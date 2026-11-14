@@ -101,8 +101,8 @@ final readonly class DrawerProducts
             $sub = $depth < self::DEPTH ? $this->level($children[$id] ?? [], $depth + 1, $children, $names, $locale, $default, $requestPath) : [];
 
             $item = ['label' => $translation->name, 'url' => $url, 'active' => $url === $requestPath, 'children' => $sub];
-            if ($depth === 1 && $sub !== []) {
-                // A top row with children opens its sub-list (a button); its own page is the first row inside.
+            if ($depth <= 2 && $sub !== []) {
+                // A row with children opens its sub-list (a button); its own page is the first row inside.
                 $item['url'] = '#';
                 $item['active'] = false;
                 array_unshift($item['children'], [

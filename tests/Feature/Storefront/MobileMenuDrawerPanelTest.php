@@ -279,6 +279,66 @@ it('shows Zalo only when the floating contact has a Zalo channel, with the butto
         ->not->toContain('sf-drawer__zalo');
 });
 
+it('draws a second-level parent as a disclosure with its own page first and the grandchildren one step in', function (): void {
+    $siteId = dpSite();
+    $top = dpCategory($siteId, ['vi' => 'Máy tính'], slug: 'may-tinh');
+    $mid = dpCategory($siteId, ['vi' => 'Laptop'], $top, 'laptop');
+    dpCategory($siteId, ['vi' => 'Laptop mỏng nhẹ'], $mid, 'laptop-mong-nhe');
+    dpCategory($siteId, ['vi' => 'Máy in'], $top, 'may-in');                         // a second-level row with no children
+    $other = dpCategory($siteId, ['vi' => 'Khuôn mẫu'], slug: 'khuon-mau');
+    dpCategory($siteId, ['vi' => 'Khuôn ép'], $other, 'khuon-ep');
+    $kids = dpCategory($siteId, ['vi' => 'Khuôn dập'], $other, 'khuon-dap');
+    dpCategory($siteId, ['vi' => 'Khuôn dập nguội'], $kids, 'khuon-dap-nguoi');
+
+    $pane = dpProductsPane($this->get('http://sp.platform.test/gioi-thieu')->assertOk()->getContent());
+    preg_match_all('#<button type="button" class="[^"]*sf-nav__toggle[^"]*"[^>]*aria-expanded="(true|false)" aria-controls="([^"]+)"#', $pane, $buttons);
+    preg_match_all('#<div class="sf-nav__panel" id="([^"]+)"#', $pane, $panels);
+
+    expect($buttons[2])->toHaveCount(4)                                              // 2 groups + 2 second-level parents
+        ->and($buttons[2])->toBe(array_values(array_unique($buttons[2])))             // ids unique
+        ->and($panels[1])->toBe($buttons[2])                                         // every button points at a panel
+        ->and($buttons[1])->each->toBe('false')
+        ->and($pane)->toContain('Xem tất cả Laptop')->toContain('href="/laptop"')
+        ->toContain('Xem tất cả Khuôn dập')->toContain('href="/khuon-dap"')
+        ->toContain('href="/laptop-mong-nhe"')
+        ->toMatch('#<a class="sf-nav__sublink" href="/may-in">Máy in</a>#');         // a leaf stays a link
+    // "Xem tất cả Laptop" comes first inside the Laptop panel
+    expect(strpos($pane, 'Xem tất cả Laptop'))->toBeLessThan(strpos($pane, 'Laptop mỏng nhẹ'));
+});
+
+it('opens the way to the category the page is on and marks it', function (): void {
+    $siteId = dpSite();
+    $top = dpCategory($siteId, ['vi' => 'Máy tính'], slug: 'may-tinh');
+    $mid = dpCategory($siteId, ['vi' => 'Laptop'], $top, 'laptop');
+    $leaf = dpCategory($siteId, ['vi' => 'Laptop mỏng nhẹ'], $mid, 'laptop-mong-nhe');
+    dpCategory($siteId, ['vi' => 'Máy in'], $top, 'may-in');
+    $far = dpCategory($siteId, ['vi' => 'Khuôn mẫu'], slug: 'khuon-mau');
+    dpCategory($siteId, ['vi' => 'Khuôn ép'], $far, 'khuon-ep');
+    app(Tenancy::class)->enter($siteId, function () use ($leaf): void {
+        app(RouteSync::class)->syncTaxonomy(Taxonomy::query()->findOrFail($leaf), 'vi', 'laptop-mong-nhe');
+    });
+
+    $pane = dpProductsPane($this->get('http://sp.platform.test/laptop-mong-nhe')->assertOk()->getContent());
+
+    expect($pane)
+        ->toMatch('#<li class="sf-nav__item sf-nav__item--parent is-open" data-disclosure>\s*<button[^>]*is-trail"[^>]*aria-current="true" aria-expanded="true"[^>]*><span>Máy tính#')
+        ->toMatch('#<button[^>]*is-trail"[^>]*aria-expanded="true"[^>]*><span>Laptop</span>#')
+        ->toMatch('#<a class="sf-nav__sublink" href="/laptop-mong-nhe" aria-current="page">Laptop mỏng nhẹ</a>#')
+        ->toMatch('#aria-expanded="false" aria-controls="[^"]+"><span>Khuôn mẫu#')            // the other group stays shut
+        ->and(substr_count($pane, 'aria-current="page"'))->toBe(1);
+});
+
+it('draws the Zalo mark in Zalo blue only when the Zalo button exists', function (): void {
+    $floating = static fn (array $channels): array => ['enabled' => true, 'theme' => 'horizontal', 'position' => 'right', 'channels' => $channels];
+    dpSite('co.platform.test', products: false, floating: $floating([['key' => 'zalo', 'on' => true, 'value' => '0912345678']]));
+    dpSite('khong.platform.test', products: false, floating: $floating([['key' => 'phone', 'on' => true, 'value' => '0912345678']]));
+
+    expect($this->get('http://co.platform.test/gioi-thieu')->assertOk()->getContent())
+        ->toMatch('#<a class="sf-drawer__zalo"[^>]*><svg class="sf-drawer__zmark" width="20" height="20"[^>]*><path fill="\#0068FF"[^>]*/><path fill="\#fff"[^>]*/></svg><span>Chat Zalo</span>#')
+        ->and($this->get('http://khong.platform.test/gioi-thieu')->assertOk()->getContent())
+        ->not->toContain('sf-drawer__zmark')->not->toContain('#0068FF');
+});
+
 it('shows the opening hours line only when the site set them', function (): void {
     dpSite('gio.platform.test', products: false, profile: ['business_hours' => ['days' => 'mon-sat', 'opens' => '07:30', 'closes' => '17:30']]);
     dpSite('khong.platform.test', products: false);

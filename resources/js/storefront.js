@@ -26,7 +26,8 @@ function setOpen(item, open) {
 
 function closeAll(except) {
     document.querySelectorAll('[data-disclosure].is-open').forEach((item) => {
-        if (item !== except) {
+        // A panel nested in another keeps the ones around it: opening it must not close its parent.
+        if (item !== except && !(except && item.contains(except))) {
             setOpen(item, false);
         }
     });

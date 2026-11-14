@@ -1522,6 +1522,14 @@ html.sf-menu-open {
     background: color-mix(in srgb, var(--color-text-strong) 3%, var(--color-surface));
 }
 
+.sf-nav--mob .sf-nav__nested .sf-nav__panel {
+    padding-inline: 0 0;
+}
+
+.sf-nav--mob .sf-nav__nested .sf-nav__item--parent > .sf-nav__sublink {
+    justify-content: space-between;
+}
+
 .sf-nav--mob .sf-nav__item--parent.is-open > .sf-nav__panel,
 html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     display: block;
@@ -1797,8 +1805,8 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     color: var(--color-text-strong);
 }
 
-.sf-drawer__zalo .sf-icon {
-    color: var(--color-primary-text);
+.sf-drawer__zmark {
+    flex: none;
 }
 
 .sf-drawer__line {

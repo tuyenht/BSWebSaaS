@@ -148,7 +148,7 @@
                 @if ($sfTabs)
                     <div class="sf-drawer__pane" role="tabpanel" id="msm-pane-products" aria-labelledby="msm-tab-products" hidden>
                         <nav class="sf-nav sf-nav--mob" aria-label="{{ __('storefront.nav_products') }}">
-                            @include('theme::partials.nav-disclosure', ['items' => $drawerProducts['items'], 'depth' => 0, 'idPrefix' => 'psm'])
+                            @include('theme::partials.drawer-tree', ['items' => $drawerProducts['items'], 'depth' => 0, 'idPrefix' => 'psm'])
                         </nav>
                         <a class="sf-drawer__all" href="{{ $drawerProducts['url'] }}"><span>{{ __('storefront.products_all') }}</span>@include('theme::partials.sf-icon', ['name' => 'chevron-right', 'size' => 20])</a>
                     </div>
@@ -190,7 +190,7 @@
                             <a class="sf-drawer__call" href="{{ $sfCallHref }}">@include('theme::partials.sf-icon', ['name' => 'phone', 'size' => 20])<span>{{ __('storefront.call_number', ['phone' => $brand['phone']]) }}</span></a>
                         @endif
                         @if ($sfZaloHref !== null)
-                            <a class="sf-drawer__zalo" href="{{ $sfZaloHref }}" rel="noopener">@include('theme::partials.sf-icon', ['name' => 'zalo', 'size' => 20])<span>{{ __('storefront.chat_zalo') }}</span></a>
+                            <a class="sf-drawer__zalo" href="{{ $sfZaloHref }}" rel="noopener"><svg class="sf-drawer__zmark" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="#0068FF" d="M12 2.5C6.2 2.5 1.5 6.3 1.5 11c0 2.6 1.4 4.9 3.7 6.5l-.9 3.4a.5.5 0 0 0 .7.6l3.9-2.1c1 .3 2 .4 3.1.4 5.8 0 10.5-3.8 10.5-8.5S17.8 2.5 12 2.5z"/><path fill="#fff" d="M7.7 6.6h8.6v1.9l-5.8 5.9h5.8v1.9H7.7v-1.9l5.8-5.9H7.7z"/></svg><span>{{ __('storefront.chat_zalo') }}</span></a>
                         @endif
                         @if ($sfEmailHref !== null)
                             <a class="sf-drawer__line" href="{{ $sfEmailHref }}">@include('theme::partials.sf-icon', ['name' => 'email', 'size' => 20])<span>{{ $brand['email'] }}</span></a>
