@@ -208,23 +208,15 @@ test('a failed transform serves the master for a few minutes only, a working one
     assert.equal(again.status, 304);
     assert.equal(again.headers.get('Cache-Control'), 'public, max-age=300');
 
-    // No transform ran (transformations off, no Cf-Resized): short-lived, whatever the format.
-    globalThis.fetch = async () => new Response('source', { headers: { 'Content-Type': 'image/jpeg' } });
-    for (const accept of ['image/avif', '*/*']) {
-      const untouched = await get('/a/library/x-1a2b.jpg?w=320', env(objects), { Accept: accept });
-      assert.equal(untouched.headers.get('Cache-Control'), 'public, max-age=300', accept);
+    // A working transform is lasting with or without Cf-Resized (Cloudflare does not always send it).
+    for (const marks of [{ 'Cf-Resized': 'internal=ok/- q=0' }, {}]) {
+      globalThis.fetch = async () => new Response('img', { headers: { 'Content-Type': 'image/avif', ...marks } });
+      const ok = await get('/a/library/x-1a2b.jpg?w=320', env(objects), { Accept: 'image/avif' });
+      assert.match(ok.headers.get('Cache-Control'), /immutable/, JSON.stringify(marks));
     }
-    globalThis.fetch = async () => new Response('source', { headers: { 'Content-Type': 'image/jpeg', 'Cf-Resized': '' } });
-    const blank = await get('/a/library/x-1a2b.jpg?w=320', env(objects), { Accept: 'image/avif' });
-    assert.equal(blank.headers.get('Cache-Control'), 'public, max-age=300', 'empty Cf-Resized');
-
-    const ran = { 'Cf-Resized': 'internal=ok/- q=0' };
-    globalThis.fetch = async () => new Response('img', { headers: { 'Content-Type': 'image/avif', ...ran } });
-    const ok = await get('/a/library/x-1a2b.jpg?w=320', env(objects), { Accept: 'image/avif' });
-    assert.match(ok.headers.get('Cache-Control'), /immutable/);
 
     // A transform that ran but gave another format (too large for AVIF → WebP) is still lasting.
-    globalThis.fetch = async () => new Response('img', { headers: { 'Content-Type': 'image/webp', ...ran } });
+    globalThis.fetch = async () => new Response('img', { headers: { 'Content-Type': 'image/webp' } });
     const other = await get('/a/library/x-1a2b.jpg?w=2048', env(objects), { Accept: 'image/avif' });
     assert.equal(other.headers.get('Content-Type'), 'image/webp');
     assert.match(other.headers.get('Cache-Control'), /immutable/);
