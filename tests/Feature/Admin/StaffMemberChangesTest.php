@@ -5,9 +5,11 @@ use App\Modules\Cms\Actions\SetMemberCategoryScopes;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Actions\AssignRole;
 use App\Modules\Rbac\Actions\CreateCustomRole;
+use App\Modules\Rbac\Actions\DeleteCustomRole;
 use App\Modules\Rbac\Actions\InviteMember;
 use App\Modules\Rbac\Actions\RevokeInvitation;
 use App\Modules\Rbac\Actions\RevokeRole;
+use App\Modules\Rbac\Actions\UpdateCustomRole;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Models\Invitation;
 use App\Modules\Rbac\Models\Role;
@@ -16,6 +18,7 @@ use App\Modules\Rbac\Support\MembershipLock;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Rbac\Support\RoleCeiling;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteFeature;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -35,7 +38,7 @@ use Livewire\Livewire;
 beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
-    DB::connection('pgsql_admin')->statement('truncate users restart identity cascade');
+    DB::connection('pgsql_admin')->statement('truncate users, audit_logs restart identity cascade');   // the invitation daily limits count audit rows
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
     app()->setLocale('vi');
@@ -81,6 +84,29 @@ function staffLockPage(User $actor, Closure $then): mixed
 function staffLockRole(string $name, int $site = 1): Role
 {
     return app(Tenancy::class)->enter($site, fn (): Role => Role::query()->where('site_id', $site)->where('name', $name)->firstOrFail());
+}
+
+/**
+ * Site 1 may keep custom roles, and has one ("Cộng tác", below an editor) that nobody holds: the
+ * role actions then have nothing left to stop staff but the membership lock.
+ */
+function staffLockCustomRole(): Role
+{
+    return app(Tenancy::class)->enter(1, function (): Role {
+        SiteFeature::query()->create(['feature_key' => 'rbac.custom_roles', 'value' => true]);
+        $role = Role::findOrCreate('Cộng tác', PermissionRegistry::GUARD);
+        $role->forceFill(['level' => 15, 'is_system' => false])->save();
+        $role->syncPermissions(['entries.view']);
+
+        return $role;
+    });
+}
+
+/** The custom roles of site 1 as name => level, so a refused create, edit or delete shows as no change. */
+function staffLockCustomRoles(): array
+{
+    return app(Tenancy::class)->enter(1, fn (): array => Role::query()->where('site_id', 1)->where('is_system', false)
+        ->orderBy('name')->pluck('level', 'name')->all());
 }
 
 it('refuses direct platform staff every member change on the screen, saying why', function (): void {
@@ -169,6 +195,7 @@ it('refuses direct platform staff in the actions themselves, not only on the scr
     $member = staffLockMember('viewer');
     $viewerRole = staffLockRole('viewer');
     app(Tenancy::class)->enter(1, fn () => app(InviteMember::class)->handle($owner->fresh(), 'cho-'.Str::lower(Str::random(8)).'@example.test', [$viewerRole]));
+    $custom = staffLockCustomRole();
     $staff = staffLockStaff();
 
     $ownerRole = staffLockRole('owner');
@@ -178,11 +205,15 @@ it('refuses direct platform staff in the actions themselves, not only on the scr
         'revoke' => app(RevokeRole::class)->handle($staff->fresh(), $owner->fresh(), $ownerRole),
         'invite' => app(InviteMember::class)->handle($staff->fresh(), 'khac-'.Str::lower(Str::random(8)).'@example.test', [$ownerRole]),
         'withdraw' => app(RevokeInvitation::class)->handle($staff->fresh(), Invitation::query()->firstOrFail()),
+        'create a role' => app(CreateCustomRole::class)->handle($staff->fresh(), 'Nhóm mới', 15, ['entries.view']),
+        'edit a role' => app(UpdateCustomRole::class)->handle($staff->fresh(), $custom->fresh(), 'Cộng tác đổi tên', 15, []),
+        'delete a role' => app(DeleteCustomRole::class)->handle($staff->fresh(), $custom->fresh()),
     }))->toThrow(AuthorizationException::class, __('admin.staff.locked'));
 
     expect(staffLockRoles($member))->toBe(['viewer'])
-        ->and(staffLockRoles($owner))->toBe(['owner']);
-})->with(['assign owner', 'revoke', 'invite', 'withdraw']);
+        ->and(staffLockRoles($owner))->toBe(['owner'])
+        ->and(staffLockCustomRoles())->toBe(['Cộng tác' => 15]);
+})->with(['assign owner', 'revoke', 'invite', 'withdraw', 'create a role', 'edit a role', 'delete a role']);
 
 it('refuses a grant of another website\'s role made from a site where the staff member belongs', function (): void {
     $staff = staffLockStaff('owner');               // a real owner of site 1
@@ -296,6 +327,7 @@ it('refuses staff who are only an editor on the site in the actions themselves',
     $other = staffLockMember('contributor');
     $viewerRole = staffLockRole('viewer');
     app(Tenancy::class)->enter(1, fn () => app(InviteMember::class)->handle($owner->fresh(), 'cho-'.Str::lower(Str::random(8)).'@example.test', [$viewerRole]));
+    $custom = staffLockCustomRole();
     // every viewer permission is one an editor holds: only the missing users.* / roles.manage stop them
     $staff = staffLockStaff('editor');
 
@@ -305,7 +337,9 @@ it('refuses staff who are only an editor on the site in the actions themselves',
         'invite' => app(InviteMember::class)->handle($staff->fresh(), 'khac-'.Str::lower(Str::random(8)).'@example.test', [$viewerRole]),
         'withdraw' => app(RevokeInvitation::class)->handle($staff->fresh(), Invitation::query()->firstOrFail()),
         'category limits' => app(SetMemberCategoryScopes::class)->handle($staff->fresh(), $member->fresh(), []),
-        'create a role' => app(CreateCustomRole::class)->handle($staff->fresh(), 'Cộng tác', 15, ['entries.view']),
+        'create a role' => app(CreateCustomRole::class)->handle($staff->fresh(), 'Nhóm mới', 15, ['entries.view']),
+        'edit a role' => app(UpdateCustomRole::class)->handle($staff->fresh(), $custom->fresh(), 'Cộng tác đổi tên', 15, []),
+        'delete a role' => app(DeleteCustomRole::class)->handle($staff->fresh(), $custom->fresh()),
     }))->toThrow(AuthorizationException::class);
 
     expect(staffLockRoles($member))->toBe(['viewer'])
@@ -313,9 +347,9 @@ it('refuses staff who are only an editor on the site in the actions themselves',
         ->and(app(Tenancy::class)->enter(1, fn (): array => [
             Invitation::query()->count(),
             Invitation::query()->whereNotNull('revoked_at')->count(),
-            Role::query()->where('site_id', 1)->where('is_system', false)->count(),
-        ]))->toBe([1, 0, 0]);
-})->with(['assign', 'revoke', 'invite', 'withdraw', 'category limits', 'create a role']);
+        ]))->toBe([1, 0])
+        ->and(staffLockCustomRoles())->toBe(['Cộng tác' => 15]);
+})->with(['assign', 'revoke', 'invite', 'withdraw', 'category limits', 'create a role', 'edit a role', 'delete a role']);
 
 it('bounds what staff may put in a role by their own role on the site, not the whole site', function (): void {
     $outside = staffLockStaff();
