@@ -126,4 +126,74 @@ final readonly class DrawerProducts
 
         return $items;
     }
+
+    /**
+     * The phone menu's own tab without the product groups the "Sản phẩm" tab already lists: a top-level
+     * item loses its children when its page is the product list, or when every child is a page of the
+     * product tree. It then stays a plain link (a "#" item links to the product list instead, so it is
+     * never dropped). The desktop menu is not passed through here.
+     *
+     * @param  list<array<string, mixed>>  $menu
+     * @param  array{url: string, items: list<array<string, mixed>>}  $tree
+     * @return list<array<string, mixed>>
+     */
+    public static function withoutProductGroups(array $menu, array $tree): array
+    {
+        $listPath = self::pathOf($tree['url']);
+        $known = [];
+        self::collectPaths($tree['items'], $known);
+
+        foreach ($menu as $i => $item) {
+            $children = $item['children'] ?? [];
+            if (! is_array($children) || $children === []) {
+                continue;
+            }
+            $url = is_string($item['url'] ?? null) ? $item['url'] : '#';
+            $isList = $url !== '#' && self::pathOf($url) === $listPath;
+            $allProducts = true;
+            foreach ($children as $child) {
+                $childUrl = is_array($child) && is_string($child['url'] ?? null) ? $child['url'] : '#';
+                if ($childUrl === '#' || ! isset($known[self::pathOf($childUrl)])) {
+                    $allProducts = false;
+                    break;
+                }
+            }
+            if (! $isList && ! $allProducts) {
+                continue;
+            }
+            $item['children'] = [];
+            if ($url === '#') {
+                $item['url'] = $tree['url'];
+            }
+            $menu[$i] = $item;
+        }
+
+        return $menu;
+    }
+
+    /**
+     * @param  array<mixed>  $items
+     * @param  array<string, true>  $into
+     */
+    private static function collectPaths(array $items, array &$into): void
+    {
+        foreach ($items as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+            if (is_string($item['url'] ?? null) && $item['url'] !== '#') {
+                $into[self::pathOf($item['url'])] = true;
+            }
+            if (! empty($item['children']) && is_array($item['children'])) {
+                self::collectPaths($item['children'], $into);
+            }
+        }
+    }
+
+    private static function pathOf(string $url): string
+    {
+        $path = parse_url($url, PHP_URL_PATH);
+
+        return rtrim(is_string($path) ? $path : $url, '/') ?: '/';
+    }
 }

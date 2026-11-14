@@ -3,6 +3,9 @@
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
+use App\Modules\Cms\Models\Menu;
+use App\Modules\Cms\Models\MenuAssignment;
+use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
@@ -427,4 +430,89 @@ it('puts no tab bar into the page without scripts and shows both panes stacked',
 
     expect($this->get('http://sp.platform.test/gioi-thieu')->assertOk()->getContent())
         ->toContain('.sf-drawer__pane[hidden]{display:block}.sf-burger,.sf-fs,.sf-drawer__fs,.sf-drawer__tabs{display:none}');
+});
+
+/**
+ * The main menu (the phone menu follows it): top-level items as label => [url, children as label => url].
+ *
+ * @param  array<string, array{0: string, 1?: array<string, string>}>  $items
+ */
+function dpMenu(int $siteId, array $items): void
+{
+    app(Tenancy::class)->enter($siteId, function () use ($items): void {
+        $menu = Menu::query()->create(['name' => 'Chính', 'handle' => 'primary']);
+        MenuAssignment::query()->updateOrCreate(['region_key' => 'primary', 'locale' => 'vi'], ['menu_id' => $menu->id, 'same_as_region' => null]);
+        $position = 0;
+        foreach ($items as $label => [$url, $kids]) {
+            $item = MenuItem::query()->create(['menu_id' => $menu->id, 'position' => $position++, 'link_type' => 'url', 'url' => $url]);
+            $item->translations()->create(['locale' => 'vi', 'label' => $label]);
+            $sub = 0;
+            foreach ($kids ?? [] as $childLabel => $childUrl) {
+                $child = MenuItem::query()->create(['menu_id' => $menu->id, 'parent_id' => $item->id, 'position' => $sub++, 'link_type' => 'url', 'url' => $childUrl]);
+                $child->translations()->create(['locale' => 'vi', 'label' => $childLabel]);
+            }
+        }
+    });
+}
+
+/** The Menu tab's panel and the desktop nav of a page. */
+function dpMenuPanes(string $html): array
+{
+    $from = (int) strpos($html, 'id="msm-pane-menu"');
+    $to = (int) strpos($html, 'id="msm-pane-products"', $from);
+    preg_match('~<nav[^>]*class="sf-nav sf-nav--desk".*?</nav>~s', $html, $desk);
+
+    return [substr($html, $from, ($to > $from ? $to : strlen($html)) - $from), $desk[0] ?? ''];
+}
+
+it('does not repeat the product groups in the Menu tab: the Sản phẩm item stays a link without its children', function (): void {
+    $siteId = dpSite();
+    $jig = dpCategory($siteId, ['vi' => 'Jig & Đồ gá'], slug: 'jig-do-ga');
+    dpCategory($siteId, ['vi' => 'Khuôn mẫu'], slug: 'khuon-mau');
+    dpMenu($siteId, [
+        'Sản phẩm' => ['/san-pham', ['Nhóm jig' => '/jig-do-ga', 'Nhóm khuôn' => '/khuon-mau']],
+        'Giới thiệu' => ['/gioi-thieu', ['Lịch sử' => '/lich-su']],
+    ]);
+
+    [$pane, $desk] = dpMenuPanes($this->get('http://sp.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    expect($pane)->toMatch('#<a class="sf-nav__link[^"]*" href="/san-pham"[^>]*>\s*(?:<span>)?Sản phẩm#u')
+        ->not->toContain('Nhóm jig')->not->toContain('Nhóm khuôn')
+        ->toContain('Lịch sử')                                    // an unrelated parent keeps its children
+        ->and($desk)->toContain('Nhóm jig')->toContain('Nhóm khuôn')->toContain('Lịch sử');   // the desktop menu is untouched
+});
+
+it('turns a "#" item whose children are all product groups into a link to the product list', function (): void {
+    $siteId = dpSite();
+    dpCategory($siteId, ['vi' => 'Jig & Đồ gá'], slug: 'jig-do-ga');
+    dpCategory($siteId, ['vi' => 'Khuôn mẫu'], slug: 'khuon-mau');
+    dpMenu($siteId, ['Hàng của chúng tôi' => ['#', ['Nhóm jig' => '/jig-do-ga', 'Nhóm khuôn' => '/khuon-mau']]]);
+
+    [$pane, $desk] = dpMenuPanes($this->get('http://sp.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    expect($pane)->toMatch('#<a class="sf-nav__link[^"]*" href="/san-pham"[^>]*>\s*(?:<span>)?Hàng của chúng tôi#u')
+        ->not->toContain('Nhóm jig')->not->toContain('aria-expanded')
+        ->and($desk)->toContain('Nhóm jig');
+});
+
+it('keeps a "#" parent whose children are not all product groups', function (): void {
+    $siteId = dpSite();
+    dpCategory($siteId, ['vi' => 'Jig & Đồ gá'], slug: 'jig-do-ga');
+    dpMenu($siteId, ['Dịch vụ' => ['#', ['Nhóm jig' => '/jig-do-ga', 'Bảo hành' => '/bao-hanh']]]);
+
+    [$pane] = dpMenuPanes($this->get('http://sp.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    expect($pane)->toContain('Nhóm jig')->toContain('Bảo hành')->toContain('aria-expanded');
+});
+
+it('keeps the menu children and draws no tab bar when the product tab is off', function (): void {
+    $siteId = dpSite(header: ['drawer_products' => false]);
+    dpCategory($siteId, ['vi' => 'Jig & Đồ gá'], slug: 'jig-do-ga');
+    dpMenu($siteId, ['Sản phẩm' => ['/san-pham', ['Nhóm jig' => '/jig-do-ga']]]);
+
+    $html = $this->get('http://sp.platform.test/gioi-thieu')->assertOk()->getContent();
+    [$pane] = dpMenuPanes($html);
+
+    expect($html)->not->toContain('role="tablist"')
+        ->and($pane)->toContain('Nhóm jig');
 });

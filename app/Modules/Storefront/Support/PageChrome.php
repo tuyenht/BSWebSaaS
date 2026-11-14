@@ -78,10 +78,15 @@ final readonly class PageChrome
         $drawerProducts = $header !== null && $header['drawer_products'] && $hasDrawer
             ? app(DrawerProducts::class)->tree($locale, $default, $requestPath)
             : null;
+        $mobileMenu = ($menus['handheld'] ?? []) !== [] ? $menus['handheld'] : ($menus['primary'] ?? []);
+        if ($drawerProducts !== null) {
+            // The "Sản phẩm" tab lists the product groups: the menu tab does not repeat them.
+            $mobileMenu = DrawerProducts::withoutProductGroups($mobileMenu, $drawerProducts);
+        }
 
         return [
             'menu' => $menus['primary'] ?? [],
-            'mobileMenu' => ($menus['handheld'] ?? []) !== [] ? $menus['handheld'] : ($menus['primary'] ?? []),
+            'mobileMenu' => $mobileMenu,
             'footerMenu' => $footer === null ? [] : ($menus[$footer['region']] ?? []),
             'header' => $header,
             'drawerProducts' => $drawerProducts,
