@@ -29,6 +29,7 @@ final class StorefrontIcons
         'map' => ['o', '<path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0021 16.382V5.618a1 1 0 00-1.447-.894L15 7m-6 3l6-3m0 0l6 3m-6-3v10"/>'],
         'upload' => ['o', '<path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>'],
         'chevron' => ['o', '<path d="M19 9l-7 7-7-7"/>'],
+        'check' => ['o', '<path d="M5 12.5l4.5 4.5L19 7.5"/>'],
         'chevron-left' => ['o', '<path d="M15 19l-7-7 7-7"/>'],
         'chevron-right' => ['o', '<path d="M9 5l7 7-7 7"/>'],
         'menu' => ['o', '<path d="M4 6h16M4 12h16M4 18h16"/>'],

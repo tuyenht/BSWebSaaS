@@ -3,7 +3,7 @@
     on the first and the second level alike, is a disclosure: a button with the name and a chevron whose
     panel starts with "Xem tất cả <name>" (the row's own page) and lists the children, one step further in.
     The way to the page the visitor is on is open on render (is-open, is-trail) and that page is
-    aria-current="page". Panels are opened by storefront.js like the menu's; a nested one never closes the
+    aria-current="page", ending with a check mark (aria-hidden). Panels are opened by storefront.js like the menu's; a nested one never closes the
     panel around it. $idPrefix keeps the panel ids apart (a nested panel's prefix is its parent's id). Names are Blade-escaped.
 --}}
 <ul class="sf-nav__list{{ $depth > 0 ? ' sf-nav__nested' : '' }}">
@@ -19,7 +19,7 @@
             </li>
         @else
             <li class="sf-nav__item">
-                <a class="{{ $depth === 0 ? 'sf-nav__link' : 'sf-nav__sublink' }}" href="{{ $item['url'] }}"@if (! empty($item['active'])) aria-current="page"@endif>{{ $item['label'] }}</a>
+                <a class="{{ $depth === 0 ? 'sf-nav__link' : 'sf-nav__sublink' }}" href="{{ $item['url'] }}"@if (! empty($item['active'])) aria-current="page"@endif>{{ $item['label'] }}@if (! empty($item['active']))@include('theme::partials.sf-icon', ['name' => 'check', 'size' => 20, 'iconClass' => 'sf-nav__check'])@endif</a>
             </li>
         @endif
     @endforeach

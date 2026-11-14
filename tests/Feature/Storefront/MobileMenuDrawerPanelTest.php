@@ -25,6 +25,7 @@ use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Chrome\StorefrontChrome;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
@@ -426,7 +427,7 @@ it('opens the way to the category the page is on and marks it', function (): voi
     expect($pane)
         ->toMatch('#<li class="sf-nav__item sf-nav__item--parent is-open" data-disclosure>\s*<button[^>]*is-trail"[^>]*aria-current="true" aria-expanded="true"[^>]*><span>Máy tính#')
         ->toMatch('#<button[^>]*is-trail"[^>]*aria-expanded="true"[^>]*><span>Laptop</span>#')
-        ->toMatch('#<a class="sf-nav__sublink" href="/laptop-mong-nhe" aria-current="page">Laptop mỏng nhẹ</a>#')
+        ->toMatch('#<a class="sf-nav__sublink" href="/laptop-mong-nhe" aria-current="page">Laptop mỏng nhẹ\s*<svg class="sf-icon sf-nav__check"[^>]*aria-hidden="true"[^>]*><path[^>]*/></svg>\s*</a>#')
         ->toMatch('#aria-expanded="false" aria-controls="[^"]+"><span>Khuôn mẫu#')            // the other group stays shut
         ->and(substr_count($pane, 'aria-current="page"'))->toBe(1);
 });
@@ -618,4 +619,28 @@ it('decides the drawer’s call and Zalo buttons per floating-contact channel', 
         ->not->toContain('sf-drawer__call')->toContain('sf-drawer__zalo')
         ->and($this->get('http://zl.platform.test/gioi-thieu')->assertOk()->getContent())
         ->toContain('sf-drawer__call')->not->toContain('sf-drawer__zalo');
+});
+
+it('heads the contact block with a caption only when the block has something to show', function (): void {
+    dpSite('co.platform.test', products: false);
+    $empty = dpSite('khong.platform.test', products: false, phone: '');
+    app(Tenancy::class)->enter($empty, fn () => SiteSetting::query()->where('key', 'brand')->update(['value' => ['name' => 'Xưởng Mẫu']]));
+
+    expect($this->get('http://co.platform.test/gioi-thieu')->assertOk()->getContent())
+        ->toMatch('#<div class="sf-drawer__contact">\s*<p class="sf-drawer__cap">Kết nối với chúng tôi</p>#')
+        ->and($this->get('http://khong.platform.test/gioi-thieu')->assertOk()->getContent())
+        ->not->toContain('sf-drawer__contact')->not->toContain('sf-drawer__cap')->not->toContain('Kết nối với chúng tôi');
+});
+
+it('keeps the phone menu tone to auto, light or dark, auto when the setting is anything else', function (): void {
+    $tone = fn (mixed $raw): string => StorefrontChrome::header(['drawer_tone' => $raw], 'vi', 'vi')['drawer_tone'] ?? 'missing';
+
+    expect($tone('auto'))->toBe('auto')->and($tone('light'))->toBe('light')->and($tone('dark'))->toBe('dark')
+        ->and($tone(null))->toBe('auto')->and($tone('Light'))->toBe('auto')->and($tone(''))->toBe('auto')
+        ->and($tone(1))->toBe('auto')->and($tone(['dark']))->toBe('auto')
+        ->and(StorefrontChrome::header([], 'vi', 'vi')['drawer_tone'] ?? 'missing')->toBe('auto')
+        // auto follows the header bar, which is dark on every site
+        ->and(StorefrontChrome::drawerDark(['drawer_tone' => 'auto']))->toBeTrue()
+        ->and(StorefrontChrome::drawerDark(['drawer_tone' => 'dark']))->toBeTrue()
+        ->and(StorefrontChrome::drawerDark(['drawer_tone' => 'light']))->toBeFalse();
 });
