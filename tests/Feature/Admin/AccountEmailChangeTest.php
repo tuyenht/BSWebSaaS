@@ -388,6 +388,113 @@ it('caps the code mails of one account in an hour, on record', function (): void
         ->and(emAudit('identity.email.code_throttled', $user))->toHaveCount(1);
 });
 
+it('caps the code mails to one new address in an hour, whichever account names it', function (): void {
+    $user = emMember();
+    $new = emNewAddress();
+    foreach (range(1, EmailChange::MAX_SENDS_PER_HOUR_PER_ADDRESS) as $_) {
+        RateLimiter::hit('email-change-send-to:new:'.sha1($new), 3600);
+    }
+
+    app(Tenancy::class)->enter(1, fn () => emToLastStep($user, $new));
+
+    expect(emCodeMails($new))->toBe([])
+        ->and(emAudit('identity.email.code_throttled', $user))->toHaveCount(1);
+});
+
+it('still sends a member the second-step code when other accounts keep naming their address as a new one', function (): void {
+    $user = emMember();
+    foreach (range(1, EmailChange::MAX_SENDS_PER_HOUR_PER_ADDRESS) as $_) {
+        RateLimiter::hit('email-change-send-to:new:'.sha1($user->email), 3600);
+    }
+
+    app(Tenancy::class)->enter(1, fn () => emToLastStep($user, emNewAddress()));
+
+    expect(emCodeMails($user->email))->toHaveCount(1);
+});
+
+it('caps the code mails from one network address in an hour', function (): void {
+    $user = emMember();
+    foreach (range(1, EmailChange::MAX_SENDS_PER_HOUR_PER_IP) as $_) {
+        RateLimiter::hit('email-change-send-ip:'.sha1('127.0.0.1'), 3600);
+    }
+
+    app(Tenancy::class)->enter(1, fn () => emPage($user)->call('openEmailChange')
+        ->set('newEmail', emNewAddress())->set('emailPassword', 'old-password-123')
+        ->call('startEmailChange')->assertHasNoErrors()->assertSet('emailStep', 2));
+
+    expect(emCodeMails($user->email))->toBe([])
+        ->and(emAudit('identity.email.code_throttled', $user))->toHaveCount(1);
+});
+
+it('pauses the authenticator step after five wrong codes, even for the right one', function (): void {
+    $user = emWithApp(emMember());
+    $secret = (string) $user->two_factor_secret;
+
+    app(Tenancy::class)->enter(1, function () use ($user, $secret): void {
+        $page = emPage($user)->call('openEmailChange')
+            ->set('newEmail', emNewAddress())->set('emailPassword', 'old-password-123')
+            ->call('startEmailChange')->assertSet('emailStep', 2)->assertSet('emailFactor', 'app');
+        $right = (new Google2FA)->getCurrentOtp($secret);
+        $wrong = $right === '111111' ? '222222' : '111111';
+        foreach (range(1, EmailChange::MAX_TRIES) as $_) {
+            $page->set('emailFactorCode', $wrong)->call('verifyEmailFactor')->assertHasErrors('emailFactorCode');
+        }
+        $page->set('emailFactorCode', $right)->call('verifyEmailFactor')
+            ->assertHasErrors('emailFactorCode')->assertSet('emailStep', 2);
+    });
+
+    expect(emAudit('identity.email.change_locked', $user))->toHaveCount(1);
+});
+
+it('starts again when the account\'s email changed some other way before the last code', function (): void {
+    $user = emMember();
+    $new = emNewAddress();
+
+    app(Tenancy::class)->enter(1, function () use ($user, $new): void {
+        $page = emToLastStep($user, $new);
+        User::query()->whereKey($user->id)->update(['email' => 'khac-'.Str::lower(Str::random(8)).'@example.test']);
+
+        $page->set('emailCode', emCode($new))->call('confirmEmailChange')
+            ->assertHasNoErrors()->assertSet('emailStep', 1)->assertSee('Yêu cầu đổi email đã hết hạn. Bắt đầu lại từ đầu.');
+    });
+
+    expect($user->fresh()->email)->not->toBe($new)
+        ->and(emAudit('identity.email.changed', $user))->toBe([]);
+});
+
+it('never takes one member\'s code for another member\'s change', function (): void {
+    $a = emMember();
+    $b = emMember();
+    $newA = emNewAddress();
+    $newB = emNewAddress();
+
+    app(Tenancy::class)->enter(1, function () use ($a, $b, $newA, $newB): void {
+        emToLastStep($a, $newA);
+        $pageB = emToLastStep($b, $newB);
+        expect(emCode($newA))->not->toBe(emCode($newB));
+
+        $pageB->set('emailCode', emCode($newA))->call('confirmEmailChange')->assertHasErrors('emailCode')->assertSet('emailStep', 3);
+    });
+
+    expect($b->fresh()->email)->toBe($b->email);
+});
+
+it('burns a sign-in code already mailed to the old address once the email moves', function (): void {
+    $user = emMember();
+    $new = emNewAddress();
+
+    app(Tenancy::class)->enter(1, function () use ($user, $new): void {
+        expect(app(EmailOtp::class)->send($user))->toBeTrue();
+        expect(Cache::has('email-otp:'.$user->id))->toBeTrue();
+
+        emToLastStep($user, $new)->set('emailCode', emCode($new))->call('confirmEmailChange')
+            ->assertHasNoErrors()->assertSet('emailStep', 0);
+    });
+
+    expect($user->fresh()->email)->toBe($new)
+        ->and(Cache::has('email-otp:'.$user->id))->toBeFalse();
+});
+
 // ── order and binding ─────────────────────────────────────────────────────────
 
 it('never skips the second step, and changes to the address the code went to', function (): void {

@@ -115,7 +115,9 @@ final class EmailChange
         $caps = [
             'account' => ['email-change-send:'.$id, self::MAX_SENDS_PER_HOUR],
             'ip' => ['email-change-send-ip:'.sha1((string) request()->ip()), self::MAX_SENDS_PER_HOUR_PER_IP],
-            'address' => ['email-change-send-to:'.sha1(Str::lower($to)), self::MAX_SENDS_PER_HOUR_PER_ADDRESS],
+            // one cap per direction: another account naming this address as its new one must not
+            // stop the codes this address's own member needs for a second step
+            'address' => ['email-change-send-to:'.($toNew ? 'new:' : 'current:').sha1(Str::lower($to)), self::MAX_SENDS_PER_HOUR_PER_ADDRESS],
         ];
         foreach ($caps as $cap => [$key, $max]) {
             if (RateLimiter::tooManyAttempts($key, $max)) {
@@ -229,6 +231,8 @@ final class EmailChange
 
             return $outcome;
         }
+        // A sign-in code already mailed to the old address must not sign anyone in after the move.
+        app(EmailOtp::class)->invalidate($user);
 
         Audit::record('identity.email.changed', [
             'actor_id' => $user->getKey(),
