@@ -4,6 +4,8 @@ use App\Modules\Admin\Livewire\Notifications;
 use App\Modules\Admin\Livewire\Platform\Notifications as PlatformNotifications;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
+use App\Modules\Notifications\Console\PruneSiteNotifications;
+use App\Modules\Notifications\Support\NotificationFeed;
 use App\Modules\Notifications\Support\NotificationSearchText;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
@@ -411,13 +413,48 @@ it('moves a search\'s "Tải thêm" to where the draw on screen ended, with one 
     npCall($page, 'more')->assertSet('until', null)->assertSee('Võ Khách 13')->assertDontSee('Võ Khách 12')->assertSee('Đang hiện 8 / 19 thông báo');
 });
 
-it('never reaches past the 90 days notices are kept, and keeps the typed words out of the address', function (): void {
+it('reaches as far back as the daily prune keeps notices, and keeps the typed words out of the address', function (): void {
     $me = npMember(extra: ['forms.view']);
-    npNotice($me, 1, 'lead.new', ['name' => 'Lê Cũ'], now()->subDays(91)->toDateTimeString());
-    npNotice($me, 1, 'lead.new', ['name' => 'Lê Mới'], now()->subDays(89)->toDateTimeString());
+    npNotice($me, 1, 'lead.new', ['name' => 'Lê Cũ'], now()->subDays(NotificationFeed::SEARCH_DAYS + 1)->toDateTimeString());
+    npNotice($me, 1, 'lead.new', ['name' => 'Lê Mới'], now()->subDays(NotificationFeed::SEARCH_DAYS - 1)->toDateTimeString());
+
+    // the walk has no time filter of its own (created_at is not in the index it reads): what bounds it
+    // is the daily prune, which keeps SEARCH_DAYS by default, like the list without a search
+    $prune = new PruneSiteNotifications;
+    expect($prune->getDefinition()->getOption('days')->getDefault())->toBe((string) NotificationFeed::SEARCH_DAYS);
+    $this->artisan('notifications:prune')->assertSuccessful();
 
     npSet(npPage($me), 'le')->assertSee('Lê Mới')->assertDontSee('Lê Cũ')->assertSee('Đã hiện hết thông báo trong 90 ngày qua (1).');
     expect((new ReflectionProperty(Notifications::class, 'q'))->getAttributes(Livewire\Attributes\Url::class))->toBeEmpty();
+});
+
+it('never sends a notice\'s bigint id to the browser while searching and paging: the cursors are ulids', function (): void {
+    $me = npMember(extra: ['forms.view']);
+    $ids = [];
+    foreach (range(1, 20) as $i) {
+        $ids[$i] = 987_654_321_000 + $i * 7;
+        DB::connection('pgsql_admin')->table('site_notifications')->insert([
+            'id' => $ids[$i], 'ulid' => (string) Str::ulid(), 'site_id' => 1, 'user_id' => $me->id, 'kind' => 'lead.new',
+            'data' => json_encode(['name' => sprintf('Đỗ Khách %02d', $i)]), 'search_text' => sprintf('do khach %02d', $i),
+            'created_at' => now()->subMinutes(100 - $i),
+        ]);
+    }
+    $sent = fn (Testable $page): string => $page->html().json_encode((fn () => $this->lastState->getSnapshot())->call($page));
+
+    $page = npSet(npPage($me), 'khach')->assertSee('Đỗ Khách 20')->assertSee('Đang hiện 8 / 20 thông báo');
+    $seen = [$sent($page)];
+    expect($page->get('nextUntil'))->toBeString()->toHaveLength(26);
+    npCall($page, 'more')->assertSee('Đỗ Khách 05')->assertSee('Đang hiện 16 / 20 thông báo');
+    $seen[] = $sent($page);
+    expect($page->get('until'))->toBeString()->toHaveLength(26);
+    npCall($page, 'more')->assertSee('Đỗ Khách 01');
+    $seen[] = $sent($page);
+
+    foreach ($seen as $out) {
+        foreach ($ids as $id) {
+            expect($out)->not->toContain((string) $id);
+        }
+    }
 });
 
 it('reads a search in a fixed number of queries, one walk of the reader\'s notices', function (): void {
