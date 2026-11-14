@@ -26,9 +26,11 @@ use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
+use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Theming\MenuAreas;
 use Closure;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
@@ -164,6 +166,44 @@ final class Index extends Component
             app(AssignMenu::class)->handle($this->actor(), $area, $locale, null);
 
             return ['ok' => true];
+        });
+    }
+
+    /**
+     * The phone menu's "Sản phẩm" tab on or off: one key (`drawer_products`) of the site's
+     * `storefront.header` setting, the rest of it kept as stored. Writing a storefront setting needs
+     * the site-settings permission as well as the menu one, and the same rule that decides whether
+     * the screen offers the switch (MenuScreen::productsTab) decides whether this writes. Saved at
+     * once, like the areas above it. Saving drops the request's settings copy (SiteSetting events),
+     * so the website reads the new value on its next page. Settings screens write no audit entry,
+     * and neither does this.
+     *
+     * @return array<string, mixed>
+     */
+    public function setProductsTab(mixed $on): array
+    {
+        if (! is_bool($on)) {
+            return $this->invalid();
+        }
+        Gate::authorize('manage', Menu::class);
+        abort_unless(Gate::allows('settings.manage'), 403);
+
+        return $this->attempt(function () use ($on): array {
+            if (! app(MenuScreen::class)->productsTab()['available']) {
+                return $this->invalid();
+            }
+
+            return DB::transaction(function () use ($on): array {
+                // The row is locked while its one key changes, so a header saved meanwhile is not overwritten.
+                $row = SiteSetting::query()->where('group_name', 'storefront')->where('key', 'header')->lockForUpdate()->first();
+                if ($row === null) {
+                    return $this->invalid();
+                }
+                $row->value = [...$row->value, 'drawer_products' => $on];
+                $row->save();
+
+                return ['ok' => true];
+            });
         });
     }
 
