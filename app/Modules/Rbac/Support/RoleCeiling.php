@@ -13,13 +13,14 @@ use App\Modules\Tenancy\Registry\ModuleCatalog;
  * The two ceilings a custom role lives under (design.md §15.3, owner's model 06/07):
  *   INV-R1 — the SITE: only permissions owned by a module the site is entitled to;
  *   INV-R2 — the EDITOR: only permissions they hold themselves (no self-escalation by proxy).
- * A platform super_admin holds no tenant role, so only the site bounds them.
+ * A platform super_admin with no role on the site is bounded by the site alone (they change no role
+ * there anyway: MembershipLock); one who holds a role there is bounded by it like any member.
  */
 final readonly class RoleCeiling
 {
     public function __construct(
         private Entitlement $entitlement,
-        private PlatformAccess $platform,
+        private RoleHierarchyGuard $guard,
     ) {}
 
     /**
@@ -54,7 +55,7 @@ final readonly class RoleCeiling
      */
     public function grantableBy(User $actor, array $siteCeiling): array
     {
-        if ($this->platform->isSuperAdmin($actor)) {
+        if ($this->guard->bypasses($actor)) {
             return $siteCeiling;
         }
 

@@ -6,7 +6,6 @@ namespace App\Modules\Admin\Livewire\Users\Concerns;
 
 use App\Modules\Admin\Support\Members\InvitationDirectory;
 use App\Modules\Admin\Support\Members\MemberDirectory;
-use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Actions\InviteMember;
 use App\Modules\Rbac\Actions\RevokeInvitation;
 use App\Modules\Rbac\Exceptions\InvitationRejectedException;
@@ -16,7 +15,6 @@ use App\Modules\Rbac\Support\RoleHierarchyGuard;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Url;
 
@@ -51,7 +49,7 @@ trait ManagesInvitations
     public function resendInvitation(string $ulid): void
     {
         $this->ensureInviter();
-        if ($this->refusedWhileSupport()) {
+        if ($this->refusedLocked()) {
             return;
         }
         $invitation = $this->liveInvitation($ulid);
@@ -86,7 +84,7 @@ trait ManagesInvitations
     public function askRevoke(string $ulid): void
     {
         $this->ensureInviter();
-        if ($this->refusedWhileSupport()) {
+        if ($this->refusedLocked()) {
             return;
         }
         $invitation = $this->liveInvitation($ulid);
@@ -107,7 +105,7 @@ trait ManagesInvitations
         $this->ensureInviter();
         $ulid = $this->revokeFor;
         $this->cancelRevoke();
-        if ($this->refusedWhileSupport()) {
+        if ($this->refusedLocked()) {
             return;
         }
         $invitation = $this->liveInvitation($ulid);
@@ -117,7 +115,7 @@ trait ManagesInvitations
         try {
             app(RevokeInvitation::class)->handle($this->actor(), $invitation);
         } catch (AuthorizationException) {
-            $this->say(app(SupportSession::class)->active() ? __('admin.support.locked') : __('admin.role_change_denied'), 'error');
+            $this->say($this->lockReason() ?? __('admin.role_change_denied'), 'error');
 
             return;
         } catch (InvitationRejectedException) {
@@ -132,7 +130,7 @@ trait ManagesInvitations
     public function reinvite(string $ulid): void
     {
         $this->ensureInviter();
-        if ($this->refusedWhileSupport()) {
+        if ($this->refusedLocked()) {
             return;
         }
         $invitation = $this->siteInvitation($ulid);
@@ -185,7 +183,7 @@ trait ManagesInvitations
     private function ensureInviter(): void
     {
         $this->ensureOpen();
-        abort_unless(Gate::allows('users.invite'), 403);
+        abort_unless($this->mayInvite(), 403);
     }
 
     /** An invitation of the CURRENT site, addressed by public ulid (the tenant scope and the explicit site keep it to this site). */

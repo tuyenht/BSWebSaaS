@@ -584,6 +584,42 @@ it('lets a category move change a limited member\'s reach only for someone who c
         ->and(app(Tenancy::class)->enter(1, fn () => Taxonomy::query()->whereKey($news->id)->value('parent_id')))->toBe($jobs->id);
 });
 
+it('lets a platform super_admin move or merge a limited member\'s category only as their role on the website allows', function (): void {
+    [$jobs, $it, $news] = cwTree();
+    $lan = cwMember('author');
+    $minh = cwMember('author');
+    cwLimit($lan, $jobs);
+    cwLimit($minh, $it);
+    $staff = function (?User $member = null): User {
+        $user = $member ?? User::factory()->create();
+        app(PlatformAccess::class)->onPlatform(fn () => $user->assignRole('super_admin'));
+
+        return $user->fresh() ?? $user;
+    };
+    $limits = fn (): array => app(Tenancy::class)->enter(1, fn (): array => [
+        Taxonomy::query()->whereKey($news->id)->value('parent_id'),
+        MemberCategoryScope::query()->where('user_id', $minh->id)->pluck('taxonomy_id')->all(),
+    ]);
+    $try = function (User $who) use ($it, $jobs, $news): array {
+        $this->actingAs($who);
+
+        return [
+            cwRefusal(fn () => app(MoveTaxonomy::class)->handle($news, $jobs, 0)),                                  // Tin tức would come under Lan's limit
+            cwRefusal(fn () => app(DeleteTaxonomy::class)->handle($it, CategoryItemsOnDelete::Reassign, $jobs)),    // Minh's limit would move onto Tuyển dụng
+        ];
+    };
+
+    $asEditor = $try($staff(cwMember('editor')));   // only an editor here: no users.manage
+    $fromOutside = $try($staff());                     // no role on the website at all
+    $unchanged = $limits();
+    $asAdmin = $try($staff(cwMember('admin')));      // an admin here sets limits by hand, so may cause this
+
+    expect([$asEditor, $fromOutside])->toBe([['changes_member_limits', 'has_scoped_members'], ['changes_member_limits', 'has_scoped_members']])
+        ->and($unchanged)->toBe([null, [$it->id]])
+        ->and($asAdmin)->toBe([null, null])
+        ->and($limits())->toBe([$jobs->id, [$jobs->id]]);
+});
+
 it('adds no query to the posts list of a member who is not limited', function (): void {
     [, , $news] = cwTree();
     cwSection('tin-tuc', $news);

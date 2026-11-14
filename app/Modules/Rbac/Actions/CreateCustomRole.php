@@ -6,11 +6,12 @@ namespace App\Modules\Rbac\Actions;
 
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
-use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Exceptions\RoleChangeRejectedException;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Rbac\Support\CustomRoleRules;
+use App\Modules\Rbac\Support\MembershipLock;
+use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
@@ -37,7 +38,7 @@ final readonly class CreateCustomRole
      */
     public function handle(User $actor, string $name, int $level, array $permissions, ?Role $forkFrom = null): Role
     {
-        app(SupportSession::class)->forbid();   // membership never changes on someone's behalf
+        app(MembershipLock::class)->authorize($actor, app(CurrentSite::class)->id(), 'roles.manage');   // never on someone's behalf, from outside the site, or without roles.manage there
         Gate::forUser($actor)->authorize('create', Role::class);
         $siteId = $this->rules->siteId();
 

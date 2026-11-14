@@ -134,7 +134,8 @@ function raceHostnameBeforeLock(string $host, ?int $ownerTenantId = null): void
         $fired = true;
 
         $tenantId = $ownerTenantId ?? Tenant::on('pgsql_admin')->create(['name' => 'Racer'])->id;
-        $site = Site::on('pgsql_admin')->create(['tenant_id' => $tenantId, 'name' => 'Racer', 'status' => 'active']);
+        // as the other run commits it: still provisioning, its owner not given yet
+        $site = Site::on('pgsql_admin')->create(['tenant_id' => $tenantId, 'name' => 'Racer', 'status' => 'provisioning']);
         Domain::on('pgsql_admin')->create([
             'site_id' => $site->id, 'hostname' => $host, 'kind' => 'subdomain',
             'is_primary' => true, 'verified_at' => now(),

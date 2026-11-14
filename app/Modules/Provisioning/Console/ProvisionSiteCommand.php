@@ -10,6 +10,7 @@ use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Provisioning\Exceptions\HostnameNotPlatformSubdomainException;
 use App\Modules\Provisioning\Exceptions\HostnameOwnedByAnotherTenantException;
 use App\Modules\Provisioning\Exceptions\HostnamePendingVerificationException;
+use App\Modules\Provisioning\Exceptions\OwnerChangeRefusedException;
 use App\Modules\Provisioning\Exceptions\SiteLimitReachedException;
 use App\Modules\Provisioning\Exceptions\TenantSelectionException;
 use App\Modules\Shared\Support\Cast;
@@ -105,6 +106,10 @@ final class ProvisionSiteCommand extends Command
             return self::FAILURE;
         } catch (HostnameOwnedByAnotherTenantException $e) {
             $this->error(Cast::string(__('provisioning.hostname_owned_by_another_tenant', ['host' => $e->hostname])));
+
+            return self::FAILURE;
+        } catch (OwnerChangeRefusedException $e) {
+            $this->error(Cast::string(__('provisioning.owner_change_refused', ['host' => $e->hostname])));
 
             return self::FAILURE;
         } catch (SiteLimitReachedException $e) {

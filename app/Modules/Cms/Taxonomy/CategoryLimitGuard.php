@@ -8,10 +8,10 @@ use App\Modules\Cms\Exceptions\TaxonomyChangeRejectedException;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Identity\Models\User;
-use App\Modules\Rbac\Support\PlatformAccess;
+use App\Modules\Rbac\Support\MembershipLock;
 use App\Modules\Rbac\Support\RoleHierarchyGuard;
+use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Gate;
 
 /**
  * Keeps a member limited to some post categories (CategoryScopes) from changing the category tree
@@ -42,8 +42,9 @@ final readonly class CategoryLimitGuard
 
     public function __construct(
         private CategoryScopes $scopes,
-        private PlatformAccess $platform,
+        private MembershipLock $membership,
         private RoleHierarchyGuard $levels,
+        private CurrentSite $site,
     ) {}
 
     /**
@@ -65,8 +66,11 @@ final readonly class CategoryLimitGuard
     /**
      * Whether the signed-in person may change these members' limits as a side effect of changing
      * categories: they hold `users.manage` and a role level strictly above every member concerned
-     * (a platform super_admin may). Members who are never limited (level ≥ EXEMPT_LEVEL) do not
-     * count — their rows are ignored anyway. With nobody signed in, nobody vouches for the change.
+     * — the same test as setting them by hand (SetMemberCategoryScopes). Platform staff are judged by
+     * the role they hold on this website like anyone else, never by the platform bypass, and never
+     * from outside the website or on someone's behalf (MembershipLock). Members who are never limited
+     * (level ≥ EXEMPT_LEVEL) do not count — their rows are ignored anyway. With nobody signed in, or
+     * no website, nobody vouches for the change.
      *
      * @param  list<array{id: int, name: string, level: int}>  $members
      */
@@ -78,13 +82,11 @@ final readonly class CategoryLimitGuard
         }
 
         $actor = Auth::user();
-        if (! $actor instanceof User) {
+        if (! $actor instanceof User || ! $this->site->hasId()) {
             return false;
         }
-        if ($this->platform->isSuperAdmin($actor)) {
-            return true;
-        }
-        if (! Gate::forUser($actor)->allows('users.manage')) {
+        $siteId = $this->site->id();
+        if ($this->membership->reason($actor, $siteId) !== null || ! $this->membership->permits($actor, $siteId, 'users.manage')) {
             return false;
         }
 

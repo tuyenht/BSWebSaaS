@@ -36,13 +36,24 @@ final readonly class RoleHierarchyGuard
     }
 
     /**
+     * A platform super_admin who holds no role on the current site: what they would be allowed to
+     * see is not limited by a level here. They change nothing on it either (MembershipLock). A
+     * super_admin who IS a member of the site is measured by that membership like anyone else.
+     */
+    public function bypasses(User $actor): bool
+    {
+        return $this->platform->isSuperAdmin($actor)
+            && ! ($this->currentSite->hasId() && MembershipLock::holdsRoleOn($actor, $this->currentSite->id()));
+    }
+
+    /**
      * The level every role the actor creates or edits must stay STRICTLY below: their own highest
-     * level here — or, for a platform super_admin (who holds no tenant role), the top template
-     * level, so nothing custom ever sits at or above the site's owner.
+     * level here — or, for a platform super_admin with no role here, the top template level, so
+     * nothing custom ever sits at or above the site's owner.
      */
     public function levelCeiling(User $actor): int
     {
-        return $this->platform->isSuperAdmin($actor)
+        return $this->bypasses($actor)
             ? PermissionRegistry::topTenantLevel()
             : $this->maxLevel($actor);
     }
@@ -57,7 +68,7 @@ final readonly class RoleHierarchyGuard
     {
         $team = $this->currentSite->id();
 
-        if ($this->platform->isSuperAdmin($actor)) {
+        if ($this->bypasses($actor)) {
             return Role::query()->where('site_id', $team)->get();
         }
 
@@ -71,12 +82,21 @@ final readonly class RoleHierarchyGuard
     }
 
     /**
+     * A platform super_admin grants any PLATFORM role (the operator console). A website's role is
+     * granted only by a member of that website, within their own level there — a super_admin with
+     * no role on the site is refused here too, not only by MembershipLock.
+     *
      * @throws AuthorizationException when the grant would escalate beyond the actor.
      */
     public function assertCanGrant(User $actor, Role $target): void
     {
         if ($this->platform->isSuperAdmin($actor)) {
-            return;
+            if ($target->site_id === PermissionRegistry::PLATFORM_TEAM_ID) {
+                return;
+            }
+            if ($this->bypasses($actor)) {
+                throw new AuthorizationException(__('admin.staff.locked'));
+            }
         }
 
         $sameTeam = $target->site_id !== null

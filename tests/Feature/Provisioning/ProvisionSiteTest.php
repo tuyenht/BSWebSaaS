@@ -11,6 +11,9 @@ use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Provisioning\Exceptions\OwnerChangeRefusedException;
+use App\Modules\Rbac\Support\MembershipLock;
+use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\Domain;
@@ -36,13 +39,13 @@ beforeEach(function (): void {
     truncateRbac();
 });
 
-function provisionAnVinh(): Site
+function provisionAnVinh(string $ownerEmail = 'owner@anvinh.test'): Site
 {
     return app(ProvisionSite::class)->handle(new ProvisionSiteData(
         tenantName: 'An Vinh',
         siteName: 'An Vinh',
         hostname: 'anvinh.platform.test',
-        ownerEmail: 'owner@anvinh.test',
+        ownerEmail: $ownerEmail,
         ownerName: 'An Vinh Owner',
         ownerPassword: 'a-strong-password',
         locales: ['vi', 'en', 'ja'],
@@ -63,6 +66,95 @@ it('provisions a full, active site stack', function (): void {
     // Owner can manage content within the site (owner role = all tenant permissions).
     $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
     expect($tenancy->enter($site->id, fn () => $owner->fresh()->can('entries.publish')))->toBeTrue();
+});
+
+it('gives the first owner the owner role, though platform staff change no member of the site', function (): void {
+    $site = provisionAnVinh();
+    $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
+    $this->artisan('rbac:sync')->assertSuccessful();
+    $staff = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $staff->assignRole('super_admin'));
+    $lock = app(MembershipLock::class);
+
+    [$roles, $ownerLocked, $staffLocked] = app(Tenancy::class)->enter($site->id, fn (): array => [
+        $owner->fresh()?->roles()->pluck('name')->all(),
+        $lock->outsideStaff($owner->fresh(), $site->id),
+        $lock->outsideStaff($staff->fresh(), $site->id),
+    ]);
+
+    expect($roles)->toBe(['owner'])
+        ->and($ownerLocked)->toBeFalse()
+        ->and($staffLocked)->toBeTrue();
+});
+
+/** The emails of the site's owners. */
+function provisionOwners(Site $site): array
+{
+    return app(Tenancy::class)->enter($site->id, fn (): array => User::query()
+        ->whereExists(fn ($q) => $q->selectRaw('1')->from('model_has_roles')
+            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+            ->whereColumn('model_has_roles.model_id', 'users.id')
+            ->where('model_has_roles.site_id', $site->id)
+            ->where('roles.name', 'owner'))
+        ->orderBy('email')->pluck('email')->all());
+}
+
+it('refuses a re-run that names someone else as owner, and points to site:recover-owner', function (): void {
+    $site = provisionAnVinh();
+
+    expect(fn () => provisionAnVinh('nguoi-la@example.test'))->toThrow(OwnerChangeRefusedException::class);
+
+    expect(provisionOwners($site))->toBe(['owner@anvinh.test'])
+        ->and(User::query()->where('email', 'nguoi-la@example.test')->exists())->toBeFalse()
+        ->and(__('provisioning.owner_change_refused', ['host' => 'anvinh.platform.test']))->toContain('site:recover-owner');
+});
+
+it('refuses a new owner for a live website whose owners are all gone: that is a recovery', function (): void {
+    $site = provisionAnVinh();
+    app(Tenancy::class)->enter($site->id, fn () => User::query()->firstWhere('email', 'owner@anvinh.test')?->removeRole('owner'));
+
+    expect(fn () => provisionAnVinh('nguoi-la@example.test'))->toThrow(OwnerChangeRefusedException::class);
+    expect(provisionOwners($site))->toBe([]);
+});
+
+it('still finishes a first run that stopped before its owner was given', function (): void {
+    $site = provisionAnVinh();
+    // as a run that failed midway leaves it: still provisioning, nobody holding the owner role
+    app(Tenancy::class)->enter($site->id, fn () => User::query()->firstWhere('email', 'owner@anvinh.test')?->removeRole('owner'));
+    $site->update(['status' => 'provisioning']);
+
+    $finished = provisionAnVinh('chu-moi@example.test');
+
+    expect($finished->status)->toBe('active')
+        ->and(provisionOwners($site))->toBe(['chu-moi@example.test']);
+});
+
+it('refuses the second of two unfinished runs with different owners once the first has given its owner', function (): void {
+    $site = provisionAnVinh();
+    app(Tenancy::class)->enter($site->id, fn () => User::query()->firstWhere('email', 'owner@anvinh.test')?->removeRole('owner'));
+    $site->update(['status' => 'provisioning']);
+
+    // The other run (another connection, committed at once) gives its owner while this one waits on
+    // the owner lock, after this one's first check passed.
+    $admin = DB::connection('pgsql_admin');
+    $grant = [
+        'role_id' => $admin->table('roles')->where('site_id', $site->id)->where('name', 'owner')->value('id'),
+        'model_type' => User::class,
+        'model_id' => User::query()->where('email', 'owner@anvinh.test')->value('id'),
+        'site_id' => $site->id,
+    ];
+    $done = false;
+    DB::listen(function ($query) use (&$done, $site, $admin, $grant): void {
+        if (! $done && str_contains($query->sql, 'pg_advisory_xact_lock') && ($query->bindings[0] ?? null) === 'site-owner:'.$site->id) {
+            $done = true;
+            $admin->table('model_has_roles')->insert($grant);
+        }
+    });
+
+    expect(fn () => provisionAnVinh('chu-moi@example.test'))->toThrow(OwnerChangeRefusedException::class);
+    expect($done)->toBeTrue()
+        ->and(provisionOwners($site))->toBe(['owner@anvinh.test'])
+        ->and(User::query()->where('email', 'chu-moi@example.test')->exists())->toBeFalse();
 });
 
 it('creates the platform subdomain already verified and primary', function (): void {

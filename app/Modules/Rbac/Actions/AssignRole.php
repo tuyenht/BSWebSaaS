@@ -6,10 +6,11 @@ namespace App\Modules\Rbac\Actions;
 
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
-use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Events\SiteMembershipChanged;
 use App\Modules\Rbac\Models\Role;
+use App\Modules\Rbac\Support\MembershipLock;
 use App\Modules\Rbac\Support\RoleHierarchyGuard;
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -26,7 +27,7 @@ final readonly class AssignRole
 
     public function handle(User $actor, User $target, Role $role): void
     {
-        app(SupportSession::class)->forbid();   // membership never changes on someone's behalf
+        app(MembershipLock::class)->authorize($actor, Cast::int($role->site_id), 'users.manage');   // never on someone's behalf, from outside the site, or without users.manage there
         $this->guard->assertCanGrant($actor, $role);
 
         DB::transaction(function () use ($target, $role): void {

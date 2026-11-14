@@ -20,6 +20,7 @@ use App\Modules\Provisioning\Exceptions\HostnameNotPlatformSubdomainException;
 use App\Modules\Provisioning\Exceptions\HostnameOwnedByAnotherTenantException;
 use App\Modules\Provisioning\Exceptions\HostnamePendingVerificationException;
 use App\Modules\Provisioning\Exceptions\HostnameReservedLabelException;
+use App\Modules\Provisioning\Exceptions\OwnerChangeRefusedException;
 use App\Modules\Provisioning\Exceptions\SiteLimitReachedException;
 use App\Modules\Provisioning\Exceptions\TenantSelectionException;
 use App\Modules\Rbac\Models\Permission;
@@ -50,7 +51,8 @@ use Spatie\Permission\PermissionRegistrar;
 /**
  * Genesis: provision a site end-to-end and leave it active. Idempotent (anchored on
  * the unique primary domain), so it is safe for An Vinh and for site #2..#10000.
- * A re-run must name the site's own customer (HostnameOwnedByAnotherTenantException).
+ * A re-run must name the site's own customer (HostnameOwnedByAnotherTenantException) and one of
+ * its own owners (OwnerChangeRefusedException): provisioning never changes who owns a website.
  *
  * Order respects the defense layers: global identity/site rows first, then per-site
  * (RLS) config + RBAC inside the tenant context, then flip the site to 'active'.
@@ -176,6 +178,10 @@ final readonly class ProvisionSite
             $tenant = $this->tenantOfExistingSite($site, $data, $hostname);
         }
 
+        // Before any account or role is touched: a re-run never hands the website to someone new.
+        // Asked again under the owner lock below, where the owner is actually given.
+        $this->tenancy->enter($site->id, fn () => $this->assertOwnerUnchanged($site->id, $hostname, $data->ownerEmail));
+
         // Functional shape (design.md §15.2): GĐ1 ships only `corporate`. Stamp it idempotently so a
         // re-run also backfills a site provisioned before the type axis existed.
         $siteType = SiteType::query()->where('key', 'corporate')->firstOrFail();
@@ -184,22 +190,28 @@ final readonly class ProvisionSite
         }
         $siteTypeKey = $siteType->key;
 
-        $owner = User::query()->firstWhere('email', $data->ownerEmail) ?? User::query()->create([
-            'name' => $data->ownerName,
-            'email' => $data->ownerEmail,
-            'password' => Hash::make($data->ownerPassword ?? Str::password(20)),
-            'email_verified_at' => now(),
-        ]);
-        // Attach membership from the User side (Tenancy must not depend on Identity).
-        $owner->tenants()->syncWithoutDetaching([$tenant->id]);
-
         // Make sure the permission catalog exists (idempotent; team-agnostic).
         foreach (PermissionRegistry::permissions() as $permission) {
             Permission::findOrCreate($permission, PermissionRegistry::GUARD);
         }
 
         // 2) Per-site setup INSIDE the tenant context (RLS + spatie team = this site).
-        $this->tenancy->enter($site->id, function () use ($data, $owner, $siteTypeKey): void {
+        $this->tenancy->enter($site->id, function () use ($data, $site, $hostname, $tenant, $siteTypeKey): void {
+            // Two runs for one website at once (different owner emails, neither owner yet) both pass
+            // the check above: they queue here, and the second finds the first one's owner and is
+            // refused before its account or role exists.
+            DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', ['site-owner:'.$site->id]);
+            $this->assertOwnerUnchanged($site->id, $hostname, $data->ownerEmail);
+
+            $owner = User::query()->firstWhere('email', $data->ownerEmail) ?? User::query()->create([
+                'name' => $data->ownerName,
+                'email' => $data->ownerEmail,
+                'password' => Hash::make($data->ownerPassword ?? Str::password(20)),
+                'email_verified_at' => now(),
+            ]);
+            // Attach membership from the User side (Tenancy must not depend on Identity).
+            $owner->tenants()->syncWithoutDetaching([$tenant->id]);
+
             foreach ($data->locales as $locale) {
                 SiteLocale::query()->firstOrCreate(
                     ['locale' => $locale],
@@ -265,6 +277,36 @@ final readonly class ProvisionSite
         ]);
 
         return $site->refresh();
+    }
+
+    /**
+     * Provisioning gives a website its FIRST owner and never another: on a website that already has
+     * an owner, the email must be one of them (a re-run that finishes or refreshes it). A website
+     * with no owner yet takes one only while it is still being provisioned (a first run that failed
+     * midway); a live website whose owners are gone is recovered with `site:recover-owner`, which is
+     * audited and mailed — never here. Runs inside the website's tenant context; the website's status
+     * is read afresh, as it is now.
+     *
+     * @throws OwnerChangeRefusedException
+     */
+    private function assertOwnerUnchanged(int $siteId, string $hostname, string $email): void
+    {
+        $owners = DB::table('model_has_roles')
+            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+            ->where('model_has_roles.site_id', $siteId)
+            ->where('model_has_roles.model_type', User::class)
+            ->where('roles.site_id', $siteId)
+            ->where('roles.name', 'owner')
+            ->limit(100)
+            ->pluck('model_has_roles.model_id');
+        $hasOwner = $owners->isNotEmpty();
+        $isOwner = $hasOwner && User::query()->whereIn('id', $owners)->where('email', $email)->exists();
+
+        if ($isOwner || (! $hasOwner && Site::query()->whereKey($siteId)->value('status') === 'provisioning')) {
+            return;
+        }
+
+        throw new OwnerChangeRefusedException($hostname);
     }
 
     /**

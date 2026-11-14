@@ -312,7 +312,7 @@ it('refuses limits for someone who is not a member here or is never limited', fu
 
     expect(csSet(1, $owner, $outsider, [$news]))->toBe('not_member')
         ->and(csSet(1, $owner, $admin, [$news]))->toBe('target_exempt')
-        ->and(csSet(1, $staff, $admin, [$news]))->toBe('target_exempt')
+        ->and(csSet(1, $staff, $admin, [$news]))->toBe('denied')       // platform staff with no role here change nobody's limits
         ->and(csRows(1, $admin))->toBe([]);
 });
 
@@ -504,7 +504,7 @@ it('moves limits onto a merge target only for someone who could set those limits
         ->and(csRows(1, $lan))->toBe([$jobs->id]);
 });
 
-it('lets a platform super_admin move limits onto a merge target', function (): void {
+it('refuses a platform super_admin with no role on the website moving limits onto a merge target', function (): void {
     $lan = csMember(1, 'editor');
     $jobs = csCategory(1, 'Tuyển dụng');
     $it = csCategory(1, 'Kỹ thuật', $jobs);
@@ -513,8 +513,9 @@ it('lets a platform super_admin move limits onto a merge target', function (): v
     app(PlatformAccess::class)->onPlatform(fn () => $staff->assignRole('super_admin'));
     $this->actingAs($staff);
 
-    expect(csDeleteRefusal(fn () => app(DeleteTaxonomy::class)->handle($it, CategoryItemsOnDelete::Reassign, $jobs)))->toBeNull()
-        ->and(csRows(1, $lan))->toBe([$jobs->id]);
+    // Staff keep only what a membership on the website gives them: none here, so they set no limit.
+    expect(csDeleteRefusal(fn () => app(DeleteTaxonomy::class)->handle($it, CategoryItemsOnDelete::Reassign, $jobs)))->toBe('has_scoped_members')
+        ->and(csRows(1, $lan))->toBe([$it->id]);
 });
 
 it('re-reads the member under the lock, so a promotion that lands while limits are being set wins', function (): void {
@@ -564,19 +565,20 @@ it('leaves limits alone for a role granted or revoked on another site', function
     $newsB = csCategory(2, 'Tin tức B');
     csLimit(1, $member, $newsA);
     csLimit(2, $member, $newsB);
-    $staff = User::factory()->create();
-    app(PlatformAccess::class)->onPlatform(fn () => $staff->assignRole('super_admin'));
+    $ownerB = csMember(2, 'owner');
     $adminB = csRole(2, 'admin');
     $editorB = csRole(2, 'editor');
 
-    // Working on site 1, a platform super_admin grants and revokes site 2 roles: neither site's limits move.
-    csIn(1, function () use ($staff, $member, $adminB, $editorB): void {
-        app(AssignRole::class)->handle($staff, $member, $adminB);
-        app(RevokeRole::class)->handle($staff, $member, $editorB);
+    // Site 2's owner grants and revokes site 2 roles: site 1's limits do not move, while site 2's
+    // follow the member there (an admin is never limited). Nobody can change a site's roles from
+    // another site any more: platform staff with no role there are refused (MembershipLock).
+    csIn(2, function () use ($ownerB, $member, $adminB, $editorB): void {
+        app(AssignRole::class)->handle($ownerB->fresh() ?? $ownerB, $member, $adminB);
+        app(RevokeRole::class)->handle($ownerB->fresh() ?? $ownerB, $member, $editorB);
     });
 
     expect(csRows(1, $member))->toBe([$newsA->id])
-        ->and(csRows(2, $member))->toBe([$newsB->id]);
+        ->and(csRows(2, $member))->toBe([]);
 });
 
 it('grants and revokes a platform role without announcing a site membership', function (): void {

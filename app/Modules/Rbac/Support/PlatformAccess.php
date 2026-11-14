@@ -23,6 +23,9 @@ final class PlatformAccess
     /** @var array<int, bool> */
     private array $superAdminMemo = [];
 
+    /** @var array<int, bool> */
+    private array $operatorMemo = [];
+
     public function __construct(private readonly TeamContext $context) {}
 
     public function isSuperAdmin(User $user): bool
@@ -49,6 +52,7 @@ final class PlatformAccess
     public function forgetMemo(): void
     {
         $this->superAdminMemo = [];
+        $this->operatorMemo = [];
     }
 
     /**
@@ -66,11 +70,22 @@ final class PlatformAccess
     /**
      * Is the user a Bảo Sơn operator — does it hold ANY platform role? The single predicate
      * that gates access to the platform plane, shared by the login gate and EnsurePlatformAccess
-     * so authentication and the middleware apply the exact same rule.
+     * so authentication and the middleware apply the exact same rule. Memoized per user-id like
+     * isSuperAdmin(): MembershipLock asks it on every member change (once per member of a bulk one).
      */
     public function isOperator(User $user): bool
     {
-        return $this->hasAnyPlatformRole($user, PermissionRegistry::platformRoleNames());
+        $id = $user->getKey();
+
+        if (! is_int($id)) {
+            return $this->hasAnyPlatformRole($user, PermissionRegistry::platformRoleNames());
+        }
+
+        if (! array_key_exists($id, $this->operatorMemo)) {
+            $this->operatorMemo[$id] = $this->hasAnyPlatformRole($user, PermissionRegistry::platformRoleNames());
+        }
+
+        return $this->operatorMemo[$id];
     }
 
     /**
