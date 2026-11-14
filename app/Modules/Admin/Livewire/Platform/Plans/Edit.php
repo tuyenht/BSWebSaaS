@@ -244,7 +244,7 @@ final class Edit extends Component
             session()->flash('plans.toast', [
                 'text' => __($saved->is_active ? 'admin.plans_toast_added_sold' : 'admin.plans_toast_added', ['name' => $saved->name]),
                 // a plan just added and not on sale can be taken back; one put on sale stays
-                'undo' => $saved->is_active ? null : ['kind' => 'discard', 'plan' => $saved->key],
+                'undo' => $saved->is_active ? null : ['kind' => 'discard', 'plan' => $saved->key, 'after' => ['name' => $saved->name, 'features' => PlanCatalog::grantsOf($saved)]],
             ]);
         } else {
             session()->flash('plans.toast', [

@@ -94,11 +94,14 @@ it('adds a plan not on sale with its features, and Hoàn tác on the list takes 
         ->and(AuditLog::query()->where('action', 'tenancy.plan.features_changed')->count())->toBe(1);
 
     // nobody has had the plan yet, so "Hoàn tác" deletes it, its feature rows with it
-    Livewire::actingAs($staff)->test(Index::class)
-        ->assertSet('toast', __('admin.plans_toast_added', ['name' => 'Chuyên nghiệp']))
-        ->assertSet('undoAction', ['kind' => 'discard', 'plan' => $plan->key])
-        ->call('undo')
-        ->assertSet('toast', '');
+    $page = Livewire::actingAs($staff)->test(Index::class)
+        ->assertSet('toast', __('admin.plans_toast_added', ['name' => 'Chuyên nghiệp']));
+    $undo = $page->get('undoAction');
+    expect($undo['kind'] ?? null)->toBe('discard')
+        ->and($undo['plan'] ?? null)->toBe($plan->key)
+        ->and($undo['after']['name'] ?? null)->toBe('Chuyên nghiệp')
+        ->and($undo['after']['features'] ?? null)->toEqualCanonicalizing(['sites.max' => 5, 'workflow.editorial' => true]);
+    $page->call('undo')->assertSet('toast', '');
     expect(Plan::query()->whereKey($plan->id)->exists())->toBeFalse()
         ->and(DB::connection('pgsql_admin')->table('plan_features')->where('plan_id', $plan->id)->count())->toBe(0)
         ->and(AuditLog::query()->where('action', 'tenancy.plan.discarded')->value('meta'))->toMatchArray(['plan' => $plan->key, 'name' => 'Chuyên nghiệp']);

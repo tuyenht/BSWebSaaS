@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Livewire\Platform\Plans\Index;
+use App\Modules\Admin\Support\Plans\PlanCatalog;
 use App\Modules\Admin\Support\PlatformPlans;
 use App\Modules\Admin\Support\UpgradeInvitation;
 use App\Modules\Audit\Models\AuditLog;
@@ -200,7 +201,7 @@ it('duplicates a plan as a copy not on sale, and Hoàn tác discards the copy wi
         ->assertSet('toastTone', 'success');
 
     $copy = Plan::query()->where('name', 'Bản sao của Cơ bản')->firstOrFail();
-    $page->assertSet('undoAction', ['kind' => 'discard', 'plan' => $copy->key]);
+    $page->assertSet('undoAction', ['kind' => 'discard', 'plan' => $copy->key, 'after' => ['name' => 'Bản sao của Cơ bản', 'features' => ['sites.max' => 3]]]);
     expect($copy->is_active)->toBeFalse()
         ->and($copy->features()->pluck('value', 'feature_key')->all())->toBe(['sites.max' => 3])
         ->and(plAudits('tenancy.plan.duplicated'))->toBe(1);
@@ -233,7 +234,7 @@ it('never discards a plan that is or was on sale, that a customer (a removed one
     ]);
 
     foreach ([$sold, $once, $held, $removed, $from, $to] as $plan) {
-        expect(fn () => app(PlatformPlans::class)->discardCopy($staff, $plan->fresh()))
+        expect(fn () => app(PlatformPlans::class)->discardCopy($staff, $plan->fresh(), ['name' => $plan->name, 'features' => PlanCatalog::grantsOf($plan)]))
             ->toThrow(PlanChangeRejectedException::class, 'plan_in_use');
     }
     expect(Plan::query()->count())->toBe(6)
@@ -250,10 +251,36 @@ it('never discards a plan that is or was on sale, that a customer (a removed one
         ->and(plAudits('tenancy.plan.discarded'))->toBe(0);
 });
 
+it('keeps a copy someone renamed or gave other features to before Hoàn tác', function (): void {
+    $plan = plPlan('Cơ bản', true, ['sites.max' => 3]);
+    $other = plStaff('billing');
+
+    // renamed in another tab while the toast is still open
+    $page = Livewire::actingAs(plStaff('billing'))->test(Index::class)->call('duplicate', $plan->key);
+    $copy = Plan::query()->latest('id')->firstOrFail();
+    app(PlatformPlans::class)->update($other, $copy, 'Gói riêng', false);
+    $page->call('undo')
+        ->assertSet('toast', __('admin.plans_toast_undo_failed'))
+        ->assertSet('toastTone', 'error');
+    expect(Plan::query()->whereKey($copy->id)->value('name'))->toBe('Gói riêng');
+
+    // feature table changed meanwhile
+    $page = Livewire::actingAs(plStaff('billing'))->test(Index::class)->call('duplicate', $plan->key);
+    $second = Plan::query()->latest('id')->firstOrFail();
+    app(PlatformPlans::class)->setFeatures($other, $second, ['sites.max' => 5]);
+    $page->call('undo')->assertSet('toast', __('admin.plans_toast_undo_failed'));
+    expect(Plan::query()->whereKey($second->id)->exists())->toBeTrue();
+
+    // an undo that does not say how the copy was left deletes nothing
+    expect(fn () => app(PlatformPlans::class)->discardCopy($other, $second->fresh(), []))
+        ->toThrow(PlanChangeRejectedException::class, 'plan_changed');
+    expect(plAudits('tenancy.plan.discarded'))->toBe(0);
+});
+
 it('refuses the discard to staff without platform.billing.manage', function (): void {
     $free = plPlan('Trống', false);
 
-    expect(fn () => app(PlatformPlans::class)->discardCopy(plStaff('support'), $free))
+    expect(fn () => app(PlatformPlans::class)->discardCopy(plStaff('support'), $free, ['name' => $free->name, 'features' => []]))
         ->toThrow(AuthorizationException::class);
     expect(Plan::query()->whereKey($free->id)->exists())->toBeTrue()
         ->and(plAudits('tenancy.plan.discarded'))->toBe(0);

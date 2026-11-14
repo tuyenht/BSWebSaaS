@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Support;
 
+use App\Modules\Admin\Support\Plans\PlanCatalog;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Support\PlatformAccess;
@@ -119,20 +120,24 @@ final readonly class PlatformPlans
      * Take back a plan nobody has had: the "Hoàn tác" right after "Thêm gói" or "Nhân bản". Plans
      * are never deleted otherwise (a plan no longer wanted stops being sold), so this refuses a plan
      * that is or was on sale, one a customer is on (a removed customer included), and one the
-     * customers' plan history names. The plan row stays locked from the check to the delete, so
-     * nobody can be put on it meanwhile.
+     * customers' plan history names. It also refuses a plan whose name or feature table is no longer
+     * as the add or copy left it ($asLeft: name, features), so an edit made meanwhile is never
+     * thrown away. The plan row stays locked from the check to the delete, so nobody can be put on
+     * it meanwhile.
+     *
+     * @param  array<array-key, mixed>  $asLeft
      *
      * @throws AuthorizationException
-     * @throws PlanChangeRejectedException plan_in_use
+     * @throws PlanChangeRejectedException plan_in_use · plan_changed
      */
-    public function discardCopy(User $actor, Plan $plan): void
+    public function discardCopy(User $actor, Plan $plan, array $asLeft): void
     {
         $this->authorize($actor);
 
-        $gone = DB::transaction(function () use ($plan): bool {
+        $gone = DB::transaction(function () use ($plan, $asLeft): ?string {
             $locked = Plan::query()->whereKey($plan->id)->lockForUpdate()->first();
             if ($locked === null) {
-                return false;
+                return null;
             }
 
             $used = $locked->is_active
@@ -143,15 +148,20 @@ final readonly class PlatformPlans
             if ($used) {
                 throw new PlanChangeRejectedException('plan_in_use');
             }
+            if (! array_key_exists('name', $asLeft) || $locked->name !== $asLeft['name']
+                || ! PlanCatalog::sameGrants(PlanCatalog::grantsOf($locked), Cast::arr($asLeft['features'] ?? null))) {
+                throw new PlanChangeRejectedException('plan_changed');
+            }
+            $name = $locked->name;
 
-            return (bool) $locked->delete();
+            return $locked->delete() ? $name : null;
         });
 
-        if (! $gone) {
+        if ($gone === null) {
             return;
         }
 
-        $this->audit($actor, 'tenancy.plan.discarded', ['plan' => $plan->key, 'name' => $plan->name]);
+        $this->audit($actor, 'tenancy.plan.discarded', ['plan' => $plan->key, 'name' => $gone]);
     }
 
     /**

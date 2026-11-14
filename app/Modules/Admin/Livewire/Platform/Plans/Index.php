@@ -186,7 +186,7 @@ final class Index extends Component
         }
 
         $this->recount();
-        $this->say(Cast::string(__('admin.plans_toast_duplicated', ['name' => $copy->name])), ['kind' => 'discard', 'plan' => $copy->key]);
+        $this->say(Cast::string(__('admin.plans_toast_duplicated', ['name' => $copy->name])), ['kind' => 'discard', 'plan' => $copy->key, 'after' => ['name' => $copy->name, 'features' => PlanCatalog::grantsOf($copy)]]);
     }
 
     /** "Lời mời nâng gói" on or off, for every website on the platform. */
@@ -232,7 +232,7 @@ final class Index extends Component
             } elseif ($kind === 'sold') {
                 $plans->update($actor, $plan, $plan->name, (bool) ($undo['sold'] ?? false));
             } elseif ($kind === 'discard') {
-                $plans->discardCopy($actor, $plan);
+                $plans->discardCopy($actor, $plan, Cast::arr($undo['after'] ?? null));
             } elseif ($kind === 'restore') {
                 $this->restore($actor, $plan, $undo);
             }
