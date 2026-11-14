@@ -1411,7 +1411,7 @@ final class Planner
         $menus = $this->locked(Menu::query()->whereIn('id', $ids))->pluck('ulid', 'id');
         $nodes = $this->locked(MenuItem::query()->whereIn('menu_id', $ids))->orderBy('position')->orderBy('id')
             ->with(['translations' => fn ($query) => $query->whereIn('locale', $this->locales)])
-            ->get(['id', 'menu_id', 'parent_id', 'position', 'link_type', 'routable_type', 'routable_id', 'url', 'dynamic_key']);
+            ->get(['id', 'menu_id', 'parent_id', 'position', 'link_type', 'routable_type', 'routable_id', 'url', 'dynamic_key', 'meta']);
         $this->rememberTargets(array_values($nodes->all()));
 
         $states = [];
@@ -1442,6 +1442,11 @@ final class Planner
             }
             ksort($labels);
             $row = ['label' => $labels, 'link' => $this->liveLink($node)];
+            // Only a set icon joins the state, so a menu without icons keeps the hash it was loaded with.
+            $icon = Cast::arr($node->meta)['icon'] ?? null;
+            if (is_string($icon) && $icon !== '') {
+                $row['icon'] = $icon;
+            }
             $children = $this->liveMenuNodes($nodes, $node->id);
             if ($children !== []) {
                 $row['children'] = $children;
@@ -1670,6 +1675,9 @@ final class Planner
                 default => 'dynamic:'.Cast::string($node['dynamic'] ?? null),
             };
             $row = ['label' => $labels, 'link' => $link];
+            if (isset($node['icon']) && is_string($node['icon']) && $node['icon'] !== '') {
+                $row['icon'] = $node['icon'];
+            }
             $children = $this->desiredMenuNodes(Cast::arr($node['children'] ?? []));
             if ($children !== []) {
                 $row['children'] = $children;

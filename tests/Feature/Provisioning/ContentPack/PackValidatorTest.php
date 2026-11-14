@@ -501,3 +501,20 @@ it('refuses a card label or a byline that is too long, holds tags or is not text
     'a byline with a tag' => ['posts.json', 'post:ra-mat-website', 'author', 'Phòng <i>Kỹ thuật</i>', 'post:ra-mat-website: author (vi) must be one line of plain text'],
     'a byline that is not text' => ['posts.json', 'post:ra-mat-website', 'author', 12, 'post:ra-mat-website: author (vi) must be text.'],
 ]);
+
+it('accepts a menu item icon from the website icon set and refuses any other name', function (mixed $icon, bool $ok): void {
+    ContentPacks::item($this->folder, 'menus.json', 'menu:primary', function (array $menu) use ($icon): array {
+        $menu['items'][0]['icon'] = $icon;
+
+        return $menu;
+    });
+
+    $problems = implode("\n", cpProblems());
+    $ok ? expect($problems)->toBe('') : expect($problems)->toContain("icon must be one of the website's icon names");
+})->with([
+    'a set icon' => ['info', true],
+    'an unknown name' => ['rocket-launch-xyz', false],
+    'markup' => ['<svg onload=alert(1)>', false],
+    'not a string' => [['info'], false],
+    'empty' => ['', false],
+]);

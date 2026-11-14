@@ -20,6 +20,7 @@ use App\Modules\Shared\Support\PlainText;
 use App\Modules\Shared\Support\RichTextSanitizer;
 use App\Modules\Shared\Support\SafeLink;
 use App\Modules\Theme\Chrome\StorefrontChrome;
+use App\Modules\Theme\Chrome\StorefrontIcons;
 use App\Modules\Theme\Chrome\WebAnalytics;
 use App\Modules\Theme\Components\ButtonLink;
 use App\Modules\Theme\Components\ComponentRegistry;
@@ -1036,6 +1037,9 @@ final readonly class PackValidator
                 $errors[] = "{$where}: url is not a safe link.";
             } elseif (isset($node['dynamic']) && ! in_array($node['dynamic'], self::DYNAMIC_LINKS, true)) {
                 $errors[] = "{$where}: dynamic must be one of ".implode(', ', self::DYNAMIC_LINKS).'.';
+            }
+            if (array_key_exists('icon', $node) && ! (is_string($node['icon']) && StorefrontIcons::has($node['icon']))) {
+                $errors[] = "{$where}: icon must be one of the website's icon names.";
             }
             if (isset($node['children'])) {
                 $this->menuNodes($pack, $where, $node['children'], $depth + 1, $errors);

@@ -524,6 +524,11 @@ final class Applier
                 $attributes['routable_id'] = $id;
             }
 
+            $icon = Cast::string($node['icon'] ?? null);
+            if ($icon !== '') {
+                $attributes['meta'] = ['icon' => $icon];
+            }
+
             $item = MenuItem::query()->create($attributes);
             foreach (Cast::arr($node['label'] ?? null) as $locale => $label) {
                 $item->translations()->create(['locale' => (string) $locale, 'label' => Cast::string($label)]);
