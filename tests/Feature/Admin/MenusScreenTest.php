@@ -156,6 +156,19 @@ it('loads the same number of queries for a menu of 10 items as for one of 200', 
         ->and(msKeys($loaded))->not->toContain('id')->not->toContain('menu_id')->not->toContain('parent_id')->not->toContain('routable_id');
 });
 
+it('answers load, the self-check and search without drawing the screen again', function (): void {
+    // the screen keeps its state in the browser; a redraw costs the whole first paint again for nothing
+    msIn(1, function (): void {
+        $screen = Livewire::actingAs($this->editor->fresh())->test(MenusIndex::class);
+        foreach ([['load'], ['selfCheck'], ['search', 'gioi']] as $call) {
+            $screen->call(...$call);
+            expect($screen->effects)->not->toHaveKey('html', $call[0]);
+        }
+        $screen->call('createMenu', 'Menu thử'); // a write still answers with the redraw, as before
+        expect($screen->effects)->toHaveKey('html');
+    });
+});
+
 it('tells what the website hides by itself, naming sources by slug and ulid, never an id', function (): void {
     [$menu, $draft, $product] = msIn(1, function (): array {
         $menu = app(SaveMenu::class)->handle(null, 'Menu chính');

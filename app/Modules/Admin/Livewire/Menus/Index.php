@@ -32,6 +32,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Renderless;
 use Livewire\Component;
 
 /**
@@ -71,6 +72,7 @@ final class Index extends Component
      *
      * @return array<string, mixed>
      */
+    #[Renderless]
     public function load(mixed $menu = null): array
     {
         Gate::authorize('viewAny', Menu::class);
@@ -303,6 +305,7 @@ final class Index extends Component
      *
      * @return array<string, mixed>
      */
+    #[Renderless]
     public function search(mixed $query, mixed $kind = null, mixed $menu = null): array
     {
         if (! is_string($query) || ($kind !== null && ! in_array($kind, MenuSourceSearch::KINDS, true)) || ($menu !== null && ! $this->isUlid($menu))) {
@@ -323,6 +326,7 @@ final class Index extends Component
      *
      * @return array<string, mixed>
      */
+    #[Renderless]
     public function selfCheck(mixed $menu = null): array
     {
         if ($menu !== null && ! $this->isUlid($menu)) {
