@@ -1534,16 +1534,26 @@ html.sf-menu-open {
     color: var(--color-on-primary);
 }
 
+/* Its icon, hover, press and focus ring stay on the brand fill's own pair, never the drawer's greys. */
+.sf-nav--mob .sf-nav__link--cta .sf-nav__ic {
+    color: inherit;
+}
+
+.sf-nav--mob .sf-nav__link--cta:active {
+    background: var(--color-primary-hover);
+    transition-duration: 0s;
+}
+
 /* The hover fill only where there is a real hover: on a touch phone a tapped row would keep it. */
 @media (hover: hover) {
-    .sf-nav--mob :is(.sf-nav__link, .sf-nav__sublink):not([aria-current="page"]):hover,
+    .sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink):not([aria-current="page"]):hover,
     .sf-nav--mob .sf-nav__chev:hover {
         background: var(--sf-dw-track);
     }
 }
 
 /* Tap feedback within 200ms: no fade, so the press shows at once. Keyboard focus gets the same ring as the tabs. */
-.sf-nav--mob :is(.sf-nav__link, .sf-nav__sublink, .sf-nav__chev):active {
+.sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink, .sf-nav__chev):active {
     background: var(--sf-dw-hair);
     transition-duration: 0s;
 }
@@ -1551,6 +1561,10 @@ html.sf-menu-open {
 .sf-nav--mob :is(.sf-nav__link, .sf-nav__sublink, .sf-nav__chev):focus-visible {
     outline: 3px solid var(--sf-dw-focus);
     outline-offset: -3px;
+}
+
+.sf-nav--mob .sf-nav__link--cta:focus-visible {
+    outline-color: var(--color-on-primary);
 }
 
 /* Where the visitor is: a pill in the track's grey drawn behind the row (so the row's height never
