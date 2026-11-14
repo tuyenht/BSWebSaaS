@@ -8,7 +8,7 @@ use App\Modules\Shared\Support\VietnameseFold;
 
 /**
  * What the Notifications page's search box finds a notice by: its facts, folded once when the notice
- * is written (site_notifications.search_text, migration 2062_01_01_000000), never the fixed wording of
+ * is written (site_notifications.search_text, migration 2063_01_01_000000), never the fixed wording of
  * its sentence (built when shown, in the reader's language, so "đang chờ bạn duyệt" finds nothing; the
  * tabs cover the kinds).
  *

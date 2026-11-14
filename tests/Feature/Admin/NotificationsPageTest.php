@@ -376,6 +376,27 @@ it('searches within the tab and pages the matches eight at a time', function ():
     npCall($page, 'show', 'duyet-bai')->assertSee('Không có thông báo nào khớp «khach»');
 });
 
+it('moves a search\'s "Tải thêm" to where the draw on screen ended, with one walk a click, and starts again when that notice is gone', function (): void {
+    $me = npMember(extra: ['forms.view']);
+    $ulids = [];
+    foreach (range(1, 20) as $i) {
+        $ulids[$i] = npNotice($me, 1, 'lead.new', ['name' => sprintf('Võ Khách %02d', $i)], now()->subMinutes(100 - $i)->toDateTimeString());
+    }
+    $page = npSet(npPage($me), 'vo')->assertSee('Đang hiện 8 / 20 thông báo');
+    expect($page->get('nextUntil'))->toBe($ulids[5]);
+
+    $walks = 0;
+    DB::listen(function ($query) use (&$walks): void {
+        $walks += str_contains($query->sql, '"search_text"') ? 1 : 0;
+    });
+    npCall($page, 'more')->assertSee('Võ Khách 05')->assertDontSee('Võ Khách 04')->assertSee('Đang hiện 16 / 20 thông báo');
+    expect($walks)->toBe(1)->and($page->get('nextUntil'))->toBe($ulids[1]);
+
+    // the notice the next page would end at is cleaned up meanwhile: the search starts again at its first page
+    DB::connection('pgsql_admin')->table('site_notifications')->where('ulid', $ulids[1])->delete();
+    npCall($page, 'more')->assertSet('until', null)->assertSee('Võ Khách 13')->assertDontSee('Võ Khách 12')->assertSee('Đang hiện 8 / 19 thông báo');
+});
+
 it('never reaches past the 90 days notices are kept, and keeps the typed words out of the address', function (): void {
     $me = npMember(extra: ['forms.view']);
     npNotice($me, 1, 'lead.new', ['name' => 'Lê Cũ'], now()->subDays(91)->toDateTimeString());

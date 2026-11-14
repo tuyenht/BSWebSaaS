@@ -60,8 +60,10 @@ final class FillNotificationSearchText extends Command
                 } while ($read === $chunk);
             } catch (Throwable $e) {
                 $failed++;
-                Log::error('Filling the search text of notifications failed for a site', ['site_id' => $siteId, 'exception' => $e]);
-                $this->error("Site {$siteId}: {$e->getMessage()}");
+                // Never the exception itself: a failed statement's message carries its bindings, the
+                // notices' facts (customers' names and phones).
+                Log::error('Filling the search text of notifications failed for a site', ['site_id' => $siteId, 'error' => $e::class, 'code' => $e->getCode()]);
+                $this->error("Site {$siteId}: failed (".$e::class.').');
             }
         }
 

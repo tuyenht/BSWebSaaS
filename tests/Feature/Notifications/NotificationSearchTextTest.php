@@ -99,6 +99,38 @@ it('fills the notices written before the column, site by site, and a second run 
     expect(array_values(nstStored()))->toBe(['tran van binh', '', 'chi ha khuon ep nhua']);
 });
 
+it('keeps the line the model wrote when a notice\'s data changes between the fill\'s read and its write', function (): void {
+    $reader = nstReader();
+    $admin = DB::connection('pgsql_admin');
+    $admin->table('site_notifications')->insert(['ulid' => (string) Str::ulid(), 'site_id' => 1, 'user_id' => $reader->id, 'kind' => 'lead.new', 'data' => json_encode(['name' => 'Đỗ Văn Cũ'])]);
+
+    $changed = false;
+    DB::connection()->beforeExecuting(function (string $sql) use ($admin, &$changed): void {
+        if (! $changed && str_starts_with($sql, 'UPDATE site_notifications AS n')) {
+            $changed = true; // as a privacy clean-up would, through the model: new data, its own line
+            $admin->table('site_notifications')->update(['data' => json_encode(['name' => '—']), 'search_text' => '—']);
+        }
+    });
+    $this->artisan('notifications:search-text')->expectsOutputToContain('Wrote the search text of 0 notification(s)')->assertSuccessful();
+
+    expect($changed)->toBeTrue()->and(array_values(nstStored()))->toBe(['—']);
+});
+
+it('logs a failed site without the statement, which would carry the notices\' facts', function (): void {
+    $reader = nstReader();
+    DB::connection('pgsql_admin')->table('site_notifications')->insert(['ulid' => (string) Str::ulid(), 'site_id' => 1, 'user_id' => $reader->id, 'kind' => 'lead.new', 'data' => json_encode(['name' => 'Ngô Thị Riêng'])]);
+    DB::connection()->beforeExecuting(function (string $sql): void {
+        if (str_starts_with($sql, 'UPDATE site_notifications AS n')) {
+            throw new RuntimeException('UPDATE … ngo thi rieng');
+        }
+    });
+    Log::spy();
+
+    $this->artisan('notifications:search-text', ['--site' => 1])->doesntExpectOutputToContain('rieng')->assertFailed();
+
+    Log::shouldHaveReceived('error')->withArgs(fn (string $message, array $context): bool => $context === ['site_id' => 1, 'error' => RuntimeException::class, 'code' => 0])->once();
+});
+
 it('walks only the reader\'s notices on the feed index, the search a row filter after RLS', function (): void {
     $reader = nstReader();
     $others = User::factory()->count(4)->create()->modelKeys();
@@ -175,7 +207,7 @@ it('adds the line as a nullable text column, and takes it away and back without 
 
     $reader = nstReader();
     app(Tenancy::class)->enter(1, fn () => Notify::user($reader->id, 'lead.new', ['name' => 'Võ Thị Hạnh']));
-    $migration = require database_path('migrations/2062_01_01_000000_add_search_text_to_site_notifications.php');
+    $migration = require database_path('migrations/2063_01_01_000000_add_search_text_to_site_notifications.php');
     $previous = DB::getDefaultConnection();
     DB::setDefaultConnection('pgsql_admin');
     try {

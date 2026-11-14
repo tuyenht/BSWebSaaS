@@ -84,6 +84,10 @@ final class Notifications extends Component
     #[Locked]
     public ?string $until = null;
 
+    /** In a search, where the next "Tải thêm" moves the cursor (found by the last draw; null: no more). */
+    #[Locked]
+    public ?string $nextUntil = null;
+
     /** What is typed in the search box ('' = no search). */
     public string $q = '';
 
@@ -121,6 +125,7 @@ final class Notifications extends Component
         abort_unless(array_key_exists($tab, self::TABS), 404);
         $this->tab = $tab;
         $this->until = null;
+        $this->nextUntil = null;
     }
 
     /** A new search starts at its first page. */
@@ -128,6 +133,7 @@ final class Notifications extends Component
     {
         $this->reader();
         $this->until = null;
+        $this->nextUntil = null;
     }
 
     /** "Bỏ tìm": the box empties and the tab lists everything again. */
@@ -136,6 +142,7 @@ final class Notifications extends Component
         $this->reader();
         $this->q = '';
         $this->until = null;
+        $this->nextUntil = null;
     }
 
     /** "Tải thêm": eight more, older ones. */
@@ -145,16 +152,12 @@ final class Notifications extends Component
         $feed = app(NotificationFeed::class);
         [$kinds, $unread] = $this->filter();
 
-        $words = NotificationSearchText::words($this->q);
-        if ($words !== []) {
-            $ulids = array_column($feed->matches($user, $kinds, $unread, $words, self::MOST), 'ulid');
-            $at = $this->until === null ? min(self::PAGE, count($ulids)) - 1 : array_search($this->until, $ulids, true);
-            if ($at === false || $at < 0) {
-                $this->until = null;
-
-                return;
+        if (NotificationSearchText::words($this->q) !== []) {
+            // The draw on screen already walked the matches and kept where the next page ends: no second
+            // walk here (a word that is rare reads the reader's whole 90 days).
+            if ($this->nextUntil !== null) {
+                $this->until = $this->nextUntil;
             }
-            $this->until = $ulids[min($at + self::PAGE, count($ulids) - 1)];
 
             return;
         }
@@ -357,8 +360,10 @@ final class Notifications extends Component
         }
 
         $rows = $feed->rows($user, array_column(array_slice($hits, 0, $shown), 'id'));
+        $more = count($hits) > $shown && $shown < self::MOST;
+        $this->nextUntil = $more ? $hits[min($shown - 1 + self::PAGE, count($hits) - 1, self::MOST - 1)]['ulid'] : null;
 
-        return [$rows, count($hits) > $shown, min(count($hits), self::CAP)];
+        return [$rows, $more, min(count($hits), self::CAP)];
     }
 
     /**
@@ -369,7 +374,7 @@ final class Notifications extends Component
     private function noMatch(): array
     {
         return [
-            'icon' => 'ri-search', 'title' => __('admin.ntf.empty.search.t', ['q' => trim($this->q)]), 'desc' => __('admin.ntf.empty.search.d'),
+            'icon' => 'ri-search', 'title' => __('admin.ntf.empty.search.t', ['q' => mb_substr(trim($this->q), 0, NotificationSearchText::QUERY_MAX)]), 'desc' => __('admin.ntf.empty.search.d'),
             'btn' => __('admin.ntf.empty.search.b'), 'url' => null, 'all' => false, 'clear' => true,
         ];
     }
