@@ -12,9 +12,11 @@ use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Notifications\Models\SiteNotification;
 use App\Modules\Notifications\Registry\NotificationKinds;
 use App\Modules\Notifications\Support\NotificationFeed;
+use App\Modules\Notifications\Support\NotificationSearchText;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Workflow\Services\ReviewQueue;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -32,6 +34,10 @@ use Livewire\Component;
  *  - Only the reader's own rows on this site: user_id here, site_id through the global scope + RLS.
  *  - Pages of eight by keyset ("Tải thêm"): the oldest notice on screen is the cursor (a ulid); the
  *    page draws again everything from the newest down to it. Each tab's count stops at 100 ("99+").
+ *  - The search box (q): the reader's notices whose facts hold every typed word, accents ignored
+ *    (NotificationSearchText), within the tab, newest first, eight per page like the rest; the tab
+ *    counts ignore it (as the board draws them). It is not put in the address: it may hold a
+ *    customer's name or phone.
  *  - Opening one marks it read and goes where it points (NotificationLink: ulid addresses only);
  *    marking read, one or all, offers "Hoàn tác" in the shared toast.
  *  - A support person signed in as the member reads the list but never marks anything read for them.
@@ -78,6 +84,9 @@ final class Notifications extends Component
     #[Locked]
     public ?string $until = null;
 
+    /** What is typed in the search box ('' = no search). */
+    public string $q = '';
+
     public string $toast = '';
 
     public string $toastTone = 'success';
@@ -114,12 +123,41 @@ final class Notifications extends Component
         $this->until = null;
     }
 
+    /** A new search starts at its first page. */
+    public function updatedQ(): void
+    {
+        $this->reader();
+        $this->until = null;
+    }
+
+    /** "Bỏ tìm": the box empties and the tab lists everything again. */
+    public function clearSearch(): void
+    {
+        $this->reader();
+        $this->q = '';
+        $this->until = null;
+    }
+
     /** "Tải thêm": eight more, older ones. */
     public function more(): void
     {
         $user = $this->reader();
         $feed = app(NotificationFeed::class);
         [$kinds, $unread] = $this->filter();
+
+        $words = NotificationSearchText::words($this->q);
+        if ($words !== []) {
+            $ulids = array_column($feed->matches($user, $kinds, $unread, $words, self::MOST), 'ulid');
+            $at = $this->until === null ? min(self::PAGE, count($ulids)) - 1 : array_search($this->until, $ulids, true);
+            if ($at === false || $at < 0) {
+                $this->until = null;
+
+                return;
+            }
+            $this->until = $ulids[min($at + self::PAGE, count($ulids) - 1)];
+
+            return;
+        }
 
         $last = $this->until ?? $feed->page($user, $kinds, $unread, self::PAGE)->last()?->ulid;
         if ($last === null) {
@@ -239,16 +277,22 @@ final class Notifications extends Component
         $feed = app(NotificationFeed::class);
         [$kinds, $unread] = $this->filter();
 
-        $rows = $this->until === null
-            ? $feed->page($user, $kinds, $unread, self::PAGE)
-            : $feed->page($user, $kinds, $unread, self::MOST, through: $this->until);
-        if ($rows->isEmpty() && $this->until !== null) {
-            // The oldest notice on screen was cleaned up meanwhile: start again from the first page.
-            $this->until = null;
-            $rows = $feed->page($user, $kinds, $unread, self::PAGE);
+        $words = NotificationSearchText::words($this->q);
+        $found = null;
+        if ($words !== []) {
+            [$rows, $more, $found] = $this->searched($user, $feed, $kinds, $unread, $words);
+        } else {
+            $rows = $this->until === null
+                ? $feed->page($user, $kinds, $unread, self::PAGE)
+                : $feed->page($user, $kinds, $unread, self::MOST, through: $this->until);
+            if ($rows->isEmpty() && $this->until !== null) {
+                // The oldest notice on screen was cleaned up meanwhile: start again from the first page.
+                $this->until = null;
+                $rows = $feed->page($user, $kinds, $unread, self::PAGE);
+            }
+            $last = $rows->last();
+            $more = $last !== null && $feed->page($user, $kinds, $unread, 1, after: $last->ulid)->isNotEmpty();
         }
-        $last = $rows->last();
-        $more = $last !== null && $feed->page($user, $kinds, $unread, 1, after: $last->ulid)->isNotEmpty();
 
         $specs = [];
         foreach (self::TABS as $key => [$group, $onlyUnread]) {
@@ -274,16 +318,60 @@ final class Notifications extends Component
             'tabs' => $this->tabs($counts),
             'days' => $days,
             'shown' => $rows->count(),
-            'total' => $counts[$this->tab],
+            'total' => $found ?? $counts[$this->tab],
+            'q' => $this->q,
             'more' => $more,
             'cap' => self::CAP,
             'supporting' => $supporting,
             'unread' => $counts['chua-doc'],
-            'empty' => $rows->isEmpty() ? $this->emptyState($user) : null,
+            'empty' => $rows->isEmpty() ? ($words !== [] ? $this->noMatch() : $this->emptyState($user)) : null,
         ]);
         $view->title(__('admin.notifications'));
 
         return $view;
+    }
+
+    /**
+     * One search's rows on screen, whether older matches remain, and how many match (stopping at
+     * CAP, like a tab's count): a single walk of the reader's notices (NotificationFeed::matches())
+     * finds the first page's matches and up to CAP of them for the count, or, after "Tải thêm", every
+     * match down to the oldest one on screen; then the rows shown are read by id.
+     *
+     * @param  list<string>|null  $kinds
+     * @param  list<string>  $words
+     * @return array{0: Collection<int, SiteNotification>, 1: bool, 2: int}
+     */
+    private function searched(User $user, NotificationFeed $feed, ?array $kinds, bool $unread, array $words): array
+    {
+        $hits = $feed->matches($user, $kinds, $unread, $words, $this->until === null ? self::CAP : self::MOST + 1);
+        $shown = self::PAGE;
+        if ($this->until !== null) {
+            $at = array_search($this->until, array_column($hits, 'ulid'), true);
+            if ($at === false) {
+                // The oldest match on screen was cleaned up meanwhile: start again from the first page.
+                $this->until = null;
+                $hits = array_slice($hits, 0, self::CAP);
+            } else {
+                $shown = $at + 1;
+            }
+        }
+
+        $rows = $feed->rows($user, array_column(array_slice($hits, 0, $shown), 'id'));
+
+        return [$rows, count($hits) > $shown, min(count($hits), self::CAP)];
+    }
+
+    /**
+     * What a search that finds nothing says (as the board draws it): the button empties the box.
+     *
+     * @return array{icon: string, title: string, desc: string, btn: string|null, url: string|null, all: bool, clear: bool}
+     */
+    private function noMatch(): array
+    {
+        return [
+            'icon' => 'ri-search', 'title' => __('admin.ntf.empty.search.t', ['q' => trim($this->q)]), 'desc' => __('admin.ntf.empty.search.d'),
+            'btn' => __('admin.ntf.empty.search.b'), 'url' => null, 'all' => false, 'clear' => true,
+        ];
     }
 
     /**
@@ -304,13 +392,13 @@ final class Notifications extends Component
     /**
      * What an empty tab says, and the button that leads on (as the board draws each tab and role).
      *
-     * @return array{icon: string, title: string, desc: string, btn: string|null, url: string|null, all: bool}
+     * @return array{icon: string, title: string, desc: string, btn: string|null, url: string|null, all: bool, clear: bool}
      */
     private function emptyState(User $user): array
     {
         $state = fn (string $icon, string $key, ?string $btn = null, ?string $url = null, bool $all = false): array => [
             'icon' => $icon, 'title' => __('admin.ntf.empty.'.$key.'.t'), 'desc' => __('admin.ntf.empty.'.$key.'.d'),
-            'btn' => $btn, 'url' => $url, 'all' => $all,
+            'btn' => $btn, 'url' => $url, 'all' => $all, 'clear' => false,
         ];
         $toAll = __('admin.ntf.see_all');
 

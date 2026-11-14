@@ -1,7 +1,8 @@
 {{--
     "Thông báo" — design c-thong-bao, ported onto the admin tokens (Notifications.php; the platform
     console's empty copy: Platform/Notifications.php). The header with "Đánh dấu đã đọc tất cả", a
-    card with the tabs (one per group, each with its count), the 90-day line, and the tab's list
+    card with the tabs (one per group, each with its count), the search box (the site's page only:
+    the platform console has no notices to search; Escape or "Bỏ tìm" empties it), the 90-day line, and the tab's list
     grouped by the site's day, eight more on "Tải thêm". A row opens where it leads (marked read);
     "Đã đọc" marks it read; the shared toast offers "Hoàn tác". The Alpine part bsNotifications
     (resources/js/admin-notifications.js, started by the shared lazy loader) moves between tabs with
@@ -19,6 +20,7 @@
         'brand' => 'bg-primary-soft text-primary-text',
     ];
     $allOff = $supporting || $unread === 0;
+    $q ??= '';
     $totalLabel = $total >= $cap ? ($cap - 1).'+' : (string) $total;
 @endphp
 <div class="@container/tb flex flex-col gap-4">
@@ -54,6 +56,15 @@
                     </button>
                 @endforeach
             </div>
+            @unless ($platform)
+                <div class="mb-2 min-w-0 flex-[1_1_100%]">
+                    <x-bs-admin::search :label="__('admin.ntf.search_label')" :placeholder="__('admin.ntf.search_ph')"
+                                        :clear-label="__('admin.ntf.search_clear')" clear-action="clearSearch" :clear-on="$q !== ''"
+                                        maxlength="{{ \App\Modules\Notifications\Support\NotificationSearchText::QUERY_MAX }}"
+                                        wire:model.live.debounce.300ms="q"
+                                        x-on:keydown.escape="if ($el.value !== '') { $event.stopPropagation(); $wire.clearSearch() }" />
+                </div>
+            @endunless
         </div>
         <p class="flex items-center gap-1.5 px-4 py-2 text-small text-text-muted">
             <x-bs-admin::icon name="ri-time" class="size-[calc(1rem+var(--user-text-boost))] shrink-0" /><span>{{ __('admin.ntf.keep') }}</span>
@@ -88,7 +99,9 @@
                         <p class="text-[calc(1rem+var(--user-text-boost))] font-semibold leading-[1.4] text-text-strong [overflow-wrap:anywhere]">{{ $empty['title'] }}</p>
                         <p class="max-w-[52ch] text-body text-text-muted [text-wrap:pretty]">{{ $empty['desc'] }}</p>
                         @if ($empty['btn'] !== null)
-                            @if ($empty['all'])
+                            @if ($empty['clear'] ?? false)
+                                <button type="button" class="{{ $btn }}" wire:click="clearSearch">{{ $empty['btn'] }}</button>
+                            @elseif ($empty['all'])
                                 <button type="button" class="{{ $btn }}" wire:click="show('tat-ca')">{{ $empty['btn'] }}</button>
                             @else
                                 <a href="{{ $empty['url'] }}" wire:navigate class="{{ $btn }}">{{ $empty['btn'] }}</a>

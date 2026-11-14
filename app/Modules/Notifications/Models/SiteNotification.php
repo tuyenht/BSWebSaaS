@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Notifications\Models;
 
+use App\Modules\Notifications\Support\NotificationSearchText;
 use App\Modules\Shared\Concerns\HasUlidColumn;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Carbon\CarbonImmutable;
@@ -19,6 +20,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $user_id
  * @property string $kind
  * @property array<string, mixed> $data
+ * @property string|null $search_text the facts folded for the Notifications page's search (NotificationSearchText; null = not filled yet)
  * @property CarbonImmutable|null $read_at
  * @property CarbonImmutable $created_at
  */
@@ -31,6 +33,20 @@ class SiteNotification extends Model
 
     #[\Override]
     protected $guarded = [];
+
+    /**
+     * search_text follows data: written with the notice and rewritten whenever its data changes
+     * (a customer's details cleared, for one), so the search never finds what the notice no longer says.
+     */
+    #[\Override]
+    protected static function booted(): void
+    {
+        static::saving(function (SiteNotification $notification): void {
+            if (! $notification->exists || $notification->isDirty('data')) {
+                $notification->search_text = NotificationSearchText::for($notification->data);
+            }
+        });
+    }
 
     /** The sentence the reader sees, e.g. "Anh Nam giao bài «Bàn giao dây chuyền» cho bạn". */
     public function summary(): string
