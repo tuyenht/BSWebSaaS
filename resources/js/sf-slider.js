@@ -191,12 +191,18 @@ function initRail(root) {
         [...dotsBox.children].forEach((dot, i) => dot.classList.toggle('is-on', i === on));
     };
     const light = () => lightDots(railDot(track.scrollLeft, track.clientWidth, track.scrollWidth));
-    const sync = () => {
-        // Every layout read first, then the writes: no forced reflow between them.
+    // measure() does every layout read and returns what apply() needs; apply() only writes. Start-up runs
+    // every rail's measure() before any rail's apply(), so six rails cost one layout pass, not six.
+    const measure = () => {
         over = overflows();
         const show = over && mode !== 'none';
-        const n = dotsBox && show ? railPages(track.clientWidth, track.scrollWidth) : 0;
-        const on = dotsBox ? railDot(track.scrollLeft, track.clientWidth, track.scrollWidth) : 0;
+        return {
+            show,
+            n: dotsBox && show ? railPages(track.clientWidth, track.scrollWidth) : 0,
+            on: dotsBox ? railDot(track.scrollLeft, track.clientWidth, track.scrollWidth) : 0,
+        };
+    };
+    const apply = ({ show, n, on }) => {
         [prev, next].forEach((btn) => btn && (btn.hidden = !show));
         if (dotsBox) {
             if (n !== pages) {
@@ -214,6 +220,7 @@ function initRail(root) {
         }
         schedule();
     };
+    const sync = () => apply(measure());
     const hold = () => {
         held = true;
         clearTimeout(holdTimer);
@@ -224,7 +231,6 @@ function initRail(root) {
         schedule();
     };
 
-    controls.hidden = false;
     prev?.addEventListener('click', () => move(-1));
     next?.addEventListener('click', () => move(1));
     track.addEventListener('pointerdown', (event) => event.pointerType !== 'mouse' && hold());
@@ -261,8 +267,16 @@ function initRail(root) {
     document.fonts?.ready.then(later);
     phone.addEventListener?.('change', sync);
     reduce.addEventListener?.('change', sync);
-    sync();
     whenPresent(schedule);
+    return () => {
+        const measured = measure();
+        return () => {
+            controls.hidden = false;
+            apply(measured);
+        };
+    };
 }
 
-document.querySelectorAll('[data-sf-rail]').forEach(initRail);
+// Start-up: wire every rail, then read every rail's layout, then write every rail's controls.
+const started = [...document.querySelectorAll('[data-sf-rail]')].map(initRail).filter(Boolean);
+started.map((measure) => measure()).forEach((apply) => apply());
