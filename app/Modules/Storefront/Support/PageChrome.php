@@ -73,11 +73,18 @@ final readonly class PageChrome
             $locale, $default, $requestPath, $brand ?? [],
         );
 
+        // The phone menu's product tab (null: no tab). Read only when the header has a phone menu to put it in.
+        $hasDrawer = ($menus['handheld'] ?? []) !== [] || ($menus['primary'] ?? []) !== [];
+        $drawerProducts = $header !== null && $header['drawer_products'] && $hasDrawer
+            ? app(DrawerProducts::class)->tree($locale, $default, $requestPath)
+            : null;
+
         return [
             'menu' => $menus['primary'] ?? [],
             'mobileMenu' => ($menus['handheld'] ?? []) !== [] ? $menus['handheld'] : ($menus['primary'] ?? []),
             'footerMenu' => $footer === null ? [] : ($menus[$footer['region']] ?? []),
             'header' => $header,
+            'drawerProducts' => $drawerProducts,
             'footer' => $footer,
             // null = off or no channel to show.
             // A channel's own icon picture costs one media query for the page (none when no channel has one).

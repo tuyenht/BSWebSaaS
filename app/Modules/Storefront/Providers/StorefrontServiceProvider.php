@@ -12,6 +12,7 @@ use App\Modules\Storefront\Console\PruneContactClicks;
 use App\Modules\Storefront\EdgeCache\CloudflareEdgeCache;
 use App\Modules\Storefront\EdgeCache\EdgeCachePurges;
 use App\Modules\Storefront\EdgeCache\NullEdgeCache;
+use App\Modules\Storefront\Support\DrawerProducts;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\Events\TransactionRolledBack;
 use Illuminate\Support\Facades\DB;
@@ -39,6 +40,8 @@ final class StorefrontServiceProvider extends ServiceProvider
         $this->app->scoped(EdgeCachePurges::class);
         // Per request or job too: work running inside EdgeCachePause::during() purges nothing.
         $this->app->scoped(EdgeCachePause::class);
+        // Holds the scoped product-list lookup, so it lives per request too.
+        $this->app->scoped(DrawerProducts::class);
     }
 
     public function boot(): void

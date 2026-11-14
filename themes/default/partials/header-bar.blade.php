@@ -6,8 +6,8 @@
     site set one, else the main menu) — which stays at the
     top. One <header> landmark holds both; it sticks with the top bar's height scrolled off, so no
     script runs on scroll and nothing shifts. Every value is Blade-escaped; links come validated.
-    The text-size button lives in the phone menu (drawer); only a header without one keeps it in the
-    top bar (below lg). While the phone bottom bar carries a call, the top bar's phone items step aside
+    The text size lives in the phone menu (drawer) as three joined radio cells; only a header without a drawer keeps
+    the button in the top bar (below lg). While the phone bottom bar carries a call, the top bar's phone items step aside
     under 768px, and a width band where the top bar would hold nothing draws no top bar at all.
 --}}
 @php
@@ -117,40 +117,94 @@
             <div class="sf-drawer__scrim" data-menu-close></div>
             <button type="button" class="sf-drawer__close" data-menu-close aria-label="{{ __('storefront.menu_close') }}">@include('theme::partials.sf-icon', ['name' => 'close', 'size' => 24])</button>
             <div class="sf-drawer__panel">
-                <nav class="sf-nav sf-nav--mob" aria-label="{{ __('storefront.nav_main') }}">
-                    @include('theme::partials.nav-disclosure', ['items' => $drawerMenu, 'depth' => 0, 'idPrefix' => 'msm'])
-                </nav>
+                @php
+                    // "Sản phẩm" tab: only with a product list and a category under it (PageChrome → DrawerProducts).
+                    $sfTabs = ! empty($drawerProducts);
+                    $sfName = $brand['name'] ?? '';
+                    $sfSocials = \App\Modules\Theme\Chrome\StorefrontChrome::socials($brand['social_links'] ?? null);
+                    $sfHours = \App\Modules\Theme\Chrome\StorefrontChrome::hours($brand['business_hours'] ?? null, $brand['opening_hours'] ?? null);
+                    // Zalo shows when the floating contact has a Zalo channel, with the link that button uses.
+                    $sfZaloHref = null;
+                    foreach (['buttons', 'bar', 'sheet'] as $sfSet) {
+                        foreach (($floatingContact[$sfSet] ?? []) as $sfChannel) {
+                            if (($sfChannel['key'] ?? null) === 'zalo' && empty($sfChannel['pending']) && ($sfChannel['href'] ?? '') !== '') {
+                                $sfZaloHref = $sfChannel['href'];
+                                break 2;
+                            }
+                        }
+                    }
+                @endphp
+                @if ($sfTabs)
+                    <div class="sf-drawer__tabs" role="tablist" aria-label="{{ __('storefront.drawer_tabs_label') }}" data-drawer-tabs>
+                        <button type="button" class="sf-drawer__tab" role="tab" id="msm-tab-menu" aria-controls="msm-pane-menu" aria-selected="true">{{ __('storefront.tab_menu') }}</button>
+                        <button type="button" class="sf-drawer__tab" role="tab" id="msm-tab-products" aria-controls="msm-pane-products" aria-selected="false" tabindex="-1">{{ __('storefront.tab_products') }}</button>
+                    </div>
+                @endif
+                <div class="sf-drawer__pane"@if ($sfTabs) role="tabpanel" id="msm-pane-menu" aria-labelledby="msm-tab-menu"@endif>
+                    <nav class="sf-nav sf-nav--mob" aria-label="{{ __('storefront.nav_main') }}">
+                        @include('theme::partials.nav-disclosure', ['items' => $drawerMenu, 'depth' => 0, 'idPrefix' => 'msm'])
+                    </nav>
+                </div>
+                @if ($sfTabs)
+                    <div class="sf-drawer__pane" role="tabpanel" id="msm-pane-products" aria-labelledby="msm-tab-products" hidden>
+                        <nav class="sf-nav sf-nav--mob" aria-label="{{ __('storefront.nav_products') }}">
+                            @include('theme::partials.nav-disclosure', ['items' => $drawerProducts['items'], 'depth' => 0, 'idPrefix' => 'psm'])
+                        </nav>
+                        <a class="sf-drawer__all" href="{{ $drawerProducts['url'] }}"><span>{{ __('storefront.products_all') }}</span>@include('theme::partials.sf-icon', ['name' => 'chevron-right', 'size' => 20])</a>
+                    </div>
+                @endif
                 @if ($sfLanguages !== [] || $header['text_size'])
                     <div class="sf-drawer__tools">
                         @if ($sfLanguages !== [])
-                            <nav class="sf-drawer__langs" aria-label="{{ __('storefront.language') }}">
-                                <ul>
-                                    @foreach ($sfLanguages as $language)
-                                        <li>
-                                            <a class="sf-drawer__lang" href="{{ $language['href'] }}" hreflang="{{ $language['locale'] }}" lang="{{ $language['locale'] }}" dir="{{ $language['dir'] }}" @if ($language['current']) aria-current="true" @endif>
-                                                <span>{{ $language['name'] }}@if ($language['fallback']) <small class="sf-drawer__hint">{{ __('storefront.lang_home') }}</small>@endif</span>
-                                                @if ($language['current'])<svg class="sf-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 13l4 4L19 7"/></svg>@endif
-                                            </a>
-                                        </li>
-                                    @endforeach
-                                </ul>
-                            </nav>
+                            <div class="sf-drawer__set">
+                                <span class="sf-drawer__set-l" aria-hidden="true">{{ __('storefront.language') }}</span>
+                                <nav class="sf-drawer__langs" aria-label="{{ __('storefront.language') }}">
+                                    <ul>
+                                        @foreach ($sfLanguages as $language)
+                                            <li>
+                                                <a class="sf-drawer__lang" href="{{ $language['href'] }}" hreflang="{{ $language['locale'] }}" lang="{{ $language['locale'] }}" dir="{{ $language['dir'] }}" @if ($language['current']) aria-current="true" @endif>
+                                                    <span>{{ $language['name'] }}@if ($language['fallback']) <small class="sf-drawer__hint">{{ __('storefront.lang_home') }}</small>@endif</span>
+                                                </a>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </nav>
+                            </div>
                         @endif
                         @if ($header['text_size'])
-                            <button type="button" class="sf-fs sf-drawer__fs" data-fs-toggle
-                                aria-label="{{ __('storefront.text_size_state', ['size' => $sfSizes['m']]) }}"
-                                @foreach ($sfSizes as $step => $label) data-label-{{ $step }}="{{ $label }}" data-aria-{{ $step }}="{{ __('storefront.text_size_state', ['size' => $label]) }}" @endforeach
-                            >@include('theme::partials.sf-icon', ['name' => 'text-size', 'size' => 20])<span>{{ __('storefront.text_size') }}<span class="sf-fs__value">: <span data-fs-value>{{ $sfSizes['m'] }}</span></span></span></button>
+                            {{-- Three joined cells showing the letter A in fixed sizes; a script sets the page's size (the group is hidden without one). --}}
+                            <fieldset class="sf-drawer__fs" data-fs-set>
+                                <legend>{{ __('storefront.text_size') }}</legend>
+                                <span class="sf-drawer__fs-cells">
+                                    @foreach ($sfSizes as $step => $label)
+                                        <label class="sf-drawer__fs-c sf-drawer__fs-c--{{ $step }}"><input class="sf-drawer__fs-in" type="radio" name="sf-fs" value="{{ $step }}" data-fs-radio aria-label="{{ $label }}" title="{{ $label }}" @checked($step === 'm')><span aria-hidden="true">A</span></label>
+                                    @endforeach
+                                </span>
+                            </fieldset>
                         @endif
                     </div>
                 @endif
-                @if ($sfCallHref !== null || $sfEmailHref !== null)
+                @if ($sfCallHref !== null || $sfZaloHref !== null || $sfEmailHref !== null || $sfHours !== null || $sfSocials !== [])
                     <div class="sf-drawer__contact">
                         @if ($sfCallHref !== null)
                             <a class="sf-drawer__call" href="{{ $sfCallHref }}">@include('theme::partials.sf-icon', ['name' => 'phone', 'size' => 20])<span>{{ __('storefront.call_number', ['phone' => $brand['phone']]) }}</span></a>
                         @endif
+                        @if ($sfZaloHref !== null)
+                            <a class="sf-drawer__zalo" href="{{ $sfZaloHref }}" rel="noopener">@include('theme::partials.sf-icon', ['name' => 'zalo', 'size' => 20])<span>{{ __('storefront.chat_zalo') }}</span></a>
+                        @endif
                         @if ($sfEmailHref !== null)
                             <a class="sf-drawer__line" href="{{ $sfEmailHref }}">@include('theme::partials.sf-icon', ['name' => 'email', 'size' => 20])<span>{{ $brand['email'] }}</span></a>
+                        @endif
+                        @if ($sfHours !== null)
+                            <p class="sf-drawer__line sf-drawer__line--hours">@include('theme::partials.sf-icon', ['name' => 'clock', 'size' => 20])<span>{{ $sfHours }}</span></p>
+                        @endif
+                        @if ($sfSocials !== [])
+                            <ul class="sf-drawer__socials" aria-label="{{ __('storefront.social_list') }}">
+                                @foreach ($sfSocials as $social)
+                                    @php($sfSocialName = __('storefront.social', ['network' => $social['label'], 'name' => $sfName]))
+                                    <li><a class="sf-drawer__social" href="{{ $social['url'] }}" rel="noopener" aria-label="{{ $sfSocialName }}" title="{{ $sfSocialName }}">@include('theme::partials.sf-icon', ['name' => $social['network'], 'size' => 22])</a></li>
+                                @endforeach
+                            </ul>
                         @endif
                     </div>
                 @endif
@@ -159,5 +213,5 @@
     @endif
     {{-- Without scripts the menu drawer is simply open below the bar, and the text-size button
          (which needs a script) is not shown. --}}
-    <noscript><style>@media (max-width:{{ $sfMenuXl ? '1279.98' : '1023.98' }}px){.sf-drawer[hidden]{display:block;position:static}.sf-drawer[hidden] :is(.sf-drawer__scrim,.sf-drawer__close){display:none}.sf-drawer[hidden] .sf-drawer__panel{position:static;width:auto;box-shadow:none;animation:none}}.sf-burger,.sf-fs{display:none}</style></noscript>
+    <noscript><style>@media (max-width:{{ $sfMenuXl ? '1279.98' : '1023.98' }}px){.sf-drawer[hidden]{display:block;position:static}.sf-drawer[hidden] :is(.sf-drawer__scrim,.sf-drawer__close){display:none}.sf-drawer[hidden] .sf-drawer__panel{position:static;width:auto;box-shadow:none;animation:none}}.sf-burger,.sf-fs,.sf-drawer__fs,.sf-drawer__tabs{display:none}</style></noscript>
 </header>
