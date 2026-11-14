@@ -231,8 +231,10 @@ final class EmailChange
 
             return $outcome;
         }
-        // A sign-in code already mailed to the old address must not sign anyone in after the move.
+        // A sign-in code already mailed to the old address must not sign anyone in after the move;
+        // burnt again once the request commits, for a sign-in that sent one in between.
         app(EmailOtp::class)->invalidate($user);
+        DB::afterCommit(static fn () => app(EmailOtp::class)->invalidate($user));
 
         Audit::record('identity.email.changed', [
             'actor_id' => $user->getKey(),

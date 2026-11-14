@@ -388,7 +388,7 @@ it('caps the code mails of one account in an hour, on record', function (): void
         ->and(emAudit('identity.email.code_throttled', $user))->toHaveCount(1);
 });
 
-it('caps the code mails to one new address in an hour, whichever account names it', function (): void {
+it('caps the code mails to one new address in an hour, on its own key', function (): void {
     $user = emMember();
     $new = emNewAddress();
     foreach (range(1, EmailChange::MAX_SENDS_PER_HOUR_PER_ADDRESS) as $_) {
@@ -471,12 +471,15 @@ it('never takes one member\'s code for another member\'s change', function (): v
     app(Tenancy::class)->enter(1, function () use ($a, $b, $newA, $newB): void {
         emToLastStep($a, $newA);
         $pageB = emToLastStep($b, $newB);
-        expect(emCode($newA))->not->toBe(emCode($newB));
-
-        $pageB->set('emailCode', emCode($newA))->call('confirmEmailChange')->assertHasErrors('emailCode')->assertSet('emailStep', 3);
+        if (emCode($newA) !== emCode($newB)) { // two random codes alike: nothing to tell apart
+            $pageB->set('emailCode', emCode($newA))->call('confirmEmailChange')->assertHasErrors('emailCode')->assertSet('emailStep', 3);
+            expect($b->fresh()->email)->toBe($b->email);
+        }
+        // B's own code still works afterwards: A's code neither passed nor burnt B's change
+        $pageB->set('emailCode', emCode($newB))->call('confirmEmailChange')->assertHasNoErrors()->assertSet('emailStep', 0);
     });
 
-    expect($b->fresh()->email)->toBe($b->email);
+    expect($b->fresh()->email)->toBe($newB)->and($a->fresh()->email)->toBe($a->email);
 });
 
 it('burns a sign-in code already mailed to the old address once the email moves', function (): void {
