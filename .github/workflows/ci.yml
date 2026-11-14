@@ -357,6 +357,12 @@ jobs:
       - name: Contrast tokens (WCAG AA)
         run: node scripts/contrast-check.mjs
 
+      # The desktop bar and the phone menu render the same menu partial: a state rule on its shared classes
+      # (:hover, :focus, :active, [aria-current], .is-…) must name .sf-nav--desk or .sf-nav--mob, or it leaks
+      # into the other one (a dark hover fill under the phone menu's dark text). Pure Node.
+      - name: Storefront menu state rules are scoped
+        run: node scripts/sf-nav-scope-check.mjs
+
       - name: JS unit tests (tree drag rule)
         run: node --test 'tests/js/*.test.mjs'
 

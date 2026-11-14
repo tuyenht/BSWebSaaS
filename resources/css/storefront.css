@@ -1087,11 +1087,13 @@ html:has(.sf-header--sticky) {
     padding: 0;
 }
 
-.sf-nav__link:hover,
-.sf-nav__chev:hover,
-.sf-nav__link[aria-current="page"],
-.sf-nav__link.is-trail,
-.sf-nav__item--parent.is-open > .sf-nav__link {
+/* Desktop dark-bar states only: :where() keeps the specificity the unscoped rule had, so the call-to-action
+   link below still wins, and the phone menu (.sf-nav--mob) never inherits a dark fill under its dark text. */
+:where(.sf-nav--desk) .sf-nav__link:hover,
+:where(.sf-nav--desk) .sf-nav__chev:hover,
+:where(.sf-nav--desk) .sf-nav__link[aria-current="page"],
+:where(.sf-nav--desk) .sf-nav__link.is-trail,
+:where(.sf-nav--desk) .sf-nav__item--parent.is-open > .sf-nav__link {
     background: var(--color-dark-line, color-mix(in srgb, var(--color-dark) 75%, white));
     color: #fff;
 }
@@ -1145,11 +1147,11 @@ html:has(.sf-header--sticky) {
     transition: background-color 0.3s, color 0.3s;
 }
 
-.sf-nav__sublink:hover,
-.sf-nav__sublink:focus-visible,
-.sf-nav__sublink[aria-current="page"] {
+:where(.sf-nav--desk) .sf-nav__sublink:hover,
+:where(.sf-nav--desk) .sf-nav__sublink:focus-visible,
+:where(.sf-nav--desk) .sf-nav__sublink[aria-current="page"] {
     background: var(--color-dark-line, color-mix(in srgb, var(--color-dark) 75%, white));
-    color: var(--color-primary);
+    color: var(--color-primary-on-dark, var(--color-primary));
 }
 
 .sf-nav__nested .sf-nav__nested {
@@ -1475,6 +1477,17 @@ html.sf-menu-open {
         background: var(--sf-drawer-tint);
         color: var(--color-text-strong);
     }
+}
+
+/* Tap feedback within 200ms: no fade, so the press shows at once. Keyboard focus gets the same ring as the tabs. */
+.sf-nav--mob :is(.sf-nav__link, .sf-nav__sublink, .sf-nav__chev):active {
+    background: var(--sf-drawer-hair);
+    transition-duration: 0s;
+}
+
+.sf-nav--mob :is(.sf-nav__link, .sf-nav__sublink, .sf-nav__chev):focus-visible {
+    outline: 3px solid var(--color-primary-text);
+    outline-offset: -3px;
 }
 
 .sf-nav--mob .sf-nav__item--parent.is-open > .sf-nav__link,

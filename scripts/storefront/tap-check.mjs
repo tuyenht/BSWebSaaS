@@ -4,6 +4,12 @@
 //
 //   node scripts/storefront/tap-check.mjs --chrome=<path> [--widths=320,390] [--add-css=<css>] [--expect-arrows=<url>,…] [--ignore-certificate-errors] <url> [<url>…]
 //
+// A second pass checks the phone menu (the drawer): on the first page, at each width, every row (link, sub-link,
+// chevron) is forced through rest / hover / active / focus-visible with CSS.forcePseudoState on a touch phone
+// (hover: none, pointer: coarse), and its text must reach 4.5:1 (an icon-only chevron 3:1) against what is
+// really behind it. It runs twice: with the site's own colours and with a red brand injected over them, so a
+// desktop-bar state that leaks into the drawer, or a brand colour that fails on a fill, cannot pass.
+//
 // --add-css tries a style fix on a live site before it is deployed (the CSS is added to every page).
 // --expect-arrows names pages that must show at least one rail arrow, so a page that lost its rails
 // (or failed to load) cannot pass by having nothing to tap.
@@ -97,6 +103,58 @@ const probe = `(async () => {
     return JSON.stringify(bad);
 })()`;
 
+// A touch phone: no hover, a coarse pointer (so the desktop-only hover rules and the sticky :hover a tap leaves are
+// both exercised), and reduced motion.
+const phoneMedia = [
+    { name: 'prefers-reduced-motion', value: 'reduce' },
+    { name: 'hover', value: 'none' },
+    { name: 'any-hover', value: 'none' },
+    { name: 'pointer', value: 'coarse' },
+    { name: 'any-pointer', value: 'coarse' },
+];
+
+// A red brand as ThemeResolver derives it (the seed, a darkened variant readable on light, a lightened one on dark):
+// a second palette over the site's own, because the colour a state paints with is a brand token.
+const redBrand = ':root{--color-primary:#dc2626;--color-primary-text:#b91c1c;--color-primary-on-dark:#f87171;--color-on-primary:#fff}';
+
+// What runs in the page for the drawer rows: lists the controls, then reports a colour pair per control.
+const drawerList = `(async () => {
+    document.documentElement.style.scrollBehavior = 'auto';
+    const st = document.createElement('style');
+    st.textContent = '*{transition:none!important;animation:none!important}';
+    document.head.append(st);
+    const burger = document.querySelector('.sf-burger');
+    if (!burger) return JSON.stringify(-1);
+    burger.click();
+    await new Promise((r) => setTimeout(r, 400));
+    for (const chev of document.querySelectorAll('.sf-nav--mob .sf-nav__item--parent > .sf-nav__chev')) {
+        if (chev.getAttribute('aria-expanded') !== 'true') chev.click();
+    }
+    await new Promise((r) => setTimeout(r, 300));
+    window.__rows = [...document.querySelectorAll('.sf-nav--mob :is(.sf-nav__link, .sf-nav__sublink, .sf-nav__chev)')].filter((e) => {
+        const c = getComputedStyle(e);
+        return c.display !== 'none' && c.visibility !== 'hidden' && e.getClientRects().length > 0 && !e.closest('[hidden]');
+    });
+    return JSON.stringify(window.__rows.length);
+})()`;
+const drawerRatio = (i) => `(() => {
+    const e = window.__rows[${i}];
+    e.scrollIntoView({ block: 'center' });
+    const cv = document.createElement('canvas'); cv.width = cv.height = 1;
+    const cx = cv.getContext('2d', { willReadFrequently: true });
+    const rgba = (c) => { cx.clearRect(0, 0, 1, 1); cx.fillStyle = '#000'; cx.fillStyle = c; cx.fillRect(0, 0, 1, 1); const d = cx.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2], d[3] / 255]; };
+    const over = (top, under) => { const a = top[3] + under[3] * (1 - top[3]); return a === 0 ? [255, 255, 255, 1] : [0, 1, 2].map((k) => (top[k] * top[3] + under[k] * under[3] * (1 - top[3])) / a).concat(a); };
+    let bg = [255, 255, 255, 1];
+    const chain = [];
+    for (let a = e; a; a = a.parentElement) chain.push(a);
+    for (const a of chain.reverse()) { const b = rgba(getComputedStyle(a).backgroundColor); if (b[3] > 0) bg = over(b, bg); }
+    const fg = over(rgba(getComputedStyle(e).color), bg);
+    const lum = (c) => { const f = c.slice(0, 3).map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2]; };
+    const [hi, lo] = [lum(fg), lum(bg)].sort((x, y) => y - x);
+    const text = (e.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 30);
+    return JSON.stringify({ text: text || (e.getAttribute('aria-label') || '').slice(0, 30) || '(chevron)', icon: text === '', ratio: Math.round(((hi + 0.05) / (lo + 0.05)) * 100) / 100 });
+})()`;
+
 const railState = `JSON.stringify({ u: location.href, s: [...document.querySelectorAll('.sf-rail__list')].map((e) => Math.round(e.scrollLeft)).join(',') })`;
 
 let failures = 0;
@@ -140,6 +198,53 @@ try {
         return JSON.parse(res.result.value);
     };
 
+    // The phone menu on the first page, at each width, in the site's palette and in a red one.
+    const drawerPass = async (width, url, palette, css) => {
+        const { targetId } = await send('Target.createTarget', { url: 'about:blank' });
+        const { sessionId: s } = await send('Target.attachToTarget', { targetId, flatten: true });
+        await send('Page.enable', {}, s);
+        await send('DOM.enable', {}, s);
+        await send('CSS.enable', {}, s);
+        await send('Emulation.setDeviceMetricsOverride', { width, height: 844, deviceScaleFactor: 2, mobile: true }, s);
+        await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 }, s);
+        await send('Emulation.setEmulatedMedia', { features: phoneMedia }, s);
+        const loaded = new Promise((resolve) => waiters.push({ method: 'Page.loadEventFired', sessionId: s, resolve }));
+        await send('Page.navigate', { url }, s);
+        await Promise.race([loaded, sleep(20000)]);
+        await sleep(800);
+        await evaluate(s, `(() => { const st = document.createElement('style'); st.textContent = ${JSON.stringify(addCss + css)}; document.head.append(st); return '1'; })()`);
+        const count = await evaluate(s, drawerList);
+        const bad = [];
+        if (count <= 0) {
+            bad.push(`the phone menu has no rows to check (${count === -1 ? 'no burger button' : 'none visible'})`);
+        } else {
+            await send('DOM.getDocument', { depth: 0 }, s);
+            for (let i = 0; i < count; i++) {
+                for (const [name, forced] of [['rest', []], ['hover', ['hover']], ['active', ['active']], ['focus-visible', ['focus', 'focus-visible']]]) {
+                    const obj = await send('Runtime.evaluate', { expression: `window.__rows[${i}]` }, s);
+                    const { nodeId } = await send('DOM.requestNode', { objectId: obj.result.objectId }, s);
+                    await send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: forced }, s);
+                    await sleep(30);
+                    const r = await evaluate(s, drawerRatio(i));
+                    if (r.ratio < (r.icon ? 3 : 4.5)) {
+                        bad.push(`"${r.text}" (${r.icon ? 'icon' : 'text'}) ${name} ${r.ratio}:1, needs ${r.icon ? 3 : 4.5}:1`);
+                    }
+                    await send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: [] }, s);
+                }
+            }
+        }
+        await send('Target.closeTarget', { targetId });
+        console.log((bad.length ? 'FAIL ' : 'ok   ') + `${width}px ${url}: phone menu rows, ${palette} palette, ${count} rows x 4 states, ${bad.length} low contrast`);
+        for (const b of bad) {
+            console.log(`       menu row: ${b}`);
+        }
+        failures += bad.length;
+    };
+    for (const width of widths) {
+        await drawerPass(width, urls[0], 'site', '');
+        await drawerPass(width, urls[0], 'red brand', redBrand);
+    }
+
     for (const width of widths) {
         for (const url of urls) {
             const { targetId } = await send('Target.createTarget', { url: 'about:blank' });
@@ -148,7 +253,7 @@ try {
             await send('Emulation.setDeviceMetricsOverride', { width, height: 844, deviceScaleFactor: 2, mobile: true }, s);
             await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 }, s);
             // Reduced motion holds every slider and rotator still, so what is on top cannot change mid-check.
-            await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] }, s);
+            await send('Emulation.setEmulatedMedia', { features: phoneMedia }, s);
             const loaded = new Promise((resolve) => waiters.push({ method: 'Page.loadEventFired', sessionId: s, resolve }));
             const nav = await send('Page.navigate', { url }, s);
             if (nav.errorText) {
