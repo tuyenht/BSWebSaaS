@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
  * A person's notifications on the current site — what the bell and the Notifications page read.
  * Always scoped to the reader (user_id) on top of the site's RLS. Lists page by keyset (newest
  * first, id tie-break, cursor = the last item's ulid — no bigint leaves the server), and the
- * unread badge uses the partial unread index.
+ * unread ones (the bell, the "Chưa đọc" tab) walk the partial index site_notifications_unread_feed.
  */
 final class NotificationFeed
 {
@@ -26,7 +26,7 @@ final class NotificationFeed
 
     /**
      * The unread count, stopping at $cap: the bell on every admin page reads "99+" from 100 on,
-     * so one query that walks at most $cap entries of the partial unread index is enough.
+     * so one query that walks at most $cap entries of site_notifications_unread_feed is enough.
      */
     public function unreadCountUpTo(User $user, int $cap): int
     {
@@ -57,9 +57,12 @@ final class NotificationFeed
      * One page of the Notifications page's list, newest first: $kinds narrows it to one group, $unread
      * to the unread ones. Keyset on id, never OFFSET: $after = the rows older than that notice (the
      * next page); $through = the rows from the newest down to and including that notice (the pages
-     * already on screen, drawn again). The reader's slice of index site_notifications_feed
-     * (site_id, user_id, id DESC) is walked newest first; a group or the unread filter is checked on
-     * the way (no index leads with them). A cursor that is not the reader's, or is gone, matches nothing.
+     * already on screen, drawn again). Each shape reads the reader's slice of its own index, newest
+     * first: every notice site_notifications_feed (site_id, user_id, id DESC), the unread ones
+     * site_notifications_unread_feed (the same, WHERE read_at IS NULL), one group
+     * site_notifications_kind_feed (site_id, user_id, kind, id DESC) when it is rare (a common group
+     * may be found as fast by walking the feed, and the planner may do that). A cursor that is not
+     * the reader's, or is gone, matches nothing.
      *
      * @param  list<string>|null  $kinds
      * @return Collection<int, SiteNotification>
@@ -83,7 +86,7 @@ final class NotificationFeed
 
     /**
      * How many notices each tab holds, each count stopping at $cap (the tab then reads "99+"), in one
-     * statement: every count walks at most $cap entries of the reader's slice that match.
+     * statement: every count reads at most $cap entries of the index that serves its tab (see page()).
      *
      * @param  array<string, array{kinds: list<string>|null, unread: bool}>  $tabs
      * @return array<string, int>
