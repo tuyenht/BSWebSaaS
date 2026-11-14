@@ -175,6 +175,12 @@ final readonly class DeleteTaxonomy
             // The limited members' locks first (with members limited there is a target: refused above
             // otherwise), in the order an accept takes them: its roles lock the member, then it reads
             // the invitation's rows.
+            // Before the members: the invitations whose rows move, in id order, FOR KEY SHARE (the lock
+            // the moved rows' foreign key takes anyway), so an accept, which holds its invitation FOR
+            // UPDATE and then locks the member, never waits on this delete while this delete waits on it.
+            if ($targetId !== null) {
+                $this->lockInvitationsLimitedTo($deleted);
+            }
             if ($scoped > 0) {
                 $this->scopes->lockMembers(array_column($this->scopes->membersLimitedTo($deleted), 'id'));
             }
@@ -310,6 +316,25 @@ final readonly class DeleteTaxonomy
             ->whereNull('invitations.accepted_at')
             ->whereNull('invitations.revoked_at')
             ->count();
+    }
+
+    /**
+     * Lock the invitations that have a limit on a deleted category, in id order, FOR KEY SHARE.
+     *
+     * @param  list<int>  $deleted
+     */
+    private function lockInvitationsLimitedTo(array $deleted): void
+    {
+        $site = $this->site->id();
+        $placeholders = implode(', ', array_fill(0, count($deleted), '?'));
+        DB::select(<<<SQL
+            SELECT id FROM invitations
+            WHERE site_id = ? AND id IN (
+                SELECT invitation_id FROM invitation_category_scopes WHERE site_id = ? AND taxonomy_id IN ({$placeholders})
+            )
+            ORDER BY id
+            FOR KEY SHARE
+            SQL, [$site, $site, ...$deleted]);
     }
 
     /**

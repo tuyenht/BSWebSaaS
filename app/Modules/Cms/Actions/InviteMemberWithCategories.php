@@ -267,7 +267,9 @@ final readonly class InviteMemberWithCategories
         foreach ($roles as $role) {
             foreach ($role->permissions as $permission) {
                 $name = Cast::string($permission->name);
-                if (str_starts_with($name, 'entries.') && $name !== 'entries.view') {
+                // the permissions a category limit holds: writing posts, and changing the categories
+                // themselves (CategoryLimitGuard keeps a limited member inside their own branch)
+                if ((str_starts_with($name, 'entries.') && $name !== 'entries.view') || $name === 'taxonomies.manage') {
                     return true;
                 }
             }

@@ -24,6 +24,7 @@ use App\Modules\Rbac\Support\IssuedInvitation;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteFeature;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
@@ -254,6 +255,29 @@ it('keeps a limited inviter inside their own limits, and never lets them invite 
         ->and(icsInviteRefusal(1, $lead, 'b@example.test', 'viewer', []))->toBeNull();
 });
 
+it('never lets a limited inviter hand every category to someone who may change the categories', function (): void {
+    icsFeatureOn(1);
+    $news = icsCategory(1, 'Tin tức');
+    $local = icsCategory(1, 'Trong nước', $news);
+    $lead = icsMember(1, 'lead', 60, icsAuthorPlus('users.invite', 'users.manage', 'taxonomies.manage'));
+    DB::connection('pgsql_admin')->table('member_category_scopes')->insert(['site_id' => 1, 'user_id' => $lead->id, 'taxonomy_id' => $news->id]);
+    $keeper = icsRole(1, 'category_keeper', 30, ['taxonomies.manage', 'entries.view']);   // writes no posts
+    $invite = function (array $ids) use ($lead, $keeper): ?string {
+        test()->actingAs($lead->fresh());
+        try {
+            icsIn(1, fn () => app(InviteMemberWithCategories::class)->handle($lead->fresh(), 'k-'.count($ids).'@example.test', [$keeper], null, $ids));
+        } catch (CategoryScopeRejectedException $e) {
+            return $e->reason;
+        }
+
+        return null;
+    };
+
+    expect($invite([]))->toBe('outside_own_scope')
+        ->and($invite([$local->id]))->toBeNull()
+        ->and(icsRows('k-1@example.test'))->toBe([$local->id]);
+});
+
 it('replaces the limits when the open invitation is refreshed, and keeps them when it is mailed again', function (): void {
     $owner = icsMember(1, 'owner');
     icsFeatureOn(1);
@@ -439,6 +463,33 @@ it('moves an invitation\'s limits onto the merge target, once per invitation', f
     expect(icsRows('a@example.test'))->toBe([$news->id])
         ->and(icsRows('b@example.test'))->toBe([$news->id])
         ->and(AuditLog::query()->where('action', 'cms.taxonomy.deleted')->value('meta'))->toMatchArray(['invitation_scopes_moved' => 3, 'scopes_moved' => 0]);
+});
+
+it('locks the invitations it moves limits of before the members, the order an accept takes them in', function (): void {
+    $owner = icsMember(1, 'owner');
+    icsFeatureOn(1);
+    $jobs = icsCategory(1, 'Tuyển dụng');
+    $news = icsCategory(1, 'Tin tức');
+    icsInvite(1, $owner, 'a@example.test', 'author', [$jobs]);
+    $writer = icsMember(1, 'author');
+    DB::connection('pgsql_admin')->table('member_category_scopes')->insert(['site_id' => 1, 'user_id' => $writer->id, 'taxonomy_id' => $jobs->id]);
+
+    /** @var list<string> $queries */
+    $queries = [];
+    DB::listen(function (QueryExecuted $query) use (&$queries): void {
+        $queries[] = strtolower((string) preg_replace('/\s+/', ' ', $query->sql)).' | '.implode(',', array_map('strval', $query->bindings));
+    });
+    $this->actingAs($owner->fresh());
+    icsIn(1, fn (): array => app(DeleteTaxonomy::class)->handle($jobs, CategoryItemsOnDelete::Reassign, $news, CategoryChildrenOnDelete::Delete));
+
+    $invitations = array_key_first(array_filter($queries, fn (string $q): bool => str_contains($q, 'from invitations') && str_contains($q, 'for key share |')));
+    $member = array_key_first(array_filter($queries, fn (string $q): bool => str_contains($q, 'pg_advisory_xact_lock') && str_contains($q, '| category_scopes:')));
+    $moved = array_key_first(array_filter($queries, fn (string $q): bool => str_starts_with($q, 'insert into invitation_category_scopes')));
+    expect($invitations)->not->toBeNull()
+        ->and($member)->not->toBeNull()
+        ->and($invitations)->toBeLessThan($member)
+        ->and($member)->toBeLessThan($moved)
+        ->and(icsRows('a@example.test'))->toBe([$news->id]);
 });
 
 it('moves an invitation\'s limits only for someone who could set them, as a member\'s', function (): void {
