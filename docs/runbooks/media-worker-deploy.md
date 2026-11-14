@@ -67,6 +67,9 @@ sandbox CSP; a PDF is `Content-Disposition: attachment`.
 ## 4. Enable Image Transformations on the zone
 Dashboard → `baoson.net` → **Speed → Optimization → Image Transformations → Enable** (covers
 `cf.image`). Without it, `?w=` still works but returns the raw master (no resize).
+Never switch it off while the Worker serves the host: a passed-through master carries no error, so the
+Worker keeps it a year under the resized URL. A master no wider than the asked width also comes back
+unchanged when transformations are on, so the output format alone cannot tell the two apart.
 
 **Plan limits for the whole platform** (Cloudflare docs, read 14/11/2026). Every site's images go
 through this one Worker, so the limits are shared by all sites:
