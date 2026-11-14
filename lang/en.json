@@ -3553,6 +3553,7 @@
     "categories.reason_changes_member_limits": "Moving it here would change other members' writing limits — ask whoever manages members.",
     "categories.reason_description_invalid": "The description is too long — keep it within 1,000 characters; a few sentences are enough.",
     "categories.reason_seo_invalid": "The Google title and description are one line each, at most 255 characters — shorten them and save again.",
+    "categories.reason_card_label_invalid": "The short card label is one line, at most 40 characters — shorten it and save again.",
     "categories.reason_cover_invalid": "This picture cannot be used (it may have just been removed from the Library, or it is not a picture) — choose another one.",
     "categories.reason_move_stale": "The categories changed after this move, so it cannot be undone — reload the page to see the latest version.",
     "categories.reason_section_invalid": "This content type was not found — open Categories from the menu on the left.",

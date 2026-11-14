@@ -643,3 +643,60 @@ it('warns about an intro picture whose file is not uploaded and keeps the live p
     expect(ContentPacks::load()[0])->toBe(0)
         ->and(cpCategoryIntro($this->siteId)['cover'])->toBe($about->storage_key);
 });
+
+/** The news category's card label and the byline of the launch post, as stored. */
+function cpLabelAndByline(int $siteId): array
+{
+    return ContentPacks::in($siteId, fn (): array => [
+        'label' => TaxonomyTranslation::query()->where('slug', 'tin-tuc')->where('locale', 'vi')->value('card_label'),
+        'author' => EntryTranslation::query()->where('slug', 'ra-mat-website')->where('locale', 'vi')->value('author_name'),
+    ]);
+}
+
+it('writes a category\'s card label and a post\'s byline, sees a second load as unchanged, and clears them when the pack drops them', function (): void {
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and(cpLabelAndByline($this->siteId))->toBe(['label' => null, 'author' => null]);
+
+    cpCategoryFields($this->folder, ['card_label' => ['vi' => 'Bản tin']]);
+    ContentPacks::item($this->folder, 'posts.json', 'post:ra-mat-website', fn (array $item): array => [...$item, 'author' => ['vi' => 'Phòng Kỹ thuật']]);
+    [, $plan] = ContentPacks::run();
+    expect(ContentPacks::verdict($plan, 'tax:post_cat/tin-tuc'))->toBe('update')
+        ->and(ContentPacks::verdict($plan, 'post:ra-mat-website'))->toBe('update');
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and(cpLabelAndByline($this->siteId))->toBe(['label' => 'Bản tin', 'author' => 'Phòng Kỹ thuật']);
+
+    [, $again] = ContentPacks::run();
+    expect(ContentPacks::verdict($again, 'tax:post_cat/tin-tuc'))->toBe('unchanged')
+        ->and(ContentPacks::verdict($again, 'post:ra-mat-website'))->toBe('unchanged');
+
+    // A category item that no longer names its label keeps the live one; one that states it empty clears it.
+    // A post's byline is part of its text, like the excerpt: an item without one has none.
+    cpCategoryFields($this->folder, ['card_label' => ['vi' => '']]);
+    ContentPacks::item($this->folder, 'posts.json', 'post:ra-mat-website', function (array $item): array {
+        unset($item['author']);
+
+        return $item;
+    });
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and(cpLabelAndByline($this->siteId))->toBe(['label' => null, 'author' => null]);
+
+    [, $settled] = ContentPacks::run();
+    expect(ContentPacks::verdict($settled, 'tax:post_cat/tin-tuc'))->toBe('unchanged')
+        ->and(ContentPacks::verdict($settled, 'post:ra-mat-website'))->toBe('unchanged');
+});
+
+it('keeps the live card label of a category whose pack item does not name one', function (): void {
+    cpCategoryFields($this->folder, ['card_label' => ['vi' => 'Bản tin']]);
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output);
+
+    ContentPacks::item($this->folder, 'taxonomies.json', 'tax:post_cat/tin-tuc', function (array $item): array {
+        unset($item['card_label']);
+
+        return $item;
+    });
+    [, $plan] = ContentPacks::run();
+    expect(ContentPacks::verdict($plan, 'tax:post_cat/tin-tuc'))->toBe('unchanged')
+        ->and(cpLabelAndByline($this->siteId)['label'])->toBe('Bản tin');
+});

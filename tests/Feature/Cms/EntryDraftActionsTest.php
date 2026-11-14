@@ -788,3 +788,37 @@ it('refuses a new layout of the wrong role when a change is saved, and drops one
             ->and($page->fresh()->translationFor('vi')->title)->toBe('Ứng viên mới');
     });
 });
+
+it('carries a live post\'s byline through a pending change that leaves it out, and sets one the change names', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        [$author, $publisher] = changeCast();
+        $entry = changeLivePost($author, changeNewsCategory());
+        $entry->translationFor('vi')->update(['author_name' => 'Phòng Kỹ thuật']);
+        $entry = $entry->fresh();
+
+        $change = app(SaveEntryDraft::class)->handle($entry, $author, 'vi', ['title' => 'Bản tin mới']);
+        expect($change->content['locales']['vi']['author_name'])->toBe('Phòng Kỹ thuật');
+        app(ApplyEntryDraft::class)->handle($entry, $publisher, $change->version());
+        expect($entry->fresh()->translationFor('vi'))->title->toBe('Bản tin mới')->author_name->toBe('Phòng Kỹ thuật');
+
+        $change = app(SaveEntryDraft::class)->handle($entry->fresh(), $author, 'vi', ['author_name' => 'Nhóm Biên tập']);
+        app(ApplyEntryDraft::class)->handle($entry->fresh(), $publisher, $change->version());
+        expect($entry->fresh()->translationFor('vi')->author_name)->toBe('Nhóm Biên tập');
+    });
+});
+
+it('leaves the byline as it is when applying a change saved before bylines existed', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        [$author, $publisher] = changeCast();
+        $entry = changeLivePost($author, changeNewsCategory());
+        $change = app(SaveEntryDraft::class)->handle($entry, $author, 'vi', ['title' => 'Bản tin cũ']);
+        $content = $change->content;
+        unset($content['locales']['vi']['author_name']);
+        $change->forceFill(['content' => $content])->save();
+        $entry->translationFor('vi')->update(['author_name' => 'Phòng Kỹ thuật']);
+
+        app(ApplyEntryDraft::class)->handle($entry->fresh(), $publisher, $change->fresh()->version());
+
+        expect($entry->fresh()->translationFor('vi'))->title->toBe('Bản tin cũ')->author_name->toBe('Phòng Kỹ thuật');
+    });
+});

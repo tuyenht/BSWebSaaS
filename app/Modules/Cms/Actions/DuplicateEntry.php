@@ -71,6 +71,7 @@ final class DuplicateEntry
                     'seo_title' => $translation->seo_title,
                     'seo_description' => $translation->seo_description,
                     'og_image_id' => $translation->og_image_id,
+                    'author_name' => $translation->author_name,
                 ]);
             }
 

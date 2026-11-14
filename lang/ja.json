@@ -3553,6 +3553,7 @@
     "categories.reason_changes_member_limits": "ここへ移動すると他のメンバーの執筆範囲が変わります — メンバーの管理者に依頼してください。",
     "categories.reason_description_invalid": "説明が長すぎます — 1,000 文字以内にしてください。数文で十分です。",
     "categories.reason_seo_invalid": "Google のタイトルと説明はそれぞれ 1 行、最大 255 文字です — 短くしてからもう一度保存してください。",
+    "categories.reason_card_label_invalid": "カードの短いラベルは 1 行、最大 40 文字です — 短くしてからもう一度保存してください。",
     "categories.reason_cover_invalid": "この画像は使用できません（ライブラリから削除されたか、画像ではありません） — 別の画像を選んでください。",
     "categories.reason_move_stale": "この移動の後にカテゴリーが変更されたため、元に戻せません — ページを再読み込みして最新の状態を確認してください。",
     "categories.reason_section_invalid": "このコンテンツタイプが見つかりません — 左のメニューからカテゴリーを開いてください。",

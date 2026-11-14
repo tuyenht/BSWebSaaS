@@ -37,6 +37,9 @@
    "name": {
     "vi": "Đồ gá"
    },
+   "card_label": {
+    "vi": "Jig gá"
+   },
    "list_template": "grid-product",
    "position": 1,
    "layout_blocks": {

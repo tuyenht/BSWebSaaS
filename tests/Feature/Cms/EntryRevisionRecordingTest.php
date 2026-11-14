@@ -124,6 +124,7 @@ it('records one publish revision per language when PublishEntry puts an entry li
                 'body' => ['blocks' => [['type' => 'hero', 'props' => ['heading' => 'Xin chào vi']]]],
                 'excerpt' => null,
                 'og_image_id' => null,
+                'author_name' => null,
                 'template_override' => null,
                 'cover_media_id' => null,
             ])

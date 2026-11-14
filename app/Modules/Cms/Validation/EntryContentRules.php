@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Cms\Validation;
 
 use App\Modules\Cms\Support\JobFacts;
+use App\Modules\Shared\Support\PlainText;
 
 /**
  * The rules one locale's content must pass to be written: the editor's save and a revision
@@ -17,6 +18,26 @@ use App\Modules\Cms\Support\JobFacts;
 final readonly class EntryContentRules
 {
     public const string SLUG_PATTERN = '/^[a-z0-9]+(?:-[a-z0-9]+)*$/';
+
+    /**
+     * Who a post is by, as readers see it (entry_translations.author_name, varchar(80)): one line of
+     * plain text naming a team or department, never a staff account.
+     */
+    public const int AUTHOR_NAME_MAX = 80;
+
+    /**
+     * The byline to store: one line of plain text (PlainText::label), null when empty. False when it
+     * cannot be stored: longer than AUTHOR_NAME_MAX or holding markup.
+     */
+    public static function authorName(string $text): string|false|null
+    {
+        $text = PlainText::label($text);
+        if ($text === '') {
+            return null;
+        }
+
+        return mb_strlen($text) > self::AUTHOR_NAME_MAX || PlainText::hasMarkup($text) ? false : $text;
+    }
 
     public function __construct(private ValidPageJson $blocks) {}
 

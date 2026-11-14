@@ -3553,6 +3553,7 @@
     "categories.reason_changes_member_limits": "Chuyển vào đây làm đổi phạm vi viết bài của thành viên khác — nhờ người quản lý thành viên.",
     "categories.reason_description_invalid": "Mô tả dài quá — giữ trong 1000 ký tự, vài câu giới thiệu là đủ.",
     "categories.reason_seo_invalid": "Tiêu đề và mô tả trên Google mỗi thứ chỉ một dòng, tối đa 255 ký tự — rút gọn rồi lưu lại.",
+    "categories.reason_card_label_invalid": "Nhãn ngắn trên thẻ chỉ một dòng, tối đa 40 ký tự — rút gọn rồi lưu lại.",
     "categories.reason_cover_invalid": "Không dùng được ảnh này (có thể vừa bị xóa khỏi Thư viện, hoặc không phải ảnh) — chọn ảnh khác.",
     "categories.reason_move_stale": "Danh sách chuyên mục đã đổi sau lần chuyển này nên không hoàn tác được — tải lại trang để xem bản mới nhất.",
     "categories.reason_section_invalid": "Không tìm thấy loại nội dung này — mở Chuyên mục từ trình đơn bên trái.",

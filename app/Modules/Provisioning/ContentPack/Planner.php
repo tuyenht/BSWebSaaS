@@ -571,7 +571,7 @@ final class Planner
         $covers = Media::query()->whereIn('id', $rows->pluck('cover_media_id')->filter()->all())->pluck('storage_key', 'id');
         // Every language, not only the pack's: a category write re-syncs the posts and products under
         // it in every language they are routed in, and their addresses there carry these slugs.
-        $translations = $this->locked(TaxonomyTranslation::query())->get(['taxonomy_id', 'locale', 'name', 'slug', 'description']);
+        $translations = $this->locked(TaxonomyTranslation::query())->get(['taxonomy_id', 'locale', 'name', 'slug', 'description', 'card_label']);
 
         foreach ($rows as $row) {
             $this->taxonomies[$row->id] = [
@@ -588,7 +588,9 @@ final class Planner
         foreach ($translations as $translation) {
             if (isset($this->taxonomies[$translation->taxonomy_id])) {
                 $this->taxonomies[$translation->taxonomy_id]['tr'][$translation->locale] = ['name' => $translation->name, 'slug' => $translation->slug]
-                    + (trim((string) $translation->description) === '' ? [] : ['description' => (string) $translation->description]);
+                    + (trim((string) $translation->description) === '' ? [] : ['description' => (string) $translation->description])
+                    // Like the intro, part of the state only when set, so a category without one keeps its ledger hash.
+                    + (trim((string) $translation->card_label) === '' ? [] : ['card_label' => (string) $translation->card_label]);
             }
         }
     }
@@ -742,6 +744,13 @@ final class Planner
                     : Cast::string(Cast::arr($live[$locale] ?? null)['description'] ?? null);
                 if ($intro !== '') {
                     $translation = Cast::arr($translation) + ['description' => $intro];
+                }
+                // The card label the same way: a pack that names it sets it ('' or null clears it), one that does not keeps the live one.
+                $label = array_key_exists($locale, Cast::arr($item->data['card_label'] ?? null))
+                    ? (TaxonomyRules::cardLabel(Cast::string(Cast::arr($item->data['card_label'])[$locale])) ?? '')
+                    : Cast::string(Cast::arr($live[$locale] ?? null)['card_label'] ?? null);
+                if ($label !== '') {
+                    $translation = Cast::arr($translation) + ['card_label' => $label];
                 }
             }
             $translations[$locale] = $translation;
@@ -945,7 +954,7 @@ final class Planner
         }
         $this->rememberEntryKeys($parentIds);
         $translations = $this->locked(EntryTranslation::query()->whereIn('entry_id', $ids)->whereIn('locale', $this->locales))
-            ->get(['entry_id', 'locale', 'title', 'slug', 'body', 'excerpt', 'seo_title', 'seo_description', 'status']);
+            ->get(['entry_id', 'locale', 'title', 'slug', 'body', 'excerpt', 'seo_title', 'seo_description', 'author_name', 'status']);
         $byEntry = [];
         foreach ($translations as $translation) {
             $byEntry[$translation->entry_id][] = $translation;
@@ -966,6 +975,10 @@ final class Planner
                 ];
                 if ($entry->type === 'post') {
                     $row['slug'] = $translation->slug;
+                    // A post's byline is part of the state only when set, so a post without one keeps its ledger hash.
+                    if (trim((string) $translation->author_name) !== '') {
+                        $row['author'] = $translation->author_name;
+                    }
                 }
                 $byLocale[$translation->locale] = $row;
             }
@@ -1089,6 +1102,10 @@ final class Planner
             ];
             if ($item->kind === 'post') {
                 $row['slug'] = $locale === $this->locale ? $item->anchor() : Cast::string($slugs[$locale] ?? null, $item->anchor());
+                $author = self::text($item->data, 'author', $locale);
+                if ($author !== null) {
+                    $row['author'] = $author;
+                }
             }
             $state['translations'][$locale] = $row;
         }

@@ -481,3 +481,23 @@ it('refuses a Cloudflare Web Analytics token the storefront would not print', fu
     'not a string' => [['cloudflare_token' => 123], "'cloudflare_token' must be the 32-character site token"],
     'an injection attempt' => [['cloudflare_token' => 'abc"></script><script>'], "'cloudflare_token' must be the 32-character site token"],
 ]);
+
+it('accepts a short card label on a category and a byline on a post, one line of plain text each', function (): void {
+    ContentPacks::item($this->folder, 'taxonomies.json', 'tax:post_cat/tin-tuc', fn (array $item): array => [...$item, 'card_label' => ['vi' => 'Bản tin']]);
+    ContentPacks::item($this->folder, 'posts.json', 'post:ra-mat-website', fn (array $item): array => [...$item, 'author' => ['vi' => 'Phòng Kỹ thuật']]);
+
+    expect(cpProblems())->toBe([]);
+});
+
+it('refuses a card label or a byline that is too long, holds tags or is not text', function (string $file, string $key, string $field, mixed $value, string $problem): void {
+    ContentPacks::item($this->folder, $file, $key, fn (array $item): array => [...$item, $field => ['vi' => $value]]);
+
+    expect(implode("\n", cpProblems()))->toContain($problem);
+})->with([
+    'a label over 40 characters' => ['taxonomies.json', 'tax:post_cat/tin-tuc', 'card_label', str_repeat('a', 41), 'tax:post_cat/tin-tuc: card_label (vi) is longer than 40 characters.'],
+    'a label with a tag' => ['taxonomies.json', 'tax:post_cat/tin-tuc', 'card_label', '<b>Tin</b>', 'tax:post_cat/tin-tuc: card_label (vi) must be one line of plain text'],
+    'a label on two lines' => ['taxonomies.json', 'tax:post_cat/tin-tuc', 'card_label', "Tin\ntức", 'tax:post_cat/tin-tuc: card_label (vi) must be one line of plain text'],
+    'a byline over 80 characters' => ['posts.json', 'post:ra-mat-website', 'author', str_repeat('a', 81), 'post:ra-mat-website: author (vi) is longer than 80 characters.'],
+    'a byline with a tag' => ['posts.json', 'post:ra-mat-website', 'author', 'Phòng <i>Kỹ thuật</i>', 'post:ra-mat-website: author (vi) must be one line of plain text'],
+    'a byline that is not text' => ['posts.json', 'post:ra-mat-website', 'author', 12, 'post:ra-mat-website: author (vi) must be text.'],
+]);

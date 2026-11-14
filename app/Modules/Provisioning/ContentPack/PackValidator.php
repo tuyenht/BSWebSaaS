@@ -10,11 +10,13 @@ use App\Modules\Admin\Support\Settings\HeadingDecorInput;
 use App\Modules\Admin\Support\Settings\SettingsChangeRejected;
 use App\Modules\Cms\Support\JobFacts;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
+use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Cms\Validation\ValidPageJson;
 use App\Modules\Forms\Support\FormFieldTypes;
 use App\Modules\Media\Actions\UploadMedia;
 use App\Modules\Media\Models\Media;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\PlainText;
 use App\Modules\Shared\Support\RichTextSanitizer;
 use App\Modules\Shared\Support\SafeLink;
 use App\Modules\Theme\Chrome\StorefrontChrome;
@@ -695,6 +697,15 @@ final readonly class PackValidator
         if (array_key_exists('description', $item->data)) {
             $this->localeMap($pack, $item->key, $item->data, 'description', false, TaxonomyRules::DESCRIPTION_MAX, $errors, true);
         }
+        // The short label the category's cards show instead of its name (one line, plain text).
+        if (array_key_exists('card_label', $item->data)) {
+            $this->localeMap($pack, $item->key, $item->data, 'card_label', false, TaxonomyRules::CARD_LABEL_MAX, $errors, true);
+            foreach (Cast::arr($item->data['card_label']) as $locale => $label) {
+                if (is_string($label) && mb_strlen($label) <= TaxonomyRules::CARD_LABEL_MAX && TaxonomyRules::cardLabel($label) !== $label) {
+                    $errors[] = "{$item->key}: card_label ({$locale}) must be one line of plain text, without tags or extra spaces.";
+                }
+            }
+        }
         if (array_key_exists('cover', $item->data) && ! self::isMediaRef($item->data['cover'])) {
             $errors[] = "{$item->key}: cover must be an image reference ({\"media\": slot}).";
         }
@@ -790,6 +801,13 @@ final readonly class PackValidator
         $this->flags($item, $errors);
         $this->categories($item, $taxonomies, true, $errors);
         $this->entryText($pack, $item, $errors);
+        // Who the post is by, as readers see it: a team or department, one line of plain text.
+        $this->localeMap($pack, $item->key, $item->data, 'author', false, EntryContentRules::AUTHOR_NAME_MAX, $errors);
+        foreach (Cast::arr($item->data['author'] ?? null) as $locale => $author) {
+            if (is_string($author) && mb_strlen($author) <= EntryContentRules::AUTHOR_NAME_MAX && (PlainText::label($author) !== $author || PlainText::hasMarkup($author))) {
+                $errors[] = "{$item->key}: author ({$locale}) must be one line of plain text, without tags or extra spaces.";
+            }
+        }
 
         $image = $item->data['image'] ?? null;
         if ($image !== null && ! self::isMediaRef($image) && ! (is_string($image) && preg_match('/\A[a-z][a-z0-9-]{0,31}\z/', $image) === 1)) {

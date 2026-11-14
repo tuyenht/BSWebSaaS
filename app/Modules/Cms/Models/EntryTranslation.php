@@ -13,7 +13,9 @@ use Illuminate\Support\Carbon;
 /**
  * Per-locale content. body = Page-JSON ({"blocks":[…]}) for a page or a post; a
  * formatted post body is a single `html` block, sanitized on every write. slug is
- * localized; the full resolved path lives in routes.
+ * localized; the full resolved path lives in routes. author_name is who a post is by as readers see
+ * it (a team or department, free text linked to no staff account; empty = the site's business). It
+ * is not main content, so changing it alone never moves the content mark.
  *
  * @property int $site_id
  * @property int $entry_id
@@ -26,6 +28,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $seo_description
  * @property int|null $og_image_id
  * @property string $status
+ * @property string|null $author_name
  * @property Carbon|null $content_changed_at when the page's main content last changed (TracksContentChange)
  */
 class EntryTranslation extends Model

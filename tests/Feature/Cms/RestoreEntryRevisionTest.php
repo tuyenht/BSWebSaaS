@@ -413,3 +413,51 @@ it('restores an old snapshot whose own layout no longer fits the entry as the de
             ->and($page->fresh()->translationFor('vi')->title)->toBe('Bản đầu');
     });
 });
+
+it('keeps the byline in each revision, restores it, and leaves it when the revision is older than bylines', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
+        $actor = $editor->fresh();
+        [$page, $v1] = restorablePage($actor);
+        editLivePage($page, ['title' => 'Bản hai', 'author_name' => 'Phòng Kỹ thuật'], $actor);
+        $v2 = EntryRevision::query()->where('entry_id', $page->id)->orderByDesc('id')->first();
+
+        expect($v1->snapshot)->toHaveKey('author_name', null)
+            ->and($v2->snapshot)->toHaveKey('author_name', 'Phòng Kỹ thuật');
+
+        // Back to the first version: it had no byline.
+        app(RestoreEntryRevision::class)->handle($v1, $actor);
+        expect($page->fresh()->translationFor('vi')->author_name)->toBeNull();
+
+        app(RestoreEntryRevision::class)->handle($v2->fresh(), $actor);
+        expect($page->fresh()->translationFor('vi')->author_name)->toBe('Phòng Kỹ thuật');
+
+        // A revision written before bylines existed has no such key: restoring it keeps the byline.
+        $old = $v1->snapshot;
+        unset($old['author_name']);
+        DB::table('entry_revisions')->where('id', $v1->id)->update(['snapshot' => json_encode($old)]);
+        app(RestoreEntryRevision::class)->handle($v1->fresh(), $actor);
+
+        $translation = $page->fresh()->translationFor('vi');
+        expect($translation->title)->toBe('Bản đầu')
+            ->and($translation->author_name)->toBe('Phòng Kỹ thuật');
+    });
+});
+
+it('refuses to restore a byline longer than its column', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
+        $actor = $editor->fresh();
+        [$page, $v1] = restorablePage($actor);
+        editLivePage($page, ['title' => 'Bản hai'], $actor);
+        DB::table('entry_revisions')->where('id', $v1->id)
+            ->update(['snapshot' => json_encode(['author_name' => str_repeat('a', 81)] + $v1->snapshot)]);
+
+        expect(fn () => app(RestoreEntryRevision::class)->handle($v1->fresh(), $actor))->toThrow(RevisionRestoreRejectedException::class)
+            ->and($page->fresh()->translationFor('vi')->title)->toBe('Bản hai');
+    });
+});
