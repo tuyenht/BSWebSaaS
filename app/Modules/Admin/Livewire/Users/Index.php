@@ -2,12 +2,16 @@
 
 namespace App\Modules\Admin\Livewire\Users;
 
+use App\Modules\Admin\Livewire\Users\Concerns\LimitsInvitationCategories;
 use App\Modules\Admin\Livewire\Users\Concerns\ManagesInvitations;
 use App\Modules\Admin\Livewire\Users\Concerns\SelectsMembers;
 use App\Modules\Admin\Notifications\MemberInvitationNotification;
 use App\Modules\Admin\Support\FirstHints;
 use App\Modules\Admin\Support\Members\InvitationDirectory;
+use App\Modules\Admin\Support\Members\InviteCategoryTree;
 use App\Modules\Admin\Support\Members\MemberDirectory;
+use App\Modules\Cms\Actions\InviteMemberWithCategories;
+use App\Modules\Cms\Exceptions\CategoryScopeRejectedException;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
@@ -16,6 +20,7 @@ use App\Modules\Rbac\Actions\AssignRole;
 use App\Modules\Rbac\Actions\InviteMember;
 use App\Modules\Rbac\Actions\RevokeRole;
 use App\Modules\Rbac\Exceptions\InvitationRejectedException;
+use App\Modules\Rbac\Models\Invitation;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Support\IssuedInvitation;
 use App\Modules\Rbac\Support\MembershipLock;
@@ -30,6 +35,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Collection as BaseCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
@@ -59,6 +65,7 @@ use Livewire\Component;
 #[Layout('admin::layouts.app')]
 final class Index extends Component
 {
+    use LimitsInvitationCategories;
     use ManagesInvitations;
     use SelectsMembers;
 
@@ -396,6 +403,9 @@ final class Index extends Component
         $this->inviteResults = [];
         $this->inviteTried = false;
         $this->resetErrorBag();
+        if ($this->inviteCategories === [] && $this->inviteScope === 'all') {
+            $this->resetInviteScope();
+        }
         $this->inviteOpen = true;
     }
 
@@ -404,6 +414,7 @@ final class Index extends Component
         $this->inviteOpen = false;
         if ($this->inviteResults !== []) {
             $this->reset('inviteEmail', 'inviteRoles', 'inviteMessage', 'inviteResults', 'inviteTried');
+            $this->resetInviteScope();
         }
     }
 
@@ -412,6 +423,7 @@ final class Index extends Component
     {
         $this->ensureOpen();
         $this->reset('inviteEmail', 'inviteRoles', 'inviteMessage', 'inviteResults', 'inviteTried');
+        $this->resetInviteScope();
         $this->resetErrorBag();
     }
 
@@ -429,6 +441,10 @@ final class Index extends Component
             'inviteRoles' => 'array|max:50',
             'inviteRoles.*' => 'string|max:125',
             'inviteMessage' => 'nullable|string|max:500',
+            'inviteScope' => 'in:all,only',
+            'inviteCategories' => 'array|max:'.InviteCategoryTree::LIMIT,
+            'inviteCategories.*' => 'string|max:26',
+            'inviteCatQ' => 'string|max:100',
         ], [], ['inviteEmail' => __('admin.members.inv_email'), 'inviteMessage' => __('admin.members.inv_msg')]);
 
         $actor = $this->actor();
@@ -458,6 +474,13 @@ final class Index extends Component
 
             return;
         }
+        // "Phạm vi làm việc": "only" with nothing picked is a choice not made yet, said on the block
+        $scope = $this->inviteScopeState($actor, $roles);
+        if ($scope['axis'] && $scope['feat'] && $scope['mode'] === 'only' && $scope['ids'] === []) {
+            $this->inviteScopeError = __('admin.members.inv_sc_err');
+
+            return;
+        }
         // what the site may still mail today, said up front: the action would refuse the addresses past it one by one
         $siteId = app(CurrentSite::class)->id();
         $left = max(0, InviteMember::DAILY_LIMIT - app(InviteMember::class)->sentToday($siteId));
@@ -476,13 +499,15 @@ final class Index extends Component
         $results = [];
         foreach ($valid as $email) {
             try {
-                $issued = app(InviteMember::class)->handle($actor, $email, array_values($roles->all()), $message);
+                $issued = app(InviteMemberWithCategories::class)->handle($actor, $email, array_values($roles->all()), $message, $scope['ids']);
                 $this->mailInvitation($issued, $actor, $siteName, $roleList);
                 $results[] = ['email' => $issued->invitation->email, 'ok' => true, 'text' => __('admin.members.inv_res_ok', ['days' => InviteMember::VALID_DAYS])];
             } catch (AuthorizationException) {
                 $results[] = ['email' => $email, 'ok' => false, 'text' => __('admin.role_change_denied')];
             } catch (InvitationRejectedException $e) {
                 $results[] = ['email' => $email, 'ok' => false, 'text' => __('rbac.invitation.error_'.$e->reason)];
+            } catch (CategoryScopeRejectedException $e) {
+                $results[] = ['email' => $email, 'ok' => false, 'text' => __('admin.members.inv_sc_err_'.$e->reason)];
             }
         }
         $this->inviteResults = $results;
@@ -525,6 +550,7 @@ final class Index extends Component
         $matched = 0;
         $scopes = [];
         $stayed = [];
+        $invScopes = [];
         try {
             // a savepoint inside the request's tenancy transaction: a failed read leaves it usable for the rest of the page
             $read = DB::transaction(function () use ($directory, $invitations, $siteId, $onInvites): array {
@@ -544,6 +570,7 @@ final class Index extends Component
                         'invRoleCounts' => $invitations->roleCounts($this->state),
                         'matched' => $narrowed ? $invitations->matchCount($this->state, $this->search, $this->groups) : $invCounts[$this->state],
                         'stayed' => $invitations->stillMembers($inviters),
+                        'invScopes' => $this->invitationScopeNames($page['rows'], $siteId),
                     ];
                 }
                 $page = $directory->page($this->search, $this->groups, $this->per, $this->after, $this->before);
@@ -570,6 +597,7 @@ final class Index extends Component
             $matched = $read['matched'];
             $scopes = $read['scopes'] ?? [];
             $stayed = $read['stayed'] ?? [];
+            $invScopes = $read['invScopes'] ?? [];
         } catch (QueryException $e) {
             report($e);
             $failed = true;
@@ -596,6 +624,15 @@ final class Index extends Component
         $panelBefore = $panelMember instanceof User ? $panelMember->roles()->with('permissions')->get() : new Collection;
         $removeMember = $this->confirmOpen && $this->removeFor !== '' ? $this->siteMember($this->removeFor) : null;
         $revoking = $this->revokeOpen && $this->revokeFor !== '' ? $this->siteInvitation($this->revokeFor) : null;
+        // "Phạm vi làm việc" of the invite dialog, read only while its form is open
+        $invScope = null;
+        $invTree = [];
+        if ($canInvite && $this->inviteOpen && $this->inviteResults === []) {
+            $invScope = $this->inviteScopeState($actor, $this->siteRoles($this->inviteRoles));
+            if ($invScope['axis'] && $invScope['feat'] && $invScope['mode'] === 'only') {
+                $invTree = $this->inviteTreeRows($actor, $invScope);
+            }
+        }
 
         return $this->page('admin::livewire.users.index', $title, [
             'failed' => $failed,
@@ -612,6 +649,7 @@ final class Index extends Component
             'matched' => $matched,
             'searching' => MemberDirectory::searches($this->search),
             'scopes' => $scopes,
+            'invScopes' => $invScopes,
             'stayed' => $stayed,
             'siteRoles' => $siteRoles,
             'assignable' => $assignable,
@@ -630,6 +668,8 @@ final class Index extends Component
             'sent' => $sent,
             'reopens' => $reopens,
             'inviteLeft' => max(0, InviteMember::DAILY_LIMIT - $sent),
+            'invScope' => $invScope,
+            'invTree' => $invTree,
         ]);
     }
 
@@ -741,7 +781,32 @@ final class Index extends Component
     private function scopeNames(Collection $rows, int $siteId): array
     {
         $ids = array_values($rows->filter(fn (User $u): bool => Cast::int($u->roles->max('level')) < CategoryScopes::EXEMPT_LEVEL)->map(fn (User $u): int => (int) $u->id)->all());
-        $roots = app(CategoryScopes::class)->rootIdsOf($ids);
+
+        return $this->namedRoots(app(CategoryScopes::class)->rootIdsOf($ids), $siteId);
+    }
+
+    /**
+     * The post categories each invitation on the page limits its new member to, by invitation id,
+     * by name (in the site's default language).
+     *
+     * @param  BaseCollection<int, Invitation>  $rows
+     * @return array<int, list<string>>
+     */
+    private function invitationScopeNames(BaseCollection $rows, int $siteId): array
+    {
+        $ids = array_values(array_map(static fn (mixed $id): int => Cast::int($id), $rows->pluck('id')->all()));
+
+        return $this->namedRoots(app(CategoryScopes::class)->invitationRootIdsOf($ids), $siteId);
+    }
+
+    /**
+     * Category ids by owner, as names by owner (sorted), read in one query.
+     *
+     * @param  array<int, list<int>>  $roots
+     * @return array<int, list<string>>
+     */
+    private function namedRoots(array $roots, int $siteId): array
+    {
         if ($roots === []) {
             return [];
         }

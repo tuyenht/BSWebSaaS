@@ -15,6 +15,7 @@ it('touches member category limits only through the reader and the known writers
         'app/Modules/Cms/Actions/SetMemberCategoryScopes.php',             // guarded user-facing writer
         'app/Modules/Cms/Listeners/ForgetMemberCategoryScopes.php',        // left the site / never limited
         'app/Modules/Cms/Actions/Taxonomies/DeleteTaxonomy.php',           // moves rows onto a merge target
+        'app/Modules/Cms/Listeners/CopyInvitationCategoryScopes.php',      // an accepted invitation's limits
     ];
 
     $offenders = [];
@@ -22,6 +23,35 @@ it('touches member category limits only through the reader and the known writers
     foreach (Finder::create()->files()->in(app_path())->name('*.php') as $file) {
         // The model by its exact name (the listener's or action's class name is not the model).
         if (preg_match('/\bMemberCategoryScope\b|member_category_scopes/', $file->getContents()) === 1) {
+            $rel = str_replace(base_path().'/', '', (string) $file->getRealPath());
+            if (! in_array($rel, $allowed, true)) {
+                $offenders[] = $rel;
+            }
+        }
+    }
+
+    expect($offenders)->toBe([]);
+});
+
+/*
+ * The same guard for the limits an invitation carries (invitation_category_scopes): "no rows" reads as
+ * "every category" once the invitation is accepted, so a stray write could lift a limit nobody chose
+ * to lift. Only the model, the reader, the inviting action, the copy on accept and the category
+ * delete may name the table or its model.
+ */
+it('touches invitation category limits only through the reader and the known writers', function (): void {
+    $allowed = [
+        'app/Modules/Cms/Models/InvitationCategoryScope.php',              // the model
+        'app/Modules/Cms/Support/CategoryScopes.php',                      // the reader (read only)
+        'app/Modules/Cms/Actions/InviteMemberWithCategories.php',          // guarded writer, with the invitation
+        'app/Modules/Cms/Listeners/CopyInvitationCategoryScopes.php',      // reads them on accept
+        'app/Modules/Cms/Actions/Taxonomies/DeleteTaxonomy.php',           // moves rows onto a merge target
+    ];
+
+    $offenders = [];
+
+    foreach (Finder::create()->files()->in(app_path())->name('*.php') as $file) {
+        if (preg_match('/\bInvitationCategoryScope\b|invitation_category_scopes/', $file->getContents()) === 1) {
             $rel = str_replace(base_path().'/', '', (string) $file->getRealPath());
             if (! in_array($rel, $allowed, true)) {
                 $offenders[] = $rel;

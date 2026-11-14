@@ -62,8 +62,8 @@ const ADMIN_HAND_BUILT_PARTS = [
     'seo-settings.blade.php' => [0, 1, 0],
     // + the screen's error state
     'settings/domains.blade.php' => [0, 3, 0],
-    // the list's error state, the error lines under the member panel and the invite fields
-    'users/index.blade.php' => [0, 5, 0],
+    // the list's error state (its error lines are the shared field-error)
+    'users/index.blade.php' => [0, 1, 0],
     // the invitations list's error state (heading, words, "Thử lại", as its board draws it)
     'users/invitations.blade.php' => [0, 1, 0],
     // + the screen's error state

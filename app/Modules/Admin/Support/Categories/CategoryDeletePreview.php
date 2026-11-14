@@ -25,7 +25,8 @@ use Illuminate\Support\Facades\Gate;
  *    target, which the person confirms (sectionChange);
  *  - menuLinks: the menu links (in the menu trash too) that follow the items onto $target —
  *    none without a target, as DeleteTaxonomy moves them only then;
- *  - limitedMembers: the names of the members whose limits name a category that goes;
+ *  - limitedMembers: the names of the members whose limits name a category that goes, then the
+ *    addresses of the open invitations whose limits do;
  *  - locked: a section is built on one of them (never deleted); allowed: TaxonomyPolicy delete;
  *    governed: the section runs an approval workflow, so its posts may not leave it;
  *  - targets: where the items can go — same vocabulary, outside what goes (for a merge, outside
@@ -99,7 +100,9 @@ final readonly class CategoryDeletePreview
             }
         }
 
-        $members = $this->delete->limitedMembers($taxonomy, $cascade ? CategoryChildrenOnDelete::Delete : CategoryChildrenOnDelete::Lift);
+        $which = $cascade ? CategoryChildrenOnDelete::Delete : CategoryChildrenOnDelete::Lift;
+        // open invitations limited to what goes count like members: their limit is the member's on accept
+        $members = [...$this->delete->limitedMembers($taxonomy, $which), ...$this->delete->limitedInvitations($taxonomy, $which)];
 
         return [
             'children' => count($forest->children($taxonomy->id)),

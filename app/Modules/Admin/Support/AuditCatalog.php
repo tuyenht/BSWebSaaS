@@ -31,7 +31,7 @@ final class AuditCatalog
         'members' => [
             'rbac.role.assigned', 'rbac.role.revoked', 'rbac.role.created', 'rbac.role.updated', 'rbac.role.deleted',
             'rbac.invitation.sent', 'rbac.invitation.accepted', 'rbac.invitation.revoked', 'rbac.invitation.send_failed',
-            'cms.category_scopes.changed', 'cms.category_scopes.cleared', 'identity.profile.updated',
+            'cms.category_scopes.changed', 'cms.category_scopes.cleared', 'cms.category_scopes.invited', 'identity.profile.updated',
         ],
         'content' => [
             'entries.status.changed', 'entries.change.applied', 'entries.change.discarded', 'entries.change.folded',
