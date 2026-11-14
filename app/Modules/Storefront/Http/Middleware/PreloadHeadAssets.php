@@ -14,8 +14,11 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
  * stylesheet when PageRenderer has cut the page down to the ones it uses (BlockStyles::narrow), so it
  * hinted files the page never links and missed the ones it does.
  *
- * Every stylesheet the head links goes out, in link order, then the font preload; module preloads
- * follow only while the total stays within MAX_HINTS, so a script can never displace a stylesheet.
+ * A preconnect the head asks for (the media host, when the page leads with a photo) goes first: the
+ * edge sends it in the 103 too, so the browser opens that connection while the page itself is still
+ * on its way. Every stylesheet the head links follows, in link order, then the font preload; module
+ * preloads follow only while the total stays within MAX_HINTS, so a script can never displace a
+ * stylesheet.
  * The cap keeps the header small (a CDN refuses an oversized one) and spends the early connection
  * on what blocks rendering first. The middleware keeps no state between requests.
  */
@@ -49,7 +52,7 @@ final class PreloadHeadAssets
             return [];
         }
 
-        $styles = $fonts = $modules = [];
+        $connects = $styles = $fonts = $modules = [];
         foreach ($tags[0] as $tag) {
             $attributes = $this->attributes($tag);
             $href = $attributes['href'] ?? '';
@@ -58,7 +61,9 @@ final class PreloadHeadAssets
             if ($href === '' || preg_match('~[\s<>,;]~', $href)) {
                 continue;
             }
-            if ($rel === 'stylesheet') {
+            if ($rel === 'preconnect' && preg_match('~^https://[^/]+$~i', $href)) {
+                $connects[$href] = $this->entry($href, 'preconnect', [], $attributes);
+            } elseif ($rel === 'stylesheet') {
                 $styles[$href] = $this->entry($href, 'preload', ['as' => 'style'], $attributes);
             } elseif ($rel === 'preload' && ($attributes['as'] ?? '') === 'font') {
                 $fonts[$href] = $this->entry($href, 'preload', ['as' => 'font', 'type' => $attributes['type'] ?? null], $attributes);
@@ -67,7 +72,7 @@ final class PreloadHeadAssets
             }
         }
 
-        $hints = [...array_values($styles), ...array_values($fonts)];
+        $hints = [...array_values($connects), ...array_values($styles), ...array_values($fonts)];
 
         return [...$hints, ...array_slice(array_values($modules), 0, max(0, self::MAX_HINTS - count($hints)))];
     }

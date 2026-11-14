@@ -124,3 +124,19 @@ it('never drops a stylesheet for the cap', function (): void {
 
     expect(explode(', ', $response->headers->get('Link')))->toHaveCount(20);
 });
+
+it('sends the media host preconnect first, so the edge can hint it in the 103', function (): void {
+    $html = '<html><head>'
+        .'<link rel="preconnect" href="https://files.example.test">'
+        .'<link rel="stylesheet" href="/a.css">'
+        .'<link rel="preconnect" href="http://insecure.example.test">'
+        .'<link rel="preconnect" href="https://cdn.example.test/path">'
+        .'</head><body><link rel="preconnect" href="https://late.example.test"></body></html>';
+
+    $response = (new PreloadHeadAssets)->handle(request(), fn () => response($html));
+
+    expect(explode(', ', $response->headers->get('Link')))->toBe([
+        '<https://files.example.test>; rel="preconnect"',
+        '</a.css>; rel="preload"; as="style"',
+    ]);
+});
