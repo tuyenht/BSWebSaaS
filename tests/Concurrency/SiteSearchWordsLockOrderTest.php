@@ -1,17 +1,25 @@
 <?php
 
+use App\Modules\Admin\Livewire\Entries\Editor as EntryEditor;
+use App\Modules\Admin\Livewire\Entries\Index as EntryIndex;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Support\ProductSiteWords;
+use App\Modules\Cms\Actions\RecordEntryRevision;
+use App\Modules\Cms\Actions\RestoreEntryRevision;
+use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Support\EntrySearchWords;
 use App\Modules\Cms\Support\TaxonomySearchWords;
+use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
 
 /*
  * The storefront search words of one item are rewritten from its translations under the item's lock.
@@ -163,5 +171,78 @@ it('moves the words with a translation moved to another language', function (): 
         expect(siteWordsOf('entry_search_words', 1, $entry->id))->toBe(['en' => ['moulds' => 1]])
             ->and(siteWordsOf('product_site_words', 1, $product->id))->toBe(['en' => ['bearing' => 1]])
             ->and(siteWordsOf('taxonomy_search_words', 1, $category->id))->toBe(['en' => ['tools' => 1]]);
+    });
+});
+
+/** A draft page of site 1 titled "Khuôn mẫu" with its vi translation; returns it. */
+function siteWordsLockPage(): Entry
+{
+    $page = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'meta' => []]);
+    $page->translations()->create(['locale' => 'vi', 'title' => 'Khuôn mẫu', 'slug' => 'khuon-mau-'.$page->id, 'status' => 'draft', 'body' => ['blocks' => []]]);
+
+    return $page->fresh();
+}
+
+/**
+ * The entry row lock comes before the first write to the entry's translations: a check of the search
+ * words (sync, which locks the entry row) then waits for the save instead of writing the old title's
+ * words back over the new ones.
+ *
+ * @param  list<string>  $statements
+ */
+function expectEntryLockedBeforeTranslationWrite(array $statements): void
+{
+    $lock = siteWordsFirst($statements, '~^select .* from "?entries"? .*for update$~');
+    $write = siteWordsFirst($statements, '~^(update|insert into|delete from) "?entry_translations"?~');
+    expect($write)->toBeGreaterThan(-1, implode("\n", $statements))
+        ->and($lock)->toBeGreaterThan(-1, implode("\n", $statements))
+        ->and($lock)->toBeLessThan($write);
+}
+
+it('locks the entry row before the list renames a title inline', function (): void {
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        grantRole($user, 'editor', ['entries.view', 'entries.edit.any']);
+        $page = siteWordsLockPage();
+        $list = Livewire::actingAs($user->fresh())->test(EntryIndex::class);
+
+        $statements = siteWordsStatementsDuring(fn () => $list->call('saveTitle', $page->ulid, 'Đồ gá'));
+
+        expectEntryLockedBeforeTranslationWrite($statements);
+        expect(siteWordsOf('entry_search_words', 1, $page->id))->toBe(['vi' => ['do' => 1, 'ga' => 1]]);
+    });
+});
+
+it('locks the entry row before the editor writes the translation, also when no shared field changed', function (): void {
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        grantRole($user, 'editor', ['entries.view', 'entries.edit.any']);
+        $page = siteWordsLockPage();
+        $editor = Livewire::actingAs($user->fresh())->test(EntryEditor::class, ['ulid' => $page->ulid])->set('title', 'Đồ gá');
+
+        $statements = siteWordsStatementsDuring(fn () => $editor->call('save')->assertHasNoErrors());
+
+        expectEntryLockedBeforeTranslationWrite($statements);
+        expect(siteWordsOf('entry_search_words', 1, $page->id))->toBe(['vi' => ['do' => 1, 'ga' => 1]]);
+    });
+});
+
+it('locks the entry row before a revision restore writes the translation back', function (): void {
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        grantRole($user, 'editor', ['entries.view', 'entries.edit.any']);
+        $actor = $user->fresh();
+        $page = siteWordsLockPage();
+        app(RecordEntryRevision::class)->forLocale($page, $page->translationFor('vi'), RevisionKind::Edit, $actor);
+        $revision = EntryRevision::query()->where('entry_id', $page->id)->sole();
+        $page->translationFor('vi')->update(['title' => 'Đồ gá']);
+
+        $statements = siteWordsStatementsDuring(fn () => app(RestoreEntryRevision::class)->handle($revision, $actor));
+
+        expectEntryLockedBeforeTranslationWrite($statements);
+        expect(siteWordsOf('entry_search_words', 1, $page->id))->toBe(['vi' => ['khuon' => 1, 'mau' => 1]]);
     });
 });

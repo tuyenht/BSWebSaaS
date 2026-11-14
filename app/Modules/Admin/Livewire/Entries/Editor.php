@@ -1249,6 +1249,10 @@ final class Editor extends Component
         } else {
             $entry = $this->resolveOrFail($this->ulid);
             $this->authorize('update', $entry);
+            // The entry row first, as every entry action takes it, before the translation is
+            // written: a save that changes no shared field writes nothing to the entry row, and a
+            // check of the search words running meanwhile must wait for it.
+            Entry::withTrashed()->whereKey($entry->id)->lockForUpdate()->firstOrFail();
         }
 
         // Featured/OG image: store the picked media's storage_key in entry.meta['image_url'] (the

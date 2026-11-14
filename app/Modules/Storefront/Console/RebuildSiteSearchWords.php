@@ -31,9 +31,12 @@ use Throwable;
  * Site by site in each site's tenant context: a chunk is compared without locks, then each item that
  * looks wrong is written again through its writer (EntrySearchWords, ProductSiteWords,
  * TaxonomySearchWords), which takes the save's lock and reads after it, so a save running meanwhile is
- * never lost. Each site with differences logs one warning per kind (how many, up to ten item ids), so
- * the path that missed them can be found. A site that fails is logged and skipped; the command then
- * exits non-zero.
+ * never lost. Each item is written in a transaction of its own, so the locks it takes (the site's
+ * category tree lock among them) are held for one item, never for a whole chunk, and an item that
+ * fails is logged and skipped while the rest of the chunk, the next chunks and the rolling cursor go
+ * on. Each site with differences logs one warning per kind (how many, up to ten item ids), so the path
+ * that missed them can be found. A site whose check fails is logged and skipped; after any failure the
+ * command exits non-zero.
  */
 final class RebuildSiteSearchWords extends Command
 {
@@ -59,27 +62,31 @@ final class RebuildSiteSearchWords extends Command
         $rolling = $this->option('rolling') !== null ? max(1, Cast::int($this->option('rolling'), 1)) : null;
         $only = $this->option('site');
         $siteIds = $only !== null ? [Cast::int($only)] : $tenancy->siteIds();
-        $sites = $checked = $corrected = $failed = 0;
+        $sites = $checked = $corrected = $failed = $failedItems = 0;
 
         foreach ($siteIds as $siteId) {
             $sites++;
             foreach (array_keys(self::KINDS) as $table) {
                 $drifted = [];
                 try {
-                    $step = function (int $after, int $limit) use ($tenancy, $siteId, $table, &$checked, &$drifted): array {
+                    $step = function (int $after, int $limit) use ($tenancy, $siteId, $table, &$checked, &$drifted, &$failedItems): array {
                         [$read, $wrong, $last] = $tenancy->enter($siteId, fn (): array => $this->compare($table, $siteId, $after, $limit));
                         $checked += $read;
-                        if ($wrong !== []) {
-                            $tenancy->enter($siteId, function () use ($table, $siteId, $wrong): void {
-                                foreach ($wrong as $id) {
+                        foreach ($wrong as $id) {
+                            try {
+                                $tenancy->enter($siteId, function () use ($table, $siteId, $id): void {
                                     match ($table) {
                                         EntrySearchWords::TABLE => EntrySearchWords::sync($siteId, $id),
                                         ProductSiteWords::TABLE => ProductSiteWords::sync($siteId, $id),
                                         default => TaxonomySearchWords::sync($siteId, $id),
                                     };
-                                }
-                            });
-                            array_push($drifted, ...$wrong);
+                                });
+                                $drifted[] = $id;
+                            } catch (Throwable $e) {
+                                $failedItems++;
+                                Log::error('Storefront search words of an item could not be written again', ['site_id' => $siteId, 'table' => $table, 'item_id' => $id, 'exception' => $e]);
+                                $this->error("Site {$siteId} ({$table}) item {$id}: {$e->getMessage()}");
+                            }
                         }
 
                         return [$read, $last];
@@ -109,8 +116,8 @@ final class RebuildSiteSearchWords extends Command
         }
 
         $this->info("Checked {$checked} item(s) on {$sites} site(s); corrected {$corrected}.");
-        if ($failed > 0) {
-            $this->error("Failed on {$failed} site check(s); see the log.");
+        if ($failed > 0 || $failedItems > 0) {
+            $this->error("Failed on {$failed} site check(s) and {$failedItems} item(s); see the log.");
 
             return self::FAILURE;
         }
