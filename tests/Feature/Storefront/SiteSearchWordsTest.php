@@ -269,4 +269,4 @@ it('writes each wrong item in a transaction of its own: one that fails is logged
     // Once the fault is gone the next full run writes it.
     $this->artisan('search:words', ['--site' => 1])->expectsOutputToContain('corrected 1.')->assertSuccessful();
     expect($words($posts[1]))->toBe(['vi' => ['hong' => 1]]);
-});
+})->skip(getenv('CI') !== 'true', 'adds a trigger to fail one write: runs on CI\'s own database only');
