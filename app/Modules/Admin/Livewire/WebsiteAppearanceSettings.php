@@ -76,6 +76,15 @@ final class WebsiteAppearanceSettings extends Component
     public array $legacy = [];
 
     /**
+     * Slots whose stored image no longer resolves (the picture went to the trash): they show empty,
+     * and the next save clears the stored reference.
+     *
+     * @var list<string>
+     */
+    #[Locked]
+    public array $stale = [];
+
+    /**
      * What "Khôi phục mặc định" removed, for "Hoàn tác" (kept on the server side of the component).
      *
      * @var array<array-key, mixed>|null
@@ -109,6 +118,7 @@ final class WebsiteAppearanceSettings extends Component
             return;
         }
         $this->pickerFor = $slot;
+        $this->undo = null;   // a later "Hoàn tác" would overwrite this pick
         $this->openImagePicker();
     }
 
@@ -136,6 +146,7 @@ final class WebsiteAppearanceSettings extends Component
             return;
         }
         $this->images[$slot] = '';
+        $this->undo = null;
         $this->resetErrorBag('images.'.$slot);
     }
 
@@ -153,10 +164,13 @@ final class WebsiteAppearanceSettings extends Component
 
         $picks = [];
         foreach ($draft as $slot => $key) {
-            if ($key !== $this->saved[$slot]) {
+            if ($key !== $this->saved[$slot] || ($key === '' && in_array($slot, $this->stale, true))) {
                 $picks[$slot] = $key;
             }
         }
+        // Choosing a picture is reading the Image library: a draft naming one needs its permission.
+        $choosing = array_filter($picks, static fn (string $key): bool => $key !== '' && $key !== self::OLD_IMAGE);
+        abort_if($choosing !== [] && ! Gate::allows('media.view'), 403);
 
         try {
             // One step: a key the library refuses (another site's, in the trash, not a picture, or
@@ -225,8 +239,9 @@ final class WebsiteAppearanceSettings extends Component
             if ($e->reason !== 'busy') {
                 throw $e;
             }
+            $payload = $this->undo;
             $this->notify(__('admin.settings.busy'), 'error');
-            $this->undo = null;
+            $this->undo = $payload;   // still offered: the next try may find the lock free
 
             return;
         }
@@ -267,7 +282,7 @@ final class WebsiteAppearanceSettings extends Component
                         : Cast::string(__('admin.seoset.share_from_library')),
                 ],
                 $old !== null => [
-                    'thumb' => $old,
+                    'thumb' => str_starts_with(strtolower($old), 'https://') ? $old : null,   // never a plain-http image on the admin
                     'name' => rawurldecode(basename(Cast::string(parse_url($old, PHP_URL_PATH)))) ?: $old,
                     'meta' => Cast::string(__('admin.seoset.share_old')),
                 ],
@@ -314,7 +329,7 @@ final class WebsiteAppearanceSettings extends Component
      * The saved images by their media keys (only a live picture of the site counts), and the older
      * general.brand URL of a slot that has no image of its own yet.
      *
-     * @return array{images: array{logo: string, logo_dark: string, favicon: string}, legacy: array<string, string>}
+     * @return array{images: array{logo: string, logo_dark: string, favicon: string}, legacy: array<string, string>, stale: list<string>}
      */
     private function load(): array
     {
@@ -333,12 +348,16 @@ final class WebsiteAppearanceSettings extends Component
         $legacyUrls = Cast::arr(app(SiteIdentity::class)->for(app(SiteLocale::class)->default())['legacy_images'] ?? null);
         $images = ['logo' => '', 'logo_dark' => '', 'favicon' => ''];
         $legacy = [];
+        $stale = [];
         foreach (self::SLOTS as $slot) {
             $key = isset($ids[$slot]) ? ($keys[$ids[$slot]] ?? null) : null;
             if (is_string($key) && $key !== '') {
                 $images[$slot] = $key;
 
                 continue;
+            }
+            if (isset($ids[$slot])) {
+                $stale[] = $slot;
             }
             $old = in_array($slot, self::LEGACY_SLOTS, true) ? ($legacyUrls[$slot] ?? null) : null;
             if (is_string($old) && preg_match('~\Ahttps?://~i', $old) === 1) {
@@ -347,15 +366,16 @@ final class WebsiteAppearanceSettings extends Component
             }
         }
 
-        return ['images' => $images, 'legacy' => $legacy];
+        return ['images' => $images, 'legacy' => $legacy, 'stale' => $stale];
     }
 
-    /** @param  array{images: array{logo: string, logo_dark: string, favicon: string}, legacy: array<string, string>}  $loaded */
+    /** @param  array{images: array{logo: string, logo_dark: string, favicon: string}, legacy: array<string, string>, stale: list<string>}  $loaded */
     private function apply(array $loaded): void
     {
         $this->images = $loaded['images'];
         $this->saved = $loaded['images'];
         $this->legacy = $loaded['legacy'];
+        $this->stale = $loaded['stale'];
         $this->pickerFor = '';
         $this->undo = null;
     }

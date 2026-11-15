@@ -233,6 +233,7 @@ it('shows a logo or favicon still held as the older URL, keeps it on save and re
 });
 
 it('says when the section was last saved and by whom', function (): void {
+    $this->freezeSecond();   // the "HH:MM" read after the save is the minute of the save
     $admin = lookAdmin(1, 'Chị Lan');
     $logo = lookMedia(1, 'logo');
 
@@ -272,6 +273,65 @@ it('restores the defaults, leaving the share image alone, and brings the images 
     });
 
     expect(lookProfile())->toMatchArray(['logo_media_id' => $logo->id, 'favicon_media_id' => $icon->id, 'og_image_media_id' => $share->id]);
+});
+
+it('lets a member without the Image library save the page but not choose a picture', function (): void {
+    $admin = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($admin, 'site-admin', ['settings.manage']));
+    $admin = $admin->fresh();
+    $logo = lookMedia(1, 'logo');
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $logo): void {
+        Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)
+            ->assertSee('Chưa chọn ảnh.')->assertDontSee('Chọn từ Thư viện ảnh hoặc tải ảnh mới lên')
+            ->call('pickFor', 'logo')->assertForbidden();
+        // A key sent straight into the draft is still a choice from the library.
+        Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)
+            ->set('images.logo', $logo->storage_key)->call('save')->assertForbidden();
+    });
+
+    expect(lookProfile()['logo_media_id'] ?? null)->toBeNull();
+});
+
+it('shows an older plain-http logo by name only, without loading it on the admin', function (): void {
+    $admin = lookAdmin();
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'general', 'key' => 'brand'], ['value' => ['logo' => 'http://old.test/logo-cu.png']]));
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)
+            ->assertSet('images.logo', WebsiteAppearanceSettings::OLD_IMAGE)
+            ->assertSee('logo-cu.png')->assertDontSee('src="http://old.test/logo-cu.png"', false);
+    });
+});
+
+it('clears a slot whose picture went to the trash on the next save', function (): void {
+    $admin = lookAdmin();
+    $logo = lookMedia(1, 'logo');
+    $this->actingAs($admin);
+    app(Tenancy::class)->enter(1, fn () => app(SetBrandImages::class)->handle(['logo' => $logo->storage_key]));
+    app(Tenancy::class)->enter(1, fn () => Media::query()->whereKey($logo->id)->first()?->delete());
+    expect(lookProfile()['logo_media_id'])->toBe($logo->id);   // the trash keeps the reference
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)
+            ->assertSet('images.logo', '')->assertSet('stale', ['logo'])
+            ->call('save')->assertHasNoErrors()->assertSet('stale', []);
+    });
+
+    expect(lookProfile()['logo_media_id'])->toBeNull();
+});
+
+it('drops the "Hoàn tác" offer once the draft changes after a restore', function (): void {
+    $admin = lookAdmin();
+    $logo = lookMedia(1, 'logo');
+    $this->actingAs($admin);
+    app(Tenancy::class)->enter(1, fn () => app(SetBrandImages::class)->handle(['logo' => $logo->storage_key]));
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)
+            ->call('restoreDefaults')->assertNotSet('undo', null)
+            ->call('pickFor', 'favicon')->assertSet('undo', null);
+    });
 });
 
 it('asks before leaving with unsaved changes, and discards them with "Bỏ thay đổi"', function (): void {

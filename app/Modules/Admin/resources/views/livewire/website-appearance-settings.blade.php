@@ -101,7 +101,11 @@
                                 @if ($picture !== null)
                                     <div role="group" aria-labelledby="{{ $fid }}-l" class="flex flex-wrap items-center gap-3.5 rounded-lg border bg-surface p-3 {{ $bad ? 'border-danger-text' : 'border-border' }}"
                                          @if ($bad && ! $canPick) tabindex="-1" data-ferr-focus aria-describedby="{{ $errId }}" @endif>
-                                        <img src="{{ $picture['thumb'] }}" alt="" class="size-[58px] shrink-0 rounded-md border border-border bg-surface-muted object-contain" loading="lazy" decoding="async">
+                                        @if ($picture['thumb'] !== null)
+                                            <img src="{{ $picture['thumb'] }}" alt="" class="size-[58px] shrink-0 rounded-md border border-border bg-surface-muted object-contain" loading="lazy" decoding="async">
+                                        @else
+                                            <span class="inline-flex size-[58px] shrink-0 items-center justify-center rounded-md border border-border bg-surface-muted text-text-muted"><x-bs-admin::icon name="ri-image-edit" class="size-6" /></span>
+                                        @endif
                                         <div class="flex min-w-[8rem] flex-1 flex-col gap-0.5">
                                             <span class="text-[calc(0.8125rem+var(--user-text-boost))] font-medium text-text-strong [overflow-wrap:anywhere]">{{ $picture['name'] }}</span>
                                             <span class="text-caption text-text-muted">{{ $picture['meta'] }}</span>
@@ -141,7 +145,7 @@
                             </div>
                         @endforeach
                         @error('images')
-                            <span data-ferr class="inline-flex items-start gap-[5px] text-caption text-danger-text">
+                            <span id="look-images-err" data-ferr data-ferr-focus tabindex="-1" class="inline-flex items-start gap-[5px] text-caption text-danger-text">
                                 <x-bs-admin::icon name="ri-error-warning" class="mt-px size-[min(1.5rem,calc(0.8125rem+var(--user-text-boost)))] shrink-0" /><span class="min-w-0">{{ $message }}</span>
                             </span>
                         @enderror
