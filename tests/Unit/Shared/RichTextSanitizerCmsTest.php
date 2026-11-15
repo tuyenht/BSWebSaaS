@@ -149,3 +149,22 @@ it('is stable: cleaning clean output changes nothing', function (): void {
 
     expect(cmsClean($once))->toBe($once);
 });
+
+it('keeps the alignment the editor sets on headings, list items and quotes', function (string $dirty, string $kept): void {
+    $clean = cmsClean($dirty);
+
+    expect($clean)->toContain($kept)->and(cmsClean($clean))->toBe($clean);
+})->with([
+    'centred heading' => ['<h2 style="text-align:center">Giới thiệu nhà máy</h2>', '<h2 style="text-align:center;">'],
+    'right-aligned sub heading' => ['<h4 style="text-align: right;">Liên hệ</h4>', '<h4 style="text-align:right;">'],
+    'centred list item' => ['<ul><li style="text-align:center">Máy CNC</li></ul>', '<li style="text-align:center;">'],
+    'justified quote' => ['<blockquote style="text-align:justify">Chất lượng trước tiên</blockquote>', '<blockquote style="text-align:justify;">'],
+]);
+
+it('still strips styles outside the allow-list from headings, list items and quotes', function (string $dirty, string $gone): void {
+    expect(strtolower(cmsClean($dirty)))->not->toContain($gone);
+})->with([
+    'heading position' => ['<h2 style="position:fixed;top:0">Tiêu đề</h2>', 'position'],
+    'list item background image' => ['<ul><li style="background:url(javascript:alert(1))">mục</li></ul>', 'url('],
+    'quote expression' => ['<blockquote style="width:expression(alert(1))">trích dẫn</blockquote>', 'expression'],
+]);
