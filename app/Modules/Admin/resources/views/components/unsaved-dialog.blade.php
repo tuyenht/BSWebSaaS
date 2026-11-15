@@ -10,6 +10,8 @@
     // when the dialog opens.
     'body' => null,
     'saveLabel' => null,
+    // An editor's own words for discarding and leaving, in place of "Bỏ thay đổi và rời đi".
+    'discardLabel' => null,
 ])
 @php
     // The one blocking dialog for unsaved changes (design 01 "Bạn có thay đổi chưa lưu"; behaviour
@@ -47,7 +49,7 @@
                     <button type="button" class="sx-ud-b sx-ud-x hit-area" data-ud="x" x-on:click="discardGo()">
                         <x-bs-admin::icon name="ri-error-warning" :class="$glyph" />
                         <span data-ud-t x-show="section">{{ __('admin.unsaved.discard_section') }}</span>
-                        <span data-ud-t x-show="!section">{{ __('admin.unsaved.discard_leave') }}</span>
+                        <span data-ud-t x-show="!section">{{ $discardLabel ?? __('admin.unsaved.discard_leave') }}</span>
                     </button>
                 </div>
             </div>

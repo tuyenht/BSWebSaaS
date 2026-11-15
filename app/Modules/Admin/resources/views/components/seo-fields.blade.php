@@ -15,6 +15,9 @@
     'locale' => 'vi',
     'multiLocale' => false,
     'id' => 'seo',
+    // all · excerpt · card: a screen whose board puts other cards between the short description
+    // and the Google card draws the two parts apart (same `id`, each part keeps its own ids).
+    'part' => 'all',
 ])
 @php
     use App\Modules\Admin\Support\SeoFields;
@@ -42,7 +45,7 @@
     $chip = $multiLocale ? strtoupper($locale) : null;
 @endphp
 <div data-seo-fields class="flex flex-col gap-4" x-data="bsSeoFields({{ Js::from($config) }})">
-    @if ($excerpt !== null)
+    @if ($excerpt !== null && $part !== 'card')
         <section class="rounded-md border border-border bg-surface px-5 py-4 shadow-card">
             <div class="{{ $labelRow }}">
                 <label for="{{ $id }}-excerpt" class="{{ $label }} text-text-strong">
@@ -74,6 +77,7 @@
         </section>
     @endif
 
+    @if ($part !== 'excerpt')
     <section id="{{ $id }}-card" class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
         <h2 class="m-0">
             <button type="button" id="{{ $id }}-head" x-on:click="toggle()" :aria-expanded="open ? 'true' : 'false'" aria-expanded="false" aria-controls="{{ $id }}-body"
@@ -139,4 +143,5 @@
             <x-bs-admin::seo-preview :address="$address['base']" :locale="$locale" />
         </div>
     </section>
+    @endif
 </div>
