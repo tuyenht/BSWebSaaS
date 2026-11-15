@@ -158,6 +158,33 @@ it('gives a writer their own posts by status and the ones sent back, with the re
         ->and($html)->toContain('author%5B0%5D='.$writer->ulid);
 });
 
+it('counts a sub-category\'s drafts on the tiles, a returned one only once, and leaves a nested section out', function (): void {
+    $writer = dashMember(['entries.view', 'entries.create', 'entries.edit.own', 'entries.submit'], 'Người viết');
+    $reviewer = dashMember(['entries.view', 'entries.review', 'entries.approve'], 'Chị Duyệt');
+
+    app(Tenancy::class)->enter(1, function () use ($writer, $reviewer): void {
+        $root = dashCollection();
+        $child = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'parent_id' => $root, 'position' => 0]);
+        $child->translations()->create(['locale' => 'vi', 'name' => 'Tin ngành', 'slug' => 'tin-nganh']);
+        // a sub-category another section is built on: its posts are in that section's list
+        $nested = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'parent_id' => $root, 'position' => 1]);
+        $nested->translations()->create(['locale' => 'vi', 'name' => 'Sự kiện', 'slug' => 'su-kien']);
+        ContentSection::query()->create(['key' => 'events', 'label' => 'Sự kiện', 'entry_type' => 'post', 'taxonomy_id' => $nested->id,
+            'permission_prefix' => 'entries', 'sort_order' => 2]);
+
+        dashPost($child->id, $writer, 'Nháp mục con', 'nhap-muc-con');
+        dashPost($nested->id, $writer, 'Nháp sự kiện', 'nhap-su-kien');
+        $returned = dashSubmitted($child->id, $writer, 'Bài mục con bị trả', 'bai-muc-con-bi-tra');
+        app(ApplyEntryWorkflowTransition::class)->handle($returned, 'vi', $reviewer, 'reject', 'Thiếu nguồn');
+    });
+
+    $html = $this->actingAs($writer)->get('http://a.test/admin')->assertOk()->assertSee('Bài mục con bị trả')->getContent();
+
+    // the sub-category draft counts, the returned one only under "Bị trả lại", the nested section's not at all
+    expect($html)->toContain(__('dash.wr_tile_aria', ['label' => __('entries.status_draft'), 'n' => 1]))
+        ->and($html)->toContain(__('dash.wr_tile_aria', ['label' => __('dash.wr_returned'), 'n' => 1]));
+});
+
 it('shows a new writer the empty state and the way to the list', function (): void {
     $writer = dashMember(['entries.view', 'entries.create', 'entries.edit.own']);
     app(Tenancy::class)->enter(1, fn () => dashCollection(approvalFlow: false));

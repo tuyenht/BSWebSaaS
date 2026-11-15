@@ -445,3 +445,22 @@ it('refuses a guest every new row method, even on a screen that was already open
             ->and(Product::onlyTrashed()->find($product->id))->not->toBeNull();
     });
 });
+
+it('links "Xem" and "Xem trên website" to the full website address, never a path under /admin', function (): void {
+    $manager = rowManager();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $product = rowProduct('Đang bán', 'dang-ban', 'published');
+        $product->forceFill(['status' => 'published'])->save();
+
+        $html = Livewire::actingAs($manager)->test(Index::class)->html();
+        preg_match_all('/href="([^"]*dang-ban[^"]*)"/', $html, $links);
+        preg_match_all('/copy\(([^)]*dang-ban[^)]*)\)/', html_entity_decode($html), $copies);
+
+        // the desktop "Xem" button and the menu item, both opening the website in a new tab
+        expect($links[1])->toHaveCount(2)
+            ->and($links[1])->each->toMatch('#^https?://[^/"]+/(.+/)?dang-ban$#')
+            ->and($copies[1])->not->toBeEmpty()
+            ->and($copies[1])->each->toMatch('#https?:#');
+    });
+});

@@ -341,13 +341,17 @@ it('counts posts, writers and waiting posts of every section in one query', func
         wfPost($news, 'published', null, $writers[0]->id);
         wfPost($news, 'pending', 'pending', $writers[0]->id);
         wfPost($news, 'pending', 'pending', $writers[1]->id);
-        // filed under a sub-category: the counts follow the section's root category only
+        // filed under a sub-category: still the section's post, as its posts list shows it
         wfPost($news, 'draft', null, $writers[1]->id, $child->id);
+        // filed under a sub-category another section is built on: that section's post
+        $events = wfNestedSection($news, 'events', 'Sự kiện', 'su-kien');
+        wfPost($events, 'pending', 'pending', $writers[0]->id);
 
         $page = Livewire::actingAs($operator->fresh())->test(WorkflowSettings::class);
         $rows = collect($page->viewData('rows'))->keyBy('key');
 
-        expect($rows['posts'])->toMatchArray(['total' => 3, 'writers' => 2, 'pending' => 2])
+        expect($rows['posts'])->toMatchArray(['total' => 4, 'writers' => 2, 'pending' => 2])
+            ->and($rows['events'])->toMatchArray(['total' => 1, 'writers' => 1, 'pending' => 1])
             ->and($rows['jobs'])->toMatchArray(['total' => 0, 'writers' => 0, 'pending' => 0]);
 
         DB::flushQueryLog();
@@ -359,7 +363,7 @@ it('counts posts, writers and waiting posts of every section in one query', func
         // one grouped tally for the list, one for what a change would move (every section at once)
         expect($tallies)->toHaveCount(2)
             ->and($tallies->filter(fn (string $sql): bool => str_contains($sql, 'count(distinct')))->toHaveCount(1)
-            ->and($tallies->filter(fn (string $sql): bool => str_contains($sql, 'WITH RECURSIVE')))->toHaveCount(1);
+            ->and($tallies->filter(fn (string $sql): bool => str_contains($sql, 'WITH RECURSIVE')))->toHaveCount(2);
     });
 });
 
@@ -499,12 +503,12 @@ it('warns with the posts a change will move: in-flight posts of the section and 
         $page->call('$refresh');
         $rows = collect($page->viewData('rows'))->keyBy('key');
 
-        // the list keeps its own counts (the section's own category); the warning counts what moves
-        expect($rows['posts'])->toMatchArray(['total' => 4, 'pending' => 1, 'movable' => 3])
+        // the list counts the section's branch as its posts list does; the warning counts what moves
+        expect($rows['posts'])->toMatchArray(['total' => 5, 'pending' => 2, 'movable' => 3])
             ->and($rows['archive'])->toMatchArray(['movable' => 1])
             ->and($rows['jobs'])->toMatchArray(['movable' => 0]);
         // the page script reads it from the state block, next to the list's own waiting count
-        $page->assertSee('"key":"posts","label":'.json_encode($news->localizedLabel(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT).',"pending":1,"movable":3', false);
+        $page->assertSee('"key":"posts","label":'.json_encode($news->localizedLabel(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT).',"pending":2,"movable":3', false);
 
         // and exactly those are the posts that move when the section drops its flow
         $page->call('save', [wfChange('posts', null, false, 'admin_approval', true)])->assertReturned(true);
