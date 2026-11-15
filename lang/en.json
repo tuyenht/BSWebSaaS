@@ -389,7 +389,7 @@
     "admin.members.inv_sc_err_category_scopes_disabled": "Scopes of work are not turned on for this website, so an invitation limited to categories cannot be sent. Choose «All categories» and send again.",
     "admin.members.inv_sc_err_target_exempt": "The roles chosen can always work everywhere and cannot be limited to categories. Choose «All categories» and send again.",
     "admin.members.inv_sc_err_taxonomy_invalid": "A category was just deleted from the website. Reload the page, choose the categories again and send.",
-    "admin.members.inv_sc_err_outside_own_scope": "You can only invite people who write posts within your own categories. Choose categories within your scope and send again.",
+    "admin.members.inv_sc_err_outside_own_scope": "You can only invite people to work within your own scope (post categories, product categories). Choose within your scope and send again.",
     "admin.members.sc_products": "Products",
     "admin.members.sc_pr_all": "All product categories",
     "admin.members.sc_pr_only": "Only the product categories chosen",
