@@ -70,7 +70,7 @@ describe('in the editor', function (): void {
                 ->assertSet('converted', true)
                 ->assertSet('blocks', [])
                 ->assertSet('bodyHtml', '<h2>Về chúng tôi</h2><p>Xưởng <strong>cơ khí</strong> &lt;chính xác&gt;<br>hai mươi năm</p><p>Đoạn hai</p>')
-                ->assertSeeHtml('data-rich-editor="full"')
+                ->assertSeeHtml('data-rte="bodyHtml"')
                 // the conversion is not an unsaved change of the person's
                 ->assertViewHas('changes', 0);
 
@@ -107,7 +107,7 @@ describe('in the editor', function (): void {
                 ->test(Editor::class, ['ulid' => $entry->ulid])
                 ->assertSet('prose', true)
                 ->assertSet('bodyHtml', '<p>Tin mới</p>')
-                ->assertSeeHtml('data-rich-editor="full"')
+                ->assertSeeHtml('data-rte="bodyHtml"')
                 ->assertSee('Soạn thảo')
                 ->assertDontSee('Trình dựng')
                 ->assertDontSeeHtml('wire:click="addBlock(');
@@ -168,7 +168,7 @@ describe('in the editor', function (): void {
             Livewire::actingAs($this->editor->fresh())
                 ->test(Editor::class, ['ulid' => $entry->ulid])
                 ->assertSeeHtmlInOrder(['aria-pressed="true"', 'Soạn thảo', 'aria-pressed="false"', 'Trình dựng'])
-                ->assertSeeHtml('data-rich-editor="full"')
+                ->assertSeeHtml('data-rte="bodyHtml"')
                 ->assertSee('Bố cục trang · 1 khối')
                 ->assertSee('Các khối nội dung của bản Tiếng Việt — Soạn thảo và Trình dựng cùng sửa một nội dung.')
                 ->assertSee('Văn bản có định dạng')

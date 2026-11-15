@@ -166,9 +166,8 @@
                             </div>
                         @else
                             <div class="px-5 py-4">
-                                <x-bs-admin::rich-editor target="bodyHtml" profile="full" :value="$bodyHtml" rows="14"
-                                                         :placeholder="__('entries.ed.body_placeholder', ['unit' => mb_strtolower($unit)])"
-                                                         :read="__('entries.ed.body_read')" aria-label="{{ __('entries.ed.body_label') }}" />
+                                <x-bs-admin::rich-editor target="bodyHtml" :value="$bodyHtml" rows="14" :placeholder="$bodyPlaceholder"
+                                                         aria-label="{{ __('entries.ed.body_label') }}" />
                                 @error('bodyHtml') <p class="{{ $error }}">{{ $message }}</p> @enderror
                                 @error('blocks') <p class="{{ $error }}">{{ $message }}</p> @enderror
                             </div>

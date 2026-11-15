@@ -1,0 +1,825 @@
+/* The shared writing frame (<x-bs-admin::rich-editor>, design 06): a one-row formatting bar with the
+   everyday buttons and «Thêm công cụ», the writing area (Jodit with its own toolbar and status bar
+   off), the footer with the block under the caret and the counts, the lists (a dropdown, or a sheet
+   from the bottom on a narrow or touch screen) and the link and special-character dialogs.
+   Buttons: 40px with a mouse at the default text size, 44px from the next size up, 44px on touch. */
+.rte {
+    --rte-t: var(--spacing-control);
+    --rte-tint: color-mix(in srgb, var(--color-primary-text) 8%, var(--color-surface));
+    position: relative;
+}
+@media (any-pointer: coarse) {
+    .rte {
+        --rte-t: var(--spacing-hit);
+    }
+}
+.rte [hidden] {
+    display: none !important;
+}
+.rte-frame {
+    border: 1px solid var(--color-border-strong);
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+}
+.rte-frame[data-full='1'] {
+    position: fixed;
+    inset: 1rem;
+    z-index: 250;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    box-shadow: 0 24px 60px rgb(0 0 0 / 0.3);
+}
+@media (max-width: 599.98px) {
+    .rte-frame[data-full='1'] {
+        inset: 0;
+        border-radius: 0;
+        padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+    }
+}
+
+/* The bar scrolls with the frame (never sticky), under the editor's own sticky bars. */
+.rte-tbw {
+    container: rtetb / inline-size;
+    position: relative;
+    z-index: 9;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--color-border);
+    border-radius: 0.5rem 0.5rem 0 0;
+    background: var(--color-surface-muted);
+}
+.rte-tbs {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.rte-tb {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 0;
+    scroll-snap-type: x mandatory;
+}
+.rte-tb .rte-g > *,
+.rte-tb .rte-mw > button {
+    scroll-snap-align: start;
+}
+.rte-g {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 2px;
+}
+.rte-g + .rte-g {
+    margin-left: 4px;
+    padding-left: 4px;
+    border-left: 1px solid var(--color-border-strong);
+}
+.rte-gk,
+.rte-mw {
+    position: relative;
+    display: inline-flex;
+}
+@media not (any-pointer: coarse) {
+    @container rtetb (min-width: 600px) {
+        .rte-g {
+            gap: 12px;
+        }
+        .rte-g + .rte-g {
+            margin-left: 6px;
+            padding-left: 5px;
+        }
+    }
+}
+.pe-tb,
+.pe-tb-txt {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    height: var(--rte-t);
+    padding: 0;
+    border: 0;
+    border-radius: 0.25rem;
+    background: transparent;
+    color: var(--color-text);
+    cursor: pointer;
+    font: inherit;
+}
+.pe-tb {
+    justify-content: center;
+    width: var(--rte-t);
+    min-width: var(--rte-t);
+    font-size: calc(0.9375rem + var(--user-text-boost));
+}
+.pe-tb-txt {
+    gap: 5px;
+    padding: 0 9px;
+    font-size: var(--text-small);
+    white-space: nowrap;
+}
+.pe-tb svg,
+.pe-tb-txt svg,
+.rte-arr svg,
+.rte-dd-i svg,
+.rte-sh-i svg {
+    width: 1em;
+    height: 1em;
+    flex: none;
+}
+.pe-tb-txt svg {
+    font-size: calc(0.9375rem + var(--user-text-boost));
+}
+.pe-tb-txt .rte-ar {
+    color: var(--color-text-muted);
+}
+.pe-tb-txt[aria-expanded='true'] .rte-ar {
+    transform: rotate(180deg);
+}
+.pe-tb:hover,
+.pe-tb-txt:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-primary-text);
+}
+.pe-tb:focus-visible,
+.pe-tb-txt:focus-visible,
+.rte-arr:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: -2px;
+}
+.pe-tb[aria-pressed='true'] {
+    background: color-mix(in srgb, var(--color-primary-text) 12%, transparent);
+    color: var(--color-primary-text);
+}
+.pe-tb[aria-disabled='true'] {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+/* Full screen: the button shows "enter" or "leave". */
+.pe-tb[data-rte-cmd='fullsize'] svg + svg,
+.pe-tb[data-rte-cmd='fullsize'][aria-pressed='true'] svg:first-child {
+    display: none;
+}
+.pe-tb[data-rte-cmd='fullsize'][aria-pressed='true'] svg + svg {
+    display: block;
+}
+.rte-tgl {
+    color: var(--color-text-muted);
+}
+.rte-tgl .rte-tgl-c,
+.rte-tgl[aria-expanded='true'] .rte-tgl-i:first-child {
+    display: none;
+}
+.rte-tgl[aria-expanded='true'] .rte-tgl-c {
+    display: block;
+}
+.rte-arr {
+    display: none;
+    flex: 0 0 var(--rte-t);
+    align-items: center;
+    justify-content: center;
+    height: var(--rte-t);
+    padding: 0;
+    border: 1px solid var(--color-border-input);
+    border-radius: 0.25rem;
+    background: var(--color-surface);
+    color: var(--color-text-strong);
+    cursor: pointer;
+    font-size: 1.25rem;
+}
+
+/* The lists under «Kiểu», the size and the colour buttons (wide screens with a mouse). */
+.rte-dd {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 0;
+    z-index: 60;
+    min-width: 200px;
+    max-width: 90cqw;
+    padding: 4px 0;
+    overflow: hidden;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+    box-shadow: 0 10px 30px rgb(30 32 37 / 0.18);
+}
+.rte-dd-size {
+    min-width: 180px;
+}
+.rte-dd-color {
+    width: 296px;
+    padding: 0;
+}
+.rte-dd-i {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    min-height: 38px;
+    padding: 8px 12px;
+    border: 0;
+    background: transparent;
+    color: var(--color-text);
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--text-small);
+    text-align: left;
+    white-space: nowrap;
+}
+.rte-dd-size .rte-dd-i {
+    display: block;
+    min-height: 36px;
+    padding: 7px 12px;
+}
+.rte-dd-i:hover,
+.rte-dd-i:focus-visible {
+    background: var(--color-surface-hover);
+    outline: none;
+}
+.rte-dd-i svg {
+    font-size: calc(0.9375rem + var(--user-text-boost));
+    color: var(--color-text-muted);
+}
+.rte-ctabs {
+    display: flex;
+}
+.rte-ctabs button {
+    flex: 1;
+    min-height: 44px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--text-small);
+    font-weight: 600;
+}
+.rte-ctabs button[aria-pressed='true'] {
+    border-bottom-color: var(--color-primary-text);
+    color: var(--color-primary-text);
+}
+.rte-cbody {
+    padding: 10px;
+}
+.rte-sw {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 4px;
+}
+.rte-sw button {
+    width: 100%;
+    min-height: 20px;
+    aspect-ratio: 1;
+    border: 1px solid rgb(0 0 0 / 0.08);
+    border-radius: 0.25rem;
+    cursor: pointer;
+}
+.rte-cust {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    color: var(--color-text-muted);
+    font-size: var(--text-caption);
+}
+.rte-cust label {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--rte-t);
+    height: var(--rte-t);
+    border: 1px solid var(--color-border-strong);
+    border-radius: 0.375rem;
+    cursor: pointer;
+}
+.rte-cust input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+/* Narrow bar (under 600px) and every touch screen: one scrolling strip with ‹ › at its ends, the
+   lists as a sheet from the bottom. */
+@container rtetb (max-width: 599.98px) {
+    .rte-tb {
+        flex: 1 1 auto;
+        flex-wrap: nowrap;
+        min-width: 0;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+    }
+    .rte-tb::-webkit-scrollbar {
+        display: none;
+    }
+    .rte-tbs {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .rte-arr {
+        display: flex;
+    }
+    .pe-tb {
+        font-size: calc(1.125rem + var(--user-text-boost));
+    }
+    .pe-tb-txt {
+        padding: 0 10px;
+    }
+    .rte-g {
+        gap: 8px;
+    }
+    .rte-tbw .rte-dd {
+        display: none !important;
+    }
+    .rte-tgl {
+        padding: 0 8px;
+    }
+    .rte-tgl svg {
+        display: none !important;
+    }
+}
+@media (any-pointer: coarse) {
+    .rte-tb {
+        flex: 1 1 auto;
+        flex-wrap: nowrap !important;
+        min-width: 0;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+    }
+    .rte-tb::-webkit-scrollbar {
+        display: none;
+    }
+    .rte-tbs {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .rte-arr {
+        display: flex;
+    }
+    .rte-tbw .rte-dd {
+        display: none !important;
+    }
+    .rte-tbw {
+        padding-top: 5px;
+        padding-bottom: 5px;
+    }
+    .rte-g {
+        gap: 0 !important;
+    }
+}
+@media (any-pointer: coarse), (max-width: 599.98px) {
+    .rte-tbw {
+        flex-wrap: wrap;
+        gap: 4px 8px;
+    }
+    .rte-tbs {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+}
+/* Two rows when the strip beside «Thêm công cụ» cannot show Kiểu · Đậm · Nghiêng · Danh sách whole:
+   row 1 «Kiểu ▾» left and «Thêm công cụ» right, row 2 the strip across the bar. */
+.rte-tbw[data-rows='2'] {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 12px;
+}
+.rte-tbw[data-rows='2'] > .rte-tbs {
+    flex: 1 1 100%;
+    order: 3;
+    min-width: 0;
+}
+.rte-tbw[data-rows='2'] > .rte-gk {
+    flex: 0 0 auto;
+}
+.rte-tbw[data-rows='2'] > .rte-tgl {
+    flex: 0 0 auto;
+    height: auto;
+    min-height: var(--rte-t);
+    margin-left: auto;
+    line-height: 1.25;
+    text-align: center;
+    white-space: nowrap;
+}
+.rte-tbw[data-rows='2'] > .rte-tgl svg.rte-tgl-i:not(.rte-tgl-c) {
+    display: block !important;
+}
+.rte-tbw[data-rows='2'] > .rte-tgl[aria-expanded='true'] svg.rte-tgl-i:not(.rte-tgl-c) {
+    display: none !important;
+}
+.rte-tbw[data-rows='2'] > .rte-tgl[aria-expanded='true'] svg.rte-tgl-c {
+    display: block !important;
+}
+@container rtetb (max-width: 400px) {
+    .rte-tbw:not([data-rows='2']) > .rte-tbs {
+        flex: 1 1 0 !important;
+        min-width: 44px;
+    }
+    .rte-tgl {
+        flex: 0 0 auto;
+        justify-content: center;
+        gap: 6px;
+        min-height: var(--rte-t);
+        padding: 0 8px;
+        white-space: nowrap;
+    }
+}
+
+/* The writing area. */
+.rte-body {
+    position: relative;
+}
+.rte .jodit-container:not(.jodit_inline) {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+.rte .jodit-workplace {
+    background: transparent;
+}
+.rte .jodit-container .jodit-wysiwyg {
+    max-height: 520px;
+    overflow-y: auto;
+    padding: 16px 20px;
+    font-size: var(--text-body);
+    overscroll-behavior: contain;
+}
+.rte-frame[data-full="1"] .jodit-container .jodit-wysiwyg {
+    min-height: 56dvh !important;
+    max-height: calc(100dvh - 236px);
+}
+@media (any-pointer: coarse) {
+    .rte .jodit-container .jodit-wysiwyg {
+        font-size: max(16px, var(--text-body));
+    }
+}
+.rte .jodit-container .jodit-placeholder {
+    padding: 16px 20px;
+    color: var(--color-text-muted);
+    font-size: var(--text-body);
+}
+.rte .jodit-source__mirror {
+    min-height: 300px;
+    padding: 14px 16px;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: var(--text-small);
+}
+.rte-frame[data-full='1'] .rte-body {
+    flex: 1 1 auto;
+}
+
+/* The footer: the block under the caret (press to select it whole), then the counts. */
+.rte-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 9px 20px;
+    border-top: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    font-size: var(--text-caption);
+}
+.rte-tag {
+    padding: 2px 8px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 0.25rem;
+    background: var(--rte-tint);
+    color: var(--color-primary-text);
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--text-caption);
+    line-height: 1.5;
+}
+.rte-counts {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    margin-left: auto;
+}
+.rte-counts strong {
+    color: var(--color-text-muted);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.rte-dot {
+    color: var(--color-border-strong);
+}
+
+/* The lists as a sheet from the bottom. */
+.rte-sheet .rte-dd {
+    position: static;
+    min-width: 0;
+    max-width: none;
+    width: auto;
+    padding: 4px 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+.rte-sheet {
+    width: 100%;
+    max-width: 100%;
+    max-height: 75dvh;
+    margin: auto 0 0;
+    padding: 0 0 env(safe-area-inset-bottom, 0);
+    overflow: auto;
+    overscroll-behavior: contain;
+    border: 0;
+    border-radius: 12px 12px 0 0;
+    background: var(--color-surface);
+    box-shadow: 0 -8px 30px rgb(15 23 41 / 0.25);
+    color: var(--color-text);
+    font-size: var(--text-body);
+}
+.rte-sheet::backdrop {
+    background: rgb(15 23 41 / 0.45);
+}
+@media (prefers-reduced-motion: no-preference) {
+    .rte-sheet[open] {
+        animation: rte-up 0.2s ease-out;
+    }
+}
+@keyframes rte-up {
+    from {
+        transform: translateY(24px);
+        opacity: 0.4;
+    }
+    to {
+        transform: none;
+        opacity: 1;
+    }
+}
+.rte-sh-h {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 6px 6px 16px;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+.rte-sh-t {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--color-text-strong);
+    font-size: calc(0.9375rem + var(--user-text-boost));
+    font-weight: 600;
+}
+.rte-sh-x {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--spacing-hit);
+    height: var(--spacing-hit);
+    border: 0;
+    border-radius: 0.25rem;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+}
+.rte-sh-b {
+    padding: 4px 0;
+}
+.rte-sheet .rte-dd-i {
+    gap: 12px;
+    min-height: 48px;
+    padding: 0 16px;
+    font-size: var(--text-body);
+}
+.rte-sheet .rte-dd-i svg {
+    font-size: calc(1.125rem + var(--user-text-boost));
+}
+.rte-sheet .rte-sw {
+    grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+    gap: 6px;
+}
+.rte-sheet .rte-sw button {
+    min-height: var(--spacing-hit);
+}
+.rte-sheet .rte-cust label {
+    width: var(--spacing-hit);
+    height: var(--spacing-hit);
+}
+
+/* The link and special-character dialogs. */
+.rte-dlg {
+    width: 480px;
+    max-width: calc(100% - 48px);
+    padding: 20px;
+    border: 0;
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+    box-shadow: 0 12px 32px rgb(56 65 74 / 0.22);
+    color: var(--color-text);
+}
+.rte-dlg::backdrop {
+    background: rgb(52 58 64 / 0.5);
+}
+.rte-dlg-ch {
+    width: 420px;
+    padding: 18px;
+}
+.rte-dlg-h {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+    color: var(--color-text-strong);
+    font-size: calc(1rem + var(--user-text-boost));
+    font-weight: 600;
+}
+.rte-dlg-ch .rte-dlg-h {
+    margin-bottom: 12px;
+}
+.rte-dlg-p {
+    margin: 0 0 12px;
+    color: var(--color-text-muted);
+    font-size: var(--text-small);
+    line-height: 1.6;
+}
+.rte-note {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 8px 0 0;
+    color: var(--color-text-muted);
+    font-size: var(--text-caption);
+}
+.rte-note[data-state='good'] {
+    color: var(--color-success-text);
+}
+.rte-note[data-state='bad'] {
+    color: var(--color-danger-text);
+}
+.rte-note .rte-ni {
+    display: none;
+    flex: none;
+}
+.rte-note[data-state='empty'] .rte-ni-empty,
+.rte-note[data-state='good'] .rte-ni-good,
+.rte-note[data-state='bad'] .rte-ni-bad {
+    display: block;
+}
+.rte-dlg-f {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+}
+.rte-dlg-x {
+    min-height: var(--rte-t);
+    padding: 9px 4px;
+    border: 0;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font: inherit;
+    font-size: calc(0.84375rem + var(--user-text-boost));
+}
+.rte-dlg-x:hover {
+    color: var(--color-primary-text);
+}
+.rte-dlg-ok {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: var(--rte-t);
+    padding: 8px 15px;
+    border: 0;
+    border-radius: 0.25rem;
+    background: var(--color-admin-primary);
+    color: var(--color-on-primary);
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--text-small);
+    font-weight: 600;
+}
+.rte-dlg-ok[aria-disabled='true'] {
+    background: var(--color-border);
+    color: var(--color-text-muted);
+    cursor: not-allowed;
+}
+.rte-chs {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 6px;
+}
+.rte-chs button {
+    min-height: var(--rte-t);
+    border: 1px solid var(--color-border);
+    border-radius: 0.25rem;
+    background: var(--color-surface);
+    color: var(--color-text);
+    cursor: pointer;
+    font: inherit;
+    font-size: calc(1rem + var(--user-text-boost));
+}
+.rte-chs button:hover,
+.rte-chs button:focus-visible {
+    border-color: var(--color-primary-text);
+    background: var(--color-surface-hover);
+    color: var(--color-primary-text);
+}
+
+/* The document inside the editor reads like the page it becomes (design 06): headings, lists and
+   quotes get back the spacing and markers the base reset takes away. */
+.jodit-wysiwyg {
+    color: var(--color-text);
+    line-height: 1.65;
+}
+.jodit-wysiwyg p {
+    margin: 0 0 0.75rem;
+}
+.jodit-wysiwyg h2 {
+    margin: 0 0 0.75rem;
+    color: var(--color-text-strong);
+    font-size: 1.625rem;
+    font-weight: 800;
+    line-height: 1.2;
+}
+.jodit-wysiwyg h3 {
+    margin: 1.25rem 0 0.5rem;
+    color: var(--color-text-strong);
+    font-size: 1.1875rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+.jodit-wysiwyg h4 {
+    margin: 1rem 0 0.5rem;
+    color: var(--color-text-strong);
+    font-size: 1rem;
+    font-weight: 700;
+}
+.jodit-wysiwyg h5 {
+    margin: 0.875rem 0 0.375rem;
+    color: var(--color-text);
+    font-size: calc(0.875rem + var(--user-text-boost));
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+.jodit-wysiwyg li {
+    margin: 0.25rem 0;
+}
+.jodit-wysiwyg ul,
+.jodit-wysiwyg ol {
+    margin: 0 0 0.75rem;
+    padding-left: 1.375rem;
+}
+.jodit-wysiwyg ul {
+    list-style: disc;
+}
+.jodit-wysiwyg ol {
+    list-style: decimal;
+}
+.jodit-wysiwyg blockquote {
+    margin: 0.875rem 0;
+    padding: 0.625rem 1.125rem;
+    border-left: 3px solid var(--color-primary-text);
+    border-radius: 0 0.5rem 0.5rem 0;
+    background: var(--color-surface-muted);
+    font-style: italic;
+}
+/* Tables and rules as on the board; `.rte` outranks Jodit's own table look, which loads later. */
+.rte .jodit-wysiwyg table {
+    width: 100%;
+    margin: 0 0 0.75rem;
+    border-collapse: collapse;
+}
+.rte .jodit-wysiwyg td,
+.rte .jodit-wysiwyg th {
+    padding: 7px 10px;
+    border: 1px solid var(--color-border-strong);
+    font-size: calc(0.84375rem + var(--user-text-boost));
+}
+.rte .jodit-wysiwyg hr {
+    margin: 1rem 0;
+    border: 0;
+    border-top: 1px solid var(--color-border-strong);
+}
+.jodit-wysiwyg a {
+    color: var(--color-primary-text);
+    text-decoration: underline;
+}
+.jodit-wysiwyg img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* The image dblclick dialog is trimmed to alt + size (every Advanced-tab field is disabled in
+   editorOptions), so the two-tab strip would show one useful tab and one empty one — drop it. */
+.jodit-ui-image-properties-form .jodit-tabs__buttons {
+    display: none;
+}
+

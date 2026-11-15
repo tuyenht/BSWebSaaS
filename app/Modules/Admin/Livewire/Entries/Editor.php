@@ -1220,6 +1220,10 @@ final class Editor extends Component
             'kinds' => $this->blockKinds(),
             'prosePreview' => $this->prose ? EntryProseBody::preview($this->bodyHtml) : '',
             'localeLabel' => Locales::label($this->locale),
+            // The writing area's hint: in another language it says that version is still empty.
+            'bodyPlaceholder' => $this->locale === app(SiteLocale::class)->default()
+                ? __('entries.ed.body_placeholder', ['unit' => mb_strtolower($this->unit())])
+                : __('entries.ed.body_placeholder_tr', ['lang' => Locales::label($this->locale)]),
             'schemas' => $schemas,
             'categories' => $this->type === 'post' ? $this->availableCategories() : [],
             'urls' => $urls,
