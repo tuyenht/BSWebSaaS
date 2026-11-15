@@ -343,6 +343,8 @@
                         // the address PathBuilder composes for this product (the site's permalink preset), in the default language
                         $path = $t?->slug ? $paths->publicUrl($paths->forProduct($primary, $t->slug, $locale), $locale) : null;
                         $fullUrl = $path === null ? null : $publicOrigin.$path;
+                        // what the labels read: the address without its scheme (the copy and the link keep it)
+                        $fullShown = $fullUrl === null ? null : (string) preg_replace('#^https?://#', '', $fullUrl);
                         // the quick edits: name and address of the default language, a live row of a member who manages products
                         $quickEdit = $canManage && ! $trashed && $t !== null;
                         $slugLeaf = $t?->slug;
@@ -445,13 +447,13 @@ JS, ['@ULID@' => (string) Js::from($product->ulid)]) : '{}';
                                         @if ($path !== null)
                                             <span class="list-m inline-flex items-center gap-1" data-for="slug" x-show="vSlug{{ $quickEdit ? ' && ! slugEditing' : '' }}">
                                                 @if ($quickEdit)
-                                                    <button type="button" class="list-path list-slug-btn font-mono [overflow-wrap:anywhere]" title="{{ __('catalog.slug_edit_hint', ['url' => $fullUrl]) }}"
+                                                    <button type="button" class="list-path list-slug-btn font-mono [overflow-wrap:anywhere]" title="{{ __('catalog.slug_edit_hint', ['url' => $fullShown]) }}"
                                                         x-on:click="from = '.list-slug-btn'; slugEditing = true; cancel = false; slugErr = ''; $nextTick(() => { $refs.slugInput.focus(); $refs.slugInput.select() })">{{ $path }}</button>
                                                 @else
                                                     <span class="font-mono [overflow-wrap:anywhere]" title="{{ $path }}">{{ $path }}</span>
                                                 @endif
                                                 @unless ($trashed)
-                                                    <button type="button" class="list-cpy" title="{{ __('catalog.copy_slug') }}" aria-label="{{ __('catalog.copy_slug_aria', ['url' => $fullUrl]) }}"
+                                                    <button type="button" class="list-cpy" title="{{ __('catalog.copy_slug') }}" aria-label="{{ __('catalog.copy_slug_aria', ['url' => $fullShown]) }}"
                                                         x-on:click="copy({{ Js::from($fullUrl) }})">
                                                         <x-bs-admin::icon name="ri-file-copy" class="size-[calc(1rem+var(--user-text-boost))]" />
                                                     </button>

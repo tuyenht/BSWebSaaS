@@ -465,13 +465,13 @@ final class WorkflowSettings extends Component
         [$branch, $bindings] = $this->branchSql(array_values(array_map(Cast::int(...), $taxonomyIds)));
 
         $rows = DB::select($branch.<<<'SQL'
-            SELECT branch.root_id AS taxonomy_id, count(*) AS total, count(distinct e.author_id) AS writers,
+            SELECT branch.section_root AS taxonomy_id, count(*) AS total, count(distinct e.author_id) AS writers,
                    count(*) filter (where e.status = 'pending') AS pending
             FROM branch
             JOIN entry_taxonomies AS et ON et.site_id = ? AND et.taxonomy_id = branch.id AND et.position = 0
             JOIN entries AS e ON e.site_id = ? AND e.id = et.entry_id AND e.deleted_at IS NULL
             WHERE NOT branch.looped
-            GROUP BY branch.root_id
+            GROUP BY branch.section_root
             SQL, [...$bindings, $site, $site]);
 
         $counts = [];
@@ -502,19 +502,19 @@ final class WorkflowSettings extends Component
         [$branch, $bindings] = $this->branchSql($rootIds);
 
         $rows = DB::select($branch.<<<'SQL'
-            SELECT branch.root_id, count(*) AS movable
+            SELECT branch.section_root, count(*) AS movable
             FROM branch
             JOIN entry_taxonomies AS et ON et.site_id = ? AND et.taxonomy_id = branch.id AND et.position = 0
             JOIN entries AS e ON e.site_id = ? AND e.id = et.entry_id AND e.deleted_at IS NULL
             LEFT JOIN entry_drafts AS d ON d.site_id = ? AND d.entry_id = e.id
             WHERE NOT branch.looped AND (e.workflow_state IS NOT NULL OR d.workflow_state IS NOT NULL)
-            GROUP BY branch.root_id
+            GROUP BY branch.section_root
             SQL, [...$bindings, $site, $site, $site]);
 
         $counts = [];
         foreach ($rows as $row) {
             $row = (array) $row;
-            $counts[Cast::int($row['root_id'] ?? null)] = Cast::int($row['movable'] ?? null);
+            $counts[Cast::int($row['section_root'] ?? null)] = Cast::int($row['movable'] ?? null);
         }
 
         return $counts;
@@ -556,7 +556,7 @@ final class WorkflowSettings extends Component
     }
 
     /**
-     * The categories each section files posts under, as a recursive CTE `branch (root_id, id)`: a
+     * The categories each section files posts under, as a recursive CTE `branch (section_root, id)`: a
      * section's own category and every category below it, down the parent chain (the source of
      * truth — the ltree path may not be written yet). Membership follows SectionResolver, where
      * the NEAREST bound category wins, so the walk stops at a sub-category that another section is

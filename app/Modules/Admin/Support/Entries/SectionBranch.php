@@ -20,7 +20,7 @@ namespace App\Modules\Admin\Support\Entries;
 final class SectionBranch
 {
     /**
-     * A recursive CTE `branch (root_id, id)` for several sections at once; rows with `looped` set
+     * A recursive CTE `branch (section_root, id)` for several sections at once; rows with `looped` set
      * closed a parent loop and are not members.
      *
      * @param  non-empty-list<int>  $rootIds
@@ -32,10 +32,10 @@ final class SectionBranch
         $marks = implode(', ', array_fill(0, count($rootIds), '?'));
 
         $sql = <<<SQL
-            WITH RECURSIVE branch (root_id, id) AS (
+            WITH RECURSIVE branch (section_root, id) AS (
                 SELECT t.id, t.id FROM taxonomies AS t WHERE t.site_id = ? AND t.id IN ({$marks})
                 UNION ALL
-                SELECT branch.root_id, child.id
+                SELECT branch.section_root, child.id
                 FROM taxonomies AS child JOIN branch ON child.parent_id = branch.id
                 WHERE child.site_id = ?
                   AND NOT EXISTS (SELECT 1 FROM content_sections AS cs WHERE cs.site_id = ? AND cs.taxonomy_id = child.id)
