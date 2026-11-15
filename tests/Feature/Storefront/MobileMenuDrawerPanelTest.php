@@ -32,8 +32,8 @@ use Spatie\Permission\PermissionRegistrar;
 
 /*
  * The phone menu's panel beyond the menu rows: the "Menu | Sản phẩm" tabs and the product category tree
- * (read only for a site with a product list and a category under it), the text-size radios, the contact
- * block (call, Zalo, email, hours) and the social circles.
+ * (read only for a site with a product list and a category under it) and the footer both tabs share:
+ * language, the text-size radios, the call and Zalo buttons and the social circles.
  */
 
 beforeEach(function (): void {
@@ -117,11 +117,11 @@ function dpCategory(int $siteId, array $names, ?int $parent = null, string $slug
     });
 }
 
-/** The product tab's panel of a page: from its tab to the language row. */
+/** The product tab's panel of a page: from its tab to the footer. */
 function dpProductsPane(string $html): string
 {
     $from = (int) strpos($html, 'id="msm-pane-products"');
-    $to = (int) strpos($html, 'sf-drawer__tools', $from);
+    $to = (int) strpos($html, 'sf-drawer__foot', $from);
 
     return substr($html, $from, ($to > $from ? $to : strlen($html)) - $from);
 }
@@ -158,11 +158,15 @@ it('shows the Menu and Sản phẩm tabs with the category tree and the link to 
         ->toMatch('#id="msm-tab-products" aria-controls="msm-pane-products" aria-selected="false" tabindex="-1">Sản phẩm</button>#')
         ->toContain('role="tabpanel" id="msm-pane-products" aria-labelledby="msm-tab-products" hidden');
     expect($pane)
+        // a caption names the tree; no thumbnails or counts
+        ->toContain('<p class="sf-drawer__cap" id="msm-products-cap">Nhóm sản phẩm</p>')
+        ->toContain('<nav class="sf-nav sf-nav--mob" aria-labelledby="msm-products-cap">')
+        ->not->toContain('<img')
         ->toContain('Jig &amp; Đồ gá')
         ->toContain('Xem tất cả Jig &amp; Đồ gá')           // a top row's own page is its first row inside
         ->toContain('href="/jig-han"')
         ->toContain('href="/khuon-mau"')
-        ->toMatch('#<a class="sf-drawer__all" href="/san-pham"><span>Xem tất cả sản phẩm</span>#')
+        ->toMatch('#<a class="sf-drawer__all" href="/san-pham"><span>Xem tất cả sản phẩm</span><svg class="sf-icon" width="18" height="18"[^>]*><path d="M5 12h14M13 6l6 6-6 6"/></svg>#')
         ->not->toMatch('#/\d+["\#?]#');                      // no raw id in any address
 });
 
@@ -321,22 +325,22 @@ it('writes the tree in the page’s language with the default language where a n
         ->toContain('View all products')->toContain('href="/en/products"');
 });
 
-it('draws the text size as a segmented pill of three radios with their names and the current size under the label', function (): void {
+it('draws the text size as three boxed letters A, each named for a screen reader and in a tooltip, with no visible size name', function (): void {
     dpSite(products: false);
 
     $html = $this->get('http://sp.platform.test/gioi-thieu')->assertOk()->getContent();
+    $row = substr($html, (int) strpos($html, 'sf-drawer__fs" data-fs-set'), 2000);
 
     expect($html)
-        ->toContain('<div class="sf-pr sf-drawer__fs" data-fs-set>')
-        ->toContain('<span class="sf-pr__t" id="msm-fs-label">Cỡ chữ</span>')
-        ->toContain('<div class="sf-pill sf-pill--fs" role="radiogroup" aria-labelledby="msm-fs-label">')
-        ->toContain('<span class="sf-pr__v" aria-hidden="true"><span data-size="m">Vừa</span><span data-size="l">Lớn</span><span data-size="xl">Cực lớn</span></span>')
-        ->toMatch('#<input class="sf-drawer__fs-in" type="radio" name="sf-fs" value="m" data-fs-radio aria-label="Vừa" checked>#')
+        ->toContain('<div class="sf-drawer__blk sf-drawer__row sf-drawer__fs" data-fs-set>')
+        ->toContain('<div class="sf-drawer__fh"><span class="sf-drawer__aa" aria-hidden="true">Aa</span><span id="msm-fs-label">Cỡ chữ</span></div>')
+        ->toContain('<div class="sf-seg sf-seg--fs" role="radiogroup" aria-labelledby="msm-fs-label">')
+        ->toMatch('#<label class="sf-seg__s" title="Vừa"><input class="sf-drawer__fs-in" type="radio" name="sf-fs" value="m" data-fs-radio aria-label="Vừa" checked><span aria-hidden="true">A</span></label>#')
         ->toMatch('#type="radio" name="sf-fs" value="l" data-fs-radio aria-label="Lớn"#')
         ->toMatch('#type="radio" name="sf-fs" value="xl" data-fs-radio aria-label="Cực lớn"#')
         ->and(substr_count($html, 'data-fs-radio'))->toBe(3)
-        ->and(substr_count($html, '<span class="sf-pill__g" aria-hidden="true">A</span>'))->toBe(3)
-        ->and($html)->toContain('sf-pill__a1')->toContain('sf-pill__a2')->toContain('sf-pill__a3');
+        ->and(substr_count($row, '<span aria-hidden="true">A</span>'))->toBe(3)
+        ->and(strip_tags($row))->not->toContain('Vừa');                  // the size's name is never printed
 });
 
 it('draws no text size group when the site did not turn it on', function (): void {
@@ -405,7 +409,7 @@ it('draws a second-level parent as a disclosure with its own page first and the 
         ->and($pane)->toContain('Xem tất cả Laptop')->toContain('href="/laptop"')
         ->toContain('Xem tất cả Khuôn dập')->toContain('href="/khuon-dap"')
         ->toContain('href="/laptop-mong-nhe"')
-        ->toMatch('#<a class="sf-nav__sublink" href="/may-in">Máy in</a>#');         // a leaf stays a link
+        ->toMatch('#<a class="sf-nav__sublink" href="/may-in"><span class="sf-nav__t">Máy in</span></a>#');         // a leaf stays a link
     // "Xem tất cả Laptop" comes first inside the Laptop panel
     expect(strpos($pane, 'Xem tất cả Laptop'))->toBeLessThan(strpos($pane, 'Laptop mỏng nhẹ'));
 });
@@ -425,10 +429,10 @@ it('opens the way to the category the page is on and marks it', function (): voi
     $pane = dpProductsPane($this->get('http://sp.platform.test/laptop-mong-nhe')->assertOk()->getContent());
 
     expect($pane)
-        ->toMatch('#<li class="sf-nav__item sf-nav__item--parent is-open" data-disclosure>\s*<button[^>]*is-trail"[^>]*aria-current="true" aria-expanded="true"[^>]*><span>Máy tính#')
-        ->toMatch('#<button[^>]*is-trail"[^>]*aria-expanded="true"[^>]*><span>Laptop</span>#')
-        ->toMatch('#<a class="sf-nav__sublink" href="/laptop-mong-nhe" aria-current="page">Laptop mỏng nhẹ</a>#')
-        ->toMatch('#aria-expanded="false" aria-controls="[^"]+"><span>Khuôn mẫu#')            // the other group stays shut
+        ->toMatch('#<li class="sf-nav__item sf-nav__item--parent is-open" data-disclosure>\s*<button[^>]*is-trail"[^>]*aria-current="true" aria-expanded="true"[^>]*><span class="sf-nav__t">Máy tính#')
+        ->toMatch('#<button[^>]*is-trail"[^>]*aria-expanded="true"[^>]*><span class="sf-nav__t">Laptop</span>#')
+        ->toMatch('#<a class="sf-nav__sublink" href="/laptop-mong-nhe" aria-current="page"><span class="sf-nav__t">Laptop mỏng nhẹ</span></a>#')
+        ->toMatch('#aria-expanded="false" aria-controls="[^"]+"><span class="sf-nav__t">Khuôn mẫu#')            // the other group stays shut
         ->and(substr_count($pane, 'aria-current="page"'))->toBe(1);
 });
 
@@ -442,14 +446,13 @@ it('draws the Zalo mark in Zalo blue only when the Zalo button exists', function
         ->not->toContain('sf-drawer__zmark')->not->toContain('#0068FF');
 });
 
-it('shows the opening hours line only when the site set them', function (): void {
+it('leaves the email and the opening hours out of the drawer (the footer keeps them)', function (): void {
     dpSite('gio.platform.test', products: false, profile: ['business_hours' => ['days' => 'mon-sat', 'opens' => '07:30', 'closes' => '17:30']]);
-    dpSite('khong.platform.test', products: false);
 
-    expect($this->get('http://gio.platform.test/gioi-thieu')->assertOk()->getContent())
-        ->toContain('sf-drawer__line--hours')->toContain('07:30')
-        ->and($this->get('http://khong.platform.test/gioi-thieu')->assertOk()->getContent())
-        ->not->toContain('sf-drawer__line--hours');
+    $drawer = dpDrawer($this->get('http://gio.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    expect($drawer)->toContain('sf-drawer__foot')
+        ->not->toContain('07:30')->not->toContain('mailto:')->not->toContain('lienhe@mau.test')->not->toContain('sf-drawer__line');
 });
 
 it('draws no social row without profiles and one named link per profile with them', function (): void {
@@ -461,6 +464,8 @@ it('draws no social row without profiles and one named link per profile with the
 
     $html = $this->get('http://co.platform.test/gioi-thieu')->assertOk()->getContent();
     $row = substr($html, (int) strpos($html, 'sf-drawer__socials'), 9000);
+    expect($html)->toContain('<span class="sf-drawer__fh" id="msm-social-label">Mạng xã hội</span>')
+        ->toContain('<ul class="sf-drawer__socials" aria-labelledby="msm-social-label">');
 
     expect($this->get('http://khong.platform.test/gioi-thieu')->assertOk()->getContent())->not->toContain('sf-drawer__socials')
         ->and(substr_count($html, 'class="sf-drawer__social"'))->toBe(5)   // the phone-number Zalo is left to the chat button
@@ -469,17 +474,19 @@ it('draws no social row without profiles and one named link per profile with the
         ->toContain('rel="noopener"');
 });
 
-it('keeps the drawer’s order: tabs, menu, language and text size, then the contact block with the socials last', function (): void {
+it('keeps the drawer’s order: tabs, both panes, then one footer with text size, the call and the socials last', function (): void {
     $siteId = dpSite('thu.platform.test', profile: ['social_links' => ['facebook' => 'https://facebook.com/comau']]);
     dpCategory($siteId, ['vi' => 'Khuôn mẫu'], slug: 'khuon-mau');
 
     $html = $this->get('http://thu.platform.test/gioi-thieu')->assertOk()->getContent();
     $at = fn (string $needle): int => (int) strpos($html, $needle);
 
-    expect($at('data-drawer-tabs'))->toBeLessThan($at('id="msm-pane-menu"'))
+    expect($at('data-drawer-tabs'))->toBeLessThan($at('class="sf-drawer__scroll"'))
+        ->and($at('class="sf-drawer__scroll"'))->toBeLessThan($at('id="msm-pane-menu"'))
         ->and($at('id="msm-pane-menu"'))->toBeLessThan($at('id="msm-pane-products"'))
-        ->and($at('id="msm-pane-products"'))->toBeLessThan($at('sf-drawer__fs"'))
-        ->and($at('sf-drawer__fs"'))->toBeLessThan($at('sf-drawer__contact'))
+        ->and($at('id="msm-pane-products"'))->toBeLessThan($at('sf-drawer__foot'))       // one footer after both tabs
+        ->and($at('sf-drawer__foot'))->toBeLessThan($at('sf-drawer__fs"'))
+        ->and($at('sf-drawer__fs"'))->toBeLessThan($at('sf-drawer__call'))
         ->and($at('sf-drawer__call'))->toBeLessThan($at('sf-drawer__socials'))
         ->and($html)->not->toContain('type="search"');
 });
@@ -535,7 +542,7 @@ it('does not repeat the product groups in the Menu tab: the Sản phẩm item st
 
     [$pane, $desk] = dpMenuPanes($this->get('http://sp.platform.test/gioi-thieu')->assertOk()->getContent());
 
-    expect($pane)->toMatch('#<a class="sf-nav__link[^"]*" href="/san-pham"[^>]*>\s*(?:<span>)?Sản phẩm#u')
+    expect($pane)->toMatch('#<a class="sf-nav__link[^"]*" href="/san-pham"[^>]*>\s*(?:<span class="sf-nav__t">)?Sản phẩm#u')
         ->not->toContain('Nhóm jig')->not->toContain('Nhóm khuôn')
         ->toContain('Lịch sử')                                    // an unrelated parent keeps its children
         ->and($desk)->toContain('Nhóm jig')->toContain('Nhóm khuôn')->toContain('Lịch sử');   // the desktop menu is untouched
@@ -549,7 +556,7 @@ it('turns a "#" item whose children are all product groups into a link to the pr
 
     [$pane, $desk] = dpMenuPanes($this->get('http://sp.platform.test/gioi-thieu')->assertOk()->getContent());
 
-    expect($pane)->toMatch('#<a class="sf-nav__link[^"]*" href="/san-pham"[^>]*>\s*(?:<span>)?Hàng của chúng tôi#u')
+    expect($pane)->toMatch('#<a class="sf-nav__link[^"]*" href="/san-pham"[^>]*>\s*(?:<span class="sf-nav__t">)?Hàng của chúng tôi#u')
         ->not->toContain('Nhóm jig')->not->toContain('aria-expanded')
         ->and($desk)->toContain('Nhóm jig');
 });
@@ -621,26 +628,60 @@ it('decides the drawer’s call and Zalo buttons per floating-contact channel', 
         ->toContain('sf-drawer__call')->not->toContain('sf-drawer__zalo');
 });
 
-it('heads the contact block with a caption only when the block has something to show', function (): void {
+it('draws the footer only when it has something to show, with no contact caption', function (): void {
     dpSite('co.platform.test', products: false);
-    $empty = dpSite('khong.platform.test', products: false, phone: '');
+    $empty = dpSite('khong.platform.test', products: false, phone: '', header: ['text_size' => false]);
     app(Tenancy::class)->enter($empty, fn () => SiteSetting::query()->where('key', 'brand')->update(['value' => ['name' => 'Xưởng Mẫu']]));
 
-    expect($this->get('http://co.platform.test/gioi-thieu')->assertOk()->getContent())
-        ->toMatch('#<div class="sf-drawer__contact">\s*<p class="sf-drawer__cap">Kết nối với chúng tôi</p>#')
-        ->and($this->get('http://khong.platform.test/gioi-thieu')->assertOk()->getContent())
-        ->not->toContain('sf-drawer__contact')->not->toContain('sf-drawer__cap')->not->toContain('Kết nối với chúng tôi');
+    expect(dpDrawer($this->get('http://co.platform.test/gioi-thieu')->assertOk()->getContent()))
+        ->toContain('<div class="sf-drawer__foot">')->not->toContain('Kết nối với chúng tôi')
+        ->and(dpDrawer($this->get('http://khong.platform.test/gioi-thieu')->assertOk()->getContent()))
+        ->not->toContain('sf-drawer__foot')->not->toContain('sf-drawer__cap');
 });
 
-it('keeps the phone menu tone to auto, light or dark, auto when the setting is anything else', function (): void {
+it('keeps the phone menu tone to auto, light or dark, light when the setting is missing or anything else', function (): void {
     $tone = fn (mixed $raw): string => StorefrontChrome::header(['drawer_tone' => $raw], 'vi', 'vi')['drawer_tone'] ?? 'missing';
 
     expect($tone('auto'))->toBe('auto')->and($tone('light'))->toBe('light')->and($tone('dark'))->toBe('dark')
-        ->and($tone(null))->toBe('auto')->and($tone('Light'))->toBe('auto')->and($tone(''))->toBe('auto')
-        ->and($tone(1))->toBe('auto')->and($tone(['dark']))->toBe('auto')
-        ->and(StorefrontChrome::header([], 'vi', 'vi')['drawer_tone'] ?? 'missing')->toBe('auto')
+        ->and($tone(null))->toBe('light')->and($tone('Light'))->toBe('light')->and($tone(''))->toBe('light')
+        ->and($tone(1))->toBe('light')->and($tone(['dark']))->toBe('light')
+        ->and(StorefrontChrome::header([], 'vi', 'vi')['drawer_tone'] ?? 'missing')->toBe('light')
         // auto follows the header bar, which is dark on every site
         ->and(StorefrontChrome::drawerDark(['drawer_tone' => 'auto']))->toBeTrue()
         ->and(StorefrontChrome::drawerDark(['drawer_tone' => 'dark']))->toBeTrue()
-        ->and(StorefrontChrome::drawerDark(['drawer_tone' => 'light']))->toBeFalse();
+        ->and(StorefrontChrome::drawerDark(['drawer_tone' => 'light']))->toBeFalse()
+        ->and(StorefrontChrome::drawerDark([]))->toBeFalse();
+});
+
+/** The phone menu's markup in a page: from the drawer to the no-script styles after it. */
+function dpDrawer(string $html): string
+{
+    $from = (int) strpos($html, '<div id="mobile-menu"');
+
+    return substr($html, $from, (int) strpos($html, '<noscript>', $from) - $from);
+}
+
+it('starts a parent’s panel with “Tổng quan” for its own page, current when that page is shown, in the drawer only', function (): void {
+    $siteId = dpSite('tq.platform.test', products: false);
+    dpMenu($siteId, [
+        'Giới thiệu' => ['/gioi-thieu', ['Lịch sử' => '/lich-su', 'Đội ngũ' => '/doi-ngu']],
+        'Dịch vụ' => ['#', ['Gia công' => '/gia-cong']],                    // no page of its own: no overview
+        'Năng lực' => ['/nang-luc', ['Năng lực chung' => '/nang-luc', 'Máy móc' => '/may-moc']],   // a child already links it
+    ]);
+
+    $html = $this->get('http://tq.platform.test/gioi-thieu')->assertOk()->getContent();
+    $drawer = dpDrawer($html);
+    preg_match('#<nav class="sf-nav sf-nav--desk".*?</nav>#s', $html, $desk);
+
+    expect($drawer)
+        ->toMatch('#<button type="button" class="sf-nav__link sf-nav__toggle is-trail" aria-current="true" aria-expanded="true" aria-controls="msm-0"><span class="sf-nav__t">Giới thiệu</span>#')
+        ->toMatch('#<div class="sf-nav__panel" id="msm-0">\s*<ul class="sf-nav__list sf-nav__nested">\s*<li class="sf-nav__item"><a class="sf-nav__sublink" href="/gioi-thieu" aria-current="page"><span class="sf-nav__t">Tổng quan Giới thiệu</span></a></li>#')
+        ->not->toContain('Tổng quan Dịch vụ')->not->toContain('Tổng quan Năng lực')
+        ->toMatch('#<button type="button" class="sf-nav__link sf-nav__toggle" aria-expanded="false" aria-controls="msm-1"><span class="sf-nav__t">Dịch vụ</span>#')
+        ->and(substr_count($drawer, 'aria-current="page"'))->toBe(1)       // one current row per tab
+        ->and($drawer)->not->toContain('sf-nav__chev')                       // no split link + chevron in the drawer
+        ->and($desk[0] ?? '')->not->toContain('Tổng quan')->toContain('sf-nav__chev');   // the desktop bar keeps its link and chevron
+    expect(StorefrontChrome::drawerOverview(['label' => 'A', 'url' => '#', 'children' => []]))->toBeNull()
+        ->and(StorefrontChrome::drawerOverview(['label' => 'A', 'url' => '/a', 'active' => false, 'children' => [['label' => 'B', 'url' => '/b']]]))
+        ->toBe(['label' => 'Tổng quan A', 'url' => '/a', 'active' => false]);
 });

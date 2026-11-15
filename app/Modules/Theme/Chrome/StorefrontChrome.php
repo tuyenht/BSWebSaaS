@@ -40,7 +40,7 @@ final class StorefrontChrome
 
     private const array MOBILE_CORNERS = ['call', 'search', 'cart', 'none'];
 
-    /** The phone menu's tone: auto follows the header bar (see drawerDark). */
+    /** The phone menu's tone: auto follows the header bar (see drawerDark); light is the default. */
     private const array DRAWER_TONES = ['auto', 'light', 'dark'];
 
     private const array TOP_BAR_KINDS = ['address', 'phone', 'email', 'link'];
@@ -126,22 +126,22 @@ final class StorefrontChrome
             'sticky' => ($raw['sticky'] ?? true) !== false,
             // The phone menu's "Sản phẩm" tab: on unless the site switches it off.
             'drawer_products' => ($raw['drawer_products'] ?? true) !== false,
-            // The phone menu's tone: auto (the header bar's), light or dark; anything else is auto.
-            'drawer_tone' => in_array($raw['drawer_tone'] ?? null, self::DRAWER_TONES, true) ? (string) $raw['drawer_tone'] : 'auto',
+            // The phone menu's tone: auto (the header bar's), light or dark; missing or anything else is light.
+            'drawer_tone' => in_array($raw['drawer_tone'] ?? null, self::DRAWER_TONES, true) ? (string) $raw['drawer_tone'] : 'light',
             // What the phone header's right corner offers: call, search, cart or nothing (search and cart draw nothing until the site has them).
             'mobile_corner' => in_array($raw['mobile_corner'] ?? null, self::MOBILE_CORNERS, true) ? (string) $raw['mobile_corner'] : 'call',
         ];
     }
 
     /**
-     * Whether the phone menu is drawn dark. `auto` takes the header bar's tone, and the bar is dark
-     * (--color-dark) on every site, so only an explicit `light` gives the light drawer.
+     * Whether the phone menu is drawn dark. Light is the default; `auto` takes the header bar's tone, and the
+     * bar is dark (--color-dark) on every site, so `auto` gives the dark drawer, as `dark` does.
      *
      * @param  array<string, mixed>  $header  a normalised header (header())
      */
     public static function drawerDark(array $header): bool
     {
-        return ($header['drawer_tone'] ?? 'auto') !== 'light';
+        return in_array($header['drawer_tone'] ?? 'light', ['auto', 'dark'], true);
     }
 
     /**
@@ -568,30 +568,87 @@ final class StorefrontChrome
      * website's own set reach a node), the label, a badge ("Mới", "Hot"…, which the resolver drops
      * once past its end date) and, where the area shows one ($withDesc), the short description.
      * Every value is escaped; the description is plain text. An item with none of these is its
-     * bare label, exactly as before they existed.
+     * bare label, exactly as before they existed. In the phone menu ($drawer) the text, description and
+     * badge always sit in one `sf-nav__t` span after the icon: the label column every row lines up on.
      *
      * @param  array<mixed>  $item  a resolved menu node
      */
     public static function menuLabel(array $item, bool $withDesc = false, bool $drawer = false): HtmlString
     {
         $label = e(is_string($item['label'] ?? null) ? $item['label'] : '');
-        $icon = is_string($item['icon'] ?? null) && StorefrontIcons::has($item['icon']) ? $item['icon'] : null;
+        $icon = self::menuIcon($item);
         $badge = is_string($item['badge'] ?? null) ? $item['badge'] : null;
         $desc = $withDesc && is_string($item['description'] ?? null) && $item['description'] !== '' ? $item['description'] : null;
-        if ($icon === null && $badge === null && $desc === null) {
+        if (! $drawer && $icon === null && $badge === null && $desc === null) {
             return new HtmlString($label);
         }
 
         // The phone menu draws the icon at 20px with its own class (its colour follows the row's state there).
         $html = $icon === null ? '' : trim(view('theme::partials.sf-icon', $drawer ? ['name' => $icon, 'size' => 20, 'iconClass' => 'sf-nav__ic'] : ['name' => $icon, 'size' => 16])->render());
-        $html .= $desc === null
-            ? '<span>'.$label.'</span>'
-            : '<span class="sf-menu__text"><span>'.$label.'</span><span class="sf-menu__desc">'.e($desc).'</span></span>';
+        $text = match (true) {
+            $desc !== null => '<span class="sf-menu__text"><span>'.$label.'</span><span class="sf-menu__desc">'.e($desc).'</span></span>',
+            $drawer => $label,
+            default => '<span>'.$label.'</span>',
+        };
         if ($badge !== null) {
-            $html .= '<span class="sf-menu__badge">'.e(__('storefront.menu_badge_'.$badge)).'</span>';
+            $text .= '<span class="sf-menu__badge">'.e(__('storefront.menu_badge_'.$badge)).'</span>';
         }
 
-        return new HtmlString($html);
+        return new HtmlString($html.($drawer ? '<span class="sf-nav__t">'.$text.'</span>' : $text));
+    }
+
+    /**
+     * A menu item's own icon: a name of the website's set, else null.
+     *
+     * @param  array<mixed>  $item  a resolved menu node
+     */
+    public static function menuIcon(array $item): ?string
+    {
+        return is_string($item['icon'] ?? null) && StorefrontIcons::has($item['icon']) ? $item['icon'] : null;
+    }
+
+    /**
+     * Whether the phone menu draws an icon column: some top-level row (not a call-to-action button) has an
+     * icon. Without one every label starts on the 24px column.
+     *
+     * @param  array<mixed>  $menu  a resolved menu tree
+     */
+    public static function drawerHasIcons(array $menu): bool
+    {
+        foreach ($menu as $item) {
+            if (is_array($item) && empty($item['cta']) && self::menuIcon($item) !== null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * The "Tổng quan <name>" row a phone-menu group starts with: the group's own page, when it has one
+     * and none of its children links the same address already (the same exact-address test that marks
+     * the current page). Null when no such row is drawn.
+     *
+     * @param  array<mixed>  $item  a resolved menu node with children
+     * @return array{label: string, url: string, active: bool}|null
+     */
+    public static function drawerOverview(array $item): ?array
+    {
+        $url = is_string($item['url'] ?? null) ? $item['url'] : '#';
+        if ($url === '#') {
+            return null;
+        }
+        foreach (is_array($item['children'] ?? null) ? $item['children'] : [] as $child) {
+            if (is_array($child) && ($child['url'] ?? null) === $url) {
+                return null;
+            }
+        }
+
+        return [
+            'label' => Cast::string(__('storefront.menu_overview', ['label' => is_string($item['label'] ?? null) ? $item['label'] : ''])),
+            'url' => $url,
+            'active' => ! empty($item['active']),
+        ];
     }
 
     /** Whether any item of a menu tree has children (it then needs the disclosure script). */

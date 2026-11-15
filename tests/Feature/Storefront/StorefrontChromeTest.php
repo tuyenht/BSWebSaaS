@@ -158,7 +158,7 @@ it('renders the top bar with safe tel and mailto links and each item’s breakpo
         ->toContain('<a class="sf-topbar__link" href="tel:+84901234567">')
         ->toContain('<a class="sf-topbar__link" href="mailto:lienhe@mau.test">')
         ->toContain('<span>Số 1 Đường Thử</span>')
-        ->toContain('<div class="sf-pr sf-drawer__fs" data-fs-set>')
+        ->toContain('<div class="sf-drawer__blk sf-drawer__row sf-drawer__fs" data-fs-set>')
         ->toContain('role="radiogroup" aria-labelledby="msm-fs-label"')
         ->toContain('aria-label="Vừa"')
         ->toContain('<script>'.StorefrontChrome::TEXT_SIZE_BOOT.'</script>')
@@ -175,7 +175,7 @@ it('keeps the text-size choice in the menu panel, never in the top bar, when the
     expect($topBar)->toContain('sf-topbar__items')->not->toContain('data-fs-toggle')->not->toContain('data-fs-radio')
         ->and(substr_count($html, 'data-fs-toggle'))->toBe(0)
         ->and(substr_count($html, 'data-fs-radio'))->toBe(3)
-        ->and($html)->toContain('<div class="sf-pr sf-drawer__fs" data-fs-set>');
+        ->and($html)->toContain('<div class="sf-drawer__blk sf-drawer__row sf-drawer__fs" data-fs-set>');
 });
 
 it('draws no top bar where it would hold only the text-size button, and none at a width with nothing in it', function (): void {
@@ -314,7 +314,8 @@ it('makes submenus disclosures: a # parent is a button, a page parent keeps its 
         ->toContain('<div class="sf-nav__panel" id="dsm-1">')
         ->toContain('<div class="sf-nav__panel" id="msm-1">')
         ->toMatch('#<a class="sf-nav__sublink" href="/gioi-thieu"\s+aria-current="page"\s*>Giới thiệu</a>#')
-        ->toContain('<div id="mobile-menu" class="sf-drawer sf-drawer--dark" role="dialog" aria-modal="true" aria-label="Menu" hidden>')
+        // the phone menu is light by default, its colours printed on it from the site’s seeds
+        ->toContain('<div id="mobile-menu" class="sf-drawer" role="dialog" aria-modal="true" aria-label="Menu" hidden style="--sf-dw-bg:#')
         ->toContain('aria-controls="mobile-menu"');
 });
 

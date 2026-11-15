@@ -33,6 +33,7 @@ final class StorefrontIcons
         'check' => ['o', '<path d="M5 12.5l4.5 4.5L19 7.5"/>'],
         'chevron-left' => ['o', '<path d="M15 19l-7-7 7-7"/>'],
         'chevron-right' => ['o', '<path d="M9 5l7 7-7 7"/>'],
+        'arrow-right' => ['o', '<path d="M5 12h14M13 6l6 6-6 6"/>'],
         'menu' => ['o', '<path d="M4 6h16M4 12h16M4 18h16"/>'],
         'close' => ['o', '<path d="M6 18L18 6M6 6l12 12"/>'],
         'quote' => ['f', '<path d="M9.5 5C6.46 5 4 7.46 4 10.5V19h6.5v-6.5H7.4c.2-1.7 1.1-2.9 2.1-3.1V5zm9 0C15.46 5 13 7.46 13 10.5V19h6.5v-6.5h-3.1c.2-1.7 1.1-2.9 2.1-3.1V5z"/>'],

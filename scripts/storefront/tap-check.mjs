@@ -127,7 +127,7 @@ const drawerList = `(async () => {
     if (!burger) return JSON.stringify(-1);
     burger.click();
     await new Promise((r) => setTimeout(r, 400));
-    for (const chev of document.querySelectorAll('.sf-nav--mob .sf-nav__item--parent > .sf-nav__chev')) {
+    for (const chev of document.querySelectorAll('.sf-nav--mob .sf-nav__item--parent > :is(.sf-nav__chev, .sf-nav__toggle)')) {
         if (chev.getAttribute('aria-expanded') !== 'true') chev.click();
     }
     await new Promise((r) => setTimeout(r, 300));
