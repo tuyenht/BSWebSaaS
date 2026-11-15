@@ -39,8 +39,10 @@ it('sizes every topbar icon button as a main control, 44 on touch', function ():
         fn (Element $button): bool => $button->closest('[role=dialog]') === null,
     );
 
-    // menu (phone) · collapse (desktop) · language · fullscreen · light/dark · notifications
-    expect($buttons)->toHaveCount(6);
+    // menu (phone) · collapse (desktop) · phone search (magnifier and its ✕) · language · fullscreen ·
+    // light/dark · notifications. The user block is its own slab (a 40/44 tile below 1024px).
+    $buttons = array_filter($buttons, fn (Element $button): bool => $button->getAttribute('aria-haspopup') !== 'true');
+    expect($buttons)->toHaveCount(8);
     foreach ($buttons as $button) {
         expect(explode(' ', (string) $button->getAttribute('class')))
             ->toContain('size-control', 'any-pointer-coarse:size-hit')

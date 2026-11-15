@@ -38,7 +38,7 @@ it('surfaces Catalog as a content-style group — Thêm mới · Danh sách · C
 
     $catalog = collect($items)->firstWhere('key', 'catalog');
     expect($catalog)->not->toBeNull()
-        ->and($catalog->icon)->toBe('cube')
+        ->and($catalog->icon)->toBe('ri-box-3')
         ->and($catalog->hasChildren())->toBeTrue()
         ->and(collect($catalog->children)->pluck('key')->all())
         ->toBe(['catalog.create', 'catalog.list', 'catalog.taxonomy'])

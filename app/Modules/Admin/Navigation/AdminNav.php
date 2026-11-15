@@ -6,6 +6,7 @@ namespace App\Modules\Admin\Navigation;
 
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -33,12 +34,69 @@ final class AdminNav
      * @var array<string, string>
      */
     private const SECTION_ICONS = [
-        'pages' => 'file-text',
-        'posts' => 'newspaper',
-        'services' => 'briefcase',
-        'products' => 'cube',
-        'projects' => 'folder',
+        'pages' => 'ri-file-text',
+        'posts' => 'ri-newspaper',
+        'services' => 'ri-briefcase',
+        'products' => 'ri-box-3',
+        'projects' => 'ri-folder-2',
     ];
+
+    /**
+     * Which headed group of the sidebar each top-level entry belongs to. Content types (any
+     * section key) fall into "content"; an entry missing here stays in the untitled top group.
+     *
+     * @var array<string, string>
+     */
+    private const GROUP_OF = [
+        'catalog' => 'content',
+        'review-inbox' => 'content',
+        'media' => 'tools',
+        'contacts' => 'tools',
+        'menus' => 'tools',
+        'users' => 'system',
+        'settings' => 'system',
+    ];
+
+    /** Heading order of the sidebar: the untitled top (dashboard), then the three headed groups. */
+    private const GROUPS = ['top', 'content', 'tools', 'system'];
+
+    /**
+     * The same menu as items(), cut into the sidebar's headed groups (Content · Tools · System).
+     * A group with no visible entry is left out, so a heading never stands alone.
+     *
+     * @return list<NavSection>
+     */
+    public function sections(?Authenticatable $user): array
+    {
+        $buckets = array_fill_keys(self::GROUPS, []);
+
+        foreach ($this->items($user) as $item) {
+            $group = match (true) {
+                $item->key === 'dashboard' => 'top',
+                isset(self::GROUP_OF[$item->key]) => self::GROUP_OF[$item->key],
+                default => 'content', // a content section (pages, posts, services…)
+            };
+            $buckets[$group][] = $item;
+        }
+
+        $sections = [];
+        foreach ($buckets as $key => $items) {
+            if ($items !== []) {
+                $sections[] = new NavSection(
+                    key: $key,
+                    label: match ($key) {
+                        'content' => Cast::string(__('admin.nav_group.content')),
+                        'tools' => Cast::string(__('admin.nav_group.tools')),
+                        'system' => Cast::string(__('admin.nav_group.system')),
+                        default => null,
+                    },
+                    items: $items,
+                );
+            }
+        }
+
+        return $sections;
+    }
 
     /**
      * @return list<NavItem>
@@ -61,7 +119,7 @@ final class AdminNav
             key: 'dashboard',
             label: __('admin.dashboard'),
             url: route('admin.dashboard'),
-            icon: 'dashboard',
+            icon: 'ri-dashboard-2',
             active: $request->routeIs('admin.dashboard'),
         );
 
@@ -127,7 +185,7 @@ final class AdminNav
             $items[] = new NavItem(
                 key: $section->key,
                 label: $section->localizedLabel(),
-                icon: $section->icon ?: (self::SECTION_ICONS[$section->key] ?? 'file-text'),
+                icon: $section->icon ?: (self::SECTION_ICONS[$section->key] ?? 'ri-file-text'),
                 active: $inSection || $inTaxonomy,
                 children: $children,
                 permission: "{$prefix}.view",
@@ -173,7 +231,7 @@ final class AdminNav
             $items[] = new NavItem(
                 key: 'catalog',
                 label: __('admin.catalog'),
-                icon: 'cube',
+                icon: 'ri-box-3',
                 active: $request->routeIs('admin.catalog.*') || $inCatalogTaxonomy,
                 children: $children,
                 permission: 'catalog.view',
@@ -203,10 +261,10 @@ final class AdminNav
         $features = [
             // [key, labelKey, route, icon, permission, entitlementKey]. Categories are NOT here —
             // they live per content type (see the section loop above), scoped so they never mix.
-            ['media', 'admin.media', 'admin.media.index', 'image', 'media.view', 'media'],
-            ['contacts', 'admin.contacts', 'admin.forms.index', 'mail', 'forms.view', 'contacts'],
-            ['menus', 'admin.menu_builder', 'admin.menus.index', 'menu', 'menus.manage', 'menus'],
-            ['users', 'admin.users', 'admin.users.index', 'users', 'users.manage', 'users'],
+            ['media', 'admin.media', 'admin.media.index', 'ri-image-2', 'media.view', 'media'],
+            ['contacts', 'admin.contacts', 'admin.forms.index', 'ri-mail', 'forms.view', 'contacts'],
+            ['menus', 'admin.menu_builder', 'admin.menus.index', 'ri-node-tree', 'menus.manage', 'menus'],
+            ['users', 'admin.users', 'admin.users.index', 'ri-team', 'users.manage', 'users'],
         ];
 
         foreach ($features as [$key, $labelKey, $routeName, $icon, $permission, $entitlementKey]) {
@@ -288,7 +346,7 @@ final class AdminNav
             $items[] = new NavItem(
                 key: 'settings',
                 label: __('admin.settings'),
-                icon: 'settings',
+                icon: 'ri-settings-4',
                 // The member's own account page sits under Settings › Bảo mật in this menu.
                 active: $request->routeIs('admin.settings*', 'admin.account'),
                 children: $settingsChildren,

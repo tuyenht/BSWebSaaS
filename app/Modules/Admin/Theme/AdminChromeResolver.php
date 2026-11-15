@@ -31,7 +31,8 @@ final readonly class AdminChromeResolver
     public const array FIELDS = [
         'scheme' => ['light', 'dark'],
         'sidebar' => ['dark', 'light', 'gradient', 'gradient-2', 'gradient-3', 'gradient-4'],
-        'topbar' => ['light', 'dark'],
+        // auto = the brand fill below 1024px (phone and tablet), the light bar from 1024px.
+        'topbar' => ['auto', 'light', 'dark'],
         'position' => ['fixed', 'scrollable'],
         'layout' => ['vertical'], // horizontal + two-column join once their nav templates exist
         'layout_width' => ['fluid', 'boxed'],

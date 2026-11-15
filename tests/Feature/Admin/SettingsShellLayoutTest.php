@@ -3,6 +3,7 @@
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use Dom\HTMLDocument;
 
 beforeEach(function (): void {
     truncateRbac();
@@ -20,4 +21,19 @@ it('lets the settings section strip shrink to a phone screen instead of widening
     $this->actingAs($admin)->get('http://a.test/admin/settings/email')
         ->assertOk()
         ->assertSee('<nav class="min-w-0 ', false);
+});
+
+it('leads a settings section with the trail ⌂ › Cài đặt › section from 768px', function (): void {
+    $admin = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($admin, 'admin', ['settings.manage', 'entries.view']));
+
+    $html = (string) $this->actingAs($admin)->withSession(['locale' => 'vi'])->get('http://a.test/admin/settings/email')->assertOk()->getContent();
+    $dom = HTMLDocument::createFromString($html, LIBXML_NOERROR);
+    $nav = $dom->querySelector('[data-set-shell] > nav[aria-label="'.__('admin.breadcrumb').'"]');
+
+    expect($nav)->not->toBeNull()
+        ->and(explode(' ', (string) $nav->getAttribute('class')))->toContain('max-md:hidden')
+        ->and($nav->querySelector('a[aria-label="Tổng quan"]')?->getAttribute('href'))->toBe(route('admin.dashboard'))
+        ->and(trim((string) $nav->querySelector('a.underline')?->textContent))->toBe('Cài đặt')
+        ->and(trim((string) $nav->querySelector('[aria-current="page"]')?->textContent))->toBe(__('admin.email_settings'));
 });

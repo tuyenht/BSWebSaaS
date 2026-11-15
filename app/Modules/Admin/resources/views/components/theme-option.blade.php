@@ -27,7 +27,12 @@
         $isDarkScheme => '#111a30',
         default => "color-mix(in srgb, {$brand} 72%, #0b1d45)", // the dark sidebar preset (app.css)
     };
-    $topbar = $axis === 'topbar' && $value === 'dark' ? $brand : $canvas;
+    $topbar = match (true) {
+        $axis === 'topbar' && $value === 'dark' => $brand,
+        // auto: the brand fill on a phone, the light bar on a computer — half of each.
+        $axis === 'topbar' && $value === 'auto' => "linear-gradient(to right, {$brand} 50%, {$canvas} 50%)",
+        default => $canvas,
+    };
 @endphp
 <label class="group block cursor-pointer">
     <input type="radio" name="{{ $name }}" value="{{ $value }}" class="peer sr-only"

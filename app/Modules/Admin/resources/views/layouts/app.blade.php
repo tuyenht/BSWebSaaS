@@ -91,7 +91,8 @@
         @php
             // Accordion: exactly ONE group open at a time = the active page's group (server-
             // resolved), re-synced after each wire:navigate via the morph-updated data-active-group.
-            $activeGroup = collect($navItems)->first(fn ($i) => $i->hasChildren() && $i->active)?->key ?? '';
+            $navItems = collect($navSections)->flatMap(fn ($section) => $section->items);
+            $activeGroup = $navItems->first(fn ($i) => $i->hasChildren() && $i->active)?->key ?? '';
             // The current page's row (and its group's, so the collapsed rail still shows it): white
             // ink, the active fill and an inset bar on the left — told apart by shape, not only by
             // color, now that resting items are white/.85. Links also carry aria-current="page".
@@ -102,11 +103,21 @@
              data-active-group="{{ $activeGroup }}"
              x-init="document.addEventListener('livewire:navigated', () => { openGroup = $el.dataset.activeGroup })"
              @scroll="$el.classList.add('is-scrolling'); clearTimeout(t); t = setTimeout(() => $el.classList.remove('is-scrolling'), 1200)">
-            {{-- Fully dynamic nested tree (AdminNav: entitlement ∩ RBAC, active resolved there).
-                 A node with children renders as an expandable group (open by default when active);
-                 leaves are links. Collapsed-rail flyout is a later stage — here groups expand inline. --}}
-            <ul class="space-y-1">
-                @foreach ($navItems as $item)
+            {{-- Fully dynamic nested tree (AdminNav: entitlement ∩ RBAC, active resolved there), cut
+                 into headed groups (Nội dung · Công cụ · Hệ thống). A node with children renders as an
+                 expandable group (open by default when active); leaves are links. On the collapsed rail
+                 a heading becomes a thin divider; the first heading draws none. --}}
+            @php $firstHeading = true; @endphp
+            @foreach ($navSections as $section)
+            @if ($section->label !== null)
+                <p id="admin-nav-{{ $section->key }}" @if ($firstHeading) data-first @endif
+                   class="sidebar-heading px-2 pb-1.5 pt-[0.9375rem] text-caption font-semibold text-sidebar-title">
+                    <span class="sidebar-label">{{ $section->label }}</span>
+                </p>
+                @php $firstHeading = false; @endphp
+            @endif
+            <ul class="space-y-1" @if ($section->label !== null) aria-labelledby="admin-nav-{{ $section->key }}" @endif>
+                @foreach ($section->items as $item)
                     <li>
                         @if ($item->hasChildren())
                             <div>
@@ -163,6 +174,7 @@
                     </li>
                 @endforeach
             </ul>
+            @endforeach
         </nav>
     </aside>
 
@@ -186,17 +198,42 @@
                 <x-bs-admin::icon name="menu" class="size-5" />
             </button>
 
-            {{-- Search --}}
-            <div class="relative hidden sm:block">
-                <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-topbar-search-placeholder">
-                    <x-bs-admin::icon name="search" class="size-4" />
-                </span>
-                <input type="search" aria-label="{{ __('admin.search') }}" placeholder="{{ __('admin.search_placeholder') }}"
-                       class="field w-56 rounded border border-topbar-search-border bg-topbar-search pl-9 pr-3 text-topbar-search-fg placeholder:text-topbar-search-placeholder transition-colors focus:border-topbar-search-accent focus:bg-topbar-search-focus lg:w-72">
+            {{-- Below 1024px the menu button is followed by the brand mark (the sidebar holds it from 1024px). --}}
+            <a href="{{ route('admin.dashboard') }}" wire:navigate aria-label="{{ config('admin.brand.name') }}" title="{{ config('admin.brand.name') }}"
+               class="topbar-logo -ms-1 inline-flex h-hit min-w-hit shrink-0 items-center justify-center rounded px-1 transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg lg:hidden">
+                <x-bs-admin::brand-logo context="topbar" />
+            </a>
+
+            {{-- Search. From 640px a field (up to 440px wide) with the Ctrl K / ⌘K hint from 1024px on a
+                 mouse; below 640px a magnifier in the right cluster opens the same field over the bar. --}}
+            <div x-data="bsTopSearch" @keydown.window="shortcut($event)" @keydown.escape="hide()" @bs-top-search-open.window="show()"
+                 :class="open && 'max-sm:!flex absolute inset-0 z-30 gap-2 bg-topbar ps-3 pe-3'"
+                 class="flex min-w-0 items-center max-sm:hidden sm:relative sm:flex-[0_1_440px]">
+                    <span class="relative block min-w-0 flex-1">
+                        <span class="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-topbar-search-placeholder">
+                            <x-bs-admin::icon name="search" class="size-4" />
+                        </span>
+                        <input type="search" x-ref="input" aria-label="{{ __('admin.search') }}" aria-keyshortcuts="Control+K Meta+K"
+                               placeholder="{{ __('admin.search_placeholder') }}"
+                               data-placeholders="{{ __('admin.search_placeholder') }}|{{ __('admin.search_placeholder_2') }}|{{ __('admin.search_placeholder_3') }}|{{ __('admin.search_placeholder_4') }}|{{ __('admin.search_placeholder_5') }}"
+                               x-on:input="$el.dataset.filled = $el.value !== '' ? '1' : ''"
+                               class="admin-search-input field w-full rounded-lg border border-topbar-search-border bg-topbar-search ps-9 pe-3 text-topbar-search-fg placeholder:text-topbar-search-placeholder transition-colors focus:border-topbar-search-accent focus:bg-topbar-search-focus">
+                        <span class="admin-search-kbd pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 rounded border border-topbar-search-border px-1.5 text-caption leading-snug text-topbar-search-placeholder"
+                              aria-hidden="true" x-text="kbdLabel">Ctrl K</span>
+                    </span>
+                    <button type="button" x-show="open" x-cloak @click="hide()" aria-label="{{ __('admin.close') }}"
+                            class="grid size-control any-pointer-coarse:size-hit shrink-0 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg sm:hidden">
+                        <x-bs-admin::icon name="x" class="size-5" />
+                    </button>
             </div>
 
-            {{-- Right cluster: language · fullscreen · light/dark · notifications · user --}}
+            {{-- Right cluster: (phone) search · language · fullscreen · light/dark · notifications · user.
+                 Below 768px the language and light/dark buttons step out: the user menu carries both. --}}
             <div class="ms-auto flex items-center gap-1">
+                <button type="button" id="admin-search-trigger" @click="$dispatch('bs-top-search-open')" aria-label="{{ __('admin.search') }}" title="{{ __('admin.search') }}"
+                        class="grid size-control any-pointer-coarse:size-hit place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg sm:hidden">
+                    <x-bs-admin::icon name="search" class="size-5" />
+                </button>
                 @include('admin::partials.topbar-tools')
                 @include('admin::partials.topbar-user')
             </div>
@@ -208,20 +245,7 @@
             {{ $slot }}
         </main>
 
-        {{-- Footer --}}
-        {{-- Footer — one left-aligned line (owner preference; deliberately NOT the reference's split layout). --}}
-        {{-- Text at the caption size, so it follows the reader's text size. The link keeps its look and
-             gets a 44px hit area through a transparent extension (one box, so it never splits across
-             lines); a wrapped second line starts below that area, never under it. --}}
-        <footer class="border-t border-border px-4 py-4 text-caption text-footer-fg">
-            <div class="flex flex-wrap items-center gap-x-1 gap-y-3.5">
-                <span>&copy; {{ now()->year }}
-                    <a href="{{ config('admin.brand.company_url') }}" target="_blank" rel="noopener noreferrer"
-                       class="hit-area inline-block font-medium text-text-muted transition-colors hover:text-primary-text hover:underline">{{ config('admin.brand.company') }}</a>.
-                </span>
-                <span>{{ __('auth.rights') }}</span>
-            </div>
-        </footer>
+        @include('admin::partials.admin-footer')
     </div>
 </div>
 @include('admin::partials.customizer')

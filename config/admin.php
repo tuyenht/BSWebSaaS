@@ -9,6 +9,16 @@ return [
         // Legal/company name + site shown in the copyright footer (the name links here).
         'company' => env('ADMIN_BRAND_COMPANY', 'BaoSon Ads'),
         'company_url' => env('ADMIN_BRAND_URL', 'https://baoson.net'),
+        // The admin framework the footer names ("Xây dựng trên nền tảng {kit} v{version}") and its page.
+        'kit' => env('ADMIN_BRAND_KIT', 'SaaS Starter'),
+        'kit_url' => env('ADMIN_BRAND_KIT_URL', env('ADMIN_BRAND_URL', 'https://baoson.net')),
+        'version' => env('ADMIN_BRAND_VERSION', '1.0'),
+        // The footer's "Phát triển bởi {name}" line; a white-label install may switch it off.
+        'built_by' => [
+            'show' => (bool) env('ADMIN_BRAND_BUILT_BY_SHOW', true),
+            'name' => env('ADMIN_BRAND_BUILT_BY_NAME', env('ADMIN_BRAND_NAME', 'Bảo Sơn')),
+            'url' => env('ADMIN_BRAND_BUILT_BY_URL', env('ADMIN_BRAND_URL', 'https://baoson.net')),
+        ],
         // The admin brand colour: a key of resources/admin-brands.json, the one table of colours
         // the platform may choose (AdminBrandColor). An unknown key falls back to the default.
         'color' => env('ADMIN_BRAND_COLOR', 'bao-son'),
