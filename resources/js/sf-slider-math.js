@@ -40,6 +40,19 @@ export function loopDot(left, period, client, span) {
     return railDot(Math.min(inside, Math.max(0, span - client)), client, span);
 }
 
+// The lit dot of a rail that moves a whole view at a time: one dot per view of `g` cards (the last view
+// may hold fewer), lit by the real card at the row's start. `left` is the scroll position, `period` one
+// copy's width when the rail loops (0 otherwise), `pitch` one card and its gap, `n` the real cards; `end`
+// = a rail that does not loop is scrolled to its end, where the last view stands whatever its count.
+export function groupDot(left, period, pitch, n, g, end) {
+    const pages = Math.ceil(n / g);
+    if (end || pitch <= 0) {
+        return end ? pages - 1 : 0;
+    }
+    const pos = period > 0 ? wrap(left - period, period) : left;
+    return Math.min(pages - 1, Math.floor(wrap(Math.round(pos / pitch), n) / g));
+}
+
 // How many dots a rail shows (one per screenful) and which one is lit.
 export const railPages = (client, scroll) => (client > 0 ? Math.max(1, Math.ceil((scroll - 2) / client)) : 1);
 export function railDot(left, client, scroll) {

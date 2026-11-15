@@ -121,6 +121,28 @@ it('gives the arrows a 44px hit area with a 36px disc and no arrows when the blo
         ->and($none)->not->toContain('data-sf-rail-prev')->and($none)->not->toContain('data-sf-rail-next');
 });
 
+it('marks a rail that moves a whole view at a time, and only that one', function (): void {
+    $view = railView('partners', ['props' => ['layout' => 'slider', 'advance' => 'view', 'logos' => logos(8)]]);
+    $item = railView('partners', ['props' => ['layout' => 'slider', 'advance' => 'auto', 'logos' => logos(8)]]);
+    $old = railView('partners', ['props' => ['layout' => 'slider', 'logos' => logos(8)]]);
+    $css = (string) StorefrontCss::all();
+
+    expect($view)->toContain('data-arrows="always" data-advance="view" role="group"')
+        ->and($item)->not->toContain('data-advance')->and($old)->not->toContain('data-advance')
+        // A row of whole views stops a swipe only at the first card of a view (the script marks it).
+        ->and($css)->toMatch('/\.sf-rail__list\.is-paged > li \{\s*scroll-snap-align: none;/s')
+        ->and($css)->toMatch('/\.sf-rail__list\.is-paged > \[data-sf-page\] \{\s*scroll-snap-align: start;/s');
+});
+
+it('draws a "slider_small" rail as a grid on a wide screen and a row that scrolls on a tablet', function (): void {
+    $html = railView('partners', ['props' => ['layout' => 'slider_small', 'logos' => logos(8)]]);
+    $css = (string) StorefrontCss::all();
+
+    expect($html)->toContain('sf-rail__list--slider_small')->and($html)->toContain('role="group"')
+        ->and($css)->toMatch('/@media \(min-width: 640px\) and \(max-width: 1023px\) \{[^@]*\.sf-rail__list--slider_small \{\s*flex-wrap: nowrap;[^}]*overflow-x: auto;[^}]*scroll-snap-type: x mandatory;/s')
+        ->and($css)->toMatch('/\.sf-rail__list--slider_small\.is-loop > \[data-sf-copy\] \{\s*display: flex;/s');
+});
+
 it('marks a rail whose loop the block turned off, and only that one', function (): void {
     $round = railView('partners', ['props' => ['layout' => 'slider', 'logos' => logos(8)]]);
     $stops = railView('partners', ['props' => ['layout' => 'slider', 'loop' => 'off', 'logos' => logos(8)]]);
@@ -374,7 +396,7 @@ it('floats the rail arrows over the list edges under 1440px, centred on the card
 it('shows a slice of the next card on a tablet slider and lets the logo strip scroll freely', function (): void {
     $css = (string) StorefrontCss::all();
 
-    expect($css)->toMatch('/\.sf-rail__list--slider:not\(\.sf-rail__list--c6\) \{ --sf-c: 2\.25; \}/')
+    expect($css)->toMatch('/\.sf-rail__list--slider:not\(\.sf-rail__list--c6\),\s*\.sf-rail__list--slider_small:not\(\.sf-rail__list--c6\) \{ --sf-c: 2\.25; \}/')
         ->and($css)->toMatch('/\.partners \.sf-rail__list--m-slider \{\s*scroll-snap-type: none;/s');
 });
 

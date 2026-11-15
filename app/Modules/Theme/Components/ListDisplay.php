@@ -33,7 +33,8 @@ final class ListDisplay
      * What `auto` means for each kind of list: columns across on a wide screen; `fit` = the most
      * items a grid holds before `auto` turns it into a slider (the product kinds hold two rows
      * instead: see plan()); `seconds` = rotation of a slider;
-     * `arrows` = the arrows' own default.
+     * `arrows` = the arrows' own default; `advance` = what `auto` moves by (a whole view unless the
+     * kind says `item`: a strip of logos changing all at once is hard on the eye).
      */
     public const array AUTO = [
         'product-overlay' => ['columns' => 3, 'seconds' => 5, 'arrows' => 'auto'],
@@ -41,7 +42,7 @@ final class ListDisplay
         'icon' => ['columns' => 4, 'fit' => PHP_INT_MAX, 'seconds' => 5, 'arrows' => 'auto'],
         'project' => ['columns' => 4, 'fit' => 4, 'seconds' => 5, 'arrows' => 'always'],
         'news' => ['columns' => 3, 'fit' => PHP_INT_MAX, 'seconds' => 5, 'arrows' => 'auto'],
-        'partners' => ['columns' => 6, 'fit' => 6, 'seconds' => 3, 'arrows' => 'always'],
+        'partners' => ['columns' => 6, 'fit' => 6, 'seconds' => 3, 'arrows' => 'always', 'advance' => 'item'],
         'testimonial' => ['columns' => 3, 'fit' => 3, 'seconds' => 8, 'arrows' => 'auto'],
         'team' => ['columns' => 4, 'fit' => PHP_INT_MAX, 'seconds' => 5, 'arrows' => 'auto'],
         'branches' => ['columns' => 3, 'fit' => PHP_INT_MAX, 'seconds' => 5, 'arrows' => 'auto'],
@@ -87,7 +88,7 @@ final class ListDisplay
      * @param  array<array-key, mixed>  $props
      * @param  int  $found  the rows read (a query reads one more than $limit to learn whether more exist)
      * @param  int  $limit  the block's limit (a static list passes its own length)
-     * @return array{layout: string, columns: int, mobile: string, interval: int, arrows: string, loop: bool, view_all: bool, shown: int, class: string, scrolls: bool, bar: string}|null
+     * @return array{layout: string, columns: int, mobile: string, interval: int, arrows: string, loop: bool, advance: string, view_all: bool, shown: int, class: string, scrolls: bool, bar: string}|null
      */
     public static function plan(string $kind, array $props, int $found, int $limit): ?array
     {
@@ -125,6 +126,10 @@ final class ListDisplay
         $arrows = SectionProps::choice($props, 'arrows', SectionProps::LIST_DISPLAY['arrows']['options']);
         $arrows = $arrows === 'auto' ? $auto['arrows'] : $arrows;
 
+        // A block saved before `advance` existed has no key and moves one card, as it always did.
+        $advance = SectionProps::choice($props, 'advance', SectionProps::LIST_DISPLAY['advance']['options'], 'item');
+        $advance = $advance === 'auto' ? ($auto['advance'] ?? 'view') : $advance;
+
         $shown = $layout === 'slider' ? min($count, self::SLIDER_MAX) : $count;
         $viewAll = SectionProps::choice($props, 'view_all', SectionProps::LIST_DISPLAY['view_all']['options']);
         $more = $found > $limit || $shown < $count;
@@ -144,14 +149,16 @@ final class ListDisplay
             'mobile' => $mobile,
             // A grid never rotates, and neither does a one-page slider; a phone's swipe row never does
             // (the script enforces that too, since the phone is a width, not a markup choice). A
-            // partner grid still rotates on a phone, where it is a slider.
+            // partner grid still rotates on a phone, where it is a slider. `slider_small` is a grid on a
+            // wide screen and never rotates on a tablet either (the script holds that rule).
             'interval' => $wideRotates || $phoneRotates ? $seconds * 1000 : 0,
             'arrows' => $arrows,
+            'advance' => $advance,
             // Every kind of list goes round unless the block says `off` (the script loops only a row that scrolls).
             'loop' => SectionProps::choice($props, 'loop', SectionProps::LIST_DISPLAY['loop']['options']) !== 'off',
             'view_all' => $viewAll === 'show' || ($viewAll === 'auto' && $more),
             'shown' => $shown,
-            'scrolls' => $layout === 'slider' || $mobile === 'slider',
+            'scrolls' => $layout === 'slider' || $layout === 'slider_small' || $mobile === 'slider',
             'bar' => $bar,
             'class' => sprintf('sf-rail__list sf-rail__list--%s sf-rail__list--c%d sf-rail__list--m-%s', $layout, $columns, $mobile),
         ];

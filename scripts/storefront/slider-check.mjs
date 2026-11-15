@@ -232,11 +232,12 @@ for (const type of ['pointerdown', 'wheel', 'touchstart']) {
 // A row settles on scrollend; `ends: false` removes the event, as in a browser without it, and the row then
 // settles after a quiet 150 ms.
 // `idle: true` gives the window requestIdleCallback; `observe: true` gives it a ResizeObserver that the
-// test reports to with resize().
-async function mountLoop({ loop = '', grid = false, ends = true, idle = false, observe = false } = {}) {
-    const cards = [1, 2, 3, 4].map((n) => `<li><a href="/the-${n}" id="card-${n}">Thẻ ${n}</a></li>`).join('');
-    const dom = new JSDOM(`<!doctype html><body><div class="sf-rail" data-sf-rail data-interval="0" data-mobile="swipe" data-arrows="auto"${loop}>
-<ul class="sf-rail__list${grid ? ' sf-rail__list--grid' : ''}">${cards}</ul>
+// test reports to with resize(). `count` cards, `row` px wide; `c` = the CSS --sf-c the script reads for a
+// view's cards; `list` = more classes on the row; `media` answers matchMedia (default: nothing matches).
+async function mountLoop({ loop = '', grid = false, ends = true, idle = false, observe = false, count = 4, row: rowStart = 300, c = '1.25', list = '', interval = 0, media = () => false } = {}) {
+    const cards = Array.from({ length: count }, (_, i) => `<li><a href="/the-${i + 1}" id="card-${i + 1}">Thẻ ${i + 1}</a></li>`).join('');
+    const dom = new JSDOM(`<!doctype html><body><div class="sf-rail" data-sf-rail data-interval="${interval}" data-mobile="swipe" data-arrows="auto"${loop}>
+<ul class="sf-rail__list${grid ? ' sf-rail__list--grid' : ''}${list}">${cards}</ul>
 <div class="sf-rail__controls" hidden><button type="button" data-sf-rail-prev hidden></button><span data-sf-rail-dots hidden></span><button type="button" data-sf-rail-next hidden></button></div></div></body>`);
     const { window } = dom;
     if (!ends) {
@@ -245,7 +246,8 @@ async function mountLoop({ loop = '', grid = false, ends = true, idle = false, o
         }
     }
     let W = 200;
-    let rowW = 300;
+    let rowW = rowStart;
+    let cNow = c;
     const isList = (el) => el.classList?.contains('sf-rail__list');
     const shown = (el) => !(el.hasAttribute('data-sf-copy') && !el.parentElement.classList.contains('is-loop'));
     const row = (list) => [...list.children].filter(shown);
@@ -284,8 +286,11 @@ async function mountLoop({ loop = '', grid = false, ends = true, idle = false, o
         return { left: x, right: x + this.offsetWidth, top: 0, bottom: 0, width: this.offsetWidth, height: 0 };
     };
     const css = window.getComputedStyle.bind(window);
-    window.getComputedStyle = (el) => (isList(el) ? { overflowX: el.classList.contains('sf-rail__list--grid') ? 'visible' : 'auto' } : css(el));
-    window.matchMedia = () => ({ matches: false, addEventListener: () => {} });
+    window.getComputedStyle = (el) =>
+        isList(el) ? { overflowX: el.classList.contains('sf-rail__list--grid') ? 'visible' : 'auto', getPropertyValue: (k) => (k === '--sf-c' ? ` ${cNow}` : '') } : css(el);
+    window.matchMedia = (q) => ({ matches: media(q), addEventListener: () => {} });
+    // jsdom reports a hidden page, where nothing rotates; this one is on screen.
+    Object.defineProperty(window.document, 'hidden', { configurable: true, value: false });
     let now = 0;
     let seq = 0;
     const queue = new Map();
@@ -312,6 +317,7 @@ async function mountLoop({ loop = '', grid = false, ends = true, idle = false, o
         return seq;
     };
     globalThis.clearTimeout = (id) => queue.delete(id);
+    globalThis.requestAnimationFrame = (fn) => globalThis.setTimeout(fn, 16);
     await import(`${script}?run=${++run}`);
     const tick = (ms) => {
         const end = now + ms;
@@ -340,12 +346,16 @@ async function mountLoop({ loop = '', grid = false, ends = true, idle = false, o
         return track.dispatchEvent(Object.assign(new window.Event(type), { touches: [...on, ...off] }));
     };
     // The cards and the row take new widths (a phone turned) and the observer reports it.
-    const resize = (card, row) => {
+    const resize = (card, row, cols = cNow) => {
         W = card;
         rowW = row;
+        cNow = cols;
         observed?.([]);
     };
-    return { window, doc: window.document, track, tick, scrollBy, touch, resize };
+    const lit = () => [...window.document.querySelector('[data-sf-rail-dots]').children].findIndex((d) => d.classList.contains('is-on'));
+    const dots = () => window.document.querySelector('[data-sf-rail-dots]').children.length;
+    const click = (which) => window.document.querySelector(`[data-sf-rail-${which}]`).click();
+    return { window, doc: window.document, track, tick, scrollBy, touch, resize, lit, dots, click };
 }
 for (const ends of [true, false]) {
     const s = await mountLoop({ ends });
@@ -449,6 +459,114 @@ for (const ends of [true, false]) {
     s.window.dispatchEvent(new s.window.Event('pointermove'));
     s.tick(100);
     check('loop: a grid that does not scroll gets no copies', s.doc.querySelectorAll('[data-sf-copy]').length === 0);
+}
+{
+    const s = await mountLoop({ count: 25 });
+    s.window.dispatchEvent(new s.window.Event('pointermove'));
+    s.tick(100);
+    check('loop: a row of more than 24 cards does not go round', s.doc.querySelectorAll('[data-sf-copy]').length === 0 && !s.track.classList.contains('is-loop'));
+}
+
+// A whole view at a time (data-advance="view"): 8 cards four across (the sample: two views, two dots).
+const view = ' data-advance="view"';
+{
+    const s = await mountLoop({ loop: view, count: 8, row: 800, c: '4' });
+    s.window.dispatchEvent(new s.window.Event('pointermove'));
+    s.tick(100);
+    const marked = [...s.track.children].map((li, i) => (li.hasAttribute('data-sf-page') ? i : -1)).filter((i) => i >= 0);
+    check('view: 8 cards four across make two dots', s.dots() === 2 && s.lit() === 0 && s.track.scrollLeft === 1600);
+    check('view: a swipe stops only at the first card of a view, copies included', s.track.classList.contains('is-paged') && marked.join() === '0,4,8,12,16,20');
+    s.click('next');
+    s.tick(200);
+    check('view: Next moves four cards and lights the second dot', s.track.scrollLeft === 2400 && s.lit() === 1);
+    s.click('next');
+    s.tick(200);
+    check('view: Next on the last view goes round to the first', s.track.scrollLeft === 1600 && s.lit() === 0);
+    s.click('prev');
+    s.tick(200);
+    check('view: Prev on the first view goes round to the last', s.track.scrollLeft === 2400 && s.lit() === 1);
+}
+{
+    // 6 cards four across: two views (5, 6 then 1, 2 when it goes round); a swipe stops at every card.
+    const s = await mountLoop({ loop: view, count: 6, row: 800, c: '4' });
+    s.window.dispatchEvent(new s.window.Event('pointermove'));
+    s.tick(100);
+    check('view, 6 cards four across: two dots, a swipe stops at every card', s.dots() === 2 && !s.track.classList.contains('is-paged'));
+    s.click('next');
+    s.tick(200);
+    check('view, 6 cards: Next moves four cards to the second view', s.track.scrollLeft === 2000 && s.lit() === 1);
+    s.click('next');
+    s.tick(200);
+    check('view, 6 cards: Next on the second view goes round to the first view, not two cards on', s.track.scrollLeft === 1200 && s.lit() === 0);
+    s.click('next');
+    s.tick(200);
+    s.click('prev');
+    s.tick(200);
+    check('view, 6 cards: Prev goes back to the first view', s.track.scrollLeft === 1200 && s.lit() === 0);
+    s.click('prev');
+    s.tick(200);
+    check('view, 6 cards: Prev on the first view goes round to the second', s.track.scrollLeft === 2000 && s.lit() === 1);
+}
+{
+    // Keyboard focus on a card past the view: the row moves to the start of that card's view.
+    const focus = (s, i) => s.doc.querySelector(`#card-${i}`).dispatchEvent(new s.window.FocusEvent('focusin', { bubbles: true }));
+    const s = await mountLoop({ loop: view, count: 8, row: 800, c: '4' });
+    s.window.dispatchEvent(new s.window.Event('pointermove'));
+    s.tick(100);
+    focus(s, 6);
+    s.tick(50);
+    check('view: focus on card 6 puts the row on the second view', s.track.scrollLeft === 2400 && s.lit() === 1);
+    const six = await mountLoop({ loop: view, count: 6, row: 800, c: '4' });
+    six.window.dispatchEvent(new six.window.Event('pointermove'));
+    six.tick(100);
+    focus(six, 6);
+    six.tick(50);
+    check('view, 6 cards: focus leaves a row that stops at every card to the browser', six.track.scrollLeft === 1200);
+}
+{
+    // A window that narrows from four across to two: the views, their marks and the dots follow.
+    const s = await mountLoop({ loop: view, count: 8, row: 800, c: '4', observe: true });
+    s.window.dispatchEvent(new s.window.Event('pointermove'));
+    s.tick(100);
+    s.resize(200, 400, '2');
+    s.tick(400);
+    const marks = s.doc.querySelectorAll('[data-sf-page]').length;
+    check('view, four across to two: four dots and a stop every second card', s.dots() === 4 && marks === 12 && s.track.classList.contains('is-paged'));
+    s.click('next');
+    s.tick(200);
+    check('view, two across: Next moves two cards', s.track.scrollLeft === 2000 && s.lit() === 1);
+}
+{
+    const s = await mountLoop({ loop: `${view} data-loop="off"`, count: 6, row: 800, c: '4' });
+    s.window.dispatchEvent(new s.window.Event('pointermove'));
+    s.tick(100);
+    s.click('next');
+    s.tick(200);
+    check('view, no loop: Next ends on the last four cards and lights the last dot', s.track.scrollLeft === 400 && s.lit() === 1);
+    s.click('next');
+    s.tick(200);
+    check('view, no loop: Next at the end goes back to the start', s.track.scrollLeft === 0 && s.lit() === 0);
+}
+{
+    // A view of one card (a phone's 1.25 row) moves one card, with the dots of a rail that moves by card.
+    const s = await mountLoop({ loop: view });
+    s.window.dispatchEvent(new s.window.Event('pointermove'));
+    s.tick(100);
+    s.click('next');
+    s.tick(200);
+    check('view of one card: Next moves one card', s.track.scrollLeft === 1000 && !s.track.classList.contains('is-paged'));
+}
+{
+    // slider_small never rotates on a tablet; the same rail without it does (the check that the clock runs).
+    const tablet = (q) => q.includes('1023px');
+    const still = await mountLoop({ count: 8, row: 400, c: '2', interval: 3000, list: ' sf-rail__list--slider_small', media: tablet });
+    still.window.dispatchEvent(new still.window.Event('pointermove'));
+    still.tick(10000);
+    check('slider_small: no rotation on a tablet', still.track.scrollLeft === 1600);
+    const turns = await mountLoop({ count: 8, row: 400, c: '2', interval: 3000, media: tablet });
+    turns.window.dispatchEvent(new turns.window.Event('pointermove'));
+    turns.tick(3500);
+    check('a slider rotates on a tablet', turns.track.scrollLeft === 1800);
 }
 
 if (failures.length > 0) {
