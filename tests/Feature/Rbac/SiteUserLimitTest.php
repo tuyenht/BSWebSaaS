@@ -288,6 +288,110 @@ it('costs an invitation one more query: the counts and the limit come in one sta
     $check = app(Tenancy::class)->enter(1, fn (): int => countQueries(fn () => app(SiteHeadcount::class)->assertRoomToInvite(null)));
     $invite = app(Tenancy::class)->enter(1, fn (): int => countQueries(fn () => app(InviteMember::class)->handle($owner->fresh(), 'moi@example.test', [$viewer])));
 
-    // 18 before the people limit, + the one statement
-    expect($check)->toBe(1)->and($invite)->toBeLessThanOrEqual(19);
+    limitWaiting(1, $owner, 'nhan@example.test');
+    $accept = app(Tenancy::class)->enter(1, fn (): int => countQueries(fn () => app(AcceptInvitation::class)->withNewAccount('link-nhan@example.test', 'Người Mới', 'Mat-khau-rat-manh-2026')));
+
+    // invite: 18 before the people limit, + the one statement; accept: 25 before, + the lock and the one statement
+    expect([$check, $invite, $accept])->toBe([1, 19, 27]);
+});
+
+/** The `users.max` overrides the seeding migration wrote, by website. */
+function seededOverrides(): array
+{
+    return DB::connection('pgsql_admin')->table('site_features')->where('feature_key', 'users.max')->orderBy('site_id')
+        ->pluck('value', 'site_id')->map(fn (string $v): mixed => json_decode($v, true))->all();
+}
+
+it('does not count a withdrawn invitation', function (): void {
+    $owner = limitTeam(1, 10);   // 11 members
+    $withdrawn = limitWaiting(1, $owner, 'rut-lai@example.test');
+    DB::connection('pgsql_admin')->table('invitations')->where('id', $withdrawn->id)->update(['revoked_at' => now()]);
+
+    expect(limitHeadcount(1))->toBe(['members' => 11, 'pending' => 0, 'limit' => 10, 'is_member' => false]);
+
+    seedUserLimit();
+    expect(seededOverrides())->toBe([1 => 11]);
+});
+
+it('counts a member holding two roles once', function (): void {
+    $owner = limitTeam(1, 9);   // 10 members
+    $twoRoles = limitMember(1, 'editor');
+    $author = limitRole(1, 'author');
+    app(Tenancy::class)->enter(1, fn () => $twoRoles->assignRole($author));
+
+    expect(DB::connection('pgsql_admin')->table('model_has_roles')->where('site_id', 1)->count())->toBe(12)   // 11 people, 12 roles
+        ->and(limitHeadcount(1))->toBe(['members' => 11, 'pending' => 0, 'limit' => 10, 'is_member' => false])
+        ->and(app(Tenancy::class)->enter(1, fn (): array => app(SiteHeadcount::class)->current($twoRoles->id))['is_member'])->toBeTrue();
+
+    seedUserLimit();
+    expect(seededOverrides())->toBe([1 => 11]);
+});
+
+it('counts an account and its invitation once when their emails differ only in case', function (): void {
+    $owner = limitTeam(1, 9);   // 10 members
+    $capitals = limitMember(1);
+    DB::connection('pgsql_admin')->table('users')->where('id', $capitals->id)->update(['email' => 'Chi.Hoa@Example.TEST']);
+    limitWaiting(1, $owner, 'chi.hoa@example.test');                // the member's own address: not one more
+    limitWaiting(1, $owner, 'Nguoi.Moi@Example.TEST');
+    limitWaiting(2, limitMember(2, 'owner'), 'NGUOI.MOI@example.test');   // another website: its own count
+
+    expect(limitHeadcount(1))->toBe(['members' => 11, 'pending' => 1, 'limit' => 10, 'is_member' => false]);
+
+    seedUserLimit();
+    expect(seededOverrides())->toBe([1 => 12]);
+});
+
+it('leaves a website in the trash out of the seeded numbers', function (): void {
+    limitTeam(1, 10);   // 11 people
+    limitTeam(2, 14);   // 15 people, then trashed
+    DB::connection('pgsql_admin')->table('sites')->where('id', 2)->update(['deleted_at' => now()]);
+
+    // no plan: only the live website gets an override
+    seedUserLimit();
+    expect(seededOverrides())->toBe([1 => 11]);
+
+    // on a plan: the plan is sized by the live website alone
+    $plan = limitPlan('pro');
+    DB::connection('pgsql_admin')->table('tenants')->where('id', 1)->update(['plan_id' => $plan]);
+    seedUserLimit();
+    expect(planUserLimit($plan))->toBe(11);
+});
+
+it('changes nothing when rolled back', function (): void {
+    $admin = DB::connection('pgsql_admin');
+    $snapshot = fn (): array => [
+        $admin->table('plan_features')->orderBy('plan_id')->orderBy('feature_key')->get()->map(fn (object $r): array => (array) $r)->all(),
+        $admin->table('site_features')->orderBy('id')->get()->map(fn (object $r): array => (array) $r)->all(),
+        $admin->table('tenant_history')->orderBy('id')->get()->map(fn (object $r): array => (array) $r)->all(),
+    ];
+    $rollBack = function (): void {
+        $original = DB::getDefaultConnection();
+        DB::setDefaultConnection('pgsql_admin');
+        try {
+            userLimitMigration()->down();
+        } finally {
+            DB::setDefaultConnection($original);
+        }
+    };
+
+    limitPlan('ca-nhan');   // nobody on it: 10
+    limitTeam(1, 11);       // a customer with no plan, 12 people: an override and its history row
+    seedUserLimit();
+    $seeded = $snapshot();
+    expect($seeded[0])->not->toBe([])->and($seeded[1])->not->toBe([])->and($seeded[2])->not->toBe([]);
+
+    $rollBack();
+    expect($snapshot())->toBe($seeded);
+});
+
+it('holds a frozen copy of the headcount query that matches the runtime one', function (): void {
+    $migration = userLimitMigration();
+    $frozen = (new ReflectionClassConstant($migration, 'COUNTS'))->getValue();
+    $userModel = (new ReflectionClassConstant($migration, 'USER_MODEL'))->getValue();
+    [$runtime, $bindings] = SiteHeadcount::perSiteSql(null, now());
+    $squash = fn (mixed $sql): string => trim((string) preg_replace('/\s+/', ' ', is_string($sql) ? $sql : ''));
+
+    expect($squash($frozen))->toBe($squash($runtime))
+        ->and($userModel)->toBe(User::class)
+        ->and($bindings[0])->toBe(User::class);
 });

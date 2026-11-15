@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\DB;
  * The count is the one SiteHeadcount::perSiteSql() defines for the runtime check, copied here as it
  * stood when this ran (a migration never calls code that may change after it): members (a role in
  * the website's team) plus invitations still waiting (not accepted, not withdrawn, not expired, to
- * an address that is not a member). SiteUserLimitTest checks the seeded numbers against the runtime
- * count. Websites in the trash are left out.
+ * an address that is not a member). SiteUserLimitTest compares this copy with perSiteSql() and
+ * checks the seeded numbers against the runtime count. Websites in the trash are left out.
  *
  *  - every plan gets `users.max` = the larger of 10 and the largest count of a website on it (a
  *    plan nobody is on gets 10);
