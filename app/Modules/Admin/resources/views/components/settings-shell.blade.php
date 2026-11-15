@@ -93,6 +93,13 @@
     request()->attributes->set('admin.sidebar_fold', true);
 @endphp
 <div class="mx-auto max-w-5xl" data-set-shell>
+    {{-- ⌂ › Cài đặt › section. Below 768px the section row carries the way back instead. --}}
+    @if ($sectionName !== '' && $items !== [])
+        <x-bs-admin::breadcrumb class="mb-2 max-md:hidden" :items="[
+            ['label' => \App\Modules\Admin\Support\AdminPlane::isPlatform() ? __('admin.settings_system') : __('admin.settings'), 'url' => route($items[0]['route'])],
+            ['label' => $sectionName],
+        ]" />
+    @endif
     <h1 class="mb-5 text-lg font-semibold text-heading">{{ \App\Modules\Admin\Support\AdminPlane::isPlatform() ? __('admin.settings_system') : __('admin.settings') }}</h1>
 
     <div class="grid gap-6 lg:grid-cols-[210px_1fr]">

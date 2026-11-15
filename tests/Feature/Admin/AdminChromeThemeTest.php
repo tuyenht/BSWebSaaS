@@ -34,7 +34,7 @@ it('SSRs the app defaults when no tier pins anything', function (): void {
         ->assertOk()
         ->assertSee('data-bs-theme="light"', false)
         ->assertSee('data-sidebar="dark"', false)
-        ->assertSee('data-topbar="light"', false)
+        ->assertSee('data-topbar="auto"', false)
         ->assertSee('data-layout-position="fixed"', false)
         ->assertSee('data-layout="vertical"', false)
         ->assertSee('data-layout-width="fluid"', false)
@@ -50,7 +50,7 @@ it('applies the site default from the admin_theme settings group', function (): 
         ->assertOk()
         ->assertSee('data-bs-theme="dark"', false)
         ->assertSee('data-sidebar="light"', false)
-        ->assertSee('data-topbar="light"', false); // unpinned axis stays on the app default
+        ->assertSee('data-topbar="auto"', false); // unpinned axis stays on the app default
 });
 
 it('lets a per-user pin win over the site default, per field', function (): void {

@@ -194,7 +194,7 @@ final class AdminServiceProvider extends ServiceProvider
 
         // The dynamic menu (content_sections ∩ permissions) for every admin layout render.
         View::composer('admin::layouts.app', function (ViewContract $view): void {
-            $view->with('navItems', app(AdminNav::class)->items(Auth::user()));
+            $view->with('navSections', app(AdminNav::class)->sections(Auth::user()));
         });
 
         // Operator console nav (platform plane) — data-driven by platform permissions.

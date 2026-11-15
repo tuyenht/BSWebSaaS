@@ -281,3 +281,77 @@ it('sizes the site menu labels by the text roles, so they follow the reader\'s t
     expect($chrome)->toContain('top: calc(1.25rem + var(--text-body) * 1.5 - 0.2rem);')
         ->not->toContain('top: 2.35rem;');
 });
+
+it('gives the search box the long hint and its shorter forms, and no shortcut while it has nothing to search', function (): void {
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
+
+    $dom = platformShellDom((string) $this->actingAs($user->fresh())->withSession(['locale' => 'vi'])->get('http://a.test/admin/content')->assertOk()->getContent());
+
+    $input = platformShellOne($dom, 'header.admin-topbar input[type="search"]');
+    expect($input->getAttribute('placeholder'))->toBe('Tìm trang, bài viết, sản phẩm, cài đặt…')
+        ->and($input->hasAttribute('aria-keyshortcuts'))->toBeFalse()
+        ->and(explode('|', (string) $input->getAttribute('data-placeholders')))->toBe([
+            'Tìm trang, bài viết, sản phẩm, cài đặt…', 'Tìm trang, bài viết, sản phẩm…', 'Tìm trang, bài viết…', 'Tìm kiếm…', 'Tìm…',
+        ])
+        ->and($dom->querySelector('header.admin-topbar .admin-search-kbd'))->toBeNull()
+        // below 640px the magnifier opens the same box; a click outside closes it
+        ->and(platformShellClasses(platformShellOne($dom, '#admin-search-trigger')))->toContain('sm:hidden', 'size-control', 'any-pointer-coarse:size-hit')
+        ->and(platformShellOne($dom, 'header.admin-topbar [x-data="bsTopSearch"]')->hasAttribute('@click.outside'))->toBeTrue()
+        ->and($dom->querySelector('header.admin-topbar [x-data="bsTopSearch"]')?->hasAttribute('@keydown.window'))->toBeFalse();
+});
+
+it('puts the brand mark after the menu button below 1024px and a chevron on the user block', function (): void {
+    $user = User::factory()->create(['name' => 'Topbar Tester']);
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
+
+    $dom = platformShellDom((string) $this->actingAs($user->fresh())->get('http://a.test/admin/content')->assertOk()->getContent());
+
+    $logo = platformShellOne($dom, 'header.admin-topbar a.topbar-logo');
+    expect($logo->getAttribute('href'))->toBe(route('admin.dashboard'))
+        ->and(platformShellClasses($logo))->toContain('lg:hidden', 'h-hit', 'min-w-hit')
+        ->and($logo->getAttribute('aria-label'))->toBe((string) config('admin.brand.name'));
+
+    $userButton = platformShellOne($dom, 'header.admin-topbar button[aria-haspopup="true"][aria-label^="Topbar Tester"]');
+    expect($userButton->querySelector('svg.lg\:block'))->not->toBeNull();
+});
+
+it('moves the language and light/dark choices into the user menu below 768px', function (): void {
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
+
+    $dom = platformShellDom((string) $this->actingAs($user->fresh())->withSession(['locale' => 'vi'])->get('http://a.test/admin/content')->assertOk()->getContent());
+
+    // the topbar buttons step out below 768px …
+    expect(platformShellClasses(platformShellOne($dom, 'header.admin-topbar button[aria-label="'.__('admin.language').'"]')->parentElement))->toContain('hidden', 'md:block')
+        ->and(platformShellClasses(platformShellOne($dom, 'header.admin-topbar button[aria-label="'.__('admin.theme_dark').'"]')))->toContain('hidden', 'md:grid');
+
+    // … and the user menu carries both, at every width
+    $labels = array_map(
+        fn (Element $b): string => trim(preg_replace('/\s+/', ' ', (string) $b->textContent)),
+        iterator_to_array($dom->querySelectorAll('div[role="menu"] button[role="menuitem"]')),
+    );
+    expect(implode(' | ', $labels))->toContain('Ngôn ngữ giao diện', 'Chuyển sang giao diện tối');
+});
+
+it('writes the footer from the brand config and drops the built-by line when it is switched off', function (): void {
+    config([
+        'admin.brand.name' => 'Nền Tảng Ví Dụ',
+        'admin.brand.kit' => 'Bộ Khung Thử',
+        'admin.brand.version' => '2.3',
+        'admin.brand.built_by' => ['show' => true, 'name' => 'Đội Phát Triển', 'url' => 'https://example.test/doi'],
+    ]);
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
+
+    $this->actingAs($user->fresh())->withSession(['locale' => 'vi'])->get('http://a.test/admin/content')
+        ->assertOk()
+        ->assertSeeInOrder(['Nền Tảng Ví Dụ', 'Xây dựng trên nền tảng', 'Bộ Khung Thử', 'v2.3.', 'Phát triển bởi', 'Đội Phát Triển'], false)
+        ->assertDontSee('Bảo lưu mọi quyền', false);
+
+    config(['admin.brand.built_by.show' => false]);
+    $this->actingAs($user->fresh())->withSession(['locale' => 'vi'])->get('http://a.test/admin/content')
+        ->assertOk()
+        ->assertSee('Bộ Khung Thử', false)
+        ->assertDontSee('Phát triển bởi', false);
+});
