@@ -1,8 +1,14 @@
 <?php
 
 use App\Modules\Admin\Livewire\Entries\Editor;
+use App\Modules\Cms\Actions\PublishEntry;
+use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
+use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\MemberCategoryScope;
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -35,6 +41,22 @@ function seedShellPostSection(string $name = 'Tin tức', string $key = 'posts')
     ]);
 
     return $category->id;
+}
+
+/** A page of the current site published at /$slug through the publish action (so it has its route). */
+function shellPublishedPage(User $by, string $title, string $slug): Entry
+{
+    $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $by->id, 'meta' => []]);
+    $entry->translations()->create(['locale' => 'vi', 'title' => $title, 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);
+    app(PublishEntry::class)->handle($entry->fresh() ?? $entry, 'vi', $by->fresh() ?? $by);
+
+    return $entry->fresh() ?? $entry;
+}
+
+/** A post category of the current site written through the category action (so it has its tree path). */
+function shellCategory(string $name, ?Taxonomy $parent = null): Taxonomy
+{
+    return app(CreateTaxonomy::class)->handle('post_cat', $parent, new TaxonomyData(names: ['vi' => $name]));
 }
 
 it('turns the address into the edit address after the first save, so reopening edits the same post', function (): void {
@@ -243,5 +265,179 @@ it('offers Gửi duyệt to a member who may not publish, Cập nhật and the l
             ->assertDontSee('Lưu nháp')
             ->assertSee('Xem trên website')
             ->assertSee('/ve-chung-toi');
+    });
+});
+
+it('keeps the live band on the address visitors reach when a save changes the slug without publishing it', function (): void {
+    $tenancy = app(Tenancy::class);
+    $publisher = User::factory()->create();
+    $writer = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($publisher, $writer): void {
+        grantRole($publisher, 'editor', ['entries.view', 'entries.create', 'entries.edit.any', 'entries.publish']);
+        grantRole($writer, 'writer', ['entries.view', 'entries.edit.any']);
+        $page = shellPublishedPage($publisher, 'Về chúng tôi', 've-chung-toi');
+
+        $c = Livewire::actingAs($writer->fresh())
+            ->test(Editor::class, ['ulid' => $page->ulid])
+            ->assertSee('Xem trên website');
+        $live = $c->get('liveAddress');
+        expect($live)->toEndWith('/ve-chung-toi');
+
+        // «Lưu» writes the new slug, but only a publish moves the route: the band keeps the live one.
+        $c->set('slug', 'gioi-thieu-moi')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertSet('liveAddress', $live)
+            ->assertSeeHtml('href="//'.$live.'"');
+        expect(SiteRoute::query()->where('entry_id', $page->id)->value('path'))->toBe('/ve-chung-toi');
+    });
+});
+
+it('keeps the live band on the old address when publishing a new slug runs into another page', function (): void {
+    $tenancy = app(Tenancy::class);
+    $editor = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.create', 'entries.edit.any', 'entries.publish']);
+        shellPublishedPage($editor, 'Liên hệ', 'lien-he');
+        $page = shellPublishedPage($editor, 'Về chúng tôi', 've-chung-toi');
+
+        $c = Livewire::actingAs($editor->fresh())->test(Editor::class, ['ulid' => $page->ulid]);
+        $live = $c->get('liveAddress');
+        expect($live)->toEndWith('/ve-chung-toi');
+
+        $c->set('slug', 'lien-he')
+            ->call('publish')
+            ->assertHasErrors('slug')
+            ->assertSet('liveAddress', $live)
+            ->assertSeeHtml('href="//'.$live.'"');
+    });
+});
+
+it('shows no live band for a language of a live page that was never published, until it is', function (): void {
+    $tenancy = app(Tenancy::class);
+    $editor = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.create', 'entries.edit.any', 'entries.publish']);
+        SiteLocale::query()->firstOrCreate(['locale' => 'vi'], ['is_default' => true, 'enabled' => true]);
+        SiteLocale::query()->firstOrCreate(['locale' => 'en'], ['is_default' => false, 'enabled' => true]);
+        $page = shellPublishedPage($editor, 'Về chúng tôi', 've-chung-toi');
+
+        $c = Livewire::actingAs($editor->fresh())
+            ->test(Editor::class, ['ulid' => $page->ulid, 'locale' => 'en'])
+            ->assertSet('liveAddress', null)
+            ->assertDontSee('Xem trên website');
+
+        // Saved on a live page, the English version is stored as published but has no route yet.
+        $c->set('title', 'About us')
+            ->set('slug', 'about-us')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertSet('liveAddress', null)
+            ->assertDontSee('Xem trên website');
+
+        $c->call('publish')
+            ->assertHasNoErrors()
+            ->assertSee('Xem trên website');
+        expect($c->get('liveAddress'))->toEndWith('/en/about-us');
+    });
+});
+
+it('offers Đăng on a new post only when its pre-filled category lies inside the member\'s limits', function (): void {
+    $tenancy = app(Tenancy::class);
+    $editor = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.create', 'entries.edit.any', 'entries.publish']);
+        $inside = shellCategory('Dự án');
+        $outside = shellCategory('Tin tức');
+        foreach (['du-an' => $inside, 'posts' => $outside] as $key => $category) {
+            ContentSection::query()->create([
+                'key' => $key, 'label' => $category->translationFor('vi')?->name, 'entry_type' => 'post', 'taxonomy_id' => $category->id,
+                'permission_prefix' => 'entries', 'sort_order' => 1,
+            ]);
+        }
+        MemberCategoryScope::query()->create(['user_id' => $editor->id, 'taxonomy_id' => $inside->id]);
+        app(CategoryScopes::class)->forget();
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class, ['section' => 'posts'])
+            ->assertSet('categoryId', $outside->id)
+            ->assertSet('mayPublish', false)
+            ->assertDontSeeHtml('wire:click="publish"');
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class, ['section' => 'du-an'])
+            ->assertSet('categoryId', $inside->id)
+            ->assertSet('mayPublish', true)
+            ->assertSeeHtml('wire:click="publish"');
+    });
+});
+
+it('forgets an open picker, a typed note and a picked member on discard', function (): void {
+    $tenancy = app(Tenancy::class);
+    $editor = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.create', 'entries.edit.any', 'media.view']);
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('title', 'Giới thiệu')
+            ->call('addBlock', 'hero')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->call('openCoverPicker')
+            ->call('openBlockImagePicker', '0.props.image_url')
+            ->set('transitionNote', 'Cần sửa ảnh')
+            ->set('assignTo', $editor->id)
+            ->call('resetChanges')
+            ->assertSet('showMediaPicker', false)
+            ->assertSet('showBlockImagePicker', false)
+            ->assertSet('blockImagePickerPath', '')
+            ->assertSet('transitionNote', '')
+            ->assertSet('assignTo', null);
+    });
+});
+
+describe('query budget', function (): void {
+    it('opens a post on a flat query budget, however deep its category sits', function (): void {
+        $editor = User::factory()->create();
+        $ulids = [];
+
+        app(Tenancy::class)->enter(1, function () use ($editor, &$ulids): void {
+            grantRole($editor, 'editor', ['entries.view', 'entries.create', 'entries.edit.any', 'entries.publish']);
+            $root = shellCategory('Dự án');
+            ContentSection::query()->create([
+                'key' => 'du-an', 'label' => 'Dự án', 'entry_type' => 'post', 'taxonomy_id' => $root->id,
+                'permission_prefix' => 'entries', 'sort_order' => 1,
+            ]);
+            $middle = shellCategory('Nhà xưởng', $root);
+            $deepest = shellCategory('Bình Dương', $middle);
+
+            foreach (['middle' => $middle, 'deep' => $deepest] as $at => $category) {
+                $post = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $editor->id, 'meta' => []]);
+                $post->translations()->create(['locale' => 'vi', 'title' => 'Xưởng '.$at, 'slug' => 'xuong-'.$at, 'status' => 'draft', 'body' => ['blocks' => []]]);
+                $post->assignCategories([$category->id]);
+                $ulids[$at] = $post->ulid;
+            }
+        });
+
+        $user = $editor->fresh();
+        $open = function (string $ulid) use ($user): int {
+            app()->forgetScopedInstances();
+
+            return countQueries(fn () => $this->actingAs($user)->get("http://a.test/admin/content/{$ulid}/edit")->assertOk()->assertSee('Sửa dự án'));
+        };
+        $open($ulids['middle']);   // warm the member's caches (permissions, preferences) first
+        $middle = $open($ulids['middle']);
+        $deep = $open($ulids['deep']);
+
+        // The section is found from the category's tree path: no query per level above it. 24 when
+        // written: the member, the site and its settings, the post with its category, the live route.
+        expect($deep)->toBe($middle)
+            ->and($middle)->toBeLessThanOrEqual(24);
     });
 });

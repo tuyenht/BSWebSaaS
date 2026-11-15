@@ -18,6 +18,7 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Support\EntryCategoryWriter;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
@@ -49,6 +50,7 @@ use DateTimeInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\Pivot;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -202,9 +204,13 @@ final class Editor extends Component
     #[Locked]
     public bool $mayPublish = false;
 
-    /** The address the saved entry lives at (no scheme), so an unsaved category or slug never moves the live link. */
+    /**
+     * Where visitors reach this language's page (no scheme), read from its route as of the last open,
+     * publish or workflow move; null while this language is not live. A save never moves it: only a
+     * publish syncs the route, so a changed slug or category is not live until then.
+     */
     #[Locked]
-    public ?string $savedAddress = null;
+    public ?string $liveAddress = null;
 
     /** That list's name (the crumb), e.g. "Tin tức" or "Trang". */
     #[Locked]
@@ -259,9 +265,12 @@ final class Editor extends Component
             $this->categoryId = $this->type === 'post' && $contentSection instanceof ContentSection && $contentSection->taxonomy_id !== null
                 ? (int) $contentSection->taxonomy_id
                 : null;
-            $this->address = $this->previewAddress(new Entry(['type' => $this->type]));
+            $draft = new Entry(['type' => $this->type]);
+            // The preview files a post under the pre-filled category, so the publish rule below
+            // reads the member's category limits off that category, as it will once saved.
+            $this->address = $this->previewAddress($draft);
             $this->placeInList($contentSection instanceof ContentSection && $this->type === 'post' ? $contentSection : null);
-            $this->mayPublish = $this->user()->can('entries.publish');
+            $this->mayPublish = $this->user()->can('publish', $draft);
             $this->saved = $this->tracked();
 
             return;
@@ -295,7 +304,7 @@ final class Editor extends Component
         // carries when it was last saved.
         $this->savedAt = self::iso($translation?->updated_at);
         $this->mayPublish = $this->user()->can('publish', $entry);
-        $this->savedAddress = $this->addressNow();
+        $this->liveAddress = $this->routedAddress($entry->id);
         $this->saved = $this->tracked();
 
         if ($this->governingWorkflow() !== null) {
@@ -595,6 +604,7 @@ final class Editor extends Component
 
         try {
             $this->status = app(PublishEntry::class)->handle($entry, $this->locale, $this->user());
+            $this->liveAddress = $this->routedAddress($entry->id);
             $unit = $this->unit();
             $this->dispatch('bs-toast', text: match (true) {
                 $this->status === 'published' && $was !== 'published' => __('entries.ed.toast_published', ['unit' => $unit]),
@@ -682,6 +692,7 @@ final class Editor extends Component
 
         $entry->refresh();
         $this->status = $entry->status;
+        $this->liveAddress = $this->routedAddress($entry->id);
         $this->transitionNote = '';
         $this->assignTo = null;
         $this->loadTrail($entry->id);
@@ -1032,7 +1043,8 @@ final class Editor extends Component
         $this->resetErrorBag();
         $this->saveFailed = false;
         // A language with no saved version yet loads nothing back: start from an empty form.
-        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'blocks', 'lookSplit');
+        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'blocks', 'lookSplit',
+            'transitionNote', 'assignTo', 'showMediaPicker', 'showBlockImagePicker', 'blockImagePickerPath');
         $this->mount($this->ulid, $this->sectionKey, $this->locale);
     }
 
@@ -1084,21 +1096,16 @@ final class Editor extends Component
     }
 
     /**
-     * The post section a category belongs to: the section rooted at the category or one of its
-     * parents, else the site's first post section. Only on open (a category tree is a few levels).
+     * The post section a category belongs to: the one publishing files the post under (the nearest
+     * category on its tree path a section is built on, as SectionResolver reads it; the address
+     * above has already asked, so it is remembered), else the site's first post section.
      */
     private function sectionOf(?Taxonomy $category): ?ContentSection
     {
-        $ids = [];
-        for ($node = $category, $depth = 0; $node instanceof Taxonomy && $depth < 16; $node = $node->parent, $depth++) {
-            $ids[] = $node->id;
-        }
-
         $posts = ContentSection::query()->where('entry_type', 'post')->orderBy('sort_order')->orderBy('id');
-        if ($ids !== []) {
-            $found = (clone $posts)->whereIn('taxonomy_id', $ids)->get()
-                ->sortBy(fn (ContentSection $section): int => (int) array_search((int) $section->taxonomy_id, $ids, true))
-                ->first();
+        $key = $category instanceof Taxonomy ? app(SectionResolver::class)->forCategory($category)['key'] ?? null : null;
+        if ($key !== null) {
+            $found = (clone $posts)->where('key', $key)->first();
             if ($found instanceof ContentSection) {
                 return $found;
             }
@@ -1220,21 +1227,42 @@ final class Editor extends Component
         ];
     }
 
-    /** The live address of published content (no scheme), as last saved; null when it is not live. */
+    /** The live address of published content (no scheme); null when this language is not live. */
     private function liveUrl(): ?string
     {
-        return $this->status === 'published' && $this->ulid !== null ? $this->savedAddress : null;
+        return $this->status === 'published' ? $this->liveAddress : null;
     }
 
-    /** The address the entry has with the slug and category on the form now (called right after an open or a save). */
-    private function addressNow(): string
+    /**
+     * Where visitors reach this language's page (no scheme): the path of its route, which only a
+     * publish writes, with the language prefix PathBuilder puts on it. Null unless the entry is
+     * published and this language's version is published and has a route — a language saved on a
+     * live entry but never published has no address yet.
+     */
+    private function routedAddress(int $entryId): ?string
     {
-        $slug = $this->slug;
-        if ($this->type === 'page' && $slug === $this->address['homeSlug'] && $this->address['home'] !== null) {
-            return $this->address['home'];
+        if ($this->status !== 'published') {
+            return null;
         }
 
-        return $this->address['base'].$slug;
+        $path = SiteRoute::query()
+            ->where('entry_id', $entryId)
+            ->where('locale', $this->locale)
+            ->whereExists(fn (QueryBuilder $translation) => $translation->selectRaw('1')->from('entry_translations')
+                ->whereColumn('entry_translations.entry_id', 'routes.entry_id')
+                ->whereColumn('entry_translations.site_id', 'routes.site_id')
+                ->where('entry_translations.locale', $this->locale)
+                ->where('entry_translations.status', 'published'))
+            ->value('path');
+        if (! is_string($path)) {
+            return null;
+        }
+
+        if ($this->addressHost === '') {
+            $this->addressHost = SeoFields::publicHost();
+        }
+
+        return $this->addressHost.app(PathBuilder::class)->publicUrl($path, $this->locale);
     }
 
     /**
@@ -1597,7 +1625,6 @@ final class Editor extends Component
         $this->saveFailed = false;
         $this->savedAt = self::iso(CarbonImmutable::now());
         $this->mayPublish = $this->user()->can('publish', $entry);
-        $this->savedAddress = $this->addressNow();
         $this->saved = $this->tracked();
 
         if ($wasNew) {

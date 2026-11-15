@@ -38,7 +38,7 @@
 @endphp
 <div class="entry-editor @container" data-entry-editor data-kind="{{ $type }}">
     <div class="mx-auto flex max-w-[80rem] min-w-0 flex-col gap-4">
-        <nav aria-label="{{ __('admin.breadcrumb') }}" class="hidden text-caption text-text-muted min-[600px]:block">
+        <nav aria-label="{{ __('admin.breadcrumb') }}" class="text-caption text-text-muted @max-[35rem]:hidden">
             <div class="flex flex-wrap items-center gap-1.5">
                 <a href="{{ route('admin.dashboard') }}" wire:navigate class="hit-area inline-flex items-center transition-colors hover:text-primary-text" title="{{ __('admin.breadcrumb_home') }}">
                     <x-bs-admin::icon name="ri-home-4" class="size-3.5" /><span class="sr-only">{{ __('admin.breadcrumb_home') }}</span>
