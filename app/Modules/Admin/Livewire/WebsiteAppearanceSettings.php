@@ -216,13 +216,21 @@ final class WebsiteAppearanceSettings extends Component
             // The phone menu's two keys go in the same transaction: either everything is saved or nothing.
             DB::transaction(function () use ($picks): void {
                 app(SetBrandImages::class)->handle($picks);
-                if ($this->hasMenu && ($this->tone !== $this->savedMenu['tone'] || $this->accent !== $this->savedMenu['accent'])) {
-                    app(SetPhoneMenuStyle::class)->handle($this->tone, $this->accent);
+                $tone = $this->tone !== $this->savedMenu['tone'] ? $this->tone : null;
+                $accent = $this->accent !== $this->savedMenu['accent'] ? $this->accent : null;
+                // The header setting gone since the screen opened: save nothing rather than say "saved".
+                if ($this->hasMenu && ($tone !== null || $accent !== null) && ! app(SetPhoneMenuStyle::class)->handle($tone, $accent)) {
+                    throw new SettingsChangeRejected('menu_gone', 'tone');
                 }
             });
         } catch (SettingsChangeRejected $e) {
             if ($e->reason === 'busy') {
                 $this->notify(__('admin.settings.busy'), 'error');
+
+                return;
+            }
+            if ($e->reason === 'menu_gone') {
+                $this->notify(__('admin.look.err_menu_gone'), 'error');
 
                 return;
             }

@@ -25,17 +25,20 @@ use Illuminate\Support\Facades\Gate;
 final class SetPhoneMenuStyle
 {
     /**
+     * Only the keys given (not null) are written, so a save that changed one key never puts back an
+     * older value of the other one saved meanwhile from another tab.
+     *
      * @return bool whether the site has a header setting to write into
      *
      * @throws SettingsChangeRejected
      */
-    public function handle(string $tone, string $accent): bool
+    public function handle(?string $tone, ?string $accent): bool
     {
         Gate::authorize('settings.manage');
-        if (! in_array($tone, StorefrontChrome::DRAWER_TONES, true)) {
+        if ($tone !== null && ! in_array($tone, StorefrontChrome::DRAWER_TONES, true)) {
             throw new SettingsChangeRejected('choice_invalid', 'tone');
         }
-        if (! in_array($accent, StorefrontChrome::DRAWER_ACCENTS, true)) {
+        if ($accent !== null && ! in_array($accent, StorefrontChrome::DRAWER_ACCENTS, true)) {
             throw new SettingsChangeRejected('choice_invalid', 'accent');
         }
 
@@ -45,7 +48,7 @@ final class SetPhoneMenuStyle
                 return false;
             }
             $value = Cast::arr($row->getAttribute('value'));
-            $next = [...$value, 'drawer_tone' => $tone, 'drawer_accent' => $accent];
+            $next = [...$value, ...array_filter(['drawer_tone' => $tone, 'drawer_accent' => $accent], static fn (?string $v): bool => $v !== null)];
             if ($next !== $value) {
                 $row->setAttribute('value', $next);
                 $row->save();

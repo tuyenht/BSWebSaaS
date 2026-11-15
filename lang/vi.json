@@ -3827,6 +3827,7 @@
     "admin.look.hint.tone": "Trình đơn mở ra khi khách bấm nút ☰ trên điện thoại. “Theo đầu trang”: đầu trang tối thì trình đơn tối, đầu trang sáng thì trình đơn sáng.",
     "admin.look.hint.accent": "Chỉ đổi màu biểu tượng, gạch chân ở thẻ đang chọn và vạch đánh dấu trang khách đang xem. Nền và chữ giữ nguyên nên luôn dễ đọc; màu quá nhạt tự đậm lên cho rõ. Website có Màu phụ (đặt ở Trình dựng trang › Bộ màu) thì có thêm lựa chọn “Màu phụ”.",
     "admin.look.err_choice": "Lựa chọn này không có trong danh sách. Hãy chọn lại một trong các ô có sẵn.",
+    "admin.look.err_menu_gone": "Website không còn menu điện thoại nên kiểu menu chưa được lưu; không có gì thay đổi. Hãy tải lại trang rồi thử lại.",
     "admin.seoset.err_robots_long": "Tối đa :max ký tự — hãy rút bớt nội dung.",
     "admin.seoset.robots_hidden": "Website đang ẩn với Google: robots.txt chặn mọi trang, nội dung tùy chỉnh chỉ dùng khi bật lại.",
     "admin.seoset.cf_title": "Ẩn website khỏi Google?",

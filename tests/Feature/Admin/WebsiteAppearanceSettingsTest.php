@@ -452,6 +452,36 @@ it('saves the images and the phone menu in one step: a refused picture writes ne
     expect(lookHeaderRow())->toBe(['drawer_tone' => 'light']);
 });
 
+it('writes only the phone menu key that changed, so a tone saved meanwhile from another tab stays', function (): void {
+    lookHeader(['drawer_tone' => 'light', 'sticky' => true]);
+    $admin = lookAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $page = Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)->assertSet('tone', 'light');
+        // Another tab saves the tone while this one is open.
+        SiteSetting::query()->where('group_name', 'storefront')->where('key', 'header')->update(['value' => ['drawer_tone' => 'dark', 'sticky' => true]]);
+        $page->set('accent', 'brand')->call('save')->assertHasNoErrors()->assertSet('toast', 'Đã lưu giao diện website');
+    });
+
+    expect(lookHeaderRow())->toEqualCanonicalizing(['drawer_tone' => 'dark', 'sticky' => true, 'drawer_accent' => 'brand']);
+});
+
+it('says plainly that nothing was saved when the header setting went away while the page was open', function (): void {
+    lookHeader(['drawer_tone' => 'light']);
+    $admin = lookAdmin();
+    $logo = lookMedia(1, 'logo-moi');
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $logo): void {
+        $page = Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)->assertSet('hasMenu', true);
+        SiteSetting::query()->where('group_name', 'storefront')->where('key', 'header')->delete();
+        $page->set('images.logo', $logo->storage_key)->set('tone', 'dark')->call('save')
+            ->assertSet('toastTone', 'error')->assertSet('toast', 'Website không còn menu điện thoại nên kiểu menu chưa được lưu; không có gì thay đổi. Hãy tải lại trang rồi thử lại.');
+    });
+
+    expect(lookHeaderRow())->toBeNull()
+        ->and(lookProfile()['logo_media_id'] ?? null)->toBeNull();
+});
+
 it('refuses a tone or an accent outside the lists with a plain message and writes nothing', function (string $field, string $value): void {
     lookHeader(['drawer_tone' => 'dark', 'drawer_accent' => 'brand']);
     $admin = lookAdmin();
