@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Support\Dashboard;
 
 use App\Modules\Admin\Support\Entries\ReviewWaiting;
+use App\Modules\Admin\Support\Entries\SectionBranch;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\SiteRoute;
@@ -217,10 +218,10 @@ final class DashboardReader
      * those a reviewer sent back with a reason.
      *
      * Each tile opens the posts list of the section postsSection() names, filtered to the member
-     * and the status, and that list holds the posts whose primary category IS the section's
-     * category (EntryListQuery::scoped(); a section built on no category lists every post). So
-     * the tiles count exactly that set: a post filed in another section, or under a sub-category,
-     * is in neither the number nor the list. The draft tile leaves out the returned posts it
+     * and the status, and that list holds the posts whose primary category is the section's
+     * category or one below it (EntryListQuery::scoped(); a section built on no category lists
+     * every post). So the tiles count exactly that set: a post filed in another section is in
+     * neither the number nor the list. The draft tile leaves out the returned posts it
      * counted (the board lists those on their own tile); only returned posts of that same set,
      * among those read, are taken off.
      *
@@ -405,7 +406,8 @@ final class DashboardReader
 
     /**
      * Posts of the member that the posts list of the linked section shows: primary category
-     * $taxonomyId (the list's own test, EntryListQuery::scoped()), or every post when null.
+     * $taxonomyId or one below it (the list's own test, EntryListQuery::scoped()), or every post
+     * when null.
      *
      * @param  Builder<Entry>  $query
      * @return Builder<Entry>
@@ -417,11 +419,13 @@ final class DashboardReader
         }
         $site = app(CurrentSite::class)->id();
 
+        [$branch, $values] = SectionBranch::ids($site, $taxonomyId);
+
         return $query->whereExists(fn (QueryBuilder $primary) => $primary->selectRaw('1')->from('entry_taxonomies')
             ->where('entry_taxonomies.site_id', $site)
             ->whereColumn('entry_taxonomies.entry_id', 'entries.id')
-            ->where('entry_taxonomies.taxonomy_id', $taxonomyId)
-            ->where('entry_taxonomies.position', 0));
+            ->where('entry_taxonomies.position', 0)
+            ->whereRaw("entry_taxonomies.taxonomy_id in ({$branch})", $values));
     }
 
     /**

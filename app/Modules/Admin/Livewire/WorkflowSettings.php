@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Support\Entries\SectionBranch;
 use App\Modules\Admin\Support\WorkflowChangedMeanwhile;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryDraft;
@@ -16,7 +17,6 @@ use App\Modules\Workflow\Actions\InstantiateWorkflow;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Registry\WorkflowTemplateRegistry;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\Query\JoinClause;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
@@ -446,8 +446,9 @@ final class WorkflowSettings extends Component
 
     /**
      * Total, writer and pending tallies per section in ONE grouped query (§6 flat, not per-row):
-     * a post belongs to the section whose taxonomy is its primary category (pivot position 0),
-     * mirroring the list screen's scope so both surfaces always report the same numbers.
+     * a post belongs to the section whose category, or one below it (branchSql()), is its primary
+     * category (pivot position 0), mirroring the list screen's scope so both surfaces always
+     * report the same numbers.
      *
      * @param  Collection<int, ContentSection>  $sections
      * @return array<int|string, \stdClass> rows of {taxonomy_id, total, writers, pending} keyed by taxonomy_id
@@ -460,27 +461,32 @@ final class WorkflowSettings extends Component
             return [];
         }
 
-        // toBase() keeps the Eloquent global scopes (site + soft-delete) but returns plain
-        // rows — this is an aggregate, not a hydration.
-        return Entry::query()
-            ->join('entry_taxonomies', function (JoinClause $join): void {
-                $join->on('entry_taxonomies.entry_id', '=', 'entries.id')
-                    ->where('entry_taxonomies.position', 0);
-            })
-            ->whereIn('entry_taxonomies.taxonomy_id', $taxonomyIds)
-            ->selectRaw("entry_taxonomies.taxonomy_id, count(*) as total, count(distinct entries.author_id) as writers, count(*) filter (where entries.status = 'pending') as pending")
-            ->groupBy('entry_taxonomies.taxonomy_id')
-            ->toBase()
-            ->get()
-            ->keyBy('taxonomy_id')
-            ->all();
+        $site = app(CurrentSite::class)->id();
+        [$branch, $bindings] = $this->branchSql(array_values(array_map(Cast::int(...), $taxonomyIds)));
+
+        $rows = DB::select($branch.<<<'SQL'
+            SELECT branch.root_id AS taxonomy_id, count(*) AS total, count(distinct e.author_id) AS writers,
+                   count(*) filter (where e.status = 'pending') AS pending
+            FROM branch
+            JOIN entry_taxonomies AS et ON et.site_id = ? AND et.taxonomy_id = branch.id AND et.position = 0
+            JOIN entries AS e ON e.site_id = ? AND e.id = et.entry_id AND e.deleted_at IS NULL
+            WHERE NOT branch.looped
+            GROUP BY branch.root_id
+            SQL, [...$bindings, $site, $site]);
+
+        $counts = [];
+        foreach ($rows as $row) {
+            /** @var \stdClass $row */
+            $counts[Cast::int($row->taxonomy_id ?? null)] = $row;
+        }
+
+        return $counts;
     }
 
     /**
      * How many posts each section's change would move, keyed by the section's taxonomy_id, in ONE
      * query for every section: the posts restartInFlightEntries() releases — those holding a stage
      * of their own, or whose pending change does — so a confirm never names fewer than it moves.
-     * The list's own counts (sectionCounts) stay on the section's category only.
      *
      * @param  Collection<int, ContentSection>  $sections
      * @return array<int, int>
@@ -561,22 +567,6 @@ final class WorkflowSettings extends Component
      */
     private function branchSql(array $rootIds): array
     {
-        $site = app(CurrentSite::class)->id();
-        /** @var literal-string $marks placeholders only; the ids go in the bindings */
-        $marks = implode(', ', array_fill(0, count($rootIds), '?'));
-
-        $sql = <<<SQL
-            WITH RECURSIVE branch (root_id, id) AS (
-                SELECT t.id, t.id FROM taxonomies AS t WHERE t.site_id = ? AND t.id IN ({$marks})
-                UNION ALL
-                SELECT branch.root_id, child.id
-                FROM taxonomies AS child JOIN branch ON child.parent_id = branch.id
-                WHERE child.site_id = ?
-                  AND NOT EXISTS (SELECT 1 FROM content_sections AS cs WHERE cs.site_id = ? AND cs.taxonomy_id = child.id)
-            ) CYCLE id SET looped USING trail
-
-            SQL;
-
-        return [$sql, [$site, ...$rootIds, $site, $site]];
+        return SectionBranch::with(app(CurrentSite::class)->id(), $rootIds);
     }
 }

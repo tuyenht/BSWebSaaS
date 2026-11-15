@@ -1297,7 +1297,8 @@ final class Index extends Component
             'selling' => $selling,
             'locales' => $locales,
             'paths' => app(PathBuilder::class),
-            'publicHost' => SeoFields::publicHost(),
+            // the website's address with the scheme this screen was opened on: a link without one opens under /admin
+            'publicOrigin' => request()->getScheme().'://'.SeoFields::publicHost(),
             'tree' => $read['tree'] ?? null,
             'sorts' => $this->sortKeys(),
             'urls' => app(MediaUrlResolver::class),

@@ -342,7 +342,7 @@
                         $imageCount = $num((int) $product->getAttribute('images_n'));
                         // the address PathBuilder composes for this product (the site's permalink preset), in the default language
                         $path = $t?->slug ? $paths->publicUrl($paths->forProduct($primary, $t->slug, $locale), $locale) : null;
-                        $fullUrl = $path === null ? null : $publicHost.$path;
+                        $fullUrl = $path === null ? null : $publicOrigin.$path;
                         // the quick edits: name and address of the default language, a live row of a member who manages products
                         $quickEdit = $canManage && ! $trashed && $t !== null;
                         $slugLeaf = $t?->slug;
