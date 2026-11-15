@@ -563,7 +563,7 @@ function mpsRolePermissions(Role $role): array
 it('never lets a member limited on an axis make a custom role work on that axis', function (): void {
     $news = mpsCategory(1, 'Tin tức');
     $moulds = mpsCategory(1, 'Khuôn', null, 'product_cat');
-    $perms = ['roles.manage', 'users.manage', 'entries.view', 'entries.create', 'catalog.view', 'catalog.manage', 'media.view'];
+    $perms = ['roles.manage', 'users.manage', 'entries.view', 'entries.create', 'entries.edit.any', 'catalog.view', 'catalog.manage', 'taxonomies.manage', 'media.view'];
     $postsLead = mpsMember(1, 'posts-lead', 60, $perms);
     mpsLimit(1, $postsLead, $news);
     $shopLead = mpsMember(1, 'shop-lead', 60, $perms);
@@ -580,6 +580,13 @@ it('never lets a member limited on an axis make a custom role work on that axis'
     // each is judged on their own axis: the other axis is not theirs to keep
     expect(mpsUpdateRole($shopLead, $helper, ['media.view', 'entries.create']))->toBeNull()
         ->and(mpsRolePermissions($helper))->toBe(['entries.create', 'entries.view', 'media.view']);
+    // a role that already works on the axis gets no more there either: its holders would do more
+    // in every category (writing posts, then also editing every one)
+    expect(mpsUpdateRole($postsLead, $helper, ['media.view', 'entries.create', 'entries.edit.any']))->toBe('outside_category_scope')
+        ->and(mpsRolePermissions($helper))->toBe(['entries.create', 'entries.view', 'media.view']);
+    $curator = mpsCustomRole('curator', 20, ['taxonomies.manage']);
+    expect(mpsUpdateRole($shopLead, $curator, ['taxonomies.manage', 'catalog.manage']))->toBe('outside_category_scope')
+        ->and(mpsRolePermissions($curator))->toBe(['taxonomies.manage']);
 });
 
 it('lets a member who is not limited add work on any axis, and a limited one remove it or keep it', function (): void {
@@ -592,7 +599,8 @@ it('lets a member who is not limited add work on any axis, and a limited one rem
 
     expect(mpsUpdateRole($free, $helper, ['media.view', 'entries.create', 'catalog.manage']))->toBeNull()
         ->and(mpsRolePermissions($helper))->toBe(['catalog.manage', 'catalog.view', 'entries.create', 'entries.view', 'media.view']);
-    // the role works on posts already: what it adds there widens nobody it did not already
+    // what works on no axis the member is limited on stays theirs to add (media; products for a
+    // member limited only on posts), with the work the role already has kept as it is
     expect(mpsUpdateRole($limited, $helper, ['media.view', 'media.upload', 'entries.create', 'catalog.manage']))->toBeNull()
         ->and(mpsRolePermissions($helper))->toBe(['catalog.manage', 'catalog.view', 'entries.create', 'entries.view', 'media.upload', 'media.view']);
     // removing is always allowed

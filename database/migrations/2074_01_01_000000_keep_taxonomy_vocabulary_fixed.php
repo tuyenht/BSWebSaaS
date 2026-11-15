@@ -73,6 +73,10 @@ return new class extends Migration
             SQL);
     }
 
+    /**
+     * Drops the trigger only. Once product limits exist (this release writes them), up() refuses to
+     * run again: its check assumes every limit row still names a post category.
+     */
     public function down(): void
     {
         if (DB::getDriverName() !== 'pgsql') {

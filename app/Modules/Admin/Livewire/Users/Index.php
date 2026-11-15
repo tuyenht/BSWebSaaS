@@ -15,6 +15,7 @@ use App\Modules\Cms\Actions\InviteMemberWithCategories;
 use App\Modules\Cms\Actions\SetMemberCategoryScopes;
 use App\Modules\Cms\Exceptions\CategoryScopeRejectedException;
 use App\Modules\Cms\Support\CategoryScopes;
+use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Identity\Support\UserPreferences;
@@ -805,6 +806,12 @@ final class Index extends Component
         $actor = $this->actor();
         try {
             DB::transaction(function () use ($actor, $target, $roles, $changes): void {
+                if ($changes !== []) {
+                    // the category tree before the member's lock (giveRoles), in the order the
+                    // category actions and SetMemberCategoryScopes take them: no deadlock with a
+                    // category being deleted
+                    TaxonomyTree::lock(app(CurrentSite::class)->id());
+                }
                 $this->giveRoles($target, $roles);
                 foreach ($changes as $axis => $ids) {
                     app(SetMemberCategoryScopes::class)->handle($actor, $target, $ids, $axis);
