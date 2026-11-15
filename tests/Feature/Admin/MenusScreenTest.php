@@ -14,6 +14,7 @@ use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Navigation\MenuIconGuess;
 use App\Modules\Cms\Navigation\MenuItemOptions;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
@@ -559,14 +560,16 @@ it('gives the screen the icons, the source edit screens and the site address it 
     $data = msIn(1, function (): array {
         $page = Livewire::actingAs($this->editor->fresh())->test(MenusIndex::class);
 
-        return array_combine($keys = ['icons', 'edit', 'siteUrl', 'main', 'siteName'], array_map(fn (string $key): mixed => $page->viewData($key), $keys));
+        return array_combine($keys = ['icons', 'kinds', 'edit', 'siteUrl', 'main', 'siteName'], array_map(fn (string $key): mixed => $page->viewData($key), $keys));
     });
 
     $names = array_merge(...array_values(MenusIndex::ICON_GROUPS));
     expect(array_keys(StorefrontIcons::GLYPHS))->toContain(...$names)
         ->and(array_column($data['icons'], 'group'))->toBe(array_map(fn (string $g): string => __('menus.icon_group_'.$g), array_keys(MenusIndex::ICON_GROUPS)))
         ->and(array_column($data['icons'][0]['icons'], 'name'))->toBe(MenusIndex::ICON_GROUPS['common'])
-        ->and($data['icons'][0]['icons'][0])->toBe(['name' => 'home', 'label' => __('menus.icon_home'), 'words' => __('menus.icon_kw_home')])
+        ->and($data['icons'][0]['icons'][0])->toBe(['name' => 'home', 'label' => __('menus.icon_home'), 'words' => __('menus.icon_kw_home'), 'kw' => MenuIconGuess::keywordTexts('home')])
+        ->and($data['icons'][0]['icons'][0]['kw'])->toContain('trang chủ nhà home')
+        ->and($data['kinds'])->toBe(MenuIconGuess::KIND)
         ->and($data['edit']['entry'])->toEndWith('/admin/content/__REF__/edit')
         ->and($data['edit']['product'])->toEndWith('/admin/catalog/__REF__/edit')
         ->and($data['siteUrl'])->toBe('/')
@@ -593,4 +596,27 @@ it('wires every call the screen script makes to a public method of the component
     foreach ($calls as $method) {
         expect((new ReflectionMethod(MenusIndex::class, $method))->isPublic())->toBeTrue();
     }
+});
+
+it('saves "no icon" for an item through the screen and gives it back as it was chosen', function (): void {
+    $menu = msIn(1, fn () => app(SaveMenu::class)->handle(null, 'Menu chính'));
+    $loaded = msCall($this->editor, 'load', $menu->ulid);
+    $saved = msCall($this->editor, 'saveDraft', $menu->ulid, [
+        'version' => $loaded['menu']['version'],
+        'tree' => [['key' => 'new:1', 'parent' => null]],
+        'creates' => [['key' => 'new:1', 'link' => ['type' => 'special', 'key' => 'home'], 'labels' => ['vi' => 'Trang chủ'], 'options' => ['icon' => 'none']]],
+    ]);
+    expect($saved['ok'])->toBeTrue();
+
+    $key = $saved['keys']['new:1'];
+    $row = fn (array $screen): array => collect($screen['menu']['items'])->firstWhere('key', $key);
+    $reloaded = msCall($this->editor, 'load', $menu->ulid);
+    expect($row($reloaded)['options']['icon'])->toBe('none');
+
+    $unset = msCall($this->editor, 'saveDraft', $menu->ulid, ['version' => $reloaded['menu']['version'], 'tree' => [['key' => $key, 'parent' => null]], 'updates' => [['key' => $key, 'options' => ['icon' => null]]]]);
+    expect($unset['ok'])->toBeTrue()
+        ->and($row(msCall($this->editor, 'load', $menu->ulid))['options']['icon'])->toBeNull();
+
+    $bad = msCall($this->editor, 'saveDraft', $menu->ulid, ['version' => $unset['version'], 'tree' => [['key' => $key, 'parent' => null]], 'updates' => [['key' => $key, 'options' => ['icon' => 'bogus']]]]);
+    expect($bad)->toMatchArray(['ok' => false, 'reason' => 'option_invalid']);
 });

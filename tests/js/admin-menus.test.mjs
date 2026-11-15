@@ -1,9 +1,9 @@
 // What the Trình đơn screen sends when "Lưu" is pressed, and the rows it hands the shared tree
 // (resources/js/admin-menus.js), without a browser: `node --test tests/js/admin-menus.test.mjs`.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { buildDraft, goneKeysOf, goneSpanOf, iconGroupsOf, suggestIconOf, treeRowsOf } from '../../resources/js/admin-menus.js';
+import { buildDraft, goneKeysOf, goneSpanOf, iconGroupsOf, autoIconOf, suggestIconOf, treeRowsOf } from '../../resources/js/admin-menus.js';
 
 const opts = (more = {}) => ({ hidden: false, new_tab: false, icon: null, description: {}, cta: false, mega: null, badge: null, device: 'all', ...more });
 const row = (key, parent, labels, more = {}) => ({ key, parent, link: { type: 'url', url: '/' + key }, labels, options: opts(more) });
@@ -174,4 +174,44 @@ test('the suggestion reads the real Vietnamese search words as whole words, not 
     for (const [label, icon] of Object.entries(expected)) {
         assert.equal(suggestIconOf(real, label), icon, label);
     }
+});
+
+// The real keyword lists of every language, one text per language, in picker order: what the screen is sent.
+const pickerGroups = () => {
+    const root = new URL('../../', import.meta.url);
+    // Every language file, as the PHP guesser reads them, so a new language is covered here too.
+    const codes = readdirSync(new URL('lang/', root)).filter((f) => f.endsWith('.json')).map((f) => f.slice(0, -5)).sort();
+    const langs = codes.map((l) => JSON.parse(readFileSync(new URL(`lang/${l}.json`, root), 'utf8')));
+    const vi = langs[codes.indexOf('vi')];
+    const src = readFileSync(new URL('app/Modules/Theme/Chrome/StorefrontIcons.php', root), 'utf8');
+    const block = src.slice(src.indexOf('MENU_GROUPS = ['));
+    const groups = [...block.slice(0, block.indexOf('];')).matchAll(/'[a-z]+' => \[([^\]]+)\]/g)];
+    return groups.map((m) => ({
+        group: 'g',
+        icons: [...m[1].matchAll(/'([^']+)'/g)].map((n) => ({
+            name: n[1], label: n[1], words: vi['menus.icon_kw_' + n[1]] || '',
+            kw: langs.map((l) => l['menus.icon_kw_' + n[1]]).filter(Boolean),
+        })),
+    }));
+};
+const KINDS = { home: 'home', search: 'search', cart: 'cart', account: 'user', login: 'user', call: 'phone', zalo: 'zalo', mail: 'email', map: 'map', sitemap: 'sitemap' };
+
+test('the icon the phone menu picks by itself follows the link kind first, then the words of the name', () => {
+    assert.equal(autoIconOf(worded, KINDS, { type: 'special', key: 'cart' }, 'Nhà máy'), 'cart');
+    assert.equal(autoIconOf(worded, KINDS, { type: 'special', key: 'account' }, 'Nhà máy'), 'user');
+    assert.equal(autoIconOf(worded, KINDS, { type: 'special', key: 'group' }, 'x'), '');
+    assert.equal(autoIconOf(worded, KINDS, { type: 'url', url: 'https://x.test' }, 'In ấn'), '');
+    assert.equal(autoIconOf(worded, KINDS, null, ''), '');
+});
+
+test('the automatic icon is strict and answers as the phone does (same cases as MenuIconGuessTest)', () => {
+    const cases = JSON.parse(readFileSync(new URL('../fixtures/menu-auto-icon-cases.json', import.meta.url), 'utf8'));
+    const groups = pickerGroups();
+    for (const label of cases.none) {
+        assert.equal(autoIconOf(groups, KINDS, { type: 'url' }, label), '', label);
+    }
+    for (const [label, icon] of Object.entries(cases.icon)) {
+        assert.equal(autoIconOf(groups, KINDS, { type: 'url' }, label), icon, label);
+    }
+    assert.equal(autoIconOf(groups, KINDS, { type: 'special', key: 'map' }, 'Chi nhánh'), 'map');
 });

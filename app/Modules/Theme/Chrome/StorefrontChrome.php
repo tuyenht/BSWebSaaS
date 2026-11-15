@@ -606,7 +606,7 @@ final class StorefrontChrome
     public static function menuLabel(array $item, bool $withDesc = false, bool $drawer = false): HtmlString
     {
         $label = e(is_string($item['label'] ?? null) ? $item['label'] : '');
-        $icon = self::menuIcon($item);
+        $icon = self::menuIcon($item, $drawer);
         $badge = is_string($item['badge'] ?? null) ? $item['badge'] : null;
         $desc = $withDesc && is_string($item['description'] ?? null) && $item['description'] !== '' ? $item['description'] : null;
         if (! $drawer && $icon === null && $badge === null && $desc === null) {
@@ -628,25 +628,32 @@ final class StorefrontChrome
     }
 
     /**
-     * A menu item's own icon: a name of the website's set, else null.
+     * A menu item's own icon: a name of the website's set, else null. In the phone menu ($drawer) a row
+     * with none of its own gets the automatic one the resolver picked ('auto_icon'); the desktop menu never does.
      *
      * @param  array<mixed>  $item  a resolved menu node
      */
-    public static function menuIcon(array $item): ?string
+    public static function menuIcon(array $item, bool $drawer = false): ?string
     {
-        return is_string($item['icon'] ?? null) && StorefrontIcons::has($item['icon']) ? $item['icon'] : null;
+        foreach ($drawer ? ['icon', 'auto_icon'] : ['icon'] as $key) {
+            if (is_string($item[$key] ?? null) && StorefrontIcons::has($item[$key])) {
+                return $item[$key];
+            }
+        }
+
+        return null;
     }
 
     /**
      * Whether the phone menu draws an icon column: some top-level row (not a call-to-action button) has an
-     * icon. Without one every label starts on the 24px column.
+     * icon, its own or the automatic one. Without one every label starts on the 24px column.
      *
      * @param  array<mixed>  $menu  a resolved menu tree
      */
     public static function drawerHasIcons(array $menu): bool
     {
         foreach ($menu as $item) {
-            if (is_array($item) && empty($item['cta']) && self::menuIcon($item) !== null) {
+            if (is_array($item) && empty($item['cta']) && self::menuIcon($item, true) !== null) {
                 return true;
             }
         }

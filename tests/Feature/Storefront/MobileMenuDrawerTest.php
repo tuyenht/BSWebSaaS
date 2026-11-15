@@ -285,7 +285,7 @@ it('keeps language, text size and the call in the drawer’s footer in that orde
     $drawer = drawerOf($html);
     $at = fn (string $needle): int => (int) strpos($drawer, $needle);
 
-    expect($at('class="sf-nav sf-nav--mob"'))->toBeLessThan($at('sf-drawer__foot'))
+    expect($at('class="sf-nav sf-nav--mob'))->toBeLessThan($at('sf-drawer__foot'))
         ->and($at('sf-drawer__foot'))->toBeLessThan($at('sf-drawer__lang'))
         ->and($at('sf-drawer__lang'))->toBeLessThan($at('sf-drawer__fs'))
         ->and($at('sf-drawer__fs'))->toBeLessThan($at('sf-drawer__call'))
@@ -345,7 +345,7 @@ it('opens the way to the current page in the phone menu on render, and leaves th
 
     expect($html)
         // the drawer: the whole row is one button
-        ->toMatch('#<li class="sf-nav__item sf-nav__item--parent is-open" data-disclosure>\s*<button type="button" class="sf-nav__link sf-nav__toggle is-trail" aria-current="true" aria-expanded="true" aria-controls="msm-1"><span class="sf-nav__t">Tin tức</span><span class="sf-nav__caret" aria-hidden="true">#')
+        ->toMatch('#<li class="sf-nav__item sf-nav__item--parent is-open" data-disclosure>\s*<button type="button" class="sf-nav__link sf-nav__toggle is-trail" aria-current="true" aria-expanded="true" aria-controls="msm-1">(?:<svg class="sf-icon sf-nav__ic"[^>]*>(?:(?!</svg>).)*</svg>)?<span class="sf-nav__t">Tin tức</span><span class="sf-nav__caret" aria-hidden="true">#s')
         ->toMatch('#<li class="sf-nav__item sf-nav__item--parent" data-disclosure>\s*<a class="sf-nav__link is-trail" href="[^"]+"\s*aria-current="true"\s*>Tin tức</a><button type="button" class="sf-nav__chev is-trail" aria-expanded="false" aria-controls="dsm-1"#')
         ->and(substr_count($html, ' is-open'))->toBe(1);
 
@@ -360,7 +360,7 @@ it('marks the current page by aria-current alone, with no check mark in either m
     // the mark is drawn by CSS from aria-current, so each menu names exactly its current rows and nothing else
     foreach (['/gioi-thieu', '/'] as $path) {
         $page = $this->get('http://mau.platform.test'.$path)->assertOk()->getContent();
-        preg_match('#<nav class="sf-nav sf-nav--mob".*?</nav>#s', $page, $mob);
+        preg_match('#<nav class="sf-nav sf-nav--mob[^"]*".*?</nav>#s', $page, $mob);
         preg_match('#<nav class="sf-nav sf-nav--desk".*?</nav>#s', $page, $desk);
         expect($page)->not->toContain('sf-nav__check')
             ->and(substr_count($mob[0] ?? '', 'aria-current="page"'))->toBe(1)

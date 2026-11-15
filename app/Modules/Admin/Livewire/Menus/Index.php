@@ -20,12 +20,14 @@ use App\Modules\Cms\Exceptions\MenuChangeRejectedException;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
+use App\Modules\Cms\Navigation\MenuIconGuess;
 use App\Modules\Cms\Navigation\MenuLimits;
 use App\Modules\Cms\Navigation\MenuVersion;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
+use App\Modules\Theme\Chrome\StorefrontIcons;
 use App\Modules\Theme\Theming\MenuAreas;
 use Closure;
 use Illuminate\Contracts\View\View;
@@ -48,19 +50,8 @@ use Livewire\Component;
 #[Layout('admin::layouts.app')]
 final class Index extends Component
 {
-    /**
-     * The website icons that suit a menu item, in the groups and order the picker shows them
-     * (group names: menus.icon_group_*). Each name is one of StorefrontIcons; a name may sit in two groups.
-     */
-    public const array ICON_GROUPS = [
-        'common' => ['home', 'info', 'building', 'factory', 'tools', 'hammer', 'box', 'price-tag', 'newspaper', 'phone', 'email', 'address'],
-        'shop' => ['cart', 'shopping-bag', 'store', 'coupon', 'percent', 'wallet', 'card', 'refund', 'truck', 'warehouse', 'barcode', 'compare'],
-        'industry' => ['settings', 'cpu', 'ruler', 'compass', 'flask', 'quality', 'recycle', 'flame', 'scissors', 'focus', 'layers', 'droplet'],
-        'content' => ['project', 'document', 'image', 'gallery', 'video', 'play', 'download', 'book', 'help', 'lightbulb', 'presentation', 'newspaper'],
-        'company' => ['support', 'team', 'user', 'vip', 'briefcase', 'award', 'medal', 'handshake', 'community', 'heart', 'star', 'testimonial', 'quote', 'license'],
-        'contact' => ['phone', 'whatsapp', 'messenger', 'facebook', 'youtube', 'instagram', 'linkedin', 'tiktok', 'send', 'calendar-check', 'clock', 'globe', 'zalo', 'x', 'map'],
-        'other' => ['search', 'link', 'zap', 'gift', 'privacy', 'legal', 'sitemap', 'route', 'leaf', 'hours-24', 'verified', 'more'],
-    ];
+    /** The groups of the icon picker: see StorefrontIcons::MENU_GROUPS. */
+    public const array ICON_GROUPS = StorefrontIcons::MENU_GROUPS;
 
     public function boot(): void
     {
@@ -362,9 +353,10 @@ final class Index extends Component
                 'product' => route('admin.catalog.edit', ['ulid' => '__REF__']),
             ],
             'siteName' => $this->siteName($main),
+            'kinds' => MenuIconGuess::KIND,
             'icons' => array_map(fn (string $group): array => [
                 'group' => __('menus.icon_group_'.$group),
-                'icons' => array_map(fn (string $name): array => ['name' => $name, 'label' => __('menus.icon_'.$name), 'words' => __('menus.icon_kw_'.$name)], self::ICON_GROUPS[$group]),
+                'icons' => array_map(fn (string $name): array => ['name' => $name, 'label' => __('menus.icon_'.$name), 'words' => __('menus.icon_kw_'.$name), 'kw' => MenuIconGuess::keywordTexts($name)], self::ICON_GROUPS[$group]),
             ], array_keys(self::ICON_GROUPS)),
         ]);
     }

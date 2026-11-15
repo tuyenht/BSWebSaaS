@@ -34,8 +34,10 @@
         'state' => ['unpublished' => $u('state_unpublished'), 'trashed' => $u('state_trashed'), 'gone' => $u('state_gone')],
         'badges' => ['new' => $u('badge_new'), 'hot' => $u('badge_hot'), 'sale' => $u('badge_sale'), 'soon' => $u('badge_soon')],
         'no' => ['gone' => __('admin.tree.gone')],
+        'iconAuto' => $u('icon_auto'), 'iconPick' => $u('icon_pick'), 'iconOff' => $u('icon_off'), 'iconOffTip' => $u('icon_off_tip'),
+        'iconChange' => $u('icon_change'), 'iconChangeTip' => $u('icon_change_tip'), 'iconAutoTip' => $u('icon_auto_tip'),
     ];
-    $config = ['initial' => $initial, 'main' => $main, 'icons' => $icons, 'texts' => $texts, 'edit' => $edit];
+    $config = ['initial' => $initial, 'main' => $main, 'icons' => $icons, 'kinds' => $kinds, 'texts' => $texts, 'edit' => $edit];
 
     // The few looks this screen shares between its own parts (sizes and colours are the shared tokens).
     $head = 'hit-area -mx-4 -my-3 flex min-w-0 flex-1 items-center gap-2 px-4 py-3 text-left';
@@ -456,8 +458,8 @@
                                 <x-bs-admin::tree.row row="r" drag-off="filtering || sel === r.k" x-bind:class="sel === r.k && '!bg-primary-soft'">
                                     <span class="flex min-w-0 items-center gap-2">
                                     <span class="shrink-0 self-center text-text-muted">
-                                        <template x-if="r.it.options.icon"><svg class="size-4" aria-hidden="true"><use :href="'#mn-ic-' + r.it.options.icon"></use></svg></template>
-                                        <template x-if="!r.it.options.icon"><span>
+                                        <template x-if="ico(r.it)"><svg class="size-4" aria-hidden="true"><use :href="'#mn-ic-' + ico(r.it)"></use></svg></template>
+                                        <template x-if="!ico(r.it)"><span>
                                             <span x-show="kind(r.it) === 'url'"><x-bs-admin::icon name="ri-links" class="size-4" /></span>
                                             <span x-show="kind(r.it) === 'special'"><x-bs-admin::icon name="ri-star" class="size-4" /></span>
                                             <span x-show="kind(r.it) === 'category'"><x-bs-admin::icon name="ri-price-tag-3" class="size-4" /></span>
@@ -544,11 +546,20 @@
                                                 <div class="flex min-w-0 flex-col gap-1.5">
                                                     <span class="flex items-center gap-1.5 text-caption font-semibold text-text">{{ $u('f_icon') }}<span class="font-normal text-text-muted">{{ $u('optional') }}</span></span>
                                                     <span class="relative flex flex-wrap items-center gap-2" x-on:click.outside="iconOpen = false">
-                                                        <x-bs-admin::button variant="outline" color="secondary" x-on:click.stop="iconOpen = !iconOpen" x-bind:aria-expanded="iconOpen">
-                                                            <template x-if="r.it.options.icon"><svg class="size-5" aria-hidden="true"><use :href="'#mn-ic-' + r.it.options.icon"></use></svg></template>
-                                                            <span x-text="r.it.options.icon ? {{ $j($u('icon_change')) }} : {{ $j($u('icon_pick')) }}"></span><x-bs-admin::icon name="ri-arrow-down-s" class="size-4" />
+                                                        <x-bs-admin::button variant="outline" color="secondary" x-on:click.stop="iconOpen = !iconOpen" x-bind:aria-expanded="iconOpen" x-bind:title="iconBtn(r.it).title">
+                                                            <template x-if="iconBtn(r.it).off"><span class="text-text-muted"><x-bs-admin::icon name="ri-forbid" class="size-5" /></span></template>
+                                                            <template x-if="iconBtn(r.it).own"><svg class="size-5" aria-hidden="true"><use :href="'#mn-ic-' + iconBtn(r.it).own"></use></svg></template>
+                                                            <template x-if="iconBtn(r.it).auto"><svg class="size-5 text-text-muted" aria-hidden="true"><use :href="'#mn-ic-' + iconBtn(r.it).auto"></use></svg></template>
+                                                            <template x-if="!iconBtn(r.it).off && !iconBtn(r.it).own && !iconBtn(r.it).auto"><span class="text-text-muted">
+                                                                <span x-show="kind(r.it) === 'url'"><x-bs-admin::icon name="ri-links" class="size-5" /></span>
+                                                                <span x-show="kind(r.it) === 'special'"><x-bs-admin::icon name="ri-star" class="size-5" /></span>
+                                                                <span x-show="kind(r.it) === 'category'"><x-bs-admin::icon name="ri-price-tag-3" class="size-5" /></span>
+                                                                <span x-show="kind(r.it) === 'product'"><x-bs-admin::icon name="ri-box-3" class="size-5" /></span>
+                                                                <span x-show="kind(r.it) === 'page' || kind(r.it) === 'post'"><x-bs-admin::icon name="ri-file-text" class="size-5" /></span>
+                                                            </span></template>
+                                                            <span x-text="iconBtn(r.it).label"></span><x-bs-admin::icon name="ri-arrow-down-s" class="size-4" />
                                                         </x-bs-admin::button>
-                                                        <template x-if="!r.it.options.icon && iconTip(r.it)">
+                                                        <template x-if="iconTip(r.it)">
                                                             <x-bs-admin::button variant="outline" color="secondary" title="{{ $u('icon_tip_title') }}" x-on:click.stop="applyIconTip(r.k)">
                                                                 <svg class="size-5 text-primary-text" aria-hidden="true"><use :href="'#mn-ic-' + iconTip(r.it)"></use></svg>{{ $u('icon_tip') }}
                                                             </x-bs-admin::button>
@@ -571,7 +582,8 @@
                                                             </div>
                                                             <div class="mt-2 flex items-center gap-2 border-t border-border-soft pt-2">
                                                                 <span class="flex-auto text-caption text-text-muted" x-text="@js($u('icon_count')).replace(':n', iconTotal)"></span>
-                                                                <x-bs-admin::button size="sm" variant="outline" color="secondary" x-show="r.it.options.icon" x-on:click="setIcon(r.k, null)"><x-bs-admin::icon name="ri-close" class="size-4" />{{ $u('icon_clear') }}</x-bs-admin::button>
+                                                                <x-bs-admin::button size="sm" variant="outline" color="secondary" x-show="r.it.options.icon" x-on:click="setIcon(r.k, null)"><x-bs-admin::icon name="ri-magic" class="size-4" />{{ $u('icon_auto') }}</x-bs-admin::button>
+                                                                <x-bs-admin::button size="sm" variant="outline" color="secondary" x-show="r.it.options.icon !== 'none'" x-on:click="setIcon(r.k, 'none')"><x-bs-admin::icon name="ri-forbid" class="size-4" />{{ $u('icon_off') }}</x-bs-admin::button>
                                                             </div>
                                                         </div>
                                                     </span>
@@ -673,7 +685,7 @@
                                         <button type="button" class="hit-area inline-flex min-h-control-row items-center gap-1 rounded px-2 text-small"
                                                 :class="it.options.cta ? 'bg-primary font-semibold text-on-primary' : (pvOpen === it.key ? 'bg-surface-hover text-primary-text' : 'text-text hover:text-primary-text')"
                                                 :aria-expanded="hasKids(it.key) ? pvOpen === it.key : null" x-on:click="pvOpen = pvOpen === it.key ? null : it.key">
-                                            <template x-if="it.options.icon"><svg class="size-4" aria-hidden="true"><use :href="'#mn-ic-' + it.options.icon"></use></svg></template>
+                                            <template x-if="ico(it)"><svg class="size-4" aria-hidden="true"><use :href="'#mn-ic-' + ico(it)"></use></svg></template>
                                             <span x-text="name(it)"></span>
                                             <span x-show="it.options.badge" class="rounded-full bg-danger px-1.5 text-caption font-bold text-on-primary" x-text="badgeText(it)"></span>
                                             <span x-show="pvKids(it.key).length"><x-bs-admin::icon name="ri-arrow-down-s" class="size-4" /></span>

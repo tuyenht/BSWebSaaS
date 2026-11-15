@@ -141,6 +141,61 @@ export function suggestIconOf(groups, label) {
     return best;
 }
 
+// The icon the phone menu would draw by itself for a row with none chosen, or '' (the same rule as
+// MenuIconGuess::for, and the same answers: tests/js/admin-menus.test.mjs and MenuIconGuessTest hold
+// the same cases). `kinds` is the icon of each special link kind (MenuIconGuess::KIND), tried first;
+// then the words of the name against every language's keyword list of each icon (`ic.kw`, one text
+// per language, so a run never spans two languages). Nobody checks this icon before it reaches the
+// website, so it is strict: a run counts only when it is two or more words, or when the whole name is
+// one word of four or more letters. A keyword of two or more Japanese/Chinese characters counts when
+// the name contains it anywhere, scoring as one word of that many letters. The longest run wins, then
+// more letters, then the first icon in picker order.
+export function autoIconOf(groups, kinds, link, label) {
+    if (link && link.type === 'special' && kinds && kinds[link.key]) {
+        return kinds[link.key];
+    }
+    const words = (s) => fold(s).split(/[^a-z0-9]+/).filter(Boolean);
+    const name = words(String(label || ''));
+    const composed = String(label || '').normalize('NFC').toLowerCase();
+    const unspaced = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u;
+    let best = '';
+    let top = [0, 0];
+    const beats = (n, chars) => n > top[0] || (n === top[0] && chars > top[1]);
+    const seen = new Set();
+    groups.forEach((g) => g.icons.forEach((ic) => {
+        if (seen.has(ic.name)) {
+            return;
+        }
+        seen.add(ic.name);
+        (ic.kw || []).forEach((text) => {
+            const kw = words(text);
+            for (let i = 0; i < name.length; i++) {
+                for (let j = 0; j < kw.length; j++) {
+                    let n = 0;
+                    let chars = 0;
+                    while (i + n < name.length && j + n < kw.length && name[i + n] === kw[j + n]) {
+                        chars += name[i + n].length;
+                        n++;
+                    }
+                    if ((n > 1 || (name.length === 1 && chars >= 4)) && beats(n, chars)) {
+                        top = [n, chars];
+                        best = ic.name;
+                    }
+                }
+            }
+            String(text).split(/\s+/).filter(Boolean).forEach((tok) => {
+                const w = tok.normalize('NFC').toLowerCase();
+                const chars = [...w].length;
+                if (chars >= 2 && unspaced.test(w) && composed.includes(w) && beats(1, chars)) {
+                    top = [1, chars];
+                    best = ic.name;
+                }
+            });
+        });
+    }));
+    return best;
+}
+
 // The rows that point at something no longer there (the source was deleted for good), in order.
 // A source in the trash or not published yet is not one: it can come back.
 export function goneKeysOf(items) {
@@ -1392,6 +1447,30 @@ if (typeof window !== 'undefined' && window.Alpine) {
                 return new Set(cfg.icons.flatMap((g) => g.icons.map((ic) => ic.name))).size;
             },
             // The icon guessed from the item's name (nothing for one that has an icon already).
+            // The icon chosen for the item, or '' (none, or "Không biểu tượng": 'none' is a setting, not an icon).
+            ico(it) {
+                return it.options.icon && it.options.icon !== 'none' ? it.options.icon : '';
+            },
+            // The icon the phone menu draws by itself for the item (what "Tự động" stands for), or ''.
+            autoIcon(it) {
+                if (it.parent || it.options.cta) {
+                    return '';   // the phone menu draws no automatic icon for a sub-row or a call-to-action
+                }
+                return autoIconOf(cfg.icons, cfg.kinds, it.link, this.label(it) || this.label(it, cfg.main) || this.fallbackName(it));
+            },
+            // The main icon button: which icon, which words, which hint.
+            iconBtn(it) {
+                const off = it.options.icon === 'none';
+                const own = this.ico(it);
+                const auto = !it.parent && !it.options.cta;   // only a top-level, non-button row gets an automatic icon
+                return {
+                    off,
+                    own,
+                    auto: own || off ? '' : this.autoIcon(it),
+                    label: off ? t.iconOff : (own ? t.iconChange : (auto ? t.iconAuto : t.iconPick)),
+                    title: off ? t.iconOffTip : (own || !auto ? t.iconChangeTip : t.iconAutoTip),
+                };
+            },
             iconTip(it) {
                 return it.options.icon ? '' : suggestIconOf(cfg.icons, this.label(it) || this.label(it, cfg.main) || this.fallbackName(it));
             },
