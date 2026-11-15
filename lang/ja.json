@@ -389,7 +389,7 @@
     "admin.members.inv_sc_err_category_scopes_disabled": "このサイトでは作業範囲が有効になっていないため、カテゴリーを制限した招待は送れません。«すべてのカテゴリー»を選んで再送してください。",
     "admin.members.inv_sc_err_target_exempt": "選んだロールは常にすべての場所で作業でき、カテゴリーで制限できません。«すべてのカテゴリー»を選んで再送してください。",
     "admin.members.inv_sc_err_taxonomy_invalid": "カテゴリーがサイトから削除されました。ページを再読み込みし、カテゴリーを選び直して送ってください。",
-    "admin.members.inv_sc_err_outside_own_scope": "自分のカテゴリー内で記事を書く人のみ招待できます。範囲内のカテゴリーを選んで再送してください。",
+    "admin.members.inv_sc_err_outside_own_scope": "自分の範囲（記事カテゴリー、商品カテゴリー）内で働く人のみ招待できます。範囲内で選んで再送してください。",
     "admin.members.sc_products": "商品",
     "admin.members.sc_pr_all": "すべての商品カテゴリー",
     "admin.members.sc_pr_only": "選んだ商品カテゴリーのみ",
