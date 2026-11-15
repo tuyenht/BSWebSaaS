@@ -698,7 +698,7 @@
     padding: 8px 15px;
     border: 0;
     border-radius: 0.25rem;
-    background: var(--color-admin-primary);
+    background: var(--color-primary);
     color: var(--color-on-primary);
     cursor: pointer;
     font: inherit;
