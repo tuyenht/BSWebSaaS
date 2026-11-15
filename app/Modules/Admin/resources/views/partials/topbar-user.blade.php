@@ -25,7 +25,7 @@
          avatar shows, in a 40px tile (44px on touch). --}}
     <button type="button" x-ref="userButton" @click="userOpen = ! userOpen" :aria-expanded="userOpen" aria-haspopup="true"
             aria-label="{{ $name }}{{ ! empty($roleLabel) ? ' · '.$roleLabel : '' }}"
-            class="flex h-[var(--spacing-header)] items-center gap-2.5 bg-topbar-user-block px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg max-lg:size-control max-lg:justify-center max-lg:rounded-lg max-lg:px-1 max-lg:any-pointer-coarse:size-hit">
+            class="flex h-(--topbar-height) items-center gap-2.5 bg-topbar-user-block px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg max-lg:size-control max-lg:justify-center max-lg:rounded-lg max-lg:px-1 max-lg:any-pointer-coarse:size-hit">
         <span class="grid size-8 shrink-0 place-items-center rounded-full bg-topbar-user text-sm font-semibold text-topbar-user-fg">
             {{ \Illuminate\Support\Str::of($name)->substr(0, 1)->upper() }}
         </span>
@@ -82,7 +82,7 @@
                    @if ($l['active']) aria-current="true" @endif
                    @class([
                        'flex min-h-menu-row items-center gap-2.5 py-2 pe-4 ps-[1.875rem] text-body transition-colors hover:bg-surface-hover any-pointer-coarse:min-h-menu-row-touch',
-                       'font-semibold text-accent' => $l['active'],
+                       'font-semibold text-primary-text' => $l['active'],
                        'text-text' => ! $l['active'],
                    ])>
                     <x-bs-admin::icon name="ri-check" @class(['size-4 shrink-0', 'invisible' => ! $l['active']]) />

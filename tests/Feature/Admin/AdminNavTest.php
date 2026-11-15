@@ -178,7 +178,7 @@ it('offers the review inbox only where an approval flow is actually running', fu
     });
 });
 
-it('cuts the menu into the untitled top, Nội dung, Công cụ and Hệ thống groups in the design order', function (): void {
+it('cuts the menu into the untitled top, then the content, tools and system groups in the design order', function (): void {
     app()->setLocale('vi');
     $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
 
@@ -188,11 +188,11 @@ it('cuts the menu into the untitled top, Nội dung, Công cụ and Hệ thống
     expect(array_map(fn ($s): string => $s->key, $sections))->toBe(['top', 'content', 'tools', 'system'])
         ->and($byKey['top']->label)->toBeNull()
         ->and(array_map(fn (NavItem $i): string => $i->key, $byKey['top']->items))->toBe(['dashboard'])
-        ->and($byKey['content']->label)->toBe('Nội dung')
+        ->and($byKey['content']->label)->toBe(__('admin.nav_group.content'))
         ->and(array_map(fn (NavItem $i): string => $i->key, $byKey['content']->items))->toContain('pages', 'posts')
-        ->and($byKey['tools']->label)->toBe('Công cụ')
+        ->and($byKey['tools']->label)->toBe(__('admin.nav_group.tools'))
         ->and(array_map(fn (NavItem $i): string => $i->key, $byKey['tools']->items))->toBe(['media', 'contacts', 'menus'])
-        ->and($byKey['system']->label)->toBe('Hệ thống')
+        ->and($byKey['system']->label)->toBe(__('admin.nav_group.system'))
         ->and(array_map(fn (NavItem $i): string => $i->key, $byKey['system']->items))->toBe(['users', 'settings']);
 });
 
@@ -226,7 +226,7 @@ it('heads the sidebar groups in the page, each list named by its heading', funct
     $dom = HTMLDocument::createFromString($html, LIBXML_NOERROR);
 
     $headings = iterator_to_array($dom->querySelectorAll('#admin-sidebar nav p.sidebar-heading'));
-    expect(array_map(fn (Element $p): string => trim((string) $p->textContent), $headings))->toBe(['Nội dung', 'Công cụ', 'Hệ thống'])
+    expect(array_map(fn (Element $p): string => trim((string) $p->textContent), $headings))->toBe([__('admin.nav_group.content'), __('admin.nav_group.tools'), __('admin.nav_group.system')])
         ->and($headings[0]->hasAttribute('data-first'))->toBeTrue()   // the collapsed rail draws no divider above the first group
         ->and($headings[1]->hasAttribute('data-first'))->toBeFalse();
     foreach ($headings as $heading) {

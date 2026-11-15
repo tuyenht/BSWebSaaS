@@ -210,7 +210,7 @@
             {{-- Search. From 640px a field (up to 440px wide) with the Ctrl K / ⌘K hint from 1024px on a
                  mouse; below 640px a magnifier in the right cluster opens the same field over the bar. --}}
             <div x-data="bsTopSearch" @keydown.window="shortcut($event)" @keydown.escape="hide()" @bs-top-search-open.window="show()"
-                 :class="open && 'max-sm:!flex absolute inset-0 z-30 gap-2 bg-topbar ps-3 pe-3'"
+                 :class="open && 'max-sm:!flex absolute inset-0 z-30 gap-2 bg-topbar-bg ps-3 pe-3'"
                  class="flex min-w-0 items-center max-sm:hidden sm:relative sm:flex-[0_1_440px]">
                     <span class="relative block min-w-0 flex-1">
                         <span class="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-topbar-search-placeholder">

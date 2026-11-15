@@ -23,7 +23,7 @@ it('lets the settings section strip shrink to a phone screen instead of widening
         ->assertSee('<nav class="min-w-0 ', false);
 });
 
-it('leads a settings section with the trail ⌂ › Cài đặt › section from 768px', function (): void {
+it('leads a settings section with the trail home › settings › section from 768px', function (): void {
     $admin = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($admin, 'admin', ['settings.manage', 'entries.view']));
 
@@ -33,7 +33,7 @@ it('leads a settings section with the trail ⌂ › Cài đặt › section from
 
     expect($nav)->not->toBeNull()
         ->and(explode(' ', (string) $nav->getAttribute('class')))->toContain('max-md:hidden')
-        ->and($nav->querySelector('a[aria-label="Tổng quan"]')?->getAttribute('href'))->toBe(route('admin.dashboard'))
+        ->and($nav->querySelector('a[aria-label="'.__('admin.dashboard').'"]')?->getAttribute('href'))->toBe(route('admin.dashboard'))
         ->and(trim((string) $nav->querySelector('a.underline')?->textContent))->toBe('Cài đặt')
         ->and(trim((string) $nav->querySelector('[aria-current="page"]')?->textContent))->toBe(__('admin.email_settings'));
 });
