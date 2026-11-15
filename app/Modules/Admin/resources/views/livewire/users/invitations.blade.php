@@ -57,6 +57,7 @@
                     $askName = $inv->invited_by === $me->id || $by === __('admin.members.inv_by_left') ? __('admin.members.owner_word') : $by;
                     $roleNames = $inv->roles->sortByDesc('level')->map(fn ($r): string => RoleLabel::for($r))->values()->all();
                     $limits = $invScopes[$inv->id] ?? [];
+                    $axisLines = [\App\Modules\Cms\Support\CategoryScopes::POSTS => ['ri-article', 'admin.members.scope_posts'], \App\Modules\Cms\Support\CategoryScopes::PRODUCTS => ['ri-shopping-bag-3', 'admin.members.scope_products']];
                     $endAt = match ($k) { 'accepted' => $inv->accepted_at, 'revoked' => $inv->revoked_at, default => $inv->expires_at };
                     $hoursLeft = max(1, (int) round($now->diffInMinutes($inv->expires_at, false) / 60));
                     $soon = $k === 'pending' && $inv->expires_at->lt($now->copy()->addDays(2));
@@ -92,11 +93,13 @@
                                 <span>{{ $part }}</span>
                             @endforeach
                         </p>
-                        @if ($limits !== [])
-                            <p class="m-0 mt-1 hidden items-start gap-1 text-small text-text-muted @max-[37.5rem]/tv:flex">
-                                <x-bs-admin::icon name="ri-article" class="mt-0.5 size-4 shrink-0" /><span class="min-w-0 [overflow-wrap:anywhere]">{{ __('admin.members.scope_posts', ['names' => implode(', ', $limits)]) }}</span>
-                            </p>
-                        @endif
+                        @foreach ($axisLines as $axis => [$axIcon, $axLine])
+                            @if (isset($limits[$axis]))
+                                <p class="m-0 mt-1 hidden items-start gap-1 text-small text-text-muted @max-[37.5rem]/tv:flex">
+                                    <x-bs-admin::icon :name="$axIcon" class="mt-0.5 size-4 shrink-0" /><span class="min-w-0 [overflow-wrap:anywhere]">{{ __($axLine, ['names' => implode(', ', $limits[$axis])]) }}</span>
+                                </p>
+                            @endif
+                        @endforeach
                         @if ($why !== null)
                             <p class="m-0 mt-1 hidden items-start gap-1.5 text-small text-text-muted @max-[37.5rem]/tv:flex">
                                 <x-bs-admin::icon name="ri-lock-2" class="mt-0.5 size-4 shrink-0" /><span>{{ $why }}</span>
@@ -109,12 +112,14 @@
                                 <span class="inline-flex max-w-full rounded bg-primary/8 px-2 py-0.5 text-caption font-medium text-primary-text [overflow-wrap:anywhere]">{{ $label }}</span>
                             @endforeach
                         </span>
-                        @if ($limits !== [])
-                            <span class="mt-1 flex items-start gap-1 text-small text-text-muted">
-                                <x-bs-admin::icon name="ri-article" class="mt-0.5 size-4 shrink-0" />
-                                <span class="min-w-0 [overflow-wrap:anywhere]">{{ __('admin.members.scope_posts', ['names' => implode(', ', $limits)]) }}</span>
-                            </span>
-                        @endif
+                        @foreach ($axisLines as $axis => [$axIcon, $axLine])
+                            @if (isset($limits[$axis]))
+                                <span class="mt-1 flex items-start gap-1 text-small text-text-muted">
+                                    <x-bs-admin::icon :name="$axIcon" class="mt-0.5 size-4 shrink-0" />
+                                    <span class="min-w-0 [overflow-wrap:anywhere]">{{ __($axLine, ['names' => implode(', ', $limits[$axis])]) }}</span>
+                                </span>
+                            @endif
+                        @endforeach
                     </x-bs-admin::list.cell>
                     <x-bs-admin::list.cell col="st">
                         <x-bs-admin::status-pill :status="'invite-'.$k">{{ __('admin.members.ist_'.$k) }}</x-bs-admin::status-pill>
