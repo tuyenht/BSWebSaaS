@@ -66,6 +66,8 @@ const ADMIN_HAND_BUILT_PARTS = [
     'users/index.blade.php' => [0, 1, 0],
     // the invitations list's error state (heading, words, "Thử lại", as its board draws it)
     'users/invitations.blade.php' => [0, 1, 0],
+    // the save bar's spoken change count, the one "Thông tin chung" and "Google & mạng xã hội" draw (no shared save bar)
+    'website-appearance-settings.blade.php' => [0, 1, 0],
     // + the screen's error state
     'workflow-settings.blade.php' => [4, 2, 0],
 ];

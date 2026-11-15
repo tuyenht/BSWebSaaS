@@ -200,7 +200,7 @@ it('shows a factory photo as used under "Chi nhánh / Nhà máy", keeps it out o
     [$used, $unused, $usages] = $read(1, $plant);
     expect($used)->toBe([$plant->id])
         ->and($unused)->toBe([$loose->id])
-        ->and($usages)->toBe([['kind' => 'site', 'role' => 'content', 'label' => 'Chi nhánh / Nhà máy', 'url' => route('admin.settings.appearance')]])
+        ->and($usages)->toBe([['kind' => 'site', 'role' => 'content', 'label' => 'Chi nhánh / Nhà máy', 'url' => null]])
         ->and($read(1, $loose)[2])->toBe([]);
 
     [$used, $unused] = $read(2, $otherPlant);
@@ -210,7 +210,7 @@ it('shows a factory photo as used under "Chi nhánh / Nhà máy", keeps it out o
     app(Tenancy::class)->enter(1, function () use ($loose): void {
         Mediable::query()->create(['media_id' => $loose->id, 'mediable_type' => 'site_setting', 'mediable_id' => SiteSetting::query()->value('id'), 'collection' => BlockMediaUsage::COLLECTION]);
     });
-    expect($read(1, $loose)[2])->toBe([['kind' => 'site', 'role' => 'content', 'label' => 'Cột phải / Kêu gọi cuối trang', 'url' => route('admin.settings.appearance')]])
+    expect($read(1, $loose)[2])->toBe([['kind' => 'site', 'role' => 'content', 'label' => 'Cột phải / Kêu gọi cuối trang', 'url' => null]])
         ->and($read(1, $plant)[1])->toBe([]);
 });
 

@@ -52,8 +52,10 @@ final readonly class MediaUsageLocator
      * (a block image, or a block button's file to download, inside an entry body, the site's block
      * slots or a category's own slot blocks). An entry that uses the media in two roles appears once
      * per role.
+     * `url` is the screen the thing is changed on; null when no admin screen changes it yet (the
+     * site's own block slots and its branch list are written by the content-pack loader only).
      *
-     * @return list<array{kind: string, role: string, label: string, url: string}>
+     * @return list<array{kind: string, role: string, label: string, url: string|null}>
      */
     public function usagesFor(Media $media, string $locale): array
     {
@@ -88,14 +90,15 @@ final readonly class MediaUsageLocator
         }
 
         // Brand — the site's logo, logo on a dark background, favicon or share image (one entry per
-        // slot), each to the page it is changed on: the share image on "Google & mạng xã hội".
+        // slot), each to the page it is changed on: the share image on "Google & mạng xã hội", the
+        // others on "Giao diện website".
         $profile = SiteProfile::query()->first(array_values(SiteProfile::IMAGE_COLUMNS));
         foreach (SiteProfile::IMAGE_COLUMNS as $slot => $column) {
             if ($profile !== null && $profile->getAttribute($column) === $media->id) {
                 $usages[] = [
                     'kind' => 'site',
                     'role' => 'brand',
-                    'label' => $slot === 'og_image' ? __('admin.seoset.title') : __('admin.appearance'),
+                    'label' => $slot === 'og_image' ? __('admin.seoset.title') : __('admin.website_look'),
                     'url' => route($slot === 'og_image' ? 'admin.settings.seo' : 'admin.settings.appearance'),
                 ];
             }
@@ -133,7 +136,7 @@ final readonly class MediaUsageLocator
                 'kind' => 'site',
                 'role' => 'content',
                 'label' => __('media.usage_layout_slots'),
-                'url' => route('admin.settings.appearance'),
+                'url' => null,
             ];
         }
         if ($branch) {
@@ -141,7 +144,7 @@ final readonly class MediaUsageLocator
                 'kind' => 'site',
                 'role' => 'content',
                 'label' => __('media.usage_branches'),
-                'url' => route('admin.settings.appearance'),
+                'url' => null,
             ];
         }
         if ($floating) {
@@ -215,7 +218,7 @@ final readonly class MediaUsageLocator
     }
 
     /**
-     * @return array{kind: string, role: string, label: string, url: string}
+     * @return array{kind: string, role: string, label: string, url: string|null}
      */
     private function entryUsage(Entry $entry, string $role, string $locale): array
     {

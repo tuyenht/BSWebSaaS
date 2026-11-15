@@ -1,8 +1,8 @@
-<x-bs-admin::settings-shell active="appearance" :head="false">
+<x-bs-admin::settings-shell active="admin-ui" :head="false">
     <form wire:submit="save">
         <div class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
             <div class="border-b border-border px-5 py-3">
-                <h2 class="text-[15px] font-semibold text-body-text">{{ __('admin.appearance') }}</h2>
+                <h2 class="text-[15px] font-semibold text-text">{{ __('admin.admin_ui') }}</h2>
                 <p class="mt-0.5 text-xs text-body-muted">{{ __('admin.appearance_desc') }}</p>
             </div>
 

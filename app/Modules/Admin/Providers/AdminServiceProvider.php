@@ -10,7 +10,7 @@ use App\Modules\Admin\Http\Middleware\TrackSignedInDevice;
 use App\Modules\Admin\Listeners\SetTenantReplyTo;
 use App\Modules\Admin\Listeners\TellSiteAboutDomain;
 use App\Modules\Admin\Livewire\Account;
-use App\Modules\Admin\Livewire\AppearanceSettings;
+use App\Modules\Admin\Livewire\AdminUiSettings;
 use App\Modules\Admin\Livewire\Catalog\Editor as CatalogEditor;
 use App\Modules\Admin\Livewire\Catalog\Index as CatalogIndex;
 use App\Modules\Admin\Livewire\CatalogSettings;
@@ -125,7 +125,7 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.email-settings', EmailSettings::class);
         Livewire::component('admin.login-security-settings', LoginSecuritySettings::class);
         Livewire::component('admin.social-settings', SocialSettings::class);
-        Livewire::component('admin.appearance-settings', AppearanceSettings::class);
+        Livewire::component('admin.admin-ui-settings', AdminUiSettings::class);
         Livewire::component('admin.dashboard', Dashboard::class);
         Livewire::component('admin.component-gallery', ComponentGallery::class);
         Livewire::component('admin.placeholder', Placeholder::class);
