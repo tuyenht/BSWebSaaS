@@ -149,3 +149,30 @@ it('is stable: cleaning clean output changes nothing', function (): void {
 
     expect(cmsClean($once))->toBe($once);
 });
+
+it('keeps the alignment the editor sets on headings, list items and quotes', function (string $dirty, string $kept): void {
+    $clean = cmsClean($dirty);
+
+    expect($clean)->toContain($kept)->and(cmsClean($clean))->toBe($clean);
+})->with([
+    'centred heading' => ['<h2 style="text-align:center">Giới thiệu nhà máy</h2>', '<h2 style="text-align:center;">'],
+    'right-aligned sub heading' => ['<h4 style="text-align: right;">Liên hệ</h4>', '<h4 style="text-align:right;">'],
+    'centred list item' => ['<ul><li style="text-align:center">Máy CNC</li></ul>', '<li style="text-align:center;">'],
+    'justified quote' => ['<blockquote style="text-align:justify">Chất lượng trước tiên</blockquote>', '<blockquote style="text-align:justify;">'],
+]);
+
+it('filters the style of headings, list items and quotes by the property allow-list', function (string $dirty, string $gone): void {
+    $clean = strtolower(cmsClean($dirty));
+
+    expect($clean)->toContain('text-align:center;')->not->toContain($gone);
+})->with([
+    'heading position' => ['<h2 style="text-align:center;position:fixed;top:0">Tiêu đề</h2>', 'position'],
+    'list item background image' => ['<ul><li style="text-align:center;background:url(javascript:alert(1))">mục</li></ul>', 'url('],
+    'quote expression' => ['<blockquote style="text-align:center;width:expression(alert(1))">trích dẫn</blockquote>', 'expression'],
+]);
+
+it('keeps heading alignment in a product description too', function (): void {
+    $clean = (new RichTextSanitizer)->full('<h3 style="text-align:center;position:fixed">Thông số máy</h3>');
+
+    expect($clean)->toContain('<h3 style="text-align:center;">')->not->toContain('position');
+});

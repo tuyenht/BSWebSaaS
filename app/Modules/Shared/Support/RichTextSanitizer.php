@@ -36,8 +36,8 @@ final class RichTextSanitizer
 
     private const string BASIC_ALLOWED = 'p,br,strong,em,b,i,u,ul,ol,li,a[href]';
 
-    private const string TEXT_ALLOWED = 'p[style],br,hr,strong,em,b,i,u,s,sub,sup,ul,ol,li,a[href],'
-        .'h2,h3,h4,h5,blockquote,table[style],thead,tbody,tr,td[style|colspan|rowspan],th[style|colspan|rowspan|scope],span[style],'
+    private const string TEXT_ALLOWED = 'p[style],br,hr,strong,em,b,i,u,s,sub,sup,ul,ol,li[style],a[href],'
+        .'h2[style],h3[style],h4[style],h5[style],blockquote[style],table[style],thead,tbody,tr,td[style|colspan|rowspan],th[style|colspan|rowspan|scope],span[style],'
         .'div[class],iframe[src|width|height|allowfullscreen|allow|loading]';
 
     private const string FULL_ALLOWED = self::TEXT_ALLOWED.',img[src|alt|width|height]';
