@@ -14,8 +14,8 @@ it('names no prop the look group or its editor state already owns', function ():
     expect(array_intersect(array_keys(SectionProps::LIST_DISPLAY), StyleProps::RESERVED))->toBe([]);
 });
 
-it('declares the six props with "auto" first and as the default, and keeps them out of the generic form', function (): void {
-    expect(array_keys(SectionProps::LIST_DISPLAY))->toBe(['layout', 'columns', 'mobile', 'autoplay', 'arrows', 'view_all']);
+it('declares the seven props with "auto" first and as the default, and keeps them out of the generic form', function (): void {
+    expect(array_keys(SectionProps::LIST_DISPLAY))->toBe(['layout', 'columns', 'mobile', 'autoplay', 'arrows', 'loop', 'view_all']);
     foreach (SectionProps::LIST_DISPLAY as $spec) {
         expect($spec['type'])->toBe('enum')->and($spec['options'][0])->toBe('auto')->and($spec['default'])->toBe('auto')->and($spec['group'])->toBe('display');
     }
@@ -24,13 +24,21 @@ it('declares the six props with "auto" first and as the default, and keeps them 
         ->and(SectionProps::LIST_DISPLAY['mobile']['options'])->toBe(['auto', 'swipe', 'two', 'one'])
         ->and(SectionProps::LIST_DISPLAY['autoplay']['options'])->toBe(['auto', 'off', '3', '5', '8'])
         ->and(SectionProps::LIST_DISPLAY['arrows']['options'])->toBe(['auto', 'always', 'none'])
+        ->and(SectionProps::LIST_DISPLAY['loop']['options'])->toBe(['auto', 'off'])
         ->and(SectionProps::LIST_DISPLAY['view_all']['options'])->toBe(['auto', 'show', 'hide']);
 });
 
 it('makes the group of a hand-typed list the same props without the "view all" button', function (): void {
     expect(SectionProps::LIST_LAYOUT)->toBe(array_diff_key(SectionProps::LIST_DISPLAY, ['view_all' => true]))
-        ->and(array_keys(SectionProps::LIST_LAYOUT))->toBe(['layout', 'columns', 'mobile', 'autoplay', 'arrows']);
+        ->and(array_keys(SectionProps::LIST_LAYOUT))->toBe(['layout', 'columns', 'mobile', 'autoplay', 'arrows', 'loop']);
 });
+
+it('lets every kind of list go round unless the block turns the loop off', function (string $kind): void {
+    expect(ListDisplay::plan($kind, ['layout' => 'slider'], 9, 50)['loop'] ?? null)->toBeTrue()
+        ->and(ListDisplay::plan($kind, ['layout' => 'slider', 'loop' => 'auto'], 9, 50)['loop'] ?? null)->toBeTrue()
+        ->and(ListDisplay::plan($kind, ['layout' => 'slider', 'loop' => 'off'], 9, 50)['loop'] ?? null)->toBeFalse()
+        ->and(ListDisplay::plan($kind, ['layout' => 'slider', 'loop' => 'sometimes'], 9, 50)['loop'] ?? null)->toBeTrue();
+})->with(['product', 'product-overlay', 'icon', 'project', 'news', 'partners', 'testimonial', 'team', 'branches']);
 
 it('leaves a block without a layout key alone', function (): void {
     expect(ListDisplay::plan('news', ['limit' => 3], 3, 3))->toBeNull()

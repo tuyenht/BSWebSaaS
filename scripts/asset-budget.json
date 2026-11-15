@@ -46,7 +46,7 @@
     },
     "resources/css/sf-rail.css": {
       "js": 0,
-      "css": 1948
+      "css": 2018
     },
     "resources/css/sf-prose.css": {
       "js": 0,
@@ -109,7 +109,7 @@
       "css": 0
     },
     "resources/js/sf-slider.js": {
-      "js": 1869,
+      "js": 2532,
       "css": 0
     },
     "resources/js/sf-stats.js": {

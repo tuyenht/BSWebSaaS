@@ -87,7 +87,7 @@ final class ListDisplay
      * @param  array<array-key, mixed>  $props
      * @param  int  $found  the rows read (a query reads one more than $limit to learn whether more exist)
      * @param  int  $limit  the block's limit (a static list passes its own length)
-     * @return array{layout: string, columns: int, mobile: string, interval: int, arrows: string, view_all: bool, shown: int, class: string, scrolls: bool, bar: string}|null
+     * @return array{layout: string, columns: int, mobile: string, interval: int, arrows: string, loop: bool, view_all: bool, shown: int, class: string, scrolls: bool, bar: string}|null
      */
     public static function plan(string $kind, array $props, int $found, int $limit): ?array
     {
@@ -147,6 +147,8 @@ final class ListDisplay
             // partner grid still rotates on a phone, where it is a slider.
             'interval' => $wideRotates || $phoneRotates ? $seconds * 1000 : 0,
             'arrows' => $arrows,
+            // Every kind of list goes round unless the block says `off` (the script loops only a row that scrolls).
+            'loop' => SectionProps::choice($props, 'loop', SectionProps::LIST_DISPLAY['loop']['options']) !== 'off',
             'view_all' => $viewAll === 'show' || ($viewAll === 'auto' && $more),
             'shown' => $shown,
             'scrolls' => $layout === 'slider' || $mobile === 'slider',

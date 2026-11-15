@@ -9,7 +9,7 @@
 // mouse move or a key. Until then the page holds still, so it is finished as soon as it is drawn; a
 // page-speed test, which never touches the page, would otherwise count each slide change as the page
 // still drawing.
-import { railDot, railPages, railTarget, swipe, wrap } from './sf-slider-math.js';
+import { loopDot, loopHome, railDot, railPages, railTarget, swipe, wrap } from './sf-slider-math.js';
 
 const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
 const HOLD = 10000;
@@ -146,8 +146,24 @@ document.querySelectorAll('[data-sf-slider]').forEach(init);
 // touch included; `none` never), draws one dot per screenful and, for a slider, rotates it: never
 // faster than the server's interval (3 s or more), never on a phone's swipe row, never under reduced
 // motion; paused while a mouse is over it or keyboard focus is inside, and for 10 s after a touch.
-// The arrows loop: Next at the end goes to the start, Prev at the start to the end.
+// A row that scrolls goes round: once the visitor is here, a copy of the cards stands before them and
+// another after them, so a swipe, an arrow or the rotation runs on past the last card into the first
+// (and back) without stopping. When a scroll settles on a copy, the row jumps the width of one copy to
+// the same view on the real cards. The copies are hidden from screen readers and skipped by Tab; a tap
+// on one still opens its link. A block can turn this off (data-loop="off", the display group's `loop`).
+// A row that does not loop keeps the old arrows: Next at the end goes to the start, Prev at the start
+// to the end.
 const phone = window.matchMedia('(max-width: 639px)');
+const settles = 'onscrollend' in window;
+
+const copy = (item) => {
+    const c = item.cloneNode(true);
+    c.setAttribute('data-sf-copy', '');
+    c.setAttribute('aria-hidden', 'true');
+    [c, ...c.querySelectorAll('[id]')].forEach((el) => el.removeAttribute('id'));
+    c.querySelectorAll('a[href], button, input, select, textarea, [tabindex]').forEach((el) => el.setAttribute('tabindex', '-1'));
+    return c;
+};
 
 function initRail(root) {
     const track = root.querySelector('.sf-rail__list');
@@ -160,21 +176,45 @@ function initRail(root) {
     const dotsBox = root.querySelector('[data-sf-rail-dots]');
     const interval = Number(root.dataset.interval) || 0;
     const mode = root.dataset.arrows;
+    const items = [...track.children];
     let hovered = false;
     let focused = false;
     let held = false;
+    let touching = false;
     let timer = 0;
     let holdTimer = 0;
+    let settleTimer = 0;
     let pages = 0;
     // Whether the row overflows, measured by sync() (every layout read happens there, before its writes),
     // so schedule() never forces a layout of its own right after the dots were drawn.
     let over = false;
+    // The loop: whether the copies are shown, one copy's width, and the real cards' width.
+    let loop = false;
+    let period = 0;
+    let span = 0;
+    // Whether the row scrolled at the last measure: a row that has just started to scroll (a phone turned
+    // upright) starts at its first card, whatever offset the browser kept from before.
+    let scrolled = false;
 
     const overflows = () => track.scrollWidth > track.clientWidth + 1;
     const rotates = () => interval > 0 && !reduce.matches && !(phone.matches && root.dataset.mobile === 'swipe') && over;
     const running = () => present && rotates() && !hovered && !focused && !held && !document.hidden;
-    const step = () => (track.children.length > 1 ? track.children[1].offsetLeft - track.children[0].offsetLeft : track.clientWidth);
+    const step = () => (items.length > 1 ? items[1].offsetLeft - items[0].offsetLeft : track.clientWidth);
+    // A settled scroll on a copy jumps to the same view on the real cards (never under a finger).
+    const home = () => {
+        if (loop && !touching) {
+            const left = loopHome(track.scrollLeft, period);
+            if (left !== track.scrollLeft) {
+                track.scrollTo({ left, behavior: 'instant' });
+            }
+        }
+    };
     const move = (dir) => {
+        if (loop) {
+            home();
+            track.scrollTo({ left: track.scrollLeft + dir * step(), behavior: reduce.matches ? 'auto' : 'smooth' });
+            return;
+        }
         const left = railTarget(dir, track.scrollLeft, track.clientWidth, track.scrollWidth, step());
         track.scrollTo({ left, behavior: reduce.matches ? 'auto' : 'smooth' });
     };
@@ -190,19 +230,34 @@ function initRail(root) {
     const lightDots = (on) => {
         [...dotsBox.children].forEach((dot, i) => dot.classList.toggle('is-on', i === on));
     };
-    const light = () => lightDots(railDot(track.scrollLeft, track.clientWidth, track.scrollWidth));
-    // measure() does every layout read and returns what apply() needs; apply() only writes. Start-up runs
-    // every rail's measure() before any rail's apply(), so six rails cost one layout pass, not six.
+    const dot = () => (loop ? loopDot(track.scrollLeft, period, track.clientWidth, span) : railDot(track.scrollLeft, track.clientWidth, track.scrollWidth));
+    const light = () => lightDots(dot());
+    // measure() does every layout read and returns what apply() needs; apply() only writes and returns,
+    // when the loop turns on or off, a fix() that keeps the same cards in view (a loop turning off leaves a
+    // row that no longer scrolls, so there is no view to keep). Start-up and the visitor's
+    // arrival run every rail's measure(), then every apply(), then every fix(): two layout passes in all.
     const measure = () => {
-        over = overflows();
+        const first = items[0];
+        const last = items[items.length - 1];
+        // The real cards' width; on a grid that wraps it is never wider than the row.
+        span = items.length > 1 ? last.offsetLeft + last.offsetWidth - first.offsetLeft : 0;
+        over = loop ? span > track.clientWidth + 1 : overflows();
         const show = over && mode !== 'none';
+        const scrolls = over && span > 0 && getComputedStyle(track).overflowX !== 'visible';
+        const loops = present && scrolls && root.dataset.loop !== 'off';
+        // Where the view stands on the real cards when the loop turns on (the copies are hidden until then).
+        const x = loops && !loop && scrolled ? track.scrollLeft : 0;
+        scrolled = scrolls;
+        const width = loops ? span : track.scrollWidth;
         return {
             show,
-            n: dotsBox && show ? railPages(track.clientWidth, track.scrollWidth) : 0,
-            on: dotsBox ? railDot(track.scrollLeft, track.clientWidth, track.scrollWidth) : 0,
+            loops,
+            x,
+            n: dotsBox && show ? railPages(track.clientWidth, width) : 0,
+            on: dotsBox ? dot() : 0,
         };
     };
-    const apply = ({ show, n, on }) => {
+    const apply = ({ show, loops, x, n, on }) => {
         [prev, next].forEach((btn) => btn && (btn.hidden = !show));
         if (dotsBox) {
             if (n !== pages) {
@@ -218,9 +273,28 @@ function initRail(root) {
         } else {
             track.removeAttribute('tabindex');
         }
+        let fix = null;
+        if (loops !== loop) {
+            if (loops && !track.querySelector('[data-sf-copy]')) {
+                track.prepend(...items.map(copy));
+                track.append(...items.map(copy));
+            }
+            track.classList.toggle('is-loop', loops);
+            loop = loops;
+            fix = () => {
+                if (loop) {
+                    period = items[0].getBoundingClientRect().left - track.children[0].getBoundingClientRect().left;
+                    track.scrollTo({ left: period + x, behavior: 'instant' });
+                }
+                if (dotsBox) {
+                    light();
+                }
+            };
+        }
         schedule();
+        return fix;
     };
-    const sync = () => apply(measure());
+    const sync = () => apply(measure())?.();
     const hold = () => {
         held = true;
         clearTimeout(holdTimer);
@@ -234,9 +308,34 @@ function initRail(root) {
     prev?.addEventListener('click', () => move(-1));
     next?.addEventListener('click', () => move(1));
     track.addEventListener('pointerdown', (event) => event.pointerType !== 'mouse' && hold());
-    if (dotsBox) {
-        track.addEventListener('scroll', light, { passive: true });
+    // A finger on the row: no jump until it lifts and the row has settled (scrollend, or a quiet 150 ms
+    // where the browser has no scrollend event).
+    track.addEventListener('touchstart', () => (touching = true), { passive: true });
+    const lift = () => {
+        touching = false;
+        if (!settles) {
+            clearTimeout(settleTimer);
+            settleTimer = setTimeout(home, 150);
+        }
+    };
+    track.addEventListener('touchend', lift, { passive: true });
+    track.addEventListener('touchcancel', lift, { passive: true });
+    if (settles) {
+        track.addEventListener('scrollend', home);
     }
+    track.addEventListener(
+        'scroll',
+        () => {
+            if (dotsBox) {
+                light();
+            }
+            if (!settles && loop) {
+                clearTimeout(settleTimer);
+                settleTimer = setTimeout(home, 150);
+            }
+        },
+        { passive: true },
+    );
     root.addEventListener('focusin', (event) => {
         focused = event.target.matches(':focus-visible');
         schedule();
@@ -267,16 +366,21 @@ function initRail(root) {
     document.fonts?.ready.then(later);
     phone.addEventListener?.('change', sync);
     reduce.addEventListener?.('change', sync);
-    whenPresent(schedule);
-    return () => {
-        const measured = measure();
-        return () => {
-            controls.hidden = false;
-            apply(measured);
-        };
-    };
+    return { measure, apply, controls };
 }
 
-// Start-up: wire every rail, then read every rail's layout, then write every rail's controls.
-const started = [...document.querySelectorAll('[data-sf-rail]')].map(initRail).filter(Boolean);
-started.map((measure) => measure()).forEach((apply) => apply());
+// Every rail's measure(), then every apply(), then every fix(): see measure() in initRail. Start-up also
+// reveals the controls; the visitor's arrival turns the loops on and starts the rotation.
+const rails = [...document.querySelectorAll('[data-sf-rail]')].map(initRail).filter(Boolean);
+const syncAll = (first = false) =>
+    rails
+        .map((rail) => rail.measure())
+        .map((measured, i) => {
+            if (first) {
+                rails[i].controls.hidden = false;
+            }
+            return rails[i].apply(measured);
+        })
+        .forEach((fix) => fix?.());
+syncAll(true);
+whenPresent(syncAll);

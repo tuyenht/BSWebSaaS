@@ -121,6 +121,18 @@ it('gives the arrows a 44px hit area with a 36px disc and no arrows when the blo
         ->and($none)->not->toContain('data-sf-rail-prev')->and($none)->not->toContain('data-sf-rail-next');
 });
 
+it('marks a rail whose loop the block turned off, and only that one', function (): void {
+    $round = railView('partners', ['props' => ['layout' => 'slider', 'logos' => logos(8)]]);
+    $stops = railView('partners', ['props' => ['layout' => 'slider', 'loop' => 'off', 'logos' => logos(8)]]);
+    $css = (string) StorefrontCss::all();
+
+    expect($round)->toContain('data-sf-rail ')->and($round)->not->toContain('data-loop')
+        ->and($stops)->toContain('data-arrows="always" data-loop="off" role="group"')
+        // The script's copies of the cards show only on a looping row that scrolls, never on a grid.
+        ->and($css)->toMatch('/\.sf-rail__list > \[data-sf-copy\] \{\s*display: none;/s')
+        ->and($css)->toMatch('/\.sf-rail__list--slider\.is-loop > \[data-sf-copy\] \{\s*display: flex;/s');
+});
+
 it('keeps a card link overlay inside its card so a tap on an arrow beside the row turns the rail', function (): void {
     $css = StorefrontCss::all();
 
@@ -252,7 +264,9 @@ it('validates the group in the page JSON', function (): void {
     expect($check(['layout' => 'slider', 'columns' => '4', 'mobile' => 'swipe', 'autoplay' => '8', 'arrows' => 'always']))->toBeTrue()
         ->and($check(['layout' => 'carousel']))->toBeFalse()
         ->and($check(['autoplay' => '1']))->toBeFalse()
-        ->and($check(['columns' => '5']))->toBeFalse();
+        ->and($check(['columns' => '5']))->toBeFalse()
+        ->and($check(['loop' => 'off']))->toBeTrue()
+        ->and($check(['loop' => 'on']))->toBeFalse();
 });
 
 it('still saves and draws a hand-typed list that kept a "view all" value from before, without the button', function (): void {
@@ -380,7 +394,7 @@ it('shows the arrows only on a row that can scroll, and the title tooltips on ev
     $js = (string) file_get_contents(base_path('resources/js/sf-slider.js'));
     $html = railView('partners', ['props' => ['layout' => 'auto', 'logos' => logos(8)]]);
 
-    expect($js)->toContain('over = overflows()')->and($js)->toContain("over && mode !== 'none'")->and($js)->not->toContain('hover: hover')
+    expect($js)->toContain('over = loop ? span > track.clientWidth + 1 : overflows()')->and($js)->toContain("over && mode !== 'none'")->and($js)->not->toContain('hover: hover')
         ->and(substr_count($html, 'title="'))->toBe(2);
 });
 
