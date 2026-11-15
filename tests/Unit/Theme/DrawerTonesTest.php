@@ -47,7 +47,8 @@ it('matches the approved recipe for every sample palette, both tones', function 
         ->and($tones['dark_ring'])->toBe($darkRing);
 })->with(drawerPalettes());
 
-it('keeps every role above its contrast floor on the solid panel and over a white or black page', function (array $seeds): void {
+function dtAssertFloors(array $seeds): void
+{
     $ink = $seeds[1];
     $tones = (array) DrawerTones::derive(...$seeds);
     $readableInk = $tones['scrim'];                 // the ink made readable on the surface, which tints the scrim
@@ -58,7 +59,7 @@ it('keeps every role above its contrast floor on the solid panel and over a whit
         $label = $dark ? DrawerTones::DARK_LABEL : DrawerTones::LABEL;
 
         expect(dtLeast($t['ink'], $seen))->toBeGreaterThanOrEqual($label - 0.005, "$name ink")
-            ->and(dtLeast($t['strong'], $seen))->toBeGreaterThanOrEqual(DrawerTones::LABEL - 0.005, "$name strong")
+            ->and(dtLeast($t['strong'], $seen))->toBeGreaterThanOrEqual($label - 0.005, "$name strong")
             ->and(dtLeast($t['sub'], [...$seen, $t['track'], $t['hair']]))->toBeGreaterThanOrEqual(DrawerTones::SECONDARY - 0.005, "$name sub")
             ->and(dtLeast($t['muted'], [...$seen, $t['track'], $t['hair']]))->toBeGreaterThanOrEqual(DrawerTones::SECONDARY - 0.005, "$name muted")
             ->and(dtLeast($t['ctl'], [...$seen, $t['track'], $t['hair']]))->toBeGreaterThanOrEqual(DrawerTones::CONTROL - 0.005, "$name ctl")
@@ -66,7 +67,20 @@ it('keeps every role above its contrast floor on the solid panel and over a whit
             ->and(dtLeast($t['on'], [$t['press']]))->toBeGreaterThanOrEqual(DrawerTones::SECONDARY - 0.005, "$name on press")
             ->and(dtLeast($t['ink'], [$t['tap'], $t['track']]))->toBeGreaterThanOrEqual(DrawerTones::SECONDARY - 0.005, "$name ink on tap");
     }
+}
+
+it('keeps every role above its contrast floor on the solid panel and over a white or black page', function (array $seeds): void {
+    dtAssertFloors($seeds);
 })->with(drawerPalettes());
+
+it('keeps the floors on a mid-grey or tinted surface, which leaves the light panel little room', function (string $surface, string $ink, string $brand): void {
+    dtAssertFloors([$surface, $ink, $brand]);
+})->with([
+    'xám 9e' => ['#9e9e9e', '#333333', '#3b82f6'],
+    'xám 80' => ['#808080', '#000000', '#dc2626'],
+    'xám ấm' => ['#a8a29e', '#1c1917', '#f59e0b'],
+    'xanh nhạt' => ['#7dd3fc', '#0c4a6e', '#0369a1'],
+]);
 
 it('prints the variables of one tone as a style attribute of hex colours only', function (): void {
     $css = (string) DrawerTones::css('#ffffff', '#0f172a', '#f59e0b', false);

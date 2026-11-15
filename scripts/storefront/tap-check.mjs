@@ -127,8 +127,10 @@ const drawerList = `(async () => {
     if (!burger) return JSON.stringify(-1);
     burger.click();
     await new Promise((r) => setTimeout(r, 400));
-    for (const chev of document.querySelectorAll('.sf-nav--mob .sf-nav__item--parent > :is(.sf-nav__chev, .sf-nav__toggle)')) {
-        if (chev.getAttribute('aria-expanded') !== 'true') chev.click();
+    // Open every group at once: a click closes the other groups (one open at a time), so set the state directly.
+    for (const item of document.querySelectorAll('.sf-nav--mob .sf-nav__item--parent[data-disclosure]')) {
+        item.classList.add('is-open');
+        item.querySelector(':scope > :is(.sf-nav__chev, .sf-nav__toggle)')?.setAttribute('aria-expanded', 'true');
     }
     await new Promise((r) => setTimeout(r, 300));
     window.__rows = [...document.querySelectorAll('.sf-nav--mob :is(.sf-nav__link, .sf-nav__sublink, .sf-nav__chev)')].filter((e) => {

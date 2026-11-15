@@ -675,7 +675,7 @@ it('starts a parent’s panel with “Tổng quan” for its own page, current w
 
     expect($drawer)
         ->toMatch('#<button type="button" class="sf-nav__link sf-nav__toggle is-trail" aria-current="true" aria-expanded="true" aria-controls="msm-0"><span class="sf-nav__t">Giới thiệu</span>#')
-        ->toMatch('#<div class="sf-nav__panel" id="msm-0">\s*<ul class="sf-nav__list sf-nav__nested">\s*<li class="sf-nav__item"><a class="sf-nav__sublink" href="/gioi-thieu" aria-current="page"><span class="sf-nav__t">Tổng quan Giới thiệu</span></a></li>#')
+        ->toMatch('#<div class="sf-nav__panel" id="msm-0">\s*<ul class="sf-nav__list sf-nav__nested">\s*<li class="sf-nav__item"><a class="sf-nav__sublink" href="/gioi-thieu" aria-current="page"\s*><span class="sf-nav__t">Tổng quan Giới thiệu</span></a></li>#')
         ->not->toContain('Tổng quan Dịch vụ')->not->toContain('Tổng quan Năng lực')
         ->toMatch('#<button type="button" class="sf-nav__link sf-nav__toggle" aria-expanded="false" aria-controls="msm-1"><span class="sf-nav__t">Dịch vụ</span>#')
         ->and(substr_count($drawer, 'aria-current="page"'))->toBe(1)       // one current row per tab
@@ -683,5 +683,26 @@ it('starts a parent’s panel with “Tổng quan” for its own page, current w
         ->and($desk[0] ?? '')->not->toContain('Tổng quan')->toContain('sf-nav__chev');   // the desktop bar keeps its link and chevron
     expect(StorefrontChrome::drawerOverview(['label' => 'A', 'url' => '#', 'children' => []]))->toBeNull()
         ->and(StorefrontChrome::drawerOverview(['label' => 'A', 'url' => '/a', 'active' => false, 'children' => [['label' => 'B', 'url' => '/b']]]))
-        ->toBe(['label' => 'Tổng quan A', 'url' => '/a', 'active' => false]);
+        ->toBe(['label' => 'Tổng quan A', 'url' => '/a', 'active' => false, 'attrs' => []]);
+});
+
+it('makes a second-level parent one toggle with its own overview row, which keeps the parent’s new-tab link', function (): void {
+    $siteId = dpSite('l2.platform.test', products: false);
+    dpMenu($siteId, ['Giới thiệu' => ['/gioi-thieu', ['Lịch sử' => '/lich-su', 'Đội ngũ' => '/doi-ngu']]]);
+    app(Tenancy::class)->enter($siteId, function (): void {
+        $team = MenuItem::query()->where('url', '/doi-ngu')->firstOrFail();
+        $team->forceFill(['meta' => ['target' => '_blank']])->save();
+        $engineer = MenuItem::query()->create(['menu_id' => $team->menu_id, 'parent_id' => $team->id, 'position' => 0, 'link_type' => 'url', 'url' => '/ky-su']);
+        $engineer->translations()->create(['locale' => 'vi', 'label' => 'Kỹ sư']);
+    });
+
+    $html = $this->get('http://l2.platform.test/')->assertOk()->getContent();
+    $drawer = dpDrawer($html);
+    preg_match('#<nav class="sf-nav sf-nav--desk".*?</nav>#s', $html, $desk);
+
+    expect($drawer)
+        ->toMatch('#<button type="button" class="sf-nav__sublink sf-nav__toggle" aria-expanded="false" aria-controls="msm-0-1"><span class="sf-nav__t">Đội ngũ</span>#')
+        ->toMatch('#<div class="sf-nav__panel" id="msm-0-1">\s*<ul class="sf-nav__list sf-nav__nested">\s*<li class="sf-nav__item"><a class="sf-nav__sublink" href="/doi-ngu"\s+target="_blank"\s+rel="noopener noreferrer"\s*><span class="sf-nav__t">Tổng quan Đội ngũ</span></a></li>#')
+        ->toContain('Kỹ sư')
+        ->and($desk[0] ?? '')->toMatch('#href="/doi-ngu"[^>]*target="_blank"#')->not->toContain('Tổng quan');
 });

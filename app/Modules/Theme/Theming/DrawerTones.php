@@ -15,7 +15,7 @@ namespace App\Modules\Theme\Theming;
  * or a black page pixel under the scrim (seen()).
  *
  * Roles: bg (the panel) · ink (a normal label, 7:1; 9:1 on dark) · strong (an open, trail or current label,
- * the current row's bar, the selected tab's underline and the focus ring, 7:1) · sub and muted (secondary
+ * the current row's bar, the selected tab's underline and the focus ring, 7:1; 9:1 on dark) · sub and muted (secondary
  * text and icons, 4.5:1) · track and hair (the hover fill and the rules) · edge (the panel's inline-end
  * line) · pill / tap / press (the current row's fill, a pressed row, a pressed current row) · ctl (control
  * borders, 3:1) · on (the current row's label, 7:1 on its pill and 4.5:1 pressed) · thumb (a chosen
@@ -40,6 +40,9 @@ final class DrawerTones
 
     /** Secondary text and icons. */
     public const float SECONDARY = 4.5;
+
+    /** How well black must read on every backdrop of the light panel, so its labels can reach 7:1. */
+    private const float LIGHT_ROOM = 12.0;
 
     /** Control borders and other non-text marks (WCAG 2.2 non-text contrast). */
     public const float CONTROL = 3.0;
@@ -134,6 +137,10 @@ final class DrawerTones
     private static function light(string $s, string $k, string $k0): array
     {
         $bg = self::mix($s, $k, 0.97);
+        // A mid-grey surface leaves too little room for 7:1 labels: lighten the panel until black reads at 12:1.
+        for ($i = 0; $i < 80 && self::least('#000000', self::seen($bg, $k, $k0, false)) < self::LIGHT_ROOM; $i++) {
+            $bg = self::mix($bg, '#ffffff', 0.96);
+        }
         $on = self::seen($bg, $k, $k0, false);
         $track = self::mix($k, $bg, 0.09);
         $hair = self::mix($k, $bg, 0.13);

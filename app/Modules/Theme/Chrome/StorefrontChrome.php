@@ -630,7 +630,7 @@ final class StorefrontChrome
      * the current page). Null when no such row is drawn.
      *
      * @param  array<mixed>  $item  a resolved menu node with children
-     * @return array{label: string, url: string, active: bool}|null
+     * @return array{label: string, url: string, active: bool, attrs: array<mixed>}|null
      */
     public static function drawerOverview(array $item): ?array
     {
@@ -648,6 +648,7 @@ final class StorefrontChrome
             'label' => Cast::string(__('storefront.menu_overview', ['label' => is_string($item['label'] ?? null) ? $item['label'] : ''])),
             'url' => $url,
             'active' => ! empty($item['active']),
+            'attrs' => is_array($item['attrs'] ?? null) ? $item['attrs'] : [],
         ];
     }
 

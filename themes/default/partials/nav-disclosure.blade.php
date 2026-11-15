@@ -15,20 +15,20 @@
     chevron, the whole row toggles it); a parent with a page of its own starts its panel with a
     "Tổng quan <name>" row linking to that page ($overview, StorefrontChrome::drawerOverview), which carries
     the current-page mark when that page is the one shown. The branch holding the current page is open on
-    render and marked (is-trail); below the top level only the current page itself is marked. Item icons
-    are drawn at 20px. The desktop bar's submenus always start closed.
+    render and marked (is-trail, aria-current="true"; in the phone menu at every level); the current page
+    itself carries aria-current="page". Item icons are drawn at 20px. The desktop bar's submenus always start closed.
 --}}
 @php($sfDrawer = ! empty($drawer))
 <ul class="sf-nav__list{{ $depth > 0 ? ' sf-nav__nested' : '' }}">
     @if (! empty($overview))
-        <li class="sf-nav__item"><a class="sf-nav__sublink" href="{{ $overview['url'] }}"@if ($overview['active']) aria-current="page"@endif><span class="sf-nav__t">{{ $overview['label'] }}</span></a></li>
+        <li class="sf-nav__item"><a class="sf-nav__sublink" href="{{ $overview['url'] }}"@if ($overview['active']) aria-current="page"@endif @foreach (($overview['attrs'] ?? []) as $attr => $value) {{ $attr }}="{{ $value }}" @endforeach><span class="sf-nav__t">{{ $overview['label'] }}</span></a></li>
     @endif
     @foreach ($items as $item)
         @if ($sfDrawer && $depth < 2 && ! empty($item['children']))
             @php($panel = $idPrefix.'-'.$loop->index)
             @php($open = ! empty($item['active']) || \App\Modules\Theme\Chrome\StorefrontChrome::inTrail($item))
             <li class="sf-nav__item sf-nav__item--parent{{ \App\Modules\Theme\Chrome\StorefrontChrome::menuItemClass($item) }}{{ $open ? ' is-open' : '' }}" data-disclosure>
-                <button type="button" class="{{ $depth === 0 ? 'sf-nav__link' : 'sf-nav__sublink' }} sf-nav__toggle{{ $open ? ' is-trail' : '' }}"@if ($open) aria-current="true"@endif aria-expanded="{{ $open ? 'true' : 'false' }}" aria-controls="{{ $panel }}">{{ \App\Modules\Theme\Chrome\StorefrontChrome::menuLabel($item, false, true) }}<span class="sf-nav__caret" aria-hidden="true">@include('theme::partials.sf-icon', ['name' => 'chevron', 'size' => 16])</span></button>
+                <button type="button" class="{{ $depth === 0 ? 'sf-nav__link' : 'sf-nav__sublink' }} sf-nav__toggle{{ $open ? ' is-trail' : '' }}"@if ($open) aria-current="true"@endif aria-expanded="{{ $open ? 'true' : 'false' }}" aria-controls="{{ $panel }}">{{ \App\Modules\Theme\Chrome\StorefrontChrome::menuLabel($item, $depth > 0, true) }}<span class="sf-nav__caret" aria-hidden="true">@include('theme::partials.sf-icon', ['name' => 'chevron', 'size' => 16])</span></button>
                 <div class="sf-nav__panel" id="{{ $panel }}">
                     @include('theme::partials.nav-disclosure', ['items' => $item['children'], 'depth' => $depth + 1, 'idPrefix' => $panel, 'overview' => \App\Modules\Theme\Chrome\StorefrontChrome::drawerOverview($item)])
                 </div>

@@ -1521,7 +1521,8 @@ html.sf-menu-open {
     width: 100%;
     min-height: 48px;
     margin: 0;
-    padding: 10px 24px 10px 40px;
+    padding-block: 10px;
+    padding-inline: 40px 24px;
     border: 0;
     border-radius: 0;
     background: none;
