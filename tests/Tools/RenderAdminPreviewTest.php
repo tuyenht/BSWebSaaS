@@ -500,9 +500,11 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     ]));
     $this->actingAs($owner);
     app(Tenancy::class)->enter(1, fn () => app(SetBrandImages::class)->handle(['logo' => $logo->storage_key]));
+    // A header setting, so the phone menu card is drawn too (tone dark, brand accent: the swatch shows).
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'storefront', 'key' => 'header'], ['value' => ['drawer_tone' => 'dark', 'drawer_accent' => 'brand']]));
     $this->flushSession();
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/appearance')->assertOk()->getContent();
-    expect($html)->toContain('data-look-slot="logo"', 'data-look-stamp', 'data-look-share', 'Cập nhật lần cuối');
+    expect($html)->toContain('data-look-slot="logo"', 'data-look-stamp', 'data-look-share', 'Cập nhật lần cuối', 'Màu nhấn của menu');
     file_put_contents($dir.'/appearance.html', $html);
 
     // The post editor with its short description and Google title and description filled, long
