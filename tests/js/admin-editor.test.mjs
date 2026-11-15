@@ -38,11 +38,11 @@ const words = { offlineToast: 'Chưa lưu được vì mất kết nối.', offl
 const rerun = () => effects.slice().forEach((fn) => fn());
 
 // An editor whose server state is `wire` (values, saved, status); returns the part and its calls.
-function editor(wire) {
+function editor(wire, cfg = {}) {
     document.body.innerHTML = '<div wire:id="c1"><div id="bar"></div><input id="f"></div>';
     const calls = [];
     const state = { status: 'draft', saveFailed: false, saved: { name: '', summary: '' }, values: { name: '', summary: '' }, ...wire };
-    const c = factory({ fields: ['name', 'summary'], words });
+    const c = factory({ fields: ['name', 'summary'], words, ...cfg });
     c.$root = document.getElementById('bar');
     c.$wire = {
         $id: 'c1',
@@ -120,6 +120,20 @@ test('a draft saves itself 3 seconds after the last change, not before', (t) => 
     assert.deepEqual(calls, []);
     t.mock.timers.tick(1000);
     assert.deepEqual(calls, ['autosave']);
+    c.destroy();
+});
+
+test('an editor that keeps no autosave never saves by itself, and the server\'s own count adds to the line', (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const { c, calls, state } = editor({ values: { name: 'Bảng giá', summary: '', blocksChanged: 1 } }, { autosave: false, extra: 'blocksChanged' });
+    assert.equal(c.state(), 'dirty');
+    assert.equal(c.n, 2);
+    t.mock.timers.tick(10000);
+    assert.deepEqual(calls, []);
+    state.values.blocksChanged = 0;
+    state.values.name = '';
+    rerun();
+    assert.equal(c.state(), null);
     c.destroy();
 });
 

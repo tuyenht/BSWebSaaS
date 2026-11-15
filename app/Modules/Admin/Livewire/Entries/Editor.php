@@ -30,6 +30,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\PlainText;
 use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Context\SiteLocale;
+use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SchemaImages;
@@ -41,14 +42,17 @@ use App\Modules\Workflow\Models\WorkflowState;
 use App\Modules\Workflow\Models\WorkflowTransition;
 use App\Modules\Workflow\Services\WorkflowEngine;
 use App\Modules\Workflow\Services\WorkflowTrail;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Closure;
+use DateTimeInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -92,6 +96,12 @@ final class Editor extends Component
      * not a longer <select>.
      */
     private const int ASSIGNEE_LIMIT = 50;
+
+    /**
+     * The fields the save state and the leave dialog count against the saved entry. The block list
+     * is counted apart (blocksChanged): the browser cannot write it the way the server does.
+     */
+    public const array TRACKED = ['title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'categoryId', 'coverImageKey'];
 
     /** Which entry is being edited — server-resolved (mount/persist); never client-set. */
     #[Locked]
@@ -164,6 +174,42 @@ final class Editor extends Component
     #[Locked]
     public ?string $status = null;
 
+    /**
+     * The tracked values as last saved (Editor::tracked); the browser counts its changes against them.
+     *
+     * @var array<string, string>
+     */
+    #[Locked]
+    public array $saved = [];
+
+    /** 1 while the block list differs from the saved one (drawn by the server, added to the browser's count). */
+    #[Locked]
+    public int $blocksChanged = 0;
+
+    /** When this entry was last saved (ISO, UTC); null for one never saved. */
+    #[Locked]
+    public ?string $savedAt = null;
+
+    /** The last save asked for was refused for a field to fix (the save state says so until the next one). */
+    #[Locked]
+    public bool $saveFailed = false;
+
+    /** The content section whose list this entry belongs to (the crumb and "Quay lại" go there). */
+    #[Locked]
+    public ?string $sectionKey = null;
+
+    /** The member may publish this entry (the publish right inside their category limits), as of the last open or save. */
+    #[Locked]
+    public bool $mayPublish = false;
+
+    /** The address the saved entry lives at (no scheme), so an unsaved category or slug never moves the live link. */
+    #[Locked]
+    public ?string $savedAddress = null;
+
+    /** That list's name (the crumb), e.g. "Tin tức" or "Trang". */
+    #[Locked]
+    public string $listLabel = '';
+
     /** Reason for a return/retract — transitions flagged requires_note refuse without one. */
     public string $transitionNote = '';
 
@@ -214,6 +260,9 @@ final class Editor extends Component
                 ? (int) $contentSection->taxonomy_id
                 : null;
             $this->address = $this->previewAddress(new Entry(['type' => $this->type]));
+            $this->placeInList($contentSection instanceof ContentSection && $this->type === 'post' ? $contentSection : null);
+            $this->mayPublish = $this->user()->can('entries.publish');
+            $this->saved = $this->tracked();
 
             return;
         }
@@ -241,6 +290,13 @@ final class Editor extends Component
         $category = $this->type === 'post' ? $entry->primaryCategory() : null;
         $this->categoryId = $category?->id;
         $this->address = $this->previewAddress($entry, $category);
+        $this->placeInList($this->type === 'post' ? $this->sectionOf($category) : null);
+        // A save that changes no shared field leaves the entry row alone: this language's own row
+        // carries when it was last saved.
+        $this->savedAt = self::iso($translation?->updated_at);
+        $this->mayPublish = $this->user()->can('publish', $entry);
+        $this->savedAddress = $this->addressNow();
+        $this->saved = $this->tracked();
 
         if ($this->governingWorkflow() !== null) {
             $this->loadTrail($entry->id);
@@ -520,18 +576,32 @@ final class Editor extends Component
         $this->swapItems($index, $key, $itemIndex, $itemIndex + 1);
     }
 
+    /** "Lưu nháp" / "Lưu" / "Cập nhật" on content that is not live: save, the status kept. */
     public function save(): void
     {
         $this->persist();
-        session()->flash('saved', true);
+
+        $time = app(SiteTime::class)->forDisplay(CarbonImmutable::now())?->format('H:i') ?? '';
+        $this->dispatch('bs-toast', text: $this->status === 'draft'
+            ? __('entries.ed.toast_draft', ['time' => $time])
+            : __('entries.ed.toast_kept', ['status' => $this->statusPill()['label']]));
     }
 
+    /** "Đăng" / "Cập nhật" (live content) / "Gửi duyệt" (no right to publish): save, then publish or send. */
     public function publish(): void
     {
         $entry = $this->persist();
+        $was = $this->status;
 
         try {
             $this->status = app(PublishEntry::class)->handle($entry, $this->locale, $this->user());
+            $unit = $this->unit();
+            $this->dispatch('bs-toast', text: match (true) {
+                $this->status === 'published' && $was !== 'published' => __('entries.ed.toast_published', ['unit' => $unit]),
+                $this->status === 'published' => __('entries.ed.toast_updated'),
+                $this->status === 'pending' => __('entries.ed.toast_sent', ['unit' => $unit]),
+                default => __('entries.ed.toast_kept', ['status' => $this->statusPill()['label']]),
+            });
         } catch (RouteConflictException) {
             $this->addError('slug', __('entries.slug_conflict'));
         } catch (WorkflowGovernedException) {
@@ -924,7 +994,18 @@ final class Editor extends Component
         $workflow = $this->governingWorkflow();
         $buttonPanel = $this->buttonPanel($schemas);
 
+        $this->blocksChanged = $this->blocksHash() !== ($this->saved['blocks'] ?? '') ? 1 : 0;
+        $actions = $this->actions($workflow);
+
         return view('admin::livewire.entries.editor', [
+            'unit' => $this->unit(),
+            'listUrl' => route('admin.entries.index', $this->sectionKey !== null ? ['section' => $this->sectionKey] : []),
+            'note' => $this->saveNote(),
+            'actions' => $actions,
+            'leave' => $this->leaveWords($actions),
+            'changes' => $this->changeCount(),
+            'pill' => $this->statusPill(),
+            'liveUrl' => $this->liveUrl(),
             'buttons' => $buttonPanel['buttons'],
             'buttonPanel' => $buttonPanel,
             'availableTypes' => app(ComponentRegistry::class)->listedTypes(),
@@ -943,6 +1024,217 @@ final class Editor extends Component
                 ? $this->workflowPanel($workflow, $this->ulid !== null ? $this->resolveOrFail($this->ulid) : null)
                 : null,
         ]);
+    }
+
+    /** "Bỏ thay đổi" (the leave dialog): back to the saved entry, a new one back to an empty form. */
+    public function resetChanges(): void
+    {
+        $this->resetErrorBag();
+        $this->saveFailed = false;
+        // A language with no saved version yet loads nothing back: start from an empty form.
+        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'blocks', 'lookSplit');
+        $this->mount($this->ulid, $this->sectionKey, $this->locale);
+    }
+
+    /**
+     * The tracked values as the server writes them: text as it is, the category id as text, the
+     * block list as a fingerprint (the browser leaves it to blocksChanged).
+     *
+     * @return array<string, string>
+     */
+    private function tracked(): array
+    {
+        $values = [];
+        foreach (self::TRACKED as $field) {
+            $value = $this->{$field};
+            $values[$field] = is_scalar($value) ? (string) $value : '';
+        }
+        $values['blocks'] = $this->blocksHash();
+
+        return $values;
+    }
+
+    private function blocksHash(): string
+    {
+        return md5((string) json_encode($this->blocks));
+    }
+
+    /** How many tracked fields, and whether the block list, differ from the saved entry. */
+    private function changeCount(): int
+    {
+        $count = $this->blocksChanged;
+        foreach ($this->tracked() as $field => $value) {
+            if ($field !== 'blocks' && ($this->saved[$field] ?? '') !== $value) {
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    /** The list this entry belongs to: a post's content section, the pages list for a page. */
+    private function placeInList(?ContentSection $section): void
+    {
+        $this->sectionKey = $section?->key;
+        $this->listLabel = match (true) {
+            $section instanceof ContentSection => $section->localizedLabel(),
+            $this->type === 'post' => (string) __('section.posts'),
+            default => (string) __('section.pages'),
+        };
+    }
+
+    /**
+     * The post section a category belongs to: the section rooted at the category or one of its
+     * parents, else the site's first post section. Only on open (a category tree is a few levels).
+     */
+    private function sectionOf(?Taxonomy $category): ?ContentSection
+    {
+        $ids = [];
+        for ($node = $category, $depth = 0; $node instanceof Taxonomy && $depth < 16; $node = $node->parent, $depth++) {
+            $ids[] = $node->id;
+        }
+
+        $posts = ContentSection::query()->where('entry_type', 'post')->orderBy('sort_order')->orderBy('id');
+        if ($ids !== []) {
+            $found = (clone $posts)->whereIn('taxonomy_id', $ids)->get()
+                ->sortBy(fn (ContentSection $section): int => (int) array_search((int) $section->taxonomy_id, $ids, true))
+                ->first();
+            if ($found instanceof ContentSection) {
+                return $found;
+            }
+        }
+
+        return $posts->first();
+    }
+
+    /** This entry's edit address, in the language being edited when that is not the site's default. */
+    private function editUrl(Entry $entry): string
+    {
+        $query = $this->locale !== app(SiteLocale::class)->default() ? ['locale' => $this->locale] : [];
+
+        return route('admin.entries.edit', ['ulid' => $entry->ulid] + $query);
+    }
+
+    private static function iso(?DateTimeInterface $at): ?string
+    {
+        return $at !== null ? CarbonImmutable::instance($at)->utc()->toIso8601String() : null;
+    }
+
+    /** What is being edited, in the sentence: "trang", or the post section's name ("tin tức"). */
+    private function unit(): string
+    {
+        return $this->type === 'page' ? (string) __('entries.noun_page') : mb_strtolower($this->listLabel);
+    }
+
+    /**
+     * The status pill of the "Đăng" card: the saved status (a new entry reads as a draft).
+     *
+     * @return array{status: string, label: string}
+     */
+    private function statusPill(): array
+    {
+        $status = $this->status ?? 'draft';
+        $key = 'entries.ed.pill_'.$status;
+
+        return ['status' => $status, 'label' => Lang::has($key) ? (string) __($key) : $status];
+    }
+
+    /**
+     * The save state beside the title while nothing is being typed: a new entry not saved yet,
+     * saved at a time, or a field to fix. The browser shows the typing states over it.
+     *
+     * @return array{key: string, icon: string, text: string, full: string, tip: string}
+     */
+    private function saveNote(): array
+    {
+        if ($this->saveFailed) {
+            $text = (string) __('catalog.ed.sv_error');
+
+            return ['key' => 'error', 'icon' => 'ri-error-warning', 'text' => $text, 'full' => $text, 'tip' => $text];
+        }
+
+        $at = $this->savedAt !== null ? app(SiteTime::class)->forDisplay(CarbonImmutable::parse($this->savedAt)) : null;
+        if (! $at instanceof CarbonImmutable) {
+            $text = (string) __('entries.ed.sv_new', ['unit' => Str::ucfirst($this->unit())]);
+
+            return ['key' => 'auto', 'icon' => 'ri-draft', 'text' => $text, 'full' => $text, 'tip' => $text];
+        }
+
+        $today = $at->isSameDay(app(SiteTime::class)->now());
+        $time = $at->format('H:i');
+        $full = (string) ($today ? __('catalog.ed.sv_full_today', ['time' => $time]) : __('catalog.ed.sv_full_day', ['time' => $time, 'day' => $at->format('d/m/Y')]));
+        $text = (string) ($today ? __('entries.ed.sv_saved', ['when' => $time]) : __('entries.ed.sv_saved', ['when' => $at->format('d/m')]));
+
+        return ['key' => 'saved', 'icon' => 'ri-checkbox-circle', 'text' => $text, 'full' => $full, 'tip' => (string) __('catalog.ed.sv_tip', ['text' => $full])];
+    }
+
+    /**
+     * The bar's two buttons. The secondary one saves keeping the status; the main one publishes
+     * ("Đăng", "Cập nhật" on live content), sends for review for a member who may not publish
+     * ("Gửi duyệt"), or saves a scheduled, private or archived entry as it is. Under an approval
+     * workflow the moves are the workflow block's, so the bar keeps only the save.
+     *
+     * @return array{secondary: string|null, primary: string|null, primaryAction: string, primaryIcon: string}
+     */
+    private function actions(?Workflow $workflow): array
+    {
+        $status = $this->status ?? 'draft';
+        $draftWord = (string) __($status === 'draft' ? 'entries.save_draft' : 'entries.ed.save_plain');
+        if ($workflow !== null) {
+            return ['secondary' => $draftWord, 'primary' => null, 'primaryAction' => 'save', 'primaryIcon' => 'ri-save-3'];
+        }
+
+        $user = $this->user();
+        $canPublish = $this->mayPublish;
+        if (in_array($status, ['published', 'scheduled', 'private', 'archived'], true)) {
+            return [
+                'secondary' => null,
+                'primary' => (string) __($canPublish ? 'entries.ed.update' : 'entries.ed.save_plain'),
+                'primaryAction' => $canPublish && $status === 'published' ? 'publish' : 'save',
+                'primaryIcon' => $canPublish ? 'ri-send-plane-fill' : 'ri-save-3',
+            ];
+        }
+
+        return match (true) {
+            $canPublish => ['secondary' => $draftWord, 'primary' => (string) __('entries.publish'), 'primaryAction' => 'publish', 'primaryIcon' => 'ri-send-plane-fill'],
+            // Already waiting for review: sending it again moves nothing, so only the save stays.
+            $status !== 'pending' && $user->can('entries.submit') => ['secondary' => $draftWord, 'primary' => (string) __('entries.ed.submit'), 'primaryAction' => 'publish', 'primaryIcon' => 'ri-send-plane'],
+            default => ['secondary' => $draftWord, 'primary' => null, 'primaryAction' => 'save', 'primaryIcon' => 'ri-save-3'],
+        };
+    }
+
+    /**
+     * The leave dialog's sentence and its buttons, and which save it runs (the bar's save, or its
+     * main button when the bar has no other).
+     *
+     * @param  array{secondary: string|null, primary: string|null, primaryAction: string, primaryIcon: string}  $actions
+     * @return array{body: string, save: string, discard: string, method: string}
+     */
+    private function leaveWords(array $actions): array
+    {
+        return [
+            'body' => (string) __('entries.ed.leave_body', ['unit' => $this->unit()]),
+            'save' => (string) __('entries.ed.leave_save'),
+            'discard' => (string) __('entries.ed.leave_discard'),
+            'method' => $actions['secondary'] !== null ? 'save' : $actions['primaryAction'],
+        ];
+    }
+
+    /** The live address of published content (no scheme), as last saved; null when it is not live. */
+    private function liveUrl(): ?string
+    {
+        return $this->status === 'published' && $this->ulid !== null ? $this->savedAddress : null;
+    }
+
+    /** The address the entry has with the slug and category on the form now (called right after an open or a save). */
+    private function addressNow(): string
+    {
+        $slug = $this->slug;
+        if ($this->type === 'page' && $slug === $this->address['homeSlug'] && $this->address['home'] !== null) {
+            return $this->address['home'];
+        }
+
+        return $this->address['base'].$slug;
     }
 
     /**
@@ -1229,9 +1521,11 @@ final class Editor extends Component
             if ($filled) {
                 $this->slug = '';
             }
+            $this->saveFailed = true;
 
             throw $e;
         }
+        $wasNew = $this->ulid === null;
 
         if ($this->ulid === null) {
             $this->authorize('create', Entry::class);
@@ -1298,6 +1592,19 @@ final class Editor extends Component
             } else {
                 $revisions->forLocale($entry, $translation, RevisionKind::Edit, $this->user());
             }
+        }
+
+        $this->saveFailed = false;
+        $this->savedAt = self::iso(CarbonImmutable::now());
+        $this->mayPublish = $this->user()->can('publish', $entry);
+        $this->savedAddress = $this->addressNow();
+        $this->saved = $this->tracked();
+
+        if ($wasNew) {
+            // The address becomes this entry's edit address, so a reload (or reopening it from the
+            // browser's history) keeps editing this entry instead of starting a second one. The
+            // form stays as it is: no new page, the focus and the scroll where they were.
+            $this->js('history.replaceState(history.state, "", '.json_encode($this->editUrl($entry)).')');
         }
 
         return $entry;

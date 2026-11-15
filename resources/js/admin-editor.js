@@ -57,8 +57,11 @@ export function stateText(state, words, n, status) {
 }
 
 /**
- * @param {{ fields: string[], words: Record<string, string>, delay?: number }} cfg the counted
- *   fields, the words of each state, the wait before a draft saves itself (ms).
+ * @param {{ fields: string[], words: Record<string, string>, delay?: number, autosave?: boolean, extra?: string }} cfg
+ *   the counted fields, the words of each state, the wait before a draft saves itself (ms);
+ *   `autosave: false` for an editor whose drafts do not save themselves; `extra` names a $wire
+ *   property holding a count of changes the server keeps itself (a list the browser cannot write
+ *   the way the server does), added to the browser's count.
  */
 export function editorSave(cfg) {
     const delay = cfg.delay ?? 3000;
@@ -123,7 +126,7 @@ export function editorSave(cfg) {
                 effect = alpine.effect(() => {
                     const wire = this.$wire;
                     const values = cfg.fields.map((f) => valueText(wire.$get(f))).join('\u0000');
-                    const n = countChanges(cfg.fields, (f) => wire.$get(f), wire.saved);
+                    const n = countChanges(cfg.fields, (f) => wire.$get(f), wire.saved) + (cfg.extra ? Number(wire.$get(cfg.extra)) || 0 : 0);
                     this.n = n;
                     this.schedule(n, wire.status, values);
                 });
@@ -145,7 +148,7 @@ export function editorSave(cfg) {
 
         schedule(n, status) {
             clearTimeout(timer);
-            if (n === 0 || status !== 'draft') {
+            if (n === 0 || status !== 'draft' || cfg.autosave === false) {
                 return;
             }
             const fire = () => {
