@@ -121,7 +121,8 @@ function setLangScreen(open, focusHead = true) {
     }
     langSub.hidden = !open;
     langHead.setAttribute('aria-expanded', open ? 'true' : 'false');
-    Array.from(panel.children).forEach((child) => {
+    // Everything else in the panel sleeps while the screen is open (the close button and the backdrop stay usable).
+    Array.from(langSub.parentElement.children).forEach((child) => {
         if (child !== langSub) {
             child.inert = open;
         }
@@ -254,7 +255,7 @@ if (burger && panel) {
         langSub.hidden = true;
         langHead.addEventListener('click', () => setLangScreen(true));
         langSub.querySelector('[data-lang-back]').addEventListener('click', () => setLangScreen(false));
-        const fold = (text) => text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
+        const fold = (text) => text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/\s+/g, ' ');
         const rows = Array.from(langSub.querySelectorAll('[data-lang-others] > li'), (li) => [
             li,
             fold(Array.from(li.querySelectorAll('.sf-lang-r__n, .sf-lang-r__g'), (el) => el.textContent).join(' ') + ' ' + li.firstElementChild.getAttribute('hreflang')),
@@ -269,7 +270,8 @@ if (burger && panel) {
                 shown += li.hidden ? 0 : 1;
             });
             more.hidden = shown === 0;
-            none.hidden = shown !== 0;
+            // A live region that is always there, filled when nothing matches, so a screen reader announces it.
+            none.textContent = shown === 0 ? none.dataset.text : '';
         });
     } else if (langHead) {
         langHead.addEventListener('click', () => langHead.setAttribute('aria-expanded', langHead.getAttribute('aria-expanded') === 'true' ? 'false' : 'true'));

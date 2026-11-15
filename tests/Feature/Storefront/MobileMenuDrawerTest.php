@@ -140,7 +140,8 @@ it('draws eight or more languages as a row opening a screen with a labelled sear
     $sub = substr($sub, 0, (int) strpos($sub, 'data-lang-none'));
 
     expect($html)
-        ->toContain('data-lang-head aria-expanded="false" aria-controls="msm-lang-list" aria-haspopup="true">')
+        ->toContain('data-lang-head aria-expanded="false" aria-controls="msm-lang-list">')
+        ->toContain('<p class="sf-lang-none" role="status" data-lang-none data-text="Không có ngôn ngữ nào khớp."></p>')   // always there, filled by the script
         ->not->toContain('class="sf-lang-list"');
     expect($sub)
         ->toContain('id="msm-lang-list" role="group" aria-labelledby="msm-lang-title" data-lang-sub')

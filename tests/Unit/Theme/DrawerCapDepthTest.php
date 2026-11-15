@@ -25,6 +25,13 @@ function capWalk(array $items, int $depth = 1): array
     return $out;
 }
 
+it('drops a level-three heading without a page once its rows move up, and keeps every link', function (): void {
+    $heading = ['label' => 'nhom', 'url' => '#', 'active' => false, 'children' => [capNode('x'), capNode('y')]];
+    $menu = [capNode('a', [capNode('a1', [$heading, capNode('a12')])])];
+
+    expect(capWalk(StorefrontChrome::drawerCapDepth($menu)))->toBe(['1:a', '2:a1', '3:x', '3:y', '3:a12']);
+});
+
 it('flattens levels four and five behind their level-three row, depth first', function (): void {
     $menu = [
         capNode('a', [
@@ -91,5 +98,7 @@ it('gives a language its Vietnamese name only when that adds something', functio
     expect(StorefrontChrome::languageGloss('en', 'English'))->toBe('Tiếng Anh')
         ->and(StorefrontChrome::languageGloss('ja', '日本語'))->toBe('Tiếng Nhật')
         ->and(StorefrontChrome::languageGloss('vi', 'Tiếng Việt'))->toBeNull()
-        ->and(StorefrontChrome::languageGloss('xx', 'XX'))->toBeNull();
+        ->and(StorefrontChrome::languageGloss('xx', 'XX'))->toBeNull()
+        // on a page in another language the gloss is in that language
+        ->and(StorefrontChrome::languageGloss('ja', '日本語', 'en'))->toBe('Japanese');
 });

@@ -1980,7 +1980,7 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     background: var(--sf-dw-tap);
 }
 
-html:not(.sf-js) .sf-lang-h {
+html:not(.sf-js) :is(.sf-lang-h, .sf-lang-back, .sf-lang-search, .sf-lang-none) {
     display: none;
 }
 
@@ -2179,7 +2179,7 @@ html:not(.sf-js) .sf-lang-h {
     line-height: 1.4;
 }
 
-.sf-lang-none[hidden] {
+.sf-lang-none:empty {
     display: none;
 }
 

@@ -411,16 +411,16 @@ final class StorefrontChrome
     }
 
     /**
-     * A language's name in Vietnamese ("Tiếng Anh", "Tiếng Nhật"), shown small under its own name in the phone
-     * menu's language list so a visitor who cannot read the script still finds it. Null when it would say
+     * A language's name in the page's language ("Tiếng Anh", "Tiếng Nhật" on a Vietnamese page), shown small under
+     * its own name in the phone menu's language list so a visitor who cannot read the script still finds it. Null when it would say
      * nothing new (the same as the language's own name) or ICU has no name for the code.
      */
-    public static function languageGloss(string $locale, string $ownName): ?string
+    public static function languageGloss(string $locale, string $ownName, string $in = 'vi'): ?string
     {
         if (! class_exists(\Locale::class)) {
             return null;
         }
-        $name = \Locale::getDisplayName($locale, 'vi');
+        $name = \Locale::getDisplayName($locale, $in);
         if (! is_string($name) || strcasecmp($name, $locale) === 0 || mb_strtolower($name) === mb_strtolower($ownName)) {
             return null;
         }
@@ -681,7 +681,8 @@ final class StorefrontChrome
     /**
      * The phone menu shows three levels at most (a menu may be five deep): a row on the third level is
      * never a parent, so the rows below it (levels four and five) follow it as third-level rows, depth
-     * first, and no link is lost. The desktop menu keeps its depth: only the drawer is passed through here.
+     * first, and no link is lost. A third-level heading without a page ("#") goes with its group: it would
+     * be a row that opens nothing. The desktop menu keeps its depth: only the drawer is passed through here.
      *
      * @param  array<mixed>  $items  menu nodes {label, url, children, …}
      * @return list<array<mixed>>
@@ -701,7 +702,10 @@ final class StorefrontChrome
                 continue;
             }
             $item['children'] = [];
-            $out[] = $item;
+            // A heading with no page of its own ("#") only named its group: with the group moved up it has nothing to open.
+            if (($item['url'] ?? null) !== '#' || $children === []) {
+                $out[] = $item;
+            }
             foreach (self::drawerCapDepth($children, 3) as $below) {
                 $out[] = $below;
             }

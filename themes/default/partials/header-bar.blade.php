@@ -194,7 +194,7 @@
                                     </div>
                                 @else
                                     <div class="sf-drawer__lang" data-lang-inline>
-                                        <button type="button" class="sf-lang-h" data-lang-head aria-expanded="false" aria-controls="msm-lang-list"@if ($sfLangSub) aria-haspopup="true"@endif>@include('theme::partials.sf-icon', ['name' => 'globe', 'size' => 20])<span class="sf-lang-h__t">{{ __('storefront.language') }} · <span lang="{{ $sfLangCurrent['locale'] }}" dir="{{ $sfLangCurrent['dir'] }}">{{ $sfLangCurrent['name'] }}</span></span><span class="sf-lang-h__chev" aria-hidden="true">@include('theme::partials.sf-icon', ['name' => 'chevron', 'size' => 16])</span></button>
+                                        <button type="button" class="sf-lang-h" data-lang-head aria-expanded="false" aria-controls="msm-lang-list">@include('theme::partials.sf-icon', ['name' => 'globe', 'size' => 20])<span class="sf-lang-h__t">{{ __('storefront.language') }} · <span lang="{{ $sfLangCurrent['locale'] }}" dir="{{ $sfLangCurrent['dir'] }}">{{ $sfLangCurrent['name'] }}</span></span><span class="sf-lang-h__chev" aria-hidden="true">@include('theme::partials.sf-icon', ['name' => 'chevron', 'size' => 16])</span></button>
                                         @if (! $sfLangSub)
                                             <nav class="sf-lang-list" id="msm-lang-list" aria-label="{{ __('storefront.language') }}">
                                                 <ul class="sf-lang-l">
@@ -271,7 +271,7 @@
                                 @endif
                             @endforeach
                         </ul>
-                        <p class="sf-lang-none" role="status" data-lang-none hidden>{{ __('storefront.language_none') }}</p>
+                        <p class="sf-lang-none" role="status" data-lang-none data-text="{{ __('storefront.language_none') }}"></p>
                     </div>
                 @endif
             </div>
