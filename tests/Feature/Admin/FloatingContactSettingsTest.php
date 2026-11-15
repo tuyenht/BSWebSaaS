@@ -103,6 +103,20 @@ it('starts off with the six built-in channels, the site’s own phone and email 
     });
 });
 
+it('says beside a built-in channel’s name what its button shows when a label is typed', function (): void {
+    $admin = fcsAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class);
+        $i = fcsIndex($lw, 'messenger');
+
+        $lw->assertDontSee('hiện là');
+        $lw->set("channels.$i.tips.vi", '  Mes ')->assertSee('· hiện là “Mes”');
+        // The same word as the name says nothing new.
+        $lw->set("channels.$i.tips.vi", 'Messenger')->assertDontSee('hiện là');
+    });
+});
+
 it('saves the draft for the current site only and loads it back', function (): void {
     $admin = fcsAdmin();
 

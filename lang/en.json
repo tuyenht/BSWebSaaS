@@ -3560,6 +3560,7 @@
     "admin.fc.st_partial": ":count labels not translated yet",
     "admin.fc.st_empty": "No labels yet",
     "admin.fc.st_hidden": "not shown on the website yet",
+    "admin.fc.shown_as": "· shown as “:text”",
     "admin.fc.note_src": "This is the source — fill in the labels marked :code carefully.",
     "admin.fc.note_src_missing": ":count languages still miss labels.",
     "admin.fc.note_empty": "The :name version has no hover labels yet — type them, or leave them empty and each button uses the channel's own name in :name.",

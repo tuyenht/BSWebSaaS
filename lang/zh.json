@@ -3560,6 +3560,7 @@
     "admin.fc.st_partial": "还有 :count 个标签未翻译",
     "admin.fc.st_empty": "还没有标签",
     "admin.fc.st_hidden": "尚未在网站上显示",
+    "admin.fc.shown_as": "· 显示为“:text”",
     "admin.fc.note_src": "这是源语言 — 请完整准确地填写标有 :code 的标签。",
     "admin.fc.note_src_missing": "还有 :count 种语言的标签不全。",
     "admin.fc.note_empty": ":name 版本还没有悬停标签 — 请自行输入，或留空让每个按钮使用该渠道在 :name 中的名称。",

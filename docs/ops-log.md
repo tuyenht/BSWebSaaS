@@ -19,6 +19,12 @@
 - **Quay lại:** gỡ bản ghi AAAA 100:: có comment trên, gắn lại tên miền công khai cho bucket (mất ~3–4 phút tới SSL active). Kịch bản dùng cho lần này nằm ở thư mục nháp của phiên (không đưa vào repo vì chứa đường dẫn token máy chủ); bước tay ở `docs/runbooks/media-worker-deploy.md` §2.
 - **Token:** token DNS của chủ dự án (`/root/.config/bswebsaas/cf-dns-token`, 600) + token R2/route trong môi trường app dev. Nên thu hồi token DNS khi không còn dùng; nên tách token chỉ-purge cho app (token app hiện sửa được route Worker).
 
+### 2026-11-13 — Cài gói `unzip`
+
+- **Owner yêu cầu trong phiên (13/11, "cài unzip vào máy này đi").**
+- **Đã làm:** `apt-get install -y unzip` (bản `6.0-28ubuntu4.1` từ kho Ubuntu). Hậu kiểm: `unzip -v` → `UnZip 6.00 of 20 April 2009, by Debian`.
+- **Gỡ:** `apt-get remove -y unzip`.
+
 ### 2026-10-29 — Gỡ ClaudeKit khỏi cấu hình Claude Code (quay lại được); MEMORY.md tiếng Anh
 
 - **Owner duyệt trong phiên (29/10, "Làm cả hai"):** gỡ bộ ClaudeKit khỏi `~/.claude` của root theo cách quay lại được. Lý do: 0 lần dùng skill của kit trong 30 ngày; tốn khoảng 8K token mỗi phiên và mỗi tác tử phụ; `scout-block` chặn `vendor/bin/pest`, `phpstan` và `pint`; `session-init` chèn thông tin sai ("monorepo, pnpm").

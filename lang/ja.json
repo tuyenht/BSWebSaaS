@@ -3560,6 +3560,7 @@
     "admin.fc.st_partial": "未翻訳のラベルが :count 件",
     "admin.fc.st_empty": "ラベルはまだありません",
     "admin.fc.st_hidden": "まだサイトに表示されていません",
+    "admin.fc.shown_as": "· 表示名「:text」",
     "admin.fc.note_src": "これはソースです — :code の付いたラベルを正しく入力してください。",
     "admin.fc.note_src_missing": "ラベルが足りない言語がまだ :count 件あります。",
     "admin.fc.note_empty": ":name 版にはホバーラベルがまだありません — 入力するか、空のままにすると各ボタンは :name でのチャネル名を使います。",
