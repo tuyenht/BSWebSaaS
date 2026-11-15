@@ -13,7 +13,8 @@
 @php
     // every public language of the site (PageChrome: StorefrontChrome::languages), none for a one-language site
     $sfLanguages = $languages ?? [];
-    $drawerMenu = ! empty($mobileMenu) ? $mobileMenu : ($menu ?? []);
+    // The phone menu shows three levels at most: deeper rows follow their level-3 row as level-3 rows (StorefrontChrome::drawerCapDepth).
+    $drawerMenu = \App\Modules\Theme\Chrome\StorefrontChrome::drawerCapDepth(! empty($mobileMenu) ? $mobileMenu : ($menu ?? []));
     $sfFsTop = $header['text_size'] && empty($drawerMenu);
     // The phone bottom bar (under 768px) and whether it carries the call: then the header's own copies
     // of the call (the corner icon, the top bar's phone items) step aside there.
@@ -136,6 +137,9 @@
                             $sfFcKeys[$sfChannel['key']] = true;
                         }
                     }
+                    // The language control by count (see the footer): the current language names the row that opens the list.
+                    $sfLangSub = count($sfLanguages) >= 8;
+                    $sfLangCurrent = $sfLanguages === [] ? null : (collect($sfLanguages)->firstWhere('current', true) ?? $sfLanguages[0]);
                     $sfOwnCall = ! isset($sfFcKeys['phone']) && $sfCallHref !== null;
                     $sfOwnZalo = ! isset($sfFcKeys['zalo']);
                     $sfZaloSocial = null;
@@ -166,7 +170,7 @@
                         <div class="sf-drawer__pane" role="tabpanel" id="msm-pane-products" aria-labelledby="msm-tab-products" hidden>
                             <p class="sf-drawer__cap" id="msm-products-cap">{{ __('storefront.product_groups') }}</p>
                             <nav class="sf-nav sf-nav--mob" aria-labelledby="msm-products-cap">
-                                @include('theme::partials.drawer-tree', ['items' => $drawerProducts['items'], 'depth' => 0, 'idPrefix' => 'psm'])
+                                @include('theme::partials.drawer-tree', ['items' => \App\Modules\Theme\Chrome\StorefrontChrome::drawerCapDepth($drawerProducts['items']), 'depth' => 0, 'idPrefix' => 'psm'])
                             </nav>
                             <a class="sf-drawer__all" href="{{ $drawerProducts['url'] }}"><span>{{ __('storefront.products_all') }}</span>@include('theme::partials.sf-icon', ['name' => 'arrow-right', 'size' => 18])</a>
                         </div>
@@ -174,17 +178,34 @@
                     @if ($sfLanguages !== [] || $header['text_size'] || $sfOwnCall || $sfZaloHref !== null || $sfSocials !== [])
                         <div class="sf-drawer__foot">
                             @if ($sfLanguages !== [])
-                                {{-- Two or three languages: one segmented control (a longer list wraps). --}}
-                                <div class="sf-drawer__blk">
-                                    <div class="sf-drawer__fh">@include('theme::partials.sf-icon', ['name' => 'globe', 'size' => 20])<span aria-hidden="true">{{ __('storefront.language') }}</span></div>
-                                    <nav class="sf-drawer__langs" aria-label="{{ __('storefront.language') }}">
-                                        <ul class="sf-seg{{ count($sfLanguages) > 3 ? ' sf-seg--wrap' : '' }}">
-                                            @foreach ($sfLanguages as $language)
-                                                <li><a class="sf-seg__s" href="{{ $language['href'] }}" hreflang="{{ $language['locale'] }}" lang="{{ $language['locale'] }}" dir="{{ $language['dir'] }}"@if ($language['current']) aria-current="true"@endif>{{ $language['name'] }}@if ($language['fallback']) <small class="sf-drawer__hint">{{ __('storefront.lang_home') }}</small>@endif</a></li>
-                                            @endforeach
-                                        </ul>
-                                    </nav>
-                                </div>
+                                {{-- By count: two or three languages are one segmented control; four to seven a "Ngôn ngữ · <name>"
+                                     row that opens the list below it; eight or more the same row opening a screen of its own with a
+                                     search field (after the scrolling part of the panel). Without a script the list is simply shown. --}}
+                                @if (count($sfLanguages) <= 3)
+                                    <div class="sf-drawer__blk">
+                                        <div class="sf-drawer__fh">@include('theme::partials.sf-icon', ['name' => 'globe', 'size' => 20])<span aria-hidden="true">{{ __('storefront.language') }}</span></div>
+                                        <nav class="sf-drawer__langs" aria-label="{{ __('storefront.language') }}">
+                                            <ul class="sf-seg">
+                                                @foreach ($sfLanguages as $language)
+                                                    <li><a class="sf-seg__s" href="{{ $language['href'] }}" hreflang="{{ $language['locale'] }}" lang="{{ $language['locale'] }}" dir="{{ $language['dir'] }}"@if ($language['current']) aria-current="true"@endif>{{ $language['name'] }}@if ($language['fallback']) <small class="sf-drawer__hint">{{ __('storefront.lang_home') }}</small>@endif</a></li>
+                                                @endforeach
+                                            </ul>
+                                        </nav>
+                                    </div>
+                                @else
+                                    <div class="sf-drawer__lang" data-lang-inline>
+                                        <button type="button" class="sf-lang-h" data-lang-head aria-expanded="false" aria-controls="msm-lang-list">@include('theme::partials.sf-icon', ['name' => 'globe', 'size' => 20])<span class="sf-lang-h__t">{{ __('storefront.language') }} · <span lang="{{ $sfLangCurrent['locale'] }}" dir="{{ $sfLangCurrent['dir'] }}">{{ $sfLangCurrent['name'] }}</span></span><span class="sf-lang-h__chev" aria-hidden="true">@include('theme::partials.sf-icon', ['name' => 'chevron', 'size' => 16])</span></button>
+                                        @if (! $sfLangSub)
+                                            <nav class="sf-lang-list" id="msm-lang-list" aria-label="{{ __('storefront.language') }}">
+                                                <ul class="sf-lang-l">
+                                                    @foreach ($sfLanguages as $language)
+                                                        @include('theme::partials.drawer-lang-row', ['language' => $language])
+                                                    @endforeach
+                                                </ul>
+                                            </nav>
+                                        @endif
+                                    </div>
+                                @endif
                             @endif
                             @if ($header['text_size'])
                                 {{-- Three boxed "A" in fixed sizes beside the label (under it when there is no room); each says its size's
@@ -222,6 +243,37 @@
                         </div>
                     @endif
                 </div>
+                @if ($sfLangSub)
+                    {{-- Eight or more languages: a screen inside the panel (opened by the "Ngôn ngữ" row; a script hides it until then). --}}
+                    <div class="sf-lang-sub" id="msm-lang-list" role="group" aria-labelledby="msm-lang-title" data-lang-sub>
+                        <div class="sf-lang-sub__h">
+                            <button type="button" class="sf-lang-back" data-lang-back>@include('theme::partials.sf-icon', ['name' => 'chevron-left', 'size' => 20])<span>{{ __('storefront.menu_word') }}</span></button>
+                            <h2 class="sf-lang-sub__t" id="msm-lang-title">{{ __('storefront.language') }}</h2>
+                        </div>
+                        <div class="sf-lang-search">
+                            @include('theme::partials.sf-icon', ['name' => 'search', 'size' => 20])
+                            <label class="sr-only" for="msm-lang-q">{{ __('storefront.language_search') }}</label>
+                            <input class="sf-lang-search__in" id="msm-lang-q" type="search" data-lang-q placeholder="{{ __('storefront.language_search') }}" autocomplete="off" autocapitalize="none" spellcheck="false" enterkeyhint="search">
+                        </div>
+                        <p class="sf-drawer__cap" id="msm-lang-now">{{ __('storefront.language_current') }}</p>
+                        <ul class="sf-lang-l" aria-labelledby="msm-lang-now">
+                            @foreach ($sfLanguages as $language)
+                                @if ($language['current'])
+                                    @include('theme::partials.drawer-lang-row', ['language' => $language])
+                                @endif
+                            @endforeach
+                        </ul>
+                        <p class="sf-drawer__cap" id="msm-lang-more" data-lang-more>{{ __('storefront.language_others') }}</p>
+                        <ul class="sf-lang-l" aria-labelledby="msm-lang-more" data-lang-others>
+                            @foreach ($sfLanguages as $language)
+                                @if (! $language['current'])
+                                    @include('theme::partials.drawer-lang-row', ['language' => $language])
+                                @endif
+                            @endforeach
+                        </ul>
+                        <p class="sf-lang-none" role="status" data-lang-none data-text="{{ __('storefront.language_none') }}"></p>
+                    </div>
+                @endif
             </div>
         </div>
     @endif

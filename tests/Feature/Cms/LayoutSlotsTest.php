@@ -406,7 +406,7 @@ describe('media in use', function (): void {
             ->and(lsUsage('site_setting', $setting))->toBe([]);
     });
 
-    it('lists the slots in the library\'s "where used", linking to the screen that edits them', function (): void {
+    it('lists the slots in the library\'s "where used", linking a category\'s to the screen that edits it (no screen edits the site\'s own yet)', function (): void {
         $picture = lsPicture(1, 'anh-bia');
         $category = lsCategory(1, 'Đồ gá cơ khí', 'product_cat');
         $this->actingAs(lsSettingsAdmin());
@@ -419,7 +419,7 @@ describe('media in use', function (): void {
         });
 
         expect($usages)->toBe([
-            ['kind' => 'site', 'role' => 'content', 'label' => 'Cột phải / Kêu gọi cuối trang', 'url' => route('admin.settings.appearance')],
+            ['kind' => 'site', 'role' => 'content', 'label' => 'Cột phải / Kêu gọi cuối trang', 'url' => null],
             ['kind' => 'category', 'role' => 'content', 'label' => 'Đồ gá cơ khí · Cột phải / Kêu gọi cuối trang', 'url' => route('admin.taxonomies.index', ['section' => 'catalog'])],
         ]);
         expect(app(Tenancy::class)->enter(1, function () use ($picture): bool {

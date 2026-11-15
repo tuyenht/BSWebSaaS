@@ -489,6 +489,22 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     app(Tenancy::class)->enter(1, fn () => app(SetBrandImages::class)->handle(['og_image' => $share->storage_key]));
     $aiShot('seo-image', 'aria-label="Gỡ ảnh"');
 
+    // "Giao diện website": a logo from the library with a long file name (wrapped, never clipped),
+    // the dark logo and the favicon still empty, and the row saying who saved last.
+    $logoHash = hash('sha256', random_bytes(16));
+    $logo = app(Tenancy::class)->enter(1, fn (): Media => Media::query()->create([
+        'collection' => 'library', 'slug' => 'logo-cong-ty', 'hash' => $logoHash,
+        'original_filename' => 'logo-cong-ty-co-khi-chinh-xac-demo-viet-nam-ban-ngang-nen-trong-suot-2026.png',
+        'storage_key' => 's/library/logo-cong-ty-'.substr($logoHash, 0, 12).'.png',
+        'mime' => 'image/png', 'size' => 24_000, 'width' => 640, 'height' => 160,
+    ]));
+    $this->actingAs($owner);
+    app(Tenancy::class)->enter(1, fn () => app(SetBrandImages::class)->handle(['logo' => $logo->storage_key]));
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/appearance')->assertOk()->getContent();
+    expect($html)->toContain('data-look-slot="logo"', 'data-look-stamp', 'data-look-share', 'Cập nhật lần cuối');
+    file_put_contents($dir.'/appearance.html', $html);
+
     // The post editor with its short description and Google title and description filled, long
     // enough that the meters show their bands and the Google preview shows where it cuts the text.
     $post = app(Tenancy::class)->enter(1, function () use ($owner): Entry {
@@ -759,5 +775,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-te-page="suspended"');
     file_put_contents($dir.'/error-suspended.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 50);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 51);
 });

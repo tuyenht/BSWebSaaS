@@ -50,6 +50,7 @@ it('renders the dialog on a section that passes its change count, named after th
 })->with([
     'general' => ['/admin/settings/general', 'Thông tin chung'],
     'seo' => ['/admin/settings/seo', 'Google & mạng xã hội'],
+    'website appearance' => ['/admin/settings/appearance', 'Giao diện website'],
 ]);
 
 it('leaves a section that passes no change count without the dialog', function (string $path): void {
@@ -60,7 +61,7 @@ it('leaves a section that passes no change count without the dialog', function (
 })->with([
     'floating contact' => ['/admin/settings/floating-contact'],
     'integrations' => ['/admin/settings/integrations'],
-    'appearance' => ['/admin/settings/appearance'],
+    'admin panel appearance' => ['/admin/settings/admin-ui'],
     'catalog' => ['/admin/settings/catalog'],
     'account' => ['/admin/account'],
 ]);

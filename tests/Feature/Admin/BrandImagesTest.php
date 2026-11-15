@@ -262,7 +262,7 @@ it('sends "Đang dùng ở" for the share image to "Google & mạng xã hội", 
     ]);
 
     expect($shareUsages)->toBe([['kind' => 'site', 'role' => 'brand', 'label' => 'Google & mạng xã hội', 'url' => route('admin.settings.seo')]])
-        ->and($logoUsages)->toBe([['kind' => 'site', 'role' => 'brand', 'label' => 'Giao diện', 'url' => route('admin.settings.appearance')]]);
+        ->and($logoUsages)->toBe([['kind' => 'site', 'role' => 'brand', 'label' => 'Giao diện website', 'url' => route('admin.settings.appearance')]]);
 });
 
 it('records who saved a setting, and the stamp names the newest save of a section', function (): void {

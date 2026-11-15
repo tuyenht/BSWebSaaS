@@ -35,14 +35,41 @@ function closeAll(except) {
     });
 }
 
+// Phone menu: one first-level group is open at a time in each tab (the groups inside it stay as they are).
+// A group folding above the tapped row would pull the row up the screen, so the scroll moves by the
+// difference and the row stays where the visitor's finger is.
+function openDrawerGroup(item, open) {
+    if (open && !item.parentElement.closest('[data-disclosure]')) {
+        const row = toggleOf(item);
+        const top = row.getBoundingClientRect().top;
+        item.closest('.sf-drawer__pane')?.querySelectorAll('[data-disclosure].is-open').forEach((other) => {
+            if (other !== item && !other.parentElement.closest('[data-disclosure]')) {
+                setOpen(other, false);
+            }
+        });
+        const scroller = row.closest('.sf-drawer__scroll');
+        const box = scroller && scroller.scrollHeight > scroller.clientHeight ? scroller : row.closest('.sf-drawer__panel');
+        if (box) {
+            box.scrollTop += row.getBoundingClientRect().top - top;
+        }
+    }
+    setOpen(item, open);
+}
+
 document.querySelectorAll('[data-disclosure]').forEach((item) => {
     const toggle = toggleOf(item);
     if (!toggle) {
         return;
     }
 
+    const inDrawer = item.closest('.sf-drawer') !== null;
+
     toggle.addEventListener('click', () => {
         const open = toggle.getAttribute('aria-expanded') !== 'true';
+        if (inDrawer) {
+            openDrawerGroup(item, open);
+            return;
+        }
         closeAll(item);
         setOpen(item, open);
     });
@@ -55,11 +82,14 @@ document.querySelectorAll('[data-disclosure]').forEach((item) => {
         }
     });
 
-    item.addEventListener('focusout', (event) => {
-        if (!item.contains(event.relatedTarget)) {
-            setOpen(item, false);
-        }
-    });
+    // The phone menu's groups are an accordion: moving focus on never folds one away.
+    if (!inDrawer) {
+        item.addEventListener('focusout', (event) => {
+            if (!item.contains(event.relatedTarget)) {
+                setOpen(item, false);
+            }
+        });
+    }
 });
 
 document.addEventListener('click', (event) => {
@@ -73,18 +103,56 @@ document.addEventListener('click', (event) => {
 const burger = document.querySelector('[data-menu-toggle]');
 const panel = burger ? document.getElementById(burger.getAttribute('aria-controls')) : null;
 
+// The language screen (eight or more languages) and the search in it; null for a menu without one.
+const langSub = panel ? panel.querySelector('[data-lang-sub]') : null;
+const langHead = panel ? panel.querySelector('[data-lang-head]') : null;
+
 function drawerFocusables() {
-    // A radio group is one tab stop: only its chosen radio counts.
-    return Array.from(panel.querySelectorAll('a[href], button:not([disabled]), input[type="radio"]:checked')).filter((el) => el.offsetParent !== null);
+    // A radio group is one tab stop: only its chosen radio counts. While the language screen is open it is the whole dialog.
+    const scope = langSub && !langSub.hidden ? langSub : panel;
+    return Array.from(scope.querySelectorAll('a[href], button:not([disabled]), input[type="search"], input[type="radio"]:checked')).filter((el) => el.offsetParent !== null);
 }
 
 let chooseTab = null;
+
+function setLangScreen(open, focusHead = true) {
+    if (!langSub || langSub.hidden !== open) {
+        return;
+    }
+    langSub.hidden = !open;
+    langHead.setAttribute('aria-expanded', open ? 'true' : 'false');
+    // Everything else in the panel sleeps while the screen is open (the close button and the backdrop stay usable).
+    Array.from(langSub.parentElement.children).forEach((child) => {
+        if (child !== langSub) {
+            child.inert = open;
+        }
+    });
+    if (open) {
+        panel.scrollTop = 0;
+        langSub.scrollTop = 0;
+        langSub.querySelector('[data-lang-back]').focus();
+    } else {
+        const search = langSub.querySelector('[data-lang-q]');
+        search.value = '';
+        search.dispatchEvent(new Event('input'));
+        if (focusHead) {
+            langHead.focus();
+        }
+    }
+}
+
+// The item to bring into view when the menu opens: the page the visitor is on, else the end of the way to it.
+function drawerHere() {
+    const pane = panel.querySelector('.sf-drawer__pane:not([hidden])');
+    return pane ? pane.querySelector('[aria-current="page"]') || Array.from(pane.querySelectorAll('[aria-current="true"]')).pop() : null;
+}
 
 function setMenu(open, returnFocus = true) {
     burger.setAttribute('aria-expanded', open ? 'true' : 'false');
     burger.setAttribute('aria-label', open ? burger.dataset.labelClose : burger.dataset.labelOpen);
     panel.hidden = !open;
     root.classList.toggle('sf-menu-open', open);
+    setLangScreen(false, false);
     if (open) {
         // Opens on "Menu", or on "Sản phẩm" when the visitor is on a product category.
         const tabs = chooseTab ? panel.querySelectorAll('[role="tab"]') : [];
@@ -94,8 +162,10 @@ function setMenu(open, returnFocus = true) {
         }
         const first = panel.querySelector('.sf-drawer__pane:not([hidden]) :is(a[href], button)') || panel.querySelector('[data-menu-close]');
         if (first) {
-            first.focus();
+            first.focus({ preventScroll: true });
         }
+        // Scrolls only when that row is hidden above or below the visible part of the menu.
+        drawerHere()?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
     } else if (returnFocus) {
         burger.focus();
     }
@@ -114,7 +184,11 @@ if (burger && panel) {
             return;
         }
         if (event.key === 'Escape') {
-            setMenu(false);
+            if (langSub && !langSub.hidden) {
+                setLangScreen(false); // one Escape leaves the language screen only
+            } else {
+                setMenu(false);
+            }
         } else if (event.key === 'Tab') {
             const items = drawerFocusables();
             if (items.length === 0) {
@@ -168,6 +242,39 @@ if (burger && panel) {
                 chooseTab(tabs[to], true);
             }
         });
+    }
+    // A page restored from the back/forward cache never shows the menu open (nor leaves the page's scroll locked).
+    window.addEventListener('pageshow', (event) => {
+        if (event.persisted) {
+            setMenu(false, false);
+        }
+    });
+    // Language: four to seven fold a list open below the row; eight or more open a screen of their own with a search
+    // that ignores case and diacritics and matches the name, the Vietnamese name and the code.
+    if (langHead && langSub) {
+        langSub.hidden = true;
+        langHead.addEventListener('click', () => setLangScreen(true));
+        langSub.querySelector('[data-lang-back]').addEventListener('click', () => setLangScreen(false));
+        const fold = (text) => text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/\s+/g, ' ');
+        const rows = Array.from(langSub.querySelectorAll('[data-lang-others] > li'), (li) => [
+            li,
+            fold(Array.from(li.querySelectorAll('.sf-lang-r__n, .sf-lang-r__g'), (el) => el.textContent).join(' ') + ' ' + li.firstElementChild.getAttribute('hreflang')),
+        ]);
+        const more = langSub.querySelector('[data-lang-more]');
+        const none = langSub.querySelector('[data-lang-none]');
+        langSub.querySelector('[data-lang-q]').addEventListener('input', (event) => {
+            const query = fold(event.target.value.trim());
+            let shown = 0;
+            rows.forEach(([li, text]) => {
+                li.hidden = !text.includes(query);
+                shown += li.hidden ? 0 : 1;
+            });
+            more.hidden = shown === 0;
+            // A live region that is always there, filled when nothing matches, so a screen reader announces it.
+            none.textContent = shown === 0 ? none.dataset.text : '';
+        });
+    } else if (langHead) {
+        langHead.addEventListener('click', () => langHead.setAttribute('aria-expanded', langHead.getAttribute('aria-expanded') === 'true' ? 'false' : 'true'));
     }
     // Widening the window until the bar shows the full menu: the drawer has no place any more.
     window.addEventListener('resize', () => {

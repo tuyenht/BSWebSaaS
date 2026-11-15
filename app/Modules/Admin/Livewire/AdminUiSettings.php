@@ -13,14 +13,14 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 /**
- * Site-default appearance (Settings → Giao diện): the per-site tier of the admin theme,
+ * Site-default look of the admin panel (Settings → Giao diện trang quản trị): the per-site tier of the admin theme,
  * stored as site_settings group `admin_theme` (NEVER the public `theme` group). Each axis
  * may also stay '' = inherit the app default — only explicitly chosen axes are persisted,
  * matching the resolver's per-field merge. Members' own Customizer picks still win over
  * whatever is set here.
  */
 #[Layout('admin::layouts.app')]
-final class AppearanceSettings extends Component
+final class AdminUiSettings extends Component
 {
     public string $scheme = '';
 
@@ -94,8 +94,8 @@ final class AppearanceSettings extends Component
 
     public function render(): View
     {
-        $view = view('admin::livewire.appearance-settings');
-        $view->title(__('admin.appearance'));
+        $view = view('admin::livewire.admin-ui-settings');
+        $view->title(__('admin.admin_ui'));
 
         return $view;
     }
