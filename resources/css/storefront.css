@@ -1288,9 +1288,10 @@ html:not(.sf-js) .sf-nav--desk .sf-nav__item--parent:focus-within > .sf-nav__pan
 }
 
 /* The tones. ink: labels and the chosen ring · sub: sub-items and unchosen segments · muted: icons, the
-   caption, a size's name · track: the tracks and the current page's pill · thumb: the chosen thumb · hair:
-   the one rule · ctl: control borders and the scrollbar (3:1) · on: the chosen and current labels and the
-   check · accent: the current page's and the trail's icon. Measured on the reference site (#0f172a ink,
+   caption, a size's name · track: the tracks · thumb: the chosen thumb · hair: the one rule · ctl: control
+   borders and the scrollbar (3:1) · on: the chosen and current labels · accent: the trail's icon · here: the
+   current page's bar and icon (the brand's readable colour, >= 4.5:1 on the panel) · here-bg / here-press:
+   the current page's pill, a brand tint under 3:1, so the bar and bold label carry the state. Measured on the reference site (#0f172a ink,
    white surface): track #f3f3f4, hair #e7e8ea, muted #6a6f7b, ctl #87898f; dark: track #222a3b, hair
    #2c3344, muted #9fa2aa, ctl #6f747f. */
 .sf-drawer {
@@ -1305,6 +1306,9 @@ html:not(.sf-js) .sf-nav--desk .sf-nav__item--parent:focus-within > .sf-nav__pan
     --sf-dw-ctl: color-mix(in srgb, var(--color-text-strong) 50%, var(--color-surface));
     --sf-dw-on: var(--color-text-strong);
     --sf-dw-accent: var(--color-text-strong);
+    --sf-dw-here: var(--color-primary-text);
+    --sf-dw-here-bg: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+    --sf-dw-here-press: color-mix(in srgb, var(--color-primary) 18%, var(--color-surface));
     --sf-dw-focus: var(--color-primary-text);
     --sf-dw-lift: 0 1px 2px color-mix(in srgb, var(--color-dark) 16%, transparent), 0 2px 6px color-mix(in srgb, var(--color-dark) 8%, transparent);
     position: fixed;
@@ -1323,6 +1327,9 @@ html:not(.sf-js) .sf-nav--desk .sf-nav__item--parent:focus-within > .sf-nav__pan
     --sf-dw-ctl: color-mix(in srgb, var(--color-dark) 60%, #fff);
     --sf-dw-on: #fff;
     --sf-dw-accent: var(--color-primary-on-dark);
+    --sf-dw-here: var(--color-primary-on-dark);
+    --sf-dw-here-bg: color-mix(in srgb, var(--color-primary-on-dark) 18%, var(--color-dark));
+    --sf-dw-here-press: color-mix(in srgb, var(--color-primary-on-dark) 26%, var(--color-dark));
     --sf-dw-focus: var(--color-primary-on-dark);
     --sf-dw-lift: 0 0 #0000;
     color-scheme: dark;
@@ -1567,32 +1574,64 @@ html.sf-menu-open {
     outline-color: var(--color-on-primary);
 }
 
-/* Where the visitor is: a pill in the track's grey drawn behind the row (so the row's height never
-   changes), a bold label and a check mark; on the dark tone the label and check are white and the icon
-   takes the accent. A section on the way to the page (aria-current="true") gets a bold label and that
-   icon colour, no pill; inside an open group only the current page stands out. */
-.sf-nav--mob :is(.sf-nav__link, .sf-nav__sublink)[aria-current="page"] {
+/* Where the visitor is: a soft pill in the brand's tint drawn behind the row (so the row's height never
+   changes), a short bar in the brand's readable colour at its leading edge, a bold label and the icon in
+   the bar's colour. The tint stays under 3:1 against the panel, so the bar (>= 3:1 on the tint) and the
+   bold label carry the state, never the colour alone. On a row with a chevron the pill spans the chevron
+   too. A section on the way to the page (aria-current="true") gets a bold label and the accent icon, no
+   pill and no bar; inside an open group only the current page stands out. A call-to-action row keeps its
+   own brand fill when it is the current page. Sides are logical, so a right-to-left page mirrors it. */
+.sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink)[aria-current="page"] {
     isolation: isolate;
     background: none;
     color: var(--sf-dw-on);
     font-weight: 700;
 }
 
-.sf-nav--mob :is(.sf-nav__link, .sf-nav__sublink)[aria-current="page"]::after {
+.sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink)[aria-current="page"]::after {
     content: "";
     position: absolute;
     inset: 2px 8px;
     z-index: -1;
     border-radius: 12px;
-    background: var(--sf-dw-track);
+    background: var(--sf-dw-here-bg);
+}
+
+.sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink)[aria-current="page"]::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    inset-inline-start: 8px;
+    width: 3px;
+    height: 20px;
+    margin-top: -10px;
+    border-radius: 0;
+    border-start-end-radius: 3px;
+    border-end-end-radius: 3px;
+    background: var(--sf-dw-here);
 }
 
 .sf-nav--mob .sf-nav__sublink[aria-current="page"]::after {
     inset: 2px 0;
 }
 
-.sf-nav--mob :is(.sf-nav__link, .sf-nav__sublink)[aria-current="page"]:active::after {
-    background: var(--sf-dw-hair);
+.sf-nav--mob .sf-nav__sublink[aria-current="page"]::before {
+    inset-inline-start: 0;
+}
+
+/* The chevron button (48px) sits after the link: the pill reaches 8px short of its far edge, and the
+   button is lifted above the link's layer so it stays visible and tappable. */
+.sf-nav--mob .sf-nav__item--parent > .sf-nav__link[aria-current="page"]::after {
+    inset-inline-end: -40px;
+}
+
+.sf-nav--mob .sf-nav__item--parent > .sf-nav__chev {
+    position: relative;
+    z-index: 1;
+}
+
+.sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink)[aria-current="page"]:active::after {
+    background: var(--sf-dw-here-press);
 }
 
 .sf-nav--mob .sf-nav__link.is-trail {
@@ -1603,16 +1642,12 @@ html.sf-menu-open {
     font-weight: 500;
 }
 
-.sf-nav--mob :is(.sf-nav__link[aria-current], .sf-nav__sublink[aria-current="page"]) .sf-nav__ic {
+.sf-nav--mob .sf-nav__link[aria-current="true"] .sf-nav__ic {
     color: var(--sf-dw-accent);
 }
 
-.sf-nav--mob .sf-nav__check {
-    flex: none;
-    width: 20px;
-    height: 20px;
-    margin-inline: auto 4px;
-    color: var(--sf-dw-on);
+.sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink)[aria-current="page"] .sf-nav__ic {
+    color: var(--sf-dw-here);
 }
 
 /* An open group has no fill; its sub-items start on the parent's label column. */
