@@ -11,6 +11,7 @@ use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Rbac\Support\IssuedInvitation;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteFeature;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -63,6 +64,12 @@ function invite(int $site, User $actor, string $email, string $roleName = 'viewe
     $role = invitationRole($site, $roleName);
 
     return app(Tenancy::class)->enter($site, fn (): IssuedInvitation => app(InviteMember::class)->handle($actor->fresh(), $email, [$role], $message));
+}
+
+/** Room on $site for more people than the mail caps let anyone invite: those tests are about the mail alone. */
+function roomForEveryone(int $site): void
+{
+    app(Tenancy::class)->enter($site, fn () => SiteFeature::query()->create(['feature_key' => 'users.max', 'value' => 1000]));
 }
 
 /** Why an invitation step was refused, or null when it went through. */
@@ -271,6 +278,7 @@ it('refreshes the open invitation instead of stacking a second one', function ()
 });
 
 it('caps invitation mail per site per 24 hours', function (): void {
+    roomForEveryone(1);
     $owner = invitationMember(1, 'owner');
     $viewer = invitationRole(1, 'viewer');
 
@@ -289,6 +297,7 @@ it('caps invitation mail per site per 24 hours', function (): void {
 });
 
 it('counts a re-sent invitation toward the daily cap', function (): void {
+    roomForEveryone(1);
     // Every address is re-sent up to its own limit: the site's mail — not its invitations — hits the cap.
     $owner = invitationMember(1, 'owner');
     $viewer = invitationRole(1, 'viewer');
@@ -351,6 +360,7 @@ it('makes invitations on one site wait for each other, so parallel invites canno
 });
 
 it('keeps each site to its own daily cap', function (): void {
+    roomForEveryone(1);
     $owner = invitationMember(1, 'owner');
     $viewer = invitationRole(1, 'viewer');
     $otherOwner = invitationMember(2, 'owner');

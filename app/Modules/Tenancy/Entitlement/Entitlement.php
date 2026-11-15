@@ -10,6 +10,7 @@ use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\Tenant;
 use App\Modules\Tenancy\Registry\FeatureRegistry;
 use App\Modules\Tenancy\Registry\ModuleCatalog;
+use LogicException;
 
 /**
  * Defense-in-depth layer #1 (design.md §15.2): what the current site is entitled to,
@@ -122,6 +123,54 @@ final class Entitlement
     public function tenantFeatureValue(int $tenantId, string $key): bool|int
     {
         return $this->planValue(Tenant::query()->whereKey($tenantId)->value('plan_id'), $key);
+    }
+
+    /**
+     * featureValue() as one SQL expression, for a caller that reads a limit in the same statement as
+     * its own counts (users.max, read with the website's headcount under one lock). The resolution
+     * order is featureValue()'s: the current site's override (a feature one website can hold), else
+     * its customer's plan grant — a scalar jsonb subquery, NULL when neither holds a value (and for a
+     * website in the trash, as Site's soft-delete scope makes featureValue() fall back to the
+     * default). Pass what it yields to valueFrom(). The current site's id is bound explicitly; the
+     * override's table is RLS-scoped to it as well.
+     *
+     * @return array{0: string, 1: list<int|string>} the SQL and its bindings
+     *
+     * @throws LogicException no site context (featureValue() would answer the default)
+     */
+    public function featureValueExpression(string $key): array
+    {
+        $current = app(CurrentSite::class);
+        if (! $current->hasId()) {
+            throw new LogicException('A feature value is read in SQL only inside a site context.');
+        }
+        $siteId = $current->id();
+
+        $plan = 'select pf.value from sites s join tenants t on t.id = s.tenant_id
+            join plan_features pf on pf.plan_id = t.plan_id and pf.feature_key = ?
+            where s.id = ? and s.deleted_at is null';
+
+        if ((FeatureRegistry::all()[$key]['scope'] ?? 'site') !== 'site') {
+            return ["({$plan})", [$key, $siteId]];
+        }
+
+        return [
+            "coalesce((select sf.value from site_features sf where sf.site_id = ? and sf.feature_key = ?), ({$plan}))",
+            [$siteId, $key, $key, $siteId],
+        ];
+    }
+
+    /**
+     * The value featureValue() gives, from what featureValueExpression() yielded: the stored jsonb as
+     * the database returns it (JSON text), or null for the registry default.
+     */
+    public function valueFrom(mixed $stored, string $key): bool|int
+    {
+        if ($stored === null) {
+            return FeatureRegistry::default($key);
+        }
+
+        return $this->coerce(is_string($stored) ? json_decode($stored, true) : $stored, $key);
     }
 
     /** What plan $planId grants for $key, or the registry default when no plan or no grant. */

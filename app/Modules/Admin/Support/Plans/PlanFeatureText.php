@@ -24,6 +24,7 @@ final class PlanFeatureText
         'custom_domains.max' => 'domains',
         'rbac.custom_roles' => 'roles',
         'rbac.category_scopes' => 'scopes',
+        'users.max' => 'users',
     ];
 
     /** The smallest value a limit takes on this screen (a plan always lets a customer have one website in one language). */

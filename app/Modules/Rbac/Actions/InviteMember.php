@@ -13,6 +13,7 @@ use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Support\IssuedInvitation;
 use App\Modules\Rbac\Support\MembershipLock;
 use App\Modules\Rbac\Support\RoleHierarchyGuard;
+use App\Modules\Rbac\Support\SiteHeadcount;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use Carbon\CarbonImmutable;
@@ -39,9 +40,13 @@ use Illuminate\Support\Str;
  *    form cannot be used to flood an inbox under the platform's shared sender. The address limit is
  *    per site on purpose: counting across sites would tell this site that another one had invited
  *    the same person.
+ *  - The website's `users.max` (SiteHeadcount): its members plus the invitations still waiting fill
+ *    it, and an invitation that would go past it is refused. Re-sending one that is still waiting
+ *    takes no new place.
  *  - Invites on one site are serialized by a transaction-scoped advisory lock (lockKey): the daily
- *    cap is counted and then written, so two invites for different addresses at the same moment
- *    cannot both pass it — and the pending-invitation unique index is never hit by a race.
+ *    cap and the people limit are counted and then written, so two invites for different addresses
+ *    at the same moment cannot both pass them — and the pending-invitation unique index is never hit
+ *    by a race. Accepting an invitation takes the same lock (AcceptInvitation).
  *
  * Returns the plain token for the caller that owns mail delivery; only its hash is stored.
  */
@@ -62,13 +67,14 @@ final readonly class InviteMember
     public function __construct(
         private RoleHierarchyGuard $guard,
         private CurrentSite $current,
+        private SiteHeadcount $headcount,
     ) {}
 
     /**
      * @param  list<Role>  $roles
      *
      * @throws AuthorizationException the actor may not invite, or a role is not theirs to grant
-     * @throws InvitationRejectedException no_roles · already_member · resend_too_soon · address_daily_limit · daily_limit
+     * @throws InvitationRejectedException no_roles · already_member · resend_too_soon · address_daily_limit · daily_limit · user_limit
      */
     public function handle(User $actor, string $email, array $roles, ?string $message = null): IssuedInvitation
     {
@@ -118,6 +124,8 @@ final readonly class InviteMember
             if ($this->mailsSentToday($siteId) >= self::DAILY_LIMIT) {
                 throw new InvitationRejectedException('daily_limit');
             }
+
+            $this->headcount->assertRoomToInvite($invitation);
 
             $refreshed = $invitation !== null;
             $invitation ??= new Invitation(['email' => $email]);
@@ -181,7 +189,7 @@ final readonly class InviteMember
         return ($at instanceof \DateTimeInterface ? CarbonImmutable::instance($at) : CarbonImmutable::parse(Cast::string($at)))->addDay();
     }
 
-    /** The advisory-lock key every invitation write on $siteId waits on. */
+    /** The advisory-lock key every invitation write, and every accept, on $siteId waits on. */
     public static function lockKey(int $siteId): string
     {
         return "invitation:{$siteId}";

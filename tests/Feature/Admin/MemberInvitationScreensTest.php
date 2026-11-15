@@ -11,6 +11,7 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteFeature;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -298,6 +299,8 @@ it('sends invitations on a fixed number of queries per address: the screen reads
     $owner = screensMember('owner');
     screensMember('viewer');
     screensMember('editor');
+    // room for all 22 invitations: the people limit is not what this counts
+    app(Tenancy::class)->enter(1, fn () => SiteFeature::query()->create(['feature_key' => 'users.max', 'value' => 100]));
     $count = fn (string $batch, int $n): int => app(Tenancy::class)->enter(1, function () use ($owner, $batch, $n): int {
         $page = Livewire::actingAs($owner->fresh())
             ->test(Index::class)
@@ -313,14 +316,15 @@ it('sends invitations on a fixed number of queries per address: the screen reads
 
     // each further address costs only what InviteMember needs plus the category tree lock (limits
     // are written under it, and a new invitation reads no limits): the level check per role (2), the
-    // account lookup, the lock, the open invitation, the two mail counts, the invitation, its role
-    // rows (read + one insert per role) and the audit row — nothing the screen reads again. The fixed
+    // account lookup, the lock, the open invitation, the two mail counts, the website's people and
+    // their limit (one statement), the invitation, its role rows (read + one insert per role) and the
+    // audit row — nothing the screen reads again. The fixed
     // part includes the page's two tab counts: the invitations per state (one statement) and the
     // mails of the last 24 hours behind the near-limit note. The "actor holds every permission" check
     // reads spatie's cached catalog, so it costs nothing per permission the invited roles carry.
-    expect($twenty - $one)->toBe(19 * 13)
+    expect($twenty - $one)->toBe(19 * 14)
         // + 4 once per send for "Phạm vi làm việc": whether the inviter is limited, may set limits
         // (membership and level), and what the roles ticked may write
-        ->and($one)->toBe(32);
+        ->and($one)->toBe(33);
     Notification::assertSentOnDemandTimes(MemberInvitationNotification::class, 22);
 });

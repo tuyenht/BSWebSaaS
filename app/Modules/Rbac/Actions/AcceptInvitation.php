@@ -10,6 +10,8 @@ use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Events\InvitationAccepted;
 use App\Modules\Rbac\Exceptions\InvitationRejectedException;
 use App\Modules\Rbac\Models\Invitation;
+use App\Modules\Rbac\Support\SiteHeadcount;
+use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -30,14 +32,22 @@ use SensitiveParameter;
  *
  * Joining grants the invitation's roles through AssignRole with the INVITER as actor: authority is
  * checked again now, so an inviter since demoted or removed cannot hand out roles they no longer
- * hold. Everything runs in one transaction with the invitation row locked — a double submit or two
- * tabs cannot both accept, and a refused grant leaves no half-created account behind. The roles in
+ * hold. A website whose members already fill its `users.max` lets nobody new in (SiteHeadcount);
+ * the invitations still waiting were counted when they were sent, so a website exactly at its limit
+ * still lets each of them in. Everything runs in one transaction under the website's invitation lock
+ * (InviteMember::lockKey, taken before the invitation row, in InviteMember's order) with the
+ * invitation row locked — a double submit or two tabs cannot both accept, two accepts cannot both
+ * take the last place, and a refused join leaves no half-created account behind. The roles in
  * place, InvitationAccepted lets other modules carry over what else the invitation holds (the post
  * categories it limits the member to) in that same transaction.
  */
 final readonly class AcceptInvitation
 {
-    public function __construct(private AssignRole $assign) {}
+    public function __construct(
+        private AssignRole $assign,
+        private SiteHeadcount $headcount,
+        private CurrentSite $site,
+    ) {}
 
     /**
      * The open invitation a mailed token points at on the current site.
@@ -52,7 +62,7 @@ final readonly class AcceptInvitation
     /**
      * Join the site with the account that is signed in.
      *
-     * @throws InvitationRejectedException invalid · expired · wrong_account · no_longer_valid
+     * @throws InvitationRejectedException invalid · expired · wrong_account · no_longer_valid · user_limit_join
      */
     public function asSignedInUser(#[SensitiveParameter] string $token, User $user): Invitation
     {
@@ -74,7 +84,7 @@ final readonly class AcceptInvitation
     /**
      * Create the account for an address that has none, and join the site with it.
      *
-     * @throws InvitationRejectedException invalid · expired · account_exists · no_longer_valid
+     * @throws InvitationRejectedException invalid · expired · account_exists · no_longer_valid · user_limit_join
      */
     public function withNewAccount(#[SensitiveParameter] string $token, string $name, #[SensitiveParameter] string $password): User
     {
@@ -108,6 +118,10 @@ final readonly class AcceptInvitation
     /** @throws InvitationRejectedException invalid · expired */
     private function lockOpen(string $token): Invitation
     {
+        // The website's invitation lock first, as InviteMember takes it: the people limit is counted
+        // and then filled, and an invite running now finishes before this accept counts.
+        DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', [InviteMember::lockKey($this->site->id())]);
+
         return $this->open(
             Invitation::query()->where('token_hash', Invitation::hashToken($token))->lockForUpdate()->first()
         );
@@ -127,7 +141,7 @@ final readonly class AcceptInvitation
         return $invitation;
     }
 
-    /** @throws InvitationRejectedException no_longer_valid */
+    /** @throws InvitationRejectedException no_longer_valid · user_limit_join */
     private function join(Invitation $invitation, User $user): void
     {
         $inviter = $invitation->inviter()->first();
@@ -136,6 +150,8 @@ final readonly class AcceptInvitation
         if (! $inviter instanceof User || $roles->isEmpty()) {
             throw new InvitationRejectedException('no_longer_valid');
         }
+
+        $this->headcount->assertRoomToJoin($user);
 
         try {
             foreach ($roles as $role) {
