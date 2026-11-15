@@ -231,7 +231,9 @@ for (const type of ['pointerdown', 'wheel', 'touchstart']) {
 // real cards start at scrollLeft 800. A copy is displayed only while its row has .is-loop (sf-rail.css).
 // A row settles on scrollend; `ends: false` removes the event, as in a browser without it, and the row then
 // settles after a quiet 150 ms.
-async function mountLoop({ loop = '', grid = false, ends = true } = {}) {
+// `idle: true` gives the window requestIdleCallback; `observe: true` gives it a ResizeObserver that the
+// test reports to with resize().
+async function mountLoop({ loop = '', grid = false, ends = true, idle = false, observe = false } = {}) {
     const cards = [1, 2, 3, 4].map((n) => `<li><a href="/the-${n}" id="card-${n}">Thẻ ${n}</a></li>`).join('');
     const dom = new JSDOM(`<!doctype html><body><div class="sf-rail" data-sf-rail data-interval="0" data-mobile="swipe" data-arrows="auto"${loop}>
 <ul class="sf-rail__list${grid ? ' sf-rail__list--grid' : ''}">${cards}</ul>
@@ -242,7 +244,8 @@ async function mountLoop({ loop = '', grid = false, ends = true } = {}) {
             delete o.onscrollend;
         }
     }
-    const W = 200;
+    let W = 200;
+    let rowW = 300;
     const isList = (el) => el.classList?.contains('sf-rail__list');
     const shown = (el) => !(el.hasAttribute('data-sf-copy') && !el.parentElement.classList.contains('is-loop'));
     const row = (list) => [...list.children].filter(shown);
@@ -256,7 +259,7 @@ async function mountLoop({ loop = '', grid = false, ends = true } = {}) {
         return isList(this.parentElement) ? Math.max(0, row(this.parentElement).indexOf(this)) * W : 0;
     });
     getter('clientWidth', function () {
-        return isList(this) ? 300 : 0;
+        return isList(this) ? rowW : 0;
     });
     getter('scrollWidth', function () {
         return isList(this) ? row(this).length * W : 0;
@@ -286,6 +289,21 @@ async function mountLoop({ loop = '', grid = false, ends = true } = {}) {
     let now = 0;
     let seq = 0;
     const queue = new Map();
+    window.performance.now = () => now;
+    globalThis.performance = window.performance;
+    if (idle) {
+        window.requestIdleCallback = (fn) => globalThis.setTimeout(fn, 0);
+    }
+    let observed = null;
+    if (observe) {
+        window.ResizeObserver = class {
+            constructor(fn) {
+                observed = fn;
+            }
+            observe() {}
+        };
+    }
+    globalThis.ResizeObserver = window.ResizeObserver;
     globalThis.window = window;
     globalThis.document = window.document;
     globalThis.getComputedStyle = window.getComputedStyle;
@@ -315,7 +333,15 @@ async function mountLoop({ loop = '', grid = false, ends = true } = {}) {
         track.dispatchEvent(new window.Event('scroll'));
         end(track);
     };
-    return { window, doc: window.document, track, tick, scrollBy };
+    // A touch on the row; `fingers` is how many stay on it afterwards.
+    const touch = (type, fingers = 0) => track.dispatchEvent(Object.assign(new window.Event(type), { touches: { length: fingers } }));
+    // The cards and the row take new widths (a phone turned) and the observer reports it.
+    const resize = (card, row) => {
+        W = card;
+        rowW = row;
+        observed?.([]);
+    };
+    return { window, doc: window.document, track, tick, scrollBy, touch, resize };
 }
 for (const ends of [true, false]) {
     const s = await mountLoop({ ends });
@@ -335,11 +361,11 @@ for (const ends of [true, false]) {
     s.tick(200);
     check(`loop (${way}): a swipe back past the first card settles on the same view of the real cards`, s.track.scrollLeft === 1200);
     // The row's settle comes while the finger is still on it (a rotation ending under a resting finger).
-    s.track.dispatchEvent(new s.window.Event('touchstart'));
+    s.touch('touchstart', 1);
     s.scrollBy(1800);
     s.tick(400);
     check(`loop (${way}): no jump while a finger is on the row`, s.track.scrollLeft === 1800);
-    s.track.dispatchEvent(new s.window.Event('touchend'));
+    s.touch('touchend');
     s.tick(400);
     check(`loop (${way}): the jump comes once the finger lifts and the row settles`, s.track.scrollLeft === 1000);
     s.scrollBy(800);
@@ -349,6 +375,51 @@ for (const ends of [true, false]) {
     s.doc.querySelector('[data-sf-rail-next]').click();
     s.tick(200);
     check(`loop (${way}): Next on the last card runs on to the first real card`, s.track.scrollLeft === 800);
+}
+{
+    // The visitor's first sign of being here is a swipe on this row: the loop waits until it is still.
+    const s = await mountLoop({ idle: true });
+    s.tick(1000);
+    s.touch('touchstart', 1);
+    s.window.dispatchEvent(new s.window.Event('touchstart'));
+    s.scrollBy(150);
+    s.tick(400);
+    check('loop, first touch on the row: no copies while the finger is on it', !s.track.classList.contains('is-loop'));
+    s.touch('touchend');
+    for (const to of [200, 250, 300, 350, 400]) {
+        s.scrollBy(to);
+        s.tick(50);
+    }
+    check('loop, first touch on the row: no copies while the row still moves after the finger lifts', !s.track.classList.contains('is-loop') && s.track.scrollLeft === 400);
+    s.tick(600);
+    check('loop, first touch on the row: copies once the row is still, with the view kept', s.track.classList.contains('is-loop') && s.track.scrollLeft === 1200);
+    // Two fingers on the row (a pinch): lifting one keeps the row held.
+    s.touch('touchstart', 2);
+    s.scrollBy(1700);
+    s.touch('touchend', 1);
+    s.tick(400);
+    check('loop: no jump while a second finger stays on the row', s.track.scrollLeft === 1700);
+    s.touch('touchend');
+    s.tick(400);
+    check('loop: the jump comes once the last finger lifts', s.track.scrollLeft === 900);
+}
+{
+    // The row and its cards change width with the loop on (a phone turned): no jump with the old copy
+    // width, then the copy width is measured again and the nearest card is kept.
+    const s = await mountLoop({ observe: true });
+    s.window.dispatchEvent(new s.window.Event('pointermove'));
+    s.tick(100);
+    s.scrollBy(1000);
+    s.tick(200);
+    s.resize(150, 200);
+    s.scrollBy(1600);
+    s.tick(100);
+    check('loop, new width: no jump before the new copy width is measured', s.track.scrollLeft === 1600);
+    s.tick(400);
+    check('loop, new width: the nearest card is kept on the real cards', s.track.scrollLeft === 1050);
+    s.scrollBy(1250);
+    s.tick(400);
+    check('loop, new width: a swipe past the last card settles by the new copy width', s.track.scrollLeft === 650);
 }
 {
     const s = await mountLoop({ loop: ' data-loop="off"' });

@@ -200,14 +200,21 @@ function initRail(root) {
     // Whether the row scrolled at the last measure: a row that has just started to scroll (a phone turned
     // upright) starts at its first card, whatever offset the browser kept from before.
     let scrolled = false;
+    // The row's width at the last measure, when it last scrolled, whether a loop change waits for the row
+    // to be still, and whether a new width waits for its sync (no jump meanwhile: the copy width is old).
+    let width = -1;
+    let lastScroll = -Infinity;
+    let deferred = false;
+    let resizing = false;
 
     const overflows = () => track.scrollWidth > track.clientWidth + 1;
     const rotates = () => interval > 0 && !reduce.matches && !(phone.matches && root.dataset.mobile === 'swipe') && over;
     const running = () => present && rotates() && !hovered && !focused && !held && !document.hidden;
     const step = () => (items.length > 1 ? items[1].offsetLeft - items[0].offsetLeft : track.clientWidth);
-    // A settled scroll on a copy jumps to the same view on the real cards (never under a finger).
+    // A settled scroll on a copy jumps to the same view on the real cards (never under a finger, never
+    // with a copy width that a new row width has made old).
     const home = () => {
-        if (loop && touching) {
+        if (loop && (touching || resizing)) {
             skipped = true;
         } else if (loop) {
             const left = loopHome(track.scrollLeft, period);
@@ -248,11 +255,19 @@ function initRail(root) {
         const last = items[items.length - 1];
         // The real cards' width; on a grid that wraps it is never wider than the row.
         span = items.length > 1 ? last.offsetLeft + last.offsetWidth - first.offsetLeft : 0;
-        over = loop ? span > track.clientWidth + 1 : overflows();
+        width = track.clientWidth;
+        over = loop ? span > width + 1 : overflows();
         const show = over && mode !== 'none';
         const scrolls = over && span > 0 && getComputedStyle(track).overflowX !== 'visible';
-        // Never switched under a finger: lift() syncs again once it is off the row.
-        const loops = touching ? loop : present && scrolls && root.dataset.loop !== 'off';
+        // The loop is switched, or its copy width measured again, only on a still row: never under a finger
+        // or mid-fling (an instant jump would cut the swipe short). Otherwise it is tried again later.
+        const still = !touching && performance.now() - lastScroll > 150;
+        const wants = present && scrolls && root.dataset.loop !== 'off';
+        const loops = still ? wants : loop;
+        deferred = !still && (loop || wants);
+        if (deferred && !touching) {
+            later();
+        }
         // Where the view stands on the real cards when the loop turns on (the copies are hidden until then).
         const x = loops && !loop && scrolled ? track.scrollLeft : 0;
         scrolled = scrolls;
@@ -260,7 +275,7 @@ function initRail(root) {
         // width: it is measured again, with the real card now nearest the row's start (the browser keeps
         // the snapped card in view), so fix() can put that card back at the start of the real cards.
         let re = null;
-        if (loop && loops) {
+        if (loop && loops && still) {
             const p = first.getBoundingClientRect().left - track.children[0].getBoundingClientRect().left;
             if (Math.abs(p - period) > 1) {
                 const edge = track.getBoundingClientRect().left;
@@ -275,13 +290,12 @@ function initRail(root) {
                 });
             }
         }
-        const width = loops ? span : track.scrollWidth;
         return {
             show,
             loops,
             x,
             re,
-            n: dotsBox && show ? railPages(track.clientWidth, width) : 0,
+            n: dotsBox && show ? railPages(width, loops ? span : track.scrollWidth) : 0,
             on: dotsBox ? dot() : 0,
         };
     };
@@ -330,7 +344,10 @@ function initRail(root) {
         schedule();
         return fix;
     };
-    const sync = () => apply(measure())?.();
+    const sync = () => {
+        resizing = false;
+        apply(measure())?.();
+    };
     const hold = () => {
         held = true;
         clearTimeout(holdTimer);
@@ -355,14 +372,19 @@ function initRail(root) {
         }, 150);
     };
     track.addEventListener('touchstart', () => (touching = true), { passive: true });
-    const lift = () => {
-        touching = false;
+    const lift = (event) => {
+        // A second finger still on the row (a pinch) keeps it held.
+        touching = event.touches.length > 0;
+        if (touching) {
+            return;
+        }
         if (!settles || skipped) {
             skipped = false;
             settle();
         }
-        // A loop the visitor's first touch could not switch on (the finger was on this row) starts now.
-        if (present && !loop) {
+        // A loop change that waited for the finger (the visitor's first touch was on this row, or the row
+        // changed width under it) is tried again.
+        if (deferred) {
             later();
         }
     };
@@ -374,6 +396,7 @@ function initRail(root) {
     track.addEventListener(
         'scroll',
         () => {
+            lastScroll = performance.now();
             if (dotsBox) {
                 light();
             }
@@ -402,18 +425,24 @@ function initRail(root) {
         schedule();
     });
     document.addEventListener('visibilitychange', schedule);
-    let resized;
+    let syncTimer;
     function later() {
-        clearTimeout(resized);
-        resized = setTimeout(sync, 200);
+        clearTimeout(syncTimer);
+        syncTimer = setTimeout(sync, 200);
     }
-    // The row's own size: a window resize, a phone turned, and a row in a tab that was hidden at start
-    // (measured 0 wide) being shown. The first report is the size start-up already measured.
+    // A new row width: a window resized, a phone turned, a row in a tab that was hidden at start (measured
+    // 0 wide) being shown. A report of the width already measured (the first one, a change of height) is
+    // dropped.
+    const resized = () => {
+        if (track.clientWidth !== width) {
+            resizing = true;
+            later();
+        }
+    };
     if (window.ResizeObserver) {
-        let seen = false;
-        new ResizeObserver(() => (seen ? later() : (seen = true))).observe(track);
+        new ResizeObserver(resized).observe(track);
     } else {
-        window.addEventListener('resize', later);
+        window.addEventListener('resize', resized);
     }
     // A row can start to overflow once its lazy images or the web font arrive.
     track.addEventListener('load', later, true);
