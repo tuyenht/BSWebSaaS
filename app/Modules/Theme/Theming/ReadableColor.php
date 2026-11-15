@@ -130,15 +130,62 @@ final class ReadableColor
      */
     private static function fromOklab(array $a): array
     {
+        $rgb = self::oklabToLinear($a);
+
+        return [max(0.0, min(1.0, $rgb[0])), max(0.0, min(1.0, $rgb[1])), max(0.0, min(1.0, $rgb[2]))];
+    }
+
+    /**
+     * @param  array{0: float, 1: float, 2: float}  $a  OKLab
+     * @return array{0: float, 1: float, 2: float} linear sRGB, not clamped (a channel outside 0..1 is out of gamut)
+     */
+    private static function oklabToLinear(array $a): array
+    {
         $l = ($a[0] + 0.3963377774 * $a[1] + 0.2158037573 * $a[2]) ** 3;
         $m = ($a[0] - 0.1055613458 * $a[1] - 0.0638541728 * $a[2]) ** 3;
         $q = ($a[0] - 0.0894841775 * $a[1] - 1.291485548 * $a[2]) ** 3;
 
         return [
-            max(0.0, min(1.0, 4.0767416621 * $l - 3.3077115913 * $m + 0.2309699292 * $q)),
-            max(0.0, min(1.0, -1.2684380046 * $l + 2.6097574011 * $m - 0.3413193965 * $q)),
-            max(0.0, min(1.0, -0.0041960863 * $l - 0.7034186147 * $m + 1.707614701 * $q)),
+            4.0767416621 * $l - 3.3077115913 * $m + 0.2309699292 * $q,
+            -1.2684380046 * $l + 2.6097574011 * $m - 0.3413193965 * $q,
+            -0.0041960863 * $l - 0.7034186147 * $m + 1.707614701 * $q,
         ];
+    }
+
+    /**
+     * A hex colour as OKLCH: lightness 0..1, chroma, hue in degrees (0..360). Null when it is not a hex colour.
+     *
+     * @return array{0: float, 1: float, 2: float}|null
+     */
+    public static function oklch(string $hex): ?array
+    {
+        $rgb = self::parse($hex);
+        if ($rgb === null) {
+            return null;
+        }
+
+        $lab = self::toOklab([self::toLinear($rgb[0] / 255), self::toLinear($rgb[1] / 255), self::toLinear($rgb[2] / 255)]);
+        $hue = fmod(rad2deg(atan2($lab[2], $lab[1])) + 360, 360);
+
+        return [$lab[0], hypot($lab[1], $lab[2]), $hue];
+    }
+
+    /**
+     * The OKLCH colour as #rrggbb, its chroma lowered in steps of 0.005 until it fits in sRGB (lightness
+     * and hue kept); a grey of that lightness when no chroma fits.
+     */
+    public static function fromOklch(float $lightness, float $chroma, float $hue): string
+    {
+        $angle = deg2rad($hue);
+        for ($c = $chroma; $c >= 0; $c -= 0.005) {
+            $rgb = self::oklabToLinear([$lightness, $c * cos($angle), $c * sin($angle)]);
+            if (min($rgb) >= -1e-4 && max($rgb) <= 1.0001) {
+                return self::hex([self::fromLinear($rgb[0]) * 255, self::fromLinear($rgb[1]) * 255, self::fromLinear($rgb[2]) * 255]);
+            }
+        }
+        $grey = self::fromLinear($lightness ** 3) * 255;
+
+        return self::hex([$grey, $grey, $grey]);
     }
 
     /**

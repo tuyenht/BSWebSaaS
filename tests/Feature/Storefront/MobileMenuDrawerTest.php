@@ -91,12 +91,12 @@ it('lists every public language in its own name, links from PathBuilder, and no 
 
     expect($html)
         ->toContain('<nav class="sf-drawer__langs" aria-label="Ngôn ngữ">')
-        ->toContain('<ul class="sf-pill">')->toContain('<span class="sf-pr__t" aria-hidden="true">Ngôn ngữ</span>')
-        ->toMatch('#<a class="sf-pill__s" href="[^"]*" hreflang="vi" lang="vi" dir="ltr"\s+aria-current="true"\s*>#')
-        ->toMatch('#href="http://mau\.platform\.test/en/about" hreflang="en" lang="en" dir="ltr"\s*>\s*<span>English#')   // a real translation
-        ->toMatch('#href="/ja" hreflang="ja" lang="ja" dir="ltr"\s*>\s*<span>日本語\s*<small class="sf-drawer__hint">\(trang chủ\)</small>#')   // no ja page: its home page, said so
+        ->toContain('<span aria-hidden="true">Ngôn ngữ</span>')
+        ->toContain('<ul class="sf-seg sf-seg--wrap">')                     // four languages: the segments wrap
+        ->toMatch('#<a class="sf-seg__s" href="[^"]*" hreflang="vi" lang="vi" dir="ltr" aria-current="true">Tiếng Việt</a>#')
+        ->toMatch('#href="http://mau\.platform\.test/en/about" hreflang="en" lang="en" dir="ltr">English</a>#')   // a real translation
+        ->toMatch('#href="/ja" hreflang="ja" lang="ja" dir="ltr">日本語 <small class="sf-drawer__hint">\(trang chủ\)</small></a>#')   // no ja page: its home page, said so
         ->toMatch('#href="http://mau\.platform\.test/ar/about-ar" hreflang="ar" lang="ar" dir="rtl"#')
-        ->toMatch('#hreflang="vi" lang="vi" dir="ltr"\s+aria-current="true"\s*>\s*<span>Tiếng Việt</span>#')
         ->not->toContain('hreflang="ko"');
 
     // the hreflang alternates stay the real translations only (no fallback target)
@@ -155,25 +155,23 @@ it('builds the switch from the public languages, falling back to each language�
         ->and(StorefrontChrome::languages($alternates, 'vi', ['vi'], $home))->toBe([]);
 });
 
-it('marks the current page in the drawer with aria-current and a brand-tinted pill with a bar, in a named dialog', function (): void {
+it('marks the current page in the drawer with aria-current, a neutral pill and a bar, in a named dialog', function (): void {
     drawerSite();
 
     $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
 
     expect($html)
-        ->toContain('<div id="mobile-menu" class="sf-drawer sf-drawer--dark" role="dialog" aria-modal="true" aria-label="Menu" hidden>')
+        ->toContain('<div id="mobile-menu" class="sf-drawer" role="dialog" aria-modal="true" aria-label="Menu" hidden style="--sf-dw-bg:#')
         ->toContain('data-menu-close aria-label="Đóng menu"')
-        ->toMatch('#<div class="sf-nav__panel" id="msm-1">.*?<a class="sf-nav__sublink"\s+href="/gioi-thieu"\s+aria-current="page"\s*>Giới thiệu</a>#s');
+        ->toMatch('#<div class="sf-nav__panel" id="msm-1">.*?<a class="sf-nav__sublink" href="/gioi-thieu"\s+aria-current="page"\s*><span class="sf-nav__t">Giới thiệu</span></a>#s');
 
-    // the pill is a layer behind the row in the brand's tint, with a bar in the brand's readable colour
+    // the pill is a layer behind the row, 8px in from each side, in the drawer's own neutral; the bar is 4x20 at 12px
     $css = (string) StorefrontCss::all();
-    expect($css)->toContain(".sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink)[aria-current=\"page\"]::after {\n    content: \"\";\n    position: absolute;\n    inset: 2px 8px;\n    z-index: -1;\n    border-radius: 12px;\n    background: var(--sf-dw-here-bg);")
-        ->toContain('--sf-dw-here-bg: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));')
-        ->toContain('--sf-dw-here: var(--color-primary-text);')
-        // logical sides, so a right-to-left page mirrors the bar and the pill that spans the chevron
-        ->toContain("    inset-inline-start: 8px;\n    width: 3px;\n    height: 20px;")
-        ->toContain("> .sf-nav__link[aria-current=\"page\"]::after {\n    inset-inline-end: -40px;")
-        ->not->toContain('.sf-nav--mob .sf-nav__link[aria-current]::before');
+    expect($css)->toContain(".sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink)::after {\n    content: \"\";\n    position: absolute;\n    inset: 2px 8px;\n    z-index: -1;\n    border-radius: 10px;")
+        ->toContain(".sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink)[aria-current=\"page\"]::after {\n    background: var(--sf-dw-pill);")
+        // logical sides, so a right-to-left page mirrors the bar
+        ->toContain("    inset-inline-start: 12px;\n    width: 4px;\n    height: 20px;\n    margin-top: -10px;\n    border-radius: 2px;\n    background: var(--sf-dw-strong);")
+        ->not->toContain('--sf-dw-here');                                   // the brand never tints the current row
 });
 
 it('prints no “Menu” title in the open drawer, only the button that opens it', function (): void {
@@ -228,34 +226,38 @@ it('follows the corner setting: search and cart draw nothing yet, none leaves it
         ->toContain('<span class="sf-bar__corner"></span>');
 })->with(['search', 'cart', 'none']);
 
-it('keeps the language, text size and contact blocks in the drawer in that order after the menu', function (): void {
+it('keeps language, text size and the call in the drawer’s footer in that order after the menu, with no email', function (): void {
     drawerSite();
 
     $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
-    $at = fn (string $needle): int => (int) strpos($html, $needle);
+    $drawer = drawerOf($html);
+    $at = fn (string $needle): int => (int) strpos($drawer, $needle);
 
-    expect($at('class="sf-nav sf-nav--mob"'))->toBeLessThan($at('sf-drawer__langs'))
+    expect($at('class="sf-nav sf-nav--mob"'))->toBeLessThan($at('sf-drawer__foot'))
+        ->and($at('sf-drawer__foot'))->toBeLessThan($at('sf-drawer__langs'))
         ->and($at('sf-drawer__langs'))->toBeLessThan($at('sf-drawer__fs'))
-        ->and($at('sf-drawer__fs'))->toBeLessThan($at('sf-drawer__contact'))
-        ->and($html)->toContain('<a class="sf-drawer__call" href="tel:0901234567">')
-        ->toContain('href="mailto:lienhe@mau.test"');
+        ->and($at('sf-drawer__fs'))->toBeLessThan($at('sf-drawer__call'))
+        ->and($drawer)->toContain('<a class="sf-drawer__call" href="tel:0901234567">')
+        ->not->toContain('mailto:')->not->toContain('sf-drawer__contact')->not->toContain('Kết nối với chúng tôi');
 });
 
-it('gives the phone menu the header bar’s dark tone unless the header asks for a light one', function (mixed $tone, bool $dark): void {
+it('draws the phone menu light by default and dark when the site asks for dark or for the header bar’s tone, with that tone’s colours on it', function (mixed $tone, bool $dark): void {
     $siteId = drawerSite([]);
     app(Tenancy::class)->enter($siteId, fn () => SiteSetting::query()->where('key', 'header')
         ->update(['value' => ['top_bar' => ['items' => []], 'text_size' => true, 'drawer_tone' => $tone]]));
 
     $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
 
-    expect($html)->toContain('<div id="mobile-menu" class="sf-drawer'.($dark ? ' sf-drawer--dark' : '').'" role="dialog"');
+    // the panel at 96% (light, f5) or 97% (dark, f7) over a scrim of 34% (57) or 44% (70) ink
+    expect($html)->toContain('<div id="mobile-menu" class="sf-drawer'.($dark ? ' sf-drawer--dark' : '').'" role="dialog"')
+        ->toMatch($dark ? '#--sf-dw-panel:\#[0-9a-f]{6}f7;--sf-dw-scrim:\#[0-9a-f]{6}70;#' : '#--sf-dw-panel:\#[0-9a-f]{6}f5;--sf-dw-scrim:\#[0-9a-f]{6}57;#');
 })->with([
-    'auto: the bar is dark' => ['auto', true],
-    'not set' => [null, true],
+    'auto: the header bar’s, which is dark' => ['auto', true],
+    'not set' => [null, false],
     'light' => ['light', false],
     'dark' => ['dark', true],
-    'an unknown word' => ['purple', true],
-    'a list' => [['light'], true],
+    'an unknown word' => ['purple', false],
+    'a list' => [['dark'], false],
 ]);
 
 it('opens the way to the current page in the phone menu on render, and leaves the desktop bar closed', function (): void {
@@ -264,7 +266,8 @@ it('opens the way to the current page in the phone menu on render, and leaves th
     $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
 
     expect($html)
-        ->toMatch('#<li class="sf-nav__item sf-nav__item--parent is-open" data-disclosure>\s*<a class="sf-nav__link is-trail" href="[^"]+"\s*aria-current="true"\s*>Tin tức</a><button type="button" class="sf-nav__chev is-trail" aria-expanded="true" aria-controls="msm-1"#')
+        // the drawer: the whole row is one button
+        ->toMatch('#<li class="sf-nav__item sf-nav__item--parent is-open" data-disclosure>\s*<button type="button" class="sf-nav__link sf-nav__toggle is-trail" aria-current="true" aria-expanded="true" aria-controls="msm-1"><span class="sf-nav__t">Tin tức</span><span class="sf-nav__caret" aria-hidden="true">#')
         ->toMatch('#<li class="sf-nav__item sf-nav__item--parent" data-disclosure>\s*<a class="sf-nav__link is-trail" href="[^"]+"\s*aria-current="true"\s*>Tin tức</a><button type="button" class="sf-nav__chev is-trail" aria-expanded="false" aria-controls="dsm-1"#')
         ->and(substr_count($html, ' is-open'))->toBe(1);
 
@@ -287,6 +290,25 @@ it('marks the current page by aria-current alone, with no check mark in either m
     }
 
     $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
-    expect($html)->toMatch('#<div class="sf-nav__panel" id="msm-1">.*?<a class="sf-nav__sublink"\s+href="/gioi-thieu"\s+aria-current="page"\s*>Giới thiệu</a>#s')
+    expect($html)->toMatch('#<div class="sf-nav__panel" id="msm-1">.*?<a class="sf-nav__sublink" href="/gioi-thieu"\s+aria-current="page"\s*><span class="sf-nav__t">Giới thiệu</span></a>#s')
         ->and($html)->toMatch('#<div class="sf-nav__panel" id="dsm-1">.*?<a class="sf-nav__sublink"\s+href="/gioi-thieu"\s+aria-current="page"\s*>Giới thiệu</a>#s');
+});
+
+/** The phone menu's markup in a page: from the drawer to the no-script styles after it. */
+function drawerOf(string $html): string
+{
+    $from = (int) strpos($html, '<div id="mobile-menu"');
+
+    return substr($html, $from, (int) strpos($html, '<noscript>', $from) - $from);
+}
+
+it('lines the labels up on the icon column when a top-level item has an icon, and names no icon class otherwise', function (): void {
+    expect(StorefrontChrome::drawerHasIcons([['label' => 'A', 'icon' => 'home'], ['label' => 'B']]))->toBeTrue()
+        ->and(StorefrontChrome::drawerHasIcons([['label' => 'A', 'icon' => 'no-such-icon'], ['label' => 'B']]))->toBeFalse()
+        ->and(StorefrontChrome::drawerHasIcons([['label' => 'A', 'icon' => 'home', 'cta' => true]]))->toBeFalse()   // the button row has its own layout
+        ->and(StorefrontChrome::drawerHasIcons([['label' => 'A', 'children' => [['label' => 'B', 'icon' => 'home']]]]))->toBeFalse()
+        ->and((string) StorefrontChrome::menuLabel(['label' => 'Trang chủ', 'icon' => 'home'], false, true))
+        ->toContain('sf-icon sf-nav__ic')->toEndWith('<span class="sf-nav__t">Trang chủ</span>')
+        ->and((string) StorefrontChrome::menuLabel(['label' => 'Trang chủ'], false, true))->toBe('<span class="sf-nav__t">Trang chủ</span>')
+        ->and((string) StorefrontChrome::menuLabel(['label' => 'Trang chủ']))->toBe('Trang chủ');   // the desktop label is unchanged
 });

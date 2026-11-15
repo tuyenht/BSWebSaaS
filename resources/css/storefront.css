@@ -1257,23 +1257,27 @@ html:not(.sf-js) .sf-nav--desk .sf-nav__item--parent:focus-within > .sf-nav__pan
 }
 
 /* The phone menu is a dialog drawer (theme::partials.header-bar): its `hidden` attribute is the
-   open/closed state, never a display set here. Rows of 3rem and never under 48px (a site may set its base
-   text below 16px), 16px top items and 15px sub items, text that wraps (never "…"), logical properties
-   throughout so a right-to-left language mirrors it.
-   Two tones, both from the site's tokens and neutral mixes only (never the brand colour in a fill): light
-   (surface and ink) and dark (sf-drawer--dark: the dark token, raised with white), the header bar's tone by
-   default (StorefrontChrome::drawerDark). One selection language: a chosen control (the tabs, the language
-   and text-size pills) is a raised thumb with a 1.5px ring and a bold label on a fully rounded track; the
-   current page is a pill in the track's grey behind the row, a bold label and a check mark. */
+   open/closed state, never a display set here. Logical properties throughout, so a right-to-left
+   language mirrors it. Text wraps (never "…").
+   Colours: --sf-dw-* roles computed per site from its surface, ink and brand (DrawerTones, printed on the
+   drawer's style attribute for the one tone in use); the values here are the fallbacks for seeds that are
+   not hex colours. Every role is a neutral mix of the site's ink and surface; the brand stays on the
+   call-to-action row and the call button. bg: the panel · panel: bg at 96% (dark 97%) · scrim: ink at 34%
+   (dark 44%) · ink: labels · strong: open, trail and current labels, the current row's bar, the chosen
+   tab's underline, a chosen segment's ring and every focus ring · sub, muted: secondary text and icons ·
+   track: hover fill · hair: the rules · edge: the panel's inline-end line · pill / tap / press: the current
+   row, a pressed row, a pressed current row · ctl: control borders · on: the current row's label.
+   The row grid (W = panel width): the pill from 8 to W-8, the bar at 12, an icon at 24, the label at
+   24 / 40 / 56 by level (56 / 56 / 72 when a top item has an icon), ending at W-24 or W-52 before a
+   chevron, which sits in a 44px box flush to W-8. */
 .sf-nav--mob {
-    padding: 0.25rem 0;
+    padding: 0;
 }
 
 @media (min-width: 1024px) {
     .sf-header:not(.sf-header--menu-xl) .sf-nav--mob {
         visibility: hidden;
         height: 0;
-        padding: 0;
         overflow: hidden;
     }
 }
@@ -1282,56 +1286,50 @@ html:not(.sf-js) .sf-nav--desk .sf-nav__item--parent:focus-within > .sf-nav__pan
     .sf-header--menu-xl .sf-nav--mob {
         visibility: hidden;
         height: 0;
-        padding: 0;
         overflow: hidden;
     }
 }
 
-/* The tones. ink: labels and the chosen ring · sub: sub-items and unchosen segments · muted: icons, the
-   caption, a size's name · track: the tracks · thumb: the chosen thumb · hair: the one rule · ctl: control
-   borders and the scrollbar (3:1) · on: the chosen and current labels · accent: the trail's icon · here: the
-   current page's bar and icon (the brand's readable colour, >= 4.5:1 on the panel) · here-bg / here-press:
-   the current page's pill, a brand tint under 3:1, so the bar and bold label carry the state. Measured on the reference site (#0f172a ink,
-   white surface): track #f3f3f4, hair #e7e8ea, muted #6a6f7b, ctl #87898f; dark: track #222a3b, hair
-   #2c3344, muted #9fa2aa, ctl #6f747f. */
 .sf-drawer {
     --sf-drawer-w: min(322px, calc(100% - 64px));
-    --sf-dw-bg: var(--color-surface);
+    --sf-dw-bg: color-mix(in srgb, var(--color-surface) 97%, var(--color-text-strong));
     --sf-dw-ink: var(--color-text-strong);
+    --sf-dw-strong: var(--color-text-strong);
     --sf-dw-sub: var(--color-text);
-    --sf-dw-muted: color-mix(in srgb, var(--color-text-strong) 62%, var(--color-surface));
-    --sf-dw-track: color-mix(in srgb, var(--color-text-strong) 5%, var(--color-surface));
+    --sf-dw-muted: color-mix(in srgb, var(--color-text-strong) 70%, var(--color-surface));
+    --sf-dw-track: color-mix(in srgb, var(--color-text-strong) 9%, var(--sf-dw-bg));
+    --sf-dw-hair: color-mix(in srgb, var(--color-text-strong) 13%, var(--sf-dw-bg));
+    --sf-dw-edge: var(--sf-dw-hair);
     --sf-dw-thumb: var(--color-surface);
-    --sf-dw-hair: color-mix(in srgb, var(--color-text-strong) 10%, var(--color-surface));
-    --sf-dw-ctl: color-mix(in srgb, var(--color-text-strong) 50%, var(--color-surface));
-    --sf-dw-on: var(--color-text-strong);
-    --sf-dw-accent: var(--color-text-strong);
-    --sf-dw-here: var(--color-primary-text);
-    --sf-dw-here-bg: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
-    --sf-dw-here-press: color-mix(in srgb, var(--color-primary) 18%, var(--color-surface));
-    --sf-dw-focus: var(--color-primary-text);
-    --sf-dw-lift: 0 1px 2px color-mix(in srgb, var(--color-dark) 16%, transparent), 0 2px 6px color-mix(in srgb, var(--color-dark) 8%, transparent);
+    --sf-dw-pill: color-mix(in srgb, var(--color-text-strong) 12%, var(--sf-dw-bg));
+    --sf-dw-tap: color-mix(in srgb, var(--color-text-strong) 5%, var(--sf-dw-bg));
+    --sf-dw-press: color-mix(in srgb, var(--color-text-strong) 17%, var(--sf-dw-bg));
+    --sf-dw-ctl: color-mix(in srgb, var(--color-text-strong) 55%, var(--sf-dw-bg));
+    --sf-dw-on: var(--sf-dw-strong);
+    --sf-dw-panel: color-mix(in srgb, var(--sf-dw-bg) 96%, transparent);
+    --sf-dw-scrim: color-mix(in srgb, var(--color-text-strong) 34%, transparent);
+    --sf-dw-cta-ring: none;
     position: fixed;
     inset: 0;
     z-index: 60;
 }
 
 .sf-drawer--dark {
-    --sf-dw-bg: var(--color-dark);
-    --sf-dw-ink: color-mix(in srgb, var(--color-dark) 3%, #fff);
-    --sf-dw-sub: color-mix(in srgb, var(--color-dark) 20%, #fff);
-    --sf-dw-muted: color-mix(in srgb, var(--color-dark) 40%, #fff);
-    --sf-dw-track: color-mix(in srgb, var(--color-dark) 92%, #fff);
-    --sf-dw-thumb: var(--color-dark);
-    --sf-dw-hair: color-mix(in srgb, var(--color-dark) 88%, #fff);
-    --sf-dw-ctl: color-mix(in srgb, var(--color-dark) 60%, #fff);
-    --sf-dw-on: #fff;
-    --sf-dw-accent: var(--color-primary-on-dark);
-    --sf-dw-here: var(--color-primary-on-dark);
-    --sf-dw-here-bg: color-mix(in srgb, var(--color-primary-on-dark) 18%, var(--color-dark));
-    --sf-dw-here-press: color-mix(in srgb, var(--color-primary-on-dark) 26%, var(--color-dark));
-    --sf-dw-focus: var(--color-primary-on-dark);
-    --sf-dw-lift: 0 0 #0000;
+    --sf-dw-bg: color-mix(in srgb, var(--color-text-strong) 92%, #fff);
+    --sf-dw-ink: color-mix(in srgb, var(--color-surface) 88%, var(--sf-dw-bg));
+    --sf-dw-strong: var(--color-surface);
+    --sf-dw-sub: color-mix(in srgb, var(--color-surface) 74%, var(--sf-dw-bg));
+    --sf-dw-muted: color-mix(in srgb, var(--color-surface) 60%, var(--sf-dw-bg));
+    --sf-dw-track: color-mix(in srgb, var(--color-surface) 7%, var(--sf-dw-bg));
+    --sf-dw-hair: color-mix(in srgb, var(--color-surface) 10%, var(--sf-dw-bg));
+    --sf-dw-edge: color-mix(in srgb, var(--color-surface) 16%, var(--sf-dw-bg));
+    --sf-dw-thumb: var(--sf-dw-bg);
+    --sf-dw-pill: color-mix(in srgb, var(--color-surface) 13%, var(--sf-dw-bg));
+    --sf-dw-tap: color-mix(in srgb, var(--color-surface) 8%, var(--sf-dw-bg));
+    --sf-dw-press: color-mix(in srgb, var(--color-surface) 19%, var(--sf-dw-bg));
+    --sf-dw-ctl: color-mix(in srgb, var(--color-surface) 45%, var(--sf-dw-bg));
+    --sf-dw-panel: color-mix(in srgb, var(--sf-dw-bg) 97%, transparent);
+    --sf-dw-scrim: color-mix(in srgb, var(--color-text-strong) 44%, transparent);
     color-scheme: dark;
 }
 
@@ -1359,20 +1357,13 @@ html.sf-menu-open {
     overflow: hidden;
 }
 
-/* The page behind is dimmed and blurred; the panel stays solid, so its text never depends on the page. */
+/* The page behind is dimmed and blurred; the panel itself is not blurred. */
 .sf-drawer__scrim {
     position: absolute;
     inset: 0;
-    background: color-mix(in srgb, var(--color-dark) 45%, transparent);
+    background: var(--sf-dw-scrim);
     -webkit-backdrop-filter: blur(6px);
     backdrop-filter: blur(6px);
-}
-
-@media (prefers-reduced-transparency: reduce) {
-    .sf-drawer__scrim {
-        -webkit-backdrop-filter: none;
-        backdrop-filter: none;
-    }
 }
 
 .sf-drawer__panel {
@@ -1385,42 +1376,44 @@ html.sf-menu-open {
     padding-block: env(safe-area-inset-top, 0px) env(safe-area-inset-bottom, 0px);
     overflow-y: auto;
     overscroll-behavior: contain;
-    background: var(--sf-dw-bg);
+    border-inline-end: 1px solid var(--sf-dw-edge);
+    background: var(--sf-dw-panel);
     color: var(--sf-dw-ink);
-    box-shadow: 0 0 2rem color-mix(in srgb, var(--color-dark) 35%, transparent);
+    box-shadow: 0 8px 32px rgb(0 0 0 / 0.18);
 }
 
-/* The panel scrolls as one; the bar is a thin 4px one in the control-border neutral. */
-.sf-drawer__panel {
+/* Under the tab row (on a screen tall enough; a landscape phone or 200% zoom keeps the whole panel
+   scrolling) only the content scrolls. The bar is a thin one in the control-border neutral. */
+@media (min-height: 480px) {
+    .sf-drawer__panel:has(> .sf-drawer__tabs) {
+        overflow: hidden;
+    }
+
+    .sf-drawer__panel:has(> .sf-drawer__tabs) > .sf-drawer__scroll {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+}
+
+.sf-drawer__panel,
+.sf-drawer__scroll {
     scrollbar-width: thin;
     scrollbar-color: var(--sf-dw-ctl) transparent;
 }
 
-.sf-drawer__panel::-webkit-scrollbar {
-    width: 4px;
-}
-
-.sf-drawer__panel::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.sf-drawer__panel::-webkit-scrollbar-thumb {
-    border-radius: 4px;
-    background: var(--sf-dw-ctl);
-}
-
-/* The ✕ sits in the dimmed strip beside the panel (at least 64px stays free, even at 320px). In px, so a
-   larger text size never pushes it past the screen's edge. A 40px disc with a hairline ring, light on the
-   dimmed page; its tap area reaches 48px (the ::after ring), 8 to 56px from the panel's edge. */
+/* The ✕ sits in the dimmed strip beside the panel (at least 64px stays free, even at 320px), in px so
+   a larger text size never pushes it past the screen's edge. */
 .sf-drawer__close {
     position: absolute;
     top: calc(12px + env(safe-area-inset-top, 0px));
-    inset-inline-start: calc(var(--sf-drawer-w) + 12px);
+    inset-inline-start: calc(var(--sf-drawer-w) + 10px);
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border: 0;
     border-radius: 999px;
     background: color-mix(in srgb, var(--color-dark) 72%, transparent);
@@ -1429,16 +1422,9 @@ html.sf-menu-open {
     cursor: pointer;
 }
 
-.sf-drawer__close::after {
-    content: "";
-    position: absolute;
-    inset: -4px;
-    border-radius: 999px;
-}
-
 .sf-drawer__close svg {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -1464,69 +1450,124 @@ html.sf-menu-open {
     }
 }
 
-/* Menu rows: no rules between them. A top item is 600 with its icon at 20px and 12px from the label; a
-   sub-item is 500 and starts on the parent's label column (16 + 20 + 12 = 48px). */
+/* Tabs "Menu | Sản phẩm" (a site with a product list and a category under it): two equal halves with
+   an underline under the chosen one and a rule under the row. */
+.sf-drawer__tabs {
+    display: flex;
+    flex: none;
+    min-height: 48px;
+    box-shadow: inset 0 -1px 0 var(--sf-dw-hair);
+}
+
+.sf-drawer__tab {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 48px;
+    padding: 0 8px;
+    border: 0;
+    background: none;
+    color: var(--sf-dw-muted);
+    font: inherit;
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.3;
+    text-align: center;
+    cursor: pointer;
+}
+
+.sf-drawer__tab[aria-selected="true"] {
+    color: var(--sf-dw-strong);
+    font-weight: 600;
+}
+
+.sf-drawer__tab[aria-selected="true"]::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 2px;
+    background: var(--sf-dw-strong);
+}
+
+@media (hover: hover) {
+    .sf-drawer__tab[aria-selected="false"]:hover {
+        background: var(--sf-dw-track);
+    }
+}
+
+.sf-drawer__pane {
+    flex: none;
+}
+
+/* Rows: one level-1 row 52px tall at 17px/500, sub-rows 48px at 16px and 15px/400. */
 .sf-nav--mob .sf-nav__list {
     display: flex;
     flex-direction: column;
+    margin: 0;
+    padding: 0;
 }
 
-.sf-nav--mob .sf-nav__nested {
-    display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
+.sf-nav--mob .sf-nav__item {
+    display: block;
 }
 
-.sf-nav--mob .sf-nav__nested .sf-nav__nested {
-    padding-inline-start: 1rem;
-}
-
-.sf-nav--mob .sf-nav__item--parent {
-    flex-wrap: wrap;
-}
-
-.sf-nav--mob .sf-nav__link,
-.sf-nav--mob .sf-nav__sublink {
+.sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink) {
     position: relative;
+    isolation: isolate;
     display: flex;
-    flex: 1;
+    align-items: center;
     gap: 12px;
-    min-height: max(48px, 3rem);
-    padding: 0.5rem 1rem;
+    width: 100%;
+    min-height: 48px;
+    margin: 0;
+    padding-block: 10px;
+    padding-inline: 40px 24px;
+    border: 0;
     border-radius: 0;
+    background: none;
     color: var(--sf-dw-ink);
+    font-family: inherit;
     font-size: 1rem;
-    font-weight: 600;
+    font-weight: 400;
     line-height: 1.35;
     text-align: start;
     white-space: normal;
     overflow-wrap: anywhere;
+    cursor: pointer;
+    transition: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.sf-nav--mob .sf-nav__sublink {
-    min-height: max(48px, 3rem);
-    border-radius: 0.625rem;
-    color: var(--sf-dw-sub);
-    font-size: 0.9375rem;
+.sf-nav--mob .sf-nav__link:not(.sf-nav__link--cta) {
+    min-height: 52px;
+    padding-inline-start: 24px;
+    font-size: 1.0625rem;
     font-weight: 500;
 }
 
-.sf-nav--mob .sf-nav__toggle {
-    justify-content: space-between;
+.sf-nav--mob .sf-nav__nested .sf-nav__nested .sf-nav__sublink {
+    padding-inline-start: 56px;
+    font-size: 0.9375rem;
 }
 
-.sf-nav--mob .sf-nav__toggle > span {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+.sf-nav--mob.sf-nav--icons .sf-nav__sublink,
+.sf-nav--mob.sf-nav--icons > .sf-nav__list > .sf-nav__item > .sf-nav__link:not(.sf-nav__link--cta, :has(> .sf-nav__ic)) {
+    padding-inline-start: 56px;
+}
+
+.sf-nav--mob.sf-nav--icons .sf-nav__nested .sf-nav__nested .sf-nav__sublink {
+    padding-inline-start: 72px;
+}
+
+.sf-nav--mob :is(.sf-nav__link, .sf-nav__sublink).sf-nav__toggle {
+    padding-inline-end: 52px;
+}
+
+.sf-nav--mob .sf-nav__t {
+    flex: 1 1 auto;
     min-width: 0;
-}
-
-.sf-nav--mob .sf-nav__chev {
-    min-width: max(48px, 3rem);
-    min-height: max(48px, 3rem);
-    border-radius: 0;
-    color: var(--sf-dw-ink);
+    text-wrap: balance;
 }
 
 .sf-nav--mob .sf-nav__ic {
@@ -1536,12 +1577,148 @@ html.sf-menu-open {
     color: var(--sf-dw-muted);
 }
 
-/* A top-level item drawn as a button keeps its label readable on the brand fill. */
-.sf-nav--mob .sf-nav__link--cta {
-    color: var(--color-on-primary);
+.sf-nav--mob .sf-nav__caret {
+    position: absolute;
+    top: 50%;
+    inset-inline-end: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    margin-top: -22px;
+    color: var(--sf-dw-muted);
 }
 
-/* Its icon, hover, press and focus ring stay on the brand fill's own pair, never the drawer's greys. */
+.sf-nav--mob .sf-nav__caret .sf-icon {
+    transition: transform 0.2s;
+}
+
+.sf-nav--mob [aria-expanded="true"] .sf-nav__ic {
+    transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sf-nav--mob .sf-nav__caret .sf-icon {
+        transition: none;
+    }
+}
+
+/* The row's fill is a pill drawn behind it, 8px in from each side, so a fill never changes the row's
+   size: pressed, hovered (only where there is a real hover) and current. The current row adds a 4x20
+   bar at 12px and a 600 label; keyboard focus is a 2px ring on the same pill. */
+.sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink)::after {
+    content: "";
+    position: absolute;
+    inset: 2px 8px;
+    z-index: -1;
+    border-radius: 10px;
+}
+
+@media (hover: hover) {
+    .sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink):not([aria-current="page"]):hover::after {
+        background: var(--sf-dw-track);
+    }
+}
+
+.sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink):active::after {
+    background: var(--sf-dw-tap);
+}
+
+.sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink)[aria-current="page"] {
+    color: var(--sf-dw-on);
+    font-weight: 600;
+}
+
+.sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink)[aria-current="page"]::after {
+    background: var(--sf-dw-pill);
+}
+
+.sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink)[aria-current="page"]:active::after {
+    background: var(--sf-dw-press);
+}
+
+.sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink)[aria-current="page"]::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    inset-inline-start: 12px;
+    width: 4px;
+    height: 20px;
+    margin-top: -10px;
+    border-radius: 2px;
+    background: var(--sf-dw-strong);
+}
+
+.sf-nav--mob :is(.sf-nav__link, .sf-nav__sublink):focus-visible {
+    outline: 0;
+}
+
+.sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink):focus-visible::after {
+    box-shadow: inset 0 0 0 2px var(--sf-dw-strong);
+}
+
+/* An opened group and the way to the current page: a 600 label in the strong colour; on the way to
+   the page the icon and the chevron take it too. The current page's icon is strong. */
+.sf-nav--mob .sf-nav__toggle[aria-expanded="true"],
+.sf-nav--mob :is(.sf-nav__link, .sf-nav__sublink).is-trail {
+    color: var(--sf-dw-strong);
+    font-weight: 600;
+}
+
+.sf-nav--mob .is-trail :is(.sf-nav__ic, .sf-nav__caret),
+.sf-nav--mob [aria-current="page"] .sf-nav__ic {
+    color: var(--sf-dw-strong);
+}
+
+/* A rule between level-1 rows only, 24px in from each side; none beside the current row or the
+   call-to-action row. An open group ends with 8px of space. */
+.sf-nav--mob > .sf-nav__list > .sf-nav__item + .sf-nav__item::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    inset-inline: 24px;
+    z-index: 1;
+    border-top: 1px solid var(--sf-dw-hair);
+    pointer-events: none;
+}
+
+.sf-nav--mob > .sf-nav__list > .sf-nav__item:has(> :is([aria-current="page"], .sf-nav__link--cta))::before,
+.sf-nav--mob > .sf-nav__list > .sf-nav__item:has(> :is([aria-current="page"], .sf-nav__link--cta)) + .sf-nav__item::before {
+    content: none;
+}
+
+.sf-nav--mob .sf-nav__panel {
+    display: none;
+    width: 100%;
+    padding: 0 0 8px;
+}
+
+.sf-nav--mob .sf-nav__nested .sf-nav__panel {
+    padding-bottom: 0;
+}
+
+.sf-nav--mob .sf-nav__item--parent.is-open > .sf-nav__panel,
+html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
+    display: block;
+}
+
+/* A top-level item drawn as a button: 12px in from each side, the brand fill and its own text colour; a
+   ring in the control-border neutral when the brand is faint on the panel. */
+.sf-nav--mob .sf-nav__link--cta {
+    display: flex;
+    gap: 12px;
+    min-height: 48px;
+    margin: 6px 12px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    box-shadow: var(--sf-dw-cta-ring);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
 .sf-nav--mob .sf-nav__link--cta .sf-nav__ic {
     color: inherit;
 }
@@ -1551,216 +1728,41 @@ html.sf-menu-open {
     transition-duration: 0s;
 }
 
-/* The hover fill only where there is a real hover: on a touch phone a tapped row would keep it. */
-@media (hover: hover) {
-    .sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink):not([aria-current="page"]):hover,
-    .sf-nav--mob .sf-nav__chev:hover {
-        background: var(--sf-dw-track);
-    }
-}
-
-/* Tap feedback within 200ms: no fade, so the press shows at once. Keyboard focus gets the same ring as the tabs. */
-.sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink, .sf-nav__chev):active {
-    background: var(--sf-dw-hair);
-    transition-duration: 0s;
-}
-
-.sf-nav--mob :is(.sf-nav__link, .sf-nav__sublink, .sf-nav__chev):focus-visible {
-    outline: 3px solid var(--sf-dw-focus);
-    outline-offset: -3px;
-}
-
 .sf-nav--mob .sf-nav__link--cta:focus-visible {
-    outline-color: var(--color-on-primary);
+    outline: 2px solid var(--sf-dw-strong);
+    outline-offset: 2px;
 }
 
-/* Where the visitor is: a soft pill in the brand's tint drawn behind the row (so the row's height never
-   changes), a short bar in the brand's readable colour at its leading edge, a bold label and the icon in
-   the bar's colour. The tint stays under 3:1 against the panel, so the bar (>= 3:1 on the tint) and the
-   bold label carry the state, never the colour alone. On a row with a chevron the pill spans the chevron
-   too. A section on the way to the page (aria-current="true") gets a bold label and the accent icon, no
-   pill and no bar; inside an open group only the current page stands out. A call-to-action row keeps its
-   own brand fill when it is the current page. Sides are logical, so a right-to-left page mirrors it. */
-.sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink)[aria-current="page"] {
-    isolation: isolate;
-    background: none;
-    color: var(--sf-dw-on);
-    font-weight: 700;
-}
-
-.sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink)[aria-current="page"]::after {
-    content: "";
-    position: absolute;
-    inset: 2px 8px;
-    z-index: -1;
-    border-radius: 12px;
-    background: var(--sf-dw-here-bg);
-}
-
-.sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink)[aria-current="page"]::before {
-    content: "";
-    position: absolute;
-    top: 50%;
-    inset-inline-start: 8px;
-    width: 3px;
-    height: 20px;
-    margin-top: -10px;
-    border-radius: 0;
-    border-start-end-radius: 3px;
-    border-end-end-radius: 3px;
-    background: var(--sf-dw-here);
-}
-
-.sf-nav--mob .sf-nav__sublink[aria-current="page"]::after {
-    inset: 2px 0;
-}
-
-.sf-nav--mob .sf-nav__sublink[aria-current="page"]::before {
-    inset-inline-start: 0;
-}
-
-/* The chevron button (48px) sits after the link: the pill reaches 8px short of its far edge, and the
-   button is lifted above the link's layer so it stays visible and tappable. */
-.sf-nav--mob .sf-nav__item--parent > .sf-nav__link[aria-current="page"]::after {
-    inset-inline-end: -40px;
-}
-
-.sf-nav--mob .sf-nav__item--parent > .sf-nav__chev {
-    position: relative;
-    z-index: 1;
-}
-
-.sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink)[aria-current="page"]:active::after {
-    background: var(--sf-dw-here-press);
-}
-
-.sf-nav--mob .sf-nav__link.is-trail {
-    font-weight: 700;
-}
-
-.sf-nav--mob .sf-nav__sublink.is-trail {
-    font-weight: 500;
-}
-
-.sf-nav--mob .sf-nav__link[aria-current="true"] .sf-nav__ic {
-    color: var(--sf-dw-accent);
-}
-
-.sf-nav--mob :is(.sf-nav__link:not(.sf-nav__link--cta), .sf-nav__sublink)[aria-current="page"] .sf-nav__ic {
-    color: var(--sf-dw-here);
-}
-
-/* An open group has no fill; its sub-items start on the parent's label column. */
-.sf-nav--mob .sf-nav__panel {
-    display: none;
-    width: 100%;
-    padding-block: 0 0.25rem;
-    padding-inline: 32px 8px;
-}
-
-.sf-nav--mob .sf-nav__nested .sf-nav__panel {
-    padding-inline: 0 0;
-}
-
-/* A second-level group in the product tree is a button: no browser border, the row look of its links. */
-.sf-nav--mob .sf-nav__nested .sf-nav__item--parent > .sf-nav__sublink {
-    justify-content: space-between;
-    width: 100%;
-    border: 0;
-    background: none;
-    font-family: inherit;
-    cursor: pointer;
-}
-
-.sf-nav--mob .sf-nav__item--parent.is-open > .sf-nav__panel,
-html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
-    display: block;
-}
-
-/* Tabs "Menu | Sản phẩm" (only on a site with a product list and a category under it): the same control
-   as the text-size pill, two equal halves on a fully rounded track; the chosen one is the raised thumb with
-   the ring and a bold label, the other a 600 label in the sub-item colour. */
-.sf-drawer__tabs {
-    display: flex;
-    flex: none;
-    margin: 10px 12px 8px;
-    padding: 4px;
-    border-radius: 26px;
-    background: var(--sf-dw-track);
-}
-
-.sf-drawer__tab {
-    flex: 1 1 0;
-    min-width: 0;
-    min-height: 44px;
-    padding: 0.5rem 0.375rem;
-    border: 0;
-    border-radius: 22px;
-    background: none;
-    color: var(--sf-dw-sub);
-    font: inherit;
-    font-size: 1rem;
+/* The "Sản phẩm" tab: a caption over the category tree, then an outlined button to every product. */
+.sf-drawer__cap {
+    margin: 0;
+    padding: 16px 24px 4px;
+    color: var(--sf-dw-muted);
+    font-size: 0.8125rem;
     font-weight: 600;
     line-height: 1.3;
-    text-align: center;
-    cursor: pointer;
-}
-
-.sf-drawer__tab[aria-selected="true"] {
-    background: var(--sf-dw-thumb);
-    box-shadow: inset 0 0 0 1.5px var(--sf-dw-ink), var(--sf-dw-lift);
-    color: var(--sf-dw-on);
-    font-weight: 700;
-}
-
-@media (hover: hover) {
-    .sf-drawer__tab[aria-selected="false"]:hover {
-        background: var(--sf-dw-hair);
-    }
-}
-
-/* The tab row stays at the top while the panel scrolls, on a screen tall enough for it (a landscape phone or
-   200% zoom keeps the whole panel scrolling). The top safe area moves from the panel into the row's margin;
-   a ring in the panel's colour hides rows scrolling under the gaps around it (and under the safe area), and
-   the scroll padding (a two-line label at most) keeps a focused row out from under it.
-   z-index 3: the pills' thumbs use 1-2. */
-@media (min-height: 480px) {
-    .sf-drawer__panel:has(> .sf-drawer__tabs) {
-        padding-top: 0;
-        scroll-padding-top: calc(max(70px, 2.6em + 34px) + env(safe-area-inset-top, 0px));
-    }
-
-    .sf-drawer__tabs {
-        position: sticky;
-        top: calc(10px + env(safe-area-inset-top, 0px));
-        z-index: 3;
-        margin-top: calc(10px + env(safe-area-inset-top, 0px));
-        box-shadow: 0 -2px 0 12px var(--sf-dw-bg), 0 calc(-12px - env(safe-area-inset-top, 0px)) 0 12px var(--sf-dw-bg);
-    }
-}
-
-.sf-drawer__tab:focus-visible,
-.sf-drawer__all:focus-visible {
-    outline: 3px solid var(--sf-dw-focus);
-    outline-offset: -3px;
-}
-
-.sf-drawer__pane {
-    flex: none;
 }
 
 .sf-drawer__all {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    min-height: max(48px, 3rem);
-    padding: 0.5rem 1rem;
-    color: var(--sf-dw-ink);
+    justify-content: center;
+    gap: 6px;
+    min-height: 48px;
+    margin: 16px 24px 24px;
+    padding: 8px 12px;
+    border: 1px solid var(--sf-dw-ctl);
+    border-radius: 10px;
+    color: var(--sf-dw-strong);
     font-size: 1rem;
     font-weight: 600;
     line-height: 1.35;
+    text-align: center;
     overflow-wrap: anywhere;
+}
+
+.sf-drawer__all .sf-icon {
+    flex: none;
 }
 
 .sf-drawer__all:dir(rtl) .sf-icon {
@@ -1773,240 +1775,153 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     }
 }
 
-/* Under the menu: language and text size (a visitor who needs bigger letters finds them early), opened by
-   one rule inset 16px each side and none between them, then the ways to reach the business. */
-.sf-drawer__tools {
+/* Under both tabs: language, text size, the call and Zalo buttons when the floating contact does not
+   carry them, and the social marks, after one rule; every label starts at 24px. */
+.sf-drawer__foot {
     position: relative;
     display: flex;
     flex: none;
     flex-direction: column;
+    gap: 12px;
     margin-top: 8px;
-    container: sf-drawer-tools / inline-size;
+    padding: 16px 0 24px;
 }
 
-.sf-drawer__tools::before {
+.sf-drawer__foot::before {
     content: "";
     position: absolute;
     top: 0;
-    inset-inline: 16px;
+    inset-inline: 24px;
     border-top: 1px solid var(--sf-dw-hair);
 }
 
-/* One segmented pill for language and text size: the head (icon, label, for text size the size's
-   name) at the start and the pill at the end; a pill that does not fit drops under the head and fills
-   the width. The chosen segment is the raised thumb with the ring, never the brand colour. */
-.sf-pr {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem 0.75rem;
-    box-sizing: border-box;
-    min-height: 56px;
-    padding: 0.5rem 1rem;
+.sf-drawer__blk {
+    padding-inline: 24px;
 }
 
-.sf-pr__h {
+.sf-drawer__fh {
     display: flex;
-    flex: 999 1 auto;
     align-items: center;
-    gap: 0.75rem;
-    min-width: 0;
+    gap: 12px;
+    min-height: 44px;
+    color: var(--sf-dw-ink);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    line-height: 1.3;
 }
 
-.sf-pr__ic {
-    display: flex;
+.sf-drawer__fh > .sf-icon,
+.sf-drawer__aa {
     flex: none;
     width: 20px;
     height: 20px;
     color: var(--sf-dw-muted);
 }
 
-.sf-pr__l {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    line-height: 1.3;
-}
-
-.sf-pr__t {
-    color: var(--sf-dw-ink);
-    font-size: 1em;
-    font-weight: 500;
-}
-
-.sf-pr__v {
-    color: var(--sf-dw-muted);
-    font-size: 0.8125em;
-    font-weight: 500;
-}
-
-/* The current size's name follows the radio that is checked (no script). */
-.sf-pr__v span {
-    display: none;
-}
-
-.sf-pr__v span[data-size="m"] {
-    display: inline;
-}
-
-.sf-drawer__fs:has(.sf-pill__a2 input:checked) .sf-pr__v span,
-.sf-drawer__fs:has(.sf-pill__a3 input:checked) .sf-pr__v span {
-    display: none;
-}
-
-.sf-drawer__fs:has(.sf-pill__a2 input:checked) .sf-pr__v span[data-size="l"],
-.sf-drawer__fs:has(.sf-pill__a3 input:checked) .sf-pr__v span[data-size="xl"] {
-    display: inline;
-}
-
-@container sf-drawer-tools (max-width: 18em) {
-    .sf-pr__h {
-        flex-basis: 100%;
-    }
-}
-
-.sf-pill {
-    position: relative;
-    display: flex;
-    flex: 1 0 auto;
-    flex-wrap: wrap;
-    box-sizing: border-box;
-    max-width: 100%;
-    margin: 0;
-    padding: 4px;
-    list-style: none;
-    border-radius: 26px;
-    background: var(--sf-dw-track);
-}
-
-.sf-drawer__langs li {
-    display: flex;
-    flex: 1 0 auto;
-    max-width: 100%;
-}
-
-.sf-pill__s {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    flex: 1 0 auto;
+.sf-drawer__aa {
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    box-sizing: border-box;
-    max-width: 100%;
-    min-width: 44px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+/* A label with its control beside it, or under it when there is no room. */
+.sf-drawer__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+}
+
+/* One segmented control for the language and the text size: a 1px control border, 44px segments; the
+   chosen one has a 2px ring in the strong colour and a 600 label. */
+.sf-seg {
+    display: flex;
+    margin: 4px 0 0;
+    padding: 0;
+    border: 1px solid var(--sf-dw-ctl);
+    border-radius: 10px;
+    list-style: none;
+}
+
+.sf-seg > li {
+    display: flex;
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.sf-seg--wrap {
+    flex-wrap: wrap;
+}
+
+.sf-seg--wrap > li {
+    flex-basis: 34%;
+}
+
+.sf-seg__s {
+    position: relative;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     min-height: 44px;
-    padding: 0 0.875rem;
-    border-radius: 22px;
-    color: var(--sf-dw-sub);
-    font-size: 0.9375em;
+    margin: -1px;
+    padding: 0 8px;
+    border-radius: 10px;
+    color: var(--sf-dw-ink);
+    font-size: 0.9375rem;
     font-weight: 500;
     line-height: 1.2;
     text-align: center;
     overflow-wrap: anywhere;
-    transition: background-color 0.15s, box-shadow 0.15s, color 0.15s;
-}
-
-.sf-pill__s[aria-current="true"] {
-    background: var(--sf-dw-thumb);
-    box-shadow: inset 0 0 0 1.5px var(--sf-dw-ink), var(--sf-dw-lift);
-    color: var(--sf-dw-on);
-    font-weight: 700;
-}
-
-.sf-drawer__hint {
-    display: block;
-    font-size: 0.8125em;
-    font-weight: 500;
-}
-
-/* Text size: three 48x44 segments whose letter A is drawn at 14, 18 and 22px (fixed pixels: they show the
-   three sizes), all on one baseline; a thumb slides under the chosen one. */
-.sf-pill--fs {
-    flex-wrap: nowrap;
-}
-
-.sf-pill--fs .sf-pill__s {
-    display: block;
-    flex: 1 0 48px;
-    width: 48px;
-    min-width: 48px;
-    height: 44px;
-    min-height: 44px;
-    padding: 0;
-    font-size: 22px;
-    line-height: 44px;
     cursor: pointer;
 }
 
-.sf-pill__g {
-    display: inline;
-    font-weight: 500;
-    line-height: 1;
-    vertical-align: baseline;
+.sf-seg__s:is([aria-current="true"], :has(input:checked)) {
+    z-index: 1;
+    box-shadow: inset 0 0 0 2px var(--sf-dw-strong);
+    color: var(--sf-dw-strong);
+    font-weight: 600;
 }
 
-.sf-pill__a1 .sf-pill__g {
+.sf-seg__s:is(:focus-visible, :has(input:focus-visible)) {
+    outline: 2px solid var(--sf-dw-strong);
+    outline-offset: 2px;
+}
+
+.sf-drawer__hint {
+    color: var(--sf-dw-sub);
+    font-size: 0.75rem;
+    font-weight: 400;
+}
+
+/* Text size: three boxed "A" in fixed px sizes (the page's own size never changes them). */
+.sf-seg--fs {
+    flex: 1 0 9rem;
+    margin: 0;
+}
+
+.sf-seg--fs .sf-seg__s {
+    flex: 1 1 0;
+    min-width: 44px;
+    padding: 0;
+    line-height: 1;
+}
+
+.sf-seg--fs .sf-seg__s:nth-child(1) span {
     font-size: 14px;
 }
 
-.sf-pill__a2 .sf-pill__g {
+.sf-seg--fs .sf-seg__s:nth-child(2) span {
     font-size: 18px;
 }
 
-.sf-pill__a3 .sf-pill__g {
+.sf-seg--fs .sf-seg__s:nth-child(3) span {
     font-size: 22px;
-}
-
-.sf-pill--fs .sf-pill__s:has(input:checked) {
-    color: var(--sf-dw-on);
-}
-
-.sf-pill--fs .sf-pill__s:has(input:checked) .sf-pill__g {
-    font-weight: 800;
-}
-
-.sf-pill__th {
-    position: absolute;
-    z-index: 0;
-    inset-block: 4px;
-    inset-inline-start: 4px;
-    width: calc((100% - 8px) / 3);
-    border-radius: 22px;
-    background: var(--sf-dw-thumb);
-    box-shadow: inset 0 0 0 1.5px var(--sf-dw-ink), var(--sf-dw-lift);
-    transition: transform 0.15s ease;
-    pointer-events: none;
-}
-
-.sf-pill--fs:has(.sf-pill__a2 input:checked) .sf-pill__th {
-    transform: translateX(100%);
-}
-
-.sf-pill--fs:has(.sf-pill__a3 input:checked) .sf-pill__th {
-    transform: translateX(200%);
-}
-
-.sf-pill--fs:dir(rtl):has(.sf-pill__a2 input:checked) .sf-pill__th {
-    transform: translateX(-100%);
-}
-
-.sf-pill--fs:dir(rtl):has(.sf-pill__a3 input:checked) .sf-pill__th {
-    transform: translateX(-200%);
-}
-
-.sf-pill__s:focus-visible,
-.sf-pill__s:has(input:focus-visible) {
-    z-index: 2;
-    outline: 3px solid var(--sf-dw-focus);
-    outline-offset: 1px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .sf-pill__th,
-    .sf-pill__s {
-        transition: none;
-    }
 }
 
 .sf-drawer__fs-in {
@@ -2021,23 +1936,10 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     border: 0;
 }
 
-/* The ways to reach the business follow the content (no band, no rule): a caption, then rows whose text
-   starts on the 48px column, then the social marks at the start. */
-.sf-drawer__contact {
+.sf-drawer__reach {
     display: flex;
-    flex: none;
     flex-direction: column;
-    padding: 4px 16px 16px;
-}
-
-.sf-drawer__cap {
-    margin: 0;
-    padding-top: 16px;
-    color: var(--sf-dw-muted);
-    font-size: 0.8125rem;
-    font-weight: 600;
-    line-height: 1.3;
-    letter-spacing: 0.01em;
+    gap: 8px;
 }
 
 .sf-drawer__call,
@@ -2046,10 +1948,9 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    min-height: 3rem;
-    margin: 4px 0;
+    min-height: 48px;
     padding: 0.25rem 1rem;
-    border-radius: 0.75rem;
+    border-radius: 12px;
     font-size: 1rem;
     font-weight: 700;
     text-align: center;
@@ -2071,44 +1972,16 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     flex: none;
 }
 
-.sf-drawer__line {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-height: max(48px, 3rem);
-    margin: 0;
-    color: var(--sf-dw-ink);
-    font-size: 0.9375rem;
-    font-weight: 600;
-    line-height: 1.4;
-    overflow-wrap: anywhere;
-}
-
-.sf-drawer__line span {
-    min-width: 0;
-}
-
-.sf-drawer__line--hours {
-    min-height: 1.75rem;
-    color: var(--sf-dw-sub);
-    font-weight: 400;
-}
-
-.sf-drawer__line .sf-icon {
-    flex: none;
-    width: 20px;
-    height: 20px;
-    color: var(--sf-dw-muted);
-}
-
-/* The social marks: 44px neutral circles with a ring of 3:1 or more, from the start and wrapping. */
+/* The social marks: 44px round discs with a control-border ring, 8px apart; the group moves under its
+   label when there is no room beside it. */
 .sf-drawer__socials {
     display: flex;
+    flex: none;
     flex-wrap: wrap;
-    justify-content: flex-start;
-    gap: 0.625rem;
+    gap: 8px;
+    max-width: 100%;
     margin: 0;
-    padding: 4px 0 0;
+    padding: 0;
     list-style: none;
 }
 
@@ -2118,18 +1991,60 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     justify-content: center;
     width: 44px;
     height: 44px;
+    border: 1px solid var(--sf-dw-ctl);
     border-radius: 999px;
-    background: var(--sf-dw-track);
-    box-shadow: inset 0 0 0 1px var(--sf-dw-ctl);
-    color: var(--sf-dw-ink);
+    color: var(--sf-dw-muted);
 }
 
+.sf-drawer__tab:focus-visible,
+.sf-drawer__all:focus-visible,
 .sf-drawer__social:focus-visible,
 .sf-drawer__zalo:focus-visible,
-.sf-drawer__line:focus-visible,
 .sf-drawer__call:focus-visible {
-    outline: 3px solid var(--sf-dw-focus);
+    outline: 2px solid var(--sf-dw-strong);
     outline-offset: 2px;
+}
+
+.sf-drawer__tab:focus-visible {
+    outline-offset: -2px;
+}
+
+/* More contrast: secondary text and rules take the label and control colours, the panel is solid. Set
+   on the panel, below the drawer's own style attribute. */
+@media (prefers-contrast: more) {
+    .sf-drawer__panel {
+        --sf-dw-sub: var(--sf-dw-ink);
+        --sf-dw-muted: var(--sf-dw-ink);
+        --sf-dw-hair: var(--sf-dw-ctl);
+        background: var(--sf-dw-bg);
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    .sf-drawer__scrim {
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+
+    .sf-drawer__panel {
+        background: var(--sf-dw-bg);
+    }
+}
+
+@media (forced-colors: active) {
+    .sf-nav--mob [aria-current="page"]::before {
+        forced-color-adjust: none;
+        background: Highlight;
+    }
+
+    .sf-nav--mob [aria-current="page"]::after {
+        border: 2px solid CanvasText;
+    }
+
+    .sf-nav--mob :is(.sf-nav__link, .sf-nav__sublink):focus-visible {
+        outline: 2px solid;
+        outline-offset: -2px;
+    }
 }
 
 /* Menu item options (admin "Trình đơn"), for every menu the theme draws: "Hiện trên" one device

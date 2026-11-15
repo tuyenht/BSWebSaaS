@@ -65,7 +65,7 @@ it('seeds the measurement page and the news card grid', function (): void {
 
     // The main menu has a parent with two sub-links: the phone-menu contrast pass needs them (tap-check.mjs).
     $home = $this->get('http://cwv.platform.test/')->assertOk()->getContent();
-    expect($home)->toMatch('#<div class="sf-nav__panel" id="msm-\\d+">.*?<a class="sf-nav__sublink"\\s+href="/thiet-ke-do-ga"\\s*>Thiết kế đồ gá</a>.*?<a class="sf-nav__sublink"\\s+href="/gia-cong-cnc"\\s*>Gia công CNC</a>#s');
+    expect($home)->toMatch('#<div class="sf-nav__panel" id="msm-\\d+">.*?<a class="sf-nav__sublink"\\s+href="/thiet-ke-do-ga"\\s*>(?:<span class="sf-nav__t">)?Thiết kế đồ gá(?:</span>)?</a>.*?<a class="sf-nav__sublink"\\s+href="/gia-cong-cnc"\\s*>(?:<span class="sf-nav__t">)?Gia công CNC(?:</span>)?</a>#s');
     expectProductSearchWordsCurrent($siteId);
     expectSiteSearchWordsCurrent($siteId);
 });
