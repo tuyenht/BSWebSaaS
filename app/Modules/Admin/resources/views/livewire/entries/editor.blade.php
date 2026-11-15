@@ -123,6 +123,7 @@
                      list and the add palette. Both tabs edit the same body. --}}
                 @php
                     $showBuilder = $isPage || ! $prose;
+                    $proseBlank = $prose && \App\Modules\Admin\Support\EntryProseBody::isBlank($bodyHtml);
                     $tabBase = 'inline-flex min-h-(--spacing-control) shrink-0 items-center gap-1.5 border-b-2 px-1 text-body transition-colors';
                     $tabOn = 'border-primary-text font-semibold text-primary-text';
                     $tabOff = 'border-transparent font-medium text-text-muted hover:text-text';
@@ -180,11 +181,11 @@
                     @if ($showBuilder)
                         <div x-show="tab === 'builder'" x-cloak class="flex flex-col gap-3 px-5 pt-4 pb-5">
                             <div>
-                                <p class="m-0 text-body font-semibold text-text-strong">{{ __($isPage ? 'entries.ed.builder_head' : 'entries.ed.builder_head_post', ['n' => $prose ? ($bodyHtml === '' ? 0 : 1) : count($blocks)]) }}</p>
+                                <p class="m-0 text-body font-semibold text-text-strong">{{ __($isPage ? 'entries.ed.builder_head' : 'entries.ed.builder_head_post', ['n' => $prose ? ($proseBlank ? 0 : 1) : count($blocks)]) }}</p>
                                 <p class="m-0 mt-0.5 text-small text-text-muted">{{ __('entries.ed.builder_sub', ['lang' => $localeLabel]) }}</p>
                             </div>
                             @if ($prose)
-                                @if ($bodyHtml !== '')
+                                @if (! $proseBlank)
                                     <div class="flex min-w-0 items-center gap-3 rounded-md border border-border bg-surface px-3 py-2.5">
                                         <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-bg text-primary-text" aria-hidden="true">
                                             <x-bs-admin::icon name="ri-text-block" class="size-5" />
@@ -211,6 +212,7 @@
                                 <ol class="m-0 flex list-none flex-col gap-2 p-0">
                                     @foreach ($blocks as $i => $block)
                                         @php
+                                            $i = (int) $i;
                                             $kind = $kinds[$block['type']] ?? \App\Modules\Admin\Support\BlockKinds::of($block['type']);
                                             $peek = \App\Modules\Admin\Support\BlockKinds::preview($block['props']);
                                         @endphp
@@ -274,7 +276,7 @@
                                                                 <button type="button" wire:click="addItem({{ $i }}, '{{ $prop }}')">{{ __('entries.add_item') }}</button>
                                                             </fieldset>
                                                         @else
-                                                            @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $spec['type'] ?? 'text', 'model' => "blocks.$i.props.$prop", 'fieldLabel' => $prop, 'value' => $block['props'][$prop] ?? null, 'imageUrls' => $blockImageUrls, 'options' => $spec['options'] ?? [], 'min' => $spec['min'] ?? null, 'max' => $spec['max'] ?? null])
+                                                            @include('admin::livewire.entries.partials.prop-input', ['fieldType' => ($spec['type'] ?? 'text') === 'html' ? 'textarea' : ($spec['type'] ?? 'text'), 'model' => "blocks.$i.props.$prop", 'fieldLabel' => $prop, 'value' => $block['props'][$prop] ?? null, 'imageUrls' => $blockImageUrls, 'options' => $spec['options'] ?? [], 'min' => $spec['min'] ?? null, 'max' => $spec['max'] ?? null])
                                                         @endif
                                                     @endforeach
                                                 </div>

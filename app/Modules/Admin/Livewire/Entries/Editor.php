@@ -419,7 +419,7 @@ final class Editor extends Component
         $prose = app(EntryProseBody::class)->read($blocks);
         if ($prose === null) {
             $this->prose = false;
-            $this->blocks = $blocks;
+            $this->blocks = $this->layoutForEditor($blocks);
             $this->bodyHtml = '';
             $this->proseLook = [];
             $this->converted = false;
@@ -435,25 +435,76 @@ final class Editor extends Component
     }
 
     /**
-     * The written body as stored blocks (its one formatted-text block, or none when empty). With
-     * $strict a picture that is not one of this site's library pictures refuses: saving would drop it.
+     * The written body as stored blocks (its one formatted-text block, or none when empty). A picture
+     * that is not one of this site's library pictures refuses: saving would drop it.
      *
      * @return list<array{type: string, props: array<string, mixed>}>
      */
-    private function proseBlocks(bool $strict = true): array
+    private function proseBlocks(): array
     {
         $written = app(EntryProseBody::class)->write(PlainText::lines($this->bodyHtml, trim: false), $this->proseLook);
-        if ($strict && $written['foreign'] > 0) {
+        if ($written['foreign'] > 0) {
             throw ValidationException::withMessages(['bodyHtml' => __('entries.ed.body_foreign_images', ['n' => $written['foreign']])]);
         }
 
         return $written['blocks'];
     }
 
-    /** The written body becomes the first block of a layout (the block list takes over). */
-    private function leaveProse(bool $strict = true): void
+    /**
+     * The formatted-text blocks of a layout in the editor's form: library pictures by address, so no
+     * id reaches the browser (as in the written body).
+     *
+     * @param  list<array{type: string, props: array<string, mixed>}>  $blocks
+     * @return list<array{type: string, props: array<string, mixed>}>
+     */
+    private function layoutForEditor(array $blocks): array
     {
-        $this->blocks = $this->proseBlocks($strict);
+        $prose = app(EntryProseBody::class);
+        foreach ($blocks as $index => $block) {
+            if ($block['type'] === EntryProseBody::TYPE && is_string($block['props']['html'] ?? null)) {
+                $blocks[$index]['props']['html'] = $prose->forEditor($block['props']['html']);
+            }
+        }
+
+        return $blocks;
+    }
+
+    /**
+     * The layout as stored: each formatted-text block names its library pictures by id. A picture
+     * that is not one of this site's library pictures refuses: saving would drop it.
+     *
+     * @return list<array{type: string, props: array<string, mixed>}>
+     */
+    private function layoutForStorage(): array
+    {
+        $prose = app(EntryProseBody::class);
+        $blocks = $this->blocks;
+        $foreign = 0;
+        foreach ($blocks as $index => $block) {
+            $props = $block['props'] ?? null;
+            if (($block['type'] ?? null) === EntryProseBody::TYPE && is_array($props) && is_string($props['html'] ?? null)) {
+                $stored = $prose->forStorage($props['html']);
+                $props['html'] = $stored['html'];
+                $blocks[$index]['props'] = $props;
+                $foreign += $stored['foreign'];
+            }
+        }
+        if ($foreign > 0) {
+            throw ValidationException::withMessages(['blocks' => __('entries.ed.body_foreign_images', ['n' => $foreign])]);
+        }
+
+        /** @var list<array{type: string, props: array<string, mixed>}> $blocks */
+        return $blocks;
+    }
+
+    /**
+     * The written body becomes the first block of a layout (the block list takes over), still in the
+     * editor's form: its pictures are checked and named by id when the layout is saved.
+     */
+    private function leaveProse(): void
+    {
+        $html = PlainText::lines($this->bodyHtml, trim: false);
+        $this->blocks = EntryProseBody::isBlank($html) ? [] : [['type' => EntryProseBody::TYPE, 'props' => $this->proseLook + ['html' => $html]]];
         $this->prose = false;
         $this->bodyHtml = '';
         $this->proseLook = [];
@@ -583,10 +634,18 @@ final class Editor extends Component
      */
     public function updatedBlocks(mixed $value, ?string $key = null): void
     {
+        // Rows are drawn by position: a list sent whole keeps positions as its keys.
+        /** @var mixed $sent the client sends any shape */
+        $sent = $this->blocks;
+        if ($key === null && is_array($sent) && ! array_is_list($sent)) {
+            /** @var list<array<string, mixed>> $list */
+            $list = array_values($sent);
+            $this->blocks = $list;
+        }
         // A block list sent whole while the body is written: it becomes a layout, the document first.
         if ($key === null && $this->prose && $this->blocks !== []) {
             $sent = $this->blocks;
-            $this->leaveProse(strict: false);
+            $this->leaveProse();
             $this->blocks = array_merge($this->blocks, $sent);
 
             return;
@@ -1041,7 +1100,7 @@ final class Editor extends Component
         if ($this->coverImageKey === '') {
             $missing[] = __('admin.wfb.missing_cover');
         }
-        if ($this->blocks === []) {
+        if ($this->prose ? EntryProseBody::isBlank($this->bodyHtml) : $this->blocks === []) {
             $missing[] = __('admin.wfb.missing_body');
         }
 
@@ -1702,11 +1761,14 @@ final class Editor extends Component
 
         $filled = $this->fillBlankSlug();
         $proseBody = null;
+        $layoutBody = null;
         try {
             // A written body is checked as the block it is stored in (ValidPageJson: an html prop's size).
             if ($this->prose) {
                 $proseBody = $this->proseBlocks();
                 $this->blocks = $proseBody;
+            } else {
+                $layoutBody = $this->layoutForStorage();
             }
             $this->validate();
         } catch (ValidationException $e) {
@@ -1772,7 +1834,7 @@ final class Editor extends Component
         $translation->fill([
             'title' => $this->title,
             'slug' => $this->slug,
-            'body' => ['blocks' => $proseBody ?? $this->blocks],
+            'body' => ['blocks' => $proseBody ?? $layoutBody ?? $this->blocks],
             'excerpt' => $this->excerpt !== '' ? $this->excerpt : null,
             'seo_title' => $this->seoTitle !== '' ? $this->seoTitle : null,
             'seo_description' => $this->seoDescription !== '' ? $this->seoDescription : null,

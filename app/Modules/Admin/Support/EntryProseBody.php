@@ -40,7 +40,8 @@ final readonly class EntryProseBody
     /** The picture attributes the CMS profile keeps besides the id (RichTextSanitizer::cms). */
     private const array KEPT = ['alt', 'data-size', 'data-align'];
 
-    private const string IMG = '~<img\b([^>]*?)\s?/?>~i';
+    /** An img tag; a quoted value may hold a `>` (older serializers leave it unescaped). */
+    private const string IMG = '~<img\b((?:[^>"\']++|"[^"]*+"|\'[^\']*+\')*+)>~i';
 
     public function __construct(private MediaUrlResolver $urls) {}
 
@@ -132,7 +133,8 @@ final readonly class EntryProseBody
 
     /**
      * The editor's HTML → stored: each picture whose address is one of this site's library pictures
-     * names it by id (address dropped); any other picture is left as it is and counted.
+     * names it by id (address dropped); a tag already naming a picture by id keeps that id (the page
+     * draws only this site's pictures); any other picture is left as it is and counted.
      *
      * @return array{html: string, foreign: int}
      */
@@ -157,6 +159,8 @@ final readonly class EntryProseBody
             $attributes = self::attributes($match[1]);
             $key = $this->keyOf($attributes);
             $id = $key !== null ? ($ids[$key] ?? null) : null;
+            // A tag already in the stored form keeps its id (only the site's own pictures are drawn).
+            $id ??= filter_var($attributes['data-media-id'] ?? '', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: null;
             if (! is_numeric($id)) {
                 $foreign++;
 

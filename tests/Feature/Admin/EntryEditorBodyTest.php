@@ -345,6 +345,71 @@ describe('in the editor', function (): void {
         });
     })->with(['another website', 'a pasted link']);
 
+    it('keeps picture ids out of the browser when a written body becomes a layout, and back on save', function (): void {
+        app(Tenancy::class)->enter(1, function (): void {
+            $media = StorefrontCards::media('khoi-anh');
+            $stored = '<p>Mở đầu</p><img data-media-id="'.$media->id.'" alt="Xưởng > máy">';
+            $entry = bodyEntry($this->editor, [['type' => 'richtext_html', 'props' => ['html' => $stored]]]);
+
+            $c = Livewire::actingAs($this->editor->fresh())
+                ->test(Editor::class, ['ulid' => $entry->ulid])
+                ->call('addBlock', 'cta')
+                ->assertSet('prose', false)
+                ->assertDontSeeHtml('data-media-id')
+                // the document is edited as several lines, never squeezed into one
+                ->assertSeeHtml('wire:model="blocks.0.props.html"');
+            expect($c->get('blocks.0.props.html'))->toContain($media->storage_key)->not->toContain('data-media-id');
+
+            $c->call('save')->assertHasNoErrors()->assertDontSeeHtml('data-media-id');
+            $html = storedBlocks($entry)[0]['props']['html'];
+            expect($html)->toContain('data-media-id="'.$media->id.'"')
+                ->and($html)->toContain('alt="Xưởng &gt; máy"')
+                ->and($html)->not->toContain($media->storage_key);
+
+            // Reopened, the layout's formatted-text block shows the address again.
+            Livewire::actingAs($this->editor->fresh())
+                ->test(Editor::class, ['ulid' => $entry->ulid])
+                ->assertSet('prose', false)
+                ->assertDontSeeHtml('data-media-id');
+        });
+    });
+
+    it('refuses to save a layout whose formatted text holds a picture from elsewhere', function (): void {
+        app(Tenancy::class)->enter(1, function (): void {
+            $entry = bodyEntry($this->editor, [['type' => 'hero', 'props' => ['heading' => 'Chào']]]);
+            Livewire::actingAs($this->editor->fresh())
+                ->test(Editor::class, ['ulid' => $entry->ulid])
+                ->set('blocks', [['type' => 'hero', 'props' => ['heading' => 'Chào']], ['type' => 'richtext_html', 'props' => ['html' => '<p>x</p><img src="https://example.com/a.jpg" alt="">']]])
+                ->call('save')
+                ->assertHasErrors('blocks');
+            expect(array_column(storedBlocks($entry), 'type'))->toBe(['hero']);
+        });
+    });
+
+    it('draws rows by position even when a block list arrives with other keys', function (): void {
+        app(Tenancy::class)->enter(1, function (): void {
+            $entry = bodyEntry($this->editor, [['type' => 'hero', 'props' => ['heading' => 'Chào']]]);
+            Livewire::actingAs($this->editor->fresh())
+                ->test(Editor::class, ['ulid' => $entry->ulid])
+                ->set('blocks', ['1||alert(1)' => ['type' => 'hero', 'props' => ['heading' => 'Chào']]])
+                ->assertSet('blocks', [['type' => 'hero', 'props' => ['heading' => 'Chào']]])
+                ->assertDontSeeHtml('alert(1)');
+        });
+    });
+
+    it('counts a written body as the body the approval check looks for', function (): void {
+        app(Tenancy::class)->enter(1, function (): void {
+            $missing = fn (Editor $editor): array => (fn (): array => $this->missingPublicFields())->call($editor);
+            $written = Livewire::actingAs($this->editor->fresh())
+                ->test(Editor::class, ['ulid' => bodyEntry($this->editor, [['type' => 'richtext_html', 'props' => ['html' => '<p>Có chữ</p>']]])->ulid]);
+            expect($missing($written->instance()))->not->toContain(__('admin.wfb.missing_body'));
+
+            $written->set('bodyHtml', '<p><br></p>');
+            expect($missing($written->instance()))->toContain(__('admin.wfb.missing_body'));
+            $written->assertSee('Bố cục trang · 0 khối');
+        });
+    });
+
     it('lets no member without the right to edit open or save the body', function (): void {
         $viewer = User::factory()->create();
         $ulid = app(Tenancy::class)->enter(1, function () use ($viewer): string {
