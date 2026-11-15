@@ -344,9 +344,11 @@ function initRail(root) {
         schedule();
         return fix;
     };
+    // A new width stops blocking jumps only once a still row has had its copy width measured again.
     const sync = () => {
-        resizing = false;
-        apply(measure())?.();
+        const measured = measure();
+        resizing &&= deferred;
+        apply(measured)?.();
     };
     const hold = () => {
         held = true;
@@ -373,8 +375,8 @@ function initRail(root) {
     };
     track.addEventListener('touchstart', () => (touching = true), { passive: true });
     const lift = (event) => {
-        // A second finger still on the row (a pinch) keeps it held.
-        touching = event.touches.length > 0;
+        // A second finger still on the row (a pinch) keeps it held; a finger elsewhere on the page does not.
+        touching = [...event.touches].some((t) => track.contains(t.target));
         if (touching) {
             return;
         }

@@ -394,7 +394,7 @@ it('shows the arrows only on a row that can scroll, and the title tooltips on ev
     $js = (string) file_get_contents(base_path('resources/js/sf-slider.js'));
     $html = railView('partners', ['props' => ['layout' => 'auto', 'logos' => logos(8)]]);
 
-    expect($js)->toContain('over = loop ? span > track.clientWidth + 1 : overflows()')->and($js)->toContain("over && mode !== 'none'")->and($js)->not->toContain('hover: hover')
+    expect($js)->toContain('over = loop ? span > width + 1 : overflows()')->and($js)->toContain("over && mode !== 'none'")->and($js)->not->toContain('hover: hover')
         ->and(substr_count($html, 'title="'))->toBe(2);
 });
 

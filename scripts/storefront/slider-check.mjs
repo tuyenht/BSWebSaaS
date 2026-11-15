@@ -333,8 +333,12 @@ async function mountLoop({ loop = '', grid = false, ends = true, idle = false, o
         track.dispatchEvent(new window.Event('scroll'));
         end(track);
     };
-    // A touch on the row; `fingers` is how many stay on it afterwards.
-    const touch = (type, fingers = 0) => track.dispatchEvent(Object.assign(new window.Event(type), { touches: { length: fingers } }));
+    // A touch on the row; `fingers` stay on the row afterwards and `away` elsewhere on the page.
+    const touch = (type, fingers = 0, away = 0) => {
+        const on = Array.from({ length: fingers }, () => ({ target: track.firstElementChild }));
+        const off = Array.from({ length: away }, () => ({ target: window.document.body }));
+        return track.dispatchEvent(Object.assign(new window.Event(type), { touches: [...on, ...off] }));
+    };
     // The cards and the row take new widths (a phone turned) and the observer reports it.
     const resize = (card, row) => {
         W = card;
@@ -402,6 +406,12 @@ for (const ends of [true, false]) {
     s.touch('touchend');
     s.tick(400);
     check('loop: the jump comes once the last finger lifts', s.track.scrollLeft === 900);
+    // A thumb resting elsewhere on the page does not hold the row.
+    s.touch('touchstart', 1, 1);
+    s.scrollBy(1700);
+    s.touch('touchend', 0, 1);
+    s.tick(400);
+    check('loop: a finger elsewhere on the page does not hold the row', s.track.scrollLeft === 900);
 }
 {
     // The row and its cards change width with the loop on (a phone turned): no jump with the old copy
@@ -420,6 +430,13 @@ for (const ends of [true, false]) {
     s.scrollBy(1250);
     s.tick(400);
     check('loop, new width: a swipe past the last card settles by the new copy width', s.track.scrollLeft === 650);
+    // A new width while the row still moves: no jump with the old copy width until it is measured.
+    s.resize(200, 300);
+    for (const to of [1250, 1300, 1350, 1400, 1450]) {
+        s.scrollBy(to);
+        s.tick(60);
+    }
+    check('loop, new width mid-scroll: no jump with the old copy width', s.track.scrollLeft === 1450);
 }
 {
     const s = await mountLoop({ loop: ' data-loop="off"' });
