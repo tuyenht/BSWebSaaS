@@ -3386,6 +3386,7 @@
     "admin.fc.st_partial": "Còn :count nhãn chưa dịch",
     "admin.fc.st_empty": "Chưa có nhãn nào",
     "admin.fc.st_hidden": "chưa hiển thị ra ngoài",
+    "admin.fc.shown_as": "· hiện là “:text”",
     "admin.fc.note_src": "Đây là bản nguồn — nhập đủ và chuẩn các nhãn có chip :code.",
     "admin.fc.note_src_missing": "Hiện còn :count bản chưa đủ nhãn.",
     "admin.fc.note_empty": "Bản :name chưa có nhãn hover nào — tự nhập, hoặc để trống thì mỗi nút dùng tên sẵn có của kênh trong :name.",

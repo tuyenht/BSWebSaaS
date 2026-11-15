@@ -373,7 +373,11 @@
                                                        aria-invalid="{{ $errors->has("channels.$i.name") ? 'true' : 'false' }}"
                                                        class="field field-row min-w-[min(10rem,100%)] max-w-70 flex-[1_1_10rem] rounded-md border border-border-input bg-surface px-2.5 font-semibold text-text-strong">
                                             @else
-                                                <span class="{{ $name }}">{{ $label }}</span>
+                                                @php
+                                                    // The label typed for this language replaces the channel's name on the website: say so beside the name.
+                                                    $shownAs = trim((string) ($c['tips'][$lang] ?? ''));
+                                                @endphp
+                                                <span class="{{ $name }}">{{ $label }}@if ($shownAs !== '' && $shownAs !== $label)<span class="ms-1.5 text-[calc(0.75rem+var(--user-text-boost))] font-medium text-text-muted">{{ __('admin.fc.shown_as', ['text' => $shownAs]) }}</span>@endif</span>
                                             @endif
                                             <div class="flex shrink-0 items-center gap-2">
                                                 <button type="button" class="switch hit-area" role="switch" aria-checked="{{ $c['on'] ? 'true' : 'false' }}" wire:click="toggleChannel({{ Js::from($key) }})"
