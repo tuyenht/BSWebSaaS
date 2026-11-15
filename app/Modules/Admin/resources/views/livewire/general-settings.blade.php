@@ -20,7 +20,7 @@
     // Examples of a value's shape, not words to translate.
     $examples = ['taxCode' => '0312345678', 'licenseNo' => '0312345678', 'licenseDate' => '14/03/2019', 'moitUrl' => 'http://online.gov.vn/Home/WebDetails/12345',
         'phone' => '0901 234 567', 'facebook' => 'https://facebook.com/tencongty', 'youtube' => 'https://youtube.com/@tencongty',
-        'tiktok' => 'https://tiktok.com/@tencongty', 'zalo' => '0901 234 567'];
+        'tiktok' => 'https://tiktok.com/@tencongty', 'instagram' => 'https://instagram.com/tencongty', 'linkedin' => 'https://linkedin.com/company/tencongty', 'zalo' => '0901 234 567'];
     $placeholder = static fn (string $key): string => $examples[$key] ?? (Lang::has('admin.gs.ph.'.$key) ? __('admin.gs.ph.'.$key) : '');
 
     $hintOf = static function (string $key) use ($province, $provinces): ?string {
@@ -171,7 +171,7 @@
                                               @if ($perLang) lang="{{ $lang }}" @endif aria-invalid="{{ $bad ? 'true' : 'false' }}" @if ($describedBy !== '') aria-describedby="{{ $describedBy }}" @endif
                                               class="field w-full min-w-0 rounded-md border bg-surface px-2.5 text-text placeholder:text-placeholder min-h-[5.5rem] resize-y py-2 {{ $bad ? 'border-danger-text' : 'border-border-input' }}"></textarea>
                                 @elseif ($kind === 'text')
-                                    <input id="{{ $fid }}" type="{{ in_array($key, ['facebook', 'youtube', 'tiktok', 'moitUrl'], true) ? 'url' : ($key === 'email' ? 'email' : ($key === 'phone' ? 'tel' : 'text')) }}"
+                                    <input id="{{ $fid }}" type="{{ in_array($key, ['facebook', 'youtube', 'tiktok', 'instagram', 'linkedin', 'moitUrl'], true) ? 'url' : ($key === 'email' ? 'email' : ($key === 'phone' ? 'tel' : 'text')) }}"
                                            wire:model.live.blur="{{ $bag }}" placeholder="{{ $ph }}" maxlength="{{ GeneralSettings::MAX }}" @if ($locked) readonly @endif
                                            @if ($perLang) lang="{{ $lang }}" @endif @if ($key === 'licenseDate') inputmode="numeric" @endif
                                            aria-invalid="{{ $bad ? 'true' : 'false' }}" @if ($describedBy !== '') aria-describedby="{{ $describedBy }}" @endif

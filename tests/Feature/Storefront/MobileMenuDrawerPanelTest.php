@@ -706,3 +706,14 @@ it('makes a second-level parent one toggle with its own overview row, which keep
         ->toContain('Kỹ sư')
         ->and($desk[0] ?? '')->toMatch('#href="/doi-ngu"[^>]*target="_blank"#')->not->toContain('Tổng quan');
 });
+
+it('draws an Instagram disc in the drawer only when the link is filled', function (): void {
+    dpSite('khong.platform.test', products: false, profile: ['social_links' => ['facebook' => 'https://facebook.com/comau', 'instagram' => '']]);
+    dpSite('co.platform.test', products: false, profile: ['social_links' => ['instagram' => 'https://instagram.com/comau']]);
+
+    $with = $this->get('http://co.platform.test/gioi-thieu')->assertOk()->getContent();
+    $without = $this->get('http://khong.platform.test/gioi-thieu')->assertOk()->getContent();
+
+    expect($with)->toContain('href="https://instagram.com/comau"')->toContain('aria-label="Instagram của Xưởng Mẫu"')
+        ->and($without)->not->toContain('Instagram');
+});

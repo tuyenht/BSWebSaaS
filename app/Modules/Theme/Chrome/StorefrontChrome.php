@@ -48,6 +48,7 @@ final class StorefrontChrome
     /** Social networks the footer has an icon for → their display name. Others are not shown. */
     public const array NETWORKS = [
         'facebook' => 'Facebook',
+        'instagram' => 'Instagram',
         'linkedin' => 'LinkedIn',
         'youtube' => 'YouTube',
         'zalo' => 'Zalo',

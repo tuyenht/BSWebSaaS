@@ -157,8 +157,10 @@ it('saves and loads back each group of fields', function (array $set, array $pro
         ['address_line' => 'Lô A12, đường số 3']],
     'hours' => [['form.days' => 'mon-sat', 'form.opens' => '07:30', 'form.closes' => '17:30', 'i18n.vi.hours_note' => 'Nghỉ trưa 12:00 – 13:00'],
         ['business_hours' => ['days' => 'mon-sat', 'opens' => '07:30', 'closes' => '17:30']], ['opening_hours_text' => 'Nghỉ trưa 12:00 – 13:00']],
-    'social' => [['form.facebook' => 'https://facebook.com/comau', 'form.youtube' => 'https://youtube.com/@comau', 'form.tiktok' => 'https://tiktok.com/@comau', 'form.zalo' => '0901 234 567'],
-        ['social_links' => ['facebook' => 'https://facebook.com/comau', 'youtube' => 'https://youtube.com/@comau', 'tiktok' => 'https://tiktok.com/@comau', 'zalo' => '0901 234 567']], []],
+    'social' => [['form.facebook' => 'https://facebook.com/comau', 'form.youtube' => 'https://youtube.com/@comau', 'form.tiktok' => 'https://tiktok.com/@comau',
+        'form.instagram' => 'https://instagram.com/comau', 'form.linkedin' => 'https://linkedin.com/company/comau', 'form.zalo' => '0901 234 567'],
+        ['social_links' => ['facebook' => 'https://facebook.com/comau', 'youtube' => 'https://youtube.com/@comau', 'tiktok' => 'https://tiktok.com/@comau',
+            'instagram' => 'https://instagram.com/comau', 'linkedin' => 'https://linkedin.com/company/comau', 'zalo' => '0901 234 567']], []],
 ]);
 
 it('saves the timezone and the day format to the site settings', function (): void {
@@ -266,6 +268,8 @@ it('shows the design’s message on the field when it is left', function (string
     'date shape' => ['form.licenseDate', '2019-03-14', 'Ghi ngày theo ngày/tháng/năm, ví dụ 14/03/2019.'],
     'no such day' => ['form.licenseDate', '31/02/2019', 'Ghi ngày theo ngày/tháng/năm, ví dụ 14/03/2019.'],
     'url scheme' => ['form.facebook', 'javascript:alert(1)', 'Đường dẫn phải bắt đầu bằng https:// và là một địa chỉ hợp lệ.'],
+    'instagram url' => ['form.instagram', 'javascript:alert(1)', 'Đường dẫn phải bắt đầu bằng https:// và là một địa chỉ hợp lệ.'],
+    'linkedin url' => ['form.linkedin', 'linkedin.com/company/comau', 'Đường dẫn phải bắt đầu bằng https:// và là một địa chỉ hợp lệ.'],
     'url ftp' => ['form.youtube', 'ftp://youtube.com/x', 'Đường dẫn phải bắt đầu bằng https:// và là một địa chỉ hợp lệ.'],
     'phone' => ['form.phone', '12345', 'Số điện thoại Việt Nam bắt đầu bằng 0 hoặc +84.'],
     'phone of dots' => ['form.phone', '0.........', 'Số điện thoại Việt Nam bắt đầu bằng 0 hoặc +84.'],
@@ -466,4 +470,29 @@ it('lists the page in the settings menu for settings.manage only', function (): 
 
     $this->actingAs($admin)->get('http://a.test/admin/settings/floating-contact')->assertOk()
         ->assertSee(route('admin.settings.general', [], false));
+});
+
+it('puts Zalo in the contact group right after the phone, and keeps it out of the social group', function (): void {
+    $keys = static fn (string $group): array => array_map(static fn (array $field): string => $field[0], GeneralSettings::GROUPS[$group]);
+
+    expect(array_slice($keys('contact'), 0, 2))->toBe(['phone', 'zalo'])
+        ->and($keys('social'))->toBe(['facebook', 'youtube', 'tiktok', 'instagram', 'linkedin', 'social_note']);
+});
+
+it('still stores Zalo with the social links, and clears a network that is emptied', function (): void {
+    $admin = gsAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        gsValid(Livewire::actingAs($admin)->test(GeneralSettings::class))
+            ->set('form.zalo', '0901 234 567')->set('form.instagram', 'https://instagram.com/comau')
+            ->call('save')->assertHasNoErrors();
+    });
+    expect(gsProfile()['social_links'])->toEqual(['instagram' => 'https://instagram.com/comau', 'zalo' => '0901 234 567']);
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Livewire::actingAs($admin)->test(GeneralSettings::class)
+            ->assertSet('form.zalo', '0901 234 567')->assertSet('form.instagram', 'https://instagram.com/comau')
+            ->set('form.instagram', '')->call('save')->assertHasNoErrors();
+    });
+    expect(gsProfile()['social_links'])->toEqual(['zalo' => '0901 234 567']);
 });

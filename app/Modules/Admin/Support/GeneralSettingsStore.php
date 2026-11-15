@@ -51,7 +51,7 @@ final class GeneralSettingsStore
     ];
 
     /** The social networks the screen edits (other keys already in social_links are kept). */
-    public const array SOCIAL = ['facebook', 'youtube', 'tiktok', 'zalo'];
+    public const array SOCIAL = ['facebook', 'youtube', 'tiktok', 'instagram', 'linkedin', 'zalo'];
 
     /**
      * The form's starting values.
