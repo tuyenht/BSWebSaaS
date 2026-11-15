@@ -14,6 +14,7 @@ use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Navigation\MenuIconGuess;
 use App\Modules\Cms\Navigation\MenuItemOptions;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
@@ -559,14 +560,16 @@ it('gives the screen the icons, the source edit screens and the site address it 
     $data = msIn(1, function (): array {
         $page = Livewire::actingAs($this->editor->fresh())->test(MenusIndex::class);
 
-        return array_combine($keys = ['icons', 'edit', 'siteUrl', 'main', 'siteName'], array_map(fn (string $key): mixed => $page->viewData($key), $keys));
+        return array_combine($keys = ['icons', 'kinds', 'edit', 'siteUrl', 'main', 'siteName'], array_map(fn (string $key): mixed => $page->viewData($key), $keys));
     });
 
     $names = array_merge(...array_values(MenusIndex::ICON_GROUPS));
     expect(array_keys(StorefrontIcons::GLYPHS))->toContain(...$names)
         ->and(array_column($data['icons'], 'group'))->toBe(array_map(fn (string $g): string => __('menus.icon_group_'.$g), array_keys(MenusIndex::ICON_GROUPS)))
         ->and(array_column($data['icons'][0]['icons'], 'name'))->toBe(MenusIndex::ICON_GROUPS['common'])
-        ->and($data['icons'][0]['icons'][0])->toBe(['name' => 'home', 'label' => __('menus.icon_home'), 'words' => __('menus.icon_kw_home')])
+        ->and($data['icons'][0]['icons'][0])->toBe(['name' => 'home', 'label' => __('menus.icon_home'), 'words' => __('menus.icon_kw_home'), 'kw' => MenuIconGuess::keywordTexts('home')])
+        ->and($data['icons'][0]['icons'][0]['kw'])->toContain('trang chủ nhà home')
+        ->and($data['kinds'])->toBe(MenuIconGuess::KIND)
         ->and($data['edit']['entry'])->toEndWith('/admin/content/__REF__/edit')
         ->and($data['edit']['product'])->toEndWith('/admin/catalog/__REF__/edit')
         ->and($data['siteUrl'])->toBe('/')

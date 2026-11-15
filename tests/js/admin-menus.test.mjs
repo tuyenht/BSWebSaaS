@@ -176,11 +176,39 @@ test('the suggestion reads the real Vietnamese search words as whole words, not 
     }
 });
 
+// The real keyword lists of every language, one text per language, in picker order: what the screen is sent.
+const pickerGroups = () => {
+    const root = new URL('../../', import.meta.url);
+    const langs = ['en', 'ja', 'vi', 'zh'].map((l) => JSON.parse(readFileSync(new URL(`lang/${l}.json`, root), 'utf8')));
+    const src = readFileSync(new URL('app/Modules/Theme/Chrome/StorefrontIcons.php', root), 'utf8');
+    const block = src.slice(src.indexOf('MENU_GROUPS = ['));
+    const groups = [...block.slice(0, block.indexOf('];')).matchAll(/'[a-z]+' => \[([^\]]+)\]/g)];
+    return groups.map((m) => ({
+        group: 'g',
+        icons: [...m[1].matchAll(/'([^']+)'/g)].map((n) => ({
+            name: n[1], label: n[1], words: langs[2]['menus.icon_kw_' + n[1]] || '',
+            kw: langs.map((l) => l['menus.icon_kw_' + n[1]]).filter(Boolean),
+        })),
+    }));
+};
+const KINDS = { home: 'home', search: 'search', cart: 'cart', account: 'user', login: 'user', call: 'phone', zalo: 'zalo', mail: 'email', map: 'map', sitemap: 'sitemap' };
+
 test('the icon the phone menu picks by itself follows the link kind first, then the words of the name', () => {
-    assert.equal(autoIconOf(worded, { type: 'special', key: 'cart' }, 'Nhà máy'), 'cart');
-    assert.equal(autoIconOf(worded, { type: 'special', key: 'account' }, 'Nhà máy'), 'user');
-    assert.equal(autoIconOf(worded, { type: 'special', key: 'group' }, 'Nhà máy'), 'factory');
-    assert.equal(autoIconOf(worded, { type: 'url', url: 'https://x.test' }, 'Nhà máy'), 'factory');
-    assert.equal(autoIconOf(worded, { type: 'entry', ref: 'x' }, 'In ấn'), '');
-    assert.equal(autoIconOf(worded, null, ''), '');
+    assert.equal(autoIconOf(worded, KINDS, { type: 'special', key: 'cart' }, 'Nhà máy'), 'cart');
+    assert.equal(autoIconOf(worded, KINDS, { type: 'special', key: 'account' }, 'Nhà máy'), 'user');
+    assert.equal(autoIconOf(worded, KINDS, { type: 'special', key: 'group' }, 'x'), '');
+    assert.equal(autoIconOf(worded, KINDS, { type: 'url', url: 'https://x.test' }, 'In ấn'), '');
+    assert.equal(autoIconOf(worded, KINDS, null, ''), '');
+});
+
+test('the automatic icon is strict and answers as the phone does (same cases as MenuIconGuessTest)', () => {
+    const cases = JSON.parse(readFileSync(new URL('../fixtures/menu-auto-icon-cases.json', import.meta.url), 'utf8'));
+    const groups = pickerGroups();
+    for (const label of cases.none) {
+        assert.equal(autoIconOf(groups, KINDS, { type: 'url' }, label), '', label);
+    }
+    for (const [label, icon] of Object.entries(cases.icon)) {
+        assert.equal(autoIconOf(groups, KINDS, { type: 'url' }, label), icon, label);
+    }
+    assert.equal(autoIconOf(groups, KINDS, { type: 'special', key: 'map' }, 'Chi nhánh'), 'map');
 });

@@ -20,6 +20,7 @@ use App\Modules\Cms\Exceptions\MenuChangeRejectedException;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
+use App\Modules\Cms\Navigation\MenuIconGuess;
 use App\Modules\Cms\Navigation\MenuLimits;
 use App\Modules\Cms\Navigation\MenuVersion;
 use App\Modules\Cms\Routing\PathBuilder;
@@ -352,9 +353,10 @@ final class Index extends Component
                 'product' => route('admin.catalog.edit', ['ulid' => '__REF__']),
             ],
             'siteName' => $this->siteName($main),
+            'kinds' => MenuIconGuess::KIND,
             'icons' => array_map(fn (string $group): array => [
                 'group' => __('menus.icon_group_'.$group),
-                'icons' => array_map(fn (string $name): array => ['name' => $name, 'label' => __('menus.icon_'.$name), 'words' => __('menus.icon_kw_'.$name)], self::ICON_GROUPS[$group]),
+                'icons' => array_map(fn (string $name): array => ['name' => $name, 'label' => __('menus.icon_'.$name), 'words' => __('menus.icon_kw_'.$name), 'kw' => MenuIconGuess::keywordTexts($name)], self::ICON_GROUPS[$group]),
             ], array_keys(self::ICON_GROUPS)),
         ]);
     }

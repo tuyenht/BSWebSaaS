@@ -32,9 +32,11 @@ it('reads Vietnamese labels with accents and case ignored, never taking "Đối 
 });
 
 it('reads labels written in the other languages of the site', function (): void {
-    expect(MenuIconGuess::for('url', null, 'Contact us'))->toBe('email')
-        ->and(MenuIconGuess::for('url', null, 'Latest news'))->toBe('newspaper')
-        ->and(MenuIconGuess::for('url', null, 'About Us'))->toBe('info');
+    expect(MenuIconGuess::for('url', null, 'Contact'))->toBe('email')
+        ->and(MenuIconGuess::for('url', null, 'News'))->toBe('newspaper')
+        ->and(MenuIconGuess::for('url', null, 'About Us'))->toBe('info')
+        // one keyword inside a longer label proves nothing
+        ->and(MenuIconGuess::for('url', null, 'Contact us'))->toBeNull();
 });
 
 it('finds Japanese and Chinese words anywhere in an unspaced label, the longest one winning', function (): void {
@@ -63,5 +65,16 @@ it('only ever names an icon of the website set', function (): void {
     foreach (['Trang chủ', 'Tin tức', 'Sản phẩm', 'Tuyển dụng', 'Hỏi đáp', 'Dịch vụ', 'Contact', '会社概要'] as $label) {
         $icon = MenuIconGuess::for('url', null, $label);
         expect($icon === null || StorefrontIcons::has($icon))->toBeTrue($label);
+    }
+});
+
+it('gives no automatic icon to the labels where one word of a longer label would pick a wrong one, and keeps the right ones (the same cases as tests/js/admin-menus.test.mjs)', function (): void {
+    $cases = json_decode((string) file_get_contents(base_path('tests/fixtures/menu-auto-icon-cases.json')), true, flags: JSON_THROW_ON_ERROR);
+
+    foreach ($cases['none'] as $label) {
+        expect(MenuIconGuess::for('url', null, $label))->toBeNull($label);
+    }
+    foreach ($cases['icon'] as $label => $icon) {
+        expect(MenuIconGuess::for('url', null, (string) $label))->toBe($icon, (string) $label);
     }
 });

@@ -34,10 +34,10 @@
         'state' => ['unpublished' => $u('state_unpublished'), 'trashed' => $u('state_trashed'), 'gone' => $u('state_gone')],
         'badges' => ['new' => $u('badge_new'), 'hot' => $u('badge_hot'), 'sale' => $u('badge_sale'), 'soon' => $u('badge_soon')],
         'no' => ['gone' => __('admin.tree.gone')],
-        'iconAuto' => $u('icon_auto'), 'iconOff' => $u('icon_off'), 'iconOffTip' => $u('icon_off_tip'),
+        'iconAuto' => $u('icon_auto'), 'iconPick' => $u('icon_pick'), 'iconOff' => $u('icon_off'), 'iconOffTip' => $u('icon_off_tip'),
         'iconChange' => $u('icon_change'), 'iconChangeTip' => $u('icon_change_tip'), 'iconAutoTip' => $u('icon_auto_tip'),
     ];
-    $config = ['initial' => $initial, 'main' => $main, 'icons' => $icons, 'texts' => $texts, 'edit' => $edit];
+    $config = ['initial' => $initial, 'main' => $main, 'icons' => $icons, 'kinds' => $kinds, 'texts' => $texts, 'edit' => $edit];
 
     // The few looks this screen shares between its own parts (sizes and colours are the shared tokens).
     $head = 'hit-area -mx-4 -my-3 flex min-w-0 flex-1 items-center gap-2 px-4 py-3 text-left';

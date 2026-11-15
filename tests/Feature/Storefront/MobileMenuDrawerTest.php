@@ -319,7 +319,7 @@ it('opens the way to the current page in the phone menu on render, and leaves th
 
     expect($html)
         // the drawer: the whole row is one button
-        ->toMatch('#<li class="sf-nav__item sf-nav__item--parent is-open" data-disclosure>\s*<button type="button" class="sf-nav__link sf-nav__toggle is-trail" aria-current="true" aria-expanded="true" aria-controls="msm-1">(?:<svg[\s\S]*?</svg>)?<span class="sf-nav__t">Tin tức</span><span class="sf-nav__caret" aria-hidden="true">#')
+        ->toMatch('#<li class="sf-nav__item sf-nav__item--parent is-open" data-disclosure>\s*<button type="button" class="sf-nav__link sf-nav__toggle is-trail" aria-current="true" aria-expanded="true" aria-controls="msm-1">(?:<svg class="sf-icon sf-nav__ic"[^>]*>(?:(?!</svg>).)*</svg>)?<span class="sf-nav__t">Tin tức</span><span class="sf-nav__caret" aria-hidden="true">#s')
         ->toMatch('#<li class="sf-nav__item sf-nav__item--parent" data-disclosure>\s*<a class="sf-nav__link is-trail" href="[^"]+"\s*aria-current="true"\s*>Tin tức</a><button type="button" class="sf-nav__chev is-trail" aria-expanded="false" aria-controls="dsm-1"#')
         ->and(substr_count($html, ' is-open'))->toBe(1);
 

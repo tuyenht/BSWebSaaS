@@ -14,9 +14,12 @@ use Normalizer;
  * (resources/js/admin-menus.js, suggestIconOf), so what the screen previews is what the phone shows.
  *
  * Latin words: accents and case ignored (đ is d), the label split into words, and the icon whose keyword
- * list holds the longest run of the label's whole words in a row wins; a lone word counts only from three
- * letters ("Đối tác" is "đối tác", never "đổi trả"); on a tie the run with more letters wins, then the
- * first icon in StorefrontIcons::MENU_GROUPS order.
+ * list holds the longest run of the label's whole words in a row wins. Nobody checks this icon before it
+ * reaches the website, so it is strict: a run counts only when it is two or more words, or when the whole
+ * label is one word of four or more letters ("Home", "News", "Contact" yes; "Giá", "Chi nhánh", "Văn phòng"
+ * no, because one syllable of a longer label proves nothing). On a tie the run with more letters wins,
+ * then the first icon in StorefrontIcons::MENU_GROUPS order. (The "Gợi ý" button is looser: the admin
+ * confirms that one by clicking it.)
  *
  * Scripts written without spaces (Japanese, Chinese): a keyword of two or more such characters counts when
  * the label contains it anywhere. It scores as a run of one word with as many letters as it has
@@ -25,8 +28,8 @@ use Normalizer;
  */
 final class MenuIconGuess
 {
-    /** The special link kinds that have an icon of their own, by the key of MenuRules::DYNAMIC. */
-    private const array KIND = [
+    /** The special link kinds that have an icon of their own, by the key of MenuRules::DYNAMIC. The admin screen reads it too. */
+    public const array KIND = [
         'home' => 'home',
         'search' => 'search',
         'cart' => 'cart',
@@ -74,7 +77,7 @@ final class MenuIconGuess
                             $chars += strlen($name[$i + $n]);
                             $n++;
                         }
-                        if (($n > 1 || $chars > 2) && self::beats([$n, $chars], $top)) {
+                        if (($n > 1 || (count($name) === 1 && $chars >= 4)) && self::beats([$n, $chars], $top)) {
                             $top = [$n, $chars];
                             $best = $entry['icon'];
                         }
@@ -102,18 +105,44 @@ final class MenuIconGuess
         return $score[0] > $top[0] || ($score[0] === $top[0] && $score[1] > $top[1]);
     }
 
+    /**
+     * The keyword text of an icon in every language the site ships (one entry per language, in language
+     * order), for the admin screen to apply the same rule as byWords().
+     *
+     * @return list<string>
+     */
+    public static function keywordTexts(string $icon): array
+    {
+        $texts = [];
+        foreach (self::locales() as $locale) {
+            $key = 'menus.icon_kw_'.$icon;
+            $text = __($key, [], $locale);
+            if (is_string($text) && $text !== $key) {
+                $texts[] = $text;
+            }
+        }
+
+        return $texts;
+    }
+
+    /** @return list<string> */
+    private static function locales(): array
+    {
+        $locales = [];
+        foreach (glob(lang_path('*.json')) ?: [] as $file) {
+            $locales[] = basename($file, '.json');
+        }
+        sort($locales);
+
+        return $locales;
+    }
+
     /** @return list<array{icon: string, latin: list<list<string>>, unspaced: list<string>}> */
     private static function index(): array
     {
         if (self::$index !== null) {
             return self::$index;
         }
-
-        $locales = [];
-        foreach (glob(lang_path('*.json')) ?: [] as $file) {
-            $locales[] = basename($file, '.json');
-        }
-        sort($locales);
 
         $seen = [];
         $index = [];
@@ -125,12 +154,7 @@ final class MenuIconGuess
                 $seen[$icon] = true;
                 $latin = [];
                 $unspaced = [];
-                foreach ($locales as $locale) {
-                    $key = 'menus.icon_kw_'.$icon;
-                    $text = __($key, [], $locale);
-                    if (! is_string($text) || $text === $key) {
-                        continue;
-                    }
+                foreach (self::keywordTexts($icon) as $text) {
                     $words = self::words($text);
                     if ($words !== []) {
                         $latin[] = $words;
