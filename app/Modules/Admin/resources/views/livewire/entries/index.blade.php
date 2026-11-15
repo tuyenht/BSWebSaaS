@@ -201,7 +201,7 @@
             {{-- Bulk action bar — appears once one or more rows are selected --}}
             @if (count($selected) > 0)
                 <div class="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 min-[600px]:mx-4">
-                    <span class="text-sm font-medium text-accent">{{ __('entries.bulk_selected', ['noun' => $noun, 'count' => count($selected)]) }}</span>
+                    <span class="text-sm font-medium text-primary-text">{{ __('entries.bulk_selected', ['noun' => $noun, 'count' => count($selected)]) }}</span>
                     @if ($tab === 'trash')
                         @if ($canDelete)
                             <button type="button" wire:click="bulkRestore"
