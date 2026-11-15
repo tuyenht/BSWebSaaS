@@ -120,7 +120,8 @@ it('draws a post with its section crumb and the Chuyên mục card, a page with 
             ])
             ->assertSee('Tin tức mới — chưa lưu')
             ->assertSee('Chuyên mục')
-            ->assertSee('Khối nội dung')
+            // a post's body is written in «Soạn thảo»; it has no builder tab
+            ->assertSee('Soạn thảo')
             ->assertDontSee('Trình dựng')
             ->assertSee('Lưu nháp')
             ->assertSee('Đăng');

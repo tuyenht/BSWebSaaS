@@ -3,6 +3,8 @@
     'profile' => 'full', // full | basic — see resources/js/admin-rich-editor.js
     'value' => '',
     'rows' => 8,
+    'placeholder' => null, // shown while the editor is empty (Jodit's own default otherwise)
+    'read' => null,        // status bar reading time, ":n" = minutes (e.g. "Đọc: :n phút"); none when null
 ])
 {{-- ONE-LINE rich editor: <x-bs-admin::rich-editor target="description" profile="full" :value="$description" />
      Livewire 4 bridge, DOM-only by design ($wire.$set defaults to live = a request per
@@ -16,6 +18,8 @@
     <textarea id="rich-editor-{{ $target }}"
               data-rich-editor="{{ $profile === 'basic' ? 'basic' : 'full' }}"
               data-rich-target="{{ $target }}"
+              @if ($placeholder !== null) data-rich-placeholder="{{ $placeholder }}" @endif
+              @if ($read !== null) data-rich-read="{{ $read }}" @endif
               rows="{{ $rows }}"
               {{ $attributes }}>{{ $value }}</textarea>
 </div>

@@ -136,9 +136,34 @@ function clickWireAction(editor, action) {
     editor.element.closest('[wire\\:id]')?.querySelector(`[data-rich-action="${action}"]`)?.click();
 }
 
-function editorOptions(profile) {
+/** Reading time in whole minutes at 200 words a minute, never under one (the writing frame's rule). */
+export function readMinutes(words) {
+    return Math.max(1, Math.round((Number(words) || 0) / 200));
+}
+
+/** Words in plain text, as the status bar counts them. */
+export function countWords(text) {
+    return String(text || '').split(/\s+/u).filter((word) => word !== '').length;
+}
+
+// "Đọc: N phút" at the right of the status bar, when the textarea asks for it (data-rich-read holds
+// the words with ":n" for the minutes, from the server's language files).
+function addReadingTime(editor, words) {
+    // A bare span: statusbar.append() wraps it in Jodit's own right-hand item (the one that gets
+    // the separator dot), as it does the char and word counters.
+    const item = document.createElement('span');
+    const update = () => {
+        item.textContent = words.replace(':n', String(readMinutes(countWords(editor.editor.innerText))));
+    };
+    editor.statusbar.append(item, true);
+    editor.events.on('change', update);
+    update();
+}
+
+function editorOptions(profile, placeholder) {
     return {
         buttons: profile === 'full' ? FULL_BUTTONS : BASIC_BUTTONS,
+        ...(placeholder ? { placeholder } : {}),
         language: editorLanguage(),
         toolbarAdaptive: false, // one stable toolbar on every breakpoint
         // Slim status bar = char/word counters over plain TEXT (countHTMLChars: false).
@@ -225,8 +250,11 @@ export function createRichEditors(root) {
             syncEl.dispatchEvent(new Event('input', { bubbles: true }));
         };
 
-        const editor = Jodit.make(el, editorOptions(profile));
+        const editor = Jodit.make(el, editorOptions(profile, el.dataset.richPlaceholder));
         editor.events.on('change', push);
+        if (el.dataset.richRead) {
+            addReadingTime(editor, el.dataset.richRead);
+        }
         // Jodit's change observer is debounced (~100ms) — a type-then-click-Save inside that
         // window would miss the last keystrokes. Blur fires before the Save click completes,
         // so flushing here closes the race.
