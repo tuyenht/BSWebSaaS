@@ -158,6 +158,7 @@ final class WebsiteAppearanceSettings extends Component
         if ($draft === null) {
             $this->addError('images', __('admin.gs.err_tampered'));
             $this->notify(__('admin.gs.toast_invalid', ['count' => 1]), 'error');
+            $this->dispatch('look-first-error');
 
             return;
         }
@@ -262,7 +263,10 @@ final class WebsiteAppearanceSettings extends Component
     public function render(): View
     {
         $draft = $this->draft() ?? $this->saved;
-        $keys = array_values(array_filter($draft, static fn (string $key): bool => $key !== '' && $key !== self::OLD_IMAGE));
+        // A member without the Image library sees only what is saved: a key typed into the draft is not looked up.
+        $library = Gate::allows('media.view');
+        $keys = array_values(array_filter($draft, fn (string $key, string $slot): bool => $key !== '' && $key !== self::OLD_IMAGE
+            && ($library || $key === $this->saved[$slot]), ARRAY_FILTER_USE_BOTH));
         // The pictures the draft names, in one query: only live pictures of this site resolve.
         $media = $keys === [] ? collect() : Media::query()->whereIn('storage_key', $keys)->where('mime', 'like', 'image/%')
             ->orderBy('id')->get(['id', 'storage_key', 'slug', 'original_filename', 'width', 'height'])->keyBy('storage_key');

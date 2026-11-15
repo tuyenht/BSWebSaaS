@@ -194,7 +194,7 @@ it('refuses another site\'s picture, from the library and from a tampered draft,
 
         // A draft of another shape is refused whole.
         Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)
-            ->set('images.og_image', $mine->storage_key)->call('save')->assertHasErrors(['images']);
+            ->set('images.og_image', $mine->storage_key)->call('save')->assertHasErrors(['images'])->assertDispatched('look-first-error');
     });
 
     $profile = lookProfile();
@@ -285,9 +285,10 @@ it('lets a member without the Image library save the page but not choose a pictu
         Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)
             ->assertSee('Chưa chọn ảnh.')->assertDontSee('Chọn từ Thư viện ảnh hoặc tải ảnh mới lên')
             ->call('pickFor', 'logo')->assertForbidden();
-        // A key sent straight into the draft is still a choice from the library.
+        // A key sent straight into the draft is not looked up for the page, and saving it is still a choice from the library.
         Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)
-            ->set('images.logo', $logo->storage_key)->call('save')->assertForbidden();
+            ->set('images.logo', $logo->storage_key)->assertViewHas('pictures', fn (array $p): bool => $p['logo'] === null)
+            ->call('save')->assertForbidden();
     });
 
     expect(lookProfile()['logo_media_id'] ?? null)->toBeNull();
@@ -332,6 +333,29 @@ it('drops the "Hoàn tác" offer once the draft changes after a restore', functi
             ->call('restoreDefaults')->assertNotSet('undo', null)
             ->call('pickFor', 'favicon')->assertSet('undo', null);
     });
+});
+
+it('keeps the "Hoàn tác" offer when another save holds the settings lock, so the next try can still undo', function (): void {
+    $admin = lookAdmin();
+    $logo = lookMedia(1, 'logo');
+    $this->actingAs($admin);
+    app(Tenancy::class)->enter(1, fn () => app(SetBrandImages::class)->handle(['logo' => $logo->storage_key]));
+
+    // each step in its own tenant transaction, so the restore's own locks are gone before the other writer comes
+    $page = app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)
+        ->call('restoreDefaults')->assertNotSet('undo', null)->assertSet('images.logo', ''));
+
+    $other = DB::connection('pgsql_admin');
+    $other->beginTransaction();
+    try {
+        $other->statement("set local lock_timeout = '2s'");
+        $other->select('select id from sites where id = 1 for no key update');   // a long writer
+        app(Tenancy::class)->enter(1, fn () => $page->call('undoRestore')->assertNotSet('undo', null)->assertSet('images.logo', ''));
+    } finally {
+        $other->rollBack();
+    }
+
+    app(Tenancy::class)->enter(1, fn () => $page->call('undoRestore')->assertSet('undo', null)->assertSet('images.logo', $logo->storage_key));
 });
 
 it('asks before leaving with unsaved changes, and discards them with "Bỏ thay đổi"', function (): void {
