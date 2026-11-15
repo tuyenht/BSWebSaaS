@@ -40,7 +40,7 @@
 
     <div x-show="userOpen" @click.outside="userOpen = false" @keydown.escape.window="userOpen = false"
          x-transition x-cloak role="menu"
-         class="absolute end-0 z-30 mt-1 w-56 rounded-md border border-border bg-surface py-1 shadow-card">
+         class="absolute end-0 z-30 mt-1 w-max min-w-[min(17rem,calc(100vw-1rem))] max-w-[min(22.5rem,calc(100vw-1rem))] rounded-md border border-border bg-surface py-1 shadow-card">
         <div class="border-b border-border px-4 py-2.5">
             <p class="text-sm font-semibold text-body-text">{{ __('admin.greeting', ['name' => $name]) }}</p>
             @if (! empty($roleLabel))

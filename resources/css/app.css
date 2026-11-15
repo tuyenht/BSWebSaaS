@@ -156,7 +156,7 @@
     --color-topbar-brand: var(--color-text-strong); /* platform console brand name */
     --color-topbar-search: #f3f3f9;               /* clearly contrasts the white topbar (owner 06/07) */
     --color-topbar-search-fg: var(--color-text);
-    --color-topbar-search-border: #f3f3f9;        /* borderless search field — the border blends into the fill */
+    --color-topbar-search-border: var(--color-border-input); /* the search field shows its edge, as the shell board draws it */
     --color-topbar-search-placeholder: var(--color-text-muted); /* placeholder is text: >=4.5 on the gray fill */
     --color-topbar-search-focus: #ffffff;         /* the field brightens on focus */
     --color-topbar-search-accent: var(--color-primary-text); /* focus border + ring — zone-owned so a dark topbar can lighten it */

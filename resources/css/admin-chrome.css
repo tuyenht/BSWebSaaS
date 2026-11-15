@@ -170,15 +170,23 @@
         --color-topbar-fg-strong: rgb(255 255 255 / 0.85);
         --color-topbar-fg: rgb(255 255 255 / 0.85);        /* icons + role line + platform links */
         --color-topbar-hover: rgb(255 255 255 / 0.14);
-        --color-topbar-search: rgb(255 255 255 / 0.05);
-        --color-topbar-search-fg: #ffffff;
-        --color-topbar-search-border: rgb(255 255 255 / 0.08); /* vz-ref: borderless field */
-        --color-topbar-search-focus: rgb(255 255 255 / 0.10);
-        --color-topbar-search-placeholder: #e2e5ed;        /* default #ced4da = 4.46 marginal on the brand field */
-        --color-topbar-search-accent: #ffffff;             /* ring: white on a dark zone, as the design rings it */
+        /* The search field and the avatar stay light on the brand bar, as the board draws them. */
+        --color-topbar-search: #f3f3f9;
+        --color-topbar-search-fg: var(--color-text);
+        --color-topbar-search-border: var(--color-border-input);
+        --color-topbar-search-focus: #ffffff;
+        --color-topbar-search-placeholder: var(--color-text-muted);
+        --color-topbar-search-accent: var(--color-primary-text); /* focus edge on the light field */
         --color-topbar-user-block: rgb(255 255 255 / 0.08); /* user slab */
-        --color-topbar-user: rgb(255 255 255 / 0.08);      /* avatar on the slab: white initial >= 4.7 */
-        --color-topbar-user-fg: #ffffff;
+        --color-topbar-user: color-mix(in oklab, var(--color-primary-text) 12%, #ffffff);
+        --color-topbar-user-fg: var(--color-primary-text);
+    }
+}
+
+/* The bar is 56px below 1024px (and on a short landscape screen), 70px from there. */
+@media (max-width: 63.98rem), (max-height: 30rem) {
+    :root {
+        --topbar-height: 56px;
     }
 }
 

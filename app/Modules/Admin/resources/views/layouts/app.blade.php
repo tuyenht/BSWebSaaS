@@ -190,8 +190,11 @@
         <header class="admin-topbar sticky top-0 z-20 flex h-[var(--spacing-header)] items-center gap-3 border-b border-topbar-border bg-topbar ps-3 pe-6 shadow-card">
             <button type="button" x-ref="menuButton" @click="open ? close() : (open = true)" aria-label="{{ __('admin.menu') }}"
                     aria-controls="admin-sidebar" aria-expanded="false" :aria-expanded="open ? 'true' : 'false'"
-                    class="grid size-control any-pointer-coarse:size-hit place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg lg:hidden">
-                <x-bs-admin::icon name="menu" class="size-5" />
+                    class="group grid size-control any-pointer-coarse:size-hit place-items-center rounded-xl text-topbar-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg lg:hidden">
+                {{-- Below 1024px the menu button sits on a filled 36px tile (the board's phone and tablet bar). --}}
+                <span class="grid size-9 place-items-center rounded-[0.625rem] bg-topbar-hover transition-[filter] group-hover:brightness-90 group-active:brightness-80">
+                    <x-bs-admin::icon name="menu" class="size-5" />
+                </span>
             </button>
             <button type="button" @click="$store.adminTheme.toggleSidebar()" aria-label="{{ __('admin.collapse_menu') }}"
                     class="hidden size-control any-pointer-coarse:size-hit place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg lg:grid">
