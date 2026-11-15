@@ -5,21 +5,24 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Support\Members;
 
 use App\Modules\Cms\Models\Taxonomy;
-use App\Modules\Cms\Taxonomy\CategoryLimitGuard;
+use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Shared\Support\Cast;
 use Illuminate\Database\Query\JoinClause;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 /**
- * The post categories the invite dialog's "Phạm vi làm việc" offers, as a tree in the website's
- * order: one read (names in the default language), each category with its depth and the categories
- * above it. The page addresses a category by its ulid, never its bigint id; a category without a
+ * The categories of one axis (post categories, or product categories) that the "Phạm vi làm việc"
+ * block of the members screen offers — in the invite dialog and in a member's panel — as a tree in
+ * the website's order: one read (names in the default language), each category with its depth and
+ * the categories above it. A category whose parent is of another vocabulary (product categories
+ * filed under a post category) sits at the top of its own axis's tree. The page addresses a category by its ulid, never its bigint id; a category without a
  * ulid yet (filled by `cms:fill-ulids`) is not offered. The tree follows `parent_id`, the source of
  * truth the ltree path mirrors.
  */
 final class InviteCategoryTree
 {
-    /** A website's post categories are few; the read stops here whatever the data. */
+    /** A website's categories of one axis are few; the read stops here whatever the data. */
     public const int LIMIT = 2000;
 
     /** @var array<int, array{id: int, ulid: string, parent: int|null, name: string}> in the website's order */
@@ -28,10 +31,14 @@ final class InviteCategoryTree
     /** @var array<int, list<int>> parent id (0 = top) → child ids */
     private array $children = [];
 
-    public static function load(int $siteId, string $locale): self
+    /** @param  string  $vocabulary  CategoryScopes::POSTS or CategoryScopes::PRODUCTS */
+    public static function load(int $siteId, string $locale, string $vocabulary = CategoryScopes::POSTS): self
     {
+        if (! CategoryScopes::isAxis($vocabulary)) {
+            throw new InvalidArgumentException("Members are not limited on the vocabulary [{$vocabulary}].");
+        }
         $rows = Taxonomy::query()
-            ->where('taxonomies.vocabulary', CategoryLimitGuard::VOCABULARY)
+            ->where('taxonomies.vocabulary', $vocabulary)
             ->whereNotNull('taxonomies.ulid')
             ->leftJoin('taxonomy_translations as tt', fn (JoinClause $join) => $join->on('tt.taxonomy_id', '=', 'taxonomies.id')
                 ->where('tt.site_id', '=', $siteId)->where('tt.locale', '=', $locale))

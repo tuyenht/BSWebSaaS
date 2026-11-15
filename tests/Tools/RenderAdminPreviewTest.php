@@ -42,6 +42,7 @@ use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Identity\Models\User;
@@ -60,6 +61,7 @@ use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\Plan;
+use App\Modules\Tenancy\Models\SiteFeature;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Theming\AiCrawlerCheck;
@@ -679,6 +681,28 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         ->call('togglePick', [$people['Trần Thị Thu Hà'], $people['Phạm Minh Tâm'], $people['Võ Quốc Việt']])->call('openBulkPanel')->set('panelRoles', ['author'])));
     expect($bulk)->toContain(__('admin.members.panel_title_many', ['n' => 2]));
     file_put_contents($dir.'/members-bulk.html', $swap($html, $bulk, 'admin\\.users\\.index'));
+    // "Phạm vi làm việc" on both axes: a member limited to a post and a product category, their panel
+    // with the product tree open, and the invite dialog with an editor ticked and products on "only"
+    // (the plan's feature switched on for the site from here on).
+    [$scopePanel, $scopeInvite] = app(Tenancy::class)->enter(1, function () use ($members, $people, $withSnapshot): array {
+        $member = (int) User::query()->where('ulid', $people['Trần Thị Thu Hà'])->value('id');
+        $post = (int) Taxonomy::query()->where('vocabulary', 'post_cat')->orderBy('id')->value('id');
+        $products = Taxonomy::query()->where('vocabulary', 'product_cat')->orderBy('id')->limit(2)->get(['id', 'ulid']);
+        foreach ([$post, (int) $products[0]->id] as $taxonomyId) {
+            DB::table('member_category_scopes')->insert(['site_id' => 1, 'user_id' => $member, 'taxonomy_id' => $taxonomyId]);
+        }
+        SiteFeature::query()->updateOrCreate(['feature_key' => 'rbac.category_scopes'], ['value' => true]);
+        app(CategoryScopes::class)->forget();
+
+        return [
+            $withSnapshot($members()->call('openPanel', $people['Trần Thị Thu Hà'])->set('panelCategories.product_cat', [$products[0]->ulid, $products[1]->ulid])),
+            $withSnapshot($members()->call('openInvite')->set('inviteRoles', ['editor'])->set('inviteScope.product_cat', 'only')),
+        ];
+    });
+    file_put_contents($dir.'/members-panel-scope.html', $swap($html, $scopePanel, 'admin\\.users\\.index'));
+    file_put_contents($dir.'/members-invite-scope.html', $swap($html, $scopeInvite, 'admin\\.users\\.index'));
+    expect($scopePanel)->toContain(__('admin.members.sc_pr_only'))
+        ->and($scopeInvite)->toContain(__('admin.members.sc_pr_tree'));
 
     // The invitations: one waiting with a message, one about to expire, one carrying a role at the
     // owner's level (says why it cannot be re-sent), one withdrawn.
@@ -729,5 +753,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-te-page="suspended"');
     file_put_contents($dir.'/error-suspended.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 47);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 49);
 });

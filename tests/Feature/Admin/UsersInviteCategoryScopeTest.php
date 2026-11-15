@@ -98,17 +98,17 @@ it('sends the categories picked with the invitation, a category standing for eve
         ->set('inviteRoles', ['editor'])
         ->assertSee(__('admin.members.inv_sc_title'))
         ->assertSee(__('admin.members.inv_sc_all'))
-        ->set('inviteScope', 'only')
+        ->set('inviteScope.post_cat', 'only')
         ->assertSee('Tuyển dụng')->assertSee('Kỹ thuật')
         ->assertSeeHtml('value="'.$jobs->ulid.'"')
-        ->set('inviteCategories', [$jobs->ulid, $it->ulid])
+        ->set('inviteCategories.post_cat', [$jobs->ulid, $it->ulid])
         ->assertSee(__('admin.members.inv_sc_included'))
-        ->set('inviteCatQ', 'ky thuat')
+        ->set('inviteCatQ.post_cat', 'ky thuat')
         ->assertSee('Tuyển dụng › ')
         ->assertDontSeeHtml('value="'.$news->ulid.'"')
         ->call('sendInvites')
         ->assertHasNoErrors()
-        ->assertSet('inviteScopeError', ''));
+        ->assertSet('inviteScopeError.post_cat', ''));
 
     expect(iscRows('moi@example.test'))->toBe([$jobs->id])
         ->and($news->id)->not->toBeIn(iscRows('moi@example.test'));
@@ -123,12 +123,12 @@ it('asks for a category when "only" is chosen with none picked, and sends nothin
     iscDialog($owner, fn (Testable $page) => $page
         ->set('inviteEmail', 'moi@example.test')
         ->set('inviteRoles', ['editor'])
-        ->set('inviteScope', 'only')
+        ->set('inviteScope.post_cat', 'only')
         ->call('sendInvites')
-        ->assertSet('inviteScopeError', __('admin.members.inv_sc_err'))
+        ->assertSet('inviteScopeError.post_cat', __('admin.members.inv_sc_err'))
         ->assertSee(__('admin.members.inv_sc_err'))
-        ->set('inviteScope', 'all')
-        ->assertSet('inviteScopeError', ''));
+        ->set('inviteScope.post_cat', 'all')
+        ->assertSet('inviteScopeError.post_cat', ''));
 
     expect(DB::connection('pgsql_admin')->table('invitations')->count())->toBe(0);
 });
@@ -143,7 +143,7 @@ it('follows the roles ticked: no scope for a role that is never limited or write
         ->set('inviteRoles', ['admin'])->assertSee(__('admin.members.inv_sc_high'))->assertDontSee(__('admin.members.inv_sc_all'))
         ->set('inviteRoles', ['viewer'])->assertSee(__('admin.members.inv_sc_none'))->assertDontSee(__('admin.members.inv_sc_all'))
         // a pick left over from another role is never sent with one that takes no scope
-        ->set('inviteRoles', ['editor'])->set('inviteScope', 'only')->set('inviteCategories', [$news->ulid])
+        ->set('inviteRoles', ['editor'])->set('inviteScope.post_cat', 'only')->set('inviteCategories.post_cat', [$news->ulid])
         ->set('inviteRoles', ['admin'])
         ->set('inviteEmail', 'moi@example.test')
         ->call('sendInvites')
@@ -163,7 +163,7 @@ it('locks the choice without the plan feature and invites to every category', fu
         ->set('inviteRoles', ['editor'])
         ->assertSee(__('admin.members.inv_sc_plan_off'))
         // a forged "only" is not honoured: the categories are not sent
-        ->set('inviteScope', 'only')->set('inviteCategories', [$news->ulid])
+        ->set('inviteScope.post_cat', 'only')->set('inviteCategories.post_cat', [$news->ulid])
         ->assertDontSeeHtml('value="'.$news->ulid.'"')
         ->call('sendInvites')
         ->assertHasNoErrors());
@@ -200,6 +200,6 @@ it('shows an invitation\'s limits on its row, keeps them when it is mailed again
         ->set('tab', 'loi-moi')->set('state', 'revoked')
         ->call('reinvite', $ulid)
         ->assertSet('inviteOpen', true)
-        ->assertSet('inviteScope', 'only')
-        ->assertSet('inviteCategories', [$news->ulid]));
+        ->assertSet('inviteScope.post_cat', 'only')
+        ->assertSet('inviteCategories.post_cat', [$news->ulid]));
 });

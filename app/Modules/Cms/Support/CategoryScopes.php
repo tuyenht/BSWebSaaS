@@ -129,16 +129,30 @@ final class CategoryScopes
      */
     public function rootIdsOf(array $userIds, string $axis = self::POSTS): array
     {
+        $axis = self::axis($axis);
+
+        return $this->rootIdsOfEachAxis($userIds)[$axis] ?? [];
+    }
+
+    /**
+     * rootIdsOf() for both axes in one read: by axis, then by user id. Each row's axis is the
+     * vocabulary of the very category it names.
+     *
+     * @param  list<int>  $userIds
+     * @return array<string, array<int, list<int>>>
+     */
+    public function rootIdsOfEachAxis(array $userIds): array
+    {
         if ($userIds === []) {
             return [];
         }
         $roots = [];
         $rows = DB::table('member_category_scopes as s')
             ->join('taxonomies as t', fn (JoinClause $join) => $join->on('t.id', '=', 's.taxonomy_id')->on('t.site_id', '=', 's.site_id'))
-            ->where('s.site_id', $this->site->id())->whereIn('s.user_id', $userIds)->where('t.vocabulary', self::axis($axis))
-            ->orderBy('s.user_id')->orderBy('s.taxonomy_id')->limit(1000)->get(['s.user_id', 's.taxonomy_id']);
+            ->where('s.site_id', $this->site->id())->whereIn('s.user_id', $userIds)->whereIn('t.vocabulary', self::AXES)
+            ->orderBy('s.user_id')->orderBy('s.taxonomy_id')->limit(1000)->get(['s.user_id', 's.taxonomy_id', 't.vocabulary']);
         foreach ($rows as $row) {
-            $roots[Cast::int($row->user_id)][] = Cast::int($row->taxonomy_id);
+            $roots[Cast::string($row->vocabulary)][Cast::int($row->user_id)][] = Cast::int($row->taxonomy_id);
         }
 
         return $roots;
