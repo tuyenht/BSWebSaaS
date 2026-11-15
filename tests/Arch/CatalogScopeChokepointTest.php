@@ -45,8 +45,10 @@ it('calls the catalog write actions only from the products list, the product edi
 });
 
 it('touches products in the admin only in the known places', function (): void {
+    // any road to the products: a product model however it is named (use line, group use, a fully
+    // qualified name, its translations or images), or the products table in a query builder or SQL
     $admin = array_values(array_filter(
-        catalogScopeFilesMatching('/^use App\\\\Modules\\\\Catalog\\\\Models\\\\Product;$/m'),
+        catalogScopeFilesMatching("/Catalog\\\\Models\\\\(Product\\w*\\b|\\{)|(table|join|leftJoin|rightJoin|from)\\(\\s*'products(\\s+as\\s+\\w+)?'|\\b(from|join)\\s+products\\b/i"),
         static fn (string $file): bool => str_starts_with($file, 'app/Modules/Admin/'),
     ));
 
@@ -55,6 +57,7 @@ it('touches products in the admin only in the known places', function (): void {
         'app/Modules/Admin/Livewire/Catalog/Index.php',             // writes: through products() / the list query
         'app/Modules/Admin/Support/Catalog/ProductListQuery.php',  // reads the list, narrowed by `within`
         'app/Modules/Admin/Support/MediaUsageLocator.php',         // reads names only
+        'app/Modules/Admin/Support/Menus/MenuSourceSearch.php',    // reads names to pick a menu target, writes nothing
         'app/Modules/Admin/Support/Menus/MenuSources.php',         // reads menu targets only
     ]);
 });

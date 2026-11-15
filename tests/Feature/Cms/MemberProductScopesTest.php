@@ -18,6 +18,7 @@ use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Actions\AcceptInvitation;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Rbac\Exceptions\InvitationRejectedException;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Rbac\Support\IssuedInvitation;
@@ -296,6 +297,8 @@ it('drops the vocabulary guard on rollback and puts it back', function (): void 
         'function' => $admin->selectOne("select to_regproc('public.taxonomies_keep_vocabulary') is not null as e")->e,
     ];
     $news = mpsCategory(1, 'Tin tức');
+    // a post limit, as every limit was before this release: up() runs past it
+    mpsLimit(1, mpsMember(1, 'writer', 30, ['entries.create']), $news);
 
     $admin->transaction(function () use ($migration, $admin, $guard, $news): void {
         DB::setDefaultConnection('pgsql_admin');
@@ -448,4 +451,79 @@ it('keeps a member limited on any axis out of the shared block library', functio
         expect(Gate::forUser($lead)->allows('manage', ContentBlock::class))->toBeFalse()
             ->and(Gate::forUser($free)->allows('manage', ContentBlock::class))->toBeTrue();
     });
+});
+
+it('refuses an invitation on accept when its inviter has since been limited on an axis the roles work on', function (): void {
+    mpsFeatureOn(1);
+    $moulds = mpsCategory(1, 'Khuôn', null, 'product_cat');
+    $lead = mpsMember(1, 'lead', 60, ['users.invite', 'users.manage', 'catalog.view', 'catalog.manage', 'entries.create', 'forms.view', 'domains.view']);
+    $writer = mpsRole(1, 'shop-writer', 30, ['catalog.view', 'catalog.manage']);
+    $viewer = mpsRole(1, 'shop-viewer', 10, ['catalog.view']);
+
+    // sent while the lead worked in every product category: no product limit asked for
+    $email = 'moi-'.Str::lower(Str::random(8)).'@example.test';
+    $open = mpsInvite(1, $lead, $email, $writer, [], null);
+    $looker = mpsInvite(1, $lead, 'xem-'.Str::lower(Str::random(8)).'@example.test', $viewer, [], null);
+    mpsLimit(1, $lead, $moulds);
+    auth()->logout();
+
+    expect(fn () => mpsIn(1, fn (): User => app(AcceptInvitation::class)->withNewAccount($open->token, 'Nguyễn Văn An', 'Mat-khau-rat-manh-2026')))
+        ->toThrow(InvitationRejectedException::class, 'no_longer_valid')
+        ->and(User::query()->where('email', $email)->exists())->toBeFalse();
+
+    // a role that manages no products needs no product limit
+    $user = mpsIn(1, fn (): User => app(AcceptInvitation::class)->withNewAccount($looker->token, 'Lê Hoa', 'Mat-khau-rat-manh-2026'));
+    expect(mpsRows(1, $user))->toBe([]);
+});
+
+it('tells which axes a limited actor would leave open for a member', function (): void {
+    $news = mpsCategory(1, 'Tin tức');
+    $moulds = mpsCategory(1, 'Khuôn', null, 'product_cat');
+    $lead = mpsMember(1, 'lead', 60, ['users.manage', 'catalog.manage', 'entries.create']);
+    mpsLimit(1, $lead, $news, $moulds);
+    $free = mpsMember(1, 'free-lead', 60, ['users.manage', 'catalog.manage', 'entries.create']);
+    $both = mpsRole(1, 'both', 30, ['catalog.manage', 'entries.create']);
+    $target = mpsMember(1, 'both', 30, ['catalog.manage', 'entries.create']);
+    $high = mpsMember(1, 'site-admin', 70, ['catalog.manage', 'entries.create']);
+    $open = fn (User $actor, User $member): array => mpsIn(1, fn (): array => DB::transaction(
+        fn (): array => app(SetMemberCategoryScopes::class)->axesLeftOpen($actor->fresh(), $member->fresh(), [$both->fresh()]),
+    ));
+
+    expect($open($lead, $target))->toBe([CategoryScopes::POSTS, CategoryScopes::PRODUCTS])
+        ->and($open($free, $target))->toBe([])
+        ->and($open($lead, $high))->toBe([]);
+    mpsLimit(1, $target, $moulds);
+    expect($open($lead, $target))->toBe([CategoryScopes::POSTS]);
+});
+
+it('refuses to add the vocabulary guard while a limit names a category that is not a post category', function (): void {
+    $migration = require database_path('migrations/2074_01_01_000000_keep_taxonomy_vocabulary_fixed.php');
+    $admin = DB::connection('pgsql_admin');
+    mpsFeatureOn(1);
+    $news = mpsCategory(1, 'Tin tức');
+    $moulds = mpsCategory(1, 'Khuôn', null, 'product_cat');
+    $member = mpsMember(1, 'writer', 30, ['entries.create']);
+    mpsLimit(1, $member, $news);
+    // what a post limit on a category re-typed afterwards looks like
+    mpsLimit(1, $member, $moulds);
+    $up = function () use ($migration, $admin): void {
+        $admin->transaction(function () use ($migration): void {
+            DB::setDefaultConnection('pgsql_admin');
+            try {
+                $migration->up();
+            } finally {
+                DB::setDefaultConnection('pgsql');
+            }
+        });
+    };
+
+    // the refusal comes before any statement that changes the schema
+    expect($up)->toThrow(RuntimeException::class, 'Refused: 1 category limit row(s)');
+
+    $admin->table('member_category_scopes')->where('taxonomy_id', $moulds->id)->delete();
+    $owner = mpsMember(1, 'owner');
+    $invited = mpsInvite(1, $owner, 'gioi-han-'.Str::lower(Str::random(8)).'@example.test', mpsRole(1, 'writer'), [$news], null);
+    $admin->table('invitation_category_scopes')->insert(['site_id' => 1, 'invitation_id' => $invited->invitation->id, 'taxonomy_id' => $moulds->id]);
+
+    expect($up)->toThrow(RuntimeException::class, 'Refused: 1 category limit row(s)');
 });

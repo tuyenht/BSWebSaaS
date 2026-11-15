@@ -772,7 +772,10 @@ final class Index extends Component
     {
         $actor = $this->actor();
         try {
-            DB::transaction(fn () => $this->giveRoles($target, $roles));
+            DB::transaction(function () use ($actor, $target, $roles): void {
+                $this->giveRoles($target, $roles);
+                app(SetMemberCategoryScopes::class)->assertNoneLeftOpen($actor, $target, array_values($roles->all()));
+            });
         } catch (AuthorizationException) {
             $locked = $this->lockReason();
             if ($locked !== null) {
@@ -780,6 +783,8 @@ final class Index extends Component
             }
 
             return false;
+        } catch (CategoryScopeRejectedException) {
+            return false;   // a limited actor would leave the member working in every category
         }
 
         return true;
@@ -803,6 +808,8 @@ final class Index extends Component
                 foreach ($changes as $axis => $ids) {
                     app(SetMemberCategoryScopes::class)->handle($actor, $target, $ids, $axis);
                 }
+                // a limited actor never leaves the member working in every category of their axis
+                app(SetMemberCategoryScopes::class)->assertNoneLeftOpen($actor, $target, array_values($roles->all()));
             });
         } catch (AuthorizationException) {
             $locked = $this->lockReason();

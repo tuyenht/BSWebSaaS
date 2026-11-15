@@ -147,6 +147,8 @@ trait LimitsMemberCategories
             $mode = self::modeOn($this->panelScope, $axis);
             if (! $feat && $saved === []) {
                 $mode = 'all';   // without the feature nobody picks: a forged "only" changes nothing
+            } elseif ($own) {
+                $mode = 'only';   // a limited editor never leaves the member with every category (as in the invite dialog)
             }
             $picks = self::picksOn($this->panelCategories, $axis);
             $tree = ! $ro && $feat && $mode === 'only';
@@ -171,7 +173,7 @@ trait LimitsMemberCategories
                 'liftLocked' => $own,
                 'liftNote' => $own ? __('admin.members.inv_sc_own') : __('admin.members.sc_lift_note'),
                 'radios' => ! $ro,
-                'allDis' => ! $feat || ($own && $saved !== []),
+                'allDis' => ! $feat || $own,
                 'onlyDis' => ! $feat,
                 'allWhy' => $own,
                 'tree' => $tree,

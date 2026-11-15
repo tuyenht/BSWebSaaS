@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
@@ -19,6 +20,13 @@ use Illuminate\Support\Facades\DB;
  * function reads no table and needs no SECURITY DEFINER; it fires for app_user like any row trigger
  * (RLS only decides which rows an UPDATE reaches). No data changes, no index, no lock beyond the
  * short one CREATE TRIGGER takes. down() drops the trigger and its function.
+ *
+ * Before the trigger, up() refuses to run while a member or invitation limit names a category that
+ * is not a post category. Until this release a limit could name only a post category (both writers
+ * refused any other), so such a row means its category was re-typed afterwards: from this release
+ * on it would silently count on another axis. The deploy runs this migration while the old code
+ * still serves, so no product limit written by the new code exists yet. Those rows are fixed by
+ * hand (or removed) first; up() then runs as usual.
  */
 return new class extends Migration
 {
@@ -26,6 +34,23 @@ return new class extends Migration
     {
         if (DB::getDriverName() !== 'pgsql') {
             return;
+        }
+
+        $retyped = Cast::int(DB::scalar(<<<'SQL'
+            SELECT (SELECT count(*) FROM member_category_scopes AS s
+                        JOIN taxonomies AS t ON t.site_id = s.site_id AND t.id = s.taxonomy_id
+                        WHERE t.vocabulary <> 'post_cat')
+                 + (SELECT count(*) FROM invitation_category_scopes AS s
+                        JOIN taxonomies AS t ON t.site_id = s.site_id AND t.id = s.taxonomy_id
+                        WHERE t.vocabulary <> 'post_cat')
+            SQL));
+        if ($retyped > 0) {
+            throw new RuntimeException(sprintf(
+                'Refused: %d category limit row(s) (member_category_scopes, invitation_category_scopes) name a category whose vocabulary is no longer post_cat. '
+                .'A limit could only name a post category until now, so those categories were re-typed after the limit was set. '
+                .'Fix or remove those rows (join taxonomies on site_id and id, vocabulary <> \'post_cat\'), then migrate again.',
+                $retyped,
+            ));
         }
 
         DB::unprepared(<<<'SQL'

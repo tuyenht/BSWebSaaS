@@ -11,6 +11,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Identity\Models\User;
+use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Support\MembershipLock;
 use App\Modules\Rbac\Support\RoleHierarchyGuard;
 use App\Modules\Shared\Support\Cast;
@@ -18,6 +19,7 @@ use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -106,6 +108,62 @@ final readonly class SetMemberCategoryScopes
                 'meta' => ['before' => $before, 'after' => $after, 'vocabulary' => $axis],
             ]);
         });
+    }
+
+    /**
+     * The axes on which $target, as they stand now in this transaction, would work in every category
+     * although $actor is limited there: $roles (the roles just given) work on that axis, and the
+     * target has no limits of it. A limited actor never leaves a member they change wider than
+     * themselves — never "every category" (as for setting limits by hand, and for an invitation).
+     * Asked after the roles are given and any limits set, in the same transaction; a member who is
+     * never limited (role level ≥ CategoryScopes::EXEMPT_LEVEL) is never left open.
+     *
+     * @param  list<Role>  $roles
+     * @return list<string>
+     */
+    public function axesLeftOpen(User $actor, User $target, array $roles): array
+    {
+        // the actor's own limits do not change with the target's roles: an actor who is not limited
+        // anywhere costs nothing more
+        $axes = array_values(array_filter(CategoryScopes::AXES, fn (string $axis): bool => $this->scopes->isLimited($actor, $axis)));
+        if ($axes === []) {
+            return [];
+        }
+        // the target's roles and limits just changed: nothing read about them earlier still holds
+        $this->scopes->forget();
+        $this->scopes->lockMember($target);
+        if ($this->scopes->isExempt($target)) {
+            return [];
+        }
+        (new Collection($roles))->loadMissing('permissions');
+        $open = [];
+        foreach ($axes as $axis) {
+            if ($this->scopes->isLimited($target, $axis)) {
+                continue;
+            }
+            $works = $axis === CategoryScopes::PRODUCTS
+                ? InviteMemberWithCategories::managesProducts($roles)
+                : InviteMemberWithCategories::writesPosts($roles);
+            if ($works) {
+                $open[] = $axis;
+            }
+        }
+
+        return $open;
+    }
+
+    /**
+     * axesLeftOpen() as a refusal: the caller rolls back the role change it is part of.
+     *
+     * @param  list<Role>  $roles
+     *
+     * @throws CategoryScopeRejectedException needs_limits
+     */
+    public function assertNoneLeftOpen(User $actor, User $target, array $roles): void
+    {
+        if ($this->axesLeftOpen($actor, $target, $roles) !== []) {
+            throw new CategoryScopeRejectedException('needs_limits');
+        }
     }
 
     /**

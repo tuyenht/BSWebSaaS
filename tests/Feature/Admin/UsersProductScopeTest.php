@@ -208,14 +208,14 @@ it('never lets a member limited on products hand out every product category, nor
     $outsider = upsMember('shop-writer', 'Phạm Nam', 30, ['catalog.view', 'catalog.manage']);
     upsLimit($outsider, $jigs);
 
-    // "every category" is locked in the panel, and a forged one is refused by the server
+    // "every category" is locked in the panel, and a forged one changes nothing: the limits stay
     upsPage($lead, fn (Testable $page) => $page
         ->call('openPanel', $writer->ulid)
         ->assertSee(__('admin.members.sc_pr_all'))
         ->assertSee(__('admin.members.inv_sc_own'))
         ->set('panelScope.product_cat', 'all')
         ->call('saveRoles')
-        ->assertSet('panelError', __('admin.members.pn_sc_err_outside_own_scope')));
+        ->assertSet('panelError', ''));
     expect(upsRows($writer))->toBe([$small->id]);
 
     // limits partly outside the lead's own are shown, never changed from here
@@ -409,4 +409,144 @@ it('tells the bulk panel how many ticked members a role that is never limited ta
         ->set('panelRoles', ['admin'])
         ->assertSee(__('admin.members.pv_drop_chip'))
         ->assertSee(__('admin.members.pv_drop', ['n' => 2])));
+});
+
+/** $user's role names on site 1, sorted. */
+function upsRoleNames(User $user): array
+{
+    $names = app(Tenancy::class)->enter(1, fn (): array => ($user->fresh() ?? $user)->roles()->pluck('name')->all());
+    sort($names);
+
+    return $names;
+}
+
+it('never lets a member limited on products give a member with no product limits a role that manages products', function (): void {
+    upsFeatureOn();
+    upsCatalogOn();
+    $moulds = upsCategory('Khuôn mẫu', 'product_cat');
+    $small = upsCategory('Khuôn nhỏ', 'product_cat', $moulds);
+    $lead = upsProductLead($moulds);
+    $viewer = upsMember('shop-viewer', 'Lê Hoa', 10, ['catalog.view']);
+    upsRole('shop-writer', 30, ['catalog.view', 'catalog.manage']);
+
+    // the panel opens on "only" for the products axis: a forged "every category" asks for the categories
+    upsPage($lead, fn (Testable $page) => $page
+        ->call('openPanel', $viewer->ulid)
+        ->set('panelRoles', ['shop-writer'])
+        ->set('panelScope.product_cat', 'all')
+        ->call('saveRoles')
+        ->assertSet('panelScopeError.product_cat', __('admin.members.sc_pr_need')));
+    expect(upsRoleNames($viewer))->toBe(['shop-viewer'])
+        ->and(upsRows($viewer))->toBe([]);
+
+    // within the lead's own product categories it is saved
+    upsPage($lead, fn (Testable $page) => $page
+        ->call('openPanel', $viewer->ulid)
+        ->set('panelRoles', ['shop-writer'])
+        ->set('panelScope.product_cat', 'only')
+        ->set('panelCategories.product_cat', [$small->ulid])
+        ->call('saveRoles')
+        ->assertSet('panelFor', ''));
+    expect(upsRoleNames($viewer))->toBe(['shop-writer'])
+        ->and(upsRows($viewer))->toBe([$small->id]);
+});
+
+it('never lets a member limited on posts give a member with no post limits a role that writes posts', function (): void {
+    upsFeatureOn();
+    $news = upsCategory('Tin tức');
+    $lead = upsMember('post-lead', 'Trần Minh', 60, ['users.invite', 'users.manage', 'entries.view', 'entries.create', 'forms.view', 'domains.view']);
+    upsLimit($lead, $news);
+    $reader = upsMember('reader', 'Lê Hoa', 10, ['entries.view']);
+    upsRole('post-writer', 30, ['entries.view', 'entries.create']);
+
+    upsPage($lead, fn (Testable $page) => $page
+        ->call('openPanel', $reader->ulid)
+        ->set('panelRoles', ['post-writer'])
+        ->set('panelScope.post_cat', 'all')
+        ->call('saveRoles')
+        ->assertSet('panelScopeError.post_cat', __('admin.members.inv_sc_err')));
+    expect(upsRoleNames($reader))->toBe(['reader'])
+        ->and(upsRows($reader))->toBe([]);
+
+    // "Hoàn tác" from a forged toast takes the same check
+    upsPage($lead, fn (Testable $page) => $page
+        ->set('undoRoles', ['ulid' => $reader->ulid, 'roles' => ['post-writer']])
+        ->call('undo'));
+    expect(upsRoleNames($reader))->toBe(['reader']);
+
+    upsPage($lead, fn (Testable $page) => $page
+        ->call('openPanel', $reader->ulid)
+        ->set('panelRoles', ['post-writer'])
+        ->set('panelScope.post_cat', 'only')
+        ->set('panelCategories.post_cat', [$news->ulid])
+        ->call('saveRoles')
+        ->assertSet('panelFor', ''));
+    expect(upsRoleNames($reader))->toBe(['post-writer'])
+        ->and(upsRows($reader))->toBe([$news->id]);
+});
+
+it('refuses the whole bulk role change when a limited member would leave someone working in every category', function (): void {
+    upsFeatureOn();
+    upsCatalogOn();
+    $moulds = upsCategory('Khuôn mẫu', 'product_cat');
+    $lead = upsProductLead($moulds);
+    $limited = upsMember('shop-viewer', 'Lê Hoa', 10, ['catalog.view']);
+    upsLimit($limited, $moulds);
+    $open = upsMember('shop-viewer', 'Phạm Nam', 10, ['catalog.view']);
+    upsRole('shop-writer', 30, ['catalog.view', 'catalog.manage']);
+
+    upsPage($lead, fn (Testable $page) => $page
+        ->call('togglePick', [$limited->ulid, $open->ulid])
+        ->call('openBulkPanel')
+        ->set('panelRoles', ['shop-writer'])
+        ->call('saveRoles')
+        ->assertSet('panelError', __('admin.members.bulk_sc_err_needs_limits', ['names' => 'Phạm Nam'])));
+    // all or nothing: the member who is limited is not changed either
+    expect(upsRoleNames($limited))->toBe(['shop-viewer'])
+        ->and(upsRoleNames($open))->toBe(['shop-viewer']);
+
+    // once everyone ticked is limited, it goes through
+    upsLimit($open, $moulds);
+    upsPage($lead, fn (Testable $page) => $page
+        ->call('togglePick', [$limited->ulid, $open->ulid])
+        ->call('openBulkPanel')
+        ->set('panelRoles', ['shop-writer'])
+        ->call('saveRoles')
+        ->assertSet('panelError', ''));
+    expect(upsRoleNames($limited))->toBe(['shop-writer'])
+        ->and(upsRoleNames($open))->toBe(['shop-writer']);
+});
+
+it('lets a member who is not limited give a role on either axis with every category', function (): void {
+    upsFeatureOn();
+    upsCatalogOn();
+    upsCategory('Khuôn mẫu', 'product_cat');
+    $lead = upsMember('lead', 'Trần Minh', 60, ['users.invite', 'users.manage', 'catalog.view', 'catalog.manage', 'entries.view', 'entries.create', 'forms.view', 'domains.view']);
+    $viewer = upsMember('shop-viewer', 'Lê Hoa', 10, ['catalog.view']);
+    upsRole('shop-writer', 30, ['catalog.view', 'catalog.manage', 'entries.create']);
+
+    upsPage($lead, fn (Testable $page) => $page
+        ->call('openPanel', $viewer->ulid)
+        ->set('panelRoles', ['shop-writer'])
+        ->call('saveRoles')
+        ->assertSet('panelFor', ''));
+    expect(upsRoleNames($viewer))->toBe(['shop-writer'])
+        ->and(upsRows($viewer))->toBe([]);
+});
+
+it('refuses on the server a role on an axis a limited member works on when nobody can be limited any more', function (): void {
+    // the plan no longer includes "Phạm vi làm việc": the panel offers no categories, the server still refuses
+    upsCatalogOn();
+    $moulds = upsCategory('Khuôn mẫu', 'product_cat');
+    $lead = upsProductLead($moulds);
+    $viewer = upsMember('shop-viewer', 'Lê Hoa', 10, ['catalog.view']);
+    upsRole('shop-writer', 30, ['catalog.view', 'catalog.manage']);
+
+    upsPage($lead, fn (Testable $page) => $page
+        ->call('openPanel', $viewer->ulid)
+        ->set('panelRoles', ['shop-writer'])
+        ->call('saveRoles')
+        ->assertSet('panelError', __('admin.members.pn_sc_err_needs_limits')));
+    expect(upsRoleNames($viewer))->toBe(['shop-viewer'])
+        ->and(upsRows($viewer))->toBe([]);
 });
