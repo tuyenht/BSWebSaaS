@@ -135,6 +135,16 @@
     scroll-snap-align: start;
 }
 
+/* The copies of the cards that let a scrolling row go round (sf-slider.js) show only on a row that
+   scrolls and while the script runs its loop; a grid that wraps never shows them. */
+.sf-rail__list > [data-sf-copy] {
+    display: none;
+}
+
+.sf-rail__list--slider.is-loop > [data-sf-copy] {
+    display: flex;
+}
+
 /* A card that is the item's only child fills it; an item built of several parts (a team member's
    photo and name) keeps its own layout. */
 .sf-rail__list > li > :only-child {
@@ -180,6 +190,11 @@
         justify-content: flex-start;
         overflow-x: auto;
         scroll-snap-type: x mandatory;
+    }
+
+    .sf-rail__list--m-swipe.is-loop > [data-sf-copy],
+    .sf-rail__list--m-slider.is-loop > [data-sf-copy] {
+        display: flex;
     }
 
     /* Few logos sit centred; many scroll from the start. */

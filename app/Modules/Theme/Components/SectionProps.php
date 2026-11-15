@@ -128,7 +128,8 @@ final class SectionProps
     /**
      * The "display" group of every list block (articles, products, partners, testimonials, team,
      * features, branches): how the items are laid out, how many across, what a phone does, whether it
-     * rotates by itself and the arrows. Every value is stored as a string; the list order is
+     * rotates by itself, the arrows, and whether a row that scrolls goes round (`loop`: `auto` = past
+     * the last card a swipe, an arrow or the rotation runs on into the first; `off` = it stops at the ends). Every value is stored as a string; the list order is
      * append-only (a stored value is never renamed). `auto` is the block type's own rule, read from
      * the table in ListDisplay. The editor offers no control for the group yet (group `display`).
      * A block whose items are typed by hand has no page to lead to, so it takes this group alone.
@@ -139,6 +140,7 @@ final class SectionProps
         'mobile' => ['type' => 'enum', 'options' => ['auto', 'swipe', 'two', 'one'], 'default' => 'auto', 'group' => 'display'],
         'autoplay' => ['type' => 'enum', 'options' => ['auto', 'off', '3', '5', '8'], 'default' => 'auto', 'group' => 'display'],
         'arrows' => ['type' => 'enum', 'options' => ['auto', 'always', 'none'], 'default' => 'auto', 'group' => 'display'],
+        'loop' => ['type' => 'enum', 'options' => ['auto', 'off'], 'default' => 'auto', 'group' => 'display'],
     ];
 
     /**
