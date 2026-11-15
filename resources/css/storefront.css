@@ -2816,7 +2816,9 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     .sf-footer__social,
     .sf-footer__link,
     .sf-factory,
-    .sf-factory__map {
+    .sf-factory__map,
+    .sf-rot__arrow::before,
+    .sf-rot__dot {
         transition: none;
     }
 
