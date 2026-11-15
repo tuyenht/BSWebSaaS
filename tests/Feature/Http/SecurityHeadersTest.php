@@ -104,3 +104,22 @@ it('platform login carries baseline headers but no Content-Security-Policy', fun
         ->assertHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()')
         ->assertHeaderMissing('Content-Security-Policy');
 });
+
+// ── No proxy rewrites a page ─────────────────────────────────────────────────
+
+it('asks every proxy not to rewrite a page, on the storefront and in the admin, and only pages', function (): void {
+    seedHomepage(1, 'Trang chủ');
+
+    // Cloudflare injects its own analytics script into HTML unless told not to; that copy reports to
+    // the site's /cdn-cgi/rum and logs a 404 in the console when its switch is half set up
+    $storefront = (string) $this->get('http://a.test/')->assertOk()->headers->get('Cache-Control');
+    $missing = (string) $this->get('http://a.test/khong-co-trang-nay')->assertNotFound()->headers->get('Cache-Control');
+    $admin = (string) $this->get('http://a.test/admin/login')->assertOk()->headers->get('Cache-Control');
+    $robots = $this->get('http://a.test/robots.txt')->assertOk()->headers;
+
+    expect(explode(', ', $storefront))->toContain('no-transform')->toContain('public')
+        ->and(explode(', ', $missing))->toContain('no-transform')->toContain('no-store')
+        ->and(explode(', ', $admin))->toContain('no-transform')
+        ->and(str_starts_with((string) $robots->get('Content-Type'), 'text/plain'))->toBeTrue()
+        ->and(explode(', ', (string) $robots->get('Cache-Control')))->not->toContain('no-transform');
+});

@@ -70,12 +70,14 @@ function edgeCacheRecorder(bool $hostsAccepted = true): object
     return $fake;
 }
 
-const EDGE_PUBLIC = 'max-age=0, public, s-maxage=300, stale-while-revalidate=86400';
+const EDGE_PUBLIC = 'max-age=0, no-transform, public, s-maxage=300, stale-while-revalidate=86400';
+const EDGE_PUBLIC_FILE = 'max-age=0, public, s-maxage=300, stale-while-revalidate=86400';
 
 it('lets the edge keep a page for a visitor with no session: no cookie, a public s-maxage', function (string $path): void {
     $response = $this->get('http://a.test'.$path)->assertOk();
 
-    expect($response->headers->get('Cache-Control'))->toBe(EDGE_PUBLIC)
+    // a page also asks proxies not to rewrite it; robots.txt and the sitemap are not pages
+    expect($response->headers->get('Cache-Control'))->toBe($path === '/' ? EDGE_PUBLIC : EDGE_PUBLIC_FILE)
         ->and($response->headers->getCookies())->toBe([])
         ->and($response->headers->has('Set-Cookie'))->toBeFalse();
 })->with(['/', '/robots.txt', '/sitemap.xml']);
@@ -95,14 +97,14 @@ it('keeps the public header on a 304 and on HEAD, still with no cookie', functio
 it('answers private, no-store to a visitor who brings the session cookie (a signed-in admin, a sent form)', function (): void {
     $response = $this->withCookie((string) config('session.cookie'), 'visitor')->get('http://a.test/')->assertOk();
 
-    expect($response->headers->get('Cache-Control'))->toBe('no-store, private')
+    expect($response->headers->get('Cache-Control'))->toBe('no-store, no-transform, private')
         ->and(collect($response->headers->getCookies())->map->getName()->all())->toContain((string) config('session.cookie'));
 });
 
 it('keeps a page private when its query string has a key outside the allow-list', function (string $query, bool $shared): void {
     $cache = (string) $this->get('http://a.test/'.$query)->assertOk()->headers->get('Cache-Control');
 
-    expect($cache)->toBe($shared ? EDGE_PUBLIC : 'no-store, private');
+    expect($cache)->toBe($shared ? EDGE_PUBLIC : 'no-store, no-transform, private');
 })->with([
     'tracking key' => ['?utm_source=zalo', true],
     'unknown key' => ['?giá=rẻ', false],
@@ -112,7 +114,7 @@ it('keeps a page private when its query string has a key outside the allow-list'
 it('answers private, no-store with no cookie on a page that does not exist', function (): void {
     $response = $this->get('http://a.test/khong-co-trang-nay')->assertNotFound();
 
-    expect($response->headers->get('Cache-Control'))->toBe('no-store, private')
+    expect($response->headers->get('Cache-Control'))->toBe('no-store, no-transform, private')
         ->and($response->headers->getCookies())->toBe([]);
 });
 
@@ -264,7 +266,7 @@ it('asks Cloudflare to purge by host, 30 names a call, and reports a refusal', f
 it('keeps a page private when a proxy header names another host, port or path prefix', function (array $server, bool $shared): void {
     $response = $this->call('GET', 'http://a.test/', [], [], [], ['REMOTE_ADDR' => '172.16.0.5'] + $server)->assertOk();
 
-    expect($response->headers->get('Cache-Control'))->toBe($shared ? EDGE_PUBLIC : 'no-store, private');
+    expect($response->headers->get('Cache-Control'))->toBe($shared ? EDGE_PUBLIC : 'no-store, no-transform, private');
 })->with([
     'the same host, as Caddy sends it' => [['HTTP_X_FORWARDED_HOST' => 'a.test'], true],
     'another site' => [['HTTP_X_FORWARDED_HOST' => 'b.test'], false],

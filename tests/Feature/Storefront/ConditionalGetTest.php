@@ -89,7 +89,7 @@ it('answers a visitor who brings a session cookie in full: private, untagged, wi
         ->get('http://other.platform.test/', ['If-None-Match' => $etag])->assertOk()->assertHeaderMissing('ETag');
 
     expect(collect($response->headers->getCookies())->map->getName()->all())->toContain((string) config('session.cookie'))
-        ->and($response->headers->get('Cache-Control'))->toBe('no-store, private');
+        ->and($response->headers->get('Cache-Control'))->toBe('no-store, no-transform, private');
 });
 
 it('matches a weak tag, a list and a star as a proxy or crawler sends them', function (string $form): void {

@@ -84,7 +84,7 @@ it('shows "no permission" inside the admin frame with the member\'s role and who
 
     $html = $this->actingAs($member)->get('http://a.test/admin/content')
         ->assertForbidden()
-        ->assertHeader('Cache-Control', 'no-store, private')
+        ->assertHeader('Cache-Control', 'no-store, no-transform, private')
         ->getContent();
 
     expect($html)
