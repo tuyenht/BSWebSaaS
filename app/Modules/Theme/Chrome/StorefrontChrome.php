@@ -43,7 +43,10 @@ final class StorefrontChrome
     private const array MOBILE_CORNERS = ['call', 'search', 'cart', 'none'];
 
     /** The phone menu's tone: auto follows the header bar (see drawerDark); light is the default. */
-    private const array DRAWER_TONES = ['auto', 'light', 'dark'];
+    public const array DRAWER_TONES = ['auto', 'light', 'dark'];
+
+    /** The phone menu's accent: neutral (the default) or the brand colour. A third value, the secondary colour, comes here once a site can have one. */
+    public const array DRAWER_ACCENTS = ['neutral', 'brand'];
 
     private const array TOP_BAR_KINDS = ['address', 'phone', 'email', 'link'];
 
@@ -84,7 +87,7 @@ final class StorefrontChrome
 
     /**
      * @param  mixed  $raw  the stored `storefront.header` value (an array when set)
-     * @return array{top_bar: list<array{kind: string, text: string, href: string|null, from: string, below: string|null}>, text_size: bool, sticky: bool, mobile_corner: string, drawer_products: bool, drawer_tone: string}|null
+     * @return array{top_bar: list<array{kind: string, text: string, href: string|null, from: string, below: string|null}>, text_size: bool, sticky: bool, mobile_corner: string, drawer_products: bool, drawer_tone: string, drawer_accent: string}|null
      */
     public static function header(mixed $raw, string $locale, string $default): ?array
     {
@@ -131,6 +134,8 @@ final class StorefrontChrome
             'drawer_products' => ($raw['drawer_products'] ?? true) !== false,
             // The phone menu's tone: auto (the header bar's), light or dark; missing or anything else is light.
             'drawer_tone' => in_array($raw['drawer_tone'] ?? null, self::DRAWER_TONES, true) ? (string) $raw['drawer_tone'] : 'light',
+            // The phone menu's accent colour (icons, the selected tab's underline, the current row's bar): neutral unless set to the brand.
+            'drawer_accent' => in_array($raw['drawer_accent'] ?? null, self::DRAWER_ACCENTS, true) ? (string) $raw['drawer_accent'] : 'neutral',
             // What the phone header's right corner offers: call, search, cart or nothing (search and cart draw nothing until the site has them).
             'mobile_corner' => in_array($raw['mobile_corner'] ?? null, self::MOBILE_CORNERS, true) ? (string) $raw['mobile_corner'] : 'call',
         ];

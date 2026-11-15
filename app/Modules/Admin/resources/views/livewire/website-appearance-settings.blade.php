@@ -13,6 +13,15 @@
     $label = 'text-[calc(0.8125rem+var(--user-text-boost))] font-medium text-text-strong';
     $errorCount = count($errors->keys());
     $groups = ['brand' => [...WebsiteAppearanceSettings::SLOTS, 'share']];
+    // The phone menu's tone and accent: only for a site that has a header setting (a phone menu to colour).
+    if ($hasMenu) {
+        $groups['menu'] = ['tone', 'accent'];
+    }
+    // Each choice: its options in the design's order (value → swatch, when it has one).
+    $choices = [
+        'tone' => ['auto' => null, 'light' => null, 'dark' => null],
+        'accent' => ['neutral' => 'var(--color-text-muted)', 'brand' => $brandColor],
+    ];
 @endphp
 <x-bs-admin::settings-shell active="appearance" :unsaved="$changes">
     <x-slot:more>
@@ -31,7 +40,7 @@
 
     <div class="@container/look flex flex-col gap-4" data-set-form
          x-data="{ open: 'brand' }"
-         x-on:look-first-error.window="open = 'brand'; $nextTick(() => $el.querySelector('[data-ferr-focus]')?.focus())">
+         x-on:look-first-error.window="open = {{ Js::from($errors->has('tone') || $errors->has('accent') ? 'menu' : 'brand') }}; $nextTick(() => $el.querySelector('[data-ferr-focus]')?.focus())">
 
         {{-- When the section was last saved, and "Khôi phục mặc định" (in the "⋮" on phones). --}}
         <div @class(['flex flex-wrap items-center justify-between gap-3.5 border-b border-border pb-3.5', 'max-md:hidden' => $stamp === null]) data-look-stamp>
@@ -76,6 +85,51 @@
                                 $fid = 'look-'.$key;
                                 $errId = $fid.'-err';
                             @endphp
+
+                            @if (in_array($key, ['tone', 'accent'], true))
+                                {{-- One choice of the phone menu: radio cards (design: choice field), the draft is kept on the server. --}}
+                                @php
+                                    $current = $key === 'tone' ? $tone : $accent;
+                                    $bad = $errors->has($key);
+                                @endphp
+                                <div role="radiogroup" aria-labelledby="{{ $fid }}-l" aria-describedby="{{ trim(($bad ? $errId.' ' : '').$fid.'-hint') }}" class="flex min-w-0 flex-col gap-2" wire:key="look-f-{{ $key }}" data-look-choice="{{ $key }}">
+                                    <span id="{{ $fid }}-l" class="{{ $label }}">{{ __('admin.look.f.'.$key) }}</span>
+                                    <div class="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(min(100%,10.5rem),1fr))]">
+                                        @foreach ($choices[$key] as $value => $swatch)
+                                            @php
+                                                $on = $current === $value;
+                                            @endphp
+                                            <label wire:key="look-o-{{ $key }}-{{ $value }}" @class([
+                                                'flex min-h-control cursor-pointer items-start gap-2.5 rounded-md bg-surface px-3 py-2.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary-text',
+                                                'border-2 border-primary-text bg-primary-soft/60' => $on,
+                                                'border border-border-strong hover:border-primary-text' => ! $on,
+                                                'border-danger-text' => $bad && ! $on,
+                                            ])>
+                                                <input type="radio" name="look-{{ $key }}" value="{{ $value }}" wire:model.live="{{ $key }}" @checked($on) class="sr-only" @if ($loop->first && $bad) data-ferr-focus @endif>
+                                                @if ($on)
+                                                    <x-bs-admin::icon name="ri-checkbox-circle" :class="$glyph.' text-primary-text'" />
+                                                @else
+                                                    <span aria-hidden="true" class="{{ $glyph }} rounded-full border-2 border-border-strong"></span>
+                                                @endif
+                                                @if ($swatch !== null)
+                                                    <span aria-hidden="true" class="size-[22px] shrink-0 rounded-sm border border-border-strong" style="background: {{ $swatch }}"></span>
+                                                @endif
+                                                <span class="flex min-w-0 flex-col gap-0.5">
+                                                    <span class="text-[calc(0.84375rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong">{{ __('admin.look.'.$key.'.'.$value) }}</span>
+                                                    <span class="text-caption leading-normal text-text-muted">{{ __('admin.look.'.$key.'.'.$value.'_d') }}</span>
+                                                </span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                    <span id="{{ $fid }}-hint" class="text-caption leading-normal text-text-muted">{{ __('admin.look.hint.'.$key) }}</span>
+                                    @error($key)
+                                        <span id="{{ $errId }}" data-ferr class="inline-flex items-start gap-[5px] text-caption text-danger-text">
+                                            <x-bs-admin::icon name="ri-error-warning" class="mt-px size-[min(1.5rem,calc(0.8125rem+var(--user-text-boost)))] shrink-0" /><span class="min-w-0">{{ $message }}</span>
+                                        </span>
+                                    @enderror
+                                </div>
+                                @continue
+                            @endif
 
                             @if ($key === 'share')
                                 {{-- The share image lives in "Google & mạng xã hội": this row only leads there. --}}

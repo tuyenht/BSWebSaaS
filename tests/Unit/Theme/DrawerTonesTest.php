@@ -105,3 +105,46 @@ it('gives no variables when a seed is not a hex colour, so the stylesheet’s fa
 it('gives the call-to-action row no ring when the brand is not a hex colour', function (): void {
     expect(DrawerTones::css('#ffffff', '#111111', 'var(--x)', false))->toEndWith('--sf-dw-cta-ring:none');
 });
+
+/** The accent a tone prints, as a hex colour (null when it prints none). */
+function dtAccent(string $brand, bool $dark, string $surface = '#ffffff', string $ink = '#111111', bool $on = true): ?string
+{
+    return preg_match('/--sf-dw-accent:(#[0-9a-f]{6});/', (string) DrawerTones::css($surface, $ink, $brand, $dark, $on), $m) === 1 ? $m[1] : null;
+}
+
+it('prints no accent for the neutral setting, so the drawer is exactly what it was', function (): void {
+    expect((string) DrawerTones::css('#ffffff', '#111111', '#ffd400', false))->not->toContain('--sf-dw-accent')
+        ->and((string) DrawerTones::css('#ffffff', '#111111', '#ffd400', true, false))->not->toContain('--sf-dw-accent')
+        ->and(DrawerTones::css('#ffffff', '#111111', '#ffd400', false, false))->toBe(DrawerTones::css('#ffffff', '#111111', '#ffd400', false));
+});
+
+it('darkens a light brand until it reads 3:1 on every backdrop of the light panel, and lightens a dark brand on the dark panel as needed', function (string $brand, string $surface, string $ink): void {
+    foreach ([false, true] as $dark) {
+        $accent = dtAccent($brand, $dark, $surface, $ink);
+        $tones = (array) DrawerTones::derive($surface, $ink, $brand);
+        $t = $tones[$dark ? 'dark' : 'light'];
+        $seen = DrawerTones::seen($t['bg'], $tones['scrim'], $ink, $dark);
+
+        expect($accent)->not->toBeNull()
+            ->and(dtLeast((string) $accent, [...$seen, $t['pill'], $t['press'], $t['track']]))->toBeGreaterThanOrEqual(DrawerTones::CONTROL - 0.005, ($dark ? 'dark ' : 'light ').$brand);
+    }
+})->with([
+    'vàng tươi' => ['#ffd400', '#ffffff', '#111111'],
+    'vàng nhạt' => ['#fde68a', '#ffffff', '#1f2937'],
+    'xanh navy' => ['#1e3a8a', '#ffffff', '#0b1120'],
+    'đen tuyền' => ['#111111', '#ffffff', '#000000'],
+    'nền xám' => ['#f59e0b', '#9e9e9e', '#333333'],
+]);
+
+it('moves a light brand toward black on the light panel and keeps a dark brand as it is when it already reads 3:1', function (): void {
+    $light = (string) dtAccent('#ffd400', false);
+
+    expect(ReadableColor::ratio($light, '#ffffff'))->toBeGreaterThanOrEqual(3.0)
+        ->and($light)->not->toBe('#ffd400')
+        ->and(dtAccent('#1e3a8a', false))->toBe('#1e3a8a')    // navy is far above 3:1 on the light panel
+        ->and(dtAccent('#FFD400', true))->toBe('#ffd400');     // a yellow already reads on the dark panel; the hex is written in lower case
+});
+
+it('prints no accent for a brand that is not a hex colour', function (string $brand): void {
+    expect(DrawerTones::css('#ffffff', '#111111', $brand, false, true))->not->toBeNull()->not->toContain('--sf-dw-accent');
+})->with(['a name' => ['gold'], 'a variable' => ['var(--x)'], 'empty' => [''], 'injected text' => ['#fff;}body{display:none']]);
