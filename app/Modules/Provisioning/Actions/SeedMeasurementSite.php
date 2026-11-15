@@ -281,7 +281,12 @@ final readonly class SeedMeasurementSite
             ]],
             ['storefront', 'footer', [
                 'about' => 'Gia công cơ khí chính xác, đồ gá và khuôn mẫu theo bản vẽ.',
-                'factories' => [['title' => 'Nhà máy', 'address' => 'Khu công nghiệp mẫu', 'map_url' => 'https://maps.google.com/?q=khu+cong+nghiep']],
+                // Two factories: below 1024px the footer turns them one at a time, with arrows floating over the
+                // card's edges, so the tap check sees those arrows on every measured page.
+                'factories' => [
+                    ['title' => 'Nhà máy', 'address' => 'Khu công nghiệp mẫu', 'map_url' => 'https://maps.google.com/?q=khu+cong+nghiep'],
+                    ['title' => 'Xưởng hai', 'address' => 'Cụm công nghiệp mẫu', 'map_url' => 'https://maps.google.com/?q=cum+cong+nghiep'],
+                ],
             ]],
         ];
         foreach ($settings as [$group, $key, $value]) {
