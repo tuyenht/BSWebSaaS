@@ -16,8 +16,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * How many people a website holds, against the `users.max` its plan (or its own override) allows.
  *
- * The count, one definition for the runtime checks below and for the migration that seeded the
- * limit into the plans (2076_01_01_000000_seed_user_limit_into_plans.php), is perSiteSql():
+ * The count, one definition for the runtime checks below, is perSiteSql() (the migration that seeded
+ * the limit into the plans, 2076_01_01_000000_seed_user_limit_into_plans.php, holds a frozen copy):
  *  - members: the distinct people holding at least one role in the website's team
  *    (model_has_roles.site_id), by account email;
  *  - plus pending invitations: neither accepted nor withdrawn, not expired, to an address that is

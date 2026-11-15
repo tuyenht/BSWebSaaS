@@ -1,6 +1,5 @@
 <?php
 
-use App\Modules\Rbac\Support\SiteHeadcount;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
@@ -9,9 +8,11 @@ use Illuminate\Support\Facades\DB;
  * back on the day the check ships: inviting and accepting are refused once a website's people fill
  * it, and with nothing written every website would fall to the registry default of 10.
  *
- * The count is SiteHeadcount::perSiteSql(), the same definition the runtime check uses: members (a
- * role in the website's team) plus invitations still waiting (not accepted, not withdrawn, not
- * expired, to an address that is not a member). Websites in the trash are left out.
+ * The count is the one SiteHeadcount::perSiteSql() defines for the runtime check, copied here as it
+ * stood when this ran (a migration never calls code that may change after it): members (a role in
+ * the website's team) plus invitations still waiting (not accepted, not withdrawn, not expired, to
+ * an address that is not a member). SiteUserLimitTest checks the seeded numbers against the runtime
+ * count. Websites in the trash are left out.
  *
  *  - every plan gets `users.max` = the larger of 10 and the largest count of a website on it (a
  *    plan nobody is on gets 10);
@@ -35,14 +36,40 @@ return new class extends Migration
 
     private const string REASON = 'Giữ số người đang có khi bật giới hạn số người dùng mỗi website';
 
+    private const string FEATURE = 'users.max';
+
+    /** model_has_roles.model_type of a person, as stored. */
+    private const string USER_MODEL = 'App\\Modules\\Identity\\Models\\User';
+
+    /** Every website's headcount (site_id, members, pending); bindings: the user model type, now. */
+    private const string COUNTS = <<<'SQL'
+        with members as (
+            select distinct m.site_id, lower(u.email::text) as email
+            from model_has_roles m
+            join users u on u.id = m.model_id
+            where m.model_type = ? and m.site_id > 0
+        ), pending as (
+            select distinct i.site_id, lower(i.email::text) as email
+            from invitations i
+            where i.site_id > 0 and i.accepted_at is null and i.revoked_at is null and i.expires_at > ?
+              and not exists (select 1 from members mm where mm.site_id = i.site_id and mm.email = lower(i.email::text))
+        )
+        select h.site_id, sum(h.members)::int as members, sum(h.pending)::int as pending
+        from (select site_id, 1 as members, 0 as pending from members
+              union all
+              select site_id, 0 as members, 1 as pending from pending) h
+        group by h.site_id
+        SQL;
+
     public function up(): void
     {
         if (DB::getDriverName() !== 'pgsql') {
             return;
         }
 
-        [$counts, $countBindings] = SiteHeadcount::perSiteSql(null, now());
-        $key = SiteHeadcount::FEATURE;
+        $counts = self::COUNTS;
+        $countBindings = [self::USER_MODEL, now()->format('Y-m-d H:i:sP')];
+        $key = self::FEATURE;
 
         DB::statement(
             "insert into plan_features (plan_id, feature_key, value)

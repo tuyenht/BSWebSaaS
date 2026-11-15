@@ -45,6 +45,15 @@ final class PlanFeatureText
         return self::word($key, 'unit') ?? '';
     }
 
+    /**
+     * Features the design draws outside the feature table ("Giới hạn khác" on board 30, not ported
+     * yet): left out of the table, their value still loads and saves untouched with the plan.
+     */
+    public static function ownCard(string $key): bool
+    {
+        return $key === 'users.max';
+    }
+
     public static function min(string $key): int
     {
         return self::MIN[$key] ?? 0;

@@ -157,6 +157,19 @@ it('saves an edited table at once for the customers on the plan, says so, and Ho
         ->and($plan->features()->pluck('value', 'feature_key')->all())->toEqualCanonicalizing(['sites.max' => 2, 'rbac.custom_roles' => true]);
 });
 
+it('keeps the people limit out of the feature table, and a save keeps its value', function (): void {
+    $plan = pePlan('Cơ bản', true, ['sites.max' => 2, 'users.max' => 13]);
+
+    Livewire::actingAs(peStaff('billing'))->test(Edit::class, ['key' => $plan->key])
+        ->assertSet('features.users__max', '13')
+        ->assertDontSeeHtml('id="plan-f-users-max-l"')
+        ->set('features.sites__max', '3')
+        ->call('save')
+        ->assertRedirect(route('platform.plans.index'));
+
+    expect($plan->refresh()->features()->pluck('value', 'feature_key')->all())->toEqualCanonicalizing(['sites.max' => 3, 'users.max' => 13]);
+});
+
 it('does not write the feature table when only the name changed', function (): void {
     $plan = pePlan('Cơ bản', true, ['sites.max' => 2]);
     DB::connection('pgsql_admin')->statement('truncate audit_logs restart identity cascade');
