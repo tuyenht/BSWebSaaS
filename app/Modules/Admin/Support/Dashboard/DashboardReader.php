@@ -345,7 +345,7 @@ final class DashboardReader
      * last move — a return when it brought the post back to the stage it is on, with a reason, by
      * someone else. A pending change to a published post that was turned down is not one: the
      * post stays published, and the board lists drafts only. `listed` counts the returned posts
-     * whose primary category is $listed (the set the draft tile counts; null: every post).
+     * whose primary category is $listed or one below it (the set the draft tile counts; null: every post).
      *
      * @return array{rows: list<array<string, mixed>>, listed: int}
      */
@@ -375,10 +375,18 @@ final class DashboardReader
         $actors = User::query()->whereIn('id', array_values(array_unique(array_filter(array_map(fn (array $pair): ?int => $pair[1]['actor_id'], $back)))))
             ->pluck('name', 'id');
 
+        // the categories the draft tile counts (inList(): the section's own and those below it)
+        $branch = null;
+        if ($listed !== null) {
+            [$sql, $values] = SectionBranch::ids(app(CurrentSite::class)->id(), $listed);
+            $branch = array_flip(array_map(fn (mixed $row): int => Cast::int(((array) $row)['id'] ?? 0), DB::select($sql, $values)));
+        }
+
         $out = [];
         $inList = 0;
         foreach ($back as [$entry, $move]) {
-            if ($listed === null || $entry->primaryCategory()?->id === $listed) {
+            $primary = $entry->primaryCategory()?->id;
+            if ($branch === null || ($primary !== null && isset($branch[$primary]))) {
                 $inList++;
             }
             $out[] = [

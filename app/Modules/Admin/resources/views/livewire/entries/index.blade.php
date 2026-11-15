@@ -201,7 +201,7 @@
             {{-- Bulk action bar — appears once one or more rows are selected --}}
             @if (count($selected) > 0)
                 <div class="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 min-[600px]:mx-4">
-                    <span class="text-sm font-medium text-accent">{{ __('entries.bulk_selected', ['count' => count($selected)]) }}</span>
+                    <span class="text-sm font-medium text-accent">{{ __('entries.bulk_selected', ['noun' => $noun, 'count' => count($selected)]) }}</span>
                     @if ($tab === 'trash')
                         @if ($canDelete)
                             <button type="button" wire:click="bulkRestore"
@@ -209,7 +209,7 @@
                                 <x-bs-admin::icon name="ri-refresh" class="size-3.5 text-body-muted" /> {{ __('entries.action_restore') }}
                             </button>
                             <button type="button"
-                                x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('entries.force_delete_confirm')), confirm: @js(__('entries.action_destroy')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.bulkForceDelete())"
+                                x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('entries.force_delete_confirm_selected', ['noun' => $noun])), confirm: @js(__('entries.action_destroy')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.bulkForceDelete())"
                                 class="inline-flex items-center gap-1.5 rounded border border-admin-danger/30 bg-surface px-2.5 py-1 text-sm font-medium text-admin-danger-text transition-colors hover:bg-admin-danger/10">
                                 <x-bs-admin::icon name="ri-delete-bin" class="size-3.5" /> {{ __('entries.action_destroy') }}
                             </button>
@@ -422,7 +422,7 @@
                                         </x-bs-admin::button>
                                         <x-slot:menu>
                                             <x-bs-admin::list.menu-item icon="ri-delete-bin" danger
-                                                x-on:click="$bsConfirm({ icon: 'trash-danger', text: {{ $Js::from(__('entries.force_delete_confirm')) }}, confirm: {{ $Js::from(__('entries.action_destroy')) }}, cancel: {{ $Js::from(__('admin.cancel')) }} }).then(ok => ok && $wire.forceDelete({{ $Js::from($entry->ulid) }}))">{{ __('entries.action_destroy') }}</x-bs-admin::list.menu-item>
+                                                x-on:click="$bsConfirm({ icon: 'trash-danger', text: {{ $Js::from(__('entries.force_delete_confirm', ['noun' => __('entries.noun_'.$entry->type)])) }}, confirm: {{ $Js::from(__('entries.action_destroy')) }}, cancel: {{ $Js::from(__('admin.cancel')) }} }).then(ok => ok && $wire.forceDelete({{ $Js::from($entry->ulid) }}))">{{ __('entries.action_destroy') }}</x-bs-admin::list.menu-item>
                                         </x-slot:menu>
                                     @endif
                                 @else
@@ -461,7 +461,7 @@
                             @if ($tab === 'trash')
                                 {{ __('entries.trash_empty') }}
                             @elseif (trim($search) !== '')
-                                {{ __('entries.search_empty') }}
+                                {{ __('entries.search_empty', ['noun' => $noun]) }}
                             @else
                                 {{ __('entries.empty') }}
                             @endif
@@ -473,7 +473,7 @@
 
             <div class="mt-4 flex flex-wrap items-center justify-between gap-3 min-[600px]:px-4">
                 <span class="text-caption text-text-muted">
-                    {{ __('entries.footer_showing', ['first' => $num($pager['from']), 'last' => $num($pager['to']), 'total' => $fmt($pager['total'])]) }}
+                    {{ __('entries.footer_showing', ['noun' => $noun, 'first' => $num($pager['from']), 'last' => $num($pager['to']), 'total' => $fmt($pager['total'])]) }}
                 </span>
                 <div class="flex flex-wrap items-center gap-4">
                     <div role="group" aria-label="{{ __('entries.rows_per_page_label') }}" class="flex items-center gap-2 text-caption text-text-muted">
