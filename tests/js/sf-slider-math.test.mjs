@@ -1,7 +1,7 @@
 // The sliders' index and offset arithmetic (resources/js/sf-slider-math.js): `node --test tests/js/sf-slider-math.test.mjs`.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { loopDot, loopHome, railDot, railPages, railTarget, swipe, wrap } from '../../resources/js/sf-slider-math.js';
+import { groupDot, loopDot, loopHome, railDot, railPages, railTarget, swipe, wrap } from '../../resources/js/sf-slider-math.js';
 
 test('wrap goes round both ways', () => {
     assert.equal(wrap(-1, 5), 4);
@@ -63,4 +63,19 @@ test('a looping rail lights the dot of its place within the real cards', () => {
     // On the copies before the real cards: the same dot as the same view on the real cards.
     assert.equal(loopDot(300, 1000, 400, 976), 1);
     assert.equal(loopDot(500, 0, 400, 976), 0);
+});
+
+test('groupDot lights one dot per view of g cards, by the real card at the start', () => {
+    // 8 cards of 200px, four in view, looping: the real cards start at 1600.
+    assert.equal(groupDot(1600, 1600, 200, 8, 4, false), 0);
+    assert.equal(groupDot(2400, 1600, 200, 8, 4, false), 1);
+    assert.equal(groupDot(1599.4, 1600, 200, 8, 4, false), 0);
+    assert.equal(groupDot(800, 1600, 200, 8, 4, false), 1);
+    // 6 cards four across, looping: cards 5, 6 then 1, 2 are the second view.
+    assert.equal(groupDot(1200 + 800, 1200, 200, 6, 4, false), 1);
+    assert.equal(groupDot(1200 + 400, 1200, 200, 6, 4, false), 0);
+    // No loop: the end shows the last view whatever its count.
+    assert.equal(groupDot(400, 0, 200, 6, 4, true), 1);
+    assert.equal(groupDot(0, 0, 200, 6, 4, false), 0);
+    assert.equal(groupDot(0, 0, 0, 6, 4, false), 0);
 });

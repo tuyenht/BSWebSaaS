@@ -14,23 +14,52 @@ it('names no prop the look group or its editor state already owns', function ():
     expect(array_intersect(array_keys(SectionProps::LIST_DISPLAY), StyleProps::RESERVED))->toBe([]);
 });
 
-it('declares the seven props with "auto" first and as the default, and keeps them out of the generic form', function (): void {
-    expect(array_keys(SectionProps::LIST_DISPLAY))->toBe(['layout', 'columns', 'mobile', 'autoplay', 'arrows', 'loop', 'view_all']);
+it('declares the eight props with "auto" first and as the default, and keeps them out of the generic form', function (): void {
+    expect(array_keys(SectionProps::LIST_DISPLAY))->toBe(['layout', 'columns', 'mobile', 'autoplay', 'arrows', 'loop', 'advance', 'view_all']);
     foreach (SectionProps::LIST_DISPLAY as $spec) {
         expect($spec['type'])->toBe('enum')->and($spec['options'][0])->toBe('auto')->and($spec['default'])->toBe('auto')->and($spec['group'])->toBe('display');
     }
-    expect(SectionProps::LIST_DISPLAY['layout']['options'])->toBe(['auto', 'grid', 'slider'])
+    expect(SectionProps::LIST_DISPLAY['layout']['options'])->toBe(['auto', 'grid', 'slider', 'slider_small'])
         ->and(SectionProps::LIST_DISPLAY['columns']['options'])->toBe(['auto', '2', '3', '4'])
         ->and(SectionProps::LIST_DISPLAY['mobile']['options'])->toBe(['auto', 'swipe', 'two', 'one'])
         ->and(SectionProps::LIST_DISPLAY['autoplay']['options'])->toBe(['auto', 'off', '3', '5', '8'])
         ->and(SectionProps::LIST_DISPLAY['arrows']['options'])->toBe(['auto', 'always', 'none'])
         ->and(SectionProps::LIST_DISPLAY['loop']['options'])->toBe(['auto', 'off'])
+        ->and(SectionProps::LIST_DISPLAY['advance']['options'])->toBe(['auto', 'item', 'view'])
         ->and(SectionProps::LIST_DISPLAY['view_all']['options'])->toBe(['auto', 'show', 'hide']);
 });
 
 it('makes the group of a hand-typed list the same props without the "view all" button', function (): void {
     expect(SectionProps::LIST_LAYOUT)->toBe(array_diff_key(SectionProps::LIST_DISPLAY, ['view_all' => true]))
-        ->and(array_keys(SectionProps::LIST_LAYOUT))->toBe(['layout', 'columns', 'mobile', 'autoplay', 'arrows', 'loop']);
+        ->and(array_keys(SectionProps::LIST_LAYOUT))->toBe(['layout', 'columns', 'mobile', 'autoplay', 'arrows', 'loop', 'advance']);
+});
+
+it('moves a whole view by default on a new block, one logo on a partner strip, and one card on a block saved before the choice', function (string $kind): void {
+    $advance = fn (array $props): ?string => ListDisplay::plan($kind, ['layout' => 'slider'] + $props, 9, 50)['advance'] ?? null;
+    $auto = $kind === 'partners' ? 'item' : 'view';
+
+    expect($advance([]))->toBe('item')
+        ->and($advance(['advance' => 'auto']))->toBe($auto)
+        ->and($advance(['advance' => 'item']))->toBe('item')
+        ->and($advance(['advance' => 'view']))->toBe('view')
+        ->and($advance(['advance' => 'page']))->toBe('item');
+})->with(array_keys(ListDisplay::AUTO));
+
+it('makes "slider_small" a grid on a wide screen that scrolls below it, never rotating there except a phone\'s logo slider', function (): void {
+    $cards = ListDisplay::plan('project', ['layout' => 'slider_small', 'autoplay' => '5'], 30, 50);
+    $logos = ListDisplay::plan('partners', ['layout' => 'slider_small'], 9, 50);
+    $few = ListDisplay::plan('project', ['layout' => 'slider_small', 'mobile' => 'two'], 3, 50);
+
+    expect($cards['layout'])->toBe('slider_small')
+        ->and($cards['class'])->toContain('sf-rail__list--slider_small')->and($cards['class'])->toContain('sf-rail__list--m-swipe')
+        ->and($cards['scrolls'])->toBeTrue()
+        // A grid on a wide screen keeps every item it read (no slider cap) and never rotates.
+        ->and($cards['shown'])->toBe(30)
+        ->and($cards['interval'])->toBe(0)
+        ->and($cards['bar'])->toBe('')
+        // The phone follows `mobile`: partner logos still rotate there (the script keeps the tablet still).
+        ->and($logos['mobile'])->toBe('slider')->and($logos['interval'])->toBe(3000)->and($logos['bar'])->toBe('phone')
+        ->and($few['class'])->toContain('sf-rail__list--m-two')->and($few['scrolls'])->toBeTrue();
 });
 
 it('lets every kind of list go round unless the block turns the loop off', function (string $kind): void {

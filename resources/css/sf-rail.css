@@ -106,7 +106,9 @@
    One flex list serves the grid, the slider and a phone's swipe row. --sf-c is how many items fit
    across (a fraction shows the next one peeking); fewer items than that sit centred. A slider, and
    a swipe row on a phone, scroll sideways with snapping; the script adds the arrows and, for a
-   slider, the rotation. Without the script the row still scrolls and nothing is hidden. */
+   slider, the rotation. Without the script the row still scrolls and nothing is hidden. A
+   `slider_small` list is a grid from 1024px and a row that scrolls on a tablet; a phone follows the
+   block's phone choice (the m-* classes) whatever the layout. */
 .sf-rail {
     position: relative;
 }
@@ -143,6 +145,16 @@
 
 .sf-rail__list--slider.is-loop > [data-sf-copy] {
     display: flex;
+}
+
+/* A row that moves a whole view at a time (data-advance="view") whose cards split into whole views
+   stops a swipe only at the first card of a view (sf-slider.js marks them); otherwise at every card. */
+.sf-rail__list.is-paged > li {
+    scroll-snap-align: none;
+}
+
+.sf-rail__list.is-paged > [data-sf-page] {
+    scroll-snap-align: start;
 }
 
 /* A card that is the item's only child fills it; an item built of several parts (a team member's
@@ -460,8 +472,26 @@
 /* region: sf-rail peek and free scroll. On a tablet a card slider shows a slice of the next card, so
    it is plain that the row moves; the logo strip scrolls freely (no snapping) so a flick coasts. */
 @media (min-width: 640px) and (max-width: 1023px) {
-    .sf-rail__list--slider:not(.sf-rail__list--c6) { --sf-c: 2.25; }
-    .partners .sf-rail__list--slider { --sf-c: 3.25; }
+    .sf-rail__list--slider:not(.sf-rail__list--c6),
+    .sf-rail__list--slider_small:not(.sf-rail__list--c6) { --sf-c: 2.25; }
+    .partners .sf-rail__list--slider,
+    .partners .sf-rail__list--slider_small { --sf-c: 3.25; }
+
+    /* slider_small: the tablet's row scrolls like a slider (it never rotates: sf-slider.js). */
+    .sf-rail__list--slider_small {
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+    }
+
+    .sf-rail__list--slider_small.is-loop > [data-sf-copy] {
+        display: flex;
+    }
+
+    .partners .sf-rail__list--slider_small {
+        scroll-snap-type: none;
+    }
 }
 
 .partners .sf-rail__list--slider,
@@ -517,13 +547,24 @@
     .partners .sf-rail__list--grid {
         grid-template-columns: repeat(5, minmax(0, 1fr));
     }
+
+    /* slider_small: the partners-page grid on a wide screen, a row of the same cards below it. */
+    .partners .sf-rail__list--slider_small {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 2rem;
+    }
+
+    .partners .sf-rail__list--slider_small > li {
+        flex: none;
+    }
 }
 
 .partners .sf-rail__list--grid > li {
     flex: none;
 }
 
-.partners .sf-rail__list--grid .partners__item {
+.partners :is(.sf-rail__list--grid, .sf-rail__list--slider_small) .partners__item {
     width: 100%;
     height: 7rem;
     border: 1px solid transparent;
@@ -532,7 +573,7 @@
     transition: background 0.25s, border-color 0.25s, box-shadow 0.25s;
 }
 
-.partners .sf-rail__list--grid .partners__link {
+.partners :is(.sf-rail__list--grid, .sf-rail__list--slider_small) .partners__link {
     display: flex;
     flex: 1;
     align-items: center;
@@ -540,12 +581,12 @@
     min-width: 0;
 }
 
-.partners .sf-rail__list--grid .partners__name {
+.partners :is(.sf-rail__list--grid, .sf-rail__list--slider_small) .partners__name {
     color: var(--color-text);
 }
 
 @media (hover: hover) {
-    .partners .sf-rail__list--grid .partners__item:hover {
+    .partners :is(.sf-rail__list--grid, .sf-rail__list--slider_small) .partners__item:hover {
         border-color: var(--color-primary);
         background: var(--color-surface);
         box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
