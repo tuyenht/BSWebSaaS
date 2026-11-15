@@ -427,7 +427,7 @@ it('opens the way to the category the page is on and marks it', function (): voi
     expect($pane)
         ->toMatch('#<li class="sf-nav__item sf-nav__item--parent is-open" data-disclosure>\s*<button[^>]*is-trail"[^>]*aria-current="true" aria-expanded="true"[^>]*><span>Máy tính#')
         ->toMatch('#<button[^>]*is-trail"[^>]*aria-expanded="true"[^>]*><span>Laptop</span>#')
-        ->toMatch('#<a class="sf-nav__sublink" href="/laptop-mong-nhe" aria-current="page">Laptop mỏng nhẹ\s*<svg class="sf-icon sf-nav__check"[^>]*aria-hidden="true"[^>]*><path[^>]*/></svg>\s*</a>#')
+        ->toMatch('#<a class="sf-nav__sublink" href="/laptop-mong-nhe" aria-current="page">Laptop mỏng nhẹ</a>#')
         ->toMatch('#aria-expanded="false" aria-controls="[^"]+"><span>Khuôn mẫu#')            // the other group stays shut
         ->and(substr_count($pane, 'aria-current="page"'))->toBe(1);
 });

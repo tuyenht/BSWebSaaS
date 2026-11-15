@@ -19,7 +19,7 @@
             </li>
         @else
             <li class="sf-nav__item">
-                <a class="{{ $depth === 0 ? 'sf-nav__link' : 'sf-nav__sublink' }}" href="{{ $item['url'] }}"@if (! empty($item['active'])) aria-current="page"@endif>{{ $item['label'] }}@if (! empty($item['active']))@include('theme::partials.sf-icon', ['name' => 'check', 'size' => 20, 'iconClass' => 'sf-nav__check'])@endif</a>
+                <a class="{{ $depth === 0 ? 'sf-nav__link' : 'sf-nav__sublink' }}" href="{{ $item['url'] }}"@if (! empty($item['active'])) aria-current="page"@endif>{{ $item['label'] }}</a>
             </li>
         @endif
     @endforeach
