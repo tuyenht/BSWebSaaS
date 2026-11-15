@@ -38,10 +38,10 @@ final class MenuItemOptions
     /** Columns of a large panel built from the item's children. The block-built panel waits for the block library. */
     public const array MEGA_COLUMNS = [2, 3, 4];
 
-    /** The stored keys this class owns. */
     /** The stored icon value for "no icon, not even an automatic one" (the phone menu picks an icon by itself when none is chosen). */
     public const string ICON_OFF = 'none';
 
+    /** The stored keys this class owns. */
     private const array OWNED = ['target', 'hidden', 'icon', 'description', 'cta', 'mega', 'badge', 'badge_until', 'device'];
 
     /**
