@@ -49,7 +49,8 @@
                         {{ $pickerUrlPreview['width'] !== null ? $pickerUrlPreview['width'].' × '.$pickerUrlPreview['height'].' · ' : '' }}~{{ number_format($pickerUrlPreview['size'] / 1048576, 1) }} MB
                     </span>
                 </div>
-                @if ($imagePickerMode === 'editor')
+                {{-- $editorLibraryOnly (set by a host whose stored HTML names only library pictures): the copy is kept, never optional. --}}
+                @if ($imagePickerMode === 'editor' && ! ($editorLibraryOnly ?? false))
                     @can('media.upload')
                         <button type="button" wire:click="$toggle('pickerUrlSaveCopy')" class="flex items-start gap-[9px] text-left">
                             <span class="mt-px flex size-[19px] shrink-0 items-center justify-center rounded-[5px] border-[1.5px] {{ $pickerUrlSaveCopy ? 'border-admin-primary bg-admin-primary text-white' : 'border-placeholder bg-surface text-transparent' }}">
@@ -61,7 +62,7 @@
                         </button>
                     @endcan
                 @else
-                    {{-- Gallery rows must reference a library master — the copy is not optional here. --}}
+                    {{-- Gallery rows (and such an editor) must reference a library master — the copy is not optional here. --}}
                     <div class="flex items-center gap-[9px] text-[12.5px] text-body-muted">
                         <x-bs-admin::icon name="ri-checkbox-circle" class="size-4 shrink-0 text-admin-success-text" />{{ __('media.picker_url_save_copy') }}
                     </div>

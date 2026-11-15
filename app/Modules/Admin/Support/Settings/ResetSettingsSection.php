@@ -30,7 +30,7 @@ use Illuminate\Support\Facades\Gate;
  * write stamps who made it (RecordsWhoSaved) and the storefront caches that listen to settings
  * saves are cleared.
  *
- * @phpstan-type UndoPayload array{section: string, settings: array<string, array<array-key, mixed>|null>, profile: array<string, mixed>, translations: array<string, array<string, mixed>>, brand: array<string, mixed>}
+ * @phpstan-type UndoPayload array{section: string, settings: array<string, array<array-key, mixed>|null>, profile: array<string, mixed>, translations: array<string, array<string, mixed>>, brand: array<string, mixed>, keys?: array<string, array<string, mixed>>}
  */
 final class ResetSettingsSection
 {
@@ -45,7 +45,7 @@ final class ResetSettingsSection
         $definition = SettingsSections::get($section);
 
         return SettingsWrite::run($section, function () use ($section, $definition): array {
-            $undo = ['section' => $section, 'settings' => [], 'profile' => [], 'translations' => [], 'brand' => []];
+            $undo = ['section' => $section, 'settings' => [], 'profile' => [], 'translations' => [], 'brand' => [], 'keys' => []];
             // The brand row is written back whole: lock it first, then read it (below), so a save
             // running at the same time waits instead of being undone.
             $brandRow = $definition['brand_keys'] !== []
@@ -56,6 +56,18 @@ final class ResetSettingsSection
                 $row = SiteSetting::query()->where('group_name', $group)->where('key', $key)->first();
                 $undo['settings']["{$group}.{$key}"] = $row?->value;
                 $row?->delete();
+            }
+
+            // Single keys of a shared row: only those names go, the rest of the row stays.
+            foreach ($definition['keys'] as [$group, $key, $names]) {
+                $row = SiteSetting::query()->where('group_name', $group)->where('key', $key)->lockForUpdate()->first();
+                $value = Cast::arr($row?->getAttribute('value'));
+                $gone = array_intersect_key($value, array_flip($names));
+                $undo['keys']["{$group}.{$key}"] = $gone;
+                if ($row !== null && $gone !== []) {
+                    $row->setAttribute('value', array_diff_key($value, $gone));
+                    $row->save();
+                }
             }
 
             $profile = $definition['profile'] !== [] || $definition['translations'] !== []
@@ -109,8 +121,9 @@ final class ResetSettingsSection
         $columns = is_array($undo['profile'] ?? null) ? $undo['profile'] : [];
         $texts = is_array($undo['translations'] ?? null) ? $undo['translations'] : [];
         $brandValues = is_array($undo['brand'] ?? null) ? $undo['brand'] : [];
+        $keys = is_array($undo['keys'] ?? null) ? $undo['keys'] : [];
 
-        SettingsWrite::run($section, function () use ($definition, $settings, $columns, $texts, $brandValues): void {
+        SettingsWrite::run($section, function () use ($definition, $settings, $keys, $columns, $texts, $brandValues): void {
             // The brand row is written back whole: lock it first, then read it (below).
             $restore = array_intersect_key($brandValues, array_flip($definition['brand_keys']));
             $brandRow = $restore !== []
@@ -126,6 +139,19 @@ final class ResetSettingsSection
                     SiteSetting::query()->updateOrCreate(['group_name' => $group, 'key' => $key], ['value' => $value]);
                 } else {
                     SiteSetting::query()->where('group_name', $group)->where('key', $key)->first()?->delete();
+                }
+            }
+
+            // The removed names come back into the row as it is now; a row deleted since gets none.
+            foreach ($definition['keys'] as [$group, $key, $names]) {
+                $back = array_intersect_key(is_array($keys["{$group}.{$key}"] ?? null) ? $keys["{$group}.{$key}"] : [], array_flip($names));
+                if ($back === []) {
+                    continue;
+                }
+                $row = SiteSetting::query()->where('group_name', $group)->where('key', $key)->lockForUpdate()->first();
+                if ($row !== null) {
+                    $row->setAttribute('value', [...Cast::arr($row->getAttribute('value')), ...$back]);
+                    $row->save();
                 }
             }
 

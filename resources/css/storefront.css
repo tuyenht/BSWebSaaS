@@ -1487,7 +1487,7 @@ html.sf-menu-open {
     inset-inline: 0;
     bottom: 0;
     height: 2px;
-    background: var(--sf-dw-strong);
+    background: var(--sf-dw-accent, var(--sf-dw-strong));
 }
 
 @media (hover: hover) {
@@ -1647,7 +1647,7 @@ html.sf-menu-open {
     height: 20px;
     margin-top: -10px;
     border-radius: 2px;
-    background: var(--sf-dw-strong);
+    background: var(--sf-dw-accent, var(--sf-dw-strong));
 }
 
 .sf-nav--mob :is(.sf-nav__link, .sf-nav__sublink):focus-visible {
@@ -1669,6 +1669,16 @@ html.sf-menu-open {
 .sf-nav--mob .is-trail :is(.sf-nav__ic, .sf-nav__caret),
 .sf-nav--mob [aria-current="page"] .sf-nav__ic {
     color: var(--sf-dw-strong);
+}
+
+/* The menu's accent colour (the site's setting): only the level-1 row icons take it, in every state;
+   without --sf-dw-accent they keep the colours above. */
+.sf-nav--mob > .sf-nav__list > .sf-nav__item > .sf-nav__link:not(.sf-nav__link--cta) .sf-nav__ic {
+    color: var(--sf-dw-accent, var(--sf-dw-muted));
+}
+
+.sf-nav--mob > .sf-nav__list > .sf-nav__item > .sf-nav__link:not(.sf-nav__link--cta):is(.is-trail, [aria-current="page"]) .sf-nav__ic {
+    color: var(--sf-dw-accent, var(--sf-dw-strong));
 }
 
 /* A rule between level-1 rows only, 24px in from each side; none beside the current row or the

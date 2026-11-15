@@ -114,6 +114,23 @@ final class StorefrontIcons
         'more' => ['o', '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>'],
     ];
 
+    /**
+     * The website icons that suit a menu item, in the groups and order the menu icon picker shows them
+     * (group names: menus.icon_group_*); the automatic phone-menu icon breaks ties by this order. Each
+     * name is one of GLYPHS; a name may sit in two groups.
+     *
+     * @var array<string, list<string>>
+     */
+    public const array MENU_GROUPS = [
+        'common' => ['home', 'info', 'building', 'factory', 'tools', 'hammer', 'box', 'price-tag', 'newspaper', 'phone', 'email', 'address'],
+        'shop' => ['cart', 'shopping-bag', 'store', 'coupon', 'percent', 'wallet', 'card', 'refund', 'truck', 'warehouse', 'barcode', 'compare'],
+        'industry' => ['settings', 'cpu', 'ruler', 'compass', 'flask', 'quality', 'recycle', 'flame', 'scissors', 'focus', 'layers', 'droplet'],
+        'content' => ['project', 'document', 'image', 'gallery', 'video', 'play', 'download', 'book', 'help', 'lightbulb', 'presentation', 'newspaper'],
+        'company' => ['support', 'team', 'user', 'vip', 'briefcase', 'award', 'medal', 'handshake', 'community', 'heart', 'star', 'testimonial', 'quote', 'license'],
+        'contact' => ['phone', 'whatsapp', 'messenger', 'facebook', 'youtube', 'instagram', 'linkedin', 'tiktok', 'send', 'calendar-check', 'clock', 'globe', 'zalo', 'x', 'map'],
+        'other' => ['search', 'link', 'zap', 'gift', 'privacy', 'legal', 'sitemap', 'route', 'leaf', 'hours-24', 'verified', 'more'],
+    ];
+
     public static function has(string $name): bool
     {
         return isset(self::GLYPHS[$name]);

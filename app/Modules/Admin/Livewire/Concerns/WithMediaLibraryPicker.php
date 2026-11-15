@@ -94,8 +94,7 @@ trait WithMediaLibraryPicker
         }
 
         if ($this->imagePickerMode === 'editor') {
-            // Wide enough for article bodies; the CDN resizes on demand anyway.
-            $this->dispatch('admin-editor-insert-image', url: app(MediaUrlResolver::class)->url($media->storage_key, 1200));
+            $this->dispatch('admin-editor-insert-image', url: $this->editorImageUrl($media));
             $this->showImagePicker = false;
 
             return;
@@ -142,6 +141,22 @@ trait WithMediaLibraryPicker
 
     /** Gallery-mode hook — components that carry a gallery override this; default: no-op. */
     protected function addGalleryImage(int $mediaId): void {}
+
+    /** The address a picked library picture is inserted at in the rich editor (a host may need one it can read back). */
+    protected function editorImageUrl(Media $media): string
+    {
+        // Wide enough for article bodies; the CDN resizes on demand anyway.
+        return app(MediaUrlResolver::class)->url($media->storage_key, 1200);
+    }
+
+    /**
+     * Whether the rich editor may show a picture from another website by its link (no copy kept). A
+     * host whose stored HTML names only library pictures says no: a link is then always copied in.
+     */
+    protected function editorHotlinks(): bool
+    {
+        return true;
+    }
 
     /**
      * The picker grid (images only, newest first) — call from render() while the modal is open.
@@ -524,7 +539,7 @@ trait WithMediaLibraryPicker
         }
 
         // A gallery row must reference a library master — hotlinking is an editor-only choice.
-        $saveCopy = $this->imagePickerMode === 'gallery' || $this->pickerUrlSaveCopy;
+        $saveCopy = $this->imagePickerMode === 'gallery' || ! $this->editorHotlinks() || $this->pickerUrlSaveCopy;
 
         if ($saveCopy) {
             abort_unless(Gate::allows('media.upload'), 403);
@@ -551,7 +566,7 @@ trait WithMediaLibraryPicker
             }
 
             $this->imagePickerMode === 'editor'
-                ? $this->dispatch('admin-editor-insert-image', url: app(MediaUrlResolver::class)->url($media->storage_key, 1200))
+                ? $this->dispatch('admin-editor-insert-image', url: $this->editorImageUrl($media))
                 : $this->addGalleryImage($media->id);
         } else {
             $this->dispatch('admin-editor-insert-image', url: $preview['url']);
@@ -582,7 +597,7 @@ trait WithMediaLibraryPicker
 
         if ($this->imagePickerMode === 'editor') {
             $first = $items->firstOrFail();
-            $this->dispatch('admin-editor-insert-image', url: app(MediaUrlResolver::class)->url($first->storage_key, 1200));
+            $this->dispatch('admin-editor-insert-image', url: $this->editorImageUrl($first));
         } else {
             foreach ($items as $media) {
                 $this->addGalleryImage($media->id);

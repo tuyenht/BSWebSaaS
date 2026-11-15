@@ -1,0 +1,14 @@
+{
+    "none": [
+        "Chi nhánh", "Văn phòng", "Người dùng", "Ứng dụng", "Giá",
+        "Phát thanh", "Phát triển", "Thu mua", "Thư ngỏ", "Gói cước",
+        "Lịch sự kiện", "Nhà cung cấp", "Hệ thống phân phối", "Thông báo", "Bản tin",
+        "Xyzzy", "us", "x", ""
+    ],
+    "icon": {
+        "Trang chủ": "home", "Liên hệ": "email", "Tin tức": "newspaper", "Giới thiệu": "info",
+        "Sản phẩm": "box", "Dịch vụ": "tools", "Contact": "email", "News": "newspaper",
+        "About Us": "info", "Đối tác": "handshake", "Đổi trả": "refund",
+        "会社概要": "info", "会社": "building", "关于我们": "info", "客户服务": "support"
+    }
+}

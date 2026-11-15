@@ -45,6 +45,9 @@ const ADMIN_BRAND_LITERAL_EXCEPTIONS = [
     // The author-avatar palette of the content list: six fixed category hues (Tailwind indigo-700,
     // pink-700…), one of which happens to equal a table colour. Not the brand; never follows it.
     'app/Modules/Admin/resources/views/livewire/entries/index.blade.php' => ['#4338ca'],
+    // The text-colour palette of the writing frame: fixed tones the author writes into the document
+    // (design 06), one of which happens to equal a table colour. Content, not the admin brand.
+    'app/Modules/Admin/resources/views/components/rich-editor.blade.php' => ['#2050a0'],
 ];
 
 /** The @theme declarations that hold the build-time default, by token => table field. */

@@ -145,7 +145,7 @@ function moRichHeader(): void
 /** The phone menu panel of a rendered page. */
 function moDrawer(string $html): string
 {
-    preg_match('~<nav class="sf-nav sf-nav--mob".*?</nav>~s', $html, $drawer);
+    preg_match('~<nav class="sf-nav sf-nav--mob[^"]*".*?</nav>~s', $html, $drawer);
 
     return $drawer[0] ?? '';
 }
@@ -200,4 +200,46 @@ it('marks device-only items and draws badges and button-style links in the heade
         ->toMatch('~<li class="[^"]*sf-only-mob[^"]*">\s*<a[^>]*>\s*(?:<span>)?Chỉ điện thoại~u')
         ->toContain('sf-nav__link--cta')
         ->toContain('<span class="sf-menu__badge">Giảm giá</span>');
+});
+
+it('picks an automatic icon for top-level rows only, never over an own icon, a turned-off icon or a button row', function (): void {
+    moIn(function (): void {
+        $menu = moMenu('Menu chính', 'primary');
+        $parent = moItem($menu, 'Tin tức');
+        moItem($menu, 'Giới thiệu', [], $parent);
+        moItem($menu, 'Sản phẩm', ['meta' => ['icon' => 'box']]);
+        moItem($menu, 'Liên hệ', ['meta' => ['icon' => 'none']]);
+        moItem($menu, 'Khuyến mãi', ['meta' => ['cta' => true]]);
+        moItem($menu, 'Xyzzy');
+        moItem($menu, 'Bất kỳ', ['link_type' => 'dynamic', 'dynamic_key' => 'home', 'url' => null]);
+    });
+
+    $nodes = moResolve();
+    $by = fn (string $label): array => collect($nodes)->firstWhere('label', $label);
+
+    expect($by('Tin tức')['auto_icon'])->toBe('newspaper')
+        ->and($by('Tin tức')['icon'])->toBeNull()
+        ->and($by('Tin tức')['children'][0]['auto_icon'])->toBeNull()
+        ->and($by('Sản phẩm')['icon'])->toBe('box')->and($by('Sản phẩm')['auto_icon'])->toBeNull()
+        ->and($by('Liên hệ')['icon'])->toBeNull()->and($by('Liên hệ')['auto_icon'])->toBeNull()
+        ->and($by('Khuyến mãi')['auto_icon'])->toBeNull()
+        ->and($by('Xyzzy')['auto_icon'])->toBeNull()
+        ->and($by('Bất kỳ')['auto_icon'])->toBe('home');
+});
+
+it('draws the automatic icon in the phone drawer and not in the desktop bar', function (): void {
+    moRichHeader();
+    moIn(function (): void {
+        $menu = moMenu('Menu chính', 'primary');
+        moItem($menu, 'Tin tức');
+        moItem($menu, 'Giới thiệu', ['meta' => ['icon' => 'none']]);
+    });
+
+    $html = $this->get('http://a.test/')->assertOk()->getContent();
+    $drawer = moDrawer($html);
+
+    expect($drawer)->toContain('sf-nav--icons')
+        ->toMatch('~<a[^>]*class="sf-nav__link[^"]*"[^>]*>\\s*<svg class="sf-icon sf-nav__ic"[^>]*>.*?</svg><span class="sf-nav__t">Tin tức</span>~s')
+        ->toMatch('~<a[^>]*class="sf-nav__link[^"]*"[^>]*>\\s*<span class="sf-nav__t">Giới thiệu</span>~s')
+        ->and(moDesk($html))->toContain('Tin tức')->not->toContain('<svg');
 });

@@ -12,6 +12,8 @@ use App\Modules\Admin\Support\GeneralSettingsStore;
  *   settings     — site_settings rows [group, key]; a reset deletes them, so the defaults apply;
  *   profile      — site_profiles columns → the value a reset writes (the column's default);
  *   translations — site_profile_translations columns a reset empties in every language;
+ *   keys         — single keys of a site_settings row [group, key, [names]]; a reset removes just those
+ *                  names and keeps the rest of the row (the row may hold other screens' values);
  *   brand_keys   — keys the older general.brand setting may still hold for this section (a reset
  *                  removes them, or the storefront would keep showing them).
  *
@@ -20,7 +22,7 @@ use App\Modules\Admin\Support\GeneralSettingsStore;
  */
 final class SettingsSections
 {
-    /** @var array<string, array{settings?: list<array{0: string, 1: string}>, profile?: array<string, mixed>, translations?: list<string>, brand_keys?: list<string>}> */
+    /** @var array<string, array{settings?: list<array{0: string, 1: string}>, profile?: array<string, mixed>, translations?: list<string>, keys?: list<array{0: string, 1: string, 2: list<string>}>, brand_keys?: list<string>}> */
     public const array SECTIONS = [
         'general' => [
             'settings' => [['general', 'timezone'], ['general', 'date_format']],
@@ -38,8 +40,10 @@ final class SettingsSections
             'profile' => ['logo_media_id' => null, 'logo_dark_media_id' => null, 'favicon_media_id' => null, 'og_image_media_id' => null],
             'brand_keys' => ['logo', 'favicon', 'og_image'],
         ],
-        // "Giao diện website": the logo, its dark twin and the favicon (the share image belongs to "seo").
+        // "Giao diện website": the logo, its dark twin and the favicon (the share image belongs to "seo"), and the
+        // phone menu's tone and accent, two keys of the header setting (the rest of the header is other screens').
         'appearance' => [
+            'keys' => [['storefront', 'header', ['drawer_tone', 'drawer_accent']]],
             'profile' => ['logo_media_id' => null, 'logo_dark_media_id' => null, 'favicon_media_id' => null],
             'brand_keys' => ['logo', 'favicon'],
         ],
@@ -54,7 +58,7 @@ final class SettingsSections
     public const array MEDIA_COLUMNS = ['logo_media_id', 'logo_dark_media_id', 'favicon_media_id', 'og_image_media_id'];
 
     /**
-     * @return array{settings: list<array{0: string, 1: string}>, profile: array<string, mixed>, translations: list<string>, brand_keys: list<string>}
+     * @return array{settings: list<array{0: string, 1: string}>, profile: array<string, mixed>, translations: list<string>, keys: list<array{0: string, 1: string, 2: list<string>}>, brand_keys: list<string>}
      *
      * @throws SettingsChangeRejected
      */
@@ -66,6 +70,7 @@ final class SettingsSections
             'settings' => $definition['settings'] ?? [],
             'profile' => $definition['profile'] ?? [],
             'translations' => $definition['translations'] ?? [],
+            'keys' => $definition['keys'] ?? [],
             'brand_keys' => $definition['brand_keys'] ?? [],
         ];
     }
