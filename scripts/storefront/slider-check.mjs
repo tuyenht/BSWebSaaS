@@ -226,6 +226,143 @@ for (const type of ['pointerdown', 'wheel', 'touchstart']) {
     check('ArrowRight on a control moves to the next slide', s.active() === 1);
 }
 
+// A looping rail (the copies of the cards and the jump back onto the real cards), on a small layout model:
+// each displayed item is 200px wide with no gap in a 300px row, so four cards are one 800px copy and the
+// real cards start at scrollLeft 800. A copy is displayed only while its row has .is-loop (sf-rail.css).
+// A row settles on scrollend; `ends: false` removes the event, as in a browser without it, and the row then
+// settles after a quiet 150 ms.
+async function mountLoop({ loop = '', grid = false, ends = true } = {}) {
+    const cards = [1, 2, 3, 4].map((n) => `<li><a href="/the-${n}" id="card-${n}">Thẻ ${n}</a></li>`).join('');
+    const dom = new JSDOM(`<!doctype html><body><div class="sf-rail" data-sf-rail data-interval="0" data-mobile="swipe" data-arrows="auto"${loop}>
+<ul class="sf-rail__list${grid ? ' sf-rail__list--grid' : ''}">${cards}</ul>
+<div class="sf-rail__controls" hidden><button type="button" data-sf-rail-prev hidden></button><span data-sf-rail-dots hidden></span><button type="button" data-sf-rail-next hidden></button></div></div></body>`);
+    const { window } = dom;
+    if (!ends) {
+        for (let o = window; o && 'onscrollend' in o; o = Object.getPrototypeOf(o)) {
+            delete o.onscrollend;
+        }
+    }
+    const W = 200;
+    const isList = (el) => el.classList?.contains('sf-rail__list');
+    const shown = (el) => !(el.hasAttribute('data-sf-copy') && !el.parentElement.classList.contains('is-loop'));
+    const row = (list) => [...list.children].filter(shown);
+    const left = new WeakMap();
+    const proto = window.HTMLElement.prototype;
+    const getter = (name, get) => Object.defineProperty(proto, name, { configurable: true, get });
+    getter('offsetWidth', function () {
+        return isList(this.parentElement) && shown(this) ? W : 0;
+    });
+    getter('offsetLeft', function () {
+        return isList(this.parentElement) ? Math.max(0, row(this.parentElement).indexOf(this)) * W : 0;
+    });
+    getter('clientWidth', function () {
+        return isList(this) ? 300 : 0;
+    });
+    getter('scrollWidth', function () {
+        return isList(this) ? row(this).length * W : 0;
+    });
+    Object.defineProperty(proto, 'scrollLeft', {
+        configurable: true,
+        get() {
+            return left.get(this) ?? 0;
+        },
+        set(v) {
+            left.set(this, Math.max(0, Math.min(v, this.scrollWidth - this.clientWidth)));
+        },
+    });
+    const end = (el) => ends && el.dispatchEvent(new window.Event('scrollend'));
+    proto.scrollTo = function scrollTo({ left: to }) {
+        this.scrollLeft = to;
+        this.dispatchEvent(new window.Event('scroll'));
+        end(this);
+    };
+    proto.getBoundingClientRect = function rect() {
+        const x = isList(this.parentElement) ? this.offsetLeft - this.parentElement.scrollLeft : 0;
+        return { left: x, right: x + this.offsetWidth, top: 0, bottom: 0, width: this.offsetWidth, height: 0 };
+    };
+    const css = window.getComputedStyle.bind(window);
+    window.getComputedStyle = (el) => (isList(el) ? { overflowX: el.classList.contains('sf-rail__list--grid') ? 'visible' : 'auto' } : css(el));
+    window.matchMedia = () => ({ matches: false, addEventListener: () => {} });
+    let now = 0;
+    let seq = 0;
+    const queue = new Map();
+    globalThis.window = window;
+    globalThis.document = window.document;
+    globalThis.getComputedStyle = window.getComputedStyle;
+    globalThis.setTimeout = (fn, ms) => {
+        queue.set(++seq, { at: now + ms, fn });
+        return seq;
+    };
+    globalThis.clearTimeout = (id) => queue.delete(id);
+    await import(`${script}?run=${++run}`);
+    const tick = (ms) => {
+        const end = now + ms;
+        for (;;) {
+            const due = [...queue].filter(([, t]) => t.at <= end).sort((a, b) => a[1].at - b[1].at)[0];
+            if (!due) {
+                break;
+            }
+            queue.delete(due[0]);
+            now = due[1].at;
+            due[1].fn();
+        }
+        now = end;
+    };
+    const track = window.document.querySelector('.sf-rail__list');
+    // A swipe that ends at `to`: the scroll, then (where the browser has it) scrollend.
+    const scrollBy = (to) => {
+        track.scrollLeft = to;
+        track.dispatchEvent(new window.Event('scroll'));
+        end(track);
+    };
+    return { window, doc: window.document, track, tick, scrollBy };
+}
+for (const ends of [true, false]) {
+    const s = await mountLoop({ ends });
+    const way = ends ? 'scrollend' : 'no scrollend';
+    s.tick(1000);
+    check(`loop (${way}): nothing is copied before the visitor is here`, s.doc.querySelectorAll('[data-sf-copy]').length === 0 && s.track.scrollLeft === 0);
+    s.window.dispatchEvent(new s.window.Event('pointermove'));
+    s.tick(100);
+    const copies = [...s.doc.querySelectorAll('[data-sf-copy]')];
+    check(`loop (${way}): a copy of the cards before and after them once the visitor is here`, copies.length === 8 && s.track.classList.contains('is-loop'));
+    check(`loop (${way}): the copies are hidden from screen readers, skipped by Tab and carry no id`, copies.every((c) => c.getAttribute('aria-hidden') === 'true') && [...s.doc.querySelectorAll('[data-sf-copy] a')].every((a) => a.getAttribute('tabindex') === '-1') && s.doc.querySelectorAll('[data-sf-copy] [id], [data-sf-copy][id]').length === 0);
+    check(`loop (${way}): the view stays on the first real card`, s.track.scrollLeft === 800);
+    s.scrollBy(1600);
+    s.tick(200);
+    check(`loop (${way}): a swipe past the last card settles on the first real card`, s.track.scrollLeft === 800);
+    s.scrollBy(400);
+    s.tick(200);
+    check(`loop (${way}): a swipe back past the first card settles on the same view of the real cards`, s.track.scrollLeft === 1200);
+    // The row's settle comes while the finger is still on it (a rotation ending under a resting finger).
+    s.track.dispatchEvent(new s.window.Event('touchstart'));
+    s.scrollBy(1800);
+    s.tick(400);
+    check(`loop (${way}): no jump while a finger is on the row`, s.track.scrollLeft === 1800);
+    s.track.dispatchEvent(new s.window.Event('touchend'));
+    s.tick(400);
+    check(`loop (${way}): the jump comes once the finger lifts and the row settles`, s.track.scrollLeft === 1000);
+    s.scrollBy(800);
+    s.doc.querySelector('[data-sf-rail-prev]').click();
+    s.tick(200);
+    check(`loop (${way}): Prev on the first card runs on to the last real card`, s.track.scrollLeft === 1400);
+    s.doc.querySelector('[data-sf-rail-next]').click();
+    s.tick(200);
+    check(`loop (${way}): Next on the last card runs on to the first real card`, s.track.scrollLeft === 800);
+}
+{
+    const s = await mountLoop({ loop: ' data-loop="off"' });
+    s.window.dispatchEvent(new s.window.Event('pointermove'));
+    s.tick(100);
+    check('loop off: no copies, the row stops at its ends', s.doc.querySelectorAll('[data-sf-copy]').length === 0 && !s.track.classList.contains('is-loop'));
+}
+{
+    const s = await mountLoop({ grid: true });
+    s.window.dispatchEvent(new s.window.Event('pointermove'));
+    s.tick(100);
+    check('loop: a grid that does not scroll gets no copies', s.doc.querySelectorAll('[data-sf-copy]').length === 0);
+}
+
 if (failures.length > 0) {
     console.error(`slider-check: ${failures.length} failed`);
     process.exit(1);

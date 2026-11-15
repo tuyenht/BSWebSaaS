@@ -161,7 +161,9 @@ const copy = (item) => {
     c.setAttribute('data-sf-copy', '');
     c.setAttribute('aria-hidden', 'true');
     [c, ...c.querySelectorAll('[id]')].forEach((el) => el.removeAttribute('id'));
-    c.querySelectorAll('a[href], button, input, select, textarea, [tabindex]').forEach((el) => el.setAttribute('tabindex', '-1'));
+    c.querySelectorAll('a[href], area[href], button, input, select, textarea, summary, iframe, video[controls], audio[controls], [contenteditable], [tabindex]').forEach((el) =>
+        el.setAttribute('tabindex', '-1'),
+    );
     return c;
 };
 
@@ -184,6 +186,9 @@ function initRail(root) {
     let timer = 0;
     let holdTimer = 0;
     let settleTimer = 0;
+    // A settle that came while a finger was on the row (skipped) and a quiet-time settle still to come.
+    let skipped = false;
+    let pending = false;
     let pages = 0;
     // Whether the row overflows, measured by sync() (every layout read happens there, before its writes),
     // so schedule() never forces a layout of its own right after the dots were drawn.
@@ -202,7 +207,9 @@ function initRail(root) {
     const step = () => (items.length > 1 ? items[1].offsetLeft - items[0].offsetLeft : track.clientWidth);
     // A settled scroll on a copy jumps to the same view on the real cards (never under a finger).
     const home = () => {
-        if (loop && !touching) {
+        if (loop && touching) {
+            skipped = true;
+        } else if (loop) {
             const left = loopHome(track.scrollLeft, period);
             if (left !== track.scrollLeft) {
                 track.scrollTo({ left, behavior: 'instant' });
@@ -244,20 +251,41 @@ function initRail(root) {
         over = loop ? span > track.clientWidth + 1 : overflows();
         const show = over && mode !== 'none';
         const scrolls = over && span > 0 && getComputedStyle(track).overflowX !== 'visible';
-        const loops = present && scrolls && root.dataset.loop !== 'off';
+        // Never switched under a finger: lift() syncs again once it is off the row.
+        const loops = touching ? loop : present && scrolls && root.dataset.loop !== 'off';
         // Where the view stands on the real cards when the loop turns on (the copies are hidden until then).
         const x = loops && !loop && scrolled ? track.scrollLeft : 0;
         scrolled = scrolls;
+        // A loop that stays on across a change of width (a phone turned, a window resized) has a new copy
+        // width: it is measured again, with the real card now nearest the row's start (the browser keeps
+        // the snapped card in view), so fix() can put that card back at the start of the real cards.
+        let re = null;
+        if (loop && loops) {
+            const p = first.getBoundingClientRect().left - track.children[0].getBoundingClientRect().left;
+            if (Math.abs(p - period) > 1) {
+                const edge = track.getBoundingClientRect().left;
+                let best = Infinity;
+                re = { p, k: 0 };
+                [...track.children].forEach((child, i) => {
+                    const d = Math.abs(child.getBoundingClientRect().left - edge);
+                    if (d < best) {
+                        best = d;
+                        re.k = i % items.length;
+                    }
+                });
+            }
+        }
         const width = loops ? span : track.scrollWidth;
         return {
             show,
             loops,
             x,
+            re,
             n: dotsBox && show ? railPages(track.clientWidth, width) : 0,
             on: dotsBox ? dot() : 0,
         };
     };
-    const apply = ({ show, loops, x, n, on }) => {
+    const apply = ({ show, loops, x, re, n, on }) => {
         [prev, next].forEach((btn) => btn && (btn.hidden = !show));
         if (dotsBox) {
             if (n !== pages) {
@@ -290,6 +318,14 @@ function initRail(root) {
                     light();
                 }
             };
+        } else if (re) {
+            fix = () => {
+                period = re.p;
+                track.scrollTo({ left: period + items[re.k].offsetLeft - items[0].offsetLeft, behavior: 'instant' });
+                if (dotsBox) {
+                    light();
+                }
+            };
         }
         schedule();
         return fix;
@@ -309,13 +345,25 @@ function initRail(root) {
     next?.addEventListener('click', () => move(1));
     track.addEventListener('pointerdown', (event) => event.pointerType !== 'mouse' && hold());
     // A finger on the row: no jump until it lifts and the row has settled (scrollend, or a quiet 150 ms
-    // where the browser has no scrollend event).
+    // where the browser has no scrollend event or a settle was skipped under the finger).
+    const settle = () => {
+        clearTimeout(settleTimer);
+        pending = true;
+        settleTimer = setTimeout(() => {
+            pending = false;
+            home();
+        }, 150);
+    };
     track.addEventListener('touchstart', () => (touching = true), { passive: true });
     const lift = () => {
         touching = false;
-        if (!settles) {
-            clearTimeout(settleTimer);
-            settleTimer = setTimeout(home, 150);
+        if (!settles || skipped) {
+            skipped = false;
+            settle();
+        }
+        // A loop the visitor's first touch could not switch on (the finger was on this row) starts now.
+        if (present && !loop) {
+            later();
         }
     };
     track.addEventListener('touchend', lift, { passive: true });
@@ -329,9 +377,8 @@ function initRail(root) {
             if (dotsBox) {
                 light();
             }
-            if (!settles && loop) {
-                clearTimeout(settleTimer);
-                settleTimer = setTimeout(home, 150);
+            if (loop && (!settles || pending)) {
+                settle();
             }
         },
         { passive: true },
@@ -356,31 +403,45 @@ function initRail(root) {
     });
     document.addEventListener('visibilitychange', schedule);
     let resized;
-    const later = () => {
+    function later() {
         clearTimeout(resized);
         resized = setTimeout(sync, 200);
-    };
-    window.addEventListener('resize', later);
+    }
+    // The row's own size: a window resize, a phone turned, and a row in a tab that was hidden at start
+    // (measured 0 wide) being shown. The first report is the size start-up already measured.
+    if (window.ResizeObserver) {
+        let seen = false;
+        new ResizeObserver(() => (seen ? later() : (seen = true))).observe(track);
+    } else {
+        window.addEventListener('resize', later);
+    }
     // A row can start to overflow once its lazy images or the web font arrive.
     track.addEventListener('load', later, true);
     document.fonts?.ready.then(later);
     phone.addEventListener?.('change', sync);
     reduce.addEventListener?.('change', sync);
-    return { measure, apply, controls };
+    return { measure, apply, controls, schedule, changes: (m) => m.loops !== loop || m.re !== null };
 }
 
 // Every rail's measure(), then every apply(), then every fix(): see measure() in initRail. Start-up also
 // reveals the controls; the visitor's arrival turns the loops on and starts the rotation.
 const rails = [...document.querySelectorAll('[data-sf-rail]')].map(initRail).filter(Boolean);
-const syncAll = (first = false) =>
+const syncAll = (first = false, changed = false) =>
     rails
-        .map((rail) => rail.measure())
-        .map((measured, i) => {
+        .map((rail) => [rail, rail.measure()])
+        .filter(([rail, measured]) => !changed || rail.changes(measured))
+        .map(([rail, measured]) => {
             if (first) {
-                rails[i].controls.hidden = false;
+                rail.controls.hidden = false;
             }
-            return rails[i].apply(measured);
+            return rail.apply(measured);
         })
         .forEach((fix) => fix?.());
 syncAll(true);
-whenPresent(syncAll);
+// The visitor's arrival starts the rotation at once; the loops (copies of the cards, a layout pass) wait
+// for an idle moment, so the first tap or key press is not held up by them.
+const soon = (fn) => (window.requestIdleCallback ? window.requestIdleCallback(fn, { timeout: 300 }) : setTimeout(fn, 50));
+whenPresent(() => {
+    rails.forEach((rail) => rail.schedule());
+    soon(() => syncAll(false, true));
+});
