@@ -55,3 +55,32 @@ it('draws a new icon in the desktop menu and in the phone drawer', function (): 
     expect($desktop)->toContain('<svg class="sf-icon" width="16" height="16"', 'stroke="currentColor"', '<path d="M15 21v-8', '<span>Trang chủ</span>')
         ->and($drawer)->toContain('sf-icon sf-nav__ic', 'width="20" height="20"', '<path d="M15 21v-8');
 });
+
+it('stores "no icon" apart from "not chosen", round-trips it through the screen and keeps refusing unknown names', function (): void {
+    $stored = MenuItemOptions::normalize([], ['icon' => 'none'], ['vi'], true, false, 'Asia/Ho_Chi_Minh');
+
+    expect($stored)->toBe(['icon' => 'none'])
+        ->and(MenuItemOptions::iconOff($stored))->toBeTrue()
+        ->and(MenuItemOptions::iconOff([]))->toBeFalse()
+        ->and(MenuItemOptions::iconOff(['icon' => 'home']))->toBeFalse()
+        ->and(MenuItemOptions::forScreen($stored)['icon'])->toBe('none')
+        ->and(MenuItemOptions::forScreen([])['icon'])->toBeNull()
+        ->and(MenuItemOptions::forRender($stored, 'vi', now())['icon'])->toBeNull()
+        ->and(fn () => MenuItemOptions::normalize([], ['icon' => 'bogus'], ['vi'], true, false, 'Asia/Ho_Chi_Minh'))->toThrow(MenuChangeRejectedException::class)
+        ->and(fn () => MenuItemOptions::normalize([], ['icon' => 'None'], ['vi'], true, false, 'Asia/Ho_Chi_Minh'))->toThrow(MenuChangeRejectedException::class);
+});
+
+it('draws the automatic icon in the phone drawer only, and lets the own icon and a call-to-action row win', function (): void {
+    $auto = ['label' => 'Tin tức', 'icon' => null, 'auto_icon' => 'newspaper'];
+
+    expect(StorefrontChrome::menuLabel($auto, false, true)->toHtml())->toContain('sf-icon sf-nav__ic')
+        ->and(StorefrontChrome::menuLabel($auto)->toHtml())->toBe('Tin tức')
+        ->and(StorefrontChrome::menuLabel(['label' => 'A', 'icon' => 'home', 'auto_icon' => 'newspaper'], false, true)->toHtml())->toContain('M15 21v-8')->not->toContain('M15 18h-5')
+        ->and(StorefrontChrome::drawerHasIcons([$auto]))->toBeTrue()
+        ->and(StorefrontChrome::drawerHasIcons([['label' => 'A', 'auto_icon' => 'newspaper', 'cta' => true]]))->toBeFalse()
+        ->and(StorefrontChrome::drawerHasIcons([['label' => 'A', 'icon' => null, 'auto_icon' => null]]))->toBeFalse()
+        ->and(StorefrontChrome::drawerHasIcons([['label' => 'A', 'auto_icon' => 'no-such-icon']]))->toBeFalse()
+        ->and(StorefrontChrome::menuIcon($auto))->toBeNull()
+        ->and(StorefrontChrome::menuIcon($auto, true))->toBe('newspaper')
+        ->and((string) StorefrontChrome::menuLabel(['label' => 'Tin tức'], false, true))->not->toContain('sf-icon');
+});

@@ -38,6 +38,9 @@ final class MenuItemOptions
     /** Columns of a large panel built from the item's children. The block-built panel waits for the block library. */
     public const array MEGA_COLUMNS = [2, 3, 4];
 
+    /** The stored icon value for "no icon, not even an automatic one" (the phone menu picks an icon by itself when none is chosen). */
+    public const string ICON_OFF = 'none';
+
     /** The stored keys this class owns. */
     private const array OWNED = ['target', 'hidden', 'icon', 'description', 'cta', 'mega', 'badge', 'badge_until', 'device'];
 
@@ -70,7 +73,7 @@ final class MenuItemOptions
 
         $icon = $options['icon'] ?? null;
         if ($icon !== null && $icon !== '') {
-            if (! is_string($icon) || ! StorefrontIcons::has($icon)) {
+            if (! is_string($icon) || ($icon !== self::ICON_OFF && ! StorefrontIcons::has($icon))) {
                 throw new MenuChangeRejectedException('option_invalid');
             }
             $meta['icon'] = $icon;
@@ -149,7 +152,7 @@ final class MenuItemOptions
         return [
             'hidden' => ($meta['hidden'] ?? false) === true,
             'new_tab' => ($meta['target'] ?? null) === '_blank',
-            'icon' => is_string($meta['icon'] ?? null) && StorefrontIcons::has($meta['icon']) ? $meta['icon'] : null,
+            'icon' => self::iconOff($meta) ? self::ICON_OFF : (is_string($meta['icon'] ?? null) && StorefrontIcons::has($meta['icon']) ? $meta['icon'] : null),
             'description' => self::storedDescriptions($meta),
             'cta' => ($meta['cta'] ?? false) === true,
             'mega' => $mega,
@@ -181,13 +184,23 @@ final class MenuItemOptions
         }
 
         return [
-            'icon' => $screen['icon'],
+            'icon' => $screen['icon'] === self::ICON_OFF ? null : $screen['icon'],
             'description' => $screen['description'][$locale] ?? null,
             'cta' => $screen['cta'],
             'mega' => $screen['mega']['columns'] ?? null,
             'badge' => $badge['kind'] ?? null,
             'device' => $screen['device'],
         ];
+    }
+
+    /**
+     * Whether the editor turned the icon off ("Không biểu tượng"): a different thing from not having chosen one.
+     *
+     * @param  array<string, mixed>  $meta
+     */
+    public static function iconOff(array $meta): bool
+    {
+        return ($meta['icon'] ?? null) === self::ICON_OFF;
     }
 
     /** @param array<string, mixed> $options */

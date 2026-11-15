@@ -542,7 +542,7 @@ it('does not repeat the product groups in the Menu tab: the Sản phẩm item st
 
     [$pane, $desk] = dpMenuPanes($this->get('http://sp.platform.test/gioi-thieu')->assertOk()->getContent());
 
-    expect($pane)->toMatch('#<a class="sf-nav__link[^"]*" href="/san-pham"[^>]*>\s*(?:<span class="sf-nav__t">)?Sản phẩm#u')
+    expect($pane)->toMatch('#<a class="sf-nav__link[^"]*" href="/san-pham"[^>]*>\s*(?:<svg class="sf-icon sf-nav__ic"[^>]*>(?:(?!</svg>).)*</svg>)?(?:<span class="sf-nav__t">)?Sản phẩm#su')
         ->not->toContain('Nhóm jig')->not->toContain('Nhóm khuôn')
         ->toContain('Lịch sử')                                    // an unrelated parent keeps its children
         ->and($desk)->toContain('Nhóm jig')->toContain('Nhóm khuôn')->toContain('Lịch sử');   // the desktop menu is untouched
@@ -556,7 +556,7 @@ it('turns a "#" item whose children are all product groups into a link to the pr
 
     [$pane, $desk] = dpMenuPanes($this->get('http://sp.platform.test/gioi-thieu')->assertOk()->getContent());
 
-    expect($pane)->toMatch('#<a class="sf-nav__link[^"]*" href="/san-pham"[^>]*>\s*(?:<span class="sf-nav__t">)?Hàng của chúng tôi#u')
+    expect($pane)->toMatch('#<a class="sf-nav__link[^"]*" href="/san-pham"[^>]*>\s*(?:<svg class="sf-icon sf-nav__ic"[^>]*>(?:(?!</svg>).)*</svg>)?(?:<span class="sf-nav__t">)?Hàng của chúng tôi#su')
         ->not->toContain('Nhóm jig')->not->toContain('aria-expanded')
         ->and($desk)->toContain('Nhóm jig');
 });
@@ -674,10 +674,10 @@ it('starts a parent’s panel with “Tổng quan” for its own page, current w
     preg_match('#<nav class="sf-nav sf-nav--desk".*?</nav>#s', $html, $desk);
 
     expect($drawer)
-        ->toMatch('#<button type="button" class="sf-nav__link sf-nav__toggle is-trail" aria-current="true" aria-expanded="true" aria-controls="msm-0"><span class="sf-nav__t">Giới thiệu</span>#')
+        ->toMatch('#<button type="button" class="sf-nav__link sf-nav__toggle is-trail" aria-current="true" aria-expanded="true" aria-controls="msm-0">(?:<svg class="sf-icon sf-nav__ic"[^>]*>(?:(?!</svg>).)*</svg>)?<span class="sf-nav__t">Giới thiệu</span>#s')
         ->toMatch('#<div class="sf-nav__panel" id="msm-0">\s*<ul class="sf-nav__list sf-nav__nested">\s*<li class="sf-nav__item"><a class="sf-nav__sublink" href="/gioi-thieu" aria-current="page"\s*><span class="sf-nav__t">Tổng quan Giới thiệu</span></a></li>#')
         ->not->toContain('Tổng quan Dịch vụ')->not->toContain('Tổng quan Năng lực')
-        ->toMatch('#<button type="button" class="sf-nav__link sf-nav__toggle" aria-expanded="false" aria-controls="msm-1"><span class="sf-nav__t">Dịch vụ</span>#')
+        ->toMatch('#<button type="button" class="sf-nav__link sf-nav__toggle" aria-expanded="false" aria-controls="msm-1">(?:<svg class="sf-icon sf-nav__ic"[^>]*>(?:(?!</svg>).)*</svg>)?<span class="sf-nav__t">Dịch vụ</span>#s')
         ->and(substr_count($drawer, 'aria-current="page"'))->toBe(1)       // one current row per tab
         ->and($drawer)->not->toContain('sf-nav__chev')                       // no split link + chevron in the drawer
         ->and($desk[0] ?? '')->not->toContain('Tổng quan')->toContain('sf-nav__chev');   // the desktop bar keeps its link and chevron
