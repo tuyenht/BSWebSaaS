@@ -141,6 +141,15 @@ export function suggestIconOf(groups, label) {
     return best;
 }
 
+// The icon each special link kind has by itself (the phone menu picks the same: MenuIconGuess::KIND).
+const KIND_ICON = { home: 'home', search: 'search', cart: 'cart', account: 'user', login: 'user', call: 'phone', zalo: 'zalo', mail: 'email', map: 'map', sitemap: 'sitemap' };
+
+// The icon the phone menu would draw by itself for a row with none chosen, or '': the link kind first
+// (a special link), then the words of its name (suggestIconOf). Nothing for the rest.
+export function autoIconOf(groups, link, label) {
+    return (link && link.type === 'special' && KIND_ICON[link.key]) || suggestIconOf(groups, label);
+}
+
 // The rows that point at something no longer there (the source was deleted for good), in order.
 // A source in the trash or not published yet is not one: it can come back.
 export function goneKeysOf(items) {
@@ -1392,6 +1401,26 @@ if (typeof window !== 'undefined' && window.Alpine) {
                 return new Set(cfg.icons.flatMap((g) => g.icons.map((ic) => ic.name))).size;
             },
             // The icon guessed from the item's name (nothing for one that has an icon already).
+            // The icon chosen for the item, or '' (none, or "Không biểu tượng": 'none' is a setting, not an icon).
+            ico(it) {
+                return it.options.icon && it.options.icon !== 'none' ? it.options.icon : '';
+            },
+            // The icon the phone menu draws by itself for the item (what "Tự động" stands for), or ''.
+            autoIcon(it) {
+                return autoIconOf(cfg.icons, it.link, this.label(it) || this.label(it, cfg.main) || this.fallbackName(it));
+            },
+            // The main icon button: which icon, which words, which hint.
+            iconBtn(it) {
+                const off = it.options.icon === 'none';
+                const own = this.ico(it);
+                return {
+                    off,
+                    own,
+                    auto: own || off ? '' : this.autoIcon(it),
+                    label: off ? t.iconOff : (own ? t.iconChange : t.iconAuto),
+                    title: off ? t.iconOffTip : (own ? t.iconChangeTip : t.iconAutoTip),
+                };
+            },
             iconTip(it) {
                 return it.options.icon ? '' : suggestIconOf(cfg.icons, this.label(it) || this.label(it, cfg.main) || this.fallbackName(it));
             },

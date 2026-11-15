@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { buildDraft, goneKeysOf, goneSpanOf, iconGroupsOf, suggestIconOf, treeRowsOf } from '../../resources/js/admin-menus.js';
+import { buildDraft, goneKeysOf, goneSpanOf, iconGroupsOf, autoIconOf, suggestIconOf, treeRowsOf } from '../../resources/js/admin-menus.js';
 
 const opts = (more = {}) => ({ hidden: false, new_tab: false, icon: null, description: {}, cta: false, mega: null, badge: null, device: 'all', ...more });
 const row = (key, parent, labels, more = {}) => ({ key, parent, link: { type: 'url', url: '/' + key }, labels, options: opts(more) });
@@ -174,4 +174,13 @@ test('the suggestion reads the real Vietnamese search words as whole words, not 
     for (const [label, icon] of Object.entries(expected)) {
         assert.equal(suggestIconOf(real, label), icon, label);
     }
+});
+
+test('the icon the phone menu picks by itself follows the link kind first, then the words of the name', () => {
+    assert.equal(autoIconOf(worded, { type: 'special', key: 'cart' }, 'Nhà máy'), 'cart');
+    assert.equal(autoIconOf(worded, { type: 'special', key: 'account' }, 'Nhà máy'), 'user');
+    assert.equal(autoIconOf(worded, { type: 'special', key: 'group' }, 'Nhà máy'), 'factory');
+    assert.equal(autoIconOf(worded, { type: 'url', url: 'https://x.test' }, 'Nhà máy'), 'factory');
+    assert.equal(autoIconOf(worded, { type: 'entry', ref: 'x' }, 'In ấn'), '');
+    assert.equal(autoIconOf(worded, null, ''), '');
 });

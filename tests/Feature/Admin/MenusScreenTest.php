@@ -594,3 +594,26 @@ it('wires every call the screen script makes to a public method of the component
         expect((new ReflectionMethod(MenusIndex::class, $method))->isPublic())->toBeTrue();
     }
 });
+
+it('saves "no icon" for an item through the screen and gives it back as it was chosen', function (): void {
+    $menu = msIn(1, fn () => app(SaveMenu::class)->handle(null, 'Menu chính'));
+    $loaded = msCall($this->editor, 'load', $menu->ulid);
+    $saved = msCall($this->editor, 'saveDraft', $menu->ulid, [
+        'version' => $loaded['menu']['version'],
+        'tree' => [['key' => 'new:1', 'parent' => null]],
+        'creates' => [['key' => 'new:1', 'link' => ['type' => 'special', 'key' => 'home'], 'labels' => ['vi' => 'Trang chủ'], 'options' => ['icon' => 'none']]],
+    ]);
+    expect($saved['ok'])->toBeTrue();
+
+    $key = $saved['keys']['new:1'];
+    $row = fn (array $screen): array => collect($screen['menu']['items'])->firstWhere('key', $key);
+    $reloaded = msCall($this->editor, 'load', $menu->ulid);
+    expect($row($reloaded)['options']['icon'])->toBe('none');
+
+    $unset = msCall($this->editor, 'saveDraft', $menu->ulid, ['version' => $reloaded['menu']['version'], 'tree' => [['key' => $key, 'parent' => null]], 'updates' => [['key' => $key, 'options' => ['icon' => null]]]]);
+    expect($unset['ok'])->toBeTrue()
+        ->and($row(msCall($this->editor, 'load', $menu->ulid))['options']['icon'])->toBeNull();
+
+    $bad = msCall($this->editor, 'saveDraft', $menu->ulid, ['version' => $unset['version'], 'tree' => [['key' => $key, 'parent' => null]], 'updates' => [['key' => $key, 'options' => ['icon' => 'bogus']]]]);
+    expect($bad)->toMatchArray(['ok' => false, 'reason' => 'option_invalid']);
+});

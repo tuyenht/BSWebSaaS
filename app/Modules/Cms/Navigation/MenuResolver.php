@@ -42,7 +42,7 @@ final readonly class MenuResolver
 
     /**
      * @param  array<string, mixed>  $contact  the site's details in the page's language (SiteIdentity::for), for the special links
-     * @return list<array<string, mixed>> nodes: {label, url, active, attrs, icon, description, cta, mega, badge, device, children}
+     * @return list<array<string, mixed>> nodes: {label, url, active, attrs, icon, auto_icon, description, cta, mega, badge, device, children}
      */
     public function resolve(string $region, string $locale, string $defaultLocale, string $currentPath = '/', array $contact = []): array
     {
@@ -375,12 +375,18 @@ final readonly class MenuResolver
                 continue;   // no usable label → omit
             }
 
+            $options = MenuItemOptions::forRender($item->meta ?? [], $locale, $now);
             $nodes[] = [
                 'label' => $label,
                 'url' => $url,
                 'active' => $here !== null && MenuPath::normalize($url, $host) === $here,
                 'attrs' => $this->attrs($item),
-                ...MenuItemOptions::forRender($item->meta ?? [], $locale, $now),
+                ...$options,
+                // Only the phone menu draws it, on top-level rows: the icon it picks for a row whose editor chose none
+                // (and did not turn icons off), from the link kind, else the label's words.
+                'auto_icon' => $depth === 0 && $options['icon'] === null && ! $options['cta'] && ! MenuItemOptions::iconOff($item->meta ?? [])
+                    ? MenuIconGuess::for($item->link_type, $item->dynamic_key, $label)
+                    : null,
                 'children' => $this->buildTree($items, $item->id, $locale, $here, $host, $urls, $titles, $depth + 1, $now),
             ];
         }
