@@ -491,7 +491,10 @@ it('turns the footer\'s factory cards into a one-card chooser only when there ar
         ->and($two)->toContain('aria-label="Nhà máy trước"')->toContain('aria-label="Nhà máy tiếp theo"')
         ->toContain('sf-footer-rot')
         // the first dot is the current one before any script runs
-        ->and(preg_match('~data-sf-rot-go aria-label="Nhà máy 1" aria-current="true"~', $two))->toBe(1);
+        ->and(preg_match('~data-sf-rot-go aria-label="Nhà máy 1" aria-current="true"~', $two))->toBe(1)
+        // the dots are one row of their own between the two arrows, so the arrows can float over the card's
+        // edges while the dots stay under it
+        ->and(preg_match('~data-sf-rot-prev.*?<span class="sf-rot__dots">\s*(?:<button type="button" class="sf-rot__go"[^>]*>.*?</button>\s*){2}</span>\s*<button type="button" class="sf-rot__arrow" data-sf-rot-next~s', $two))->toBe(1);
 
     $one = $footerHtml(sfcFooter(['factories' => [['title' => ['vi' => 'Nhà máy 1'], 'address' => 'Lô A1']]]));
     expect($one)->toContain('sf-footer__factories')->not->toContain('data-sf-rot-nav')->not->toContain('sf-footer-rot');

@@ -124,7 +124,7 @@
                     </ul>
                 </div>
                 @if ($footer['factories'] !== [])
-                    {{-- The cards and their turning controls share one box: on a phone the arrows stand on the card's edges, halfway down. --}}
+                    {{-- The cards and their turning controls share one box: below 1024px the arrows float over the card's left and right edges, halfway down it, and the dots sit alone in a row under it. --}}
                     <div class="sf-rot">
                     {{-- A factory's name sits under the company name (h2) when the site gives one; without it the name is an h2 itself, so the footer never skips a heading level after a page whose last heading is its h1. --}}
                     @php($sfFactoryTag = $sfLegal !== null ? 'h3' : 'h2')
@@ -162,9 +162,11 @@
                     @if (count($footer['factories']) > 1)
                         <div class="sf-rot__nav" data-sf-rot-nav hidden>
                             <button type="button" class="sf-rot__arrow" data-sf-rot-prev aria-label="{{ __('storefront.factory_prev') }}">@include('theme::partials.sf-icon', ['name' => 'chevron-left', 'size' => 16])</button>
-                            @foreach ($footer['factories'] as $factory)
-                                <button type="button" class="sf-rot__go" data-sf-rot-go aria-label="{{ $factory['title'] }}"@if ($loop->first) aria-current="true"@endif><span class="sf-rot__dot"></span></button>
-                            @endforeach
+                            <span class="sf-rot__dots">
+                                @foreach ($footer['factories'] as $factory)
+                                    <button type="button" class="sf-rot__go" data-sf-rot-go aria-label="{{ $factory['title'] }}"@if ($loop->first) aria-current="true"@endif><span class="sf-rot__dot"></span></button>
+                                @endforeach
+                            </span>
                             <button type="button" class="sf-rot__arrow" data-sf-rot-next aria-label="{{ __('storefront.factory_next') }}">@include('theme::partials.sf-icon', ['name' => 'chevron-right', 'size' => 16])</button>
                         </div>
                         @vite(['resources/js/sf-footer-rot.js'])
