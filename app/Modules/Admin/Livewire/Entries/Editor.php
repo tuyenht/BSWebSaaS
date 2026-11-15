@@ -3,6 +3,10 @@
 namespace App\Modules\Admin\Livewire\Entries;
 
 use App\Modules\Admin\Livewire\Concerns\EditsButtonActions;
+use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
+use App\Modules\Admin\Support\BlockKinds;
+use App\Modules\Admin\Support\EntryProseBody;
+use App\Modules\Admin\Support\Locales;
 use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Catalog\Components\ProductGridComponent;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
@@ -64,14 +68,18 @@ use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
- * The content editor: a block-list builder over the shared ComponentRegistry (add /
- * reorder / remove / edit props). It serves both entry types — a `page` (flat URL) and
- * a `post` (URL prefixed by its primary category, so posts need a category picker). The
- * type is resolved server-side (from the content_section on create, from the entry on
- * edit) and #[Locked] so the client can't flip it. Save persists a draft + its Page-JSON
- * body (validated against the registry allow-list — ValidPageJson, D1: posts reuse the
- * block-list); Publish runs the Tầng-1 workflow (PublishEntry). Every mutation authorizes
- * through EntryPolicy. The entry is addressed by ulid, never its raw id.
+ * The content editor for both entry types — a `page` (flat URL) and a `post` (URL prefixed by
+ * its primary category, so posts need a category picker). The type is resolved server-side
+ * (from the content_section on create, from the entry on edit) and #[Locked] so the client
+ * can't flip it. One body, two editors (ADR-19, EntryProseBody): a body that is empty, ONE
+ * formatted-text block or only older plain-text blocks is written in the rich editor
+ * («Soạn thảo», `bodyHtml`; plain-text blocks are converted when it opens, and the first save
+ * keeps a revision of the old body); any other body is a page layout edited block by block over
+ * the shared ComponentRegistry («Trình dựng»: add / reorder / remove / edit props). Save
+ * persists a draft + its Page-JSON body (validated against the registry allow-list —
+ * ValidPageJson; every html prop sanitized by the body's cast); Publish runs the Tầng-1
+ * workflow (PublishEntry). Every mutation authorizes through EntryPolicy. The entry is
+ * addressed by ulid, never its raw id.
  *
  * Where an ACTIVE workflow governs the post's section (design.md §15.4 tier-2), the Publish
  * button gives way to the "Trạng thái duyệt" block: the flow's stages, the transitions the
@@ -84,6 +92,7 @@ final class Editor extends Component
 {
     use AuthorizesRequests;
     use EditsButtonActions;
+    use WithMediaLibraryPicker;
 
     /** How many trail rows the block shows before "Xem thêm" (design: 3, +3 per load). */
     private const int TRAIL_PAGE = 3;
@@ -103,7 +112,7 @@ final class Editor extends Component
      * The fields the save state and the leave dialog count against the saved entry. The block list
      * is counted apart (blocksChanged): the browser cannot write it the way the server does.
      */
-    public const array TRACKED = ['title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'categoryId', 'coverImageKey'];
+    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryId', 'coverImageKey'];
 
     /** Which entry is being edited — server-resolved (mount/persist); never client-set. */
     #[Locked]
@@ -164,6 +173,31 @@ final class Editor extends Component
 
     /** @var list<array<string, mixed>> */
     public array $blocks = [];
+
+    /**
+     * The «Soạn thảo» document while the body is written as one (`prose`): HTML in the editor's
+     * form, pictures by address and never by id (EntryProseBody); '' for a layout body.
+     */
+    public string $bodyHtml = '';
+
+    /** The body is written as one document (rich editor); false for a page layout edited block by block. */
+    #[Locked]
+    public bool $prose = true;
+
+    /**
+     * The look props the document's block carries (kept as they are on save; the look panel is the builder's).
+     *
+     * @var array<string, mixed>
+     */
+    #[Locked]
+    public array $proseLook = [];
+
+    /** The block whose content form is open under its row in «Trình dựng» (one at a time). */
+    public ?int $openBlock = null;
+
+    /** This language's body was older plain-text blocks shown converted: the first save keeps a revision of it. */
+    #[Locked]
+    public bool $converted = false;
 
     /**
      * Blocks whose "Trình bày" panel shows the top and bottom spacing apart, by index (editor state
@@ -287,7 +321,7 @@ final class Editor extends Component
         if ($translation instanceof EntryTranslation) {
             $this->title = $translation->title;
             $this->slug = $translation->slug;
-            $this->blocks = $this->normalizeBlocks($translation->body['blocks'] ?? []);
+            $this->openBody($this->normalizeBlocks($translation->body['blocks'] ?? []));
             $this->excerpt = $translation->excerpt ?? '';
             $this->seoTitle = $translation->seo_title ?? '';
             $this->seoDescription = $translation->seo_description ?? '';
@@ -359,7 +393,122 @@ final class Editor extends Component
         }
 
         $this->resetErrorBag('blocks');
+        // A block added to a written body makes it a layout: the document becomes its first block.
+        if ($this->prose) {
+            $this->leaveProse();
+        }
         $this->blocks[] = ['type' => $type, 'props' => $this->defaultProps($type)];
+        $this->openBlock = array_key_last($this->blocks);
+    }
+
+    /** «Sửa nội dung» on a block row: opens its content form, or closes it when open. */
+    public function toggleBlock(int $index): void
+    {
+        $this->openBlock = $this->openBlock === $index || ! array_key_exists($index, $this->blocks) ? null : $index;
+    }
+
+    /**
+     * Which editor the body opens in (EntryProseBody::read): the rich editor for a written body, the
+     * block list for a layout. Nothing is written: a converted body is saved by the person's save.
+     *
+     * @param  list<array{type: string, props: array<string, mixed>}>  $blocks
+     */
+    private function openBody(array $blocks): void
+    {
+        $this->openBlock = null;
+        $prose = app(EntryProseBody::class)->read($blocks);
+        if ($prose === null) {
+            $this->prose = false;
+            $this->blocks = $this->layoutForEditor($blocks);
+            $this->bodyHtml = '';
+            $this->proseLook = [];
+            $this->converted = false;
+
+            return;
+        }
+
+        $this->prose = true;
+        $this->blocks = [];
+        $this->bodyHtml = $prose['html'];
+        $this->proseLook = $prose['look'];
+        $this->converted = $prose['converted'];
+    }
+
+    /**
+     * The written body as stored blocks (its one formatted-text block, or none when empty). A picture
+     * that is not one of this site's library pictures refuses: saving would drop it.
+     *
+     * @return list<array{type: string, props: array<string, mixed>}>
+     */
+    private function proseBlocks(): array
+    {
+        $written = app(EntryProseBody::class)->write(PlainText::lines($this->bodyHtml, trim: false), $this->proseLook);
+        if ($written['foreign'] > 0) {
+            throw ValidationException::withMessages(['bodyHtml' => __('entries.ed.body_foreign_images', ['n' => $written['foreign']])]);
+        }
+
+        return $written['blocks'];
+    }
+
+    /**
+     * The formatted-text blocks of a layout in the editor's form: library pictures by address, so no
+     * id reaches the browser (as in the written body).
+     *
+     * @param  list<array{type: string, props: array<string, mixed>}>  $blocks
+     * @return list<array{type: string, props: array<string, mixed>}>
+     */
+    private function layoutForEditor(array $blocks): array
+    {
+        $prose = app(EntryProseBody::class);
+        foreach ($blocks as $index => $block) {
+            if ($block['type'] === EntryProseBody::TYPE && is_string($block['props']['html'] ?? null)) {
+                $blocks[$index]['props']['html'] = $prose->forEditor($block['props']['html']);
+            }
+        }
+
+        return $blocks;
+    }
+
+    /**
+     * The layout as stored: each formatted-text block names its library pictures by id. A picture
+     * that is not one of this site's library pictures refuses: saving would drop it.
+     *
+     * @return list<array{type: string, props: array<string, mixed>}>
+     */
+    private function layoutForStorage(): array
+    {
+        $prose = app(EntryProseBody::class);
+        $blocks = $this->blocks;
+        $foreign = 0;
+        foreach ($blocks as $index => $block) {
+            $props = $block['props'] ?? null;
+            if (($block['type'] ?? null) === EntryProseBody::TYPE && is_array($props) && is_string($props['html'] ?? null)) {
+                $stored = $prose->forStorage($props['html']);
+                $props['html'] = $stored['html'];
+                $blocks[$index]['props'] = $props;
+                $foreign += $stored['foreign'];
+            }
+        }
+        if ($foreign > 0) {
+            throw ValidationException::withMessages(['blocks' => __('entries.ed.body_foreign_images', ['n' => $foreign])]);
+        }
+
+        /** @var list<array{type: string, props: array<string, mixed>}> $blocks */
+        return $blocks;
+    }
+
+    /**
+     * The written body becomes the first block of a layout (the block list takes over), still in the
+     * editor's form: its pictures are checked and named by id when the layout is saved.
+     */
+    private function leaveProse(): void
+    {
+        $html = PlainText::lines($this->bodyHtml, trim: false);
+        $this->blocks = EntryProseBody::isBlank($html) ? [] : [['type' => EntryProseBody::TYPE, 'props' => $this->proseLook + ['html' => $html]]];
+        $this->prose = false;
+        $this->bodyHtml = '';
+        $this->proseLook = [];
+        $this->resetErrorBag('bodyHtml');
     }
 
     public function removeBlock(int $index): void
@@ -372,6 +521,13 @@ final class Editor extends Component
         array_splice($blocks, $index, 1);
         $this->blocks = $blocks;
         $this->lookSplit = [];
+        if ($this->openBlock !== null) {
+            $this->openBlock = match (true) {
+                $this->openBlock === $index => null,
+                $this->openBlock > $index => $this->openBlock - 1,
+                default => $this->openBlock,
+            };
+        }
     }
 
     public function moveUp(int $index): void
@@ -384,6 +540,7 @@ final class Editor extends Component
         [$blocks[$index - 1], $blocks[$index]] = [$blocks[$index], $blocks[$index - 1]];
         $this->blocks = $blocks;
         $this->lookSplit = [];
+        $this->followMove($index, $index - 1);
     }
 
     public function moveDown(int $index): void
@@ -396,6 +553,17 @@ final class Editor extends Component
         [$blocks[$index], $blocks[$index + 1]] = [$blocks[$index + 1], $blocks[$index]];
         $this->blocks = $blocks;
         $this->lookSplit = [];
+        $this->followMove($index, $index + 1);
+    }
+
+    /** The open content form follows its block when two blocks swap places. */
+    private function followMove(int $from, int $to): void
+    {
+        $this->openBlock = match ($this->openBlock) {
+            $from => $to,
+            $to => $from,
+            default => $this->openBlock,
+        };
     }
 
     /**
@@ -466,6 +634,23 @@ final class Editor extends Component
      */
     public function updatedBlocks(mixed $value, ?string $key = null): void
     {
+        // Rows are drawn by position: a list sent whole keeps positions as its keys.
+        /** @var mixed $sent the client sends any shape */
+        $sent = $this->blocks;
+        if ($key === null && is_array($sent) && ! array_is_list($sent)) {
+            /** @var list<array<string, mixed>> $list */
+            $list = array_values($sent);
+            $this->blocks = $list;
+        }
+        // A block list sent whole while the body is written: it becomes a layout, the document first.
+        if ($key === null && $this->prose && $this->blocks !== []) {
+            $sent = $this->blocks;
+            $this->leaveProse();
+            $this->blocks = array_merge($this->blocks, $sent);
+
+            return;
+        }
+
         if ($key === null || preg_match('/^(\d+)\.props\.anchor_id$/', $key, $match) !== 1) {
             return;
         }
@@ -915,7 +1100,7 @@ final class Editor extends Component
         if ($this->coverImageKey === '') {
             $missing[] = __('admin.wfb.missing_cover');
         }
-        if ($this->blocks === []) {
+        if ($this->prose ? EntryProseBody::isBlank($this->bodyHtml) : $this->blocks === []) {
             $missing[] = __('admin.wfb.missing_body');
         }
 
@@ -949,6 +1134,18 @@ final class Editor extends Component
     public function clearCover(): void
     {
         $this->coverImageKey = '';
+    }
+
+    /** The rich editor shows a library picture at an address the save can read back to the picture. */
+    protected function editorImageUrl(Media $media): string
+    {
+        return app(EntryProseBody::class)->editorUrl($media->storage_key);
+    }
+
+    /** The stored body names only library pictures: a picture taken from a link is always copied in. */
+    protected function editorHotlinks(): bool
+    {
+        return false;
     }
 
     public function openBlockImagePicker(string $path): void
@@ -1020,6 +1217,13 @@ final class Editor extends Component
             'buttons' => $buttonPanel['buttons'],
             'buttonPanel' => $buttonPanel,
             'availableTypes' => app(ComponentRegistry::class)->listedTypes(),
+            'kinds' => $this->blockKinds(),
+            'prosePreview' => $this->prose ? EntryProseBody::preview($this->bodyHtml) : '',
+            'localeLabel' => Locales::label($this->locale),
+            // The writing area's hint: in another language it says that version is still empty.
+            'bodyPlaceholder' => $this->locale === app(SiteLocale::class)->default()
+                ? __('entries.ed.body_placeholder', ['unit' => mb_strtolower($this->unit())])
+                : __('entries.ed.body_placeholder_tr', ['lang' => Locales::label($this->locale)]),
             'schemas' => $schemas,
             'categories' => $this->type === 'post' ? $this->availableCategories() : [],
             'urls' => $urls,
@@ -1037,13 +1241,31 @@ final class Editor extends Component
         ]);
     }
 
+    /**
+     * The name, chip, glyph and tint of every kind «Trình dựng» shows: the body's blocks and the
+     * kinds the add list offers, in the add list's order.
+     *
+     * @return array<string, array{label: string, chip: string, icon: string, tint: string}>
+     */
+    private function blockKinds(): array
+    {
+        $kinds = [];
+        foreach ([...app(ComponentRegistry::class)->listedTypes(), ...array_column($this->blocks, 'type')] as $type) {
+            if (is_string($type)) {
+                $kinds[$type] ??= BlockKinds::of($type);
+            }
+        }
+
+        return $kinds;
+    }
+
     /** "Bỏ thay đổi" (the leave dialog): back to the saved entry, a new one back to an empty form. */
     public function resetChanges(): void
     {
         $this->resetErrorBag();
         $this->saveFailed = false;
         // A language with no saved version yet loads nothing back: start from an empty form.
-        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'blocks', 'lookSplit',
+        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
             'transitionNote', 'assignTo', 'showMediaPicker', 'showBlockImagePicker', 'blockImagePickerPath');
         $this->mount($this->ulid, $this->sectionKey, $this->locale);
     }
@@ -1542,7 +1764,16 @@ final class Editor extends Component
         $this->blocks = PlainText::linesIn($this->blocks);
 
         $filled = $this->fillBlankSlug();
+        $proseBody = null;
+        $layoutBody = null;
         try {
+            // A written body is checked as the block it is stored in (ValidPageJson: an html prop's size).
+            if ($this->prose) {
+                $proseBody = $this->proseBlocks();
+                $this->blocks = $proseBody;
+            } else {
+                $layoutBody = $this->layoutForStorage();
+            }
             $this->validate();
         } catch (ValidationException $e) {
             // A link made for a save that failed must not stay behind: it would pin the old title.
@@ -1552,6 +1783,11 @@ final class Editor extends Component
             $this->saveFailed = true;
 
             throw $e;
+        } finally {
+            // The stored form names pictures by id: it never stays in the browser's copy of the form.
+            if ($this->prose) {
+                $this->blocks = [];
+            }
         }
         $wasNew = $this->ulid === null;
 
@@ -1594,10 +1830,15 @@ final class Editor extends Component
         $entry->save();
 
         $translation = $entry->translations()->firstOrNew(['locale' => $this->locale]);
+        // This language's body was older plain-text blocks, now written as one formatted-text block:
+        // the old body is kept as a revision first, so the history can bring it back.
+        if ($this->converted && $translation->exists) {
+            app(RecordEntryRevision::class)->forLocale($entry, $translation, RevisionKind::Baseline, $this->user());
+        }
         $translation->fill([
             'title' => $this->title,
             'slug' => $this->slug,
-            'body' => ['blocks' => $this->blocks],
+            'body' => ['blocks' => $proseBody ?? $layoutBody ?? $this->blocks],
             'excerpt' => $this->excerpt !== '' ? $this->excerpt : null,
             'seo_title' => $this->seoTitle !== '' ? $this->seoTitle : null,
             'seo_description' => $this->seoDescription !== '' ? $this->seoDescription : null,
@@ -1623,6 +1864,7 @@ final class Editor extends Component
         }
 
         $this->saveFailed = false;
+        $this->converted = false;
         $this->savedAt = self::iso(CarbonImmutable::now());
         $this->mayPublish = $this->user()->can('publish', $entry);
         $this->saved = $this->tracked();
@@ -1870,7 +2112,7 @@ final class Editor extends Component
     }
 
     /**
-     * @return list<array<string, mixed>>
+     * @return list<array{type: string, props: array<string, mixed>}>
      */
     private function normalizeBlocks(mixed $blocks): array
     {
@@ -1881,10 +2123,9 @@ final class Editor extends Component
         $normalized = [];
         foreach ($blocks as $block) {
             if (is_array($block) && isset($block['type']) && is_string($block['type'])) {
-                $normalized[] = [
-                    'type' => $block['type'],
-                    'props' => $this->clampNumbers($block['type'], is_array($block['props'] ?? null) ? $block['props'] : []),
-                ];
+                /** @var array<string, mixed> $props block props are keyed by prop name (a stored body is JSON objects) */
+                $props = $this->clampNumbers($block['type'], is_array($block['props'] ?? null) ? $block['props'] : []);
+                $normalized[] = ['type' => $block['type'], 'props' => $props];
             }
         }
 

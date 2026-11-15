@@ -4,9 +4,9 @@ use App\Modules\Shared\Support\RichTextSanitizer;
 
 /*
  * Rich-editor CONTRACT — pins the invariants that once let toolbar buttons silently die:
- * (1) every toolbar button's Jodit plugin is actually imported — the bare `jodit` esm entry
- *     ships only 21 core plugins, and a missing import still RENDERS an icon (our global
- *     Remix icon map) but no-ops on click;
+ * (1) every tool's Jodit plugin is actually imported — the bare `jodit` esm entry ships only
+ *     the core plugins, and a missing import still RENDERS the bar's button but no-ops on click;
+ *     and every button the frame draws is a tool the script knows;
  * (2) buttons that need companion plugins to be usable (table cell menu, image resize) have them;
  * (3) the source view never loads ACE/js-beautify from a CDN (white-label);
  * (4) everything the editor's own tools WRITE survives the server-side sanitizer — a button
@@ -29,14 +29,16 @@ const JODIT_BUTTON_PLUGIN = [
     'ul' => 'ordered-list', 'ol' => 'ordered-list',
     'left' => 'justify', 'center' => 'justify', 'right' => 'justify', 'justify' => 'justify',
     'outdent' => 'indent', 'indent' => 'indent',
-    'link' => 'link', 'unlink' => 'link',
-    'table' => 'table', 'hr' => 'hr', 'symbols' => 'symbols', 'eraser' => 'clean-html',
+    'table' => 'table', 'eraser' => 'clean-html',
     'undo' => 'redo-undo', 'redo' => 'redo-undo',
-    'source' => 'source', 'fullsize' => 'fullsize',
+    'source' => 'source',
 ];
 
-/** Controls defined inline in editorOptions() (Livewire bridge), not plugin-backed. */
-const JODIT_CUSTOM_CONTROLS = ['libraryImage', 'embedVideo'];
+/** Tools the frame does itself (its own dialogs, the Livewire bridge, inserted HTML), not plugin-backed. */
+const JODIT_CUSTOM_CONTROLS = ['link', 'unlink', 'libraryImage', 'embedVideo', 'hr', 'symbols', 'fullsize'];
+
+/** The three lists of the bar: the button opens a list, its items run the tool's command. */
+const RICH_MENUS = ['para' => 'paragraph', 'size' => 'fontsize', 'color' => 'brush'];
 
 /** Plugins a button needs to be USABLE, not merely clickable. */
 const JODIT_COMPANION_PLUGINS = [
@@ -73,7 +75,7 @@ it('imports the Jodit plugin behind every toolbar button (dead-button guard)', f
     $available = [...JODIT_CORE_PLUGINS, ...richEditorImportedPlugins($src)];
 
     $dead = [];
-    foreach (['FULL_BUTTONS', 'BASIC_BUTTONS'] as $const) {
+    foreach (['FULL_BUTTONS'] as $const) {
         foreach (richEditorButtons($src, $const) as $button) {
             if (in_array($button, JODIT_CUSTOM_CONTROLS, true)) {
                 continue;
@@ -92,7 +94,7 @@ it('imports the Jodit plugin behind every toolbar button (dead-button guard)', f
 
 it('imports the companion plugins that make table and image tooling usable', function (): void {
     $src = richEditorSource();
-    $offered = [...richEditorButtons($src, 'FULL_BUTTONS'), ...richEditorButtons($src, 'BASIC_BUTTONS')];
+    $offered = richEditorButtons($src, 'FULL_BUTTONS');
     $imported = richEditorImportedPlugins($src);
 
     $missing = [];
@@ -110,12 +112,26 @@ it('imports the companion plugins that make table and image tooling usable', fun
     expect($missing)->toBe([]);
 });
 
-it('backs every custom control with an inline definition', function (): void {
+it('backs every custom tool with its own handler', function (): void {
     $src = richEditorSource();
+    preg_match('/const TOOLS = \{(.*?)\n    \};/s', $src, $m);
 
+    expect($m)->not->toBeEmpty();
     foreach (JODIT_CUSTOM_CONTROLS as $control) {
-        expect($src)->toContain($control.':');
+        expect($m[1])->toMatch('/^\s+'.$control.'[:,]/m');
     }
+});
+
+it('draws only tools the script knows, and offers every one of them', function (): void {
+    $blade = (string) file_get_contents(base_path('app/Modules/Admin/resources/views/components/rich-editor.blade.php'));
+    $tools = richEditorButtons(richEditorSource(), 'FULL_BUTTONS');
+
+    preg_match_all("/\\\$tool\('([A-Za-z]+)'/", $blade, $cmds);
+    preg_match_all('/data-rte-menu="([a-z]+)"/', $blade, $menus);
+    $drawn = [...$cmds[1], ...array_map(fn (string $m): string => RICH_MENUS[$m] ?? "menu:{$m}", $menus[1])];
+
+    expect(array_values(array_diff($drawn, $tools)))->toBe([])
+        ->and(array_values(array_diff($tools, $drawn)))->toBe([]);
 });
 
 it('keeps the source view CDN-free (white-label: no ACE / js-beautify from cdnjs)', function (): void {

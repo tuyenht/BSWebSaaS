@@ -3,8 +3,8 @@
      buttons; when the editor's area is under 768px wide, its content under 720px, the buttons move to
      a bar along the bottom), the status band of live
      content, then two columns in the board's order. Main: Tiêu đề and Đường dẫn, Mô tả ngắn, the
-     content card (a page's layout blocks under "Trình dựng"; a post's blocks until its writing frame
-     comes), the shared "Hiện thế nào trên Google" card. Side: Đăng (status, the approval steps where a
+     content card ("Soạn thảo" = the body as one formatted-text document; "Trình dựng" = a page's
+     blocks, or any body laid out in blocks), the shared "Hiện thế nào trên Google" card. Side: Đăng (status, the approval steps where a
      workflow governs the post), Chuyên mục (posts), Ảnh đại diện. The save state at rest is drawn
      here; typing, saving and a lost connection are drawn over it in the browser (bsEditorSave,
      resources/js/admin-editor.js; this editor's drafts do not save themselves). The block list is
@@ -117,84 +117,200 @@
 
                 <x-bs-admin::seo-fields excerpt="excerpt" part="excerpt" :kind="$type" :address="$address" :locale="$locale" :multi-locale="$multiLocale" id="entry-seo" />
 
-                <section class="{{ $card }} overflow-hidden" aria-labelledby="entry-body-h">
-                    @if ($isPage)
-                        <div class="flex min-w-0 items-center gap-3 border-b border-border px-4">
-                            <h2 id="entry-body-h" class="m-0 inline-flex min-h-(--spacing-control) items-center gap-1.5 border-b-2 border-primary-text text-body font-semibold text-primary-text">
+                {{-- The content card (ADR-19, one body / two editors). «Soạn thảo»: the body as one
+                     formatted-text document (Jodit), or, when the body is a layout of other blocks, a
+                     lock pointing to «Trình dựng». «Trình dựng» (pages, and any layout body): the block
+                     list and the add palette. Both tabs edit the same body. --}}
+                @php
+                    $showBuilder = $isPage || ! $prose;
+                    $proseBlank = $prose && \App\Modules\Admin\Support\EntryProseBody::isBlank($bodyHtml);
+                    $tabBase = 'inline-flex min-h-(--spacing-control) shrink-0 items-center gap-1.5 border-b-2 px-1 text-body transition-colors';
+                    $tabOn = 'border-primary-text font-semibold text-primary-text';
+                    $tabOff = 'border-transparent font-medium text-text-muted hover:text-text';
+                    $rowButton = 'hit-area inline-flex size-control-row shrink-0 items-center justify-center rounded border border-border bg-surface text-text-muted transition-colors hover:bg-surface-hover hover:text-text';
+                @endphp
+                <section class="{{ $card }} overflow-hidden" aria-labelledby="entry-body-h" x-data="{ tab: 'text', openBlock: $wire.entangle('openBlock') }">
+                    <h2 id="entry-body-h" class="sr-only">{{ __('entries.ed.body_label') }}</h2>
+                    <div class="flex min-w-0 items-center gap-3 overflow-hidden border-b border-border px-4">
+                        @if ($showBuilder)
+                            <button type="button" class="{{ $tabBase }}" x-on:click="tab = 'text'" x-bind:aria-pressed="tab === 'text' ? 'true' : 'false'"
+                                    x-bind:class="tab === 'text' ? @js($tabOn) : @js($tabOff)" aria-pressed="true">
+                                <x-bs-admin::icon name="ri-edit-2" :class="$glyph" />{{ __('entries.ed.tab_text') }}
+                            </button>
+                            <button type="button" class="{{ $tabBase }}" x-on:click="tab = 'builder'" x-bind:aria-pressed="tab === 'builder' ? 'true' : 'false'"
+                                    x-bind:class="tab === 'builder' ? @js($tabOn) : @js($tabOff)" aria-pressed="false">
                                 <x-bs-admin::icon name="ri-artboard-2" :class="$glyph" />{{ __('entries.ed.builder_tab') }}
-                            </h2>
-                        </div>
-                        <div class="flex flex-col gap-3 px-5 pt-4 pb-5">
-                            <p class="m-0 text-body font-semibold text-text-strong">{{ __('entries.ed.builder_head', ['n' => count($blocks)]) }}</p>
-                    @else
-                        <div class="{{ $cardHead }}">
-                            <h2 id="entry-body-h" class="{{ $cardTitle }}">{{ __('entries.blocks_heading') }}</h2>
-                            @if ($chip)
-                                <span class="rounded-sm bg-primary-soft px-1.5 text-caption font-bold text-primary-text" title="{{ __('admin.seo.locale_chip_title') }}">{{ $chip }}</span>
-                            @endif
-                        </div>
-                        <div class="flex flex-col gap-3 px-5 pt-4 pb-5">
-                    @endif
-                            @error('blocks') <p class="{{ $error }} m-0">{{ $message }}</p> @enderror
-                            @if ($blocks === [])
-                                <p class="m-0 rounded-md border border-border bg-surface-muted p-4 text-center text-small text-text-muted">{{ __('entries.ed.builder_empty') }}</p>
-                            @endif
-                            <div class="blocks">
-        <ol class="block-list">
-            @foreach ($blocks as $i => $block)
-                <li wire:key="block-{{ $i }}" class="block">
-                    <header>
-                        <strong>{{ $block['type'] }}</strong>
-                        <button type="button" wire:click="moveUp({{ $i }})" aria-label="{{ __('entries.move_up') }}">↑</button>
-                        <button type="button" wire:click="moveDown({{ $i }})" aria-label="{{ __('entries.move_down') }}">↓</button>
-                        <button type="button" wire:click="removeBlock({{ $i }})">{{ __('entries.remove_block') }}</button>
-                    </header>
-                    <div class="block-props">
-                        @foreach (($schemas[$block['type']] ?? []) as $prop => $spec)
-                            @continue(in_array($spec['group'] ?? null, ['style', 'display'], true))
-                            {{-- A background video is chosen in the page builder's video field (not built in this editor yet); its value is kept as saved. --}}
-                            @continue(($spec['type'] ?? null) === 'video')
-                            @if (($spec['type'] ?? 'text') === 'list')
-                                <fieldset class="prop-list" wire:key="list-{{ $i }}-{{ $prop }}">
-                                    <legend>{{ $prop }}</legend>
-                                    @foreach (($block['props'][$prop] ?? []) as $j => $item)
-                                        <div class="prop-list__item" wire:key="item-{{ $i }}-{{ $prop }}-{{ $j }}">
-                                            @if (isset($spec['of']['type']))
-                                                @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $spec['of']['type'], 'model' => "blocks.$i.props.$prop.$j", 'fieldLabel' => $prop, 'value' => $item, 'imageUrls' => $blockImageUrls, 'options' => $spec['of']['options'] ?? [], 'describedBy' => $prop === 'product_keys' && is_string($item) && in_array(strtoupper($item), $goneProducts, true) ? "gone-$i-$j" : null])
-                                            @else
-                                                @foreach (($spec['of'] ?? []) as $field => $fieldSpec)
-                                                    @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $fieldSpec['type'] ?? 'text', 'model' => "blocks.$i.props.$prop.$j.$field", 'fieldLabel' => $field, 'value' => $item[$field] ?? null, 'imageUrls' => $blockImageUrls, 'options' => $fieldSpec['options'] ?? []])
-                                                @endforeach
-                                            @endif
-                                            @if ($prop === 'product_keys' && is_string($item) && in_array(strtoupper($item), $goneProducts, true))
-                                                <span class="error" id="gone-{{ $i }}-{{ $j }}">{{ __('entries.product_pick_gone') }}</span>
-                                            @endif
-                                            <button type="button" wire:click="moveItemUp({{ $i }}, '{{ $prop }}', {{ $j }})" aria-label="{{ __('entries.move_up') }}">↑</button>
-                                            <button type="button" wire:click="moveItemDown({{ $i }}, '{{ $prop }}', {{ $j }})" aria-label="{{ __('entries.move_down') }}">↓</button>
-                                            <button type="button" wire:click="removeItem({{ $i }}, '{{ $prop }}', {{ $j }})">{{ __('entries.remove_item') }}</button>
-                                        </div>
-                                    @endforeach
-                                    <button type="button" wire:click="addItem({{ $i }}, '{{ $prop }}')">{{ __('entries.add_item') }}</button>
-                                </fieldset>
-                            @else
-                                @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $spec['type'] ?? 'text', 'model' => "blocks.$i.props.$prop", 'fieldLabel' => $prop, 'value' => $block['props'][$prop] ?? null, 'imageUrls' => $blockImageUrls, 'options' => $spec['options'] ?? [], 'min' => $spec['min'] ?? null, 'max' => $spec['max'] ?? null])
-                            @endif
-                        @endforeach
+                            </button>
+                        @else
+                            <span class="{{ $tabBase }} {{ $tabOn }}">
+                                <x-bs-admin::icon name="ri-edit-2" :class="$glyph" />{{ __('entries.ed.tab_text') }}
+                            </span>
+                        @endif
+                        <span class="flex-1"></span>
+                        @if ($chip)
+                            <span class="shrink-0 rounded-sm bg-primary-soft px-1.5 text-caption font-bold text-primary-text" title="{{ __('admin.seo.locale_chip_title') }}">{{ $chip }}</span>
+                        @endif
                     </div>
-                    @include('admin::livewire.entries.partials.block-look', ['look' => $looks[$i]])
-                </li>
-            @endforeach
-        </ol>
+
+                    <div x-show="tab === 'text'">
+                        @if (! $prose)
+                            <div class="flex flex-col items-center gap-3 px-5 py-8 text-center">
+                                <span class="inline-flex size-12 items-center justify-center rounded-full bg-bg text-primary-text" aria-hidden="true">
+                                    <x-bs-admin::icon name="ri-layout-masonry" class="size-6" />
+                                </span>
+                                <p class="m-0 text-body font-semibold text-text-strong">{{ $isPage ? __('entries.ed.lock_title_page', ['n' => count($blocks)]) : __('entries.ed.lock_title_post', ['n' => count($blocks)]) }}</p>
+                                <p class="m-0 max-w-[32rem] text-small text-text-muted">{{ __('entries.ed.lock_text') }}</p>
+                                <x-bs-admin::button color="primary" x-on:click="tab = 'builder'">
+                                    <x-bs-admin::icon name="ri-artboard-2" :class="$glyph" /> {{ __('entries.ed.lock_open') }}
+                                </x-bs-admin::button>
                             </div>
-                            <div class="flex flex-col gap-2 rounded-md border border-dashed border-border-input p-3">
-                                <p class="m-0 inline-flex items-center gap-1.5 text-small font-semibold text-primary-text"><x-bs-admin::icon name="ri-add" :class="$glyph" />{{ __('entries.ed.add_block') }}</p>
-                                <div class="block-palette flex flex-wrap gap-2">
-                                    @foreach ($availableTypes as $availableType)
-                                        <button type="button" wire:click="addBlock('{{ $availableType }}')" class="hit-area min-h-(--spacing-control) rounded-md border border-border bg-surface px-3 text-small text-text transition-colors hover:bg-surface-hover">+ {{ $availableType }}</button>
+                        @else
+                            <div class="px-5 py-4">
+                                <x-bs-admin::rich-editor target="bodyHtml" :value="$bodyHtml" rows="14" :placeholder="$bodyPlaceholder"
+                                                         aria-label="{{ __('entries.ed.body_label') }}" />
+                                @error('bodyHtml') <p class="{{ $error }}">{{ $message }}</p> @enderror
+                                @error('blocks') <p class="{{ $error }}">{{ $message }}</p> @enderror
+                            </div>
+                            <p class="m-0 flex items-center gap-1.5 border-t border-border px-5 py-2 text-caption text-text-muted">
+                                <x-bs-admin::icon name="ri-translate-2" class="size-3.5 shrink-0" />{{ $localeLabel }}
+                            </p>
+                        @endif
+                    </div>
+
+                    @if ($showBuilder)
+                        <div x-show="tab === 'builder'" x-cloak class="flex flex-col gap-3 px-5 pt-4 pb-5">
+                            <div>
+                                <p class="m-0 text-body font-semibold text-text-strong">{{ __($isPage ? 'entries.ed.builder_head' : 'entries.ed.builder_head_post', ['n' => $prose ? ($proseBlank ? 0 : 1) : count($blocks)]) }}</p>
+                                <p class="m-0 mt-0.5 text-small text-text-muted">{{ __('entries.ed.builder_sub', ['lang' => $localeLabel]) }}</p>
+                            </div>
+                            @if ($prose)
+                                @if (! $proseBlank)
+                                    <div class="flex min-w-0 items-center gap-3 rounded-md border border-border bg-surface px-3 py-2.5">
+                                        <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-bg text-primary-text" aria-hidden="true">
+                                            <x-bs-admin::icon name="ri-text-block" class="size-5" />
+                                        </span>
+                                        <span class="flex min-w-0 flex-1 flex-col">
+                                            <span class="text-small font-semibold text-text">{{ __('entries.ed.builder_prose_label') }}</span>
+                                            <span class="truncate text-caption text-text-muted">{{ $prosePreview }}</span>
+                                        </span>
+                                        <x-bs-admin::button variant="outline" color="secondary" size="sm" class="shrink-0" x-on:click="tab = 'text'">
+                                            <x-bs-admin::icon name="ri-pencil" :class="$glyph" /> {{ __('entries.ed.builder_prose_edit') }}
+                                        </x-bs-admin::button>
+                                    </div>
+                                @else
+                                    <p class="m-0 rounded-md border border-border bg-surface-muted p-4 text-center text-small text-text-muted">{{ __('entries.ed.builder_none') }}</p>
+                                @endif
+                            @else
+                                @error('blocks') <p class="{{ $error }} m-0">{{ $message }}</p> @enderror
+                                @if ($blocks === [])
+                                    <p class="m-0 rounded-md border border-border bg-surface-muted p-4 text-center text-small text-text-muted">{{ __('entries.ed.builder_none') }}</p>
+                                @endif
+                                {{-- One row per block (design 07): glyph, name and a glimpse, kind chip, «Sửa nội dung»
+                                     (its content form opens under the row, one at a time) and «Xóa khối». Order changes
+                                     with the form's «Lên trên» / «Xuống dưới»: there is no drag reordering yet. --}}
+                                <ol class="m-0 flex list-none flex-col gap-2 p-0">
+                                    @foreach ($blocks as $i => $block)
+                                        @php
+                                            $i = (int) $i;
+                                            $kind = $kinds[$block['type']] ?? \App\Modules\Admin\Support\BlockKinds::of($block['type']);
+                                            $peek = \App\Modules\Admin\Support\BlockKinds::preview($block['props']);
+                                        @endphp
+                                        <li wire:key="block-{{ $i }}" class="min-w-0 rounded-lg border border-border bg-surface">
+                                            <div class="flex min-w-0 items-center gap-3 px-3.5 py-2.5">
+                                                <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-md {{ $kind['tint'] }}" aria-hidden="true">
+                                                    <x-bs-admin::icon :name="$kind['icon']" class="size-5" />
+                                                </span>
+                                                <span class="flex min-w-0 flex-1 flex-col">
+                                                    <span class="text-small font-semibold text-text-strong">{{ $kind['label'] }}</span>
+                                                    @if ($peek !== '')
+                                                        <span class="truncate text-caption text-text-muted">{{ $peek }}</span>
+                                                    @endif
+                                                </span>
+                                                <span class="hidden shrink-0 rounded-sm px-2 py-0.5 text-caption font-semibold whitespace-nowrap sm:inline {{ $kind['tint'] }}">{{ $kind['chip'] }}</span>
+                                                <button type="button" class="{{ $rowButton }}" title="{{ __('entries.ed.block_edit') }}" aria-label="{{ __('entries.ed.block_edit') }}: {{ $kind['label'] }}"
+                                                        aria-controls="block-form-{{ $i }}" aria-expanded="{{ $openBlock === $i ? 'true' : 'false' }}"
+                                                        x-on:click="openBlock = openBlock === {{ $i }} ? null : {{ $i }}" x-bind:aria-expanded="openBlock === {{ $i }} ? 'true' : 'false'">
+                                                    <x-bs-admin::icon name="ri-pencil" class="size-4" />
+                                                </button>
+                                                <button type="button" class="{{ $rowButton }} hover:border-danger-text hover:text-danger-text" wire:click="removeBlock({{ $i }})"
+                                                        title="{{ __('entries.ed.block_remove') }}" aria-label="{{ __('entries.ed.block_remove') }}: {{ $kind['label'] }}">
+                                                    <x-bs-admin::icon name="ri-delete-bin" class="size-4" />
+                                                </button>
+                                            </div>
+                                            <div id="block-form-{{ $i }}" class="flex min-w-0 flex-col gap-3 border-t border-border px-3.5 py-3"
+                                                 x-show="openBlock === {{ $i }}" @if ($openBlock !== $i) style="display: none" @endif>
+                                                <div class="flex flex-wrap gap-2">
+                                                    <x-bs-admin::button variant="outline" color="secondary" size="sm" wire:click="moveUp({{ $i }})" :disabled="$i === 0">
+                                                        <x-bs-admin::icon name="ri-arrow-up" class="size-4" /> {{ __('entries.ed.block_up') }}
+                                                    </x-bs-admin::button>
+                                                    <x-bs-admin::button variant="outline" color="secondary" size="sm" wire:click="moveDown({{ $i }})" :disabled="$i === count($blocks) - 1">
+                                                        <x-bs-admin::icon name="ri-arrow-down" class="size-4" /> {{ __('entries.ed.block_down') }}
+                                                    </x-bs-admin::button>
+                                                </div>
+                                                <div class="block-props">
+                                                    @foreach (($schemas[$block['type']] ?? []) as $prop => $spec)
+                                                        @continue(in_array($spec['group'] ?? null, ['style', 'display'], true))
+                                                        {{-- A background video is chosen in the page builder's video field (not built in this editor yet); its value is kept as saved. --}}
+                                                        @continue(($spec['type'] ?? null) === 'video')
+                                                        @if (($spec['type'] ?? 'text') === 'list')
+                                                            <fieldset class="prop-list" wire:key="list-{{ $i }}-{{ $prop }}">
+                                                                <legend>{{ $prop }}</legend>
+                                                                @foreach (($block['props'][$prop] ?? []) as $j => $item)
+                                                                    <div class="prop-list__item" wire:key="item-{{ $i }}-{{ $prop }}-{{ $j }}">
+                                                                        @if (isset($spec['of']['type']))
+                                                                            @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $spec['of']['type'], 'model' => "blocks.$i.props.$prop.$j", 'fieldLabel' => $prop, 'value' => $item, 'imageUrls' => $blockImageUrls, 'options' => $spec['of']['options'] ?? [], 'describedBy' => $prop === 'product_keys' && is_string($item) && in_array(strtoupper($item), $goneProducts, true) ? "gone-$i-$j" : null])
+                                                                        @else
+                                                                            @foreach (($spec['of'] ?? []) as $field => $fieldSpec)
+                                                                                @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $fieldSpec['type'] ?? 'text', 'model' => "blocks.$i.props.$prop.$j.$field", 'fieldLabel' => $field, 'value' => $item[$field] ?? null, 'imageUrls' => $blockImageUrls, 'options' => $fieldSpec['options'] ?? []])
+                                                                            @endforeach
+                                                                        @endif
+                                                                        @if ($prop === 'product_keys' && is_string($item) && in_array(strtoupper($item), $goneProducts, true))
+                                                                            <span class="error" id="gone-{{ $i }}-{{ $j }}">{{ __('entries.product_pick_gone') }}</span>
+                                                                        @endif
+                                                                        <button type="button" wire:click="moveItemUp({{ $i }}, '{{ $prop }}', {{ $j }})" aria-label="{{ __('entries.move_up') }}">↑</button>
+                                                                        <button type="button" wire:click="moveItemDown({{ $i }}, '{{ $prop }}', {{ $j }})" aria-label="{{ __('entries.move_down') }}">↓</button>
+                                                                        <button type="button" wire:click="removeItem({{ $i }}, '{{ $prop }}', {{ $j }})">{{ __('entries.remove_item') }}</button>
+                                                                    </div>
+                                                                @endforeach
+                                                                <button type="button" wire:click="addItem({{ $i }}, '{{ $prop }}')">{{ __('entries.add_item') }}</button>
+                                                            </fieldset>
+                                                        @else
+                                                            @include('admin::livewire.entries.partials.prop-input', ['fieldType' => ($spec['type'] ?? 'text') === 'html' ? 'textarea' : ($spec['type'] ?? 'text'), 'model' => "blocks.$i.props.$prop", 'fieldLabel' => $prop, 'value' => $block['props'][$prop] ?? null, 'imageUrls' => $blockImageUrls, 'options' => $spec['options'] ?? [], 'min' => $spec['min'] ?? null, 'max' => $spec['max'] ?? null])
+                                                        @endif
+                                                    @endforeach
+                                                </div>
+                                                @include('admin::livewire.entries.partials.block-look', ['look' => $looks[$i]])
+                                            </div>
+                                        </li>
                                     @endforeach
+                                </ol>
+                            @endif
+                            {{-- «+ Thêm khối»: the kinds a body may hold, by name. A block added to a written body makes
+                                 the document the layout's first block (addBlock). --}}
+                            <div x-data="{ adding: false }" class="flex flex-col gap-2">
+                                <button type="button" class="hit-area inline-flex min-h-(--spacing-control) items-center justify-center gap-1.5 rounded-lg border-[1.5px] border-dashed border-border-input bg-transparent px-3 text-small font-semibold text-primary-text transition-colors hover:bg-surface-hover"
+                                        x-on:click="adding = ! adding" x-bind:aria-expanded="adding ? 'true' : 'false'" aria-expanded="false" aria-controls="block-add-list">
+                                    <x-bs-admin::icon name="ri-add" :class="$glyph" />{{ __('entries.ed.add_block') }}
+                                </button>
+                                <div id="block-add-list" x-show="adding" style="display: none" class="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3">
+                                    <p class="m-0 text-small font-semibold text-text-strong">{{ __('entries.ed.add_pick') }}</p>
+                                    <ul class="block-palette m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] gap-2 p-0">
+                                        @foreach ($availableTypes as $availableType)
+                                            <li>
+                                                <button type="button" wire:click="addBlock('{{ $availableType }}')" x-on:click="adding = false"
+                                                        class="hit-area flex min-h-(--spacing-control) w-full items-center gap-2.5 rounded-md border border-border bg-surface px-2.5 py-1.5 text-start text-small text-text transition-colors hover:bg-surface-hover">
+                                                    <span class="inline-flex size-7 shrink-0 items-center justify-center rounded {{ $kinds[$availableType]['tint'] }}" aria-hidden="true">
+                                                        <x-bs-admin::icon :name="$kinds[$availableType]['icon']" class="size-4" />
+                                                    </span>
+                                                    <span class="min-w-0">{{ $kinds[$availableType]['label'] }}</span>
+                                                </button>
+                                            </li>
+                                        @endforeach
+                                    </ul>
                                 </div>
                             </div>
                         </div>
+                    @endif
                 </section>
 
                 <x-bs-admin::seo-fields excerpt="excerpt" part="card" :kind="$type" :address="$address" :locale="$locale" :multi-locale="$multiLocale" id="entry-seo" />
@@ -353,5 +469,9 @@
                 <x-bs-admin::button variant="outline" color="secondary" wire:click="closeButtonFilePicker">{{ __('entries.btn_file_dialog_cancel') }}</x-bs-admin::button>
             </x-slot:footer>
         </x-bs-admin::modal>
+        {{-- The body's «Chèn ảnh» (WithMediaLibraryPicker): library pictures only; a picture taken
+             from a link is always saved into the library, so the body never points elsewhere. --}}
+        @include('admin::partials.media-picker-modal', ['pickedIds' => [], 'editorLibraryOnly' => true])
     @endcan
+    @include('admin::partials.video-embed-modal')
 </div>

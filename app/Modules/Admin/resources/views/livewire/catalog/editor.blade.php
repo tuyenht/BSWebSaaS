@@ -234,9 +234,18 @@
                         @if ($chip)
                             <span class="rounded-sm bg-primary-soft px-1.5 text-caption font-bold text-primary-text" title="{{ __('admin.seo.locale_chip_title') }}">{{ $chip }}</span>
                         @endif
+                        @php
+                            // The product's spec table, added at the end of the description for the shop to fill in.
+                            $specHtml = '<h3>'.e(__('admin.rte.spec_head')).'</h3><table><tbody><tr><th>'.e(__('admin.rte.spec_key')).'</th><th>'.e(__('admin.rte.spec_value')).'</th></tr>'
+                                .implode('', array_map(static fn (string $row): string => '<tr><td>'.e($row).'</td><td>&nbsp;</td></tr>', explode('|', __('admin.rte.spec_rows'))))
+                                .'</tbody></table><p></p>';
+                        @endphp
+                        <x-bs-admin::button variant="outline" color="secondary" size="sm" class="ms-auto shrink-0" data-rich-append="description" :data-rich-html="$specHtml" :data-rich-toast="__('admin.rte.spec_done')">
+                            <x-bs-admin::icon name="ri-table" class="size-4" />{{ __('admin.rte.spec') }}
+                        </x-bs-admin::button>
                     </div>
                     <div class="p-4">
-                        <x-bs-admin::rich-editor target="description" profile="full" :value="$description" rows="10" />
+                        <x-bs-admin::rich-editor target="description" :value="$description" rows="10" :placeholder="__('catalog.ed.desc_placeholder')" />
                         @error('description') <p class="mt-1 text-sm text-danger-text">{{ $message }}</p> @enderror
                     </div>
                 </section>
