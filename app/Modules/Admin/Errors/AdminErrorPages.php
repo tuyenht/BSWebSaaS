@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Errors;
 
+use App\Modules\Admin\Support\AccessRequests;
 use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Admin\Theme\AdminBrandColor;
@@ -144,7 +145,7 @@ final class AdminErrorPages
         return array_merge([
             'key' => $key, 'tone' => '', 'icon' => 'ri-error-warning', 'num' => null, 'title' => $title, 'line' => $line,
             'groups' => [], 'primary' => null, 'secondary' => [], 'why' => null, 'code' => null, 'support' => null,
-            'retryAfter' => null, 'inShell' => false,
+            'retryAfter' => null, 'inShell' => false, 'request' => null, 'ok' => null,
         ], $extra);
     }
 
@@ -342,13 +343,56 @@ final class AdminErrorPages
         $role = $member ? RoleLabel::topOf($user) : null;
         $screen = self::screenTitle($request);
         $permission = self::routePermission($request);
-
-        return self::page('noperm', __('errors.noperm.title', ['screen' => $screen ?? __('errors.this_item')]),
+        $page = self::page('noperm', __('errors.noperm.title', ['screen' => $screen ?? __('errors.this_item')]),
             $role !== null ? __('errors.noperm.line', ['role' => $role]) : __('errors.noperm.line_plain'), [
                 'icon' => 'ri-shield-keyhole', 'inShell' => true,
                 'groups' => $member && $permission !== null ? $this->rolesHolding($permission) : [],
                 'primary' => $member ? self::action(__('errors.back_dashboard'), 'ri-dashboard', self::home()) : null,
             ]);
+
+        $ask = $member ? $this->accessRequest($request, $user) : null;
+        if ($ask === null) {
+            return $page;
+        }
+
+        // "Nhờ cấp quyền" leads; "Về Tổng quan" stays as the quiet second action (board 25)
+        $page['primary'] = null;
+        $page['secondary'] = [self::action(__('errors.back_dashboard'), 'ri-dashboard', self::home())];
+        $page['request'] = $ask;
+        if ($ask['state'] === 'sent') {
+            $page['ok'] = __('errors.noperm.sent', ['to' => $ask['to']]);
+        } elseif ($ask['state'] === 'limited') {
+            $page['why'] = __('errors.noperm.limited', ['count' => AccessRequests::PER_DAY]);
+        }
+
+        return $page;
+    }
+
+    /**
+     * The "Nhờ cấp quyền" button of the no-permission page: where it posts, the screen it names,
+     * the address to come back to, its state and who it tells — null when there is nothing to ask.
+     *
+     * @return array{url: string, screen: string, back: string, state: string, to: string}|null
+     */
+    private function accessRequest(Request $request, User $user): ?array
+    {
+        $screen = (string) $request->route()?->getName();
+        $requests = app(AccessRequests::class);
+        if ($requests->askable($user, $screen) === null) {
+            return null;
+        }
+        $to = $requests->recipients($user);
+        if ($to === []) {
+            return null; // nobody else runs this website: there is no one to ask
+        }
+
+        return [
+            'url' => route('admin.access.request', absolute: false),
+            'screen' => $screen,
+            'back' => self::safeReturnPath($request, $request->getRequestUri()) ?? self::home(),
+            'state' => $requests->state($user, $screen),
+            'to' => implode(', ', $to),
+        ];
     }
 
     /** @return array<string, mixed> */
@@ -404,7 +448,12 @@ final class AdminErrorPages
     /** The screen the member tried to open, as the menu names it; null when it is not a known screen. */
     private static function screenTitle(Request $request): ?string
     {
-        $name = (string) $request->route()?->getName();
+        return self::screenTitleOf((string) $request->route()?->getName());
+    }
+
+    /** A screen's name as the menu says it, from its route name; null when it is not a known screen. */
+    public static function screenTitleOf(string $name): ?string
+    {
         $titles = [
             'admin.users.' => 'admin.members.title',
             'admin.settings.domains' => 'admin.domains_title',
@@ -430,13 +479,7 @@ final class AdminErrorPages
     /** The permission the route's own `can:` gate asked for, when it names one plainly. */
     private static function routePermission(Request $request): ?string
     {
-        foreach ($request->route()?->gatherMiddleware() ?? [] as $middleware) {
-            if (is_string($middleware) && preg_match('/^can:([a-z0-9_.]+)$/', $middleware, $m) === 1) {
-                return $m[1];
-            }
-        }
-
-        return null;
+        return AccessRequests::permissionOf($request->route());
     }
 
     /**

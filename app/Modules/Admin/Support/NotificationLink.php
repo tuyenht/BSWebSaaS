@@ -11,7 +11,8 @@ use Illuminate\Support\Str;
  * Where a notification in the bell leads, and the words on its link ("Mở bài", "Xem liên hệ"…).
  * Built from the facts the notification stores — the subject's ulid, never a bigint id — and only
  * to screens that exist; a kind with nowhere to go (the support sign-in notice: no activity log
- * on the website's admin yet) has no link and is only marked read.
+ * on the website's admin yet; a member's own roles changed: the notice is the message) has no link
+ * and is only marked read.
  */
 final class NotificationLink
 {
@@ -40,6 +41,9 @@ final class NotificationLink
                 : self::to(route('admin.settings.security', absolute: false), 'two_factor'),
             'security.new_device_login' => self::to(route('admin.settings.security', absolute: false), 'devices'),
             'system.storage_near_limit' => self::to(route('admin.media.index', absolute: false), 'media'),
+            // the member who asked, their roles panel open (Thành viên checks the reader may change them)
+            'member.access_requested' => ($member = self::ulid($data['requester'] ?? null)) !== null
+                ? self::to(route('admin.users.index', ['mo' => $member], false), 'member') : null,
             default => null,
         };
     }

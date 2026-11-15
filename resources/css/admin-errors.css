@@ -204,6 +204,19 @@
         cursor: not-allowed;
     }
 
+    /* "Đã báo qua chuông tới …": the request went out (board 25, under the groups). */
+    .te-ok {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        padding: 0.625rem 0.75rem;
+        border-radius: 0.375rem;
+        background: color-mix(in srgb, var(--color-admin-success-text) 10%, var(--color-surface));
+        color: var(--color-admin-success-text);
+        text-align: start;
+        font-size: var(--text-small);
+    }
+
     .te-why {
         margin: 0;
         font-size: var(--text-small);

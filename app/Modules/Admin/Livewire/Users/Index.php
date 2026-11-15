@@ -19,6 +19,7 @@ use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Identity\Support\UserPreferences;
+use App\Modules\Notifications\Messages\SiteNotice;
 use App\Modules\Rbac\Actions\AssignRole;
 use App\Modules\Rbac\Actions\InviteMember;
 use App\Modules\Rbac\Actions\RevokeRole;
@@ -142,6 +143,15 @@ final class Index extends Component
         $view = Cast::arr(Cast::arr(Cast::arr($this->actor()->preferences)['lists'] ?? null)[self::PREFS] ?? null);
         $this->per = in_array($view['per'] ?? null, MemberDirectory::PER_PAGE, true) ? Cast::int($view['per']) : 20;
         $this->clean();
+
+        // ?mo=<member ulid> (the bell's "Mở thành viên" on an access request): that member's panel,
+        // through openPanel's own checks — an unknown member or one above the reader says so
+        $open = request()->query('mo');
+        if (is_string($open) && Str::isUlid($open)) {
+            $this->openPanel($open);
+        } elseif ($open !== null) {
+            $this->say(__('admin.member_not_found'), 'error');
+        }
     }
 
     public function updated(string $property): void
@@ -853,15 +863,26 @@ final class Index extends Component
         $actor = $this->actor();
         $held = $target->roles()->get();
         $wanted = $roles->pluck('id')->all();
+        $changed = false;
         foreach ($roles as $role) {
             if (! $held->contains('id', $role->id)) {
                 app(AssignRole::class)->handle($actor, $target, $role);
+                $changed = true;
             }
         }
         foreach ($held as $existing) {
             if ($existing instanceof Role && ! in_array($existing->id, $wanted, true)) {
                 app(RevokeRole::class)->handle($actor, $target, $existing);
+                $changed = true;
             }
+        }
+        // the member hears of it ("Bạn sẽ nhận chuông khi được cấp quyền"), in this transaction:
+        // a refused save tells nobody; never the person making the change
+        if ($changed && $target->id !== $actor->id) {
+            $target->notify(new SiteNotice('member.role_changed', [
+                'actor' => $actor->name,
+                'roles' => implode(', ', $roles->sortByDesc('level')->map(fn (Role $role): string => RoleLabel::for($role))->all()),
+            ]));
         }
     }
 

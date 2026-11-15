@@ -744,6 +744,12 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         expect($html)->toContain('data-te-page=');
         file_put_contents($dir.'/'.$name.'.html', $html);
     }
+    // "Nhờ cấp quyền" pressed: the button reads "Đã gửi yêu cầu" and the green line says who was told
+    $this->flushSession();
+    $this->actingAs($viewer)->post('http://'.ADMIN_PREVIEW_HOST.'/admin/access-requests', ['screen' => 'admin.settings.general', 'back' => '/admin/settings/general'])->assertStatus(303);
+    $html = $this->actingAs($viewer)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/general')->assertForbidden()->getContent();
+    expect($html)->toContain('class="te-ok"');
+    file_put_contents($dir.'/error-noperm-sent.html', $html);
     app('auth')->forgetGuards();
     $this->flushSession();
     $html = $this->get('http://'.ADMIN_PREVIEW_HOST.'/admin/session-expired')->assertOk()->getContent();
@@ -753,5 +759,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-te-page="suspended"');
     file_put_contents($dir.'/error-suspended.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 49);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 50);
 });

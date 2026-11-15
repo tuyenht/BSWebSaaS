@@ -74,7 +74,7 @@ return new class extends Migration
     }
 
     /**
-     * Drops the trigger only. Once product limits exist (this release writes them), up() refuses to
+     * Drops the trigger and its function. Once product limits exist (this release writes them), up() refuses to
      * run again: its check assumes every limit row still names a post category.
      */
     public function down(): void
