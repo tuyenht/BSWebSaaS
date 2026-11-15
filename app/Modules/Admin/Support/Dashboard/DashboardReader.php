@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Support\Dashboard;
 
 use App\Modules\Admin\Support\Entries\ReviewWaiting;
+use App\Modules\Admin\Support\Entries\SectionBranch;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\SiteRoute;
@@ -217,10 +218,10 @@ final class DashboardReader
      * those a reviewer sent back with a reason.
      *
      * Each tile opens the posts list of the section postsSection() names, filtered to the member
-     * and the status, and that list holds the posts whose primary category IS the section's
-     * category (EntryListQuery::scoped(); a section built on no category lists every post). So
-     * the tiles count exactly that set: a post filed in another section, or under a sub-category,
-     * is in neither the number nor the list. The draft tile leaves out the returned posts it
+     * and the status, and that list holds the posts whose primary category is the section's
+     * category or one below it (EntryListQuery::scoped(); a section built on no category lists
+     * every post). So the tiles count exactly that set: a post filed in another section is in
+     * neither the number nor the list. The draft tile leaves out the returned posts it
      * counted (the board lists those on their own tile); only returned posts of that same set,
      * among those read, are taken off.
      *
@@ -344,7 +345,7 @@ final class DashboardReader
      * last move — a return when it brought the post back to the stage it is on, with a reason, by
      * someone else. A pending change to a published post that was turned down is not one: the
      * post stays published, and the board lists drafts only. `listed` counts the returned posts
-     * whose primary category is $listed (the set the draft tile counts; null: every post).
+     * whose primary category is $listed or one below it (the set the draft tile counts; null: every post).
      *
      * @return array{rows: list<array<string, mixed>>, listed: int}
      */
@@ -374,10 +375,18 @@ final class DashboardReader
         $actors = User::query()->whereIn('id', array_values(array_unique(array_filter(array_map(fn (array $pair): ?int => $pair[1]['actor_id'], $back)))))
             ->pluck('name', 'id');
 
+        // the categories the draft tile counts (inList(): the section's own and those below it)
+        $branch = null;
+        if ($listed !== null) {
+            [$sql, $values] = SectionBranch::ids(app(CurrentSite::class)->id(), $listed);
+            $branch = array_flip(array_map(fn (mixed $row): int => Cast::int(((array) $row)['id'] ?? 0), DB::select($sql, $values)));
+        }
+
         $out = [];
         $inList = 0;
         foreach ($back as [$entry, $move]) {
-            if ($listed === null || $entry->primaryCategory()?->id === $listed) {
+            $primary = $entry->primaryCategory()?->id;
+            if ($branch === null || ($primary !== null && isset($branch[$primary]))) {
                 $inList++;
             }
             $out[] = [
@@ -405,7 +414,8 @@ final class DashboardReader
 
     /**
      * Posts of the member that the posts list of the linked section shows: primary category
-     * $taxonomyId (the list's own test, EntryListQuery::scoped()), or every post when null.
+     * $taxonomyId or one below it (the list's own test, EntryListQuery::scoped()), or every post
+     * when null.
      *
      * @param  Builder<Entry>  $query
      * @return Builder<Entry>
@@ -417,11 +427,13 @@ final class DashboardReader
         }
         $site = app(CurrentSite::class)->id();
 
+        [$branch, $values] = SectionBranch::ids($site, $taxonomyId);
+
         return $query->whereExists(fn (QueryBuilder $primary) => $primary->selectRaw('1')->from('entry_taxonomies')
             ->where('entry_taxonomies.site_id', $site)
             ->whereColumn('entry_taxonomies.entry_id', 'entries.id')
-            ->where('entry_taxonomies.taxonomy_id', $taxonomyId)
-            ->where('entry_taxonomies.position', 0));
+            ->where('entry_taxonomies.position', 0)
+            ->whereRaw("entry_taxonomies.taxonomy_id in ({$branch})", $values));
     }
 
     /**

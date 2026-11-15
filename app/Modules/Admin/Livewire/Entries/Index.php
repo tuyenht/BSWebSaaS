@@ -534,7 +534,7 @@ final class Index extends Component
 
         $translation->update(['title' => $value]);
         $this->recordLiveEdit($entry, $translation);
-        $this->toast(__('entries.title_saved'));
+        $this->toast(__('entries.title_saved', ['noun' => __('entries.noun_'.$entry->type)]));
     }
 
     /**
@@ -633,7 +633,7 @@ final class Index extends Component
         // Materialize the copied block images into the usage index, exactly as the editor does on save.
         app(EntryBlockMediaReconciler::class)->reconcile($copy);
 
-        $this->toast(__('entries.duplicated'));
+        $this->toast(__('entries.duplicated', ['noun' => __('entries.noun_'.$entry->type)]));
     }
 
     public function trash(string $ulid): void
@@ -661,7 +661,7 @@ final class Index extends Component
         $this->authorize('restore', $entry);
         $entry->restore();
 
-        $this->toast(__('entries.restored'));
+        $this->toast(__('entries.restored', ['noun' => __('entries.noun_'.$entry->type)]));
     }
 
     public function forceDelete(string $ulid): void

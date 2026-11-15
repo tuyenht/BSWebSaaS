@@ -100,11 +100,13 @@ final class EntryListQuery
             $query->whereIn('entries.id', fn (QueryBuilder $set) => $set->select('sec.entry_id')->from('sec'));
         } elseif ($taxonomyId !== null) {
             // the section's posts: those whose PRIMARY category (pivot position 0) is the section's
+            // own or one below it (SectionBranch), as the storefront lists them
+            [$branch, $values] = SectionBranch::ids($this->siteId, $taxonomyId);
             $query->whereExists(fn (QueryBuilder $primary) => $primary->selectRaw('1')->from('entry_taxonomies')
                 ->where('entry_taxonomies.site_id', $this->siteId)
                 ->whereColumn('entry_taxonomies.entry_id', 'entries.id')
-                ->where('entry_taxonomies.taxonomy_id', $taxonomyId)
-                ->where('entry_taxonomies.position', 0));
+                ->where('entry_taxonomies.position', 0)
+                ->whereRaw("entry_taxonomies.taxonomy_id in ({$branch})", $values));
         }
 
         return $query;
@@ -663,8 +665,9 @@ final class EntryListQuery
         $heads = [];
         $headBindings = [];
         if ($taxonomyId !== null) {
-            $heads[] = 'sec as materialized (select entry_id from entry_taxonomies where site_id = ? and taxonomy_id = ? and position = 0)';
-            $headBindings = [$this->siteId, $taxonomyId];
+            [$branch, $values] = SectionBranch::ids($this->siteId, $taxonomyId);
+            $heads[] = "sec as materialized (select entry_id from entry_taxonomies where site_id = ? and position = 0 and taxonomy_id in ({$branch}))";
+            $headBindings = [$this->siteId, ...$values];
         }
         if ($size !== null) {
             $heads[] = "s as materialized (select {$size[0]} as c)";

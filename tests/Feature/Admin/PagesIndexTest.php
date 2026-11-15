@@ -652,7 +652,7 @@ it('refuses an inline title longer than the editor allows, and saves one at the 
         $component->assertDispatched('bs-toast', text: __('entries.title_too_long', ['max' => 200]));
 
         $component->call('saveTitle', $page->ulid, str_repeat('ă', 200))
-            ->assertDispatched('bs-toast', text: __('entries.title_saved'));
+            ->assertDispatched('bs-toast', text: __('entries.title_saved', ['noun' => __('entries.noun_page')]));
         expect($page->translationFor('vi')->fresh()->title)->toBe(str_repeat('ă', 200));
     });
 });
