@@ -100,6 +100,8 @@ final class Account extends Component
         'security.support_sign_in' => 'owner',
         'security.domain_taken_over' => ['domains.manage'],
         'system.domain_problem' => ['domains.manage'],
+        'member.access_requested' => ['users.manage'],
+        'member.role_changed' => null,
     ];
 
     /** The icon of each kind of device (board 23). */

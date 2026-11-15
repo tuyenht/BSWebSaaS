@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Admin\Http\Controllers\AccessRequestController;
 use App\Modules\Admin\Http\Controllers\HintPreferenceController;
 use App\Modules\Admin\Http\Controllers\OAuthController;
 use App\Modules\Admin\Http\Controllers\SessionController;
@@ -276,6 +277,9 @@ Route::prefix(config('admin.prefix', 'admin'))
         Route::post('/hint-preference', [HintPreferenceController::class, 'store'])->name('admin.hint.dismiss');
         // "Tiếp tục làm việc" in the session-ending dialog: a signed-in request keeps the session.
         Route::post('/session/ping', [SessionController::class, 'ping'])->name('admin.session.ping');
+        // "Nhờ cấp quyền" on the no-permission page: any member, for a screen their roles cannot open
+        // (AccessRequests reads the permission again from that screen's own route, and limits how often).
+        Route::post('/access-requests', [AccessRequestController::class, 'store'])->middleware('throttle:20,1')->name('admin.access.request');
 
         // Site members + their roles. Invite/change/remove go through the guarded InviteMember /
         // AssignRole / RevokeRole actions, so the role hierarchy is enforced server-side. No `can:`

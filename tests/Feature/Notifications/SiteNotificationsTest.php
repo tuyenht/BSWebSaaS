@@ -134,6 +134,38 @@ it('adds the domain kinds reversibly, dropping only their own notices on the way
         ->and(fn () => $insert('system.domain_problem'))->not->toThrow(QueryException::class);
 });
 
+it('adds the member access kinds, and refuses to roll back while notices of them exist', function (): void {
+    /** @var Migration $migration */
+    $migration = require database_path('migrations/2075_01_01_000000_add_member_access_notification_kinds.php');
+    $user = User::factory()->create();
+    $insert = fn (string $kind) => DB::connection('pgsql_admin')->table('site_notifications')->insert([
+        'ulid' => (string) str()->ulid(), 'site_id' => 1, 'user_id' => $user->id, 'kind' => $kind, 'data' => '{}',
+    ]);
+    $insert('member.access_requested');
+    $insert('system.domain_problem');
+
+    $original = DB::getDefaultConnection();
+    DB::setDefaultConnection('pgsql_admin');
+    try {
+        expect(fn () => $migration->down())->toThrow(RuntimeException::class, '1 notices of the kinds');
+        $kindsAfterRefusal = DB::table('site_notifications')->orderBy('kind')->pluck('kind')->all();
+
+        // deleted on purpose, the rollback goes through and the old list refuses the new kinds
+        DB::table('site_notifications')->where('kind', 'member.access_requested')->delete();
+        $migration->down();
+        $listAfterDown = (string) DB::scalar("select pg_get_constraintdef(oid) from pg_constraint where conname = 'site_notifications_kind_check'");
+        $migration->up();
+        $migration->up();   // re-runnable after a mid-run failure
+    } finally {
+        latestNotificationKinds();
+        DB::setDefaultConnection($original);
+    }
+
+    expect($kindsAfterRefusal)->toBe(['member.access_requested', 'system.domain_problem'])
+        ->and($listAfterDown)->not->toContain('member.')->toContain("'system.domain_problem'")
+        ->and(fn () => $insert('member.role_changed'))->not->toThrow(QueryException::class);
+});
+
 /**
  * The kind CHECK as the newest migration leaves it: a test that replays an older one must not leave
  * the shared database refusing kinds added since.
@@ -141,7 +173,7 @@ it('adds the domain kinds reversibly, dropping only their own notices on the way
 function latestNotificationKinds(): void
 {
     /** @var Migration $latest */
-    $latest = require database_path('migrations/2033_01_01_000000_add_domain_notification_kinds.php');
+    $latest = require database_path('migrations/2075_01_01_000000_add_member_access_notification_kinds.php');
     $latest->up();
 }
 

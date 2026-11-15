@@ -33,8 +33,35 @@
         </div>
     @endif
 
-    @if ($primary !== null || $page['secondary'] !== [])
+    @if ($page['ok'] !== null)
+        <div class="te-ok" role="status">
+            <x-bs-admin::icon name="ri-checkbox-circle" class="size-5 shrink-0" /><span>{{ $page['ok'] }}</span>
+        </div>
+    @endif
+
+    @if ($primary !== null || $page['secondary'] !== [] || $page['request'] !== null)
         <div class="te-acts">
+            @if ($page['request'] !== null)
+                @php($ask = $page['request'])
+                @if ($ask['state'] === 'ready')
+                    {{-- a plain form: the request goes out without script, then the screen reads "Đã gửi yêu cầu" --}}
+                    <form method="post" action="{{ $ask['url'] }}" class="contents">
+                        @csrf
+                        <input type="hidden" name="screen" value="{{ $ask['screen'] }}">
+                        <input type="hidden" name="back" value="{{ $ask['back'] }}">
+                        <x-bs-admin::button type="submit" :title="__('errors.noperm.request_title', ['to' => $ask['to']])">
+                            <x-bs-admin::icon name="ri-hand-heart" class="size-4" /><span>{{ __('errors.noperm.request') }}</span>
+                        </x-bs-admin::button>
+                    </form>
+                @else
+                    {{-- sent or no more today: still focusable, its reason read with it, visibly off --}}
+                    <x-bs-admin::button aria-disabled="true" :aria-describedby="$whyId"
+                        :title="$ask['state'] === 'sent' ? __('errors.noperm.requested_title') : $page['why']">
+                        <x-bs-admin::icon :name="$ask['state'] === 'sent' ? 'ri-check' : 'ri-hand-heart'" class="size-4" />
+                        <span>{{ $ask['state'] === 'sent' ? __('errors.noperm.requested') : __('errors.noperm.request') }}</span>
+                    </x-bs-admin::button>
+                @endif
+            @endif
             @if ($primary !== null)
                 @if ($primary['href'] !== null)
                     <x-bs-admin::button :href="$primary['href']" :navigate="false">

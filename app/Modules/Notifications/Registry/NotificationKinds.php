@@ -34,6 +34,8 @@ final class NotificationKinds
             'security.domain_taken_over' => ['group' => 'security', 'in_app' => true, 'mail' => true, 'locked' => true],
             'system.storage_near_limit' => ['group' => 'system', 'in_app' => true, 'mail' => true, 'locked' => false],
             'system.domain_problem' => ['group' => 'system', 'in_app' => true, 'mail' => true, 'locked' => false],
+            'member.access_requested' => ['group' => 'system', 'in_app' => true, 'mail' => false, 'locked' => false],
+            'member.role_changed' => ['group' => 'system', 'in_app' => true, 'mail' => false, 'locked' => false],
         ];
     }
 

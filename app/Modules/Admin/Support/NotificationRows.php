@@ -92,6 +92,8 @@ final class NotificationRows
             'security.domain_taken_over' => ['ri-error-warning', 'danger'],
             'system.storage_near_limit' => ['ri-hard-drive-3', 'warn'],
             'system.domain_problem' => ['ri-global', $sentence === 'recovered' ? 'ok' : 'danger'],
+            'member.access_requested' => ['ri-user-add', 'info'],
+            'member.role_changed' => ['ri-shield-user', 'info'],
             default => ['ri-information', 'info'],
         };
     }

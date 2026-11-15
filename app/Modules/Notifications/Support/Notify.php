@@ -38,6 +38,30 @@ final class Notify
     }
 
     /**
+     * Everyone on the current site who holds one of the roles $roleIds (this site's roles), but
+     * $except; returns how many were told — those who turned this kind off in the bell are neither
+     * told nor counted, so a caller can turn to someone else.
+     *
+     * @param  list<int>  $roleIds
+     * @param  array<string, mixed>  $data
+     */
+    public static function membersOf(array $roleIds, string $kind, array $data, ?User $except = null): int
+    {
+        if ($roleIds === []) {
+            return 0;
+        }
+        $users = User::query()
+            ->whereHas('roles', fn (Builder $role) => $role->whereIn($role->qualifyColumn('id'), $roleIds))
+            ->when($except instanceof User, fn ($query) => $query->whereKeyNot($except?->getKey()))
+            ->get()
+            ->filter(fn (User $user): bool => NotificationPreferences::wants($user, $kind, 'in_app'));
+
+        Notification::send($users, new SiteNotice($kind, $data));
+
+        return $users->count();
+    }
+
+    /**
      * One person, by id — skipped when they caused the event or no longer exist.
      *
      * @param  array<string, mixed>  $data

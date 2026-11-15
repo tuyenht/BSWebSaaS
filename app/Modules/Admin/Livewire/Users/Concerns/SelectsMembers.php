@@ -120,7 +120,7 @@ trait SelectsMembers
             ->orderBy('name')
             ->orderBy('id')
             ->with('roles')
-            ->get(['id', 'ulid', 'name', 'email']);
+            ->get(['id', 'ulid', 'name', 'email', 'preferences']); // preferences: the role-change notice honours a member's choice
         $this->picked = array_values(array_intersect($this->picked, Cast::strings($members->pluck('ulid')->all())));
 
         return $members;
