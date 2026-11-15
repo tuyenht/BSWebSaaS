@@ -27,7 +27,7 @@
         'offlineToast' => __('catalog.ed.toast_offline'),
         'offlineToastIcon' => \Illuminate\Support\Facades\Blade::render('<x-bs-admin::icon name="ri-wifi-off" class="size-4" />'),
     ]];
-    $field = 'field block w-full rounded-md border border-border-input bg-surface-muted px-3 text-text placeholder:text-placeholder transition-colors focus:border-primary-text aria-invalid:border-danger-text';
+    $fieldLook = 'block w-full rounded-md border border-border-input bg-surface-muted px-3 text-text placeholder:text-placeholder transition-colors focus:border-primary-text aria-invalid:border-danger-text';
     $label = 'inline-flex min-w-0 max-w-full flex-wrap items-center gap-x-1.5 gap-y-1 text-small font-semibold text-text-strong';
     $error = 'mt-1 text-small text-danger-text';
     $card = 'rounded-md border border-border bg-surface shadow-card';
@@ -104,13 +104,13 @@
                         </label>
                     </div>
                     <input type="text" id="entry-title" wire:model="title" lang="{{ $locale }}" aria-required="true"
-                           @error('title') aria-invalid="true" aria-describedby="entry-title-e" @enderror class="{{ $field }}">
+                           @error('title') aria-invalid="true" aria-describedby="entry-title-e" @enderror class="field {{ $fieldLook }}">
                     @error('title') <p id="entry-title-e" class="{{ $error }}">{{ $message }}</p> @enderror
 
                     <div class="mt-3.5">
                         <label for="entry-slug" class="{{ $label }} mb-1.5">{{ __('entries.ed.slug') }}</label>
                         <input type="text" id="entry-slug" wire:model="slug" dir="ltr" autocomplete="off" spellcheck="false"
-                               @error('slug') aria-invalid="true" aria-describedby="entry-slug-e" @enderror class="{{ $field }}">
+                               @error('slug') aria-invalid="true" aria-describedby="entry-slug-e" @enderror class="field {{ $fieldLook }}">
                         @error('slug') <p id="entry-slug-e" class="{{ $error }}">{{ $message }}</p> @enderror
                     </div>
                 </section>
