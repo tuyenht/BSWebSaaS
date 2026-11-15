@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AddSecurityHeaders;
+use App\Http\Middleware\KeepPagesUntransformed;
 use App\Modules\Admin\Errors\AdminErrorPages;
 use App\Modules\Admin\Errors\ErrorReference;
 use App\Modules\Identity\Http\Middleware\EnsureTwoFactorEnabled;
@@ -38,6 +39,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // web group means headers are applied after routing but before the response
         // leaves the pipeline, and they survive any earlier post-processing middleware.
         $middleware->web(append: [AddSecurityHeaders::class]);
+
+        // Outermost: no proxy rewrites a page (Cloudflare's injected analytics script); last to touch
+        // Cache-Control, after Livewire's global back-button middleware.
+        $middleware->prepend(KeepPagesUntransformed::class);
 
         // Storefront lead capture (POST /forms/{key}) is a public, session-less endpoint defended
         // by Turnstile + honeypot + rate-limit (§23/R20), not the session CSRF token — which can't
