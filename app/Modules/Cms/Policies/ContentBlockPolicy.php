@@ -17,8 +17,9 @@ use App\Modules\Identity\Models\User;
  *    page: `entries.create`, `entries.edit.own`, `entries.edit.any`). An author or contributor may
  *    therefore list the blocks and place one in their own page; placing a block does not change it.
  *  - Every change to a block (create, update, publish, duplicate, delete): `blocks.manage`, and only
- *    for a member not limited to some categories (CategoryScopes): one change shows on every page and
- *    menu that uses the block, including pages outside those limits. A limited member still sees and
+ *    for a member not limited to some categories on any axis (CategoryScopes — post or product
+ *    categories): one change shows on every page and menu that uses the block, including pages and
+ *    product listings outside those limits. A limited member still sees and
  *    places blocks like any placer.
  *
  * Every action in Cms\Actions\ContentBlocks asks this policy first (ContentBlockPolicyChokepointTest).
@@ -33,7 +34,7 @@ final class ContentBlockPolicy
     /** Any change to the website's blocks. */
     public function manage(User $user): bool
     {
-        return $user->can('blocks.manage') && ! $this->scopes->isLimited($user);
+        return $user->can('blocks.manage') && ! $this->scopes->isLimitedOnAnyAxis($user);
     }
 
     public function viewAny(User $user): bool

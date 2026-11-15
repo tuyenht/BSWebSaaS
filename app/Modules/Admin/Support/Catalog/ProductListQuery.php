@@ -63,6 +63,7 @@ final class ProductListQuery
     /** The price a row shows: the sale price while a sale is on, else the regular price. */
     private const string SHOWN_PRICE = 'case when '.self::ON_SALE.' then products.sale_price else products.price end';
 
+    /** @param  list<int>|null  $within  the main categories the reader may see products in (CategoryScopes::allowedTaxonomyIds); null = every product */
     public function __construct(
         private readonly int $siteId,
         private readonly string $tab,
@@ -71,7 +72,40 @@ final class ProductListQuery
         private readonly int $cap = self::CAP,
         private readonly ProductListFilter $filter = new ProductListFilter,
         private readonly int $gather = self::GATHER,
+        private readonly ?array $within = null,
     ) {}
+
+    /**
+     * Only the products whose MAIN category (product_taxonomies position 0) is one of $categoryIds —
+     * the products a member limited to some product categories may see and change
+     * (CategoryScopes::allowedTaxonomyIds). A product with no main category is never among them. One
+     * EXISTS on the pivot, keyed by the explicit site_id like every other read of the list.
+     *
+     * @template TBuilder of Builder<Product>
+     *
+     * @param  TBuilder  $query
+     * @param  list<int>  $categoryIds
+     * @return TBuilder
+     */
+    public static function whereMainCategoryIn(Builder $query, int $siteId, array $categoryIds): Builder
+    {
+        return $query->whereRaw(
+            'exists (select 1 from product_taxonomies main where main.site_id = ? and main.product_id = products.id and main.position = 0 and main.taxonomy_id = any(?::bigint[]))',
+            [$siteId, self::pgArray($categoryIds)],
+        );
+    }
+
+    /**
+     * Every product of the list's reach: the whole website, or the main categories $within names.
+     *
+     * @return Builder<Product>
+     */
+    private function base(): Builder
+    {
+        $query = Product::query();
+
+        return $this->within === null ? $query : self::whereMainCategoryIn($query, $this->siteId, $this->within);
+    }
 
     /** @var array<string, array<string, int>> the word counts of a search, read once per list (wordCounts) */
     private array $wordCounts = [];
@@ -275,23 +309,23 @@ final class ProductListQuery
         $n = count($locales);
         /** @var array<string, Builder<Product>> $wanted */
         $wanted = [
-            't_featured' => Product::query()->where('products.is_featured', true),
-            't_best' => Product::query()->where('products.is_bestseller', true),
+            't_featured' => $this->base()->where('products.is_featured', true),
+            't_best' => $this->base()->where('products.is_bestseller', true),
         ];
         if ($selling) {
-            $wanted['s_in'] = Product::query()->where('products.stock', '>', 0);
-            $wanted['s_out'] = Product::query()->where('products.stock', 0);
-            $wanted['s_none'] = Product::query()->whereNull('products.stock');
-            $wanted['sale'] = Product::query()->whereRaw(self::ON_SALE_GROUP);
+            $wanted['s_in'] = $this->base()->where('products.stock', '>', 0);
+            $wanted['s_out'] = $this->base()->where('products.stock', 0);
+            $wanted['s_none'] = $this->base()->whereNull('products.stock');
+            $wanted['sale'] = $this->base()->whereRaw(self::ON_SALE_GROUP);
         }
         if ($n >= 2) {
             $have = [$this->siteId, self::pgArray($locales)];
-            $wanted['r_full'] = Product::query()->whereRaw(self::HAVE.' >= ?', [...$have, $n]);
+            $wanted['r_full'] = $this->base()->whereRaw(self::HAVE.' >= ?', [...$have, $n]);
             // with exactly two languages no product can have some but not all of them and more than one
             if ($n > 2) {
-                $wanted['r_partial'] = Product::query()->whereRaw(self::HAVE.' > 1 and '.self::HAVE.' < ?', [...$have, ...$have, $n]);
+                $wanted['r_partial'] = $this->base()->whereRaw(self::HAVE.' > 1 and '.self::HAVE.' < ?', [...$have, ...$have, $n]);
             }
-            $wanted['r_none'] = Product::query()->whereRaw(self::HAVE.' <= 1', $have);
+            $wanted['r_none'] = $this->base()->whereRaw(self::HAVE.' <= 1', $have);
         }
 
         $select = [];
@@ -325,7 +359,7 @@ final class ProductListQuery
      */
     private function scoped(string $tab): Builder
     {
-        $query = Product::query();
+        $query = $this->base();
         if ($tab === 'trash') {
             $query->onlyTrashed();
         } elseif (in_array($tab, self::STATUS_TABS, true)) {

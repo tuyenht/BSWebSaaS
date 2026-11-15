@@ -11,26 +11,32 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Identity\Models\User;
+use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Support\MembershipLock;
 use App\Modules\Rbac\Support\RoleHierarchyGuard;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Set the categories a member of this site may write in — the one user-facing writer of
- * member_category_scopes. An empty list means every category, and is only ever set here, by
- * someone choosing it. The given list replaces the member's whole set, atomically.
+ * Set the categories a member of this site may write in, on one axis — posts (post categories) or
+ * products (product categories) — the one user-facing writer of member_category_scopes. An empty
+ * list means every category of that axis, and is only ever set here, by someone choosing it. The
+ * given list replaces the member's set ON THAT AXIS, atomically; the other axis is left as it is
+ * (a row's axis is the vocabulary of its category, CategoryScopes).
  *
  * Who may: someone holding `users.manage`, for a member strictly below their own role level and
  * never themselves; platform staff set nobody's (MembershipLock). Setting limits needs the site's
  * `rbac.category_scopes` feature; clearing them does not, so a site whose plan lapsed can still
  * lift limits that keep applying. A limited actor hands out only categories inside their own limits, so never "every
- * category". Members who are never limited (role level ≥ CategoryScopes::EXEMPT_LEVEL) cannot be
- * given limits; clearing leftover rows of one is allowed. Only post categories of this site count.
- * Every change is audited. Runs inside the tenant context.
+ * category" — judged on the same axis: a member limited on products only hands out any post limits.
+ * Members who are never limited (role level ≥ CategoryScopes::EXEMPT_LEVEL) cannot be given limits;
+ * clearing leftover rows of one is allowed. Only this site's categories of the axis count. Every
+ * change is audited. Runs inside the tenant context.
  */
 final readonly class SetMemberCategoryScopes
 {
@@ -42,13 +48,17 @@ final readonly class SetMemberCategoryScopes
     ) {}
 
     /**
-     * @param  list<int|string>  $taxonomyIds  the categories the member may write in (ids as a form sends them); [] = every category
+     * @param  list<int|string>  $taxonomyIds  the categories of $axis the member may write in (ids as a form sends them); [] = every category of it
+     * @param  string  $axis  CategoryScopes::POSTS or CategoryScopes::PRODUCTS
      *
      * @throws AuthorizationException
      * @throws CategoryScopeRejectedException
      */
-    public function handle(User $actor, User $target, array $taxonomyIds): void
+    public function handle(User $actor, User $target, array $taxonomyIds, string $axis = CategoryScopes::POSTS): void
     {
+        if (! CategoryScopes::isAxis($axis)) {
+            throw new CategoryScopeRejectedException('taxonomy_invalid');
+        }
         app(MembershipLock::class)->authorize($actor, $this->site->id(), 'users.manage');   // never on someone's behalf, from outside the site, or without users.manage there
         if ($actor->id === $target->id) {
             throw new AuthorizationException('Nobody sets their own category limits.');
@@ -60,10 +70,10 @@ final readonly class SetMemberCategoryScopes
         if ($ids !== [] && ! $this->entitlement->featureEnabled('rbac.category_scopes')) {
             throw new CategoryScopeRejectedException('category_scopes_disabled');
         }
-        $this->assertWithinOwnScope($actor, $ids);
+        $this->assertWithinOwnScope($actor, $ids, $axis);
 
         $siteId = $this->site->id();
-        DB::transaction(function () use ($actor, $target, $ids, $siteId): void {
+        DB::transaction(function () use ($actor, $target, $ids, $siteId, $axis): void {
             // The category tree first (a category being deleted right now is refused cleanly, never
             // left to the foreign key), then the member's own limits lock, which a role change
             // takes too (ForgetMemberCategoryScopes). Everything the change depends on is read
@@ -73,11 +83,11 @@ final readonly class SetMemberCategoryScopes
             $this->scopes->forget();
 
             $this->assertTarget($actor, $target, $ids);
-            $this->assertCategories($ids);
+            $this->assertCategories($ids, $axis);
 
             $before = array_map(
                 static fn (mixed $id): int => Cast::int($id),
-                MemberCategoryScope::query()->where('site_id', $siteId)->where('user_id', $target->id)->orderBy('taxonomy_id')->pluck('taxonomy_id')->all(),
+                $this->rowsOn($axis, $siteId, $target)->orderBy('taxonomy_id')->pluck('taxonomy_id')->all(),
             );
             $after = $ids;
             sort($after);
@@ -85,11 +95,8 @@ final readonly class SetMemberCategoryScopes
                 return;   // nothing changes: nothing written, nothing audited
             }
 
-            MemberCategoryScope::query()
-                ->where('site_id', $siteId)
-                ->where('user_id', $target->id)
-                ->whereNotIn('taxonomy_id', $ids)
-                ->delete();
+            // Only this axis's rows: setting post limits never touches product limits, and back.
+            $this->rowsOn($axis, $siteId, $target)->whereNotIn('taxonomy_id', $ids)->delete();
             foreach (array_diff($ids, $before) as $id) {
                 MemberCategoryScope::query()->create(['user_id' => $target->id, 'taxonomy_id' => $id]);
             }
@@ -98,9 +105,90 @@ final readonly class SetMemberCategoryScopes
             Audit::record('cms.category_scopes.changed', [
                 'auditable_type' => User::class,
                 'auditable_id' => $target->id,
-                'meta' => ['before' => $before, 'after' => $after],
+                'meta' => ['before' => $before, 'after' => $after, 'vocabulary' => $axis],
             ]);
         });
+    }
+
+    /**
+     * The axes on which $target, as they stand now in this transaction, would work in every category
+     * although $actor is limited there: $roles (the roles just given) work on that axis, and the
+     * target has no limits of it. A limited actor never leaves a member they change wider than
+     * themselves — never "every category" (as for setting limits by hand, and for an invitation).
+     * Asked after the roles are given and any limits set, in the same transaction; a member who is
+     * never limited (role level ≥ CategoryScopes::EXEMPT_LEVEL) is never left open.
+     *
+     * @param  list<Role>  $roles
+     * @param  list<string>|null  $actorAxes  limitedAxes($actor), when the caller read it already (a
+     *                                        loop over many members reads the actor's limits once)
+     * @return list<string>
+     */
+    public function axesLeftOpen(User $actor, User $target, array $roles, ?array $actorAxes = null): array
+    {
+        // the actor's own limits do not change with the target's roles: an actor who is not limited
+        // anywhere costs nothing more
+        $axes = $actorAxes ?? $this->limitedAxes($actor);
+        if ($axes === []) {
+            return [];
+        }
+        // the target's roles and limits just changed: nothing read about them earlier still holds
+        $this->scopes->forget();
+        $this->scopes->lockMember($target);
+        if ($this->scopes->isExempt($target)) {
+            return [];
+        }
+        (new Collection($roles))->loadMissing('permissions');
+        $open = [];
+        foreach ($axes as $axis) {
+            if ($this->scopes->isLimited($target, $axis)) {
+                continue;
+            }
+            $works = $axis === CategoryScopes::PRODUCTS
+                ? InviteMemberWithCategories::managesProducts($roles)
+                : InviteMemberWithCategories::writesPosts($roles);
+            if ($works) {
+                $open[] = $axis;
+            }
+        }
+
+        return $open;
+    }
+
+    /**
+     * The axes on which $actor is limited to some categories here.
+     *
+     * @return list<string>
+     */
+    public function limitedAxes(User $actor): array
+    {
+        return array_values(array_filter(CategoryScopes::AXES, fn (string $axis): bool => $this->scopes->isLimited($actor, $axis)));
+    }
+
+    /**
+     * axesLeftOpen() as a refusal: the caller rolls back the role change it is part of.
+     *
+     * @param  list<Role>  $roles
+     *
+     * @throws CategoryScopeRejectedException needs_limits
+     */
+    public function assertNoneLeftOpen(User $actor, User $target, array $roles): void
+    {
+        if ($this->axesLeftOpen($actor, $target, $roles) !== []) {
+            throw new CategoryScopeRejectedException('needs_limits');
+        }
+    }
+
+    /**
+     * The target's rows whose category is of $axis.
+     *
+     * @return Builder<MemberCategoryScope>
+     */
+    private function rowsOn(string $axis, int $siteId, User $target): Builder
+    {
+        return MemberCategoryScope::query()
+            ->where('site_id', $siteId)
+            ->where('user_id', $target->id)
+            ->whereIn('taxonomy_id', Taxonomy::query()->select('id')->where('vocabulary', $axis));
     }
 
     /**
@@ -130,14 +218,14 @@ final readonly class SetMemberCategoryScopes
      *
      * @throws CategoryScopeRejectedException
      */
-    private function assertCategories(array $ids): void
+    private function assertCategories(array $ids, string $axis): void
     {
         if ($ids === []) {
             return;
         }
 
         // The site scope (and RLS) hide other sites' categories, so they are refused like unknown ids.
-        $found = Taxonomy::query()->whereKey($ids)->where('vocabulary', 'post_cat')->count();
+        $found = Taxonomy::query()->whereKey($ids)->where('vocabulary', $axis)->count();
         if ($found !== count($ids)) {
             throw new CategoryScopeRejectedException('taxonomy_invalid');
         }
@@ -148,9 +236,9 @@ final readonly class SetMemberCategoryScopes
      *
      * @throws CategoryScopeRejectedException
      */
-    private function assertWithinOwnScope(User $actor, array $ids): void
+    private function assertWithinOwnScope(User $actor, array $ids, string $axis): void
     {
-        if (! $this->scopes->isLimited($actor)) {
+        if (! $this->scopes->isLimited($actor, $axis)) {
             return;
         }
 
@@ -158,7 +246,7 @@ final readonly class SetMemberCategoryScopes
             throw new CategoryScopeRejectedException('outside_own_scope');
         }
         foreach ($ids as $id) {
-            if (! $this->scopes->coversId($actor, $id)) {
+            if (! $this->scopes->coversId($actor, $id, $axis)) {
                 throw new CategoryScopeRejectedException('outside_own_scope');
             }
         }

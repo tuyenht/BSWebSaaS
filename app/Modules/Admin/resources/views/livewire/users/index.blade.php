@@ -240,12 +240,14 @@
                                         <span class="inline-flex max-w-full rounded bg-primary/8 px-2 py-0.5 text-caption font-medium text-primary-text [overflow-wrap:anywhere]">{{ $label }}</span>
                                     @endforeach
                                 </span>
-                                @if ($limits !== [])
-                                    <span class="mt-1 flex items-start gap-1 text-small text-text-muted">
-                                        <x-bs-admin::icon name="ri-article" class="mt-0.5 size-4 shrink-0" />
-                                        <span class="min-w-0 [overflow-wrap:anywhere]">{{ __('admin.members.scope_posts', ['names' => implode(', ', $limits)]) }}</span>
-                                    </span>
-                                @endif
+                                @foreach ([\App\Modules\Cms\Support\CategoryScopes::POSTS => ['ri-article', 'admin.members.scope_posts'], \App\Modules\Cms\Support\CategoryScopes::PRODUCTS => ['ri-shopping-bag-3', 'admin.members.scope_products']] as $axis => [$axIcon, $axLine])
+                                    @if (isset($limits[$axis]))
+                                        <span class="mt-1 flex items-start gap-1 text-small text-text-muted">
+                                            <x-bs-admin::icon :name="$axIcon" class="mt-0.5 size-4 shrink-0" />
+                                            <span class="min-w-0 [overflow-wrap:anywhere]">{{ __($axLine, ['names' => implode(', ', $limits[$axis]['names'])]).($limits[$axis]['off'] ? ' '.__('admin.members.scope_off') : '') }}</span>
+                                        </span>
+                                    @endif
+                                @endforeach
                             </x-bs-admin::list.cell>
                             <x-bs-admin::list.cell col="st">
                                 <x-bs-admin::status-pill status="active">{{ $statusLabel }}</x-bs-admin::status-pill>
@@ -348,6 +350,31 @@
                 @if ($panelError !== '')
                     <x-bs-admin::field-error>{{ $panelError }}</x-bs-admin::field-error>
                 @endif
+                @if ($pnScope !== null)
+                    {{-- "Phạm vi làm việc" (design 22): the categories the member is limited to on each axis --}}
+                    <section class="flex min-w-0 flex-col gap-3 rounded-md border border-border p-3" aria-labelledby="members-pn-sc-h">
+                        <h3 id="members-pn-sc-h" class="m-0 text-[calc(0.875rem+var(--user-text-boost))] font-semibold text-text-strong">{{ __('admin.members.inv_sc_title') }}</h3>
+                        @if ($pnScope['high'])
+                            <p class="m-0 flex items-start gap-1.5 text-small text-text-muted"><x-bs-admin::icon name="ri-shield-check" class="mt-0.5 size-4 shrink-0" /><span>{{ __('admin.members.inv_sc_high') }}</span></p>
+                            @if ($pnScope['drop'] !== '')
+                                <p class="m-0 flex items-start gap-1.5 text-small text-text-muted"><x-bs-admin::icon name="ri-information" class="mt-0.5 size-4 shrink-0" /><span>{{ $pnScope['drop'] }}</span></p>
+                            @endif
+                        @elseif ($pnScope['none'])
+                            <p class="m-0 flex items-start gap-1.5 text-small text-text-muted"><x-bs-admin::icon name="ri-information" class="mt-0.5 size-4 shrink-0" /><span>{{ __('admin.members.inv_sc_none') }}</span></p>
+                        @else
+                            @if (! $pnScope['feat'])
+                                <p class="m-0 flex items-start gap-1.5 text-small text-text-muted"><x-bs-admin::icon name="ri-lock-2" class="mt-0.5 size-4 shrink-0" /><span>{{ $pnScope['upsell'] ? __('admin.members.inv_sc_plan_upsell') : __('admin.members.inv_sc_plan_off') }}</span></p>
+                            @endif
+                            @foreach ($pnScope['axes'] as $a)
+                                @include('admin::livewire.users.scope-axis', ['a' => $a, 'kind' => 'pn', 'prefix' => 'panel'])
+                            @endforeach
+                        @endif
+                        @foreach ($pnScope['keep'] as $keep)
+                            <p class="m-0 flex items-start gap-1.5 text-small text-text-muted"><x-bs-admin::icon name="ri-archive" class="mt-0.5 size-4 shrink-0" /><span>{{ $keep }}</span></p>
+                        @endforeach
+                        <p class="m-0 flex items-start gap-1.5 text-small text-text-muted"><x-bs-admin::icon name="ri-information" class="mt-0.5 size-4 shrink-0" /><span>{{ __('admin.members.inv_sc_note') }}</span></p>
+                    </section>
+                @endif
                 <div class="flex flex-col gap-2 rounded-md bg-surface-muted px-3.5 py-3 text-small">
                     <b class="text-text-strong">{{ __('admin.members.pv_title', ['name' => $first($panelMember->name)]) }}</b>
                     @if ($added === [] && $removed === [])
@@ -402,6 +429,9 @@
                     <b class="text-text-strong">{{ __('admin.members.pv_title_many', ['n' => $num($okN)]) }}</b>
                     @if ($bulkDoes !== [])
                         <span class="flex flex-wrap items-start gap-2"><x-bs-admin::badge color="success" soft pill><x-bs-admin::icon name="ri-checkbox-circle" class="size-3.5" />{{ __('admin.members.pv_many_does') }}</x-bs-admin::badge><b class="min-w-0 flex-1 text-text">{{ implode(', ', array_map($permLabel, $bulkDoes)) }}</b></span>
+                    @endif
+                    @if ($bulkDrop > 0)
+                        <span class="flex flex-wrap items-start gap-2"><x-bs-admin::badge color="secondary" soft pill><x-bs-admin::icon name="ri-folder-unknow" class="size-3.5" />{{ __('admin.members.pv_drop_chip') }}</x-bs-admin::badge><b class="min-w-0 flex-1 text-text">{{ __('admin.members.pv_drop', ['n' => $num($bulkDrop)]) }}</b></span>
                     @endif
                     <span class="text-text-muted">{{ __('admin.members.pv_logged') }}</span>
                 </div>
@@ -475,7 +505,7 @@
                         @error('inviteRoles')<x-bs-admin::field-error>{{ $message }}</x-bs-admin::field-error>@enderror
                     </fieldset>
                     @if ($invScope !== null && $invScope['show'])
-                        {{-- "Phạm vi làm việc" (design 22): the post categories the invited person will be limited to --}}
+                        {{-- "Phạm vi làm việc" (design 22): the categories the invited person will be limited to on each axis --}}
                         <section class="flex min-w-0 flex-col gap-3 rounded-md border border-border p-3" aria-labelledby="members-inv-sc-h">
                             <h3 id="members-inv-sc-h" class="m-0 text-[calc(0.875rem+var(--user-text-boost))] font-semibold text-text-strong">{{ __('admin.members.inv_sc_title') }}</h3>
                             @if ($invScope['high'])
@@ -486,51 +516,9 @@
                                 @if (! $invScope['feat'])
                                     <p class="m-0 flex items-start gap-1.5 text-small text-text-muted"><x-bs-admin::icon name="ri-lock-2" class="mt-0.5 size-4 shrink-0" /><span>{{ $invScope['upsell'] ? __('admin.members.inv_sc_plan_upsell') : __('admin.members.inv_sc_plan_off') }}</span></p>
                                 @endif
-                                <fieldset class="m-0 flex min-w-0 flex-col gap-1 border-0 border-t border-border p-0 pt-2" wire:key="members-inv-sc-posts">
-                                    <legend class="contents"><span class="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-body font-semibold text-text-strong"><x-bs-admin::icon name="ri-article" class="size-4 shrink-0" />{{ __('admin.members.inv_sc_posts') }}</span></legend>
-                                    @php $allDis = ! $invScope['feat'] || $invScope['limited']; @endphp
-                                    <label @class(['flex min-h-hit items-center gap-2.5', 'cursor-pointer text-text-strong' => ! $allDis, 'cursor-not-allowed text-text-muted' => $allDis])>
-                                        <input type="radio" name="members-inv-sc-posts" value="all" wire:model.live="inviteScope" @checked($invScope['mode'] === 'all') @disabled($allDis) class="size-4.5 shrink-0 accent-primary-text">
-                                        <span>{{ __('admin.members.inv_sc_all') }}</span>
-                                    </label>
-                                    @if ($invScope['limited'])
-                                        <p class="m-0 -mt-1.5 mb-1 ms-7 text-small text-text-muted">{{ __('admin.members.inv_sc_own') }}</p>
-                                    @endif
-                                    <label @class(['flex min-h-hit items-center gap-2.5', 'cursor-pointer text-text-strong' => $invScope['feat'], 'cursor-not-allowed text-text-muted' => ! $invScope['feat']])>
-                                        <input type="radio" name="members-inv-sc-posts" value="only" wire:model.live="inviteScope" @checked($invScope['mode'] === 'only') @disabled(! $invScope['feat']) class="size-4.5 shrink-0 accent-primary-text">
-                                        <span>{{ __('admin.members.inv_sc_only') }}</span>
-                                    </label>
-                                    @if ($invScope['feat'] && $invScope['mode'] === 'only')
-                                        <div class="ms-7 flex min-w-0 flex-col gap-1.5">
-                                            <x-bs-admin::search :label="__('admin.members.inv_sc_q')" :placeholder="__('admin.members.inv_sc_ph')" wire:model.live.debounce.250ms="inviteCatQ" maxlength="100" />
-                                            <p class="m-0 text-small text-text-muted">{{ __('admin.members.inv_sc_hint') }}</p>
-                                            <div class="flex max-h-[340px] min-w-0 flex-col overflow-x-hidden overflow-y-auto rounded border border-border-strong p-1" role="group" aria-label="{{ __('admin.members.inv_sc_tree') }}">
-                                                @foreach ($invTree as $node)
-                                                    <label wire:key="members-inv-sc-{{ $node['ulid'] }}" @style(['--i: '.($node['depth'] * 24).'px'])
-                                                        @class(['relative flex min-h-hit items-center gap-2.5 rounded py-0 pe-2 ps-[calc(8px+var(--i))] hover:bg-surface-hover',
-                                                            'before:absolute before:start-[calc(var(--i)-10px)] before:top-0 before:h-1/2 before:w-2.5 before:border-b before:border-s before:border-border-strong' => $node['depth'] > 0,
-                                                            'cursor-pointer text-text-strong' => ! $node['dis'], 'cursor-not-allowed text-text-muted' => $node['dis']])>
-                                                        @if ($node['inc'])
-                                                            <input type="checkbox" checked disabled class="size-4.5 shrink-0 accent-primary-text">
-                                                        @else
-                                                            <input type="checkbox" value="{{ $node['ulid'] }}" wire:model.live="inviteCategories" @disabled($node['dis']) class="size-4.5 shrink-0 accent-primary-text">
-                                                        @endif
-                                                        <span class="min-w-0 flex-auto [overflow-wrap:anywhere]">@if ($node['path'] !== '')<span class="text-text-muted">{{ $node['path'] }}</span>@endif{{ $node['name'] }}</span>
-                                                        @if ($node['note'] !== '')
-                                                            <span class="shrink-0 text-caption text-text-muted">{{ $node['note'] }}</span>
-                                                        @endif
-                                                    </label>
-                                                @endforeach
-                                                @if ($invTree === [] && trim($inviteCatQ) !== '')
-                                                    <p class="m-0 flex items-start gap-1.5 p-2 text-small text-text-muted">{{ __('admin.members.inv_sc_nohit') }}</p>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    @endif
-                                    @if ($inviteScopeError !== '')
-                                        <x-bs-admin::field-error>{{ $inviteScopeError }}</x-bs-admin::field-error>
-                                    @endif
-                                </fieldset>
+                                @foreach ($invScope['axes'] as $a)
+                                    @include('admin::livewire.users.scope-axis', ['a' => $a, 'kind' => 'inv', 'prefix' => 'invite'])
+                                @endforeach
                             @endif
                             <p class="m-0 flex items-start gap-1.5 text-small text-text-muted"><x-bs-admin::icon name="ri-information" class="mt-0.5 size-4 shrink-0" /><span>{{ __('admin.members.inv_sc_note') }}</span></p>
                         </section>

@@ -65,7 +65,8 @@ it('touches invitation category limits only through the reader and the known wri
 /*
  * Every road that files an entry under categories on a person's behalf goes through
  * EntryCategoryWriter, which applies that person's category limits. Only the trait that defines
- * assignCategories(), the writer, the product editor and its bulk category change (product categories are not limited) and the
+ * assignCategories(), the writer, the product editor and its bulk category change (products: they ask
+ * CatalogPolicy::fileUnder for the person's product limits, CatalogScopeChokepointTest) and the
  * provisioning seeders (they act for nobody) may call it. Adding a caller means checking it applies
  * the limits — or routing it through the writer.
  */
@@ -73,8 +74,8 @@ it('files entries under categories only through the writer that applies category
     $allowed = [
         'app/Modules/Cms/Concerns/HasCategoryTaxonomies.php',                          // the definition
         'app/Modules/Cms/Support/EntryCategoryWriter.php',                             // applies the limits
-        'app/Modules/Admin/Livewire/Catalog/Editor.php',                               // products: not limited
-        'app/Modules/Catalog/Actions/ChangeProductMainCategory.php',                   // bulk product category change: not limited
+        'app/Modules/Admin/Livewire/Catalog/Editor.php',                               // products: fileUnder before filing
+        'app/Modules/Catalog/Actions/ChangeProductMainCategory.php',                   // bulk product category change: fileUnder before filing
         'app/Modules/Provisioning/Actions/SeedAnVinhContent.php',                      // seeder, no person
         'app/Modules/Provisioning/Actions/PromoteAnVinhProductPostsToCatalog.php',     // seeder, no person
         'app/Modules/Provisioning/Actions/SeedMeasurementSite.php',                    // CI seeder, no person

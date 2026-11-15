@@ -235,9 +235,10 @@ it('previews a product in the public page’s queries plus the admin’s sign-in
 
     // The preview finds the product by its ulid instead of resolving a route (−1) and adds the admin's
     // own checks: the site membership (2), the permissions behind catalog.manage (4, read once and
-    // then cached), the plan's modules (2) and the permalink setting its address is built from (1).
-    expect($preview - $public)->toBe(8)
-        ->and($preview)->toBeLessThanOrEqual(22);
+    // then cached), the plan's modules (2), the permalink setting its address is built from (1) and the
+    // member's product-category limits, asked about the product itself (1).
+    expect($preview - $public)->toBe(9)
+        ->and($preview)->toBeLessThanOrEqual(23);
 });
 
 it('offers the preview on a draft row of the product list, and the website link on a published one', function (): void {

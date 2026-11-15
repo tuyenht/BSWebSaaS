@@ -21,23 +21,28 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Invite an address to the current site (InviteMember) together with the post categories the new
- * member may write in — the one writer of invitation_category_scopes besides DeleteTaxonomy. An
- * empty list means every category. The limits take effect when the invitation is accepted
+ * Invite an address to the current site (InviteMember) together with the categories the new member
+ * may write in, on each axis — post categories and product categories (CategoryScopes) — the one
+ * writer of invitation_category_scopes besides DeleteTaxonomy. An empty list means every category
+ * of that axis. The limits take effect when the invitation is accepted
  * (CopyInvitationCategoryScopes), in the same transaction as the roles.
  *
  * Inviting with limits passes the same gate as setting them on a member later
  * (SetMemberCategoryScopes): the site's `rbac.category_scopes` feature, someone who could set those
  * limits by hand (CategoryLimitGuard::mayChangeLimitsOf — `users.manage` and a level above every role
- * the invitation grants), only this site's post categories, and a limited inviter hands out only
- * categories inside their own limits. Roles that are never limited (level ≥ EXEMPT_LEVEL) take no
- * limits. And as there, a limited inviter never hands out "every category": inviting someone who
- * writes posts, they must choose categories.
+ * the invitation grants), only this site's categories of the axis, and a limited inviter hands out
+ * only categories inside their own limits of that axis. Roles that are never limited (level ≥
+ * EXEMPT_LEVEL) take no limits. And as there, a limited inviter never hands out "every category" of
+ * an axis they are limited on: inviting someone who writes posts (or manages products), they must
+ * choose categories of it. Each axis is judged on its own.
  *
- *  - handle(): a new invitation, or the open one refreshed — its limits become exactly the given set.
+ *  - handle(): a new invitation, or the open one refreshed — the limits of each axis given become
+ *    exactly the given set; an axis not given (null) keeps what the open invitation carries (a new
+ *    one: none), held to the sender's own limits like a resend.
  *  - resend(): the invitation mailed again as it is — its limits are kept, untouched.
  *
  * Everything runs in one transaction: a refused limit sends no invitation. Runs inside the tenant
@@ -55,29 +60,42 @@ final readonly class InviteMemberWithCategories
 
     /**
      * @param  list<Role>  $roles
-     * @param  list<int|string>  $taxonomyIds  the categories the new member may write in (ids as a form sends them); [] = every category
+     * @param  list<int|string>  $taxonomyIds  the post categories the new member may write in (ids as a form sends them); [] = every one
+     * @param  list<int|string>|null  $productTaxonomyIds  the product categories they may edit products in; [] = every one; null = left as the open invitation has them
      *
      * @throws AuthorizationException
      * @throws CategoryScopeRejectedException category_scopes_disabled · target_exempt · taxonomy_invalid · outside_own_scope
      * @throws InvitationRejectedException
      */
-    public function handle(User $actor, string $email, array $roles, ?string $message, array $taxonomyIds): IssuedInvitation
+    public function handle(User $actor, string $email, array $roles, ?string $message, array $taxonomyIds, ?array $productTaxonomyIds = null): IssuedInvitation
     {
-        // Ids from a form arrive as strings: normalise them once, here at the boundary.
-        $ids = array_values(array_unique(array_map(static fn (mixed $id): int => Cast::int($id), $taxonomyIds)));
-        sort($ids);
-        $this->assertMayLimit($actor, $email, $roles, $ids);
+        $wanted = [CategoryScopes::POSTS => self::normalise($taxonomyIds)];
+        if ($productTaxonomyIds !== null) {
+            $wanted[CategoryScopes::PRODUCTS] = self::normalise($productTaxonomyIds);
+        }
+        $this->assertMayLimit($actor, $email, $roles, $wanted);
 
         $siteId = $this->site->id();
 
-        return DB::transaction(function () use ($actor, $email, $roles, $message, $ids, $siteId): IssuedInvitation {
+        return DB::transaction(function () use ($actor, $email, $roles, $message, $wanted, $siteId): IssuedInvitation {
             // The category tree first, as every limits writer does: a category being deleted right
             // now is refused here cleanly, never left to the foreign key.
             TaxonomyTree::lock($siteId);
-            $this->assertCategories($ids);
+            foreach ($wanted as $axis => $ids) {
+                $this->assertCategories($ids, $axis);
+            }
 
             $issued = $this->invite->handle($actor, $email, $roles, $message);
-            $this->sync($actor, $issued->invitation, $roles, $ids);
+            $invitation = $issued->invitation;
+            foreach (CategoryScopes::AXES as $axis) {
+                if (isset($wanted[$axis])) {
+                    $this->sync($actor, $invitation, $roles, $wanted[$axis], $axis);
+                } else {
+                    // Kept as they are (none on a new invitation): only a limited sender is held to
+                    // their own limits, as on a resend.
+                    $this->assertWithinOwnScope($actor, $roles, $invitation->wasRecentlyCreated ? [] : $this->rowsOf($invitation->id, $axis), $axis);
+                }
+            }
 
             return $issued;
         });
@@ -96,10 +114,11 @@ final readonly class InviteMemberWithCategories
     {
         return DB::transaction(function () use ($actor, $invitation, $roles): IssuedInvitation {
             TaxonomyTree::lock($this->site->id());
-            $ids = $this->rowsOf($invitation->id);
             // Kept limits are not set anew (no feature or level check): only a limited sender is held
-            // to their own limits, so a resend is never their way around them.
-            $this->assertWithinOwnScope($actor, $roles, $ids);
+            // to their own limits, axis by axis, so a resend is never their way around them.
+            foreach (CategoryScopes::AXES as $axis) {
+                $this->assertWithinOwnScope($actor, $roles, $this->rowsOf($invitation->id, $axis), $axis);
+            }
 
             $issued = $this->invite->handle($actor, $invitation->email, $roles, $invitation->message);
             // Withdrawn or accepted meanwhile: InviteMember found no open invitation and made a new
@@ -113,15 +132,29 @@ final readonly class InviteMemberWithCategories
     }
 
     /**
+     * Ids from a form arrive as strings: normalised once, here at the boundary (unique, sorted).
+     *
+     * @param  list<int|string>  $taxonomyIds
+     * @return list<int>
+     */
+    private static function normalise(array $taxonomyIds): array
+    {
+        $ids = array_values(array_unique(array_map(static fn (mixed $id): int => Cast::int($id), $taxonomyIds)));
+        sort($ids);
+
+        return $ids;
+    }
+
+    /**
      * @param  list<Role>  $roles
-     * @param  list<int>  $ids
+     * @param  array<string, list<int>>  $wanted  the ids per axis given
      *
      * @throws AuthorizationException
      * @throws CategoryScopeRejectedException
      */
-    private function assertMayLimit(User $actor, string $email, array $roles, array $ids): void
+    private function assertMayLimit(User $actor, string $email, array $roles, array $wanted): void
     {
-        if ($ids !== []) {
+        if (array_filter($wanted) !== []) {
             if (! $this->entitlement->featureEnabled('rbac.category_scopes')) {
                 throw new CategoryScopeRejectedException('category_scopes_disabled');
             }
@@ -133,32 +166,34 @@ final readonly class InviteMemberWithCategories
                 throw new AuthorizationException('Category limits are set only by someone who could set them on the member.');
             }
         }
-        $this->assertWithinOwnScope($actor, $roles, $ids);
+        foreach ($wanted as $axis => $ids) {
+            $this->assertWithinOwnScope($actor, $roles, $ids, $axis);
+        }
     }
 
     /**
-     * A limited actor hands out only categories inside their own limits — and never "every category"
-     * to someone the roles let write posts.
+     * A limited actor hands out only categories inside their own limits of $axis — and never "every
+     * category" of it to someone the roles let work on it (write posts, manage products).
      *
      * @param  list<Role>  $roles
      * @param  list<int>  $ids
      *
      * @throws CategoryScopeRejectedException
      */
-    private function assertWithinOwnScope(User $actor, array $roles, array $ids): void
+    private function assertWithinOwnScope(User $actor, array $roles, array $ids, string $axis): void
     {
-        if (! $this->scopes->isLimited($actor) || self::topLevel($roles) >= CategoryScopes::EXEMPT_LEVEL) {
+        if (! $this->scopes->isLimited($actor, $axis) || self::topLevel($roles) >= CategoryScopes::EXEMPT_LEVEL) {
             return;
         }
         if ($ids === []) {
-            if (self::writesPosts($roles)) {
+            if ($axis === CategoryScopes::PRODUCTS ? self::managesProducts($roles) : self::writesPosts($roles)) {
                 throw new CategoryScopeRejectedException('outside_own_scope');
             }
 
             return;
         }
         foreach ($ids as $id) {
-            if (! $this->scopes->coversId($actor, $id)) {
+            if (! $this->scopes->coversId($actor, $id, $axis)) {
                 throw new CategoryScopeRejectedException('outside_own_scope');
             }
         }
@@ -169,33 +204,33 @@ final readonly class InviteMemberWithCategories
      *
      * @throws CategoryScopeRejectedException
      */
-    private function assertCategories(array $ids): void
+    private function assertCategories(array $ids, string $axis): void
     {
         if ($ids === []) {
             return;
         }
 
         // The site scope (and RLS) hide other sites' categories, so they are refused like unknown ids.
-        $found = Taxonomy::query()->whereKey($ids)->where('vocabulary', CategoryLimitGuard::VOCABULARY)->count();
+        $found = Taxonomy::query()->whereKey($ids)->where('vocabulary', $axis)->count();
         if ($found !== count($ids)) {
             throw new CategoryScopeRejectedException('taxonomy_invalid');
         }
     }
 
     /**
-     * Make the invitation's limits exactly $ids (sorted); audited when they change. Lifting the
-     * limits of an open invitation (refreshing it with every category) widens what its member will
-     * do, so it takes the same person as setting them.
+     * Make the invitation's limits of $axis exactly $ids (sorted); audited when they change. The
+     * other axis is left as it is. Lifting the limits of an open invitation (refreshing it with every
+     * category) widens what its member will do, so it takes the same person as setting them.
      *
      * @param  list<Role>  $roles
      * @param  list<int>  $ids
      *
      * @throws AuthorizationException
      */
-    private function sync(User $actor, Invitation $invitation, array $roles, array $ids): void
+    private function sync(User $actor, Invitation $invitation, array $roles, array $ids, string $axis): void
     {
         // a new invitation has no limits yet: nothing to read
-        $before = $invitation->wasRecentlyCreated ? [] : $this->rowsOf($invitation->id);
+        $before = $invitation->wasRecentlyCreated ? [] : $this->rowsOf($invitation->id, $axis);
         if ($before === $ids) {
             return;
         }
@@ -203,12 +238,7 @@ final readonly class InviteMemberWithCategories
             throw new AuthorizationException('Category limits are lifted only by someone who could set them on the member.');
         }
 
-        $siteId = $this->site->id();
-        InvitationCategoryScope::query()
-            ->where('site_id', $siteId)
-            ->where('invitation_id', $invitation->id)
-            ->whereNotIn('taxonomy_id', $ids)
-            ->delete();
+        $this->rowsOn($invitation->id, $axis)->whereNotIn('taxonomy_id', $ids)->delete();
         foreach (array_diff($ids, $before) as $id) {
             InvitationCategoryScope::query()->create(['invitation_id' => $invitation->id, 'taxonomy_id' => $id]);
         }
@@ -216,22 +246,30 @@ final readonly class InviteMemberWithCategories
         Audit::record('cms.category_scopes.invited', [
             'auditable_type' => Invitation::class,
             'auditable_id' => $invitation->id,
-            'meta' => ['email' => $invitation->email, 'before' => $before, 'after' => $ids],
+            'meta' => ['email' => $invitation->email, 'before' => $before, 'after' => $ids, 'vocabulary' => $axis],
         ]);
     }
 
-    /** @return list<int> the categories the invitation limits its member to, sorted */
-    private function rowsOf(int $invitationId): array
+    /** @return list<int> the categories of $axis the invitation limits its member to, sorted */
+    private function rowsOf(int $invitationId, string $axis): array
     {
         return array_values(array_map(
             static fn (mixed $id): int => Cast::int($id),
-            InvitationCategoryScope::query()
-                ->where('site_id', $this->site->id())
-                ->where('invitation_id', $invitationId)
-                ->orderBy('taxonomy_id')
-                ->pluck('taxonomy_id')
-                ->all(),
+            $this->rowsOn($invitationId, $axis)->orderBy('taxonomy_id')->pluck('taxonomy_id')->all(),
         ));
+    }
+
+    /**
+     * The invitation's rows whose category is of $axis.
+     *
+     * @return Builder<InvitationCategoryScope>
+     */
+    private function rowsOn(int $invitationId, string $axis): Builder
+    {
+        return InvitationCategoryScope::query()
+            ->where('site_id', $this->site->id())
+            ->where('invitation_id', $invitationId)
+            ->whereIn('taxonomy_id', Taxonomy::query()->select('id')->where('vocabulary', $axis));
     }
 
     /**
@@ -264,17 +302,55 @@ final readonly class InviteMemberWithCategories
      */
     public static function writesPosts(array $roles): bool
     {
-        foreach ($roles as $role) {
-            foreach ($role->permissions as $permission) {
-                $name = Cast::string($permission->name);
-                // the permissions a category limit holds: writing posts, and changing the categories
-                // themselves (CategoryLimitGuard keeps a limited member inside their own branch)
-                if ((str_starts_with($name, 'entries.') && $name !== 'entries.view') || $name === 'taxonomies.manage') {
-                    return true;
-                }
+        return self::worksOn(CategoryScopes::POSTS, self::permissionNames($roles));
+    }
+
+    /**
+     * Whether $roles let their holder change products: managing the catalog, or changing the
+     * categories themselves (CategoryLimitGuard keeps a limited member inside their own branch).
+     *
+     * @param  list<Role>  $roles
+     */
+    public static function managesProducts(array $roles): bool
+    {
+        return self::worksOn(CategoryScopes::PRODUCTS, self::permissionNames($roles));
+    }
+
+    /**
+     * Whether a holder of $permissions works on $axis, i.e. holds a permission a category limit of
+     * that axis holds: on posts, writing them (any post permission beyond viewing them); on products,
+     * managing the catalog. Changing the categories themselves counts on both (CategoryLimitGuard
+     * keeps a limited member inside their own branch).
+     *
+     * @param  list<string>  $permissions  permission names
+     */
+    public static function worksOn(string $axis, array $permissions): bool
+    {
+        foreach ($permissions as $name) {
+            if ($name === 'taxonomies.manage') {
+                return true;
+            }
+            if ($axis === CategoryScopes::PRODUCTS ? $name === 'catalog.manage' : (str_starts_with($name, 'entries.') && $name !== 'entries.view')) {
+                return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * @param  list<Role>  $roles
+     * @return list<string>
+     */
+    private static function permissionNames(array $roles): array
+    {
+        $names = [];
+        foreach ($roles as $role) {
+            foreach ($role->permissions as $permission) {
+                $names[] = Cast::string($permission->name);
+            }
+        }
+
+        return $names;
     }
 }

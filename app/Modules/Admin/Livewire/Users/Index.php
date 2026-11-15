@@ -2,17 +2,20 @@
 
 namespace App\Modules\Admin\Livewire\Users;
 
+use App\Modules\Admin\Livewire\Users\Concerns\DrawsCategoryScopes;
 use App\Modules\Admin\Livewire\Users\Concerns\LimitsInvitationCategories;
+use App\Modules\Admin\Livewire\Users\Concerns\LimitsMemberCategories;
 use App\Modules\Admin\Livewire\Users\Concerns\ManagesInvitations;
 use App\Modules\Admin\Livewire\Users\Concerns\SelectsMembers;
 use App\Modules\Admin\Notifications\MemberInvitationNotification;
 use App\Modules\Admin\Support\FirstHints;
 use App\Modules\Admin\Support\Members\InvitationDirectory;
-use App\Modules\Admin\Support\Members\InviteCategoryTree;
 use App\Modules\Admin\Support\Members\MemberDirectory;
 use App\Modules\Cms\Actions\InviteMemberWithCategories;
+use App\Modules\Cms\Actions\SetMemberCategoryScopes;
 use App\Modules\Cms\Exceptions\CategoryScopeRejectedException;
 use App\Modules\Cms\Support\CategoryScopes;
+use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Identity\Support\UserPreferences;
@@ -30,10 +33,12 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
+use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Models\Site;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Database\Query\JoinClause;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection as BaseCollection;
 use Illuminate\Support\Facades\DB;
@@ -65,7 +70,9 @@ use Livewire\Component;
 #[Layout('admin::layouts.app')]
 final class Index extends Component
 {
+    use DrawsCategoryScopes;
     use LimitsInvitationCategories;
+    use LimitsMemberCategories;
     use ManagesInvitations;
     use SelectsMembers;
 
@@ -218,6 +225,7 @@ final class Index extends Component
         $this->panelFor = $target->ulid;
         $this->panelRoles = Cast::strings($target->roles()->pluck('name')->all());
         $this->panelError = '';
+        $this->fillPanelScope($target);
     }
 
     public function closePanel(): void
@@ -226,15 +234,21 @@ final class Index extends Component
         $this->panelBulk = false;
         $this->panelRoles = [];
         $this->panelError = '';
+        $this->resetPanelScope();
     }
 
-    /** Save the panel: the member holds exactly the ticked roles afterwards (at least one). */
+    /**
+     * Save the panel: the member holds exactly the ticked roles afterwards (at least one), and — for
+     * one member — the categories picked in "Phạm vi làm việc" on each axis shown, in the same
+     * transaction (SetMemberCategoryScopes decides; a refusal changes nothing).
+     */
     public function saveRoles(): void
     {
         $this->ensureOpen();
         $this->validate([
             'panelRoles' => 'array|max:50',
             'panelRoles.*' => 'string|max:125|distinct',
+            ...self::scopeRules('panelScope', 'panelCategories', 'panelCatQ'),
         ]);
         if ($this->refusedLocked()) {
             return;
@@ -269,16 +283,51 @@ final class Index extends Component
 
             return;
         }
+        // "Phạm vi làm việc": "only" with nothing picked is a choice not made yet, said on its axis
+        $scope = $this->panelScopeState($this->actor(), $target, $roles);
+        if ($scope['bad'] !== []) {
+            $errors = self::eachAxis('');
+            foreach ($scope['bad'] as $axis) {
+                $errors[$axis] = self::axisWords($axis)['need'];
+            }
+            $this->panelScopeError = $errors;
+
+            return;
+        }
+        // the axes whose limits change; a role that is never limited drops them all by itself
+        $changes = [];
+        if (! $scope['high']) {
+            foreach ($scope['axes'] as $axis => $view) {
+                $now = $scope['init'][$axis];
+                $next = $scope['next'][$axis];
+                sort($now);
+                sort($next);
+                if (! $view['ro'] && $now !== $next) {
+                    $changes[$axis] = $scope['next'][$axis];
+                }
+            }
+        }
 
         $before = Cast::strings($target->roles()->pluck('name')->all());
-        if (! $this->applyRoles($target, $roles)) {
-            $this->panelError = __('admin.role_change_denied');
+        $after = Cast::strings($roles->pluck('name')->all());
+        $rolesChanged = array_diff($before, $after) !== [] || array_diff($after, $before) !== [];
+        $refused = $this->applyRolesAndScopes($target, $roles, $changes);
+        if ($refused !== null) {
+            $this->panelError = $refused;
 
             return;
         }
 
         $this->closePanel();
-        $this->say(__('admin.members.saved_roles', ['name' => $target->name]), 'success', ['ulid' => $target->ulid, 'roles' => $before]);
+        $said = $this->scopeSaidLines($target, $changes);
+        if ($said === []) {
+            $this->say(__('admin.members.saved_roles', ['name' => $target->name]), 'success', ['ulid' => $target->ulid, 'roles' => $before]);
+        } elseif ($rolesChanged) {
+            // "Hoàn tác" gives back roles only: it is not offered once the limits changed too
+            $this->say(__('admin.members.saved_roles_scope', ['name' => $target->name, 'scopes' => implode('; ', $said)]));
+        } else {
+            $this->say(__('admin.members.saved_scope', ['scopes' => implode('; ', $said)]));
+        }
     }
 
     /** "Hoàn tác" on the toast: give the member back the roles they had before the last change. */
@@ -403,7 +452,7 @@ final class Index extends Component
         $this->inviteResults = [];
         $this->inviteTried = false;
         $this->resetErrorBag();
-        if ($this->inviteCategories === [] && $this->inviteScope === 'all') {
+        if (! $this->inviteScopeTouched()) {
             $this->resetInviteScope();
         }
         $this->inviteOpen = true;
@@ -441,10 +490,7 @@ final class Index extends Component
             'inviteRoles' => 'array|max:50',
             'inviteRoles.*' => 'string|max:125',
             'inviteMessage' => 'nullable|string|max:500',
-            'inviteScope' => 'in:all,only',
-            'inviteCategories' => 'array|max:'.InviteCategoryTree::LIMIT,
-            'inviteCategories.*' => 'string|max:26',
-            'inviteCatQ' => 'string|max:100',
+            ...self::scopeRules('inviteScope', 'inviteCategories', 'inviteCatQ'),
         ], [], ['inviteEmail' => __('admin.members.inv_email'), 'inviteMessage' => __('admin.members.inv_msg')]);
 
         $actor = $this->actor();
@@ -474,13 +520,22 @@ final class Index extends Component
 
             return;
         }
-        // "Phạm vi làm việc": "only" with nothing picked is a choice not made yet, said on the block
+        // "Phạm vi làm việc": "only" with nothing picked is a choice not made yet, said on its axis
         $scope = $this->inviteScopeState($actor, $roles);
-        if ($scope['axis'] && $scope['feat'] && $scope['mode'] === 'only' && $scope['ids'] === []) {
-            $this->inviteScopeError = __('admin.members.inv_sc_err');
+        $errors = self::eachAxis('');
+        foreach ($scope['axes'] as $axis => $view) {
+            if ($view['tree'] && $view['ids'] === []) {
+                $errors[$axis] = $view['words']['need'];
+            }
+        }
+        if (array_filter($errors) !== []) {
+            $this->inviteScopeError = $errors;
 
             return;
         }
+        // an axis the block does not show is left as an open invitation has it (none on a new one)
+        $postIds = $scope['axes'][CategoryScopes::POSTS]['ids'] ?? [];
+        $productIds = isset($scope['axes'][CategoryScopes::PRODUCTS]) ? $scope['axes'][CategoryScopes::PRODUCTS]['ids'] : null;
         // what the site may still mail today, said up front: the action would refuse the addresses past it one by one
         $siteId = app(CurrentSite::class)->id();
         $left = max(0, InviteMember::DAILY_LIMIT - app(InviteMember::class)->sentToday($siteId));
@@ -499,7 +554,7 @@ final class Index extends Component
         $results = [];
         foreach ($valid as $email) {
             try {
-                $issued = app(InviteMemberWithCategories::class)->handle($actor, $email, array_values($roles->all()), $message, $scope['ids']);
+                $issued = app(InviteMemberWithCategories::class)->handle($actor, $email, array_values($roles->all()), $message, $postIds, $productIds);
                 $this->mailInvitation($issued, $actor, $siteName, $roleList);
                 $results[] = ['email' => $issued->invitation->email, 'ok' => true, 'text' => __('admin.members.inv_res_ok', ['days' => InviteMember::VALID_DAYS])];
             } catch (AuthorizationException) {
@@ -626,12 +681,22 @@ final class Index extends Component
         $revoking = $this->revokeOpen && $this->revokeFor !== '' ? $this->siteInvitation($this->revokeFor) : null;
         // "Phạm vi làm việc" of the invite dialog, read only while its form is open
         $invScope = null;
-        $invTree = [];
         if ($canInvite && $this->inviteOpen && $this->inviteResults === []) {
-            $invScope = $this->inviteScopeState($actor, $this->siteRoles($this->inviteRoles));
-            if ($invScope['axis'] && $invScope['feat'] && $invScope['mode'] === 'only') {
-                $invTree = $this->inviteTreeRows($actor, $invScope);
+            $invScope = $this->inviteScopeState($actor, $this->siteRoles($this->inviteRoles), true);
+        }
+        // ... and of one member's panel, read only while it is open
+        $pnScope = null;
+        if ($panelMember instanceof User && ! $this->panelBulk && $this->panelRoles !== []) {
+            $pnScope = $this->panelScopeState($actor, $panelMember, $this->siteRoles($this->panelRoles), true);
+        }
+        // the ticked members whose limits a role that is never limited would drop (bulk panel)
+        $bulkDrop = 0;
+        if ($this->panelBulk && $pickedOk->isNotEmpty() && Cast::int($this->siteRoles($this->panelRoles)->max('level')) >= CategoryScopes::EXEMPT_LEVEL) {
+            $limitedIds = [];
+            foreach (app(CategoryScopes::class)->rootIdsOfEachAxis(array_values(array_map(fn (User $u): int => (int) $u->id, $pickedOk->all()))) as $byUser) {
+                $limitedIds += $byUser;
             }
+            $bulkDrop = count($limitedIds);
         }
 
         return $this->page('admin::livewire.users.index', $title, [
@@ -669,7 +734,8 @@ final class Index extends Component
             'reopens' => $reopens,
             'inviteLeft' => max(0, InviteMember::DAILY_LIMIT - $sent),
             'invScope' => $invScope,
-            'invTree' => $invTree,
+            'pnScope' => $pnScope,
+            'bulkDrop' => $bulkDrop,
         ]);
     }
 
@@ -708,7 +774,10 @@ final class Index extends Component
     {
         $actor = $this->actor();
         try {
-            DB::transaction(fn () => $this->giveRoles($target, $roles));
+            DB::transaction(function () use ($actor, $target, $roles): void {
+                $this->giveRoles($target, $roles);
+                app(SetMemberCategoryScopes::class)->assertNoneLeftOpen($actor, $target, array_values($roles->all()));
+            });
         } catch (AuthorizationException) {
             $locked = $this->lockReason();
             if ($locked !== null) {
@@ -716,9 +785,60 @@ final class Index extends Component
             }
 
             return false;
+        } catch (CategoryScopeRejectedException) {
+            return false;   // a limited actor would leave the member working in every category
         }
 
         return true;
+    }
+
+    /**
+     * applyRoles(), then the member's category limits on each axis of $changes, all in one
+     * transaction: a refused step changes nothing. The roles go first, so the limits are judged on
+     * the roles the member ends up with.
+     *
+     * @param  Collection<int, Role>  $roles
+     * @param  array<string, list<int>>  $changes  the new limits by axis ([] = every category of it)
+     * @return string|null why nothing was saved, or null when it was
+     */
+    private function applyRolesAndScopes(User $target, Collection $roles, array $changes): ?string
+    {
+        $actor = $this->actor();
+        try {
+            DB::transaction(function () use ($actor, $target, $roles, $changes): void {
+                if ($changes !== []) {
+                    // the category tree before the member's lock (giveRoles), in the order the
+                    // category actions and SetMemberCategoryScopes take them: no deadlock with a
+                    // category being deleted
+                    TaxonomyTree::lock(app(CurrentSite::class)->id());
+                }
+                $this->giveRoles($target, $roles);
+                foreach ($changes as $axis => $ids) {
+                    app(SetMemberCategoryScopes::class)->handle($actor, $target, $ids, $axis);
+                }
+                // a limited actor never leaves the member working in every category of their axis
+                app(SetMemberCategoryScopes::class)->assertNoneLeftOpen($actor, $target, array_values($roles->all()));
+            });
+        } catch (AuthorizationException) {
+            $locked = $this->lockReason();
+            if ($locked !== null) {
+                $this->say($locked, 'error');
+            }
+
+            return __('admin.role_change_denied');
+        } catch (CategoryScopeRejectedException $e) {
+            if ($e->reason === 'not_member') {
+                return __('admin.member_not_found');
+            }
+            // without the plan feature no categories are shown to choose from: someone else must change the roles
+            if ($e->reason === 'needs_limits' && ! app(Entitlement::class)->featureEnabled('rbac.category_scopes')) {
+                return __('admin.members.pn_sc_err_needs_limits_off');
+            }
+
+            return __('admin.members.pn_sc_err_'.$e->reason);
+        }
+
+        return null;
     }
 
     /**
@@ -772,59 +892,100 @@ final class Index extends Component
     }
 
     /**
-     * The post categories each limited member on the page may write in, by user id (names in the
-     * site's default language). Owners and admins are never limited, whatever rows exist.
+     * The categories each limited member on the page may work in, by user id, then axis (names in
+     * the site's default language), each with whether the member's roles work on that axis today
+     * (design 22: "(đang không áp dụng)" when they do not). Owners and admins are never limited,
+     * whatever rows exist. Product limits are listed only where the website sells products.
      *
      * @param  Collection<int, User>  $rows
-     * @return array<int, list<string>>
+     * @return array<int, array<string, array{names: list<string>, off: bool}>>
      */
     private function scopeNames(Collection $rows, int $siteId): array
     {
         $ids = array_values($rows->filter(fn (User $u): bool => Cast::int($u->roles->max('level')) < CategoryScopes::EXEMPT_LEVEL)->map(fn (User $u): int => (int) $u->id)->all());
+        $roots = [];
+        foreach (app(CategoryScopes::class)->rootIdsOfEachAxis($ids) as $axis => $byUser) {
+            foreach ($byUser as $userId => $taxonomyIds) {
+                $roots[$userId] = [...$roots[$userId] ?? [], ...$taxonomyIds];
+            }
+        }
+        $named = $this->namedRoots($roots, $siteId);
+        if ($named === []) {
+            return [];
+        }
+        // only the members with limits: their roles' permissions say whether each axis applies
+        $limited = $rows->filter(fn (User $u): bool => isset($named[$u->id]));
+        $limited->loadMissing('roles.permissions');
+        $out = [];
+        foreach ($limited as $member) {
+            $roles = array_values(array_filter($member->roles->all(), fn (mixed $role): bool => $role instanceof Role));
+            foreach ($named[$member->id] as $axis => $names) {
+                if ($axis === CategoryScopes::PRODUCTS && ! $this->catalogOn()) {
+                    continue;
+                }
+                $works = $axis === CategoryScopes::PRODUCTS ? InviteMemberWithCategories::managesProducts($roles) : InviteMemberWithCategories::writesPosts($roles);
+                $out[$member->id][$axis] = ['names' => $names, 'off' => ! $works];
+            }
+        }
 
-        return $this->namedRoots(app(CategoryScopes::class)->rootIdsOf($ids), $siteId);
+        return $out;
     }
 
     /**
-     * The post categories each invitation on the page limits its new member to, by invitation id,
-     * by name (in the site's default language).
+     * The categories each invitation on the page limits its new member to, by invitation id, then
+     * axis, by name (in the site's default language). Product limits are listed only where the
+     * website sells products.
      *
      * @param  BaseCollection<int, Invitation>  $rows
-     * @return array<int, list<string>>
+     * @return array<int, array<string, list<string>>>
      */
     private function invitationScopeNames(BaseCollection $rows, int $siteId): array
     {
         $ids = array_values(array_map(static fn (mixed $id): int => Cast::int($id), $rows->pluck('id')->all()));
+        $named = $this->namedRoots(app(CategoryScopes::class)->invitationRootIdsOf($ids), $siteId);
+        foreach ($named as $id => $byAxis) {
+            if (isset($byAxis[CategoryScopes::PRODUCTS]) && ! $this->catalogOn()) {
+                unset($named[$id][CategoryScopes::PRODUCTS]);
+            }
+        }
 
-        return $this->namedRoots(app(CategoryScopes::class)->invitationRootIdsOf($ids), $siteId);
+        return array_filter($named);
     }
 
     /**
-     * Category ids by owner, as names by owner (sorted), read in one query.
+     * Category ids by owner, as names by owner and axis (the vocabulary of each category, sorted),
+     * read in one query.
      *
      * @param  array<int, list<int>>  $roots
-     * @return array<int, list<string>>
+     * @return array<int, array<string, list<string>>>
      */
     private function namedRoots(array $roots, int $siteId): array
     {
         if ($roots === []) {
             return [];
         }
-        $label = DB::table('taxonomy_translations')
-            ->where('site_id', $siteId)
-            ->where('locale', app(SiteLocale::class)->default())
-            ->whereIn('taxonomy_id', array_values(array_unique(array_merge(...array_values($roots)))))
+        $label = [];
+        foreach (DB::table('taxonomy_translations as tt')
+            ->join('taxonomies as t', fn (JoinClause $join) => $join->on('t.id', '=', 'tt.taxonomy_id')->on('t.site_id', '=', 'tt.site_id'))
+            ->where('tt.site_id', $siteId)
+            ->where('tt.locale', app(SiteLocale::class)->default())
+            ->whereIn('tt.taxonomy_id', array_values(array_unique(array_merge(...array_values($roots)))))
+            ->whereIn('t.vocabulary', CategoryScopes::AXES)
             ->limit(1000)
-            ->pluck('name', 'taxonomy_id');
+            ->get(['tt.taxonomy_id', 'tt.name', 't.vocabulary']) as $row) {
+            $label[Cast::int($row->taxonomy_id)] = [Cast::string($row->vocabulary), Cast::string($row->name)];
+        }
         $names = [];
-        foreach ($roots as $userId => $taxonomyIds) {
+        foreach ($roots as $ownerId => $taxonomyIds) {
             foreach ($taxonomyIds as $taxonomyId) {
                 if (isset($label[$taxonomyId])) {
-                    $names[$userId][] = Cast::string($label[$taxonomyId]);
+                    [$axis, $name] = $label[$taxonomyId];
+                    $names[$ownerId][$axis][] = $name;
                 }
             }
-            if (isset($names[$userId])) {
-                sort($names[$userId]);
+            foreach ($names[$ownerId] ?? [] as $axis => $list) {
+                sort($list);
+                $names[$ownerId][$axis] = $list;
             }
         }
 

@@ -164,8 +164,7 @@ it('gives a product category under a post category the default list, not the pos
     app(Tenancy::class)->enter($siteId, function (): void {
         $catalog = StorefrontCards::category('Sản phẩm', 'san-pham', null, 'grid-job');
         StorefrontCards::catalog($catalog);
-        $kid = StorefrontCards::category('Đồ gá', 'do-ga', $catalog, '@parent', 1);
-        $kid->forceFill(['vocabulary' => 'product_cat'])->save();
+        $kid = StorefrontCards::category('Đồ gá', 'do-ga', $catalog, '@parent', 1, vocabulary: 'product_cat');
         StorefrontCards::product('Jig kiểm', 'jig-kiem', $kid, StorefrontCards::media('anh'));
     });
 

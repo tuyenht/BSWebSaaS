@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Livewire\Users\Concerns;
 
+use App\Modules\Cms\Actions\SetMemberCategoryScopes;
+use App\Modules\Cms\Exceptions\CategoryScopeRejectedException;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Actions\RevokeRole;
 use App\Modules\Rbac\Models\Role;
@@ -154,14 +156,31 @@ trait SelectsMembers
 
             return;
         }
+        $actor = $this->actor();
+        // a limited actor never leaves a member working in every category of their axis; their
+        // limits are read once here, so the loop never re-reads them and an actor limited nowhere
+        // pays nothing per member
+        $limits = app(SetMemberCategoryScopes::class);
+        $axes = $limits->limitedAxes($actor);
+        $open = [];
         try {
-            DB::transaction(function () use ($targets, $roles): void {
+            DB::transaction(function () use ($actor, $targets, $roles, $limits, $axes, &$open): void {
                 foreach ($targets as $target) {
                     $this->giveRoles($target, $roles);
+                    if ($axes !== [] && $limits->axesLeftOpen($actor, $target, array_values($roles->all()), $axes) !== []) {
+                        $open[] = $target->name;
+                    }
+                }
+                if ($open !== []) {
+                    throw new CategoryScopeRejectedException('needs_limits');
                 }
             });
         } catch (AuthorizationException) {
             $this->panelError = $this->lockReason() ?? __('admin.role_change_denied');
+
+            return;
+        } catch (CategoryScopeRejectedException) {
+            $this->panelError = __('admin.members.bulk_sc_err_needs_limits', ['names' => implode(', ', $open)]);
 
             return;
         }

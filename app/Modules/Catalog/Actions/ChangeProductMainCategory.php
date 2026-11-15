@@ -48,6 +48,7 @@ final class ChangeProductMainCategory
         if ($to->vocabulary !== 'product_cat') {
             throw new InvalidArgumentException('The main category of a product is a product category.');
         }
+        $this->authorizeFiling($to->id);
         $routes = $this->routePaths(array_values($products->modelKeys()));
         $counts = app(CategoryItemCounts::class);
         $tally = ['moved' => 0, 'same' => 0, 'redirected' => 0, 'failed' => 0, 'before' => []];
@@ -113,6 +114,8 @@ final class ChangeProductMainCategory
     public function file(Product $product, array $ids, ?Taxonomy $main, array $before): array
     {
         $this->authorizeCatalog('update', $product);
+        // where it goes, too: a main category inside the person's product limits
+        $this->authorizeFiling($ids[0] ?? null);
         $mainChanged = $product->assignCategories($ids, markContent: false);
         $product->touch();
         if ($product->status !== 'published') {

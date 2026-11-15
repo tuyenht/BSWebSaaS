@@ -620,6 +620,8 @@ describe('query budget', function (): void {
             $editor = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $ulid])->set('name', 'Đồ gá hàn khung');
             $auto = countQueries(fn () => $editor->call('autosave')->assertHasNoErrors());
         });
-        expect($auto)->toBeLessThanOrEqual(20);
+        // the edit right is asked about the stored product (read once per request) and the member's
+        // product-category limits (read once per request)
+        expect($auto)->toBeLessThanOrEqual(21);
     });
 });

@@ -6,6 +6,7 @@ namespace App\Modules\Rbac\Actions;
 
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
+use App\Modules\Rbac\Events\CustomRolePermissionsAdding;
 use App\Modules\Rbac\Exceptions\RoleChangeRejectedException;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Support\CustomRoleRules;
@@ -13,6 +14,7 @@ use App\Modules\Rbac\Support\MembershipLock;
 use App\Modules\Shared\Support\Cast;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -20,6 +22,8 @@ use Illuminate\Support\Facades\Gate;
  * roles are refused (INV-R4). Deliberately NOT gated by the `rbac.custom_roles` entitlement: a site
  * whose plan dropped the feature must still be able to tidy up the roles it already has. The audit
  * row carries the permission diff (INV-R6), so "who gave this group publish rights" is one query.
+ * Adding permissions is announced first (CustomRolePermissionsAdding): a module keeping per-member
+ * limits may refuse it, and nothing is written.
  */
 final readonly class UpdateCustomRole
 {
@@ -47,7 +51,11 @@ final readonly class UpdateCustomRole
         $previousName = $role->getAttribute('name');
         $previousLevel = $role->level;
 
-        DB::transaction(function () use ($role, $name, $level, $granted, $before, $previousName, $previousLevel): void {
+        DB::transaction(function () use ($actor, $role, $name, $level, $granted, $before, $previousName, $previousLevel): void {
+            if (array_diff($granted, $before) !== []) {
+                // e.g. an actor limited to some categories never makes the role work in every one
+                Event::dispatch(new CustomRolePermissionsAdding($actor, $role, $before, $granted));
+            }
             $role->forceFill(['name' => $name, 'level' => $level])->save();
             $role->syncPermissions($granted);
 

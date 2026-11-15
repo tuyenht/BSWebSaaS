@@ -28,8 +28,8 @@ function ctSite(Closure $callback): mixed
 /** A category row with the given stored layouts (written as stored, not through the write path). */
 function ctCategory(string $slug, ?Taxonomy $parent = null, ?string $list = null, ?string $detail = null, string $vocabulary = 'post_cat'): Taxonomy
 {
-    $category = StorefrontCards::category('Ưu tiên ốc', $slug, $parent, $list);
-    $category->forceFill(['detail_template' => $detail, 'vocabulary' => $vocabulary])->save();
+    $category = StorefrontCards::category('Ưu tiên ốc', $slug, $parent, $list, vocabulary: $vocabulary);
+    $category->forceFill(['detail_template' => $detail])->save();
 
     return $category->fresh() ?? $category;
 }
