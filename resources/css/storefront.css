@@ -1853,14 +1853,6 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     min-width: 0;
 }
 
-.sf-seg--wrap {
-    flex-wrap: wrap;
-}
-
-.sf-seg--wrap > li {
-    flex-basis: 34%;
-}
-
 .sf-seg__s {
     position: relative;
     display: flex;
@@ -1897,6 +1889,298 @@ html:not(.sf-js) .sf-nav--mob .sf-nav__panel {
     color: var(--sf-dw-sub);
     font-size: 0.75rem;
     font-weight: 400;
+}
+
+/* Language by count (four or more): a "Ngôn ngữ · name" row that opens the list below it (four to seven) or a
+   screen of its own with a search field (eight or more). Rows are 48px tall links; without a script the list
+   is shown and the sub-screen sits at the end of the panel. */
+.sf-lang-h {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 48px;
+    margin: 0;
+    padding: 2px 8px 2px 24px;
+    border: 0;
+    background: none;
+    color: var(--sf-dw-strong);
+    font: inherit;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.3;
+    text-align: start;
+    cursor: pointer;
+}
+
+.sf-lang-h:dir(rtl) {
+    padding: 2px 24px 2px 8px;
+}
+
+.sf-lang-h > .sf-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    color: var(--sf-dw-muted);
+}
+
+.sf-lang-h__t {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+}
+
+.sf-lang-h__chev {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    margin-inline-start: auto;
+    color: var(--sf-dw-strong);
+}
+
+.sf-lang-h[aria-haspopup] .sf-lang-h__chev .sf-icon {
+    transform: rotate(-90deg);
+}
+
+.sf-lang-h[aria-haspopup] .sf-lang-h__chev:dir(rtl) .sf-icon {
+    transform: rotate(90deg);
+}
+
+.sf-lang-h[aria-expanded="true"]:not([aria-haspopup]) .sf-lang-h__chev .sf-icon {
+    transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .sf-lang-h__chev .sf-icon {
+        transition: transform 0.2s ease;
+    }
+}
+
+.sf-lang-h:is(:focus-visible),
+.sf-lang-back:focus-visible,
+.sf-lang-r:focus-visible {
+    outline: 2px solid var(--sf-dw-strong);
+    outline-offset: -2px;
+    border-radius: 10px;
+}
+
+@media (hover: hover) {
+    .sf-lang-h:hover,
+    .sf-lang-r:hover {
+        background: var(--sf-dw-tap);
+    }
+}
+
+.sf-lang-h:active,
+.sf-lang-r:active {
+    background: var(--sf-dw-tap);
+}
+
+html:not(.sf-js) .sf-lang-h {
+    display: none;
+}
+
+.sf-js .sf-lang-h[aria-expanded="false"] + .sf-lang-list {
+    display: none;
+}
+
+.sf-lang-l {
+    margin: 0;
+    padding: 0 0 4px;
+    list-style: none;
+}
+
+.sf-lang-r {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-sizing: border-box;
+    min-height: 48px;
+    padding: 6px 8px 6px 56px;
+    color: var(--sf-dw-ink);
+    text-decoration: none;
+}
+
+.sf-lang-r:dir(rtl) {
+    padding: 6px 56px 6px 8px;
+}
+
+.sf-lang-sub .sf-lang-r {
+    padding-inline-start: 24px;
+}
+
+.sf-lang-sub .sf-lang-r:dir(rtl) {
+    padding: 6px 24px 6px 8px;
+}
+
+.sf-lang-r__t {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.sf-lang-r__n {
+    font-size: 1rem;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.sf-lang-r__g {
+    color: var(--sf-dw-sub);
+    font-size: 0.8125rem;
+    line-height: 1.3;
+}
+
+.sf-lang-r[aria-current="true"] {
+    color: var(--sf-dw-on);
+}
+
+.sf-lang-r[aria-current="true"] .sf-lang-r__n {
+    font-weight: 600;
+}
+
+.sf-lang-r__ck {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    color: var(--sf-dw-strong);
+}
+
+.sf-lang-sub {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 16px;
+    color: var(--sf-dw-ink);
+}
+
+.sf-lang-sub[hidden] {
+    display: none;
+}
+
+.sf-js .sf-lang-sub {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    padding-block: env(safe-area-inset-top, 0px) env(safe-area-inset-bottom, 0px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.sf-drawer__panel:has(> .sf-lang-sub:not([hidden])) {
+    overflow: hidden;
+}
+
+.sf-js .sf-drawer__panel:has(> .sf-lang-sub:not([hidden])) > :not(.sf-lang-sub) {
+    visibility: hidden;
+}
+
+.sf-lang-sub__h {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 12px;
+    min-height: 64px;
+    padding: 0 24px;
+    box-shadow: inset 0 -1px 0 var(--sf-dw-hair);
+}
+
+.sf-lang-back {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-sizing: border-box;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 14px 0 8px;
+    border: 1px solid var(--sf-dw-ctl);
+    border-radius: 10px;
+    background: none;
+    color: var(--sf-dw-strong);
+    font: inherit;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.sf-lang-back:dir(rtl) {
+    padding: 0 8px 0 14px;
+}
+
+.sf-lang-back:dir(rtl) .sf-icon {
+    transform: scaleX(-1);
+}
+
+.sf-lang-sub__t {
+    margin: 0;
+    color: var(--sf-dw-ink);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.sf-lang-search {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-sizing: border-box;
+    min-height: 44px;
+    margin: 12px 24px 4px;
+    padding: 0 12px;
+    border: 1px solid var(--sf-dw-ctl);
+    border-radius: 10px;
+    color: var(--sf-dw-muted);
+}
+
+.sf-lang-search:focus-within {
+    outline: 2px solid var(--sf-dw-strong);
+    outline-offset: 2px;
+}
+
+.sf-lang-search > .sf-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+}
+
+.sf-lang-search__in {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    background: none;
+    color: var(--sf-dw-ink);
+    font: inherit;
+    font-size: 1rem;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.sf-lang-search__in::placeholder {
+    color: var(--sf-dw-sub);
+    opacity: 1;
+}
+
+.sf-lang-none {
+    margin: 0;
+    padding: 12px 24px;
+    color: var(--sf-dw-sub);
+    font-size: 0.9375rem;
+    line-height: 1.4;
+}
+
+.sf-lang-none[hidden] {
+    display: none;
 }
 
 /* Text size: three boxed "A" in fixed px sizes (the page's own size never changes them). */

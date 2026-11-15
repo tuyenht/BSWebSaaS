@@ -9,6 +9,7 @@ use App\Modules\Cms\Models\MenuItemTranslation;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Shared\Support\MenuPath;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -86,10 +87,13 @@ final readonly class MenuResolver
         }
 
         $now = CarbonImmutable::now();
+        // The page the visitor is on, as a plain path, matched against each link the same way (MenuPath).
+        $host = request()->getHost();
+        $here = MenuPath::normalize($currentPath, $host);
         foreach ($chosen as $region => $pick) {
             [$urls, $titles] = $lookups[$pick['locale']];
             $menuItems = $items->where('menu_id', $pick['menu'])->values();
-            $trees[$region] = $this->buildTree($menuItems, null, $pick['locale'], $currentPath, $urls, $titles, 0, $now);
+            $trees[$region] = $this->buildTree($menuItems, null, $pick['locale'], $here, $host, $urls, $titles, 0, $now);
         }
 
         return $trees;
@@ -349,7 +353,7 @@ final readonly class MenuResolver
      * @param  array<int, string>  $titles
      * @return list<array<string, mixed>>
      */
-    private function buildTree(Collection $items, ?int $parentId, string $locale, string $currentPath, array $urls, array $titles, int $depth, CarbonImmutable $now): array
+    private function buildTree(Collection $items, ?int $parentId, string $locale, ?string $here, string $host, array $urls, array $titles, int $depth, CarbonImmutable $now): array
     {
         if ($depth >= MenuRules::MAX_DEPTH) {
             return [];
@@ -374,10 +378,10 @@ final readonly class MenuResolver
             $nodes[] = [
                 'label' => $label,
                 'url' => $url,
-                'active' => $url === $currentPath,
+                'active' => $here !== null && MenuPath::normalize($url, $host) === $here,
                 'attrs' => $this->attrs($item),
                 ...MenuItemOptions::forRender($item->meta ?? [], $locale, $now),
-                'children' => $this->buildTree($items, $item->id, $locale, $currentPath, $urls, $titles, $depth + 1, $now),
+                'children' => $this->buildTree($items, $item->id, $locale, $here, $host, $urls, $titles, $depth + 1, $now),
             ];
         }
 

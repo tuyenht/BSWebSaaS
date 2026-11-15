@@ -8,6 +8,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Navigation\MenuResolver;
 use App\Modules\Cms\Navigation\MenuRules;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Http\Request;
 
 /*
  * ③a — MenuResolver (design.md §13): resolve a region's menu (via menu_assignments) into a
@@ -287,3 +288,25 @@ it('falls back to the default-locale menu region by region', function (): void {
         ->and(collect($trees['footer'])->pluck('label')->all())->toBe(['Home'])                // its own en menu
         ->and($trees['footer'][0]['url'])->toBe('/en');
 });
+
+it('marks the active item after reducing both sides to a plain path', function (string $link, string $current, bool $active): void {
+    $ids = seedNavFixture();
+    app()->instance('request', Request::create('https://mau.test/tin-tuc'));
+
+    $tree = app(Tenancy::class)->enter(1, function () use ($ids, $link, $current) {
+        $item = MenuItem::query()->create(['menu_id' => $ids['menu'], 'link_type' => 'url', 'url' => $link, 'position' => 2]);
+        $item->translations()->create(['locale' => 'vi', 'label' => 'Liên kết thử']);
+
+        return app(MenuResolver::class)->resolve('primary', 'vi', 'vi', $current);
+    });
+
+    expect(collect($tree)->firstWhere('label', 'Liên kết thử')['active'])->toBe($active);
+})->with([
+    'the same site written absolute' => ['https://mau.test/gioi-thieu', '/gioi-thieu', true],
+    'a query string on either side' => ['/gioi-thieu?utm=a', '/gioi-thieu?page=2', true],
+    'a fragment' => ['/gioi-thieu#lien-he', '/gioi-thieu', true],
+    'a trailing slash' => ['/gioi-thieu/', '/gioi-thieu', true],
+    'percent-encoding' => ['/s%E1%BA%A3n-ph%E1%BA%A9m', '/sản-phẩm', true],
+    'another host with the same path' => ['https://baoson.test/gioi-thieu', '/gioi-thieu', false],
+    'another page' => ['/lien-he', '/gioi-thieu', false],
+]);
