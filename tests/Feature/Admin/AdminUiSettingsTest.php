@@ -1,6 +1,6 @@
 <?php
 
-use App\Modules\Admin\Livewire\AppearanceSettings;
+use App\Modules\Admin\Livewire\AdminUiSettings;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
@@ -8,7 +8,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use Livewire\Livewire;
 
 /*
- * Appearance settings page — the SITE-default tier of the admin theme (site_settings
+ * "Giao diện trang quản trị" — the SITE-default tier of the admin theme (site_settings
  * group `admin_theme`, gated `settings.manage`). Only explicitly pinned axes persist;
  * '' means inherit, so saving it drops the key (per-field merge in the resolver).
  */
@@ -27,11 +27,11 @@ it('is denied without settings.manage (route + component boot)', function (): vo
     $tenancy->enter(1, function () use ($member): void {
         grantRole($member, 'editor', ['entries.view']);
 
-        Livewire::actingAs($member->fresh())->test(AppearanceSettings::class)->assertForbidden();
+        Livewire::actingAs($member->fresh())->test(AdminUiSettings::class)->assertForbidden();
     });
 
     $this->actingAs($member->fresh())
-        ->get('http://a.test/admin/settings/appearance')
+        ->get('http://a.test/admin/settings/admin-ui')
         ->assertForbidden();
 });
 
@@ -43,7 +43,7 @@ it('persists only the pinned axes to the admin_theme group', function (): void {
         grantRole($owner, 'owner', ['settings.manage', 'entries.view']);
 
         Livewire::actingAs($owner->fresh())
-            ->test(AppearanceSettings::class)
+            ->test(AdminUiSettings::class)
             ->set('scheme', 'dark')
             ->set('position', 'scrollable')
             ->call('save')
@@ -63,7 +63,7 @@ it('rejects a tampered value and stores nothing', function (): void {
         grantRole($owner, 'owner', ['settings.manage', 'entries.view']);
 
         Livewire::actingAs($owner->fresh())
-            ->test(AppearanceSettings::class)
+            ->test(AdminUiSettings::class)
             ->set('scheme', '"><script>alert(1)</script>')
             ->call('save')
             ->assertHasErrors(['scheme']);
@@ -81,7 +81,7 @@ it('loads the stored pins and drops a key set back to inherit', function (): voi
         app(SettingsRepository::class)->put('admin_theme', 'config', ['scheme' => 'dark', 'topbar' => 'dark']);
 
         Livewire::actingAs($owner->fresh())
-            ->test(AppearanceSettings::class)
+            ->test(AdminUiSettings::class)
             ->assertSet('scheme', 'dark')
             ->assertSet('topbar', 'dark')
             ->assertSet('sidebar', '')
@@ -103,11 +103,11 @@ it('appears in the settings nav only for settings.manage holders', function (): 
 
     $this->actingAs($owner->fresh())->get('http://a.test/admin/settings/general')
         ->assertOk()
-        ->assertSee(route('admin.settings.appearance'));
+        ->assertSee(route('admin.settings.admin-ui'));
 
     $this->actingAs($member->fresh())->get('http://a.test/admin/content')
         ->assertOk()
-        ->assertDontSee(route('admin.settings.appearance'));
+        ->assertDontSee(route('admin.settings.admin-ui'));
 });
 
 it('persists the new visual axes to the admin_theme group', function (): void {
@@ -118,7 +118,7 @@ it('persists the new visual axes to the admin_theme group', function (): void {
         grantRole($owner, 'owner', ['settings.manage', 'entries.view']);
 
         Livewire::actingAs($owner->fresh())
-            ->test(AppearanceSettings::class)
+            ->test(AdminUiSettings::class)
             ->set('layout_width', 'boxed')
             ->set('sidebar_size', 'sm')
             ->set('sidebar_image', 'img-2')

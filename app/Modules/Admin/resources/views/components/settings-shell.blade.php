@@ -7,6 +7,7 @@
     // A page passes `hints` (FirstHints key => the sentence as it shows on that page) for the
     // explanations it offers; only the dismissed ones go into the note.
     // `head` false leaves the row out for a page whose own card header still names the section.
+    // A page may pass a `more` slot: its "⋮" menu, put at the end of the title row on phones only.
     // A section that keeps its draft on the server joins the shared unsaved-changes dialog by
     // passing its change count (`:unsaved="$changes"`) and, when they are named otherwise, its save
     // and discard methods. Leaving it then asks first; a section that passes nothing leaves freely.
@@ -35,6 +36,12 @@
             if (Route::has('admin.settings.general')) {
                 $workspace[] = ['key' => 'general', 'route' => 'admin.settings.general', 'label' => __('admin.gs.title')];
             }
+            if (Route::has('admin.settings.appearance')) {
+                $workspace[] = ['key' => 'appearance', 'route' => 'admin.settings.appearance', 'label' => __('admin.website_look')];
+            }
+            if (Route::has('admin.settings.admin-ui')) {
+                $workspace[] = ['key' => 'admin-ui', 'route' => 'admin.settings.admin-ui', 'label' => __('admin.admin_ui')];
+            }
             if (Route::has('admin.settings.seo')) {
                 $workspace[] = ['key' => 'seo', 'route' => 'admin.settings.seo', 'label' => __('admin.seoset.title')];
             }
@@ -43,9 +50,6 @@
             }
             if (Route::has('admin.settings.social')) {
                 $workspace[] = ['key' => 'social', 'route' => 'admin.settings.social', 'label' => __('admin.social_login')];
-            }
-            if (Route::has('admin.settings.appearance')) {
-                $workspace[] = ['key' => 'appearance', 'route' => 'admin.settings.appearance', 'label' => __('admin.appearance')];
             }
             if (Route::has('admin.settings.catalog')) {
                 $workspace[] = ['key' => 'catalog', 'route' => 'admin.settings.catalog', 'label' => __('admin.catalog_settings')];
@@ -126,6 +130,10 @@
                                 <x-bs-admin::icon name="ri-information" :class="$infoGlyph" />
                             </button>
                         @endif
+                        @isset($more)
+                            {{-- The page's own "⋮" (phones only): what the row above the fields offers on a wide screen. --}}
+                            <div class="ms-auto shrink-0 md:hidden">{{ $more }}</div>
+                        @endisset
                     </div>
                     @if ($hasInfo)
                         <div id="set-info" role="note" aria-labelledby="set-info-t" x-show="secInfo" x-cloak

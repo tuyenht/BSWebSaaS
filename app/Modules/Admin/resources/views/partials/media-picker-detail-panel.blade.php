@@ -74,11 +74,19 @@
                             <ul class="flex flex-col gap-1">
                                 @foreach ($group as $u)
                                     <li>
-                                        <a href="{{ $u['url'] }}" target="_blank" rel="noopener"
-                                           class="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12.5px] text-body-text hover:bg-surface-hover">
-                                            <span class="min-w-0 flex-1 truncate">{{ $u['label'] }}</span>
-                                            <span class="shrink-0 rounded bg-admin-primary/8 px-1.5 py-0.5 text-[10px] font-semibold text-accent">{{ __('media.picker_kind_'.$u['kind']) }}</span>
-                                        </a>
+                                        {{-- A place no admin screen changes yet has no link (url null). --}}
+                                        @if ($u['url'] !== null)
+                                            <a href="{{ $u['url'] }}" target="_blank" rel="noopener"
+                                               class="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12.5px] text-text hover:bg-surface-hover">
+                                                <span class="min-w-0 flex-1 truncate">{{ $u['label'] }}</span>
+                                                <span class="shrink-0 rounded bg-primary/8 px-1.5 py-0.5 text-[10px] font-semibold text-primary-text">{{ __('media.picker_kind_'.$u['kind']) }}</span>
+                                            </a>
+                                        @else
+                                            <span class="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12.5px] text-text">
+                                                <span class="min-w-0 flex-1 truncate">{{ $u['label'] }}</span>
+                                                <span class="shrink-0 rounded bg-primary/8 px-1.5 py-0.5 text-[10px] font-semibold text-primary-text">{{ __('media.picker_kind_'.$u['kind']) }}</span>
+                                            </span>
+                                        @endif
                                     </li>
                                 @endforeach
                             </ul>

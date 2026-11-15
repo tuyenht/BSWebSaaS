@@ -38,6 +38,11 @@ final class SettingsSections
             'profile' => ['logo_media_id' => null, 'logo_dark_media_id' => null, 'favicon_media_id' => null, 'og_image_media_id' => null],
             'brand_keys' => ['logo', 'favicon', 'og_image'],
         ],
+        // "Giao diện website": the logo, its dark twin and the favicon (the share image belongs to "seo").
+        'appearance' => [
+            'profile' => ['logo_media_id' => null, 'logo_dark_media_id' => null, 'favicon_media_id' => null],
+            'brand_keys' => ['logo', 'favicon'],
+        ],
         'seo' => ['settings' => [['seo', 'config']]],
         'floating_contact' => ['settings' => [['storefront', 'floating_contact']]],
         'verification' => ['settings' => [['storefront', 'verification']]],

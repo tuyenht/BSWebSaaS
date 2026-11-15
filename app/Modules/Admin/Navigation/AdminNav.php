@@ -243,9 +243,10 @@ final class AdminNav
             if ($can('settings.manage')) {
                 foreach ([
                     ['settings.general', 'admin.gs.title', 'admin.settings.general'],
+                    ['settings.appearance', 'admin.website_look', 'admin.settings.appearance'],
+                    ['settings.admin-ui', 'admin.admin_ui', 'admin.settings.admin-ui'],
                     ['settings.email', 'admin.email_settings', 'admin.settings.email'],
                     ['settings.social', 'admin.social_login', 'admin.settings.social'],
-                    ['settings.appearance', 'admin.appearance', 'admin.settings.appearance'],
                     ['settings.catalog', 'admin.catalog_settings', 'admin.settings.catalog'],
                     ['settings.floating-contact', 'admin.fc.title', 'admin.settings.floating-contact'],
                     ['settings.integrations', 'admin.int.title', 'admin.settings.integrations'],
