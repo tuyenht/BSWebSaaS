@@ -34,7 +34,7 @@ import './admin-floating-contact.js';
 // offline strip of the frame (Alpine.data 'bsSession'); a Livewire 419 opens "Phiên đã hết hạn".
 import './admin-session.js';
 
-// The topbar search box: Ctrl K / ⌘K, the placeholder that fits, the phone-width magnifier (Alpine.data 'bsTopSearch').
+// The topbar search box: the placeholder that fits, the phone-width magnifier (Alpine.data 'bsTopSearch').
 import './admin-top-search.js';
 
 let uploader = null;

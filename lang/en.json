@@ -2769,7 +2769,6 @@
     "menus.reason_menu_full": "This menu already has 2,000 items, the most it can hold — remove items you no longer use, then try again.",
     "menus.reason_option_invalid": "One of the item's display options is not valid (icon, description, badge, large panel or device) — check them and try again.",
     "menus.reason_input_invalid": "The request was not complete — reload the page and try again.",
-    "menus.ui_crumb": "Tools › Menus",
     "menus.ui_intro": "Arrange the items visitors see on your website. Drag to reorder, drag onto an item to nest it. The system looks after addresses and broken links; you only take care of names and order.",
     "menus.ui_open_site": "View on website",
     "menus.ui_nothing_to_save": "No changes to save yet",

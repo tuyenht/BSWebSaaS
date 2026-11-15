@@ -42,8 +42,9 @@ final class AdminNav
     ];
 
     /**
-     * Which headed group of the sidebar each top-level entry belongs to. Content types (any
-     * section key) fall into "content"; an entry missing here stays in the untitled top group.
+     * Which headed group of the sidebar each top-level entry belongs to. Every key missing here
+     * falls into "content": content sections carry their own keys (site data, never listed here),
+     * and on the board only the dashboard sits in the untitled top group.
      *
      * @var array<string, string>
      */
@@ -59,6 +60,18 @@ final class AdminNav
 
     /** Heading order of the sidebar: the untitled top (dashboard), then the three headed groups. */
     private const GROUPS = ['top', 'content', 'tools', 'system'];
+
+    /**
+     * Screens the shell draws no trail above: the dashboard and the screens that carry their own
+     * header (review inbox, component gallery), as on the shell board; and the screens that draw
+     * their own trail in their header (content lists and editors, products, every settings
+     * screen), so no page shows two.
+     */
+    private const NO_SHELL_TRAIL = [
+        'admin.dashboard', 'admin.entries.review', 'admin.gallery',
+        'admin.entries.index', 'admin.entries.create', 'admin.entries.edit',
+        'admin.catalog.*', 'admin.settings.*',
+    ];
 
     /**
      * The same menu as items(), cut into the sidebar's headed groups (Content · Tools · System).
@@ -96,6 +109,43 @@ final class AdminNav
         }
 
         return $sections;
+    }
+
+    /**
+     * The page's trail under ⌂, read from the menu the sidebar already built (no query of its
+     * own): the active entry, then its active child, the entry linking to its list when that is
+     * not the page itself. A page outside the menu is named by its title. The member's account
+     * sits under Settings › Security in the menu but is its own page, so its title names it.
+     *
+     * @param  iterable<NavItem>  $items
+     * @return list<array{label: string, url: ?string}>
+     */
+    public function trail(iterable $items, ?string $title = null): array
+    {
+        $request = request();
+        if ($request->routeIs(...self::NO_SHELL_TRAIL)) {
+            return [];
+        }
+
+        if (! $request->routeIs('admin.account')) {
+            foreach ($items as $item) {
+                if (! $item->active) {
+                    continue;
+                }
+                $child = collect($item->children)->first(fn (NavItem $c): bool => $c->active);
+                if ($child === null) {
+                    return [['label' => $item->label, 'url' => null]];
+                }
+                $list = collect($item->children)->first(fn (NavItem $c): bool => str_ends_with($c->key, '.list'));
+
+                return [
+                    ['label' => $item->label, 'url' => $list === null || $list === $child ? null : $list->url],
+                    ['label' => $child->label, 'url' => null],
+                ];
+            }
+        }
+
+        return $title === null || $title === '' ? [] : [['label' => $title, 'url' => null]];
     }
 
     /**

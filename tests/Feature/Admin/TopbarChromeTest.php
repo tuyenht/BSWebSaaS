@@ -282,7 +282,7 @@ it('sizes the site menu labels by the text roles, so they follow the reader\'s t
         ->not->toContain('top: 2.35rem;');
 });
 
-it('gives the search box the long hint, its shorter forms and the Ctrl K shortcut', function (): void {
+it('gives the search box the long hint and its shorter forms, and no shortcut while it has nothing to search', function (): void {
     $user = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
 
@@ -290,13 +290,15 @@ it('gives the search box the long hint, its shorter forms and the Ctrl K shortcu
 
     $input = platformShellOne($dom, 'header.admin-topbar input[type="search"]');
     expect($input->getAttribute('placeholder'))->toBe('Tìm trang, bài viết, sản phẩm, cài đặt…')
-        ->and($input->getAttribute('aria-keyshortcuts'))->toBe('Control+K Meta+K')
+        ->and($input->hasAttribute('aria-keyshortcuts'))->toBeFalse()
         ->and(explode('|', (string) $input->getAttribute('data-placeholders')))->toBe([
             'Tìm trang, bài viết, sản phẩm, cài đặt…', 'Tìm trang, bài viết, sản phẩm…', 'Tìm trang, bài viết…', 'Tìm kiếm…', 'Tìm…',
         ])
-        ->and(trim((string) platformShellOne($dom, 'header.admin-topbar .admin-search-kbd')->textContent))->toBe('Ctrl K')
-        // below 640px the magnifier opens the same box
-        ->and(platformShellClasses(platformShellOne($dom, '#admin-search-trigger')))->toContain('sm:hidden', 'size-control', 'any-pointer-coarse:size-hit');
+        ->and($dom->querySelector('header.admin-topbar .admin-search-kbd'))->toBeNull()
+        // below 640px the magnifier opens the same box; a click outside closes it
+        ->and(platformShellClasses(platformShellOne($dom, '#admin-search-trigger')))->toContain('sm:hidden', 'size-control', 'any-pointer-coarse:size-hit')
+        ->and(platformShellOne($dom, 'header.admin-topbar [x-data="bsTopSearch"]')->hasAttribute('@click.outside'))->toBeTrue()
+        ->and($dom->querySelector('header.admin-topbar [x-data="bsTopSearch"]')?->hasAttribute('@keydown.window'))->toBeFalse();
 });
 
 it('puts the brand mark after the menu button below 1024px and a chevron on the user block', function (): void {

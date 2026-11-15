@@ -1,8 +1,6 @@
 @props([
     'title' => '',
     'subtitle' => null,
-    // The shared trail (⌂ › section › page) when the page passes no breadcrumbs slot of its own.
-    'crumbs' => [],
 ])
 @php
     // Standard admin page header: h1 (mirrors the dashboard/gallery title style) + optional
@@ -15,8 +13,6 @@
             <nav aria-label="{{ __('admin.breadcrumb') }}" class="mb-1 text-xs text-body-muted">
                 {{ $breadcrumbs }}
             </nav>
-        @elseif ($crumbs !== [])
-            <x-bs-admin::breadcrumb :items="$crumbs" class="mb-2" />
         @endisset
         <h1 class="text-xl font-semibold text-heading">{{ $title }}</h1>
         @if ($subtitle)

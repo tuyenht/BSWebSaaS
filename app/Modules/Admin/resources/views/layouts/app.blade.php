@@ -93,6 +93,8 @@
             // resolved), re-synced after each wire:navigate via the morph-updated data-active-group.
             $navItems = collect($navSections)->flatMap(fn ($section) => $section->items);
             $activeGroup = $navItems->first(fn ($i) => $i->hasChildren() && $i->active)?->key ?? '';
+            // The page's trail (⌂ › entry › child) from the same menu, shown above the page.
+            $trail = app(\App\Modules\Admin\Navigation\AdminNav::class)->trail($navItems, isset($title) ? (string) $title : null);
             // The current page's row (and its group's, so the collapsed rail still shows it): white
             // ink, the active fill and an inset bar on the left — told apart by shape, not only by
             // color, now that resting items are white/.85. Links also carry aria-current="page".
@@ -207,22 +209,20 @@
                 <x-bs-admin::brand-logo context="topbar" />
             </a>
 
-            {{-- Search. From 640px a field (up to 440px wide) with the Ctrl K / ⌘K hint from 1024px on a
-                 mouse; below 640px a magnifier in the right cluster opens the same field over the bar. --}}
-            <div x-data="bsTopSearch" @keydown.window="shortcut($event)" @keydown.escape="hide()" @bs-top-search-open.window="show()"
+            {{-- Search. From 640px a field (up to 440px wide); below 640px a magnifier in the right cluster
+                 opens the same field over the bar, closed by Esc, ✕, a click outside or widening to 640px. --}}
+            <div x-data="bsTopSearch" @keydown.escape="hide()" @bs-top-search-open.window="show()"
+                 @click.outside="$event.target.closest('#admin-search-trigger') || (open = false)"
                  :class="open && 'max-sm:!flex absolute inset-0 z-30 gap-2 bg-topbar-bg ps-3 pe-3'"
                  class="flex min-w-0 items-center max-sm:hidden sm:relative sm:flex-[0_1_440px]">
                     <span class="relative block min-w-0 flex-1">
                         <span class="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-topbar-search-placeholder">
                             <x-bs-admin::icon name="search" class="size-4" />
                         </span>
-                        <input type="search" x-ref="input" aria-label="{{ __('admin.search') }}" aria-keyshortcuts="Control+K Meta+K"
+                        <input type="search" x-ref="input" aria-label="{{ __('admin.search') }}"
                                placeholder="{{ __('admin.search_placeholder') }}"
                                data-placeholders="{{ __('admin.search_placeholder') }}|{{ __('admin.search_placeholder_2') }}|{{ __('admin.search_placeholder_3') }}|{{ __('admin.search_placeholder_4') }}|{{ __('admin.search_placeholder_5') }}"
-                               x-on:input="$el.dataset.filled = $el.value !== '' ? '1' : ''"
                                class="admin-search-input field w-full rounded-lg border border-topbar-search-border bg-topbar-search ps-9 pe-3 text-topbar-search-fg placeholder:text-topbar-search-placeholder transition-colors focus:border-topbar-search-accent focus:bg-topbar-search-focus">
-                        <span class="admin-search-kbd pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 rounded border border-topbar-search-border px-1.5 text-caption leading-snug text-topbar-search-placeholder"
-                              aria-hidden="true" x-text="kbdLabel">Ctrl K</span>
                     </span>
                     <button type="button" x-show="open" x-cloak @click="hide()" aria-label="{{ __('admin.close') }}"
                             class="grid size-control any-pointer-coarse:size-hit shrink-0 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg sm:hidden">
@@ -245,6 +245,10 @@
         {{-- Page content --}}
         <main class="flex-1 p-4 lg:p-6">
             @include('admin::partials.session-guard')
+            {{-- One trail per page: none on the dashboard, nor where the screen draws its own header or trail. --}}
+            @if ($trail !== [])
+                <x-bs-admin::breadcrumb :items="$trail" class="mb-2" />
+            @endif
             {{ $slot }}
         </main>
 

@@ -435,17 +435,19 @@
     :root[data-topbar='dark'] .admin-topbar .brand-logo--topbar-dark { display: none; }
     :root[data-topbar='dark'] .admin-topbar .brand-logo--topbar-light { display: block; }
 }
+/* The site admin's own topbar shows the full logo at every width below 1024px (board 01 at 390):
+   light ink on the brand-filled bar (dark, or auto below 1024px) and on the dark scheme, dark ink on a light bar. */
+@media (max-width: 52.49rem) {
+    .admin-topbar .topbar-logo .brand-logo--topbar-sm { display: none; }
+    .admin-topbar .topbar-logo .brand-logo--topbar-dark { display: block; }
+    :root:is([data-topbar='dark'], [data-topbar='auto'], [data-bs-theme='dark'], [data-theme='dark']) .admin-topbar .topbar-logo .brand-logo--topbar-dark { display: none; } /* legacy-token-ok: same attribute */
+    :root:is([data-topbar='dark'], [data-topbar='auto'], [data-bs-theme='dark'], [data-theme='dark']) .admin-topbar .topbar-logo .brand-logo--topbar-light { display: block; } /* legacy-token-ok: same attribute */
+}
 @media (min-width: 52.5rem) and (max-width: 63.98rem) {
     :root[data-topbar='auto']:not([data-bs-theme='dark'], [data-theme='dark']) .admin-topbar .brand-logo--topbar-dark { display: none; } /* legacy-token-ok: same attribute */
     :root[data-topbar='auto']:not([data-bs-theme='dark'], [data-theme='dark']) .admin-topbar .brand-logo--topbar-light { display: block; } /* legacy-token-ok: same attribute */
 }
 
-/* Topbar search: the Ctrl K / ⌘K chip shows from 1024px on a mouse while the box is empty. */
-.admin-search-kbd { display: none; }
-@media (min-width: 64rem) and (hover: hover) and (pointer: fine) {
-    .admin-search-input:not([data-filled='1']) { padding-inline-end: 4rem; }
-    .admin-search-input:not([data-filled='1']) + .admin-search-kbd { display: block; }
-}
 .admin-sidebar .brand-logo--light { display: block; } /* default dark sidebar → white logo */
 :root[data-sidebar='light'] .admin-sidebar .brand-logo--light { display: none; }
 :root[data-sidebar='light'] .admin-sidebar .brand-logo--dark { display: block; }

@@ -2769,7 +2769,6 @@
     "menus.reason_menu_full": "此菜单已有 2,000 个项目，已达上限 — 请先移除不用的项目，再试一次。",
     "menus.reason_option_invalid": "项目的某个显示选项无效（图标、描述、标记、大面板或设备）— 请检查后重试。",
     "menus.reason_input_invalid": "请求不完整 — 请重新加载页面后重试。",
-    "menus.ui_crumb": "工具 › 菜单",
     "menus.ui_intro": "整理访客在网站上看到的菜单项。拖动可调整顺序，拖到某项上可成为子项。链接地址和失效链接由系统自动照看，您只需关心名称和顺序。",
     "menus.ui_open_site": "在网站上查看",
     "menus.ui_nothing_to_save": "还没有要保存的更改",

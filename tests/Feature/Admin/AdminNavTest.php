@@ -235,3 +235,74 @@ it('heads the sidebar groups in the page, each list named by its heading', funct
             ->and($list?->getAttribute('aria-labelledby'))->toBe($heading->getAttribute('id'));
     }
 });
+
+it('draws no Tools heading for a member who may use none of its entries', function (): void {
+    // entries.view only: no media.view, forms.view or menus.manage, so nothing sits under Công cụ.
+    $writer = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($writer, 'writer-test', ['entries.view']));
+
+    $html = (string) $this->actingAs($writer->fresh())->withSession(['locale' => 'vi'])->get('http://anvinh.platform.test/admin/content')->assertOk()->getContent();
+    $dom = HTMLDocument::createFromString($html, LIBXML_NOERROR);
+
+    $headings = array_map(fn (Element $p): string => trim((string) $p->textContent), iterator_to_array($dom->querySelectorAll('#admin-sidebar nav p.sidebar-heading')));
+    expect($headings)->toContain(__('admin.nav_group.content'))->not->toContain(__('admin.nav_group.tools'))
+        ->and($dom->getElementById('admin-nav-tools'))->toBeNull()
+        ->and($dom->querySelector('#admin-sidebar a[href="'.route('admin.media.index').'"]'))->toBeNull();
+});
+
+/** How many trails (navs named "Đường dẫn") the page draws. */
+function shellTrailCount(string $html): int
+{
+    return count(HTMLDocument::createFromString($html, LIBXML_NOERROR)->querySelectorAll('nav[aria-label="'.__('admin.breadcrumb').'"]'));
+}
+
+it('leads a menu page with the shell trail from the active menu entry and its child', function (): void {
+    app()->setLocale('vi');
+    $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
+    $posts = app(Tenancy::class)->enter(1, fn () => ContentSection::query()->where('key', 'posts')->firstOrFail());
+    expect($posts->taxonomy_id)->not->toBeNull();
+
+    // a leaf: ⌂ › Thư viện ảnh & tệp
+    $html = (string) $this->actingAs($owner)->withSession(['locale' => 'vi'])->get('http://anvinh.platform.test/admin/media')->assertOk()->getContent();
+    $dom = HTMLDocument::createFromString($html, LIBXML_NOERROR);
+    $trail = $dom->querySelector('main > nav[aria-label="'.__('admin.breadcrumb').'"]');
+    expect(shellTrailCount($html))->toBe(1)
+        ->and($trail?->querySelector('a[aria-label="'.__('admin.dashboard').'"]')?->getAttribute('href'))->toBe(route('admin.dashboard'))
+        ->and(trim((string) $trail?->querySelector('[aria-current="page"]')?->textContent))->toBe('Thư viện ảnh & tệp');
+
+    // a child: ⌂ › Tin tức › Chuyên mục, the entry linking to its own list
+    $html = (string) $this->actingAs($owner)->withSession(['locale' => 'vi'])->get('http://anvinh.platform.test/admin/taxonomies?section=posts')->assertOk()->getContent();
+    $dom = HTMLDocument::createFromString($html, LIBXML_NOERROR);
+    $trail = $dom->querySelector('main > nav[aria-label="'.__('admin.breadcrumb').'"]');
+    $label = app(Tenancy::class)->enter(1, fn (): string => $posts->localizedLabel());
+    expect(shellTrailCount($html))->toBe(1)
+        ->and(trim((string) $trail?->querySelector('a.underline')?->textContent))->toBe($label)
+        ->and($trail?->querySelector('a.underline')?->getAttribute('href'))->toBe(route('admin.entries.index', ['section' => 'posts']))
+        ->and(trim((string) $trail?->querySelector('[aria-current="page"]')?->textContent))->toBe(__('admin.categories'))
+        ->and($dom->querySelectorAll('h1'))->toHaveCount(1);
+});
+
+it('draws no shell trail on the dashboard, and one trail only where the screen draws its own', function (): void {
+    $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
+    $get = fn (string $path): string => (string) $this->actingAs($owner)->withSession(['locale' => 'vi'])->get('http://anvinh.platform.test'.$path)->assertOk()->getContent();
+
+    expect(shellTrailCount($get('/admin')))->toBe(0);
+
+    foreach (['/admin/settings/email', '/admin/content?section=posts'] as $path) {
+        $dom = HTMLDocument::createFromString($get($path), LIBXML_NOERROR);
+        expect($dom->querySelectorAll('nav[aria-label="'.__('admin.breadcrumb').'"]'))->toHaveCount(1, $path)
+            ->and($dom->querySelector('main > nav[aria-label="'.__('admin.breadcrumb').'"]'))->toBeNull()
+            ->and($dom->querySelectorAll('h1'))->toHaveCount(1);
+    }
+});
+
+it('names a page outside the menu by its title, and the account by its own title', function (): void {
+    app()->setLocale('vi');
+    $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
+
+    foreach (['/admin/notifications' => __('admin.notifications'), '/admin/account' => __('admin.account.title')] as $path => $title) {
+        $html = (string) $this->actingAs($owner)->withSession(['locale' => 'vi'])->get('http://anvinh.platform.test'.$path)->assertOk()->getContent();
+        $trail = HTMLDocument::createFromString($html, LIBXML_NOERROR)->querySelector('main > nav[aria-label="'.__('admin.breadcrumb').'"]');
+        expect(trim((string) $trail?->querySelector('[aria-current="page"]')?->textContent))->toBe($title);
+    }
+});

@@ -2769,7 +2769,6 @@
     "menus.reason_menu_full": "Trình đơn đã có 2.000 mục, mức tối đa — gỡ bớt mục không dùng rồi thử lại.",
     "menus.reason_option_invalid": "Một tùy chọn hiển thị của mục chưa hợp lệ (biểu tượng, mô tả, nhãn, bảng lớn hoặc thiết bị) — xem lại rồi thử lại.",
     "menus.reason_input_invalid": "Yêu cầu chưa đầy đủ — tải lại trang rồi thử lại.",
-    "menus.ui_crumb": "Công cụ › Trình đơn",
     "menus.ui_intro": "Sắp xếp những mục khách nhìn thấy trên website. Kéo để đổi vị trí, kéo vào trong để thành mục con. Đường dẫn và liên kết hỏng do hệ thống tự trông, bạn chỉ lo tên mục và thứ tự.",
     "menus.ui_open_site": "Xem trên website",
     "menus.ui_nothing_to_save": "Chưa có thay đổi nào để lưu",
