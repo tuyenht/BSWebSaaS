@@ -94,3 +94,17 @@ it('leaves out of the width what a laptop does not draw: phone-only rows and lin
     expect(StorefrontChrome::menuNeedsXl([...$menu, ...$hidden]))->toBeFalse()
         ->and(StorefrontChrome::menuNeedsXl([...$menu, ...$shown]))->toBeTrue();
 });
+
+it('matches the breadcrumb to the menu by normalised path: absolute same-host links, trailing slash, query, encoding', function (): void {
+    $menu = [
+        ['label' => 'Dự án', 'url' => 'https://shop.test/du-an/', 'active' => false, 'children' => []],
+        ['label' => 'Sản phẩm', 'url' => '/s%E1%BA%A3n-ph%E1%BA%A9m?x=1', 'active' => false, 'children' => []],
+        ['label' => 'Ngoài', 'url' => 'https://other.test/du-an', 'active' => false, 'children' => []],
+    ];
+
+    $out = StorefrontChrome::withTrail(['menu' => $menu, 'breadcrumb' => [
+        ['href' => '/'], ['href' => '/du-an'], ['href' => '/sản-phẩm#top'], ['href' => '/x'],
+    ]], 'shop.test');
+
+    expect(array_map(StorefrontChrome::inTrail(...), $out['menu']))->toBe([true, true, false]);   // an external link with the same path is not on the way
+});

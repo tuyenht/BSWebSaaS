@@ -89,18 +89,70 @@ it('lists every public language in its own name, links from PathBuilder, and no 
 
     $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
 
+    // four languages: a "Ngôn ngữ · <current>" row that opens the list below it (collapsed), one 48px row link per language
     expect($html)
-        ->toContain('<nav class="sf-drawer__langs" aria-label="Ngôn ngữ">')
-        ->toContain('<span aria-hidden="true">Ngôn ngữ</span>')
-        ->toContain('<ul class="sf-seg sf-seg--wrap">')                     // four languages: the segments wrap
-        ->toMatch('#<a class="sf-seg__s" href="[^"]*" hreflang="vi" lang="vi" dir="ltr" aria-current="true">Tiếng Việt</a>#')
-        ->toMatch('#href="http://mau\.platform\.test/en/about" hreflang="en" lang="en" dir="ltr">English</a>#')   // a real translation
-        ->toMatch('#href="/ja" hreflang="ja" lang="ja" dir="ltr">日本語 <small class="sf-drawer__hint">\(trang chủ\)</small></a>#')   // no ja page: its home page, said so
+        ->toContain('<button type="button" class="sf-lang-h" data-lang-head aria-expanded="false" aria-controls="msm-lang-list">')
+        ->toMatch('#<span class="sf-lang-h__t">Ngôn ngữ · <span lang="vi" dir="ltr">Tiếng Việt</span></span>#')
+        ->toContain('<nav class="sf-lang-list" id="msm-lang-list" aria-label="Ngôn ngữ">')
+        ->not->toContain('data-lang-sub')
+        ->not->toContain('sf-seg--wrap')
+        ->toMatch('#<a class="sf-lang-r" href="[^"]*" hreflang="vi" lang="vi" dir="ltr" aria-current="true"><span class="sf-lang-r__t"><span class="sf-lang-r__n">Tiếng Việt</span> </span><span class="sf-lang-r__ck" aria-hidden="true">#')   // the current one: a check, no gloss
+        ->toMatch('#href="http://mau\.platform\.test/en/about" hreflang="en" lang="en" dir="ltr"><span class="sf-lang-r__t"><span class="sf-lang-r__n">English</span><span class="sf-lang-r__g" lang="vi">Tiếng Anh</span> </span></a>#')   // a real translation, with its Vietnamese name
+        ->toMatch('#href="/ja" hreflang="ja" lang="ja" dir="ltr"><span class="sf-lang-r__t"><span class="sf-lang-r__n">日本語</span><span class="sf-lang-r__g" lang="vi">Tiếng Nhật</span> <small class="sf-drawer__hint">\(trang chủ\)</small></span></a>#')   // no ja page: its home page, said so
         ->toMatch('#href="http://mau\.platform\.test/ar/about-ar" hreflang="ar" lang="ar" dir="rtl"#')
         ->not->toContain('hreflang="ko"');
 
     // the hreflang alternates stay the real translations only (no fallback target)
     expect($html)->not->toContain('<link rel="alternate" hreflang="ja"');
+});
+
+it('draws two or three languages as one segmented control and no list row', function (array $extra): void {
+    drawerSite($extra);
+
+    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+
+    expect($html)
+        ->toContain('<nav class="sf-drawer__langs" aria-label="Ngôn ngữ">')
+        ->toContain('<ul class="sf-seg">')
+        ->toMatch('#<a class="sf-seg__s" href="[^"]*" hreflang="vi" lang="vi" dir="ltr" aria-current="true">Tiếng Việt</a>#')
+        ->not->toContain('sf-lang-h')->not->toContain('data-lang-sub');
+})->with([
+    'two' => [['en']],
+    'three' => [['en', 'ja']],
+]);
+
+it('draws four to seven languages as a collapsed list under a "Ngôn ngữ · name" row, with no screen of its own', function (): void {
+    drawerSite(['en', 'ja', 'ar', 'fr', 'de', 'es']);   // seven public languages with vi
+
+    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+
+    expect(substr_count($html, 'class="sf-lang-r"'))->toBe(7)
+        ->and($html)->toContain('data-lang-head aria-expanded="false" aria-controls="msm-lang-list">')
+        ->toContain('<nav class="sf-lang-list" id="msm-lang-list" aria-label="Ngôn ngữ">')
+        ->not->toContain('aria-haspopup')->not->toContain('data-lang-sub')->not->toContain('class="sf-seg"');
+});
+
+it('draws eight or more languages as a row opening a screen with a labelled search, the language in use and the others', function (): void {
+    drawerSite(['en', 'ja', 'ar', 'fr', 'de', 'es', 'th']);   // eight public languages with vi
+
+    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+    $sub = substr($html, (int) strpos($html, '<div class="sf-lang-sub"'));
+    $sub = substr($sub, 0, (int) strpos($sub, 'data-lang-none'));
+
+    expect($html)
+        ->toContain('data-lang-head aria-expanded="false" aria-controls="msm-lang-list">')
+        ->toContain('<p class="sf-lang-none" role="status" data-lang-none data-text="Không có ngôn ngữ nào khớp."></p>')   // always there, filled by the script
+        ->not->toContain('class="sf-lang-list"');
+    expect($sub)
+        ->toContain('id="msm-lang-list" role="group" aria-labelledby="msm-lang-title" data-lang-sub')
+        ->toContain('<span>Menu</span></button>')
+        ->toContain('<h2 class="sf-lang-sub__t" id="msm-lang-title">Ngôn ngữ</h2>')
+        ->toContain('<label class="sr-only" for="msm-lang-q">Tìm ngôn ngữ…</label>')
+        ->toContain('id="msm-lang-q" type="search"')
+        ->toContain('>Đang dùng</p>')->toContain('>Ngôn ngữ khác</p>')
+        ->and(substr_count($sub, 'aria-current="true"'))->toBe(1)       // one language in use
+        ->and(substr_count($sub, 'class="sf-lang-r"'))->toBe(8)          // every language once: none is lost
+        ->and(substr_count($sub, 'hreflang="th" lang="th" dir="ltr"'))->toBe(1);
 });
 
 it('shows no language switch on a site with one public language', function (): void {
@@ -109,7 +161,7 @@ it('shows no language switch on a site with one public language', function (): v
     $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
 
     expect($html)->toContain('id="mobile-menu"')
-        ->not->toContain('sf-drawer__langs')
+        ->not->toContain('sf-drawer__lang')->not->toContain('sf-lang-h')
         ->not->toContain('class="sf-lang"');
 });
 
@@ -234,8 +286,8 @@ it('keeps language, text size and the call in the drawer’s footer in that orde
     $at = fn (string $needle): int => (int) strpos($drawer, $needle);
 
     expect($at('class="sf-nav sf-nav--mob"'))->toBeLessThan($at('sf-drawer__foot'))
-        ->and($at('sf-drawer__foot'))->toBeLessThan($at('sf-drawer__langs'))
-        ->and($at('sf-drawer__langs'))->toBeLessThan($at('sf-drawer__fs'))
+        ->and($at('sf-drawer__foot'))->toBeLessThan($at('sf-drawer__lang'))
+        ->and($at('sf-drawer__lang'))->toBeLessThan($at('sf-drawer__fs'))
         ->and($at('sf-drawer__fs'))->toBeLessThan($at('sf-drawer__call'))
         ->and($drawer)->toContain('<a class="sf-drawer__call" href="tel:0901234567">')
         ->not->toContain('mailto:')->not->toContain('sf-drawer__contact')->not->toContain('Kết nối với chúng tôi');

@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Modules\Theme\Chrome;
 
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\MenuPath;
 use App\Modules\Shared\Support\SafeLink;
 use App\Modules\Tenancy\Support\BusinessHours;
+use Illuminate\Container\Container;
 use Illuminate\Support\HtmlString;
 
 /**
@@ -408,6 +410,24 @@ final class StorefrontChrome
         return mb_strtoupper(mb_substr($name, 0, 1)).mb_substr($name, 1);
     }
 
+    /**
+     * A language's name in the page's language ("Tiếng Anh", "Tiếng Nhật" on a Vietnamese page), shown small under
+     * its own name in the phone menu's language list so a visitor who cannot read the script still finds it. Null when it would say
+     * nothing new (the same as the language's own name) or ICU has no name for the code.
+     */
+    public static function languageGloss(string $locale, string $ownName, string $in = 'vi'): ?string
+    {
+        if (! class_exists(\Locale::class)) {
+            return null;
+        }
+        $name = \Locale::getDisplayName($locale, $in);
+        if (! is_string($name) || strcasecmp($name, $locale) === 0 || mb_strtolower($name) === mb_strtolower($ownName)) {
+            return null;
+        }
+
+        return mb_strtoupper(mb_substr($name, 0, 1)).mb_substr($name, 1);
+    }
+
     /** The text direction of a language: "rtl" for Arabic, Hebrew, Persian…, else "ltr". */
     public static function dir(string $locale): string
     {
@@ -466,15 +486,18 @@ final class StorefrontChrome
      * already `active`). Pure: no query.
      *
      * @param  array<string, mixed>  $extra  the page's layout variables (menu, mobileMenu, breadcrumb)
+     * @param  string|null  $host  the request's host (links on it count as paths of this site); null = the current request's
      * @return array<string, mixed>
      */
-    public static function withTrail(array $extra): array
+    public static function withTrail(array $extra, ?string $host = null): array
     {
+        $host ??= self::requestHost();
         $crumbs = is_array($extra['breadcrumb'] ?? null) ? array_values($extra['breadcrumb']) : [];
         $paths = [];
         foreach (array_slice($crumbs, 1, -1) as $crumb) {
-            if (is_array($crumb) && is_string($crumb['href'] ?? null) && $crumb['href'] !== '') {
-                $paths[$crumb['href']] = true;
+            $path = is_array($crumb) && is_string($crumb['href'] ?? null) ? MenuPath::normalize($crumb['href'], $host) : null;
+            if ($path !== null) {
+                $paths[$path] = true;
             }
         }
         if ($paths === []) {
@@ -482,7 +505,7 @@ final class StorefrontChrome
         }
         foreach (['menu', 'mobileMenu'] as $key) {
             if (is_array($extra[$key] ?? null)) {
-                $extra[$key] = self::markTrail($extra[$key], $paths);
+                $extra[$key] = self::markTrail($extra[$key], $paths, $host);
             }
         }
 
@@ -491,20 +514,21 @@ final class StorefrontChrome
 
     /**
      * @param  array<mixed>  $items
-     * @param  array<string, true>  $paths
+     * @param  array<string, true>  $paths  normalised paths (MenuPath)
      * @return array<mixed>
      */
-    private static function markTrail(array $items, array $paths): array
+    private static function markTrail(array $items, array $paths, string $host): array
     {
         foreach ($items as $i => $item) {
             if (! is_array($item)) {
                 continue;
             }
-            if (is_string($item['url'] ?? null) && isset($paths[$item['url']]) && empty($item['active'])) {
+            $path = is_string($item['url'] ?? null) ? MenuPath::normalize($item['url'], $host) : null;
+            if ($path !== null && isset($paths[$path]) && empty($item['active'])) {
                 $item['trail'] = true;
             }
             if (is_array($item['children'] ?? null) && $item['children'] !== []) {
-                $item['children'] = self::markTrail($item['children'], $paths);
+                $item['children'] = self::markTrail($item['children'], $paths, $host);
             }
             $items[$i] = $item;
         }
@@ -633,14 +657,15 @@ final class StorefrontChrome
      * @param  array<mixed>  $item  a resolved menu node with children
      * @return array{label: string, url: string, active: bool, attrs: array<mixed>}|null
      */
-    public static function drawerOverview(array $item): ?array
+    public static function drawerOverview(array $item, ?string $host = null): ?array
     {
+        $host ??= self::requestHost();
         $url = is_string($item['url'] ?? null) ? $item['url'] : '#';
         if ($url === '#') {
             return null;
         }
         foreach (is_array($item['children'] ?? null) ? $item['children'] : [] as $child) {
-            if (is_array($child) && ($child['url'] ?? null) === $url) {
+            if (is_array($child) && is_string($child['url'] ?? null) && MenuPath::same($child['url'], $url, $host)) {
                 return null;
             }
         }
@@ -651,6 +676,50 @@ final class StorefrontChrome
             'active' => ! empty($item['active']),
             'attrs' => is_array($item['attrs'] ?? null) ? $item['attrs'] : [],
         ];
+    }
+
+    /**
+     * The phone menu shows three levels at most (a menu may be five deep): a row on the third level is
+     * never a parent, so the rows below it (levels four and five) follow it as third-level rows, depth
+     * first, and no link is lost. A third-level heading without a page ("#") goes with its group: it would
+     * be a row that opens nothing. The desktop menu keeps its depth: only the drawer is passed through here.
+     *
+     * @param  array<mixed>  $items  menu nodes {label, url, children, …}
+     * @return list<array<mixed>>
+     */
+    public static function drawerCapDepth(array $items, int $level = 1): array
+    {
+        $out = [];
+        foreach ($items as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+            $children = is_array($item['children'] ?? null) ? array_values($item['children']) : [];
+            if ($level < 3) {
+                $item['children'] = self::drawerCapDepth($children, $level + 1);
+                $out[] = $item;
+
+                continue;
+            }
+            $item['children'] = [];
+            // A heading with no page of its own ("#") only named its group: with the group moved up it has nothing to open.
+            if (($item['url'] ?? null) !== '#' || $children === []) {
+                $out[] = $item;
+            }
+            foreach (self::drawerCapDepth($children, 3) as $below) {
+                $out[] = $below;
+            }
+        }
+
+        return $out;
+    }
+
+    /** The current request's host, or '' where no request is bound (a unit test): then only plain paths match. */
+    private static function requestHost(): string
+    {
+        $container = Container::getInstance();
+
+        return $container->bound('request') ? $container->make('request')->getHost() : '';
     }
 
     /** Whether any item of a menu tree has children (it then needs the disclosure script). */

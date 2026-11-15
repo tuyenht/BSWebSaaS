@@ -717,3 +717,10 @@ it('draws an Instagram disc in the drawer only when the link is filled', functio
     expect($with)->toContain('href="https://instagram.com/comau"')->toContain('aria-label="Instagram của Xưởng Mẫu"')
         ->and($without)->not->toContain('Instagram');
 });
+
+it('drops the overview row when a child links the same page written another way', function (): void {
+    $item = ['label' => 'A', 'url' => '/a', 'children' => [['label' => 'Tổng', 'url' => 'https://localhost/a/?x=1']]];
+
+    expect(StorefrontChrome::drawerOverview($item, 'localhost'))->toBeNull()
+        ->and(StorefrontChrome::drawerOverview(['label' => 'A', 'url' => '/a', 'children' => [['label' => 'B', 'url' => 'https://other.test/a']]], 'localhost'))->not->toBeNull();
+});
