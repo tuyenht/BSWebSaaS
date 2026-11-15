@@ -369,3 +369,157 @@ it('asks before leaving with unsaved changes, and discards them with "Bỏ thay 
             ->call('resetChanges')->assertSet('images.logo', '')->assertSeeHtml('data-unsaved-count="0"');
     });
 });
+
+/** Gives the site a `storefront.header` setting (a site with the rich header and its phone menu). */
+function lookHeader(array $value, int $siteId = 1): void
+{
+    app(Tenancy::class)->enter($siteId, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'storefront', 'key' => 'header'], ['value' => $value]));
+}
+
+/** @return array<string, mixed>|null the stored header setting, read in its own tenant transaction */
+function lookHeaderRow(int $siteId = 1): ?array
+{
+    $value = app(Tenancy::class)->enter($siteId, fn () => SiteSetting::query()->where('group_name', 'storefront')->where('key', 'header')->value('value'));
+
+    return is_array($value) ? $value : null;
+}
+
+it('shows the phone menu card only for a site that has a header setting, and never creates one by saving', function (): void {
+    $admin = lookAdmin();
+
+    $this->actingAs($admin)->get('http://a.test/admin/settings/appearance')->assertOk()
+        ->assertDontSee('Đầu trang &amp; menu điện thoại', false)->assertDontSee('Màu nhấn của menu');
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)
+            ->assertSet('hasMenu', false)->set('tone', 'dark')->set('accent', 'brand')
+            ->assertSeeHtml('data-unsaved-count="0"')->call('save')->assertHasNoErrors();
+    });
+
+    expect(lookHeaderRow())->toBeNull();
+});
+
+it('draws the phone menu card of the design with its default choices', function (): void {
+    lookHeader(['top_bar' => ['items' => []]]);
+
+    $this->actingAs(lookAdmin())->get('http://a.test/admin/settings/appearance')->assertOk()
+        ->assertSeeInOrder(['Đầu trang &amp; menu điện thoại', 'Màu trình đơn trên điện thoại',
+            'Theo đầu trang', 'Cùng màu với đầu trang', 'Sáng', 'Mặc định — nền trắng, chữ đậm', 'Tối', 'Nền tối, chữ trắng',
+            'Trình đơn mở ra khi khách bấm nút ☰ trên điện thoại.',
+            'Màu nhấn của menu', 'Trung tính', 'Mặc định — xám đậm, hợp mọi website', 'Màu thương hiệu', 'Theo màu thương hiệu ở trên',
+            'Chỉ đổi màu biểu tượng, gạch chân ở thẻ đang chọn', 'Lưu thay đổi'], false)
+        ->assertSeeHtml('name="look-tone" value="light" wire:model.live="tone" checked')
+        ->assertSeeHtml('name="look-accent" value="neutral" wire:model.live="accent" checked')
+        ->assertDontSee('Màu phụ</span>', false);
+});
+
+it('paints the brand swatch with the brand colour the site has', function (): void {
+    lookHeader([]);
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'theme', 'key' => 'tokens'], ['value' => ['primary' => '#d1242a']]));
+
+    $this->actingAs(lookAdmin())->get('http://a.test/admin/settings/appearance')->assertOk()
+        ->assertSeeHtml('style="background: #d1242a"')->assertSeeHtml('style="background: var(--color-text-muted)"');
+});
+
+it('saves the phone menu tone and accent, keeps every other header key, and shows them again on reload', function (): void {
+    $header = ['top_bar' => ['items' => [['kind' => 'phone', 'text' => 'Gọi', 'value' => '0901234567']]], 'text_size' => true, 'sticky' => false, 'mobile_corner' => 'search', 'drawer_products' => false, 'drawer_tone' => 'light'];
+    lookHeader($header);
+    $admin = lookAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)
+            ->assertSet('tone', 'light')->assertSet('accent', 'neutral')
+            ->set('tone', 'auto')->set('accent', 'brand')->assertSeeHtml('data-unsaved-count="2"')
+            ->call('save')->assertHasNoErrors()->assertSet('toast', 'Đã lưu giao diện website')
+            ->assertSet('savedMenu', ['tone' => 'auto', 'accent' => 'brand'])->assertSeeHtml('data-unsaved-count="0"');
+    });
+
+    expect(lookHeaderRow())->toEqualCanonicalizing([...$header, 'drawer_tone' => 'auto', 'drawer_accent' => 'brand']);
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)
+        ->assertSet('tone', 'auto')->assertSet('accent', 'brand'));
+});
+
+it('saves the images and the phone menu in one step: a refused picture writes neither', function (): void {
+    lookHeader(['drawer_tone' => 'light']);
+    $admin = lookAdmin();
+    $theirs = lookMedia(2, 'cua-nguoi-khac');
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $theirs): void {
+        Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)
+            ->set('images.logo', $theirs->storage_key)->set('tone', 'dark')->set('accent', 'brand')
+            ->call('save')->assertHasErrors('images.logo');
+    });
+
+    expect(lookHeaderRow())->toBe(['drawer_tone' => 'light']);
+});
+
+it('refuses a tone or an accent outside the lists with a plain message and writes nothing', function (string $field, string $value): void {
+    lookHeader(['drawer_tone' => 'dark', 'drawer_accent' => 'brand']);
+    $admin = lookAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $field, $value): void {
+        Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)
+            ->set($field, $value)->call('save')->assertHasErrors($field)
+            ->assertSee('Lựa chọn này không có trong danh sách.')->assertSet('toastTone', 'error');
+    });
+
+    expect(lookHeaderRow())->toEqualCanonicalizing(['drawer_tone' => 'dark', 'drawer_accent' => 'brand']);
+})->with([
+    'tone' => ['tone', 'purple'],
+    'accent' => ['accent', 'secondary'],
+    'empty tone' => ['tone', ''],
+]);
+
+it('counts the phone menu fields as unsaved changes, and "Bỏ thay đổi" puts them back', function (): void {
+    lookHeader(['drawer_tone' => 'dark', 'drawer_accent' => 'brand']);
+    $admin = lookAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)
+            ->assertSeeHtml('data-unsaved-count="0"')
+            ->set('tone', 'light')->assertSeeHtml('data-unsaved-count="1"')
+            ->set('accent', 'neutral')->assertSeeHtml('data-unsaved-count="2"')
+            ->set('tone', 'dark')->assertSeeHtml('data-unsaved-count="1"')
+            ->call('resetChanges')->assertSet('tone', 'dark')->assertSet('accent', 'brand')->assertSeeHtml('data-unsaved-count="0"');
+    });
+});
+
+it('restores the phone menu to its defaults with the rest of the section, leaving the other header keys, and "Hoàn tác" brings it back', function (): void {
+    $header = ['top_bar' => ['items' => []], 'text_size' => true, 'drawer_products' => false, 'drawer_tone' => 'dark', 'drawer_accent' => 'brand'];
+    lookHeader($header);
+    $admin = lookAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $page = Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)
+            ->call('restoreDefaults')->assertSet('tone', 'light')->assertSet('accent', 'neutral')->assertSee('Hoàn tác');
+        expect(SiteSetting::query()->where('group_name', 'storefront')->where('key', 'header')->value('value'))
+            ->toEqualCanonicalizing(['top_bar' => ['items' => []], 'text_size' => true, 'drawer_products' => false]);
+
+        $page->call('undoRestore')->assertSet('tone', 'dark')->assertSet('accent', 'brand');
+    });
+
+    expect(lookHeaderRow())->toEqualCanonicalizing($header);
+});
+
+it('restores a site without a header setting without creating one', function (): void {
+    $admin = lookAdmin();
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)
+        ->call('restoreDefaults')->assertHasNoErrors()->call('undoRestore')->assertHasNoErrors());
+
+    expect(lookHeaderRow())->toBeNull();
+});
+
+it('refuses to save the phone menu to a member who loses settings.manage while the page is open', function (): void {
+    lookHeader(['drawer_tone' => 'light']);
+    $admin = lookAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $page = Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)->set('tone', 'dark');
+        $admin->syncPermissions([]);
+        $admin->syncRoles([]);
+        app(TeamContext::class)->forget();
+        $page->call('save')->assertForbidden();
+    });
+
+    expect(lookHeaderRow())->toBe(['drawer_tone' => 'light']);
+});

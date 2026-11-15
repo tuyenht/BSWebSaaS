@@ -653,6 +653,15 @@ it('keeps the phone menu tone to auto, light or dark, light when the setting is 
         ->and(StorefrontChrome::drawerDark([]))->toBeFalse();
 });
 
+it('keeps the phone menu accent to neutral or brand, neutral when the setting is missing or anything else', function (): void {
+    $accent = fn (mixed $raw): string => StorefrontChrome::header(['drawer_accent' => $raw], 'vi', 'vi')['drawer_accent'] ?? 'missing';
+
+    expect($accent('brand'))->toBe('brand')->and($accent('neutral'))->toBe('neutral')
+        ->and($accent(null))->toBe('neutral')->and($accent('Brand'))->toBe('neutral')->and($accent(''))->toBe('neutral')
+        ->and($accent(1))->toBe('neutral')->and($accent(['brand']))->toBe('neutral')
+        ->and(StorefrontChrome::header([], 'vi', 'vi')['drawer_accent'] ?? 'missing')->toBe('neutral');
+});
+
 /** The phone menu's markup in a page: from the drawer to the no-script styles after it. */
 function dpDrawer(string $html): string
 {

@@ -73,8 +73,12 @@ final class DrawerTones
     /**
      * The drawer's CSS variables for one tone, as a style attribute's text ("--sf-dw-bg:#…;…"); null when
      * the seeds cannot be measured. Every value is a hex colour of ours or a fixed shadow, never a seed's text.
+     * With $brandAccent the brand colour, made at least 3:1 on everything the panel can look like (accent()),
+     * is printed as --sf-dw-accent; the stylesheet gives the icons, the selected tab's underline and the
+     * current row's bar that colour. Without it, or for a brand that is not hex, nothing is printed and they keep
+     * their neutral colours.
      */
-    public static function css(string $surface, string $ink, string $brand, bool $dark): ?string
+    public static function css(string $surface, string $ink, string $brand, bool $dark, bool $brandAccent = false): ?string
     {
         $tone = self::tone($surface, $ink, $brand, $dark);
         if ($tone === null) {
@@ -86,6 +90,10 @@ final class DrawerTones
         foreach (self::ROLES as $role) {
             $css .= '--sf-dw-'.$role.':'.$tone['roles'][$role].';';
         }
+        $accent = $brandAccent ? self::accent($brand, $tone, $dark) : null;
+        if ($accent !== null) {
+            $css .= '--sf-dw-accent:'.$accent.';';
+        }
         $css .= '--sf-dw-panel:'.$tone['roles']['bg'].self::alpha($panel).';--sf-dw-scrim:'.$tone['scrim'].self::alpha($scrim).';';
 
         return $css.'--sf-dw-cta-ring:'.($tone['ring'] ? 'inset 0 0 0 1.5px '.$tone['roles']['ctl'] : 'none');
@@ -94,7 +102,7 @@ final class DrawerTones
     /**
      * One tone: its roles, the scrim's colour (the readable ink) and whether the call-to-action row needs a ring.
      *
-     * @return array{roles: array<string, string>, scrim: string, ring: bool}|null
+     * @return array{roles: array<string, string>, scrim: string, raw: string, ring: bool}|null
      */
     private static function tone(string $surface, string $ink, string $brand, bool $dark): ?array
     {
@@ -107,7 +115,26 @@ final class DrawerTones
         $k = (ReadableColor::ratio($k0, $s) ?? 0.0) < self::LABEL ? self::readable($k0, [$s], self::LABEL) : $k0;
         $roles = $dark ? self::dark($s, $k, $k0) : self::light($s, $k, $k0);
 
-        return ['roles' => $roles, 'scrim' => $k, 'ring' => (ReadableColor::ratio($brand, $roles['bg']) ?? self::CTA_FILL) < self::CTA_FILL];
+        return ['roles' => $roles, 'scrim' => $k, 'raw' => $k0, 'ring' => (ReadableColor::ratio($brand, $roles['bg']) ?? self::CTA_FILL) < self::CTA_FILL];
+    }
+
+    /**
+     * The brand colour as an accent on this tone's panel: itself when it already reads 3:1 (non-text contrast)
+     * on every backdrop, else moved toward black (light) or white (dark) until it does. The backdrops are
+     * the panel as seen() gives it plus the fills an icon or bar can sit on (the current row's pill, a pressed row, the
+     * hover fill). Null when the brand is not a hex colour.
+     *
+     * @param  array{roles: array<string, string>, scrim: string, raw: string, ring: bool}  $tone
+     */
+    private static function accent(string $brand, array $tone, bool $dark): ?string
+    {
+        $color = ReadableColor::mix($brand, $brand, 1.0);
+        if ($color === null) {
+            return null;
+        }
+        $roles = $tone['roles'];
+
+        return self::readable($color, [...self::seen($roles['bg'], $tone['scrim'], $tone['raw'], $dark), $roles['pill'], $roles['press'], $roles['track']], self::CONTROL);
     }
 
     /**

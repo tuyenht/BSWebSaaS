@@ -115,7 +115,7 @@
             // The phone menu's tone (light by default; dark when set to dark or to follow the header bar) and its colours,
             // derived from the site's seeds (DrawerTones); the stylesheet's fallbacks apply to seeds that are not hex.
             $sfDrawerDark = \App\Modules\Theme\Chrome\StorefrontChrome::drawerDark($header);
-            $sfDrawerTones = \App\Modules\Theme\Theming\DrawerTones::css($tokens['surface'] ?? '', $tokens['ink'] ?? '', $tokens['primary'] ?? '', $sfDrawerDark);
+            $sfDrawerTones = \App\Modules\Theme\Theming\DrawerTones::css($tokens['surface'] ?? '', $tokens['ink'] ?? '', $tokens['primary'] ?? '', $sfDrawerDark, ($header['drawer_accent'] ?? 'neutral') === 'brand');
         @endphp
         {{-- The phone menu: a dialog drawer (focus moves in on open and back to the button on close, Esc,
              the dimmed area and the ✕ close it). No title word in it: the page's own words are the menu. --}}
