@@ -87,6 +87,7 @@
                         <span class="{{ $sub }}">{{ __('admin.plans_features_sub') }}</span>
                     </div>
                     @foreach (FeatureRegistry::all() as $key => $feature)
+                        @continue(PlanFeatureText::ownCard($key))
                         @php
                             $fid = 'plan-f-'.str_replace(['.', '_'], '-', $key);
                             $field = Edit::field($key);

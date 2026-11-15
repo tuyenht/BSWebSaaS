@@ -13,6 +13,7 @@ use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteFeature;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -248,6 +249,8 @@ it('pages through the invitations by keyset, newest invitation first', function 
     $owner = invTabMember('owner');
     invTabMember('viewer');
     $per = MemberDirectory::PER_PAGE[0];
+    // room for more invitations than a page holds: the people limit is not what this pages through
+    app(Tenancy::class)->enter(1, fn () => SiteFeature::query()->create(['feature_key' => 'users.max', 'value' => 100]));
     for ($i = 1; $i <= $per + 3; $i++) {
         invTabInvite($owner, sprintf('m%02d@example.test', $i));
         $this->travel(1)->seconds();

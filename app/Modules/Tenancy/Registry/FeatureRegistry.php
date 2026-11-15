@@ -8,7 +8,8 @@ namespace App\Modules\Tenancy\Registry;
  * The code-defined catalog of plan features (design.md §15.2), the peer of ModuleCatalog for the
  * finer-grained grants a plan carries. A feature is a capability or a limit; feature_key is the
  * stable handle plan_features/site_features store, and `default` is what a site with no plan and
- * no override gets — fail-closed by design (a boolean feature defaults off; a limit defaults 0).
+ * no override gets. A boolean feature defaults off (fail-closed); a limit defaults to the level a
+ * customer with no plan is given (1 website, 500 MB, 1 language, 1 domain, 10 people per website).
  *
  * Adding a capability = adding a row here; no schema change. Nothing enforces a feature until the
  * code that owns it reads Entitlement::featureValue() — this registry only says a feature EXISTS
@@ -45,6 +46,10 @@ final class FeatureRegistry
             // Whether the site's managers may limit a member to some categories. Gates only CHANGING
             // the limits: limits already set keep applying when the feature is off (fail-closed).
             'rbac.category_scopes' => ['name' => 'Giới hạn chuyên mục theo thành viên', 'kind' => 'boolean', 'default' => false, 'scope' => 'site'],
+            // People a website may hold: its members (anyone with a role there) plus the invitations
+            // still waiting for an answer (SiteHeadcount). Checked when someone is invited and when an
+            // invitation is accepted, so a website already above its limit keeps everyone it has.
+            'users.max' => ['name' => 'Số người dùng tối đa / website', 'kind' => 'limit', 'default' => 10, 'scope' => 'site'],
         ];
     }
 
