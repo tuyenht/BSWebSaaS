@@ -51,12 +51,12 @@ final class GeneralSettings extends Component
         'legal' => [['legalName', 'text', false, true], ['taxCode', 'text', false, false], ['representative', 'text', false, false],
             ['licenseNo', 'text', false, false], ['licenseDate', 'text', false, false], ['license_text', 'text', true, false],
             ['moitOn', 'toggle', false, false], ['moitUrl', 'text', false, false]],
-        'contact' => [['phone', 'text', false, false], ['email', 'text', false, false], ['provinceId', 'select', false, false],
+        'contact' => [['phone', 'text', false, false], ['zalo', 'text', false, false], ['email', 'text', false, false], ['provinceId', 'select', false, false],
             ['wardId', 'select', false, false], ['address_line', 'textarea', true, false]],
         'hours' => [['days', 'select', false, false], ['opens', 'select', false, false], ['closes', 'select', false, false], ['hours_note', 'text', true, false]],
         'region' => [['timezone', 'select', false, false], ['dateFormat', 'select', false, false], ['region_note', 'note', false, false]],
         'social' => [['facebook', 'text', false, false], ['youtube', 'text', false, false], ['tiktok', 'text', false, false],
-            ['zalo', 'text', false, false], ['social_note', 'note', false, false]],
+            ['instagram', 'text', false, false], ['linkedin', 'text', false, false], ['social_note', 'note', false, false]],
     ];
 
     /** @var array<string, array<string, string>> per-language values, locale → field → text */
@@ -389,7 +389,7 @@ final class GeneralSettings extends Component
                 : ($value === '' ? __('admin.gs.req.moitUrl') : ($url($value) ? null : __('admin.gs.err.url'))),
             'phone' => $value === '' || self::isPhone($value) ? null : __('admin.gs.err.phone'),
             'email' => $value === '' || (preg_match('/\A[^\s@]+@[^\s@]+\.[a-z]{2,}\z/i', $value) === 1 && filter_var($value, FILTER_VALIDATE_EMAIL) !== false) ? null : __('admin.gs.err.email'),
-            'facebook', 'youtube', 'tiktok' => $value === '' || $url($value) ? null : __('admin.gs.err.url'),
+            'facebook', 'youtube', 'tiktok', 'instagram', 'linkedin' => $value === '' || $url($value) ? null : __('admin.gs.err.url'),
             'provinceId' => $value === '' || (ctype_digit($value) && Province::query()->whereNull('valid_to')->whereKey((int) $value)->exists()) ? null : __('admin.gs.err.provinceId'),
             'wardId' => $this->checkWard($value, Cast::string($s['provinceId'] ?? null)),
             'days' => $value === '' || array_key_exists($value, BusinessHours::DAYS) ? null : __('admin.gs.err_tampered'),

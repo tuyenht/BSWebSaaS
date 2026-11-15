@@ -372,16 +372,16 @@ it('keeps a network the screen does not edit, from the brand setting too', funct
     $siteId = gisSite();
     gisRichFooter($siteId);
     gisBrand($siteId, ['name' => 'Cơ Khí Mẫu', 'legal_name' => 'Công ty TNHH Cơ Khí Mẫu', 'address' => 'Số 1 Đường Thử, TP Hà Nội', 'phone' => '0901 234 567',
-        'social_links' => ['facebook' => 'https://facebook.com/comau', 'linkedin' => 'https://www.linkedin.com/company/comau']]);
+        'social_links' => ['facebook' => 'https://facebook.com/comau', 'x' => 'https://x.com/comau']]);
     $before = gisHome();
-    expect(gisFooter($before))->toContain('https://www.linkedin.com/company/comau');
+    expect(gisFooter($before))->toContain('https://x.com/comau');
 
     gisSave($siteId);
     $after = gisHome();
 
     expect(gisFooter($after))->toBe(gisFooter($before))
         ->and(gisLd($after))->toBe(gisLd($before))
-        ->and(gisProfile($siteId)['social_links'])->toMatchArray(['facebook' => 'https://facebook.com/comau', 'linkedin' => 'https://www.linkedin.com/company/comau']);
+        ->and(gisProfile($siteId)['social_links'])->toMatchArray(['facebook' => 'https://facebook.com/comau', 'x' => 'https://x.com/comau']);
 });
 
 it('keeps the networks the site shows: the brand setting’s links replace the profile’s', function (): void {
@@ -525,4 +525,19 @@ it('keeps a street named after its ward when the address is written with commas'
     gisSave($siteId);
 
     expect(gisProfile($siteId)['address_line'])->toBe('12 Đường Bến Nghé');
+});
+
+it('prints an Instagram icon in the footer only once its link is filled', function (): void {
+    $siteId = gisSite();
+    gisRichFooter($siteId);
+    gisBrand($siteId, ['name' => 'Cơ Khí Mẫu', 'legal_name' => 'Công ty TNHH Cơ Khí Mẫu', 'address' => 'Số 1 Đường Thử, TP Hà Nội', 'phone' => '0901 234 567']);
+    expect(gisFooter(gisHome()))->not->toContain('sf-footer__socials')->not->toContain('Instagram');
+
+    gisSave($siteId, ['instagram' => 'https://instagram.com/comau']);
+    $footer = gisFooter(gisHome());
+    expect($footer)->toContain('href="https://instagram.com/comau"')->toContain('aria-label="Instagram của ')
+        ->and(gisLd(gisHome())['sameAs'])->toContain('https://instagram.com/comau');
+
+    gisSave($siteId, ['instagram' => '']);
+    expect(gisFooter(gisHome()))->not->toContain('instagram.com');
 });
