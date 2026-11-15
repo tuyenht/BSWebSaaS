@@ -119,13 +119,15 @@ final readonly class SetMemberCategoryScopes
      * never limited (role level ≥ CategoryScopes::EXEMPT_LEVEL) is never left open.
      *
      * @param  list<Role>  $roles
+     * @param  list<string>|null  $actorAxes  limitedAxes($actor), when the caller read it already (a
+     *                                        loop over many members reads the actor's limits once)
      * @return list<string>
      */
-    public function axesLeftOpen(User $actor, User $target, array $roles): array
+    public function axesLeftOpen(User $actor, User $target, array $roles, ?array $actorAxes = null): array
     {
         // the actor's own limits do not change with the target's roles: an actor who is not limited
         // anywhere costs nothing more
-        $axes = array_values(array_filter(CategoryScopes::AXES, fn (string $axis): bool => $this->scopes->isLimited($actor, $axis)));
+        $axes = $actorAxes ?? $this->limitedAxes($actor);
         if ($axes === []) {
             return [];
         }
@@ -150,6 +152,16 @@ final readonly class SetMemberCategoryScopes
         }
 
         return $open;
+    }
+
+    /**
+     * The axes on which $actor is limited to some categories here.
+     *
+     * @return list<string>
+     */
+    public function limitedAxes(User $actor): array
+    {
+        return array_values(array_filter(CategoryScopes::AXES, fn (string $axis): bool => $this->scopes->isLimited($actor, $axis)));
     }
 
     /**

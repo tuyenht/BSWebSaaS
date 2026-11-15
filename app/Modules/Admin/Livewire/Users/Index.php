@@ -32,6 +32,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
+use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Models\Site;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection;
@@ -819,7 +820,15 @@ final class Index extends Component
 
             return __('admin.role_change_denied');
         } catch (CategoryScopeRejectedException $e) {
-            return $e->reason === 'not_member' ? __('admin.member_not_found') : __('admin.members.pn_sc_err_'.$e->reason);
+            if ($e->reason === 'not_member') {
+                return __('admin.member_not_found');
+            }
+            // without the plan feature no categories are shown to choose from: someone else must change the roles
+            if ($e->reason === 'needs_limits' && ! app(Entitlement::class)->featureEnabled('rbac.category_scopes')) {
+                return __('admin.members.pn_sc_err_needs_limits_off');
+            }
+
+            return __('admin.members.pn_sc_err_'.$e->reason);
         }
 
         return null;

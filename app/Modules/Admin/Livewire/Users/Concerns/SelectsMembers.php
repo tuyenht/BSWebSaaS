@@ -6,7 +6,6 @@ namespace App\Modules\Admin\Livewire\Users\Concerns;
 
 use App\Modules\Cms\Actions\SetMemberCategoryScopes;
 use App\Modules\Cms\Exceptions\CategoryScopeRejectedException;
-use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Actions\RevokeRole;
 use App\Modules\Rbac\Models\Role;
@@ -158,15 +157,17 @@ trait SelectsMembers
             return;
         }
         $actor = $this->actor();
-        // a limited actor never leaves a member working in every category of their axis; read once
-        // here, so an actor limited nowhere pays nothing per member
-        $limited = app(CategoryScopes::class)->isLimitedOnAnyAxis($actor);
+        // a limited actor never leaves a member working in every category of their axis; their
+        // limits are read once here, so the loop never re-reads them and an actor limited nowhere
+        // pays nothing per member
+        $limits = app(SetMemberCategoryScopes::class);
+        $axes = $limits->limitedAxes($actor);
         $open = [];
         try {
-            DB::transaction(function () use ($actor, $targets, $roles, $limited, &$open): void {
+            DB::transaction(function () use ($actor, $targets, $roles, $limits, $axes, &$open): void {
                 foreach ($targets as $target) {
                     $this->giveRoles($target, $roles);
-                    if ($limited && app(SetMemberCategoryScopes::class)->axesLeftOpen($actor, $target, array_values($roles->all())) !== []) {
+                    if ($axes !== [] && $limits->axesLeftOpen($actor, $target, array_values($roles->all()), $axes) !== []) {
                         $open[] = $target->name;
                     }
                 }

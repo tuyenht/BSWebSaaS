@@ -546,7 +546,10 @@ it('refuses on the server a role on an axis a limited member works on when nobod
         ->call('openPanel', $viewer->ulid)
         ->set('panelRoles', ['shop-writer'])
         ->call('saveRoles')
-        ->assertSet('panelError', __('admin.members.pn_sc_err_needs_limits')));
+        // no categories are shown to choose from, so it asks for the website admin, not for a choice
+        ->assertSet('panelError', __('admin.members.pn_sc_err_needs_limits_off')));
     expect(upsRoleNames($viewer))->toBe(['shop-viewer'])
-        ->and(upsRows($viewer))->toBe([]);
+        ->and(upsRows($viewer))->toBe([])
+        ->and(__('admin.members.pn_sc_err_needs_limits_off'))->not->toBe(__('admin.members.pn_sc_err_needs_limits'))
+        ->and(__('admin.members.pn_sc_err_needs_limits_off'))->toContain('quản trị website');
 });

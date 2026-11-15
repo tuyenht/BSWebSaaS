@@ -17,11 +17,14 @@ use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Actions\AcceptInvitation;
+use App\Modules\Rbac\Actions\UpdateCustomRole;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Exceptions\InvitationRejectedException;
+use App\Modules\Rbac\Exceptions\RoleChangeRejectedException;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Rbac\Support\IssuedInvitation;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteFeature;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -526,4 +529,74 @@ it('refuses to add the vocabulary guard while a limit names a category that is n
     $admin->table('invitation_category_scopes')->insert(['site_id' => 1, 'invitation_id' => $invited->invitation->id, 'taxonomy_id' => $moulds->id]);
 
     expect($up)->toThrow(RuntimeException::class, 'Refused: 1 category limit row(s)');
+});
+
+/** Site 1's custom role $name (not a system one), at $level with $permissions; the site may use every module. */
+function mpsCustomRole(string $name, int $level, array $permissions): Role
+{
+    DB::connection('pgsql_admin')->table('sites')->where('id', 1)
+        ->update(['site_type_id' => DB::table('site_types')->where('key', 'corporate')->value('id')]);
+    $role = mpsRole(1, $name, $level, $permissions);
+    DB::connection('pgsql_admin')->table('roles')->where('id', $role->id)->update(['is_system' => false]);
+
+    return $role->fresh() ?? $role;
+}
+
+/** $actor gives the custom role $role exactly $permissions; the refusal reason or null. */
+function mpsUpdateRole(User $actor, Role $role, array $permissions): ?string
+{
+    try {
+        mpsIn(1, fn () => app(UpdateCustomRole::class)->handle($actor->fresh() ?? $actor, $role->fresh() ?? $role, Cast::string($role->name), $role->level, $permissions));
+    } catch (RoleChangeRejectedException $e) {
+        return $e->reason;
+    }
+
+    return null;
+}
+
+/** @return list<string> */
+function mpsRolePermissions(Role $role): array
+{
+    return mpsIn(1, fn (): array => ($role->fresh() ?? $role)->permissions->pluck('name')->sort()->values()->all());
+}
+
+it('never lets a member limited on an axis make a custom role work on that axis', function (): void {
+    $news = mpsCategory(1, 'Tin tức');
+    $moulds = mpsCategory(1, 'Khuôn', null, 'product_cat');
+    $perms = ['roles.manage', 'users.manage', 'entries.view', 'entries.create', 'catalog.view', 'catalog.manage', 'media.view'];
+    $postsLead = mpsMember(1, 'posts-lead', 60, $perms);
+    mpsLimit(1, $postsLead, $news);
+    $shopLead = mpsMember(1, 'shop-lead', 60, $perms);
+    mpsLimit(1, $shopLead, $moulds);
+    $helper = mpsCustomRole('helper', 20, ['media.view']);
+
+    // posts: refused to the member limited on posts, nothing written
+    expect(mpsUpdateRole($postsLead, $helper, ['media.view', 'entries.create']))->toBe('outside_category_scope')
+        ->and(mpsRolePermissions($helper))->toBe(['media.view'])
+        ->and(__('rbac.role_change.outside_category_scope'))->not->toBe('rbac.role_change.outside_category_scope');
+    // products: refused to the member limited on products, nothing written
+    expect(mpsUpdateRole($shopLead, $helper, ['media.view', 'catalog.manage']))->toBe('outside_category_scope')
+        ->and(mpsRolePermissions($helper))->toBe(['media.view']);
+    // each is judged on their own axis: the other axis is not theirs to keep
+    expect(mpsUpdateRole($shopLead, $helper, ['media.view', 'entries.create']))->toBeNull()
+        ->and(mpsRolePermissions($helper))->toBe(['entries.create', 'entries.view', 'media.view']);
+});
+
+it('lets a member who is not limited add work on any axis, and a limited one remove it or keep it', function (): void {
+    $news = mpsCategory(1, 'Tin tức');
+    $perms = ['roles.manage', 'users.manage', 'entries.view', 'entries.create', 'catalog.view', 'catalog.manage', 'media.view', 'media.upload'];
+    $free = mpsMember(1, 'free-lead', 60, $perms);
+    $limited = mpsMember(1, 'posts-lead', 60, $perms);
+    mpsLimit(1, $limited, $news);
+    $helper = mpsCustomRole('helper', 20, ['media.view']);
+
+    expect(mpsUpdateRole($free, $helper, ['media.view', 'entries.create', 'catalog.manage']))->toBeNull()
+        ->and(mpsRolePermissions($helper))->toBe(['catalog.manage', 'catalog.view', 'entries.create', 'entries.view', 'media.view']);
+    // the role works on posts already: what it adds there widens nobody it did not already
+    expect(mpsUpdateRole($limited, $helper, ['media.view', 'media.upload', 'entries.create', 'catalog.manage']))->toBeNull()
+        ->and(mpsRolePermissions($helper))->toBe(['catalog.manage', 'catalog.view', 'entries.create', 'entries.view', 'media.upload', 'media.view']);
+    // removing is always allowed
+    expect(mpsUpdateRole($limited, $helper, ['media.view']))->toBeNull()
+        ->and(mpsRolePermissions($helper))->toBe(['media.view'])
+        ->and(DB::connection('pgsql_admin')->table('audit_logs')->where('action', 'rbac.role.updated')->count())->toBe(3);
 });

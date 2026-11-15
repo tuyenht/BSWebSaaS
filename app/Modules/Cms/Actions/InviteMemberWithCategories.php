@@ -302,18 +302,7 @@ final readonly class InviteMemberWithCategories
      */
     public static function writesPosts(array $roles): bool
     {
-        foreach ($roles as $role) {
-            foreach ($role->permissions as $permission) {
-                $name = Cast::string($permission->name);
-                // the permissions a category limit holds: writing posts, and changing the categories
-                // themselves (CategoryLimitGuard keeps a limited member inside their own branch)
-                if ((str_starts_with($name, 'entries.') && $name !== 'entries.view') || $name === 'taxonomies.manage') {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return self::worksOn(CategoryScopes::POSTS, self::permissionNames($roles));
     }
 
     /**
@@ -324,15 +313,44 @@ final readonly class InviteMemberWithCategories
      */
     public static function managesProducts(array $roles): bool
     {
-        foreach ($roles as $role) {
-            foreach ($role->permissions as $permission) {
-                $name = Cast::string($permission->name);
-                if ($name === 'catalog.manage' || $name === 'taxonomies.manage') {
-                    return true;
-                }
+        return self::worksOn(CategoryScopes::PRODUCTS, self::permissionNames($roles));
+    }
+
+    /**
+     * Whether a holder of $permissions works on $axis, i.e. holds a permission a category limit of
+     * that axis holds: on posts, writing them (any post permission beyond viewing them); on products,
+     * managing the catalog. Changing the categories themselves counts on both (CategoryLimitGuard
+     * keeps a limited member inside their own branch).
+     *
+     * @param  list<string>  $permissions  permission names
+     */
+    public static function worksOn(string $axis, array $permissions): bool
+    {
+        foreach ($permissions as $name) {
+            if ($name === 'taxonomies.manage') {
+                return true;
+            }
+            if ($axis === CategoryScopes::PRODUCTS ? $name === 'catalog.manage' : (str_starts_with($name, 'entries.') && $name !== 'entries.view')) {
+                return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * @param  list<Role>  $roles
+     * @return list<string>
+     */
+    private static function permissionNames(array $roles): array
+    {
+        $names = [];
+        foreach ($roles as $role) {
+            foreach ($role->permissions as $permission) {
+                $names[] = Cast::string($permission->name);
+            }
+        }
+
+        return $names;
     }
 }

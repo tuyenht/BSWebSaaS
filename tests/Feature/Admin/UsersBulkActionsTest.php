@@ -1,6 +1,10 @@
 <?php
 
 use App\Modules\Admin\Livewire\Users\Index;
+use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
+use App\Modules\Cms\Data\TaxonomyData;
+use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Models\Role;
@@ -183,6 +187,47 @@ it('changes or removes ticked members at a fixed cost per member, whatever the n
     'new roles (one granted, one revoked)' => ['roles', 13],
     'removal (one role revoked)' => ['remove', 7],
 ]);
+
+it('changes ticked members at a fixed cost per member for an actor limited to some categories', function (): void {
+    $news = app(Tenancy::class)->enter(1, fn (): Taxonomy => app(CreateTaxonomy::class)->handle('post_cat', null, new TaxonomyData(names: ['vi' => 'Tin tức'])));
+    $limit = fn (User $user): bool => DB::connection('pgsql_admin')->table('member_category_scopes')->insert(['site_id' => 1, 'user_id' => $user->id, 'taxonomy_id' => $news->id]);
+    $lead = User::factory()->create();
+    app(Tenancy::class)->enter(1, function () use ($lead): void {
+        $role = Role::findOrCreate('lead', PermissionRegistry::GUARD);
+        $role->forceFill(['level' => 60, 'is_system' => true])->save();
+        $role->syncPermissions(['users.invite', 'users.manage', 'entries.view', 'entries.create', 'entries.edit.own', 'entries.delete.own', 'entries.submit', 'media.view', 'media.upload', 'forms.view', 'domains.view']);
+        $lead->assignRole($role);
+    });
+    $limit($lead);
+    bulkPickMember('contributor');
+    // the queries giving $n freshly ticked authors, each limited inside the lead's own limits, a role that writes posts
+    $run = function (int $n) use ($lead, $limit): int {
+        $targets = array_map(function () use ($limit): string {
+            $author = bulkPickMember('author');
+            $limit($author);
+
+            return $author->ulid;
+        }, range(1, $n));
+        app(CategoryScopes::class)->forget();
+
+        return bulkPickPage($lead, function (Testable $page) use ($targets): int {
+            $page->call('togglePick', $targets)->call('openBulkPanel')->set('panelRoles', ['contributor']);
+
+            return countQueries(fn () => $page->call('saveRoles')->assertSet('panelError', '')->assertSet('picked', []));
+        });
+    };
+
+    $run(1); // the permission and settings caches fill on the first run
+    $one = $run(1);
+    $five = $run(5);
+    $ten = $run(10);
+    $each = intdiv($five - $one, 4);
+
+    // the lead's own limits are read once, not again for each member (re-reading them was 24 a member)
+    expect($five - $one)->toBe(4 * $each)
+        ->and($ten - $five)->toBe(5 * $each)
+        ->and($each)->toBe(21);
+});
 
 it('keeps at most 250 ticks on the server: a longer forged list is cut to its first 250', function (): void {
     $owner = bulkPickMember('owner');
