@@ -94,7 +94,7 @@ test('draws the rows from plain text, only addresses of the site, with a combobo
     assert.equal(p.doc.querySelector('img'), null);
     assert.equal(options[2].querySelector('.sf-ssug__t').firstChild.textContent, '<img src=x onerror=alert(1)>');
     assert.equal(p.status.textContent, '3 gợi ý');
-    assert.equal(p.box.querySelector('.sf-ssug__all').getAttribute('href'), '/tim-kiem?q=do+ga');
+    assert.equal(p.box.querySelector('.sf-ssug__all').getAttribute('href'), 'https://a.test/tim-kiem?q=do+ga');
     assert.equal(p.box.querySelector('.sf-ssug__long').textContent, 'Xem tất cả kết quả cho “do ga”');
     // the header panel's quick links give way to the list
     assert.equal(p.doc.querySelector('[data-search-quick]').hidden, true);
@@ -111,7 +111,7 @@ test('↓ ↓ Enter opens the second row, ↑ wraps, Esc closes the list and kee
     assert.equal(options[1].getAttribute('aria-selected'), 'true');
     assert.equal(options[0].getAttribute('aria-selected'), 'false');
     assert.equal(p.key('Enter').defaultPrevented, true);
-    assert.deepEqual(p.went, ['/do-ga-han']);
+    assert.deepEqual(p.went, ['https://a.test/do-ga-han']);
     p.key('ArrowUp');
     p.key('ArrowUp');
     assert.equal(p.input.getAttribute('aria-activedescendant'), options[2].id);
@@ -138,7 +138,7 @@ test('a click opens its row without taking the focus from the field', async () =
     row.querySelector('b').dispatchEvent(down);
     assert.equal(down.defaultPrevented, true);
     row.querySelector('b').dispatchEvent(new p.dom.window.MouseEvent('click', { bubbles: true }));
-    assert.deepEqual(p.went, ['/jig-do-ga']);
+    assert.deepEqual(p.went, ['https://a.test/jig-do-ga']);
 });
 
 test('only the answer to the latest words is drawn', async () => {
@@ -179,4 +179,61 @@ test('loading: the bar at once, the grey rows only past the wait, the screen rea
     await tick(40);
     assert.equal(p.box.querySelector('.sf-ssug__bar').hidden, true);
     assert.equal(p.box.querySelector('.sf-ssug__sk').hidden, true);
+});
+
+test('a row or the “all” link whose address leaves the site is never drawn, even with a tab or a line break hidden in it', async () => {
+    const sneaky = ['/\t/evil.test/', '/\n/evil.test/', '/\r\n/evil.test/x', '/\t\\evil.test/', ' //evil.test/', 'javascript:alert(1)'];
+    const p = await page({ answer: () => ({ q: 'do ga', items: [...sneaky.map((url) => ({ kind: 'item', label: 'Lạ', group: 'Khác', url })), rows[1]], all_url: '/\t/evil.test/all' }) });
+    p.type('do ga');
+    await tick(60);
+    const options = [...p.list.querySelectorAll('[role="option"]')];
+    assert.deepEqual(options.map((o) => o.dataset.url), ['https://a.test/do-ga-han']);
+    // the link falls back to the search page of this site
+    assert.equal(new URL(p.box.querySelector('.sf-ssug__all').href).origin, 'https://a.test');
+    p.key('ArrowDown');
+    p.key('Enter');
+    assert.deepEqual(p.went, ['https://a.test/do-ga-han']);
+});
+
+test('leaving the field while an answer is on its way stops the loading bar; coming back shows no running bar', async () => {
+    const p = await page();
+    const other = p.doc.body.appendChild(p.doc.createElement('button'));
+    p.type('do ga');
+    await tick(60);
+    // asked again, then Tab out of the box before the answer
+    p.type('do gal');
+    await tick(22);
+    assert.equal(p.box.querySelector('.sf-ssug__bar').hidden, false);
+    other.focus();
+    await tick(40);
+    assert.equal(p.box.hidden, true);
+    assert.equal(p.box.querySelector('.sf-ssug__bar').hidden, true);
+    assert.equal(p.box.querySelector('.sf-ssug__sk').hidden, true);
+    p.input.focus();
+    p.key('ArrowDown');
+    assert.equal(p.box.querySelector('.sf-ssug__bar').hidden, true);
+    assert.equal(p.box.querySelector('.sf-ssug__sk').hidden, true);
+
+    // the focus on the form's own button: the answer is not drawn, and the bar stops too
+    p.type('do ga');
+    await tick(22);
+    p.doc.querySelector('form button').focus();
+    await tick(40);
+    assert.equal(p.box.querySelector('.sf-ssug__bar').hidden, true);
+    assert.equal(p.box.querySelector('.sf-ssug__sk').hidden, true);
+});
+
+test('an input method starting to compose drops the answer already on its way', async () => {
+    const p = await page();
+    p.type('do');
+    await tick(22);   // asked, the answer still on its way
+    assert.equal(p.asked.length, 1);
+    p.input.dispatchEvent(new p.dom.window.CompositionEvent('compositionstart'));
+    await tick(40);
+    assert.equal(p.list.querySelectorAll('[role="option"]').length, 0);
+    p.type('do gá');
+    p.input.dispatchEvent(new p.dom.window.CompositionEvent('compositionend'));
+    await tick(60);
+    assert.equal(p.asked.length, 2);
+    assert.equal(p.list.querySelectorAll('[role="option"]').length, 3);
 });

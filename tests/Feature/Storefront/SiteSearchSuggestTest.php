@@ -9,10 +9,12 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Storefront\Http\Controllers\SearchSuggestController;
+use App\Modules\Storefront\Search\SiteSearch;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Theming\StorefrontSettings;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -211,6 +213,42 @@ it('suggests only what a visitor may open: no draft, trash, scheduled, untransla
     expect(array_column(sgGet('a.test', 'khuon')['items'], 'label'))->toEqualCanonicalizing(['Khuôn hiện', 'Khuôn bán']);
 });
 
+it('keeps the same items out when the words are too common to gather and the newest items are walked', function (): void {
+    $walked = [];
+    app(Tenancy::class)->enter(1, function (): void {
+        // one draft post and one draft product carrying more words that start with “khuon” than the gather cap:
+        // the rarest word is too common, so the newest visible items are walked instead
+        $common = sgPost('Khuôn nhiều từ', attributes: ['status' => 'draft']);
+        $commonProduct = sgProduct('Khuôn nhiều từ sp', attributes: ['status' => 'draft']);
+        foreach (['entry_search_words' => ['entry_id', $common->id], 'product_site_words' => ['product_id', $commonProduct->id]] as $table => [$column, $id]) {
+            DB::table($table)->insert(array_map(fn (int $n): array => ['site_id' => 1, 'locale' => 'vi', 'word' => 'khuon'.$n, $column => $id, 'weight' => 3], range(1, SiteSearch::GATHER + 1)));
+        }
+        sgPost('Khuôn hiện');
+        sgPost('Khuôn nháp', attributes: ['status' => 'draft']);
+        sgPost('Khuôn hẹn giờ', attributes: ['status' => 'scheduled'], at: now()->addDay());
+        sgPost('Khuôn tương lai', at: now()->addDay());
+        sgPost('Khuôn dịch nháp', translationStatus: 'draft');
+        sgPost('Khuôn english', locale: 'en');
+        sgPost('Khuôn thùng rác')->delete();
+        $thanks = sgPost('Khuôn cảm ơn', type: 'page');
+        DB::table('forms')->insert(['site_id' => 1, 'ulid' => (string) Str::ulid(), 'key' => 'lien-he', 'name' => json_encode(['vi' => 'Liên hệ']), 'settings' => json_encode(['redirect_entry' => $thanks->ulid]), 'created_at' => now(), 'updated_at' => now()]);
+        sgProduct('Khuôn bán');
+        sgProduct('Khuôn nháp sp', attributes: ['status' => 'draft']);
+        sgProduct('Khuôn hẹn sp', at: now()->addDay());
+        sgProduct('Khuôn english sp', locale: 'en');
+        sgProduct('Khuôn xoá sp')->delete();
+    });
+    DB::listen(function (QueryExecuted $query) use (&$walked): void {
+        $walked[] = $query->sql;
+    });
+
+    expect(array_column(sgGet('a.test', 'khuon')['items'], 'label'))->toEqualCanonicalizing(['Khuôn hiện', 'Khuôn bán']);
+    // both kinds went through the walk (the newest visible items), not through the word rows
+    $sql = implode("\n", $walked);
+    expect($sql)->toContain("e.type = 'post' and e.deleted_at is null")
+        ->toContain('from products p where p.site_id = ? and p.status = \'published\'');
+});
+
 it('never shows one site’s items to another, even for the same words', function (): void {
     app(Tenancy::class)->enter(1, fn () => sgPost('Khuôn của A'));
     app(Tenancy::class)->enter(2, function (): void {
@@ -239,6 +277,19 @@ it('answers in the page’s language under its prefix, and sends the default lan
 
     $this->get('http://a.test/vi/tim-kiem/goi-y?q=khuon')->assertRedirect('/tim-kiem/goi-y?q=khuon')->assertStatus(301);
 });
+
+it('answers {} with a 404 under a prefix that is not a public language of the site, never a page', function (string $prefix): void {
+    DB::connection('pgsql_admin')->table('site_locales')->insert(['site_id' => 1, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'is_public' => false, 'created_at' => now(), 'updated_at' => now()]);
+    app(Tenancy::class)->enter(1, fn () => sgPost('Khuôn mẫu'));
+
+    $response = $this->get("http://a.test{$prefix}/tim-kiem/goi-y?q=khuon");
+
+    $response->assertNotFound();
+    expect($response->getContent())->toBe('{}')
+        ->and($response->headers->get('Content-Type'))->toContain('application/json')
+        ->and($response->headers->get('Cache-Control'))->toContain('no-store')->toContain('private')
+        ->and($response->headers->get('X-Robots-Tag'))->toBe('noindex');
+})->with(['not a language' => '/tv', 'a language not public' => '/en']);
 
 it('is not there while the site has search switched off', function (): void {
     app(Tenancy::class)->enter(1, function (): void {

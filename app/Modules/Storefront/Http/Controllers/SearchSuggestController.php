@@ -22,7 +22,8 @@ use Symfony\Component\HttpFoundation\Response;
  * a language other than the site's default, as the search page itself): JSON
  * `{q, items: [{kind, label, parts, group, icon, url, sku?}], all_url}` (SearchSuggestions), the
  * script drawing each row from plain text. Nothing typed, or one letter: no rows. While the site has
- * search switched off the address does not exist (404).
+ * search switched off, or under a prefix that is not a public language of the site, the address does
+ * not exist (`{}` with a 404): it never serves a content page.
  *
  * Never cached and never indexed. Typing asks several times a second, so it has its own limit per site
  * and visitor address (MAX_PER_MINUTE, counted in the cache store, apart from the search page's): past
@@ -54,8 +55,8 @@ final readonly class SearchSuggestController
                 return redirect()->to(PathBuilder::SUGGEST_PATH.($query === null || $query === '' ? '' : '?'.$query), 301);
             }
             if (! $this->locale->isPublic($locale)) {
-                // not a language of the site: an ordinary address, served by the storefront like any other path
-                return app(StorefrontController::class)($request);
+                // not a language of the site: no suggestions there, and never a content page under this route's middleware
+                return self::private(new JsonResponse(new \stdClass, 404));
             }
         }
         $locale ??= $default;

@@ -34,8 +34,21 @@ const icon = (doc, name, size, stroke) => {
     return svg;
 };
 
-// Only an address of this site (a path), never another host or a script address.
-const local = (url) => typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/\\');
+// Only an address of this site, never another host or a script address: resolved the way the browser
+// resolves it (it drops tabs and line breaks, so "/\t/host" is another host) and kept only on the page's
+// own origin; the resolved address is the one opened. null otherwise.
+const local = (doc, url) => {
+    if (typeof url !== 'string' || url === '') {
+        return null;
+    }
+    try {
+        const base = new URL(doc.baseURI);
+        const to = new URL(url, base);
+        return /^https?:$/.test(to.protocol) && to.origin === base.origin ? to.href : null;
+    } catch {
+        return null;
+    }
+};
 
 export function attach(form, env = {}) {
     const input = form.querySelector('input[name="q"]');
@@ -150,7 +163,7 @@ export function attach(form, env = {}) {
         expanded();
     };
     const close = () => {
-        clearTimeout(slowTimer);
+        loading(false);
         choose(-1);
         show(false);
     };
@@ -189,7 +202,9 @@ export function attach(form, env = {}) {
     };
 
     const draw = (data, typed) => {
-        const items = Array.isArray(data?.items) ? data.items.filter((it) => it && local(it.url)).slice(0, ROWS) : [];
+        const items = Array.isArray(data?.items)
+            ? data.items.map((it) => (it ? { ...it, url: local(doc, it.url) } : null)).filter((it) => it?.url).slice(0, ROWS)
+            : [];
         list.replaceChildren();
         foot.replaceChildren();
         list.hidden = false;
@@ -226,7 +241,7 @@ export function attach(form, env = {}) {
         } else {
             const q = typeof data.q === 'string' && data.q !== '' ? data.q : typed;
             const all = el('a', 'sf-ssug__all');
-            all.href = local(data.all_url) ? data.all_url : form.action;
+            all.href = local(doc, data.all_url) ?? form.action;
             all.append(el('span', 'sf-ssug__long', say('all', { q })), el('span', 'sf-ssug__short', say('all_short')), icon(doc, 'all', 18, 2));
             const keys = el('span', 'sf-ssug__keys');
             keys.setAttribute('aria-hidden', 'true');
@@ -265,8 +280,14 @@ export function attach(form, env = {}) {
             }
             data = {};
         }
-        if (mine === asked && doc.activeElement === input) {
+        if (mine !== asked) {
+            return;
+        }
+        if (doc.activeElement === input) {
             draw(data, typed);
+        } else {
+            // the visitor left the field meanwhile: nothing drawn, and the loading bar stops
+            close();
         }
     };
     const later = () => {
@@ -282,6 +303,9 @@ export function attach(form, env = {}) {
     input.addEventListener('compositionstart', () => {
         composing = true;
         clearTimeout(timer);
+        // an answer for the letters before the composing never draws in the middle of it
+        ctrl?.abort();
+        asked++;
     });
     input.addEventListener('compositionend', () => {
         composing = false;
