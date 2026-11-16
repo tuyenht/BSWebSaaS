@@ -484,13 +484,18 @@ if (searchPanel) {
 }
 
 // Search suggestions while typing: their code (sf-search-suggest.js, its address in the box's
-// data-suggest-js) is fetched the first time a search box takes focus; it then serves every box.
-document.addEventListener('focusin', (event) => {
-    const src = event.target.closest?.('form[data-suggest-js]')?.dataset.suggestJs;
-    if (src) {
-        import(/* @vite-ignore */ src).catch(() => {});
+// data-suggest-js) is fetched as soon as the visitor reaches for a search box (a press on the header's
+// magnifier or on a box, before the panel opens and the field takes the focus; or the focus itself); it
+// then serves every box.
+const suggestSoon = (event) => {
+    const target = event.target.closest?.('form[data-suggest-js], [data-search-open]');
+    const form = target?.matches('form') ? target : target && document.querySelector('[data-search-panel] form[data-suggest-js]');
+    if (form) {
+        import(/* @vite-ignore */ form.dataset.suggestJs).catch(() => {});
     }
-});
+};
+document.addEventListener('pointerdown', suggestSoon, { passive: true });
+document.addEventListener('focusin', suggestSoon);
 
 // Search results: "Xem thêm" is a link to the next rows of its group (it works without this script);
 // here the next rows are fetched and added under the group's rows, and the link moves on.
