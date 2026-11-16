@@ -1,10 +1,15 @@
-// The footer's factory cards below 1024px: one card at a time with arrows and dots, turning by itself every
-// 3 seconds like the design, loaded only where the footer has two or more cards. The server prints every
-// card and the controls hidden, so without this script the cards simply stack. The turning stops while the
-// pointer, a finger or the keyboard is inside, when the visitor asks for reduced motion, when the tab is
-// hidden, and for good once a visitor picks a card by hand.
+// The footer's factory cards below 1024px: one card at a time with arrows, dots and a sideways swipe,
+// turning by itself every 5 seconds, loaded only where the footer has two or more cards. The server prints
+// every card and the controls hidden, so without this script the cards simply stack. The turning stops
+// while the pointer, a finger or the keyboard is inside, when the visitor asks for reduced motion and when
+// the tab is hidden; a card picked by hand (arrow, dot or swipe) stays 10 seconds before it turns on, as
+// the page's other sliders do.
 const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
 const narrow = window.matchMedia('(max-width: 1023.98px)');
+const EVERY = 5000;
+const REST = 10000;
+// A swipe: at least 40px sideways and more sideways than up or down (a page scroll is not a swipe).
+const swipe = (dx, dy) => (Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy) ? Math.sign(dx) : 0);
 
 for (const root of document.querySelectorAll('[data-sf-rot]')) {
     const cards = [...root.querySelectorAll('.sf-factory')];
@@ -13,7 +18,9 @@ for (const root of document.querySelectorAll('[data-sf-rot]')) {
     let current = 0;
     let timer = 0;
     let held = false;
-    let picked = false;
+    let resting = false;
+    let rest = 0;
+    let start = null;
 
     const show = (n) => {
         current = (n + cards.length) % cards.length;
@@ -25,15 +32,20 @@ for (const root of document.querySelectorAll('[data-sf-rot]')) {
     };
     const schedule = () => {
         clearTimeout(timer);
-        if (narrow.matches && !reduce.matches && !held && !picked && !document.hidden) {
+        if (narrow.matches && !reduce.matches && !held && !resting && !document.hidden) {
             timer = setTimeout(() => {
                 show(current + 1);
                 schedule();
-            }, 3000);
+            }, EVERY);
         }
     };
     const pick = (n) => {
-        picked = true;
+        resting = true;
+        clearTimeout(rest);
+        rest = setTimeout(() => {
+            resting = false;
+            schedule();
+        }, REST);
         show(n);
         schedule();
     };
@@ -69,6 +81,19 @@ for (const root of document.querySelectorAll('[data-sf-rot]')) {
         el.addEventListener('touchstart', hold(true), { passive: true });
         el.addEventListener('touchend', hold(false), { passive: true });
     }
+    root.addEventListener('touchstart', (event) => {
+        const t = event.touches[0];
+        start = event.touches.length === 1 && root.classList.contains('is-rot') ? { x: t.clientX, y: t.clientY } : null;
+    }, { passive: true });
+    root.addEventListener('touchend', (event) => {
+        const t = event.changedTouches[0];
+        const dir = start && t ? swipe(t.clientX - start.x, t.clientY - start.y) : 0;
+        start = null;
+        if (dir) {
+            pick(current - dir);
+        }
+    }, { passive: true });
+    root.addEventListener('touchcancel', () => (start = null), { passive: true });
     narrow.addEventListener('change', apply);
     reduce.addEventListener('change', schedule);
     document.addEventListener('visibilitychange', schedule);

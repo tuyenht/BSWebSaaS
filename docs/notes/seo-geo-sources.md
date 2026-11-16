@@ -1,4 +1,4 @@
-# SEO + GEO practices, primary sources (read 2026-11-11)
+# SEO + GEO practices, primary sources (read 2026-11-11; sections I and J 2026-11-16)
 
 Why this file exists: the source list behind `.claude/rules/storefront-seo.md`. Two items were re-opened by hand on 2026-11-11 (FAQ rich result removal in the Search Central updates log; Organization markup "You don't need to include it on every page of your site."). Re-open any other quote before it goes into a signed document.
 Caveat: pages were fetched through WebFetch (a small model extracts and quotes). Quotes are as returned; text inside quotation marks was returned in quotes, other text is paraphrase. Re-open the URL before putting a quote in a signed document. "chưa kiểm" = not reached or not confirmed.
@@ -77,6 +77,21 @@ H7. Blocking Google-Extended to "leave AI Overviews": does not do that (E3); nos
 H8. Keyword stuffing: lowest GEO method, below baseline (E9). Meta descriptions as keyword lists: less likely to be shown (D2).
 H9. Identical descriptions or boilerplate titles on every page (D1, D2).
 H10. Blocking GPTBot hides you from ChatGPT search: no, search uses OAI-SearchBot (E4). Blocking IP ranges to stop crawlers: unreliable (E6).
+H11. Mass AI-written pages that add nothing: a spam violation, however they are made (I2). Bulk machine translation can fall under it too: Google names translating among automated transformations in its scraping example, not as a rule about translating your own pages.
+H12. Changing a page's date to look fresh, or adding/removing content in bulk to seem fresh: a sign of search-engine-first content (I4).
+
+## I. AI-written content and freshness (read 2026-11-16)
+I1. AI use is allowed: "Generative AI can be particularly useful when researching a topic, and to add structure to original content." Review: "It is critical to manually factcheck and review all AI-generated content for accuracy and trustworthiness before publishing."; "This review also applies to metadata like <title> elements, meta description elements, structured data, and alternate texts for images". Disclosure is advice: "If you're automatically generating content, consider adding information on how your content was created in a way that makes sense for your audience". https://developers.google.com/search/docs/fundamentals/using-gen-ai-content
+I2. Scaled content abuse: "Scaled content abuse is when many pages are generated for the primary purpose of manipulating search rankings and not helping users." Examples include "Using generative AI tools or other similar tools to generate many pages without adding value for users" and scraping to generate pages "(including through automated transformations like synonymizing, translating, or other obfuscation techniques)". https://developers.google.com/search/docs/essentials/spam-policies
+I3. "How" includes AI (the disclosure advice "reasonably expected" is on this page, not on I1's): "That can include automated, AI-generated, and AI-assisted content."; "Overall, AI or automation disclosures are useful for content where someone might think "How was this created?" Consider adding these when it would be reasonably expected." https://developers.google.com/search/docs/fundamentals/creating-helpful-content
+I4. Freshness signs of search-engine-first content: "Are you changing the date of pages to make them seem fresh when the content has not substantially changed?"; adding or removing a lot of content to seem fresh "(No, it won't)". Same page as I3. Matches the sitemap lastmod rule (A3).
+I5. Secondary only (chưa kiểm on Google's own page): a 15 May 2026 update said all spam policies apply to AI Overviews and AI Mode answers.
+
+## J. Vietnamese advertising law (read 2026-11-16; a website's product and service text may count as advertising, scope chưa kiểm)
+J1. Luật Quảng cáo sửa đổi số 75/2025/QH15, in force "từ ngày 01 tháng 01 năm 2026" (Điều 3 khoản 1). Điều 1 khoản 4 amends Điều 8 (banned acts) only in khoản 3 and khoản 10; Điều 1 khoản 25 repeals khoản 13 of Điều 8. So Điều 8 khoản 11 of the 2012 law (words "nhất", "duy nhất", "tốt nhất", "số một" or similar without legal proof) still stands; its exact wording was read only through a secondary source (chưa kiểm on the official text). https://luatvietnam.vn/thuong-mai/luat-quang-cao-sua-doi-2025-so-75-2025-qh15-404208-d1.html ; https://hethongphapluat.com/luat-quang-cao-sua-doi-2025/dieu-1 (that page embeds text addressed to AI readers; ignored); secondary: https://luatvietnam.vn/tin-phap-luat/khi-nao-duoc-dung-tu-nhat-so-1-trong-quang-cao-230-18080-article.html
+J2. New Điều 8 khoản 10: "Quảng cáo so sánh sản phẩm, hàng hóa, dịch vụ của mình với sản phẩm, hàng hóa, dịch vụ cùng loại của tổ chức, cá nhân khác nhưng không có tài liệu hợp pháp chứng minh."
+J3. Điều 19 khoản 1: "Nội dung quảng cáo phải trung thực, chính xác, rõ ràng; không gây hiểu nhầm về tính năng, chất lượng, công dụng, tác dụng của sản phẩm, hàng hóa, dịch vụ."
+J4. Not read: Nghị định 342/2025/NĐ-CP (detail rules) and the ministry's list of acceptable proof (chưa kiểm).
 
 ## Not reached (chưa kiểm)
 Bing Webmaster Guidelines page and AI Performance help page (returned only a title); Google blog 2026/05 and 2023/06 pages opened only via search summary; schema.org graph/@id linking guidance; indexnow searchengines.json; Cốc Cốc (no primary source); Google image/hreflang sitemap detail pages; whether Bing/Copilot still uses FAQPage.
