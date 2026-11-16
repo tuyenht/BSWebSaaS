@@ -84,17 +84,17 @@
         // The phone header's right corner. While the phone bottom bar is on, the call is hidden only where
         // that bar shows (under 768px; it carries the call itself), so a tablet keeps it. Where the call
         // steps aside (or the corner is set to search, or to the cart the site does not have yet), the
-        // magnifier takes the corner: cart, then search, then nothing. From 768px up to the menu button's
-        // last width the magnifier stands before the call.
+        // magnifier takes the corner: cart, then search, then nothing. A site with no bottom bar keeps the
+        // call in the corner, so the magnifier stands before it there, on phones too (the menu has no search).
         $sfCallHref = \App\Modules\Shared\Support\SafeLink::tel($brand['phone'] ?? null);
         $sfCornerSetting = $header['mobile_corner'] ?? 'call';
         $sfCorner = $sfCornerSetting === 'call' && $sfCallHref !== null;
         $sfCornerSearch = $sfSearch !== null && in_array($sfCornerSetting, ['call', 'search', 'cart'], true);
-        // the magnifier waits for 768px when the call already takes the phone corner (no bottom bar)
-        $sfCornerSearchWide = $sfCorner && ! $sfBar;
+        // both buttons in the corner on every width up to the menu button's last one
+        $sfCornerPair = $sfCornerSearch && $sfCorner && ! $sfBar;
     @endphp
     <div class="sf-bar">
-        <div class="sf-container sf-bar__inner{{ ! empty($drawerMenu) ? ' sf-bar__inner--drawer' : '' }}">
+        <div class="sf-container sf-bar__inner{{ ! empty($drawerMenu) ? ' sf-bar__inner--drawer' : '' }}{{ ! empty($drawerMenu) && $sfCornerPair ? ' sf-bar__inner--pair' : '' }}">
             @if (! empty($drawerMenu))
                 <button type="button" class="sf-burger" aria-expanded="false" aria-controls="mobile-menu" data-menu-toggle
                     aria-label="{{ __('storefront.menu_open') }}" data-label-open="{{ __('storefront.menu_open') }}" data-label-close="{{ __('storefront.menu_close') }}">
@@ -120,7 +120,7 @@
                 @include('theme::partials.sf-search-button', ['href' => $sfSearch, 'place' => 'solo'])
             @endif
             @if (! empty($drawerMenu))
-                <span class="sf-bar__corner">@includeWhen($sfCornerSearch, 'theme::partials.sf-search-button', ['href' => $sfSearch, 'place' => $sfCornerSearchWide ? 'corner-wide' : 'corner'])@if ($sfCorner)<a class="sf-bar__call{{ $sfBar ? ' sf-bar__call--hasbar' : '' }}" href="{{ $sfCallHref }}" aria-label="{{ __('storefront.call_number', ['phone' => $brand['phone']]) }}">@include('theme::partials.sf-icon', ['name' => 'phone', 'size' => 24])</a>@endif</span>
+                <span class="sf-bar__corner">@includeWhen($sfCornerSearch, 'theme::partials.sf-search-button', ['href' => $sfSearch, 'place' => 'corner'])@if ($sfCorner)<a class="sf-bar__call{{ $sfBar ? ' sf-bar__call--hasbar' : '' }}" href="{{ $sfCallHref }}" aria-label="{{ __('storefront.call_number', ['phone' => $brand['phone']]) }}">@include('theme::partials.sf-icon', ['name' => 'phone', 'size' => 24])</a>@endif</span>
             @endif
         </div>
     </div>

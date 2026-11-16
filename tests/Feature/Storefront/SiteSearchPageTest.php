@@ -315,13 +315,15 @@ it('counts the search button in the menu-width rule (room 698 → 629px at 1024)
         ->and(StorefrontChrome::menuNeedsXl($menu))->toBeFalse();
 });
 
-it('puts the magnifier in the phone corner where the bottom bar carries the call, and beside the call from 768px', function (): void {
+it('puts the magnifier before the call in the phone corner when there is no bottom bar, and alone where the bar carries the call', function (): void {
     spSite(1);
-    // a menu, so the header has the menu button and its corner
+    // a menu, so the header has the menu button and its corner; no bottom bar: magnifier then call, on every width
     $html = $this->get('http://a.test/')->getContent();
-    // the call holds the phone corner (no bottom bar): the magnifier joins it from 768px only
-    expect($html)->toMatch('#<span class="sf-bar__corner"><a class="sf-sbtn sf-sbtn--corner-wide" href="/tim-kiem"[^>]*>.*?</a>\s*<a class="sf-bar__call" href="tel:0901234567"#s');
+    expect($html)->toContain('<div class="sf-container sf-bar__inner sf-bar__inner--drawer sf-bar__inner--pair">')
+        ->toMatch('#<span class="sf-bar__corner"><a class="sf-sbtn sf-sbtn--corner" href="/tim-kiem"[^>]*>.*?</a>\s*<a class="sf-bar__call" href="tel:0901234567" aria-label="Gọi 0901 234 567">#s')
+        ->not->toContain('sf-sbtn--corner-wide');
 
+    // the bottom bar carries the call: the magnifier alone on phones (the header call stays for tablets only)
     app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(
         ['group_name' => 'storefront', 'key' => 'floating_contact'],
         ['value' => ['enabled' => true, 'theme' => 'horizontal', 'position' => 'right', 'offset_x' => 20, 'offset_y' => 24,
@@ -329,7 +331,24 @@ it('puts the magnifier in the phone corner where the bottom bar carries the call
     ));
     app(StorefrontSettings::class)->forget();
     expect($this->get('http://a.test/')->getContent())
-        ->toMatch('#<span class="sf-bar__corner"><a class="sf-sbtn sf-sbtn--corner" href="/tim-kiem"[^>]*>.*?</a>\s*<a class="sf-bar__call sf-bar__call--hasbar"#s');
+        ->toMatch('#<span class="sf-bar__corner"><a class="sf-sbtn sf-sbtn--corner" href="/tim-kiem"[^>]*>.*?</a>\s*<a class="sf-bar__call sf-bar__call--hasbar"#s')
+        ->not->toContain('sf-bar__inner--pair');
+
+    // search off: the call alone
+    spSite(2, ['search' => false]);
+    $off = $this->get('http://b.test/')->getContent();
+    expect($off)->toContain('<span class="sf-bar__corner"><a class="sf-bar__call" href="tel:0901234567"')
+        ->not->toContain('sf-sbtn')->not->toContain('sf-bar__inner--pair');
+
+    // no phone number (and no bottom bar): the magnifier alone
+    app(Tenancy::class)->enter(2, fn () => SiteSetting::query()->where('key', 'header')->update(['value' => ['top_bar' => ['items' => []]]]));
+    app(Tenancy::class)->enter(2, fn () => SiteSetting::query()->where('key', 'brand')->update(['value' => ['name' => 'Xưởng Mẫu']]));
+    app(StorefrontSettings::class)->forget();
+    $noPhone = $this->get('http://b.test/')->getContent();
+    preg_match('#<span class="sf-bar__corner">(.*?)</span>\s*</div>#s', $noPhone, $cell);
+    expect($cell[1] ?? null)->not->toBeNull()
+        ->and($cell[1])->toContain('<a class="sf-sbtn sf-sbtn--corner" href="/tim-kiem"')->not->toContain('sf-bar__call')
+        ->and($noPhone)->not->toContain('sf-bar__inner--pair');
 
     // the corner set to search (or to the cart the site does not have): the magnifier alone; none: nothing
     foreach (['search' => true, 'cart' => true, 'none' => false] as $corner => $magnifier) {

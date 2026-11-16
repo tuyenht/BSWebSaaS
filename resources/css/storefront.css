@@ -1095,18 +1095,30 @@ html:has(.sf-header--sticky) {
     margin-left: auto;
 }
 
-.sf-sbtn--corner-wide {
-    display: none;
-}
-
-@media (min-width: 768px) {
-    .sf-sbtn--corner-wide {
-        display: inline-flex;
-    }
-}
-
 .sf-bar__corner {
     gap: 0.25rem;
+}
+
+/* A site with no phone bottom bar: the magnifier and the call share the corner. Its column is at least
+   as wide as the pair, so the logo column shrinks first and centres again as soon as there is room. On a
+   phone the pair is 44 + 44 in px, like the menu button: a larger text size does not squeeze the logo. */
+.sf-bar__inner--pair {
+    grid-template-columns: minmax(52px, 1fr) minmax(0, auto) minmax(auto, 1fr);
+}
+
+.sf-bar__inner--pair .sf-bar__corner {
+    min-width: max-content;
+}
+
+@media (max-width: 639.98px) {
+    .sf-bar__inner--pair .sf-bar__corner {
+        gap: 4px;
+    }
+
+    .sf-bar__inner--pair :is(.sf-sbtn, .sf-bar__call) {
+        width: 44px;
+        height: 44px;
+    }
 }
 
 .sf-tip {
@@ -1135,7 +1147,6 @@ html:has(.sf-header--sticky) {
 
 /* at the bar's right end the tooltip lines up with the button's right edge, inside the page */
 .sf-sbtn--corner .sf-tip,
-.sf-sbtn--corner-wide .sf-tip,
 .sf-sform__x .sf-tip {
     left: auto;
     right: 0;
