@@ -263,7 +263,7 @@ final class SeoSettings extends Component
     }
 
     #[Authorize('settings.manage')]
-    public function save(): void
+    public function save(): bool
     {
         $this->resetErrorBag();
         $errors = $this->allErrors();
@@ -274,7 +274,7 @@ final class SeoSettings extends Component
             $this->notify(__('admin.gs.toast_invalid', ['count' => count($errors)]), 'error');
             $this->dispatch('seo-first-error', group: $this->groupOf((string) array_key_first($errors)));
 
-            return;
+            return false;
         }
 
         $settings = app(SettingsRepository::class);
@@ -308,7 +308,7 @@ final class SeoSettings extends Component
             if ($e->reason === 'busy') {
                 $this->notify(__('admin.settings.busy'), 'error');
 
-                return;
+                return false;
             }
             if ($e->reason !== 'image_invalid') {
                 throw $e;
@@ -317,7 +317,7 @@ final class SeoSettings extends Component
             $this->notify(__('admin.gs.toast_invalid', ['count' => 1]), 'error');
             $this->dispatch('seo-first-error', group: $this->groupOf('share_image'));
 
-            return;
+            return false;
         }
 
         // What the AI check looked at changed: its kept result no longer holds — check again.
@@ -328,6 +328,8 @@ final class SeoSettings extends Component
 
         $this->apply($this->load());
         $this->notify(__('admin.seoset.toast_saved'));
+
+        return true;
     }
 
     /** Back to the saved values. */

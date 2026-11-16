@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Livewire\Concerns\TracksSavedState;
 use App\Modules\Admin\Support\Settings\FloatingContactInput;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Catalog\Support\ProductIndexLink;
@@ -46,6 +47,8 @@ use Livewire\Component;
 #[Layout('admin::layouts.app')]
 final class FloatingContactSettings extends Component
 {
+    use TracksSavedState;
+
     /** Colours offered for the "Mua hàng" button (`brand` = the site's brand colour). */
     public const array BUY_SWATCHES = ['#f7b84b', 'brand', '#16223f', '#0ab39c', '#f06548', '#ffffff'];
 
@@ -134,9 +137,6 @@ final class FloatingContactSettings extends Component
 
     public bool $presetMenu = false;
 
-    /** Fingerprint of the saved setting: the page shows "Chưa lưu" while the draft differs. */
-    public string $savedSig = '';
-
     public string $toast = '';
 
     public string $toastTone = 'success';
@@ -155,7 +155,7 @@ final class FloatingContactSettings extends Component
         $this->lang = app(SiteLocale::class)->default();
         $this->hasShop = $this->shopIn($this->lang);
         $this->load(app(SettingsRepository::class)->get('storefront', 'floating_contact'));
-        $this->savedSig = $this->signature();
+        $this->rememberSaved();
         $taps = app(ContactClickStats::class)->lastDays(30);
         $this->stats = ['total' => $taps['total'], 'channels' => $taps['channels']];
     }
@@ -390,7 +390,7 @@ final class FloatingContactSettings extends Component
     }
 
     #[Authorize('settings.manage')]
-    public function save(): void
+    public function save(): bool
     {
         $this->resetErrorBag();
         $errors = $this->allErrors();
@@ -402,7 +402,7 @@ final class FloatingContactSettings extends Component
             $this->notify(__('admin.fc.toast_invalid', ['count' => $bad]), 'error');
             $this->dispatch('fc-first-error');
 
-            return;
+            return false;
         }
 
         // The setting and the library's "in use" rows of its icon pictures change together.
@@ -412,15 +412,17 @@ final class FloatingContactSettings extends Component
             $row = SiteSetting::query()->where('group_name', 'storefront')->where('key', 'floating_contact')->value('id');
             FloatingContactInput::syncIconUsage(Cast::int($row), $stored);
         });
-        $this->savedSig = $this->signature();
+        $this->rememberSaved();
         $this->notify(__('admin.fc.toast_saved'));
+
+        return true;
     }
 
     /** Back to the saved setting. */
     public function resetChanges(): void
     {
         $this->load(app(SettingsRepository::class)->get('storefront', 'floating_contact'));
-        $this->savedSig = $this->signature();
+        $this->rememberSaved();
         $this->resetErrorBag();
         $this->notify(__('admin.fc.toast_reset'));
     }
@@ -453,7 +455,7 @@ final class FloatingContactSettings extends Component
 
         $view = view('admin::livewire.floating-contact-settings', [
             'rows' => $rows,
-            'dirty' => md5((string) json_encode($stored)) !== $this->savedSig,
+            'changes' => $this->unsavedCount($stored),
             'defaultLocale' => $siteLocale->default(),
             'locales' => $locales,
             'publicLocales' => $siteLocale->public(),
@@ -841,9 +843,14 @@ final class FloatingContactSettings extends Component
         return app(ProductIndexLink::class)->for($locale) !== null;
     }
 
-    private function signature(): string
+    /**
+     * The setting as it would be saved, for the save bar (each channel row counts on its own).
+     *
+     * @return array<string, mixed>
+     */
+    protected function trackedState(): array
     {
-        return md5((string) json_encode($this->stored()));
+        return $this->stored();
     }
 
     private function notify(string $message, string $tone = 'success'): void

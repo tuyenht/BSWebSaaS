@@ -157,7 +157,7 @@ it('shows the Vietnamese page text with its diacritics at both edges', function 
     $this->actingAs($admin)->get('http://a.test/admin/settings/integrations')->assertOk()
         ->assertSee('Tích hợp & Theo dõi')->assertSee('Xác minh sở hữu để xem thứ hạng tìm kiếm.')
         ->assertSee('Chỉ chèn thẻ meta xác minh — không chạy script, không thu dữ liệu khách.', false)
-        ->assertSee('Lưu cấu hình');
+        ->assertSee('Chưa có thay đổi')->assertSee('Bỏ thay đổi');
 });
 
 it('gates the page — settings.manage on the route, in boot() and on every action', function (): void {
@@ -219,7 +219,7 @@ it('does not fail when the whole tokens array is replaced or a value is not text
     });
 });
 
-it('does not let the browser set the toast or the saved signature', function (string $property, mixed $value): void {
+it('does not let the browser set the toast or the saved state', function (string $property, mixed $value): void {
     $admin = intAdmin();
 
     app(Tenancy::class)->enter(1, function () use ($admin, $property, $value): void {
@@ -229,7 +229,7 @@ it('does not let the browser set the toast or the saved signature', function (st
     'toast' => ['toast', 'x'],
     'toastTone' => ['toastTone', 'error'],
     'toastSeq' => ['toastSeq', 9],
-    'savedSig' => ['savedSig', 'x'],
+    'savedState' => ['savedState', ['google' => 'x']],
     'on' => ['on.google', true],
 ])->throws(CannotUpdateLockedPropertyException::class);
 

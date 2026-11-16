@@ -416,7 +416,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     ]]));
     $this->flushSession();
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/integrations')->assertOk()->getContent();
-    expect($html)->toContain('Xác minh &amp; Công cụ', 'wire:model.blur="tokens.google"');
+    expect($html)->toContain('Xác minh &amp; Công cụ', 'wire:model.live.blur="tokens.google"');
     file_put_contents($dir.'/integrations.html', $html);
 
     // "Thông tin chung" filled from the older brand setting, as a site has it before its first save

@@ -11,9 +11,9 @@
             <x-bs-admin::icon name="ri-error-warning" class="mt-0.5 size-[calc(1rem+var(--user-text-boost))] shrink-0" />
             <span>{{ __('dash.card_error') }}</span>
         </p>
-        <button type="button" wire:click="retry('{{ $card }}')" wire:loading.attr="aria-disabled" wire:target="retry('{{ $card }}')" class="{{ $btn }}">
+        <x-bs-admin::button variant="outline" color="neutral" wire:click="retry('{{ $card }}')" wire:loading.attr="aria-disabled" wire:target="retry('{{ $card }}')" class="max-w-full shrink-0">
             <x-bs-admin::icon name="ri-refresh" class="size-[calc(1rem+var(--user-text-boost))]" /><span>{{ __('dash.retry') }}</span>
-        </button>
+        </x-bs-admin::button>
     </div>
     <div wire:loading.flex wire:target="retry('{{ $card }}')" aria-hidden="true" class="flex-col gap-2.5">
         <span class="h-[1.125rem] w-1/2 animate-pulse rounded bg-surface-hover"></span>

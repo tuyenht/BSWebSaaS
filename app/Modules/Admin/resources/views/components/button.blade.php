@@ -23,7 +23,12 @@
     // A link opens in place through wire:navigate; `:navigate="false"` keeps it a plain link (a
     // page on the public website in a new tab).
     // A toggle (aria-pressed) shows its on state: the accent edge and ink on a soft accent fill, bold.
-    $base = 'hit-area inline-flex items-center justify-center gap-2 rounded font-medium leading-tight text-center transition-colors disabled:opacity-60 disabled:pointer-events-none aria-pressed:border-primary-text aria-pressed:bg-primary-soft aria-pressed:font-semibold aria-pressed:text-primary-text';
+    // `variant="outline" color="neutral"` is the quiet button beside a main one (design 01's "Bỏ thay
+    // đổi"; the dashboard's and notifications' row buttons): the field edge (>= 3:1 on the card), the
+    // card fill and body ink, a light grey on hover; its icon sits 6px from its words, and a label
+    // that wraps keeps the page's alignment (as the hand-built copies it replaced drew it).
+    $neutral = $variant === 'outline' && $color === 'neutral';
+    $base = 'hit-area inline-flex items-center justify-center '.($neutral ? 'gap-1.5' : 'gap-2 text-center').' rounded font-medium leading-tight transition-colors disabled:opacity-60 disabled:pointer-events-none aria-pressed:border-primary-text aria-pressed:bg-primary-soft aria-pressed:font-semibold aria-pressed:text-primary-text';
 
     $sizes = $icon ? [
         'sm' => 'size-control-row shrink-0 text-caption',
@@ -60,6 +65,7 @@
         'secondary' => 'border border-admin-secondary-text text-admin-secondary-text hover:bg-admin-secondary-solid hover:text-white',
         'success' => 'border border-admin-success-text text-admin-success-text hover:bg-admin-success-solid hover:text-white',
         'danger' => 'border border-admin-danger-text text-admin-danger-text hover:bg-admin-danger-solid hover:text-white',
+        'neutral' => 'border border-border-input bg-surface text-text hover:bg-surface-hover hover:text-text-strong',
     ];
 
     $ghost = [

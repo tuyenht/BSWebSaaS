@@ -408,8 +408,8 @@ html:not(.sf-js) .site-nav__item:focus-within > .site-nav__list--level-1 {
 
 @media (any-pointer: coarse) {
     .site-nav__toggle--split {
-        min-width: 2.75rem;
-        min-height: 2.75rem;
+        min-width: max(44px, 2.75rem);
+        min-height: max(44px, 2.75rem);
     }
 }
 
@@ -566,7 +566,7 @@ main:has(.hero, .sf-slider) .page__title {
 
 @media (any-pointer: coarse) {
     .sf-crumbs__link {
-        min-height: 2.75rem;
+        min-height: max(44px, 2.75rem);
     }
 }
 
@@ -3317,7 +3317,7 @@ html:not(.sf-js) :is(.sf-lang-h, .sf-lang-back, .sf-lang-search, .sf-lang-none) 
 /* Touch screens: every control of the rich chrome reaches 44px, at every width. */
 @media (any-pointer: coarse) {
     .sf-header--topbar {
-        --sf-topbar-h: 2.75rem;
+        --sf-topbar-h: max(44px, 2.75rem);
     }
 
     .sf-nav__link,
@@ -3325,15 +3325,15 @@ html:not(.sf-js) :is(.sf-lang-h, .sf-lang-back, .sf-lang-search, .sf-lang-none) 
     .sf-nav__sublink,
     .sf-footer__link,
     .sf-factory__map {
-        min-height: 2.75rem;
+        min-height: max(44px, 2.75rem);
     }
 
     .sf-nav__chev {
-        min-width: 2.75rem;
+        min-width: max(44px, 2.75rem);
     }
 
     .sf-nav--desk .sf-nav__item--parent > .sf-nav__chev::after {
-        inset: 0 calc(100% - 2.75rem) 0 0;
+        inset: 0 calc(100% - max(44px, 2.75rem)) 0 0;
     }
 }
 
@@ -3945,7 +3945,7 @@ html:not(.sf-js) :is(.sf-lang-h, .sf-lang-back, .sf-lang-search, .sf-lang-none) 
 
     /* a short link ("Dự án") at this size is narrower than a fingertip: keep the 44px target */
     .sf-footer__link {
-        min-width: 2.75rem;
+        min-width: max(44px, 2.75rem);
         font-size: 0.9375rem;
     }
 }

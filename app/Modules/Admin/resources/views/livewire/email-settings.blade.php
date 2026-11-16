@@ -1,4 +1,4 @@
-<x-bs-admin::settings-shell :active="$scope === 'platform' ? 'system-email' : 'email'" :head="false">
+<x-bs-admin::settings-shell :active="$scope === 'platform' ? 'system-email' : 'email'" :head="false" :unsaved="$changes" :invalid="count($errors->keys())">
     {{-- Flash + OAuth-connect errors --}}
     @if (session('status'))
         <div class="rounded border border-admin-success/30 bg-admin-success/10 px-4 py-3 text-sm text-admin-success-text">{{ session('status') }}</div>
@@ -42,7 +42,8 @@
     @endif
 
     {{-- Configuration form --}}
-    <form wire:submit="save" class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
+    {{-- Enter in a field is the save bar's "Lưu" (it waits while a save runs and does nothing with nothing to save); the form itself never submits, so the page never reloads --}}
+    <form x-data x-on:submit.prevent class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
         <div class="border-b border-border px-5 py-3">
             <h2 class="text-[15px] font-semibold text-body-text">{{ __('admin.email_settings') }}</h2>
             <p class="mt-0.5 text-xs text-body-muted">{{ __('admin.email_settings_desc') }}</p>
@@ -63,19 +64,19 @@
 
             @if ($method === 'smtp_password')
                 <div class="grid gap-4 sm:grid-cols-2">
-                    <x-bs-admin::input :label="__('admin.smtp_host')" wire:model="smtpHost" placeholder="smtp.gmail.com" />
-                    <x-bs-admin::input :label="__('admin.smtp_port')" type="number" wire:model="smtpPort" placeholder="587" />
+                    <x-bs-admin::input :label="__('admin.smtp_host')" wire:model.live.blur="smtpHost" placeholder="smtp.gmail.com" />
+                    <x-bs-admin::input :label="__('admin.smtp_port')" type="number" wire:model.live.blur="smtpPort" placeholder="587" />
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-body-text">{{ __('admin.smtp_encryption') }}</label>
-                        <select wire:model="smtpEncryption" class="field block w-full rounded border border-border-strong bg-surface px-3 text-text focus:border-primary-text">
+                        <select wire:model.live="smtpEncryption" class="field block w-full rounded border border-border-strong bg-surface px-3 text-text focus:border-primary-text">
                             <option value="tls">{{ __('admin.encryption_tls') }}</option>
                             <option value="ssl">{{ __('admin.encryption_ssl') }}</option>
                             <option value="null">{{ __('admin.encryption_none') }}</option>
                         </select>
                     </div>
-                    <x-bs-admin::input :label="__('admin.smtp_username')" wire:model="smtpUsername" placeholder="info@example.com" />
+                    <x-bs-admin::input :label="__('admin.smtp_username')" wire:model.live.blur="smtpUsername" placeholder="info@example.com" />
                     <div class="sm:col-span-2">
-                        <x-bs-admin::input :label="__('admin.smtp_password')" type="password" wire:model="smtpPassword" autocomplete="new-password"
+                        <x-bs-admin::input :label="__('admin.smtp_password')" type="password" wire:model.live.blur="smtpPassword" autocomplete="new-password"
                                         :placeholder="$smtpPasswordSet ? __('admin.secret_stored') : ''" />
                         @if ($smtpPasswordSet)
                             <p class="mt-1 text-xs text-body-muted">{{ __('admin.leave_blank_keep') }}</p>
@@ -93,9 +94,9 @@
                         </select>
                     </div>
                     <div class="hidden sm:block"></div>
-                    <x-bs-admin::input :label="__('admin.client_id')" wire:model="oauthClientId" />
+                    <x-bs-admin::input :label="__('admin.client_id')" wire:model.live.blur="oauthClientId" />
                     <div>
-                        <x-bs-admin::input :label="__('admin.client_secret')" type="password" wire:model="oauthClientSecret" autocomplete="new-password"
+                        <x-bs-admin::input :label="__('admin.client_secret')" type="password" wire:model.live.blur="oauthClientSecret" autocomplete="new-password"
                                         :placeholder="$oauthSecretSet ? __('admin.secret_stored') : ''" />
                         @if ($oauthSecretSet)
                             <p class="mt-1 text-xs text-body-muted">{{ __('admin.leave_blank_keep') }}</p>
@@ -143,11 +144,11 @@
 
             {{-- Sender identity --}}
             <div class="grid gap-4 border-t border-border-soft pt-5 sm:grid-cols-2">
-                <x-bs-admin::input :label="__('admin.from_address')" type="email" wire:model="fromAddress" placeholder="no-reply@example.com" />
-                <x-bs-admin::input :label="__('admin.from_name')" wire:model="fromName" :placeholder="config('admin.brand.name')" />
+                <x-bs-admin::input :label="__('admin.from_address')" type="email" wire:model.live.blur="fromAddress" placeholder="no-reply@example.com" />
+                <x-bs-admin::input :label="__('admin.from_name')" wire:model.live.blur="fromName" :placeholder="config('admin.brand.name')" />
                 @if ($scope !== 'platform')
                     <div class="sm:col-span-2">
-                        <x-bs-admin::input :label="__('admin.reply_to')" type="email" wire:model="replyTo" placeholder="lienhe@congty-cua-ban.com" />
+                        <x-bs-admin::input :label="__('admin.reply_to')" type="email" wire:model.live.blur="replyTo" placeholder="lienhe@congty-cua-ban.com" />
                         <p class="mt-1 text-xs text-body-muted">{{ __('admin.reply_to_hint') }}</p>
                     </div>
                 @endif
@@ -155,7 +156,6 @@
 
             {{-- Actions --}}
             <div class="flex flex-wrap items-center gap-3 border-t border-border-soft pt-5">
-                <x-bs-admin::button type="submit" wire:loading.attr="disabled" wire:target="save">{{ __('admin.save') }}</x-bs-admin::button>
                 <x-bs-admin::button type="button" variant="outline" wire:click="sendTest" wire:loading.attr="disabled" wire:target="sendTest">{{ __('admin.send_test_email') }}</x-bs-admin::button>
                 @if ($testResult === 'ok')
                     <span class="text-sm text-admin-success-text">{{ __('admin.test_email_sent') }}</span>

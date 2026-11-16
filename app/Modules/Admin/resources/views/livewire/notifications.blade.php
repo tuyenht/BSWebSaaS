@@ -10,8 +10,6 @@
     alert with "Thử lại" when a request is lost. The row column is the card's width (@container).
 --}}
 @php
-    $btn = 'hit-area inline-flex min-h-control max-w-full items-center justify-center gap-1.5 rounded border border-border-input bg-surface px-3.5 py-1.5 text-body font-medium leading-tight text-text transition-colors hover:bg-surface-hover hover:text-text-strong';
-    $btnSm = 'hit-area inline-flex min-h-control-row max-w-full items-center justify-center gap-1.5 rounded border border-border-input bg-surface px-2.5 py-1 text-caption font-medium leading-tight text-text transition-colors hover:bg-surface-hover hover:text-text-strong';
     $tones = [
         'info' => 'bg-info-soft text-info-text',
         'warn' => 'bg-warning-soft text-warning-text',
@@ -75,9 +73,9 @@
                 <x-bs-admin::alert color="danger" icon="ri-wifi-off" class="m-4">
                     <span class="flex flex-wrap items-center gap-x-3 gap-y-2">
                         <span class="min-w-0 flex-[1_1_15rem]" x-text="failed === 'load' ? @js(__('admin.bell.error_load')) : @js(__('admin.bell.error_save'))"></span>
-                        <button type="button" class="{{ $btn }}" x-on:click="again()">
+                        <x-bs-admin::button variant="outline" color="neutral" class="max-w-full" x-on:click="again()">
                             <x-bs-admin::icon name="ri-refresh" class="size-[calc(1rem+var(--user-text-boost))]" /><span>{{ __('admin.bell.retry') }}</span>
-                        </button>
+                        </x-bs-admin::button>
                     </span>
                 </x-bs-admin::alert>
             </template>
@@ -100,11 +98,11 @@
                         <p class="max-w-[52ch] text-body text-text-muted [text-wrap:pretty]">{{ $empty['desc'] }}</p>
                         @if ($empty['btn'] !== null)
                             @if ($empty['clear'] ?? false)
-                                <button type="button" class="{{ $btn }}" wire:click="clearSearch">{{ $empty['btn'] }}</button>
+                                <x-bs-admin::button variant="outline" color="neutral" class="max-w-full" wire:click="clearSearch">{{ $empty['btn'] }}</x-bs-admin::button>
                             @elseif ($empty['all'])
-                                <button type="button" class="{{ $btn }}" wire:click="show('tat-ca')">{{ $empty['btn'] }}</button>
+                                <x-bs-admin::button variant="outline" color="neutral" class="max-w-full" wire:click="show('tat-ca')">{{ $empty['btn'] }}</x-bs-admin::button>
                             @else
-                                <a href="{{ $empty['url'] }}" wire:navigate class="{{ $btn }}">{{ $empty['btn'] }}</a>
+                                <x-bs-admin::button variant="outline" color="neutral" :href="$empty['url']" class="max-w-full">{{ $empty['btn'] }}</x-bs-admin::button>
                             @endif
                         @endif
                     </div>
@@ -142,11 +140,11 @@
                                     </div>
                                     <div data-acts class="flex flex-col items-end gap-1.5 @max-[37.4375rem]/tb:col-start-2 @max-[37.4375rem]/tb:flex-row @max-[37.4375rem]/tb:flex-wrap @max-[37.4375rem]/tb:items-center">
                                         @if ($item['url'] !== null)
-                                            <a href="{{ $item['url'] }}" data-open x-on:click="follow($event, '{{ $item['ulid'] }}')"
+                                            <x-bs-admin::button variant="outline" color="neutral" size="sm" :href="$item['url']" :navigate="false" data-open x-on:click="follow($event, '{{ $item['ulid'] }}')"
                                                aria-label="{{ __('admin.ntf.act_aria', ['act' => $item['act'], 'text' => $item['text']]) }}"
-                                               class="{{ $btnSm }} max-w-[13.75rem] @max-[37.4375rem]/tb:min-w-0 @max-[37.4375rem]/tb:max-w-none @max-[37.4375rem]/tb:flex-[1_1_auto]">
+                                               class="max-w-full max-w-[13.75rem] @max-[37.4375rem]/tb:min-w-0 @max-[37.4375rem]/tb:max-w-none @max-[37.4375rem]/tb:flex-[1_1_auto]">
                                                 <span class="min-w-0 truncate">{{ $item['act'] }}</span><x-bs-admin::icon name="ri-arrow-right-s" class="size-[calc(1rem+var(--user-text-boost))] shrink-0" />
-                                            </a>
+                                            </x-bs-admin::button>
                                         @endif
                                         @if ($item['unread'] && ! $supporting)
                                             <x-bs-admin::button variant="ghost" size="sm" wire:click="read('{{ $item['ulid'] }}')"
@@ -161,9 +159,9 @@
                     @endforeach
                     <div class="flex flex-col items-center gap-1.5 border-t border-border px-4 pb-4 pt-3 text-center text-small text-text-muted">
                         @if ($more)
-                            <button type="button" class="{{ $btn }}" wire:click="more" wire:loading.attr="aria-busy" wire:target="more">
+                            <x-bs-admin::button variant="outline" color="neutral" class="max-w-full" wire:click="more" wire:loading.attr="aria-busy" wire:target="more">
                                 <x-bs-admin::icon name="ri-arrow-down" class="size-[calc(1rem+var(--user-text-boost))]" /><span>{{ __('admin.ntf.more') }}</span>
-                            </button>
+                            </x-bs-admin::button>
                             <span>{{ __('admin.ntf.shown', ['shown' => $shown, 'total' => $totalLabel]) }}</span>
                         @else
                             <span>{{ __('admin.ntf.all_shown', ['count' => $shown]) }}</span>

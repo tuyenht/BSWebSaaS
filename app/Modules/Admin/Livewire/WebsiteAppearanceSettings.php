@@ -196,7 +196,7 @@ final class WebsiteAppearanceSettings extends Component
     }
 
     #[Authorize('settings.manage')]
-    public function save(): void
+    public function save(): bool
     {
         $this->resetErrorBag();
         $draft = $this->draft();
@@ -205,7 +205,7 @@ final class WebsiteAppearanceSettings extends Component
             $this->notify(__('admin.gs.toast_invalid', ['count' => 1]), 'error');
             $this->dispatch('look-first-error');
 
-            return;
+            return false;
         }
 
         if ($this->hasMenu && ! $this->menuDraftValid()) {
@@ -213,7 +213,7 @@ final class WebsiteAppearanceSettings extends Component
             $this->notify(__('admin.gs.toast_invalid', ['count' => 1]), 'error');
             $this->dispatch('look-first-error');
 
-            return;
+            return false;
         }
 
         $picks = [];
@@ -244,19 +244,19 @@ final class WebsiteAppearanceSettings extends Component
             if ($e->reason === 'busy') {
                 $this->notify(__('admin.settings.busy'), 'error');
 
-                return;
+                return false;
             }
             if ($e->reason === 'menu_gone') {
                 $this->notify(__('admin.look.err_menu_gone'), 'error');
 
-                return;
+                return false;
             }
             if ($e->reason === 'choice_invalid') {
                 $this->addError($e->field, __('admin.look.err_choice'));
                 $this->notify(__('admin.gs.toast_invalid', ['count' => 1]), 'error');
                 $this->dispatch('look-first-error');
 
-                return;
+                return false;
             }
             if ($e->reason !== 'image_invalid' || ! in_array($e->field, self::SLOTS, true)) {
                 throw $e;
@@ -265,11 +265,13 @@ final class WebsiteAppearanceSettings extends Component
             $this->notify(__('admin.gs.toast_invalid', ['count' => 1]), 'error');
             $this->dispatch('look-first-error');
 
-            return;
+            return false;
         }
 
         $this->apply($this->load());
         $this->notify(__('admin.look.toast_saved'));
+
+        return true;
     }
 
     /** "Bỏ thay đổi": back to the saved images. */

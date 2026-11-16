@@ -250,6 +250,22 @@ test('a round trip that carried the typed text clears it; one sent while the fie
     assert.equal(c.dirty(), true);
 });
 
+test('a round trip that sends the focused field\'s text (Enter pressed "Lưu" in it) clears it too', () => {
+    const { c } = page(0);
+    const f = document.getElementById('f');
+    const name = f.getAttribute([...f.attributes].find((a) => a.name.startsWith('wire:model')).name);
+    f.focus();
+    f.dispatchEvent(new window.Event('input', { bubbles: true }));
+    const commit = (updates) => hooks.forEach((h) => h({ component: { id: 'c1' }, commit: { updates, calls: [] }, succeed: (cb) => cb() }));
+    commit({ other: 'x' });
+    assert.equal(c.dirty(), true, 'another field\'s value: this one is still unsent');
+    commit({ [name]: 'typed' });
+    assert.equal(c.dirty(), false);
+    // typed again after the round trip left: changed again
+    f.dispatchEvent(new window.Event('input', { bubbles: true }));
+    assert.equal(c.dirty(), true);
+});
+
 test('typed text not yet sent marks the root data-typed (a settings save bar on a phone shows then), cleared with it', () => {
     const { c } = page(0);
     const root = document.getElementById('root');

@@ -24,7 +24,7 @@
         'accent' => ['neutral' => 'var(--color-text-muted)', 'brand' => $brandColor],
     ];
 @endphp
-<x-bs-admin::settings-shell active="appearance" :unsaved="$changes">
+<x-bs-admin::settings-shell active="appearance" :unsaved="$changes" :invalid="$errorCount" live-errors first-error="look-first-error">
     <x-slot:more>
         <x-bs-admin::dropdown align="end">
             <x-slot:trigger>
@@ -229,27 +229,6 @@
             @endforeach
         </div>
 
-        {{-- The page's own save bar, kept in view at the bottom --}}
-        <div class="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center justify-between gap-2.5 border-t border-border-strong bg-surface px-1 py-3" role="region" aria-label="{{ __('admin.gs.savebar') }}" data-set-savebar @if ($changes === 0) data-clean @endif>
-            <div role="status" aria-live="polite" class="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption leading-snug">
-                @if ($changes > 0)
-                    <span class="inline-flex items-center gap-1.5 font-semibold text-warning-text"><x-bs-admin::icon name="ri-error-warning" :class="$glyph" />{{ __('admin.gs.changes', ['count' => $changes]) }}</span>
-                @else
-                    <span class="inline-flex items-center gap-1.5 text-text-muted"><x-bs-admin::icon name="ri-checkbox-circle" :class="$glyph" />{{ __('admin.gs.no_changes') }}</span>
-                @endif
-                @if ($errorCount > 0)
-                    <span class="inline-flex items-center gap-1.5 font-semibold text-danger-text"><x-bs-admin::icon name="ri-close-circle" :class="$glyph" />{{ __('admin.gs.errs', ['count' => $errorCount]) }}</span>
-                    <button type="button" class="hit-area-row text-caption font-semibold text-primary-text underline underline-offset-2"
-                            x-on:click="$dispatch('look-first-error')">{{ __('admin.gs.first_error') }}</button>
-                @endif
-            </div>
-            <div class="flex flex-wrap items-center gap-2.5">
-                <x-bs-admin::button variant="outline" color="secondary" wire:click="resetChanges" wire:loading.attr="disabled" :disabled="$changes === 0">{{ __('admin.gs.discard') }}</x-bs-admin::button>
-                <x-bs-admin::button color="primary" wire:click="save" wire:loading.attr="disabled">
-                    <x-bs-admin::icon name="ri-save-3" :class="$glyph" /><span>{{ __('admin.gs.save') }}</span>
-                </x-bs-admin::button>
-            </div>
-        </div>
     </div>
 
     {{-- The shared Image library, opened by an image slot (one picture goes back). --}}

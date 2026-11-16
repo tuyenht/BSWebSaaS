@@ -1,4 +1,4 @@
-@props(['active' => '', 'unsaved' => null, 'save' => 'save', 'discard' => 'resetChanges', 'hints' => [], 'head' => true])
+@props(['active' => '', 'unsaved' => null, 'save' => 'save', 'discard' => 'resetChanges', 'hints' => [], 'head' => true, 'invalid' => 0, 'liveErrors' => false, 'firstError' => null, 'firstErrorDetail' => []])
 @php
     // The section's title row: its name, then an (i) button stuck to it (the same button and in-place
     // note as a field's explanation) that opens "Về mục <name>" right under the row, with the full
@@ -8,9 +8,14 @@
     // explanations it offers; only the dismissed ones go into the note.
     // `head` false leaves the row out for a page whose own card header still names the section.
     // A page may pass a `more` slot: its "⋮" menu, put at the end of the title row on phones only.
-    // A section that keeps its draft on the server joins the shared unsaved-changes dialog by
-    // passing its change count (`:unsaved="$changes"`) and, when they are named otherwise, its save
-    // and discard methods. Leaving it then asks first; a section that passes nothing leaves freely.
+    // A section that keeps its draft on the server passes its change count (`:unsaved="$changes"`)
+    // and, when they are named otherwise, its save and discard methods. The shell then draws the one
+    // save bar under the section (<x-bs-admin::save-bar>: "Chưa có thay đổi" · "Bỏ thay đổi" · "Lưu",
+    // across the whole settings area, outside the cards) and the shared unsaved-changes dialog, both
+    // on the same count: leaving asks first. `invalid` is the section's count of fields in error,
+    // `liveErrors` says it checks them as they are left, and `firstError` / `firstErrorDetail` name
+    // its window event that opens the group of the first one. A section that passes nothing (one
+    // with nothing to save) has no bar and leaves freely.
     if (\App\Modules\Admin\Support\AdminPlane::isPlatform()) {
         // Platform (system) console — super_admin-only system defaults.
         $nav = [[
@@ -167,6 +172,8 @@
     </div>
 
     @if ($unsaved !== null)
+        <x-bs-admin::save-bar :changes="(int) $unsaved" :invalid="(int) $invalid" :live="(bool) $liveErrors" :save="$save" :discard="$discard"
+                              :first-error="$firstError" :first-error-detail="$firstErrorDetail" />
         @php
             $paths = array_map(static fn (array $item): string => (string) parse_url(route($item['route']), PHP_URL_PATH), $items);
         @endphp
