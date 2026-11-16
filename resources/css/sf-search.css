@@ -609,7 +609,7 @@
     }
 }
 
-@media (max-width: 639.98px), (hover: none) and (pointer: coarse) {
+@media (max-width: 639.98px), (hover: none) and (any-pointer: coarse) {
     .sf-ssug__keys {
         display: none;
     }
