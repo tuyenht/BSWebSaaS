@@ -238,7 +238,7 @@ it('words the role card from the member permissions, limits and the section work
         $limited = $member('Biên tập mảng', ['entries.edit.any', 'entries.publish']);
         MemberCategoryScope::query()->create(['user_id' => $limited->id, 'taxonomy_id' => $t['know']->id]);
 
-        expect($card($editor))->toBe(['role' => 'Biên tập', 'governed' => false, 'text' => 'Website đang đăng thẳng, không qua bước duyệt.', 'summary' => 'Được đăng · sửa được mọi bài'])
+        expect($card($editor))->toBe(['role' => 'Biên tập', 'governed' => false, 'text' => 'Mục Tin tức đang đăng thẳng, không qua bước duyệt.', 'summary' => 'Được đăng · sửa được mọi bài'])
             ->and($card($writer)['summary'])->toBe('Được gửi duyệt · chỉ sửa bài của mình')
             ->and($card($reader)['summary'])->toBe('Chỉ xem · không sửa bài')
             ->and($card($limited->fresh())['summary'])->toBe('Được đăng · chỉ sửa bài trong phạm vi của bạn');
@@ -253,7 +253,7 @@ it('words the role card from the member permissions, limits and the section work
         $approver = $member('Trưởng ban', ['entries.edit.any', 'entries.approve']);
 
         expect($card($writer))->toBe(['role' => 'Cộng tác viên', 'governed' => true,
-            'text' => 'Website đang dùng “Biên tập trước khi đăng”: bài đi qua các bước duyệt trước khi lên website.', 'summary' => 'Được gửi biên tập · chỉ sửa bài của mình'])
+            'text' => 'Mục Tin tức đang dùng “Biên tập trước khi đăng”: bài đi qua các bước duyệt trước khi lên website.', 'summary' => 'Được gửi biên tập · chỉ sửa bài của mình'])
             ->and($card($approver)['summary'])->toBe('Được duyệt đăng · sửa được mọi bài')
             ->and($card($editor)['summary'])->toBe('Không được chuyển bước duyệt · sửa được mọi bài')
             ->and($card($reader)['summary'])->toBe('Chỉ xem · không sửa bài');
@@ -265,7 +265,13 @@ it('words the role card from the member permissions, limits and the section work
 
         // another section's workflow does not govern this one
         $workflow->update(['applies_to_type' => 'services']);
-        expect($card($writer)['governed'])->toBeFalse();
+        expect($card($writer)['governed'])->toBeFalse()
+            ->and($card($writer)['text'])->toBe('Mục Tin tức đang đăng thẳng, không qua bước duyệt.');
+
+        // approval is switched on per section, so the card names the section it speaks for
+        $services = Livewire::actingAs($writer)->test(Index::class, ['section' => 'services'])->viewData('roleNote');
+        expect($services['governed'])->toBeTrue()
+            ->and($services['text'])->toBe('Mục Dịch vụ đang dùng “Biên tập trước khi đăng”: bài đi qua các bước duyệt trước khi lên website.');
     });
 });
 

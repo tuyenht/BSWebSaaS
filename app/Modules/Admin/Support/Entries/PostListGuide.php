@@ -32,7 +32,7 @@ final class PostListGuide
      */
     public static function for(User $user, array $screen, ?Workflow $workflow): Guide
     {
-        $note = $screen['roleNote'] ?? PostRoleNote::with($user, $workflow, $screen['scoped']);
+        $note = $screen['roleNote'] ?? PostRoleNote::with($user, $workflow, $screen['title'], $screen['scoped']);
         $can = fn (string $permission): bool => $user->can($permission);
         $editScope = $can('entries.edit.any') ? 'any' : ($can('entries.edit.own') ? 'own' : 'none');
         $delScope = $can('entries.delete.any') ? 'any' : ($can('entries.delete.own') ? 'own' : 'none');

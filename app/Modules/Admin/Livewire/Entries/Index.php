@@ -1421,7 +1421,7 @@ final class Index extends Component
         $postSection = $type === 'post' && $section instanceof ContentSection ? $section : null;
         $roleShows = $postSection !== null && ! FirstHints::dismissed(FirstHints::POSTS_ROLE, $user);
         $workflow = $postSection !== null && ($roleShows || $this->guideDue) ? app(WorkflowEngine::class)->activeFor($postSection->key) : null;
-        $roleNote = $roleShows ? PostRoleNote::with($user, $workflow, $scoped) : null;
+        $roleNote = $roleShows ? PostRoleNote::with($user, $workflow, $postSection->localizedLabel(), $scoped) : null;
 
         $canDelete = $user->can('entries.delete.any') || $user->can('entries.delete.own');
         [$sortKey, $sortDir] = $this->sorting();
