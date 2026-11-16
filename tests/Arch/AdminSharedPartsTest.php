@@ -36,8 +36,7 @@ const ADMIN_HAND_BUILT_PARTS = [
     'entries/partials/button-action.blade.php' => [0, 9, 0],
     'entries/partials/workflow-status.blade.php' => [1, 0, 0],
     // The floating contact screen is being redesigned; its channel error box moves to the shared alert with that work.
-    'floating-contact-settings.blade.php' => [0, 2, 0],
-    'general-settings.blade.php' => [0, 1, 0],
+    'floating-contact-settings.blade.php' => [0, 1, 0],
     'login.blade.php' => [0, 1, 0],
     // the library's error state and its loading line, as board 12 draws them
     'media/library.blade.php' => [0, 2, 0],
@@ -59,7 +58,6 @@ const ADMIN_HAND_BUILT_PARTS = [
     'platform/support/index.blade.php' => [0, 1, 0],
     // + the list's error state
     'platform/tenants/index.blade.php' => [0, 3, 0],
-    'seo-settings.blade.php' => [0, 1, 0],
     // + the screen's error state
     'settings/domains.blade.php' => [0, 3, 0],
     // the list's error state (its error lines are the shared field-error)
@@ -67,7 +65,6 @@ const ADMIN_HAND_BUILT_PARTS = [
     // the invitations list's error state (heading, words, "Thử lại", as its board draws it)
     'users/invitations.blade.php' => [0, 1, 0],
     // the save bar's spoken change count, the one "Thông tin chung" and "Google & mạng xã hội" draw (no shared save bar)
-    'website-appearance-settings.blade.php' => [0, 1, 0],
     // + the screen's error state
     'workflow-settings.blade.php' => [4, 2, 0],
 ];

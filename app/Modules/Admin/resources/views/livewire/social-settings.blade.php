@@ -40,7 +40,7 @@
                     <a href="{{ config('oauth.providers.'.$provider.'.console_url') }}" target="_blank" rel="noopener noreferrer" class="ms-1 text-xs font-medium text-accent hover:underline">{{ __('admin.oauth_open_console', ['provider' => ucfirst($provider)]) }} ↗</a>
                 </h3>
                 <label class="inline-flex cursor-pointer items-center gap-2">
-                    <input type="checkbox" wire:model.live="forms.{{ $provider }}.enabled" class="h-4 w-4 rounded border-border-strong text-accent focus:ring-admin-primary/30">
+                    <input type="checkbox" wire:model.live="forms.{{ $provider }}.enabled" class="h-4 w-4 rounded border-border-strong text-primary-text focus:ring-primary/30">
                     <span class="text-sm text-body-muted">{{ __('admin.enabled') }}</span>
                 </label>
             </div>
