@@ -1,4 +1,4 @@
-<x-bs-admin::settings-shell active="social" :head="false">
+<x-bs-admin::settings-shell active="social" :head="false" :unsaved="$changes" :invalid="count($errors->keys())">
     @if (session('status'))
         <div class="rounded border border-admin-success/30 bg-admin-success/10 px-4 py-3 text-sm text-admin-success-text">{{ session('status') }}</div>
     @endif
@@ -32,29 +32,27 @@
         </div>
     </div>
 
+    {{-- Enter in a field is the save bar's "Lưu" (it waits while a save runs and does nothing with nothing to save); the form itself never submits, so the page never reloads --}}
     @foreach ($providers as $provider)
-        <form wire:submit="save('{{ $provider }}')" wire:key="social-{{ $provider }}"
+        <form x-data x-on:submit.prevent wire:key="social-{{ $provider }}"
               class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
             <div class="flex items-center justify-between border-b border-border px-5 py-3">
                 <h3 class="text-sm font-semibold text-body-text">{{ ucfirst($provider) }}
                     <a href="{{ config('oauth.providers.'.$provider.'.console_url') }}" target="_blank" rel="noopener noreferrer" class="ms-1 text-xs font-medium text-accent hover:underline">{{ __('admin.oauth_open_console', ['provider' => ucfirst($provider)]) }} ↗</a>
                 </h3>
                 <label class="inline-flex cursor-pointer items-center gap-2">
-                    <input type="checkbox" wire:model="forms.{{ $provider }}.enabled" class="h-4 w-4 rounded border-border-strong text-accent focus:ring-admin-primary/30">
+                    <input type="checkbox" wire:model.live="forms.{{ $provider }}.enabled" class="h-4 w-4 rounded border-border-strong text-primary-text focus:ring-primary/30">
                     <span class="text-sm text-body-muted">{{ __('admin.enabled') }}</span>
                 </label>
             </div>
             <div class="grid gap-4 p-5 sm:grid-cols-2">
-                <x-bs-admin::input :label="__('admin.client_id')" wire:model="forms.{{ $provider }}.client_id" />
+                <x-bs-admin::input :label="__('admin.client_id')" wire:model.live.blur="forms.{{ $provider }}.client_id" />
                 <div>
-                    <x-bs-admin::input :label="__('admin.client_secret')" type="password" wire:model="forms.{{ $provider }}.client_secret" autocomplete="new-password"
+                    <x-bs-admin::input :label="__('admin.client_secret')" type="password" wire:model.live.blur="forms.{{ $provider }}.client_secret" autocomplete="new-password"
                                     :placeholder="($secretSet[$provider] ?? false) ? __('admin.secret_stored') : ''" />
                     @if ($secretSet[$provider] ?? false)
                         <p class="mt-1 text-xs text-body-muted">{{ __('admin.leave_blank_keep') }}</p>
                     @endif
-                </div>
-                <div class="sm:col-span-2">
-                    <x-bs-admin::button type="submit" size="sm" wire:loading.attr="disabled" wire:target="save('{{ $provider }}')">{{ __('admin.save') }}</x-bs-admin::button>
                 </div>
             </div>
         </form>

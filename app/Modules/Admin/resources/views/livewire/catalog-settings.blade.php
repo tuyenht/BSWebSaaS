@@ -1,4 +1,4 @@
-<x-bs-admin::settings-shell active="catalog" :head="false">
+<x-bs-admin::settings-shell active="catalog" :head="false" :unsaved="$changes" :invalid="count($errors->keys())">
     @if (session('status'))
         <x-bs-admin::alert color="success" icon="shield">{{ session('status') }}</x-bs-admin::alert>
     @endif
@@ -45,11 +45,5 @@
                 @error('drawerProducts') <p class="mt-2 text-sm text-danger-text">{{ $message }}</p> @enderror
             </div>
         @endif
-
-        <x-slot:footer>
-            <div class="flex justify-end">
-                <x-bs-admin::button color="primary" wire:click="save" wire:loading.attr="disabled">{{ __('catalog.save') }}</x-bs-admin::button>
-            </div>
-        </x-slot:footer>
     </x-bs-admin::card>
 </x-bs-admin::settings-shell>

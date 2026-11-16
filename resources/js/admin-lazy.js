@@ -10,7 +10,9 @@
 // CSS (app.css) then hides the root's [data-bs-lazy-wait] block and shows its
 // [data-bs-lazy-error] block. A [data-bs-lazy-retry] button inside the error block tries again; when
 // the browser keeps the failed download (it may answer a second import() of the same file with
-// the same failure), the second try reloads the page.
+// the same failure), the second try reloads the page — unless the root is marked
+// `data-bs-lazy-keep` (a part that holds what the member typed, as the settings save bar does):
+// that one stays on its error block, whose own way out keeps the typing.
 //
 // A Livewire redraw morphs the started root against the server's HTML, which still carries
 // x-ignore. Alpine's morph first prepares that new HTML with the live state (Alpine.cloneNode),
@@ -23,6 +25,7 @@ const PARTS = {
     bsMenus: () => import('./admin-menus.js'),
     bsEditorSave: () => import('./admin-editor.js'),
     bsUnsaved: () => import('./admin-unsaved.js'),
+    bsSaveBar: () => import('./admin-save-bar.js'),
     bsBell: () => import('./admin-bell.js'),
     bsNotifications: () => import('./admin-notifications.js'),
 };
@@ -46,7 +49,7 @@ export function makeLazy({ parts, alpine, reload }) {
             },
             () => {
                 el._bsLazy = false; // a lost download: "Thử lại", or the next navigation, tries again
-                if (again) {
+                if (again && !el.hasAttribute('data-bs-lazy-keep')) {
                     reload();
                     return;
                 }

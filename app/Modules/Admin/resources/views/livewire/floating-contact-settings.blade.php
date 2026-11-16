@@ -129,7 +129,7 @@
 
     $buySafe = FloatingContact::color($buyColor) ?? FloatingContact::BUY_COLOR;
 @endphp
-<x-bs-admin::settings-shell active="floating" :hints="count($locales) > 1 ? [FirstHints::LANG_SOURCE => $srcHint] : []">
+<x-bs-admin::settings-shell active="floating" :unsaved="$changes" :invalid="count($errors->keys())" first-error="fc-first-error" :hints="count($locales) > 1 ? [FirstHints::LANG_SOURCE => $srcHint] : []">
     {{-- `ico`: the channel whose "Tùy chỉnh nút" group is open (one at a time). The first field in error
          gets the focus after a refused save, its group or folded "mã Remix Icon" opened first. --}}
     <div class="@container/fc flex flex-col gap-4"
@@ -790,27 +790,10 @@
                     </span>
                     <div class="min-w-0">
                         <p class="mb-0.5 {{ $name }}">{{ __('admin.fc.applied_title') }}</p>
-                        <p class="text-caption leading-relaxed text-text-muted">{!! __('admin.fc.applied_body', ['save' => '<b>'.e(__('admin.fc.save')).'</b>']) !!}</p>
+                        <p class="text-caption leading-relaxed text-text-muted">{!! __('admin.fc.applied_body', ['save' => '<b>'.e(__('admin.savebar.save')).'</b>']) !!}</p>
                     </div>
                 </div>
             </div>
-        </div>
-
-        {{-- The page's own save bar --}}
-        <div class="flex flex-wrap items-center justify-end gap-2.5 border-t border-border-strong pt-4">
-            <span role="status" class="inline-flex min-h-6 items-center gap-1.5 px-2.5 text-caption leading-snug font-semibold">
-                @if ($dirty)
-                    <span class="inline-flex items-center gap-1.5 text-warning-text"><x-bs-admin::icon name="ri-error-warning" class="size-[min(1.5rem,calc(1rem+var(--user-text-boost)))]" />{{ __('admin.fc.dirty') }}</span>
-                @else
-                    <span class="inline-flex items-center gap-1.5 text-success-text"><x-bs-admin::icon name="ri-checkbox-circle" class="size-[min(1.5rem,calc(1rem+var(--user-text-boost)))]" />{{ __('admin.fc.saved') }}</span>
-                @endif
-            </span>
-            @if ($dirty)
-                <x-bs-admin::button variant="outline" color="secondary" wire:click="resetChanges" wire:loading.attr="disabled">{{ __('admin.fc.discard') }}</x-bs-admin::button>
-            @endif
-            <x-bs-admin::button color="primary" wire:click="save" wire:loading.attr="disabled">
-                <x-bs-admin::icon name="ri-save-3" :class="$glyph" /><span>{{ __('admin.fc.save') }}</span>
-            </x-bs-admin::button>
         </div>
     </div>
 

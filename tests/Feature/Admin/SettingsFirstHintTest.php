@@ -181,21 +181,22 @@ it('marks a settings save bar with nothing to save, so a phone can hide it', fun
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         $lw = Livewire::actingAs($admin)->test(GeneralSettings::class);
-        expect($lw->html())->toMatch('/data-set-savebar\s+data-clean/');
+        expect($lw->html())->toMatch('/data-sb-state[^>]*data-clean/');
 
         $lw->set('form.phone', '0901 234 567');
-        expect($lw->html())->toContain('data-set-savebar')->not->toMatch('/data-set-savebar\s+data-clean/');
+        expect($lw->html())->toContain('data-set-savebar')->not->toMatch('/data-sb-state[^>]*data-clean/');
     });
 });
 
-it('never hides the save bar of a settings page that has no unsaved-changes dialog', function (): void {
-    // these pages send some fields only on blur or not at all until Save, so the server cannot tell
-    // that a field holds text; a bar it marked clean would hide Save on a phone while text waits
+it('marks the bar clean only beside the unsaved-changes dialog, whose typed-text flag shows it again', function (): void {
+    // these pages send some fields only when they are left, so the server cannot tell that a field
+    // holds text; the dialog notices typing and its flag brings the bar back on a phone
     $admin = hintAdmin();
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         foreach ([IntegrationsSettings::class, FloatingContactSettings::class] as $page) {
-            expect(Livewire::actingAs($admin)->test($page)->html())->not->toContain('data-clean');
+            expect(Livewire::actingAs($admin)->test($page)->html())->toMatch('/data-sb-state[^>]*data-clean/')
+                ->toContain('data-unsaved-guard');
         }
     });
 });

@@ -23,7 +23,7 @@
     }
     $badge = 'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-caption font-semibold';
 @endphp
-<x-bs-admin::settings-shell active="integrations">
+<x-bs-admin::settings-shell active="integrations" :unsaved="$changes" :invalid="count($errors->keys())" first-error="int-first-error">
     <div class="flex flex-col gap-4" x-data x-on:int-first-error.window="$nextTick(() => $el.querySelector('[aria-invalid=true]')?.focus())">
         <div class="overflow-hidden rounded-md border border-border-strong bg-surface shadow-card">
             <div class="flex flex-wrap items-center gap-2.5 border-b border-border-soft bg-surface-muted px-4 py-3.5">
@@ -82,7 +82,7 @@
                             <div class="mt-3 flex flex-col gap-2.5 border-t border-dashed border-border pt-3">
                                 <div class="max-w-xl">
                                     <label for="int-token-{{ $key }}" class="mb-1.5 block text-[calc(0.78125rem+var(--user-text-boost))] font-semibold text-text">{{ $fieldLabel }}</label>
-                                    <x-bs-admin::input id="int-token-{{ $key }}" wire:model.blur="tokens.{{ $key }}" autocomplete="off" autocapitalize="off" spellcheck="false"
+                                    <x-bs-admin::input id="int-token-{{ $key }}" wire:model.live.blur="tokens.{{ $key }}" autocomplete="off" autocapitalize="off" spellcheck="false"
                                                        placeholder="{{ __('admin.int.p.'.$key.'.ph') }}" aria-label="{{ __('admin.int.field_aria', ['field' => $fieldLabel, 'name' => $name]) }}" />
                                 </div>
                                 <div class="flex flex-wrap items-center gap-2.5">
@@ -118,23 +118,6 @@
                     </div>
                 @endforeach
             </div>
-        </div>
-
-        {{-- The page's own save bar --}}
-        <div class="flex flex-wrap items-center justify-end gap-2.5 border-t border-border-strong pt-4">
-            <span class="inline-flex min-h-6 items-center gap-1.5 px-2.5 text-caption leading-snug font-semibold">
-                @if ($dirty)
-                    <span class="inline-flex items-center gap-1.5 text-warning-text"><x-bs-admin::icon name="ri-error-warning" class="{{ $glyph }}" />{{ __('admin.int.dirty') }}</span>
-                @else
-                    <span class="inline-flex items-center gap-1.5 text-success-text"><x-bs-admin::icon name="ri-checkbox-circle" class="{{ $glyph }}" />{{ __('admin.int.saved') }}</span>
-                @endif
-            </span>
-            @if ($dirty)
-                <x-bs-admin::button variant="outline" color="secondary" wire:click="resetChanges" wire:loading.attr="disabled">{{ __('admin.int.discard') }}</x-bs-admin::button>
-            @endif
-            <x-bs-admin::button color="primary" wire:click="save" wire:loading.attr="disabled">
-                <x-bs-admin::icon name="ri-save-3" class="{{ $glyph }}" /><span>{{ __('admin.int.save') }}</span>
-            </x-bs-admin::button>
         </div>
     </div>
 

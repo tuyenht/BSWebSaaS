@@ -30,7 +30,6 @@
     $card = 'min-w-0 rounded-md border border-border bg-surface shadow-card @container';
     $ch = 'flex flex-wrap items-center gap-2 border-b border-border px-4 py-3';
     $h2 = 'text-[calc(1rem+var(--user-text-boost))] font-semibold leading-[1.4] text-text-strong';
-    $btn = 'hit-area inline-flex min-h-control max-w-full shrink-0 items-center justify-center gap-1.5 rounded border border-border-input bg-surface px-3.5 py-1.5 text-body font-medium leading-tight text-text transition-colors hover:bg-surface-hover hover:text-text-strong';
     $ghost = 'hit-area inline-flex min-h-control max-w-full shrink-0 items-center justify-center gap-1.5 rounded px-3.5 py-1.5 text-body font-medium leading-tight text-primary-text transition-colors hover:bg-primary/10';
     $chip = 'inline-flex min-h-[1.375rem] items-center gap-1 rounded-full px-2 text-caption font-semibold leading-snug';
     $tones = [
@@ -139,7 +138,7 @@
                 @endif
             </div>
             @if ($todoFailed)
-                @include('admin::livewire.dashboard.card-error', ['card' => 'todo', 'label' => __('dash.todo_title'), 'btn' => $btn])
+                @include('admin::livewire.dashboard.card-error', ['card' => 'todo', 'label' => __('dash.todo_title')])
             @endif
             <div>
                 @foreach ($todoItems as $t)
@@ -151,9 +150,9 @@
                                 <div class="{{ $ts }}">{{ $t['sub'] }}</div>
                             @endif
                         </div>
-                        <a href="{{ $t['url'] }}" wire:navigate class="{{ $btn }}">
+                        <x-bs-admin::button variant="outline" color="neutral" :href="$t['url']" class="max-w-full shrink-0">
                             <span>{{ $t['btn'] }}</span><x-bs-admin::icon name="ri-arrow-right" class="size-[calc(1rem+var(--user-text-boost))]" />
-                        </a>
+                        </x-bs-admin::button>
                     </div>
                 @endforeach
             </div>
@@ -172,7 +171,7 @@
                 </div>
             </div>
             @if (! $start['ok'])
-                @include('admin::livewire.dashboard.card-error', ['card' => 'start', 'label' => __('dash.start_title'), 'btn' => $btn])
+                @include('admin::livewire.dashboard.card-error', ['card' => 'start', 'label' => __('dash.start_title')])
             @else
                 <div class="flex min-w-0 flex-col gap-4 p-4">
                     <div class="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4">
@@ -193,9 +192,9 @@
                             <div class="flex min-w-0 flex-col items-start gap-2 rounded-md border border-border bg-surface p-3">
                                 <div class="{{ $tt }}">{{ __('dash.step_'.$s['key']) }}</div>
                                 <div class="{{ $ts }}">{{ __('dash.step_'.$s['key'].'_sub') }}</div>
-                                <a href="{{ $s['url'] }}" wire:navigate class="{{ $btn }}">
+                                <x-bs-admin::button variant="outline" color="neutral" :href="$s['url']" class="max-w-full shrink-0">
                                     <span>{{ __('dash.step_'.$s['key'].'_btn') }}</span><x-bs-admin::icon name="ri-arrow-right" class="size-[calc(1rem+var(--user-text-boost))]" />
-                                </a>
+                                </x-bs-admin::button>
                             </div>
                         @endforeach
                     </div>
@@ -211,9 +210,9 @@
                 <div class="{{ $ch }}"><h2 id="tq-h-quick" class="{{ $h2 }}">{{ __('dash.quick_title') }}</h2></div>
                 <div class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,10rem),1fr))] gap-2 p-4">
                     @foreach ($quick as $q)
-                        <a href="{{ $q['url'] }}" wire:navigate class="{{ $btn }} w-full justify-start">
+                        <x-bs-admin::button variant="outline" color="neutral" :href="$q['url']" class="max-w-full shrink-0 w-full justify-start">
                             <x-bs-admin::icon :name="$q['icon']" class="size-[calc(1rem+var(--user-text-boost))]" /><span>{{ $q['label'] }}</span>
-                        </a>
+                        </x-bs-admin::button>
                     @endforeach
                 </div>
             </section>
@@ -252,7 +251,7 @@
                         @endif
                     </div>
                     @if ($rev === null)
-                        @include('admin::livewire.dashboard.card-error', ['card' => 'review', 'label' => __('dash.rev_title'), 'btn' => $btn])
+                        @include('admin::livewire.dashboard.card-error', ['card' => 'review', 'label' => __('dash.rev_title')])
                     @else
                         <div role="tablist" aria-label="{{ __('dash.rev_tabs_label') }}" class="flex flex-wrap gap-1 border-b border-border px-3">
                             @foreach ($revTabs as $key => $t)
@@ -284,9 +283,9 @@
                                             </div>
                                         </div>
                                         @if ($key === 'sched')
-                                            <a href="{{ $row['url'] }}" wire:navigate class="{{ $btn }}" aria-label="{{ __($row['edit'] ? 'dash.edit_aria' : 'dash.view_aria', ['title' => $row['title']]) }}">{{ __($row['edit'] ? 'dash.edit' : 'dash.view') }}</a>
+                                            <x-bs-admin::button variant="outline" color="neutral" :href="$row['url']" class="max-w-full shrink-0" aria-label="{{ __($row['edit'] ? 'dash.edit_aria' : 'dash.view_aria', ['title' => $row['title']]) }}">{{ __($row['edit'] ? 'dash.edit' : 'dash.view') }}</x-bs-admin::button>
                                         @else
-                                            <a href="{{ route('admin.entries.review', ['bai' => $row['ulid']]) }}" wire:navigate class="{{ $btn }}" aria-label="{{ __('dash.rev_btn_aria', ['title' => $row['title']]) }}">{{ __('dash.rev_btn') }}</a>
+                                            <x-bs-admin::button variant="outline" color="neutral" :href="route('admin.entries.review', ['bai' => $row['ulid']])" class="max-w-full shrink-0" aria-label="{{ __('dash.rev_btn_aria', ['title' => $row['title']]) }}">{{ __('dash.rev_btn') }}</x-bs-admin::button>
                                         @endif
                                     </div>
                                 @empty
@@ -297,9 +296,9 @@
                                 @endif
                                 <div class="{{ $foot }}">
                                     @if ($key === 'sched')
-                                        <a href="{{ $postsList(['tab' => 'scheduled']) }}" wire:navigate class="{{ $btn }}"><span>{{ __('dash.rev_foot_sched') }}</span><x-bs-admin::icon name="ri-arrow-right" class="size-[calc(1rem+var(--user-text-boost))]" /></a>
+                                        <x-bs-admin::button variant="outline" color="neutral" :href="$postsList(['tab' => 'scheduled'])" class="max-w-full shrink-0"><span>{{ __('dash.rev_foot_sched') }}</span><x-bs-admin::icon name="ri-arrow-right" class="size-[calc(1rem+var(--user-text-boost))]" /></x-bs-admin::button>
                                     @else
-                                        <a href="{{ route('admin.entries.review') }}" wire:navigate class="{{ $btn }}"><span>{{ __('dash.rev_foot_inbox') }}</span><x-bs-admin::icon name="ri-arrow-right" class="size-[calc(1rem+var(--user-text-boost))]" /></a>
+                                        <x-bs-admin::button variant="outline" color="neutral" :href="route('admin.entries.review')" class="max-w-full shrink-0"><span>{{ __('dash.rev_foot_inbox') }}</span><x-bs-admin::icon name="ri-arrow-right" class="size-[calc(1rem+var(--user-text-boost))]" /></x-bs-admin::button>
                                     @endif
                                 </div>
                             </div>
@@ -312,7 +311,7 @@
                 <section class="{{ $card }}" aria-labelledby="tq-h-wr">
                     <div class="{{ $ch }}"><h2 id="tq-h-wr" tabindex="-1" class="{{ $h2 }}">{{ __('dash.wr_title') }}</h2></div>
                     @if ($wr === null)
-                        @include('admin::livewire.dashboard.card-error', ['card' => 'mine', 'label' => __('dash.wr_title'), 'btn' => $btn])
+                        @include('admin::livewire.dashboard.card-error', ['card' => 'mine', 'label' => __('dash.wr_title')])
                     @else
                         <div class="flex min-w-0 flex-col gap-4 p-4">
                             @if ($wr['any'])
@@ -348,7 +347,7 @@
                                                     @endif
                                                     <div class="{{ $lm }}"><span>{{ $r['by'] !== '' ? __('dash.wr_by', ['name' => $r['by'], 'when' => $ago($r['at'])]) : __('dash.wr_by_gone', ['when' => $ago($r['at'])]) }}</span></div>
                                                 </div>
-                                                <a href="{{ $r['url'] }}" wire:navigate class="{{ $btn }}" aria-label="{{ __('dash.wr_fix_aria', ['title' => $r['title']]) }}">{{ __('dash.wr_fix') }}</a>
+                                                <x-bs-admin::button variant="outline" color="neutral" :href="$r['url']" class="max-w-full shrink-0" aria-label="{{ __('dash.wr_fix_aria', ['title' => $r['title']]) }}">{{ __('dash.wr_fix') }}</x-bs-admin::button>
                                             </div>
                                         @endforeach
                                     </div>
@@ -372,7 +371,7 @@
                 <section class="{{ $card }}" aria-labelledby="tq-h-rec">
                     <div class="{{ $ch }}"><h2 id="tq-h-rec" tabindex="-1" class="{{ $h2 }}">{{ __($editor ? 'dash.rec_title_edit' : 'dash.rec_title_view') }}</h2></div>
                     @if (! $recent['ok'])
-                        @include('admin::livewire.dashboard.card-error', ['card' => 'recent', 'label' => __($editor ? 'dash.rec_title_edit' : 'dash.rec_title_view'), 'btn' => $btn])
+                        @include('admin::livewire.dashboard.card-error', ['card' => 'recent', 'label' => __($editor ? 'dash.rec_title_edit' : 'dash.rec_title_view')])
                     @else
                         <div>
                             @forelse ($recent['data'] as $row)
@@ -385,7 +384,7 @@
                                             <span>{{ $meta([$row['section'], $row['author'], $stamp($row['updated_at'])]) }}</span>
                                         </div>
                                     </div>
-                                    <a href="{{ $row['url'] }}" wire:navigate class="{{ $btn }}" aria-label="{{ __($row['edit'] ? 'dash.edit_aria' : 'dash.view_aria', ['title' => $row['title']]) }}">{{ __($row['edit'] ? 'dash.edit' : 'dash.view') }}</a>
+                                    <x-bs-admin::button variant="outline" color="neutral" :href="$row['url']" class="max-w-full shrink-0" aria-label="{{ __($row['edit'] ? 'dash.edit_aria' : 'dash.view_aria', ['title' => $row['title']]) }}">{{ __($row['edit'] ? 'dash.edit' : 'dash.view') }}</x-bs-admin::button>
                                 </div>
                             @empty
                                 <div class="{{ $empty }}">

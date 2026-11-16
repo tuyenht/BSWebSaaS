@@ -170,6 +170,10 @@
       "js": 2456,
       "css": 0
     },
+    "resources/js/admin-save-bar.js": {
+      "js": 1073,
+      "css": 0
+    },
     "resources/js/admin-editor.js": {
       "js": 1135,
       "css": 0

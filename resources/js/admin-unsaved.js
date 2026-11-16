@@ -113,8 +113,12 @@ export function unsavedDialog(cfg) {
     let typedField = null;
     let root = null;
     // Typed text the server has not seen yet is also shown on the dialog's root (data-typed), so the
-    // page's CSS can treat the page as changed before the round trip (a settings save bar on a phone).
+    // page's CSS can treat the page as changed before the round trip (a settings save bar on a phone),
+    // and told to the page's save bar ('bs-unsaved-typed'), which reads the same flag.
     const setTyped = (on) => {
+        if (typed !== on) {
+            window.dispatchEvent(new window.CustomEvent('bs-unsaved-typed', { detail: { on } }));
+        }
         typed = on;
         if (root) {
             root.toggleAttribute('data-typed', on);
@@ -167,13 +171,18 @@ export function unsavedDialog(cfg) {
             const id = this.$wire ? this.$wire.$id : null;
             const lw = window.Livewire;
             if (lw && typeof lw.hook === 'function') {
-                offHook = lw.hook('commit', ({ component, succeed }) => {
+                offHook = lw.hook('commit', ({ component, commit, succeed }) => {
                     if (!component || component.id !== id) {
                         return;
                     }
                     const at = seq;
+                    // A field still in focus is carried too when this round trip sends its value
+                    // (Enter in it pressed "Lưu"): Livewire puts a .blur field's text in the updates.
+                    // (Another field typed in meanwhile moved seq on, so `at === seq` covers a change of field.)
+                    const carried = typedField && typedField.getAttribute(modelOf(typedField)) in { ...(commit && commit.updates) };
                     succeed(() => {
-                        if (at === seq && typedField === null) {
+                        if (at === seq && (!typedField || carried)) {
+                            typedField = null;
                             setTyped(false);
                         }
                     });
