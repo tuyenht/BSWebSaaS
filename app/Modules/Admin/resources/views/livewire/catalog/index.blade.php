@@ -87,20 +87,7 @@
     $clock = fn (?\DateTimeInterface $at): ?string => $at === null ? null : $siteTime->forDisplay($at)?->format('d/m/Y H:i');
     $nowAt = $siteTime->now();
     // the card's short form of the last edit: today, yesterday, this year without the year, otherwise the day
-    $editedShort = function (\DateTimeInterface $at) use ($siteTime, $nowAt): string {
-        $t = $siteTime->forDisplay($at);
-        if ($t === null) {
-            return '';
-        }
-        $days = (int) round($t->startOfDay()->diffInDays($nowAt->startOfDay()));
-
-        return match (true) {
-            $days === 0 => __('catalog.edited_today', ['time' => $t->format('H:i')]),
-            $days === 1 => __('catalog.edited_yesterday', ['time' => $t->format('H:i')]),
-            $t->year === $nowAt->year => __('catalog.edited_year', ['day' => $t->format('d/m'), 'time' => $t->format('H:i')]),
-            default => __('catalog.edited_other', ['date' => $t->format('d/m/Y')]),
-        };
-    };
+    $editedShort = fn (\DateTimeInterface $at): string => \App\Modules\Admin\Support\EditedWhen::short($siteTime->forDisplay($at) ?? $nowAt, $nowAt);
     $hiddenAlways = $selling ? [] : ['price', 'stock'];
     // what the table hides at first paint (the saved columns, and price and stock on a brochure website); Alpine keeps it in step
     $hideNow = implode(' ', array_values(array_unique([...array_diff(['cat', 'price', 'stock', 'badge'], $cols), ...$hiddenAlways])));
