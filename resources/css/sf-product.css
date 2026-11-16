@@ -49,6 +49,8 @@
     display: block;
     width: 100%;
     height: 100%;
+    /* A sideways swipe turns the photo (sf-gallery.js); scrolling and zooming the page still work. */
+    touch-action: pan-y pinch-zoom;
 }
 
 .product__main:focus-visible {
