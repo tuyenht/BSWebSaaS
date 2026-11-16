@@ -146,7 +146,7 @@
         <div class="flex items-center gap-3">
             {{-- the name is inline, so the (?) follows its last word when it wraps --}}
             <div class="min-w-0 flex-1">
-                <h1 id="entries-title" tabindex="-1" class="m-0 inline text-[calc(1.25rem+var(--user-text-boost))] outline-none font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ $pageTitle }}</h1>
+                <h1 id="entries-title" tabindex="-1" class="m-0 inline text-[calc(1.25rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ $pageTitle }}</h1>
                 <div class="relative ms-1 inline-block align-middle" x-data="{ open: false }" @keydown.escape.prevent.stop="open && (open = false, $refs.help.focus())" @click.outside="open = false">
                     <button type="button" x-ref="help" @click="open = ! open" :aria-expanded="open ? 'true' : 'false'" aria-controls="entries-help"
                             aria-label="{{ __('admin.list.help_named', ['name' => $pageTitle]) }}" title="{{ __('admin.list.help') }}"
