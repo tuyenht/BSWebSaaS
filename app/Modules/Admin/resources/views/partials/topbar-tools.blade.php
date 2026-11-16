@@ -18,8 +18,8 @@
         : null;
 @endphp
 
-{{-- Language --}}
-<div class="relative" x-data="{ langOpen: false }">
+{{-- Language (from 768px; below it the user menu carries the choice) --}}
+<div class="relative hidden md:block" x-data="{ langOpen: false }">
     <button type="button" @click="langOpen = ! langOpen" :aria-expanded="langOpen"
             aria-label="{{ __('admin.language') }}"
             class="grid size-control place-items-center rounded text-topbar-fg any-pointer-coarse:size-hit transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg">
@@ -54,17 +54,18 @@
         @fullscreenchange.document="full = !! document.fullscreenElement"
         @click="document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()"
         aria-label="{{ __('admin.fullscreen') }}"
-        class="hidden size-control place-items-center rounded text-topbar-fg any-pointer-coarse:size-hit transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg sm:grid">
+        class="hidden size-control place-items-center rounded text-topbar-fg any-pointer-coarse:size-hit transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg md:grid">
     <x-bs-admin::icon name="fullscreen" class="size-5" x-show="! full" />
     <x-bs-admin::icon name="minimize" class="size-5" x-show="full" x-cloak />
 </button>
 
-{{-- Light / dark — shares the Customizer's scheme axis + adminTheme store. The static name holds until Alpine sets the live one. --}}
+{{-- Light / dark — shares the Customizer's scheme axis + adminTheme store. The static name holds until Alpine sets the live one.
+     From 768px; below it the user menu carries the switch. --}}
 <button type="button" x-data
         @click="$store.adminTheme.set('scheme', $store.adminTheme.state.scheme === 'dark' ? 'light' : 'dark')"
         aria-label="{{ __('admin.theme_dark') }}"
         :aria-label="$store.adminTheme.state.scheme === 'dark' ? @js(__('admin.theme_light')) : @js(__('admin.theme_dark'))"
-        class="grid size-control place-items-center rounded text-topbar-fg any-pointer-coarse:size-hit transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg">
+        class="hidden md:grid size-control place-items-center rounded text-topbar-fg any-pointer-coarse:size-hit transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg">
     <x-bs-admin::icon name="moon" class="size-5" x-show="$store.adminTheme.state.scheme !== 'dark'" />
     <x-bs-admin::icon name="sun" class="size-5" x-show="$store.adminTheme.state.scheme === 'dark'" x-cloak />
 </button>

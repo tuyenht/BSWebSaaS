@@ -56,7 +56,8 @@
                 <fieldset>
                     <legend class="text-[11px] font-semibold uppercase tracking-wider text-body-muted">{{ __('admin.theme_topbar') }}</legend>
                     <p class="mb-2 mt-0.5 text-xs text-body-muted">{{ __('admin.theme_topbar_desc') }}</p>
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-3 gap-3">
+                        <x-bs-admin::theme-option axis="topbar" value="auto" name="ct-topbar" :label="__('admin.theme_auto')" store />
                         <x-bs-admin::theme-option axis="topbar" value="light" name="ct-topbar" :label="__('admin.theme_light')" store />
                         <x-bs-admin::theme-option axis="topbar" value="dark" name="ct-topbar" :label="__('admin.theme_dark')" store />
                     </div>

@@ -76,7 +76,6 @@
     <div x-ignore wire:ignore.self data-bs-lazy="bsCategories" x-data="bsCategories(@js($config))" x-on:category-cover-picked.window="coverPicked($event.detail)"
         class="mx-auto flex w-full max-w-[1400px] flex-col gap-4">
         <x-bs-admin::page-header :title="__('categories.title', ['section' => $label])" :subtitle="$products ? $u('desc_products') : $u('desc_posts', ['section' => $lowerLabel])" class="!mb-0">
-            <x-slot:breadcrumbs><a href="{{ $listUrl }}" wire:navigate class="underline-offset-2 hover:underline">{{ $label }}</a> › {{ $u('crumb') }}</x-slot:breadcrumbs>
             <x-slot:actions>
                 <x-bs-admin::button x-on:click="openAdd(null)" aria-disabled="{{ $off }}" :title="$canManage ? null : $u('no_manage')">
                     <x-bs-admin::icon name="ri-add" class="size-4" /> {{ $u('add') }}

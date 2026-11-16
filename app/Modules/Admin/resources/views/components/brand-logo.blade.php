@@ -14,8 +14,8 @@
     @if ($context === 'topbar')
         {{-- Platform topbar (phone/tablet, where the sidebar is a drawer, or every width when the
              operator has no sidebar): the compact mark, the
-             full logo from 840px — dark ink on the light scheme, light ink on the dark one. CSS
-             picks the one shown (admin-chrome.css). --}}
+             full logo from 840px — dark ink on the light scheme, light ink on the dark one. A site's
+             own topbar shows the full logo at every width. CSS picks the one shown (admin-chrome.css). --}}
         <img src="{{ asset($logo['sm']) }}" alt="{{ $brandName }}" class="brand-logo brand-logo--topbar-sm h-7 w-auto">
         <img src="{{ asset($logo['dark']) }}" alt="{{ $brandName }}" class="brand-logo brand-logo--topbar-dark h-7 w-auto">
         <img src="{{ asset($logo['light']) }}" alt="{{ $brandName }}" class="brand-logo brand-logo--topbar-light h-7 w-auto">

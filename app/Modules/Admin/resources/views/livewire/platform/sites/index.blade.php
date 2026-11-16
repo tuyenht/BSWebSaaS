@@ -5,7 +5,7 @@
 
     {{-- Filters --}}
     <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-        <input type="search" wire:model.live.debounce.300ms="search" placeholder="{{ __('admin.search_placeholder') }}"
+        <input type="search" wire:model.live.debounce.300ms="search" placeholder="{{ __('admin.search_placeholder_4') }}"
                class="field w-full rounded border border-border bg-surface-muted px-3 text-text placeholder:text-placeholder transition-colors focus:border-primary-text focus:bg-surface sm:max-w-xs">
         <select wire:model.live="status"
                 class="field w-full rounded border border-border bg-surface-muted px-3 text-text transition-colors focus:border-primary-text focus:bg-surface sm:max-w-[200px]">

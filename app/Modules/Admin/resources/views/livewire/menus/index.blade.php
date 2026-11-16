@@ -61,7 +61,6 @@
 
     <div class="mx-auto flex w-full max-w-[1400px] flex-col gap-4">
         <x-bs-admin::page-header :title="__('menus.title')" :subtitle="$u('intro')" class="!mb-0">
-            <x-slot:breadcrumbs>{{ $u('crumb') }}</x-slot:breadcrumbs>
             <x-slot:actions>
                 <x-bs-admin::button variant="outline" color="secondary" :href="$siteUrl" :navigate="false" target="_blank" rel="noopener">
                     <x-bs-admin::icon name="ri-external-link" class="size-4" />{{ $u('open_site') }}

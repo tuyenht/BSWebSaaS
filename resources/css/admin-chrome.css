@@ -160,6 +160,36 @@
     --color-topbar-user-fg: #ffffff;
 }
 
+/* Automatic topbar (the default): the same brand fill below 1024px, where the sidebar is a drawer
+   and the bar carries the brand mark; the light bar from 1024px. */
+@media (max-width: 63.98rem) {
+    /* Under the dark scheme the bar keeps the scheme's night navy, as the design draws it. */
+    :root[data-topbar='auto']:not([data-bs-theme='dark'], [data-theme='dark']) { /* legacy-token-ok: AdminChromeResolver still writes this attribute */
+        --color-topbar-bg: var(--color-primary);
+        --color-topbar-border: var(--color-primary);
+        --color-topbar-fg-strong: rgb(255 255 255 / 0.85);
+        --color-topbar-fg: rgb(255 255 255 / 0.85);        /* icons + role line + platform links */
+        --color-topbar-hover: rgb(255 255 255 / 0.14);
+        /* The search field and the avatar stay light on the brand bar, as the board draws them. */
+        --color-topbar-search: #f3f3f9;
+        --color-topbar-search-fg: var(--color-text);
+        --color-topbar-search-border: var(--color-border-input);
+        --color-topbar-search-focus: #ffffff;
+        --color-topbar-search-placeholder: var(--color-text-muted);
+        --color-topbar-search-accent: var(--color-primary-text); /* focus edge on the light field */
+        --color-topbar-user-block: rgb(255 255 255 / 0.08); /* user slab */
+        --color-topbar-user: color-mix(in oklab, var(--color-primary-text) 12%, #ffffff);
+        --color-topbar-user-fg: var(--color-primary-text);
+    }
+}
+
+/* The bar is 56px below 1024px (and on a short landscape screen), 70px from there. */
+@media (max-width: 63.98rem), (max-height: 30rem) {
+    :root {
+        --topbar-height: 56px;
+    }
+}
+
 /* Light sidebar — ONE merged block for both schemes: a white zone, so its ink stays the light
    one (the brand FILL as text: the table's solid reads >= 4.5 on white and on its 15% tint). */
 :root[data-sidebar='light'] {
@@ -304,6 +334,18 @@
         display: none;
     }
 
+    /* A group heading becomes a thin divider between the groups; the first heading draws none. */
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) :where(.admin-shell-wrapper) .admin-sidebar .sidebar-heading {
+        height: 1px;
+        margin: 0.5625rem 1.25rem;
+        padding: 0;
+        overflow: hidden;
+        background: var(--color-sidebar-hover);
+    }
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) :where(.admin-shell-wrapper) .admin-sidebar .sidebar-heading[data-first] {
+        display: none;
+    }
+
     /* …and reappear as a hover FLYOUT to the right of the 70px rail — with the item's OWN label,
        so every collapsed item (leaves too, like Velzon "Widgets") shows its name on hover, not just
        a native title tooltip. Target span.sidebar-label only (the chevron carries the class too). */
@@ -388,6 +430,24 @@
     :root:not([data-bs-theme='dark']) .brand-logo--topbar-dark, /* legacy-token-ok: AdminChromeResolver still writes this attribute */
     :root[data-bs-theme='dark'] .brand-logo--topbar-light { display: block; } /* legacy-token-ok: same attribute */
 }
+/* On the brand-filled bar the light ink, whatever the scheme. */
+@media (min-width: 52.5rem) {
+    :root[data-topbar='dark'] .admin-topbar .brand-logo--topbar-dark { display: none; }
+    :root[data-topbar='dark'] .admin-topbar .brand-logo--topbar-light { display: block; }
+}
+/* The site admin's own topbar shows the full logo at every width below 1024px (board 01 at 390):
+   light ink on the brand-filled bar (dark, or auto below 1024px) and on the dark scheme, dark ink on a light bar. */
+@media (max-width: 52.49rem) {
+    .admin-topbar .topbar-logo .brand-logo--topbar-sm { display: none; }
+    .admin-topbar .topbar-logo .brand-logo--topbar-dark { display: block; }
+    :root:is([data-topbar='dark'], [data-topbar='auto'], [data-bs-theme='dark'], [data-theme='dark']) .admin-topbar .topbar-logo .brand-logo--topbar-dark { display: none; } /* legacy-token-ok: same attribute */
+    :root:is([data-topbar='dark'], [data-topbar='auto'], [data-bs-theme='dark'], [data-theme='dark']) .admin-topbar .topbar-logo .brand-logo--topbar-light { display: block; } /* legacy-token-ok: same attribute */
+}
+@media (min-width: 52.5rem) and (max-width: 63.98rem) {
+    :root[data-topbar='auto']:not([data-bs-theme='dark'], [data-theme='dark']) .admin-topbar .brand-logo--topbar-dark { display: none; } /* legacy-token-ok: same attribute */
+    :root[data-topbar='auto']:not([data-bs-theme='dark'], [data-theme='dark']) .admin-topbar .brand-logo--topbar-light { display: block; } /* legacy-token-ok: same attribute */
+}
+
 .admin-sidebar .brand-logo--light { display: block; } /* default dark sidebar → white logo */
 :root[data-sidebar='light'] .admin-sidebar .brand-logo--light { display: none; }
 :root[data-sidebar='light'] .admin-sidebar .brand-logo--dark { display: block; }

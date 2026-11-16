@@ -58,7 +58,7 @@ it('renders the shell brand (from config), search and footer', function (): void
         ->assertSee(config('admin.brand.name'))
         ->assertSee('brand-logo', false) // config-driven logo replaces the text name+tagline in the shell (name lives in its alt)
         ->assertSee(__('admin.search_placeholder'))
-        ->assertSee(__('auth.rights'));
+        ->assertSee(__('admin.footer_built_on'));
 });
 
 it('renders button + badge variants with Velzon-mirrored admin tokens', function (): void {
