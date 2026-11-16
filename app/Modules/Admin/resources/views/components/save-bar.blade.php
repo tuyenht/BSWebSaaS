@@ -46,7 +46,7 @@
     $stat = 'sb-st-'.substr(md5($save.'|'.$discard), 0, 6);
 @endphp
 <div x-ignore wire:ignore.self data-bs-lazy="bsSaveBar" data-bs-lazy-keep x-data="bsSaveBar({{ json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR) }})" data-set-savebar
-     x-on:keydown.enter.document="if (! $event.isComposing && ! $event.defaultPrevented && $event.target.form && $event.target.matches('input:not([type]),input:is([type=text],[type=search],[type=url],[type=tel],[type=email],[type=password],[type=number])') && ($root.closest('[data-set-shell]') || document).contains($event.target)) { $event.preventDefault(); go() }"
+     x-on:keydown.enter.document="if (! $event.isComposing && $event.keyCode !== 229 && ! $event.defaultPrevented && $event.target.form && $event.target.matches('input:not([type]),input:is([type=text],[type=search],[type=url],[type=tel],[type=email],[type=password],[type=number])') && ($root.closest('[data-set-shell]') || document).contains($event.target)) { $event.preventDefault(); go() }"
      role="region" aria-label="{{ __('admin.savebar.region') }}"
      class="sticky bottom-0 z-20 -mb-4 mt-4 flex flex-wrap items-center gap-x-3.5 gap-y-2.5 border-t border-border bg-surface pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] lg:-mb-6">
     <span hidden x-ref="state" data-sb-state data-changes="{{ $changes }}" data-invalid="{{ $invalid }}"
