@@ -52,6 +52,7 @@ use App\Modules\Admin\Livewire\WebsiteAppearanceSettings;
 use App\Modules\Admin\Livewire\WorkflowSettings;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Audit\Facades\Audit;
+use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Media\Http\Controllers\MediaUploadController;
@@ -59,6 +60,7 @@ use App\Modules\Storefront\Http\Controllers\FormSubmissionController;
 use App\Modules\Storefront\Http\Controllers\ProductPreviewController;
 use App\Modules\Storefront\Http\Controllers\RecordContactClick;
 use App\Modules\Storefront\Http\Controllers\RecordEntryView;
+use App\Modules\Storefront\Http\Controllers\SearchController;
 use App\Modules\Storefront\Http\Controllers\SitemapController;
 use App\Modules\Storefront\Http\Controllers\StorefrontController;
 use App\Modules\Storefront\Http\Middleware\ConditionalGet;
@@ -436,6 +438,20 @@ Route::prefix(config('admin.prefix', 'admin'))
     ->group(function (): void {
         Route::get('/{any}', [SessionController::class, 'unknownOnSite'])->where('any', '.*')->fallback()->name('admin.unknown');
     });
+
+// ── The site search page (SearchController): the default language unprefixed, every other public
+//    language under its prefix (an unknown one is the site's 404, the default's prefix a 301 to the
+//    unprefixed address). The storefront's own middleware, so a site that is not open shows its state
+//    page here too; its slug is reserved, so no content can take the address (PathBuilder). ─────────
+$storefrontSearch = [
+    StorefrontSession::class, ServeOnPrimaryDomain::class, SetCurrentSite::class, ShowSiteStatePage::class,
+    ConditionalGet::class, PreloadHeadAssets::class, EdgeCacheHeaders::class,
+];
+Route::get(PathBuilder::SEARCH_PATH, SearchController::class)
+    ->withoutMiddleware($storefrontSessionless)->middleware($storefrontSearch);
+Route::get('/{locale}'.PathBuilder::SEARCH_PATH, SearchController::class)
+    ->where('locale', '[A-Za-z]{2}(-[A-Za-z0-9]{2,8})?')
+    ->withoutMiddleware($storefrontSessionless)->middleware($storefrontSearch);
 
 // ── Storefront plane — public, tenant context. A fallback so it never shadows a
 //    defined route; resolves dynamic content for any other path (404 if none). A site that is

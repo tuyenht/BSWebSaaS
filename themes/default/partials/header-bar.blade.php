@@ -38,7 +38,9 @@
     $sfTopBar = count($sfTopOff) < 4;
     $sfTopOffClass = $sfTopBar ? implode('', array_map(static fn (string $band): string => ' sf-header--top-off-'.$band, $sfTopOff)) : '';
     // a menu too wide for a 1024px laptop keeps the menu button up to 1280px (StorefrontChrome::menuNeedsXl)
-    $sfMenuXl = ! empty($menu) && \App\Modules\Theme\Chrome\StorefrontChrome::menuNeedsXl($menu);
+    // (the search button at the end of the menu row counts against that room)
+    $sfSearch = ! empty($search) ? $search : null;
+    $sfMenuXl = ! empty($menu) && \App\Modules\Theme\Chrome\StorefrontChrome::menuNeedsXl($menu, $sfSearch !== null);
     $sfSizes = ['m' => __('storefront.text_size_m'), 'l' => __('storefront.text_size_l'), 'xl' => __('storefront.text_size_xl')];
 @endphp
 <header class="sf-header{{ $header['sticky'] ? ' sf-header--sticky' : '' }}{{ $sfTopBar ? ' sf-header--topbar' : '' }}{{ $sfMenuXl ? ' sf-header--menu-xl' : '' }}{{ $sfTopOffClass }}">
@@ -80,10 +82,16 @@
     @endif
     @php
         // The phone header's right corner. While the phone bottom bar is on, the call is hidden only where
-        // that bar shows (under 768px; it carries the call itself), so a tablet keeps it; search and cart
-        // draw nothing until the site has them.
+        // that bar shows (under 768px; it carries the call itself), so a tablet keeps it. Where the call
+        // steps aside (or the corner is set to search, or to the cart the site does not have yet), the
+        // magnifier takes the corner: cart, then search, then nothing. From 768px up to the menu button's
+        // last width the magnifier stands before the call.
         $sfCallHref = \App\Modules\Shared\Support\SafeLink::tel($brand['phone'] ?? null);
-        $sfCorner = ($header['mobile_corner'] ?? 'call') === 'call' && $sfCallHref !== null;
+        $sfCornerSetting = $header['mobile_corner'] ?? 'call';
+        $sfCorner = $sfCornerSetting === 'call' && $sfCallHref !== null;
+        $sfCornerSearch = $sfSearch !== null && in_array($sfCornerSetting, ['call', 'search', 'cart'], true);
+        // the magnifier waits for 768px when the call already takes the phone corner (no bottom bar)
+        $sfCornerSearchWide = $sfCorner && ! $sfBar;
     @endphp
     <div class="sf-bar">
         <div class="sf-container sf-bar__inner{{ ! empty($drawerMenu) ? ' sf-bar__inner--drawer' : '' }}">
@@ -103,13 +111,43 @@
             @if (! empty($menu))
                 <nav class="sf-nav sf-nav--desk" aria-label="{{ __('storefront.nav_main') }}">
                     @include('theme::partials.nav-disclosure', ['items' => $menu, 'depth' => 0, 'idPrefix' => 'dsm', 'drawer' => false])
+                    @if ($sfSearch !== null)
+                        <span class="sf-sdiv" aria-hidden="true"></span>
+                        @include('theme::partials.sf-search-button', ['href' => $sfSearch, 'place' => 'desk'])
+                    @endif
                 </nav>
+            @elseif ($sfSearch !== null)
+                @include('theme::partials.sf-search-button', ['href' => $sfSearch, 'place' => 'solo'])
             @endif
             @if (! empty($drawerMenu))
-                <span class="sf-bar__corner">@if ($sfCorner)<a class="sf-bar__call{{ $sfBar ? ' sf-bar__call--hasbar' : '' }}" href="{{ $sfCallHref }}" aria-label="{{ __('storefront.call_number', ['phone' => $brand['phone']]) }}">@include('theme::partials.sf-icon', ['name' => 'phone', 'size' => 24])</a>@endif</span>
+                <span class="sf-bar__corner">@includeWhen($sfCornerSearch, 'theme::partials.sf-search-button', ['href' => $sfSearch, 'place' => $sfCornerSearchWide ? 'corner-wide' : 'corner'])@if ($sfCorner)<a class="sf-bar__call{{ $sfBar ? ' sf-bar__call--hasbar' : '' }}" href="{{ $sfCallHref }}" aria-label="{{ __('storefront.call_number', ['phone' => $brand['phone']]) }}">@include('theme::partials.sf-icon', ['name' => 'phone', 'size' => 24])</a>@endif</span>
             @endif
         </div>
     </div>
+    @if ($sfSearch !== null)
+        {{-- The search panel: opens under the header (a script places it), as wide as the header's content,
+             over the dimmed page; the header itself stays bright. Esc, the ✕ or a click outside closes it and
+             focus goes back to the button. Without a script the buttons are links to the search page. --}}
+        <div class="sf-spanel" id="sf-search-panel" role="dialog" aria-label="{{ __('storefront.search.open') }}" hidden data-search-panel>
+            <div class="sf-spanel__dim"></div>
+            <div class="sf-container sf-spanel__wrap">
+                <div class="sf-spanel__box">
+                    @include('theme::partials.sf-search-field', ['action' => $sfSearch, 'id' => 'sf-search-q', 'close' => true])
+                    @php
+                        $sfQuick = \App\Modules\Storefront\Support\NotFoundPage::suggestions($menu ?? [], $homeUrl ?? '/', 6);
+                    @endphp
+                    @if ($sfQuick !== [])
+                        <p class="sf-spanel__label" id="sf-search-quick">{{ __('storefront.search.quick') }}</p>
+                        <ul class="sf-schips" aria-labelledby="sf-search-quick">
+                            @foreach ($sfQuick as $link)
+                                <li><a class="sf-schip" href="{{ $link['url'] }}">{{ $link['label'] }}</a></li>
+                            @endforeach
+                        </ul>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
     @if (! empty($drawerMenu))
         @php
             // The phone menu's tone (light by default; dark when set to dark or to follow the header bar) and its colours,

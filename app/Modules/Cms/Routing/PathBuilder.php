@@ -27,6 +27,12 @@ final readonly class PathBuilder
     /** Conventional home slug → site root (matches ProvisionSite + seedHomepage). */
     public const string HOME_SLUG = 'home';
 
+    /** The site search's results page (its own route, ahead of the storefront's content paths). */
+    public const string SEARCH_PATH = '/tim-kiem';
+
+    /** Unprefixed paths that belong to a page of the platform: no content may take one (RouteSync). */
+    public const array RESERVED_PATHS = [self::SEARCH_PATH];
+
     public function __construct(
         private SiteLocale $siteLocale,
         private PermalinkConfig $permalinks,
@@ -48,6 +54,18 @@ final readonly class PathBuilder
         $path = '/'.ltrim($path, '/');
 
         return $path === '/' ? '/'.$locale : '/'.$locale.$path;
+    }
+
+    /** Whether $path (unprefixed, as a route stores it) is a platform page's address that content may not take. */
+    public static function isReserved(string $path): bool
+    {
+        return in_array('/'.trim(strtolower($path), '/'), self::RESERVED_PATHS, true);
+    }
+
+    /** The site search's results page in $locale (the default language unprefixed, the others under /{locale}). */
+    public function searchUrl(string $locale): string
+    {
+        return $this->publicUrl(self::SEARCH_PATH, $locale);
     }
 
     /**

@@ -85,9 +85,12 @@ final class StorefrontChrome
     /** The menu's room in the bar at 1024px (see menuNeedsXl). */
     private const int MENU_ROOM_LG = 698;
 
+    /** What the site search button takes from that room: a 4px gap, the 1px divider with 8px each side and the 44px button, as measured. */
+    private const int MENU_SEARCH = 69;
+
     /**
      * @param  mixed  $raw  the stored `storefront.header` value (an array when set)
-     * @return array{top_bar: list<array{kind: string, text: string, href: string|null, from: string, below: string|null}>, text_size: bool, sticky: bool, mobile_corner: string, drawer_products: bool, drawer_tone: string, drawer_accent: string}|null
+     * @return array{top_bar: list<array{kind: string, text: string, href: string|null, from: string, below: string|null}>, text_size: bool, sticky: bool, mobile_corner: string, drawer_products: bool, drawer_tone: string, drawer_accent: string, search: bool}|null
      */
     public static function header(mixed $raw, string $locale, string $default): ?array
     {
@@ -138,7 +141,21 @@ final class StorefrontChrome
             'drawer_accent' => in_array($raw['drawer_accent'] ?? null, self::DRAWER_ACCENTS, true) ? (string) $raw['drawer_accent'] : 'neutral',
             // What the phone header's right corner offers: call, search, cart or nothing (search and cart draw nothing until the site has them).
             'mobile_corner' => in_array($raw['mobile_corner'] ?? null, self::MOBILE_CORNERS, true) ? (string) $raw['mobile_corner'] : 'call',
+            // "Có tìm kiếm": the site search (header button, the 404 page's box, /tim-kiem) is on unless switched off.
+            'search' => self::searchOn($raw),
         ];
+    }
+
+    /**
+     * Whether the website's search is on ("Có tìm kiếm", a key of the `storefront.header` setting): on
+     * unless the stored value is exactly false, so a site with no header setting, or with a value
+     * that is not a yes/no, keeps it.
+     *
+     * @param  mixed  $raw  the stored `storefront.header` value
+     */
+    public static function searchOn(mixed $raw): bool
+    {
+        return ! is_array($raw) || ($raw['search'] ?? true) !== false;
     }
 
     /**
@@ -549,11 +566,13 @@ final class StorefrontChrome
      * Calibrated on Chromium at the default text size: An Vinh's nine items (71 label characters,
      * one heading-only parent, two parents with a page) measure 837px and estimate 887px; the room
      * at 1024px is 698px (1024 less a 15px scroll bar, the 2rem side padding, a 200px logo, the
-     * 1rem gap and the menu's 1.5rem offset).
+     * 1rem gap and the menu's 1.5rem offset). With the site search on, its button at the end of the
+     * menu row takes 69px of that room (698 → 629px).
      *
      * @param  mixed  $menu  the resolved desktop menu (a list of menu nodes)
+     * @param  bool  $search  whether the menu row also carries the search button
      */
-    public static function menuNeedsXl(mixed $menu): bool
+    public static function menuNeedsXl(mixed $menu, bool $search = false): bool
     {
         $width = 0.0;
         $count = 0;
@@ -575,7 +594,7 @@ final class StorefrontChrome
             }
         }
 
-        return $width + self::MENU_GAP * max(0, $count - 1) > self::MENU_ROOM_LG;
+        return $width + self::MENU_GAP * max(0, $count - 1) > self::MENU_ROOM_LG - ($search ? self::MENU_SEARCH : 0);
     }
 
     /**

@@ -6,9 +6,10 @@
     ($notice.actions: on the 404 page "home" then the site's contact page when it names one, labelled
     with the site's own name; on a site that is not open one button, reload or the site's public
     email), then the main menu's first links ($suggestions, 404 only; left out when there are none).
-    $notice absent = the 404 page. Nothing here names a tenant.
-    The site search box the design draws on the 404 page waits for site search (not built yet).
+    $notice absent = the 404 page. Nothing here names a tenant. On the 404 page, while the site has
+    search ($search, PageChrome), the site search box comes under the line of help, before the buttons.
 --}}
+@php($sfMissing = ! isset($notice))
 @php($notice ??= [
     'icon' => 'compass',
     'code' => '404',
@@ -41,6 +42,11 @@
 @endif
             <h1 class="sf-404__title">{{ $notice['heading'] }}</h1>
             <p class="sf-404__text">{{ $notice['text'] }}</p>
+@if ($sfMissing && ! empty($search))
+            <div class="sf-404__search">
+                @include('theme::partials.sf-search-field', ['action' => $search, 'id' => 'sf-404-q', 'label' => __('storefront.search.field'), 'small' => true])
+            </div>
+@endif
 @if ($noticeActions !== [])
             <div class="sf-404__actions">
 @foreach ($noticeActions as $action)

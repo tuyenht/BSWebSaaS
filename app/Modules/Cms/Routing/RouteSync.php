@@ -17,7 +17,8 @@ use Illuminate\Database\Eloquent\Builder;
  * renames stay a single hop, not a chain) and drops a redirect FROM the new path (so an
  * A→B→A rename cannot loop). A path resolves to exactly one target — a clash with a
  * DIFFERENT target raises RouteConflictException (a friendly "slug taken", not a DB 500);
- * this covers entry-vs-entry AND entry-vs-taxonomy (A2). Runs inside the tenant context
+ * this covers entry-vs-entry AND entry-vs-taxonomy (A2), and a path the platform keeps for a page of
+ * its own (PathBuilder::RESERVED_PATHS: the site search) is refused the same way. Runs inside the tenant context
  * (BelongsToSite + RLS scope every query to the site).
  */
 final readonly class RouteSync
@@ -197,11 +198,11 @@ final readonly class RouteSync
     }
 
     /**
-     * @throws RouteConflictException the path belongs to a different target
+     * @throws RouteConflictException the path belongs to a different target, or to a page of the platform (the site search)
      */
     private function assertPathAvailable(string $locale, string $path, string $ownColumn, int $ownId): void
     {
-        if ($this->foreignRoute($locale, $path, $ownColumn, $ownId) !== null) {
+        if (PathBuilder::isReserved($path) || $this->foreignRoute($locale, $path, $ownColumn, $ownId) !== null) {
             throw new RouteConflictException($path);
         }
     }

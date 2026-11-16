@@ -238,8 +238,8 @@ it('hides the menu button from lg (xl for a wide menu) and the text-size control
     }
     // the desktop menu and the phone panel switch at the same width as the menu button: lg, or xl
     // for a menu too wide for a laptop; nothing squeezes a wide menu into 1024–1279 any more
-    expect($css)->toContain("@media (min-width: 1024px) {\n    .sf-header:not(.sf-header--menu-xl) .sf-nav--desk {\n        display: block;\n        margin-left: auto;")
-        ->toContain("@media (min-width: 1280px) {\n    .sf-header--menu-xl .sf-nav--desk {\n        display: block;\n        margin-left: auto;")
+    expect($css)->toContain("@media (min-width: 1024px) {\n    .sf-header:not(.sf-header--menu-xl) .sf-nav--desk {\n        display: flex;\n        align-items: center;\n        margin-left: auto;")
+        ->toContain("@media (min-width: 1280px) {\n    .sf-header--menu-xl .sf-nav--desk {\n        display: flex;\n        align-items: center;\n        margin-left: auto;")
         ->toContain("@media (min-width: 1024px) {\n    .sf-header:not(.sf-header--menu-xl) .sf-nav--mob {\n        visibility: hidden;")
         ->toContain("@media (min-width: 1280px) {\n    .sf-header--menu-xl .sf-nav--mob {\n        visibility: hidden;")
         ->not->toContain('@media (min-width: 1024px) and (max-width: 1279.98px)')

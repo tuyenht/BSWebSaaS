@@ -241,5 +241,7 @@ it('draws the automatic icon in the phone drawer and not in the desktop bar', fu
     expect($drawer)->toContain('sf-nav--icons')
         ->toMatch('~<a[^>]*class="sf-nav__link[^"]*"[^>]*>\\s*<svg class="sf-icon sf-nav__ic"[^>]*>.*?</svg><span class="sf-nav__t">Tin tức</span>~s')
         ->toMatch('~<a[^>]*class="sf-nav__link[^"]*"[^>]*>\\s*<span class="sf-nav__t">Giới thiệu</span>~s')
-        ->and(moDesk($html))->toContain('Tin tức')->not->toContain('<svg');
+        // the bar's only drawing is the search button's magnifier, after the menu
+        ->and(moDesk($html))->toContain('Tin tức')->toContain('<a class="sf-sbtn sf-sbtn--desk"')
+        ->and(preg_replace('~<a class="sf-sbtn.*?</a>~s', '', moDesk($html)))->not->toContain('<svg');
 });

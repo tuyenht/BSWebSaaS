@@ -317,6 +317,56 @@ it('renders the site’s 404 page within the same query budget when the site nam
         ->and($count)->toBeLessThanOrEqual($budget);
 });
 
+it('renders the site search results page on one fixed query budget, however many rows and groups it shows', function (): void {
+    // The chrome as on the 404 page (settings, brand, menus, the phone menu's products read), the rate
+    // limit in the cache (no query), then the search: one plan statement (word counts and matched
+    // categories), one for the posts and pages, one for the products; then the rows shown: the
+    // category names, the posts with their translations and addresses, the products with their
+    // translations, categories (and their names) and pictures. The same count for 1 row per group or 3.
+    $budget = 23;
+    $seed = function (int $site, int $perGroup): void {
+        app(Tenancy::class)->enter($site, function () use ($site, $perGroup): void {
+            foreach (['Tin tức', 'Dự án'] as $i => $name) {
+                $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => $i]);
+                $category->translations()->create(['locale' => 'vi', 'name' => $name, 'slug' => 'nhom-'.$category->id]);
+                app(TaxonomyPaths::class)->refreshBranch($category->id);
+                foreach (range(1, $perGroup) as $n) {
+                    $entry = Entry::query()->create(['type' => 'post', 'status' => 'published', 'published_at' => now()->subMinutes($n), 'meta' => []]);
+                    $entry->translations()->create(['locale' => 'vi', 'title' => "Khuôn {$name} {$n}", 'slug' => 'khuon-'.$entry->id, 'status' => 'published', 'excerpt' => 'Khuôn mẫu']);
+                    SiteRoute::query()->create(['locale' => 'vi', 'path' => '/khuon-'.$entry->id, 'entry_id' => $entry->id]);
+                    $entry->assignCategories([$category->id]);
+                }
+            }
+            $shelf = Taxonomy::query()->create(['vocabulary' => 'product_cat', 'position' => 0]);
+            $shelf->translations()->create(['locale' => 'vi', 'name' => 'Kệ', 'slug' => 'ke-'.$shelf->id]);
+            app(TaxonomyPaths::class)->refreshBranch($shelf->id);
+            foreach (range(1, $perGroup) as $n) {
+                $product = Product::query()->create(['status' => 'published', 'sku' => "K-{$n}", 'published_at' => now()->subMinutes($n)]);
+                $product->translations()->create(['locale' => 'vi', 'name' => "Khuôn {$n}", 'slug' => 'khuon-sp-'.$product->id]);
+                $product->taxonomies()->attach($shelf->id, ['site_id' => $site, 'position' => 0]);
+            }
+            SiteSetting::query()->updateOrCreate(['group_name' => 'storefront', 'key' => 'header'], ['value' => ['top_bar' => ['items' => []]]]);
+        });
+    };
+    $measure = function (string $host): array {
+        $html = '';
+        $count = countQueries(function () use (&$html, $host): void {
+            $html = $this->get("http://{$host}/tim-kiem?q=khuon")->assertOk()->getContent();
+        });
+
+        return [$count, substr_count($html, 'class="sf-search__rw"')];
+    };
+
+    $seed(1, 1);
+    $seed(2, 3);   // three of each: still one read per kind
+    [$few, $fewRows] = $measure('a.test');
+    [$many, $manyRows] = $measure('b.test');
+
+    expect($fewRows)->toBe(3)->and($manyRows)->toBe(9)
+        ->and($many)->toBe($few)
+        ->and($many)->toBeLessThanOrEqual($budget);
+});
+
 it('renders a stats block of plain numbers with no query of its own, and a years item with the one settings read', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         $numbers = fn () => View::make('theme::sections.stats', ['props' => ['items' => [['value' => 3, 'label' => 'Nhà máy'], ['value' => 4300, 'label' => 'Nhà xưởng']]]])->render();
