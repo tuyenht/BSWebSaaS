@@ -63,7 +63,7 @@
     $fcUp = $fc['lift'] !== [] ? ' data-up="'.implode(' ', $fc['lift']).'"' : '';
     // With the raised call a narrow bar re-orders its visible cells (flex order, from the class sheet): the
     // call in the middle where it is raised, the saved order where it is not; the wide bar keeps the drawn order.
-    $fcOrd = static fn (array $c): string => $fc['raise'] ? ' style="--fc-o4:'.$c['o4'].';--fc-o3:'.$c['o3'].'"' : '';
+    $fcOrd = static fn (array $c): string => $fc['lift'] !== [] ? ' style="--fc-o4:'.$c['o4'].';--fc-o3:'.$c['o3'].'"' : '';
     $fcCopy = $fcFloat && array_filter($fc['buttons'], static fn (array $b): bool => $b['tel'] !== null && $b['key'] === 'phone') !== [];
 @endphp
 @if ($fcFloat)
