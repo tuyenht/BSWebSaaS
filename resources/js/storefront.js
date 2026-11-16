@@ -483,6 +483,15 @@ if (searchPanel) {
     });
 }
 
+// Search suggestions while typing: their code (sf-search-suggest.js, its address in the box's
+// data-suggest-js) is fetched the first time a search box takes focus; it then serves every box.
+document.addEventListener('focusin', (event) => {
+    const src = event.target.closest?.('form[data-suggest-js]')?.dataset.suggestJs;
+    if (src) {
+        import(/* @vite-ignore */ src).catch(() => {});
+    }
+});
+
 // Search results: "Xem thêm" is a link to the next rows of its group (it works without this script);
 // here the next rows are fetched and added under the group's rows, and the link moves on.
 document.addEventListener('click', (event) => {

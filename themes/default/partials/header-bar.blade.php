@@ -137,8 +137,8 @@
                         $sfQuick = \App\Modules\Storefront\Support\NotFoundPage::suggestions($menu ?? [], $homeUrl ?? '/', 6);
                     @endphp
                     @if ($sfQuick !== [])
-                        <p class="sf-spanel__label" id="sf-search-quick">{{ __('storefront.search.quick') }}</p>
-                        <ul class="sf-schips" aria-labelledby="sf-search-quick">
+                        <p class="sf-spanel__label" id="sf-search-quick" data-search-quick>{{ __('storefront.search.quick') }}</p>
+                        <ul class="sf-schips" aria-labelledby="sf-search-quick" data-search-quick>
                             @foreach ($sfQuick as $link)
                                 <li><a class="sf-schip" href="{{ $link['url'] }}">{{ $link['label'] }}</a></li>
                             @endforeach

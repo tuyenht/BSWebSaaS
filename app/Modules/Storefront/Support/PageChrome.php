@@ -113,6 +113,8 @@ final readonly class PageChrome
             // The site search page in the page's language, for the header button, the 404 page's box and the
             // search page itself; null while the site has search switched off ("Có tìm kiếm", on unless set off).
             'search' => StorefrontChrome::searchOn($headerRaw) ? $this->paths->searchUrl($locale) : null,
+            // Where the search boxes ask for suggestions while the visitor types (null with search off).
+            'searchSuggest' => StorefrontChrome::searchOn($headerRaw) ? $this->paths->suggestUrl($locale) : null,
         ];
     }
 

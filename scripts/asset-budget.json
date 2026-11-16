@@ -82,7 +82,7 @@
     },
     "resources/css/sf-search.css": {
       "js": 0,
-      "css": 1327
+      "css": 2008
     },
     "resources/js/app.js": {
       "js": 15355,
@@ -148,8 +148,12 @@
       "js": 167,
       "css": 0
     },
+    "resources/js/sf-search-suggest.js": {
+      "js": 2990,
+      "css": 0
+    },
     "resources/js/storefront.js": {
-      "js": 3518,
+      "js": 3556,
       "css": 0
     }
   },

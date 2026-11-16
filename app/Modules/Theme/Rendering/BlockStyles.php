@@ -41,7 +41,7 @@ final class BlockStyles
         'resources/css/sf-stats.css' => ['sf-stat', 'sf-stats'],
         'resources/css/sf-floating.css' => ['sf-fc', 'sf-fc-bar', 'sf-fc-ghost', 'sf-fc-sheet'],
         'resources/css/sf-404.css' => ['sf-404', 'error-page'],
-        'resources/css/sf-search.css' => ['sf-search'],
+        'resources/css/sf-search.css' => ['sf-search', 'sf-ssug'],
     ];
 
     /** Every block stylesheet between the markers (the head's default, before the page is narrowed). */

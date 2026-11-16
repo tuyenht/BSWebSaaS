@@ -4,8 +4,26 @@
     ($close: the ✕ that closes the panel, after the box), the search page ($value: the words searched for)
     and the 404 page ($label: a visible label above the box instead of the field's own name; $small:
     the rounder, lower box). $id names the field. Every value is Blade-escaped.
+    With search on, the page's $searchSuggest (PageChrome) is where the box asks for suggestions while
+    the visitor types: the script (data-suggest-js, fetched on the first focus), its stylesheet and its
+    texts ride on the form; without a script nothing changes.
 --}}
-<form class="sf-sform{{ ! empty($close) ? ' sf-sform--panel' : '' }}" role="search" action="{{ $action }}" method="get">
+@php
+    $sfSuggest = ! empty($searchSuggest) && is_string($searchSuggest) ? $searchSuggest : null;
+@endphp
+<form class="sf-sform{{ ! empty($close) ? ' sf-sform--panel' : '' }}" role="search" action="{{ $action }}" method="get"@if ($sfSuggest !== null) data-suggest="{{ $sfSuggest }}" data-suggest-js="{{ \Illuminate\Support\Facades\Vite::asset('resources/js/sf-search-suggest.js') }}" data-suggest-css="{{ \Illuminate\Support\Facades\Vite::asset('resources/css/sf-search.css') }}" data-suggest-text="{{ json_encode([
+    'label' => __('storefront.search.suggest_label'),
+    'one' => __('storefront.search.suggest_one'),
+    'count' => __('storefront.search.suggest_count'),
+    'none' => __('storefront.search.suggest_none'),
+    'enter' => __('storefront.search.suggest_enter'),
+    'loading' => __('storefront.search.suggest_loading'),
+    'all' => __('storefront.search.suggest_all'),
+    'all_short' => __('storefront.search.suggest_all_short'),
+    'select' => __('storefront.search.suggest_select'),
+    'open' => __('storefront.search.suggest_open'),
+    'close' => __('storefront.search.suggest_close'),
+], JSON_UNESCAPED_UNICODE) }}"@endif>
 @if (! empty($label))
     <label class="sf-sform__label" for="{{ $id }}">{{ $label }}</label>
 @endif

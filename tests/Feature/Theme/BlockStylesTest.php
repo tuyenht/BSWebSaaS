@@ -180,6 +180,12 @@ describe('on a page', function (): void {
             {
                 return new HtmlString(collect((array) $entrypoints)->map(fn (string $entry): string => str_ends_with($entry, '.css') ? '<link rel="stylesheet" href="/'.$entry.'">' : '<script type="module" src="/'.$entry.'"></script>')->implode(''));
             }
+
+            // the search box names its lazy script by address (no build in the test run)
+            public function asset($asset, $buildDirectory = null): string
+            {
+                return '/'.$asset;
+            }
         });
     });
 

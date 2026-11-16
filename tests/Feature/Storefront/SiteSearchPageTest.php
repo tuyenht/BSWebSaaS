@@ -299,7 +299,7 @@ it('turns the search off everywhere with the header setting: no button, no 404 b
     $missing = $this->get('http://b.test/khong-co-trang-nay')->assertNotFound()->getContent();
     expect($missing)->toContain('<div class="sf-404__search">')
         ->toContain('<label class="sf-sform__label" for="sf-404-q">Tìm trên website</label>')
-        ->toContain('<form class="sf-sform" role="search" action="/tim-kiem" method="get">');
+        ->toContain('<form class="sf-sform" role="search" action="/tim-kiem" method="get" data-suggest="/tim-kiem/goi-y" data-suggest-js="');
 });
 
 it('serves the page in every public language under its prefix, and the default language unprefixed', function (): void {
@@ -375,12 +375,12 @@ it('draws the header’s magnifier after the menu behind a line, and the panel a
         ->toMatch('#</ul>\s*<span class="sf-sdiv" aria-hidden="true"></span>\s*<a class="sf-sbtn sf-sbtn--desk" href="/tim-kiem" aria-label="Tìm kiếm" aria-controls="sf-search-panel" data-search-open>#')
         ->toContain('<span class="sf-tip" aria-hidden="true">Tìm kiếm</span>')
         ->toContain('<div class="sf-spanel" id="sf-search-panel" role="dialog" aria-label="Tìm kiếm" hidden data-search-panel>')
-        ->toContain('<form class="sf-sform sf-sform--panel" role="search" action="/tim-kiem" method="get">')
+        ->toContain('<form class="sf-sform sf-sform--panel" role="search" action="/tim-kiem" method="get" data-suggest="/tim-kiem/goi-y" data-suggest-js="')
         ->toContain('placeholder="Tìm sản phẩm, dịch vụ, dự án, tin tức…" aria-label="Tìm trên website"')
         ->toContain('maxlength="100"')
         ->toContain('<button type="submit" class="sf-sfield__go">Tìm</button>')
         ->toContain('aria-label="Đóng tìm kiếm" data-search-close>')
-        ->toContain('<p class="sf-spanel__label" id="sf-search-quick">Gợi ý nhanh</p>')
+        ->toContain('<p class="sf-spanel__label" id="sf-search-quick" data-search-quick>Gợi ý nhanh</p>')
         ->toContain('<li><a class="sf-schip" href="/san-pham">Sản phẩm</a></li>');
 
     spSite(2, ['search' => false]);

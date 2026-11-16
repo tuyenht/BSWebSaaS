@@ -61,6 +61,7 @@ use App\Modules\Storefront\Http\Controllers\ProductPreviewController;
 use App\Modules\Storefront\Http\Controllers\RecordContactClick;
 use App\Modules\Storefront\Http\Controllers\RecordEntryView;
 use App\Modules\Storefront\Http\Controllers\SearchController;
+use App\Modules\Storefront\Http\Controllers\SearchSuggestController;
 use App\Modules\Storefront\Http\Controllers\SitemapController;
 use App\Modules\Storefront\Http\Controllers\StorefrontController;
 use App\Modules\Storefront\Http\Middleware\ConditionalGet;
@@ -452,6 +453,16 @@ Route::get(PathBuilder::SEARCH_PATH, SearchController::class)
 Route::get('/{locale}'.PathBuilder::SEARCH_PATH, SearchController::class)
     ->where('locale', '[A-Za-z]{2}(-[A-Za-z0-9]{2,8})?')
     ->withoutMiddleware($storefrontSessionless)->middleware($storefrontSearch);
+
+// ── The suggestions under a search box while the visitor types (SearchSuggestController): JSON, in the
+//    same languages and addresses as the search page. A site that is not open is refused by
+//    site.active (no state page: the box simply shows no suggestion); never cached, never indexed. ───
+$storefrontSuggest = [StorefrontSession::class, ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active', EdgeCacheHeaders::class];
+Route::get(PathBuilder::SUGGEST_PATH, SearchSuggestController::class)
+    ->withoutMiddleware($storefrontSessionless)->middleware($storefrontSuggest);
+Route::get('/{locale}'.PathBuilder::SUGGEST_PATH, SearchSuggestController::class)
+    ->where('locale', '[A-Za-z]{2}(-[A-Za-z0-9]{2,8})?')
+    ->withoutMiddleware($storefrontSessionless)->middleware($storefrontSuggest);
 
 // ── Storefront plane — public, tenant context. A fallback so it never shadows a
 //    defined route; resolves dynamic content for any other path (404 if none). A site that is
