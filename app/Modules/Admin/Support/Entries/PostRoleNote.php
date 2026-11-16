@@ -27,26 +27,28 @@ final class PostRoleNote
     /**
      * @return array{role: string, governed: bool, text: string, summary: string}
      */
-    public static function for(User $user, string $sectionKey, bool $scoped): array
+    public static function for(User $user, string $sectionKey, string $section, bool $scoped): array
     {
-        return self::with($user, app(WorkflowEngine::class)->activeFor($sectionKey), $scoped);
+        return self::with($user, app(WorkflowEngine::class)->activeFor($sectionKey), $section, $scoped);
     }
 
     /**
-     * The card for a section whose active workflow (or none) the caller has already read.
+     * The card for a section whose active workflow (or none) the caller has already read. The sentence
+     * names the section (its label in the admin's language): approval is switched on per section, so
+     * "Tin tức" may publish straight away while "Dự án" goes through review.
      *
      * @return array{role: string, governed: bool, text: string, summary: string}
      */
-    public static function with(User $user, ?Workflow $workflow, bool $scoped): array
+    public static function with(User $user, ?Workflow $workflow, string $section, bool $scoped): array
     {
         $governed = $workflow instanceof Workflow;
 
         if ($workflow instanceof Workflow) {
-            $text = Cast::string(__('entries.role_governed', ['name' => $workflow->name]));
+            $text = Cast::string(__('entries.role_governed', ['section' => $section, 'name' => $workflow->name]));
             $may = self::throughWorkflow($workflow, $user)
                 ?? ($user->can('entries.edit.any') || $user->can('entries.edit.own') ? __('entries.role_no_step') : __('entries.role_view_only'));
         } else {
-            $text = Cast::string(__('entries.role_direct'));
+            $text = Cast::string(__('entries.role_direct', ['section' => $section]));
             $may = match (true) {
                 $user->can('entries.publish') => __('entries.role_may_publish'),
                 $user->can('entries.submit') => __('entries.role_may_submit'),
