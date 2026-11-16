@@ -32,8 +32,9 @@
         </div>
     </div>
 
+    {{-- Enter in a field is the save bar's "Lưu" (it waits while a save runs and does nothing with nothing to save); the form itself never submits, so the page never reloads --}}
     @foreach ($providers as $provider)
-        <form wire:submit="save" wire:key="social-{{ $provider }}"
+        <form x-data x-on:submit.prevent wire:key="social-{{ $provider }}"
               class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
             <div class="flex items-center justify-between border-b border-border px-5 py-3">
                 <h3 class="text-sm font-semibold text-body-text">{{ ucfirst($provider) }}

@@ -11,6 +11,7 @@ use App\Modules\Shared\Support\Cast;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
@@ -26,13 +27,15 @@ final class SocialSettings extends Component
 {
     use TracksSavedState;
 
-    /** @var list<string> */
+    /** @var list<string> The providers this screen may write; save() trusts it, so the browser cannot change it. */
+    #[Locked]
     public array $providers = ['google', 'facebook'];
 
     /** @var array<string, array{client_id: string, client_secret: string, enabled: bool}> */
     public array $forms = [];
 
     /** @var array<string, bool> */
+    #[Locked]
     public array $secretSet = [];
 
     public function boot(): void
@@ -51,18 +54,19 @@ final class SocialSettings extends Component
 
     /**
      * Save one provider's app, or (no provider: the save bar's "Lưu") every provider that differs
-     * from what is saved.
+     * from what is saved. False when nothing was saved (nothing differed, or a provider this screen
+     * does not offer was sent).
      */
-    public function save(?string $provider = null): void
+    public function save(?string $provider = null): bool
     {
         $chosen = $provider === null ? $this->unsavedFields() : [$provider];
         if ($chosen === []) {
-            return;
+            return false;
         }
         $rules = [];
         foreach ($chosen as $key) {
             if (! in_array($key, $this->providers, true)) {
-                return;
+                return false;
             }
             $rules['forms.'.$key.'.client_id'] = ['nullable', 'string', 'max:255'];
             $rules['forms.'.$key.'.client_secret'] = ['nullable', 'string', 'max:1024'];
@@ -75,6 +79,8 @@ final class SocialSettings extends Component
         }
         $this->rememberSaved();
         session()->flash('status', __('admin.saved'));
+
+        return true;
     }
 
     /** Back to the saved apps (the save bar's "Bỏ thay đổi"); a secret typed but not saved is dropped. */

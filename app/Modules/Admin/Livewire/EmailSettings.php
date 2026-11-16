@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Throwable;
 
@@ -39,8 +40,11 @@ final class EmailSettings extends Component
     private const array TRACKED = ['method', 'smtpHost', 'smtpPort', 'smtpEncryption', 'smtpUsername', 'smtpPassword',
         'oauthProvider', 'oauthClientId', 'oauthClientSecret', 'fromAddress', 'fromName', 'replyTo'];
 
+    /** Which sender this screen writes (this site's or the system's); set once, never by the browser. */
+    #[Locked]
     public string $scope = 'site';
 
+    #[Locked]
     public bool $isSuperAdmin = false;
 
     public string $method = 'smtp_password';
@@ -145,7 +149,8 @@ final class EmailSettings extends Component
         $this->oauthConnectedEmail = is_string($connectedEmail) && ! empty($oauth['refresh_token']) ? $connectedEmail : null;
     }
 
-    public function save(): void
+    /** True once written (a form that fails its checks stops at validation). */
+    public function save(): bool
     {
         // Platform scope mutates global config → re-verify super_admin server-side (the
         // public $scope/$isSuperAdmin props are hydrated from the client, never trusted).
@@ -204,6 +209,8 @@ final class EmailSettings extends Component
         $this->loadConfig($this->scope);
         $this->rememberSaved();
         session()->flash('status', __('admin.saved'));
+
+        return true;
     }
 
     public function connect(): RedirectResponse

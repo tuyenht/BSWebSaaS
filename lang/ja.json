@@ -3912,6 +3912,8 @@
     "admin.savebar.discard": "変更を破棄",
     "admin.savebar.save": "保存",
     "admin.savebar.saving": "保存中…",
+    "admin.savebar.load_failed": "保存バーを読み込めませんでした。入力した内容はそのまま残っています。「保存」を押すと今すぐ保存できます。または「再試行」を押してください。",
+    "admin.savebar.retry": "再試行",
     "admin.gs.toast_saved": "基本情報を保存しました",
     "admin.gs.toast_invalid": ":count 件の項目が無効です — 修正してからもう一度保存してください",
     "admin.gs.toast_reset": "変更を破棄しました",

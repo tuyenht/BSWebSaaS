@@ -10,6 +10,10 @@
 //  - A section that checks its fields as they are left (live) sends "Lưu" to the first field in
 //    error while any is left; the others let the server check on save.
 //  - "Lưu" shows it is busy at once and takes no second press until the round trip is over.
+//    "Đã lưu HH:MM" follows only a save the page says it made (its save method answers true).
+//  - Enter in a one-line field of a section's form is "Lưu" too, with the same checks (a form
+//    with several fields and no submit button would otherwise ignore it): the bar's keydown
+//    listener in components/save-bar.blade.php calls go().
 //  - The bar's height (--sb-h on <html>) keeps a focused field at the bottom of the page in view.
 
 const two = (n) => (n < 10 ? '0' : '') + n;
@@ -28,7 +32,7 @@ export function clock(d) {
 export function saveBar(cfg) {
     let mo = null;
     let ro = null;
-    let onTyped = null;
+    let off = null;
 
     return {
         count: 0,
@@ -45,10 +49,10 @@ export function saveBar(cfg) {
                 mo.observe(state, { attributes: true });
             }
             this.typed = !!document.querySelector('[data-unsaved-guard][data-typed]');
-            onTyped = (e) => {
+            off = new window.AbortController();
+            window.addEventListener('bs-unsaved-typed', (e) => {
                 this.typed = !!(e.detail && e.detail.on);
-            };
-            window.addEventListener('bs-unsaved-typed', onTyped);
+            }, off);
             if (window.ResizeObserver) {
                 ro = new window.ResizeObserver(() => this.fit());
                 ro.observe(this.$root);
@@ -63,8 +67,8 @@ export function saveBar(cfg) {
             if (ro) {
                 ro.disconnect();
             }
-            if (onTyped) {
-                window.removeEventListener('bs-unsaved-typed', onTyped);
+            if (off) {
+                off.abort();
             }
             document.documentElement.style.removeProperty('--sb-h');
         },
@@ -116,15 +120,12 @@ export function saveBar(cfg) {
                 return;
             }
             this.busy = 'save';
-            let sent = true;
-            try {
-                await this.$wire[cfg.save]();
-            } catch {
-                sent = false;
-            }
+            // The page's save answers true once it wrote; false (nothing differed, refused) or a lost
+            // request leaves the status as it was.
+            const saved = await this.$wire[cfg.save]().then((r) => r === true, () => false);
             this.busy = '';
             this.read();
-            if (sent && this.count === 0 && this.invalid === 0) {
+            if (saved && this.count === 0 && this.invalid === 0) {
                 this.savedAt = clock(new Date());
             }
         },

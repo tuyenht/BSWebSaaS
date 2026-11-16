@@ -42,7 +42,8 @@
     @endif
 
     {{-- Configuration form --}}
-    <form wire:submit="save" class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
+    {{-- Enter in a field is the save bar's "Lưu" (it waits while a save runs and does nothing with nothing to save); the form itself never submits, so the page never reloads --}}
+    <form x-data x-on:submit.prevent class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
         <div class="border-b border-border px-5 py-3">
             <h2 class="text-[15px] font-semibold text-body-text">{{ __('admin.email_settings') }}</h2>
             <p class="mt-0.5 text-xs text-body-muted">{{ __('admin.email_settings_desc') }}</p>

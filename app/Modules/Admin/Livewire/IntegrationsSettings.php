@@ -115,7 +115,7 @@ final class IntegrationsSettings extends Component
     }
 
     #[Authorize('settings.manage')]
-    public function save(): void
+    public function save(): bool
     {
         $this->resetErrorBag();
         $bad = [];
@@ -132,12 +132,14 @@ final class IntegrationsSettings extends Component
                 : __('admin.int.toast_invalid_one', ['name' => $names[0]]), 'error');
             $this->dispatch('int-first-error');
 
-            return;
+            return false;
         }
 
         app(SettingsRepository::class)->put('storefront', 'verification', $this->stored());
         $this->load();
         $this->notify(__('admin.int.toast_saved'));
+
+        return true;
     }
 
     /** Back to the saved setting. */

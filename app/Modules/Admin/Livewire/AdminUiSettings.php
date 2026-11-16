@@ -59,7 +59,7 @@ final class AdminUiSettings extends Component
         $this->load();
     }
 
-    public function save(): void
+    public function save(): bool
     {
         $rules = [];
         foreach (AdminChromeResolver::FIELDS as $field => $allowed) {
@@ -87,6 +87,8 @@ final class AdminUiSettings extends Component
             'admin-chrome-changed',
             attributes: app(AdminChromeResolver::class)->attributes($user instanceof User ? $user : null),
         );
+
+        return true;
     }
 
     /** Back to the saved look (the save bar's "Bỏ thay đổi"). */

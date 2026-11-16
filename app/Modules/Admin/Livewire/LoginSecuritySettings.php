@@ -35,14 +35,17 @@ final class LoginSecuritySettings extends Component
 
     public function mount(): void
     {
-        $this->turnstileLogin = LoginTurnstile::enabled();
-        $this->rememberSaved();
+        $this->load();
     }
 
-    public function save(): void
+    /** Saves the switch; false when nothing differed (no write, no audit entry) or nothing was saved. */
+    public function save(): bool
     {
         abort_unless($this->isSuperAdmin(), 403);
         $this->validate(['turnstileLogin' => ['required', 'boolean']]);
+        if ($this->unsavedCount() === 0) {
+            return false;
+        }
 
         $security = app(PlatformSettings::class)->get(LoginTurnstile::GROUP) ?? [];
         $security[LoginTurnstile::KEY] = $this->turnstileLogin;
@@ -57,13 +60,15 @@ final class LoginSecuritySettings extends Component
 
         $this->rememberSaved();
         session()->flash('status', __('admin.saved'));
+
+        return true;
     }
 
     /** Back to the saved switch (the save bar's "Bỏ thay đổi"). */
     public function resetChanges(): void
     {
         abort_unless($this->isSuperAdmin(), 403);
-        $this->turnstileLogin = LoginTurnstile::enabled();
+        $this->load();
         $this->resetErrorBag();
     }
 
@@ -79,6 +84,13 @@ final class LoginSecuritySettings extends Component
     protected function trackedState(): array
     {
         return ['turnstileLogin' => $this->turnstileLogin];
+    }
+
+    /** The saved switch, and the save bar's baseline with it. */
+    private function load(): void
+    {
+        $this->turnstileLogin = LoginTurnstile::enabled();
+        $this->rememberSaved();
     }
 
     private function isSuperAdmin(): bool

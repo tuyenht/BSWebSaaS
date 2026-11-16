@@ -3912,6 +3912,8 @@
     "admin.savebar.discard": "Bỏ thay đổi",
     "admin.savebar.save": "Lưu",
     "admin.savebar.saving": "Đang lưu…",
+    "admin.savebar.load_failed": "Không tải được thanh lưu. Những gì đã nhập vẫn còn: bấm «Lưu» để lưu ngay, hoặc «Thử lại».",
+    "admin.savebar.retry": "Thử lại",
     "admin.gs.toast_saved": "Đã lưu thông tin chung",
     "admin.gs.toast_invalid": "Còn :count mục chưa hợp lệ — sửa rồi bấm Lưu lại",
     "admin.gs.toast_reset": "Đã bỏ thay đổi",

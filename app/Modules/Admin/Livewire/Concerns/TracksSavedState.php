@@ -11,7 +11,7 @@ use Livewire\Attributes\Locked;
  * the bar compares (trackedState), remembers them once loaded and once saved (rememberSaved), and
  * passes unsavedCount() to the settings shell. Only a fingerprint of each field is kept, so a
  * secret typed into a field never travels back to the browser, and the browser cannot change it.
- * A list (the rows of a table) counts each row on its own.
+ * A list (the rows of a table) counts each row on its own; an empty field or list leaves no key.
  */
 trait TracksSavedState
 {
@@ -83,7 +83,12 @@ trait TracksSavedState
     {
         $out = [];
         foreach ($state as $key => $value) {
-            if (is_array($value) && $value !== [] && array_is_list($value)) {
+            // An empty list leaves no row behind, so emptying a list of three counts three changes
+            // (its rows were "field.N"), not those three plus the field itself.
+            if ($value === []) {
+                continue;
+            }
+            if (is_array($value) && array_is_list($value)) {
                 foreach ($value as $i => $row) {
                     $out[$key.'.'.$i] = hash('xxh128', (string) json_encode($row));
                 }

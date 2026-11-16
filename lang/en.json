@@ -3912,6 +3912,8 @@
     "admin.savebar.discard": "Discard changes",
     "admin.savebar.save": "Save",
     "admin.savebar.saving": "Saving…",
+    "admin.savebar.load_failed": "The save bar did not load. What you typed is still here: press “Save” to save it now, or “Try again”.",
+    "admin.savebar.retry": "Try again",
     "admin.gs.toast_saved": "General information saved",
     "admin.gs.toast_invalid": ":count fields are not valid — fix them and press Save again",
     "admin.gs.toast_reset": "Changes discarded",

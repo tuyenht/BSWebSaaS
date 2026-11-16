@@ -20,6 +20,14 @@
     // browser once the part has started (typed text the server has not seen counts as a change), so
     // the server writes only the sentence that holds now and the part writes the others (the part's
     // sentences go to it with their letters escaped, so the page's text holds only the one shown).
+    // Until the part has started its buttons do nothing, so a lost download (the loader marks the
+    // bar data-bs-lazy-failed) swaps the status and the buttons for the error block: plain words,
+    // a "Lưu" that works without the part (a native button of the plain form after the bar, which
+    // Livewire sends, typed text included) and "Thử lại", which never reloads the page here
+    // (data-bs-lazy-keep), so nothing typed is lost.
+    // Enter in a one-line field of a form in the section is "Lưu" (go(): nothing to save does
+    // nothing, a save under way takes no second one); the section's forms never submit themselves.
+    // Not while an input method is still composing a word (Vietnamese typing).
     $changes = max(0, (int) $changes);
     $invalid = max(0, (int) $invalid);
     $clean = $changes === 0;
@@ -37,13 +45,14 @@
     $glyph = 'size-[min(1.5rem,calc(1rem+var(--user-text-boost)))] shrink-0';
     $stat = 'sb-st-'.substr(md5($save.'|'.$discard), 0, 6);
 @endphp
-<div x-ignore wire:ignore.self data-bs-lazy="bsSaveBar" x-data="bsSaveBar({{ json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR) }})" data-set-savebar
+<div x-ignore wire:ignore.self data-bs-lazy="bsSaveBar" data-bs-lazy-keep x-data="bsSaveBar({{ json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR) }})" data-set-savebar
+     x-on:keydown.enter.document="if (! $event.isComposing && ! $event.defaultPrevented && $event.target.form && $event.target.matches('input:not([type]),input:is([type=text],[type=search],[type=url],[type=tel],[type=email],[type=password],[type=number])') && ($root.closest('[data-set-shell]') || document).contains($event.target)) { $event.preventDefault(); go() }"
      role="region" aria-label="{{ __('admin.savebar.region') }}"
      class="sticky bottom-0 z-20 -mb-4 mt-4 flex flex-wrap items-center gap-x-3.5 gap-y-2.5 border-t border-border bg-surface pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] lg:-mb-6">
     <span hidden x-ref="state" data-sb-state data-changes="{{ $changes }}" data-invalid="{{ $invalid }}"
           data-first-error="{{ json_encode((object) $firstErrorDetail) }}" @if ($clean) data-clean @endif></span>
 
-    <div wire:ignore id="{{ $stat }}" role="status" aria-live="polite"
+    <div wire:ignore data-bs-lazy-wait id="{{ $stat }}" role="status" aria-live="polite"
          class="flex min-w-0 flex-auto flex-wrap items-center gap-x-3 gap-y-1 text-[calc(0.875rem+var(--user-text-boost))] leading-snug">
         <span class="inline-flex items-center gap-1.5 font-semibold text-warning-text" x-show="dirty" @if ($clean) x-cloak @endif data-sb-changes>
             <x-bs-admin::icon name="ri-error-warning" :class="$glyph" /><span x-text="changesText">@unless ($clean){{ __('admin.savebar.changes', ['count' => $changes]) }}@endunless</span>
@@ -58,8 +67,8 @@
                 x-show="invalid > 0" @if ($invalid === 0) x-cloak @endif x-on:click="firstError()">{{ __('admin.savebar.first_error') }}</button>
     </div>
 
-    <div wire:ignore class="ms-auto flex flex-wrap items-center justify-end gap-2.5">
-        <x-bs-admin::button variant="outline" color="secondary" data-sb-discard aria-describedby="{{ $stat }}"
+    <div wire:ignore data-bs-lazy-wait class="ms-auto flex flex-wrap items-center justify-end gap-2.5">
+        <x-bs-admin::button variant="outline" color="neutral" data-sb-discard aria-describedby="{{ $stat }}"
                             :disabled="$clean" x-bind:disabled="! dirty || busy !== ''" x-on:click="discard()">{{ __('admin.savebar.discard') }}</x-bs-admin::button>
         <x-bs-admin::button color="primary" data-sb-save aria-describedby="{{ $stat }}"
                             aria-disabled="{{ $blocked ? 'true' : 'false' }}" x-bind:aria-disabled="blocked ? 'true' : 'false'"
@@ -70,4 +79,16 @@
             <span x-text="busy === 'save' ? @js(__('admin.savebar.saving')) : @js(__('admin.savebar.save'))">{{ __('admin.savebar.save') }}</span>
         </x-bs-admin::button>
     </div>
+
+    <div data-bs-lazy-error class="flex min-w-0 flex-auto flex-wrap items-center gap-x-3.5 gap-y-2.5">
+        <p role="alert" class="inline-flex min-w-0 flex-[1_1_16rem] items-start gap-1.5 text-[calc(0.875rem+var(--user-text-boost))] leading-snug text-danger-text">
+            <x-bs-admin::icon name="ri-wifi-off" :class="$glyph.' mt-px'" /><span>{{ __('admin.savebar.load_failed') }}</span>
+        </p>
+        <div class="ms-auto flex flex-wrap items-center justify-end gap-2.5">
+            <x-bs-admin::button variant="outline" color="neutral" data-bs-lazy-retry><x-bs-admin::icon name="ri-refresh" :class="$glyph" />{{ __('admin.savebar.retry') }}</x-bs-admin::button>
+            <x-bs-admin::button type="submit" color="primary" form="{{ $stat }}-f" data-sb-fallback><x-bs-admin::icon name="ri-save-3" :class="$glyph" />{{ __('admin.savebar.save') }}</x-bs-admin::button>
+        </div>
+    </div>
 </div>
+{{-- the error block's "Lưu": outside the bar, so Livewire (not the part that failed) sends it --}}
+<form id="{{ $stat }}-f" wire:submit="{{ $save }}" hidden></form>

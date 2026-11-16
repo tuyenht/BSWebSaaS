@@ -41,7 +41,7 @@ final class CatalogSettings extends Component
         $this->load();
     }
 
-    public function save(): void
+    public function save(): bool
     {
         $this->validate([
             'mode' => ['required', Rule::in(CatalogMode::MODES)],
@@ -54,6 +54,8 @@ final class CatalogSettings extends Component
         $this->rememberSaved();
 
         session()->flash('status', __('admin.saved'));
+
+        return true;
     }
 
     /** Back to the saved choice (the save bar's "Bỏ thay đổi"). */

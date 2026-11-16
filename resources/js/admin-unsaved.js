@@ -171,13 +171,18 @@ export function unsavedDialog(cfg) {
             const id = this.$wire ? this.$wire.$id : null;
             const lw = window.Livewire;
             if (lw && typeof lw.hook === 'function') {
-                offHook = lw.hook('commit', ({ component, succeed }) => {
+                offHook = lw.hook('commit', ({ component, commit, succeed }) => {
                     if (!component || component.id !== id) {
                         return;
                     }
                     const at = seq;
+                    // A field still in focus is carried too when this round trip sends its value
+                    // (Enter in it pressed "Lưu"): Livewire puts a .blur field's text in the updates.
+                    // (Another field typed in meanwhile moved seq on, so `at === seq` covers a change of field.)
+                    const carried = typedField && typedField.getAttribute(modelOf(typedField)) in { ...(commit && commit.updates) };
                     succeed(() => {
-                        if (at === seq && typedField === null) {
+                        if (at === seq && (!typedField || carried)) {
+                            typedField = null;
                             setTyped(false);
                         }
                     });

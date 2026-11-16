@@ -390,7 +390,7 @@ final class FloatingContactSettings extends Component
     }
 
     #[Authorize('settings.manage')]
-    public function save(): void
+    public function save(): bool
     {
         $this->resetErrorBag();
         $errors = $this->allErrors();
@@ -402,7 +402,7 @@ final class FloatingContactSettings extends Component
             $this->notify(__('admin.fc.toast_invalid', ['count' => $bad]), 'error');
             $this->dispatch('fc-first-error');
 
-            return;
+            return false;
         }
 
         // The setting and the library's "in use" rows of its icon pictures change together.
@@ -414,6 +414,8 @@ final class FloatingContactSettings extends Component
         });
         $this->rememberSaved();
         $this->notify(__('admin.fc.toast_saved'));
+
+        return true;
     }
 
     /** Back to the saved setting. */

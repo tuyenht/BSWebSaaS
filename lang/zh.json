@@ -3912,6 +3912,8 @@
     "admin.savebar.discard": "放弃更改",
     "admin.savebar.save": "保存",
     "admin.savebar.saving": "正在保存…",
+    "admin.savebar.load_failed": "保存栏未能加载。您输入的内容仍然保留：点击“保存”立即保存，或点击“重试”。",
+    "admin.savebar.retry": "重试",
     "admin.gs.toast_saved": "基本信息已保存",
     "admin.gs.toast_invalid": "还有 :count 项无效——修正后再次点击保存",
     "admin.gs.toast_reset": "已放弃更改",

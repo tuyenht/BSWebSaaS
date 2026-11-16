@@ -72,6 +72,19 @@ test('when the browser keeps the failed download, "Thử lại" reloads the page
     assert.equal(seen.reloads, 1);
 });
 
+test('a part that holds typed text keeps the page: "Thử lại" failing again shows the error block again', async () => {
+    const { doc, root, retry } = page();
+    root.setAttribute('data-bs-lazy-keep', '');
+    const { lazy, seen } = loader([false, false]);
+    lazy.scan(doc);
+    await tick();
+    lazy.click({ target: retry });
+    await tick();
+    assert.equal(seen.reloads, 0);
+    assert.equal(root.hasAttribute('data-bs-lazy-failed'), true);
+    assert.equal(root.hasAttribute('x-ignore'), true);
+});
+
 test('a click elsewhere, or on a root that has not failed, does nothing', async () => {
     const { doc, root, retry } = page();
     const { lazy, seen } = loader([true]);

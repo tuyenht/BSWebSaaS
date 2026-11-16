@@ -136,7 +136,7 @@ final class GeneralSettings extends Component
     }
 
     #[Authorize('settings.manage')]
-    public function save(): void
+    public function save(): bool
     {
         $this->resetErrorBag();
         $errors = $this->allErrors();
@@ -147,7 +147,7 @@ final class GeneralSettings extends Component
             $this->notify(__('admin.gs.toast_invalid', ['count' => count($errors)]), 'error');
             $this->dispatch('gs-first-error', group: $this->groupOf((string) array_key_first($errors)));
 
-            return;
+            return false;
         }
 
         $shared = $this->sharedDraft();
@@ -162,12 +162,14 @@ final class GeneralSettings extends Component
             // Nothing was written; the form keeps what the member typed, so Lưu lại later works.
             $this->notify(__('admin.settings.busy'), 'error');
 
-            return;
+            return false;
         }
         app(SiteTime::class)->forget();
 
         $this->apply(app(GeneralSettingsStore::class)->load());
         $this->notify(__('admin.gs.toast_saved'));
+
+        return true;
     }
 
     /** Back to the saved values. */

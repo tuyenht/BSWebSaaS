@@ -965,7 +965,9 @@ button:not(:disabled) {
    it shows only once there is something to save, as the menus editor does: the server marks the
    bar's state `data-clean` when nothing differs, and text typed but not yet sent (the unsaved
    dialog's `data-typed`) counts as a change. From 768px the bar always shows. A field focused at the
-   bottom of the page stays clear of it (--sb-h, the bar's height, set by the bar). Below 360px at the
+   bottom of the page stays clear of it (--sb-h, the bar's height, set by the bar). A bar whose part
+   could not be downloaded always shows, with its error block (typed text may be waiting there,
+   and the dialog that would count it may be lost too). Below 360px at the
    two largest text sizes the bar keeps its words and drops its icons and some height. Unlayered on
    purpose: it must win over the bar's own `flex` utility. */
 [data-set-savebar] {
@@ -1005,7 +1007,8 @@ html:has([data-set-savebar]) {
     [data-set-savebar]:has(> [data-sb-state][data-clean]) {
         display: none;
     }
-    [data-set-shell]:has([data-unsaved-guard][data-typed]) [data-set-savebar]:has(> [data-sb-state][data-clean]) {
+    [data-set-shell]:has([data-unsaved-guard][data-typed]) [data-set-savebar]:has(> [data-sb-state][data-clean]),
+    [data-set-savebar][data-bs-lazy-failed]:has(> [data-sb-state][data-clean]) {
         display: flex;
     }
 }

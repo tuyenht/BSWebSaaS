@@ -2,7 +2,8 @@
     @if ($saved)
         <x-bs-admin::alert color="success" icon="ri-checkbox-circle">{{ __('admin.theme_saved_note') }}</x-bs-admin::alert>
     @endif
-    <form wire:submit="save">
+    {{-- Enter in a field is the save bar's "Lưu" (it waits while a save runs and does nothing with nothing to save); the form itself never submits, so the page never reloads --}}
+    <form x-data x-on:submit.prevent>
         <div class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
             <div class="border-b border-border px-5 py-3">
                 <h2 class="text-[15px] font-semibold text-text">{{ __('admin.admin_ui') }}</h2>

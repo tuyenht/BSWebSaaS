@@ -36,7 +36,8 @@ function bar({ changes = 0, invalid = 0, live = true, firstError = null, wire = 
         save: async () => {
             calls.push('save');
             await tick();
-            (wire.save || (() => set(0)))(set);
+            // like the page's save method: true once it wrote
+            return (wire.save || ((s) => (s(0), true)))(set);
         },
         resetChanges: async () => {
             calls.push('resetChanges');
@@ -71,6 +72,35 @@ test('a change turns the bar on, and "Lưu" saves once however often it is press
     assert.deepEqual(calls, ['save']);
     assert.equal(c.busy, '');
     assert.equal(c.dirty, false);
+    assert.match(c.cleanText, /^Đã lưu \d\d:\d\d$/);
+});
+
+test('a save that wrote nothing (the page answers false) never says "Đã lưu"', async () => {
+    const { c, calls } = bar({ changes: 1, wire: { save: (set) => (set(0), false) } });
+    await c.go();
+    assert.deepEqual(calls, ['save']);
+    assert.equal(c.dirty, false);
+    assert.equal(c.cleanText, 'Chưa có thay đổi');
+});
+
+test('a lost save request leaves the status as it was', async () => {
+    const { c } = bar({ changes: 1, wire: { save: () => { throw new Error('lost'); } } });
+    await c.go();
+    assert.equal(c.busy, '');
+    assert.equal(c.dirty, true);
+    assert.equal(c.cleanText, 'Chưa có thay đổi');
+});
+
+test('a second "Lưu" while the first save runs (Enter pressed twice) saves once', async () => {
+    const { c, calls, set } = bar();
+    await c.go();
+    assert.deepEqual(calls, [], 'nothing to save: does nothing');
+    set(1);
+    await tick();
+    const first = c.go();
+    await c.go();
+    await first;
+    assert.deepEqual(calls, ['save']);
     assert.match(c.cleanText, /^Đã lưu \d\d:\d\d$/);
 });
 
