@@ -30,8 +30,11 @@ final readonly class PathBuilder
     /** The site search's results page (its own route, ahead of the storefront's content paths). */
     public const string SEARCH_PATH = '/tim-kiem';
 
+    /** The suggestions under a search box while the visitor types (JSON, its own route). */
+    public const string SUGGEST_PATH = self::SEARCH_PATH.'/goi-y';
+
     /** Unprefixed paths that belong to a page of the platform: no content may take one (RouteSync). */
-    public const array RESERVED_PATHS = [self::SEARCH_PATH];
+    public const array RESERVED_PATHS = [self::SEARCH_PATH, self::SUGGEST_PATH];
 
     public function __construct(
         private SiteLocale $siteLocale,
@@ -66,6 +69,12 @@ final readonly class PathBuilder
     public function searchUrl(string $locale): string
     {
         return $this->publicUrl(self::SEARCH_PATH, $locale);
+    }
+
+    /** The search suggestions' address in $locale, prefixed like searchUrl(). */
+    public function suggestUrl(string $locale): string
+    {
+        return $this->publicUrl(self::SUGGEST_PATH, $locale);
     }
 
     /**

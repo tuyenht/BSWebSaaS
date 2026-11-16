@@ -140,7 +140,7 @@ it('suggests at most five links next to the home and contact buttons, under the 
         ->and($list[1] ?? '')->toContain('Ấn phẩm hè')->toContain('Ba')->not->toContain('Bốn')
         ->and(substr_count($html, 'class="sf-404__btn'))->toBe(2)
         ->and($html)->toContain('Liên hệ Ánh Kim Hà</a>')
-        ->toMatch('~<div class="sf-404__search">\s*<form class="sf-sform" role="search" action="/tim-kiem" method="get">~')
+        ->toMatch('~<div class="sf-404__search">\s*<form class="sf-sform" role="search" action="/tim-kiem" method="get" data-suggest="/tim-kiem/goi-y" data-suggest-js="~')
         ->and(strpos($html, 'class="sf-404__search"'))->toBeLessThan(strpos($html, 'sf-404__btn--home'));
 });
 

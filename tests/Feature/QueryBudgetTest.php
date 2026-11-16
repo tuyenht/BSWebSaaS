@@ -368,6 +368,49 @@ it('renders the site search results page on one fixed query budget, however many
         ->and($many)->toBeLessThanOrEqual($budget);
 });
 
+it('answers the search suggestions on one small fixed query budget, whatever rows it shows', function (): void {
+    // The site (its domain, the tenant setting and its check, whether it is open), its languages,
+    // whether search is on (settings), the rate limit in the cache (no query), then one plan statement
+    // (word counts and matched categories), the forms' thank-you pages, one statement for the posts and
+    // pages, one for the products, one for the category names and addresses: no chrome, no models.
+    $budget = 11;
+    $seed = function (int $site, int $each): void {
+        app(Tenancy::class)->enter($site, function () use ($each): void {
+            $news = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0, 'list_template' => 'grid-news']);
+            $news->translations()->create(['locale' => 'vi', 'name' => 'Khuôn tin', 'slug' => 'khuon-tin']);
+            app(TaxonomyPaths::class)->refreshBranch($news->id);
+            SiteRoute::query()->create(['locale' => 'vi', 'path' => '/khuon-tin', 'taxonomy_id' => $news->id]);
+            foreach (range(1, $each) as $n) {
+                $entry = Entry::query()->create(['type' => 'post', 'status' => 'published', 'published_at' => now()->subMinutes($n), 'meta' => []]);
+                $entry->translations()->create(['locale' => 'vi', 'title' => "Khuôn bài {$n}", 'slug' => 'khuon-'.$entry->id, 'status' => 'published']);
+                SiteRoute::query()->create(['locale' => 'vi', 'path' => '/khuon-'.$entry->id, 'entry_id' => $entry->id]);
+                $entry->assignCategories([$news->id]);
+                $product = Product::query()->create(['status' => 'published', 'sku' => "KHUON-{$n}", 'published_at' => now()->subMinutes($n)]);
+                $product->translations()->create(['locale' => 'vi', 'name' => "Khuôn sản phẩm {$n}", 'slug' => 'khuon-sp-'.$product->id]);
+                SiteRoute::query()->create(['locale' => 'vi', 'path' => '/khuon-sp-'.$product->id, 'product_id' => $product->id]);
+            }
+        });
+    };
+    $measure = function (string $host): array {
+        $json = [];
+        $count = countQueries(function () use (&$json, $host): void {
+            $json = $this->get("http://{$host}/tim-kiem/goi-y?q=khuon")->assertOk()->json();
+        });
+
+        return [$count, array_count_values(array_column($json['items'], 'kind'))];
+    };
+
+    $seed(1, 1);
+    $seed(2, 4);   // more than fit: still one read per kind
+    [$few, $fewKinds] = $measure('a.test');
+    [$many, $manyKinds] = $measure('b.test');
+
+    expect($fewKinds)->toBe(['group' => 1, 'sku' => 1, 'item' => 1])
+        ->and($manyKinds)->toBe(['group' => 1, 'sku' => 4])
+        ->and($many)->toBe($few)
+        ->and($many)->toBeLessThanOrEqual($budget);
+});
+
 it('renders a stats block of plain numbers with no query of its own, and a years item with the one settings read', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         $numbers = fn () => View::make('theme::sections.stats', ['props' => ['items' => [['value' => 3, 'label' => 'Nhà máy'], ['value' => 4300, 'label' => 'Nhà xưởng']]]])->render();
