@@ -380,11 +380,14 @@ it('chooses the bottom bar cells, the sheet and the "Thêm" cell', function (arr
     'nothing ready' => [[], false, [], [], false],
     'three channels, e-mail first, no shop' => [['email', 'zalo', 'phone'], false, ['email', 'zalo', 'phone'], [], false],
     'three channels, e-mail first, with shop' => [['email', 'zalo', 'phone'], true, ['email', 'zalo', 'phone'], [], false],
-    'two sheet-only channels left over' => [['phone', 'zalo', 'messenger', 'email'], false, ['phone', 'zalo'], ['messenger', 'email'], true],
-    'six quick channels with shop' => [['phone', 'zalo', 'sms', 'whatsapp', 'viber', 'telegram'], true, ['phone', 'zalo', 'sms'], ['whatsapp', 'viber', 'telegram'], true],
-    'five quick channels and e-mail, bar full' => [['phone', 'zalo', 'sms', 'whatsapp', 'viber', 'email'], false, ['phone', 'zalo', 'sms', 'whatsapp'], ['viber', 'email'], true],
-    'four quick channels with shop' => [['phone', 'zalo', 'sms', 'whatsapp'], true, ['phone', 'zalo', 'sms', 'whatsapp'], [], false],
-    'five quick channels, no shop' => [['phone', 'zalo', 'sms', 'whatsapp', 'viber'], false, ['phone', 'zalo', 'sms', 'whatsapp', 'viber'], [], false],
+    'Messenger and e-mail take cells like any channel' => [['phone', 'zalo', 'messenger', 'email'], false, ['phone', 'zalo', 'messenger', 'email'], [], false],
+    'five channels like An Vinh, Messenger and e-mail included' => [['zalo', 'sms', 'phone', 'messenger', 'email'], false, ['zalo', 'sms', 'phone', 'messenger', 'email'], [], false],
+    'the same five with shop: one place fewer' => [['zalo', 'sms', 'phone', 'messenger', 'email'], true, ['zalo', 'sms', 'phone'], ['messenger', 'email'], true],
+    'six channels with shop' => [['phone', 'zalo', 'sms', 'whatsapp', 'viber', 'telegram'], true, ['phone', 'zalo', 'sms'], ['whatsapp', 'viber', 'telegram'], true],
+    'six channels, e-mail last: one too many' => [['phone', 'zalo', 'sms', 'whatsapp', 'viber', 'email'], false, ['phone', 'zalo', 'sms', 'whatsapp'], ['viber', 'email'], true],
+    'e-mail first of six keeps its saved place' => [['email', 'phone', 'zalo', 'sms', 'whatsapp', 'viber'], false, ['email', 'phone', 'zalo', 'sms'], ['whatsapp', 'viber'], true],
+    'four channels with shop' => [['phone', 'zalo', 'sms', 'whatsapp'], true, ['phone', 'zalo', 'sms', 'whatsapp'], [], false],
+    'five channels, no shop' => [['phone', 'zalo', 'sms', 'whatsapp', 'viber'], false, ['phone', 'zalo', 'sms', 'whatsapp', 'viber'], [], false],
 ]);
 
 it('reads "Mua hàng" only where older code showed it: the bar theme stored, a layout with the bar, its switch on', function (array $raw, bool $wants): void {
@@ -495,46 +498,30 @@ it('gives the raised call a place before the other quick channels, keeping the s
         ->and(FloatingContact::barSlots($ready, true, true))->toBe(['bar' => ['zalo', 'sms', 'phone'], 'sheet' => ['whatsapp', 'telegram', 'viber'], 'more' => true]);
 });
 
-it('draws the call in the middle of the bar, the other cells keeping their order with the extra one on the left', function (array $keys, bool $more, bool $buy, array $expected): void {
-    $cells = FloatingContact::barCells($keys, $more, $buy, true);
-    $label = static fn (array $c): string => match ($c['kind']) {
-        'channel' => $keys[$c['at']],
-        default => $c['kind'],
-    };
-
-    expect(array_map($label, $cells))->toBe($expected)
-        ->and(array_values(array_filter($cells, static fn (array $c): bool => $c['up'])))->toHaveCount(1)
-        ->and($cells[array_search('phone', $expected, true)]['up'])->toBeTrue();
-})->with([
-    'two cells' => [['phone', 'zalo'], false, false, ['zalo', 'phone']],
-    'three cells' => [['phone', 'zalo', 'sms'], false, false, ['zalo', 'phone', 'sms']],
-    'four cells: the left takes the extra one' => [['phone', 'zalo', 'sms', 'whatsapp'], false, false, ['zalo', 'sms', 'phone', 'whatsapp', 'spare']],
-    'five cells' => [['phone', 'zalo', 'sms', 'whatsapp', 'telegram'], false, false, ['zalo', 'sms', 'phone', 'whatsapp', 'telegram', 'spare']],
-    'the call saved last' => [['zalo', 'sms', 'whatsapp', 'phone'], false, false, ['zalo', 'sms', 'phone', 'whatsapp', 'spare']],
-    '“Thêm” and “Mua hàng” count as cells' => [['phone', 'zalo', 'sms'], true, true, ['zalo', 'sms', 'phone', 'more', 'buy']],
-]);
-
 /**
- * The cells of a raised bar left to right in one narrow width, by their flex order, among the cells that show there.
+ * A bar's cells left to right at one width (5 = from 22.5rem, 4 = from 18rem, 3 = below), among the cells
+ * shown there, as the class sheet orders them; the raised call is written in capitals.
  *
  * @param  list<string>  $keys
  * @return list<string>
  */
-function narrowBarOrder(array $keys, bool $more, bool $buy, string $band): array
+function barAt(array $keys, bool $more, bool $buy, int $band, bool $raise = true): array
 {
-    $cells = FloatingContact::barCells($keys, $more, $buy, true);
+    $cells = FloatingContact::barCells($keys, $more, $buy, $raise);
+    $lift = in_array($band, FloatingContact::barLift($keys, $more, $buy, $raise), true);
     $count = count($keys) + ($more ? 1 : 0) + ($buy ? 1 : 0);
     $shown = [];
     foreach ($cells as $i => $c) {
+        // The theme's place classes: r4/r5 go below 18rem/22.5rem, the spare "Thêm" (m4/m5) shows only there.
         $rank = $c['kind'] === 'channel' ? min($c['place'] + 2 + ($buy ? 1 : 0), $count) : 0;
         $on = match (true) {
-            $c['kind'] === 'spare' => $band === 'o3' || $count === 5,
-            $rank === 5 => false,
-            $rank === 4 => $band === 'o4',
+            $c['kind'] === 'spare' => $band < $count,
+            $c['kind'] === 'channel' => $rank <= $band,
             default => true,
         };
         if ($on) {
-            $shown[] = [$c[$band], $c['kind'] === 'channel' ? $keys[$c['at']] : $c['kind'], $i];
+            $name = $c['kind'] === 'channel' ? $keys[$c['at']] : $c['kind'];
+            $shown[] = [$band === 5 ? 0 : $c['o'.$band], $c['up'] && $lift ? strtoupper($name) : $name, $i];
         }
     }
     usort($shown, static fn (array $a, array $b): int => [$a[0], $a[2]] <=> [$b[0], $b[2]]);
@@ -542,20 +529,57 @@ function narrowBarOrder(array $keys, bool $more, bool $buy, string $band): array
     return array_column($shown, 1);
 }
 
-it('keeps the raised call in the middle of the cells a narrow bar still shows', function (): void {
-    // Zalo, call, text message, "Thêm" and "Mua hàng": drawn Zalo · text · call · Thêm · Mua hàng.
-    $keys = ['zalo', 'phone', 'sms'];
+it('raises the call in the middle of an odd number of cells, the others in saved order around it', function (array $keys, bool $more, bool $buy, array $wide): void {
+    expect(barAt($keys, $more, $buy, 5))->toBe($wide);
+})->with([
+    'one cell' => [['phone'], false, false, ['PHONE']],
+    'three cells: 2·1·3' => [['phone', 'zalo', 'sms'], false, false, ['zalo', 'PHONE', 'sms']],
+    'five cells: 2·3·1·4·5' => [['phone', 'zalo', 'sms', 'whatsapp', 'telegram'], false, false, ['zalo', 'sms', 'PHONE', 'whatsapp', 'telegram']],
+    'five like An Vinh, the call saved third' => [['zalo', 'sms', 'phone', 'messenger', 'email'], false, false, ['zalo', 'sms', 'PHONE', 'messenger', 'email']],
+    'five, the call saved last' => [['zalo', 'sms', 'whatsapp', 'telegram', 'phone'], false, false, ['zalo', 'sms', 'PHONE', 'whatsapp', 'telegram']],
+    '“Thêm” and “Mua hàng” count as cells' => [['phone', 'zalo', 'sms'], true, true, ['zalo', 'sms', 'PHONE', 'more', 'buy']],
+    'three channels and “Thêm”, “Thêm” last' => [['zalo', 'phone', 'sms', 'whatsapp'], true, false, ['zalo', 'sms', 'PHONE', 'whatsapp', 'more']],
+]);
 
-    expect(narrowBarOrder($keys, true, true, 'o4'))->toBe(['zalo', 'more', 'phone', 'buy'])
-        ->and(narrowBarOrder($keys, true, true, 'o3'))->toBe(['more', 'phone', 'buy']);
-});
+it('keeps the saved order and a plain call for an even number of cells, the switch on or not', function (array $keys, bool $more, bool $buy, array $wide): void {
+    expect(barAt($keys, $more, $buy, 5))->toBe($wide)
+        ->and(barAt($keys, $more, $buy, 5, false))->toBe($wide)
+        ->and(FloatingContact::barLift($keys, $more, $buy, true))->not->toContain(5);
+})->with([
+    'two cells, the call first' => [['phone', 'zalo'], false, false, ['phone', 'zalo']],
+    'four cells, the call first' => [['phone', 'zalo', 'sms', 'whatsapp'], false, false, ['phone', 'zalo', 'sms', 'whatsapp']],
+    'four cells, the call saved last' => [['zalo', 'sms', 'whatsapp', 'phone'], false, false, ['zalo', 'sms', 'whatsapp', 'phone']],
+    'three channels and “Mua hàng”' => [['zalo', 'phone', 'sms'], false, true, ['zalo', 'phone', 'sms', 'buy']],
+]);
 
-it('orders a bar without "Thêm" and "Mua hàng" for the narrow widths, the spare "Thêm" included', function (): void {
-    $keys = ['zalo', 'sms', 'phone', 'whatsapp'];
+it('applies the rule to the cells each width shows: five, four and three cells', function (array $keys, bool $more, bool $buy, array $five, array $four, array $three, array $lift): void {
+    expect(barAt($keys, $more, $buy, 5))->toBe($five)
+        ->and(barAt($keys, $more, $buy, 4))->toBe($four)
+        ->and(barAt($keys, $more, $buy, 3))->toBe($three)
+        ->and(FloatingContact::barLift($keys, $more, $buy, true))->toBe($lift);
+})->with([
+    // An Vinh: five channels; four cells hold the call and two more with the spare "Thêm", three cells one.
+    'five channels like An Vinh' => [['zalo', 'sms', 'phone', 'messenger', 'email'], false, false,
+        ['zalo', 'sms', 'PHONE', 'messenger', 'email'], ['zalo', 'sms', 'phone', 'spare'], ['zalo', 'PHONE', 'spare'], [5, 3]],
+    'five channels, the call first' => [['phone', 'zalo', 'sms', 'whatsapp', 'telegram'], false, false,
+        ['zalo', 'sms', 'PHONE', 'whatsapp', 'telegram'], ['phone', 'zalo', 'sms', 'spare'], ['zalo', 'PHONE', 'spare'], [5, 3]],
+    'four channels' => [['zalo', 'sms', 'phone', 'whatsapp'], false, false,
+        ['zalo', 'sms', 'phone', 'whatsapp'], ['zalo', 'sms', 'phone', 'whatsapp'], ['zalo', 'PHONE', 'spare'], [3]],
+    'three channels, “Thêm” and “Mua hàng”' => [['zalo', 'phone', 'sms'], true, true,
+        ['zalo', 'sms', 'PHONE', 'more', 'buy'], ['zalo', 'phone', 'more', 'buy'], ['more', 'PHONE', 'buy'], [5, 3]],
+    'three channels' => [['phone', 'zalo', 'sms'], false, false,
+        ['zalo', 'PHONE', 'sms'], ['zalo', 'PHONE', 'sms'], ['zalo', 'PHONE', 'sms'], [5, 4, 3]],
+    'two channels' => [['phone', 'zalo'], false, false, ['phone', 'zalo'], ['phone', 'zalo'], ['phone', 'zalo'], []],
+]);
 
-    // Four channel cells: the fourth place and the spare are the narrow phone's swap.
-    expect(narrowBarOrder($keys, false, false, 'o3'))->toBe(['zalo', 'phone', 'spare'])
-        ->and(narrowBarOrder(['phone', 'zalo', 'sms'], false, false, 'o3'))->toBe(['zalo', 'phone', 'sms']);
+it('raises nothing and keeps the saved order at every width with the switch off', function (): void {
+    $keys = ['zalo', 'sms', 'phone', 'messenger', 'email'];
+
+    expect(FloatingContact::barLift($keys, false, false, false))->toBe([])
+        ->and(array_column(FloatingContact::barCells($keys, false, false, false), 'up'))->not->toContain(true)
+        ->and(barAt($keys, false, false, 5, false))->toBe($keys)
+        ->and(barAt($keys, false, false, 4, false))->toBe(['zalo', 'sms', 'phone', 'spare'])
+        ->and(barAt($keys, false, false, 3, false))->toBe(['zalo', 'sms', 'spare']);
 });
 
 it('gives a bar without the raised call no narrow orders', function (): void {

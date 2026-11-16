@@ -172,11 +172,14 @@ it('draws the picture in the round buttons, the bottom bar and the “Thêm” s
     $html = $this->get('http://a.test/')->assertOk()->getContent();
     $img = static fn (Media $m): string => '<img class="sf-fc__img" src="'.e(app(MediaUrlResolver::class)->url($m->storage_key)).'" alt="" width="64" height="64" loading="lazy" decoding="async">';
 
-    // The call: a round button (floating) and a bar cell; Messenger: a round button and a row of the sheet.
-    expect(substr_count($html, $img($call)))->toBe(2)
-        ->and(substr_count($html, $img($chat)))->toBe(2)
+    // Four channels fit the bar. The call: a round button and a bar cell, whose plain and raised discs
+    // (raised on the narrowest phone, where three cells show) both carry it. Messenger: a round button,
+    // a bar cell and the row of the sheet it moves to on that narrow phone.
+    expect(substr_count($html, $img($call)))->toBe(3)
+        ->and(substr_count($html, $img($chat)))->toBe(3)
         ->and($html)->toMatch('/class="sf-fc__btn"[^>]*>'.preg_quote($img($call), '/').'/')
-        ->and($html)->toMatch('/class="sf-fc-bar__link"[^>]*><span class="sf-fc-bar__dot"[^>]*>'.preg_quote($img($call), '/').'/')
+        ->and($html)->toMatch('/class="sf-fc-bar__link"[^>]*><span class="sf-fc-bar__dot sf-fc-bar__dot--flat"[^>]*>'.preg_quote($img($call), '/').'/')
+        ->and($html)->toMatch('/class="sf-fc-bar__link"[^>]*><span class="sf-fc-bar__dot"[^>]*>'.preg_quote($img($chat), '/').'/')
         ->and($html)->toMatch('/class="sf-fc-sheet__row"[^>]*><span class="sf-fc-bar__dot"[^>]*>'.preg_quote($img($chat), '/').'/');
 });
 

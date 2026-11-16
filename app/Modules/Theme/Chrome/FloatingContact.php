@@ -34,8 +34,8 @@ final class FloatingContact
     /** Cells of the bottom bar, the "Mua hàng" and "Thêm" cells counted. */
     public const int BAR_CAP = 5;
 
-    /** Channels that open from the "Thêm" sheet only, never as a cell of the bar. */
-    public const array SHEET_ONLY = ['messenger', 'email'];
+    /** The bar's widths by the most cells each shows: from 22.5rem, from 18rem, and below 18rem (the theme's container queries). */
+    public const array BAR_BANDS = [5, 4, 3];
 
     /** Ready channels from which a phone folds round buttons into one "Liên hệ" button. */
     public const int DIAL_FROM = 4;
@@ -153,7 +153,7 @@ final class FloatingContact
      * @param  mixed  $raw  the stored value (an array when set)
      * @param  string|null  $shopHref  the site's product list, or null when it has none
      * @param  array<string, array{src: string, w: int, h: int}>  $images  icon pictures by ulid (ContactIconImages)
-     * @return array{layout: string, position: string, offset_x: int, offset_y: int, tone: string, track: bool, dial: bool, buttons: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, img: array{src: string, w: int, h: int}|null, pending?: true}>, bar: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, img: array{src: string, w: int, h: int}|null, pending?: true}>, sheet: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, img: array{src: string, w: int, h: int}|null, pending?: true}>, more: bool, raise: bool, cells: list<array{kind: 'channel'|'more'|'spare'|'buy', at: int|null, place: int, up: bool}>, buy: array{href: string, fill: string, ink: string, icon: string}|null}|null
+     * @return array{layout: string, position: string, offset_x: int, offset_y: int, tone: string, track: bool, dial: bool, buttons: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, img: array{src: string, w: int, h: int}|null, pending?: true}>, bar: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, img: array{src: string, w: int, h: int}|null, pending?: true}>, sheet: list<array{key: string, href: string, label: string|null, icon: string, zalo: bool, fill: string, tint: string, pulse: bool, link: string, tel: string|null, img: array{src: string, w: int, h: int}|null, pending?: true}>, more: bool, raise: bool, lift: list<int>, cells: list<array{kind: 'channel'|'more'|'spare'|'buy', at: int|null, place: int, up: bool}>, buy: array{href: string, fill: string, ink: string, icon: string}|null}|null
      */
     public static function widget(mixed $raw, string $locale, ?string $shopHref = null, bool $pending = false, array $images = []): ?array
     {
@@ -205,6 +205,7 @@ final class FloatingContact
             'sheet' => $layout === 'vertical' ? [] : self::pick($byKey, $slots['sheet']),
             'more' => $layout !== 'vertical' && $slots['more'],
             'raise' => $raise,
+            'lift' => $layout === 'vertical' ? [] : self::barLift($slots['bar'], $slots['more'], $buy !== null, $raise),
             'cells' => $layout === 'vertical' ? [] : self::barCells($slots['bar'], $slots['more'], $buy !== null, $raise),
             'buy' => $buy,
         ];
@@ -453,123 +454,137 @@ final class FloatingContact
 
     /**
      * Which channels sit on the phone's bottom bar, which wait in the "Thêm" sheet, and whether that
-     * cell shows: the quick channels (not SHEET_ONLY) fill the bar in saved order; one leftover joins
-     * the bar when there is room, two or more (or a full bar) turn the last cell into "Thêm".
+     * cell shows: every channel shows while they all fit the bar's places (BAR_CAP, "Mua hàng"
+     * counted); past that the last place becomes "Thêm" and the channels that did not get a place
+     * wait in its sheet, in saved order.
      *
      * @param  list<string>  $ready  keys of the channels that are on and have a value that passes, in saved order
      * @param  bool  $buy  whether the "Mua hàng" cell takes one place
-     * @param  bool  $raise  whether the call is raised: it is then picked before the other quick channels, so it always has a place
+     * @param  bool  $raise  whether the call is raised: it is then picked before the other channels, so it always has a place
      * @return array{bar: list<string>, sheet: list<string>, more: bool}
      */
     public static function barSlots(array $ready, bool $buy, bool $raise = false): array
     {
         $cap = self::BAR_CAP - ($buy ? 1 : 0);
-        $quick = array_values(array_filter($ready, static fn (string $k): bool => ! in_array($k, self::SHEET_ONLY, true)));
-        $picking = $raise && in_array('phone', $quick, true) ? ['phone', ...array_values(array_diff($quick, ['phone']))] : $quick;
-        $left = array_values(array_diff($ready, array_slice($picking, 0, $cap)));
-
-        if ($left === []) {
-            return ['bar' => $quick, 'sheet' => [], 'more' => false];
-        }
-        if (count($left) === 1 && count($quick) < $cap) {
+        if (count($ready) <= $cap) {
             return ['bar' => $ready, 'sheet' => [], 'more' => false];
         }
 
+        $picking = $raise && in_array('phone', $ready, true) ? ['phone', ...array_values(array_diff($ready, ['phone']))] : $ready;
         $taken = array_slice($picking, 0, $cap - 1);
         // The bar keeps the saved order whichever channels were picked first.
-        $bar = array_values(array_filter($quick, static fn (string $k): bool => in_array($k, $taken, true)));
+        $bar = array_values(array_filter($ready, static fn (string $k): bool => in_array($k, $taken, true)));
 
         return ['bar' => $bar, 'sheet' => array_values(array_diff($ready, $bar)), 'more' => true];
     }
 
     /**
-     * The cells of the phone's bottom bar in the order they are drawn. Without the raised call it is the
-     * saved order, "Thêm" then "Mua hàng" last. With it the call stands in the middle and the other cells
-     * ("Thêm" and "Mua hàng" included) keep their order, split left and right of it, the left side taking
-     * the extra one when the count is uneven (four cells: X, Y, call, Z). `at` is a channel's index in
-     * $keys; `place` ranks a channel for a narrow phone, which lets the last ones go (the call is first);
-     * `up` marks the raised call. A "spare" cell is the "Thêm" a narrow phone adds when the bar has none
-     * (it shows only there). With the raised call, `o4` and `o3` are each cell's flex order in the two
-     * narrow widths (see narrowOrders), so the call stays in the middle of the cells that show.
+     * The cells of the phone's bottom bar in the order they are drawn. A cell's `place` ranks a channel for
+     * a narrow phone, which lets the last ones go (with the raised call the call is first and never goes):
+     * the bar shows five cells from 22.5rem, four from 18rem and three below (BAR_BANDS), "Thêm" and
+     * "Mua hàng" kept. A "spare" cell is the "Thêm" a narrow phone adds when the bar has none (it shows
+     * only there). Without the raised call the cells keep the saved order, "Thêm" then "Mua hàng" last.
+     * With it, wherever the bar shows an odd number of cells the call stands raised in the middle of them
+     * and the others keep the saved order left to right around it; an even number keeps the saved order
+     * and a plain call. The cells are drawn as the widest bar shows them; `o4` and `o3` are each cell's
+     * flex order in the two narrow widths (0 without the raised call), and `up` marks the call whenever
+     * some width raises it (barLift says which).
      *
      * @param  list<string>  $keys  the bar's channel keys in saved order
      * @return list<array{kind: 'channel'|'more'|'spare'|'buy', at: int|null, place: int, up: bool, o4: int, o3: int}>
      */
     public static function barCells(array $keys, bool $more, bool $buy, bool $raise): array
     {
-        $call = $raise ? array_search('phone', $keys, true) : false;
-        $cells = [];
-        $place = 0;
-        $callCell = null;
-        foreach ($keys as $at => $key) {
-            if ($call !== false && $at === $call) {
-                $callCell = ['kind' => 'channel', 'at' => $at, 'place' => 0, 'up' => true];
+        ['cells' => $cells, 'order' => $order, 'lift' => $lift, 'call' => $call] = self::barPlan($keys, $more, $buy, $raise);
 
-                continue;
-            }
-            $cells[] = ['kind' => 'channel', 'at' => $at, 'place' => $call === false ? $at : ++$place, 'up' => false];
-        }
-        if ($more) {
-            $cells[] = ['kind' => 'more', 'at' => null, 'place' => -1, 'up' => false];
-        }
-        if ($buy) {
-            $cells[] = ['kind' => 'buy', 'at' => null, 'place' => -1, 'up' => false];
-        }
-        if ($callCell !== null) {
-            array_splice($cells, (int) ceil(count($cells) / 2), 0, [$callCell]);
-        }
-        if (! $more && count($cells) >= 4) {
-            array_splice($cells, count($cells) - ($buy ? 1 : 0), 0, [['kind' => 'spare', 'at' => null, 'place' => -1, 'up' => false]]);
-        }
-
-        return $callCell === null ? array_map(static fn (array $c): array => $c + ['o4' => 0, 'o3' => 0], $cells) : self::narrowOrders($cells, $buy);
-    }
-
-    /**
-     * Gives every cell of a bar with the raised call its flex order in the two narrow widths, so the call
-     * stays in the middle of the cells that are visible there: `o4` from 18rem to 22.5rem (the channel that
-     * ranks fifth is gone, the spare "Thêm" of a five-cell bar shows) and `o3` below 18rem (ranks four and
-     * five are gone, the spare shows). Visible cells other than the call keep their drawn order, the left
-     * side taking the extra one. A hidden cell gets 0 (its order does not matter). The wide width keeps
-     * the drawn order.
-     *
-     * @param  list<array{kind: 'channel'|'more'|'spare'|'buy', at: int|null, place: int, up: bool}>  $cells
-     * @return list<array{kind: 'channel'|'more'|'spare'|'buy', at: int|null, place: int, up: bool, o4: int, o3: int}>
-     */
-    private static function narrowOrders(array $cells, bool $buy): array
-    {
-        $count = count(array_filter($cells, static fn (array $c): bool => $c['kind'] !== 'spare'));
-        $extra = $buy ? 1 : 0;
-        // A cell's visibility in each narrow width: 18rem to 22.5rem loses only the fifth place (the spare
-        // shows when the bar has five cells); below 18rem places four and five are gone (the spare shows).
-        $shows = ['o4' => [], 'o3' => []];
-        foreach ($cells as $k => $c) {
-            $rank = $c['kind'] === 'channel' ? min($c['place'] + 2 + $extra, $count) : 0;
-            $shows['o4'][$k] = $c['kind'] === 'spare' ? $count === 5 : $rank < 5;
-            $shows['o3'][$k] = $c['kind'] !== 'channel' || $rank <= 3;
-        }
-        $orders = ['o4' => [], 'o3' => []];
-        foreach ($shows as $band => $on) {
-            $seen = array_keys(array_filter($on));
-            $left = intdiv(count($seen), 2);
-            $i = 0;
-            foreach ($seen as $k) {
-                if ($cells[$k]['up']) {
-                    $orders[$band][$k] = $left;
-
-                    continue;
-                }
-                $orders[$band][$k] = $i < $left ? $i : $i + 1;
-                $i++;
+        // Drawn as the widest bar stands; the spare "Thêm" it does not show goes before "Mua hàng".
+        $drawn = $order[5];
+        foreach (array_keys($cells) as $k) {
+            if (! in_array($k, $drawn, true)) {
+                $end = $drawn !== [] && $cells[$drawn[count($drawn) - 1]]['kind'] === 'buy' ? count($drawn) - 1 : count($drawn);
+                array_splice($drawn, $end, 0, [$k]);
             }
         }
 
         $out = [];
-        foreach ($cells as $k => $c) {
-            $out[] = $c + ['o4' => $orders['o4'][$k] ?? 0, 'o3' => $orders['o3'][$k] ?? 0];
+        foreach ($drawn as $k) {
+            $at4 = array_search($k, $order[4], true);
+            $at3 = array_search($k, $order[3], true);
+            $out[] = [...$cells[$k], 'up' => $cells[$k]['up'] && $lift !== [],
+                'o4' => $call && $at4 !== false ? $at4 : 0,
+                'o3' => $call && $at3 !== false ? $at3 : 0,
+            ];
         }
 
         return $out;
+    }
+
+    /**
+     * The widths (by their BAR_BANDS cell count) at which the bar raises the call: those where it shows
+     * an odd number of cells, "Thêm" and "Mua hàng" counted, while the raised call is on and on the bar.
+     *
+     * @param  list<string>  $keys  the bar's channel keys in saved order
+     * @return list<int>
+     */
+    public static function barLift(array $keys, bool $more, bool $buy, bool $raise): array
+    {
+        return self::barPlan($keys, $more, $buy, $raise)['lift'];
+    }
+
+    /**
+     * The bar's cells in saved order, which of them each width shows (a channel while its rank, "Thêm"
+     * and "Mua hàng" counted first, is within the width's cell count; the spare "Thêm" where the bar has
+     * more cells than the width holds) and the order they stand in there.
+     *
+     * @param  list<string>  $keys
+     * @return array{cells: list<array{kind: 'channel'|'more'|'spare'|'buy', at: int|null, place: int, up: bool}>, order: array<int, list<int>>, lift: list<int>, call: bool}
+     */
+    private static function barPlan(array $keys, bool $more, bool $buy, bool $raise): array
+    {
+        $call = $raise ? array_search('phone', $keys, true) : false;
+        $cells = [];
+        $place = 0;
+        foreach ($keys as $at => $key) {
+            $up = $call !== false && $at === $call;
+            $cells[] = ['kind' => 'channel', 'at' => $at, 'place' => $call === false ? $at : ($up ? 0 : ++$place), 'up' => $up];
+        }
+        if ($more) {
+            $cells[] = ['kind' => 'more', 'at' => null, 'place' => -1, 'up' => false];
+        }
+        $count = count($cells) + ($buy ? 1 : 0);
+        if (! $more && $count >= 4) {
+            $cells[] = ['kind' => 'spare', 'at' => null, 'place' => -1, 'up' => false];
+        }
+        if ($buy) {
+            $cells[] = ['kind' => 'buy', 'at' => null, 'place' => -1, 'up' => false];
+        }
+
+        $order = [];
+        $lift = [];
+        foreach (self::BAR_BANDS as $band) {
+            $seen = [];
+            foreach ($cells as $k => $c) {
+                $on = match ($c['kind']) {
+                    'spare' => $band < $count,
+                    'channel' => min($c['place'] + 2 + ($buy ? 1 : 0), $count) <= $band,
+                    default => true,
+                };
+                if ($on) {
+                    $seen[] = $k;
+                }
+            }
+            $n = count($seen);
+            if ($call === false || $n % 2 === 0) {
+                $order[$band] = $seen;
+
+                continue;
+            }
+            $others = array_values(array_filter($seen, static fn (int $k): bool => ! $cells[$k]['up']));
+            $order[$band] = [...array_slice($others, 0, intdiv($n, 2)), $call, ...array_slice($others, intdiv($n, 2))];
+            $lift[] = $band;
+        }
+
+        return ['cells' => $cells, 'order' => $order, 'lift' => $lift, 'call' => $call !== false];
     }
 
     /** Whether a phone folds the round buttons into one "Liên hệ" button: vertical layout, switch on, enough ready channels. */
