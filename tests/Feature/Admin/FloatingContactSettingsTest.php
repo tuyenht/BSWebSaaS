@@ -348,10 +348,11 @@ it('keeps the “Mua hàng” switch but shows the button nowhere while the site
             ->call('toggleChannel', 'sms');
         $lw->set('channels.'.fcsIndex($lw, 'sms').'.value', '0912345678');
 
-        // The preview draws what the site draws: no buy button; the bar holds the quick channels, Messenger and email wait in "Thêm".
+        // The preview draws what the site draws: no buy button; the five channels switched on all fit the bar,
+        // Messenger and email (not filled in yet) at their places.
         expect($lw->viewData('preview')['buy'])->toBeNull()
-            ->and(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'sms'])
-            ->and(array_column($lw->viewData('preview')['sheet'], 'key'))->toBe(['messenger', 'email'])
+            ->and(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'messenger', 'email', 'sms'])
+            ->and($lw->viewData('preview')['sheet'])->toBe([])
             ->and($lw->viewData('srcdoc'))->not->toContain('sf-fc__buy')->not->toContain('Mua hàng');
         $lw->call('save')->assertHasNoErrors();
     });
@@ -375,8 +376,9 @@ it('shows “Mua hàng” in the preview, after the channels, when the site has 
             ->call('toggleChannel', 'sms');
         $lw->set('channels.'.fcsIndex($lw, 'sms').'.value', '0912345678');
 
+        // Four places with "Mua hàng": three channels in saved order (Messenger not filled in yet at its place) and "Thêm".
         expect($lw->viewData('preview')['buy'])->toMatchArray(['fill' => 'var(--color-primary)', 'ink' => 'var(--color-on-primary)'])
-            ->and(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'sms'])
+            ->and(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'messenger'])
             ->and($lw->viewData('srcdoc'))->toContain('Mua hàng');
     });
 });
@@ -473,17 +475,17 @@ it('puts every channel switched on in the bottom bar or its “Thêm” sheet, u
             ->call('toggleChannel', 'sms')
             ->call('addPreset', 'whatsapp')->call('addPreset', 'telegram')->call('addPreset', 'viber');
 
-        // Five places: four quick channels and "Thêm", which holds the rest in saved order.
-        expect(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'sms', 'whatsapp'])
-            ->and(array_column($lw->viewData('preview')['sheet'], 'key'))->toBe(['messenger', 'email', 'telegram', 'viber'])
+        // Five places: four channels in saved order and "Thêm", which holds the rest in saved order.
+        expect(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'zalo', 'messenger', 'email'])
+            ->and(array_column($lw->viewData('preview')['sheet'], 'key'))->toBe(['sms', 'whatsapp', 'telegram', 'viber'])
             ->and($lw->viewData('srcdoc'))->toContain('popovertarget="sf-fc-more"')
             ->toMatch('#class="sf-fc-bar__item[^"]*"(?: style="[^"]*")? data-fc-pending><a class="sf-fc-bar__link" href="\#"#')
             ->not->toContain('sf-fc__float');
 
         // A switched-off channel never takes a cell.
         $lw->call('toggleChannel', 'zalo');
-        expect(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'sms', 'whatsapp', 'telegram'])
-            ->and(array_column($lw->viewData('preview')['sheet'], 'key'))->toBe(['messenger', 'email', 'viber']);
+        expect(array_column($lw->viewData('preview')['bar'], 'key'))->toBe(['phone', 'messenger', 'email', 'sms'])
+            ->and(array_column($lw->viewData('preview')['sheet'], 'key'))->toBe(['whatsapp', 'telegram', 'viber']);
     });
 });
 
@@ -1032,7 +1034,7 @@ it('offers the raised call switch on, stores only its off state, and reads a set
         $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)
             ->assertSet('barRaiseCall', true)
             ->assertSee('Làm nổi nút Gọi ở giữa thanh')
-            ->assertSee('Nút Gọi to hơn, nằm giữa và nhô lên trên thanh — dễ thấy, dễ bấm bằng ngón cái.')
+            ->assertSee('nút Gọi to hơn, nằm giữa và nhô lên trên thanh — dễ thấy, dễ bấm bằng ngón cái. Số nút chẵn: nút Gọi giữ chỗ và cỡ bình thường.')
             ->assertDontSee('Chưa dùng được: hãy bật kênh');
         expect(fcsBare($lw))->toContain('aria-labelledby="fc-raise-l"')->toMatch('~<button[^>]*aria-checked="true"[^>]*aria-labelledby="fc-raise-l"~');
 
@@ -1094,6 +1096,31 @@ it('draws the preview with the call raised in the middle while the switch is on,
         expect($labels($lw->call('toggleRaise')))->toBe(['Gọi điện', 'Zalo', 'Nhắn tin']);
     });
 });
+
+it('draws the preview bar as the site does: the call raised among an odd number of cells, the saved order among an even number', function (array $keys, array $labels, ?string $up): void {
+    $admin = fcsAdmin();
+    $values = ['phone' => '0912345678', 'zalo' => '0912345678', 'sms' => '0912345678', 'messenger' => 'trang.mau', 'email' => 'lienhe@mau.test'];
+    $raw = ['enabled' => true, 'layout' => 'combo', 'channels' => array_map(static fn (string $k): array => ['key' => $k, 'on' => true, 'value' => $values[$k]], $keys)];
+    fcsSave($raw);
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $raw, $labels, $up): void {
+        $frame = html_entity_decode(fcsBare(Livewire::actingAs($admin)->test(FloatingContactSettings::class)), ENT_QUOTES);
+        preg_match('~<nav class="sf-fc-bar[^"]*"[^>]*>~', $frame, $nav);
+        preg_match('~<ul class="sf-fc-bar__list" role="list">.*?</ul>~s', $frame, $m);
+        preg_match_all('~<span class="sf-fc-bar__label">([^<]*)</span>~', $m[0] ?? '', $l);
+        $site = FloatingContact::widget($raw, 'vi');
+
+        expect($l[1])->toBe($labels)
+            ->and(str_contains($nav[0] ?? '', $up === null ? 'data-up' : 'data-up="'.$up.'"'))->toBe($up !== null)
+            // The same cells and the same raised widths as the website for the same setting.
+            ->and($site['lift'])->toBe($up === null ? [] : array_map('intval', explode(' ', $up)))
+            ->and(count($site['cells']))->toBe(count($labels));
+    });
+})->with([
+    'five like An Vinh' => [['zalo', 'sms', 'phone', 'messenger', 'email'], ['Zalo', 'Nhắn tin', 'Gọi điện', 'Messenger', 'Gửi Email', 'Thêm'], '5 3'],
+    'four' => [['phone', 'zalo', 'sms', 'email'], ['Gọi điện', 'Zalo', 'Nhắn tin', 'Gửi Email', 'Thêm'], '3'],
+    'two' => [['phone', 'zalo'], ['Gọi điện', 'Zalo'], null],
+]);
 
 it('always lists directions, switched off, and never lets it be removed', function (): void {
     $admin = fcsAdmin();

@@ -3,8 +3,10 @@
     nothing printed). Every channel is a plain link printed here, so it works before any script.
     Layouts: combo = round buttons from 768px and the bottom bar below it; vertical = round buttons at
     every width (on a phone with many channels folded into one dark "Liên hệ" button that opens them);
-    horizontal = the bottom bar on phones only. The bar holds FloatingContact::barSlots(): its "Thêm"
-    cell opens a small sheet above the bar ("Kênh liên hệ khác"), "Mua hàng" always last; a narrow phone
+    horizontal = the bottom bar on phones only. The bar holds FloatingContact::barSlots(): every channel
+    while they fit, else a "Thêm" cell that opens a small sheet above the bar ("Kênh liên hệ khác"),
+    "Mua hàng" always last; with the raised call, a width that shows an odd number of cells raises the
+    call in the middle of them (data-up lists those widths, FloatingContact::barLift); a narrow phone
     drops channel cells from the end (sf-fc-bar__item--r4/r5, min. three cells) and the sheet then lists
     them — a bar of four or five cells without "Thêm" gains one there (--m4/--m5), so no channel is lost.
     The dial and the sheet open with the browser's popover (Esc, a tap outside and focus return are the
@@ -49,17 +51,18 @@
     $fcRank = static fn (int $i): int => min($i + 2 + $fcBuy, $fcCells);
     $fcSpare = ! $fc['more'] && $fcCells >= 4 ? ' sf-fc-bar__item--m'.$fcCells : '';
     $fcSheet = $fc['more'] || $fcSpare !== '';
-    // The bar's cells in the order they are drawn (the raised call stands in the middle); a channel's place
-    // ranks it for a narrow phone, which lets the later ones go.
+    // The bar's cells in the order the widest bar shows them; a channel's place ranks it for a narrow phone,
+    // which lets the later ones go.
     $fcPlace = [];
     foreach ($fc['cells'] as $fcCell) {
         if ($fcCell['at'] !== null) {
             $fcPlace[$fcCell['at']] = $fcCell['place'];
         }
     }
-    $fcUp = $fc['raise'] ? ' data-up' : '';
-    // With the raised call a narrow bar re-orders its visible cells (flex order, from the class sheet) so the
-    // call stays in the middle of them; the wide bar keeps the drawn order.
+    // The widths that raise the call, by the most cells each shows ("5 3": from 22.5rem and below 18rem).
+    $fcUp = $fc['lift'] !== [] ? ' data-up="'.implode(' ', $fc['lift']).'"' : '';
+    // With the raised call a narrow bar re-orders its visible cells (flex order, from the class sheet): the
+    // call in the middle where it is raised, the saved order where it is not; the wide bar keeps the drawn order.
     $fcOrd = static fn (array $c): string => $fc['raise'] ? ' style="--fc-o4:'.$c['o4'].';--fc-o3:'.$c['o3'].'"' : '';
     $fcCopy = $fcFloat && array_filter($fc['buttons'], static fn (array $b): bool => $b['tel'] !== null && $b['key'] === 'phone') !== [];
 @endphp
@@ -108,7 +111,7 @@
             @foreach ($fc['cells'] as $cell)
                 @if ($cell['kind'] === 'channel')
                     @php($b = $fc['bar'][$cell['at']])
-                    <li class="sf-fc-bar__item{{ $fcRank($cell['place']) > 3 ? ' sf-fc-bar__item--r'.$fcRank($cell['place']) : '' }}{{ $cell['up'] ? ' sf-fc-bar__item--up' : '' }}"{!! $fcOrd($cell) !!}{!! empty($b['pending']) ? '' : ' data-fc-pending' !!}><a class="sf-fc-bar__link" href="{{ $b['href'] }}"{!! $fcRel($b['href']) !!}{!! $fcEv($b['key'], 'bar', $b['link']) !!}><span class="sf-fc-bar__dot" style="{{ $fcVars($b) }}">{!! $fcGlyph($b, 'sf-fc-bar__icon') !!}</span><span class="sf-fc-bar__label">{{ $fcWord($b) }}</span></a></li>
+                    <li class="sf-fc-bar__item{{ $fcRank($cell['place']) > 3 ? ' sf-fc-bar__item--r'.$fcRank($cell['place']) : '' }}{{ $cell['up'] ? ' sf-fc-bar__item--up' : '' }}"{!! $fcOrd($cell) !!}{!! empty($b['pending']) ? '' : ' data-fc-pending' !!}><a class="sf-fc-bar__link" href="{{ $b['href'] }}"{!! $fcRel($b['href']) !!}{!! $fcEv($b['key'], 'bar', $b['link']) !!}>@if ($cell['up'])<span class="sf-fc-bar__dot sf-fc-bar__dot--flat" style="{{ $fcVars($b) }}">{!! $fcGlyph($b, 'sf-fc-bar__icon') !!}</span><span class="sf-fc-bar__dot sf-fc-bar__dot--up" style="{{ $fcVars($b) }}">{!! $fcGlyph($b, 'sf-fc-bar__icon') !!}</span>@else<span class="sf-fc-bar__dot" style="{{ $fcVars($b) }}">{!! $fcGlyph($b, 'sf-fc-bar__icon') !!}</span>@endif<span class="sf-fc-bar__label">{{ $fcWord($b) }}</span></a></li>
                 @elseif ($cell['kind'] === 'buy')
                     <li class="sf-fc-bar__item"{!! $fcOrd($cell) !!}><a class="sf-fc-bar__link" href="{{ $fc['buy']['href'] }}"{!! $fcEv('buy', 'bar', str_starts_with($fc['buy']['href'], '/') ? 'page' : 'web') !!}><span class="sf-fc-bar__dot" style="--fc-fill:{{ $fc['buy']['fill'] }};--fc-tint:{{ $fc['buy']['fill'] }};color:{{ $fc['buy']['ink'] }}">{!! $fcIcon('ri-shopping-bag-fill', 'sf-fc-bar__icon') !!}</span><span class="sf-fc-bar__label">{{ __('storefront.fc_buy') }}</span></a></li>
                 @else

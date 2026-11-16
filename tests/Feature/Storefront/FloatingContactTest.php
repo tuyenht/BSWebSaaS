@@ -243,23 +243,34 @@ it('puts Email, Zalo and the call on the bar with no “Thêm” for a site like
         ->and($part)->not->toContain('popovertarget')->not->toContain('sf-fc-sheet');
 });
 
-it('fills the bar with the call, Zalo and SMS and opens Messenger and Email from “Thêm”, “Mua hàng” last', function (bool $shop): void {
+it('shows every channel on the bar while they all fit, Messenger and Email too, with no “Thêm” of its own', function (): void {
     $siteId = flcSite();
-    if ($shop) {
-        flcShop($siteId);
-    }
+    flcSetting($siteId, flcFive(['theme' => 'horizontal', 'layout' => 'combo', 'buy' => ['enabled' => true, 'color' => '#0ab39c']]));
+
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    // Five cells, the saved order; only a narrow phone adds its "Thêm" (m5) for the channels it lets go.
+    expect(flcBarCells($part))->toBe(['Gọi điện', 'Zalo', 'Messenger:r4', 'Gửi Email:r5', 'Nhắn tin:r5', 'Thêm:m5'])
+        ->and($part)->toContain('href="https://m.me/trang.mau"')->toContain('href="mailto:lienhe@mau.test"')
+        ->not->toContain('sf-fc-bar__item--more"><button');
+});
+
+it('opens from “Thêm” the channels that do not fit, in saved order, “Thêm” before “Mua hàng”', function (): void {
+    $siteId = flcSite();
+    flcShop($siteId);
     flcSetting($siteId, flcFive(['theme' => 'horizontal', 'layout' => 'combo', 'buy' => ['enabled' => true, 'color' => '#0ab39c']]));
 
     $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
     preg_match('~<div class="sf-fc-sheet" id="sf-fc-more" popover>.*?</div>~s', $part, $sheet);
 
-    expect(flcBarLabels($part))->toBe($shop ? ['Gọi điện', 'Zalo', 'Nhắn tin', 'Thêm', 'Mua hàng'] : ['Gọi điện', 'Zalo', 'Nhắn tin', 'Thêm'])
-        ->and($sheet[0])->toContain('Kênh liên hệ khác')->toContain('href="https://m.me/trang.mau"')->toContain('href="mailto:lienhe@mau.test"')
+    // Four places with "Mua hàng": three channels and "Thêm"; Email and SMS wait in the sheet.
+    expect(flcBarLabels($part))->toBe(['Gọi điện', 'Zalo', 'Messenger', 'Thêm', 'Mua hàng'])
+        ->and($sheet[0])->toContain('Kênh liên hệ khác')->toContain('href="mailto:lienhe@mau.test"')->toContain('href="sms:')
         ->and(substr_count($sheet[0], '<li class="sf-fc-sheet__item">'))->toBe(2)
         // The bar cells a narrow phone lets go (fourth place on, "Thêm" and "Mua hàng" counted) wait in the sheet too.
-        ->and(substr_count($sheet[0], '<li class="sf-fc-sheet__item sf-fc-sheet__item--r'))->toBe($shop ? 2 : 1)
+        ->and(substr_count($sheet[0], '<li class="sf-fc-sheet__item sf-fc-sheet__item--r'))->toBe(2)
         ->and($part)->toContain('<li class="sf-fc-bar__item sf-fc-bar__item--more"><button type="button" class="sf-fc-bar__link" popovertarget="sf-fc-more">');
-})->with(['with a product list' => true, 'without one' => false]);
+});
 
 /** @return list<string> each bar cell as "label" or "label:place class" (r4/r5/m4/m5), in order */
 function flcBarCells(string $part): array
@@ -562,30 +573,56 @@ it('adds no query to a page, and for “Mua hàng” only the product list looku
  */
 function flcRaw(array $keys, array $extra = []): array
 {
-    $values = ['phone' => '0912345678', 'zalo' => '0912345678', 'sms' => '0912345678', 'whatsapp' => '0912345678', 'telegram' => '@mau_shop', 'email' => 'lienhe@mau.test', 'maps' => 'https://maps.app.goo.gl/abc'];
+    $values = ['phone' => '0912345678', 'zalo' => '0912345678', 'sms' => '0912345678', 'whatsapp' => '0912345678', 'telegram' => '@mau_shop', 'messenger' => 'trang.mau', 'email' => 'lienhe@mau.test', 'maps' => 'https://maps.app.goo.gl/abc'];
 
     return $extra + ['enabled' => true, 'theme' => 'horizontal', 'layout' => 'combo', 'position' => 'right', 'offset_x' => 20, 'offset_y' => 24,
         'channels' => array_map(static fn (string $key): array => ['key' => $key, 'on' => true, 'value' => $values[$key]], $keys)];
 }
 
-it('raises the call into the middle of the bar for a setting saved before the option, with the cell one link', function (array $keys, array $labels): void {
+it('raises the call into the middle of the bar where it shows an odd number of cells, for a setting saved before the option, with the cell one link', function (array $keys, array $labels, string $up): void {
     $siteId = flcSite();
     flcSetting($siteId, flcRaw($keys));
 
     $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
 
     expect(flcBarLabels($part))->toBe($labels)
-        // The bar and its spacer both carry the raise, so the spacer keeps the room of the rise too.
-        ->and(substr_count($part, ' data-up>'))->toBe(2)
+        // The bar and its spacer both name the widths that raise the call, so the spacer keeps the room of the rise there too.
+        ->and(substr_count($part, ' data-up="'.$up.'">'))->toBe(2)
         ->and(substr_count($part, 'sf-fc-bar__item--up'))->toBe(2)
-        // The whole cell is the call link: the disc and its label sit inside the one tel: link.
-        ->and($part)->toMatch('~<li class="sf-fc-bar__item sf-fc-bar__item--up"[^>]*><a class="sf-fc-bar__link" href="tel:[^"]+"[^>]*><span class="sf-fc-bar__dot"[^>]*>.*?</span><span class="sf-fc-bar__label">Gọi điện</span></a></li>~s');
+        // The whole cell is the call link: its plain and raised discs and its label sit inside the one tel: link.
+        ->and($part)->toMatch('~<li class="sf-fc-bar__item sf-fc-bar__item--up"[^>]*><a class="sf-fc-bar__link" href="tel:[^"]+"[^>]*><span class="sf-fc-bar__dot sf-fc-bar__dot--flat"[^>]*>.*?</span><span class="sf-fc-bar__dot sf-fc-bar__dot--up"[^>]*>.*?</span><span class="sf-fc-bar__label">Gọi điện</span></a></li>~s')
+        ->and(substr_count($part, 'sf-fc-bar__dot--up'))->toBe(1);
 })->with([
-    'three cells' => [['phone', 'zalo', 'sms'], ['Zalo', 'Gọi điện', 'Nhắn tin']],
-    'four cells' => [['phone', 'zalo', 'sms', 'whatsapp'], ['Zalo', 'Nhắn tin', 'Gọi điện', 'WhatsApp', 'Thêm']],
-    'five cells' => [['phone', 'zalo', 'sms', 'whatsapp', 'telegram'], ['Zalo', 'Nhắn tin', 'Gọi điện', 'WhatsApp', 'Telegram', 'Thêm']],
-    'the call saved last' => [['zalo', 'sms', 'whatsapp', 'phone'], ['Zalo', 'Nhắn tin', 'Gọi điện', 'WhatsApp', 'Thêm']],
+    'three cells: raised at every width' => [['phone', 'zalo', 'sms'], ['Zalo', 'Gọi điện', 'Nhắn tin'], '5 4 3'],
+    'four cells: saved order, raised only where three show' => [['phone', 'zalo', 'sms', 'whatsapp'], ['Gọi điện', 'Zalo', 'Nhắn tin', 'WhatsApp', 'Thêm'], '3'],
+    'five cells: 2·3·1·4·5' => [['phone', 'zalo', 'sms', 'whatsapp', 'telegram'], ['Zalo', 'Nhắn tin', 'Gọi điện', 'WhatsApp', 'Telegram', 'Thêm'], '5 3'],
+    'four cells, the call saved last' => [['zalo', 'sms', 'whatsapp', 'phone'], ['Zalo', 'Nhắn tin', 'WhatsApp', 'Gọi điện', 'Thêm'], '3'],
 ]);
+
+it('draws An Vinh’s five channels as Zalo · Nhắn tin · raised call · Messenger · Email, and a plain saved-order bar where four show', function (): void {
+    $siteId = flcSite();
+    flcSetting($siteId, flcRaw(['zalo', 'sms', 'phone', 'messenger', 'email']));
+
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+    preg_match('~<nav class="sf-fc-bar sf-fc-bar--light" aria-label="[^"]*" data-up="5 3">.*?<ul class="sf-fc-bar__list".*?</ul>~s', $part, $bar);
+    preg_match_all('~<li class="sf-fc-bar__item[^"]*" style="--fc-o4:(\d+);--fc-o3:(\d+)"~', $bar[0] ?? '', $ord, PREG_SET_ORDER);
+
+    // Four cells (18rem to 22.5rem): Zalo, Nhắn tin, the plain call and "Thêm" in saved order; three below:
+    // Zalo, the raised call, "Thêm". A cell a width does not show keeps order 0.
+    expect(flcBarCells($part))->toBe(['Zalo', 'Nhắn tin:r4', 'Gọi điện', 'Messenger:r5', 'Gửi Email:r5', 'Thêm:m5'])
+        ->and(array_map(static fn (array $o): string => $o[1].'/'.$o[2], $ord))->toBe(['0/0', '1/0', '2/1', '0/0', '0/0', '3/2'])
+        ->and($part)->not->toContain('sf-fc-bar__item--more"><button');
+});
+
+it('keeps a plain call in the saved order for a bar of two cells, the switch on', function (): void {
+    $siteId = flcSite();
+    flcSetting($siteId, flcRaw(['phone', 'zalo']));
+
+    $part = flcPart($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent());
+
+    expect(flcBarLabels($part))->toBe(['Gọi điện', 'Zalo'])
+        ->and($part)->not->toContain('data-up')->not->toContain('sf-fc-bar__item--up')->not->toContain('sf-fc-bar__dot--up');
+});
 
 it('prints each cell\'s narrow-width order on the bar and on its spacer alike, only when the call is raised', function (): void {
     $siteId = flcSite();
