@@ -10,6 +10,7 @@ use App\Modules\Admin\Livewire\IntegrationsSettings;
 use App\Modules\Admin\Livewire\LoginSecuritySettings;
 use App\Modules\Admin\Livewire\SeoSettings;
 use App\Modules\Admin\Livewire\SocialSettings;
+use App\Modules\Admin\Livewire\WebsiteAppearanceSettings;
 use App\Modules\Admin\Support\LoginTurnstile;
 use App\Modules\Admin\Support\PlatformSettings;
 use App\Modules\Admin\Support\SettingsRepository;
@@ -18,6 +19,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteSetting;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
@@ -58,6 +60,14 @@ function sbOperator(): User
     app(PlatformSettings::class)->put(LoginTurnstile::GROUP, 'config', [LoginTurnstile::KEY => true]);
 
     return $operator->fresh();
+}
+
+/** An admin of a site with the rich header (so "Có tìm kiếm" on Giao diện website), its search saved on. */
+function sbHeaderAdmin(): User
+{
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'storefront', 'key' => 'header'], ['value' => ['search' => true]]));
+
+    return sbAdmin();
 }
 
 /** The opening tag of the bar's button marked `$mark`. */
@@ -111,7 +121,7 @@ it('turns the bar on after one change, and "Bỏ thay đổi" puts the saved val
 
         $change($lw);
         expect(sbClean($lw->html()))->toBeFalse()
-            ->and($lw->html())->toContain('1 thay đổi chưa lưu')->not->toContain('Chưa có thay đổi');
+            ->and($lw->html())->toContain('1 thay đổi chưa lưu')->not->toContain('<span x-text="cleanText">Chưa có thay đổi</span>');
 
         $lw->call('resetChanges')->assertSet($property, $saved);
         expect(sbClean($lw->html()))->toBeTrue();
@@ -126,6 +136,7 @@ it('turns the bar on after one change, and "Bỏ thay đổi" puts the saved val
     'floating contact' => [FloatingContactSettings::class, fn (Testable $lw) => $lw->call('toggleEnabled'), 'enabled', false],
     'integrations' => [IntegrationsSettings::class, fn (Testable $lw) => $lw->set('tokens.google', 'abcdefghijklmnopqrstuvwxyz'), 'tokens.google', ''],
     'login security' => [LoginSecuritySettings::class, fn (Testable $lw) => $lw->set('turnstileLogin', false), 'turnstileLogin', true, fn () => sbOperator()],
+    'website appearance: "Có tìm kiếm"' => [WebsiteAppearanceSettings::class, fn (Testable $lw) => $lw->call('toggleSearch'), 'search', true, fn () => sbHeaderAdmin()],
 ]);
 
 it('goes back to nothing to save once the change is saved', function (string $page, Closure $change, ?Closure $who = null): void {
@@ -145,6 +156,7 @@ it('goes back to nothing to save once the change is saved', function (string $pa
     'quick sign-in' => [SocialSettings::class, fn (Testable $lw) => $lw->set('forms.google.client_id', 'abc.apps')],
     'catalog' => [CatalogSettings::class, fn (Testable $lw) => $lw->set('mode', 'commerce')],
     'login security' => [LoginSecuritySettings::class, fn (Testable $lw) => $lw->set('turnstileLogin', false), fn () => sbOperator()],
+    'website appearance: "Có tìm kiếm"' => [WebsiteAppearanceSettings::class, fn (Testable $lw) => $lw->call('toggleSearch'), fn () => sbHeaderAdmin()],
 ]);
 
 it('saves every quick sign-in app that changed with the one "Lưu", and leaves the others alone', function (): void {
@@ -273,6 +285,7 @@ it('answers the bar with true only when a section really saved', function (strin
     'floating contact' => [FloatingContactSettings::class, fn (Testable $lw) => $lw->call('toggleEnabled')],
     'integrations' => [IntegrationsSettings::class, fn (Testable $lw) => $lw->set('tokens.google', 'abcdefghijklmnopqrstuvwxyz')],
     'login security' => [LoginSecuritySettings::class, fn (Testable $lw) => $lw->set('turnstileLogin', false), fn () => sbOperator()],
+    'website appearance: "Có tìm kiếm"' => [WebsiteAppearanceSettings::class, fn (Testable $lw) => $lw->call('toggleSearch'), fn () => sbHeaderAdmin()],
 ]);
 
 it('answers false when quick sign-in has nothing to save', function (): void {
