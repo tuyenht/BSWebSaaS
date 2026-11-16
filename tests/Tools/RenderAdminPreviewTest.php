@@ -541,6 +541,42 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-bs-lazy="bsCategories"', 'Gia công CNC');
     file_put_contents($dir.'/categories.html', $html);
 
+    // The news list (Tin tức): posts in the categories above, with cover pictures, several statuses
+    // and two authors, as the posts variant of the list board shows them.
+    app(Tenancy::class)->enter(1, function () use ($owner): void {
+        $writer = User::query()->create(['name' => 'Trần Thị Lan', 'email' => 'lan@'.ADMIN_PREVIEW_HOST, 'password' => 'a-strong-password']);
+        $cat = fn (string $name): int => (int) Taxonomy::query()->where('vocabulary', 'post_cat')
+            ->whereHas('translations', fn ($q) => $q->where('name', $name))->value('id');
+        $rows = [
+            ['Khánh thành nhà xưởng gia công cơ khí chính xác mới tại Phú Nghĩa', 'khanh-thanh-nha-xuong-moi', 'published', 'Tin công ty', 0],
+            ['Những điều nên biết trước khi đặt gia công CNC', 'dieu-nen-biet-truoc-khi-dat-gia-cong', 'published', 'Gia công CNC', 1],
+            ['Thông báo lịch nghỉ Tết Nguyên đán 2027', 'lich-nghi-tet-2027', 'scheduled', 'Tin công ty', 0],
+            ['Chọn vật liệu thép cho chi tiết chịu mài mòn', 'chon-vat-lieu-thep', 'draft', 'Kiến thức', 1],
+            ['Ưu đãi 10% cho đơn gia công đầu tiên', 'uu-dai-don-dau-tien', 'private', 'Khuyến mãi', 0],
+            ['Tham gia Hội chợ Mechanical Expo 2026', 'hoi-cho-mechanical-expo-2026', 'archived', 'Hội chợ Mechanical Expo', 1],
+        ];
+        foreach ($rows as $i => [$title, $slug, $status, $category, $byWriter]) {
+            $hash = hash('sha256', $slug);
+            $media = Media::query()->create(['collection' => 'library', 'slug' => 'anh-'.$slug, 'hash' => $hash,
+                'original_filename' => 'anh-'.$slug.'.jpg', 'storage_key' => 's/library/anh-'.$slug.'-'.substr($hash, 0, 12).'.jpg',
+                'mime' => 'image/jpeg', 'size' => 120_000, 'width' => 1200, 'height' => 800]);
+            $entry = Entry::query()->create(['type' => 'post', 'status' => $status, 'author_id' => $byWriter ? $writer->id : $owner->id,
+                'cover_media_id' => $media->id, 'view_count' => [1240, 860, 0, 0, 35, 410][$i],
+                'published_at' => $status === 'scheduled' ? now()->addDays(20) : ($status === 'draft' ? null : now()->subDays($i + 1))]);
+            $entry->translations()->create(['locale' => 'vi', 'title' => $title, 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);
+            if ($i === 0) {
+                $entry->translations()->create(['locale' => 'en', 'title' => 'New precision machining workshop opens', 'slug' => 'new-workshop-opens', 'status' => 'draft', 'body' => ['blocks' => []]]);
+            }
+            if (($id = $cat($category)) > 0) {
+                $entry->taxonomies()->attach($id, ['position' => 0, 'site_id' => 1]);
+            }
+        }
+    });
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content?section=posts')->assertOk()->getContent();
+    expect($html)->toContain('Khánh thành nhà xưởng gia công');
+    file_put_contents($dir.'/post-list.html', $html);
+
     // The product editor with the same shared Google part (no short description: a product has
     // none). The catalog is switched on only now, so the screens above keep their menus.
     $product = app(Tenancy::class)->enter(1, function (): Product {
@@ -777,5 +813,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-te-page="suspended"');
     file_put_contents($dir.'/error-suspended.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 51);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 52);
 });

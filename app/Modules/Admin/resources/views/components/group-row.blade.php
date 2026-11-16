@@ -12,8 +12,10 @@
     // last first, while the chosen group and Trash always stay in the row. "Khác" sits right after
     // the last group and Trash at the far end, at least 2rem apart; the menu never leaves the row.
     //
-    // $groups: list<array{key: string, label: string, icon?: string|null, count?: int|string|null, trash?: bool}>
-    // A count given as text ("hơn 10.000", for a list that stops counting) is shown as given.
+    // $groups: list<array{key: string, label: string, icon?: string|null, count?: int|string|null, trash?: bool, tone?: string}>
+    // A count given as text ("hơn 10.000", for a list that stops counting) is shown as given. A group
+    // with a tone (a record status, "all" or "trash") draws its count in that status's own ink and tint,
+    // the same as the status pill on its rows; the label beside it says what the number is.
     // $active: the chosen group's key. $model: the host Livewire property a click sets.
     // $label: the row's name, e.g. "Nhóm tệp".
     //
@@ -124,7 +126,9 @@
                     <x-bs-admin::icon :name="$group['icon']" class="size-4 shrink-0" />
                 @endif
                 <span>{{ $group['label'] }}</span>
-                @if (($n = $fmt($group['count'] ?? null)) !== null)
+                @if (($n = $fmt($group['count'] ?? null)) !== null && ($group['tone'] ?? null) !== null)
+                    <x-bs-admin::status-pill count :status="$group['tone']">{{ $n }}</x-bs-admin::status-pill>
+                @elseif ($n !== null)
                     <span @class([
                         'inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-caption font-semibold leading-normal',
                         'bg-surface-hover text-text' => ! $on,

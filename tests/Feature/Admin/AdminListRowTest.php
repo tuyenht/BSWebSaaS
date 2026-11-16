@@ -264,14 +264,14 @@ describe('the posts and pages list on the shared row', function (): void {
         return $entry;
     }
 
-    it('names views only once there are some, written in the member\'s locale', function (): void {
+    it('names views only once there are some, on a record visitors can see, written in the member\'s locale', function (): void {
         $user = User::factory()->create();
         app()->setLocale('vi');
 
         app(Tenancy::class)->enter(1, function () use ($user): void {
             grantRole($user, 'editor', ['entries.view', 'entries.edit.any']);
             $entry = listRowEntry($user, 'Bài được đọc', 'bai-duoc-doc');
-            Entry::query()->whereKey($entry->getKey())->update(['view_count' => 1234]);
+            Entry::query()->whereKey($entry->getKey())->update(['view_count' => 1234, 'status' => 'published', 'published_at' => now()]);
 
             Livewire::actingAs($user->fresh())->test(Index::class)
                 ->assertSeeHtml('data-for="views">1.234 lượt xem</span>');
