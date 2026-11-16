@@ -143,30 +143,30 @@
                 <span class="font-medium">{{ $sectionLabel }}</span>
             </div>
         </nav>
-        <div class="flex items-center gap-3">
-            {{-- the name is inline, so the (?) follows its last word when it wraps --}}
-            <div class="min-w-0 flex-1">
-                <h1 id="entries-title" tabindex="-1" class="m-0 inline text-[calc(1.25rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ $pageTitle }}</h1>
+        <x-bs-admin::title-row :title="$pageTitle" title-id="entries-title">
+            <x-slot:help>
                 @if ($isPost)
-                    <x-bs-admin::guide class="ms-1" :guide="$guide" />
+                    <x-bs-admin::guide :guide="$guide" />
                 @else
-                    <div class="relative ms-1 inline-block align-middle" x-data="{ open: false }" @keydown.escape.prevent.stop="open && (open = false, $refs.help.focus())" @click.outside="open = false">
+                    {{-- the popup opens under the (?) from 768; below, under the whole row (the (?) is at its end) --}}
+                    <div class="inline-block align-middle md:relative" x-data="{ open: false }" @keydown.escape.prevent.stop="open && (open = false, $refs.help.focus())" @click.outside="open = false">
                         <button type="button" x-ref="help" @click="open = ! open" :aria-expanded="open ? 'true' : 'false'" aria-controls="entries-help"
                                 aria-label="{{ __('admin.list.help_named', ['name' => $pageTitle]) }}" title="{{ __('admin.list.help') }}"
                                 class="hit-area inline-flex size-control items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-hover hover:text-text-strong">
                             <x-bs-admin::icon name="ri-question-mark" class="size-5" />
                         </button>
                         <div x-show="open" x-cloak id="entries-help" role="region" aria-label="{{ __('admin.list.help') }}"
-                             class="absolute start-0 top-full z-60 mt-1.5 w-[min(22rem,calc(100vw-2rem))] rounded-md border border-border bg-surface p-3 text-body text-text shadow-lg">
+                             class="absolute start-0 top-full z-60 mt-1.5 w-[min(22rem,calc(100vw-2rem))] rounded-md border border-border bg-surface p-3 text-body text-text shadow-lg max-md:start-auto max-md:end-0">
                             <p class="m-0 [overflow-wrap:anywhere]">{{ __('entries.help_'.$type) }}</p>
                         </div>
                     </div>
                 @endif
-            </div>
-            <x-bs-admin::button color="primary" class="shrink-0" data-guide="add" :href="route('admin.entries.create', $sectionKey ? ['section' => $sectionKey] : [])">
-                <x-bs-admin::icon name="ri-add" class="size-4" /> {{ __('entries.add_'.$type) }}
+            </x-slot:help>
+            <x-bs-admin::button color="primary" class="shrink-0" data-guide="add" :href="route('admin.entries.create', $sectionKey ? ['section' => $sectionKey] : [])"
+                :label="__('entries.add_'.$type)" :short="__('admin.list.add_short')">
+                <x-bs-admin::icon name="ri-add" class="size-4" />
             </x-bs-admin::button>
-        </div>
+        </x-bs-admin::title-row>
         <p class="m-0 text-body text-text-muted [overflow-wrap:anywhere]">{{ __('entries.desc_'.$type, ['label' => mb_strtolower(mb_substr($sectionLabel, 0, 1)).mb_substr($sectionLabel, 1)]) }}</p>
     </header>
 

@@ -613,6 +613,8 @@ it('draws the screen: the header, the theme\'s templates and each row carrying i
     $html = $this->actingAs($this->editor->fresh())->get('http://a.test/admin/taxonomies?section=tin-tuc')->assertOk()
         ->assertSee(__('categories.title', ['section' => 'Tin tức']))
         ->assertSee(__('categories.ui_add'))
+        // below 768 the add button shows «+ Thêm», its name still «Thêm chuyên mục»
+        ->assertSee('<span class="max-md:sr-only">'.e(__('categories.ui_add')).'</span><span class="md:hidden" aria-hidden="true">'.e(__('admin.list.add_short')).'</span>', false)
         ->assertSee('data-bs-lazy="bsCategories"', false)
         ->assertSee('Ấn <b>phẩm</b> mới')                // escaped, never markup
         ->assertDontSee('Ấn <b>phẩm</b> mới', false)

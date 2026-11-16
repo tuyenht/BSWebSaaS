@@ -165,14 +165,14 @@
                 <span class="font-medium">{{ $title }}</span>
             </div>
         </nav>
-        <div class="flex items-center gap-3">
-            <h1 class="m-0 min-w-0 flex-1 text-[calc(1.25rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ $title }}</h1>
+        <x-bs-admin::title-row :title="$title">
             @if ($canManage)
-                <x-bs-admin::button color="primary" class="shrink-0" :href="route('admin.catalog.create')">
-                    <x-bs-admin::icon name="ri-add" class="size-4" /> {{ __('catalog.create_new') }}
+                <x-bs-admin::button color="primary" class="shrink-0" :href="route('admin.catalog.create')"
+                    :label="__('catalog.create_new')" :short="__('admin.list.add_short')">
+                    <x-bs-admin::icon name="ri-add" class="size-4" />
                 </x-bs-admin::button>
             @endif
-        </div>
+        </x-bs-admin::title-row>
         <p class="m-0 text-body text-text-muted [overflow-wrap:anywhere]">{{ __('catalog.desc') }}</p>
     </header>
 

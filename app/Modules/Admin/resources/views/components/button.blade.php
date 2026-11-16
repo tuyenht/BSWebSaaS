@@ -6,6 +6,8 @@
     'href' => null,
     'icon' => false,
     'navigate' => true,
+    'label' => null,
+    'short' => null,
 ])
 @php
     // Mirrors Velzon .btn / .btn-soft-* / .btn-outline-* / .btn-ghost-*.
@@ -22,6 +24,9 @@
     // running out of the button; `icon` makes a square button for a lone icon with an aria-label.
     // A link opens in place through wire:navigate; `:navigate="false"` keeps it a plain link (a
     // page on the public website in a new tab).
+    // `label` draws the words after the slot (the icon); with `short` too, below 768px the button shows only
+    // the short word ("+ Thêm") while its name stays the full label (in a span read by screen readers only),
+    // and the short word contains in every language a word of that name (label in name).
     // A toggle (aria-pressed) shows its on state: the accent edge and ink on a soft accent fill, bold.
     // `variant="outline" color="neutral"` is the quiet button beside a main one (design 01's "Bỏ thay
     // đổi"; the dashboard's and notifications' row buttons): the field edge (>= 3:1 on the card), the
@@ -82,8 +87,15 @@
 
     $classes = trim($base.' '.($sizes[$size] ?? $sizes['md']).' '.$tone);
 @endphp
+@php
+    // the words after the icon: the full label, or (with `short`) the full label for screen readers below 768
+    // beside the short word drawn instead
+    $words = $label === null ? '' : ($short === null
+        ? '<span>'.e($label).'</span>'
+        : '<span class="max-md:sr-only">'.e($label).'</span><span class="md:hidden" aria-hidden="true">'.e($short).'</span>');
+@endphp
 @if ($href)
-    <a href="{{ $href }}" @if ($navigate) wire:navigate @endif {{ $attributes->merge(['class' => $classes]) }}>{{ $slot }}</a>
+    <a href="{{ $href }}" @if ($navigate) wire:navigate @endif {{ $attributes->merge(['class' => $classes]) }}>{{ $slot }}{!! $words !!}</a>
 @else
-    <button type="{{ $type }}" {{ $attributes->merge(['class' => $classes]) }}>{{ $slot }}</button>
+    <button type="{{ $type }}" {{ $attributes->merge(['class' => $classes]) }}>{{ $slot }}{!! $words !!}</button>
 @endif

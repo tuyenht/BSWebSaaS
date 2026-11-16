@@ -102,6 +102,8 @@ it('shows billing the plans with their customers and main features, but not the 
 
     Livewire::actingAs(plStaff('billing'))->test(Index::class)
         ->assertSee(__('admin.plans_role_strip_billing'))
+        // below 768 the add button shows «+ Thêm», its name still «Thêm gói»
+        ->assertSee('<span class="max-md:sr-only">'.e(__('admin.plans_add')).'</span><span class="md:hidden" aria-hidden="true">'.e(__('admin.list.add_short')).'</span>', false)
         ->assertSee('Cơ bản')
         ->assertSee('Chuyên nghiệp')
         ->assertSee(__('admin.plans_customers_n', ['n' => 1]))
