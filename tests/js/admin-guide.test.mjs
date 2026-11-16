@@ -140,7 +140,7 @@ test('a part\'s tour ends with «Xong», which marks the part seen for this memb
     esc();
 });
 
-test('the first visit offers the guide in a bubble after the button, without taking focus; Esc puts it away for good', async () => {
+test('the first visit offers the guide in a bubble after the button, without taking focus; Esc from it puts it away for good', async () => {
     localStorage.clear();
     const field = $('[data-guide="sort"]');
     field.focus();
@@ -157,11 +157,18 @@ test('the first visit offers the guide in a bubble after the button, without tak
     await wait(200);
     assert.equal($('.bg-sr[aria-live="polite"]').textContent, 'Lần đầu dùng màn này? Xem hướng dẫn khoảng 1 phút, đúng với quyền của bạn.');
 
+    // Esc on the page belongs to what is open there: the bubble steps aside, nothing is remembered
     esc();
     assert.equal(g.state().offer, null);
     assert.equal($('.bg-offer-hole'), null);
     assert.equal($('.bg-sr'), null);
     assert.equal(document.activeElement, field);
+    assert.equal(localStorage.getItem('bs-guide-seen:m1'), null);
+
+    g.offer();
+    g.state().offer.querySelector('.bg-next').focus();
+    esc();
+    assert.equal(g.state().offer, null);
     assert.deepEqual(JSON.parse(localStorage.getItem('bs-guide-seen:m1')), { 'posts|abc123': 'later' });
 
     g.offer();
@@ -187,6 +194,8 @@ test('a press elsewhere on the page puts the bubble away; «Xem ngay» runs the 
     localStorage.clear();
     g.offer();
     $('[data-guide="cols"]').dispatchEvent(new window.Event('pointerdown', { bubbles: true }));
+    assert.ok(g.state().offer); // a finger that starts a scroll is not a press
+    $('[data-guide="cols"]').dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
     assert.equal(g.state().offer, null);
     assert.equal(JSON.parse(localStorage.getItem('bs-guide-seen:m1'))['posts|abc123'], 'later');
 
@@ -218,6 +227,12 @@ test('a tour opens the put-away role card for its first step and closes it again
     esc();
     assert.equal(g.state().card, null);
     assert.equal(copy.hidden, true);
+
+    g.startTour('find'); // a part with no step on the role card leaves the put-away card alone
+    assert.equal(copy.hidden, true);
+    await wait(60);
+    assert.equal(copy.hidden, true);
+    esc();
 
     copy.remove();
     live.hidden = false;

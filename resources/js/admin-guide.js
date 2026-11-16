@@ -1047,7 +1047,12 @@ export function startTour(id) {
         dropTour();
         showMode = false;
     }
-    roleBar('show'); // the opening step points at the role card: opened again if it was put away
+    // a part whose steps point at the role card opens it again if it was put away; other parts leave it
+    const g = guide();
+    const part = (typeof id === 'string' && g.parts.find((p) => p.id === id)) || g.parts[0];
+    if (part && (part.steps || []).some((s) => (s.v || []).some((v) => v.t === 'role'))) {
+        roleBar('show');
+    }
     setTimeout(
         () => {
             const b = build();
@@ -1321,9 +1326,10 @@ export function offer() {
     tryT = setInterval(step, 200);
     step();
 }
-// a press anywhere else is «Để sau» (it reaches the page as well); on «Hướng dẫn» the drawer opens
+// a press anywhere else is «Để sau» (it reaches the page as well); on «Hướng dẫn» the drawer opens.
+// A click, not a pointerdown: a finger that only scrolls the page leaves the bubble where it is.
 document.addEventListener(
-    'pointerdown',
+    'click',
     (e) => {
         if (offerEl && e.target instanceof Element && !offerEl.contains(e.target) && !e.target.closest('[data-guide-open]')) {
             dismissOffer();
@@ -1403,10 +1409,15 @@ document.addEventListener(
             return;
         }
         if (offerEl && !tourEl && !panel) {
-            if (offerEl.contains(document.activeElement)) {
+            // from the bubble or its button, Esc is «Để sau»; elsewhere it belongs to whatever is open there
+            // (a menu, a picker): the bubble only steps aside and is offered again on the next visit
+            const a = document.activeElement;
+            if (a && (offerEl.contains(a) || a.closest('[data-guide-open]'))) {
                 e.stopPropagation();
+                dismissOffer();
+            } else {
+                hideOffer();
             }
-            dismissOffer();
             return;
         }
         if (tourEl) {

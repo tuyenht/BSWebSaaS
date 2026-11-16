@@ -190,6 +190,22 @@ it('guides the pages list with the same parts, worded for pages, and no part on 
     });
 });
 
+it('guides a page editor who may only edit their own pages: no adding, own-pages wording, a status they cannot change', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $editor = pgMember('Sửa trang', ['entries.edit.own']);
+
+        $guide = Livewire::actingAs($editor)->test(Index::class)->viewData('guide');
+        $steps = pgSteps($guide);
+        $targets = collect($guide['parts'])->flatMap(fn (array $p) => collect($p['steps'])->flatMap(fn (array $s) => array_column($s['v'], 't')))->all();
+
+        expect($guide['screen'])->toBe('pages')
+            ->and($steps['main'])->not->toHaveKey('add')
+            ->and($targets)->not->toContain('add')
+            ->and($guide['role']['may'])->toContain('chỉ sửa trang của mình')
+            ->and($steps['main']['status'])->toContain('Nhóm quyền của bạn không đổi trạng thái được');
+    });
+});
+
 it('puts the guide button on the pages list in place of its old help', function (): void {
     $user = null;
     app(Tenancy::class)->enter(1, function () use (&$user): void {
