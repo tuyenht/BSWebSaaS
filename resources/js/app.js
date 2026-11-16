@@ -46,6 +46,24 @@ document.addEventListener('click', (e) => {
         import('./admin-guide.js').then((m) => m.openPanel(btn), () => window.location.reload());
     }
 });
+// Entering a screen whose guide this member has not been offered yet (remembered per member, website,
+// screen and scenario, as admin-guide.js keeps it) downloads the guide to offer it in a bubble.
+document.addEventListener('livewire:navigated', () => {
+    const s = document.querySelector('script[data-guide-ctx]');
+    if (!s || s.dataset.offered) {
+        return;
+    }
+    s.dataset.offered = '1';
+    try {
+        const c = JSON.parse(s.textContent || '{}');
+        if (JSON.parse(localStorage.getItem('bs-guide-seen:' + c.member) || '{}')[c.screen + '|' + c.scenario]) {
+            return;
+        }
+    } catch {
+        return; // no memory to keep an answer in: the bubble would come back on every visit
+    }
+    import('./admin-guide.js').then((m) => m.offer(), () => {});
+});
 
 let uploader = null;
 

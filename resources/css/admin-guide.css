@@ -407,10 +407,131 @@
     }
 }
 
+/* the first-visit bubble under «Hướng dẫn»: its arrow points at the button, a ring marks the button */
+.bg-offer {
+    position: fixed;
+    z-index: 1500;
+    display: flex;
+    flex-direction: column;
+    width: min(340px, calc(100vw - 24px));
+    padding: 14px 16px;
+    box-sizing: border-box;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    box-shadow: 0 8px 28px rgb(15 18 30 / 0.18);
+    font-size: calc(0.875rem + var(--user-text-boost));
+    font-weight: 400;
+    line-height: 1.5;
+    text-align: left;
+    white-space: normal;
+    animation: bg-offer-in 0.18s ease-out;
+}
+
+.bg-offer::before {
+    content: '';
+    position: absolute;
+    top: -7px;
+    left: var(--ax, 24px);
+    width: 12px;
+    height: 12px;
+    background: inherit;
+    border-left: 1px solid var(--color-border);
+    border-top: 1px solid var(--color-border);
+    transform: rotate(45deg);
+}
+
+.bg-offer-in {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    overflow-wrap: anywhere;
+}
+
+.bg-offer b {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--color-text-strong);
+}
+
+.bg-offer .bg-nav {
+    flex: 0 0 auto;
+    margin-top: 8px;
+}
+
+.bg-offer .bg-nav button {
+    white-space: nowrap;
+}
+
+.bg-offer-hole {
+    position: fixed;
+    z-index: 1499;
+    border-radius: 8px;
+    box-shadow: 0 0 0 3px var(--color-primary-text);
+    pointer-events: none;
+    animation: bg-offer-in 0.18s ease-out;
+}
+
+.bg-offer.bg-nm,
+.bg-offer-hole.bg-nm {
+    animation: none;
+}
+
+@keyframes bg-offer-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* the bubble's words, read out once it shows */
+.bg-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* the put-away role card a tour opens for its first step, and closes after */
+[data-role-copy].bg-rb {
+    overflow: hidden;
+    transition:
+        max-height 0.25s ease,
+        opacity 0.2s ease,
+        padding 0.25s ease,
+        margin 0.25s ease,
+        border-width 0.25s ease;
+}
+
+[data-role-copy].bg-rb-gone {
+    max-height: 0 !important;
+    opacity: 0;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    border-width: 0 !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .bg-hole,
     .bg-card,
-    .bg-panel .bg-cht > svg {
+    .bg-panel .bg-cht > svg,
+    [data-role-copy].bg-rb {
         transition: none;
+    }
+
+    .bg-offer,
+    .bg-offer-hole {
+        animation: none;
     }
 }

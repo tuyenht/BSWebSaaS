@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Livewire\Entries\Index;
+use App\Modules\Admin\Support\FirstHints;
 use App\Modules\Admin\Support\Guide\Guide;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Identity\Models\User;
@@ -13,9 +14,9 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Livewire\Livewire;
 
 /*
- * The posts list's «Hướng dẫn»: one button beside the title, and the member's own guide printed
- * with it — the parts and steps worded from their real permissions and the section's workflow,
- * the steps they cannot use left out — in the admin's language, every line from lang/*.json.
+ * The posts and pages lists' «Hướng dẫn»: one button beside the title, and the member's own guide
+ * printed with it — the parts and steps worded from their real permissions and the section's
+ * workflow, the steps they cannot use left out — in the admin's language, every line from lang/*.json.
  */
 
 beforeEach(function (): void {
@@ -162,7 +163,34 @@ it('prints the button with its name, and the guide in each admin language withou
     }
 })->with(['vi', 'en', 'ja', 'zh']);
 
-it('keeps the old help on the pages list, which has no guide yet', function (): void {
+it('guides the pages list with the same parts, worded for pages, and no part on the page tree', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $owner = User::factory()->create();
+        grantRole($owner, 'owner', PermissionRegistry::TENANT_PERMISSIONS);
+
+        $guide = Livewire::actingAs($owner->fresh())->test(Index::class)->viewData('guide');
+        $steps = pgSteps($guide);
+        $find = collect(collect($guide['parts'])->firstWhere('id', 'find')['steps'])->keyBy('id');
+        $row = collect(collect($guide['parts'])->firstWhere('id', 'row')['steps'])->keyBy('id');
+
+        expect($guide['screen'])->toBe('pages')
+            ->and($guide['title'])->toBe('Trang')
+            ->and(array_keys($steps))->toBe(['main', 'row', 'find', 'bulk'])
+            // the role card is a post list's: the page list's opening step has nothing to point at
+            ->and($steps['main'])->not->toHaveKey('intro')
+            ->and($steps['main']['add'])->toBe('Bấm [[Thêm trang]] để mở trình soạn. Nhập tiêu đề và nội dung rồi đăng là trang lên website. Chưa xong thì trang tự lưu thành bản nháp, khách chưa thấy.')
+            ->and($steps['main']['tabs'])->toContain('số bên cạnh là số trang. Trang mới viết nằm ở [[Bản nháp]]')
+            ->and($guide['role']['note'])->toBe('Mục Trang đang đăng thẳng, không qua bước duyệt.')
+            ->and($guide['role']['may'])->toBe('được đăng · sửa được mọi trang')
+            ->and($guide['purpose'])->toContain('Mọi trang của website nằm ở đây')
+            ->and(array_column($row['path']['v'], 't'))->toBe(['row-path-edit', 'row-path-home', 'row-path'])
+            ->and($row['path']['v'][1]['text'])->toContain('Trang chủ luôn ở địa chỉ gốc / nên không đổi đường dẫn được.')
+            ->and($find['filter']['v'][1]['text'])->toStartWith('[[Mẫu trang]] lọc theo mẫu của trang')
+            ->and($find['cols']['v'][0]['text'])->toContain('mẫu trang');
+    });
+});
+
+it('puts the guide button on the pages list in place of its old help', function (): void {
     $user = null;
     app(Tenancy::class)->enter(1, function () use (&$user): void {
         $user = User::factory()->create();
@@ -170,7 +198,38 @@ it('keeps the old help on the pages list, which has no guide yet', function (): 
     });
 
     $this->actingAs($user->fresh())->get('http://a.test/admin/content')->assertOk()
-        ->assertDontSee('data-guide-open', false)->assertSee('entries-help', false);
+        ->assertSee('data-guide-open', false)->assertSee('data-guide-ctx', false)
+        ->assertDontSee('entries-help', false)->assertDontSee('guide.pages.', false)->assertDontSee('data-role-copy', false);
+});
+
+it('prints a put-away role card once more, hidden, for the tour to open, and only on the first draw', function (): void {
+    $user = null;
+    app(Tenancy::class)->enter(1, function () use (&$user): void {
+        pgSection();
+        $user = User::factory()->create();
+        grantRole($user, 'owner', PermissionRegistry::TENANT_PERMISSIONS);
+    });
+    $user = $user->fresh();
+
+    // the card on show: no copy
+    $this->actingAs($user)->get('http://a.test/admin/content?section=posts')->assertOk()
+        ->assertSee('data-role-note', false)->assertDontSee('data-role-copy', false);
+
+    $this->actingAs($user)->postJson('http://a.test/admin/hint-preference', ['key' => FirstHints::POSTS_ROLE])->assertOk();
+    $html = $this->actingAs($user->fresh())->get('http://a.test/admin/content?section=posts')->assertOk()
+        ->assertDontSee('data-role-note', false)->getContent();
+
+    expect($html)->toMatch('/<div wire:ignore class="contents" data-guide-role-box>\s*(?:<!--.*?-->\s*)*<section aria-label="[^"]+"\s+hidden data-role-copy\s+data-guide="role"/')
+        ->and($html)->toContain('Mục Tin tức đang đăng thẳng, không qua bước duyệt.')
+        ->and($html)->not->toContain('data-hint-ok="'.FirstHints::POSTS_ROLE.'"');
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $list = Livewire::actingAs($user->fresh())->test(Index::class, ['section' => 'posts']);
+        expect($list->viewData('tourRoleNote'))->not->toBeNull()
+            ->and(collect($list->viewData('guide')['parts'][0]['steps'])->pluck('id')->first())->toBe('intro')
+            // a redraw prints it no more (the part redraws leave alone keeps the first)
+            ->and($list->set('search', 'x')->viewData('tourRoleNote'))->toBeNull();
+    });
 });
 
 it('words a single review step in the singular', function (): void {

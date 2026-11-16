@@ -85,7 +85,7 @@
       "css": 2317
     },
     "resources/js/app.js": {
-      "js": 15817,
+      "js": 15912,
       "css": 0
     },
     "resources/js/sections.js": {
@@ -207,8 +207,8 @@
       "css": 0
     },
     "resources/js/admin-guide.js": {
-      "js": 7309,
-      "css": 1572
+      "js": 8539,
+      "css": 1945
     }
   }
 }

@@ -1,4 +1,5 @@
-// A screen's «Hướng dẫn» (resources/js/admin-guide.js) — the drawer, «Chỉ cho tôi» and a part's tour —
+// A screen's «Hướng dẫn» (resources/js/admin-guide.js) — the drawer, «Chỉ cho tôi», a part's tour, the
+// first-visit bubble and the put-away role card a tour opens —
 // in a DOM without a browser: `node --test tests/js/admin-guide.test.mjs`.
 import assert from 'node:assert/strict';
 import { register } from 'node:module';
@@ -16,6 +17,8 @@ const ui = {
     steps: ':n bước', steps_one: '1 bước', seen: 'Đã xem', show: 'Chỉ cho tôi', show_named: 'Chỉ cho tôi: :step', run: 'Đi qua :n bước', run_one: 'Đi qua 1 bước',
     exit: 'Thoát', exit_tip: 'Thoát (Esc)', back: 'Quay lại Hướng dẫn', prev: 'Trước', prev_aria: 'Bước trước', next: 'Tiếp', next_aria: 'Bước tiếp',
     done: 'Xong', next_part: 'Xem tiếp: :title', count: 'Phần :i/:n · bước :k/:m', count_intro: 'Phần :i/:n', title_sep: ':title:', quote: '«:x»',
+    offer_title: 'Lần đầu dùng màn này?', offer_title_changed: 'Cách làm ở màn này vừa thay đổi', offer_changed: 'Quyền hoặc quy trình duyệt của bạn đã khác trước.',
+    offer_text: 'Xem hướng dẫn khoảng 1 phút, đúng với quyền của bạn.', offer_later: 'Để sau', offer_now: 'Xem ngay',
 };
 const on = (t, title, text) => ({ t, title, text });
 const ctx = {
@@ -135,4 +138,87 @@ test('a part\'s tour ends with «Xong», which marks the part seen for this memb
     assert.equal(g.state().panel.querySelector('[aria-controls="bg-ch-1"] .bg-seen').textContent, 'Đã xem');
     assert.equal(g.state().panel.querySelector('[aria-controls="bg-ch-0"] .bg-seen'), null);
     esc();
+});
+
+test('the first visit offers the guide in a bubble after the button, without taking focus; Esc puts it away for good', async () => {
+    localStorage.clear();
+    const field = $('[data-guide="sort"]');
+    field.focus();
+    g.offer();
+
+    const b = g.state().offer;
+    assert.ok(b && b.getAttribute('role') === 'dialog' && b.getAttribute('aria-modal') === 'false');
+    assert.equal(b.previousElementSibling, opener); // next in the tab order
+    assert.equal($('#bg-o-t').textContent, 'Lần đầu dùng màn này?');
+    assert.equal($('#bg-o-d').textContent, 'Xem hướng dẫn khoảng 1 phút, đúng với quyền của bạn.');
+    assert.deepEqual([...b.querySelectorAll('button')].map((x) => x.textContent), ['Để sau', 'Xem ngay']);
+    assert.equal(document.activeElement, field);
+    assert.ok($('.bg-offer-hole'));
+    await wait(200);
+    assert.equal($('.bg-sr[aria-live="polite"]').textContent, 'Lần đầu dùng màn này? Xem hướng dẫn khoảng 1 phút, đúng với quyền của bạn.');
+
+    esc();
+    assert.equal(g.state().offer, null);
+    assert.equal($('.bg-offer-hole'), null);
+    assert.equal($('.bg-sr'), null);
+    assert.equal(document.activeElement, field);
+    assert.deepEqual(JSON.parse(localStorage.getItem('bs-guide-seen:m1')), { 'posts|abc123': 'later' });
+
+    g.offer();
+    assert.equal(g.state().offer, null);
+});
+
+test('the bubble says the screen changed when another role or workflow was remembered; «Để sau» returns focus from inside it', () => {
+    localStorage.clear();
+    localStorage.setItem('bs-guide-seen:m1', JSON.stringify({ 'posts|old': 'done' }));
+    g.offer();
+
+    assert.equal($('#bg-o-t').textContent, 'Cách làm ở màn này vừa thay đổi');
+    assert.match($('#bg-o-d').textContent, /^Quyền hoặc quy trình duyệt của bạn đã khác trước\. Xem hướng dẫn/);
+    const later = g.state().offer.querySelector('.bg-prev');
+    later.focus();
+    later.click();
+    assert.equal(g.state().offer, null);
+    assert.equal(document.activeElement, opener);
+    assert.equal(JSON.parse(localStorage.getItem('bs-guide-seen:m1'))['posts|abc123'], 'later');
+});
+
+test('a press elsewhere on the page puts the bubble away; «Xem ngay» runs the first part', async () => {
+    localStorage.clear();
+    g.offer();
+    $('[data-guide="cols"]').dispatchEvent(new window.Event('pointerdown', { bubbles: true }));
+    assert.equal(g.state().offer, null);
+    assert.equal(JSON.parse(localStorage.getItem('bs-guide-seen:m1'))['posts|abc123'], 'later');
+
+    localStorage.clear();
+    g.offer();
+    g.state().offer.querySelector('.bg-next').click();
+    assert.equal(g.state().offer, null);
+    await wait(60);
+    assert.equal(g.state().card.querySelector('#bg-t').textContent, 'Nhóm quyền');
+    esc();
+    assert.equal(JSON.parse(localStorage.getItem('bs-guide-seen:m1'))['posts|abc123'], 'skip');
+});
+
+test('a tour opens the put-away role card for its first step and closes it again when it ends', async () => {
+    localStorage.clear();
+    const live = $('main > [data-guide="role"]');
+    live.hidden = true;
+    const copy = document.createElement('section');
+    copy.hidden = true;
+    copy.setAttribute('data-role-copy', '');
+    copy.setAttribute('data-guide', 'role');
+    copy.textContent = 'Vai trò (đã ẩn)';
+    live.after(copy);
+
+    g.startTour('main');
+    assert.equal(copy.hidden, false);
+    await wait(60);
+    assert.equal(g.state().card.querySelector('#bg-t').textContent, 'Nhóm quyền');
+    esc();
+    assert.equal(g.state().card, null);
+    assert.equal(copy.hidden, true);
+
+    copy.remove();
+    live.hidden = false;
 });
