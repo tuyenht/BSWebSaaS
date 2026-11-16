@@ -94,7 +94,7 @@ it('starts off with the six built-in channels, the site’s own phone and email 
             ->assertSet('layout', 'combo')
             ->assertSet('position', 'right')
             ->assertSee('Kích hoạt nút liên hệ nổi')
-            ->assertSee('Đã lưu');
+            ->assertSee('Chưa có thay đổi');
 
         expect(array_column($lw->get('channels'), 'key'))->toBe(['phone', 'zalo', 'messenger', 'email', 'sms', 'maps'])
             ->and(array_column($lw->get('channels'), 'on'))->toBe([true, true, true, true, false, false])
@@ -137,11 +137,11 @@ it('saves the draft for the current site only and loads it back', function (): v
             ->set('channels.'.fcsIndex($lw, 'c1').'.name', 'Liên hệ')
             ->call('pickIcon', 'c1', 'ri-chat-3-line')
             ->call('move', 'telegram', -1)
-            ->assertSee('Chưa lưu')
+            ->assertSee('thay đổi chưa lưu')
             ->call('save')
             ->assertHasNoErrors()
             ->assertSet('toast', 'Đã lưu cấu hình nút liên hệ')
-            ->assertSee('Đã lưu');
+            ->assertSee('Chưa có thay đổi');
     });
 
     $stored = fcsStored(1);
@@ -666,11 +666,11 @@ it('discards the draft back to the saved setting', function (): void {
         Livewire::actingAs($admin)->test(FloatingContactSettings::class)
             ->call('toggleEnabled')
             ->call('addPreset', 'maps')
-            ->assertSee('Chưa lưu')
+            ->assertSee('thay đổi chưa lưu')
             ->call('resetChanges')
             ->assertSet('enabled', false)
             ->assertSet('toast', 'Đã bỏ thay đổi')
-            ->assertSee('Đã lưu');
+            ->assertSee('Chưa có thay đổi');
     });
 });
 

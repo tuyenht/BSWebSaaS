@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Livewire\Concerns\TracksSavedState;
 use App\Modules\Admin\Support\OAuthFlow;
 use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\SettingsRepository;
@@ -23,6 +24,8 @@ use Livewire\Component;
 #[Layout('admin::layouts.app')]
 final class SocialSettings extends Component
 {
+    use TracksSavedState;
+
     /** @var list<string> */
     public array $providers = ['google', 'facebook'];
 
@@ -43,6 +46,52 @@ final class SocialSettings extends Component
 
     public function mount(): void
     {
+        $this->load();
+    }
+
+    /**
+     * Save one provider's app, or (no provider: the save bar's "Lưu") every provider that differs
+     * from what is saved.
+     */
+    public function save(?string $provider = null): void
+    {
+        $chosen = $provider === null ? $this->unsavedFields() : [$provider];
+        if ($chosen === []) {
+            return;
+        }
+        $rules = [];
+        foreach ($chosen as $key) {
+            if (! in_array($key, $this->providers, true)) {
+                return;
+            }
+            $rules['forms.'.$key.'.client_id'] = ['nullable', 'string', 'max:255'];
+            $rules['forms.'.$key.'.client_secret'] = ['nullable', 'string', 'max:1024'];
+            $rules['forms.'.$key.'.enabled'] = ['boolean'];
+        }
+        $this->validate($rules);
+
+        foreach ($chosen as $key) {
+            $this->store($key);
+        }
+        $this->rememberSaved();
+        session()->flash('status', __('admin.saved'));
+    }
+
+    /** Back to the saved apps (the save bar's "Bỏ thay đổi"); a secret typed but not saved is dropped. */
+    public function resetChanges(): void
+    {
+        $this->load();
+        $this->resetErrorBag();
+    }
+
+    /** @return array<string, mixed> */
+    protected function trackedState(): array
+    {
+        return $this->forms;
+    }
+
+    private function load(): void
+    {
         $repo = app(SettingsRepository::class);
 
         foreach ($this->providers as $provider) {
@@ -54,14 +103,11 @@ final class SocialSettings extends Component
             ];
             $this->secretSet[$provider] = ! empty($cfg['client_secret']);
         }
+        $this->rememberSaved();
     }
 
-    public function save(string $provider): void
+    private function store(string $provider): void
     {
-        if (! in_array($provider, $this->providers, true)) {
-            return;
-        }
-
         $form = $this->forms[$provider] ?? [];
         $repo = app(SettingsRepository::class);
         $existing = $repo->get('oauth_social', $provider) ?? [];
@@ -79,13 +125,13 @@ final class SocialSettings extends Component
 
         $this->forms[$provider]['client_secret'] = '';
         $this->secretSet[$provider] = $secret !== null;
-        session()->flash('status', __('admin.saved'));
     }
 
     public function render(): View
     {
         $view = view('admin::livewire.social-settings', [
             'redirectUri' => OAuthFlow::callbackUrl(),
+            'changes' => $this->unsavedCount(),
         ]);
         $view->title(__('admin.social_login'));
 

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Livewire\Concerns\TracksSavedState;
 use App\Modules\Admin\Support\ProductsTabSwitch;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Catalog\Support\CatalogMode;
@@ -22,6 +23,8 @@ use Livewire\Component;
 #[Layout('admin::layouts.app')]
 final class CatalogSettings extends Component
 {
+    use TracksSavedState;
+
     public string $mode = CatalogMode::BROCHURE;
 
     public bool $drawerProducts = true;
@@ -35,8 +38,7 @@ final class CatalogSettings extends Component
 
     public function mount(): void
     {
-        $this->mode = app(CatalogMode::class)->current();
-        $this->drawerProducts = app(ProductsTabSwitch::class)->isOn();
+        $this->load();
     }
 
     public function save(): void
@@ -49,15 +51,39 @@ final class CatalogSettings extends Component
         app(SettingsRepository::class)->put('catalog', 'mode', ['value' => $this->mode]);
         // A site with no products tab to switch (no header setting) keeps its settings untouched.
         app(ProductsTabSwitch::class)->set($this->drawerProducts);
+        $this->rememberSaved();
 
         session()->flash('status', __('admin.saved'));
     }
 
+    /** Back to the saved choice (the save bar's "Bỏ thay đổi"). */
+    public function resetChanges(): void
+    {
+        $this->load();
+        $this->resetErrorBag();
+    }
+
     public function render(): View
     {
-        $view = view('admin::livewire.catalog-settings', ['productsTabAvailable' => app(ProductsTabSwitch::class)->available()]);
+        $view = view('admin::livewire.catalog-settings', [
+            'productsTabAvailable' => app(ProductsTabSwitch::class)->available(),
+            'changes' => $this->unsavedCount(),
+        ]);
         $view->title(__('admin.catalog_settings'));
 
         return $view;
+    }
+
+    /** @return array{mode: string, drawerProducts: bool} */
+    protected function trackedState(): array
+    {
+        return ['mode' => $this->mode, 'drawerProducts' => $this->drawerProducts];
+    }
+
+    private function load(): void
+    {
+        $this->mode = app(CatalogMode::class)->current();
+        $this->drawerProducts = app(ProductsTabSwitch::class)->isOn();
+        $this->rememberSaved();
     }
 }

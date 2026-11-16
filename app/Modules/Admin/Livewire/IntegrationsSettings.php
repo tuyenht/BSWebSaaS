@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Livewire\Concerns\TracksSavedState;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Theme\Chrome\SiteVerification;
 use Illuminate\Support\Facades\Gate;
@@ -23,15 +24,14 @@ use Livewire\Component;
 #[Layout('admin::layouts.app')]
 final class IntegrationsSettings extends Component
 {
+    use TracksSavedState;
+
     /** @var array<string, bool> provider → switched on; changed only through toggle() */
     #[Locked]
     public array $on = [];
 
     /** @var array<string, string> provider → the code as typed */
     public array $tokens = [];
-
-    #[Locked]
-    public string $savedSig = '';
 
     #[Locked]
     public string $toast = '';
@@ -160,7 +160,7 @@ final class IntegrationsSettings extends Component
     public function render(): View
     {
         $view = view('admin::livewire.integrations-settings', [
-            'dirty' => $this->signature() !== $this->savedSig,
+            'changes' => $this->unsavedCount(),
         ]);
         $view->title(__('admin.int.title'));
 
@@ -223,17 +223,22 @@ final class IntegrationsSettings extends Component
             $this->on[$provider] = ($row['on'] ?? false) === true;
             $this->tokens[$provider] = SiteVerification::valid($provider, $token) ? $token : '';
         }
-        $this->savedSig = $this->signature();
+        $this->rememberSaved();
     }
 
-    private function signature(): string
+    /**
+     * Per provider the switch and the code as it would be kept, for the save bar.
+     *
+     * @return array<string, array{0: bool, 1: string}>
+     */
+    protected function trackedState(): array
     {
         $draft = [];
         foreach (array_keys(SiteVerification::PROVIDERS) as $provider) {
             $draft[$provider] = [(bool) ($this->on[$provider] ?? false), SiteVerification::extract($this->tokens[$provider] ?? '')];
         }
 
-        return md5((string) json_encode($draft));
+        return $draft;
     }
 
     private function notify(string $message, string $tone = 'success'): void

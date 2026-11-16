@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Livewire\Concerns\TracksSavedState;
 use App\Modules\Admin\Support\PlatformSettings;
 use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\SettingsRepository;
@@ -32,6 +33,12 @@ use Throwable;
 #[Layout('admin::layouts.app')]
 final class EmailSettings extends Component
 {
+    use TracksSavedState;
+
+    /** The fields the save bar compares with the saved setup (a secret only while one is typed). */
+    private const array TRACKED = ['method', 'smtpHost', 'smtpPort', 'smtpEncryption', 'smtpUsername', 'smtpPassword',
+        'oauthProvider', 'oauthClientId', 'oauthClientSecret', 'fromAddress', 'fromName', 'replyTo'];
+
     public string $scope = 'site';
 
     public bool $isSuperAdmin = false;
@@ -82,6 +89,22 @@ final class EmailSettings extends Component
     }
 
     public function mount(string $scope = 'site'): void
+    {
+        $this->loadConfig($scope);
+        $this->rememberSaved();
+    }
+
+    /** Back to the saved setup (the save bar's "Bỏ thay đổi"); a secret typed but not saved is dropped. */
+    public function resetChanges(): void
+    {
+        $this->reset(...self::TRACKED);
+        $this->resetErrorBag();
+        $this->testResult = null;
+        $this->loadConfig($this->scope);
+        $this->rememberSaved();
+    }
+
+    private function loadConfig(string $scope): void
     {
         $this->scope = $scope === 'platform' ? 'platform' : 'site';
         $this->isSuperAdmin = $this->checkSuperAdmin();
@@ -178,7 +201,8 @@ final class EmailSettings extends Component
         $repo->put('email', 'config', $cfg);
 
         $this->reset('smtpPassword', 'oauthClientSecret');
-        $this->mount($this->scope);
+        $this->loadConfig($this->scope);
+        $this->rememberSaved();
         session()->flash('status', __('admin.saved'));
     }
 
@@ -233,6 +257,17 @@ final class EmailSettings extends Component
         }
     }
 
+    /** @return array<string, mixed> */
+    protected function trackedState(): array
+    {
+        $state = [];
+        foreach (self::TRACKED as $field) {
+            $state[$field] = $this->{$field};
+        }
+
+        return $state;
+    }
+
     private function checkSuperAdmin(): bool
     {
         $user = auth()->user();
@@ -279,7 +314,7 @@ final class EmailSettings extends Component
     {
         $platform = $this->scope === 'platform';
 
-        $view = view('admin::livewire.email-settings');
+        $view = view('admin::livewire.email-settings', ['changes' => $this->unsavedCount()]);
         $view->layout($platform ? 'admin::layouts.platform' : 'admin::layouts.app');
         $view->title($platform ? __('admin.system_email') : __('admin.email_settings'));
 

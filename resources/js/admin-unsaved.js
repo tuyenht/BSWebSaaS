@@ -113,8 +113,12 @@ export function unsavedDialog(cfg) {
     let typedField = null;
     let root = null;
     // Typed text the server has not seen yet is also shown on the dialog's root (data-typed), so the
-    // page's CSS can treat the page as changed before the round trip (a settings save bar on a phone).
+    // page's CSS can treat the page as changed before the round trip (a settings save bar on a phone),
+    // and told to the page's save bar ('bs-unsaved-typed'), which reads the same flag.
     const setTyped = (on) => {
+        if (typed !== on) {
+            window.dispatchEvent(new window.CustomEvent('bs-unsaved-typed', { detail: { on } }));
+        }
         typed = on;
         if (root) {
             root.toggleAttribute('data-typed', on);

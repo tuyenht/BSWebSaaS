@@ -959,16 +959,53 @@ button:not(:disabled) {
     color: var(--color-text);
 }
 
-/* A settings page's own save bar (`data-set-savebar` inside the shared settings frame) shows on a
-   phone (narrower than 768px) only once there is something to save, as the menus editor does: the
-   server marks a bar with nothing to save `data-clean`, and text typed but not yet sent (the unsaved
-   dialog's `data-typed`) counts as a change. From 768px the bar always shows. Unlayered on purpose:
-   it must win over the bar's own `flex` utility. */
-@media (width < 48rem) {
-    [data-set-savebar][data-clean] {
+/* The settings save bar (<x-bs-admin::save-bar>, `data-set-savebar`, under the section inside the
+   shared settings frame). Its surface, top line and soft shadow reach out to the edges of the page's
+   gutter as SHADOWS, so nothing outside the frame scrolls sideways. On a phone (narrower than 768px)
+   it shows only once there is something to save, as the menus editor does: the server marks the
+   bar's state `data-clean` when nothing differs, and text typed but not yet sent (the unsaved
+   dialog's `data-typed`) counts as a change. From 768px the bar always shows. A field focused at the
+   bottom of the page stays clear of it (--sb-h, the bar's height, set by the bar). Below 360px at the
+   two largest text sizes the bar keeps its words and drops its icons and some height. Unlayered on
+   purpose: it must win over the bar's own `flex` utility. */
+[data-set-savebar] {
+    --sb-gutter: 1rem;
+    --sb-shade: rgb(30 32 37 / 0.07);
+    box-shadow:
+        calc(-1 * var(--sb-gutter)) 0 0 0 var(--color-surface),
+        var(--sb-gutter) 0 0 0 var(--color-surface),
+        calc(-1 * var(--sb-gutter)) -1px 0 0 var(--color-border),
+        var(--sb-gutter) -1px 0 0 var(--color-border),
+        0 -2px 10px var(--sb-shade),
+        calc(-1 * var(--sb-gutter)) -2px 10px var(--sb-shade),
+        var(--sb-gutter) -2px 10px var(--sb-shade);
+}
+@media (width >= 64rem) {
+    [data-set-savebar] {
+        --sb-gutter: 1.5rem;
+    }
+}
+html:has([data-set-savebar]) {
+    scroll-padding-bottom: calc(var(--sb-h, 0px) + 8px);
+}
+@media (width < 22.5rem) {
+    :root:is([data-text-size='xl'], [data-text-size='xxl']) [data-set-savebar] {
+        row-gap: 4px;
+        padding-top: 4px;
+        padding-bottom: calc(4px + env(safe-area-inset-bottom));
+    }
+    :root:is([data-text-size='xl'], [data-text-size='xxl']) [data-set-savebar] svg {
         display: none;
     }
-    [data-set-shell]:has([data-unsaved-guard][data-typed]) [data-set-savebar][data-clean] {
+    :root:is([data-text-size='xl'], [data-text-size='xxl']) [data-set-savebar] [role='status'] {
+        line-height: 1.4;
+    }
+}
+@media (width < 48rem) {
+    [data-set-savebar]:has(> [data-sb-state][data-clean]) {
+        display: none;
+    }
+    [data-set-shell]:has([data-unsaved-guard][data-typed]) [data-set-savebar]:has(> [data-sb-state][data-clean]) {
         display: flex;
     }
 }

@@ -23,6 +23,7 @@ const PARTS = {
     bsMenus: () => import('./admin-menus.js'),
     bsEditorSave: () => import('./admin-editor.js'),
     bsUnsaved: () => import('./admin-unsaved.js'),
+    bsSaveBar: () => import('./admin-save-bar.js'),
     bsBell: () => import('./admin-bell.js'),
     bsNotifications: () => import('./admin-notifications.js'),
 };

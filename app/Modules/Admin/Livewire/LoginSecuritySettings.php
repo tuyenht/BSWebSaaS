@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Livewire\Concerns\TracksSavedState;
 use App\Modules\Admin\Support\LoginTurnstile;
 use App\Modules\Admin\Support\PlatformSettings;
 use App\Modules\Audit\Facades\Audit;
@@ -23,6 +24,8 @@ use Livewire\Component;
 #[Layout('admin::layouts.platform')]
 final class LoginSecuritySettings extends Component
 {
+    use TracksSavedState;
+
     public bool $turnstileLogin = true;
 
     public function boot(): void
@@ -33,11 +36,13 @@ final class LoginSecuritySettings extends Component
     public function mount(): void
     {
         $this->turnstileLogin = LoginTurnstile::enabled();
+        $this->rememberSaved();
     }
 
     public function save(): void
     {
         abort_unless($this->isSuperAdmin(), 403);
+        $this->validate(['turnstileLogin' => ['required', 'boolean']]);
 
         $security = app(PlatformSettings::class)->get(LoginTurnstile::GROUP) ?? [];
         $security[LoginTurnstile::KEY] = $this->turnstileLogin;
@@ -50,15 +55,30 @@ final class LoginSecuritySettings extends Component
             'meta' => ['enabled' => $this->turnstileLogin],
         ]);
 
+        $this->rememberSaved();
         session()->flash('status', __('admin.saved'));
+    }
+
+    /** Back to the saved switch (the save bar's "Bỏ thay đổi"). */
+    public function resetChanges(): void
+    {
+        abort_unless($this->isSuperAdmin(), 403);
+        $this->turnstileLogin = LoginTurnstile::enabled();
+        $this->resetErrorBag();
     }
 
     public function render(): View
     {
-        $view = view('admin::livewire.login-security-settings');
+        $view = view('admin::livewire.login-security-settings', ['changes' => $this->unsavedCount()]);
         $view->title(__('admin.settings_login_security'));
 
         return $view;
+    }
+
+    /** @return array{turnstileLogin: bool} */
+    protected function trackedState(): array
+    {
+        return ['turnstileLogin' => $this->turnstileLogin];
     }
 
     private function isSuperAdmin(): bool

@@ -391,7 +391,7 @@ it('falls back to the glyph when the picture was removed from the library, with 
 
     // The screen opens with the glyph and nothing unsaved; saving another change does not stumble on it.
     app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(FloatingContactSettings::class)
-        ->assertSet('channels.0.img', '')->assertSee('Đã lưu')->assertDontSee('Dùng mặc định')
+        ->assertSet('channels.0.img', '')->assertSee('Chưa có thay đổi')->assertDontSee('Dùng mặc định')
         ->call('setPosition', 'left')->call('save')->assertHasNoErrors());
     expect(collect(fciStored()['channels'])->firstWhere('key', 'phone'))->not->toHaveKey('img');
 });

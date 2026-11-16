@@ -1,4 +1,7 @@
-<x-bs-admin::settings-shell active="admin-ui" :head="false">
+<x-bs-admin::settings-shell active="admin-ui" :head="false" :unsaved="$changes" :invalid="count($errors->keys())">
+    @if ($saved)
+        <x-bs-admin::alert color="success" icon="ri-checkbox-circle">{{ __('admin.theme_saved_note') }}</x-bs-admin::alert>
+    @endif
     <form wire:submit="save">
         <div class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
             <div class="border-b border-border px-5 py-3">
@@ -18,7 +21,7 @@
                         <div class="grid max-w-md grid-cols-3 gap-3">
                             {{-- '' = inherit the app default; shown as its own card so "not pinned" stays visible. --}}
                             <label class="group block cursor-pointer">
-                                <input type="radio" value="" wire:model="{{ $axis }}" class="peer sr-only">
+                                <input type="radio" value="" wire:model.live="{{ $axis }}" class="peer sr-only">
                                 <span class="grid h-14 place-items-center rounded border border-dashed border-border-strong text-[11px] font-medium text-body-muted transition-all peer-checked:border-solid peer-checked:border-accent peer-checked:ring-2 peer-checked:ring-accent/30 peer-focus-visible:ring-2 peer-focus-visible:ring-accent/60">
                                     {{ __('admin.theme_inherit') }}
                                 </span>
@@ -26,7 +29,7 @@
                             </label>
                             @foreach (\App\Modules\Admin\Theme\AdminChromeResolver::FIELDS[$axis] as $value)
                                 <x-bs-admin::theme-option :axis="$axis" :value="$value" name="st-{{ $axis }}"
-                                                       :label="__('admin.theme_'.str_replace('-', '_', $value))" wire:model="{{ $axis }}" />
+                                                       :label="__('admin.theme_'.str_replace('-', '_', $value))" wire:model.live="{{ $axis }}" />
                             @endforeach
                         </div>
                         @error($axis) <p class="mt-1 text-xs text-admin-danger-text">{{ $message }}</p> @enderror
@@ -74,14 +77,14 @@
                     <p class="mb-3 mt-0.5 text-xs text-body-muted">{{ __('admin.theme_sidebar_image_desc') }}</p>
                     <div class="grid max-w-md grid-cols-6 gap-2">
                         <label class="group block cursor-pointer">
-                            <input type="radio" value="" wire:model="sidebar_image" class="peer sr-only">
+                            <input type="radio" value="" wire:model.live="sidebar_image" class="peer sr-only">
                             <span class="grid aspect-[3/5] place-items-center rounded border border-dashed border-border-strong text-[9px] font-medium text-body-muted transition-all peer-checked:border-solid peer-checked:border-accent peer-checked:ring-2 peer-checked:ring-accent/30 peer-focus-visible:ring-2 peer-focus-visible:ring-accent/60">
                                 {{ __('admin.theme_default') }}
                             </span>
                         </label>
                         @foreach (\App\Modules\Admin\Theme\AdminChromeResolver::FIELDS['sidebar_image'] as $value)
                             <label class="group block cursor-pointer">
-                                <input type="radio" value="{{ $value }}" wire:model="sidebar_image" class="peer sr-only"
+                                <input type="radio" value="{{ $value }}" wire:model.live="sidebar_image" class="peer sr-only"
                                        @if ($value !== 'none') aria-label="{{ __('admin.theme_sidebar_image').' '.str_replace('img-', '', $value) }}" @endif>
                                 <span class="grid aspect-[3/5] place-items-center overflow-hidden rounded border border-border bg-surface-muted text-[9px] text-body-muted transition-all peer-checked:border-accent peer-checked:ring-2 peer-checked:ring-accent/30 peer-focus-visible:ring-2 peer-focus-visible:ring-accent/60"
                                       style="{{ $value === 'none' ? '' : 'background-image:url(/images/admin/sidebar/'.$value.'.jpg);background-size:cover;background-position:center' }}">
@@ -112,14 +115,6 @@
                 </fieldset>
             </div>
 
-            <div class="flex items-center gap-3 border-t border-border bg-surface-muted px-5 py-3">
-                <x-bs-admin::button type="submit" wire:loading.attr="disabled" wire:target="save">
-                    {{ __('admin.save') }}
-                </x-bs-admin::button>
-                @if ($saved)
-                    <span class="text-xs font-medium text-admin-success-text">{{ __('admin.theme_saved_note') }}</span>
-                @endif
-            </div>
         </div>
     </form>
 </x-bs-admin::settings-shell>
