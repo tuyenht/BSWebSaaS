@@ -221,10 +221,10 @@ it('offers status groups as pressed buttons that set the host property, never as
 it('keeps the chosen group and Trash in the row when groups overflow into More', function (): void {
     $html = (string) $this->blade('<x-bs-admin::group-row :groups="$groups" active="used" model="group" label="Nhóm tệp" />', ['groups' => statusGroups()]);
 
-    expect($html)->toMatch('/data-g="all" data-pin="0"/')
-        ->and($html)->toMatch('/data-g="used" data-pin="1"/')
-        ->and($html)->toMatch('/data-g="unused" data-pin="0"/')
-        ->and($html)->toMatch('/data-g="trash" data-pin="1"/')
+    expect($html)->toMatch('/data-g="all" data-guide="tab-all" data-pin="0"/')
+        ->and($html)->toMatch('/data-g="used" data-guide="tab-used" data-pin="1"/')
+        ->and($html)->toMatch('/data-g="unused" data-guide="tab-unused" data-pin="0"/')
+        ->and($html)->toMatch('/data-g="trash" data-guide="tab-trash" data-pin="1"/')
         ->and(substr_count($html, 'role="menuitemradio"'))->toBe(4)
         ->and($html)->toContain('aria-haspopup="menu"');
 });
@@ -234,7 +234,7 @@ it('puts More right after the last group and Trash at the far end', function ():
 
     expect(strpos($html, 'data-g="all"'))->toBeLessThan(strpos($html, 'aria-haspopup="menu"'))
         ->and(strpos($html, 'aria-haspopup="menu"'))->toBeLessThan(strpos($html, 'data-g="trash"'))
-        ->and($html)->toMatch('/data-g="trash" data-pin="1"\s+data-trash/');
+        ->and($html)->toMatch('/data-g="trash" data-guide="tab-trash" data-pin="1"\s+data-trash/');
 });
 
 it('keeps the More menu id across renders and fits the row again after every Livewire update', function (): void {

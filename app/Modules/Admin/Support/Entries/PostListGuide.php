@@ -14,6 +14,7 @@ use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowState;
 use App\Modules\Workflow\Models\WorkflowTransition;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * The guide of a post list («Quản lý bài viết»), in four parts: adding a post and getting it onto
@@ -53,7 +54,13 @@ final class PostListGuide
         );
 
         $mine = array_values($user->roles->pluck('name')->all());
-        $holding = fn (string $permission): array => self::rolesHolding($permission, $mine);
+        // Who publishes and who sends for review, read in one query the first time a step needs it.
+        $held = null;
+        $holding = function (string $permission) use (&$held, $mine): array {
+            $held ??= self::rolesHolding(['entries.publish', 'entries.submit'], $mine);
+
+            return $held[$permission] ?? [];
+        };
 
         // Part 1 · adding a post and getting it onto the website
         $add = Cast::string(__('entries.add_post'));
@@ -215,20 +222,32 @@ final class PostListGuide
     }
 
     /**
-     * This website's roles, other than the member's own, that hold $permission (the owner holds every
-     * one), as people read them.
+     * This website's roles, other than the member's own, that hold each of $permissions (the owner
+     * holds every one), as people read them: one query for all of them, at most 20 roles.
      *
+     * @param  list<string>  $permissions
      * @param  list<mixed>  $mine
-     * @return list<string>
+     * @return array<string, list<string>>
      */
-    private static function rolesHolding(string $permission, array $mine): array
+    private static function rolesHolding(array $permissions, array $mine): array
     {
-        $roles = Role::query()->where('site_id', app(CurrentSite::class)->id())
-            ->where(fn ($q) => $q->where('name', 'owner')->orWhereHas('permissions', fn ($p) => $p->where('name', $permission)))
+        $query = Role::query()->where('site_id', app(CurrentSite::class)->id())
+            ->where(fn ($q) => $q->where('name', 'owner')->orWhereHas('permissions', fn ($p) => $p->whereIn('name', $permissions)))
             ->whereNotIn('name', $mine)
-            ->select(['id', 'name', 'is_system', 'level'])->orderByDesc('level')->limit(20)->get();
+            ->select(['id', 'name', 'is_system', 'level']);
+        foreach ($permissions as $i => $permission) {
+            $query->withExists(['permissions as holds_'.$i => fn (Builder $p) => $p->where('name', $permission)]);
+        }
+        $roles = $query->orderByDesc('level')->limit(20)->get();
 
-        return array_values($roles->map(fn (Role $role): string => RoleLabel::for($role))->all());
+        $held = [];
+        foreach ($permissions as $i => $permission) {
+            $held[$permission] = array_values($roles
+                ->filter(fn (Role $role): bool => $role->name === 'owner' || Cast::bool($role->getAttribute('holds_'.$i)))
+                ->map(fn (Role $role): string => RoleLabel::for($role))->all());
+        }
+
+        return $held;
     }
 
     /**
