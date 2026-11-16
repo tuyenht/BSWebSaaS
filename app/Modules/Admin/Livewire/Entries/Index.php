@@ -7,6 +7,7 @@ use App\Modules\Admin\Support\Entries\EntryListFilter;
 use App\Modules\Admin\Support\Entries\EntryListQuery;
 use App\Modules\Admin\Support\Entries\ListCursor;
 use App\Modules\Admin\Support\Entries\ListGroup;
+use App\Modules\Admin\Support\Entries\PostListGuide;
 use App\Modules\Admin\Support\Entries\PostRoleNote;
 use App\Modules\Admin\Support\FirstHints;
 use App\Modules\Cms\Actions\DuplicateEntry;
@@ -35,6 +36,7 @@ use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Workflow\Services\WorkflowEngine;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -165,6 +167,9 @@ final class Index extends Component
 
     private ?ContentSection $sectionRow = null;
 
+    /** The guide («Hướng dẫn») is printed on the screen's first draw only (a redraw keeps it, wire:ignore). */
+    private bool $guideDue = false;
+
     /** The listed type (page / post), fixed when the screen opens. */
     #[Locked]
     public string $entryType = 'page';
@@ -261,6 +266,7 @@ final class Index extends Component
         $offered = isset($view['offered']) ? Cast::strings($view['offered']) : self::COLS_BEFORE_CAT;
         $this->cols = self::known([...$this->cols, ...array_diff(self::COLS_DEFAULT, $offered)], $cols);
         $this->card = self::known(Cast::arr($view['card'] ?? null), $this->cardHere());
+        $this->guideDue = true;
         $this->clean();
     }
 
@@ -1411,12 +1417,48 @@ final class Index extends Component
             $tree->topmost($this->catF));
 
         // The role card stays until this member presses "Đã hiểu"; nothing of it is read after that.
-        $roleNote = $type === 'post' && $section instanceof ContentSection && ! FirstHints::dismissed(FirstHints::POSTS_ROLE, $user)
-            ? PostRoleNote::for($user, $section->key, $scoped)
-            : null;
+        // The guide (first draw only) words the same workflow, read once for both.
+        $postSection = $type === 'post' && $section instanceof ContentSection ? $section : null;
+        $roleShows = $postSection !== null && ! FirstHints::dismissed(FirstHints::POSTS_ROLE, $user);
+        $workflow = $postSection !== null && ($roleShows || $this->guideDue) ? app(WorkflowEngine::class)->activeFor($postSection->key) : null;
+        $roleNote = $roleShows ? PostRoleNote::with($user, $workflow, $scoped) : null;
 
         $canDelete = $user->can('entries.delete.any') || $user->can('entries.delete.own');
         [$sortKey, $sortDir] = $this->sorting();
+        $sorts = array_values(array_filter(array_keys(self::SORTS), fn (string $key): bool => $this->sortsHere($key)));
+
+        // The member's guide, on the first draw only: the filters and columns this list offers them,
+        // and the role card's own reading when the card shows.
+        $guide = null;
+        if ($this->guideDue && $postSection !== null) {
+            $filters = [];
+            if ($catOptions !== [] || $this->catF !== []) {
+                $filters[] = ['key' => 'cat', 'label' => Cast::string(__('entries.col_category'))];
+            }
+            if ($multilingual) {
+                $filters[] = ['key' => 'trans', 'label' => Cast::string(__('entries.f_trans'))];
+                $filters[] = ['key' => 'lang', 'label' => Cast::string(__('entries.col_language'))];
+            }
+            if (count($read['facets']['creator']) >= 2 || $this->creatorF !== []) {
+                $filters[] = ['key' => 'creator', 'label' => Cast::string(__('entries.col_creator'))];
+            }
+            $filters[] = ['key' => 'when', 'label' => Cast::string(__('entries.f_when'))];
+            $cols = [Cast::string(__('entries.col_category')), Cast::string(__('entries.col_path'))];
+            if ($multilingual) {
+                $cols[] = Cast::string(__('entries.col_language'));
+            }
+            $cols[] = Cast::string(__('entries.col_creator'));
+            $guide = PostListGuide::for($user, [
+                'title' => $postSection->localizedLabel(),
+                'scoped' => $scoped,
+                'roleNote' => $roleNote,
+                'multilingual' => $multilingual,
+                'locales' => count($locales),
+                'sorts' => $sorts,
+                'cols' => $cols,
+                'filters' => $filters,
+            ], $workflow)->toArray($user, app(CurrentSite::class)->id());
+        }
 
         return view('admin::livewire.entries.index', [
             'rows' => $rows,
@@ -1438,7 +1480,8 @@ final class Index extends Component
             'sortOn' => $sortKey,
             'sortWay' => $sortDir,
             'sortIsDefault' => $sortKey === $this->defaultSortKey() && $sortDir === self::naturalDir($sortKey),
-            'sorts' => array_values(array_filter(array_keys(self::SORTS), fn (string $key): bool => $this->sortsHere($key))),
+            'sorts' => $sorts,
+            'guide' => $guide,
             'multilingual' => $multilingual,
             'type' => $type,
             'matchCount' => $read['total'],

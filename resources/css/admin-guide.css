@@ -1,0 +1,416 @@
+/*
+ | The admin guide's drawer, step card and ring (resources/js/admin-guide.js), loaded with it on the first
+ | press of «Hướng dẫn». Ported from the design canvas (guide.js) on the admin tokens; the canvas icon
+ | font sizes now size the inline icons.
+ */
+
+.bg-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgb(15 18 30 / 0.45);
+}
+
+.bg-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2001;
+    width: min(440px, 100%);
+    display: flex;
+    flex-direction: column;
+    background: var(--color-surface);
+    color: var(--color-text);
+    box-shadow: -8px 0 40px rgb(20 22 30 / 0.22);
+    font-size: calc(0.875rem + var(--user-text-boost));
+    line-height: 1.55;
+}
+
+.bg-panel svg,
+.bg-card svg {
+    width: 1em;
+    height: 1em;
+    flex: 0 0 auto;
+}
+
+.bg-hd {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px 16px 12px 20px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.bg-hd h2 {
+    flex: 1;
+    margin: 10px 0 0;
+    font-size: calc(1.125rem + var(--user-text-boost));
+    line-height: 1.35;
+    font-weight: 600;
+    color: var(--color-text-strong);
+    overflow-wrap: anywhere;
+}
+
+.bg-x {
+    flex: 0 0 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-size: min(26px, calc(1.25rem + var(--user-text-boost)));
+}
+
+.bg-x:hover {
+    background: var(--color-surface-hover);
+}
+
+.bg-bd {
+    flex: 1;
+    overflow: auto;
+    padding: 16px 20px 24px;
+}
+
+.bg-bd p {
+    margin: 0;
+}
+
+.bg-who {
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg);
+    margin-bottom: 14px;
+}
+
+.bg-who b,
+.bg-bd li b {
+    color: var(--color-text-strong);
+}
+
+.bg-bd h3 {
+    margin: 18px 0 8px;
+    font-size: calc(0.9375rem + var(--user-text-boost));
+    color: var(--color-text-strong);
+}
+
+.bg-bd ol {
+    margin: 0;
+    padding-left: 22px;
+    list-style: decimal;
+}
+
+.bg-bd li {
+    margin: 0 0 10px;
+}
+
+.bg-go {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 44px;
+    margin-top: 14px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.bg-hole {
+    position: fixed;
+    z-index: 2002;
+    border-radius: 8px;
+    box-shadow:
+        0 0 0 3px var(--color-primary-text),
+        0 0 0 9999px rgb(15 18 30 / 0.55);
+    pointer-events: none;
+    transition: all 0.2s;
+}
+
+:root:is([data-theme='dark'], [data-bs-theme='dark']) .bg-hole { /* legacy-token-ok: the attribute the app writes */
+    box-shadow:
+        0 0 0 3px var(--color-primary-text),
+        0 0 0 9999px rgb(15 18 30 / 0.8);
+}
+
+.bg-card {
+    position: fixed;
+    z-index: 2003;
+    width: min(380px, calc(100vw - 24px));
+    padding: 16px;
+    border-radius: 10px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    box-shadow: 0 12px 40px rgb(15 18 30 / 0.3);
+    font-size: calc(0.875rem + var(--user-text-boost));
+    line-height: 1.55;
+    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
+    overflow: auto;
+}
+
+.bg-card h3 {
+    margin: 0 40px 6px 0;
+    font-size: calc(1rem + var(--user-text-boost));
+    font-weight: 600;
+    color: var(--color-text-strong);
+}
+
+.bg-card .bg-x {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+}
+
+/* a card short of room: its top row and its buttons stay still, the step scrolls between them */
+.bg-card .bg-ctop {
+    display: contents;
+}
+
+.bg-card.bg-lim {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.bg-card.bg-lim .bg-ctop {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+.bg-card.bg-lim .bg-ctop .bg-x {
+    position: static;
+    flex: 0 0 44px;
+    margin: -10px -10px 0 auto;
+}
+
+.bg-card.bg-lim .bg-cb {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+}
+
+.bg-card.bg-lim .bg-nav {
+    flex: 0 0 auto;
+}
+
+.bg-card.bg-lim .bg-cb h3 {
+    margin-right: 0;
+}
+
+.bg-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+.bg-nav .n {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--color-text-muted);
+    font-size: calc(0.8125rem + var(--user-text-boost));
+}
+
+.bg-nav button {
+    min-height: 44px;
+    min-width: 44px;
+    max-width: 100%;
+    padding: 0 14px;
+    border-radius: 8px;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* «Xem tiếp: …» is never cut: a line of its own, two lines if it needs them */
+.bg-nav button[data-a='next'] {
+    flex: 1 1 100%;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.4;
+    padding-block: 8px;
+    text-align: center;
+}
+
+/* the parts in the drawer */
+.bg-bd h3.bg-chh {
+    margin: 14px 0 4px;
+}
+
+.bg-cht {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 6px 8px;
+    margin: 0 -8px;
+    width: calc(100% + 16px);
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text-strong);
+    font: inherit;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+.bg-cht:hover {
+    background: var(--color-surface-hover);
+}
+
+.bg-cht > span {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.bg-panel .bg-cht > svg {
+    width: min(26px, calc(1.25rem + var(--user-text-boost)));
+    height: min(26px, calc(1.25rem + var(--user-text-boost)));
+    transition: transform 0.2s;
+}
+
+.bg-cht[aria-expanded='true'] > svg {
+    transform: rotate(180deg);
+}
+
+.bg-seen {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 6px;
+    font-weight: 500;
+    color: var(--color-success-text);
+    white-space: nowrap;
+}
+
+.bg-chb {
+    padding: 4px 0 6px;
+}
+
+.bg-show {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 44px;
+    min-width: 44px;
+    margin: 4px 0 0 4px;
+    padding: 0 12px;
+    vertical-align: middle;
+    border: 1px solid var(--color-border-input);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-primary-text);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.bg-show:hover {
+    background: var(--color-surface-hover);
+}
+
+.bg-prev {
+    border: 1px solid var(--color-border-input);
+    background: transparent;
+    color: inherit;
+}
+
+.bg-next {
+    border: 0;
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+}
+
+/* the «Chỉ cho tôi» card: «Quay lại Hướng dẫn» at its top; «Trước» (outlined) / «Tiếp» (filled) at its foot */
+.bg-card .bg-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    max-width: calc(100% - 44px);
+    margin: -10px 0 2px -8px;
+    padding: 4px 8px;
+    box-sizing: border-box;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    font: inherit;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--color-primary-text);
+    text-align: left;
+    white-space: normal;
+    cursor: pointer;
+}
+
+.bg-card .bg-back:hover {
+    text-decoration: underline;
+}
+
+.bg-card .bg-btns {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+    justify-content: flex-end;
+    max-width: 100%;
+}
+
+.bg-card .bg-snav button,
+.bg-card .bg-sp,
+.bg-card .bg-sn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.3;
+    padding-block: 6px;
+    text-align: center;
+}
+
+@media (max-width: 599px) {
+    .bg-card .bg-snav .n {
+        flex: 1 1 100%;
+    }
+
+    .bg-card .bg-btns {
+        flex: 1 1 100%;
+    }
+
+    .bg-card .bg-btns button {
+        flex: 0 1 calc(50% - 4px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bg-hole,
+    .bg-card,
+    .bg-panel .bg-cht > svg {
+        transition: none;
+    }
+}

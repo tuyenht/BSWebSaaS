@@ -274,7 +274,7 @@ describe('the posts and pages list on the shared row', function (): void {
             Entry::query()->whereKey($entry->getKey())->update(['view_count' => 1234, 'status' => 'published', 'published_at' => now()]);
 
             Livewire::actingAs($user->fresh())->test(Index::class)
-                ->assertSeeHtml('data-for="views">1.234 lượt xem</span>');
+                ->assertSeeHtml('data-for="views" data-guide="row-views">1.234 lượt xem</span>');
         });
     });
 
@@ -288,7 +288,7 @@ describe('the posts and pages list on the shared row', function (): void {
             Livewire::actingAs($user->fresh())->test(Index::class)
                 ->assertOk()
                 ->assertSeeHtml('role="table"')
-                ->assertSeeHtml('<div role="row" class="list-r list-hd">')
+                ->assertSeeHtml('<div role="row" class="list-r list-hd" data-guide="list-head">')
                 ->assertSeeHtml('role="columnheader" aria-sort="none"')
                 ->assertSeeHtml('aria-label="'.e(__('entries.select_named', ['title' => 'Giới thiệu công ty'])).'"')
                 ->assertSeeHtml('aria-label="'.e(__('admin.list.more_for', ['name' => 'Giới thiệu công ty'])).'"')
@@ -492,11 +492,11 @@ describe('the posts and pages list on the shared row', function (): void {
 
                 // one note, on the row that misses three, outside the column choice
                 expect(substr_count($html, 'role="note"'))->toBe(1)
-                    ->and($html)->toContain('<span class="list-m" data-for="langs">')
+                    ->and($html)->toContain('<span class="list-m" data-for="langs" data-guide="row-langs">')
                     ->and($html)->toContain('<span class="list-lmiss" role="note" title="Chưa có bản tiếng Anh, tiếng Nhật và tiếng Trung"')
                     ->and($html)->toContain('<span>Chưa dịch: Anh, Nhật, Trung</span>')
                     // the complete row's piece follows the column choice
-                    ->and($html)->toContain('<span class="list-m" data-for="langs" x-show="vLangs">')
+                    ->and($html)->toContain('<span class="list-m" data-for="langs" data-guide="row-langs" x-show="vLangs">')
                     // the column choice hides only the chips with content
                     ->and($html)->toContain('x-bind:data-off="(vLangs) ? null : \'\'"');
             });

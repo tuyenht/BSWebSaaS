@@ -127,7 +127,7 @@
         </div>
     @endforeach
 
-    <div class="relative shrink-0 min-[1024px]:hidden"
+    <div class="relative shrink-0 min-[1024px]:hidden" data-guide="filter-button"
          x-data="{
              open: false, cols: 1, cur: null, pin: null, prog: 0,
              // two columns once the screen is at least 29 body-text widths wide; decided on opening and on resize only

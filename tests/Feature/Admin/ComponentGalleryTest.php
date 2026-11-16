@@ -93,7 +93,7 @@ it('renders the list tools (status groups, search field and Filter panel)', func
         ->assertSee('wire:model.live="galleryKinds"', false)
         ->assertSee('role="dialog"', false)
         ->assertSee('<nav aria-label="Nhóm tệp"', false)
-        ->assertSee('data-g="trash" data-pin="1"', false);
+        ->assertSee('data-g="trash" data-guide="tab-trash" data-pin="1"', false);
 });
 
 it('renders the shared list rows in each state: selected, read-only, Trash, with a long name', function (): void {

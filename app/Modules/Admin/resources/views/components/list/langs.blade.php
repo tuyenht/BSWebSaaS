@@ -76,7 +76,7 @@
         </span>
     @endif
 @elseif (count($locales) > 1)
-    <span class="list-m" data-for="langs"@if ($missing === []) x-show="{{ $show }}"@endif>
+    <span class="list-m" data-for="langs" data-guide="row-langs"@if ($missing === []) x-show="{{ $show }}"@endif>
         <span class="list-lcs">
             @if ($missing !== [] && $note)
                 @php $missLabel = __('entries.lc_missing', ['lang' => $list(array_map($langLow, $missing))]); @endphp

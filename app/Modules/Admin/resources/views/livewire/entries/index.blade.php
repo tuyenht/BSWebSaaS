@@ -134,7 +134,7 @@
          what the list holds. Below 600 the way back is the menu, so the breadcrumb gives its room to the list; its link
          reaches 44px through the shared transparent hit area, drawn as before. --}}
     <header class="flex flex-col gap-1">
-        <nav aria-label="{{ __('admin.breadcrumb') }}" class="hidden text-caption text-text-muted min-[600px]:block">
+        <nav aria-label="{{ __('admin.breadcrumb') }}" data-guide="crumb" class="hidden text-caption text-text-muted min-[600px]:block">
             <div class="flex items-center gap-1.5">
                 <a href="{{ route('admin.dashboard') }}" wire:navigate class="hit-area inline-flex items-center gap-1 transition-colors hover:text-primary-text">
                     <x-bs-admin::icon name="home" class="size-3.5" /> {{ __('admin.breadcrumb_home') }}
@@ -147,19 +147,23 @@
             {{-- the name is inline, so the (?) follows its last word when it wraps --}}
             <div class="min-w-0 flex-1">
                 <h1 id="entries-title" tabindex="-1" class="m-0 inline text-[calc(1.25rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ $pageTitle }}</h1>
-                <div class="relative ms-1 inline-block align-middle" x-data="{ open: false }" @keydown.escape.prevent.stop="open && (open = false, $refs.help.focus())" @click.outside="open = false">
-                    <button type="button" x-ref="help" @click="open = ! open" :aria-expanded="open ? 'true' : 'false'" aria-controls="entries-help"
-                            aria-label="{{ __('admin.list.help_named', ['name' => $pageTitle]) }}" title="{{ __('admin.list.help') }}"
-                            class="hit-area inline-flex size-control items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-hover hover:text-text-strong">
-                        <x-bs-admin::icon name="ri-question-mark" class="size-5" />
-                    </button>
-                    <div x-show="open" x-cloak id="entries-help" role="region" aria-label="{{ __('admin.list.help') }}"
-                         class="absolute start-0 top-full z-60 mt-1.5 w-[min(22rem,calc(100vw-2rem))] rounded-md border border-border bg-surface p-3 text-body text-text shadow-lg">
-                        <p class="m-0 [overflow-wrap:anywhere]">{{ __('entries.help_'.$type) }}</p>
+                @if ($isPost)
+                    <x-bs-admin::guide class="ms-1" :guide="$guide" />
+                @else
+                    <div class="relative ms-1 inline-block align-middle" x-data="{ open: false }" @keydown.escape.prevent.stop="open && (open = false, $refs.help.focus())" @click.outside="open = false">
+                        <button type="button" x-ref="help" @click="open = ! open" :aria-expanded="open ? 'true' : 'false'" aria-controls="entries-help"
+                                aria-label="{{ __('admin.list.help_named', ['name' => $pageTitle]) }}" title="{{ __('admin.list.help') }}"
+                                class="hit-area inline-flex size-control items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-hover hover:text-text-strong">
+                            <x-bs-admin::icon name="ri-question-mark" class="size-5" />
+                        </button>
+                        <div x-show="open" x-cloak id="entries-help" role="region" aria-label="{{ __('admin.list.help') }}"
+                             class="absolute start-0 top-full z-60 mt-1.5 w-[min(22rem,calc(100vw-2rem))] rounded-md border border-border bg-surface p-3 text-body text-text shadow-lg">
+                            <p class="m-0 [overflow-wrap:anywhere]">{{ __('entries.help_'.$type) }}</p>
+                        </div>
                     </div>
-                </div>
+                @endif
             </div>
-            <x-bs-admin::button color="primary" class="shrink-0" :href="route('admin.entries.create', $sectionKey ? ['section' => $sectionKey] : [])">
+            <x-bs-admin::button color="primary" class="shrink-0" data-guide="add" :href="route('admin.entries.create', $sectionKey ? ['section' => $sectionKey] : [])">
                 <x-bs-admin::icon name="ri-add" class="size-4" /> {{ __('entries.add_'.$type) }}
             </x-bs-admin::button>
         </div>
@@ -170,7 +174,7 @@
          workflow — then the card takes the accent tint) and what they may do. It stays until they press "Đã hiểu",
          remembered for them on the server; focus then goes to the list's name. --}}
     @if ($roleNote)
-        <section aria-label="{{ __('entries.role_aria') }}" data-role-note data-gov="{{ $roleNote['governed'] ? '1' : '0' }}"
+        <section aria-label="{{ __('entries.role_aria') }}" data-role-note data-guide="role" data-gov="{{ $roleNote['governed'] ? '1' : '0' }}"
                  @class([
                      'flex flex-wrap items-center gap-x-2.5 gap-y-1.5 rounded-md border px-3.5 py-2 text-small text-text',
                      'border-primary/25 bg-primary/6' => $roleNote['governed'],
@@ -187,7 +191,7 @@
     {{-- The list card: groups (from 900) · search + tools · the active-filter line · the rows · the pager. Below 600
          the card frame moves onto the rows, so the tools stand on the page and the first record comes up sooner. --}}
     <div class="min-w-0 min-[600px]:rounded-md min-[600px]:border min-[600px]:border-border min-[600px]:bg-surface min-[600px]:pb-4 min-[600px]:shadow-card">
-        <x-bs-admin::group-row :groups="$groups" :active="$tab" model="tab" :label="__('entries.groups_label', ['noun' => $noun])" />
+        <x-bs-admin::group-row data-guide="tabs" :groups="$groups" :active="$tab" model="tab" :label="__('entries.groups_label', ['noun' => $noun])" />
 
         {{-- What shows on each record follows the list's own width: below 600 the member's card choice, 600–899
              every detail, from 900 their column choice (both kept in their own preferences). --}}
@@ -208,30 +212,30 @@
                      the free space; when the
                      tools no longer fit beside it they go down together, as one group, and the search takes the whole
                      line (the tools row marks itself data-below). --}}
-                <div class="min-w-0 text-body @min-[56.25rem]/lt:min-w-[11em] @min-[56.25rem]/lt:max-w-[30em] @min-[56.25rem]/lt:flex-[999_1_11em] @min-[56.25rem]/lt:[&:has(+[data-below='1'])]:max-w-none">
+                <div data-guide="search" class="min-w-0 text-body @min-[56.25rem]/lt:min-w-[11em] @min-[56.25rem]/lt:max-w-[30em] @min-[56.25rem]/lt:flex-[999_1_11em] @min-[56.25rem]/lt:[&:has(+[data-below='1'])]:max-w-none">
                     <x-bs-admin::search id="entries-search" :label="__('entries.search_placeholder')" :placeholder="__('entries.search_hint_'.$type)" wire:model.live.debounce.300ms="search" />
                 </div>
                 <x-bs-admin::tool-row class="@min-[56.25rem]/lt:min-w-0 @min-[56.25rem]/lt:flex-[1_1_auto] @min-[56.25rem]/lt:flex-wrap @min-[56.25rem]/lt:gap-2">
                     @if ($pageUlids !== [])
-                        <div class="min-w-0 @min-[56.25rem]/lt:hidden">
+                        <div class="min-w-0 @min-[56.25rem]/lt:hidden" data-guide="select-tool">
                             <x-bs-admin::list.check :checked="$allState" :label="$selectAllLabel" visible :wire:click="$selectAllCall" />
                         </div>
                     @endif
-                    <x-bs-admin::filter-panel class="ms-auto flex-nowrap @min-[56.25rem]/lt:ms-0 @min-[56.25rem]/lt:min-w-0 @min-[56.25rem]/lt:shrink @min-[56.25rem]/lt:flex-wrap" :sections="$sections"
+                    <x-bs-admin::filter-panel data-guide="filters" class="ms-auto flex-nowrap @min-[56.25rem]/lt:ms-0 @min-[56.25rem]/lt:min-w-0 @min-[56.25rem]/lt:shrink @min-[56.25rem]/lt:flex-wrap" :sections="$sections"
                         :active="$filterCount" :active-narrow="$filterCountNarrow" :results="__('entries.show_n', ['n' => $fmt($matchCount), 'unit' => $noun])" clear="clearAllFilters" />
-                    <x-bs-admin::sort-menu class="@min-[56.25rem]/lt:ms-auto" :options="$sortOptions" :active="$sortOn" :lit="! $sortIsDefault" set="setSort" />
-                    <x-bs-admin::cols-menu class="hidden @min-[56.25rem]/lt:block" id="entries-cols" :options="$colOptions" :selected="$cols"
+                    <x-bs-admin::sort-menu data-guide="sort" class="@min-[56.25rem]/lt:ms-auto" :options="$sortOptions" :active="$sortOn" :lit="! $sortIsDefault" set="setSort" />
+                    <x-bs-admin::cols-menu data-guide="cols" class="hidden @min-[56.25rem]/lt:block" id="entries-cols" :options="$colOptions" :selected="$cols"
                         :locked="[__('entries.title_label'), __('entries.col_status'), __('admin.actions')]" />
                 </x-bs-admin::tool-row>
             </div>
 
-            <x-bs-admin::filter-status class="-mx-3 -mt-1 mb-2 min-[600px]:mx-1" :group="$groupLabel"
+            <x-bs-admin::filter-status :data-guide="$filtering ? 'filter-line' : 'filter-sort'" class="-mx-3 -mt-1 mb-2 min-[600px]:mx-1" :group="$groupLabel"
                 :summary="$filtering ? __('entries.match_of', ['n' => $fmt($matchCount), 'm' => $fmt($counts[$tab] ?? $baseCount), 'unit' => $noun]) : null"
                 :chips="$chips" :clear="$filtering ? 'clearAllFilters' : null" />
 
             {{-- Bulk action bar — appears once one or more rows are selected --}}
             @if (count($selected) > 0)
-                <div class="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 min-[600px]:mx-4">
+                <div data-guide="bulk-bar" class="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 min-[600px]:mx-4">
                     <span class="text-sm font-medium text-primary-text">{{ __('entries.bulk_selected', ['noun' => $noun, 'count' => count($selected)]) }}</span>
                     @if ($tab === 'trash')
                         @if ($canDelete)
@@ -287,10 +291,10 @@
             <x-bs-admin::list :label="__('entries.list_label', ['label' => $sectionLabel])" :kind="$isPost ? 'posts' : null"
                 x-bind:data-hide="[mode === 'cols' && ! show('creator') ? 'au' : '', mode === 'cols' && ! show('cat') ? 'cat' : ''].join(' ').trim()">
 
-                <x-bs-admin::list.head>
+                <x-bs-admin::list.head data-guide="list-head">
                     <x-bs-admin::list.cell head col="chk">
                         @if ($pageUlids !== [])
-                            <x-bs-admin::list.check :checked="$allState" :label="$selectAllLabel" :wire:click="$selectAllCall" />
+                            <x-bs-admin::list.check data-guide="select-head" :checked="$allState" :label="$selectAllLabel" :wire:click="$selectAllCall" />
                         @endif
                     </x-bs-admin::list.cell>
                     <x-bs-admin::list.cell head col="main" :sort="$ariaSort('name')">
@@ -341,7 +345,7 @@
                         x-data="{ editing: false, value: {{ $Js::from($t?->title ?? '') }}, cancel: false }"
                         x-on:list-quick-edit="editing = true; cancel = false">
                         <x-bs-admin::list.cell col="chk">
-                            <x-bs-admin::list.check :checked="$isSelected" :label="__('entries.select_named', ['title' => $title])" wire:click="toggleSelectAll(['{{ $entry->ulid }}'])" />
+                            <x-bs-admin::list.check data-guide="row-check" :checked="$isSelected" :label="__('entries.select_named', ['title' => $title])" wire:click="toggleSelectAll(['{{ $entry->ulid }}'])" />
                         </x-bs-admin::list.cell>
 
                         <x-bs-admin::list.cell col="main">
@@ -355,7 +359,7 @@
                             @endif
                             <div @class(['pl-5' => $depth, 'min-w-0 flex-1' => $isPost])>
                                 <div x-show="! editing">
-                                    <x-bs-admin::list.name :href="$trashed ? null : route('admin.entries.edit', ['ulid' => $entry->ulid])"
+                                    <x-bs-admin::list.name :data-guide="$quickEdit ? 'row-title-qe' : 'row-title'" :href="$trashed ? null : route('admin.entries.edit', ['ulid' => $entry->ulid])"
                                         :quick-edit="$quickEdit ? __('entries.quick_edit_named', ['title' => $title]) : null" :child="$depth > 0">{{ $title }}</x-bs-admin::list.name>
                                 </div>
                                 @if ($quickEdit)
@@ -370,10 +374,10 @@
                                 <x-bs-admin::list.meta>
                                     <span class="list-m" x-show="vPath">
                                         @if ($isHome)
-                                            <span class="inline-flex items-center gap-1 font-mono text-caption" title="{{ __('entries.home_locked') }}">{{ $path ?? '/' }} <x-bs-admin::icon name="ri-lock" class="size-3" /></span>
+                                            <span class="inline-flex items-center gap-1 font-mono text-caption" data-guide="row-path" title="{{ __('entries.home_locked') }}">{{ $path ?? '/' }} <x-bs-admin::icon name="ri-lock" class="size-3" /></span>
                                         @elseif ($quickEdit)
                                             <span wire:key="slug-{{ $entry->ulid }}-{{ $slugLeaf }}" x-data="{ editing: false, value: @js($slugLeaf ?? ''), cancel: false }">
-                                                <button type="button" x-show="! editing"
+                                                <button type="button" x-show="! editing" data-guide="row-path-edit"
                                                     @click="editing = true; cancel = false; $nextTick(() => { $refs.slugInput.focus(); $refs.slugInput.select() })"
                                                     title="{{ $path }} · {{ __('entries.edit_hint') }}"
                                                     class="list-path font-mono text-caption text-text-muted [overflow-wrap:anywhere] transition-colors hover:bg-primary-soft hover:text-primary-text">{{ $path ?? '—' }}</button>
@@ -387,7 +391,7 @@
                                                 </span>
                                             </span>
                                         @else
-                                            <span class="font-mono text-caption" title="{{ $path }}">{{ $path ?? '—' }}</span>
+                                            <span class="font-mono text-caption" data-guide="row-path" title="{{ $path }}">{{ $path ?? '—' }}</span>
                                         @endif
                                     </span>
                                     @if ($isPost)
@@ -405,7 +409,7 @@
                                     @endif
                                     {{-- as in the design, views are named only once there are some --}}
                                     @if ($isLive && $entry->view_count > 0)
-                                        <span class="list-m" data-for="views">{{ __('entries.views_count', ['count' => \Illuminate\Support\Number::format($entry->view_count, locale: app()->getLocale())]) }}</span>
+                                        <span class="list-m" data-for="views" data-guide="row-views">{{ __('entries.views_count', ['count' => \Illuminate\Support\Number::format($entry->view_count, locale: app()->getLocale())]) }}</span>
                                     @endif
                                     @if ($creator)
                                         <span class="list-m" data-for="au">{{ $creator }}</span>
@@ -425,7 +429,7 @@
                         @endif
 
                         <x-bs-admin::list.cell col="st">
-                            <div class="list-stw">
+                            <div class="list-stw" data-guide="row-status">
                                 @if ($canPublish && ! $trashed)
                                     <div x-data="{ open: false, sched: false }" @click.outside="open = false; sched = false" @keydown.escape="if (open || sched) { open = false; sched = false; $refs.pill.focus() }" class="relative inline-block">
                                         <x-bs-admin::status-pill button x-ref="pill" :status="$status" x-on:click="open = ! open" x-bind:aria-expanded="open.toString()" aria-haspopup="true" title="{{ __('entries.status_menu_label') }}">{{ __('entries.status_'.$status) }}<span class="sr-only"> · {{ __('entries.status_menu_label') }}</span></x-bs-admin::status-pill>
@@ -486,11 +490,11 @@
                                     @if ($path)
                                         {{-- both open in a new tab and say so: a published record on the website, any other as a preview --}}
                                         <x-bs-admin::button size="sm" variant="soft" color="secondary" :href="$path" :navigate="false" target="_blank" rel="noopener"
-                                            :title="$isLive ? __('entries.opens_new_tab') : __('entries.action_preview')" :aria-label="__('entries.view_named', ['title' => $title]).' ('.__('entries.opens_new_tab').')'">
+                                            :title="$isLive ? __('entries.opens_new_tab') : __('entries.action_preview')" data-guide="row-view" :aria-label="__('entries.view_named', ['title' => $title]).' ('.__('entries.opens_new_tab').')'">
                                             <x-bs-admin::icon :name="$isLive ? 'ri-external-link' : 'ri-eye'" class="size-4" /> {{ __('admin.view') }}
                                         </x-bs-admin::button>
                                     @endif
-                                    <x-bs-admin::button size="sm" variant="soft" color="primary" :href="route('admin.entries.edit', ['ulid' => $entry->ulid])"
+                                    <x-bs-admin::button size="sm" variant="soft" color="primary" data-guide="row-edit" :href="route('admin.entries.edit', ['ulid' => $entry->ulid])"
                                         :aria-label="__('entries.edit_named', ['title' => $title])">
                                         <x-bs-admin::icon name="ri-pencil" class="size-4" /> {{ __('entries.edit_action') }}
                                     </x-bs-admin::button>
@@ -534,7 +538,7 @@
                     {{ __('entries.footer_showing', ['noun' => $noun, 'first' => $num($pager['from']), 'last' => $num($pager['to']), 'total' => $fmt($pager['total'])]) }}
                 </span>
                 <div class="flex flex-wrap items-center gap-4">
-                    <div role="group" aria-label="{{ __('entries.rows_per_page_label') }}" class="flex items-center gap-2 text-caption text-text-muted">
+                    <div role="group" data-guide="per-page" aria-label="{{ __('entries.rows_per_page_label') }}" class="flex items-center gap-2 text-caption text-text-muted">
                         <span class="mr-1">{{ __('entries.rows_per_page') }}</span>
                         {{-- Drawn at the row-control size (36 / 40 / 44px across the text sizes) like the pager
                              beside it; the shared row hit area makes each 40 / 44px with a mouse, 44px on touch. --}}
@@ -552,7 +556,7 @@
                         $pgPrev = $turn($pager['prev']);
                         $pgNext = $turn($pager['next']);
                     @endphp
-                    <nav aria-label="Pagination" class="flex flex-wrap items-center gap-2">
+                    <nav aria-label="Pagination" data-guide="pager" class="flex flex-wrap items-center gap-2">
                         <button type="button" @if ($pgPrev) wire:click="{{ $pgPrev }}" @endif @disabled($pgPrev === null)
                             aria-label="{{ __('admin.pagination.previous') }}"
                             @class(['pager-link', 'text-text-muted hover:bg-surface-hover' => $pgPrev !== null, 'cursor-not-allowed text-icon-ghost' => $pgPrev === null])>

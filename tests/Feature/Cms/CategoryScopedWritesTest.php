@@ -518,7 +518,10 @@ it('lists posts for a limited member on a flat query budget', function (): void 
     // +1: the top bar's bell reads the unread count (one bounded query on every admin page).
     // +3: the section's categories, the rows' primary categories and the section's workflow (the
     // Chuyên mục filter and column, and the role card above the list).
-    expect($unlimited)->toBeLessThanOrEqual(20)
+    // +1: the «Hướng dẫn» guide, on the first draw only, names the roles that publish and those that
+    // send for review — one query for both, at most 20 roles, whatever the number of rows (the
+    // workflow it words is the one the role card already read).
+    expect($unlimited)->toBeLessThanOrEqual(21)
         ->and($limited)->toBeLessThanOrEqual($unlimited + 4);
 });
 
