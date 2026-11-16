@@ -31,16 +31,16 @@
             </div>
         </div>
     @else
-        <header class="flex flex-wrap items-start justify-between gap-3">
-            <div class="flex min-w-0 flex-[1_1_20rem] flex-col gap-1">
-                <h1 class="m-0 text-[calc(1.25rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ __('admin.platform_plans') }}</h1>
-                <p class="m-0 max-w-[72ch] text-body text-text-muted [text-wrap:pretty]">{{ __('admin.plans_desc') }}</p>
-            </div>
-            @if ($canPlans)
-                <x-bs-admin::button color="primary" :href="route('platform.plans.create')" title="{{ __('admin.plans_add_tip') }}">
-                    <x-bs-admin::icon name="ri-add" :class="$glyph" /><span>{{ __('admin.plans_add') }}</span>
-                </x-bs-admin::button>
-            @endif
+        <header class="flex flex-col gap-1">
+            <x-bs-admin::title-row :title="__('admin.platform_plans')">
+                @if ($canPlans)
+                    <x-bs-admin::button color="primary" class="shrink-0" :href="route('platform.plans.create')" title="{{ __('admin.plans_add_tip') }}"
+                        :label="__('admin.plans_add')" :short="__('admin.list.add_short')">
+                        <x-bs-admin::icon name="ri-add" :class="$glyph" />
+                    </x-bs-admin::button>
+                @endif
+            </x-bs-admin::title-row>
+            <p class="m-0 max-w-[72ch] text-body text-text-muted [text-wrap:pretty]">{{ __('admin.plans_desc') }}</p>
         </header>
     @endif
 

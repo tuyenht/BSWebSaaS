@@ -75,13 +75,15 @@
     @endphp
     <div x-ignore wire:ignore.self data-bs-lazy="bsCategories" x-data="bsCategories(@js($config))" x-on:category-cover-picked.window="coverPicked($event.detail)"
         class="mx-auto flex w-full max-w-[1400px] flex-col gap-4">
-        <x-bs-admin::page-header :title="__('categories.title', ['section' => $label])" :subtitle="$products ? $u('desc_products') : $u('desc_posts', ['section' => $lowerLabel])" class="!mb-0">
-            <x-slot:actions>
-                <x-bs-admin::button x-on:click="openAdd(null)" aria-disabled="{{ $off }}" :title="$canManage ? null : $u('no_manage')">
-                    <x-bs-admin::icon name="ri-add" class="size-4" /> {{ $u('add') }}
+        <header class="flex flex-col gap-1">
+            <x-bs-admin::title-row :title="__('categories.title', ['section' => $label])">
+                <x-bs-admin::button class="shrink-0" x-on:click="openAdd(null)" aria-disabled="{{ $off }}" :title="$canManage ? null : $u('no_manage')"
+                    :label="$u('add')" :short="__('admin.list.add_short')">
+                    <x-bs-admin::icon name="ri-add" class="size-4" />
                 </x-bs-admin::button>
-            </x-slot:actions>
-        </x-bs-admin::page-header>
+            </x-bs-admin::title-row>
+            <p class="m-0 text-body text-text-muted [overflow-wrap:anywhere]">{{ $products ? $u('desc_products') : $u('desc_posts', ['section' => $lowerLabel]) }}</p>
+        </header>
 
         {{-- shown until the screen's part has started (one more download for this screen only); the
              shared loader marks the root when the download is lost, and the CSS swaps the two blocks --}}

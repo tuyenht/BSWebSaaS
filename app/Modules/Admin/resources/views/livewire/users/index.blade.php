@@ -87,17 +87,16 @@
         'names' => $skipped->map(fn ($u): string => __($u->id === $me->id ? 'admin.members.skip_you' : 'admin.members.skip_level', ['name' => $u->name]))->implode('; ')]);
 @endphp
 <div class="flex flex-col gap-4">
-    <header class="flex flex-wrap items-start justify-between gap-3">
-        <div class="flex min-w-0 flex-[1_1_20rem] flex-col gap-1">
-            <h1 class="m-0 text-[calc(1.25rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ __('admin.members.title') }}</h1>
-            <p class="m-0 max-w-[72ch] text-body text-text-muted [text-wrap:pretty]">{{ __('admin.members.desc') }}</p>
-        </div>
-        @if ($canInvite)
-            <x-bs-admin::button color="primary" id="members-invite" aria-disabled="{{ $inviteWhy !== null ? 'true' : 'false' }}" class="aria-disabled:opacity-60"
-                :title="$inviteWhy" wire:click="openInvite">
-                <x-bs-admin::icon name="ri-user-add" class="size-4" /> {{ __('admin.members.invite') }}
-            </x-bs-admin::button>
-        @endif
+    <header class="flex flex-col gap-1">
+        <x-bs-admin::title-row :title="__('admin.members.title')">
+            @if ($canInvite)
+                <x-bs-admin::button color="primary" id="members-invite" aria-disabled="{{ $inviteWhy !== null ? 'true' : 'false' }}" class="shrink-0 aria-disabled:opacity-60"
+                    :title="$inviteWhy" wire:click="openInvite" :label="__('admin.members.invite')" :short="__('admin.members.invite_short')">
+                    <x-bs-admin::icon name="ri-user-add" class="size-4" />
+                </x-bs-admin::button>
+            @endif
+        </x-bs-admin::title-row>
+        <p class="m-0 max-w-[72ch] text-body text-text-muted [text-wrap:pretty]">{{ __('admin.members.desc') }}</p>
     </header>
 
     @if ($support)

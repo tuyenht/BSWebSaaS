@@ -421,6 +421,8 @@ it('lists a manager the add button, the Trash group and the row actions', functi
 
         Livewire::actingAs($manager->fresh())->test(Index::class)
             ->assertSee(__('catalog.create_new'))
+            // below 768 the button shows «+ Thêm», its name still «Thêm sản phẩm»
+            ->assertSee('<span class="max-md:sr-only">'.e(__('catalog.create_new')).'</span><span class="md:hidden" aria-hidden="true">'.e(__('admin.list.add_short')).'</span>', false)
             ->assertSee(__('catalog.trash_tab'))
             ->assertSee(__('catalog.edit_action'))
             ->assertSee(__('catalog.menu_trash'));
