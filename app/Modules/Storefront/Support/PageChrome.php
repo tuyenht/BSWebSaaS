@@ -48,7 +48,8 @@ final readonly class PageChrome
     {
         /** @var list<string> $mapHosts */
         $mapHosts = config('cms.map_hosts', []);
-        $header = StorefrontChrome::header($this->settings->get('storefront', 'header'), $locale, $default);
+        $headerRaw = $this->settings->get('storefront', 'header');
+        $header = StorefrontChrome::header($headerRaw, $locale, $default);
         $footerRaw = $this->settings->get('storefront', 'footer');
         $footer = StorefrontChrome::footer($footerRaw, $locale, $default, $mapHosts);
         // The floating contact buttons / phone bottom bar; the product list is looked up only when
@@ -109,6 +110,9 @@ final readonly class PageChrome
             'webAnalytics' => PreviewMode::on() ? null : WebAnalytics::token($this->settings->get('storefront', 'web_analytics')),
             // The logo and footer home links stay in the page's language (/en for an English page).
             'homeUrl' => $this->paths->publicUrl('/', $locale),
+            // The site search page in the page's language, for the header button, the 404 page's box and the
+            // search page itself; null while the site has search switched off ("Có tìm kiếm", on unless set off).
+            'search' => StorefrontChrome::searchOn($headerRaw) ? $this->paths->searchUrl($locale) : null,
         ];
     }
 

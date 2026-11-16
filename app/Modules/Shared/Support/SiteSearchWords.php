@@ -49,6 +49,20 @@ final class SiteSearchWords
      */
     public static function words(?string $text): array
     {
+        $words = self::sequence($text);
+        sort($words, SORT_STRING);
+
+        return $words;
+    }
+
+    /**
+     * The same words as words(), in the order they come in $text (each once, at its first place): what
+     * a visitor typed, whose last word the storefront search reads as the start of a word.
+     *
+     * @return list<string>
+     */
+    public static function sequence(?string $text): array
+    {
         if ($text === null || $text === '') {
             return [];
         }
@@ -56,10 +70,8 @@ final class SiteSearchWords
         if ($parts === false) {
             return [];   // not valid UTF-8: nothing to index
         }
-        $words = array_values(array_unique(array_map(fn (string $word): string => mb_substr($word, 0, self::MAX_LENGTH), $parts)));
-        sort($words, SORT_STRING);
 
-        return $words;
+        return array_values(array_unique(array_map(fn (string $word): string => mb_substr($word, 0, self::MAX_LENGTH), $parts)));
     }
 
     /** The text of stored rich HTML (a product summary): each tag becomes a space, entities are decoded. */

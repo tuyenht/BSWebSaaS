@@ -38,10 +38,11 @@ use Livewire\Component;
  * the library). A logo or favicon that is still the older general.brand URL shows in its slot, so
  * it can be replaced or removed here.
  *
- * A second card, "Đầu trang & menu điện thoại", sets the phone menu's tone (Theo đầu trang, Sáng, Tối)
- * and accent colour (Trung tính, Màu thương hiệu): two keys of the `storefront.header` setting, kept in
- * the same draft and saved in the same transaction as the images (SetPhoneMenuStyle). A site without a
- * header setting has no phone menu to colour, so the card is not shown for it.
+ * A second card, "Đầu trang & menu điện thoại", switches the site search on or off ("Có tìm kiếm": the
+ * header's magnifier, the search page and the 404 page's box) and sets the phone menu's tone (Theo đầu
+ * trang, Sáng, Tối) and accent colour (Trung tính, Màu thương hiệu): three keys of the `storefront.header`
+ * setting, kept in the same draft and saved in the same transaction as the images (SetPhoneMenuStyle).
+ * A site without a header setting has no such header to set, so the card is not shown for it.
  *
  * The row above the fields says when the section was last saved and by whom (SettingsStamp, the
  * site profile row) and offers "Khôi phục mặc định": the three images are emptied
@@ -75,6 +76,9 @@ final class WebsiteAppearanceSettings extends Component
 
     private const string DEFAULT_ACCENT = 'neutral';
 
+    /** The card's keys as loaded when the header setting does not say: search on, light tone, neutral accent. */
+    private const array DEFAULT_MENU = ['tone' => self::DEFAULT_TONE, 'accent' => self::DEFAULT_ACCENT, 'search' => true];
+
     /** @var array{logo: string, logo_dark: string, favicon: string} the draft: slot → media key ('' = none) */
     public array $images = ['logo' => '', 'logo_dark' => '', 'favicon' => ''];
 
@@ -84,9 +88,12 @@ final class WebsiteAppearanceSettings extends Component
     /** The phone menu's accent in the draft: neutral or brand. */
     public string $accent = self::DEFAULT_ACCENT;
 
-    /** @var array{tone: string, accent: string} the phone menu's tone and accent as loaded or last saved */
+    /** "Có tìm kiếm" in the draft: the site search is on. */
+    public bool $search = true;
+
+    /** @var array{tone: string, accent: string, search: bool} the header card's keys as loaded or last saved */
     #[Locked]
-    public array $savedMenu = ['tone' => self::DEFAULT_TONE, 'accent' => self::DEFAULT_ACCENT];
+    public array $savedMenu = self::DEFAULT_MENU;
 
     /** The site has a header setting, so a phone menu to colour (the card is shown only then). */
     #[Locked]
@@ -167,6 +174,15 @@ final class WebsiteAppearanceSettings extends Component
         }
     }
 
+    /** "Có tìm kiếm": the switch flips in the draft; nothing is saved until "Lưu thay đổi". */
+    #[Authorize('settings.manage')]
+    public function toggleSearch(): void
+    {
+        if ($this->hasMenu) {
+            $this->search = ! $this->search;
+        }
+    }
+
     /** "Gỡ ảnh": the slot is emptied in the draft; the picture stays in the library. */
     #[Authorize('settings.manage')]
     public function removeImage(string $slot): void
@@ -218,8 +234,9 @@ final class WebsiteAppearanceSettings extends Component
                 app(SetBrandImages::class)->handle($picks);
                 $tone = $this->tone !== $this->savedMenu['tone'] ? $this->tone : null;
                 $accent = $this->accent !== $this->savedMenu['accent'] ? $this->accent : null;
+                $search = $this->search !== $this->savedMenu['search'] ? $this->search : null;
                 // The header setting gone since the screen opened: save nothing rather than say "saved".
-                if ($this->hasMenu && ($tone !== null || $accent !== null) && ! app(SetPhoneMenuStyle::class)->handle($tone, $accent)) {
+                if ($this->hasMenu && ($tone !== null || $accent !== null || $search !== null) && ! app(SetPhoneMenuStyle::class)->handle($tone, $accent, $search)) {
                     throw new SettingsChangeRejected('menu_gone', 'tone');
                 }
             });
@@ -394,7 +411,7 @@ final class WebsiteAppearanceSettings extends Component
      * The saved images by their media keys (only a live picture of the site counts), and the older
      * general.brand URL of a slot that has no image of its own yet.
      *
-     * @return array{images: array{logo: string, logo_dark: string, favicon: string}, legacy: array<string, string>, stale: list<string>, menu: array{tone: string, accent: string}|null}
+     * @return array{images: array{logo: string, logo_dark: string, favicon: string}, legacy: array<string, string>, stale: list<string>, menu: array{tone: string, accent: string, search: bool}|null}
      */
     private function load(): array
     {
@@ -431,20 +448,21 @@ final class WebsiteAppearanceSettings extends Component
             }
         }
 
-        // The phone menu's two keys; null when the site has no header setting (no phone menu to colour).
+        // The header card's keys; null when the site has no header setting (no such header to set).
         $header = SiteSetting::query()->where('group_name', 'storefront')->where('key', 'header')->value('value');
         $menu = null;
         if (is_array($header)) {
             $menu = [
                 'tone' => in_array($header['drawer_tone'] ?? null, StorefrontChrome::DRAWER_TONES, true) ? (string) $header['drawer_tone'] : self::DEFAULT_TONE,
                 'accent' => in_array($header['drawer_accent'] ?? null, StorefrontChrome::DRAWER_ACCENTS, true) ? (string) $header['drawer_accent'] : self::DEFAULT_ACCENT,
+                'search' => StorefrontChrome::searchOn($header),
             ];
         }
 
         return ['images' => $images, 'legacy' => $legacy, 'stale' => $stale, 'menu' => $menu];
     }
 
-    /** @param  array{images: array{logo: string, logo_dark: string, favicon: string}, legacy: array<string, string>, stale: list<string>, menu: array{tone: string, accent: string}|null}  $loaded */
+    /** @param  array{images: array{logo: string, logo_dark: string, favicon: string}, legacy: array<string, string>, stale: list<string>, menu: array{tone: string, accent: string, search: bool}|null}  $loaded */
     private function apply(array $loaded): void
     {
         $this->images = $loaded['images'];
@@ -452,9 +470,10 @@ final class WebsiteAppearanceSettings extends Component
         $this->legacy = $loaded['legacy'];
         $this->stale = $loaded['stale'];
         $this->hasMenu = $loaded['menu'] !== null;
-        $this->savedMenu = $loaded['menu'] ?? ['tone' => self::DEFAULT_TONE, 'accent' => self::DEFAULT_ACCENT];
+        $this->savedMenu = $loaded['menu'] ?? self::DEFAULT_MENU;
         $this->tone = $this->savedMenu['tone'];
         $this->accent = $this->savedMenu['accent'];
+        $this->search = $this->savedMenu['search'];
         $this->pickerFor = '';
         $this->undo = null;
     }
@@ -488,10 +507,11 @@ final class WebsiteAppearanceSettings extends Component
         return $draft;
     }
 
-    /** How many slots differ from the saved images. */
+    /** How many fields differ from what is saved (the image slots and the header card's keys). */
     private function changeCount(): int
     {
-        $menu = $this->hasMenu ? (int) ($this->tone !== $this->savedMenu['tone']) + (int) ($this->accent !== $this->savedMenu['accent']) : 0;
+        $menu = $this->hasMenu ? (int) ($this->tone !== $this->savedMenu['tone']) + (int) ($this->accent !== $this->savedMenu['accent'])
+            + (int) ($this->search !== $this->savedMenu['search']) : 0;
         $draft = $this->draft();
         if ($draft === null) {
             return count(self::SLOTS) + $menu;

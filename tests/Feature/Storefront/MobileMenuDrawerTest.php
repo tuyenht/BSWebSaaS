@@ -269,13 +269,15 @@ it('shows the call in the header corner, and drops it while the phone bottom bar
     expect($this->get('http://mau.platform.test/gioi-thieu')->getContent())->toContain('<a class="sf-bar__call" href="tel:');
 });
 
-it('follows the corner setting: search and cart draw nothing yet, none leaves it empty', function (string $corner): void {
+it('follows the corner setting: search (and cart, which no site has yet) puts the magnifier there, none leaves it empty', function (string $corner): void {
     $siteId = drawerSite([]);
     app(Tenancy::class)->enter($siteId, fn () => SiteSetting::query()->where('key', 'header')->update(['value' => ['top_bar' => ['items' => []], 'mobile_corner' => $corner]]));
 
-    expect($this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent())
-        ->not->toContain('sf-bar__call')
-        ->toContain('<span class="sf-bar__corner"></span>');
+    $html = $this->get('http://mau.platform.test/gioi-thieu')->assertOk()->getContent();
+    expect($html)->not->toContain('sf-bar__call');
+    $corner === 'none'
+        ? expect($html)->toContain('<span class="sf-bar__corner"></span>')
+        : expect($html)->toContain('<span class="sf-bar__corner"><a class="sf-sbtn sf-sbtn--corner" href="/tim-kiem"');
 })->with(['search', 'cart', 'none']);
 
 it('keeps language, text size and the call in the drawer’s footer in that order after the menu, with no email', function (): void {

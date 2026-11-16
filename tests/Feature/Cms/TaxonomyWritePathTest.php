@@ -210,6 +210,18 @@ it('refuses a rename onto an address in use and changes nothing', function (): v
     });
 });
 
+it('refuses the site search address for a category, new or renamed, as its own reason', function (): void {
+    twSiteOne(function (): void {
+        $news = twCreate('Tin tức');
+
+        expect(twRefusal(fn () => twCreate('Tìm kiếm')))->toBe('slug_reserved')
+            ->and(twRefusal(fn () => app(UpdateTaxonomy::class)->handle($news, new TaxonomyData(slugs: ['vi' => 'tim-kiem']))))->toBe('slug_reserved')
+            ->and(__('categories.reason_slug_reserved', [], 'vi'))->toBe('Đường dẫn này dành cho trang tìm kiếm của website — thử thêm vài chữ vào cuối.')
+            ->and(twPage($news))->toBe('/tin-tuc')
+            ->and(SiteRoute::query()->where('path', '/tim-kiem')->exists())->toBeFalse();
+    });
+});
+
 it('moves a category among its siblings and under another parent, rewriting the branch path', function (): void {
     twSiteOne(function (): void {
         $a = twCreate('A');

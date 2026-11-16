@@ -255,3 +255,10 @@
         width: 100%;
     }
 }
+
+/* The site search box on the 404 page (theme::partials.sf-search-field), the width of the column. */
+.sf-404__search {
+    width: 100%;
+    max-width: 32rem;
+    margin: 0.25rem 0 0.5rem;
+}

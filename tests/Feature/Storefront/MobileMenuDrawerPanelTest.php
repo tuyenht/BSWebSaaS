@@ -488,7 +488,10 @@ it('keeps the drawer’s order: tabs, both panes, then one footer with text size
         ->and($at('sf-drawer__foot'))->toBeLessThan($at('sf-drawer__fs"'))
         ->and($at('sf-drawer__fs"'))->toBeLessThan($at('sf-drawer__call'))
         ->and($at('sf-drawer__call'))->toBeLessThan($at('sf-drawer__socials'))
-        ->and($html)->not->toContain('type="search"');
+        // no search box in the drawer: the only one is the header's search panel
+        ->and(substr($html, $at('data-drawer-tabs'), $at('sf-drawer__socials') - $at('data-drawer-tabs')))->not->toContain('type="search"')
+        ->and(substr_count($html, 'type="search"'))->toBe(1)
+        ->and($at('id="sf-search-panel"'))->toBeLessThan($at('type="search"'));
 });
 
 it('puts no tab bar into the page without scripts and shows both panes stacked', function (): void {

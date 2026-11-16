@@ -254,8 +254,8 @@ trait EditsTaxonomyTree
 
             try {
                 $routes->syncTaxonomy($taxonomy, $locale, $translation['slug']);
-            } catch (RouteConflictException) {
-                throw new TaxonomyChangeRejectedException('slug_taken');
+            } catch (RouteConflictException $e) {
+                throw new TaxonomyChangeRejectedException($e->reserved() ? 'slug_reserved' : 'slug_taken');
             }
 
             if ($slugChanged) {

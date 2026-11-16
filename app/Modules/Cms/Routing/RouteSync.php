@@ -17,7 +17,9 @@ use Illuminate\Database\Eloquent\Builder;
  * renames stay a single hop, not a chain) and drops a redirect FROM the new path (so an
  * A→B→A rename cannot loop). A path resolves to exactly one target — a clash with a
  * DIFFERENT target raises RouteConflictException (a friendly "slug taken", not a DB 500);
- * this covers entry-vs-entry AND entry-vs-taxonomy (A2). Runs inside the tenant context
+ * this covers entry-vs-entry AND entry-vs-taxonomy (A2), and a path the platform keeps for a page of
+ * its own (PathBuilder::RESERVED_PATHS: the site search) is refused the same way, unless the target already stands
+ * there (content from before the address was reserved keeps it). Runs inside the tenant context
  * (BelongsToSite + RLS scope every query to the site).
  */
 final readonly class RouteSync
@@ -197,12 +199,29 @@ final readonly class RouteSync
     }
 
     /**
-     * @throws RouteConflictException the path belongs to a different target
+     * A reserved path (the site search) is refused only to a target that does not stand there yet: content
+     * that took the address before it was reserved keeps it, so it can still be saved, published, moved
+     * along its workflow or re-synced (one more read, only for a reserved path).
+     *
+     * @throws RouteConflictException the path belongs to a different target, or to a page of the platform (the site search)
      */
     private function assertPathAvailable(string $locale, string $path, string $ownColumn, int $ownId): void
     {
+        if (PathBuilder::isReserved($path) && ! $this->standsAt($locale, $path, $ownColumn, $ownId)) {
+            throw new RouteConflictException($path);
+        }
         if ($this->foreignRoute($locale, $path, $ownColumn, $ownId) !== null) {
             throw new RouteConflictException($path);
         }
+    }
+
+    /** Whether the target's own route in $locale is already at $path. */
+    private function standsAt(string $locale, string $path, string $ownColumn, int $ownId): bool
+    {
+        return SiteRoute::query()
+            ->where('locale', $locale)
+            ->where('path', $path)
+            ->where($ownColumn, $ownId)
+            ->exists();
     }
 }

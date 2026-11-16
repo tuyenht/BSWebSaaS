@@ -88,6 +88,7 @@ it('refuses every action to a member who loses settings.manage while the page is
     'remove' => ['removeImage', ['logo']],
     'restore' => ['restoreDefaults', []],
     'undo' => ['undoRestore', []],
+    'search switch' => ['toggleSearch', []],
 ]);
 
 it('draws the three images of the design in order, and nothing of the parts not built yet', function (): void {
@@ -402,7 +403,9 @@ it('draws the phone menu card of the design with its default choices', function 
     lookHeader(['top_bar' => ['items' => []]]);
 
     $this->actingAs(lookAdmin())->get('http://a.test/admin/settings/appearance')->assertOk()
-        ->assertSeeInOrder(['Đầu trang &amp; menu điện thoại', 'Màu trình đơn trên điện thoại',
+        ->assertSeeInOrder(['Đầu trang &amp; menu điện thoại', 'Có tìm kiếm', 'Chi tiết',
+            'Hiện nút kính lúp ở đầu trang để khách tìm bài viết, trang và sản phẩm; trang báo lỗi “không tìm thấy” cũng có ô tìm. Tắt thì mọi chỗ tìm trên website đều ẩn.',
+            'role="switch" aria-checked="true" aria-labelledby="look-search-l" wire:click="toggleSearch"', 'Màu trình đơn trên điện thoại',
             'Theo đầu trang', 'Cùng màu với đầu trang', 'Sáng', 'Mặc định — nền trắng, chữ đậm', 'Tối', 'Nền tối, chữ trắng',
             'Trình đơn mở ra khi khách bấm nút ☰ trên điện thoại.',
             'Màu nhấn của menu', 'Trung tính', 'Mặc định — xám đậm, hợp mọi website', 'Màu thương hiệu', 'Theo màu thương hiệu ở trên',
@@ -430,7 +433,7 @@ it('saves the phone menu tone and accent, keeps every other header key, and show
             ->assertSet('tone', 'light')->assertSet('accent', 'neutral')
             ->set('tone', 'auto')->set('accent', 'brand')->assertSeeHtml('data-unsaved-count="2"')
             ->call('save')->assertHasNoErrors()->assertSet('toast', 'Đã lưu giao diện website')
-            ->assertSet('savedMenu', ['tone' => 'auto', 'accent' => 'brand'])->assertSeeHtml('data-unsaved-count="0"');
+            ->assertSet('savedMenu', ['tone' => 'auto', 'accent' => 'brand', 'search' => true])->assertSeeHtml('data-unsaved-count="0"');
     });
 
     expect(lookHeaderRow())->toEqualCanonicalizing([...$header, 'drawer_tone' => 'auto', 'drawer_accent' => 'brand']);
@@ -545,6 +548,100 @@ it('refuses to save the phone menu to a member who loses settings.manage while t
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         $page = Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)->set('tone', 'dark');
+        $admin->syncPermissions([]);
+        $admin->syncRoles([]);
+        app(TeamContext::class)->forget();
+        $page->call('save')->assertForbidden();
+    });
+
+    expect(lookHeaderRow())->toBe(['drawer_tone' => 'light']);
+});
+
+it('switches the site search off: only the search key is written, the storefront loses its magnifier and its search page', function (): void {
+    $header = ['top_bar' => ['items' => []], 'sticky' => false, 'mobile_corner' => 'search', 'drawer_products' => false, 'drawer_tone' => 'dark', 'drawer_accent' => 'brand'];
+    lookHeader($header);
+    $admin = lookAdmin();
+
+    $before = $this->get('http://a.test/tim-kiem?q=khuon')->assertOk()->getContent();
+    expect($before)->toContain('sf-sbtn')->toContain('sf-spanel');
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)
+            ->assertSet('search', true)->assertSeeHtml('data-unsaved-count="0"')
+            ->call('toggleSearch')->assertSet('search', false)->assertSeeHtml('aria-checked="false" aria-labelledby="look-search-l"')
+            ->assertSeeHtml('data-unsaved-count="1"')
+            ->call('save')->assertHasNoErrors()->assertSet('toast', 'Đã lưu giao diện website')
+            ->assertSet('savedMenu', ['tone' => 'dark', 'accent' => 'brand', 'search' => false])->assertSeeHtml('data-unsaved-count="0"');
+    });
+
+    expect(lookHeaderRow())->toEqualCanonicalizing([...$header, 'search' => false]);
+
+    $after = $this->get('http://a.test/tim-kiem?q=khuon')->assertNotFound()->getContent();
+    expect($after)->toContain('class="sf-404"')->not->toContain('sf-sbtn')->not->toContain('sf-spanel')->not->toContain('sf-404__search');
+
+    // Reopened, the switch shows off; switched back on and saved, the search page answers again.
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)
+        ->assertSet('search', false)->call('toggleSearch')->call('save')->assertHasNoErrors());
+    expect(lookHeaderRow())->toEqualCanonicalizing([...$header, 'search' => true]);
+    $this->get('http://a.test/tim-kiem?q=khuon')->assertOk();
+});
+
+it('counts the search switch as an unsaved change, and "Bỏ thay đổi" puts it back', function (): void {
+    lookHeader(['search' => false]);
+    $admin = lookAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)
+            ->assertSet('search', false)->call('toggleSearch')->assertSeeHtml('data-unsaved-count="1"')
+            ->call('toggleSearch')->assertSeeHtml('data-unsaved-count="0"')
+            ->call('toggleSearch')->call('resetChanges')->assertSet('search', false)->assertSeeHtml('data-unsaved-count="0"');
+    });
+
+    expect(lookHeaderRow())->toBe(['search' => false]);
+});
+
+it('writes only the search key, so a phone menu tone saved meanwhile from another tab stays', function (): void {
+    lookHeader(['drawer_tone' => 'light']);
+    $admin = lookAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $page = Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class);
+        SiteSetting::query()->where('group_name', 'storefront')->where('key', 'header')->update(['value' => ['drawer_tone' => 'dark']]);
+        $page->call('toggleSearch')->call('save')->assertHasNoErrors();
+    });
+
+    expect(lookHeaderRow())->toEqualCanonicalizing(['drawer_tone' => 'dark', 'search' => false]);
+});
+
+it('has no search switch for a site without a header setting, and never creates one for it', function (): void {
+    $admin = lookAdmin();
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)
+        ->assertDontSeeHtml('wire:click="toggleSearch"')->call('toggleSearch')->assertSet('search', true)
+        ->assertSeeHtml('data-unsaved-count="0"')->call('save')->assertHasNoErrors());
+
+    expect(lookHeaderRow())->toBeNull();
+});
+
+it('puts the search back on with "Khôi phục mặc định", and "Hoàn tác" switches it off again', function (): void {
+    lookHeader(['sticky' => false, 'search' => false]);
+    $admin = lookAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $page = Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)->call('restoreDefaults')->assertSet('search', true);
+        expect(SiteSetting::query()->where('group_name', 'storefront')->where('key', 'header')->value('value'))->toBe(['sticky' => false]);
+        $page->call('undoRestore')->assertSet('search', false);
+    });
+
+    expect(lookHeaderRow())->toEqualCanonicalizing(['sticky' => false, 'search' => false]);
+});
+
+it('refuses to save the search switch to a member who loses settings.manage while the page is open', function (): void {
+    lookHeader(['drawer_tone' => 'light']);
+    $admin = lookAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $page = Livewire::actingAs($admin)->test(WebsiteAppearanceSettings::class)->call('toggleSearch');
         $admin->syncPermissions([]);
         $admin->syncRoles([]);
         app(TeamContext::class)->forget();

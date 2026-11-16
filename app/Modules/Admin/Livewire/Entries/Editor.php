@@ -797,8 +797,8 @@ final class Editor extends Component
                 $this->status === 'pending' => __('entries.ed.toast_sent', ['unit' => $unit]),
                 default => __('entries.ed.toast_kept', ['status' => $this->statusPill()['label']]),
             });
-        } catch (RouteConflictException) {
-            $this->addError('slug', __('entries.slug_conflict'));
+        } catch (RouteConflictException $e) {
+            $this->addError('slug', __($e->reserved() ? 'entries.slug_reserved' : 'entries.slug_conflict'));
         } catch (WorkflowGovernedException) {
             // A tab that still shows the tier-1 button after the flow was switched on: the
             // draft is saved, and the next render swaps in the approval block.
@@ -854,8 +854,8 @@ final class Editor extends Component
             $destination = app(ApplyEntryWorkflowTransition::class)->handle(
                 $entry, $this->locale, $this->user(), $key, $note !== '' ? $note : null, $assignTo,
             );
-        } catch (RouteConflictException) {
-            $this->addError('slug', __('entries.slug_conflict'));
+        } catch (RouteConflictException $e) {
+            $this->addError('slug', __($e->reserved() ? 'entries.slug_reserved' : 'entries.slug_conflict'));
 
             return;
         } catch (InvalidTransitionException) {

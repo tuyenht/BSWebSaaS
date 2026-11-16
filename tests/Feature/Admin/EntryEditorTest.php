@@ -273,6 +273,23 @@ it('rejects a slug already owned by another page with a friendly error (no 500)'
     });
 });
 
+it('refuses the site search address for a page with a plain message that says what it is for', function (): void {
+    $editor = User::factory()->create();
+    app()->setLocale('vi');
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.create', 'entries.edit.any', 'entries.publish']);
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('title', 'Tìm kiếm')->set('slug', 'tim-kiem')->call('addBlock', 'hero')
+            ->call('publish')->assertHasErrors('slug')
+            ->assertSee('Đường dẫn này dành cho trang tìm kiếm của website. Hãy chọn đường dẫn khác, ví dụ thêm vài chữ vào cuối.');
+
+        expect(SiteRoute::query()->where('path', '/tim-kiem')->exists())->toBeFalse();
+    });
+});
+
 it('seeds list-typed props as empty arrays from the section schema (fixes paragraphs/items)', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
