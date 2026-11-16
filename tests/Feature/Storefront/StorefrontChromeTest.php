@@ -286,9 +286,11 @@ it('keeps every menu and top-bar target 40px with a mouse and 44px on touch, at 
     $css = (string) StorefrontCss::all();
     preg_match('/\/\* Touch screens: every control of the rich chrome reaches 44px, at every width\. \*\/\n@media \(any-pointer: coarse\) \{(.*?)\n\}\n/s', $css, $touch);
 
-    expect($touch[1] ?? '')->toContain(".sf-nav__link,\n    .sf-nav__chev,\n    .sf-nav__sublink,\n    .sf-footer__link,\n    .sf-factory__map {\n        min-height: 2.75rem;")
-        ->toContain(".sf-nav__chev {\n        min-width: 2.75rem;")
-        ->toContain(".sf-nav--desk .sf-nav__item--parent > .sf-nav__chev::after {\n        inset: 0 calc(100% - 2.75rem) 0 0;");
+    expect($touch[1] ?? '')->toContain(".sf-nav__link,\n    .sf-nav__chev,\n    .sf-nav__sublink,\n    .sf-footer__link,\n    .sf-factory__map {\n        min-height: max(44px, 2.75rem);")
+        ->toContain(".sf-nav__chev {\n        min-width: max(44px, 2.75rem);")
+        ->toContain(".sf-nav--desk .sf-nav__item--parent > .sf-nav__chev::after {\n        inset: 0 calc(100% - max(44px, 2.75rem)) 0 0;");
+    // a theme root below 16px (14 or 15px) must not shrink a touch target under 44px
+    expect($touch[1] ?? '')->not->toMatch('/:\s*2\.75rem;/');
     // a parent's chevron draws narrow (spaced like a plain item) and reaches 40px through its extension
     expect($css)->toContain(".sf-nav--desk .sf-nav__item--parent > .sf-nav__chev {\n    position: relative;\n    z-index: 1;\n    min-width: 0;\n    padding: 0 0.75rem 0 0.25rem;")
         ->toContain(".sf-nav--desk .sf-nav__item--parent > .sf-nav__chev::after {\n    content: \"\";\n    position: absolute;\n    inset: 0 calc(100% - 2.5rem) 0 0;");
