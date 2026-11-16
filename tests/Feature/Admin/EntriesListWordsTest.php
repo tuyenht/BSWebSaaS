@@ -173,12 +173,22 @@ describe('dates', function (): void {
             ->and(EditedWhen::short($now->subDays(7), $now, recentDays: 7, dayThisYear: false))->toBe('Sửa 7 ngày trước')
             ->and(EditedWhen::short($now->subDays(8), $now, recentDays: 7, dayThisYear: false))->toBe('Sửa 08/11/2026')
             // a clock running slightly ahead never reads as a future day
-            ->and(EditedWhen::short($now->addMinutes(5), $now))->toBe('Sửa hôm nay, 10:05');
+            ->and(EditedWhen::short($now->addMinutes(5), $now))->toBe('Sửa hôm nay, 10:05')
+            // a day still ahead is written out, never "today"
+            ->and(EditedWhen::short($now->addDays(3), $now))->toBe('Sửa 19/11/2026')
+            ->and(EditedWhen::short($now->addDays(3), $now, recentDays: 7, dayThisYear: false))->toBe('Sửa 19/11/2026');
+    });
+
+    it('counts days in the website zone, not only in Vietnam', function (): void {
+        $now = CarbonImmutable::parse('2026-03-30 09:00', 'Europe/Berlin'); // the day after the spring clock change
+
+        expect(EditedWhen::short($now->subDay()->setTime(23, 30), $now))->toBe('Sửa hôm qua, 23:30')
+            ->and(EditedWhen::short($now->subDays(2), $now, recentDays: 7))->toBe('Sửa 2 ngày trước');
     });
 });
 
 describe('rows', function (): void {
-    it('names views only on a published record, and opens a published record in a new tab, saying so', function (): void {
+    it('names views only on a published record, and says that Xem opens a new tab', function (): void {
         $user = User::factory()->create();
 
         app(Tenancy::class)->enter(1, function () use ($user): void {
@@ -194,7 +204,8 @@ describe('rows', function (): void {
                 ->and($html)->not->toContain('410 lượt xem')
                 ->and($html)->not->toContain('35 lượt xem')
                 ->and($html)->toContain('aria-label="'.e(__('entries.view_named', ['title' => 'Đang đăng'])).' (mở ở thẻ mới)"')
-                ->and($html)->toContain('aria-label="'.e(__('entries.view_named', ['title' => 'Kín'])).'"')
+                // a preview opens in a new tab too, and says so
+                ->and($html)->toContain('aria-label="'.e(__('entries.view_named', ['title' => 'Kín'])).' (mở ở thẻ mới)"')
                 ->and(substr_count($html, 'title="mở ở thẻ mới"'))->toBe(1);
         });
     });

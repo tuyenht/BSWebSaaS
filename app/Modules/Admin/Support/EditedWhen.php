@@ -22,7 +22,9 @@ final class EditedWhen
         $time = $at->format('H:i');
 
         return match (true) {
-            $days <= 0 => __('admin.list.edited_today', ['time' => $time]),
+            // a day still ahead (a wrong clock, an imported date) is written out, never called today
+            $days < 0 => __('admin.list.edited_other', ['date' => $at->format('d/m/Y')]),
+            $days === 0 => __('admin.list.edited_today', ['time' => $time]),
             $days === 1 => __('admin.list.edited_yesterday', ['time' => $time]),
             $days <= $recentDays => __('admin.list.edited_days', ['n' => $days]),
             $dayThisYear && $at->year === $now->year => __('admin.list.edited_year', ['day' => $at->format('d/m'), 'time' => $time]),

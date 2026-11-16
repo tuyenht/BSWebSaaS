@@ -158,7 +158,7 @@
                 <x-bs-admin::icon name="ri-add" class="size-4" /> {{ __('entries.add_'.$type) }}
             </x-bs-admin::button>
         </div>
-        <p class="m-0 text-body text-text-muted [overflow-wrap:anywhere]">{{ __('entries.desc_'.$type, ['label' => mb_strtolower($sectionLabel)]) }}</p>
+        <p class="m-0 text-body text-text-muted [overflow-wrap:anywhere]">{{ __('entries.desc_'.$type, ['label' => mb_strtolower(mb_substr($sectionLabel, 0, 1)).mb_substr($sectionLabel, 1)]) }}</p>
     </header>
 
     {{-- The list card: groups (from 900) · search + tools · the active-filter line · the rows · the pager. Below 600
@@ -438,9 +438,9 @@
                                     @endif
                                 @else
                                     @if ($path)
-                                        {{-- a published record opens on the website in a new tab, and says so; any other is a preview --}}
+                                        {{-- both open in a new tab and say so: a published record on the website, any other as a preview --}}
                                         <x-bs-admin::button size="sm" variant="soft" color="secondary" :href="$path" :navigate="false" target="_blank" rel="noopener"
-                                            :title="$isLive ? __('entries.opens_new_tab') : __('entries.action_preview')" :aria-label="__('entries.view_named', ['title' => $title]).($isLive ? ' ('.__('entries.opens_new_tab').')' : '')">
+                                            :title="$isLive ? __('entries.opens_new_tab') : __('entries.action_preview')" :aria-label="__('entries.view_named', ['title' => $title]).' ('.__('entries.opens_new_tab').')'">
                                             <x-bs-admin::icon :name="$isLive ? 'ri-external-link' : 'ri-eye'" class="size-4" /> {{ __('admin.view') }}
                                         </x-bs-admin::button>
                                     @endif
