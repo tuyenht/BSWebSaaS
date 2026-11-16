@@ -19,9 +19,8 @@ use App\Modules\Workflow\Services\WorkflowEngine;
  * member's permissions, their category limits and the section's active workflow — never from the
  * role's name, so a custom role reads as truly as a built-in one.
  *
- * What a member may do through a workflow is named by the workflow's own first step out of its
- * starting stage ("Gửi biên tập" → "Được gửi biên tập"), so a site that renames its steps reads its
- * own words here.
+ * What a member may do through a workflow is read from the steps the workflow lets them take, so a
+ * site that renames its steps or guards them with its own permissions reads its own words here.
  */
 final class PostRoleNote
 {
@@ -35,12 +34,8 @@ final class PostRoleNote
 
         if ($workflow instanceof Workflow) {
             $text = Cast::string(__('entries.role_governed', ['name' => $workflow->name]));
-            $step = self::firstStep($workflow);
-            $may = match (true) {
-                $user->can('entries.approve') => __('entries.role_may_approve'),
-                $step instanceof WorkflowTransition && $user->can($step->required_permission) => __('entries.role_may_step', ['step' => mb_strtolower(mb_substr($step->label, 0, 1)).mb_substr($step->label, 1)]),
-                default => __('entries.role_view_only'),
-            };
+            $may = self::throughWorkflow($workflow, $user)
+                ?? ($user->can('entries.edit.any') || $user->can('entries.edit.own') ? __('entries.role_no_step') : __('entries.role_view_only'));
         } else {
             $text = Cast::string(__('entries.role_direct'));
             $may = match (true) {
@@ -64,20 +59,32 @@ final class PostRoleNote
         ];
     }
 
-    /** The workflow's first step out of its starting stage that does not publish (null: it has none). */
-    private static function firstStep(Workflow $workflow): ?WorkflowTransition
+    /**
+     * What the member may move through the workflow, in the workflow's own terms: publishing out of a
+     * later stage reads "Được duyệt đăng"; out of the starting stage, publishing reads "Được đăng" and
+     * any other step its own label ("Gửi biên tập" → "Được gửi biên tập"). Each step is allowed by its
+     * own required permission, exactly as the engine checks it (null: no step is theirs).
+     */
+    private static function throughWorkflow(Workflow $workflow, User $user): ?string
     {
         $states = $workflow->states()->get(['key', 'is_initial', 'is_published'])->keyBy('key');
         $initial = $states->first(fn (WorkflowState $state): bool => $state->is_initial);
-        if (! $initial instanceof WorkflowState) {
+        $published = fn (WorkflowTransition $step): bool => ($states->get($step->to_state)?->is_published) === true;
+        $mine = $workflow->transitions()->orderBy('id')->get()
+            ->filter(fn (WorkflowTransition $step): bool => $user->can($step->required_permission));
+
+        if ($mine->contains(fn (WorkflowTransition $step): bool => $published($step) && $step->from_state !== $initial?->key)) {
+            return Cast::string(__('entries.role_may_approve'));
+        }
+        $first = $mine->where('from_state', $initial?->key);
+        if ($first->contains($published)) {
+            return Cast::string(__('entries.role_may_publish'));
+        }
+        $step = $first->first();
+        if (! $step instanceof WorkflowTransition) {
             return null;
         }
 
-        return $workflow->transitions()->where('from_state', $initial->key)->orderBy('id')->get()
-            ->first(function (WorkflowTransition $step) use ($states): bool {
-                $to = $states->get($step->to_state);
-
-                return $to instanceof WorkflowState && ! $to->is_published;
-            });
+        return Cast::string(__('entries.role_may_step', ['step' => mb_strtolower(mb_substr($step->label, 0, 1)).mb_substr($step->label, 1)]));
     }
 }

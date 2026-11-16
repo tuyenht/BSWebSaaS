@@ -2073,6 +2073,7 @@
     "entries.role_may_publish": "Can publish",
     "entries.role_may_submit": "Can send for approval",
     "entries.role_view_only": "View only",
+    "entries.role_no_step": "Cannot move posts through approval",
     "entries.role_edit_any": "can edit every post",
     "entries.role_edit_any_scoped": "can edit posts in your scope only",
     "entries.role_edit_own": "can edit only your own posts",

@@ -2073,6 +2073,7 @@
     "entries.role_may_publish": "Được đăng",
     "entries.role_may_submit": "Được gửi duyệt",
     "entries.role_view_only": "Chỉ xem",
+    "entries.role_no_step": "Không được chuyển bước duyệt",
     "entries.role_edit_any": "sửa được mọi bài",
     "entries.role_edit_any_scoped": "chỉ sửa bài trong phạm vi của bạn",
     "entries.role_edit_own": "chỉ sửa bài của mình",

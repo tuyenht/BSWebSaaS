@@ -164,10 +164,25 @@
        however many lines follow, so the row check lines up with the first line at every size. */
     .list-tl {
         display: flex;
-        flex-wrap: wrap;
-        align-items: center;
+        flex-wrap: nowrap;
+        align-items: flex-start;
         min-width: 0;
         min-height: var(--list-tap);
+    }
+
+    /* A long name wraps inside its own box, so the ✎ stays beside its first line and never drops
+       alone onto a line of its own when a column beside it narrows the cell. */
+    .list-tl > .list-name {
+        flex: 0 1 auto;
+        min-width: 0;
+    }
+
+    .list-tl > .list-qe {
+        flex: none;
+    }
+
+    .list-tl > .list-tree {
+        align-self: center;
     }
 
     /* The text sits centred in a box at least one target tall; a wrapped title grows by its lines only,

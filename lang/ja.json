@@ -2073,6 +2073,7 @@
     "entries.role_may_publish": "公開できます",
     "entries.role_may_submit": "承認依頼を送れます",
     "entries.role_view_only": "閲覧のみ",
+    "entries.role_no_step": "承認の段階を進める権限はありません",
     "entries.role_edit_any": "すべての記事を編集できます",
     "entries.role_edit_any_scoped": "担当範囲内の記事のみ編集できます",
     "entries.role_edit_own": "自分の記事のみ編集できます",

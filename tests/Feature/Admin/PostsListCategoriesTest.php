@@ -255,7 +255,13 @@ it('words the role card from the member permissions, limits and the section work
         expect($card($writer))->toBe(['role' => 'Cộng tác viên', 'governed' => true,
             'text' => 'Website đang dùng “Biên tập trước khi đăng”: bài đi qua các bước duyệt trước khi lên website.', 'summary' => 'Được gửi biên tập · chỉ sửa bài của mình'])
             ->and($card($approver)['summary'])->toBe('Được duyệt đăng · sửa được mọi bài')
-            ->and($card($editor)['summary'])->toBe('Chỉ xem · sửa được mọi bài');
+            ->and($card($editor)['summary'])->toBe('Không được chuyển bước duyệt · sửa được mọi bài')
+            ->and($card($reader)['summary'])->toBe('Chỉ xem · không sửa bài');
+
+        // a step out of the starting stage that publishes, guarded by the site's own permission,
+        // reads as publishing for whoever holds that permission (not as "view only")
+        $workflow->transitions()->create(['key' => 'direct', 'label' => 'Đăng ngay', 'from_state' => 'draft', 'to_state' => 'published', 'required_permission' => 'entries.publish']);
+        expect($card($editor)['summary'])->toBe('Được đăng · sửa được mọi bài');
 
         // another section's workflow does not govern this one
         $workflow->update(['applies_to_type' => 'services']);
