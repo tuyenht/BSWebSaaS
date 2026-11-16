@@ -12,6 +12,16 @@ return [
         's_maxage' => (int) env('STOREFRONT_EDGE_S_MAXAGE', 300),
         'stale_while_revalidate' => (int) env('STOREFRONT_EDGE_SWR', 86400),
         'query_allow' => ['page', 'sau', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'],
+        // The search suggestions (EdgeCacheHeaders:suggest): asked several times a second while a visitor
+        // types, the same answer for everyone. A change to the site purges them with its pages (the purge
+        // is by host); kept a minute, served a minute longer while refetched, so what no purge reaches (a
+        // post whose publish time comes, a refused host purge) shows at most two minutes late. Only the
+        // typed words may vary the address.
+        'suggest' => [
+            's_maxage' => (int) env('STOREFRONT_SUGGEST_S_MAXAGE', 60),
+            'stale_while_revalidate' => (int) env('STOREFRONT_SUGGEST_SWR', 60),
+            'query_allow' => ['q'],
+        ],
     ],
 
 ];

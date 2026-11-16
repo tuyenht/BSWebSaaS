@@ -456,8 +456,10 @@ Route::get('/{locale}'.PathBuilder::SEARCH_PATH, SearchController::class)
 
 // ── The suggestions under a search box while the visitor types (SearchSuggestController): JSON, in the
 //    same languages and addresses as the search page. A site that is not open is refused by
-//    site.active (no state page: the box simply shows no suggestion); never cached, never indexed. ───
-$storefrontSuggest = [StorefrontSession::class, ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active', EdgeCacheHeaders::class];
+//    site.active (no state page: the box simply shows no suggestion); never indexed. No session: the
+//    answer is the same for every visitor, so the edge may keep it a short while (EdgeCacheHeaders'
+//    suggest rules: the typed words are the only query key it keeps). ───
+$storefrontSuggest = [ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active', EdgeCacheHeaders::class.':suggest'];
 Route::get(PathBuilder::SUGGEST_PATH, SearchSuggestController::class)
     ->withoutMiddleware($storefrontSessionless)->middleware($storefrontSuggest);
 Route::get('/{locale}'.PathBuilder::SUGGEST_PATH, SearchSuggestController::class)

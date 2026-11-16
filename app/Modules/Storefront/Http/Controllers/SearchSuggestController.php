@@ -25,10 +25,13 @@ use Symfony\Component\HttpFoundation\Response;
  * search switched off, or under a prefix that is not a public language of the site, the address does
  * not exist (`{}` with a 404): it never serves a content page.
  *
- * Never cached and never indexed. Typing asks several times a second, so it has its own limit per site
- * and visitor address (MAX_PER_MINUTE, counted in the cache store, apart from the search page's): past
- * it the answer is `{}` with a 429, which the box shows as no suggestion. The words typed are never
- * stored with the address (the counter's key holds the address alone) and never written to the log.
+ * Never indexed. An answer is the same for every visitor of the address (published titles only, no
+ * session on this route), so the edge may keep it a minute (EdgeCacheHeaders' `suggest` rules: a
+ * visitor typing what another just typed gets it from the edge, never from here); a refusal, a 404 and
+ * a redirect are never kept. Typing asks several times a second, so it has its own limit per site and
+ * visitor address (MAX_PER_MINUTE, counted in the cache store, apart from the search page's): past it
+ * the answer is `{}` with a 429, which the box shows as no suggestion. The words typed are never stored
+ * here with the address (the counter's key holds the address alone) and never written to the log.
  */
 final readonly class SearchSuggestController
 {
@@ -69,7 +72,7 @@ final readonly class SearchSuggestController
         $q = SearchText::from($request->query('q'));
         $all = $this->paths->searchUrl($locale);
         if (! $q->searchable()) {
-            return self::private(new JsonResponse(['q' => $q->text, 'items' => [], 'all_url' => $all]));
+            return self::answer(new JsonResponse(['q' => $q->text, 'items' => [], 'all_url' => $all]));
         }
 
         $key = 'site-suggest:'.$this->current->id().'|'.$request->ip();
@@ -81,18 +84,26 @@ final readonly class SearchSuggestController
         }
         RateLimiter::hit($key, 60);
 
-        return self::private(new JsonResponse([
+        return self::answer(new JsonResponse([
             'q' => $q->text,
             'items' => $this->suggestions->build($q, $locale),
             'all_url' => $all.'?'.http_build_query(['q' => $q->text]),
         ], 200, [], JsonResponse::DEFAULT_ENCODING_OPTIONS | JSON_UNESCAPED_UNICODE));
     }
 
-    private static function private(JsonResponse $response): JsonResponse
+    /** The same for every visitor: who may keep it is EdgeCacheHeaders' call. */
+    private static function answer(JsonResponse $response): JsonResponse
     {
-        $response->headers->set('Cache-Control', StorefrontSession::PRIVATE);
         $response->headers->set('X-Robots-Tag', 'noindex');
 
         return $response;
+    }
+
+    /** A refusal or an absence: this visitor's alone, never kept. */
+    private static function private(JsonResponse $response): JsonResponse
+    {
+        $response->headers->set('Cache-Control', StorefrontSession::PRIVATE);
+
+        return self::answer($response);
     }
 }

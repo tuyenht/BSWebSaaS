@@ -15,12 +15,14 @@ use App\Modules\Storefront\EdgeCache\CloudflareEdgeCache;
 use App\Modules\Storefront\EdgeCache\EdgeCachePurges;
 use App\Modules\Storefront\EdgeCache\NullEdgeCache;
 use App\Modules\Storefront\EdgeCache\PurgeSiteEdgeCache;
+use App\Modules\Storefront\Http\Middleware\EdgeCacheHeaders;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\MessageBag;
 use Illuminate\Support\ViewErrorBag;
@@ -108,6 +110,17 @@ it('keeps a page private when its query string has a key outside the allow-list'
     'unknown key' => ['?giá=rẻ', false],
     'cache buster' => ['?v=1', false],
 ]);
+
+it('lets a route name its own edge rules, and shares nothing under a name with no rules', function (): void {
+    config(['storefront.edge_cache.probe' => ['s_maxage' => 7, 'stale_while_revalidate' => 3, 'query_allow' => ['q']]]);
+    Route::get('/_edge-probe', fn () => response('x'))->middleware(EdgeCacheHeaders::class.':probe');
+    Route::get('/_edge-unknown', fn () => response('x'))->middleware(EdgeCacheHeaders::class.':nothing');
+
+    expect($this->get('/_edge-probe?q=a')->headers->get('Cache-Control'))->toBe('max-age=0, public, s-maxage=7, stale-while-revalidate=3')
+        // the pages' own keys are not this route's
+        ->and($this->get('/_edge-probe?page=2')->headers->get('Cache-Control'))->toContain('no-store')
+        ->and($this->get('/_edge-unknown')->headers->get('Cache-Control'))->toContain('no-store')->toContain('private');
+});
 
 it('answers private, no-store with no cookie on a page that does not exist', function (): void {
     $response = $this->get('http://a.test/khong-co-trang-nay')->assertNotFound();

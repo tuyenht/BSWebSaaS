@@ -26,6 +26,10 @@ use Symfony\Component\HttpFoundation\Response;
  * The innermost storefront middleware: it sees the page as the controller made it, and
  * ConditionalGet (outside it) turns a match into a 304 that keeps these headers. Answers made before
  * the route ran (redirects to the primary domain, an unknown host, a closed site) keep their own.
+ *
+ * A route may name its own rules (`EdgeCacheHeaders:suggest` reads `storefront.edge_cache.suggest`):
+ * its own times and its own query keys in place of the pages', every other condition the same; a
+ * name with no rules shares nothing.
  */
 final readonly class EdgeCacheHeaders
 {
@@ -37,22 +41,27 @@ final readonly class EdgeCacheHeaders
     /**
      * @param  Closure(Request): Response  $next
      */
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next, ?string $rules = null): Response
     {
         $response = $next($request);
+        $config = $rules === null ? 'storefront.edge_cache' : 'storefront.edge_cache.'.$rules;
 
-        $response->headers->set('Cache-Control', $this->shareable($request, $response)
+        // rules named but not configured: nothing is shared
+        $known = $rules === null || is_array(config($config));
+
+        $response->headers->set('Cache-Control', $known && $this->shareable($request, $response, Cast::strings(config($config.'.query_allow')))
             ? sprintf(
                 'public, max-age=0, s-maxage=%d, stale-while-revalidate=%d',
-                max(0, Cast::int(config('storefront.edge_cache.s_maxage'), 300)),
-                max(0, Cast::int(config('storefront.edge_cache.stale_while_revalidate'), 86400)),
+                max(0, Cast::int(config($config.'.s_maxage'), 300)),
+                max(0, Cast::int(config($config.'.stale_while_revalidate'), 86400)),
             )
             : StorefrontSession::PRIVATE);
 
         return $response;
     }
 
-    private function shareable(Request $request, Response $response): bool
+    /** @param list<string> $queryAllow */
+    private function shareable(Request $request, Response $response, array $queryAllow): bool
     {
         $headers = $response->headers;
 
@@ -64,7 +73,7 @@ final readonly class EdgeCacheHeaders
             && $headers->get('Cache-Control') === self::UNSET
             && $headers->getCookies() === []
             && $this->cookies->getQueuedCookies() === []
-            && array_diff(array_map('strval', array_keys($request->query->all())), Cast::strings(config('storefront.edge_cache.query_allow'))) === [];
+            && array_diff(array_map('strval', array_keys($request->query->all())), $queryAllow) === [];
     }
 
     /** Whether the proxy headers name another host, port or path prefix than Host itself. */

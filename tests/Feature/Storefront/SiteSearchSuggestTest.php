@@ -78,7 +78,7 @@ function sgGet(string $host, string $typed, string $prefix = ''): array
     return $response->json();
 }
 
-it('finds “Đồ gá” from “do ga”, as JSON rows of label, matched pieces, group and address, never cached or indexed', function (): void {
+it('finds “Đồ gá” from “do ga”, as JSON rows of label, matched pieces, group and address, kept a minute at the edge, never indexed', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         $news = sgCategory('Tin tức', listTemplate: 'grid-news');
         sgPost('5 lưu ý khi đặt gia công đồ gá theo bản vẽ', [$news->id]);
@@ -88,7 +88,8 @@ it('finds “Đồ gá” from “do ga”, as JSON rows of label, matched piece
     $item = $response->json('items.0');
 
     expect($response->headers->get('Content-Type'))->toContain('application/json')
-        ->and($response->headers->get('Cache-Control'))->toContain('no-store')->toContain('private')
+        ->and($response->headers->get('Cache-Control'))->toBe('max-age=0, public, s-maxage=60, stale-while-revalidate=60')
+        ->and($response->headers->getCookies())->toBe([])
         ->and($response->headers->get('X-Robots-Tag'))->toBe('noindex')
         ->and($response->json('q'))->toBe('do ga')
         ->and($response->json('all_url'))->toBe('/tim-kiem?q=do+ga')
@@ -262,6 +263,25 @@ it('never shows one site’s items to another, even for the same words', functio
         ->and(array_column(sgGet('b.test', 'khuon')['items'], 'label'))->toContain('Khuôn của B')->not->toContain('Khuôn của A');
 });
 
+it('gives a signed-in visitor the same answer as everyone, with no session started and no cookie, so the edge may keep it', function (): void {
+    app(Tenancy::class)->enter(1, fn () => sgPost('Khuôn mẫu'));
+
+    $response = $this->withCookie((string) config('session.cookie'), str_repeat('a1', 20))->get('http://a.test/tim-kiem/goi-y?q=khuon')->assertOk();
+
+    expect(array_column($response->json('items'), 'label'))->toBe(['Khuôn mẫu'])
+        ->and($response->headers->get('Cache-Control'))->toContain('public')->toContain('s-maxage=60')
+        ->and($response->headers->getCookies())->toBe([]);
+});
+
+it('keeps an answer private when its address has a key besides the typed words, and every refusal or redirect too', function (): void {
+    app(Tenancy::class)->enter(1, fn () => sgPost('Khuôn mẫu'));
+
+    foreach (['/tim-kiem/goi-y?q=khuon&page=2', '/tim-kiem/goi-y?q=khuon&utm_source=x', '/vi/tim-kiem/goi-y?q=khuon', '/tv/tim-kiem/goi-y?q=khuon'] as $address) {
+        expect($this->get('http://a.test'.$address)->headers->get('Cache-Control'))->toContain('no-store')->toContain('private');
+    }
+    expect($this->get('http://a.test/tim-kiem/goi-y?q=k')->headers->get('Cache-Control'))->toContain('public');
+});
+
 it('answers in the page’s language under its prefix, and sends the default language’s prefix to the plain address', function (): void {
     DB::connection('pgsql_admin')->table('site_locales')->insert(['site_id' => 1, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'is_public' => true, 'created_at' => now(), 'updated_at' => now()]);
     app(Tenancy::class)->enter(1, function (): void {
@@ -298,8 +318,9 @@ it('is not there while the site has search switched off', function (): void {
     });
     app(StorefrontSettings::class)->forget();
 
-    $this->get('http://a.test/tim-kiem/goi-y?q=khuon')->assertNotFound();
-    expect(sgGet('b.test', 'khuon')['items'])->toBe([]);
+    $off = $this->get('http://a.test/tim-kiem/goi-y?q=khuon')->assertNotFound();
+    expect($off->headers->get('Cache-Control'))->toContain('no-store')->toContain('private')
+        ->and(sgGet('b.test', 'khuon')['items'])->toBe([]);
 });
 
 it('gives no rows for nothing or one letter typed, without counting it against the visitor', function (string $typed): void {
@@ -321,7 +342,7 @@ it('limits each visitor of a site on its own counter and answers {} with a 429 p
 
     $response->assertStatus(429);
     expect($response->getContent())->toBe('{}')
-        ->and($response->headers->get('Cache-Control'))->toContain('no-store')
+        ->and($response->headers->get('Cache-Control'))->toContain('no-store')->toContain('private')
         ->and((int) $response->headers->get('Retry-After'))->toBeGreaterThan(0)
         // the results page keeps its own counter, and the other site its own
         ->and(RateLimiter::attempts('site-search:1|127.0.0.1'))->toBe(0)
