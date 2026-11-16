@@ -159,6 +159,15 @@ final class EntryListQuery
     {
         $f = $this->filter;
 
+        if ($f->categories !== []) {
+            // by the MAIN category (pivot position 0), the one that files a post in its section
+            $query->whereExists(fn (QueryBuilder $primary) => $primary->selectRaw('1')->from('entry_taxonomies as ft')
+                ->where('ft.site_id', $this->siteId)
+                ->whereColumn('ft.entry_id', 'entries.id')
+                ->where('ft.position', 0)
+                ->whereRaw('ft.taxonomy_id = any(?::bigint[])', [self::pgArray($f->categories)]));
+        }
+
         if ($f->trans !== []) {
             $this->whereTransStates($query, $f->trans);
         }

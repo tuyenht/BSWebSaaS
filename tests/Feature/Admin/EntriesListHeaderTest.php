@@ -421,9 +421,9 @@ describe('view choices', function (): void {
                 ->assertSet('card', []);
             expect($an->fresh()->preferences['lists'] ?? null)->toBeNull();
 
-            // each list keeps its own choice: the posts section starts from the defaults
+            // each list keeps its own choice: the posts section starts from the defaults (its own Chuyên mục first)
             Livewire::actingAs($lan->fresh())->test(Index::class, ['section' => 'tin-tuc'])
-                ->assertSet('cols', ['path', 'langs', 'creator'])
+                ->assertSet('cols', ['cat', 'path', 'langs', 'creator'])
                 ->set('cols', []);
             expect($lan->fresh()->preferences['lists'])->toHaveKeys(['entries.page', 'entries.post.tin-tuc'])
                 ->and($lan->fresh()->preferences['lists']['entries.post.tin-tuc']['cols'])->toBe([]);

@@ -52,7 +52,8 @@
     $whenText = $when === EntriesIndex::RANGE ? __('entries.when_range', ['from' => $day($from), 'to' => $day($to)]) : ($when !== '' ? ($whenLabels[$when] ?? '') : '');
 
     // What a member may choose to show: "Cột" on a wide list, "Hiện trên thẻ" on phone cards.
-    $colOptions = ['path' => __('entries.col_path')];
+    $colOptions = $isPost ? ['cat' => __('entries.col_category')] : [];
+    $colOptions['path'] = __('entries.col_path');
     if ($multilingual) {
         $colOptions['langs'] = __('entries.col_language');
     }
@@ -60,7 +61,7 @@
     if (! $isPost) {
         $colOptions['tpl'] = __('entries.filter_template');
     }
-    $cardOptions = array_intersect_key($colOptions, array_flip(['tpl', 'path', 'langs']));
+    $cardOptions = array_intersect_key($colOptions, array_flip(['cat', 'tpl', 'path', 'langs']));
     $cardOptions = (! $isPost ? ['tpl' => $colOptions['tpl']] : []) + $cardOptions;
 
     // The Filter sheet (and from 1024 one button per section). Status groups lead it below 900, where their row hides.
@@ -69,6 +70,10 @@
             'sheet' => true, 'class' => 'min-[900px]:hidden',
             'options' => array_map(fn (array $g): array => ['value' => $g['key'], 'label' => $g['label'], 'count' => $g['count'], 'divider' => $g['trash'] ?? false], $groups)],
     ];
+    // a post list's categories lead its filters, as in the design (offered while the section has any)
+    if ($isPost && ($catOptions !== [] || $catF !== [])) {
+        $sections[] = ['key' => 'cat', 'label' => __('entries.col_category'), 'icon' => 'ri-price-tag-3', 'model' => 'catF', 'multiple' => true, 'value' => $catF, 'options' => $catOptions];
+    }
     if (! $isPost) {
         $sections[] = ['key' => 'template', 'label' => __('entries.filter_template'), 'icon' => 'ri-layout-2', 'model' => 'templateF', 'multiple' => true, 'value' => $templateF, 'options' => $facets['template']];
     }
@@ -141,7 +146,7 @@
         <div class="flex items-center gap-3">
             {{-- the name is inline, so the (?) follows its last word when it wraps --}}
             <div class="min-w-0 flex-1">
-                <h1 class="m-0 inline text-[calc(1.25rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ $pageTitle }}</h1>
+                <h1 id="entries-title" tabindex="-1" class="m-0 inline text-[calc(1.25rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ $pageTitle }}</h1>
                 <div class="relative ms-1 inline-block align-middle" x-data="{ open: false }" @keydown.escape.prevent.stop="open && (open = false, $refs.help.focus())" @click.outside="open = false">
                     <button type="button" x-ref="help" @click="open = ! open" :aria-expanded="open ? 'true' : 'false'" aria-controls="entries-help"
                             aria-label="{{ __('admin.list.help_named', ['name' => $pageTitle]) }}" title="{{ __('admin.list.help') }}"
@@ -161,6 +166,24 @@
         <p class="m-0 text-body text-text-muted [overflow-wrap:anywhere]">{{ __('entries.desc_'.$type, ['label' => mb_strtolower(mb_substr($sectionLabel, 0, 1)).mb_substr($sectionLabel, 1)]) }}</p>
     </header>
 
+    {{-- Where the member stands here: their role, how this section publishes (straight, or through its approval
+         workflow — then the card takes the accent tint) and what they may do. It stays until they press "Đã hiểu",
+         remembered for them on the server; focus then goes to the list's name. --}}
+    @if ($roleNote)
+        <section aria-label="{{ __('entries.role_aria') }}" data-role-note data-gov="{{ $roleNote['governed'] ? '1' : '0' }}"
+                 @class([
+                     'flex flex-wrap items-center gap-x-2.5 gap-y-1.5 rounded-md border px-3.5 py-2 text-small text-text',
+                     'border-primary/25 bg-primary/6' => $roleNote['governed'],
+                     'border-border bg-surface' => ! $roleNote['governed'],
+                 ])>
+            <x-bs-admin::icon name="ri-shield-user" class="size-[min(1.5rem,calc(1rem+var(--user-text-boost)))] shrink-0 text-primary-text" />
+            <span class="inline-flex items-center whitespace-nowrap rounded-full bg-primary/12 px-2.5 py-0.5 text-caption font-bold text-primary-text">{{ $roleNote['role'] }}</span>
+            <span class="min-w-0 flex-[1_1_16rem] [overflow-wrap:anywhere]">{{ $roleNote['text'] }}</span>
+            <span class="text-caption text-text-muted [overflow-wrap:anywhere]">{{ $roleNote['summary'] }}</span>
+            <x-bs-admin::hint-ok :key="\App\Modules\Admin\Support\FirstHints::POSTS_ROLE" focus="#entries-title" class="ms-auto" />
+        </section>
+    @endif
+
     {{-- The list card: groups (from 900) · search + tools · the active-filter line · the rows · the pager. Below 600
          the card frame moves onto the rows, so the tools stand on the page and the first record comes up sooner. --}}
     <div class="min-w-0 min-[600px]:rounded-md min-[600px]:border min-[600px]:border-border min-[600px]:bg-surface min-[600px]:pb-4 min-[600px]:shadow-card">
@@ -176,6 +199,7 @@
                  get vPath() { return this.show('path'); },
                  get vLangs() { return this.show('langs'); },
                  get vTpl() { return this.show('tpl'); },
+                 get vCat() { return this.show('cat'); },
              }"
              x-init="size(); new ResizeObserver(() => size()).observe($el)">
             <div class="flex flex-col gap-3 pb-3 min-[600px]:px-4 min-[600px]:pt-4 min-[900px]:pt-3 @min-[56.25rem]/lt:flex-row @min-[56.25rem]/lt:flex-wrap @min-[56.25rem]/lt:items-center">
@@ -260,7 +284,8 @@
             {{-- The shared list row: a card below 600, one record per line to 900, a table from 900 (by the list's own
                  width). Below 600 the rows carry the card frame; select-all lives in the tools row above. --}}
             <div x-ref="rows" class="min-w-0 max-[599.98px]:rounded-md max-[599.98px]:border max-[599.98px]:border-border max-[599.98px]:bg-surface max-[599.98px]:[&_.list-g]:border-t-0">
-            <x-bs-admin::list :label="__('entries.list_label', ['label' => $sectionLabel])" x-bind:data-hide="mode === 'cols' && ! show('creator') ? 'au' : ''">
+            <x-bs-admin::list :label="__('entries.list_label', ['label' => $sectionLabel])" :kind="$isPost ? 'posts' : null"
+                x-bind:data-hide="[mode === 'cols' && ! show('creator') ? 'au' : '', mode === 'cols' && ! show('cat') ? 'cat' : ''].join(' ').trim()">
 
                 <x-bs-admin::list.head>
                     <x-bs-admin::list.cell head col="chk">
@@ -271,6 +296,9 @@
                     <x-bs-admin::list.cell head col="main" :sort="$ariaSort('name')">
                         <x-bs-admin::list.sort :active="$sortOn === 'name'" :dir="$sortWay" wire:click="sortBy('name')">{{ __('entries.title_label') }}</x-bs-admin::list.sort>
                     </x-bs-admin::list.cell>
+                    @if ($isPost)
+                        <x-bs-admin::list.cell head col="cat">{{ __('entries.col_category') }}</x-bs-admin::list.cell>
+                    @endif
                     <x-bs-admin::list.cell head col="st" :sort="$ariaSort('status')">
                         <x-bs-admin::list.sort :active="$sortOn === 'status'" :dir="$sortWay" wire:click="sortBy('status')">{{ __('entries.col_status') }}</x-bs-admin::list.sort>
                     </x-bs-admin::list.cell>
@@ -317,7 +345,15 @@
                         </x-bs-admin::list.cell>
 
                         <x-bs-admin::list.cell col="main">
-                            <div @class(['pl-5' => $depth])>
+                            @if ($isPost)
+                                <div class="list-pw">
+                                @if ($rowCover[$entry->ulid] ?? null)
+                                    <span class="list-th" title="{{ __('entries.cover') }}"><img src="{{ $rowCover[$entry->ulid] }}" alt="" loading="lazy" decoding="async" width="64" height="36"></span>
+                                @else
+                                    <span class="list-th" data-img="0" title="{{ __('entries.cover_none') }}" aria-hidden="true"><x-bs-admin::icon name="ri-image-add" class="size-5" /></span>
+                                @endif
+                            @endif
+                            <div @class(['pl-5' => $depth, 'min-w-0 flex-1' => $isPost])>
                                 <div x-show="! editing">
                                     <x-bs-admin::list.name :href="$trashed ? null : route('admin.entries.edit', ['ulid' => $entry->ulid])"
                                         :quick-edit="$quickEdit ? __('entries.quick_edit_named', ['title' => $title]) : null" :child="$depth > 0">{{ $title }}</x-bs-admin::list.name>
@@ -354,6 +390,9 @@
                                             <span class="font-mono text-caption" title="{{ $path }}">{{ $path ?? '—' }}</span>
                                         @endif
                                     </span>
+                                    @if ($isPost)
+                                        <span class="list-m [overflow-wrap:anywhere]" data-for="cat" x-show="vCat">{{ $rowCategory[$entry->ulid] ?? __('entries.cat_none') }}</span>
+                                    @endif
                                     @if (isset($parentPaths[$entry->ulid]))
                                         <span class="list-m [overflow-wrap:anywhere]" data-for="parent">{{ __('entries.meta_parent', ['path' => $parentPaths[$entry->ulid]]) }}</span>
                                     @endif
@@ -376,7 +415,14 @@
                                     @endif
                                 </x-bs-admin::list.meta>
                             </div>
+                            @if ($isPost)
+                                </div>
+                            @endif
                         </x-bs-admin::list.cell>
+
+                        @if ($isPost)
+                            <x-bs-admin::list.cell col="cat"><span class="list-ell" title="{{ $rowCategory[$entry->ulid] ?? '' }}">{{ $rowCategory[$entry->ulid] ?? __('entries.cat_none') }}</span></x-bs-admin::list.cell>
+                        @endif
 
                         <x-bs-admin::list.cell col="st">
                             <div class="list-stw">
@@ -469,7 +515,7 @@
                     </x-bs-admin::list.row>
                 @empty
                     <x-bs-admin::list.row>
-                        <x-bs-admin::list.cell col="full" aria-colspan="5">
+                        <x-bs-admin::list.cell col="full" aria-colspan="{{ $isPost ? 6 : 5 }}">
                             @if ($tab === 'trash')
                                 {{ __('entries.trash_empty') }}
                             @elseif (trim($search) !== '')

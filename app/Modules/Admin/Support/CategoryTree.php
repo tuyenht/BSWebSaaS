@@ -1,24 +1,26 @@
 <?php
 
-namespace App\Modules\Admin\Support\Catalog;
+namespace App\Modules\Admin\Support;
 
+use App\Modules\Admin\Support\Entries\SectionBranch;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Shared\Support\Cast;
 use Illuminate\Database\Query\JoinClause;
+use Illuminate\Support\Facades\DB;
 
 /**
- * The product categories as the list's category filter shows them: one read of the tree (names in
- * the default language, the `items_count` counter of each), in the order of the website. The number
- * beside a category is the counter summed over its subtree — every product not in the Trash whose
- * main category is that one or lies under it, whatever its status; no product is counted.
+ * A list's categories as its category filter and category column show them: one read of the tree
+ * (names in the default language, the `items_count` counter of each), in the order of the website.
+ * The number beside a category is the counter summed over its subtree — every record not in the
+ * Trash whose main category is that one or lies under it, whatever its status; no record is counted.
  *
  * The tree follows `parent_id`, the source of truth the ltree path mirrors, so a category whose path
  * was never written still has its children. A category without a `ulid` yet (filled by
  * `cms:fill-ulids`) cannot be chosen: the page never carries a bigint id.
  */
-final class ProductCategoryTree
+final class CategoryTree
 {
-    /** A website's product categories are few; the read stops here whatever the data. */
+    /** A website's categories are few; the read stops here whatever the data. */
     public const int LIMIT = 2000;
 
     /** @var array<int, array{id: int, ulid: string|null, parent: int|null, name: string, own: int}> */
@@ -30,12 +32,17 @@ final class ProductCategoryTree
     /** @var array<string, int> ulid → id */
     private array $byUlid = [];
 
+    /** The section's own category (a posts list): its id and name; it is the list itself, not a choice. */
+    private ?int $rootId = null;
+
+    private string $rootName = '';
+
     /**
-     * Read the tree: one statement, at most LIMIT categories in menu order. Past that limit the later
-     * categories are not read: they are not offered in the filter, their products cannot be filtered by
-     * them, and their children (read, if within the limit) are listed at the top.
+     * The product categories: one statement, at most LIMIT categories in menu order. Past that limit
+     * the later categories are not read: they are not offered in the filter, their products cannot be
+     * filtered by them, and their children (read, if within the limit) are listed at the top.
      */
-    public static function load(int $siteId, string $locale): self
+    public static function products(int $siteId, string $locale): self
     {
         $rows = Taxonomy::query()
             ->where('taxonomies.vocabulary', 'product_cat')
@@ -45,21 +52,76 @@ final class ProductCategoryTree
             ->limit(self::LIMIT)
             ->toBase()->get(['taxonomies.id', 'taxonomies.ulid', 'taxonomies.parent_id', 'taxonomies.items_count', 'tt.name']);
 
+        return self::fromRows($rows->all(), null);
+    }
+
+    /** No categories (a list that has none: pages). */
+    public static function none(): self
+    {
+        return new self;
+    }
+
+    /**
+     * The categories of a post section: its own category and everything the section files under it
+     * (SectionBranch — the same walk that decides which posts the list holds), one statement, at most
+     * LIMIT categories in menu order. The section's own category is not a choice: its children are the
+     * top of the tree. A section built on no category reads every post category of the website.
+     */
+    public static function postSection(int $siteId, string $locale, ?int $rootId): self
+    {
+        if ($rootId === null) {
+            $rows = Taxonomy::query()
+                ->where('taxonomies.vocabulary', 'post_cat')
+                ->leftJoin('taxonomy_translations as tt', fn (JoinClause $join) => $join->on('tt.taxonomy_id', '=', 'taxonomies.id')
+                    ->where('tt.site_id', '=', $siteId)->where('tt.locale', '=', $locale))
+                ->orderBy('taxonomies.position')->orderBy('taxonomies.id')
+                ->limit(self::LIMIT)
+                ->toBase()->get(['taxonomies.id', 'taxonomies.ulid', 'taxonomies.parent_id', 'taxonomies.items_count', 'tt.name']);
+
+            return self::fromRows($rows->all(), null);
+        }
+
+        [$branch, $values] = SectionBranch::with($siteId, [$rootId]);
+        $rows = DB::select($branch.<<<'SQL'
+            SELECT t.id, t.ulid, t.parent_id, t.items_count, tt.name
+            FROM branch
+            JOIN taxonomies AS t ON t.id = branch.id AND t.site_id = ?
+            LEFT JOIN taxonomy_translations AS tt ON tt.taxonomy_id = t.id AND tt.site_id = ? AND tt.locale = ?
+            WHERE NOT branch.looped
+            ORDER BY t.position, t.id
+            LIMIT ?
+            SQL, [...$values, $siteId, $siteId, $locale, self::LIMIT]);
+
+        return self::fromRows($rows, $rootId);
+    }
+
+    /**
+     * @param  array<array-key, mixed>  $rows  stdClass rows of id, ulid, parent_id, items_count, name
+     */
+    private static function fromRows(array $rows, ?int $rootId): self
+    {
         $tree = new self;
         foreach ($rows as $row) {
             $row = (array) $row;
             $id = Cast::int($row['id'] ?? 0);
+            $name = Cast::string($row['name'] ?? '') ?: Cast::string(__('catalog.unnamed'));
+            if ($id === $rootId) {
+                $tree->rootId = $id;
+                $tree->rootName = $name;
+
+                continue;
+            }
             $parent = $row['parent_id'] ?? null;
             $tree->nodes[$id] = [
                 'id' => $id,
                 'ulid' => Cast::stringOrNull($row['ulid'] ?? null),
                 'parent' => $parent === null ? null : Cast::int($parent),
-                'name' => Cast::string($row['name'] ?? '') ?: __('catalog.unnamed'),
+                'name' => $name,
                 'own' => Cast::int($row['items_count'] ?? 0),
             ];
         }
         foreach ($tree->nodes as $id => $node) {
-            // a parent outside the read (or itself) leaves the category at the top
+            // a parent outside the read (or itself, or the section's own category) leaves the category at the top
             $parent = $node['parent'] !== null && $node['parent'] !== $id && isset($tree->nodes[$node['parent']]) ? $node['parent'] : 0;
             $tree->children[$parent][] = $id;
             $tree->nodes[$id]['parent'] = $parent === 0 ? null : $parent;
@@ -69,6 +131,26 @@ final class ProductCategoryTree
         }
 
         return $tree;
+    }
+
+    /** Whether there is a category to choose. */
+    public function isEmpty(): bool
+    {
+        return $this->byUlid === [];
+    }
+
+    /**
+     * What a row shows for its main category: the path from the top of the tree ("Kiến thức gia công ›
+     * Gia công CNC"), the section's own name when the post is filed on the section itself, null when the
+     * category is not in the read (none, or another section's).
+     */
+    public function label(?int $id): ?string
+    {
+        if ($id === null) {
+            return null;
+        }
+
+        return $id === $this->rootId ? $this->rootName : $this->pathOf($id);
     }
 
     /**

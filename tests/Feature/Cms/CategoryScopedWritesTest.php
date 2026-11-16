@@ -512,11 +512,14 @@ it('lists posts for a limited member on a flat query budget', function (): void 
     $limited = $list($lan);
 
     // A member without limits pays nothing for them (the list learns it from its own query). A
-    // limited one adds a flat five — their limits, their role level, the rows' primary categories,
-    // the names in the refusal sentence and the categories without a path — never one per row.
+    // limited one adds a flat four — their limits, their role level, the names in the refusal
+    // sentence and the categories without a path — never one per row. Both read the rows' primary
+    // categories once (the Chuyên mục column).
     // +1: the top bar's bell reads the unread count (one bounded query on every admin page).
-    expect($unlimited)->toBeLessThanOrEqual(17)
-        ->and($limited)->toBeLessThanOrEqual($unlimited + 5);
+    // +3: the section's categories, the rows' primary categories and the section's workflow (the
+    // Chuyên mục filter and column, and the role card above the list).
+    expect($unlimited)->toBeLessThanOrEqual(20)
+        ->and($limited)->toBeLessThanOrEqual($unlimited + 4);
 });
 
 it('opens a post in the editor for a limited member on a flat query budget', function (): void {
@@ -636,10 +639,11 @@ it('adds no query to the posts list of a member who is not limited', function ()
     $queries = array_map(fn (array $q): string => $q['query'], DB::getQueryLog());
     DB::disableQueryLog();
 
-    // Neither the reader's own query nor the rows' primary categories: the list learns that this
-    // member has no limits from its own entries query.
-    expect(array_values(array_filter($queries, fn (string $q): bool => str_contains($q, 'root_id') || str_contains($q, '"taxonomies"."path"'))))->toBe([])
-        ->and(count($queries))->toBeLessThanOrEqual(19);
+    // No read of the member's own limits: the list learns that this member has none from its own
+    // entries query. The rows' primary categories are read once, for the Chuyên mục column.
+    expect(array_values(array_filter($queries, fn (string $q): bool => str_contains($q, 'root_id'))))->toBe([])
+        ->and(array_values(array_filter($queries, fn (string $q): bool => str_contains($q, '"taxonomies"."path"'))))->toHaveCount(1)
+        ->and(count($queries))->toBeLessThanOrEqual(22);
 });
 
 it('re-checks the limits on the locked row before saving a pending change', function (): void {

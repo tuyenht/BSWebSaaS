@@ -542,7 +542,11 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     file_put_contents($dir.'/categories.html', $html);
 
     // The news list (Tin tức): posts in the categories above, with cover pictures, several statuses
-    // and two authors, as the posts variant of the list board shows them.
+    // and two authors, as the posts variant of the list board shows them. A cover is the picture's
+    // key in the post's meta; here it names an image the preview server has, and one post in three
+    // has none (the placeholder).
+    $mediaConfig = config('media');
+    config(['media.driver' => 'cloudflare', 'media.cloudflare.base' => 'http://'.ADMIN_PREVIEW_HOST]);
     app(Tenancy::class)->enter(1, function () use ($owner): void {
         $writer = User::query()->create(['name' => 'Trần Thị Lan', 'email' => 'lan@'.ADMIN_PREVIEW_HOST, 'password' => 'a-strong-password']);
         $cat = fn (string $name): int => (int) Taxonomy::query()->where('vocabulary', 'post_cat')
@@ -562,6 +566,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
                 'mime' => 'image/jpeg', 'size' => 120_000, 'width' => 1200, 'height' => 800]);
             $entry = Entry::query()->create(['type' => 'post', 'status' => $status, 'author_id' => $byWriter ? $writer->id : $owner->id,
                 'cover_media_id' => $media->id, 'view_count' => [1240, 860, 0, 0, 35, 410][$i],
+                'meta' => $i % 3 === 2 ? [] : ['image_url' => $i % 2 === 0 ? 'images/admin/logo-sm.png' : 'images/admin/logo-light.png'],
                 'published_at' => $status === 'scheduled' ? now()->addDays(20) : ($status === 'draft' ? null : now()->subDays($i + 1))]);
             $entry->translations()->create(['locale' => 'vi', 'title' => $title, 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);
             if ($i === 0) {
@@ -574,8 +579,9 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     });
     $this->flushSession();
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content?section=posts')->assertOk()->getContent();
-    expect($html)->toContain('Khánh thành nhà xưởng gia công');
+    expect($html)->toContain('Khánh thành nhà xưởng gia công', 'data-role-note', 'Kiến thức › Gia công CNC', 'loading="lazy"', 'data-img="0"');
     file_put_contents($dir.'/post-list.html', $html);
+    config(['media' => $mediaConfig]);
 
     // The product editor with the same shared Google part (no short description: a product has
     // none). The catalog is switched on only now, so the screens above keep their menus.

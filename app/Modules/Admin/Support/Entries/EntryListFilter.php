@@ -23,6 +23,7 @@ final readonly class EntryListFilter
      * @param  list<string>  $templates  template names, TEMPLATE_NONE for none
      * @param  list<string>  $trans  translation states (full / partial / none)
      * @param  list<string>  $locales  the site's enabled languages
+     * @param  list<int>  $categories  main-category ids, any of (the chosen categories and everything under them)
      */
     public function __construct(
         public string $type,
@@ -37,12 +38,13 @@ final readonly class EntryListFilter
         public string $defaultLocale,
         public ?CarbonImmutable $from,
         public ?CarbonImmutable $until,
+        public array $categories = [],
     ) {}
 
     /** Is any filter value on (the search and the status group aside)? */
     public function filtering(): bool
     {
         return $this->langs !== [] || $this->creators !== [] || $this->templates !== [] || $this->trans !== []
-            || $this->from !== null || $this->until !== null;
+            || $this->from !== null || $this->until !== null || $this->categories !== [];
     }
 }

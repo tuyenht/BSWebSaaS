@@ -164,10 +164,25 @@
        however many lines follow, so the row check lines up with the first line at every size. */
     .list-tl {
         display: flex;
-        flex-wrap: wrap;
-        align-items: center;
+        flex-wrap: nowrap;
+        align-items: flex-start;
         min-width: 0;
         min-height: var(--list-tap);
+    }
+
+    /* A long name wraps inside its own box, so the ✎ stays beside its first line and never drops
+       alone onto a line of its own when a column beside it narrows the cell. */
+    .list-tl > .list-name {
+        flex: 0 1 auto;
+        min-width: 0;
+    }
+
+    .list-tl > .list-qe {
+        flex: none;
+    }
+
+    .list-tl > .list-tree {
+        align-self: center;
     }
 
     /* The text sits centred in a box at least one target tall; a wrapped title grows by its lines only,
@@ -1467,6 +1482,92 @@
         color: var(--color-text-muted);
         cursor: not-allowed;
     }
+    /* ── A post list (list kind="posts"): the category column and the cover thumbnail ──────────
+       Below 900 neither is drawn: the category stands in the name's meta line (as the member's
+       card choice says below 600) and the thumbnail is left out, so a narrow row keeps its room for
+       the name. From 900 the category takes a column of at most 9.375rem (a longer path wraps, never
+       clipped) between the name and the status, and the thumbnail (64px, 16:9) leads the name.
+       `data-hide~='cat'` turns the column off, its head, its cells and its track together. */
+    .list-rows[data-kind='posts'] .list-c-cat,
+    .list-rows[data-kind='posts'] .list-th {
+        display: none;
+    }
+
+    .list-rows[data-kind='posts'] .list-c-cat .list-ell {
+        overflow-wrap: anywhere;
+    }
+
+    .list-th {
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        width: 4rem;
+        aspect-ratio: 16 / 9;
+        overflow: hidden;
+        border-radius: 0.25rem;
+        background: var(--color-surface-hover);
+        color: var(--color-text-muted);
+    }
+
+    .list-th > img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .list-th[data-img='0'] {
+        border: 1px dashed var(--color-border-input);
+        background: transparent;
+    }
+
+    @container list (width >= 56.25rem) {
+        .list-rows[data-kind='posts'] .list-g {
+            --list-w-cat: 9.375rem;
+        }
+
+        .list-rows[data-kind='posts'][data-kind] .list-g {
+            grid-template-columns: [chk] 3.5rem [main] minmax(0, 1fr) [cat] fit-content(var(--list-w-cat)) [st] minmax(10.75rem, max-content) [act] auto [end];
+        }
+
+        .list-rows[data-kind='posts'] .list-c-cat {
+            display: block;
+            grid-column: cat;
+        }
+
+        .list-rows[data-kind='posts'] .list-r:not(.list-hd) > .list-c-cat {
+            padding-top: calc(0.3125rem + (var(--spacing-hit) - var(--list-tap)) / 2);
+        }
+
+        .list-rows[data-kind='posts'] .list-m[data-for='cat'] {
+            display: none;
+        }
+
+        .list-rows[data-kind='posts'] .list-pw {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .list-rows[data-kind='posts'] .list-th {
+            display: inline-flex;
+            margin-top: calc((var(--spacing-hit) - var(--list-tap)) / 2 - 0.375rem);
+        }
+
+        .list-rows[data-kind='posts'][data-hide~='cat'] .list-g {
+            --list-w-cat: 0px;
+        }
+
+        .list-rows[data-kind='posts'][data-hide~='cat'] .list-c-cat {
+            display: none;
+        }
+    }
+
+    @container list (width >= 80rem) {
+        .list-rows[data-kind='posts'][data-kind]:not([data-hide~='au']) .list-g {
+            grid-template-columns: [chk] 3.5rem [main] minmax(0, 1fr) [cat] fit-content(var(--list-w-cat)) [st] minmax(10.75rem, max-content) [au] 8.75rem [act] auto [end];
+        }
+    }
+
     /* ── The product list (list kind="catalog"): category, price, stock and label cells ─────────
        Below 900 the cells are not drawn and the same facts stand in the name's meta line (price
        and stock, category, labels as a comma list); the "(gốc … ₫)" of a sale is one block that

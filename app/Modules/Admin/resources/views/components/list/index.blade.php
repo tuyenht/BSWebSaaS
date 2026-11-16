@@ -15,9 +15,11 @@
     // `kind="catalog"` is the product list: the table gains the category, price, stock and label columns
     // (cat, price, stock, badge), which `data-hide` (space-separated keys) turns off one by one and the
     // list's width folds into the meta line (label below 80rem, category below 68.75rem).
+    // `kind="posts"` is a post list: from 900 the table gains the category column (cat, `data-hide~="cat"` turns it
+    // off) and each name its cover thumbnail (.list-th); below 900 the category stands in the meta line.
     // Sizes live in the stylesheet only.
 @endphp
-<div @if (in_array($kind, ['facts', 'catalog'], true)) data-kind="{{ $kind }}" @endif {{ $attributes->merge(['class' => 'list-rows']) }}>
+<div @if (in_array($kind, ['facts', 'catalog', 'posts'], true)) data-kind="{{ $kind }}" @endif {{ $attributes->merge(['class' => 'list-rows']) }}>
     @isset($select)
         <div class="list-selbar">{{ $select }}</div>
     @endisset
