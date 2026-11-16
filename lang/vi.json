@@ -5570,6 +5570,7 @@
     "guide.posts.add_publish": "Bấm :add để mở trình soạn. Nhập tiêu đề và nội dung rồi đăng là :unit lên website. Chưa xong thì :unit tự lưu thành bản nháp, khách chưa thấy.",
     "guide.posts.add_submit": "Bấm :add để mở trình soạn. Viết xong bạn gửi duyệt; :who xem rồi đăng. Chưa được đăng thì khách chưa thấy :unit.",
     "guide.posts.add_flow": "Bấm :add để mở trình soạn. Viết xong bạn gửi đi duyệt; :unit qua :n bước duyệt rồi mới lên website. Bạn nhận thông báo khi có kết quả.",
+    "guide.posts.add_flow_one": "Bấm :add để mở trình soạn. Viết xong bạn gửi đi duyệt; :unit qua 1 bước duyệt rồi mới lên website. Bạn nhận thông báo khi có kết quả.",
     "guide.posts.add_write": "Bấm :add để mở trình soạn và viết. Nhóm quyền của bạn chưa được gửi :unit đi duyệt.",
     "guide.posts.who": "nhóm :roles",
     "guide.posts.who_none": "người được đăng bài",

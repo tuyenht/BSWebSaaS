@@ -42,7 +42,8 @@ document.addEventListener('click', (e) => {
     const btn = e.target instanceof Element ? e.target.closest('[data-guide-open]') : null;
     if (btn) {
         e.preventDefault();
-        import('./admin-guide.js').then((m) => m.openPanel(btn));
+        // A chunk that no longer loads (a deploy replaced its hash) needs the page's new asset list: reload.
+        import('./admin-guide.js').then((m) => m.openPanel(btn), () => window.location.reload());
     }
 });
 

@@ -62,7 +62,11 @@ final class PostListGuide
             $A = ['add' => W::label($add)];
             if ($workflow instanceof Workflow) {
                 $steps = self::reviewSteps($workflow, $user);
-                $addText = $steps !== null ? $t('add_flow', $A + ['n' => $steps]) : $t('add_write', $A);
+                $addText = match (true) {
+                    $steps === null => $t('add_write', $A),
+                    $steps === 1 => $t('add_flow_one', $A),
+                    default => $t('add_flow', $A + ['n' => $steps]),
+                };
             } elseif ($canPublish) {
                 $addText = $t('add_publish', $A);
             } elseif ($can('entries.submit')) {
@@ -194,13 +198,17 @@ final class PostListGuide
         }
         $n = 0;
         $at = $send->to_state;
-        while (! $published($at) && $n < 8) {
-            $forward = $steps->first(fn (WorkflowTransition $s): bool => $s->from_state === $at && ! $s->requires_note);
+        // Walk forward to the published state; a state already passed ends the walk, so a step that leads back
+        // without a note (a withdraw) never counts the same steps twice.
+        $passed = [$send->from_state => true, $at => true];
+        while (! $published($at)) {
+            $forward = $steps->first(fn (WorkflowTransition $s): bool => $s->from_state === $at && ! $s->requires_note && ! isset($passed[$s->to_state]));
             if (! $forward instanceof WorkflowTransition) {
                 break;
             }
             $n++;
             $at = $forward->to_state;
+            $passed[$at] = true;
         }
 
         return max(1, $n);

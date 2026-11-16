@@ -5570,6 +5570,7 @@
     "guide.posts.add_publish": "点击 :add 打开编辑器。输入标题和内容后发布，:unit 就会出现在网站上。完成之前，:unit 会保存为草稿，访客看不到。",
     "guide.posts.add_submit": "点击 :add 打开编辑器。写完后提交审核；由:who查看并发布。发布之前，访客看不到:unit。",
     "guide.posts.add_flow": "点击 :add 打开编辑器。写完后提交审核；:unit 要经过 :n 个审核步骤才会发布到网站。有结果时您会收到通知。",
+    "guide.posts.add_flow_one": "点击 :add 打开编辑器。写完后提交审核；:unit 要经过 1 个审核步骤才会发布到网站。有结果时您会收到通知。",
     "guide.posts.add_write": "点击 :add 打开编辑器进行撰写。您的权限组还不能提交:unit审核。",
     "guide.posts.who": "“:roles”组",
     "guide.posts.who_none": "有发布权限的人",

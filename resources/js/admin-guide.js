@@ -2,7 +2,7 @@
 // cho tôi» ringing one element, and a part's tour across the screen. Loaded on the first press of a
 // [data-guide-open] button (app.js), so a screen pays nothing until then.
 //
-// A port of the design canvas engine (plans/design-canvas/admin/project/guide.js): the same drawer,
+// A port of the design canvas guide engine: the same drawer,
 // cards, card placement, focus return and memory. Only the data differs: the canvas read the screen's
 // prototype state; here the server prints the member's guide (role, workflow, what they may do, the
 // labels the screen draws) as JSON in script[data-guide-ctx], with every word in the admin's language

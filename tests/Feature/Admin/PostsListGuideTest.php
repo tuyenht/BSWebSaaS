@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Livewire\Entries\Index;
 use App\Modules\Admin\Support\Guide\Guide;
+use App\Modules\Cms\Models\Entry;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Registry\PermissionRegistry;
@@ -170,4 +171,51 @@ it('keeps the old help on the pages list, which has no guide yet', function (): 
 
     $this->actingAs($user->fresh())->get('http://a.test/admin/content')->assertOk()
         ->assertDontSee('data-guide-open', false)->assertSee('entries-help', false);
+});
+
+it('words a single review step in the singular', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        app()->setLocale('en');
+        pgSection();
+        $workflow = Workflow::query()->create(['key' => 'single', 'name' => 'Duyệt', 'applies_to_type' => 'posts', 'is_active' => true]);
+        foreach ([['key' => 'draft', 'label' => 'Draft', 'is_initial' => true, 'sort_order' => 1], ['key' => 'pending', 'label' => 'Pending', 'sort_order' => 2],
+            ['key' => 'published', 'label' => 'Published', 'is_published' => true, 'sort_order' => 3]] as $state) {
+            $workflow->states()->create($state);
+        }
+        // a withdraw back to the draft, needing no note and older than the forward step, must not be walked as a review step
+        $workflow->transitions()->create(['key' => 'submit', 'label' => 'Send', 'from_state' => 'draft', 'to_state' => 'pending', 'required_permission' => 'entries.submit']);
+        $workflow->transitions()->create(['key' => 'withdraw', 'label' => 'Withdraw', 'from_state' => 'pending', 'to_state' => 'draft', 'required_permission' => 'entries.submit']);
+        $workflow->transitions()->create(['key' => 'approve', 'label' => 'Approve', 'from_state' => 'pending', 'to_state' => 'published', 'required_permission' => 'entries.approve']);
+
+        $steps = pgSteps(pgGuide(pgMember('Writer', ['entries.create', 'entries.edit.own', 'entries.submit'])));
+
+        expect($steps['main']['add'])->toContain('goes through one review step before')
+            ->not->toContain('review steps');
+    });
+});
+
+it('builds the guide on the first draw only, at a query count that does not grow with the rows', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        pgSection();
+        $owner = User::factory()->create();
+        grantRole($owner, 'owner', PermissionRegistry::TENANT_PERMISSIONS);
+        $owner = $owner->fresh();
+        $post = fn (int $i) => Entry::query()->create(['type' => 'post', 'status' => 'draft'])->translations()->create([
+            'locale' => 'vi', 'title' => "Bài {$i}", 'slug' => "bai-{$i}", 'status' => 'draft', 'body' => ['blocks' => []],
+        ]);
+        $post(0);
+        // a first draw warms the request-wide caches (permissions, settings), so both counts start alike
+        Livewire::actingAs($owner)->test(Index::class, ['section' => 'posts']);
+        $one = countQueries(fn () => Livewire::actingAs($owner)->test(Index::class, ['section' => 'posts']));
+        foreach (range(1, 10) as $i) {
+            $post($i);
+        }
+        $eleven = countQueries(fn () => Livewire::actingAs($owner)->test(Index::class, ['section' => 'posts']));
+
+        $list = Livewire::actingAs($owner)->test(Index::class, ['section' => 'posts']);
+        expect($list->viewData('guide'))->not->toBeNull();
+        // a redraw keeps the printed guide (wire:ignore) and does not build it again
+        expect($list->set('search', 'Bài')->viewData('guide'))->toBeNull()
+            ->and($eleven)->toBe($one);
+    });
 });

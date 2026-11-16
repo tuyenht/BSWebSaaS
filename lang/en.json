@@ -5570,6 +5570,7 @@
     "guide.posts.add_publish": "Press :add to open the editor. Type the title and the content, then publish, and the :unit is on the website. Until then the :unit is kept as a draft that visitors do not see.",
     "guide.posts.add_submit": "Press :add to open the editor. When you have written it, send it for review; :who check it and publish it. Until it is published, visitors do not see the :unit.",
     "guide.posts.add_flow": "Press :add to open the editor. When you have written it, send it for review; the :unit goes through :n review steps before it reaches the website. You get a notification with the result.",
+    "guide.posts.add_flow_one": "Press :add to open the editor. When you have written it, send it for review; the :unit goes through one review step before it reaches the website. You get a notification with the result.",
     "guide.posts.add_write": "Press :add to open the editor and write. Your role may not send a :unit for review yet.",
     "guide.posts.who": "the :roles role",
     "guide.posts.who_none": "someone who may publish",
