@@ -29,7 +29,16 @@ final class PostRoleNote
      */
     public static function for(User $user, string $sectionKey, bool $scoped): array
     {
-        $workflow = app(WorkflowEngine::class)->activeFor($sectionKey);
+        return self::with($user, app(WorkflowEngine::class)->activeFor($sectionKey), $scoped);
+    }
+
+    /**
+     * The card for a section whose active workflow (or none) the caller has already read.
+     *
+     * @return array{role: string, governed: bool, text: string, summary: string}
+     */
+    public static function with(User $user, ?Workflow $workflow, bool $scoped): array
+    {
         $governed = $workflow instanceof Workflow;
 
         if ($workflow instanceof Workflow) {

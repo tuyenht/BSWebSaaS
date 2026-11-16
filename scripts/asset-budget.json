@@ -205,6 +205,10 @@
     "resources/js/admin-notifications.js": {
       "js": 674,
       "css": 0
+    },
+    "resources/js/admin-guide.js": {
+      "js": 7309,
+      "css": 1572
     }
   }
 }

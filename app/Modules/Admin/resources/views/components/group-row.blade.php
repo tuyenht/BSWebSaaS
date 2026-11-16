@@ -112,7 +112,7 @@
                 @continue
             @endif
             @php $on = $group['key'] === $active; @endphp
-            <button type="button" data-g="{{ $group['key'] }}" data-pin="{{ $on || ($group['trash'] ?? false) ? '1' : '0' }}" @if ($group['trash'] ?? false) data-trash @endif
+            <button type="button" data-g="{{ $group['key'] }}" data-guide="tab-{{ $group['key'] }}" data-pin="{{ $on || ($group['trash'] ?? false) ? '1' : '0' }}" @if ($group['trash'] ?? false) data-trash @endif
                     aria-pressed="{{ $on ? 'true' : 'false' }}"
                     wire:click="{{ $setter($group['key']) }}"
                     @class([
