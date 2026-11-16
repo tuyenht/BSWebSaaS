@@ -440,6 +440,8 @@ if (searchPanel) {
     const phone = window.matchMedia('(max-width: 639.98px)');
     let opener = null;
     let sheet = false;
+    // history.back() from our own close settles later, as a popstate of its own; until then no new entry is pushed
+    let pending = 0;
     const place = () => searchPanel.style.setProperty('--sf-spanel-top', `${Math.max(0, header.getBoundingClientRect().bottom)}px`);
     const setSearch = (open, from = null, returnFocus = true) => {
         if (open) {
@@ -451,7 +453,7 @@ if (searchPanel) {
         document.dispatchEvent(new CustomEvent('sf:cover'));
         openers.forEach((el) => el.setAttribute('aria-expanded', open && el === opener ? 'true' : 'false'));
         if (open) {
-            if (phone.matches && !sheet) {
+            if (phone.matches && !sheet && pending === 0) {
                 sheet = true;
                 window.history.pushState({ sfSearch: 1 }, '');
             }
@@ -461,6 +463,7 @@ if (searchPanel) {
         } else {
             if (sheet) {
                 sheet = false;
+                pending++;
                 window.history.back();
             }
             searchPanel.removeAttribute('aria-modal');
@@ -474,11 +477,22 @@ if (searchPanel) {
     // a page restored from the back/forward cache never shows the panel open
     window.addEventListener('pageshow', (event) => {
         if (event.persisted && !searchPanel.hidden) {
-            sheet = false;
+            // a sheet's entry is still the current one: closing steps back off it, leaving no duplicate
             setSearch(false, null, false);
         }
     });
     window.addEventListener('popstate', () => {
+        if (pending > 0) {
+            // the traversal of our own back(); a panel opened meanwhile now gets its entry
+            pending--;
+            if (pending === 0 && !searchPanel.hidden && phone.matches && !sheet) {
+                sheet = true;
+                window.history.pushState({ sfSearch: 1 }, '');
+                searchPanel.setAttribute('aria-modal', '');
+                searchPanel.setAttribute('data-search-sheet', '');
+            }
+            return;
+        }
         if (sheet) {
             sheet = false;
             setSearch(false);

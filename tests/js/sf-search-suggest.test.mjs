@@ -309,6 +309,38 @@ test('a row or the “all” link whose address leaves the site is never drawn, 
     assert.deepEqual(p.went, ['https://a.test/do-ga-han']);
 });
 
+test('the typed text is put into the loading line as it is, even with replacement patterns in it', async () => {
+    const p = await page();
+    p.type("a$'b$&");
+    await tick(22);
+    assert.equal(p.box.querySelector('.sf-ssug__lt').textContent, "Đang tìm “a$'b$&”…");
+});
+
+test('a picture is drawn only from an https address', async () => {
+    const answer = () => ({ q: 'do ga', items: [
+        { kind: 'item', label: 'A', group: 'G', group_key: 'g', icon: 'box', url: '/a', thumb: 'https://files.test/a.jpg' },
+        { kind: 'item', label: 'B', group: 'G', group_key: 'g', icon: 'box', url: '/b', thumb: 'http://files.test/b.jpg' },
+    ], all_url: '/tim-kiem?q=do+ga' });
+    const p = await page({ answer });
+    p.type('do ga');
+    await tick(60);
+    const imgs = [...p.list.querySelectorAll('img')].map((i) => i.getAttribute('src'));
+    assert.deepEqual(imgs, ['https://files.test/a.jpg']);
+});
+
+test('the listbox holds only groups: each heading is hidden from the tree and names its group', async () => {
+    const p = await page();
+    p.type('do ga');
+    await tick(60);
+    const groups = [...p.list.querySelectorAll('[role="group"]')];
+    assert.ok(groups.length >= 2);
+    for (const g of groups) {
+        const h = p.doc.getElementById(g.getAttribute('aria-labelledby'));
+        assert.equal(h.getAttribute('aria-hidden'), 'true');
+        assert.equal(h.parentNode.parentNode, p.list);
+    }
+});
+
 test('leaving the field while an answer is on its way stops the loading bar; coming back shows no running bar', async () => {
     const p = await page();
     const other = p.doc.body.appendChild(p.doc.createElement('button'));

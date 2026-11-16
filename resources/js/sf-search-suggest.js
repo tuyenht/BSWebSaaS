@@ -63,10 +63,10 @@ const local = (doc, url) => {
     }
 };
 
-// A picture's address: http(s) only (the media host may be another), null otherwise.
+// A picture's address: https only (the media host may be another), null otherwise.
 const picture = (doc, url) => {
     try {
-        return typeof url === 'string' && url !== '' && /^https?:$/.test(new URL(url, doc.baseURI).protocol) ? new URL(url, doc.baseURI).href : null;
+        return typeof url === 'string' && url !== '' && /^https:$/.test(new URL(url, doc.baseURI).protocol) ? new URL(url, doc.baseURI).href : null;
     } catch {
         return null;
     }
@@ -91,7 +91,7 @@ export function attach(form, env = {}) {
     } catch {
         text = {};
     }
-    const say = (key, swap = {}) => Object.entries(swap).reduce((s, [k, v]) => s.replace(`:${k}`, v), String(text[key] ?? ''));
+    const say = (key, swap = {}) => Object.entries(swap).reduce((s, [k, v]) => s.replace(`:${k}`, () => v), String(text[key] ?? ''));
     const el = (tag, cls, content) => {
         const node = doc.createElement(tag);
         if (cls) {
@@ -321,7 +321,7 @@ export function attach(form, env = {}) {
                 g.setAttribute('role', 'presentation');
                 const h = el('div', 'sf-ssug__gh', String(item.group ?? ''));
                 h.id = `${list.id}-g${list.children.length}`;
-                h.setAttribute('role', 'presentation');
+                h.setAttribute('aria-hidden', 'true');
                 rows = el('ul', 'sf-ssug__gl');
                 rows.setAttribute('role', 'group');
                 rows.setAttribute('aria-labelledby', h.id);

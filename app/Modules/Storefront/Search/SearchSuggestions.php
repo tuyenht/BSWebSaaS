@@ -171,7 +171,7 @@ final readonly class SearchSuggestions
             return null;
         }
         if (str_contains($stored, '://')) {
-            return preg_match('#^https?://#i', $stored) === 1 ? $stored : null;
+            return preg_match('#^https://#i', $stored) === 1 ? $stored : null;
         }
 
         return $this->media->url($stored, self::THUMB_WIDTH);

@@ -436,6 +436,7 @@ it('gives each row its picture from the media key at the small width, a product�
         $product->images()->create(['media_id' => sgMedia('khuon-sau')->id, 'position' => 2]);
         sgPost('Khuôn bài có ảnh', attributes: ['meta' => ['image_url' => 'tenant/entries/bia-abcdef012345.jpg']], at: now()->subMinutes(5));
         sgPost('Khuôn bài ảnh cũ', attributes: ['meta' => ['image_url' => 'https://img.example.test/cu.jpg']], at: now()->subMinutes(6));
+        sgPost('Khuôn bài ảnh http', attributes: ['meta' => ['image_url' => 'http://img.example.test/cu.jpg']], at: now()->subMinutes(8));
         sgPost('Khuôn bài ảnh lạ', attributes: ['meta' => ['image_url' => 'javascript:alert(1)']], at: now()->subMinutes(7));
 
         return ['product' => $product->id, 'media' => $first->id];
@@ -446,8 +447,10 @@ it('gives each row its picture from the media key at the small width, a product�
 
     expect($items['Khuôn có ảnh']['thumb'])->toBe($urls->url('tenant/products/khuon-dau-0123456789ab.jpg', SearchSuggestions::THUMB_WIDTH))
         ->and($items['Khuôn bài có ảnh']['thumb'])->toBe($urls->url('tenant/entries/bia-abcdef012345.jpg', SearchSuggestions::THUMB_WIDTH))
-        // a cover saved as a full address before keys were stored: as it is; anything else: none
+        // a cover saved as a full https address before keys were stored: as it is; anything else: none
         ->and($items['Khuôn bài ảnh cũ']['thumb'])->toBe('https://img.example.test/cu.jpg')
+        // a plain http address would be mixed content on an https page: none
+        ->and($items['Khuôn bài ảnh http']['thumb'])->toBeNull()
         ->and($items['Khuôn bài ảnh lạ']['thumb'])->toBeNull();
     // the media key is the picture's address: neither the product's nor the picture's number is in it
     foreach ($items as $item) {
