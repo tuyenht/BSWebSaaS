@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Livewire\Entries\Index;
+use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -152,4 +153,26 @@ it('plans the top of a large page tree on the tree index, as a generic plan unde
 
     expect($sql)->toContain('"entries"."parent_id" is null')
         ->and(entriesGenericPlanIndexes($sql, $bindings))->toContain('entries_page_top_idx');
+});
+
+it('filters the posts list by a category with a probe per row on the main-category pivot, on the order index', function (): void {
+    $ulid = app(Tenancy::class)->enter(1, function (): string {
+        $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
+        $category->translations()->create(['locale' => 'vi', 'name' => 'Tin công ty', 'slug' => 'tin-cong-ty']);
+        // a third of the live posts are filed there as their main category
+        DB::statement(<<<'SQL'
+            insert into entry_taxonomies (site_id, entry_id, taxonomy_id, position)
+            select e.site_id, e.id, ?, 0 from entries e where e.site_id = 1 and e.type = 'post' and e.id % 3 = 0
+        SQL, [$category->id]);
+
+        return (string) $category->ulid;
+    });
+    DB::connection('pgsql_admin')->statement('analyze entry_taxonomies');
+
+    ['sql' => $sql, 'bindings' => $bindings] = entriesPageQuery('posts', ['cat' => [$ulid]]);
+    $indexes = entriesGenericPlanIndexes($sql, $bindings);
+
+    expect($sql)->toContain('"ft"."position" = ?')
+        ->and($indexes)->toContain('entries_post_updated_idx')
+        ->and($indexes)->toContain('entry_taxonomies_entry_id_taxonomy_id_unique');
 });

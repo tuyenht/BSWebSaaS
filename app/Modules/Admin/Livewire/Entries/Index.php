@@ -2,10 +2,13 @@
 
 namespace App\Modules\Admin\Livewire\Entries;
 
+use App\Modules\Admin\Support\CategoryTree;
 use App\Modules\Admin\Support\Entries\EntryListFilter;
 use App\Modules\Admin\Support\Entries\EntryListQuery;
 use App\Modules\Admin\Support\Entries\ListCursor;
 use App\Modules\Admin\Support\Entries\ListGroup;
+use App\Modules\Admin\Support\Entries\PostRoleNote;
+use App\Modules\Admin\Support\FirstHints;
 use App\Modules\Cms\Actions\DuplicateEntry;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
@@ -16,6 +19,7 @@ use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
+use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Support\CategoryItemCounts;
@@ -23,6 +27,7 @@ use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\ConcurrencyError;
 use App\Modules\Shared\Support\Slugger;
@@ -127,6 +132,19 @@ final class Index extends Component
     #[Url(as: 'tr')]
     public array $transF = [];
 
+    /**
+     * @var list<string> chosen category ulids of a post list — OR within the group; a category brings
+     *                   everything under it (ticking one ticks its children, see settleCategories())
+     */
+    #[Url(as: 'cat')]
+    public array $catF = [];
+
+    /** @var list<string> the categories as they were before a change from the browser (see updating()) */
+    private array $catBefore = [];
+
+    /** The section's categories, read once per request (a post list only). */
+    private ?CategoryTree $catTree = null;
+
     /** "Thời gian" of a post list: a preset from WHEN, or RANGE while the two dates below decide. */
     #[Url(as: 'when', except: '')]
     public string $when = '';
@@ -177,12 +195,15 @@ final class Index extends Component
     public const array SORTS = ['order' => 'page', 'name' => null, 'updated' => null, 'pub' => 'post', 'status' => null, 'views' => null, 'creator' => null];
 
     /** Optional columns of a wide list ("Cột"), and the ones on until the member says otherwise. */
-    private const array COLS = ['path', 'langs', 'creator', 'tpl'];
+    private const array COLS = ['cat', 'path', 'langs', 'creator', 'tpl'];
 
-    private const array COLS_DEFAULT = ['path', 'langs', 'creator'];
+    private const array COLS_DEFAULT = ['cat', 'path', 'langs', 'creator'];
+
+    /** The columns a member could choose before "Chuyên mục" came: a choice saved then starts with it shown. */
+    private const array COLS_BEFORE_CAT = ['path', 'langs', 'creator', 'tpl'];
 
     /** What a phone card may add ("Hiện trên thẻ"), all off until the member turns them on. */
-    private const array CARD = ['tpl', 'path', 'langs'];
+    private const array CARD = ['cat', 'tpl', 'path', 'langs'];
 
     /** Sentinel value for the "no template" (null template_override) filter option. */
     private const string TEMPLATE_NONE = '__default__';
@@ -234,14 +255,26 @@ final class Index extends Component
         $this->viewKey = $this->entryType === 'post' && $section instanceof ContentSection ? 'entries.post.'.$section->key : 'entries.page';
         $lists = Cast::arr(Cast::arr($this->actingUser()->preferences)['lists'] ?? null);
         $view = Cast::arr($lists[$this->viewKey] ?? null);
-        $this->cols = isset($view['cols']) ? self::known(Cast::arr($view['cols']), self::COLS) : self::COLS_DEFAULT;
-        $this->card = self::known(Cast::arr($view['card'] ?? null), self::CARD);
+        $cols = $this->colsHere();
+        $this->cols = isset($view['cols']) ? self::known(Cast::arr($view['cols']), $cols) : self::known(self::COLS_DEFAULT, $cols);
+        // a column added since the choice was saved starts as its default says (shown), not as hidden
+        $offered = isset($view['offered']) ? Cast::strings($view['offered']) : self::COLS_BEFORE_CAT;
+        $this->cols = self::known([...$this->cols, ...array_diff(self::COLS_DEFAULT, $offered)], $cols);
+        $this->card = self::known(Cast::arr($view['card'] ?? null), $this->cardHere());
         $this->clean();
     }
 
     public function updatedSearch(): void
     {
         $this->restart(); // a new term must not strand the user on a stale page number
+    }
+
+    /** A category is about to change from the browser: remember what was chosen, to see which one was ticked or unticked. */
+    public function updating(string $property): void
+    {
+        if (Str::before($property, '.') === 'catF') {
+            $this->catBefore = $this->catF;
+        }
     }
 
     /**
@@ -258,7 +291,10 @@ final class Index extends Component
         if ($name === 'from' || $name === 'to') {
             $this->when = self::dateOr($this->from) !== '' || self::dateOr($this->to) !== '' ? self::RANGE : '';
         }
-        if (in_array($name, ['tab', 'transF', 'langF', 'creatorF', 'templateF', 'when', 'from', 'to', 'sortKey', 'sortDir'], true)) {
+        if ($name === 'catF') {
+            $this->settleCategories($this->catBefore);
+        }
+        if (in_array($name, ['tab', 'catF', 'transF', 'langF', 'creatorF', 'templateF', 'when', 'from', 'to', 'sortKey', 'sortDir'], true)) {
             $this->clean();
             $this->restart();
         }
@@ -270,14 +306,14 @@ final class Index extends Component
     /** "Cột" changed: kept for this member only. */
     public function updatedCols(): void
     {
-        $this->cols = self::known($this->cols, self::COLS);
+        $this->cols = self::known($this->cols, $this->colsHere());
         $this->saveView();
     }
 
     /** "Hiện trên thẻ" changed: kept for this member only. */
     public function updatedCard(): void
     {
-        $this->card = self::known($this->card, self::CARD);
+        $this->card = self::known($this->card, $this->cardHere());
         $this->saveView();
     }
 
@@ -378,7 +414,11 @@ final class Index extends Component
 
     public function toggleFilterValue(string $group, string $value): void
     {
-        if ($group === 'lang') {
+        if ($group === 'cat') {
+            $before = $this->catF;
+            $this->catF = $this->toggleIn($this->catF, $value);
+            $this->settleCategories($before);
+        } elseif ($group === 'lang') {
             $this->langF = $this->toggleIn($this->langF, $value);
         } elseif ($group === 'creator') {
             $this->creatorF = $this->toggleIn($this->creatorF, $value);
@@ -393,7 +433,9 @@ final class Index extends Component
 
     public function resetFilterGroup(string $group): void
     {
-        if ($group === 'lang') {
+        if ($group === 'cat') {
+            $this->catF = [];
+        } elseif ($group === 'lang') {
             $this->langF = [];
         } elseif ($group === 'creator') {
             $this->creatorF = [];
@@ -409,6 +451,7 @@ final class Index extends Component
     /** "Bỏ lọc": every filter, the search words and the group go; the sort stays. */
     public function clearAllFilters(): void
     {
+        $this->catF = [];
         $this->langF = [];
         $this->creatorF = [];
         $this->templateF = [];
@@ -1057,8 +1100,41 @@ final class Index extends Component
                 true
             ) where id = ?
             SQL,
-            [$this->viewKey, json_encode(['cols' => $this->cols, 'card' => $this->card], JSON_THROW_ON_ERROR), $user->getKey()],
+            [$this->viewKey, json_encode($this->savedView(), JSON_THROW_ON_ERROR), $user->getKey()],
         );
+    }
+
+    /**
+     * What is kept of the member's view choices. A post list also keeps the columns it offered then,
+     * so a column added later starts shown for them (a page list has gained none).
+     *
+     * @return array{cols: list<string>, card: list<string>, offered?: list<string>}
+     */
+    private function savedView(): array
+    {
+        $view = ['cols' => $this->cols, 'card' => $this->card];
+
+        return $this->entryType === 'post' ? $view + ['offered' => $this->colsHere()] : $view;
+    }
+
+    /**
+     * The columns this list offers in "Cột" (Chuyên mục is a post list's).
+     *
+     * @return list<string>
+     */
+    private function colsHere(): array
+    {
+        return $this->entryType === 'post' ? self::COLS : array_values(array_diff(self::COLS, ['cat']));
+    }
+
+    /**
+     * The details this list offers in "Hiện trên thẻ" (Chuyên mục is a post list's).
+     *
+     * @return list<string>
+     */
+    private function cardHere(): array
+    {
+        return $this->entryType === 'post' ? self::CARD : array_values(array_diff(self::CARD, ['cat']));
     }
 
     /**
@@ -1081,6 +1157,7 @@ final class Index extends Component
         $this->langF = array_values(array_unique(array_filter($this->langF, 'is_string')));
         $this->creatorF = array_values(array_unique(array_filter($this->creatorF, 'is_string')));
         $this->templateF = array_values(array_unique(array_filter($this->templateF, 'is_string')));
+        $this->catF = $this->entryType === 'post' ? array_values(array_unique(array_filter($this->catF, 'is_string'))) : [];
         if ($this->entryType !== 'post') {
             $this->when = $this->from = $this->to = ''; // Thời gian is a post filter (pages have no publish date to pick by)
         }
@@ -1187,8 +1264,47 @@ final class Index extends Component
      */
     private function filterCount(): int
     {
-        return count($this->templateF) + count($this->transF) + count($this->creatorF) + count($this->langF)
+        return ($this->catF === [] ? 0 : count($this->categoryTree()->topmost($this->catF))) + count($this->templateF) + count($this->transF) + count($this->creatorF) + count($this->langF)
             + ($this->when !== '' ? 1 : 0);
+    }
+
+    /** The section's categories, read once per request (an empty tree for a page list). */
+    private function categoryTree(): CategoryTree
+    {
+        if ($this->catTree === null) {
+            $this->catTree = $this->entryType === 'post'
+                ? CategoryTree::postSection(app(CurrentSite::class)->id(), app(SiteLocale::class)->default(), $this->resolveSection()?->taxonomy_id)
+                : CategoryTree::none();
+        }
+
+        return $this->catTree;
+    }
+
+    /**
+     * A category ticked brings everything under it; one unticked takes everything under it and above it
+     * (a parent cannot stay ticked with a child gone). Compares the choice with what it was; keys of
+     * categories not in this section are dropped.
+     *
+     * @param  list<string>  $before
+     */
+    private function settleCategories(array $before): void
+    {
+        if ($this->entryType !== 'post') {
+            $this->catF = [];
+
+            return;
+        }
+        $tree = $this->categoryTree();
+        $now = $tree->known($this->catF);
+        $before = $tree->known($before);
+        $set = $now;
+        foreach (array_diff($now, $before) as $added) {
+            $set = [...$set, ...$tree->keysUnder($added)];
+        }
+        foreach (array_diff($before, $now) as $removed) {
+            $set = array_diff($set, $tree->keysUnder($removed), $tree->keysAbove($removed));
+        }
+        $this->catF = array_values(array_unique($set));
     }
 
     public function render(): View
@@ -1215,12 +1331,20 @@ final class Index extends Component
         $user = $this->actingUser();
         $scopes = app(CategoryScopes::class);
         [$from, $until] = $this->period();
+        // the section's categories (one read): the Chuyên mục filter's choices and each row's category path
+        $tree = $this->categoryTree();
+        $this->catF = $tree->known($this->catF);
         $filter = new EntryListFilter($type === 'post' ? 'post' : 'page', $this->tab, $section?->taxonomy_id, $this->search, $this->langF, $this->creatorF,
-            $this->templateF, $this->transF, $locales, $locale, $from, $until);
+            $this->templateF, $this->transF, $locales, $locale, $from, $until, $tree->idsUnder($this->catF));
         // Whether this member has category limits here rides along on the rows' own query, so a
-        // member without limits costs the list nothing more.
-        $list = new EntryListQuery($filter, app(CurrentSite::class)->id(),
-            fn (Builder $rows) => $scopes->selectHasLimits($rows, $user, EntryListQuery::COLUMNS));
+        // member without limits costs the list nothing more; so does a post's cover (its storage key
+        // alone, never the whole meta).
+        $list = new EntryListQuery($filter, app(CurrentSite::class)->id(), function (Builder $rows) use ($scopes, $user, $type): void {
+            $scopes->selectHasLimits($rows, $user, EntryListQuery::COLUMNS);
+            if ($type === 'post') {
+                $rows->selectRaw("entries.meta->>'image_url' as cover_key");
+            }
+        });
 
         // Group counts, bounded: a website past 10,000 rows reads "hơn 10.000", at the cost of 10,001 rows.
         // Pages count first, to know whether they fit in memory; a list of posts counts its groups in the
@@ -1259,6 +1383,38 @@ final class Index extends Component
             $rowEditable[$item['entry']->ulid] = $user->can('update', $item['entry']);
         }
 
+        // Each post row's main category, as a path from the top of the section's tree, and its cover in a
+        // small rendition (both from what the rows already carry: no query per row).
+        $rowCategory = [];
+        $rowCover = [];
+        if ($type === 'post') {
+            $urls = app(MediaUrlResolver::class);
+            foreach ($rows->items() as $item) {
+                $entry = $item['entry'];
+                $primary = $entry->relationLoaded('taxonomies') ? $entry->taxonomies->first() : null;
+                $rowCategory[$entry->ulid] = $tree->label($primary instanceof Taxonomy ? $primary->id : null);
+                $key = $entry->getAttribute('cover_key');
+                $rowCover[$entry->ulid] = is_string($key) && $key !== '' ? $urls->url($key, 96) : null;
+            }
+        }
+
+        // The Chuyên mục choices; the number beside each counts the posts of the whole section filed there or
+        // below, so it is shown where it is what the list holds: every status, no search, no category limits.
+        $scoped = $type === 'post' && ($limited || $scopes->isLimited($user));
+        $counted = $this->tab === 'all' && trim($this->search) === '' && ! $scoped;
+        $catOptions = [];
+        foreach ($tree->options() as $option) {
+            $catOptions[] = ['value' => $option['ulid'], 'label' => $option['label'], 'depth' => $option['depth']]
+                + ($counted ? ['count' => $this->countLabel($option['count'])] : []);
+        }
+        $catChips = array_map(fn (array $c): array => ['group' => 'cat', 'value' => $c['ulid'], 'label' => Cast::string(__('entries.chip_cat', ['name' => $c['label']]))],
+            $tree->topmost($this->catF));
+
+        // The role card stays until this member presses "Đã hiểu"; nothing of it is read after that.
+        $roleNote = $type === 'post' && $section instanceof ContentSection && ! FirstHints::dismissed(FirstHints::POSTS_ROLE, $user)
+            ? PostRoleNote::for($user, $section->key, $scoped)
+            : null;
+
         $canDelete = $user->can('entries.delete.any') || $user->can('entries.delete.own');
         [$sortKey, $sortDir] = $this->sorting();
 
@@ -1272,7 +1428,11 @@ final class Index extends Component
             'scopeRefusal' => $limited ? $scopes->refusal($user) : null,
             'counts' => $counts,
             'facets' => $read['facets'],
-            'activeChips' => $this->activeChips($read['facets']),
+            'activeChips' => [...$catChips, ...$this->activeChips($read['facets'])],
+            'catOptions' => $catOptions,
+            'rowCategory' => $rowCategory,
+            'rowCover' => $rowCover,
+            'roleNote' => $roleNote,
             'filterCount' => $this->filterCount(),
             'filterCountNarrow' => $this->filterCount() + ($this->tab !== 'all' ? 1 : 0),
             'sortOn' => $sortKey,
@@ -1415,7 +1575,8 @@ final class Index extends Component
 
         $limited = $all->isNotEmpty()
             && $scopes->learnHasLimits($user, $all->first()->getAttribute(CategoryScopes::HAS_LIMITS)) && $scopes->isLimited($user);
-        if ($limited && $type === 'post') {
+        if ($type === 'post') {
+            // the row's category column, and what the category limits read
             $all->load(self::primaryCategoryOnly());
         }
 
@@ -1648,7 +1809,7 @@ final class Index extends Component
     /** Names the view of the list a page cursor belongs to: what is filtered, searched, sorted, and the page size. */
     private function fingerprint(): string
     {
-        return hash('xxh128', json_encode([$this->entryType, $this->section, $this->tab, trim($this->search), $this->langF, $this->creatorF,
+        return hash('xxh128', json_encode([$this->entryType, $this->section, $this->tab, trim($this->search), $this->catF, $this->langF, $this->creatorF,
             $this->templateF, $this->transF, $this->when, $this->from, $this->to, $this->sorting(), $this->perPage], JSON_THROW_ON_ERROR));
     }
 

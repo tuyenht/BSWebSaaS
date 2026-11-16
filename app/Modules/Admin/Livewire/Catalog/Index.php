@@ -2,9 +2,9 @@
 
 namespace App\Modules\Admin\Livewire\Catalog;
 
-use App\Modules\Admin\Support\Catalog\ProductCategoryTree;
 use App\Modules\Admin\Support\Catalog\ProductListFilter;
 use App\Modules\Admin\Support\Catalog\ProductListQuery;
+use App\Modules\Admin\Support\CategoryTree;
 use App\Modules\Admin\Support\Entries\ListCursor;
 use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Catalog\Actions\ChangeProductMainCategory;
@@ -206,7 +206,7 @@ final class Index extends Component
 
     private ?bool $brochure = null;
 
-    private ?ProductCategoryTree $tree = null;
+    private ?CategoryTree $tree = null;
 
     /** @var list<string> the category choice before a change from the browser (to tell what was ticked or unticked) */
     private array $catBefore = [];
@@ -1313,7 +1313,7 @@ final class Index extends Component
      *
      * @return array{count: int, name: string|null, pick: string|null, published: int, moves: bool, choices: list<array{ulid: string, label: string, depth: int, count: int, path: string}>}
      */
-    private function categoryDialog(ProductCategoryTree $tree): array
+    private function categoryDialog(CategoryTree $tree): array
     {
         $products = $this->products()->whereIn('ulid', $this->catTargets)->orderBy('id')
             ->with(['translations:id,product_id,locale,name', 'taxonomies' => static function (BelongsToMany $primary): void {
@@ -1378,7 +1378,7 @@ final class Index extends Component
         $this->qF = array_map(fn (mixed $words): string => mb_substr(Cast::string($words), 0, 100), array_intersect_key($this->qF, self::FILTERS));
     }
 
-    private function listFilter(ProductCategoryTree $tree): ProductListFilter
+    private function listFilter(CategoryTree $tree): ProductListFilter
     {
         return new ProductListFilter($tree->idsUnder($this->catF), $this->transF, app(SiteLocale::class)->enabled(), $this->tagF, $this->stockF, $this->saleF !== []);
     }
@@ -1415,9 +1415,9 @@ final class Index extends Component
     }
 
     /** The product categories, read once per request. */
-    private function categoryTree(): ProductCategoryTree
+    private function categoryTree(): CategoryTree
     {
-        return $this->tree ??= ProductCategoryTree::load(app(CurrentSite::class)->id(), app(SiteLocale::class)->default());
+        return $this->tree ??= CategoryTree::products(app(CurrentSite::class)->id(), app(SiteLocale::class)->default());
     }
 
     /**
@@ -1464,7 +1464,7 @@ final class Index extends Component
      * @param  array{tags: array<string, int>, stock: array<string, int>, trans: array<string, int>, sale: int}|null  $values  null: the website is past the cap, the values carry no number
      * @return array<string, list<array{value: string, label: string, count?: int|string, depth?: int, active: bool}>>
      */
-    private function facets(ProductCategoryTree $tree, ?array $values, bool $multilingual, bool $selling, int $cap): array
+    private function facets(CategoryTree $tree, ?array $values, bool $multilingual, bool $selling, int $cap): array
     {
         $count = fn (int $n): int|string => $n > $cap ? Cast::string(__('catalog.count_over')) : $n;
         $number = fn (int $n): array => $values === null ? [] : ['count' => $count($n)];
@@ -1502,7 +1502,7 @@ final class Index extends Component
      * @param  array<string, list<array{value: string, label: string, active: bool}>>  $facets
      * @return list<array{label: string, icon: string, aria: string, remove: string}>
      */
-    private function filterChips(ProductCategoryTree $tree, array $facets): array
+    private function filterChips(CategoryTree $tree, array $facets): array
     {
         $chips = [];
         $make = function (string $group, string $nameKey, string $icon, string $ariaKey, string $value, string $name) use (&$chips): void {
@@ -1529,7 +1529,7 @@ final class Index extends Component
     }
 
     /** How many conditions are on (the Lọc badge): each chosen value, a chosen category counted by its chip. */
-    private function filterCount(ProductCategoryTree $tree): int
+    private function filterCount(CategoryTree $tree): int
     {
         return count($tree->topmost($this->catF)) + count($this->transF) + count($this->tagF) + count($this->stockF) + ($this->saleF !== [] ? 1 : 0);
     }

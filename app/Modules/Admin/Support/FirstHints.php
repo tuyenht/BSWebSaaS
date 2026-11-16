@@ -24,8 +24,11 @@ final class FirstHints
     /** The members list's line on the member's own row ("Nhóm quyền của bạn đổi ở …"). */
     public const string MEMBERS_YOU = 'members-you';
 
+    /** The card above a post list on the member's role and how the section publishes. */
+    public const string POSTS_ROLE = 'posts-role';
+
     /** @var list<string> */
-    public const array KEYS = [self::LANG_SOURCE, self::MEMBERS_YOU];
+    public const array KEYS = [self::LANG_SOURCE, self::MEMBERS_YOU, self::POSTS_ROLE];
 
     /** Whether the signed-in member (or $user) has dismissed the hint $key. */
     public static function dismissed(string $key, ?User $user = null): bool
