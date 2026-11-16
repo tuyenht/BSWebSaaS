@@ -428,14 +428,18 @@ if (beacon) {
 }
 
 // Site search panel: every magnifier is a link to the search page that becomes the button opening the
-// panel under the header. Focus goes to the field; Esc, the ✕ or a click on the dimmed page closes it
-// and focus goes back to the button that opened it. The panel follows the header's bottom edge while
-// open (a sticky header moves as the top bar scrolls away).
+// panel under the header (a phone: over the whole screen, a modal dialog). Focus goes to the field; Esc,
+// the ✕ or a click on the dimmed page closes it and focus goes back to the button that opened it. The
+// panel follows the header's bottom edge while open (a sticky header moves as the top bar scrolls away).
+// While it is open the page's slideshows hold still (sf:cover). On a phone the phone's Back closes it (one
+// history entry while open; a page opened from the panel takes that entry's place) and Tab stays inside.
 const searchPanel = document.querySelector('[data-search-panel]');
 if (searchPanel) {
     const header = searchPanel.closest('header');
     const openers = document.querySelectorAll('[data-search-open]');
+    const phone = window.matchMedia('(max-width: 639.98px)');
     let opener = null;
+    let sheet = false;
     const place = () => searchPanel.style.setProperty('--sf-spanel-top', `${Math.max(0, header.getBoundingClientRect().bottom)}px`);
     const setSearch = (open, from = null, returnFocus = true) => {
         if (open) {
@@ -443,17 +447,61 @@ if (searchPanel) {
             place();
         }
         searchPanel.hidden = !open;
+        root.classList.toggle('sf-search-open', open);
+        document.dispatchEvent(new CustomEvent('sf:cover'));
         openers.forEach((el) => el.setAttribute('aria-expanded', open && el === opener ? 'true' : 'false'));
         if (open) {
+            if (phone.matches && !sheet) {
+                sheet = true;
+                window.history.pushState({ sfSearch: 1 }, '');
+            }
+            searchPanel.toggleAttribute('aria-modal', sheet);
             searchPanel.querySelector('[data-search-input]').focus();
-            addEventListener('scroll', place, { passive: true });
+            window.addEventListener('scroll', place, { passive: true });
         } else {
-            removeEventListener('scroll', place);
+            if (sheet) {
+                sheet = false;
+                window.history.back();
+            }
+            searchPanel.removeAttribute('aria-modal');
+            window.removeEventListener('scroll', place);
             if (returnFocus) {
                 opener?.focus();
             }
         }
+        searchPanel.toggleAttribute('data-search-sheet', sheet);
     };
+    // a page restored from the back/forward cache never shows the panel open
+    window.addEventListener('pageshow', (event) => {
+        if (event.persisted && !searchPanel.hidden) {
+            sheet = false;
+            setSearch(false, null, false);
+        }
+    });
+    window.addEventListener('popstate', () => {
+        if (sheet) {
+            sheet = false;
+            setSearch(false);
+        }
+    });
+    // a page opened from the full-screen panel replaces its history entry, so Back from there comes home
+    const away = (href) => {
+        sheet = false;
+        window.location.replace(href);
+    };
+    searchPanel.addEventListener('click', (event) => {
+        const link = sheet && event.button === 0 && !(event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) && event.target.closest('a[href]');
+        if (link) {
+            event.preventDefault();
+            away(link.href);
+        }
+    });
+    searchPanel.addEventListener('submit', (event) => {
+        if (sheet) {
+            event.preventDefault();
+            away(`${event.target.action}?${new URLSearchParams(new FormData(event.target))}`);
+        }
+    });
     openers.forEach((el) => {
         el.setAttribute('role', 'button');
         el.setAttribute('aria-expanded', 'false');
@@ -472,13 +520,24 @@ if (searchPanel) {
     });
     searchPanel.addEventListener('focusout', (event) => {
         const to = event.relatedTarget;
-        if (to && !searchPanel.contains(to) && !to.closest('[data-search-open]')) {
+        if (to && !sheet && !searchPanel.contains(to) && !to.closest('[data-search-open]')) {
             setSearch(false, null, false);
         }
     });
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && !searchPanel.hidden) {
+        if (searchPanel.hidden) {
+            return;
+        }
+        if (event.key === 'Escape') {
             setSearch(false);
+        } else if (event.key === 'Tab' && sheet) {
+            const items = [...searchPanel.querySelectorAll('a[href], button, input')].filter((el) => el.getClientRects().length > 0);
+            const at = items.indexOf(document.activeElement);
+            const to = event.shiftKey ? (at <= 0 ? items.length - 1 : -1) : at === items.length - 1 || at < 0 ? 0 : -1;
+            if (to >= 0 && items.length) {
+                event.preventDefault();
+                items[to].focus();
+            }
         }
     });
 }

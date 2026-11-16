@@ -10,7 +10,7 @@
     },
     "resources/css/storefront.css": {
       "js": 0,
-      "css": 11107
+      "css": 11284
     },
     "resources/css/sf-hero.css": {
       "js": 0,
@@ -82,7 +82,7 @@
     },
     "resources/css/sf-search.css": {
       "js": 0,
-      "css": 2008
+      "css": 2317
     },
     "resources/js/app.js": {
       "js": 15817,
@@ -113,7 +113,7 @@
       "css": 0
     },
     "resources/js/sf-slider.js": {
-      "js": 3469,
+      "js": 3494,
       "css": 0
     },
     "resources/js/sf-stats.js": {
@@ -149,11 +149,11 @@
       "css": 0
     },
     "resources/js/sf-search-suggest.js": {
-      "js": 3282,
+      "js": 3960,
       "css": 0
     },
     "resources/js/storefront.js": {
-      "js": 3556,
+      "js": 3922,
       "css": 0
     }
   },

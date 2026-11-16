@@ -20,8 +20,10 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * The suggestions under a search box while the visitor types, `/tim-kiem/goi-y?q=…` (`/{locale}/…` for
  * a language other than the site's default, as the search page itself): JSON
- * `{q, items: [{kind, label, parts, group, icon, url, sku?}], all_url}` (SearchSuggestions), the
- * script drawing each row from plain text. Nothing typed, or one letter: no rows. While the site has
+ * `{q, items: [{kind, label, parts, group, group_key, icon, url, thumb, meta, meta_parts?, sku?}], total, total_more, all_url}`
+ * (SearchSuggestions), the script drawing each row from plain text under its group's heading. `total`:
+ * how many results the search page lists, counted up to SearchSuggestions::COUNT_CAP (the box shows
+ * «50+» past 50; `total_more`: at least that many), null with no row. Nothing typed, or one letter: no rows. While the site has
  * search switched off, or under a prefix that is not a public language of the site, the address does
  * not exist (`{}` with a 404): it never serves a content page.
  *
@@ -72,7 +74,7 @@ final readonly class SearchSuggestController
         $q = SearchText::from($request->query('q'));
         $all = $this->paths->searchUrl($locale);
         if (! $q->searchable()) {
-            return self::answer(new JsonResponse(['q' => $q->text, 'items' => [], 'all_url' => $all]));
+            return self::answer(new JsonResponse(['q' => $q->text, 'items' => [], 'total' => null, 'total_more' => false, 'all_url' => $all]));
         }
 
         $key = 'site-suggest:'.$this->current->id().'|'.$request->ip();
@@ -84,9 +86,15 @@ final readonly class SearchSuggestController
         }
         RateLimiter::hit($key, 60);
 
+        $items = $this->suggestions->build($q, $locale);
+        // counted only for a box that shows rows: «Xem tất cả N kết quả» sits under them
+        $total = $items === [] ? null : $this->suggestions->total($q, $locale);
+
         return self::answer(new JsonResponse([
             'q' => $q->text,
-            'items' => $this->suggestions->build($q, $locale),
+            'items' => $items,
+            'total' => $total['count'] ?? null,
+            'total_more' => $total['lower'] ?? false,
             'all_url' => $all.'?'.http_build_query(['q' => $q->text]),
         ], 200, [], JsonResponse::DEFAULT_ENCODING_OPTIONS | JSON_UNESCAPED_UNICODE));
     }

@@ -8,11 +8,15 @@ use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
+use App\Modules\Media\Models\Media;
+use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Storefront\Http\Controllers\SearchSuggestController;
+use App\Modules\Storefront\Search\SearchSuggestions;
 use App\Modules\Storefront\Search\SiteSearch;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Theming\StorefrontSettings;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
@@ -22,9 +26,10 @@ use Illuminate\Support\Str;
 /*
  * The suggestions under a search box while the visitor types (/tim-kiem/goi-y?q=…): plain JSON of at
  * most five rows (the matched categories, then product codes that start with what was typed, then
- * titles newest first), each with its group and its address, never a description or a picture; only
- * what a visitor of that site and language may open; its own limit per visitor; never cached, never
- * indexed; nothing at all while the site has search switched off.
+ * titles newest first), put under their group's heading, each with its address, a small picture from
+ * the media key (never an id), a meta line (a code, a day) and never a description; how many results
+ * the search page has, up to 51; only what a visitor of that site and language may open; its own
+ * limit per visitor; never cached, never indexed; nothing at all while the site has search switched off.
  */
 
 beforeEach(function (): void {
@@ -70,6 +75,15 @@ function sgCategory(string $name, string $vocabulary = 'post_cat', ?string $list
     return $category->refresh();
 }
 
+/** A picture in the media library of the current site, by its content-hash key. */
+function sgMedia(string $name): Media
+{
+    return Media::query()->create([
+        'storage_key' => "tenant/products/{$name}-0123456789ab.jpg", 'mime' => 'image/jpeg',
+        'size' => 10, 'original_filename' => "{$name}.jpg", 'hash' => str_pad($name, 64, 'a'), 'slug' => $name,
+    ]);
+}
+
 /** @return array<string, mixed> */
 function sgGet(string $host, string $typed, string $prefix = ''): array
 {
@@ -78,10 +92,10 @@ function sgGet(string $host, string $typed, string $prefix = ''): array
     return $response->json();
 }
 
-it('finds “Đồ gá” from “do ga”, as JSON rows of label, matched pieces, group and address, kept a minute at the edge, never indexed', function (): void {
+it('finds “Đồ gá” from “do ga”, as JSON rows of label, matched pieces, group, address and meta line, kept a minute at the edge, never indexed', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         $news = sgCategory('Tin tức', listTemplate: 'grid-news');
-        sgPost('5 lưu ý khi đặt gia công đồ gá theo bản vẽ', [$news->id]);
+        sgPost('5 lưu ý khi đặt gia công đồ gá theo bản vẽ', [$news->id], at: CarbonImmutable::parse('2026-10-11 20:30:00', 'UTC'));
     });
 
     $response = $this->get('http://a.test/tim-kiem/goi-y?q=do%20ga')->assertOk();
@@ -98,13 +112,19 @@ it('finds “Đồ gá” from “do ga”, as JSON rows of label, matched piece
         ->and($item['label'])->toBe('5 lưu ý khi đặt gia công đồ gá theo bản vẽ')
         ->and($item['parts'])->toBe([['5 lưu ý khi đặt gia công ', false], ['đồ gá', true], [' theo bản vẽ', false]])
         ->and($item['group'])->toBe('Tin tức')
+        ->and($item['group_key'])->toStartWith('c:tin-tuc-')
         ->and($item['icon'])->toBe('doc')
         ->and($item['url'])->toMatch('#^/bai-\d+$#')
-        // never a description or a picture
-        ->and($item)->not->toHaveKey('text')->not->toHaveKey('image');
+        // a news post's day, in the site's zone (GMT+7: the 12th)
+        ->and($item['meta'])->toBe('12/10/2026')
+        // no picture: the box draws a tile; never a description
+        ->and($item['thumb'])->toBeNull()
+        ->and($item)->not->toHaveKey('text')->not->toHaveKey('image')
+        ->and($response->json('total'))->toBe(1)
+        ->and($response->json('total_more'))->toBeFalse();
 });
 
-it('puts the matched categories first, then the titles newest first, each with the group the results page uses', function (): void {
+it('puts the matched categories first under «Nhóm», then the titles newest first under the group the results page uses', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         sgCategory('Jig & Đồ gá', 'product_cat');
         $projects = sgCategory('Dự án', listTemplate: 'grid-project');
@@ -116,17 +136,21 @@ it('puts the matched categories first, then the titles newest first, each with t
     $items = sgGet('a.test', 'do ga')['items'];
 
     expect(array_column($items, 'kind'))->toBe(['group', 'item', 'item', 'item'])
-        ->and($items[0]['label'])->toBe('Nhóm: Jig & Đồ gá')
-        ->and($items[0]['parts'])->toBe([['Nhóm: Jig & ', false], ['Đồ gá', true]])
-        ->and($items[0]['group'])->toBe('Nhóm sản phẩm')
+        // the heading says «Nhóm»; the row is the category's own name, never «Nhóm: …»
+        ->and($items[0]['label'])->toBe('Jig & Đồ gá')
+        ->and($items[0]['parts'])->toBe([['Jig & ', false], ['Đồ gá', true]])
+        ->and($items[0]['group'])->toBe('Nhóm')
+        ->and($items[0]['group_key'])->toBe('nhom')
         ->and($items[0]['icon'])->toBe('folder')
         ->and($items[0]['url'])->toMatch('#^/jig-do-ga-\d+$#')
-        ->and(array_column($items, 'label'))->toBe(['Nhóm: Jig & Đồ gá', 'Đồ gá kiểm tra lỗ định vị', 'Hệ thống đồ gá hàn robot', 'Trang đồ gá'])
-        ->and(array_column($items, 'group'))->toBe(['Nhóm sản phẩm', 'Sản phẩm', 'Dự án', 'Khác'])
-        ->and(array_column($items, 'icon'))->toBe(['folder', 'box', 'briefcase', 'doc']);
+        ->and(array_column($items, 'label'))->toBe(['Jig & Đồ gá', 'Đồ gá kiểm tra lỗ định vị', 'Hệ thống đồ gá hàn robot', 'Trang đồ gá'])
+        ->and(array_column($items, 'group'))->toBe(['Nhóm', 'Sản phẩm', 'Dự án', 'Khác'])
+        ->and(array_column($items, 'icon'))->toBe(['folder', 'box', 'briefcase', 'doc'])
+        // the kind of a category, no code for a product without one, no day for a project or a page
+        ->and(array_column($items, 'meta'))->toBe(['Sản phẩm', '', '', '']);
 });
 
-it('names a post category as a “Chuyên mục” and leaves out a category with no page in the language', function (): void {
+it('says a post category holds posts and leaves out a category with no page in the language', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         sgCategory('Khuôn mẫu');
         sgCategory('Khuôn ẩn', route: false);
@@ -135,11 +159,12 @@ it('names a post category as a “Chuyên mục” and leaves out a category wit
     $items = sgGet('a.test', 'khuon')['items'];
 
     expect($items)->toHaveCount(1)
-        ->and($items[0]['label'])->toBe('Nhóm: Khuôn mẫu')
-        ->and($items[0]['group'])->toBe('Chuyên mục');
+        ->and($items[0]['label'])->toBe('Khuôn mẫu')
+        ->and($items[0]['group'])->toBe('Nhóm')
+        ->and($items[0]['meta'])->toBe('Bài viết');
 });
 
-it('shows a product code that starts with what was typed as “Mã: … · name”, before every title, the code part in bold', function (): void {
+it('shows a product whose code starts with what was typed before every title, its name as the row and «Mã …» under it, the code part in bold', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         sgProduct('Đồ gá hàn khung thép 4 điểm kẹp', 'AV-DG-01', at: now()->subHours(2));
         sgProduct('Đồ gá kiểm tra lỗ định vị', 'AV-DG-02', at: now()->subHours(3));
@@ -151,13 +176,14 @@ it('shows a product code that starts with what was typed as “Mã: … · name�
     $items = sgGet('a.test', 'AV-DG')['items'];
 
     expect(array_column($items, 'kind'))->toBe(['sku', 'sku', 'item'])
-        ->and($items[0]['label'])->toBe('Mã: AV-DG-01 · Đồ gá hàn khung thép 4 điểm kẹp')
+        ->and($items[0]['label'])->toBe('Đồ gá hàn khung thép 4 điểm kẹp')
         ->and($items[0]['sku'])->toBe('AV-DG-01')
-        ->and($items[0]['parts'])->toBe([['Mã: ', false], ['AV-DG', true], ['-01 · Đồ gá hàn khung thép 4 điểm kẹp', false]])
+        ->and($items[0]['meta'])->toBe('Mã AV-DG-01')
+        ->and($items[0]['meta_parts'])->toBe([['Mã ', false], ['AV-DG', true], ['-01', false]])
         ->and($items[0]['group'])->toBe('Sản phẩm')
-        ->and($items[0]['icon'])->toBe('tag')
+        ->and($items[0]['icon'])->toBe('box')
         ->and($items[0]['url'])->toMatch('#^/sp-\d+$#')
-        ->and($items[1]['label'])->toBe('Mã: AV-DG-02 · Đồ gá kiểm tra lỗ định vị')
+        ->and($items[1]['label'])->toBe('Đồ gá kiểm tra lỗ định vị')
         ->and($items[2]['label'])->toBe('Tin AV DG mới');
 
     // typed without its dash: the start of a code is a code row, its middle a plain row after them
@@ -165,7 +191,7 @@ it('shows a product code that starts with what was typed as “Mã: … · name�
     expect(array_column($joined, 'kind'))->toBe(['sku', 'sku', 'item'])
         ->and($joined[2]['label'])->toBe('Bộ kẹp')
         ->and($joined[2]['group'])->toBe('Sản phẩm')
-        ->and(sgGet('a.test', 'avdg0')['items'][0]['parts'][1])->toBe(['AV-DG-0', true]);
+        ->and(sgGet('a.test', 'avdg0')['items'][0]['meta_parts'][1])->toBe(['AV-DG-0', true]);
 });
 
 it('shows at most five rows, the newest first', function (): void {
@@ -374,10 +400,125 @@ it('gives the search boxes where to ask, in the page’s language, and nothing w
         ->and($html)->toContain('id="sf-search-quick" data-search-quick>')
         ->toContain('aria-labelledby="sf-search-quick" data-search-quick>')
         // the box's texts ride on the form, escaped as an attribute
-        ->toContain('&quot;none&quot;:&quot;Không có gợi ý&quot;');
+        ->toContain('&quot;none_title&quot;:&quot;Chưa có gợi ý cho “:q”&quot;');
 
     app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'storefront', 'key' => 'header'], ['value' => ['search' => false]]));
     app(StorefrontSettings::class)->forget();
 
     expect($this->get('http://a.test/khong-co')->getContent())->not->toContain('data-suggest');
+});
+
+it('keeps the rows of a group together under its heading, the groups in the order their first row came', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $news = sgCategory('Tin tức', listTemplate: 'grid-news');
+        sgPost('Khuôn tin mới', [$news->id], at: now()->subMinutes(1));
+        sgProduct('Khuôn sản phẩm', at: now()->subMinutes(2));
+        sgPost('Khuôn tin cũ', [$news->id], at: now()->subMinutes(3));
+        sgPost('Khuôn khác', at: now()->subMinutes(4));
+    });
+
+    $items = sgGet('a.test', 'khuon')['items'];
+
+    expect(array_column($items, 'label'))->toBe(['Khuôn tin mới', 'Khuôn tin cũ', 'Khuôn sản phẩm', 'Khuôn khác'])
+        ->and(array_column($items, 'group'))->toBe(['Tin tức', 'Tin tức', 'Sản phẩm', 'Khác'])
+        ->and($items[3]['group_key'])->toBe(SiteSearch::OTHER)
+        ->and($items[2]['group_key'])->toBe(SiteSearch::PRODUCTS);
+});
+
+it('gives each row its picture from the media key at the small width, a product’s first live photo, never an id', function (): void {
+    $keys = app(Tenancy::class)->enter(1, function (): array {
+        $product = sgProduct('Khuôn có ảnh');
+        $trashed = sgMedia('khuon-xoa');
+        $product->images()->create(['media_id' => $trashed->id, 'position' => 0]);
+        $trashed->delete();
+        $first = sgMedia('khuon-dau');
+        $product->images()->create(['media_id' => $first->id, 'position' => 1]);
+        $product->images()->create(['media_id' => sgMedia('khuon-sau')->id, 'position' => 2]);
+        sgPost('Khuôn bài có ảnh', attributes: ['meta' => ['image_url' => 'tenant/entries/bia-abcdef012345.jpg']], at: now()->subMinutes(5));
+        sgPost('Khuôn bài ảnh cũ', attributes: ['meta' => ['image_url' => 'https://img.example.test/cu.jpg']], at: now()->subMinutes(6));
+        sgPost('Khuôn bài ảnh lạ', attributes: ['meta' => ['image_url' => 'javascript:alert(1)']], at: now()->subMinutes(7));
+
+        return ['product' => $product->id, 'media' => $first->id];
+    });
+
+    $items = collect(sgGet('a.test', 'khuon')['items'])->keyBy('label');
+    $urls = app(MediaUrlResolver::class);
+
+    expect($items['Khuôn có ảnh']['thumb'])->toBe($urls->url('tenant/products/khuon-dau-0123456789ab.jpg', SearchSuggestions::THUMB_WIDTH))
+        ->and($items['Khuôn bài có ảnh']['thumb'])->toBe($urls->url('tenant/entries/bia-abcdef012345.jpg', SearchSuggestions::THUMB_WIDTH))
+        // a cover saved as a full address before keys were stored: as it is; anything else: none
+        ->and($items['Khuôn bài ảnh cũ']['thumb'])->toBe('https://img.example.test/cu.jpg')
+        ->and($items['Khuôn bài ảnh lạ']['thumb'])->toBeNull();
+    // the media key is the picture's address: neither the product's nor the picture's number is in it
+    foreach ($items as $item) {
+        expect((string) $item['thumb'])->not->toMatch('#[/=-]('.$keys['product'].'|'.$keys['media'].')(\D|$)#');
+    }
+});
+
+it('reads the pictures in the same reads as the rows: the query count does not grow with them', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        foreach (range(1, 3) as $n) {
+            $product = sgProduct("Khuôn {$n}");
+            $product->images()->create(['media_id' => sgMedia("anh-{$n}")->id, 'position' => 0]);
+        }
+    });
+    app(Tenancy::class)->enter(2, fn () => sgProduct('Khuôn trơn'));
+
+    $count = function (string $host): int {
+        $n = 0;
+        DB::listen(function () use (&$n): void {
+            $n++;
+        });
+        sgGet($host, 'khuon');
+
+        return $n;
+    };
+
+    expect($count('a.test'))->toBe($count('b.test'));
+});
+
+it('counts the search page’s results for «Xem tất cả N kết quả», stopping at 51, with the same rules', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        foreach (range(1, 30) as $n) {
+            sgPost("Khuôn bài {$n}", at: now()->subMinutes($n));
+        }
+        foreach (range(1, 25) as $n) {
+            sgProduct("Khuôn sp {$n}", at: now()->subMinutes($n));
+        }
+        // what the search page leaves out is not counted
+        sgPost('Khuôn nháp', attributes: ['status' => 'draft']);
+        sgProduct('Khuôn nháp sp', attributes: ['status' => 'draft']);
+        sgPost('Jig hàn 1');
+        sgPost('Jig hàn 2');
+        sgPost('Jig hàn nháp', attributes: ['status' => 'draft']);
+    });
+    app(Tenancy::class)->enter(2, function (): void {
+        foreach (range(1, 3) as $n) {
+            sgPost("Jig hàn B {$n}");
+        }
+    });
+
+    $many = sgGet('a.test', 'khuon');
+    $few = sgGet('a.test', 'jig han');
+
+    expect($many['total'])->toBe(SearchSuggestions::COUNT_CAP)
+        ->and($many['total_more'])->toBeFalse()
+        // another site's items never count
+        ->and($few['total'])->toBe(2)
+        ->and(sgGet('b.test', 'jig han')['total'])->toBe(3)
+        // nothing found: no count asked
+        ->and(sgGet('a.test', 'zzqq')['total'])->toBeNull();
+});
+
+it('says the count is a floor when the words are too common and the newest items are walked', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $common = sgPost('Khuôn nhiều từ', attributes: ['status' => 'draft']);
+        DB::table('entry_search_words')->insert(array_map(fn (int $n): array => ['site_id' => 1, 'locale' => 'vi', 'word' => 'khuon'.$n, 'entry_id' => $common->id, 'weight' => 3], range(1, SiteSearch::GATHER + 1)));
+        sgPost('Khuôn hiện');
+    });
+
+    $json = sgGet('a.test', 'khuon');
+
+    expect($json['total'])->toBe(1)
+        ->and($json['total_more'])->toBeTrue();
 });
