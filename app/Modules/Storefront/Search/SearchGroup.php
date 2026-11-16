@@ -13,6 +13,8 @@ final readonly class SearchGroup
     /**
      * @param  list<SearchHit>  $hits
      * @param  bool  $more  rows follow the last one shown
+     * @param  string|null  $cursor  the ulid the next page goes on after when it is not the last row shown
+     *                               (a walk past a window whose matches were all shown), else null
      */
     public function __construct(
         public string $key,
@@ -20,6 +22,7 @@ final readonly class SearchGroup
         public bool $capped,
         public array $hits,
         public bool $more,
+        public ?string $cursor = null,
     ) {}
 
     /** The level-1 post category's id of a category group, else null. */

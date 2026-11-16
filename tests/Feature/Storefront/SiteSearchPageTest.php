@@ -11,12 +11,14 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Storefront\Http\Controllers\SearchController;
+use App\Modules\Storefront\Search\SearchPage;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Chrome\StorefrontChrome;
 use App\Modules\Theme\Rendering\BlockStyles;
 use App\Modules\Theme\Theming\StorefrontSettings;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -202,6 +204,53 @@ it('takes the example product code only from a product a visitor of the page may
     $html = $this->get('http://a.test/tim-kiem?q=khong-co-gi')->assertOk()->getContent();
     expect($html)->toContain('<li>Tìm theo mã sản phẩm, ví dụ AV-CU-01.</li>')
         ->not->toContain('HEN-GIO')->not->toContain('KHONG-NGAY')->not->toContain('CHI-EN')->not->toContain('THUNG-RAC');
+});
+
+it('reads the example code down the products index newest first and stops at the first, the undated only when none is dated', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $make = function (string $sku, ?CarbonInterface $at): void {
+            $product = Product::query()->create(['status' => 'published', 'sku' => $sku, 'published_at' => $at]);
+            $product->translations()->create(['locale' => 'vi', 'name' => 'Hàng '.$sku, 'slug' => strtolower($sku)]);
+        };
+        $make('KHONG-NGAY', null);
+        $make('CU-HON', now()->subDays(3));
+
+        $sent = [];
+        DB::listen(function (QueryExecuted $query) use (&$sent): void {
+            if (str_contains($query->sql, 'from "products"')) {
+                $sent[] = ['sql' => $query->sql, 'bindings' => $query->connection->prepareBindings($query->bindings)];
+            }
+        });
+        $page = app(SearchPage::class);
+        expect($page->exampleSku('vi'))->toBe('CU-HON')
+            ->and($sent)->toHaveCount(1);
+        // none dated: the newest undated one, in a second read
+        Product::query()->where('sku', 'CU-HON')->update(['published_at' => now()->addDay()]);
+        $sent = [];
+        expect($page->exampleSku('vi'))->toBe('KHONG-NGAY')
+            ->and($sent)->toHaveCount(2);
+
+        // each read's plan with a full read of the table ruled out: a limit over the newest-first products
+        // index, never a sort of every product
+        foreach ($sent as $statement) {
+            $plan = DB::transaction(function () use ($statement): array {
+                DB::statement('SET LOCAL enable_seqscan = off');
+
+                return json_decode((string) array_values((array) DB::selectOne('EXPLAIN (FORMAT JSON) '.$statement['sql'], $statement['bindings']))[0], true)[0]['Plan'];
+            });
+            $nodes = [];
+            $walk = function (array $node) use (&$walk, &$nodes): void {
+                $nodes[] = [$node['Node Type'], $node['Index Name'] ?? null];
+                foreach ($node['Plans'] ?? [] as $child) {
+                    $walk($child);
+                }
+            };
+            $walk($plan);
+            expect($plan['Node Type'])->toBe('Limit')
+                ->and(array_column($nodes, 0))->not->toContain('Sort')->not->toContain('Incremental Sort')
+                ->and(array_column($nodes, 1))->toContain('products_site_id_status_published_at_id_index');
+        }
+    });
 });
 
 it('shows the page with its box and the main groups when nothing or one letter is typed', function (string $typed): void {

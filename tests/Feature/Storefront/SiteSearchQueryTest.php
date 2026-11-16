@@ -6,6 +6,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Storefront\Search\SearchGroup;
 use App\Modules\Storefront\Search\SearchHit;
+use App\Modules\Storefront\Search\SearchPage;
 use App\Modules\Storefront\Search\SearchResult;
 use App\Modules\Storefront\Search\SearchText;
 use App\Modules\Storefront\Search\SiteSearch;
@@ -277,19 +278,54 @@ it('walks the posts and pages as one stream, so continuing never passes over an 
         $q = SearchText::from('tin chung');
         $first = $search->overview($q, 'vi')->groups[0];
         $shown = array_map(fn (SearchHit $hit): int => $hit->id, $first->hits);
-        $cursor = $first->more ? $first->hits[count($first->hits) - 1]->ulid : null;
-        for ($round = 0; $cursor !== null && $round < 10; $round++) {
+        // "Xem thêm" goes on from the cursor the group gives, else from its last row shown
+        $onward = fn (SearchGroup $group): ?string => $group->more ? ($group->cursor ?? $group->hits[count($group->hits) - 1]->ulid) : null;
+        $cursor = $onward($first);
+        $pages = 0;
+        for (; $cursor !== null && $pages < 10; $pages++) {
             $next = $search->more($q, 'vi', SiteSearch::OTHER, $cursor)->groups[0] ?? null;
-            $hits = $next === null ? [] : $next->hits;
-            $shown = [...$shown, ...array_map(fn (SearchHit $hit): int => $hit->id, $hits)];
-            $cursor = $next !== null && $next->more ? $hits[count($hits) - 1]->ulid : null;
+            $shown = [...$shown, ...array_map(fn (SearchHit $hit): int => $hit->id, $next === null ? [] : $next->hits)];
+            $cursor = $next === null ? null : $onward($next);
         }
 
         expect($first->capped)->toBeTrue()
             ->and(array_slice($shown, 0, 3))->toBe(array_slice($postIds, 0, 3))
-            // whatever was shown is the matching items newest first with none passed over on the way
-            ->and($shown)->toBe(array_slice($matching, 0, count($shown)))
-            ->and(count($shown))->toBeGreaterThan(3);
+            // every matching item is reached, newest first, exactly once: a window holding few matches
+            // (the second one: four) still goes on to the older posts and the pages, and the end says so
+            ->and($shown)->toBe($matching)
+            ->and($cursor)->toBeNull()
+            ->and($pages)->toBe(3);
+    });
+});
+
+it('goes on past a full window that held none of a group\'s items, and the page still offers its next one', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        searchBulkEntries(array_fill(0, SiteSearch::GATHER + 1, ['post', 'draft', now()->subYear(), 'Tin chung nháp']), ['tin', 'chung']);
+        // the three newest match, then two windows' worth that do not (no title in the language), then two that do
+        $posts = [];
+        foreach (range(1, 2 * SiteSearch::EXAMINE + 5) as $n) {
+            $posts[] = ['post', 'published', now()->subMinutes(10 * $n), $n <= 3 || $n > 2 * SiteSearch::EXAMINE + 3 ? "Tin chung số {$n}" : null];
+        }
+        $ids = searchBulkEntries($posts, ['tin', 'chung']);
+
+        $search = app(SiteSearch::class);
+        $q = SearchText::from('tin chung');
+        $first = $search->overview($q, 'vi')->groups[0];
+        $second = $search->more($q, 'vi', SiteSearch::OTHER, $first->cursor)->groups[0];
+        $page = app(SearchPage::class)->build($q, 'vi', '/tim-kiem', SiteSearch::OTHER, $first->cursor);
+        $third = $search->more($q, 'vi', SiteSearch::OTHER, $second->cursor)->groups[0];
+
+        expect(array_map(fn (SearchHit $hit): int => $hit->id, $first->hits))->toBe(array_slice($ids, 0, 3))
+            // every match of the first window shown, but the window was full: go on from its last item
+            ->and($first->more)->toBeTrue()
+            ->and($first->cursor)->toBe(DB::table('entries')->where('id', $ids[SiteSearch::EXAMINE - 1])->value('ulid'))
+            ->and($second->hits)->toBe([])
+            ->and($second->more)->toBeTrue()
+            ->and($second->cursor)->toBe(DB::table('entries')->where('id', $ids[2 * SiteSearch::EXAMINE - 1])->value('ulid'))
+            ->and($page['groups'][0]['rows'])->toBe([])
+            ->and($page['groups'][0]['more']['url'] ?? '')->toContain('sau='.$second->cursor)
+            ->and(array_map(fn (SearchHit $hit): int => $hit->id, $third->hits))->toBe(array_slice($ids, -2))
+            ->and($third->more)->toBeFalse();
     });
 });
 

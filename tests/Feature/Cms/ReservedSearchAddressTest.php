@@ -123,3 +123,18 @@ it('still refuses /tim-kiem to a new item and to a slug change onto it', functio
             ->and(SiteRoute::query()->where('entry_id', $moved->id)->value('path'))->toBe('/gioi-thieu');
     });
 });
+
+it('lets a category already at /tim-kiem be saved again, and refuses the address to a new category', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $sync = app(RouteSync::class);
+        $old = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
+        $old->translations()->create(['locale' => 'vi', 'name' => 'Tìm kiếm', 'slug' => 'tim-kiem']);
+        SiteRoute::query()->create(['locale' => 'vi', 'path' => '/tim-kiem', 'taxonomy_id' => $old->id]);
+
+        expect($sync->syncTaxonomy($old->fresh(), 'vi', 'tim-kiem'))->toBe('/tim-kiem');
+
+        $new = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 1]);
+        expect(fn () => $sync->syncTaxonomy($new, 'vi', 'tim-kiem'))->toThrow(RouteConflictException::class)
+            ->and(SiteRoute::query()->where('path', '/tim-kiem')->where('locale', 'vi')->pluck('taxonomy_id')->all())->toBe([$old->id]);
+    });
+});

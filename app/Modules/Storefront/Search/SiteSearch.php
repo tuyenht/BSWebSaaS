@@ -23,7 +23,8 @@ use Illuminate\Support\Facades\DB;
  *   more common than that, the newest visible items are walked instead (at most EXAMINE per page: the
  *   posts and pages as one stream, the products as another, newest first, continued by a keyset on the
  *   publish time; only the walked items are judged, so the cursor never passes one not yet examined),
- *   and the counts say "at least".
+ *   and the counts say "at least". A full window offers "Xem thêm" even when it held few matches (going
+ *   on from the last item examined); the walk's end offers it no more.
  * - A category whose words hold every word typed (at most CATEGORY_MAX) brings its items and those of
  *   its subcategories, through the category pivots, ranked between a title and a short description.
  * - Only what a visitor may open: published, not in the Trash, publish time reached, a published
@@ -201,11 +202,11 @@ final class SiteSearch
             $streams = [];
             foreach (['post', 'page'] as $type) {
                 $streams[] = "(select e.id, e.published_at from entries e where e.site_id = ? and e.type = '{$type}' and e.deleted_at is null and e.status = 'published'"
-                    ." and e.published_at is not null{$keyset} order by e.published_at desc nulls last, e.id desc limit ?)";   // nulls last: a backward walk of the posts list index
+                    ." and e.published_at <= now(){$keyset} order by e.published_at desc nulls last, e.id desc limit ?)";   // nulls last: a backward walk of the posts list index
                 $b = [...$b, $site, ...$keysetBindings, self::EXAMINE];
             }
             // merged in order (a merge of the two ordered reads), the newest EXAMINE of both together
-            $sql = 'with c as (select s.id from ('.implode(' union all ', $streams).') as s order by s.published_at desc nulls last, s.id desc limit ?)';
+            $sql = 'with c as (select s.id, s.published_at from ('.implode(' union all ', $streams).') as s order by s.published_at desc nulls last, s.id desc limit ?)';
             $b[] = self::EXAMINE;
         } else {
             $parts = [];
@@ -261,18 +262,26 @@ final class SiteSearch
         $order = $walk ? 'r.published_at desc nulls last, r.id desc' : 'r.accent desc, r.weight, r.published_at desc nulls last, r.id desc';
         $sql .= "), ranked as (select r.*, row_number() over (partition by r.root_id order by {$order}) as rn, count(*) over (partition by r.root_id) as n from r)";
 
+        if ($walk) {
+            $sql .= self::edge('entries');
+            $b[] = $site;
+        }
         if ($overview) {
-            $sql .= ' select id, ulid, primary_id, root_id, rn, n from ranked where rn <= ? order by root_id = 0, root_id, rn';
+            $sql .= $walk
+                ? self::withEdge('select id, ulid, primary_id, root_id, rn, n from ranked where rn <= ?', 'x.root_id = 0, x.root_id, x.rn')
+                : ' select id, ulid, primary_id, root_id, rn, n from ranked where rn <= ? order by root_id = 0, root_id, rn';
             $b[] = self::PER_GROUP;
         } elseif ($walk) {
-            $sql .= ' select id, ulid, primary_id, root_id, rn, n from ranked order by rn limit ?';
+            $sql .= self::withEdge('select id, ulid, primary_id, root_id, rn, n from ranked order by rn limit ?', 'x.rn');
             $b[] = self::PAGE + 1;
         } else {
             $sql .= ' select id, ulid, primary_id, root_id, rn, n from ranked where rn > coalesce((select k.rn from ranked k where k.ulid = ?), 0) order by rn limit ?';
             $b = [...$b, (string) $after, self::PAGE + 1];
         }
 
-        return $this->groups(DB::select($sql, $b), $walk, $overview, fn (int $rootId): string => $rootId === 0 ? self::OTHER : 'c'.$rootId);
+        $key = fn (int $rootId): string => $rootId === 0 ? self::OTHER : 'c'.$rootId;
+
+        return $this->groups(DB::select($sql, $b), $walk, $overview, $key, $root === null ? null : $key($root));
     }
 
     /**
@@ -306,8 +315,8 @@ final class SiteSearch
 
         if ($walk) {
             // the newest products only (a matched category's are judged inside the walk, as entries() does)
-            $sql = "with c as (select p.id from products p where p.site_id = ? and p.status = 'published' and p.deleted_at is null"
-                ." and p.published_at is not null{$keyset} order by p.published_at desc, p.id desc limit ?)";
+            $sql = "with c as (select p.id, p.published_at from products p where p.site_id = ? and p.status = 'published' and p.deleted_at is null"
+                ." and p.published_at <= now(){$keyset} order by p.published_at desc, p.id desc limit ?)";
             $b = [...$b, $site, ...$keysetBindings, self::EXAMINE];
         } else {
             $parts = [];
@@ -352,52 +361,98 @@ final class SiteSearch
         $order = $walk ? 'r.published_at desc nulls last, r.id desc' : 'r.accent desc, r.weight, r.published_at desc nulls last, r.id desc';
         $sql .= ", ranked as (select r.*, row_number() over (order by {$order}) as rn, count(*) over () as n from r)";
 
+        if ($walk) {
+            $sql .= self::edge('products');
+            $b[] = $site;
+        }
         if ($overview) {
-            $sql .= ' select id, ulid, primary_id, root_id, rn, n from ranked where rn <= ? order by rn';
+            $sql .= $walk
+                ? self::withEdge('select id, ulid, primary_id, root_id, rn, n from ranked where rn <= ?', 'x.rn')
+                : ' select id, ulid, primary_id, root_id, rn, n from ranked where rn <= ? order by rn';
             $b[] = self::PER_GROUP;
         } elseif ($walk) {
-            $sql .= ' select id, ulid, primary_id, root_id, rn, n from ranked order by rn limit ?';
+            $sql .= self::withEdge('select id, ulid, primary_id, root_id, rn, n from ranked order by rn limit ?', 'x.rn');
             $b[] = self::PAGE + 1;
         } else {
             $sql .= ' select id, ulid, primary_id, root_id, rn, n from ranked where rn > coalesce((select k.rn from ranked k where k.ulid = ?), 0) order by rn limit ?';
             $b = [...$b, (string) $after, self::PAGE + 1];
         }
 
-        return $this->groups(DB::select($sql, $b), $walk, $overview, fn (int $rootId): string => self::PRODUCTS);
+        return $this->groups(DB::select($sql, $b), $walk, $overview, fn (int $rootId): string => self::PRODUCTS, $overview ? null : self::PRODUCTS);
     }
 
     /**
-     * The rows read, as groups in the order their rows came.
+     * SQL: the walk's window, as one more CTE: how many items it examined and the last of them (its ulid,
+     * from $table), so a page can go on past a full window that held few matches.
+     *
+     * @param  'entries'|'products'  $table
+     */
+    private static function edge(string $table): string
+    {
+        return ", edge as (select (select count(*) from c) as examined, (select l.ulid from {$table} l where l.site_id = ?"
+            .' and l.id = (select c.id from c order by c.published_at, c.id limit 1)) as last_ulid)';
+    }
+
+    /**
+     * SQL: the rows read by $select with the walk's window on each, and one row of the window alone when
+     * none matched (its item columns null).
+     */
+    private static function withEdge(string $select, string $order): string
+    {
+        return " select x.id, x.ulid, x.primary_id, x.root_id, x.rn, x.n, edge.examined, edge.last_ulid from edge left join ({$select}) as x on true order by {$order}";
+    }
+
+    /**
+     * The rows read, as groups in the order their rows came. A walk whose window was full (EXAMINE items
+     * examined) may have older matches: its groups offer "Xem thêm" even with every match shown, going on
+     * from the last item examined ($cursor), and the group asked for ($only) comes back without rows when
+     * this window held none of its items. A walk that reached the end offers it only for rows held back.
      *
      * @param  array<array-key, mixed>  $rows
      * @param  \Closure(int): string  $key
+     * @param  string|null  $only  the group continued (null on the first page)
      * @return list<SearchGroup>
      */
-    private function groups(array $rows, bool $walk, bool $overview, \Closure $key): array
+    private function groups(array $rows, bool $walk, bool $overview, \Closure $key, ?string $only = null): array
     {
         /** @var array<string, array{count: int, hits: list<SearchHit>}> $groups */
         $groups = [];
+        $full = false;
+        $last = null;
         foreach ($rows as $row) {
             $row = (array) $row;
+            if ($walk) {
+                $full = Cast::int($row['examined'] ?? 0) >= self::EXAMINE;
+                $last = is_string($row['last_ulid'] ?? null) && $row['last_ulid'] !== '' ? $row['last_ulid'] : null;
+            }
+            if (($row['id'] ?? null) === null) {
+                continue;   // the walk's window alone: nothing in it matched
+            }
             $group = $key(Cast::int($row['root_id'] ?? 0));
             $groups[$group] ??= ['count' => Cast::int($row['n'] ?? 0), 'hits' => []];
             $primary = $row['primary_id'] ?? null;
             $groups[$group]['hits'][] = new SearchHit(
-                Cast::int($row['id'] ?? 0),
+                Cast::int($row['id']),
                 Cast::string($row['ulid'] ?? ''),
                 is_numeric($primary) ? (int) $primary : null,
                 Cast::int($row['rn'] ?? 0),
             );
         }
 
+        $onward = $walk && $full && $last !== null;
+        if ($onward && $only !== null && $groups === []) {
+            $groups[$only] = ['count' => 0, 'hits' => []];
+        }
+
         $out = [];
         foreach ($groups as $group => $found) {
             $hits = $found['hits'];
-            $more = ! $overview && count($hits) > self::PAGE;
-            if ($more) {
+            // rows held back: the next page goes on from the last row shown
+            $held = $overview ? $found['count'] > count($hits) : count($hits) > self::PAGE;
+            if ($held && ! $overview) {
                 array_pop($hits);
             }
-            $out[] = new SearchGroup((string) $group, $found['count'], $walk, $hits, $overview ? $found['count'] > count($hits) : $more);
+            $out[] = new SearchGroup((string) $group, $found['count'], $walk, $hits, $held || $onward, $held || ! $onward ? null : $last);
         }
 
         return $out;

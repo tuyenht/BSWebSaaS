@@ -134,15 +134,15 @@ final readonly class SearchPage
                 $lastPosition = $hit->position;
                 $lastUlid = $hit->ulid;
             }
-            if ($rows === []) {
-                continue;
+            if ($rows === [] && ($found->cursor === null || ! $found->more)) {
+                continue;   // a walk's window that held none of the group's items still offers the next one
             }
 
             $more = null;
             if ($found->more) {
                 $left = $found->capped ? null : max(0, $found->count - $lastPosition);
                 $more = [
-                    'url' => $base.'?'.http_build_query(['q' => $q->text, 'nhom' => $urlKey, 'sau' => $lastUlid]),
+                    'url' => $base.'?'.http_build_query(['q' => $q->text, 'nhom' => $urlKey, 'sau' => $found->cursor ?? $lastUlid]),
                     'label' => $left === null || $left === 0
                         ? __('storefront.search.more')
                         : ($found->key === SiteSearch::PRODUCTS
@@ -181,10 +181,12 @@ final readonly class SearchPage
      */
     public function exampleSku(string $locale): ?string
     {
-        $sku = Product::query()->where('status', 'published')->whereNotNull('sku')->where('sku', '<>', '')
-            ->where(fn (Builder $query) => $query->whereNull('published_at')->orWhere('published_at', '<=', now()))
-            ->whereHas('translations', fn (Builder $query) => $query->where('locale', $locale))
-            ->orderByRaw('published_at desc nulls last')->orderByDesc('id')->value('sku');
+        $visible = fn (): Builder => Product::query()->where('status', 'published')->whereNotNull('sku')->where('sku', '<>', '')
+            ->whereHas('translations', fn (Builder $query) => $query->where('locale', $locale));
+        // in the order of the products index (site, status, newest first), so each read stops at its first
+        // row: the dated ones; only when none is dated, the undated ones (the same order keeps that index)
+        $sku = $visible()->where('published_at', '<=', now())->orderByDesc('published_at')->orderByDesc('id')->value('sku')
+            ?? $visible()->whereNull('published_at')->orderByDesc('published_at')->orderByDesc('id')->value('sku');
 
         return is_string($sku) && trim($sku) !== '' ? trim($sku) : null;
     }
