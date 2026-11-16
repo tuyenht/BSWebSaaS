@@ -1,9 +1,13 @@
-// Search suggestions while the visitor types (storefront.js fetches this file the first time a search
-// box with data-suggest takes focus). Under the field: at most five rows from the site
-// (data-suggest: /tim-kiem/goi-y, JSON), each built from plain text (textContent, never HTML from the
-// answer), then "Xem tất cả kết quả cho “…”" and the keys hint. Asked 250 ms after typing stops, from two
-// characters, never while an input method (Telex, VNI) is still composing a letter; an older answer is
-// dropped (AbortController + a counter). The field is a combobox: ↑ ↓ choose a row (it stays the focus),
+// Search suggestions while the visitor types (storefront.js fetches this file as soon as the visitor
+// reaches for a search box: a press on the header's magnifier or on a box, or the focus). Under the
+// field: at most five rows from the site (data-suggest: /tim-kiem/goi-y, JSON), each built from plain
+// text (textContent, never HTML from the answer), then "Xem tất cả kết quả cho “…”" and the keys hint.
+// Asked 130 ms after typing stops, from two characters; the words already asked (a space typed after a
+// word, a letter typed then rubbed out) are answered from what this page already has, or from the
+// request still on its way. An input method's composing counts as typing on a page in a language
+// written with letters (a phone keyboard composes every word; Telex and VNI compose a letter); on a
+// Japanese, Chinese or Korean page, where it is spelling sounds out, it is waited for. An older answer
+// is dropped (AbortController + a counter). The field is a combobox: ↑ ↓ choose a row (it stays the focus),
 // Enter opens the chosen row (none chosen: the form goes to the search page as without this script), Esc
 // closes the list (a second Esc closes the header's panel). Loading: a thin bar at once, grey rows past
 // 300 ms. No row: "Nhấn Enter để xem mọi kết quả". A refused or failed answer counts as no row. The
@@ -20,6 +24,9 @@ const ICONS = {
     all: ['M5 12h14M13 6l6 6-6 6'],
 };
 const ROWS = 5;
+const WAIT = 130;
+// The answers this page already has, by the words asked (the latest few).
+const KEEP = 30;
 let boxes = 0;
 
 const icon = (doc, name, size, stroke) => {
@@ -60,7 +67,7 @@ export function attach(form, env = {}) {
     const win = doc.defaultView;
     const fetchFn = env.fetch ?? ((...a) => win.fetch(...a));
     const go = env.go ?? ((href) => win.location.assign(href));
-    const wait = env.wait ?? 250;
+    const wait = env.wait ?? WAIT;
     const slow = env.slow ?? 300;
     let text = {};
     try {
@@ -141,6 +148,18 @@ export function attach(form, env = {}) {
     let asked = 0;
     let ctrl = null;
     let composing = false;
+    // the words the request on its way asks for
+    let asking = null;
+    const answers = new Map();
+    // spelling sounds out (kana, pinyin, Hangul jamo): the composed text is not yet the words
+    const sounds = /^(ja|zh|ko)(-|$)/i.test(doc.documentElement.lang ?? '');
+    const remember = (typed, data) => {
+        answers.delete(typed);
+        answers.set(typed, data);
+        if (answers.size > KEEP) {
+            answers.delete(answers.keys().next().value);
+        }
+    };
 
     const expanded = () => input.setAttribute('aria-expanded', !box.hidden && !list.hidden && list.children.length ? 'true' : 'false');
     const choose = (i) => {
@@ -171,6 +190,7 @@ export function attach(form, env = {}) {
         clearTimeout(timer);
         clearTimeout(slowTimer);
         ctrl?.abort();
+        asking = null;
         asked++;
         close();
         list.replaceChildren();
@@ -262,26 +282,43 @@ export function attach(form, env = {}) {
             return;
         }
         ctrl?.abort();
+        asking = null;
         const mine = ++asked;
-        const signal = (ctrl = new AbortController()).signal;
+        const known = answers.get(typed);
+        let answer = null;
+        if (known === undefined) {
+            // asked at once; the stylesheet (fetched meanwhile) only has to be there to draw
+            const signal = (ctrl = new AbortController()).signal;
+            asking = typed;
+            answer = Promise.resolve()
+                .then(() => fetchFn(`${form.dataset.suggest}?q=${encodeURIComponent(typed)}`, { signal, headers: { Accept: 'application/json' }, credentials: 'same-origin' }))
+                .then(async (res) => (res.ok ? { data: await res.json(), keep: true } : { data: {}, keep: false }));
+            answer.catch(() => {});
+        }
         await styled;
         if (mine !== asked) {
             return;
         }
-        loading(true);
-        show(true);
-        let data = {};
-        try {
-            const res = await fetchFn(`${form.dataset.suggest}?q=${encodeURIComponent(typed)}`, { signal, headers: { Accept: 'application/json' }, credentials: 'same-origin' });
-            data = res.ok ? await res.json() : {};
-        } catch (error) {
-            if (error?.name === 'AbortError') {
+        let data = known ?? {};
+        if (answer !== null) {
+            loading(true);
+            show(true);
+            try {
+                const got = await answer;
+                data = got.data;
+                if (got.keep) {
+                    remember(typed, data);
+                }
+            } catch (error) {
+                if (error?.name === 'AbortError') {
+                    return;
+                }
+                data = {};
+            }
+            if (mine !== asked) {
                 return;
             }
-            data = {};
-        }
-        if (mine !== asked) {
-            return;
+            asking = null;
         }
         if (doc.activeElement === input) {
             draw(data, typed);
@@ -292,19 +329,31 @@ export function attach(form, env = {}) {
     };
     const later = () => {
         clearTimeout(timer);
+        if (composing && sounds) {
+            return;
+        }
+        const typed = input.value.trim();
+        if (typed === asking && ctrl !== null) {
+            // the same words as the request on its way (a space after the last word): let it answer
+            return;
+        }
         ctrl?.abort();
+        asking = null;
         asked++;
         choose(-1);
-        if (!composing) {
-            timer = setTimeout(run, wait);
-        }
+        // words this page already has an answer for are drawn at once
+        timer = setTimeout(run, answers.has(typed) ? 0 : wait);
     };
 
     input.addEventListener('compositionstart', () => {
         composing = true;
+        if (!sounds) {
+            return;
+        }
         clearTimeout(timer);
         // an answer for the letters before the composing never draws in the middle of it
         ctrl?.abort();
+        asking = null;
         asked++;
     });
     input.addEventListener('compositionend', () => {
@@ -312,7 +361,7 @@ export function attach(form, env = {}) {
         later();
     });
     input.addEventListener('input', (event) => {
-        if (event.isComposing || composing) {
+        if (sounds && (event.isComposing || composing)) {
             return;
         }
         later();
@@ -341,6 +390,7 @@ export function attach(form, env = {}) {
             event.stopPropagation();
             clearTimeout(timer);
             ctrl?.abort();
+            asking = null;
             asked++;
             close();
         }

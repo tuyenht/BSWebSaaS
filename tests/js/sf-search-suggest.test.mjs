@@ -1,6 +1,7 @@
 // The search suggestions script (resources/js/sf-search-suggest.js): the wait after typing, the input
-// method's composing, the stale answers, the combobox keys and the rows built from plain text, in a DOM
-// without a browser: `node --test tests/js/sf-search-suggest.test.mjs`.
+// method's composing, the stale answers, the answers the page already has, the combobox keys and the
+// rows built from plain text; and the storefront script fetching it as soon as the visitor reaches for
+// a search box. In a DOM without a browser: `node --test tests/js/sf-search-suggest.test.mjs`.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { JSDOM } from 'jsdom';
@@ -16,8 +17,10 @@ const rows = [
 
 const tick = (ms = 0) => new Promise((r) => setTimeout(r, ms));
 
-async function page({ answer = () => ({ q: 'do ga', items: rows, all_url: '/tim-kiem?q=do+ga' }), status = 200 } = {}) {
-    const dom = new JSDOM(`<!doctype html><body><header><div class="sf-spanel__box"><form action="/tim-kiem" data-suggest="/tim-kiem/goi-y" data-suggest-text='${JSON.stringify(texts)}'><input name="q" type="search"><button>Tìm</button></form><p data-search-quick>Tìm nhanh</p></div></header></body>`, { url: 'https://a.test/' });
+const echo = (url) => ({ q: url, items: [{ kind: 'item', label: decodeURIComponent(url.split('q=')[1]), group: 'Khác', url: '/x' }], all_url: '/tim-kiem' });
+
+async function page({ answer = () => ({ q: 'do ga', items: rows, all_url: '/tim-kiem?q=do+ga' }), status = 200, lang = 'vi', wait = 20, styled = Promise.resolve() } = {}) {
+    const dom = new JSDOM(`<!doctype html><html lang="${lang}"><body><header><div class="sf-spanel__box"><form action="/tim-kiem" data-suggest="/tim-kiem/goi-y" data-suggest-text='${JSON.stringify(texts)}'><input name="q" type="search"><button>Tìm</button></form><p data-search-quick>Tìm nhanh</p></div></header></body>`, { url: 'https://a.test/' });
     const doc = dom.window.document;
     globalThis.document = dom.window.document;
     const asked = [];
@@ -27,9 +30,9 @@ async function page({ answer = () => ({ q: 'do ga', items: rows, all_url: '/tim-
     delete form.dataset.suggestOn;
     form.parentNode.querySelectorAll('.sf-ssug, [role="status"]').forEach((n) => n.remove());
     const parts = mod.attach(form, {
-        wait: 20,
+        wait,
         slow: 30,
-        styled: Promise.resolve(),
+        styled,
         go: (url) => went.push(url),
         fetch: (url, init) => {
             asked.push(url);
@@ -49,10 +52,11 @@ async function page({ answer = () => ({ q: 'do ga', items: rows, all_url: '/tim-
         parts.input.dispatchEvent(event);
         return event;
     };
-    return { dom, doc, ...parts, asked, went, type, key };
+    const labels = () => [...parts.list.querySelectorAll('[role="option"]')].map((o) => o.querySelector('.sf-ssug__t').firstChild.textContent);
+    return { dom, doc, ...parts, asked, went, type, key, labels };
 }
 
-test('asks once, 250 ms (here 20) after typing stops, from two characters', async () => {
+test('asks once, 130 ms (here 20) after typing stops, from two characters', async () => {
     const p = await page();
     p.type('d');
     await tick(40);
@@ -66,8 +70,30 @@ test('asks once, 250 ms (here 20) after typing stops, from two characters', asyn
     assert.deepEqual(p.asked, ['/tim-kiem/goi-y?q=do%20g']);
 });
 
-test('waits while an input method composes, and asks once it is done', async () => {
-    const p = await page();
+test('waits 130 ms after typing stops unless told otherwise', async () => {
+    const p = await page({ wait: null });
+    p.type('do');
+    await tick(100);
+    assert.equal(p.asked.length, 0);
+    await tick(60);
+    assert.deepEqual(p.asked, ['/tim-kiem/goi-y?q=do']);
+});
+
+test('on a page written with letters, a keyboard composing the word still asks (a phone composes every word), once', async () => {
+    const p = await page({ answer: echo });
+    p.input.dispatchEvent(new p.dom.window.CompositionEvent('compositionstart'));
+    p.type('đô');
+    await tick(40);
+    assert.deepEqual(p.asked, ['/tim-kiem/goi-y?q=%C4%91%C3%B4']);
+    assert.deepEqual(p.labels(), ['đô']);
+    p.input.dispatchEvent(new p.dom.window.CompositionEvent('compositionend'));
+    await tick(40);
+    assert.equal(p.asked.length, 1);
+    assert.deepEqual(p.labels(), ['đô']);
+});
+
+test('on a Japanese, Chinese or Korean page, waits while the input method composes, and asks once it is done', async () => {
+    const p = await page({ lang: 'ja' });
     p.input.dispatchEvent(new p.dom.window.CompositionEvent('compositionstart'));
     p.type('đô');
     await tick(40);
@@ -223,8 +249,55 @@ test('leaving the field while an answer is on its way stops the loading bar; com
     assert.equal(p.box.querySelector('.sf-ssug__sk').hidden, true);
 });
 
-test('an input method starting to compose drops the answer already on its way', async () => {
-    const p = await page();
+test('a space after the last word keeps the request on its way: asked once', async () => {
+    const p = await page({ answer: echo });
+    p.type('do');
+    await tick(22);   // asked, the answer still on its way
+    p.type('do ');
+    await tick(40);
+    assert.deepEqual(p.asked, ['/tim-kiem/goi-y?q=do']);
+    assert.deepEqual(p.labels(), ['do']);
+});
+
+test('words asked before are drawn at once from the answers the page already has, with no loading', async () => {
+    const p = await page({ answer: echo });
+    p.type('do');
+    await tick(60);
+    p.type('do g');
+    await tick(60);
+    assert.equal(p.asked.length, 2);
+    p.type('do');
+    await tick(2);
+    assert.equal(p.asked.length, 2);
+    assert.deepEqual(p.labels(), ['do']);
+    assert.equal(p.box.querySelector('.sf-ssug__bar').hidden, true);
+});
+
+test('a refused answer is not kept: the same words are asked again', async () => {
+    const p = await page({ status: 429 });
+    p.type('zz');
+    await tick(60);
+    p.type('z');
+    await tick(60);
+    p.type('zz');
+    await tick(60);
+    assert.equal(p.asked.length, 2);
+});
+
+test('asks while the stylesheet is still on its way, and draws once it is there', async () => {
+    let ready;
+    const p = await page({ answer: echo, styled: new Promise((done) => (ready = done)) });
+    p.type('do');
+    await tick(40);
+    assert.deepEqual(p.asked, ['/tim-kiem/goi-y?q=do']);
+    assert.equal(p.box.hidden, true);
+    ready();
+    await tick(2);
+    assert.deepEqual(p.labels(), ['do']);
+});
+
+test('an input method starting to compose drops the answer already on its way (a Japanese page)', async () => {
+    const p = await page({ lang: 'ja' });
     p.type('do');
     await tick(22);   // asked, the answer still on its way
     assert.equal(p.asked.length, 1);
@@ -236,4 +309,33 @@ test('an input method starting to compose drops the answer already on its way', 
     await tick(60);
     assert.equal(p.asked.length, 2);
     assert.equal(p.list.querySelectorAll('[role="option"]').length, 3);
+});
+
+test('the storefront script fetches the suggestions code at the first press on the header’s magnifier, before the panel opens', async () => {
+    const chunk = `data:text/javascript,globalThis.sfSuggestWarm=(globalThis.sfSuggestWarm||0)+1;export{}`;
+    const dom = new JSDOM(`<!doctype html><html lang="vi"><body><header><a id="open" href="/tim-kiem" data-search-open aria-controls="sf-search-panel">Tìm</a>
+        <div id="sf-search-panel" data-search-panel hidden><div class="sf-spanel__box"><form action="/tim-kiem" data-suggest="/tim-kiem/goi-y" data-suggest-js="${chunk}"><input name="q" data-search-input></form></div></div></header>
+        <main><form id="page-form" action="/tim-kiem" data-suggest="/tim-kiem/goi-y" data-suggest-js="${chunk}"><input name="q"></form><p id="text">Chữ</p></main></body></html>`, { url: 'https://a.test/', pretendToBeVisual: true });
+    const w = dom.window;
+    w.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
+    w.requestIdleCallback = () => {};
+    for (const name of ['window', 'document', 'location', 'navigator', 'CustomEvent', 'matchMedia', 'localStorage', 'getSelection', 'Element']) {
+        Object.defineProperty(globalThis, name, { value: name === 'window' ? w : w[name], configurable: true, writable: true });
+    }
+    globalThis.sfSuggestWarm = 0;
+    await import(`../../resources/js/storefront.js?run=${++load}`);
+    const press = (el) => el.dispatchEvent(new w.Event('pointerdown', { bubbles: true }));
+
+    press(w.document.getElementById('text'));
+    await tick(20);
+    assert.equal(globalThis.sfSuggestWarm, 0, 'a press elsewhere fetches nothing');
+    press(w.document.getElementById('open'));
+    await tick(20);
+    assert.equal(globalThis.sfSuggestWarm, 1);
+    assert.equal(w.document.getElementById('sf-search-panel').hidden, true, 'fetched on the press, before the click opens the panel');
+    // the same code serves every box: a press on the page's own box asks for the same (already fetched) module
+    press(w.document.querySelector('#page-form input'));
+    w.document.querySelector('#page-form input').focus();
+    await tick(20);
+    assert.equal(globalThis.sfSuggestWarm, 1);
 });
