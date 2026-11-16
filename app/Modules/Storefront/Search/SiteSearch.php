@@ -118,6 +118,132 @@ final class SiteSearch
     }
 
     /**
+     * How many items the first page would list for these words (the same candidates and rules as
+     * overview(): every word in any field, or a matched category), counted up to $cap at most of each
+     * kind and in all, with no ranking and no rows read: the plan and ONE statement. `lower` when a kind
+     * was walked (even the rarest word too common to gather): the count then covers the newest items
+     * walked only, as the page's "at least".
+     *
+     * @param  positive-int  $cap
+     * @return array{count: int, lower: bool}
+     */
+    public function countUpTo(SearchText $q, string $locale, int $cap): array
+    {
+        if (! $q->searchable()) {
+            return ['count' => 0, 'lower' => false];
+        }
+        $plan = $this->plan($q, $locale);
+        $select = [];
+        $b = [];
+        $lower = false;
+        foreach (['entries', 'products'] as $kind) {
+            $part = $this->countSql($q, $locale, $plan, $kind);
+            if ($part === null) {
+                continue;
+            }
+            [$sql, $values, $walk] = $part;
+            $select[] = "(select count(*) from ({$sql} limit ?) as n)";
+            $b = [...$b, ...$values, $cap];
+            $lower = $lower || $walk;
+        }
+        if ($select === []) {
+            return ['count' => 0, 'lower' => false];
+        }
+        $row = (array) DB::selectOne('select '.implode(' + ', $select).' as n', $b);
+
+        return ['count' => min($cap, Cast::int($row['n'] ?? 0)), 'lower' => $lower];
+    }
+
+    /**
+     * SQL: the visible items of one kind that the first page would list (one row each, nothing read),
+     * its bindings and whether it walks; null when none can match.
+     *
+     * @param  array{entries: list<int>, products: list<int>, categories: list<int>}  $plan
+     * @param  'entries'|'products'  $kind
+     * @return array{0: string, 1: list<int|string>, 2: bool}|null
+     */
+    private function countSql(SearchText $q, string $locale, array $plan, string $kind): ?array
+    {
+        $site = $this->current->id();
+        $counts = $plan[$kind];
+        $cats = $plan['categories'];
+        if ($counts === []) {
+            return null;
+        }
+        $byWords = min($counts) > 0;
+        if (! $byWords && $cats === []) {
+            return null;
+        }
+        $rarest = (int) array_search(min($counts), $counts, true);
+        $walk = $byWords && $counts[$rarest] > self::GATHER;
+        $entries = $kind === 'entries';
+        [$words, $own, $pivot, $alias] = $entries
+            ? ['entry_search_words', 'entry_id', 'entry_taxonomies', 'e']
+            : ['product_site_words', 'product_id', 'product_taxonomies', 'p'];
+
+        // the candidates: the rarest word's items and the matched categories' items, or the newest walked
+        $sb = [];
+        if ($walk) {
+            if ($entries) {
+                $streams = [];
+                foreach (['post', 'page'] as $type) {
+                    $streams[] = "(select e.id, e.published_at from entries e where e.site_id = ? and e.type = '{$type}' and e.deleted_at is null and e.status = 'published'"
+                        .' and e.published_at <= now() order by e.published_at desc nulls last, e.id desc limit ?)';
+                    $sb = [...$sb, $site, self::EXAMINE];
+                }
+                $source = 'select s.id from ('.implode(' union all ', $streams).') as s order by s.published_at desc nulls last, s.id desc limit ?';
+            } else {
+                $source = "select p.id from products p where p.site_id = ? and p.status = 'published' and p.deleted_at is null"
+                    .' and p.published_at <= now() order by p.published_at desc, p.id desc limit ?';
+                $sb[] = $site;
+            }
+            $sb[] = self::EXAMINE;
+        } else {
+            $parts = [];
+            if ($byWords) {
+                [$cond, $values] = $this->match('w.word', $q, $rarest);
+                $parts[] = "(select w.{$own} as id from {$words} w where w.site_id = ? and w.locale = ? and {$cond})";
+                $sb = [...$sb, $site, $locale, ...$values];
+            }
+            if ($cats !== []) {
+                $parts[] = "(select c.{$own} as id from {$pivot} c where c.site_id = ? and c.taxonomy_id = any (?::bigint[]) order by c.{$own} desc limit ?)";
+                $sb = [...$sb, $site, self::pgInts($cats), self::GATHER];
+            }
+            $source = 'select u.id from ('.implode(' union ', $parts).') as u';
+        }
+
+        // every word in any field of the item, or the item in a matched category
+        $wb = [];
+        $all = [];
+        if ($byWords) {
+            foreach (array_keys($q->words) as $i) {
+                [$cond, $values] = $this->match('x.word', $q, $i);
+                $all[] = "exists (select 1 from {$words} x where x.site_id = ? and x.locale = ? and x.{$own} = {$alias}.id and {$cond})";
+                $wb = [...$wb, $site, $locale, ...$values];
+            }
+        }
+        $either = $all === [] ? [] : ['('.implode(' and ', $all).')'];
+        if ($cats !== []) {
+            $either[] = "exists (select 1 from {$pivot} c where c.site_id = ? and c.{$own} = {$alias}.id and c.taxonomy_id = any (?::bigint[]))";
+            $wb = [...$wb, $site, self::pgInts($cats)];
+        }
+
+        if ($entries) {
+            $sql = "select 1 from entries e join entry_translations t on t.entry_id = e.id and t.site_id = ? and t.locale = ? and t.status = 'published'"
+                ." where e.site_id = ? and e.id = any (array({$source})) and e.deleted_at is null and e.status = 'published' and e.type in ('page', 'post')"
+                .' and (e.published_at is null or e.published_at <= now()) and e.ulid::text <> all (?::text[])';
+            $b = [$site, $locale, $site, ...$sb, self::pgTexts($this->thankYou->all())];
+        } else {
+            $sql = 'select 1 from products p join product_translations t on t.product_id = p.id and t.site_id = ? and t.locale = ?'
+                ." where p.site_id = ? and p.id = any (array({$source})) and p.deleted_at is null and p.status = 'published'"
+                .' and (p.published_at is null or p.published_at <= now())';
+            $b = [$site, $locale, $site, ...$sb];
+        }
+
+        return [$sql.' and ('.implode(' or ', $either).')', [...$b, ...$wb], $walk];
+    }
+
+    /**
      * How many rows each word has in each table (up to GATHER + 1), and the categories (with their
      * subcategories) whose own words hold every word typed, in one statement.
      *

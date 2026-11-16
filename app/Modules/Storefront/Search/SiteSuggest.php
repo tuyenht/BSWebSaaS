@@ -27,7 +27,9 @@ use Illuminate\Support\Facades\DB;
  *   words were stored) comes before the other products; a walk orders the newest ones it saw that way.
  *
  * Four statements at most (the word counts with the categories, the posts and pages, the products), each
- * naming the site (`site_id = ?`) besides RLS, each bounded; a row brings its title and its stored address.
+ * naming the site (`site_id = ?`) besides RLS, each bounded; a row brings its title, its stored address
+ * and the storage key of its picture (a post's or page's cover, a product's first photo: read with the
+ * few rows found, never a query of its own), never an id that leaves the server.
  */
 final readonly class SiteSuggest
 {
@@ -40,7 +42,7 @@ final readonly class SiteSuggest
     ) {}
 
     /**
-     * @return array{categories: list<int>, entries: list<array{id: int, title: string, path: string, at: string|null, root: int}>, products: list<array{id: int, title: string, sku: string, path: string, at: string|null}>}
+     * @return array{categories: list<int>, entries: list<array{id: int, type: string, title: string, path: string, at: string|null, root: int, image: string}>, products: list<array{id: int, title: string, sku: string, path: string, at: string|null, image: string}>}
      */
     public function find(SearchText $q, string $locale): array
     {
@@ -119,7 +121,7 @@ final readonly class SiteSuggest
      * The newest posts and pages whose title holds every word typed.
      *
      * @param  list<int>  $counts  each word's rows (plan)
-     * @return list<array{id: int, title: string, path: string, at: string|null, root: int}>
+     * @return list<array{id: int, type: string, title: string, path: string, at: string|null, root: int, image: string}>
      */
     private function entries(SearchText $q, string $locale, array $counts): array
     {
@@ -147,7 +149,7 @@ final readonly class SiteSuggest
             $order = 'e.published_at desc nulls last, e.id desc';
         }
 
-        $inner = "select e.id, e.published_at, t.title from {$source} join entries e on e.site_id = ? and e.id = c.id"
+        $inner = "select e.id, e.type, e.published_at, e.meta->>'image_url' as image, t.title from {$source} join entries e on e.site_id = ? and e.id = c.id"
             ." join entry_translations t on t.entry_id = e.id and t.site_id = ? and t.locale = ? and t.status = 'published'"
             ." where e.deleted_at is null and e.status = 'published' and e.type in ('page', 'post')"
             .' and (e.published_at is null or e.published_at <= now()) and e.ulid::text <> all (?::text[])';
@@ -161,7 +163,7 @@ final readonly class SiteSuggest
         $b[] = self::ROWS;
 
         // for the few rows found: the address and the level-1 post category of the main category (the group)
-        $sql = 'select x.id, x.published_at, x.title, (select r.path from routes r where r.site_id = ? and r.locale = ? and r.entry_id = x.id order by r.id limit 1) as path,'
+        $sql = 'select x.id, x.type, x.published_at, x.title, x.image, (select r.path from routes r where r.site_id = ? and r.locale = ? and r.entry_id = x.id order by r.id limit 1) as path,'
             ." coalesce(root.id, 0) as root_id from ({$inner}) as x"
             .' left join lateral (select p.taxonomy_id from entry_taxonomies p where p.site_id = ? and p.entry_id = x.id and p.position = 0 order by p.id limit 1) as main on true'
             .' left join taxonomies pt on pt.site_id = ? and pt.id = main.taxonomy_id'
@@ -178,10 +180,12 @@ final readonly class SiteSuggest
             }
             $out[] = [
                 'id' => Cast::int($row['id'] ?? 0),
+                'type' => Cast::string($row['type'] ?? ''),
                 'title' => Cast::string($row['title'] ?? ''),
                 'path' => $path,
                 'at' => Cast::stringOrNull($row['published_at'] ?? null),
                 'root' => Cast::int($row['root_id'] ?? 0),
+                'image' => Cast::string($row['image'] ?? ''),
             ];
         }
 
@@ -193,7 +197,7 @@ final readonly class SiteSuggest
      * typed first, then the newest.
      *
      * @param  list<int>  $counts  each word's rows (plan)
-     * @return list<array{id: int, title: string, sku: string, path: string, at: string|null}>
+     * @return list<array{id: int, title: string, sku: string, path: string, at: string|null, image: string}>
      */
     private function products(SearchText $q, string $locale, array $counts): array
     {
@@ -219,11 +223,15 @@ final readonly class SiteSuggest
         // a code that starts with what was typed first (its letters and digits; SearchSuggestions folds accents too)
         $order = $compact === '' ? $newest : "starts_with(regexp_replace(lower(coalesce(p.sku, '')), '[^[:alnum:]]+', '', 'g'), ?) desc, {$newest}";
 
-        $sql = "select p.id, p.published_at, p.sku, t.name, (select r.path from routes r where r.site_id = ? and r.locale = ? and r.product_id = p.id order by r.id limit 1) as path from {$source}"
+        // the first photo of the gallery (the product_images index in its order), not in the media trash
+        $sql = 'select p.id, p.published_at, p.sku, t.name, (select r.path from routes r where r.site_id = ? and r.locale = ? and r.product_id = p.id order by r.id limit 1) as path,'
+            .' (select m.storage_key from product_images i join media m on m.site_id = ? and m.id = i.media_id and m.deleted_at is null'
+            .' where i.site_id = ? and i.product_id = p.id order by i.position, i.id limit 1) as image'
+            ." from {$source}"
             .' join products p on p.site_id = ? and p.id = c.id'
             .' join product_translations t on t.product_id = p.id and t.site_id = ? and t.locale = ?'
             ." where p.deleted_at is null and p.status = 'published' and (p.published_at is null or p.published_at <= now())";
-        $b = [$site, $locale, ...$b, $site, $site, $locale];
+        $b = [$site, $locale, $site, $site, ...$b, $site, $site, $locale];
         foreach (array_keys($q->words) as $i) {
             [$cond, $values] = self::match('x.word', $q, $i);
             $sql .= " and exists (select 1 from product_site_words x where x.site_id = ? and x.locale = ? and x.product_id = p.id and x.weight = 1 and {$cond})";
@@ -248,6 +256,7 @@ final readonly class SiteSuggest
                 'sku' => trim(Cast::string($row['sku'] ?? '')),
                 'path' => $path,
                 'at' => Cast::stringOrNull($row['published_at'] ?? null),
+                'image' => Cast::string($row['image'] ?? ''),
             ];
         }
 

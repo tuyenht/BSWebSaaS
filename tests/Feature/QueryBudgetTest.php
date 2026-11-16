@@ -372,8 +372,10 @@ it('answers the search suggestions on one small fixed query budget, whatever row
     // The site (its domain, the tenant setting and its check, whether it is open), its languages,
     // whether search is on (settings), the rate limit in the cache (no query), then one plan statement
     // (word counts and matched categories), the forms' thank-you pages, one statement for the posts and
-    // pages, one for the products, one for the category names and addresses: no chrome, no models.
-    $budget = 11;
+    // pages, one for the products (each with its first photo's media key, in the same statement), one
+    // for the category names and addresses, the site's day format for a dated row; then «Xem tất cả N»:
+    // the search page's plan and one count stopped at 51. No chrome, no models.
+    $budget = 14;
     $seed = function (int $site, int $each): void {
         app(Tenancy::class)->enter($site, function () use ($each): void {
             $news = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0, 'list_template' => 'grid-news']);
@@ -385,9 +387,12 @@ it('answers the search suggestions on one small fixed query budget, whatever row
                 $entry->translations()->create(['locale' => 'vi', 'title' => "Khuôn bài {$n}", 'slug' => 'khuon-'.$entry->id, 'status' => 'published']);
                 SiteRoute::query()->create(['locale' => 'vi', 'path' => '/khuon-'.$entry->id, 'entry_id' => $entry->id]);
                 $entry->assignCategories([$news->id]);
-                $product = Product::query()->create(['status' => 'published', 'sku' => "KHUON-{$n}", 'published_at' => now()->subMinutes($n)]);
+                // one code that starts with the words: the other rows are titles, a dated news post among them
+                $product = Product::query()->create(['status' => 'published', 'sku' => $n === 1 ? 'KHUON-1' : "SP-{$n}", 'published_at' => now()->subMinutes($n)]);
                 $product->translations()->create(['locale' => 'vi', 'name' => "Khuôn sản phẩm {$n}", 'slug' => 'khuon-sp-'.$product->id]);
                 SiteRoute::query()->create(['locale' => 'vi', 'path' => '/khuon-sp-'.$product->id, 'product_id' => $product->id]);
+                $media = Media::query()->create(['storage_key' => "tenant/products/khuon-{$product->id}-0123456789ab.jpg", 'mime' => 'image/jpeg', 'size' => 10, 'original_filename' => 'k.jpg', 'hash' => str_pad((string) $product->id, 64, 'a'), 'slug' => 'khuon-'.$product->id]);
+                $product->images()->create(['media_id' => $media->id, 'position' => 0]);
             }
         });
     };
@@ -401,12 +406,12 @@ it('answers the search suggestions on one small fixed query budget, whatever row
     };
 
     $seed(1, 1);
-    $seed(2, 4);   // more than fit: still one read per kind
+    $seed(2, 4);   // more than fit, each with a photo: still one read per kind
     [$few, $fewKinds] = $measure('a.test');
     [$many, $manyKinds] = $measure('b.test');
 
     expect($fewKinds)->toBe(['group' => 1, 'sku' => 1, 'item' => 1])
-        ->and($manyKinds)->toBe(['group' => 1, 'sku' => 4])
+        ->and($manyKinds)->toBe(['group' => 1, 'sku' => 1, 'item' => 3])
         ->and($many)->toBe($few)
         ->and($many)->toBeLessThanOrEqual($budget);
 });

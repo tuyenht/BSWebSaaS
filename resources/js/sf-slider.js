@@ -12,6 +12,8 @@
 import { groupDot, loopDot, loopHome, railDot, railPages, railTarget, swipe, wrap } from './sf-slider-math.js';
 
 const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+// Something covers the page (the search panel, storefront.js, which says so with sf:cover): nothing rotates.
+const covered = () => document.documentElement.classList.contains('sf-search-open');
 const HOLD = 10000;
 let present = false;
 const waiting = [];
@@ -49,7 +51,7 @@ function init(root) {
             media.hidden = false;
         }
     };
-    const running = () => present && interval > 0 && !reduce.matches && !hovered && !focused && !held && !document.hidden;
+    const running = () => present && interval > 0 && !reduce.matches && !hovered && !focused && !held && !document.hidden && !covered();
     const schedule = () => {
         clearTimeout(timer);
         clearTimeout(early);
@@ -133,6 +135,7 @@ function init(root) {
         }
     });
     document.addEventListener('visibilitychange', schedule);
+    document.addEventListener('sf:cover', schedule);
     reduce.addEventListener?.('change', schedule);
     schedule();
     whenPresent(schedule);
@@ -220,7 +223,7 @@ function initRail(root) {
 
     const overflows = () => track.scrollWidth > track.clientWidth + 1;
     const rotates = () => interval > 0 && !reduce.matches && !(phone.matches && root.dataset.mobile === 'swipe') && !(small && tablet.matches) && over;
-    const running = () => present && rotates() && !hovered && !focused && !held && !document.hidden;
+    const running = () => present && rotates() && !hovered && !focused && !held && !document.hidden && !covered();
     const step = () => (items.length > 1 ? items[1].offsetLeft - items[0].offsetLeft : track.clientWidth) * group;
     // A settled scroll on a copy jumps to the same view on the real cards (never under a finger, never
     // with a copy width that a new row width has made old).
@@ -479,6 +482,7 @@ function initRail(root) {
         schedule();
     });
     document.addEventListener('visibilitychange', schedule);
+    document.addEventListener('sf:cover', schedule);
     let syncTimer;
     function later() {
         clearTimeout(syncTimer);
