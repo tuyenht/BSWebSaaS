@@ -34,7 +34,7 @@ beforeEach(function (): void {
     $this->withoutMiddleware(PreventRequestForgery::class);
 });
 
-function pcCategory(string $name, ?Taxonomy $parent = null, int $position = 0): Taxonomy
+function plcatCategory(string $name, ?Taxonomy $parent = null, int $position = 0): Taxonomy
 {
     $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'parent_id' => $parent?->id, 'position' => $position]);
     $category->translations()->create(['locale' => 'vi', 'name' => $name, 'slug' => Str::slug($name).'-'.$category->id]);
@@ -50,23 +50,23 @@ function pcCategory(string $name, ?Taxonomy $parent = null, int $position = 0): 
  *
  * @return array<string, Taxonomy>
  */
-function pcTree(): array
+function plcatTree(): array
 {
-    $root = pcCategory('Tin tức');
+    $root = plcatCategory('Tin tức');
     ContentSection::query()->create(['key' => 'posts', 'label' => 'Tin tức', 'entry_type' => 'post', 'taxonomy_id' => $root->id, 'permission_prefix' => 'entries', 'sort_order' => 1]);
-    $company = pcCategory('Tin công ty', $root, 1);
-    $jobs = pcCategory('Tuyển dụng', $company, 1);
-    $know = pcCategory('Kiến thức', $root, 2);
-    $cnc = pcCategory('Gia công CNC', $know, 1);
-    $tolerance = pcCategory('Dung sai', $cnc, 1);
-    $services = pcCategory('Dịch vụ', $know, 2);
+    $company = plcatCategory('Tin công ty', $root, 1);
+    $jobs = plcatCategory('Tuyển dụng', $company, 1);
+    $know = plcatCategory('Kiến thức', $root, 2);
+    $cnc = plcatCategory('Gia công CNC', $know, 1);
+    $tolerance = plcatCategory('Dung sai', $cnc, 1);
+    $services = plcatCategory('Dịch vụ', $know, 2);
     ContentSection::query()->create(['key' => 'services', 'label' => 'Dịch vụ', 'entry_type' => 'post', 'taxonomy_id' => $services->id, 'permission_prefix' => 'entries', 'sort_order' => 2]);
 
     return compact('root', 'company', 'jobs', 'know', 'cnc', 'tolerance', 'services');
 }
 
 /** @param  list<int>  $categories  main category first */
-function pcPost(string $title, array $categories, array $meta = []): Entry
+function plcatPost(string $title, array $categories, array $meta = []): Entry
 {
     $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'meta' => $meta]);
     $entry->translations()->create(['locale' => 'vi', 'title' => $title, 'slug' => Str::slug($title), 'status' => 'draft', 'body' => ['blocks' => []]]);
@@ -77,7 +77,7 @@ function pcPost(string $title, array $categories, array $meta = []): Entry
     return $entry;
 }
 
-function pcEditor(): User
+function plcatEditor(): User
 {
     $user = User::factory()->create();
     grantRole($user, 'editor', ['entries.view', 'entries.create', 'entries.edit.any', 'entries.publish']);
@@ -86,51 +86,51 @@ function pcEditor(): User
 }
 
 /** @return list<string> */
-function pcTitles(mixed $test): array
+function plcatTitles(mixed $test): array
 {
     return collect($test->viewData('rows')->items())->map(fn (array $row): string => $row['entry']->translations->first()->title)->sort()->values()->all();
 }
 
 it('filters by a main category and everything under it, never by a second category', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
-        $user = pcEditor();
-        $t = pcTree();
-        pcPost('Tuyển kỹ sư', [$t['jobs']->id]);
-        pcPost('Tin họp mặt', [$t['company']->id]);
-        pcPost('Bảng dung sai', [$t['tolerance']->id]);
-        pcPost('Phay CNC', [$t['cnc']->id]);
+        $user = plcatEditor();
+        $t = plcatTree();
+        plcatPost('Tuyển kỹ sư', [$t['jobs']->id]);
+        plcatPost('Tin họp mặt', [$t['company']->id]);
+        plcatPost('Bảng dung sai', [$t['tolerance']->id]);
+        plcatPost('Phay CNC', [$t['cnc']->id]);
         // filed under Kiến thức, also tagged Tin công ty: it is not company news
-        pcPost('Đọc bản vẽ', [$t['know']->id, $t['company']->id]);
-        pcPost('Chung chung', [$t['root']->id]);
+        plcatPost('Đọc bản vẽ', [$t['know']->id, $t['company']->id]);
+        plcatPost('Chung chung', [$t['root']->id]);
 
         $test = Livewire::actingAs($user)->test(Index::class, ['section' => 'posts']);
-        expect(pcTitles($test))->toHaveCount(6);
+        expect(plcatTitles($test))->toHaveCount(6);
 
         $test->set('catF', [$t['company']->ulid]);
-        expect(pcTitles($test))->toBe(['Tin họp mặt', 'Tuyển kỹ sư'])
+        expect(plcatTitles($test))->toBe(['Tin họp mặt', 'Tuyển kỹ sư'])
             ->and($test->get('catF'))->toEqualCanonicalizing([$t['company']->ulid, $t['jobs']->ulid])
             ->and($test->viewData('filterCount'))->toBe(1);
 
         // a deep branch: Gia công CNC brings Dung sai
         $test->call('resetFilterGroup', 'cat')->call('toggleFilterValue', 'cat', $t['cnc']->ulid);
-        expect(pcTitles($test))->toBe(['Bảng dung sai', 'Phay CNC'])
+        expect(plcatTitles($test))->toBe(['Bảng dung sai', 'Phay CNC'])
             ->and($test->viewData('activeChips'))->toBe([['group' => 'cat', 'value' => $t['cnc']->ulid, 'label' => 'Chuyên mục: Gia công CNC']]);
 
         // unticking a child unticks the parent above it: only the child's sibling-free rest stays
         $test->call('toggleFilterValue', 'cat', $t['tolerance']->ulid);
         expect($test->get('catF'))->toBe([])
-            ->and(pcTitles($test))->toHaveCount(6);
+            ->and(plcatTitles($test))->toHaveCount(6);
     });
 });
 
 it('offers the section categories only, indented, with the posts filed in each branch', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
-        $user = pcEditor();
-        $t = pcTree();
-        pcPost('Tuyển kỹ sư', [$t['jobs']->id]);
-        pcPost('Tin họp mặt', [$t['company']->id]);
-        pcPost('Phay CNC', [$t['cnc']->id]);
-        pcPost('Dịch vụ phay', [$t['services']->id]);
+        $user = plcatEditor();
+        $t = plcatTree();
+        plcatPost('Tuyển kỹ sư', [$t['jobs']->id]);
+        plcatPost('Tin họp mặt', [$t['company']->id]);
+        plcatPost('Phay CNC', [$t['cnc']->id]);
+        plcatPost('Dịch vụ phay', [$t['services']->id]);
 
         $test = Livewire::actingAs($user)->test(Index::class, ['section' => 'posts']);
         $options = collect($test->viewData('catOptions'))->map(fn (array $o): array => [$o['label'], $o['depth'], $o['count'] ?? null])->all();
@@ -151,28 +151,28 @@ it('offers the section categories only, indented, with the posts filed in each b
 it('drops a category key of another section or another website from the link', function (): void {
     $foreign = null;
     app(Tenancy::class)->enter(2, function () use (&$foreign): void {
-        $foreign = pcCategory('Khác')->ulid;
+        $foreign = plcatCategory('Khác')->ulid;
     });
 
     app(Tenancy::class)->enter(1, function () use ($foreign): void {
-        $user = pcEditor();
-        $t = pcTree();
-        pcPost('Tin họp mặt', [$t['company']->id]);
+        $user = plcatEditor();
+        $t = plcatTree();
+        plcatPost('Tin họp mặt', [$t['company']->id]);
 
         $test = Livewire::withQueryParams(['cat' => [$foreign, $t['services']->ulid, $t['root']->ulid, 'rác']])
             ->actingAs($user)->test(Index::class, ['section' => 'posts']);
         expect($test->get('catF'))->toBe([])
-            ->and(pcTitles($test))->toBe(['Tin họp mặt']);
+            ->and(plcatTitles($test))->toBe(['Tin họp mặt']);
     });
 });
 
 it('names each row by its main category path, and shows its cover small or an empty frame', function (): void {
     config(['media.driver' => 'cloudflare']);
     app(Tenancy::class)->enter(1, function (): void {
-        $user = pcEditor();
-        $t = pcTree();
-        pcPost('Bảng dung sai', [$t['tolerance']->id], ['image_url' => 'site-1/bang-dung-sai-0123456789ab.jpg']);
-        pcPost('Chung chung', [$t['root']->id]);
+        $user = plcatEditor();
+        $t = plcatTree();
+        plcatPost('Bảng dung sai', [$t['tolerance']->id], ['image_url' => 'site-1/bang-dung-sai-0123456789ab.jpg']);
+        plcatPost('Chung chung', [$t['root']->id]);
 
         $test = Livewire::actingAs($user)->test(Index::class, ['section' => 'posts']);
         $byTitle = fn (string $key): array => collect($test->viewData('rows')->items())
@@ -193,9 +193,9 @@ it('names each row by its main category path, and shows its cover small or an em
 
 it('offers no category filter where there are no categories, and says a post has none', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
-        $user = pcEditor();
+        $user = plcatEditor();
         ContentSection::query()->create(['key' => 'posts', 'label' => 'Bài viết', 'entry_type' => 'post', 'permission_prefix' => 'entries', 'sort_order' => 1]);
-        $post = pcPost('Không chuyên mục', []);
+        $post = plcatPost('Không chuyên mục', []);
 
         $test = Livewire::actingAs($user)->test(Index::class, ['section' => 'posts']);
         expect($test->viewData('catOptions'))->toBe([])
@@ -206,11 +206,11 @@ it('offers no category filter where there are no categories, and says a post has
 
 it('shows the category column by default, also to a member who saved their columns before it existed', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
-        $fresh = pcEditor();
-        $old = pcEditor();
+        $fresh = plcatEditor();
+        $old = plcatEditor();
         $old->preferences = ['lists' => ['entries.post.posts' => ['cols' => ['path', 'creator'], 'card' => []]]];
         $old->save();
-        pcTree();
+        plcatTree();
 
         expect(Livewire::actingAs($fresh)->test(Index::class, ['section' => 'posts'])->get('cols'))->toContain('cat')
             ->and(Livewire::actingAs($old->fresh())->test(Index::class, ['section' => 'posts'])->get('cols'))->toBe(['cat', 'path', 'creator']);
@@ -223,7 +223,7 @@ it('shows the category column by default, also to a member who saved their colum
 
 it('words the role card from the member permissions, limits and the section workflow', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
-        $t = pcTree();
+        $t = plcatTree();
         $member = function (string $role, array $permissions): User {
             $user = User::factory()->create();
             grantRole($user, $role, ['entries.view', ...$permissions]);
@@ -267,9 +267,9 @@ it('keeps the role card until the member presses "Đã hiểu", for that member 
     $user = null;
     $other = null;
     app(Tenancy::class)->enter(1, function () use (&$user, &$other): void {
-        pcTree();
-        $user = pcEditor();
-        $other = pcEditor();
+        plcatTree();
+        $user = plcatEditor();
+        $other = plcatEditor();
     });
 
     $this->actingAs($user)->get('http://a.test/admin/content?section=posts')->assertOk()
@@ -292,14 +292,14 @@ it('reads a categorised posts list on a flat query budget, whatever the number o
     $user = null;
     $t = [];
     app(Tenancy::class)->enter(1, function () use (&$user, &$t): void {
-        $user = pcEditor();
-        $t = pcTree();
+        $user = plcatEditor();
+        $t = plcatTree();
     });
     $budget = function (int $rows, string $query) use ($user, $t): int {
         app(Tenancy::class)->enter(1, function () use ($rows, $t): void {
             DB::connection('pgsql_admin')->statement('truncate entries restart identity cascade');
             foreach (range(1, $rows) as $i) {
-                pcPost('Bài '.$i, [[$t['jobs']->id, $t['cnc']->id, $t['tolerance']->id, $t['root']->id][$i % 4]], $i % 2 ? ['image_url' => "site-1/anh-{$i}-0123456789ab.jpg"] : []);
+                plcatPost('Bài '.$i, [[$t['jobs']->id, $t['cnc']->id, $t['tolerance']->id, $t['root']->id][$i % 4]], $i % 2 ? ['image_url' => "site-1/anh-{$i}-0123456789ab.jpg"] : []);
             }
         });
 

@@ -313,7 +313,6 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         ->and($html)->toContain('Dự án', 'Tuyển dụng');
     file_put_contents($dir.'/workflows.html', $html);
 
-
     // The domain screen with its "add a name" dialog open on the first step (the www switch).
     $this->flushSession();
     $page = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/domains')->assertOk()->getContent();
