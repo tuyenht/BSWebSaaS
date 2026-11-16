@@ -150,6 +150,8 @@ export function attach(form, env = {}) {
     let composing = false;
     // the words the request on its way asks for
     let asking = null;
+    // the words the rows on screen answer
+    let drawnFor = null;
     const answers = new Map();
     // spelling sounds out (kana, pinyin, Hangul jamo): the composed text is not yet the words
     const sounds = /^(ja|zh|ko)(-|$)/i.test(doc.documentElement.lang ?? '');
@@ -191,6 +193,7 @@ export function attach(form, env = {}) {
         clearTimeout(slowTimer);
         ctrl?.abort();
         asking = null;
+        drawnFor = null;
         asked++;
         close();
         list.replaceChildren();
@@ -270,6 +273,7 @@ export function attach(form, env = {}) {
             foot.hidden = false;
             status.textContent = options.length === 1 ? say('one') : say('count', { count: String(options.length) });
         }
+        drawnFor = typed;
         loading(false);
         choose(-1);
         show(true);
@@ -335,6 +339,11 @@ export function attach(form, env = {}) {
         const typed = input.value.trim();
         if (typed === asking && ctrl !== null) {
             // the same words as the request on its way (a space after the last word): let it answer
+            return;
+        }
+        if (asking === null && typed === drawnFor && !list.hidden) {
+            // the rows already answer these words (a keyboard ending its composition, maybe by the tap
+            // on a row): redrawing would swap the row under the finger before its click lands
             return;
         }
         ctrl?.abort();

@@ -155,6 +155,21 @@ test('↓ ↓ Enter opens the second row, ↑ wraps, Esc closes the list and kee
     assert.equal(p.doc.activeElement, p.input);
 });
 
+test('a keyboard ending its composition on the words already drawn keeps the rows, so a tap on one still opens it', async () => {
+    const p = await page();
+    p.input.dispatchEvent(new p.dom.window.CompositionEvent('compositionstart'));
+    p.type('do ga');
+    await tick(60);
+    const row = p.list.querySelectorAll('[role="option"]')[0];
+    row.querySelector('b').dispatchEvent(new p.dom.window.MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    p.input.dispatchEvent(new p.dom.window.CompositionEvent('compositionend'));
+    await tick(20);
+    assert.equal(row.isConnected, true);
+    row.querySelector('b').dispatchEvent(new p.dom.window.MouseEvent('click', { bubbles: true }));
+    assert.deepEqual(p.went, ['https://a.test/jig-do-ga']);
+    assert.equal(p.asked.length, 1);
+});
+
 test('a click opens its row without taking the focus from the field', async () => {
     const p = await page();
     p.type('do ga');
