@@ -2949,6 +2949,8 @@ html:not(.sf-js) :is(.sf-lang-h, .sf-lang-back, .sf-lang-search, .sf-lang-none) 
 /* Below 1024px sf-footer-rot.js shows one card at a time: the cards share one grid cell, so the frame is
    as tall as the tallest card and the page does not jump when the card turns. */
 .sf-footer__factories.is-rot {
+    /* the page still scrolls up and down; a sideways swipe is left to the script, which turns the card */
+    touch-action: pan-y;
     gap: 0;
 }
 
