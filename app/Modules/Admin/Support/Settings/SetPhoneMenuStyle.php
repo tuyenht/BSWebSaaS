@@ -11,8 +11,9 @@ use App\Modules\Theme\Chrome\StorefrontChrome;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * Sets the phone menu's colour tone (`drawer_tone`) and accent (`drawer_accent`), two keys of the
- * site's `storefront.header` setting, from "Giao diện website". The row is locked while the two keys
+ * Sets the keys of the card "Đầu trang & menu điện thoại" in "Giao diện website": whether the site
+ * search is on (`search`, "Có tìm kiếm"), the phone menu's colour tone (`drawer_tone`) and accent
+ * (`drawer_accent`), all keys of the site's `storefront.header` setting. The row is locked while they
  * change and every other key is kept as stored (the top bar, the products tab, the text size…), so a
  * header saved meanwhile is not overwritten. A site without a header setting has no phone menu to
  * colour, and creating the row here would switch its plain header for the rich one: nothing is
@@ -26,13 +27,13 @@ final class SetPhoneMenuStyle
 {
     /**
      * Only the keys given (not null) are written, so a save that changed one key never puts back an
-     * older value of the other one saved meanwhile from another tab.
+     * older value of another one saved meanwhile from another tab.
      *
      * @return bool whether the site has a header setting to write into
      *
      * @throws SettingsChangeRejected
      */
-    public function handle(?string $tone, ?string $accent): bool
+    public function handle(?string $tone, ?string $accent, ?bool $search = null): bool
     {
         Gate::authorize('settings.manage');
         if ($tone !== null && ! in_array($tone, StorefrontChrome::DRAWER_TONES, true)) {
@@ -42,13 +43,13 @@ final class SetPhoneMenuStyle
             throw new SettingsChangeRejected('choice_invalid', 'accent');
         }
 
-        return SettingsWrite::run('appearance', function () use ($tone, $accent): bool {
+        return SettingsWrite::run('appearance', function () use ($tone, $accent, $search): bool {
             $row = SiteSetting::query()->where('group_name', 'storefront')->where('key', 'header')->lockForUpdate()->first();
             if ($row === null) {
                 return false;
             }
             $value = Cast::arr($row->getAttribute('value'));
-            $next = [...$value, ...array_filter(['drawer_tone' => $tone, 'drawer_accent' => $accent], static fn (?string $v): bool => $v !== null)];
+            $next = [...$value, ...array_filter(['drawer_tone' => $tone, 'drawer_accent' => $accent, 'search' => $search], static fn (string|bool|null $v): bool => $v !== null)];
             if ($next !== $value) {
                 $row->setAttribute('value', $next);
                 $row->save();

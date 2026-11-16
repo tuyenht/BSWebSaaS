@@ -323,7 +323,8 @@ it('renders the site search results page on one fixed query budget, however many
     // categories), one for the posts and pages, one for the products; then the rows shown: the
     // category names, the posts with their translations and addresses, the products with their
     // translations, categories (and their names) and pictures. The same count for 1 row per group or 3.
-    $budget = 23;
+    // One more: whether content the site had before the address was reserved still holds it.
+    $budget = 24;
     $seed = function (int $site, int $perGroup): void {
         app(Tenancy::class)->enter($site, function () use ($site, $perGroup): void {
             foreach (['Tin tức', 'Dự án'] as $i => $name) {

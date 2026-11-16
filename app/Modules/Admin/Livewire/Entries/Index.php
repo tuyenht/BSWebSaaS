@@ -586,8 +586,8 @@ final class Index extends Component
                 }
                 $this->recordLiveEdit($entry, $translation);
             });
-        } catch (RouteConflictException) {
-            $this->toast(__('entries.slug_conflict'));
+        } catch (RouteConflictException $e) {
+            $this->toast(__($e->reserved() ? 'entries.slug_reserved' : 'entries.slug_conflict'));
 
             return;
         }

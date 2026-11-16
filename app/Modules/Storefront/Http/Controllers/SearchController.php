@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Storefront\Http\Controllers;
 
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Shared\Support\SafeLink;
 use App\Modules\Storefront\Http\Middleware\StorefrontSession;
@@ -25,6 +26,12 @@ use Symfony\Component\HttpFoundation\Response;
  * "nothing found" help, or, with nothing (or one letter) typed, the box and the site's main groups.
  * A group's "Xem thêm" link (`nhom`, `sau`) shows that group's next rows. While the site has search
  * switched off the address is the site's own 404 page.
+ *
+ * The address is reserved for new content (PathBuilder::RESERVED_PATHS), but a site may hold a page,
+ * post, category or product at it from before: then that content keeps the address. Its route is
+ * looked up (one row by the unique (site_id, locale, path) index, only on this address) and, when the
+ * storefront serves something there, that answer is returned as it is; content that is not shown (a
+ * draft, an item in the trash) leaves the address to the search.
  *
  * Never cached and kept out of search engines (noindex, follow). Searches are limited per site and
  * visitor address (MAX_PER_MINUTE, counted in the cache store): past it a plain "wait a moment" page
@@ -65,6 +72,14 @@ final readonly class SearchController
             }
         }
         $locale ??= $default;
+
+        // Content the site already had at this address keeps it (see the class comment).
+        if (SiteRoute::query()->where('locale', $locale)->where('path', PathBuilder::SEARCH_PATH)->exists()) {
+            $page = app(StorefrontController::class)($request);
+            if ($page->getStatusCode() !== 404) {
+                return $page;
+            }
+        }
         app()->setLocale($locale);
 
         $base = $this->paths->searchUrl($locale);

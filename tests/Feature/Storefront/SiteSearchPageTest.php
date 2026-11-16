@@ -252,6 +252,31 @@ it('reserves the search address: no content may take /tim-kiem', function (): vo
     });
 });
 
+it('leaves the address to content the site already had there, and takes it back once that content is not shown', function (): void {
+    spSite(1);
+    // A post that took /tim-kiem before the address was reserved (written straight to the table, as then).
+    $old = app(Tenancy::class)->enter(1, fn () => spPost('Bài cũ ở địa chỉ tìm kiếm', 'Nội dung có sẵn', slug: 'tim-kiem'));
+
+    $html = $this->get('http://a.test/tim-kiem?q=khuon')->assertOk()->getContent();
+    expect($html)->toContain('Bài cũ ở địa chỉ tìm kiếm')->not->toContain('class="sf-search');
+
+    // Back to a draft, the post is not shown, so the address is the search page again.
+    app(Tenancy::class)->enter(1, function () use ($old): void {
+        $old->forceFill(['status' => 'draft'])->save();
+        $old->translations()->update(['status' => 'draft']);
+    });
+    expect($this->get('http://a.test/tim-kiem?q=khuon')->assertOk()->getContent())->toContain('class="sf-search');
+});
+
+it('lets content at the address in one language keep it there only, never in the other languages', function (): void {
+    spSite(1);
+    DB::connection('pgsql_admin')->table('site_locales')->insert(['site_id' => 1, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'is_public' => true, 'created_at' => now(), 'updated_at' => now()]);
+    app(Tenancy::class)->enter(1, fn () => spPost('Old search page', slug: 'tim-kiem', locale: 'en'));
+
+    expect($this->get('http://a.test/en/tim-kiem')->assertOk()->getContent())->toContain('Old search page')
+        ->and($this->get('http://a.test/tim-kiem')->assertOk()->getContent())->toContain('class="sf-search');
+});
+
 it('draws the header’s magnifier after the menu behind a line, and the panel as a plain search form', function (): void {
     spSite(1);
 

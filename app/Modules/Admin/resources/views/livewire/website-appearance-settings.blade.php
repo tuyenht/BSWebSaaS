@@ -13,10 +13,11 @@
     $label = 'text-[calc(0.8125rem+var(--user-text-boost))] font-medium text-text-strong';
     $errorCount = count($errors->keys());
     $groups = ['brand' => [...WebsiteAppearanceSettings::SLOTS, 'share']];
-    // The phone menu's tone and accent: only for a site that has a header setting (a phone menu to colour).
+    // "Có tìm kiếm" and the phone menu's tone and accent: only for a site that has a header setting.
     if ($hasMenu) {
-        $groups['menu'] = ['tone', 'accent'];
+        $groups['menu'] = ['search', 'tone', 'accent'];
     }
+    $infoBox = 'rounded-lg border border-border bg-surface px-3 py-2.5 text-caption leading-relaxed text-text [overflow-wrap:break-word]';
     // Each choice: its options in the design's order (value → swatch, when it has one).
     $choices = [
         'tone' => ['auto' => null, 'light' => null, 'dark' => null],
@@ -39,7 +40,7 @@
     </x-slot:more>
 
     <div class="@container/look flex flex-col gap-4" data-set-form
-         x-data="{ open: 'brand' }"
+         x-data="{ open: 'brand', info: null }"
          x-on:look-first-error.window="open = {{ Js::from($errors->has('tone') || $errors->has('accent') ? 'menu' : 'brand') }}; $nextTick(() => $el.querySelector('[data-ferr-focus]')?.focus())">
 
         {{-- When the section was last saved, and "Khôi phục mặc định" (in the "⋮" on phones). --}}
@@ -85,6 +86,26 @@
                                 $fid = 'look-'.$key;
                                 $errId = $fid.'-err';
                             @endphp
+
+                            @if ($key === 'search')
+                                {{-- "Có tìm kiếm" (design: toggle field): the switch flips the draft; its explanation opens under "Chi tiết". --}}
+                                @php
+                                    $infoId = $fid.'-info';
+                                @endphp
+                                <div class="col-span-full flex items-start justify-between gap-4" wire:key="look-f-search" data-look-search>
+                                    <div class="flex min-w-0 flex-col gap-1">
+                                        <span id="{{ $fid }}-l" class="text-[calc(0.84375rem+var(--user-text-boost))] font-medium text-text-strong">{{ __('admin.look.f.search') }}</span>
+                                        <button type="button" class="hit-area-row inline-flex items-center gap-1 self-start text-caption text-text-muted hover:text-primary-text"
+                                                x-on:click="info = info === '{{ $infoId }}' ? null : '{{ $infoId }}'" x-bind:aria-expanded="info === '{{ $infoId }}' ? 'true' : 'false'"
+                                                aria-controls="{{ $infoId }}" aria-label="{{ __('admin.gs.detail_aria', ['label' => __('admin.look.f.search')]) }}">
+                                            <x-bs-admin::icon name="ri-information" class="size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))]" />{{ __('admin.gs.detail') }}
+                                        </button>
+                                        <div id="{{ $infoId }}" role="note" x-show="info === '{{ $infoId }}'" x-cloak class="{{ $infoBox }}">{{ __('admin.look.hint.search') }}</div>
+                                    </div>
+                                    <button type="button" class="switch hit-area" role="switch" aria-checked="{{ $search ? 'true' : 'false' }}" aria-labelledby="{{ $fid }}-l" wire:click="toggleSearch"></button>
+                                </div>
+                                @continue
+                            @endif
 
                             @if (in_array($key, ['tone', 'accent'], true))
                                 {{-- One choice of the phone menu: radio cards (design: choice field), the draft is kept on the server. --}}
