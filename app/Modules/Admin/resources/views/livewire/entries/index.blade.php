@@ -3,7 +3,8 @@
     use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
 
     $sectionLabel = $sectionModel?->localizedLabel() ?? __('entries.section_fallback');
-    $pageTitle = __('entries.manage_title', ['label' => $sectionLabel]);
+    // the list is named as its section in the menu ("Tin tức", "Trang"), with no "Quản lý" before it
+    $pageTitle = $sectionLabel;
     $isPost = $type === 'post';
     $noun = __('entries.noun_'.$type);
     // a list stops counting past 10,000 rows: such a count reads "hơn 10.000"
@@ -28,16 +29,17 @@
     };
 
     // Status groups, as in the design: "Chờ duyệt" only once something waits; Thùng rác only for who may empty it.
-    $groupKeys = ['all', 'published', 'scheduled', 'pending', 'draft', 'private', 'archived'];
+    // Each count is drawn in its status's own ink, as the pills on the rows.
+    $groupKeys = ['all', 'published', 'draft', 'scheduled', 'pending', 'private', 'archived'];
     $groups = [];
     foreach ($groupKeys as $key) {
         if ($key === 'pending' && ($counts['pending'] ?? 0) === 0 && $tab !== 'pending') {
             continue;
         }
-        $groups[] = ['key' => $key, 'label' => $key === 'all' ? __('entries.tab_all') : __('entries.status_'.$key), 'icon' => $tabIcon($key), 'count' => $countOf($counts[$key] ?? 0)];
+        $groups[] = ['key' => $key, 'label' => $key === 'all' ? __('entries.tab_all') : __('entries.status_'.$key), 'icon' => $tabIcon($key), 'count' => $countOf($counts[$key] ?? 0), 'tone' => $key];
     }
     if ($canSeeTrash || $tab === 'trash') {
-        $groups[] = ['key' => 'trash', 'label' => __('entries.tab_trash'), 'icon' => 'ri-delete-bin', 'count' => $countOf($counts['trash'] ?? 0), 'trash' => true];
+        $groups[] = ['key' => 'trash', 'label' => __('entries.tab_trash'), 'icon' => 'ri-delete-bin', 'count' => $countOf($counts['trash'] ?? 0), 'trash' => true, 'tone' => 'trash'];
     }
     $groupLabel = $tab === 'all' ? null : (collect($groups)->firstWhere('key', $tab)['label'] ?? null);
 
@@ -113,6 +115,10 @@
         $chips[] = ['label' => __('entries.sort_chip_'.$sortOn.'_'.$sortWay), 'remove' => 'resetSort'];
     }
 
+    // the select-all box ticks the rows of this page: named "Chọn cả trang" once the list has more than one page
+    $selectAllLabel = $pager['last'] === null || $pager['last'] > 1 ? __('entries.select_page') : __('entries.select_all');
+    // a row's last edit (or, scheduled, the moment it goes up), in the website's clock
+    $nowAt = $siteTime->now();
     $pageSelected = count(array_intersect($pageUlids, $selected));
     $allState = $pageUlids !== [] && $pageSelected === count($pageUlids) ? true : ($pageSelected > 0 ? 'mixed' : false);
     $selectAllCall = 'toggleSelectAll(['.collect($pageUlids)->map(fn (string $u): string => "'".$u."'")->implode(',').'])';
@@ -149,10 +155,10 @@
                 </div>
             </div>
             <x-bs-admin::button color="primary" class="shrink-0" :href="route('admin.entries.create', $sectionKey ? ['section' => $sectionKey] : [])">
-                <x-bs-admin::icon name="ri-add" class="size-4" /> {{ __('entries.create_new') }}
+                <x-bs-admin::icon name="ri-add" class="size-4" /> {{ __('entries.add_'.$type) }}
             </x-bs-admin::button>
         </div>
-        <p class="m-0 text-body text-text-muted [overflow-wrap:anywhere]">{{ __('entries.desc_'.$type) }}</p>
+        <p class="m-0 text-body text-text-muted [overflow-wrap:anywhere]">{{ __('entries.desc_'.$type, ['label' => mb_strtolower(mb_substr($sectionLabel, 0, 1)).mb_substr($sectionLabel, 1)]) }}</p>
     </header>
 
     {{-- The list card: groups (from 900) · search + tools · the active-filter line · the rows · the pager. Below 600
@@ -173,17 +179,18 @@
              }"
              x-init="size(); new ResizeObserver(() => size()).observe($el)">
             <div class="flex flex-col gap-3 pb-3 min-[600px]:px-4 min-[600px]:pt-4 min-[900px]:pt-3 @min-[56.25rem]/lt:flex-row @min-[56.25rem]/lt:flex-wrap @min-[56.25rem]/lt:items-center">
-                {{-- From 900 the search and the tools share a row: the search keeps room for its whole hint (sized in
-                     its own text size, so it grows with the member's text size) and takes the free space; when the
+                {{-- From 900 the search and the tools share a row: the search keeps room for its whole short hint
+                     ("Ví dụ: bảng giá", sized in its own text size, so it grows with the member's text size) and takes
+                     the free space; when the
                      tools no longer fit beside it they go down together, as one group, and the search takes the whole
                      line (the tools row marks itself data-below). --}}
-                <div class="min-w-0 text-body @min-[56.25rem]/lt:min-w-[19em] @min-[56.25rem]/lt:max-w-[30em] @min-[56.25rem]/lt:flex-[999_1_19em] @min-[56.25rem]/lt:[&:has(+[data-below='1'])]:max-w-none">
-                    <x-bs-admin::search id="entries-search" :label="__('entries.search_placeholder')" wire:model.live.debounce.300ms="search" />
+                <div class="min-w-0 text-body @min-[56.25rem]/lt:min-w-[11em] @min-[56.25rem]/lt:max-w-[30em] @min-[56.25rem]/lt:flex-[999_1_11em] @min-[56.25rem]/lt:[&:has(+[data-below='1'])]:max-w-none">
+                    <x-bs-admin::search id="entries-search" :label="__('entries.search_placeholder')" :placeholder="__('entries.search_hint_'.$type)" wire:model.live.debounce.300ms="search" />
                 </div>
-                <x-bs-admin::tool-row class="@min-[56.25rem]/lt:min-w-0 @min-[56.25rem]/lt:flex-[1_1_auto] @min-[56.25rem]/lt:flex-wrap @min-[56.25rem]/lt:gap-3">
+                <x-bs-admin::tool-row class="@min-[56.25rem]/lt:min-w-0 @min-[56.25rem]/lt:flex-[1_1_auto] @min-[56.25rem]/lt:flex-wrap @min-[56.25rem]/lt:gap-2">
                     @if ($pageUlids !== [])
                         <div class="min-w-0 @min-[56.25rem]/lt:hidden">
-                            <x-bs-admin::list.check :checked="$allState" :label="__('entries.select_all')" visible :wire:click="$selectAllCall" />
+                            <x-bs-admin::list.check :checked="$allState" :label="$selectAllLabel" visible :wire:click="$selectAllCall" />
                         </div>
                     @endif
                     <x-bs-admin::filter-panel class="ms-auto flex-nowrap @min-[56.25rem]/lt:ms-0 @min-[56.25rem]/lt:min-w-0 @min-[56.25rem]/lt:shrink @min-[56.25rem]/lt:flex-wrap" :sections="$sections"
@@ -258,7 +265,7 @@
                 <x-bs-admin::list.head>
                     <x-bs-admin::list.cell head col="chk">
                         @if ($pageUlids !== [])
-                            <x-bs-admin::list.check :checked="$allState" :label="__('entries.select_all')" :wire:click="$selectAllCall" />
+                            <x-bs-admin::list.check :checked="$allState" :label="$selectAllLabel" :wire:click="$selectAllCall" />
                         @endif
                     </x-bs-admin::list.cell>
                     <x-bs-admin::list.cell head col="main" :sort="$ariaSort('name')">
@@ -290,10 +297,14 @@
                         $parts = $creator ? preg_split('/\s+/', trim($creator)) : [];
                         $initials = $parts ? mb_strtoupper(mb_substr($parts[0], 0, 1).(count($parts) > 1 ? mb_substr(end($parts), 0, 1) : '')) : '—';
                         $c = $avatarPalette[$creator ? abs(crc32($creator)) % count($avatarPalette) : 0];
+                        // "Sửa hôm nay, 10:20" … "Sửa 7 ngày trước", then the day; a scheduled one "Đăng lúc 23/11/2026 · 08:00"
                         $when = $siteTime->forDisplay($isScheduled ? $entry->published_at : $entry->updated_at);
                         $whenText = $when ? ($isScheduled
-                            ? __('entries.scheduled_prefix').' '.$when->locale(app()->getLocale())->isoFormat('D MMM, Y').' · '.$when->format('H:i')
-                            : $when->locale(app()->getLocale())->isoFormat('D MMM, Y')) : null;
+                            ? __('entries.scheduled_at', ['date' => $when->format('d/m/Y'), 'time' => $when->format('H:i')])
+                            : \App\Modules\Admin\Support\EditedWhen::short($when, $nowAt, recentDays: 7, dayThisYear: false)) : null;
+                        $whenFull = $when ? \App\Modules\Admin\Support\EditedWhen::full($when) : null;
+                        // visitors see only a published record, so only its views are named
+                        $isLive = $status === 'published' && ! $trashed;
                         $slugLeaf = $t?->slug;
                         $slugPrefix = ($path !== null && $slugLeaf) ? \Illuminate\Support\Str::beforeLast($path, $slugLeaf) : '/';
                         $quickEdit = ($rowEditable[$entry->ulid] ?? false) && ! $trashed;
@@ -354,14 +365,14 @@
                                         <span class="list-m" data-for="tpl" x-show="vTpl">{{ __('entries.meta_tpl', ['name' => $entry->template_override]) }}</span>
                                     @endif
                                     {{-- as in the design, views are named only once there are some --}}
-                                    @if ($entry->view_count > 0)
+                                    @if ($isLive && $entry->view_count > 0)
                                         <span class="list-m" data-for="views">{{ __('entries.views_count', ['count' => \Illuminate\Support\Number::format($entry->view_count, locale: app()->getLocale())]) }}</span>
                                     @endif
                                     @if ($creator)
                                         <span class="list-m" data-for="au">{{ $creator }}</span>
                                     @endif
                                     @if ($whenText)
-                                        <span class="list-m" data-for="when">{{ $whenText }}</span>
+                                        <span class="list-m" data-for="when"><x-bs-admin::list.when :at="$when" :text="$whenText" :full="$whenFull" :exact="$isScheduled" /></span>
                                     @endif
                                 </x-bs-admin::list.meta>
                             </div>
@@ -401,7 +412,7 @@
                             @if ($whenText)
                                 <div class="list-st-meta">
                                     <x-bs-admin::icon :name="$isScheduled ? 'ri-time' : 'ri-history'" class="size-3 shrink-0" />
-                                    <span>{{ $whenText }}</span>
+                                    <x-bs-admin::list.when :at="$when" :text="$whenText" :full="$whenFull" :exact="$isScheduled" />
                                 </div>
                             @endif
                         </x-bs-admin::list.cell>
@@ -427,9 +438,10 @@
                                     @endif
                                 @else
                                     @if ($path)
+                                        {{-- both open in a new tab and say so: a published record on the website, any other as a preview --}}
                                         <x-bs-admin::button size="sm" variant="soft" color="secondary" :href="$path" :navigate="false" target="_blank" rel="noopener"
-                                            :title="__('entries.action_preview')" :aria-label="__('entries.view_named', ['title' => $title])">
-                                            <x-bs-admin::icon name="ri-eye" class="size-4" /> {{ __('admin.view') }}
+                                            :title="$isLive ? __('entries.opens_new_tab') : __('entries.action_preview')" :aria-label="__('entries.view_named', ['title' => $title]).' ('.__('entries.opens_new_tab').')'">
+                                            <x-bs-admin::icon :name="$isLive ? 'ri-external-link' : 'ri-eye'" class="size-4" /> {{ __('admin.view') }}
                                         </x-bs-admin::button>
                                     @endif
                                     <x-bs-admin::button size="sm" variant="soft" color="primary" :href="route('admin.entries.edit', ['ulid' => $entry->ulid])"

@@ -887,9 +887,11 @@
             display: none;
         }
 
+        /* The status column grows to its widest pill ("Đã gỡ khỏi website" on one line), never below
+           10.75rem; the date line under a pill wraps inside it and never widens it. */
         .list-g {
             display: grid;
-            grid-template-columns: [chk] 3.5rem [main] minmax(0, 1fr) [st] 10.75rem [act] auto [end];
+            grid-template-columns: [chk] 3.5rem [main] minmax(0, 1fr) [st] minmax(10.75rem, max-content) [act] auto [end];
         }
 
         .list-r {
@@ -926,6 +928,10 @@
 
         .list-c-st {
             grid-column: st;
+        }
+
+        .list-st-meta {
+            contain: inline-size;
         }
 
         .list-c-au {
@@ -974,7 +980,7 @@
 
     @container list (width >= 80rem) {
         .list-rows:not([data-hide~='au']) .list-g {
-            grid-template-columns: [chk] 3.5rem [main] minmax(0, 1fr) [st] 10.75rem [au] 8.75rem [act] auto [end];
+            grid-template-columns: [chk] 3.5rem [main] minmax(0, 1fr) [st] minmax(10.75rem, max-content) [au] 8.75rem [act] auto [end];
         }
 
         .list-rows:not([data-hide~='au']) .list-c-au {

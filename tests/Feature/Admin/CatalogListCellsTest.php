@@ -319,7 +319,7 @@ it('prints the last edit in the website clock with the full time in a title, and
 
         expect($html)->toContain(__('catalog.updated_at', ['date' => '05/03/2025 00:30']))
             ->and($html)->toContain('title="'.e(__('catalog.updated_full', ['date' => '05/03/2025 00:30'])).'"')
-            ->and($html)->toContain(__('catalog.edited_other', ['date' => '05/03/2025']));
+            ->and($html)->toContain(__('admin.list.edited_other', ['date' => '05/03/2025']));
     });
 });
 
@@ -346,7 +346,7 @@ it('words a row edited today or yesterday in the short form of a card', function
 
         $html = Livewire::actingAs(cellManager())->test(Index::class)->html();
 
-        expect($html)->toContain(__('catalog.edited_yesterday', ['time' => '08:15']))
-            ->and($html)->toContain(__('catalog.edited_today', ['time' => $zone->forDisplay($today->fresh()->updated_at)->format('H:i')]));
+        expect($html)->toContain(__('admin.list.edited_yesterday', ['time' => '08:15']))
+            ->and($html)->toContain(__('admin.list.edited_today', ['time' => $zone->forDisplay($today->fresh()->updated_at)->format('H:i')]));
     });
 });
