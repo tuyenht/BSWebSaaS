@@ -230,11 +230,14 @@ it('reads the example code down the products index newest first and stops at the
         expect($page->exampleSku('vi'))->toBe('KHONG-NGAY')
             ->and($sent)->toHaveCount(2);
 
-        // each read's plan with a full read of the table ruled out: a limit over the newest-first products
-        // index, never a sort of every product
+        // each read's plan with a full read and a sort ruled out: the read can be answered by a limit over
+        // the newest-first products index (the planner's own pick on a nearly empty table varies between
+        // runs, so the test asks whether a sortless plan exists, not which plan it picks)
         foreach ($sent as $statement) {
             $plan = DB::transaction(function () use ($statement): array {
                 DB::statement('SET LOCAL enable_seqscan = off');
+                DB::statement('SET LOCAL enable_sort = off');
+                DB::statement('SET LOCAL enable_incremental_sort = off');
 
                 return json_decode((string) array_values((array) DB::selectOne('EXPLAIN (FORMAT JSON) '.$statement['sql'], $statement['bindings']))[0], true)[0]['Plan'];
             });
