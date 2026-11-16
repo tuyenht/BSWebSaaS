@@ -20,8 +20,10 @@ use Illuminate\Support\Facades\DB;
  * - Candidates come from the rarest word (its rows counted up to GATHER + 1 in one statement): when it
  *   has at most GATHER rows, all of them are ranked by the best field (title before short description),
  *   then newest; titles that hold the accented words typed come first. When even the rarest word is
- *   more common than that, the newest visible items are walked instead (at most EXAMINE of each kind
- *   per page, newest first, continued by a keyset on the publish time), and the counts say "at least".
+ *   more common than that, the newest visible items are walked instead (at most EXAMINE per page: the
+ *   posts and pages as one stream, the products as another, newest first, continued by a keyset on the
+ *   publish time; only the walked items are judged, so the cursor never passes one not yet examined),
+ *   and the counts say "at least".
  * - A category whose words hold every word typed (at most CATEGORY_MAX) brings its items and those of
  *   its subcategories, through the category pivots, ranked between a title and a short description.
  * - Only what a visitor may open: published, not in the Trash, publish time reached, a published
@@ -43,7 +45,7 @@ final class SiteSearch
     /** Most word rows of the rarest word whose items are all ranked (measured, see the class doc). */
     public const int GATHER = 1000;
 
-    /** Most items of one kind walked per page when even the rarest word is more common than GATHER (2,000 cost a common word about 30% more). */
+    /** Most items walked per page (posts and pages together; products) when even the rarest word is more common than GATHER (2,000 cost a common word about 30% more). */
     public const int EXAMINE = 1000;
 
     /** Rows a group shows on the first page. */
@@ -192,33 +194,32 @@ final class SiteSearch
             $keysetBindings = [$site, $after];
         }
 
-        // the candidates: the rarest word's items (or the newest items), and the matched categories' items
-        $parts = [];
+        // the candidates: the rarest word's items and the matched categories' items, or, walking, the newest
+        // posts and pages as ONE stream in one order (a matched category's items are judged inside it too:
+        // a candidate from outside the stream would move the cursor past items it never examined)
         if ($walk) {
-            $sql = 'with walked as (';
+            $streams = [];
             foreach (['post', 'page'] as $type) {
-                $parts[] = "(select e.id from entries e where e.site_id = ? and e.type = '{$type}' and e.deleted_at is null and e.status = 'published'"
+                $streams[] = "(select e.id, e.published_at from entries e where e.site_id = ? and e.type = '{$type}' and e.deleted_at is null and e.status = 'published'"
                     ." and e.published_at is not null{$keyset} order by e.published_at desc nulls last, e.id desc limit ?)";   // nulls last: a backward walk of the posts list index
                 $b = [...$b, $site, ...$keysetBindings, self::EXAMINE];
             }
-            $sql .= implode(' union all ', $parts).'), c as (select id from walked';
-            $parts = [];
+            // merged in order (a merge of the two ordered reads), the newest EXAMINE of both together
+            $sql = 'with c as (select s.id from ('.implode(' union all ', $streams).') as s order by s.published_at desc nulls last, s.id desc limit ?)';
+            $b[] = self::EXAMINE;
         } else {
-            $sql = 'with c as (';
+            $parts = [];
             if ($byWords) {
                 [$cond, $values] = $this->match('w.word', $q, $rarest);
                 $parts[] = "(select w.entry_id as id from entry_search_words w where w.site_id = ? and w.locale = ? and {$cond})";
                 $b = [...$b, $site, $locale, ...$values];
             }
-        }
-        if ($cats !== []) {
-            $parts[] = '(select p.entry_id as id from entry_taxonomies p where p.site_id = ? and p.taxonomy_id = any (?::bigint[]) limit ?)';
-            $b = [...$b, $site, self::pgInts($cats), self::GATHER];
-        }
-        if ($walk) {
-            $sql .= ($parts === [] ? '' : ' union '.implode(' union ', $parts)).')';
-        } else {
-            $sql .= implode(' union ', $parts).')';
+            if ($cats !== []) {
+                // the newest-made first, so the same rows are gathered on every page (no repeat, no skip)
+                $parts[] = '(select p.entry_id as id from entry_taxonomies p where p.site_id = ? and p.taxonomy_id = any (?::bigint[]) order by p.entry_id desc limit ?)';
+                $b = [...$b, $site, self::pgInts($cats), self::GATHER];
+            }
+            $sql = 'with c as ('.implode(' union ', $parts).')';
         }
 
         // the visible ones, with each word's best weight and the main category (materialized: the filter, the
@@ -303,27 +304,24 @@ final class SiteSearch
             $keysetBindings = [$site, $after];
         }
 
-        $parts = [];
         if ($walk) {
-            $sql = "with walked as (select p.id from products p where p.site_id = ? and p.status = 'published' and p.deleted_at is null"
-                ." and p.published_at is not null{$keyset} order by p.published_at desc, p.id desc limit ?), c as (select id from walked";
+            // the newest products only (a matched category's are judged inside the walk, as entries() does)
+            $sql = "with c as (select p.id from products p where p.site_id = ? and p.status = 'published' and p.deleted_at is null"
+                ." and p.published_at is not null{$keyset} order by p.published_at desc, p.id desc limit ?)";
             $b = [...$b, $site, ...$keysetBindings, self::EXAMINE];
         } else {
-            $sql = 'with c as (';
+            $parts = [];
             if ($byWords) {
                 [$cond, $values] = $this->match('w.word', $q, $rarest);
                 $parts[] = "(select w.product_id as id from product_site_words w where w.site_id = ? and w.locale = ? and {$cond})";
                 $b = [...$b, $site, $locale, ...$values];
             }
-        }
-        if ($cats !== []) {
-            $parts[] = '(select pc.product_id as id from product_taxonomies pc where pc.site_id = ? and pc.taxonomy_id = any (?::bigint[]) limit ?)';
-            $b = [...$b, $site, self::pgInts($cats), self::GATHER];
-        }
-        if ($walk) {
-            $sql .= ($parts === [] ? '' : ' union '.implode(' union ', $parts)).')';
-        } else {
-            $sql .= implode(' union ', $parts).')';
+            if ($cats !== []) {
+                // the newest-made first, so the same rows are gathered on every page (no repeat, no skip)
+                $parts[] = '(select pc.product_id as id from product_taxonomies pc where pc.site_id = ? and pc.taxonomy_id = any (?::bigint[]) order by pc.product_id desc limit ?)';
+                $b = [...$b, $site, self::pgInts($cats), self::GATHER];
+            }
+            $sql = 'with c as ('.implode(' union ', $parts).')';
         }
 
         $sql .= ', v as materialized (select p.id, p.ulid, p.published_at, t.name as title';

@@ -10,6 +10,7 @@ use App\Modules\Storefront\Search\SearchResult;
 use App\Modules\Storefront\Search\SearchText;
 use App\Modules\Storefront\Search\SiteSearch;
 use App\Modules\Tenancy\Context\Tenancy;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -217,6 +218,98 @@ it('walks the newest items when even the rarest word is more common than the gat
             ->and(array_map(fn (SearchHit $hit): int => $hit->id, $group->hits))->toBe(array_slice($ids, 0, 3));
         $next = app(SiteSearch::class)->more(SearchText::from('tin chung'), 'vi', SiteSearch::OTHER, $group->hits[2]->ulid)->groups[0];
         expect(array_map(fn (SearchHit $hit): int => $hit->id, $next->hits))->toBe(array_slice($ids, 3, 10));
+    });
+});
+
+/**
+ * Bulk-insert entries of site 1 (type, status, publish time each), with a published 'vi' title when one is
+ * given and the stored words $words for those with a title; returns their ids in the order given.
+ *
+ * @param  list<array{0: string, 1: string, 2: CarbonInterface, 3: ?string}>  $rows  type, status, publish time, title
+ * @param  list<string>  $words
+ * @return list<int>
+ */
+function searchBulkEntries(array $rows, array $words = []): array
+{
+    $ids = [];
+    foreach (array_chunk($rows, 500) as $chunk) {
+        foreach ($chunk as [$type, $status, $at, $title]) {
+            $ids[] = (int) DB::table('entries')->insertGetId(['site_id' => 1, 'ulid' => (string) Str::ulid(), 'type' => $type, 'status' => $status, 'published_at' => $at, 'meta' => '{}', 'created_at' => now(), 'updated_at' => now()]);
+        }
+    }
+    $translations = [];
+    $wordRows = [];
+    foreach ($rows as $i => [, , , $title]) {
+        if ($title === null) {
+            continue;
+        }
+        $translations[] = ['site_id' => 1, 'entry_id' => $ids[$i], 'locale' => 'vi', 'title' => $title, 'slug' => 'muc-'.$ids[$i], 'status' => 'published', 'body' => '{}', 'created_at' => now(), 'updated_at' => now()];
+        foreach ($words as $word) {
+            $wordRows[] = ['site_id' => 1, 'locale' => 'vi', 'word' => $word, 'entry_id' => $ids[$i], 'weight' => 1];
+        }
+    }
+    foreach (array_chunk($translations, 500) as $chunk) {
+        DB::table('entry_translations')->insert($chunk);
+    }
+    foreach (array_chunk($wordRows, 1000) as $chunk) {
+        DB::table('entry_search_words')->insert($chunk);
+    }
+
+    return $ids;
+}
+
+it('walks the posts and pages as one stream, so continuing never passes over an item not yet examined', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        // drafts carry the words too: the rarest word is more common than the gather cap, so the newest are walked
+        searchBulkEntries(array_fill(0, SiteSearch::GATHER + 1, ['post', 'draft', now()->subYear(), 'Tin chung nháp']), ['tin', 'chung']);
+        // the newest EXAMINE posts of the last month: four match (the three newest, one near the end), the rest do not
+        $posts = [];
+        foreach (range(1, SiteSearch::EXAMINE + 5) as $n) {
+            $matches = in_array($n, [1, 2, 3, SiteSearch::EXAMINE - 5], true) || $n > SiteSearch::EXAMINE;
+            $posts[] = ['post', 'published', now()->subMinutes(40 * $n), $matches ? "Tin chung số {$n}" : null];
+        }
+        $postIds = searchBulkEntries($posts, ['tin', 'chung']);
+        // older pages that match
+        $pageIds = searchBulkEntries(array_map(fn (int $n): array => ['page', 'published', now()->subDays(100 + $n), "Tin chung trang {$n}"], range(1, 12)), ['tin', 'chung']);
+        $matching = [...array_values(array_filter($postIds, fn (int $id, int $i): bool => $posts[$i][3] !== null, ARRAY_FILTER_USE_BOTH)), ...$pageIds];
+
+        $search = app(SiteSearch::class);
+        $q = SearchText::from('tin chung');
+        $first = $search->overview($q, 'vi')->groups[0];
+        $shown = array_map(fn (SearchHit $hit): int => $hit->id, $first->hits);
+        $cursor = $first->more ? $first->hits[count($first->hits) - 1]->ulid : null;
+        for ($round = 0; $cursor !== null && $round < 10; $round++) {
+            $next = $search->more($q, 'vi', SiteSearch::OTHER, $cursor)->groups[0] ?? null;
+            $hits = $next === null ? [] : $next->hits;
+            $shown = [...$shown, ...array_map(fn (SearchHit $hit): int => $hit->id, $hits)];
+            $cursor = $next !== null && $next->more ? $hits[count($hits) - 1]->ulid : null;
+        }
+
+        expect($first->capped)->toBeTrue()
+            ->and(array_slice($shown, 0, 3))->toBe(array_slice($postIds, 0, 3))
+            // whatever was shown is the matching items newest first with none passed over on the way
+            ->and($shown)->toBe(array_slice($matching, 0, count($shown)))
+            ->and(count($shown))->toBeGreaterThan(3);
+    });
+});
+
+it('gathers the same rows of a big matched category on every page, so two pages never repeat or skip one', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $robots = searchCategory('Robot hàn');
+        $ids = searchBulkEntries(array_map(fn (int $n): array => ['post', 'published', now()->subDays(3000)->addMinutes($n), "Bài số {$n}"], range(1, SiteSearch::GATHER + 5)));
+        foreach (array_chunk($ids, 500) as $chunk) {
+            DB::table('entry_taxonomies')->insert(array_map(fn (int $id): array => ['site_id' => 1, 'entry_id' => $id, 'taxonomy_id' => $robots->id, 'position' => 0, 'created_at' => now(), 'updated_at' => now()], $chunk));
+        }
+        $newest = array_reverse($ids);
+
+        $search = app(SiteSearch::class);
+        $q = SearchText::from('robot han');
+        $first = $search->overview($q, 'vi')->groups[0];
+        $next = $search->more($q, 'vi', 'c'.$robots->id, $first->hits[2]->ulid)->groups[0];
+
+        expect($first->key)->toBe('c'.$robots->id)
+            ->and(array_map(fn (SearchHit $hit): int => $hit->id, $first->hits))->toBe(array_slice($newest, 0, 3))
+            ->and(array_map(fn (SearchHit $hit): int => $hit->id, $next->hits))->toBe(array_slice($newest, 3, SiteSearch::PAGE));
     });
 });
 

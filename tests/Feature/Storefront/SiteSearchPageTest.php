@@ -181,6 +181,29 @@ it('says nothing was found, with tips, the main groups and the site’s main act
         ->not->toContain('Bớt từ');
 });
 
+it('takes the example product code only from a product a visitor of the page may see, the newest dated first', function (): void {
+    spSite(1);
+    app(Tenancy::class)->enter(1, function (): void {
+        $make = function (string $sku, ?CarbonInterface $at, array $locales = ['vi']): Product {
+            $product = Product::query()->create(['status' => 'published', 'sku' => $sku, 'published_at' => $at]);
+            foreach ($locales as $locale) {
+                $product->translations()->create(['locale' => $locale, 'name' => 'Hàng '.$sku, 'slug' => strtolower($sku)]);
+            }
+
+            return $product;
+        };
+        $make('AV-CU-01', now()->subDays(2));
+        $make('KHONG-NGAY', null);                       // no date: after every dated one
+        $make('HEN-GIO', now()->addDay());               // scheduled: not on the website yet
+        $make('CHI-EN', now()->subHour(), ['en']);       // no translation in the page's language
+        $make('THUNG-RAC', now()->subMinute())->delete();
+    });
+
+    $html = $this->get('http://a.test/tim-kiem?q=khong-co-gi')->assertOk()->getContent();
+    expect($html)->toContain('<li>Tìm theo mã sản phẩm, ví dụ AV-CU-01.</li>')
+        ->not->toContain('HEN-GIO')->not->toContain('KHONG-NGAY')->not->toContain('CHI-EN')->not->toContain('THUNG-RAC');
+});
+
 it('shows the page with its box and the main groups when nothing or one letter is typed', function (string $typed): void {
     spSite(1);
 
@@ -242,6 +265,20 @@ it('serves the page in every public language under its prefix, and the default l
     $this->get('http://a.test/ko/tim-kiem?q=khuon')->assertNotFound();
     // the header and the 404 page link to the search page of the page's language
     expect($this->get('http://a.test/en/khong-co')->getContent())->toContain('href="/en/tim-kiem"');
+});
+
+it('serves an ordinary nested address whose first part is no language of the site, and the search under a public one', function (): void {
+    spSite(1);
+    DB::connection('pgsql_admin')->table('site_locales')->insert(['site_id' => 1, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'is_public' => true, 'created_at' => now(), 'updated_at' => now()]);
+    app(Tenancy::class)->enter(1, function (): void {
+        // a post under a two-letter category ("tv"), its address /tv/tim-kiem
+        $post = spPost('Tìm kiếm tài năng trên TV', 'Bài trong mục TV', slug: 'tim-kiem-tv');
+        SiteRoute::query()->where('entry_id', $post->id)->update(['path' => '/tv/tim-kiem']);
+    });
+
+    expect($this->get('http://a.test/tv/tim-kiem')->assertOk()->getContent())->toContain('Tìm kiếm tài năng trên TV')->not->toContain('class="sf-search')
+        ->and($this->get('http://a.test/en/tim-kiem')->assertOk()->getContent())->toContain('class="sf-search');
+    $this->get('http://a.test/hn/tim-kiem')->assertNotFound();
 });
 
 it('reserves the search address: no content may take /tim-kiem', function (): void {
@@ -360,4 +397,14 @@ it('puts the magnifier before the call in the phone corner when there is no bott
             ->and(str_contains($cell[1], 'sf-sbtn--corner"'))->toBe($magnifier, $corner)
             ->and($cell[1])->not->toContain('sf-bar__call');
     }
+});
+
+it('gives a phone header corner button a 44px hit area on touch even where the root is 15px, growing with a larger text size', function (): void {
+    // measured in headless Chrome at 320 and 390 with a 15px root (a phone's smallest): 41.25px before, 44px after
+    $css = (string) file_get_contents(resource_path('css/storefront.css'));
+    $rule = "@media (any-pointer: coarse) {\n    .sf-bar__corner > :is(.sf-sbtn, .sf-bar__call) {\n        width: max(44px, 2.75rem);\n        height: max(44px, 2.75rem);\n    }\n}";
+
+    expect($css)->toContain($rule)
+        // the phone pair's own fixed 44px comes later, so it still wins there
+        ->and(strpos($css, $rule))->toBeLessThan(strpos($css, '.sf-bar__inner--pair :is(.sf-sbtn, .sf-bar__call) {'));
 });

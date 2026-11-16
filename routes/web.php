@@ -440,8 +440,8 @@ Route::prefix(config('admin.prefix', 'admin'))
     });
 
 // ── The site search page (SearchController): the default language unprefixed, every other public
-//    language under its prefix (an unknown one is the site's 404, the default's prefix a 301 to the
-//    unprefixed address). The storefront's own middleware, so a site that is not open shows its state
+//    language under its prefix (the default's prefix a 301 to the unprefixed address; a first part that
+//    is no public language is an ordinary address the storefront serves, e.g. a post under /tv/). The storefront's own middleware, so a site that is not open shows its state
 //    page here too; its slug is reserved, so no content can take the address (PathBuilder). ─────────
 $storefrontSearch = [
     StorefrontSession::class, ServeOnPrimaryDomain::class, SetCurrentSite::class, ShowSiteStatePage::class,

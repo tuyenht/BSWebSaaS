@@ -10,6 +10,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Storefront\Support\ListPage;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Theme\Rendering\TemplateCatalog;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\JoinClause;
 use Illuminate\Support\Facades\DB;
@@ -174,12 +175,16 @@ final readonly class SearchPage
     }
 
     /**
-     * The newest published product code of the site, the no-results page's example (null: none).
+     * The newest product code a visitor of the page may see, the no-results page's example (null: none):
+     * the same rule as the search (published, not in the Trash, publish time reached, a translation in
+     * the page's language), never a scheduled product's code.
      */
-    public function exampleSku(): ?string
+    public function exampleSku(string $locale): ?string
     {
         $sku = Product::query()->where('status', 'published')->whereNotNull('sku')->where('sku', '<>', '')
-            ->orderByDesc('published_at')->orderByDesc('id')->value('sku');
+            ->where(fn (Builder $query) => $query->whereNull('published_at')->orWhere('published_at', '<=', now()))
+            ->whereHas('translations', fn (Builder $query) => $query->where('locale', $locale))
+            ->orderByRaw('published_at desc nulls last')->orderByDesc('id')->value('sku');
 
         return is_string($sku) && trim($sku) !== '' ? trim($sku) : null;
     }

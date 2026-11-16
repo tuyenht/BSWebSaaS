@@ -24,6 +24,8 @@ use Symfony\Component\HttpFoundation\Response;
  * The site search page, `/tim-kiem?q=…` (`/{locale}/tim-kiem` for a language other than the site's
  * default): the box with the words searched for, then the results in groups (SearchPage), or the
  * "nothing found" help, or, with nothing (or one letter) typed, the box and the site's main groups.
+ * `/{xx}/tim-kiem` whose first part is not a public language of the site is an ordinary address (a post
+ * under a two-letter category, a child page) and goes to the storefront's own handler.
  * A group's "Xem thêm" link (`nhom`, `sau`) shows that group's next rows. While the site has search
  * switched off the address is the site's own 404 page.
  *
@@ -66,9 +68,9 @@ final readonly class SearchController
                 return redirect()->to(PathBuilder::SEARCH_PATH.($query === null || $query === '' ? '' : '?'.$query), 301);
             }
             if (! $this->locale->isPublic($locale)) {
-                app()->setLocale($default);
-
-                return $this->private($this->notFoundPage->respond($this->pageChrome->for($default, $default, strtolower('/'.$request->path()), [])));
+                // not a language of the site: an ordinary address (a post under a two-letter category, a
+                // child page), served by the storefront like any other path
+                return app(StorefrontController::class)($request);
             }
         }
         $locale ??= $default;
@@ -112,7 +114,7 @@ final readonly class SearchController
             'query' => $q->text,
             'results' => $results,
             'quick' => $quick,
-            'tips' => $empty ? $this->tips($q) : [],
+            'tips' => $empty ? $this->tips($q, $locale) : [],
             'cta' => $empty ? self::mainAction($chrome) : null,
         ];
 
@@ -128,7 +130,7 @@ final readonly class SearchController
      *
      * @return list<string>
      */
-    private function tips(SearchText $q): array
+    private function tips(SearchText $q, string $locale): array
     {
         $typed = explode(' ', $q->text);
         $tips = [];
@@ -136,7 +138,7 @@ final readonly class SearchController
             $tips[] = __('storefront.search.tip_fewer', ['words' => implode(' ', array_slice($typed, 0, intdiv(count($typed) + 1, 2)))]);
         }
         $tips[] = __('storefront.search.tip_spelling');
-        $sku = $this->page->exampleSku();
+        $sku = $this->page->exampleSku($locale);
         if ($sku !== null) {
             $tips[] = __('storefront.search.tip_sku', ['sku' => $sku]);
         }

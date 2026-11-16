@@ -977,6 +977,16 @@ html:has(.sf-header--sticky) {
     }
 }
 
+/* Touch screens: a corner button reaches 44px even where the root is smaller (a phone starts from 15px,
+   a tablet from the site's own size), and grows with a larger text size as before. The phone pair's own
+   44px rule below comes later and still applies there. */
+@media (any-pointer: coarse) {
+    .sf-bar__corner > :is(.sf-sbtn, .sf-bar__call) {
+        width: max(44px, 2.75rem);
+        height: max(44px, 2.75rem);
+    }
+}
+
 @media (min-width: 1024px) {
     .sf-header:not(.sf-header--menu-xl) .sf-bar__inner--drawer {
         display: flex;
