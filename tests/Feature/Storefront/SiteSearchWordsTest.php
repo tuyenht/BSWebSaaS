@@ -9,6 +9,8 @@ use App\Modules\Cms\Support\EntrySearchWords;
 use App\Modules\Cms\Support\TaxonomySearchWords;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Shared\Support\SiteSearchWords;
+use App\Modules\Shared\Support\VietnameseFold;
 use App\Modules\Storefront\Console\RebuildSiteSearchWords;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Database\QueryException;
@@ -40,6 +42,37 @@ function siteWordsPost(string $title, ?string $excerpt = null, string $body = ''
 
     return $entry;
 }
+
+it('stores the same words as before the visitor-order split was added: words() is sequence() sorted', function (string $text, array $stored): void {
+    // The split as it was written before sequence() existed, kept here to prove the stored words did not change.
+    $before = static function (string $text): array {
+        $parts = preg_split('/[^\p{L}\p{M}\p{N}]+/u', VietnameseFold::text($text), -1, PREG_SPLIT_NO_EMPTY);
+        if ($parts === false) {
+            return [];
+        }
+        $words = array_values(array_unique(array_map(fn (string $word): string => mb_substr($word, 0, SiteSearchWords::MAX_LENGTH), $parts)));
+        sort($words, SORT_STRING);
+
+        return $words;
+    };
+
+    $sorted = SiteSearchWords::sequence($text);
+    sort($sorted, SORT_STRING);
+
+    expect(SiteSearchWords::words($text))->toBe($stored)->toBe($before($text))->toBe($sorted);
+})->with([
+    'accents and repeats' => ['Khuôn mẫu ĐÚC khuôn, mẫu', ['duc', 'khuon', 'mau']],
+    'codes and digits' => ['Đồ gá CNC-5 trục (SKU AV-0012)', ['0012', '5', 'av', 'cnc', 'do', 'ga', 'sku', 'truc']],
+    'a word past the length cap' => [str_repeat('a', 70).' b', [str_repeat('a', 64), 'b']],
+    'nothing to index' => ['  — … ', []],
+    'bytes that are not UTF-8' => ["\xC3\x28 khuon", ['khuon']],
+]);
+
+it('keeps the order the visitor typed in sequence(), each word once at its first place', function (): void {
+    expect(SiteSearchWords::sequence('Mẫu khuôn mẫu đúc'))->toBe(['mau', 'khuon', 'duc'])
+        ->and(SiteSearchWords::sequence(null))->toBe([])
+        ->and(SiteSearchWords::sequence(''))->toBe([]);
+});
 
 it('folds the words and weighs a word of the title 1 and one only in the short description 3', function (): void {
     expect(EntrySearchWords::of('Khuôn Mẫu', null))->toBe(['khuon' => 1, 'mau' => 1])

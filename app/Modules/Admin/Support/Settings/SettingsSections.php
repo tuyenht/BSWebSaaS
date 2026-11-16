@@ -40,10 +40,11 @@ final class SettingsSections
             'profile' => ['logo_media_id' => null, 'logo_dark_media_id' => null, 'favicon_media_id' => null, 'og_image_media_id' => null],
             'brand_keys' => ['logo', 'favicon', 'og_image'],
         ],
-        // "Giao diện website": the logo, its dark twin and the favicon (the share image belongs to "seo"), and the
-        // phone menu's tone and accent, two keys of the header setting (the rest of the header is other screens').
+        // "Giao diện website": the logo, its dark twin and the favicon (the share image belongs to "seo"), and
+        // "Có tìm kiếm" with the phone menu's tone and accent, three keys of the header setting (the rest of the
+        // header is other screens'). Without the `search` key the site search is on, its default.
         'appearance' => [
-            'keys' => [['storefront', 'header', ['drawer_tone', 'drawer_accent']]],
+            'keys' => [['storefront', 'header', ['search', 'drawer_tone', 'drawer_accent']]],
             'profile' => ['logo_media_id' => null, 'logo_dark_media_id' => null, 'favicon_media_id' => null],
             'brand_keys' => ['logo', 'favicon'],
         ],

@@ -426,3 +426,85 @@ if (beacon) {
     const idle = () => (window.requestIdleCallback ? requestIdleCallback(add, { timeout: 4000 }) : setTimeout(add, 2000));
     document.readyState === 'complete' ? idle() : addEventListener('load', idle, { once: true });
 }
+
+// Site search panel: every magnifier is a link to the search page that becomes the button opening the
+// panel under the header. Focus goes to the field; Esc, the ✕ or a click on the dimmed page closes it
+// and focus goes back to the button that opened it. The panel follows the header's bottom edge while
+// open (a sticky header moves as the top bar scrolls away).
+const searchPanel = document.querySelector('[data-search-panel]');
+if (searchPanel) {
+    const header = searchPanel.closest('header');
+    const openers = document.querySelectorAll('[data-search-open]');
+    let opener = null;
+    const place = () => searchPanel.style.setProperty('--sf-spanel-top', `${Math.max(0, header.getBoundingClientRect().bottom)}px`);
+    const setSearch = (open, from = null, returnFocus = true) => {
+        if (open) {
+            opener = from;
+            place();
+        }
+        searchPanel.hidden = !open;
+        openers.forEach((el) => el.setAttribute('aria-expanded', open && el === opener ? 'true' : 'false'));
+        if (open) {
+            searchPanel.querySelector('[data-search-input]').focus();
+            addEventListener('scroll', place, { passive: true });
+        } else {
+            removeEventListener('scroll', place);
+            if (returnFocus) {
+                opener?.focus();
+            }
+        }
+    };
+    openers.forEach((el) => {
+        el.setAttribute('role', 'button');
+        el.setAttribute('aria-expanded', 'false');
+        el.setAttribute('aria-haspopup', 'dialog');
+        el.addEventListener('click', (event) => {
+            event.preventDefault();
+            setSearch(searchPanel.hidden, el);
+        });
+    });
+    searchPanel.querySelectorAll('[data-search-close]').forEach((el) => el.addEventListener('click', () => setSearch(false)));
+    // a click anywhere outside the box (the dimmed page or the header) closes it; so does moving focus out of it
+    document.addEventListener('click', (event) => {
+        if (!searchPanel.hidden && !event.target.closest('.sf-spanel__box, [data-search-open]')) {
+            setSearch(false);
+        }
+    });
+    searchPanel.addEventListener('focusout', (event) => {
+        const to = event.relatedTarget;
+        if (to && !searchPanel.contains(to) && !to.closest('[data-search-open]')) {
+            setSearch(false, null, false);
+        }
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !searchPanel.hidden) {
+            setSearch(false);
+        }
+    });
+}
+
+// Search results: "Xem thêm" is a link to the next rows of its group (it works without this script);
+// here the next rows are fetched and added under the group's rows, and the link moves on.
+document.addEventListener('click', (event) => {
+    const more = event.target.closest('[data-search-more]');
+    if (!more || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) {
+        return;
+    }
+    event.preventDefault();
+    const rows = more.closest('[data-search-group]').querySelector('[data-search-rows]');
+    more.setAttribute('aria-busy', 'true');
+    fetch(more.href, { headers: { Accept: 'text/html' } })
+        .then((response) => (response.ok ? response.text() : Promise.reject(response.status)))
+        .then((html) => {
+            const page = new DOMParser().parseFromString(html, 'text/html');
+            const group = page.querySelector('[data-search-group]');
+            const added = group ? Array.from(group.querySelectorAll('[data-search-rows] > li')) : [];
+            rows.append(...added);
+            added[0]?.querySelector('a')?.focus();
+            const next = group?.querySelector('[data-search-more]');
+            next ? more.replaceWith(next) : more.remove();
+        })
+        .catch(() => {
+            window.location.href = more.href;
+        });
+});

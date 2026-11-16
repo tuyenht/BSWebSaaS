@@ -122,7 +122,7 @@ it('links the contact button to the site’s contact page, named after the site,
         ->and(substr_count($html, 'class="sf-404__btn'))->toBe(2);
 });
 
-it('suggests at most five links next to the home and contact buttons, and no search box', function (): void {
+it('suggests at most five links next to the home and contact buttons, under the site search box', function (): void {
     notFoundContactPage(1);
     app(Tenancy::class)->enter(1, function (): void {
         $menu = Menu::query()->firstOrFail();
@@ -140,7 +140,8 @@ it('suggests at most five links next to the home and contact buttons, and no sea
         ->and($list[1] ?? '')->toContain('Ấn phẩm hè')->toContain('Ba')->not->toContain('Bốn')
         ->and(substr_count($html, 'class="sf-404__btn'))->toBe(2)
         ->and($html)->toContain('Liên hệ Ánh Kim Hà</a>')
-        ->not->toContain('role="search"');
+        ->toMatch('~<div class="sf-404__search">\s*<form class="sf-sform" role="search" action="/tim-kiem" method="get">~')
+        ->and(strpos($html, 'class="sf-404__search"'))->toBeLessThan(strpos($html, 'sf-404__btn--home'));
 });
 
 it('keeps the 404 page out of search engines, with no address, share tags or alternates of its own', function (): void {

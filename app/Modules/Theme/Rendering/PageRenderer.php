@@ -587,6 +587,24 @@ final readonly class PageRenderer
     }
 
     /**
+     * Render the site search page (theme::layouts.search) in the site's header, footer and tokens: the
+     * search box, then the results in groups, the "nothing found" help, or the main groups for a search
+     * with nothing typed. The <title> runs through the site's title template; the head carries the
+     * robots line the caller set (`noindex, follow`; a hidden site keeps its stricter one) and no
+     * canonical, share tags or JSON-LD (notFound), since a results page is never a page to index.
+     *
+     * @param  array<string, mixed>  $extra  the page chrome and what SearchController found
+     */
+    public function renderSearch(string $title, array $extra = []): string
+    {
+        return BlockStyles::narrow($this->views->make('theme::layouts.search', $this->head([], $title, $extra) + [
+            'title' => $title,
+            'tokens' => $this->theme->cssVariables(),
+            'notFound' => true,
+        ] + $extra)->render());
+    }
+
+    /**
      * Render a page with nothing of the site's content to show — the 404 page, or the page of a
      * site that is not open — on its own layout (theme::layouts.not-found), in the same header,
      * footer and tokens as every page. The <title> runs through the site's title template like any
