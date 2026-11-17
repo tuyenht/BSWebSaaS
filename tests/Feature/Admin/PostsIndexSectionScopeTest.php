@@ -7,7 +7,6 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
-use Illuminate\Support\Js;
 use Livewire\Livewire;
 
 /*
@@ -170,19 +169,19 @@ it('leaves a sub-category another section is built on to that section', function
     });
 });
 
-it('asks to move "this post" to the trash on a posts list, never "this page"', function (): void {
+it('counts "posts" moved to the trash on a posts list, never "pages"', function (): void {
     $user = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
         grantRole($user, 'editor', ['entries.view', 'entries.delete.any']);
 
         $news = makeSection('posts', 'Tin tức', 'Tin tức', 'tin-tuc');
-        makeSectionPost($user, 'Tin để bỏ', 'tin-de-bo', (int) $news->taxonomy_id);
+        $one = makeSectionPost($user, 'Tin để bỏ', 'tin-de-bo', (int) $news->taxonomy_id);
+        $two = makeSectionPost($user, 'Tin cũ', 'tin-cu', (int) $news->taxonomy_id);
 
-        $html = Livewire::actingAs($user->fresh())->test(Index::class, ['section' => 'posts'])->html();
-
-        expect($html)->toContain(Js::from(__('entries.trash_confirm', ['noun' => __('entries.noun_post')]))->toHtml())
-            ->and($html)->not->toContain(Js::from(__('entries.trash_confirm', ['noun' => __('entries.noun_page')]))->toHtml())
-            ->and(__('entries.trash_confirm', ['noun' => __('entries.noun_post', [], 'vi')], 'vi'))->toBe('Chuyển bài viết này vào thùng rác?');
+        Livewire::actingAs($user->fresh())->test(Index::class, ['section' => 'posts'])
+            ->call('trash', $one->ulid)->call('trash', $two->ulid)
+            ->assertSet('toastMsg', __('entries.trashed_many', ['count' => 2, 'noun' => __('entries.noun_post')]));
+        expect(__('entries.trashed_many', ['count' => 2, 'noun' => __('entries.noun_post', [], 'vi')], 'vi'))->toBe('Đã chuyển 2 bài viết vào Thùng rác');
     });
 });

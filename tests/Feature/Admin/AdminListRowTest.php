@@ -393,7 +393,8 @@ describe('the posts and pages list on the shared row', function (): void {
                 ->assertSee('Chỉ xem')
                 ->assertDontSeeHtml('class="list-qe"')
                 ->assertDontSeeHtml(e(__('admin.list.more_for', ['name' => 'Chỉ xem'])))
-                ->assertDontSeeHtml('$wire.trash(');
+                ->assertDontSeeHtml('$wire.trash(')
+                ->assertDontSeeHtml('wire:click="trash(');
         });
     });
 

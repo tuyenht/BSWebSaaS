@@ -10,6 +10,11 @@ return [
         'days' => (int) env('CMS_REVISIONS_DAYS', 90),
     ],
 
+    // Days a post or page stays in the Trash before the daily entries:purge-trash deletes it for
+    // good, with its translations, addresses, versions and category links (at least 1). The list
+    // tells each trashed row the days it has left, and the guide names the same number.
+    'trash_retention_days' => (int) env('CMS_TRASH_RETENTION_DAYS', 30),
+
     // sitemap.xml (sitemaps.org caps one file at 50,000 URLs). A site with more listed routes
     // gets a <sitemapindex> of /sitemap-{n}.xml keyset pages; their start cursors are cached per
     // site for `plan_ttl` seconds (at least 60), so a page can lag new content by up to that long.

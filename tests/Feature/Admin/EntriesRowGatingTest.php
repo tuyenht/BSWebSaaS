@@ -144,7 +144,7 @@ it('offers a full-access owner every row action on every row', function (): void
         expect($list->html())->toContain("changeStatus('{$theirs->ulid}', 'published')")
             ->and($list->html())->not->toContain("'pending')");
 
-        $list->call('trash', $theirs->ulid)->assertOk()->assertDispatched('bs-toast', text: __('entries.trashed'));
+        $list->call('trash', $theirs->ulid)->assertOk()->assertSet('toastMsg', __('entries.trashed_one', ['name' => 'Bài của đồng nghiệp']));
     });
 
     expect(rgTrashed($theirs))->toBeTrue();
@@ -272,7 +272,7 @@ it('gives a submit-only member «Gửi duyệt» on their draft, in the status m
 
         // the bulk bar: «Gửi duyệt», which sends their drafts and skips the rest
         $list->set('selected', [$second->ulid, $theirs->ulid])
-            ->assertSeeHtml('wire:click="bulkPublish"')
+            ->assertSeeHtml('data-bulk="send"')
             ->assertDontSee(__('entries.bulk_publish'))
             ->call('bulkPublish')
             ->assertDispatched('bs-toast', text: __('entries.bulk_sent', ['count' => 1]).' '.__('entries.bulk_skipped', ['count' => 1]));
