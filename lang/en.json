@@ -5561,7 +5561,6 @@
     "guide.ui.offer_text": "Take the guide: about 1 minute, matched to your permissions.",
     "guide.ui.offer_later": "Later",
     "guide.ui.offer_now": "Show me now",
-    "guide.ui.list_sep": ", ",
     "guide.list.sep": ", ",
     "guide.list.and": " and ",
     "guide.list.or": " or ",

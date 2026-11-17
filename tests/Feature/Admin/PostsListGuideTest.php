@@ -162,7 +162,7 @@ it('prints the button with its name, and the guide in each admin language withou
 
     app()->setLocale($locale);
     foreach (Guide::ui() as $key => $text) {
-        expect($text)->toBe($lines['guide.ui.'.$key]);
+        expect($text)->toBe($lines[$key === 'list_sep' ? 'guide.list.sep' : 'guide.ui.'.$key]);
     }
 })->with(['vi', 'en', 'ja', 'zh']);
 

@@ -427,6 +427,7 @@
     line-height: 1.5;
     text-align: left;
     white-space: normal;
+    touch-action: none;
     animation: bg-offer-in 0.18s ease-out;
 }
 
@@ -448,6 +449,8 @@
     min-height: 0;
     overflow: auto;
     overflow-wrap: anywhere;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
 }
 
 .bg-offer b {

@@ -301,3 +301,36 @@ test('a tour opens the put-away role card for its first step and closes it again
     copy.remove();
     live.hidden = false;
 });
+
+test('another dialog the page opens: the bubble steps aside and focus stays in that dialog', () => {
+    localStorage.clear();
+    g.offer();
+    assert.ok(g.state().offer);
+    const other = document.createElement('div');
+    other.setAttribute('role', 'dialog');
+    other.innerHTML = '<input id="other-in">';
+    document.body.append(other);
+    const input = other.querySelector('input');
+    input.focus();
+    assert.equal(document.activeElement, input); // the trap does not pull it back
+    document.dispatchEvent(new window.Event('scroll'));
+    assert.equal(g.state().offer, null);
+    assert.equal(document.activeElement, input); // and «Hướng dẫn» does not take it
+    other.remove();
+});
+
+test('while the bubble is open the keys that scroll the page do nothing, and Space still presses its button', () => {
+    localStorage.clear();
+    g.offer();
+    for (const key of [' ', 'PageDown', 'PageUp', 'ArrowDown', 'ArrowUp', 'Home', 'End']) {
+        const ev = new window.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+        document.body.dispatchEvent(ev);
+        assert.ok(ev.defaultPrevented, key);
+    }
+    g.state().offer.querySelector('.bg-prev').focus();
+    const sp = new window.KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
+    document.activeElement.dispatchEvent(sp);
+    assert.equal(sp.defaultPrevented, false);
+    esc();
+    assert.equal(g.state().offer, null);
+});

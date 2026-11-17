@@ -116,7 +116,7 @@ final class Guide
         foreach (['heading', 'close', 'close_tip', 'role', 'part', 'steps', 'steps_one', 'seen', 'show', 'show_named', 'run', 'run_one',
             'exit', 'exit_tip', 'back', 'prev', 'prev_aria', 'next', 'next_aria', 'done', 'next_part', 'count', 'count_intro', 'title_sep', 'quote',
             'offer_title', 'offer_title_changed', 'offer_changed', 'offer_text', 'offer_later', 'offer_now', 'list_sep'] as $k) {
-            $ui[$k] = Cast::string(__('guide.ui.'.$k));
+            $ui[$k] = Cast::string(__($k === 'list_sep' ? 'guide.list.sep' : 'guide.ui.'.$k));
         }
 
         return $ui;

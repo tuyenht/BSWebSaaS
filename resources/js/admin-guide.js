@@ -1253,7 +1253,12 @@ function placeOffer() {
         return;
     }
     const l = openBtn();
-    if (offerBlocked() || !l || !inView(l.getBoundingClientRect())) {
+    if (offerBlocked()) {
+        // another dialog took the screen: step aside and leave focus where that dialog put it
+        hideOffer(true);
+        return;
+    }
+    if (!l || !inView(l.getBoundingClientRect())) {
         hideOffer();
         return;
     }
@@ -1411,7 +1416,8 @@ export function offer() {
 document.addEventListener(
     'focusin',
     (e) => {
-        if (offerEl && e.target instanceof Element && !offerEl.contains(e.target)) {
+        // a dialog the page opens itself keeps the focus it took
+        if (offerEl && e.target instanceof Element && !offerEl.contains(e.target) && !e.target.closest('[role=dialog],[role=alertdialog],[aria-modal=true]')) {
             try {
                 offerEl.focus({ preventScroll: true });
             } catch {
@@ -1470,6 +1476,7 @@ function roleBar(mode) {
     }, 300);
 }
 
+const SCROLL_KEYS = [' ', 'PageDown', 'PageUp', 'ArrowDown', 'ArrowUp', 'Home', 'End'];
 // The first-visit bubble holds the keyboard: Esc is «Để sau», Tab goes round its two buttons and no key
 // reaches the page. Otherwise Esc leaves the card, else closes the drawer; Tab stays inside the open drawer.
 document.addEventListener(
@@ -1488,6 +1495,10 @@ document.addEventListener(
                 const i = bs.indexOf(document.activeElement);
                 bs[i < 0 ? (e.shiftKey ? 1 : 0) : (i + 1) % 2].focus();
                 return;
+            }
+            // the keys that scroll the page would move «Hướng dẫn» out of view (a button keeps Space: it presses it)
+            if (SCROLL_KEYS.includes(e.key) && !(e.key === ' ' && document.activeElement instanceof Element && document.activeElement.tagName === 'BUTTON')) {
+                e.preventDefault();
             }
             if (!offerEl.contains(document.activeElement)) {
                 e.preventDefault();
