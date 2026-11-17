@@ -23,7 +23,8 @@
     // page, plus $refresh). While one of them is out the rows are covered by the loading rows of the
     // design (no shift: the cover stands over the rows' own room); one that does not come back gives
     // way to «Chưa tải được danh sách … Thử lại» (Alpine.data 'bsListState', resources/js/admin-list-state.js),
-    // which stays until a request of the list succeeds. Nothing is redrawn on a failure, so what the
+    // which stays until a request of the list succeeds (the page's own count line listens for the event
+    // 'bs-list-failed' and hides while it shows, so it never states counts of rows that are no longer shown). Nothing is redrawn on a failure, so what the
     // member typed stays in its fields; «Thử lại» sends the failed request again.
     // Sizes live in the stylesheet only.
     $busyTargets = $busy === null ? [] : array_values(array_filter(array_map('trim', explode(',', $busy))));
@@ -52,6 +53,6 @@
                 <div class="list-skr"><span class="list-sk list-sk-1"></span><span class="list-sk list-sk-2"></span><span class="list-sk list-sk-3"></span></div>
             @endfor
         </div>
-        <p wire:loading.delay.short wire:target="{{ implode(',', $busyTargets) }}" class="sr-only" role="status">{{ __('admin.list.loading') }}</p>
+        <p class="sr-only" role="status"><span wire:loading.delay.short wire:target="{{ implode(',', $busyTargets) }}">{{ __('admin.list.loading') }}</span></p>
     @endif
 </div>

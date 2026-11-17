@@ -212,6 +212,8 @@ describe('loading and a request that fails', function (): void {
                 ->and($html)->toContain('class="list-busy hidden"')
                 ->and($html)->toContain('wire:loading.delay.short.attr="aria-busy"')
                 ->and($html)->toContain(e(__('admin.list.loading')))
+                ->and($html)->toMatch('/<p class="sr-only" role="status"><span wire:loading\.delay\.short wire:target="[^"]+">/')
+                ->and($html)->toContain('x-on:bs-list-failed.window="failed = $event.detail"')
                 ->and($html)->toContain(e(__('admin.list.load_failed')))
                 ->and($html)->toContain(e(__('admin.list.load_failed_text')))
                 ->and($html)->toContain('x-on:click="retry()"');

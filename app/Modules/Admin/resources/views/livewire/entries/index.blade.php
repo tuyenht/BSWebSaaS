@@ -616,7 +616,7 @@
             </div>
 
             <div class="mt-4 flex flex-wrap items-center justify-between gap-3 @max-[56.25rem]/lt:order-5 min-[600px]:px-4">
-                <span class="text-caption text-text-muted">
+                <span class="text-caption text-text-muted" x-data="{ failed: false }" x-show="! failed" x-on:bs-list-failed.window="failed = $event.detail">
                     {{ __('entries.footer_showing', ['noun' => $noun, 'first' => $num($pager['from']), 'last' => $num($pager['to']), 'total' => $fmt($pager['total'])]) }}
                 </span>
                 <div class="flex flex-wrap items-center gap-4">
