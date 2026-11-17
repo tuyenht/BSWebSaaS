@@ -2395,7 +2395,7 @@
     "entries.trashed_many": "Moved :count :noun to the Trash",
     "entries.undo_trash_done": "Undone — :count :noun back in the list",
     "entries.trash_kids_refused": "Not moved: this page has sub-pages you may not delete. Sub-pages go with their parent so their addresses do not break — ask the website manager.",
-    "entries.trash_kids_too_many": "Not moved: this page has more than :max sub-pages. Move some of its sub-pages to the Trash first, then try again.",
+    "entries.trash_kids_too_many": "Not moved: this page has too many sub-pages below it (more than :max pages, or deeper than :depth levels). Move some of its sub-pages to the Trash first, then try again.",
     "entries.trash_ask_title": "Move “:name” to the Trash?",
     "entries.trash_ask_home_text": "The website will have no home page until you restore this page from the Trash.",
     "entries.trash_ask_kids_title": "Move this page and its :count sub-pages to the Trash?",

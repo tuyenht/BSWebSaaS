@@ -2395,7 +2395,7 @@
     "entries.trashed_many": "已将 :count 个:noun移到回收站",
     "entries.undo_trash_done": "已撤销 — :count 个:noun回到列表",
     "entries.trash_kids_refused": "未能移动：此页面有您无权删除的子页面。子页面随父页面一起移动，以免地址失效——请联系网站管理员。",
-    "entries.trash_kids_too_many": "未能移动：此页面的子页面超过 :max 个。请先将部分子页面移入回收站，然后重试。",
+    "entries.trash_kids_too_many": "未能移动：此页面下的子页面过多（超过 :max 个，或深于 :depth 层）。请先将部分子页面移入回收站，然后重试。",
     "entries.trash_ask_title": "将“:name”移到回收站？",
     "entries.trash_ask_home_text": "在您从回收站恢复此页面之前，网站将没有首页。",
     "entries.trash_ask_kids_title": "将此页面及其 :count 个子页面移到回收站？",

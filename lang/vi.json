@@ -2395,7 +2395,7 @@
     "entries.trashed_many": "Đã chuyển :count :noun vào Thùng rác",
     "entries.undo_trash_done": "Đã hoàn tác — :count :noun trở lại danh sách",
     "entries.trash_kids_refused": "Chưa chuyển được: trang này có trang con bạn không được xóa. Trang con đi cùng trang cha để đường dẫn không bị gãy — hãy nhờ người quản lý website.",
-    "entries.trash_kids_too_many": "Chưa chuyển được: trang này có hơn :max trang con. Hãy chuyển bớt các trang con vào Thùng rác trước rồi thử lại.",
+    "entries.trash_kids_too_many": "Chưa chuyển được: dưới trang này có quá nhiều trang con (hơn :max trang, hoặc sâu hơn :depth tầng). Hãy chuyển bớt các trang con vào Thùng rác trước rồi thử lại.",
     "entries.trash_ask_title": "Chuyển “:name” vào Thùng rác?",
     "entries.trash_ask_home_text": "Website sẽ không còn trang chủ cho tới khi bạn khôi phục trang này từ Thùng rác.",
     "entries.trash_ask_kids_title": "Chuyển trang này và :count trang con vào Thùng rác?",

@@ -2395,7 +2395,7 @@
     "entries.trashed_many": ":count 件の:nounをゴミ箱に移動しました",
     "entries.undo_trash_done": "元に戻しました — :count 件の:nounが一覧に戻りました",
     "entries.trash_kids_refused": "移動できません：削除できない子ページがあります。アドレスが壊れないよう子ページは親と一緒に移動します。サイト管理者に依頼してください。",
-    "entries.trash_kids_too_many": "移動できません：このページには :max 件を超える子ページがあります。先に子ページの一部をゴミ箱に移動してから、もう一度お試しください。",
+    "entries.trash_kids_too_many": "移動できません：このページの下の子ページが多すぎます（:max 件超、または :depth 階層より深い）。先に子ページの一部をゴミ箱に移動してから、もう一度お試しください。",
     "entries.trash_ask_title": "「:name」をゴミ箱に移動しますか？",
     "entries.trash_ask_home_text": "このページをゴミ箱から復元するまで、ウェブサイトにはホームページがなくなります。",
     "entries.trash_ask_kids_title": "このページと子ページ :count 件をゴミ箱に移動しますか？",

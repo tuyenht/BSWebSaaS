@@ -244,6 +244,9 @@ final class Index extends Component
     /** At most this many pages ride below the top pages of one page of the tree. */
     private const int TREE_CHILDREN = 1000;
 
+    /** The deepest branch of sub-pages one move to the Trash takes along. */
+    private const int TREE_DEPTH = 12;
+
     /** What a row shows besides its own columns, loaded for the rows of the page only. */
     private const array ROW_RELATIONS = [
         'translations:id,entry_id,locale,title,slug,status',
@@ -761,7 +764,7 @@ final class Index extends Component
 
         $kids = $entry->type === 'page' ? $this->liveSubPages($entry) : [];
         if ($kids === null) {   // too big a branch to move in one go: nothing moves, and the member is told
-            $this->refuse(Cast::string(__('entries.trash_kids_too_many', ['max' => $this->subPageCap()])));
+            $this->refuse(Cast::string(__('entries.trash_kids_too_many', ['max' => $this->subPageCap(), 'depth' => self::TREE_DEPTH])));
 
             return;
         }
@@ -1316,7 +1319,7 @@ final class Index extends Component
     /**
      * Every live page under this one (its sub-pages, theirs, …), read level by level as RouteSync
      * walks the tree, with a cap on depth and size against a looped or huge tree. A branch past the
-     * cap — more than subPageCap() pages in all, or still going after 12 levels — is null: the whole
+     * cap — more than subPageCap() pages in all, or deeper than TREE_DEPTH levels — is null: the whole
      * branch is too big to move at once, and no part of it is moved, so no sub-page is ever left
      * behind its parent without a word.
      *
@@ -1329,15 +1332,14 @@ final class Index extends Component
         $seen = [$page->id => true];
         $frontier = [$page->id];
         for ($depth = 0; $frontier !== []; $depth++) {
-            if ($depth >= 12) {
-                return null;
-            }
             $room = $cap - count($found);
             // one more than there is room for: finding it means the branch is over the cap
             $children = Entry::query()->where('type', 'page')->whereIn('parent_id', $frontier)->orderBy('id')
                 ->limit($room + 1)
                 ->get(['id', 'site_id', 'ulid', 'type', 'status', 'parent_id', 'author_id', 'deleted_at', 'updated_at']);
-            if ($children->count() > $room) {
+            // past the size cap, or a level below the deepest one a branch may have (a 12-level branch
+            // passes: the 13th read only looks for pages under it)
+            if ($children->count() > $room || ($depth >= self::TREE_DEPTH && $children->isNotEmpty())) {
                 return null;
             }
             $frontier = [];

@@ -376,7 +376,7 @@ it('moves nothing of a branch past the sub-page cap, at whatever level the cap i
     $owner = tuMember('owner', PermissionRegistry::TENANT_PERMISSIONS);
 
     app(Tenancy::class)->enter(1, function () use ($owner): void {
-        $refused = __('entries.trash_kids_too_many', ['max' => 2]);
+        $refused = __('entries.trash_kids_too_many', ['max' => 2, 'depth' => 12]);
 
         // three sub-pages on one level: past the cap
         $wide = tuPage($owner, 'Rộng');
@@ -402,6 +402,28 @@ it('moves nothing of a branch past the sub-page cap, at whatever level the cap i
             ->call('trash', $deep->ulid, true);
         expect(tuTrashed($deep))->toBeTrue()->and(tuTrashed($a))->toBeTrue()->and(tuTrashed($b))->toBeTrue()
             ->and(collect($wideKids)->contains(fn (Entry $kid): bool => tuTrashed($kid)))->toBeFalse();
+    });
+});
+
+it('takes a branch exactly twelve levels deep along, and refuses one a level deeper', function (): void {
+    $owner = tuMember('owner', PermissionRegistry::TENANT_PERMISSIONS);
+
+    app(Tenancy::class)->enter(1, function () use ($owner): void {
+        $top = tuPage($owner, 'Gốc');
+        $parent = $top;
+        foreach (range(1, 12) as $level) {
+            $parent = tuPage($owner, "Tầng {$level}", 'published', $parent);
+        }
+
+        Livewire::actingAs($owner)->test(Index::class)->call('trash', $top->ulid, true);
+        expect(Entry::onlyTrashed()->count())->toBe(13);
+
+        Entry::onlyTrashed()->restore();
+        tuPage($owner, 'Tầng 13', 'published', $parent);
+        Livewire::actingAs($owner)->test(Index::class)->call('trash', $top->ulid, true)
+            ->assertDispatched('bs-toast', text: __('entries.trash_kids_too_many', ['max' => 1000, 'depth' => 12]), stay: true)
+            ->assertSet('trashUndo', null);
+        expect(Entry::onlyTrashed()->count())->toBe(0);
     });
 });
 
