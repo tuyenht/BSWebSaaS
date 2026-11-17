@@ -5653,5 +5653,14 @@
     "guide.posts.crumb": "Dòng nhỏ trên tên màn cho biết bạn đang ở mục nào. Ở màn thêm hoặc sửa, bấm tên mục trong dòng này để quay về danh sách.",
     "guide.pages.role_edit_any": "sửa được mọi trang",
     "guide.pages.role_edit_own": "chỉ sửa trang của mình",
-    "guide.pages.role_edit_none": "không sửa trang"
+    "guide.pages.role_edit_none": "không sửa trang",
+    "entries.refused_status": "Nhóm quyền của bạn không đổi được trạng thái này.",
+    "entries.refused_others_edit": "Đây là :noun của người khác — bạn chỉ sửa được :noun do mình tạo.",
+    "entries.refused_others_delete": "Đây là :noun của người khác — bạn chỉ chuyển vào Thùng rác được :noun do mình tạo.",
+    "entries.refused_role_edit": "Nhóm quyền của bạn không sửa được :noun này.",
+    "entries.refused_role_delete": "Nhóm quyền của bạn không xóa được :noun này.",
+    "entries.scope_page_refusal": ":why — không sửa được Trang.",
+    "entries.locked_view_live": ":why — bấm để xem trên website",
+    "entries.locked_view_preview": ":why — bấm để xem trước",
+    "entries.locked_view_named": "Xem “:title” — :why"
 }

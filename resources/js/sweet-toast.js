@@ -6,6 +6,8 @@
 // Styling mirrors design_handoff_pages_admin §3a: a compact dark pill anchored bottom-center with a
 // small green ri-checkbox-circle glyph (or the caller's own icon markup, `icon`, in amber and kept longer: a warning) + 13px text — NOT SweetAlert2's large animated success icon
 // or timer bar, which read chunky. Text is escaped (it may carry entry titles).
+// `stay` keeps it until the person closes it (a refusal that says what to do: an error stays until
+// dismissed), with a close button named `close` and a 44px hit area.
 
 const CHECK_SVG =
     '<svg viewBox="0 0 24 24" width="16" height="16" fill="#0ab39c" aria-hidden="true" style="flex:none;">' +
@@ -28,10 +30,21 @@ async function bsToast(opts = {}) {
         position: 'bottom',
         html: `<span style="display:inline-flex;align-items:center;gap:8px;font-size:13px;line-height:1.4;">${opts.icon ? `<span aria-hidden="true" style="display:inline-flex;flex:none;color:#f7b84b;">${opts.icon}</span>` : CHECK_SVG}<span>${escapeHtml(opts.text)}</span></span>`,
         showConfirmButton: false,
-        timer: opts.icon ? 6000 : 2400,
+        timer: opts.stay ? undefined : opts.icon ? 6000 : 2400,
+        showCloseButton: !!opts.stay,
+        closeButtonAriaLabel: opts.close || 'Close',
+        didOpen: opts.stay
+            ? (el) => {
+                  const x = el.querySelector('.swal2-close');
+                  if (x) {
+                      Object.assign(x.style, { color: '#fff', width: '44px', height: '44px', margin: '-10px -16px -10px 4px', fontSize: '22px', alignSelf: 'center' });
+                  }
+              }
+            : undefined,
         background: '#212529', // dark slab (design tokens)
         color: '#fff',
-        width: 'auto',
+        // a refusal carries a sentence: give it a reading width rather than a narrow column on a phone
+        width: opts.stay ? 'min(28rem, calc(100vw - 2rem))' : 'auto',
         padding: '10px 16px',
     });
 }
@@ -41,7 +54,7 @@ document.addEventListener('alpine:init', () => {
 });
 
 document.addEventListener('bs-toast', (event) => {
-    bsToast({ text: event.detail?.text, icon: event.detail?.icon });
+    bsToast({ text: event.detail?.text, icon: event.detail?.icon, stay: event.detail?.stay, close: event.detail?.close });
 });
 
 window.bsToast = bsToast;

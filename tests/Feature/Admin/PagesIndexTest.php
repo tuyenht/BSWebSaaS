@@ -362,16 +362,19 @@ it('permanently deletes a trashed row', function (): void {
     });
 });
 
-it('forbids a viewer without publish from changing a status', function (): void {
+it('refuses a viewer without publish a status change, with the reason and no error page', function (): void {
     $viewer = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($viewer): void {
         grantRole($viewer, 'viewer', ['entries.view']);
-        $page = makePageEntry($viewer, 'Chỉ xem', 'chi-xem', 'draft');
+        $page = makePageEntry($viewer, 'Chỉ xem', 'chi-xem', 'published');
 
         Livewire::actingAs($viewer->fresh())->test(Index::class)
             ->call('changeStatus', $page->ulid, 'draft')
-            ->assertForbidden();
+            ->assertOk()
+            ->assertDispatched('bs-toast', text: __('entries.refused_status'), stay: true);
+
+        expect($page->fresh()->status)->toBe('published');
     });
 });
 
@@ -487,7 +490,8 @@ it("refuses a forged status change that would send a colleague's draft", functio
 
         Livewire::actingAs($author->fresh())->test(Index::class)
             ->call('changeStatus', $theirs->ulid, 'published')
-            ->assertForbidden();
+            ->assertOk()
+            ->assertDispatched('bs-toast', text: __('entries.refused_status'), stay: true);
 
         expect($theirs->fresh()->status)->toBe('draft');
     });

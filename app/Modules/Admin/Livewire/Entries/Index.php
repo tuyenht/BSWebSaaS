@@ -48,6 +48,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -473,8 +474,10 @@ final class Index extends Component
 
     /**
      * Row status menu → published (via PublishEntry, route-synced) or draft/private (via the
-     * engine). A post whose section runs an approval workflow cannot be published from here —
-     * that is the editor's approval block — so the refusal comes back as a plain toast.
+     * engine); for a member who may only send for review, pending («Gửi duyệt», via PublishEntry,
+     * which sends a draft). A post whose section runs an approval workflow cannot be published from
+     * here — that is the editor's approval block — so the refusal comes back as a plain toast, as
+     * does a move this member may not make on this row.
      */
     public function changeStatus(string $ulid, string $status): void
     {
@@ -485,10 +488,22 @@ final class Index extends Component
             return;
         }
         $user = $this->actingUser();
+        $locale = app(SiteLocale::class)->default();
 
         try {
+            if ($status === EntryStatus::Pending->value) {
+                // Only a sender sends: a publisher's PublishEntry would publish instead.
+                if ($user->can('publish', $entry) || ! $user->can('submit', $entry)) {
+                    throw new AuthorizationException;
+                }
+                $moved = app(PublishEntry::class)->attempt($entry, $locale, $user)['moved'];
+                // not moved: no longer a draft (someone sent or published it meanwhile)
+                $moved ? $this->toast(__('entries.ed.toast_sent', ['unit' => __('entries.noun_'.$entry->type)])) : $this->toastStaleRow();
+
+                return;
+            }
             if ($status === EntryStatus::Published->value) {
-                app(PublishEntry::class)->handle($entry, app(SiteLocale::class)->default(), $user);
+                app(PublishEntry::class)->handle($entry, $locale, $user);
             } elseif ($status === EntryStatus::Draft->value || $status === EntryStatus::Private->value) {
                 app(TransitionEntryStatus::class)->handle($entry, EntryStatus::from($status), $user);
             } else {
@@ -496,6 +511,10 @@ final class Index extends Component
             }
         } catch (WorkflowGovernedException) {
             $this->toast(__('entries.workflow_governed'));
+
+            return;
+        } catch (AuthorizationException) {
+            $this->refuse($this->refusalFor($entry, 'status'));
 
             return;
         }
@@ -525,6 +544,10 @@ final class Index extends Component
             app(TransitionEntryStatus::class)->handle($entry, EntryStatus::Scheduled, $this->actingUser(), $when);
         } catch (WorkflowGovernedException) {
             $this->toast(__('entries.workflow_governed'));
+
+            return;
+        } catch (AuthorizationException) {
+            $this->refuse($this->refusalFor($entry, 'status'));
 
             return;
         }
@@ -558,7 +581,9 @@ final class Index extends Component
 
             return;
         }
-        $this->authorize('update', $entry);
+        if (! $this->allowed('update', $entry, 'edit')) {
+            return;
+        }
 
         // The entry row first, as every entry action takes it: a check of the search words running
         // meanwhile waits for this rename instead of writing the old title's words back.
@@ -601,7 +626,9 @@ final class Index extends Component
 
             return;
         }
-        $this->authorize('update', $entry);
+        if (! $this->allowed('update', $entry, 'edit')) {
+            return;
+        }
 
         $locale = app(SiteLocale::class)->default();
         $translation = $entry->translationFor($locale);
@@ -678,7 +705,14 @@ final class Index extends Component
 
             return;
         }
-        $copy = app(DuplicateEntry::class)->handle($entry, $this->actingUser());
+        try {
+            $copy = app(DuplicateEntry::class)->handle($entry, $this->actingUser());
+        } catch (AuthorizationException $e) {
+            // DuplicateEntry words its own refusals (no right to create, outside the limits, in the Trash)
+            $this->refuse($e->getMessage());
+
+            return;
+        }
         // Materialize the copied block images into the usage index, exactly as the editor does on save.
         app(EntryBlockMediaReconciler::class)->reconcile($copy);
 
@@ -693,7 +727,9 @@ final class Index extends Component
 
             return;
         }
-        $this->authorize('delete', $entry);
+        if (! $this->allowed('delete', $entry, 'delete')) {
+            return;
+        }
         $entry->delete();
 
         $this->toast(__('entries.trashed'));
@@ -707,7 +743,9 @@ final class Index extends Component
 
             return;
         }
-        $this->authorize('restore', $entry);
+        if (! $this->allowed('restore', $entry, 'delete')) {
+            return;
+        }
         $entry->restore();
 
         $this->toast(__('entries.restored', ['noun' => __('entries.noun_'.$entry->type)]));
@@ -721,7 +759,9 @@ final class Index extends Component
 
             return;
         }
-        $this->authorize('forceDelete', $entry);
+        if (! $this->allowed('forceDelete', $entry, 'delete')) {
+            return;
+        }
         $entry->forceDelete(); // EntryObserver clears the block-image usage index
 
         $this->toast(__('entries.destroyed'));
@@ -1065,6 +1105,72 @@ final class Index extends Component
     }
 
     /**
+     * Ask the policy for $ability on this row; a refusal is answered with the reason, in a toast that
+     * stays until it is closed, instead of the error page Livewire would show.
+     *
+     * @param  'edit'|'delete'  $verb  what the reason speaks of
+     */
+    private function allowed(string $ability, Entry $entry, string $verb): bool
+    {
+        try {
+            $this->authorize($ability, $entry);
+        } catch (AuthorizationException) {
+            $this->refuse($this->refusalFor($entry, $verb));
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /** A refusal: the lock mark, and it stays until the member closes it (it says what to do). */
+    private function refuse(string $message): void
+    {
+        $this->dispatch('bs-toast', text: $message, icon: self::lockIcon(), stay: true, close: __('admin.close'));
+    }
+
+    private static function lockIcon(): string
+    {
+        return Blade::render('<x-bs-admin::icon name="ri-lock" class="size-4" />');
+    }
+
+    /**
+     * Why this member may not $verb this row, in the design's words: outside their category limits
+     * (a page: every page, for a limited member), someone else's record for an own-only right, or
+     * not a right their role has.
+     *
+     * @param  'edit'|'delete'|'status'  $verb
+     */
+    private function refusalFor(Entry $entry, string $verb): string
+    {
+        $user = $this->actingUser();
+        $scopes = app(CategoryScopes::class);
+        if (! $scopes->coversEntry($user, $entry)) {
+            return self::scopeWhy($entry->type, $scopes->refusal($user));
+        }
+        if ($verb === 'status') {
+            return Cast::string(__('entries.refused_status'));
+        }
+        $noun = __('entries.noun_'.$entry->type);
+        $own = $entry->author_id !== null && $entry->author_id === $user->id;
+
+        return Cast::string(! $own && $user->can('entries.'.$verb.'.own')
+            ? __('entries.refused_others_'.$verb, ['noun' => $noun])
+            : __('entries.refused_role_'.$verb, ['noun' => $noun]));
+    }
+
+    /**
+     * The limits sentence for a row of $type: for a page it adds that pages are out of reach (a
+     * page has no category, so no limit ever covers it).
+     */
+    private static function scopeWhy(string $type, string $refusal): string
+    {
+        return $type === 'page'
+            ? Cast::string(__('entries.scope_page_refusal', ['why' => preg_replace('/[.。]$/u', '', $refusal) ?? $refusal]))
+            : $refusal;
+    }
+
+    /**
      * @param  list<string>  $values
      * @return list<string>
      */
@@ -1380,14 +1486,47 @@ final class Index extends Component
         // their own record, inside those limits), so a row they may not edit offers the reason
         // instead of a link that would be refused; permissions and limits are read once per
         // request, so this too adds no query per row.
+        //
+        // Each row's own answers, as the design offers its actions: the status menu only on a row the
+        // member may edit (a publisher's moves, or a sender's «Gửi duyệt» on a draft), Nhân bản and
+        // Thùng rác only where the policy allows them on that row. A row outside their limits that
+        // their role could otherwise edit (any page, for a limited member) shows «🔒 Xem» and the
+        // reason, with its items locked under that reason.
+        $canCreate = $user->can('entries.create');
+        $editAny = $user->can('entries.edit.any');
+        $editOwn = $user->can('entries.edit.own');
+        $deleteAny = $user->can('entries.delete.any');
+        $deleteOwn = $user->can('entries.delete.own');
+        $scopeRefusal = $limited ? $scopes->refusal($user) : null;
         $pageUlids = [];
         $rowCovered = [];
         $rowEditable = [];
+        $rowCan = [];
         foreach ($rows->items() as $item) {
-            $pageUlids[] = $item['entry']->ulid;
-            $rowCovered[$item['entry']->ulid] = ! $limited || $scopes->coversEntry($user, $item['entry']);
-            $rowEditable[$item['entry']->ulid] = $user->can('update', $item['entry']);
+            $entry = $item['entry'];
+            $ulid = $entry->ulid;
+            $pageUlids[] = $ulid;
+            $covered = ! $limited || $scopes->coversEntry($user, $entry);
+            $edit = $user->can('update', $entry);
+            $publish = $edit && $user->can('publish', $entry);
+            $own = $entry->author_id !== null && $entry->author_id === $user->id;
+            $rowCovered[$ulid] = $covered;
+            $rowEditable[$ulid] = $edit;
+            $rowCan[$ulid] = [
+                'publish' => $publish,
+                'send' => $edit && ! $publish && $entry->status === EntryStatus::Draft->value && $user->can('submit', $entry),
+                'delete' => $user->can('delete', $entry),
+                'duplicate' => $canCreate && $covered,
+                'out' => ! $covered && $scopeRefusal !== null && ($type === 'page' || $editAny || ($editOwn && $own))
+                    ? self::scopeWhy($type, $scopeRefusal) : null,
+                // a locked Thùng rác is shown on such a row only to a role that could otherwise remove it
+                'deleteRole' => $type === 'page' || $deleteAny || ($deleteOwn && $own),
+            ];
         }
+        // A member limited to some categories may add no page (a page has no category): the add button
+        // stays, locked, with the reason.
+        $addLock = $type === 'page' && $canCreate && $scopes->isLimited($user)
+            ? self::scopeWhy('page', $scopeRefusal ?? $scopes->refusal($user)) : null;
 
         // Each post row's main category, as a path from the top of the section's tree, and its cover in a
         // small rendition (both from what the rows already carry: no query per row).
@@ -1423,7 +1562,7 @@ final class Index extends Component
         $workflow = $postSection !== null && ($roleShows || $this->guideDue) ? app(WorkflowEngine::class)->activeFor($postSection->key) : null;
         $roleNote = $roleShows ? PostRoleNote::with($user, $workflow, $postSection->localizedLabel(), $scoped) : null;
 
-        $canDelete = $user->can('entries.delete.any') || $user->can('entries.delete.own');
+        $canDelete = $deleteAny || $deleteOwn;
         [$sortKey, $sortDir] = $this->sorting();
         $sorts = array_values(array_filter(array_keys(self::SORTS), fn (string $key): bool => $this->sortsHere($key)));
 
@@ -1482,7 +1621,9 @@ final class Index extends Component
             'pageUlids' => $pageUlids,
             'rowCovered' => $rowCovered,
             'rowEditable' => $rowEditable,
-            'scopeRefusal' => $limited ? $scopes->refusal($user) : null,
+            'rowCan' => $rowCan,
+            'scopeRefusal' => $scopeRefusal,
+            'addLock' => $addLock,
             'counts' => $counts,
             'facets' => $read['facets'],
             'activeChips' => [...$catChips, ...$this->activeChips($read['facets'])],
@@ -1508,7 +1649,9 @@ final class Index extends Component
             'sectionModel' => $section,
             'sectionKey' => $this->section,
             'canPublish' => $user->can('entries.publish'),
-            'canCreate' => $user->can('entries.create'),
+            'canCreate' => $canCreate,
+            // a sender's bulk «Gửi duyệt» (bulkPublish sends their drafts for review)
+            'canSend' => ! $user->can('entries.publish') && $user->can('entries.submit'),
             'canDelete' => $canDelete,
             // whoever may delete (their own or any) reaches the Trash, to restore what they removed
             'canSeeTrash' => $canDelete,

@@ -561,6 +561,23 @@
         color: var(--color-text-muted);
     }
 
+    /* A row outside the member's limits: the lock and the reason under the status, in the warning ink
+       (the design's lock note); it wraps rather than clip, and shows at every width. */
+    .list-lk {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.25rem;
+        max-width: 100%;
+        font-size: var(--text-caption);
+        font-weight: 600;
+        color: var(--color-admin-warning-text);
+        overflow-wrap: anywhere;
+    }
+
+    .list-lk > svg {
+        margin-top: 0.125rem;
+    }
+
     .list-au {
         display: flex;
         align-items: center;
@@ -816,6 +833,12 @@
             order: 1;
             flex: 0 0 auto;
             align-self: center;
+        }
+
+        /* A lock line takes what the row has left beside the actions and wraps there, never wider. */
+        .list-c-st:has(> .list-lk) {
+            flex: 1 1 0%;
+            min-width: 0;
         }
 
         .list-c-act {

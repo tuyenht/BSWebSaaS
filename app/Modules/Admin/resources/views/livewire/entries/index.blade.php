@@ -7,6 +7,9 @@
     $pageTitle = $sectionLabel;
     $isPost = $type === 'post';
     $noun = __('entries.noun_'.$type);
+    // A locked item's click: its reason in a toast with the lock mark, kept until the member closes it.
+    $lockMark = \Illuminate\Support\Facades\Blade::render('<x-bs-admin::icon name="ri-lock" class="size-4" />');
+    $lockToast = fn (string $why): Js => Js::from(['text' => $why, 'icon' => $lockMark, 'stay' => true, 'close' => __('admin.close')]);
     // a list stops counting past 10,000 rows: such a count reads "hơn 10.000"
     $fmt = fn (int|string $n): string => is_string($n) ? $n : ($n > \App\Modules\Admin\Support\Entries\EntryListQuery::CAP ? __('entries.count_over') : \Illuminate\Support\Number::format($n, locale: app()->getLocale()));
     $num = fn (int $n): string => \Illuminate\Support\Number::format($n, locale: app()->getLocale());
@@ -143,10 +146,20 @@
             <x-slot:help>
                 <x-bs-admin::guide :guide="$guide" />
             </x-slot:help>
-            <x-bs-admin::button color="primary" class="shrink-0" data-guide="add" :href="route('admin.entries.create', $sectionKey ? ['section' => $sectionKey] : [])"
-                :label="__('entries.add_'.$type)" :short="__('admin.list.add_short')">
-                <x-bs-admin::icon name="ri-add" class="size-4" />
-            </x-bs-admin::button>
+            {{-- Only with the right to create; a member limited to some categories gets the page list's button locked,
+                 with the reason (a page has no category). --}}
+            @if ($addLock)
+                <x-bs-admin::button color="primary" class="shrink-0 aria-disabled:cursor-not-allowed aria-disabled:opacity-60" data-guide="add" aria-disabled="true" :title="$addLock"
+                    :aria-label="__('entries.add_'.$type).' — '.$addLock" x-on:click="$bsToast({{ $lockToast($addLock) }})"
+                    :label="__('entries.add_'.$type)" :short="__('admin.list.add_short')">
+                    <x-bs-admin::icon name="ri-lock" class="size-4" />
+                </x-bs-admin::button>
+            @elseif ($canCreate)
+                <x-bs-admin::button color="primary" class="shrink-0" data-guide="add" :href="route('admin.entries.create', $sectionKey ? ['section' => $sectionKey] : [])"
+                    :label="__('entries.add_'.$type)" :short="__('admin.list.add_short')">
+                    <x-bs-admin::icon name="ri-add" class="size-4" />
+                </x-bs-admin::button>
+            @endif
         </x-bs-admin::title-row>
         <p class="m-0 text-body text-text-muted [overflow-wrap:anywhere]">
             <span data-desc="full" class="max-[599.98px]:hidden [@media(max-height:500px)]:hidden">{{ __('entries.desc_'.$type, ['label' => mb_strtolower(mb_substr($sectionLabel, 0, 1)).mb_substr($sectionLabel, 1)]) }}</span>
@@ -264,6 +277,11 @@
                                 class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-accent hover:text-accent">
                                 <x-bs-admin::icon name="ri-pencil" class="size-3.5 text-body-muted" /> {{ __('entries.bulk_draft') }}
                             </button>
+                        @elseif ($canSend)
+                            <button type="button" wire:click="bulkPublish"
+                                class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-accent hover:text-accent">
+                                <x-bs-admin::icon name="ri-inbox-unarchive" class="size-3.5 text-body-muted" /> {{ __('entries.ed.submit') }}
+                            </button>
                         @endif
                         @if ($canCreate)
                             <button type="button" wire:click="bulkDuplicate"
@@ -345,6 +363,10 @@
                         $slugLeaf = $t?->slug;
                         $slugPrefix = ($path !== null && $slugLeaf) ? \Illuminate\Support\Str::beforeLast($path, $slugLeaf) : '/';
                         $quickEdit = ($rowEditable[$entry->ulid] ?? false) && ! $trashed;
+                        $may = $rowCan[$entry->ulid];
+                        // outside the member's limits: «🔒 Xem» and the reason instead of «Sửa», its items locked
+                        $out = $trashed ? null : $may['out'];
+                        $outWhy = $out !== null ? (preg_replace('/[.。]$/u', '', $out) ?? $out) : null;
                     @endphp
                     <x-bs-admin::list.row :selected="$isSelected" wire:key="entry-{{ $entry->ulid }}"
                         x-data="{ editing: false, value: {{ $Js::from($t?->title ?? '') }}, cancel: false }"
@@ -364,7 +386,7 @@
                             @endif
                             <div @class(['pl-5' => $depth, 'min-w-0 flex-1' => $isPost])>
                                 <div x-show="! editing">
-                                    <x-bs-admin::list.name :data-guide="$quickEdit ? 'row-title-qe' : 'row-title'" :href="$trashed ? null : route('admin.entries.edit', ['ulid' => $entry->ulid])"
+                                    <x-bs-admin::list.name :data-guide="$quickEdit ? 'row-title-qe' : 'row-title'" :href="$quickEdit ? route('admin.entries.edit', ['ulid' => $entry->ulid]) : null"
                                         :quick-edit="$quickEdit ? __('entries.quick_edit_named', ['title' => $title]) : null" :child="$depth > 0">{{ $title }}</x-bs-admin::list.name>
                                 </div>
                                 @if ($quickEdit)
@@ -435,7 +457,18 @@
 
                         <x-bs-admin::list.cell col="st">
                             <div class="list-stw" data-guide="row-status">
-                                @if ($canPublish && ! $trashed)
+                                @if ($may['send'] && ! $trashed)
+                                    {{-- a sender's one move here: «Gửi duyệt» on their draft --}}
+                                    <div x-data="{ open: false }" @click.outside="open = false" @keydown.escape="if (open) { open = false; $refs.pill.focus() }" class="relative inline-block">
+                                        <x-bs-admin::status-pill button x-ref="pill" :status="$status" x-on:click="open = ! open" x-bind:aria-expanded="open.toString()" aria-haspopup="true" title="{{ __('entries.status_menu_label') }}">{{ __('entries.status_'.$status) }}<span class="sr-only"> · {{ __('entries.status_menu_label') }}</span></x-bs-admin::status-pill>
+                                        <div x-show="open" x-cloak x-transition
+                                            class="absolute left-0 z-30 mt-1 w-56 rounded-lg border border-border bg-surface p-1 shadow-lg">
+                                            <button type="button" x-on:click="$wire.changeStatus(@js($entry->ulid), 'pending'); open = false" class="list-mi rounded">
+                                                <x-bs-admin::status-pill status="pending">{{ __('entries.ed.submit') }}</x-bs-admin::status-pill>
+                                            </button>
+                                        </div>
+                                    </div>
+                                @elseif ($may['publish'] && ! $trashed)
                                     <div x-data="{ open: false, sched: false }" @click.outside="open = false; sched = false" @keydown.escape="if (open || sched) { open = false; sched = false; $refs.pill.focus() }" class="relative inline-block">
                                         <x-bs-admin::status-pill button x-ref="pill" :status="$status" x-on:click="open = ! open" x-bind:aria-expanded="open.toString()" aria-haspopup="true" title="{{ __('entries.status_menu_label') }}">{{ __('entries.status_'.$status) }}<span class="sr-only"> · {{ __('entries.status_menu_label') }}</span></x-bs-admin::status-pill>
                                         <div x-show="open" x-cloak x-transition
@@ -464,7 +497,9 @@
                                     <x-bs-admin::status-pill :status="$status">{{ __('entries.status_'.$status) }}</x-bs-admin::status-pill>
                                 @endif
                             </div>
-                            @if ($whenText)
+                            @if ($out !== null)
+                                <div class="list-lk" data-guide="row-lock"><x-bs-admin::icon name="ri-lock" class="size-3 shrink-0" /><span>{{ $out }}</span></div>
+                            @elseif ($whenText)
                                 <div class="list-st-meta">
                                     <x-bs-admin::icon :name="$isScheduled ? 'ri-time' : 'ri-history'" class="size-3 shrink-0" />
                                     <x-bs-admin::list.when :at="$when" :text="$whenText" :full="$whenFull" :exact="$isScheduled" />
@@ -482,7 +517,7 @@
                         <x-bs-admin::list.cell col="act">
                             <x-bs-admin::list.actions :name="$title">
                                 @if ($trashed)
-                                    @if ($canDelete)
+                                    @if ($may['delete'])
                                         <x-bs-admin::button size="sm" variant="soft" color="primary" wire:click="restore('{{ $entry->ulid }}')">
                                             <x-bs-admin::icon name="ri-arrow-go-back" class="size-4" /> {{ __('entries.action_restore') }}
                                         </x-bs-admin::button>
@@ -491,6 +526,30 @@
                                                 x-on:click="$bsConfirm({ icon: 'trash-danger', text: {{ $Js::from(__('entries.force_delete_confirm', ['noun' => __('entries.noun_'.$entry->type)])) }}, confirm: {{ $Js::from(__('entries.action_destroy')) }}, cancel: {{ $Js::from(__('admin.cancel')) }} }).then(ok => ok && $wire.forceDelete({{ $Js::from($entry->ulid) }}))">{{ __('entries.action_destroy') }}</x-bs-admin::list.menu-item>
                                         </x-slot:menu>
                                     @endif
+                                @elseif ($out !== null)
+                                    {{-- outside the member's limits: one «🔒 Xem» that opens the record (on the website, or a preview), saying why it does not open the editor --}}
+                                    @if ($path)
+                                        <x-bs-admin::button size="sm" variant="soft" color="secondary" :href="$path" :navigate="false" target="_blank" rel="noopener" data-guide="row-view"
+                                            :title="__($isLive ? 'entries.locked_view_live' : 'entries.locked_view_preview', ['why' => $outWhy])"
+                                            :aria-label="__('entries.locked_view_named', ['title' => $title, 'why' => $outWhy]).' ('.__('entries.opens_new_tab').')'">
+                                            <x-bs-admin::icon name="ri-lock" class="size-4" /> {{ __('admin.view') }}
+                                        </x-bs-admin::button>
+                                    @else
+                                        <x-bs-admin::button size="sm" variant="soft" color="secondary" class="aria-disabled:cursor-not-allowed aria-disabled:opacity-60" aria-disabled="true" data-guide="row-view" :title="$out"
+                                            :aria-label="__('entries.locked_view_named', ['title' => $title, 'why' => $outWhy])" x-on:click="$bsToast({{ $lockToast($out) }})">
+                                            <x-bs-admin::icon name="ri-lock" class="size-4" /> {{ __('admin.view') }}
+                                        </x-bs-admin::button>
+                                    @endif
+                                    <x-slot:menu>
+                                        <x-bs-admin::list.menu-item icon="ri-pencil" :why="$outWhy" x-on:click="$bsToast({{ $lockToast($out) }})">{{ __('entries.quick_edit_title') }}</x-bs-admin::list.menu-item>
+                                        @if ($canCreate)
+                                            <x-bs-admin::list.menu-item icon="ri-file-copy" :why="$outWhy" x-on:click="$bsToast({{ $lockToast($out) }})">{{ __('entries.action_duplicate') }}</x-bs-admin::list.menu-item>
+                                        @endif
+                                        @if ($may['deleteRole'])
+                                            <x-bs-admin::list.menu-sep />
+                                            <x-bs-admin::list.menu-item icon="ri-delete-bin" danger :why="$outWhy" x-on:click="$bsToast({{ $lockToast($out) }})">{{ __('entries.action_trash') }}</x-bs-admin::list.menu-item>
+                                        @endif
+                                    </x-slot:menu>
                                 @else
                                     @if ($path)
                                         {{-- both open in a new tab and say so: a published record on the website, any other as a preview --}}
@@ -499,19 +558,22 @@
                                             <x-bs-admin::icon :name="$isLive ? 'ri-external-link' : 'ri-eye'" class="size-4" /> {{ __('admin.view') }}
                                         </x-bs-admin::button>
                                     @endif
-                                    <x-bs-admin::button size="sm" variant="soft" color="primary" data-guide="row-edit" :href="route('admin.entries.edit', ['ulid' => $entry->ulid])"
-                                        :aria-label="__('entries.edit_named', ['title' => $title])">
-                                        <x-bs-admin::icon name="ri-pencil" class="size-4" /> {{ __('entries.edit_action') }}
-                                    </x-bs-admin::button>
+                                    {{-- «Sửa» only on a row this member may edit: the editor would refuse the others --}}
+                                    @if ($quickEdit)
+                                        <x-bs-admin::button size="sm" variant="soft" color="primary" data-guide="row-edit" :href="route('admin.entries.edit', ['ulid' => $entry->ulid])"
+                                            :aria-label="__('entries.edit_named', ['title' => $title])">
+                                            <x-bs-admin::icon name="ri-pencil" class="size-4" /> {{ __('entries.edit_action') }}
+                                        </x-bs-admin::button>
+                                    @endif
                                     <x-slot:menu>
                                         @if ($quickEdit)
                                             <x-bs-admin::list.menu-item icon="ri-pencil" x-on:click="$dispatch('list-quick-edit')">{{ __('entries.quick_edit_title') }}</x-bs-admin::list.menu-item>
                                         @endif
-                                        @if ($canCreate)
+                                        @if ($may['duplicate'])
                                             <x-bs-admin::list.menu-item icon="ri-file-copy" wire:click="duplicate('{{ $entry->ulid }}')">{{ __('entries.action_duplicate') }}</x-bs-admin::list.menu-item>
                                         @endif
-                                        @if ($canDelete)
-                                            @if ($quickEdit || $canCreate)
+                                        @if ($may['delete'])
+                                            @if ($quickEdit || $may['duplicate'])
                                                 <x-bs-admin::list.menu-sep />
                                             @endif
                                             <x-bs-admin::list.menu-item icon="ri-delete-bin" danger

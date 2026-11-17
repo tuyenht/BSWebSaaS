@@ -5653,5 +5653,14 @@
     "guide.posts.crumb": "The small line above the screen name tells you which section you are in. On an add or edit screen, press the section name in this line to go back to the list.",
     "guide.pages.role_edit_any": "can edit every page",
     "guide.pages.role_edit_own": "can edit only your own pages",
-    "guide.pages.role_edit_none": "cannot edit pages"
+    "guide.pages.role_edit_none": "cannot edit pages",
+    "entries.refused_status": "Your role can't change this status.",
+    "entries.refused_others_edit": "This :noun belongs to someone else — you can only edit the ones you created.",
+    "entries.refused_others_delete": "This :noun belongs to someone else — you can only move the ones you created to the Trash.",
+    "entries.refused_role_edit": "Your role can't edit this :noun.",
+    "entries.refused_role_delete": "Your role can't delete this :noun.",
+    "entries.scope_page_refusal": ":why — you can't edit Pages.",
+    "entries.locked_view_live": ":why — click to view it on the website",
+    "entries.locked_view_preview": ":why — click to preview",
+    "entries.locked_view_named": "View “:title” — :why"
 }
