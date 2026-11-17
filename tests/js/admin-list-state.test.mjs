@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { JSDOM } from 'jsdom';
 
-const dom = new JSDOM('<!doctype html><html><body><div id="card"><input type="search" id="s"><div id="root"><div role="table"></div></div></div></body></html>');
+const dom = new JSDOM('<!doctype html><html><body><input type="search" id="top"><div id="card" wire:id="lw1"><input type="search" id="s"><div id="root"><div role="table"></div></div></div></body></html>');
 const { window } = dom;
 globalThis.window = window;
 globalThis.document = window.document;

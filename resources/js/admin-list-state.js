@@ -80,11 +80,9 @@ function listState(targets) {
             if (!root || (a && a !== document.body && a.isConnected)) {
                 return;
             }
-            let target = null;
-            for (let up = root.parentElement; up && !target && up !== document.body; up = up.parentElement) {
-                target = up.querySelector('input[type="search"]');
-            }
-            target = target || root.querySelector('[role="table"]');
+            // the list's own search field, never one outside its Livewire component (the top bar's search)
+            const scope = root.closest('[wire\\:id]') || root;
+            const target = scope.querySelector('input[type="search"]') || root.querySelector('[role="table"]');
             if (!target) {
                 return;
             }
