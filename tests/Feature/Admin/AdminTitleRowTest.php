@@ -73,6 +73,14 @@ it('puts the (?) and the main button in one group at the end of the row, the (?)
     $bare = (string) $this->blade('<x-bs-admin::title-row title="Sản phẩm"><a data-add>+</a></x-bs-admin::title-row>');
     expect(HTMLDocument::createFromString('<!doctype html><body>'.$bare.'</body>', LIBXML_NOERROR)->querySelector('[data-title-help]'))->toBeNull()
         ->and($bare)->not->toContain('tabindex');
+
+    // the name leaves room for the (?) only when there is one; a row with nothing at its end prints no group
+    $cap = 'max-md:max-w-[calc(100%-var(--spacing-hit)-0.5rem)]';
+    $none = (string) $this->blade('<x-bs-admin::title-row title="Danh mục"></x-bs-admin::title-row>');
+    expect($bare)->not->toContain($cap)
+        ->and($row)->toContain($cap)
+        ->and($none)->not->toContain('data-title-act')->not->toContain($cap)
+        ->and($bare)->toContain('data-title-act');
 });
 
 it('keeps each short word inside its full label, so the name says what is seen', function (string $locale): void {

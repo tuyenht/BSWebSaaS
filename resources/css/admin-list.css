@@ -1877,3 +1877,16 @@
         }
     }
 }
+
+/* A list whose columns fold by measured room stays unseen (visibility, so it still measures) until the page
+   script has folded it once; the animation lets go by itself if that script never runs. */
+[data-fold-wait] {
+    visibility: hidden;
+    animation: list-fold-release 0s 1.5s forwards;
+}
+
+@keyframes list-fold-release {
+    to {
+        visibility: visible;
+    }
+}

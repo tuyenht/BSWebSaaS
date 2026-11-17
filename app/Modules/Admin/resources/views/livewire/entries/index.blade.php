@@ -186,8 +186,10 @@
                  destroy() { this.ro?.disconnect(); },
                  size(force = false) { const w = this.$refs.rows?.clientWidth ?? 0, rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16, boost = window.bsListFold.boostPx(), key = w + ':' + boost; if (! force && key === this.seen) { return; } this.seen = key; this.mode = w < 37.5 * rem ? 'card' : (w < 56.25 * rem ? 'line' : 'cols'); this.$nextTick(() => this.foldCols(boost)); },
                  {{-- a side column shows whenever the name text keeps the shared minimum beside it: as the table narrows or the text grows, the category and then the author fold into the line under the name. One pass after the chosen columns are drawn (next tick): clear the fold, read every width, write the fold once. The name text's room is the name cell less what stands beside the text in it (padding, the cover, the indent, the ✎), read on the first row. --}}
+                 {{-- the rows stay hidden (visibility, so they can still be measured) from the first paint until this first pass has folded them: no flash of columns that then fold --}}
                  foldCols(boost) {
                      const list = this.$refs.rows?.querySelector('.list-rows'), head = list?.querySelector('.list-hd'), main = head?.querySelector('.list-c-main');
+                     this.$nextTick(() => this.$refs.rows?.removeAttribute('data-fold-wait'));
                      if (! list || ! main) { return; }
                      let out = [];
                      if (this.mode === 'cols') {
@@ -290,7 +292,7 @@
             @endphp
             {{-- The shared list row: a card below 600, one record per line to 900, a table from 900 (by the list's own
                  width). Below 600 the rows carry the card frame; select-all lives in the tools row above. --}}
-            <div x-ref="rows" class="min-w-0 max-[599.98px]:rounded-md max-[599.98px]:border max-[599.98px]:border-border max-[599.98px]:bg-surface max-[599.98px]:[&_.list-g]:border-t-0">
+            <div x-ref="rows" data-fold-wait class="min-w-0 max-[599.98px]:rounded-md max-[599.98px]:border max-[599.98px]:border-border max-[599.98px]:bg-surface max-[599.98px]:[&_.list-g]:border-t-0">
             <x-bs-admin::list :label="__('entries.list_label', ['label' => $sectionLabel])" :kind="$isPost ? 'posts' : null"
                 x-bind:data-hide="[mode === 'cols' && ! show('creator') ? 'au' : '', mode === 'cols' && ! show('cat') ? 'cat' : ''].join(' ').trim()" x-bind:data-fold="fold">
 
