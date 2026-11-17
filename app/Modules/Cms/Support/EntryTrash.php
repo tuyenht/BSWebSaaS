@@ -13,7 +13,7 @@ use Illuminate\Support\Carbon;
  */
 final class EntryTrash
 {
-    /** The number used when the setting is missing or not a whole number. */
+    /** The number used when the setting is missing, empty, not a number or below 1. */
     public const int DEFAULT_DAYS = 30;
 
     /**
@@ -23,12 +23,16 @@ final class EntryTrash
      */
     public const string SINCE = '2026-11-18';
 
-    /** Days a trashed entry is kept; never below 1, so a mistyped setting cannot empty the Trash at once. */
+    /**
+     * Days a trashed entry is kept. A setting that is empty, not a number or below 1 gives the
+     * default, never a shorter wait, so a mistyped value cannot empty every site's Trash at once.
+     */
     public static function days(): int
     {
         $days = config('cms.trash_retention_days', self::DEFAULT_DAYS);
+        $days = is_int($days) ? $days : (is_numeric($days) ? (int) $days : 0);
 
-        return max(1, is_int($days) ? $days : (is_numeric($days) ? (int) $days : self::DEFAULT_DAYS));
+        return $days >= 1 ? $days : self::DEFAULT_DAYS;
     }
 
     /**

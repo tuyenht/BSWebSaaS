@@ -23,10 +23,11 @@ use Illuminate\Support\Facades\DB;
  * at the top level. The category totals already left the post's category when it went to the Trash.
  *
  * Chunks of CHUNK rows in id order (the order the list's bulk actions lock in, so the two never
- * deadlock), each in its own savepoint inside the site's transaction; each chunk's SELECT locks its
- * rows, so a restore either commits before the read (the row is not picked) or waits until the chunk
- * is done and then finds nothing to restore. Re-running deletes nothing twice. One audit row per site
- * that lost anything. Scheduled daily.
+ * deadlock), each in its own savepoint inside the site's one transaction. Each chunk's SELECT locks
+ * its rows, and a savepoint releases no lock: every row picked stays locked until the whole site's
+ * purge commits. A restore therefore either commits before the read (the row is not picked) or waits
+ * until that site is done and then finds nothing to restore. Re-running deletes nothing twice. One
+ * audit row per site that lost anything. Scheduled daily.
  */
 final class PurgeTrashedEntries extends Command
 {

@@ -327,3 +327,100 @@ it('works the bulk bar out in the same few queries however many rows are ticked'
         expect($many)->toBe($few);
     });
 });
+
+it('brings back with «Hoàn tác» a branch of more pages than one bulk run takes', function (): void {
+    $owner = tuMember('owner', PermissionRegistry::TENANT_PERMISSIONS);
+
+    app(Tenancy::class)->enter(1, function () use ($owner): void {
+        $parent = tuPage($owner, 'Sản phẩm');
+        foreach (range(1, 205) as $i) {
+            tuPage($owner, "Mẫu {$i}", 'published', $parent);
+        }
+
+        $list = Livewire::actingAs($owner)->test(Index::class)->call('trash', $parent->ulid, true);
+        expect(count($list->get('trashUndo')))->toBe(206)
+            ->and(Entry::onlyTrashed()->count())->toBe(206);
+
+        $list->call('undoTrash')
+            ->assertSet('trashUndo', null)
+            ->assertSet('toastMsg', __('entries.undo_trash_done', ['count' => 206, 'noun' => __('entries.noun_page')]));
+        expect(Entry::onlyTrashed()->count())->toBe(0)
+            ->and(Entry::query()->where('parent_id', $parent->id)->count())->toBe(205);
+    });
+});
+
+it('leaves out of a bulk move a page that still has live sub-pages, on the count and in the run', function (): void {
+    $deleter = tuMember('deleter', ['entries.view', 'entries.delete.any']);
+
+    app(Tenancy::class)->enter(1, function () use ($deleter): void {
+        $parent = tuPage(null, 'Dịch vụ');
+        $kid = tuPage(null, 'Gia công', 'published', $parent);
+        $emptied = tuPage(null, 'Tin cũ');
+        tuPage(null, 'Đã bỏ', 'published', $emptied)->delete();   // only a trashed sub-page: it may go
+        $plain = tuPage(null, 'Liên hệ');
+        $list = Livewire::actingAs($deleter)->test(Index::class)->set('selected', [$parent->ulid, $emptied->ulid, $plain->ulid]);
+
+        expect(tuBulk($list))->toBe(['trash' => ['label' => 'Chuyển vào Thùng rác (2)', 'ok' => 2]])
+            ->and($list->viewData('bulkSkip'))->toBe('“Chuyển vào Thùng rác” bỏ qua 1 trang: 1 trang còn trang con — chuyển từng trang.');
+
+        $list->call('bulkTrash')
+            ->assertSet('trashUndo', [$emptied->ulid, $plain->ulid])
+            ->assertSet('toastMsg', __('entries.bulk_trashed', ['count' => 2]).' '.__('entries.bulk_skipped', ['count' => 1]).' '.__('entries.skip_kids_note'));
+        expect(tuTrashed($parent))->toBeFalse()->and(tuTrashed($kid))->toBeFalse()
+            ->and(tuTrashed($emptied))->toBeTrue()->and(tuTrashed($plain))->toBeTrue();
+    });
+});
+
+it('moves nothing of a branch past the sub-page cap, at whatever level the cap is passed', function (): void {
+    config(['cms.trash_subpages_max' => 2]);
+    $owner = tuMember('owner', PermissionRegistry::TENANT_PERMISSIONS);
+
+    app(Tenancy::class)->enter(1, function () use ($owner): void {
+        $refused = __('entries.trash_kids_too_many', ['max' => 2]);
+
+        // three sub-pages on one level: past the cap
+        $wide = tuPage($owner, 'Rộng');
+        $wideKids = array_map(fn (int $i): Entry => tuPage($owner, "Rộng {$i}", 'published', $wide), [1, 2, 3]);
+        Livewire::actingAs($owner)->test(Index::class)->call('trash', $wide->ulid, true)
+            ->assertDispatched('bs-toast', text: $refused, stay: true)
+            ->assertSet('trashUndo', null);
+
+        // two sub-pages, within the cap level by level, and a grandchild that passes it
+        $deep = tuPage($owner, 'Sâu');
+        $a = tuPage($owner, 'Sâu A', 'published', $deep);
+        $b = tuPage($owner, 'Sâu B', 'published', $deep);
+        $grandkid = tuPage($owner, 'Sâu A1', 'published', $a);
+        Livewire::actingAs($owner)->test(Index::class)->call('trash', $deep->ulid, true)
+            ->assertDispatched('bs-toast', text: $refused, stay: true);
+
+        expect(Entry::onlyTrashed()->count())->toBe(0);
+
+        // exactly at the cap: asked, then the whole branch goes
+        $grandkid->forceDelete();
+        Livewire::actingAs($owner)->test(Index::class)->call('trash', $deep->ulid)
+            ->assertDispatched('entries-ask-trash', ulid: $deep->ulid)
+            ->call('trash', $deep->ulid, true);
+        expect(tuTrashed($deep))->toBeTrue()->and(tuTrashed($a))->toBeTrue()->and(tuTrashed($b))->toBeTrue()
+            ->and(collect($wideKids)->contains(fn (Entry $kid): bool => tuTrashed($kid)))->toBeFalse();
+    });
+});
+
+it('reads no row for the bulk bar when more are ticked than one run takes, and every button says so', function (): void {
+    $owner = tuMember('owner', PermissionRegistry::TENANT_PERMISSIONS);
+
+    app(Tenancy::class)->enter(1, function () use ($owner): void {
+        $page = tuPage($owner, 'Giới thiệu');
+        $many = [$page->ulid, ...array_map(static fn (): string => (string) Str::ulid(), range(1, 200))];
+        $tooMany = __('entries.bulk_too_many', ['max' => 200]);
+
+        $list = Livewire::actingAs($owner)->test(Index::class)->set('selected', $many);
+        $bulk = collect($list->viewData('bulk'));
+        expect($bulk->pluck('ok')->unique()->all())->toBe([0])
+            ->and($bulk->pluck('none')->unique()->all())->toBe([$tooMany])
+            ->and($bulk->pluck('label')->all())->toBe(['Đăng', 'Gỡ khỏi website', 'Đưa về nháp', 'Nhân bản', 'Chuyển vào Thùng rác'])
+            ->and($list->viewData('bulkSkip'))->toBe($tooMany);
+
+        $list->call('bulkTrash')->assertDispatched('bs-toast', text: $tooMany);
+        expect(tuTrashed($page))->toBeFalse();
+    });
+});

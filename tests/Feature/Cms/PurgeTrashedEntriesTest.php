@@ -211,7 +211,7 @@ it('counts entries trashed before the purge began from the day it began', functi
     expect(DB::connection('pgsql_admin')->table('entries')->where('id', $id)->exists())->toBeFalse();
 });
 
-it('takes its window from the settings, never below one day', function (): void {
+it('takes its window from the settings, and the default for one that is not a whole number of days', function (): void {
     $now = Carbon::parse('2027-01-15 10:00:00', 'UTC');
 
     expect(EntryTrash::days())->toBe(30)
@@ -224,10 +224,32 @@ it('takes its window from the settings, never below one day', function (): void 
     expect(EntryTrash::days())->toBe(7)
         ->and(EntryTrash::cutoff($now)?->toDateTimeString())->toBe('2027-01-08 10:00:00');
 
-    config(['cms.trash_retention_days' => 0]);
-    expect(EntryTrash::days())->toBe(1);
-    config(['cms.trash_retention_days' => 'abc']);
-    expect(EntryTrash::days())->toBe(30);
+    config(['cms.trash_retention_days' => '12']);
+    expect(EntryTrash::days())->toBe(12);
+    foreach ([0, -3, '', 'abc', '0', null] as $mistyped) {
+        config(['cms.trash_retention_days' => $mistyped]);
+        expect(EntryTrash::days())->toBe(30);
+    }
+});
+
+it('reads the environment setting as written, so an empty or mistyped one keeps the 30 days', function (): void {
+    $read = function (string $value): int {
+        putenv("CMS_TRASH_RETENTION_DAYS={$value}");
+        $_ENV['CMS_TRASH_RETENTION_DAYS'] = $_SERVER['CMS_TRASH_RETENTION_DAYS'] = $value;
+        try {
+            config(['cms' => require base_path('config/cms.php')]);
+
+            return EntryTrash::days();
+        } finally {
+            putenv('CMS_TRASH_RETENTION_DAYS');
+            unset($_ENV['CMS_TRASH_RETENTION_DAYS'], $_SERVER['CMS_TRASH_RETENTION_DAYS']);
+        }
+    };
+
+    expect($read(''))->toBe(30)
+        ->and($read('abc'))->toBe(30)
+        ->and($read('0'))->toBe(30)
+        ->and($read('14'))->toBe(14);
 });
 
 it('is scheduled daily without overlapping, and named in the audit log', function (): void {

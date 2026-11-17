@@ -760,6 +760,11 @@ final class Index extends Component
         }
 
         $kids = $entry->type === 'page' ? $this->liveSubPages($entry) : [];
+        if ($kids === null) {   // too big a branch to move in one go: nothing moves, and the member is told
+            $this->refuse(Cast::string(__('entries.trash_kids_too_many', ['max' => $this->subPageCap()])));
+
+            return;
+        }
         $home = $this->homeIds([$entry->ulid]) !== [];
         if (! $confirmed && ($kids !== [] || $home)) {
             $this->askTrash($entry, count($kids), $home);
@@ -794,7 +799,9 @@ final class Index extends Component
 
     /**
      * «Hoàn tác» on the message of a move to the Trash: every row it moved comes back, each through
-     * the same rule and policy as «Khôi phục» (a row restored or purged meanwhile is left out).
+     * the same rule and policy as «Khôi phục» (a row restored or purged meanwhile is left out). A
+     * branch of sub-pages or several moves joined in one message can hold more than BULK_LIMIT rows:
+     * they come back BULK_LIMIT at a time, never refused for their number.
      */
     public function undoTrash(): void
     {
@@ -816,6 +823,7 @@ final class Index extends Component
                 return $entry->restore();
             },
             $ulids,
+            capped: false,
         );
         if ($run === null) {
             return;
@@ -958,18 +966,21 @@ final class Index extends Component
     }
 
     /**
-     * «Chuyển vào Thùng rác (N)»: at once, like the row's, with «Hoàn tác» on the message. The Home
-     * page is skipped (the message says how to remove it); only the rows ticked go, as in the design.
+     * «Chuyển vào Thùng rác (N)»: at once, like the row's, with «Hoàn tác» on the message. Only the
+     * rows ticked go, as in the design. The Home page is skipped, and so is a page that still has
+     * live sub-pages: they would stay behind it with a broken address, so it is moved from its own
+     * row, which takes its sub-pages along (the message says how to remove either).
      */
     public function bulkTrash(): void
     {
         $user = $this->actingUser();
         $homes = $this->homeIds($this->selected);
+        $parents = $this->parentIds($this->selected);
 
         $run = $this->runBulk(
             'entries.bulk_trashed',
             'entries.bulk_skipped',
-            fn (Entry $entry): bool => $this->whyNotTrash($entry, $user, $homes) === null,
+            fn (Entry $entry): bool => $this->whyNotTrash($entry, $user, $homes, $parents) === null,
             function (Entry $entry): bool {
                 $this->authorize('delete', $entry);
 
@@ -980,7 +991,7 @@ final class Index extends Component
             return;
         }
 
-        $message = $this->bulkMessage($run, 'entries.bulk_trashed', 'entries.bulk_skipped', $homes !== []);
+        $message = $this->bulkMessage($run, 'entries.bulk_trashed', 'entries.bulk_skipped', $homes !== [], $parents !== []);
         $run['done'] === [] ? $this->toast($message) : $this->sayTrashed($run['done'], $message);
     }
 
@@ -1026,12 +1037,16 @@ final class Index extends Component
      * the action is for) or the lang key of the reason.
      */
 
-    /** @param  array<int, true>  $homes  the Home page among the rows (homeIds()) */
-    private function whyNotTrash(Entry $entry, User $user, array $homes): ?string
+    /**
+     * @param  array<int, true>  $homes  the Home page among the rows (homeIds())
+     * @param  array<int, true>  $parents  the pages among the rows with live sub-pages (parentIds())
+     */
+    private function whyNotTrash(Entry $entry, User $user, array $homes, array $parents): ?string
     {
         return match (true) {
             $entry->trashed() => 'entries.skip_in_trash',
             isset($homes[$entry->id]) => 'entries.skip_home',
+            isset($parents[$entry->id]) => 'entries.skip_has_kids',
             ! $user->can('delete', $entry) => $this->whyRefused($entry, $user, 'delete'),
             default => null,
         };
@@ -1169,14 +1184,16 @@ final class Index extends Component
      * @param  callable(Entry): bool  $eligible  the row is one this action is for
      * @param  callable(Entry): bool  $action  runs the action; true when the row really changed
      * @param  list<string>|null  $ulids  the rows to act on; the selection when null
+     * @param  bool  $capped  refuse more than BULK_LIMIT rows (a selection); false works through any
+     *                        number BULK_LIMIT at a time, in one transaction (the rows «Hoàn tác» names)
      * @return array{tally: array<string, int>, done: list<string>}|null what the run did; null when
      *                                                                   it did nothing (already told)
      */
-    private function runBulk(string $doneKey, string $skippedKey, callable $eligible, callable $action, ?array $ulids = null): ?array
+    private function runBulk(string $doneKey, string $skippedKey, callable $eligible, callable $action, ?array $ulids = null, bool $capped = true): ?array
     {
         $fromSelection = $ulids === null;
         $ulids ??= $this->selected;
-        if (count($ulids) > self::BULK_LIMIT) {
+        if ($capped && count($ulids) > self::BULK_LIMIT) {
             $this->toast(__('entries.bulk_too_many', ['max' => self::BULK_LIMIT]));
 
             return null;
@@ -1189,11 +1206,13 @@ final class Index extends Component
         DB::beginTransaction();
         try {
             $counts->batch(function () use (&$tally, &$done, $ulids, $counts, $eligible, $action, $doneKey, $skippedKey): void {
-                foreach ($this->selectedEntries($ulids) as $entry) {
-                    $key = $this->bulkRow($counts, $entry, $eligible, $action, $doneKey, $skippedKey);
-                    $tally[$key]++;
-                    if ($key === $doneKey) {
-                        $done[] = $entry->ulid;
+                foreach ($this->selectedChunks($ulids) as $chunk) {
+                    foreach ($chunk as $entry) {
+                        $key = $this->bulkRow($counts, $entry, $eligible, $action, $doneKey, $skippedKey);
+                        $tally[$key]++;
+                        if ($key === $doneKey) {
+                            $done[] = $entry->ulid;
+                        }
                     }
                 }
             });
@@ -1217,11 +1236,11 @@ final class Index extends Component
 
     /**
      * The one toast of a bulk run: what was done, then what was skipped, governed or failed, and
-     * why the Home page was left out when it was among the rows.
+     * why the Home page, or a page with sub-pages, was left out when one was among the rows.
      *
      * @param  array{tally: array<string, int>, done: list<string>}  $run
      */
-    private function bulkMessage(array $run, string $doneKey, string $skippedKey, bool $homeAmong = false): string
+    private function bulkMessage(array $run, string $doneKey, string $skippedKey, bool $homeAmong = false, bool $parentAmong = false): string
     {
         $tally = $run['tally'];
         $parts = [Cast::string(__($doneKey, ['count' => $tally[$doneKey]]))];
@@ -1232,6 +1251,9 @@ final class Index extends Component
         }
         if ($homeAmong && $tally[$skippedKey] > 0) {
             $parts[] = Cast::string(__('entries.skip_home_note'));
+        }
+        if ($parentAmong && $tally[$skippedKey] > 0) {
+            $parts[] = Cast::string(__('entries.skip_kids_note'));
         }
 
         return implode(' ', $parts);
@@ -1293,19 +1315,31 @@ final class Index extends Component
 
     /**
      * Every live page under this one (its sub-pages, theirs, …), read level by level as RouteSync
-     * walks the tree, with a cap on depth and size against a looped or huge tree.
+     * walks the tree, with a cap on depth and size against a looped or huge tree. A branch past the
+     * cap — more than subPageCap() pages in all, or still going after 12 levels — is null: the whole
+     * branch is too big to move at once, and no part of it is moved, so no sub-page is ever left
+     * behind its parent without a word.
      *
-     * @return list<Entry>
+     * @return list<Entry>|null
      */
-    private function liveSubPages(Entry $page): array
+    private function liveSubPages(Entry $page): ?array
     {
+        $cap = $this->subPageCap();
         $found = [];
         $seen = [$page->id => true];
         $frontier = [$page->id];
-        for ($depth = 0; $frontier !== [] && $depth < 12 && count($found) < self::TREE_CHILDREN; $depth++) {
+        for ($depth = 0; $frontier !== []; $depth++) {
+            if ($depth >= 12) {
+                return null;
+            }
+            $room = $cap - count($found);
+            // one more than there is room for: finding it means the branch is over the cap
             $children = Entry::query()->where('type', 'page')->whereIn('parent_id', $frontier)->orderBy('id')
-                ->limit(self::TREE_CHILDREN)
+                ->limit($room + 1)
                 ->get(['id', 'site_id', 'ulid', 'type', 'status', 'parent_id', 'author_id', 'deleted_at', 'updated_at']);
+            if ($children->count() > $room) {
+                return null;
+            }
             $frontier = [];
             foreach ($children as $child) {
                 if (! isset($seen[$child->id])) {
@@ -1317,6 +1351,15 @@ final class Index extends Component
         }
 
         return $found;
+    }
+
+    /**
+     * The most sub-pages one move to the Trash takes along: TREE_CHILDREN. The undocumented setting
+     * cms.trash_subpages_max lowers it, so a test can reach the cap without building a thousand pages.
+     */
+    private function subPageCap(): int
+    {
+        return max(1, min(self::TREE_CHILDREN, Cast::int(config('cms.trash_subpages_max'), self::TREE_CHILDREN)));
     }
 
     /**
@@ -1343,6 +1386,31 @@ final class Index extends Component
         }
 
         return $homes;
+    }
+
+    /**
+     * Which of these rows is a page that still has a live sub-page (one query): the bulk move to the
+     * Trash leaves it out, as the row's move would take the sub-pages with it.
+     *
+     * @param  list<string>  $ulids
+     * @return array<int, true> entry id => true
+     */
+    private function parentIds(array $ulids): array
+    {
+        if ($ulids === []) {
+            return [];
+        }
+        $ids = Entry::query()->where('type', 'page')
+            ->whereIn('parent_id', Entry::withTrashed()->select('id')->where('type', 'page')->whereIn('ulid', $ulids))
+            ->distinct()
+            ->pluck('parent_id');
+
+        $parents = [];
+        foreach ($ids as $id) {
+            $parents[Cast::int($id)] = true;
+        }
+
+        return $parents;
     }
 
     /** The row's title in the website's default language (one query), for a message that names it. */
@@ -1383,18 +1451,46 @@ final class Index extends Component
     }
 
     /**
-     * The selection, locked in id order (see runBulk()). Trashed rows are loaded too, so each
-     * rule can tell a row of the wrong kind (skipped) from one that no longer exists (left out).
+     * The rows of a run, locked BULK_LIMIT at a time in ascending id order across the whole run (see
+     * runBulk()): up to BULK_LIMIT rows are one locked read, as before; more are first listed by id
+     * (no lock), then locked chunk by chunk, so the order matches the purge's and the two never deadlock.
      *
      * @param  list<string>  $ulids
+     * @return iterable<EloquentCollection<int, Entry>>
+     */
+    private function selectedChunks(array $ulids): iterable
+    {
+        if (count($ulids) <= self::BULK_LIMIT) {
+            yield $this->selectedEntries('ulid', $ulids);
+
+            return;
+        }
+        $ids = [];
+        foreach (array_chunk($ulids, self::BULK_LIMIT * 10) as $part) {
+            foreach (Entry::withTrashed()->whereIn('ulid', $part)->pluck('id') as $id) {
+                $ids[] = Cast::int($id);
+            }
+        }
+        sort($ids);
+        foreach (array_chunk($ids, self::BULK_LIMIT) as $chunk) {
+            yield $this->selectedEntries('id', $chunk);
+        }
+    }
+
+    /**
+     * Rows of a run, locked in id order (see runBulk()). Trashed rows are loaded too, so each rule
+     * can tell a row of the wrong kind (skipped) from one that no longer exists (left out).
+     *
+     * @param  'ulid'|'id'  $column
+     * @param  list<string>|list<int>  $keys
      * @return EloquentCollection<int, Entry>
      */
-    private function selectedEntries(array $ulids): EloquentCollection
+    private function selectedEntries(string $column, array $keys): EloquentCollection
     {
         // The row's primary category is read by every rule for a member limited to some
         // categories, and by the category totals a trash, restore or purge moves: load it with the
         // rows (one query) rather than once per row.
-        return Entry::withTrashed()->whereIn('ulid', $ulids)->orderBy('id')->lockForUpdate()
+        return Entry::withTrashed()->whereIn($column, $keys)->orderBy('id')->lockForUpdate()
             ->with(self::primaryCategoryOnly())
             ->get();
     }
@@ -2023,8 +2119,9 @@ final class Index extends Component
      * người khác.»). Only the buttons this member's role has are offered, in the signed order:
      * Đăng · Gỡ khỏi website · Đưa về nháp · Nhân bản · Chuyển vào Thùng rác (a sender: Gửi duyệt);
      * on the Trash, Khôi phục · Xóa vĩnh viễn. Costs nothing with nothing ticked; with a selection,
-     * the ticked rows, their main category and their default-language text: three queries, plus one
-     * for the Home page among them.
+     * the ticked rows, their main category and their default-language text: three queries, plus two
+     * on pages (the Home page among them, and those with live sub-pages). More than BULK_LIMIT
+     * ticked reads no row: every button says the run would refuse them.
      *
      * @return array{actions: list<array{key: string, label: string, name: string, icon: string, color: string, call: string, ok: int, title: string, none: ?string, confirm: ?array{title: string, text: string, ok: string}}>, skip: ?string}
      */
@@ -2034,13 +2131,18 @@ final class Index extends Component
             return ['actions' => [], 'skip' => null];
         }
 
-        $rows = Entry::withTrashed()->whereIn('ulid', $this->selected)->orderBy('id')
+        // More ticked than one run takes: every action would refuse (runBulk()), so no row is read and
+        // each button says so instead of running. The read below never takes more than BULK_LIMIT + 1.
+        $tooMany = count($this->selected) > self::BULK_LIMIT;
+        $picked = $tooMany ? [] : array_slice($this->selected, 0, self::BULK_LIMIT + 1);
+        $rows = $picked === [] ? new EloquentCollection : Entry::withTrashed()->whereIn('ulid', $picked)->orderBy('id')
             ->with(self::primaryCategoryOnly() + ['translations' => static function (Relation $text) use ($locale): void {
                 $text->where('locale', $locale)->select(['id', 'entry_id', 'locale', 'status', 'title']);
             }])
             ->get(['id', 'site_id', 'ulid', 'type', 'status', 'author_id', 'deleted_at']);
-        $homes = $type === 'page' ? $this->homeIds($this->selected) : [];
-        $gone = count($this->selected) - $rows->count();   // gone meanwhile (purged by a colleague): never acted on
+        $homes = $type === 'page' ? $this->homeIds($picked) : [];
+        $parents = $type === 'page' ? $this->parentIds($picked) : [];
+        $gone = count($picked) - $rows->count();   // gone meanwhile (purged by a colleague): never acted on
         $noun = Cast::string(__('entries.noun_'.$type));
 
         $deleter = $user->can('entries.delete.any') || $user->can('entries.delete.own');
@@ -2062,12 +2164,22 @@ final class Index extends Component
                 $specs[] = ['duplicate', 'entries.action_duplicate', 'ri-file-copy', 'primary', 'bulkDuplicate', fn (Entry $e): ?string => $this->whyNotDuplicate($e, $user)];
             }
             if ($deleter) {
-                $specs[] = ['trash', 'entries.action_trash', 'ri-delete-bin', 'danger', 'bulkTrash', fn (Entry $e): ?string => $this->whyNotTrash($e, $user, $homes)];
+                $specs[] = ['trash', 'entries.action_trash', 'ri-delete-bin', 'danger', 'bulkTrash', fn (Entry $e): ?string => $this->whyNotTrash($e, $user, $homes, $parents)];
             }
         }
 
         $actions = [];
         $skip = null;
+        if ($tooMany) {
+            $refusal = Cast::string(__('entries.bulk_too_many', ['max' => self::BULK_LIMIT]));
+            foreach ($specs as [$key, $labelKey, $icon, $color, $call]) {
+                $name = Cast::string(__($labelKey));
+                $actions[] = ['key' => $key, 'label' => $name, 'name' => $name, 'icon' => $icon, 'color' => $color, 'call' => $call,
+                    'ok' => 0, 'title' => $refusal, 'none' => $refusal, 'confirm' => null];
+            }
+
+            return ['actions' => $actions, 'skip' => $specs === [] ? null : $refusal];
+        }
         foreach ($specs as [$key, $labelKey, $icon, $color, $call, $why]) {
             $ok = 0;
             $bad = [];
