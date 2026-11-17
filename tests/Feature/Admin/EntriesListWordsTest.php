@@ -63,6 +63,8 @@ describe('header', function (): void {
         app(Tenancy::class)->enter(1, function () use ($user): void {
             grantRole($user, 'editor', ['entries.view', 'entries.create']);
             lwSection();
+            // the search box shows once the section holds something (an empty one shows a single card)
+            lwEntry($user, 'Một bài');
 
             Livewire::actingAs($user->fresh())->test(Index::class, ['section' => 'tin-tuc'])
                 ->assertSeeHtml('>Tin tức</h1>')
@@ -80,6 +82,7 @@ describe('header', function (): void {
 
         app(Tenancy::class)->enter(1, function () use ($user): void {
             grantRole($user, 'editor', ['entries.view', 'entries.create']);
+            lwEntry($user, 'Một trang', 'page');
 
             Livewire::actingAs($user->fresh())->test(Index::class)
                 ->assertSeeHtml('>'.e(__('entries.section_fallback')).'</h1>')

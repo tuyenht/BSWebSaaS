@@ -41,6 +41,16 @@ final class AdminNav
         'projects' => 'ri-folder-2',
     ];
 
+    /** A content section's glyph: its own when set, else the default for its key, else the document glyph. */
+    public static function sectionIcon(?ContentSection $section): string
+    {
+        if ($section === null) {
+            return 'ri-file-text';
+        }
+
+        return $section->icon ?: (self::SECTION_ICONS[$section->key] ?? 'ri-file-text');
+    }
+
     /**
      * Which headed group of the sidebar each top-level entry belongs to. Every key missing here
      * falls into "content": content sections carry their own keys (site data, never listed here),
@@ -235,7 +245,7 @@ final class AdminNav
             $items[] = new NavItem(
                 key: $section->key,
                 label: $section->localizedLabel(),
-                icon: $section->icon ?: (self::SECTION_ICONS[$section->key] ?? 'ri-file-text'),
+                icon: self::sectionIcon($section),
                 active: $inSection || $inTaxonomy,
                 children: $children,
                 permission: "{$prefix}.view",

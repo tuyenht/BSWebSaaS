@@ -69,6 +69,104 @@
         color: var(--color-text-muted);
     }
 
+    /* A list's state (list.state, design 05): a list with nothing yet, rows that match nothing, a list
+       that did not load. The glyph large and muted (the danger ink for a failure), a heading, one line
+       of at most 46ch, then its button. In a full-width cell (no match) it keeps 2.5rem above and below. */
+    .list-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.625rem;
+        padding: 3rem 1rem;
+        text-align: center;
+    }
+
+    .list-c-full:has(> .list-state) {
+        padding: 0;
+    }
+
+    .list-c-full > .list-state {
+        padding: 2.5rem 1rem;
+    }
+
+    .list-state-i {
+        color: var(--color-text-muted);
+    }
+
+    .list-state[data-k='error'] .list-state-i {
+        color: var(--color-danger-text);
+    }
+
+    .list-state-t {
+        margin: 0;
+        font-weight: 600;
+        color: var(--color-text-strong);
+    }
+
+    .list-state-p {
+        margin: 0;
+        max-width: 46ch;
+        font-size: var(--text-body);
+        color: var(--color-text-muted);
+        text-wrap: pretty;
+        overflow-wrap: anywhere;
+    }
+
+    .list-state-p:empty {
+        display: none;
+    }
+
+    /* Loading (list busy=…): the design's grey rows over the rows' own room, so nothing moves; they do
+       not animate (nothing to slow down for reduced motion). */
+    .list-busy {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        flex-direction: column;
+        overflow: hidden;
+        border-radius: inherit;
+        background: var(--color-surface);
+    }
+
+    /* While they reload, the rows' own layers (a card's raised parts) stay under the cover. */
+    .list-g[aria-busy] {
+        isolation: isolate;
+    }
+
+    .list-skr {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        border-top: 1px solid var(--color-border);
+    }
+
+    .list-skr:first-child {
+        border-top: 0;
+    }
+
+    .list-sk {
+        display: block;
+        height: 0.875rem;
+        border-radius: 0.25rem;
+        background: var(--color-surface-hover);
+    }
+
+    .list-sk-1 {
+        flex: 0 0 1.125rem;
+    }
+
+    .list-sk-2 {
+        flex: 1 1 auto;
+        max-width: 26.25rem;
+    }
+
+    .list-sk-3 {
+        flex: 0 0 6rem;
+        margin-left: auto;
+    }
+
     /* Header row: shown from 900 only. */
     .list-hd {
         display: none;

@@ -109,6 +109,12 @@
     // The active-filter line: "Group · N trong M <unit> · Bỏ lọc", then a chip per condition (and the sort, when changed).
     // remove calls are fixed method names with Js::from() arguments, never raw input (filter-status contract).
     $filtering = $tab !== 'all' || $filterCount > 0 || trim($search) !== '';
+    // The design's states when no row shows: a search or a filter that matches nothing says so with «Bỏ lọc» (a
+    // status group alone is not a filter: its empty line says the group has nothing); a section with nothing in
+    // it yet, not even in the Trash, shows one card in place of the list, with the add button for who may add.
+    $narrowing = $filterCount > 0 || trim($search) !== '';
+    $createOk = $canCreate && ! $addLock;
+    $nothingYet = ! $narrowing && $pageUlids === [] && ($counts['all'] ?? 0) === 0 && ($counts['trash'] ?? 0) === 0;
     $chips = [];
     if (trim($search) !== '') {
         $chips[] = ['label' => __('entries.chip_search', ['q' => trim($search)]), 'remove' => '$set(\'search\', \'\')'];
@@ -184,6 +190,22 @@
         </div>
     @endif
 
+    {{-- A section with nothing in it yet (not even in the Trash): one card in place of the list, as in the design —
+         the section's glyph, «Chưa có bài nào», a line, and the add button for whoever may add here. --}}
+    @if ($nothingYet)
+        <div class="min-w-0 rounded-md border border-border bg-surface shadow-card" data-guide="list-empty">
+            <x-bs-admin::list.state :icon="\App\Modules\Admin\Navigation\AdminNav::sectionIcon($sectionModel)" kind="empty" :title="__('entries.state_empty_title_'.$type)">
+                {{ __($createOk ? 'entries.state_empty_create_'.$type : 'entries.state_empty_view_'.$type) }}
+                @if ($createOk)
+                    <x-slot:action>
+                        <x-bs-admin::button color="primary" :href="route('admin.entries.create', $sectionKey ? ['section' => $sectionKey] : [])">
+                            <x-bs-admin::icon name="ri-add" class="size-4" /> {{ __('entries.add_'.$type) }}
+                        </x-bs-admin::button>
+                    </x-slot:action>
+                @endif
+            </x-bs-admin::list.state>
+        </div>
+    @else
     {{-- The list card: groups (from 900) · search + tools · the active-filter line · the rows · the pager. Below 600
          the card frame moves onto the rows, so the tools stand on the page and the first record comes up sooner. --}}
     <div class="min-w-0 min-[600px]:rounded-md min-[600px]:border min-[600px]:border-border min-[600px]:bg-surface min-[600px]:pb-4 min-[600px]:shadow-card">
@@ -284,6 +306,7 @@
                  width). Below 600 the rows carry the card frame; select-all lives in the tools row above. --}}
             <div x-ref="rows" data-fold-wait class="min-w-0 @max-[56.25rem]/lt:order-3 max-[599.98px]:rounded-md max-[599.98px]:border max-[599.98px]:border-border max-[599.98px]:bg-surface max-[599.98px]:[&_.list-g]:border-t-0">
             <x-bs-admin::list :label="__('entries.list_label', ['label' => $sectionLabel])" :kind="$isPost ? 'posts' : null"
+                busy="tab,setTab,search,sortKey,sortDir,sortBy,setSort,resetSort,page,gotoPage,turnPage,perPage,setPerPage,cursor,catF,langF,creatorF,templateF,transF,when,from,to,clearWhen,toggleFilterValue,resetFilterGroup,clearAllFilters,$refresh"
                 x-bind:data-hide="[mode === 'cols' && ! show('creator') ? 'au' : '', mode === 'cols' && ! show('cat') ? 'cat' : ''].join(' ').trim()" x-bind:data-fold="fold">
 
                 <x-bs-admin::list.head data-guide="list-head">
@@ -572,15 +595,20 @@
                         </x-bs-admin::list.cell>
                     </x-bs-admin::list.row>
                 @empty
+                    {{-- No row on this view: the Trash is empty, nothing matches the search or filters («Bỏ lọc», which
+                         also goes back to «Tất cả»), or the status group has nothing --}}
                     <x-bs-admin::list.row>
                         <x-bs-admin::list.cell col="full" aria-colspan="{{ $isPost ? 6 : 5 }}">
-                            @if ($tab === 'trash')
-                                {{ __('entries.trash_empty') }}
-                            @elseif (trim($search) !== '')
-                                {{ __('entries.search_empty', ['noun' => $noun]) }}
-                            @else
-                                {{ __('entries.empty') }}
-                            @endif
+                            <x-bs-admin::list.state icon="ri-search-eye" :kind="$narrowing ? 'nomatch' : 'none'" data-guide="list-none">
+                                {{ $tab === 'trash' ? __('entries.state_trash_empty') : __($narrowing ? 'entries.state_no_match_'.$type : 'entries.state_group_empty_'.$type) }}
+                                @if ($narrowing)
+                                    <x-slot:action>
+                                        <x-bs-admin::button variant="outline" color="neutral" wire:click="clearAllFilters">
+                                            <x-bs-admin::icon name="ri-filter-off" class="size-4" /> {{ __('admin.list.clear_filters') }}
+                                        </x-bs-admin::button>
+                                    </x-slot:action>
+                                @endif
+                            </x-bs-admin::list.state>
                         </x-bs-admin::list.cell>
                     </x-bs-admin::list.row>
                 @endforelse
@@ -636,6 +664,7 @@
             </div>
         </div>
     </div>
+    @endif
 
     {{-- A move to the Trash and its «Hoàn tác» (10 seconds); it rises above the bulk bar while that bar sticks to the bottom. --}}
     <x-bs-admin::toast :message="$toastMsg" :tone="$toastTone" :seq="$toastSeq" dismiss="closeToast" :undo="$trashUndo !== null ? 'undoTrash' : null" :raised="count($selected) > 0 && $bulk !== []" />
