@@ -19,7 +19,8 @@ use App\Modules\Shared\Support\Cast;
  * Every word comes from lang/*.json: the screen's own text under guide.<screen>.*, the engine's under
  * guide.ui.* (printed with the guide, so the script carries no text of its own). In a step's text,
  * [[Label]] is a control's label: the browser quotes it when a control on the screen carries it and
- * writes it plainly otherwise; [[@]] is the label of the element the step points at.
+ * writes it plainly otherwise; [[@]] is the label of the element the step points at, and [[@menu]] the
+ * items its menu holds when the step shows (a list's «Khác» holds the groups that do not fit).
  */
 final class Guide
 {
@@ -114,7 +115,7 @@ final class Guide
         $ui = [];
         foreach (['heading', 'close', 'close_tip', 'role', 'part', 'steps', 'steps_one', 'seen', 'show', 'show_named', 'run', 'run_one',
             'exit', 'exit_tip', 'back', 'prev', 'prev_aria', 'next', 'next_aria', 'done', 'next_part', 'count', 'count_intro', 'title_sep', 'quote',
-            'offer_title', 'offer_title_changed', 'offer_changed', 'offer_text', 'offer_later', 'offer_now'] as $k) {
+            'offer_title', 'offer_title_changed', 'offer_changed', 'offer_text', 'offer_later', 'offer_now', 'list_sep'] as $k) {
             $ui[$k] = Cast::string(__('guide.ui.'.$k));
         }
 

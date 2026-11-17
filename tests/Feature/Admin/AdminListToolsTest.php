@@ -226,7 +226,9 @@ it('keeps the chosen group and Trash in the row when groups overflow into More',
         ->and($html)->toMatch('/data-g="unused" data-guide="tab-unused" data-pin="0"/')
         ->and($html)->toMatch('/data-g="trash" data-guide="tab-trash" data-pin="1"/')
         ->and(substr_count($html, 'role="menuitemradio"'))->toBe(4)
-        ->and($html)->toContain('aria-haspopup="menu"');
+        ->and($html)->toContain('aria-haspopup="menu"')
+        // a screen's guide points at «Khác» (its step drops while the button is hidden)
+        ->and($html)->toContain('x-ref="moreButton" data-guide="tabs-more"');
 });
 
 it('puts More right after the last group and Trash at the far end', function (): void {
