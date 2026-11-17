@@ -279,8 +279,8 @@
                             </button>
                         @elseif ($canSend)
                             <button type="button" wire:click="bulkPublish"
-                                class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-accent hover:text-accent">
-                                <x-bs-admin::icon name="ri-inbox-unarchive" class="size-3.5 text-body-muted" /> {{ __('entries.ed.submit') }}
+                                class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-text transition-colors hover:border-primary-text hover:text-primary-text">
+                                <x-bs-admin::icon name="ri-inbox-unarchive" class="size-3.5 text-text-muted" /> {{ __('entries.ed.submit') }}
                             </button>
                         @endif
                         @if ($canCreate)

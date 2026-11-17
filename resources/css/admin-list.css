@@ -570,7 +570,7 @@
         max-width: 100%;
         font-size: var(--text-caption);
         font-weight: 600;
-        color: var(--color-admin-warning-text);
+        color: var(--color-warning-text);
         overflow-wrap: anywhere;
     }
 
