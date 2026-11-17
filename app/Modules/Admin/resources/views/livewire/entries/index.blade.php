@@ -130,19 +130,15 @@
 @endphp
 <div class="entries-index flex flex-col gap-3">
 
-    {{-- Title row: the name · (?) · the main button on one line (the name wraps, never clipped), then one line on
-         what the list holds. Below 600 the way back is the menu, so the breadcrumb gives its room to the list; its link
-         reaches 44px through the shared transparent hit area, drawn as before. --}}
+    {{-- The header, as the admin shell draws it: the trail «⌂ › section › Danh sách» (the section a link back to its
+         list), the title row (the name, then the (?) guide and the main button as one group at the end of the row),
+         then one line on what the list holds. Below 600, or on a short landscape screen, the way back is the menu, so
+         the trail gives its room to the list and the line under the name is its short phone wording. --}}
     <header class="flex flex-col gap-1">
-        <nav aria-label="{{ __('admin.breadcrumb') }}" data-guide="crumb" class="hidden text-caption text-text-muted min-[600px]:block">
-            <div class="flex items-center gap-1.5">
-                <a href="{{ route('admin.dashboard') }}" wire:navigate class="hit-area inline-flex items-center gap-1 transition-colors hover:text-primary-text">
-                    <x-bs-admin::icon name="home" class="size-3.5" /> {{ __('admin.breadcrumb_home') }}
-                </a>
-                <x-bs-admin::icon name="chevron-right" class="size-3.5 text-placeholder" />
-                <span class="font-medium">{{ $sectionLabel }}</span>
-            </div>
-        </nav>
+        <x-bs-admin::breadcrumb data-guide="crumb" class="max-[599.98px]:hidden [@media(max-height:500px)]:hidden" :items="[
+            ['label' => $sectionLabel, 'url' => route('admin.entries.index', $sectionKey ? ['section' => $sectionKey] : [])],
+            ['label' => __('admin.list')],
+        ]" />
         <x-bs-admin::title-row :title="$pageTitle" title-id="entries-title">
             <x-slot:help>
                 <x-bs-admin::guide :guide="$guide" />
@@ -152,7 +148,10 @@
                 <x-bs-admin::icon name="ri-add" class="size-4" />
             </x-bs-admin::button>
         </x-bs-admin::title-row>
-        <p class="m-0 text-body text-text-muted [overflow-wrap:anywhere]">{{ __('entries.desc_'.$type, ['label' => mb_strtolower(mb_substr($sectionLabel, 0, 1)).mb_substr($sectionLabel, 1)]) }}</p>
+        <p class="m-0 text-body text-text-muted [overflow-wrap:anywhere]">
+            <span data-desc="full" class="max-[599.98px]:hidden [@media(max-height:500px)]:hidden">{{ __('entries.desc_'.$type, ['label' => mb_strtolower(mb_substr($sectionLabel, 0, 1)).mb_substr($sectionLabel, 1)]) }}</span>
+            <span data-desc="short" class="hidden max-[599.98px]:inline [@media(max-height:500px)]:inline">{{ __('entries.mdesc_'.$type) }}</span>
+        </p>
     </header>
 
     {{-- Where the member stands here: their role, how this section publishes (straight, or through its approval
@@ -181,14 +180,35 @@
         <div class="@container/lt min-w-0"
              x-data="{
                  mode: 'cols',
-                 size() { const w = this.$refs.rows?.clientWidth ?? 0, rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16; this.mode = w < 37.5 * rem ? 'card' : (w < 56.25 * rem ? 'line' : 'cols'); },
+                 fold: '',
+                 seen: '',
+                 ro: null,
+                 destroy() { this.ro?.disconnect(); },
+                 size(force = false) { const w = this.$refs.rows?.clientWidth ?? 0, rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16, boost = window.bsListFold.boostPx(), key = w + ':' + boost; if (! force && key === this.seen) { return; } this.seen = key; this.mode = w < 37.5 * rem ? 'card' : (w < 56.25 * rem ? 'line' : 'cols'); this.$nextTick(() => this.foldCols(boost)); },
+                 {{-- a side column shows whenever the name text keeps the shared minimum beside it: as the table narrows or the text grows, the category and then the author fold into the line under the name. One pass after the chosen columns are drawn (next tick): clear the fold, read every width, write the fold once. The name text's room is the name cell less what stands beside the text in it (padding, the cover, the indent, the ✎), read on the first row. --}}
+                 foldCols(boost) {
+                     const list = this.$refs.rows?.querySelector('.list-rows'), head = list?.querySelector('.list-hd'), main = head?.querySelector('.list-c-main');
+                     if (! list || ! main) { return; }
+                     let out = [];
+                     if (this.mode === 'cols') {
+                         list.removeAttribute('data-fold');
+                         const cols = ['cat', 'au'].map((k) => [k, head.querySelector('.list-c-' + k)?.getBoundingClientRect().width ?? 0]);
+                         const cell = list.querySelector('.list-r:not(.list-hd) > .list-c-main'), tl = cell?.querySelector('.list-tl'), name = tl?.querySelector('.list-name');
+                         let beside = 0;
+                         if (tl && name && tl.getClientRects().length) { beside = cell.getBoundingClientRect().width - tl.getBoundingClientRect().width; for (const c of tl.children) { if (c !== name && c.getClientRects().length) { const cs = getComputedStyle(c); beside += c.getBoundingClientRect().width + (parseFloat(cs.marginLeft) || 0) + (parseFloat(cs.marginRight) || 0); } } }
+                         else { const cs = getComputedStyle(main); beside = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0); }
+                         out = window.bsListFold.nameFold(main.getBoundingClientRect().width - beside, cols, boost);
+                     }
+                     this.fold = out.join(' ');
+                     this.fold === '' ? list.removeAttribute('data-fold') : list.setAttribute('data-fold', this.fold);
+                 },
                  show(k) { return this.mode === 'line' || (this.mode === 'cols' ? this.$wire.cols : this.$wire.card).includes(k); },
                  get vPath() { return this.show('path'); },
                  get vLangs() { return this.show('langs'); },
                  get vTpl() { return this.show('tpl'); },
                  get vCat() { return this.show('cat'); },
              }"
-             x-init="size(); new ResizeObserver(() => size()).observe($el)">
+             x-init="size(true); ro = new ResizeObserver(() => size()); ro.observe($el); $watch('$wire.cols', () => $nextTick(() => size(true))); $wire.$hook('commit', ({ succeed }) => succeed(() => $nextTick(() => size(true))))">
             <div class="flex flex-col gap-3 pb-3 min-[600px]:px-4 min-[600px]:pt-4 min-[900px]:pt-3 @min-[56.25rem]/lt:flex-row @min-[56.25rem]/lt:flex-wrap @min-[56.25rem]/lt:items-center">
                 {{-- From 900 the search and the tools share a row: the search keeps room for its whole short hint
                      ("Ví dụ: bảng giá", sized in its own text size, so it grows with the member's text size) and takes
@@ -272,7 +292,7 @@
                  width). Below 600 the rows carry the card frame; select-all lives in the tools row above. --}}
             <div x-ref="rows" class="min-w-0 max-[599.98px]:rounded-md max-[599.98px]:border max-[599.98px]:border-border max-[599.98px]:bg-surface max-[599.98px]:[&_.list-g]:border-t-0">
             <x-bs-admin::list :label="__('entries.list_label', ['label' => $sectionLabel])" :kind="$isPost ? 'posts' : null"
-                x-bind:data-hide="[mode === 'cols' && ! show('creator') ? 'au' : '', mode === 'cols' && ! show('cat') ? 'cat' : ''].join(' ').trim()">
+                x-bind:data-hide="[mode === 'cols' && ! show('creator') ? 'au' : '', mode === 'cols' && ! show('cat') ? 'cat' : ''].join(' ').trim()" x-bind:data-fold="fold">
 
                 <x-bs-admin::list.head data-guide="list-head">
                     <x-bs-admin::list.cell head col="chk">

@@ -137,7 +137,6 @@ it('switches layout on the list width in rem, from shared tokens, never clipping
         ->and($css)->toContain('@container list (width < 37.5rem)')
         ->and($css)->toContain('@container list (37.5rem <= width < 56.25rem)')
         ->and($css)->toContain('@container list (width >= 56.25rem)')
-        ->and($css)->toContain('@container list (width >= 80rem)')
         // one grid for the header and every row, so a header lines up with its column
         ->and($css)->toContain('grid-template-columns: subgrid')
         ->and($css)->toContain('var(--spacing-hit)')
@@ -194,6 +193,29 @@ it('shows the quick-edit pencil in the table only, so below 900 no 44px box reac
     expect($source)->toMatch('/@if \\(\\$quickEdit\\)\\s*<x-bs-admin::list\\.menu-item icon="ri-pencil" x-on:click="\\$dispatch\\(\'list-quick-edit\'\\)">/');
 });
 
+it('draws the author column whenever it fits, folding it into the line under the name only by measure', function (): void {
+    $css = listCss();
+    $author = listCssBand('/* The author column: drawn from 900', '/* ── A list of facts');
+    $posts = listCssBand('/* ── A post list (list kind="posts")', '/* ── The product list');
+
+    // no fixed width gate: from 900 the column joins unless the member hid it or the page script folded it
+    expect($css)->not->toContain('@container list (width >= 80rem)')
+        ->and($author)->toContain('@container list (width >= 56.25rem)')
+        ->toContain(".list-rows:not([data-hide~='au']):not([data-fold~='au']) .list-g")
+        ->toContain(".list-rows:not([data-hide~='au']):not([data-fold~='au']) .list-c-au")
+        ->toContain(".list-rows:not([data-hide~='au']):not([data-fold~='au']) .list-m[data-for='au']")
+        // a post list folds its category the same way, back into the meta line
+        ->and($posts)->toContain(".list-rows[data-kind='posts'][data-fold~='cat'] .list-c-cat")
+        ->toMatch("/\\.list-rows\\[data-kind='posts'\\]\\[data-fold~='cat'\\] \\.list-m\\[data-for='cat'\\]\\s*\\{\\s*display: inline;/")
+        ->toContain(".list-rows[data-kind='posts'][data-kind]:not([data-hide~='au']):not([data-fold~='au']) .list-g");
+
+    // the posts and pages list measures: the category folds first, then the author, by the shared name minimum
+    $source = (string) file_get_contents(app_path('Modules/Admin/resources/views/livewire/entries/index.blade.php'));
+    expect($source)->toContain("['cat', 'au'].map(")
+        ->toContain('window.bsListFold.nameFold(')
+        ->toContain('x-bind:data-fold="fold"');
+});
+
 it('keeps the path button inside its meta piece (no negative margin past the line)', function (): void {
     $source = (string) file_get_contents(app_path('Modules/Admin/resources/views/livewire/entries/index.blade.php'));
     // up to the first class attribute: the click handler before it holds "=>"
@@ -205,7 +227,7 @@ it('keeps the path button inside its meta piece (no negative margin past the lin
 
 it('draws the name link and the path button at the full target size, the table cutting them to the name-cell size', function (): void {
     $css = listCss();
-    $table = listCssBand('@container list (width >= 56.25rem)', '@container list (width >= 80rem)');
+    $table = listCssBand('@container list (width >= 56.25rem)', '/* The author column: drawn from 900');
 
     // 44 everywhere by default: the visible box itself is the target, so nothing reaches over a neighbour
     expect($css)->toMatch('/\\.list-rows\\s*\\{[^}]*--list-tap: var\\(--spacing-hit\\);/')
@@ -241,7 +263,7 @@ it('draws the rows-per-page buttons as the shared pager link, with the row hit a
 });
 
 it('drops the select-all bar from 900, where the header box selects the page', function (): void {
-    expect(listCssBand('@container list (width >= 56.25rem)', '@container list (width >= 80rem)'))
+    expect(listCssBand('@container list (width >= 56.25rem)', '/* The author column: drawn from 900'))
         ->toMatch('/\\.list-selbar\\s*\\{\\s*display: none;/');
 });
 
