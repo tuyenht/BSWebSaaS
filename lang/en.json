@@ -2110,6 +2110,7 @@
     "entries.filter_none": "None",
     "entries.status_changed": "Status updated",
     "entries.scheduled_set": "Publishing scheduled",
+    "entries.err_duplicate_refused": "You are not allowed to duplicate this item.",
     "entries.duplicated": "The :noun was duplicated",
     "entries.trashed": "Moved to trash",
     "entries.restored": "The :noun was restored",

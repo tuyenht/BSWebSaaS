@@ -709,7 +709,7 @@ final class Index extends Component
             $copy = app(DuplicateEntry::class)->handle($entry, $this->actingUser());
         } catch (AuthorizationException $e) {
             // DuplicateEntry words its own refusals (no right to create, outside the limits, in the Trash)
-            $this->refuse($e->getMessage());
+            $this->refuse($e->getMessage() !== '' ? $e->getMessage() : __('entries.err_duplicate_refused'));
 
             return;
         }
@@ -1517,10 +1517,10 @@ final class Index extends Component
                 'send' => $edit && ! $publish && $entry->status === EntryStatus::Draft->value && $user->can('submit', $entry),
                 'delete' => $user->can('delete', $entry),
                 'duplicate' => $canCreate && $covered,
-                'out' => ! $covered && $scopeRefusal !== null && ($type === 'page' || $editAny || ($editOwn && $own))
+                'out' => ! $covered && $scopeRefusal !== null && ($editAny || ($editOwn && $own))
                     ? self::scopeWhy($type, $scopeRefusal) : null,
                 // a locked Thùng rác is shown on such a row only to a role that could otherwise remove it
-                'deleteRole' => $type === 'page' || $deleteAny || ($deleteOwn && $own),
+                'deleteRole' => $deleteAny || ($deleteOwn && $own),
             ];
         }
         // A member limited to some categories may add no page (a page has no category): the add button

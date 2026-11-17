@@ -315,3 +315,20 @@ it('lists every member type within the same query budget', function (): void {
         ->and($counts['sender'])->toBeLessThanOrEqual($counts['owner'] + 1)
         ->and($counts['limited'])->toBeLessThanOrEqual($counts['owner'] + 4);
 });
+
+it('shows a locked «Thùng rác» only to a role that could otherwise remove the row', function (): void {
+    ['limited' => $lan, 'owner' => $owner] = rgMembers();
+    [$events] = rgSection();
+    rgLimit($lan, $events);
+    $page = rgEntry($owner, 'Giới thiệu', 'published', null, true);
+    $nobody = rgMember('contributor-limited', 20, ['entries.view', 'entries.create', 'entries.edit.own']);
+    rgLimit($nobody, $events);
+
+    app(Tenancy::class)->enter(1, function () use ($page, $lan, $nobody): void {
+        // no delete right at all: no locked Thùng rác, on a page or a post
+        expect(Livewire::actingAs($nobody)->test(Index::class)->viewData('rowCan')[$page->ulid]['deleteRole'])->toBeFalse();
+        // the editor role may delete any: its locked Thùng rác stays, with the reason
+        $may = Livewire::actingAs($lan)->test(Index::class)->viewData('rowCan')[$page->ulid];
+        expect($may['deleteRole'])->toBe($lan->can('entries.delete.any') || $lan->can('entries.delete.own'));
+    });
+});

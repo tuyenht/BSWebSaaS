@@ -2110,6 +2110,7 @@
     "entries.filter_none": "无",
     "entries.status_changed": "状态已更新",
     "entries.scheduled_set": "已设置发布计划",
+    "entries.err_duplicate_refused": "您无权复制此项。",
     "entries.duplicated": "已复制:noun",
     "entries.trashed": "已移到回收站",
     "entries.restored": "已恢复:noun",

@@ -3,6 +3,7 @@
     'quickEdit' => null,
     'child' => false,
     'act' => null,
+    'external' => false,
 ])
 @php
     // A record's name: a link to its editor (plain text when it has none, such as a Trash row),
@@ -10,6 +11,7 @@
     // button with that name; it dispatches `list-quick-edit` for the row to open its title field.
     // `act` (a public method of the host) makes the name a button that calls it, for a record with no
     // editor to open (a Trash row says what to do instead).
+    // `external` opens the href in a new tab instead of inside the admin (a record's public page).
     // `child` puts the tree mark of a child record (a sub-page) before the name, in its indent.
 @endphp
 <span {{ $attributes->merge(['class' => 'list-tl']) }}>
@@ -17,7 +19,7 @@
         <x-bs-admin::icon name="chevron-right" class="list-tree" />
     @endif
     @if ($href)
-        <a href="{{ $href }}" wire:navigate class="list-name">{!! trim($slot) !!}</a>
+        <a href="{{ $href }}" @if ($external) target="_blank" rel="noopener" @else wire:navigate @endif class="list-name">{!! trim($slot) !!}</a>
     @elseif ($act)
         <button type="button" wire:click="{{ $act }}" class="list-name cursor-pointer border-0 bg-transparent p-0 text-left font-[inherit]">{!! trim($slot) !!}</button>
     @else

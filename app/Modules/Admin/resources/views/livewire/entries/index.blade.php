@@ -386,7 +386,7 @@
                             @endif
                             <div @class(['pl-5' => $depth, 'min-w-0 flex-1' => $isPost])>
                                 <div x-show="! editing">
-                                    <x-bs-admin::list.name :data-guide="$quickEdit ? 'row-title-qe' : 'row-title'" :href="$quickEdit ? route('admin.entries.edit', ['ulid' => $entry->ulid]) : null"
+                                    <x-bs-admin::list.name :data-guide="$quickEdit ? 'row-title-qe' : 'row-title'" :href="$quickEdit ? route('admin.entries.edit', ['ulid' => $entry->ulid]) : ($trashed ? null : $path)" :external="! $quickEdit"
                                         :quick-edit="$quickEdit ? __('entries.quick_edit_named', ['title' => $title]) : null" :child="$depth > 0">{{ $title }}</x-bs-admin::list.name>
                                 </div>
                                 @if ($quickEdit)

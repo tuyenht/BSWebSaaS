@@ -2110,6 +2110,7 @@
     "entries.filter_none": "なし",
     "entries.status_changed": "ステータスを更新しました",
     "entries.scheduled_set": "公開予約を設定しました",
+    "entries.err_duplicate_refused": "この項目を複製する権限がありません。",
     "entries.duplicated": ":nounを複製しました",
     "entries.trashed": "ゴミ箱に移動しました",
     "entries.restored": ":nounを復元しました",
