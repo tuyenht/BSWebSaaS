@@ -19,7 +19,7 @@
         <x-bs-admin::icon name="chevron-right" class="list-tree" />
     @endif
     @if ($href)
-        <a href="{{ $href }}" @if ($external) target="_blank" rel="noopener" @else wire:navigate @endif class="list-name">{!! trim($slot) !!}</a>
+        <a href="{{ $href }}" {!! $external ? 'target="_blank" rel="noopener"' : 'wire:navigate' !!} class="list-name">{!! trim($slot) !!}</a>
     @elseif ($act)
         <button type="button" wire:click="{{ $act }}" class="list-name cursor-pointer border-0 bg-transparent p-0 text-left font-[inherit]">{!! trim($slot) !!}</button>
     @else
