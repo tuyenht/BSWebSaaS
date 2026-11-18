@@ -2140,7 +2140,7 @@ final class Index extends Component
             $cols = $type === 'post' ? [Cast::string(__('entries.col_category'))] : [];
             $cols[] = Cast::string(__('entries.col_path'));
             if ($multilingual) {
-                $cols[] = Cast::string(__('entries.col_language'));
+                $cols[] = Cast::string(__('entries.col_translations'));
             }
             $cols[] = Cast::string(__('entries.col_creator'));
             if ($type === 'page') {

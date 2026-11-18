@@ -2116,6 +2116,7 @@
     "entries.action_destroy": "Delete permanently",
     "entries.scheduled_at": "Publishes :date · :time",
     "entries.col_language": "Languages",
+    "entries.col_translations": "Translations",
     "entries.language_vi": "Vietnamese",
     "entries.language_en": "English",
     "entries.language_ja": "Japanese",
