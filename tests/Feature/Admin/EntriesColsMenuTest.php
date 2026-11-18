@@ -8,6 +8,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Workflow\Models\Workflow;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Number;
@@ -145,6 +146,41 @@ it('counts views only on a published post, under the member\'s Lượt xem choic
     });
 });
 
+it('puts the row\'s Xem in its own span and offers «Xem» in the ⋮ for the width that hides the button', function (): void {
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        grantRole($user, 'editor', ['entries.view', 'entries.edit.any']);
+        $section = cmSection();
+        cmPost($user, 'Bài một', $section);
+
+        $html = Livewire::actingAs($user->fresh())->test(Index::class, ['section' => 'tin-tuc'])->html();
+        $menu = Str::between($html, 'class="list-menu', '</div>');
+        expect($html)->toContain('<span class="list-x" data-x="xv">')
+            ->and($menu)->toContain('data-xm="xv"')->toContain('target="_blank"')->toContain('>'.__('admin.view').'<');
+    });
+});
+
+it('names the languages column «Bản dịch» in Cột and on the cards while the filter keeps «Ngôn ngữ»', function (): void {
+    $vi = json_decode((string) file_get_contents(lang_path('vi.json')), true);
+    expect($vi['entries.col_translations'])->toBe('Bản dịch')->and($vi['entries.col_language'])->toBe('Ngôn ngữ');
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        grantRole($user, 'editor', ['entries.view']);
+        SiteLocale::query()->firstOrCreate(['locale' => 'vi'], ['is_default' => true, 'enabled' => true]);
+        SiteLocale::query()->firstOrCreate(['locale' => 'en'], ['is_default' => false, 'enabled' => true]);
+        $section = cmSection();
+        cmPost($user, 'Bài một', $section);
+
+        $html = Livewire::actingAs($user->fresh())->test(Index::class, ['section' => 'tin-tuc'])->html();
+        $opts = Str::after(Str::after($html, 'id="entries-cols"'), __('admin.list.cols_optional'));
+        expect($opts)->toContain(e(__('entries.col_translations')))
+            ->and(Str::before($opts, e(__('entries.col_views'))))->not->toContain(e(__('entries.col_language')))
+            ->and($html)->toContain(e(__('entries.col_language')));
+    });
+});
+
 it('draws Nhân bản and Thùng rác on the rows only while the member has «Hiện thêm nút khi đủ chỗ» on, kept for them', function (): void {
     $user = User::factory()->create();
     $other = User::factory()->create();
@@ -231,9 +267,9 @@ it('leaves only the copy item in the ⋮ of another author\'s post for a member 
 
         $html = Livewire::actingAs($member->fresh())->test(Index::class, ['section' => 'tin-tuc'])->set('xbtn', true)->html();
         $menu = Str::after($html, 'class="list-more"');
-        // the only item is Nhân bản, the one the row's own button covers: the page's CSS hides the empty ⋮ then
-        expect(substr_count($menu, 'role="menuitem"'))->toBe(1)
-            ->and($menu)->toContain('data-xm="xd"')->not->toContain('data-xm="xt"')
+        // the items are Xem and Nhân bản, both covered by the row's own buttons: the page's CSS hides the empty ⋮ then
+        expect(substr_count($menu, 'role="menuitem"'))->toBe(2)
+            ->and($menu)->toContain('data-xm="xv"')->toContain('data-xm="xd"')->not->toContain('data-xm="xt"')
             ->and($html)->toContain('<span class="list-x" data-x="xd">')->not->toContain('<span class="list-x" data-x="xt">');
     });
 });

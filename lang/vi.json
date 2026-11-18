@@ -2116,6 +2116,7 @@
     "entries.action_destroy": "Xóa vĩnh viễn",
     "entries.scheduled_at": "Đăng lúc :date · :time",
     "entries.col_language": "Ngôn ngữ",
+    "entries.col_translations": "Bản dịch",
     "entries.language_vi": "Tiếng Việt",
     "entries.language_en": "Tiếng Anh",
     "entries.language_ja": "Tiếng Nhật",

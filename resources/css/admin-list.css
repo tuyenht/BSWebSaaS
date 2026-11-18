@@ -1754,15 +1754,26 @@
         overflow-wrap: anywhere;
     }
 
-    /* «Hiện thêm nút khi đủ chỗ»: a table row's Nhân bản and Thùng rác (each button inside its own span, so a utility class on the button cannot beat the hiding) beside «Sửa», only those the page script
-       found room for (data-acts); a row without the button keeps its room (list-xe) so the buttons stay in line,
-       and the row's ⋮ leaves out what the row shows (data-xm), itself too when nothing is left in it. Below 900
-       nothing changes. */
+    /* A table row's Xem, Nhân bản and Thùng rác (each button inside its own span, so a utility class on the button cannot beat the hiding) beside «Sửa», only those the page script
+       found room for (data-acts, tried in that order, as design board 05 does); a row without Nhân bản or Thùng rác keeps its room (list-xe) so the buttons stay in line,
+       and the row's ⋮ leaves out what the row shows (data-xm: «Xem» appears there only while the button is hidden),
+       itself too when nothing is left in it. Below 900 nothing changes. */
     .list-x {
         display: none;
     }
 
+    @container list (width < 56.25rem) {
+        .list-menu [data-xm~='xv'] {
+            display: none;
+        }
+
+        .list-more:not(:has(.list-mi:not([data-xm~='xv']))) {
+            display: none;
+        }
+    }
+
     @container list (width >= 56.25rem) {
+        .list-rows[data-acts~='xv'] .list-x[data-x='xv'],
         .list-rows[data-acts~='xd'] .list-x[data-x='xd'],
         .list-rows[data-acts~='xt'] .list-x[data-x='xt'] {
             display: inline-flex;
@@ -1778,14 +1789,19 @@
             inline-size: var(--list-b-xt, 0px);
         }
 
+        .list-rows[data-acts~='xv'] .list-menu [data-xm~='xv'],
         .list-rows[data-acts~='xd'] .list-menu [data-xm~='xd'],
         .list-rows[data-acts~='xt'] .list-menu [data-xm~='xt'] {
             display: none;
         }
 
-        .list-rows[data-acts~='xd'][data-acts~='xt'] .list-more:not(:has(.list-mi:not([data-xm]))),
-        .list-rows[data-acts~='xd']:not([data-acts~='xt']) .list-more:not(:has(.list-mi:not([data-xm]), .list-mi[data-xm~='xt'])),
-        .list-rows[data-acts~='xt']:not([data-acts~='xd']) .list-more:not(:has(.list-mi:not([data-xm]), .list-mi[data-xm~='xd'])) {
+        .list-rows[data-acts~='xv']:not([data-acts~='xd']):not([data-acts~='xt']) .list-more:not(:has(.list-mi:not([data-xm]), .list-mi[data-xm~='xd'], .list-mi[data-xm~='xt'])),
+        .list-rows[data-acts~='xd']:not([data-acts~='xv']):not([data-acts~='xt']) .list-more:not(:has(.list-mi:not([data-xm]), .list-mi[data-xm~='xv'], .list-mi[data-xm~='xt'])),
+        .list-rows[data-acts~='xt']:not([data-acts~='xv']):not([data-acts~='xd']) .list-more:not(:has(.list-mi:not([data-xm]), .list-mi[data-xm~='xv'], .list-mi[data-xm~='xd'])),
+        .list-rows[data-acts~='xv'][data-acts~='xd']:not([data-acts~='xt']) .list-more:not(:has(.list-mi:not([data-xm]), .list-mi[data-xm~='xt'])),
+        .list-rows[data-acts~='xv'][data-acts~='xt']:not([data-acts~='xd']) .list-more:not(:has(.list-mi:not([data-xm]), .list-mi[data-xm~='xd'])),
+        .list-rows[data-acts~='xd'][data-acts~='xt']:not([data-acts~='xv']) .list-more:not(:has(.list-mi:not([data-xm]), .list-mi[data-xm~='xv'])),
+        .list-rows[data-acts~='xv'][data-acts~='xd'][data-acts~='xt'] .list-more:not(:has(.list-mi:not([data-xm]))) {
             display: none;
         }
     }

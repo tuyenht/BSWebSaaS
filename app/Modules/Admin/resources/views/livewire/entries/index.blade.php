@@ -59,7 +59,7 @@
     // while the section runs an approval workflow) · Lượt xem · Người tạo.
     $colOptions = ['path' => __('entries.col_path'), 'desc' => __('entries.col_desc')];
     if ($multilingual) {
-        $colOptions['langs'] = __('entries.col_language');
+        $colOptions['langs'] = __('entries.col_translations');
     }
     $colOptions[$isPost ? 'cat' : 'tpl'] = $isPost ? __('entries.col_category') : __('entries.filter_template');
     if ($isPost && $governed) {
@@ -264,18 +264,22 @@
                      const prev = this.acts.split(' '), ae = document.activeElement;
                      let acts = [];
                      list.setAttribute('data-acts', '');
-                     if (this.mode === 'cols' && this.$wire.xbtn && this.$wire.tab !== 'trash') {
-                         for (const t of ['xd', 'xt']) {
+                     if (this.mode === 'cols' && this.$wire.tab !== 'trash') {
+                         {{-- the room the name column needs before a button joins it (design board 05): Xem 340, Nhân bản and Thùng rác 560; with «Hiện thêm nút» off only Xem is tried --}}
+                         const need = { xv: 340, xd: 560, xt: 560 };
+                         for (const t of this.$wire.xbtn ? ['xv', 'xd', 'xt'] : ['xv']) {
                              if (! list.querySelector('.list-x[data-x=' + t + ']:not(.list-xe)')) { continue; }
                              const next = [...acts, t];
                              list.setAttribute('data-acts', next.join(' '));
                              let w = 0;
                              list.querySelectorAll('.list-x[data-x=' + t + ']:not(.list-xe)').forEach((b) => { w = Math.max(w, Math.ceil((b.firstElementChild ?? b).getBoundingClientRect().width)); });
                              list.style.setProperty('--list-b-' + t, w + 'px');
-                             if (main.getBoundingClientRect().width >= 560 + 12 * boost - (prev.includes(t) ? 16 : 0)) { acts = next; } else { break; }
+                             if (main.getBoundingClientRect().width >= need[t] + 12 * boost - (prev.includes(t) ? 16 : 0)) { acts = next; } else { break; }
                          }
-                         this.xNoFit = acts.length === 0;
+                         this.xNoFit = this.$wire.xbtn && acts.filter((t) => t !== 'xv').length === 0;
                      } else {
+                         {{-- the Trash and the narrow layouts keep Xem on the row --}}
+                         acts = ['xv'];
                          this.xNoFit = false;
                      }
                      this.acts = acts.join(' ');
@@ -639,11 +643,13 @@
                                     </x-slot:menu>
                                 @else
                                     @if ($path)
-                                        {{-- both open in a new tab and say so: a published record on the website, any other as a preview --}}
-                                        <x-bs-admin::button size="sm" variant="soft" color="secondary" :href="$path" :navigate="false" target="_blank" rel="noopener"
-                                            :title="$isLive ? __('entries.opens_new_tab') : __('entries.action_preview')" data-guide="row-view" :aria-label="__('entries.view_named', ['title' => $title]).' ('.__('entries.opens_new_tab').')'">
-                                            <x-bs-admin::icon :name="$isLive ? 'ri-external-link' : 'ri-eye'" class="size-4" /> {{ __('admin.view') }}
-                                        </x-bs-admin::button>
+                                        {{-- both open in a new tab and say so: a published record on the website, any other as a preview. The button sits in its own span (list-x) so the table can hide it when the name column needs the room; the ⋮ then offers «Xem» --}}
+                                        <span class="list-x" data-x="xv">
+                                            <x-bs-admin::button size="sm" variant="soft" color="secondary" :href="$path" :navigate="false" target="_blank" rel="noopener"
+                                                :title="$isLive ? __('entries.opens_new_tab') : __('entries.action_preview')" data-guide="row-view" :aria-label="__('entries.view_named', ['title' => $title]).' ('.__('entries.opens_new_tab').')'">
+                                                <x-bs-admin::icon :name="$isLive ? 'ri-external-link' : 'ri-eye'" class="size-4" /> {{ __('admin.view') }}
+                                            </x-bs-admin::button>
+                                        </span>
                                     @endif
                                     {{-- «Sửa» only on a row this member may edit: the editor would refuse the others --}}
                                     @if ($quickEdit)
@@ -676,6 +682,9 @@
                                         @endif
                                     @endif
                                     <x-slot:menu>
+                                        @if ($path)
+                                            <x-bs-admin::list.menu-item :icon="$isLive ? 'ri-external-link' : 'ri-eye'" data-xm="xv" :href="$path" target="_blank" rel="noopener" :aria-label="__('entries.view_named', ['title' => $title]).' ('.__('entries.opens_new_tab').')'">{{ __('admin.view') }}</x-bs-admin::list.menu-item>
+                                        @endif
                                         @if ($quickEdit)
                                             <x-bs-admin::list.menu-item icon="ri-pencil" x-on:click="$dispatch('list-quick-edit')">{{ __('entries.quick_edit_title') }}</x-bs-admin::list.menu-item>
                                         @endif

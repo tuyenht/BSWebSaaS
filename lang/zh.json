@@ -2116,6 +2116,7 @@
     "entries.action_destroy": "永久删除",
     "entries.scheduled_at": ":date · :time 发布",
     "entries.col_language": "语言",
+    "entries.col_translations": "翻译",
     "entries.language_vi": "越南语",
     "entries.language_en": "英语",
     "entries.language_ja": "日语",

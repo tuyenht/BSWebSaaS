@@ -2116,6 +2116,7 @@
     "entries.action_destroy": "完全に削除",
     "entries.scheduled_at": ":date · :time に公開",
     "entries.col_language": "言語",
+    "entries.col_translations": "翻訳",
     "entries.language_vi": "ベトナム語",
     "entries.language_en": "英語",
     "entries.language_ja": "日本語",

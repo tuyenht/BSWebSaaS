@@ -392,7 +392,9 @@ describe('the posts and pages list on the shared row', function (): void {
             Livewire::actingAs($user->fresh())->test(Index::class)
                 ->assertSee('Chỉ xem')
                 ->assertDontSeeHtml('class="list-qe"')
-                ->assertDontSeeHtml(e(__('admin.list.more_for', ['name' => 'Chỉ xem'])))
+                // the ⋮ holds only «Xem», for the width where the row's button gives way: no edit, copy or trash
+                ->assertSeeHtml('data-xm="xv"')
+                ->assertDontSeeHtml('data-xm="xd"')
                 ->assertDontSeeHtml('$wire.trash(')
                 ->assertDontSeeHtml('wire:click="trash(');
         });
