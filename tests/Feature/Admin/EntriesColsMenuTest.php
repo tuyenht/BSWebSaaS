@@ -288,6 +288,22 @@ it('reads the workflow on a redraw only while Bước duyệt is on', function (
     });
 });
 
+it('drops Bước duyệt on the next redraw once the section\'s workflow is switched off while the list is open', function (): void {
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        grantRole($user, 'editor', ['entries.view']);
+        $user->forceFill(['preferences' => ['hints' => [FirstHints::POSTS_ROLE => true]]])->save();
+        $section = cmSection();
+        $workflow = cmWorkflow();
+        cmPost($user, 'Bài một', $section);
+
+        $list = Livewire::actingAs($user->fresh())->test(Index::class, ['section' => 'tin-tuc'])->assertSee('list-c-step', false);
+        $workflow->forceFill(['is_active' => false])->save();
+        $list->set('search', 'a')->assertDontSee('list-c-step', false)->assertSet('governed', false);
+    });
+});
+
 it('adds no query per row for Mô tả, Bước duyệt, Lượt xem and the row buttons', function (array $on, bool $xbtn): void {
     $user = User::factory()->create();
     $all = ['path', 'desc', 'langs', 'cat', 'step', 'views', 'creator'];

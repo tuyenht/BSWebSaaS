@@ -1747,7 +1747,7 @@ final class Index extends Component
             $next = $workflow->transitions->first(static fn (WorkflowTransition $t): bool => $t->from_state === $at && ! $t->requires_note);
             $out[$entry->ulid] = [
                 'text' => $n === false ? '—' : Cast::string(__('entries.step_of', ['n' => $n + 1, 'm' => count($keys)])),
-                'next' => $next instanceof WorkflowTransition ? Cast::string(__('entries.step_next', ['label' => $next->label])) : Cast::string(__('entries.step_last')),
+                'next' => $at === null ? '—' : ($next instanceof WorkflowTransition ? Cast::string(__('entries.step_next', ['label' => $next->label])) : Cast::string(__('entries.step_last'))),
             ];
         }
 
@@ -2102,6 +2102,11 @@ final class Index extends Component
         // read only when a post list needs it: the Bước duyệt column is on, the role card shows or the guide is drawn
         $stepOn = $this->governed && in_array('step', $this->cols, true);
         $workflow = $postSection !== null && ($stepOn || $roleShows || $this->guideDue) ? ($this->workflowRead ? $this->mountedWorkflow : app(WorkflowEngine::class)->activeFor($postSection->key)) : null;
+        if ($stepOn && $workflow === null) {
+            // the section's workflow was switched off while the list stayed open: drop the column now, not on reload
+            $this->governed = false;
+            $stepOn = false;
+        }
         $rowStep = $workflow !== null && $stepOn ? self::rowSteps($workflow, $rows->items()) : [];
         $roleNote = $roleShows ? PostRoleNote::with($user, $workflow, $postSection->localizedLabel(), $scoped) : null;
 
