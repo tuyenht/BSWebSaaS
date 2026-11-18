@@ -346,7 +346,7 @@ LBLOB_COMMIT=$UNMERGED launch
 ok '[ "$RC" != 0 ] && says "chưa nằm trên origin/main" && head_is "$OLD" && [ ! -s "$FAKE/calls.log" ]' "an engine commit not on origin/main is refused (same engine blob)"
 
 echo "== full run on the fake prod"
-fresh "$FULL"; launch
+fresh "$FULL"; mkdir -p "$PROD/public/build/assets" && echo "old" > "$PROD/public/build/assets/served-before.css" && echo "older" > "$PROD/public/build/assets/kept-from-older.css" && echo '{"resources/css/storefront.css":{"file":"assets/served-before.css"}}' > "$PROD/public/build/manifest.json"; launch
 ok '[ "$RC" = 0 ] && says "===== XONG"' "deploy ends XONG (rc $RC)"
 [ "$RC" = 0 ] || tail -25 "$OUT"
 ok 'head_is "$FULL"' "prod HEAD is TARGET"
@@ -364,6 +364,10 @@ ok '[ -e "$FAKE/verified" ]' "one-off: apply got the preview count, verify ran"
 O=$(line_of "artisan optimize"); P=$(line_of "artisan fake:pre"); L=$(line_of "artisan octane:reload"); Q1=$(line_of "artisan fake:oneoff")
 ok '[ -n "$O" ] && [ -n "$P" ] && [ -n "$L" ] && [ "$O" -lt "$P" ] && [ "$P" -lt "$L" ] && [ "$L" -lt "$Q1" ]' "pre-reload one-off ran after optimize, before octane:reload; the other one-off after it ($O < $P < $L < $Q1)"
 ok '[ "$(cat "$FAKE/pre-count")" = 0 ] && [ -e "$FAKE/pre-verified" ] && says "OK   early xem lại sau khi chạy (còn đổi) = 0" && [ -s "$RUNS/${OLD:0:7}-${FULL:0:8}/oneoff-pre-early" ]' "pre-reload one-off: preview 2 → apply 2 → re-preview 0 → verify, its own mark"
+L=$(line_of "artisan octane:reload"); E=$(line_of "artisan storefront:purge-edge --all")
+ok '[ -n "$E" ] && [ "$L" -lt "$E" ] && [ "$(calls "artisan storefront:purge-edge --all")" = 1 ]' "the edge purge is queued once, after the reload ($L < $E)"
+ok '[ -s "$PROD/public/build/assets/served-before.css" ] && [ -s "$PROD/public/build/assets/storefront.css-${FULL:0:7}" ]' "the previous build's files stay beside the new build"
+ok '[ ! -e "$PROD/public/build/assets/kept-from-older.css" ]' "a file the serving manifest does not name is not carried into the next build"
 PB=$RUNS/${OLD:0:7}-${FULL:0:8}/pages-before
 ok 'grep -qx "/bai-2 200" "$PB" && ! grep -q "^/bai-1 " "$PB" && says "OK   trang /bai-2 (code cũ trên cấu trúc bảng mới; trước: 200) = 200"' "release_pages: the first page that opens is kept and re-checked on the old code in step 4"
 ok 'says "OK   bản build có phần tải sau resources/js/lazy.js = true" && says "OK   bản build: resources/js/app.js có '"'"'bsNewThing'"'"'" && says "OK   bản build: resources/css/storefront.css có '"'"'sf-newclass'"'"'"' "build: lazy chunk and the new strings checked"
@@ -376,7 +380,9 @@ echo "== same deploy: resume refuses another release file, rollback reads the re
 release '# edited after the review'
 launch 8
 ok '[ "$RC" = 1 ] && says "khác bản ghi lần đầu"' "a resume with a changed release file is refused"
-release; launch rollback
+touch "$FAKE/no-purge-command"; release; launch rollback
+ok 'says "Bỏ qua xoá trang lưu ở Cloudflare: bản code này chưa có storefront:purge-edge" && [ "$(calls "artisan storefront:purge-edge --all")" = 1 ]' "a rollback to code without the purge command skips it and goes on"
+rm -f "$FAKE/no-purge-command"
 ok '[ "$RC" = 0 ] && head_is "$OLD"' "rollback puts the code back on OLD"
 ok '[ "$(calls "MIGRATED")" = 2 ]' "rollback ran no migration"
 ok '[ "$(calls "artisan fake:pre")" = 1 ] && [ "$(calls "artisan octane:reload")" = 2 ]' "rollback reloads without the pre-reload one-off"
@@ -505,7 +511,7 @@ ok '[ "$RC" = 0 ] && says "Bỏ qua rbac:sync: đã chạy" && [ "$(calls "artis
 launch rollback
 ok '[ "$RC" = 0 ] && head_is "$OLD" && [ "$(calls "artisan rbac:sync")" = 2 ] && [ "$(calls "artisan octane:reload")" = 6 ]' "a rollback after a permission sync syncs back to the old list and reloads again"
 ( export PATH="$STUB:$PATH" FAKE; bash "$SRC/scripts/deploy/deploy.sh" plan "$REL" ) > "$PLAN" 2>&1; RC=$?
-ok '[ "$RC" = 0 ] && grep -q "octane:reload, khởi động lại horizon + scheduler, rbac:sync rồi octane:reload lần nữa" "$PLAN"' "the plan names the sync after the reload and the second reload"
+ok '[ "$RC" = 0 ] && grep -q "octane:reload, khởi động lại horizon + scheduler, xếp việc xoá trang lưu ở Cloudflare, rbac:sync rồi octane:reload lần nữa" "$PLAN"' "the plan names the sync after the reload and the second reload"
 fresh "$ENVK"; launch
 ok '[ "$RC" = 1 ] && says "thiếu khóa mới: NEW_KEY"' "a new env key missing on prod stops"
 fresh "$ENVK"; release 'ENV_DEFAULT_OK=(NEW_KEY)'; launch

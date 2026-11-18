@@ -29,6 +29,8 @@ artisan() {
             if [ -e "$FAKE/fail-reload-after-sync" ] && grep -q "artisan rbac:sync" "$FAKE/calls.log" 2>/dev/null; then rm -f "$FAKE/fail-reload-after-sync"; echo "reload failed"; exit 1; fi
             echo "ok $1" ;;
         view:clear|optimize|rbac:sync|media:reconcile-content-usage|fake:oneoff|fake:pre) echo "ok $1" ;;
+        list) [ -e "$FAKE/no-purge-command" ] || echo "storefront:purge-edge   Drop the pages kept at the edge" ;;
+        storefront:purge-edge) echo "ok $*" ;;
         schedule:list) grep -oE "Schedule::command\('[^']+'" "$FAKE_PROD/routes/console.php" | sed -E "s/^Schedule::command\('//; s/'$//" \
             | while read -r c; do printf '  0 0 * * *  php artisan %s ........ Next Due: 1 hour from now\n' "$c"; done ;;
         cms:resanitize-bodies) echo "site 1: 0 would change"; echo "0 would change on 1 site(s)." ;;

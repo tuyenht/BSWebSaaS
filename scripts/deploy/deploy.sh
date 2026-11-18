@@ -550,10 +550,25 @@ composer_install() { # always: also refreshes the optimized class map (a moved c
     if has_class composer-lock; then echo "Laravel: trước $(cat "$STATE/laravel-version"), bây giờ $(art --version)"
     else expect "phiên bản Laravel sau composer" "$(art --version)" "$(cat "$STATE/laravel-version")"; fi
 }
-build() {
+build() { # the build empties public/build: the previous build's files go back in beside the new ones (never over
+    # them), so a page drawn before the reload (an edge copy, an open tab loading a lazy part) still finds its CSS
+    # and JS. Only the files the serving build's manifest names are kept (older kept files are not carried
+    # again, so the folder never grows past two builds); the copy is taken once, so a resume or a rollback
+    # build restores that same set.
+    local keep=$STATE/prev-build f
     pushd "$PROD" >/dev/null
+    if [ ! -e "$keep" ]; then
+        mkdir -p "$keep.tmp"
+        if [ -s public/build/manifest.json ]; then
+            jq -r '[.[] | .file, (.css // [])[], (.assets // [])[]] | unique[]' public/build/manifest.json | while read -r f; do
+                if [ -f "public/build/$f" ]; then mkdir -p "$keep.tmp/$(dirname "$f")"; cp -a "public/build/$f" "$keep.tmp/$f"; fi
+            done
+        fi
+        mv "$keep.tmp" "$keep"
+    fi
     pnpm install --frozen-lockfile
     pnpm run build
+    cp -a -n "$keep"/. public/build/
     popd >/dev/null
 }
 s6() {
@@ -583,6 +598,16 @@ reload() { # reload [pre]: "pre" (step 7 only, never the rollback) runs ONEOFFS_
     docker restart "${PREFIX}horizon" "${PREFIX}scheduler"
     if restart_needed; then pgb_drop; fi
     wait_up
+    edge_purge
+}
+edge_purge() { # drop every site's pages kept at the Cloudflare edge: they were drawn by the code just replaced. The
+    # purge is queued (Horizon runs it, retrying a refusal); a fault here never stops the deploy, the pages then
+    # age out within the edge lifetime. Code without the command (a rollback to an older commit) skips it.
+    if art list --raw 2>/dev/null | grep -q '^storefront:purge-edge '; then
+        art storefront:purge-edge --all || echo "CẢNH BÁO: chưa xếp được việc xoá trang lưu ở Cloudflare; trang cũ hết hạn theo thời gian lưu"
+    else
+        echo "Bỏ qua xoá trang lưu ở Cloudflare: bản code này chưa có storefront:purge-edge"
+    fi
 }
 oneoff() { # oneoff <name> [pre]: preview → apply <preview count> → re-preview must be 0 → verify; a mark stops a resume from applying twice
     local k=$1 n mark=$STATE/oneoff-$1
@@ -721,7 +746,7 @@ mode_plan() { # git only, on the dev repo; prod is never touched (docker/gh/ssh/
         note "4 migrate từng tệp (code cũ vẫn phục vụ; tệp không khởi động lại PgBouncer không được đổi cột), rồi so cấu trúc bảng (bớt/đổi = đúng SCHEMA_REMOVED_OK), mọi trang của bước 0 như trước trên code cũ"
     else note "3–4 không có migration (chỉ kiểm không còn chờ)"; fi
     note "5 đổi code + composer install · 6 pnpm install + build ($(wc -w <<< "$VITE") input)"
-    note "7 view:clear, optimize,${ONEOFFS_PRE[*]:+ một lần trước khi nạp lại (code mới, worker cũ còn phục vụ): ${ONEOFFS_PRE[*]},} octane:reload, khởi động lại horizon + scheduler$(restart_needed_plan && echo ', PgBouncer')$(case " $CLASSES " in *" permission "*) echo ', rbac:sync rồi octane:reload lần nữa' ;; esac)$(case " $CLASSES " in *" sanitizer "*) echo ", resanitize ${RESANITIZE}" ;; esac)${ONEOFFS[*]:+, một lần: ${ONEOFFS[*]}}"
+    note "7 view:clear, optimize,${ONEOFFS_PRE[*]:+ một lần trước khi nạp lại (code mới, worker cũ còn phục vụ): ${ONEOFFS_PRE[*]},} octane:reload, khởi động lại horizon + scheduler$(restart_needed_plan && echo ', PgBouncer'), xếp việc xoá trang lưu ở Cloudflare$(case " $CLASSES " in *" permission "*) echo ', rbac:sync rồi octane:reload lần nữa' ;; esac)$(case " $CLASSES " in *" sanitizer "*) echo ", resanitize ${RESANITIZE}" ;; esac)${ONEOFFS[*]:+, một lần: ${ONEOFFS[*]}}"
     note "8 kiểm sau: trang như trước, CSS mới, lịch chạy (+${SCHEDULE_ADDED[*]:-} −${SCHEDULE_REMOVED[*]:-}), mật khẩu superuser, cached plan"
     echo "Dòng anh chạy (giữ nguyên; muốn chạy tiếp từ một bước thì thêm số bước trước dấu ;):"
     local envp=; [ "$dev" = /opt/bswebsaas/dev ] || envp="DEPLOY_DEV_REPO=$dev "
