@@ -20,6 +20,7 @@ use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
+use App\Modules\Cms\Exceptions\SchedulePastException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
@@ -29,6 +30,7 @@ use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
+use App\Modules\Cms\Support\EntryReviewReach;
 use App\Modules\Cms\Support\EntryTrash;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Cms\Support\HomePages;
@@ -64,7 +66,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
-use InvalidArgumentException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
@@ -771,7 +772,7 @@ final class Index extends Component
 
         try {
             app(TransitionEntryStatus::class)->handle($entry, EntryStatus::Scheduled, $this->actingUser(), $when);
-        } catch (InvalidArgumentException) {
+        } catch (SchedulePastException) {
             return Cast::string(__('entries.sched_err_past'));   // the time passed while the row was locked
         } catch (WorkflowGovernedException) {
             $this->toast(__('entries.workflow_governed'));
@@ -1044,6 +1045,7 @@ final class Index extends Component
 
         $rows = [$entry, ...$kids];
         DB::transaction(fn (): mixed => app(CategoryItemCounts::class)->batch(function () use ($rows): bool {
+            HomePages::remember($rows);   // the Home page guard on each row, read for the whole branch at once
             foreach ($rows as $row) {
                 $row->delete();
             }
@@ -2402,6 +2404,11 @@ final class Index extends Component
         $rowCovered = [];
         $rowEditable = [];
         $rowCan = [];
+        // «Xem trước» for a reviewer who may not edit every row: whether a row waits at their step is read
+        // for the whole page at once (their stages once, the sections of the rows on those stages in one go)
+        if (! $editAny && $user->can('review', Entry::class)) {
+            app(EntryReviewReach::class)->prime($user, array_map(static fn (array $item): Entry => $item['entry'], $rows->items()));
+        }
         foreach ($rows->items() as $item) {
             $entry = $item['entry'];
             $ulid = $entry->ulid;

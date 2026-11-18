@@ -6,12 +6,14 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\MemberCategoryScope;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\CategoryScopes;
+use App\Modules\Cms\Support\HomePages;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 
@@ -188,6 +190,50 @@ it('refuses a move of the Home page to the Trash outside the screens too, but le
         // a permanent purge is not a move to the Trash
         $home->forceDelete();
         expect(Entry::withTrashed()->whereKey($home->id)->exists())->toBeFalse();
+    });
+});
+
+it('reads the Home page guard of a whole branch in one go, however many pages it takes along', function (): void {
+    $owner = tuMember('owner', PermissionRegistry::TENANT_PERMISSIONS);
+
+    app(Tenancy::class)->enter(1, function () use ($owner): void {
+        // the Home page reads of one confirmed move of a branch of $size pages
+        $homeReads = function (int $size) use ($owner): int {
+            $parent = tuPage($owner, "Nhánh {$size}");
+            foreach (range(2, $size) as $i) {
+                tuPage($owner, "Trang con {$size}-{$i}", 'published', $parent);
+            }
+            $list = Livewire::actingAs($owner)->test(Index::class);
+            $reads = 0;
+            DB::listen(function ($query) use (&$reads): void {
+                if (str_contains($query->sql, 'from "entry_translations"') && str_contains($query->sql, '"slug" in')) {
+                    $reads++;
+                }
+            });
+            $list->call('trash', $parent->ulid, true);
+            expect(tuTrashed($parent))->toBeTrue();
+
+            return $reads;
+        };
+
+        $small = $homeReads(3);
+        $large = $homeReads(9);
+        expect($large)->toBe($small)->and($small)->toBeLessThanOrEqual(2);
+    });
+});
+
+it('keeps refusing the Home page when its answer was read for a batch beforehand', function (): void {
+    $owner = tuMember('owner', PermissionRegistry::TENANT_PERMISSIONS);
+
+    app(Tenancy::class)->enter(1, function () use ($owner): void {
+        $home = tuPage($owner, 'Trang chủ', 'published', null, 'home');
+        $other = tuPage($owner, 'Liên hệ');
+        HomePages::remember([$home, $other]);
+
+        expect(fn () => $home->delete())->toThrow(HomePageLockedException::class, __('entries.home_trash_why'))
+            ->and(countQueries(fn () => expect(HomePages::is($other))->toBeFalse()))->toBe(0);
+        $other->delete();
+        expect(tuTrashed($home))->toBeFalse()->and(tuTrashed($other))->toBeTrue();
     });
 });
 

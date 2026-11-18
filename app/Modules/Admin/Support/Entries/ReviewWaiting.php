@@ -70,11 +70,7 @@ final readonly class ReviewWaiting
             ->get($columns === ['*'] ? ['*'] : array_map(fn (string $column): string => 'entries.'.$column, $columns));
 
         $sections->prime($rows);
-        $waiting = $rows->filter(function (Entry $entry) use ($stages, $sections): bool {
-            $section = $sections->forEntry($entry)['key'] ?? null;
-
-            return $section !== null && isset($stages[$section]) && in_array((string) $entry->workflow_state, $stages[$section], true);
-        })->values();
+        $waiting = $rows->filter(fn (Entry $entry): bool => $sections->onStage($entry, $stages))->values();
 
         /** @var EloquentCollection<int, Entry> $kept */
         $kept = $waiting->take($limit);

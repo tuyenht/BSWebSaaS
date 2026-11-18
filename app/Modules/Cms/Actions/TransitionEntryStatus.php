@@ -3,6 +3,7 @@
 namespace App\Modules\Cms\Actions;
 
 use App\Modules\Cms\Enums\EntryStatus;
+use App\Modules\Cms\Exceptions\SchedulePastException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Support\EntryStatusAudit;
@@ -43,6 +44,7 @@ final readonly class TransitionEntryStatus
     public function __construct(private EntryWorkflowResolver $workflows) {}
 
     /**
+     * @throws SchedulePastException a publish time that is missing or not after now
      * @throws WorkflowGovernedException scheduling content an active workflow governs
      * @throws ModelNotFoundException the entry left the list meanwhile (sent to the Trash or purged)
      */
@@ -105,7 +107,7 @@ final readonly class TransitionEntryStatus
 
         if ($target === EntryStatus::Scheduled) {
             if ($publishAt === null || $publishAt <= now()) {
-                throw new InvalidArgumentException(__('entries.err_schedule_in_past'));
+                throw new SchedulePastException;
             }
 
             if ($governed) {

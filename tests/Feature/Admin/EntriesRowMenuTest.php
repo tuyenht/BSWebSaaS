@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Livewire\Entries\Index;
+use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
 use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Models\Entry;
@@ -13,6 +14,7 @@ use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Workflow\Actions\InstantiateWorkflow;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Js;
 use Illuminate\Support\Str;
@@ -129,6 +131,49 @@ describe('the row ⋮', function (): void {
                 ->toContain(__('entries.copy_link'))
                 ->toContain((string) Js::from($origin.'/gioi-thieu'))
                 ->and($origin)->toStartWith('http');
+        });
+    });
+
+    it('offers a reviewer «Xem trước» only on a colleague’s post waiting at their step, read for the whole page at once', function (): void {
+        $author = rmMember('author', ['entries.view', 'entries.create', 'entries.edit.own', 'entries.submit']);
+        $reviewer = rmMember('reviewer', ['entries.view', 'entries.edit.own', 'entries.review', 'entries.approve']);
+
+        app(Tenancy::class)->enter(1, function () use ($author, $reviewer): void {
+            [$events] = rmSection();
+            app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: true);
+            $root = Taxonomy::query()->findOrFail($events->parent_id);
+            // a category of its own under the section for each post sent for review (made before anyone signs in)
+            $categories = [];
+            foreach (range(1, 8) as $i) {
+                $categories[] = app(CreateTaxonomy::class)->handle('post_cat', $root, new TaxonomyData(names: ['vi' => "Mục {$i}"]));
+            }
+            $sendIn = function (int $count, string $tag) use ($author, &$categories): array {
+                $ulids = [];
+                foreach (range(1, $count) as $i) {
+                    $post = rmEntry($author, "Bài chờ {$tag} {$i}", 'draft', 'post', category: array_shift($categories));
+                    app(ApplyEntryWorkflowTransition::class)->handle($post, 'vi', $author, 'submit');
+                    $ulids[] = $post->ulid;
+                }
+
+                return $ulids;
+            };
+            $draft = rmEntry($author, 'Bản nháp chưa gửi', 'draft', 'post', category: $events);
+            $waiting = $sendIn(2, 'a');
+
+            // a member who may edit only their own work opens on «Của tôi»: every author is asked for
+            $few = countQueries(fn () => Livewire::actingAs($reviewer)->test(Index::class, ['section' => 'tin-tuc'])->call('resetFilterGroup', 'creator'));
+            $waiting = [...$waiting, ...$sendIn(6, 'b')];
+            $list = null;
+            $many = countQueries(function () use ($reviewer, &$list): void {
+                $list = Livewire::actingAs($reviewer)->test(Index::class, ['section' => 'tin-tuc'])->call('resetFilterGroup', 'creator');
+            });
+
+            $html = $list->html();
+            foreach ($waiting as $ulid) {
+                expect(rmRowHtml($html, $ulid))->toContain(e(route('admin.entries.preview', ['ulid' => $ulid])));
+            }
+            expect(rmRowHtml($html, $draft->ulid))->not->toContain(e(route('admin.entries.preview', ['ulid' => $draft->ulid])))
+                ->and($many)->toBeLessThanOrEqual($few);
         });
     });
 

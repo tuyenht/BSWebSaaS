@@ -145,6 +145,20 @@ final class SectionResolver
     }
 
     /**
+     * The in-memory twin of whereOnSectionStage() for one loaded entry: its section (forEntry()) is S
+     * and its workflow_state one of S's stages. Prime a list first (prime()) to answer it per row
+     * without a query.
+     *
+     * @param  array<string, list<string>>  $stages  section key => stage keys
+     */
+    public function onStage(Entry $entry, array $stages): bool
+    {
+        $section = $this->forEntry($entry)['key'] ?? null;
+
+        return $section !== null && isset($stages[$section]) && in_array((string) $entry->workflow_state, $stages[$section], true);
+    }
+
+    /**
      * Drop the memo so the next lookup reflects categories moved earlier in the SAME request — a
      * move changes which section a category's posts resolve to.
      */

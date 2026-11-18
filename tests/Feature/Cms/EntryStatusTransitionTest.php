@@ -3,6 +3,7 @@
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\TransitionEntryStatus;
 use App\Modules\Cms\Enums\EntryStatus;
+use App\Modules\Cms\Exceptions\SchedulePastException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
@@ -69,7 +70,7 @@ it('rejects scheduling without a future datetime', function (): void {
         $page = newlyPublishedPage($editor);
 
         expect(fn () => app(TransitionEntryStatus::class)->handle($page, EntryStatus::Scheduled, $editor->fresh(), now()->subHour()))
-            ->toThrow(InvalidArgumentException::class);
+            ->toThrow(SchedulePastException::class, __('entries.err_schedule_in_past'));
     });
 });
 

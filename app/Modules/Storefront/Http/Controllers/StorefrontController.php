@@ -144,10 +144,10 @@ final readonly class StorefrontController
     /**
      * The admin's preview of a page or post (admin.entries.preview): the real storefront page of an
      * entry of the current site, whatever its status, drawn exactly as a published one would be, for
-     * a member who may open it (EntryPolicy::preview — refused with 403 otherwise). It lives under the
-     * admin's protected routes (signed in, a member of this site) and is addressed by the entry's
-     * ulid: a draft has no public address yet. An entry of another site (RLS), one in the Trash, a
-     * language the site does not have or one the entry lacks answer 404. Like the product preview
+     * a member who may open it (EntryPolicy::preview). It lives under the admin's protected routes
+     * (signed in, a member of this site) and is addressed by the entry's ulid: a draft has no public
+     * address yet. An entry the member may not preview, one of another site (RLS), one in the Trash, a
+     * language the site does not have or one the entry lacks all answer the same 404. Like the product preview
      * (ProductPreviewController): never cached or indexed, no referrer, the storefront's own
      * Content-Security-Policy, framed only by the admin, no view counted and its forms switched off.
      */
@@ -158,8 +158,8 @@ final readonly class StorefrontController
         abort_unless(is_string($locale) && $this->locale->isEnabled($locale), 404);
 
         $entry = Entry::query()->where('ulid', $ulid)->first();
-        abort_if($entry === null, 404);
-        Gate::authorize('preview', $entry);
+        // not allowed answers like a missing entry (as the product preview does): a ulid probe learns nothing
+        abort_unless($entry !== null && Gate::allows('preview', $entry), 404);
         $translation = $entry->translationFor($locale);
         abort_if($translation === null, 404);
 
