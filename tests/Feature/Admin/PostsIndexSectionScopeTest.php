@@ -106,7 +106,7 @@ it('lists and counts the posts filed under the section sub-categories, and none 
     $user = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
-        grantRole($user, 'editor', ['entries.view']);
+        grantRole($user, 'editor', ['entries.view', 'entries.delete.any']); // the Thùng rác is theirs who may remove
 
         $news = makeSection('posts', 'Tin tức', 'Tin tức', 'tin-tuc');
         $services = makeSection('services', 'Dịch vụ', 'Dịch vụ', 'dich-vu');
