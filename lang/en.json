@@ -2440,6 +2440,7 @@
     "entries.trash_ask_title": "Move “:name” to the Trash?",
     "entries.home_trash_why": "To remove this page, first choose another page as the Home page.",
     "entries.home_sched_why": "The Home page is live: scheduling it would hide it until that time. To schedule this page, first choose another page as the Home page.",
+    "entries.home_offline_why": "The Home page is live: changing its status would take it off the website, and visitors to the website's main address would find no page. To change this page's status, first choose another page as the Home page.",
     "entries.view_on_site": "View on website",
     "entries.copy_link": "Copy link",
     "entries.link_copied": "Link copied: :url",

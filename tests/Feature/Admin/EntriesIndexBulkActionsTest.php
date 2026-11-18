@@ -187,6 +187,25 @@ it('bulk-deletes for good only trashed rows this person may delete', function ()
     });
 });
 
+it('leaves the live Home page out of a bulk draft, and says why', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any', 'entries.publish']);
+        $home = Entry::query()->create(['type' => 'page', 'status' => 'published', 'author_id' => $editor->id]);
+        $home->translations()->create(['locale' => 'vi', 'title' => 'Trang chủ', 'slug' => 'home', 'status' => 'published', 'body' => ['blocks' => []]]);
+        $live = bulkRow($editor, 'Đang chạy');
+
+        $component = Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->set('selected', [$home->ulid, $live->ulid])
+            ->call('bulkDraft');
+
+        expect(bulkFind($home)->status)->toBe('published')
+            ->and(bulkFind($live)->status)->toBe('draft');
+        $component->assertDispatched('bs-toast', fn (string $name, array $p): bool => str_contains((string) ($p['text'] ?? ''), __('entries.skip_home_note')));
+    });
+});
+
 it('bulk-drafts only live rows that are not drafts already', function (): void {
     $editor = User::factory()->create();
     $colleague = User::factory()->create();

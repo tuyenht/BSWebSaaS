@@ -33,8 +33,9 @@ use InvalidArgumentException;
  * otherwise "schedule it for a minute from now" would walk straight around the gate. The other
  * targets only ever take content off the public site, which no gate needs to approve.
  *
- * The live Home page is never scheduled: until its time it would not be published, so the
- * website's «/» would answer 404 (RouteResolver serves published entries only).
+ * The live Home page never leaves `published` here (not to a draft, private, archived, nor a
+ * schedule that hides it until its time): the website's «/» would answer 404 (RouteResolver serves
+ * published entries only). A member picks another page as the Home page first.
  */
 final readonly class TransitionEntryStatus
 {
@@ -50,7 +51,7 @@ final readonly class TransitionEntryStatus
 
     /**
      * @throws SchedulePastException a publish time that is missing or not after now
-     * @throws HomePageLockedException scheduling the live Home page (it would be off the website until then)
+     * @throws HomePageLockedException any move of the live Home page (it would leave the website, «/» with it)
      * @throws WorkflowGovernedException scheduling content an active workflow governs
      * @throws ModelNotFoundException the entry left the list meanwhile (sent to the Trash or purged)
      */
@@ -109,13 +110,16 @@ final readonly class TransitionEntryStatus
     {
         $this->lockAndAuthorize($entry, $actor);
 
+        // Every target here takes a live entry off the website (none is `published`): the live Home
+        // page would leave «/» answering 404 (RouteResolver serves published entries only), so it is
+        // refused whichever target was asked for, with the sentence that says why.
+        if ($entry->status === EntryStatus::Published->value && HomePages::is($entry)) {
+            throw new HomePageLockedException($target === EntryStatus::Scheduled ? 'entries.home_sched_why' : 'entries.home_offline_why');
+        }
+
         $governed = $this->workflows->forEntry($entry) !== null;
 
         if ($target === EntryStatus::Scheduled) {
-            if ($entry->status === EntryStatus::Published->value && HomePages::is($entry)) {
-                throw new HomePageLockedException('entries.home_sched_why');
-            }
-
             if ($publishAt === null || $publishAt <= now()) {
                 throw new SchedulePastException;
             }

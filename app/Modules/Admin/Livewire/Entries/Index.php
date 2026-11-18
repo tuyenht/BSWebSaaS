@@ -640,6 +640,10 @@ final class Index extends Component
             $this->toastStaleRow(); // sent to the Trash or purged since the list loaded it
 
             return;
+        } catch (HomePageLockedException $refused) {
+            $this->refuse($refused->getMessage());   // the live Home page: the menu hides the move, the action refuses it
+
+            return;
         } catch (AuthorizationException) {
             $this->refuse($this->refusalFor($entry, 'status'));
 

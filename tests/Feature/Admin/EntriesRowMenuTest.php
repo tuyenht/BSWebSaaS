@@ -6,6 +6,7 @@ use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
 use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\MemberCategoryScope;
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Identity\Models\User;
@@ -469,6 +470,53 @@ describe('scheduling', function (): void {
                 ->assertDispatched('bs-toast', text: __('entries.home_sched_why'), stay: true);
             expect($home->fresh()->status)->toBe('published')->and($home->fresh()->published_at?->isFuture())->toBeFalse();
         });
+    });
+
+    it('offers only «Đã đăng» on the live Home page, refuses a draft or private there with the reason kept until closed, and «/» stays live', function (): void {
+        $owner = rmMember('owner', PermissionRegistry::TENANT_PERMISSIONS, 90);
+        $menuItem = static fn (Entry $entry, string $status): string => '$wire.changeStatus('.Js::from($entry->ulid).', '.Js::from($status).')';
+
+        app(Tenancy::class)->enter(1, function () use ($owner, $menuItem): void {
+            $home = rmEntry($owner, 'Trang chủ', 'published', slug: 'home');
+            SiteRoute::query()->create(['locale' => 'vi', 'path' => '/', 'entry_id' => $home->id]);
+            $other = rmEntry($owner, 'Liên hệ', 'published');
+            $list = Livewire::actingAs($owner)->test(Index::class);
+            $html = $list->html();
+
+            expect(rmRowHtml($html, $home->ulid))->toContain($menuItem($home, 'published'))
+                ->not->toContain($menuItem($home, 'draft'))
+                ->not->toContain($menuItem($home, 'private'))
+                ->and(rmRowHtml($html, $other->ulid))->toContain($menuItem($other, 'draft'))->toContain($menuItem($other, 'private'));
+
+            // a call made anyway (a tab opened before the page became the Home page) is refused by the action, with why
+            foreach (['draft', 'private'] as $status) {
+                $list->call('changeStatus', $home->ulid, $status)
+                    ->assertDispatched('bs-toast', text: __('entries.home_offline_why'), stay: true);
+                expect($home->fresh()->status)->toBe('published');
+            }
+
+            // another page still changes as asked
+            $list->call('changeStatus', $other->ulid, 'draft')->assertDispatched('bs-toast', text: __('entries.status_changed'));
+            expect($other->fresh()->status)->toBe('draft');
+        });
+
+        $this->get('http://a.test/')->assertOk();
+    });
+
+    it('offers every status on a Home page not yet on the website, and publishes it', function (): void {
+        $owner = rmMember('owner', PermissionRegistry::TENANT_PERMISSIONS, 90);
+
+        app(Tenancy::class)->enter(1, function () use ($owner): void {
+            $home = rmEntry($owner, 'Trang chủ', 'draft', slug: 'home');
+            $list = Livewire::actingAs($owner)->test(Index::class);
+
+            expect(rmRowHtml($list->html(), $home->ulid))->toContain('$wire.changeStatus('.Js::from($home->ulid).', '.Js::from('private').')');
+
+            $list->call('changeStatus', $home->ulid, 'published')->assertDispatched('bs-toast', text: __('entries.status_changed'));
+            expect($home->fresh()->status)->toBe('published');
+        });
+
+        $this->get('http://a.test/')->assertOk();
     });
 });
 

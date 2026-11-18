@@ -2440,6 +2440,7 @@
     "entries.trash_ask_title": "将“:name”移到回收站？",
     "entries.home_trash_why": "要移除此页面，请先选择另一个页面作为首页。",
     "entries.home_sched_why": "首页正在网站上显示：定时发布会使其在设定时间前无法访问。如要为此页面定时发布，请先选择另一个页面作为首页。",
+    "entries.home_offline_why": "首页正在网站上显示：更改其状态会将其从网站上移除，访客打开网站主地址时将看不到任何页面。如要更改此页面的状态，请先选择另一个页面作为首页。",
     "entries.view_on_site": "在网站上查看",
     "entries.copy_link": "复制链接",
     "entries.link_copied": "已复制链接：:url",

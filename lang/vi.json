@@ -2440,6 +2440,7 @@
     "entries.trash_ask_title": "Chuyển “:name” vào Thùng rác?",
     "entries.home_trash_why": "Muốn bỏ trang này, hãy chọn trang khác làm Trang chủ trước.",
     "entries.home_sched_why": "Trang chủ đang hiện trên website: hẹn giờ đăng sẽ ẩn trang đến giờ hẹn. Muốn hẹn giờ trang này, hãy chọn trang khác làm Trang chủ trước.",
+    "entries.home_offline_why": "Trang chủ đang hiện trên website: đổi trạng thái sẽ gỡ trang khỏi website, khách vào địa chỉ chính của website sẽ không thấy trang nào. Muốn đổi trạng thái trang này, hãy chọn trang khác làm Trang chủ trước.",
     "entries.view_on_site": "Xem trên website",
     "entries.copy_link": "Sao chép đường dẫn",
     "entries.link_copied": "Đã sao chép đường dẫn: :url",
