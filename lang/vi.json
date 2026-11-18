@@ -2150,6 +2150,7 @@
     "entries.wf_ap_cancel": "Để tôi đọc lại đã",
     "entries.wf_ap_ok": "Duyệt đăng ngay",
     "entries.wf_off_title": "Gỡ “:title” khỏi website?",
+    "entries.wf_off_bulk_title": "Gỡ :count :noun đang hiện khỏi website?",
     "entries.wf_off_text": "Bài sẽ không còn hiện trên website và chưa thể đưa lại từ danh sách.",
     "entries.wf_off_cancel": "Để tôi xem lại",
     "entries.wf_off_ok": "Gỡ khỏi website",

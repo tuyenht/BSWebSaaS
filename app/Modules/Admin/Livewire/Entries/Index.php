@@ -2472,7 +2472,7 @@ final class Index extends Component
      * moves that need no reason, at most two, among those this member may make on a ticked row
      * («Duyệt đăng (3)»); each runs bulkTransition() with its key (`arg`).
      *
-     * @return array{actions: list<array{key: string, label: string, name: string, icon: string, color: string, call: string, arg: ?string, ok: int, title: string, none: ?string, confirm: ?array{title: string, text: string, ok: string}}>, skip: ?string}
+     * @return array{actions: list<array{key: string, label: string, name: string, icon: string, color: string, call: string, arg: ?string, ok: int, title: string, none: ?string, confirm: ?array{title: string, text: string, ok: string, icon: string, cancel: string}}>, skip: ?string}
      */
     private function bulkPlan(User $user, string $locale, string $type, ?Workflow $flow = null): array
     {
@@ -2521,7 +2521,7 @@ final class Index extends Component
                     $to = $flow->states->firstWhere('key', $move->to_state);
                     $key = $move->key;
                     $specs[] = ['tr-'.$key, $move->label, $to instanceof WorkflowState && $to->is_published ? 'ri-check-double' : 'ri-send-plane', 'primary', 'bulkTransition',
-                        fn (Entry $e): ?string => $this->whyNotMove($e, $user, $flow, $key), $key];
+                        fn (Entry $e): ?string => $this->whyNotMove($e, $user, $flow, $key), $key, ! ($to instanceof WorkflowState && $to->is_published)];
                 }
             } elseif ($user->can('entries.publish')) {
                 $specs[] = ['publish', 'entries.bulk_publish', 'ri-send-plane', 'primary', 'bulkPublish', fn (Entry $e): ?string => $this->whyNotPublish($e, $user, $locale)];
@@ -2555,7 +2555,9 @@ final class Index extends Component
         foreach ($specs as $spec) {
             [$key, $labelKey, $icon, $color, $call, $why] = $spec;
             $arg = $spec[6] ?? null;
+            $offMove = $spec[7] ?? false;
             $ok = 0;
+            $live = 0;
             $bad = [];
             $first = null;
             foreach ($rows as $row) {
@@ -2563,6 +2565,7 @@ final class Index extends Component
                 if ($reason === null) {
                     $ok++;
                     $first ??= $row;
+                    $live += $row->status === EntryStatus::Published->value ? 1 : 0;
                 } else {
                     $bad[$reason] = ($bad[$reason] ?? 0) + 1;
                 }
@@ -2596,7 +2599,16 @@ final class Index extends Component
                         : __('entries.destroy_ask_title', ['count' => $ok, 'noun' => $noun])),
                     'text' => Cast::string(__($ok === 1 ? 'entries.destroy_ask_text_one' : 'entries.destroy_ask_text', ['count' => $ok, 'noun' => $noun])),
                     'ok' => Cast::string($ok === 1 ? __('entries.action_destroy') : __('entries.destroy_ask_ok', ['count' => $ok, 'noun' => $noun])),
-                ] : null,
+                    'icon' => 'trash-danger',
+                    'cancel' => Cast::string(__('admin.cancel')),
+                ] : ($offMove && $live > 0 ? [
+                    // a move that takes live posts off the website cannot be undone from the list: ask first, as the row does
+                    'title' => Cast::string(__('entries.wf_off_bulk_title', ['count' => $live, 'noun' => $noun])),
+                    'text' => Cast::string(__('entries.wf_off_text')),
+                    'ok' => Cast::string(__('entries.wf_off_ok')),
+                    'icon' => 'warning',
+                    'cancel' => Cast::string(__('entries.wf_off_cancel')),
+                ] : null),
             ];
             if ($skip === null && $bad !== []) {
                 $skip = Cast::string(__('entries.bulk_skip_line', ['label' => $name, 'count' => $skipped, 'noun' => $noun, 'why' => $reasons]));

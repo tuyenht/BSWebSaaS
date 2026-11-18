@@ -349,7 +349,7 @@
                         @php
                             $click = match (true) {
                                 $action['none'] !== null => '$bsToast('.Js::from(['text' => $action['none']]).')',
-                                $action['confirm'] !== null => '$bsConfirm({ icon: \'trash-danger\', title: '.Js::from($action['confirm']['title']).', text: '.Js::from($action['confirm']['text']).', confirm: '.Js::from($action['confirm']['ok']).', cancel: '.Js::from(__('admin.cancel')).' }).then(ok => ok && $wire.'.$action['call'].'())',
+                                $action['confirm'] !== null => '$bsConfirm({ icon: '.Js::from($action['confirm']['icon']).', title: '.Js::from($action['confirm']['title']).', text: '.Js::from($action['confirm']['text']).', confirm: '.Js::from($action['confirm']['ok']).', cancel: '.Js::from($action['confirm']['cancel']).' }).then(ok => ok && $wire.'.$action['call'].'('.($action['arg'] !== null ? Js::from($action['arg']) : '').'))',
                                 default => '$wire.'.$action['call'].'('.($action['arg'] !== null ? Js::from($action['arg']) : '').')',
                             };
                         @endphp

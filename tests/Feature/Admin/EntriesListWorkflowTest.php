@@ -282,6 +282,26 @@ it('asks first before a move takes a live post off the website, and only then', 
     });
 });
 
+it('asks first before a bulk move takes live posts off the website, and not for other bulk moves', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $m = elwMembers();
+        $cat = elwSection();
+        $live = elwPost($cat, $m['sender'], 'live', 'published');
+        $pending = elwPost($cat, $m['sender'], 'cho', 'pending');
+        elwGoverned();
+
+        $ask = e((string) Js::from(__('entries.wf_off_bulk_title', ['count' => 1, 'noun' => __('entries.noun_post')])));
+        $list = Livewire::actingAs($m['approver'])->test(Index::class, ['section' => 'posts'])
+            ->set('selected', [$live->ulid, $pending->ulid]);
+        $list->assertSeeHtml('data-bulk="tr-archive"')->assertSeeHtml($ask)
+            ->assertSeeHtml(e((string) Js::from(__('entries.wf_off_ok'))));
+
+        // the approve on the pending row alone takes nothing offline: the bar asks nothing (the live row's own pill still asks)
+        $list->set('selected', [$pending->ulid])
+            ->assertSeeHtml('data-bulk="tr-approve"')->assertDontSeeHtml($ask);
+    });
+});
+
 it('refuses a workflow move it may not make and leaves the row as it was', function (): void {
     $otherSite = app(Tenancy::class)->enter(2, function (): Entry {
         $author = User::factory()->create();

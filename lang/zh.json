@@ -2150,6 +2150,7 @@
     "entries.wf_ap_cancel": "我先再读一遍",
     "entries.wf_ap_ok": "立即批准发布",
     "entries.wf_off_title": "要将“:title”从网站撤下吗？",
+    "entries.wf_off_bulk_title": "要将 :count 个正在显示的:noun从网站撤下吗？",
     "entries.wf_off_text": "文章将不再显示在网站上，目前也无法从列表中恢复。",
     "entries.wf_off_cancel": "我再看看",
     "entries.wf_off_ok": "从网站撤下",

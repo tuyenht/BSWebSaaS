@@ -2150,6 +2150,7 @@
     "entries.wf_ap_cancel": "もう一度読み直す",
     "entries.wf_ap_ok": "今すぐ承認して公開",
     "entries.wf_off_title": "「:title」をサイトから外しますか？",
+    "entries.wf_off_bulk_title": "表示中の:nounを:count 件サイトから外しますか？",
     "entries.wf_off_text": "記事はサイトに表示されなくなり、一覧から元に戻すことはまだできません。",
     "entries.wf_off_cancel": "もう一度確認する",
     "entries.wf_off_ok": "サイトから外す",
