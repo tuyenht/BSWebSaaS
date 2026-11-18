@@ -37,6 +37,8 @@ use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Workflow\Models\Workflow;
+use App\Modules\Workflow\Models\WorkflowTransition;
 use App\Modules\Workflow\Services\WorkflowEngine;
 use Carbon\CarbonImmutable;
 use Closure;
@@ -186,6 +188,9 @@ final class Index extends Component
     /** @var list<string> what this member adds to a phone card ("Hiện trên thẻ"); kept in their own preferences. */
     public array $card = [];
 
+    /** "Hiện thêm nút khi đủ chỗ" (Cột): a wide row also shows Nhân bản and Thùng rác beside «Sửa» when they fit; kept in their own preferences. */
+    public bool $xbtn = false;
+
     private ?string $sectionFor = null;
 
     private ?ContentSection $sectionRow = null;
@@ -222,10 +227,14 @@ final class Index extends Component
     /** Sort keys, each with the one type it belongs to (null = both). */
     public const array SORTS = ['order' => 'page', 'name' => null, 'updated' => null, 'pub' => 'post', 'status' => null, 'views' => null, 'creator' => null];
 
-    /** Optional columns of a wide list ("Cột"), and the ones on until the member says otherwise. */
-    private const array COLS = ['cat', 'path', 'langs', 'creator', 'tpl'];
+    /**
+     * Optional columns of a wide list ("Cột"), in the menu's order, and the ones on until the member says
+     * otherwise. Chuyên mục is a post list's and Mẫu trang a page list's; Bước duyệt is offered only while
+     * the section runs an approval workflow (the choice is kept either way).
+     */
+    private const array COLS = ['path', 'desc', 'langs', 'cat', 'tpl', 'step', 'views', 'creator'];
 
-    private const array COLS_DEFAULT = ['cat', 'path', 'langs', 'creator'];
+    private const array COLS_DEFAULT = ['path', 'langs', 'cat', 'step', 'views', 'creator'];
 
     /** The columns a member could choose before "Chuyên mục" came: a choice saved then starts with it shown. */
     private const array COLS_BEFORE_CAT = ['path', 'langs', 'creator', 'tpl'];
@@ -292,6 +301,7 @@ final class Index extends Component
         $offered = isset($view['offered']) ? Cast::strings($view['offered']) : self::COLS_BEFORE_CAT;
         $this->cols = self::known([...$this->cols, ...array_diff(self::COLS_DEFAULT, $offered)], $cols);
         $this->card = self::known(Cast::arr($view['card'] ?? null), $this->cardHere());
+        $this->xbtn = ($view['xbtn'] ?? false) === true;
         $this->guideDue = true;
         $this->clean();
     }
@@ -346,6 +356,12 @@ final class Index extends Component
     public function updatedCard(): void
     {
         $this->card = self::known($this->card, $this->cardHere());
+        $this->saveView();
+    }
+
+    /** "Hiện thêm nút khi đủ chỗ" changed: kept for this member only (the typed property takes a yes or no only). */
+    public function updatedXbtn(): void
+    {
         $this->saveView();
     }
 
@@ -1676,26 +1692,71 @@ final class Index extends Component
     }
 
     /**
-     * What is kept of the member's view choices. A post list also keeps the columns it offered then,
-     * so a column added later starts shown for them (a page list has gained none).
+     * What is kept of the member's view choices, with the columns the list offered then, so a column
+     * added later starts as its default says for them.
      *
-     * @return array{cols: list<string>, card: list<string>, offered?: list<string>}
+     * @return array{cols: list<string>, card: list<string>, xbtn: bool, offered: list<string>}
      */
     private function savedView(): array
     {
-        $view = ['cols' => $this->cols, 'card' => $this->card];
-
-        return $this->entryType === 'post' ? $view + ['offered' => $this->colsHere()] : $view;
+        return ['cols' => $this->cols, 'card' => $this->card, 'xbtn' => $this->xbtn, 'offered' => $this->colsHere()];
     }
 
     /**
-     * The columns this list offers in "Cột" (Chuyên mục is a post list's).
+     * Each row's place in the section's approval workflow («Bước 2/3») and what comes next («Tiếp: Duyệt»,
+     * the first move from there that needs no note), or «Bước cuối». The steps and moves are read once for
+     * the page (two queries), never per row; a record that has not joined the workflow stands on its first step.
+     *
+     * @param  array<int|string, array{entry: Entry, depth: int}>  $items
+     * @return array<string, array{text: string, next: string}>
+     */
+    private static function rowSteps(Workflow $workflow, array $items): array
+    {
+        $workflow->loadMissing([
+            'states' => static fn (Relation $q): mixed => $q->orderBy('sort_order')->orderBy('id'),
+            'transitions' => static fn (Relation $q): mixed => $q->orderBy('id'),
+        ]);
+        $keys = array_values(array_map(Cast::string(...), $workflow->states->pluck('key')->all()));
+        $first = $workflow->states->firstWhere('is_initial', true)->key ?? ($keys[0] ?? null);
+        $out = [];
+        foreach ($items as $item) {
+            $entry = $item['entry'];
+            $at = $entry->workflow_state ?? $first;
+            $n = array_search($at, $keys, true);
+            $n = is_int($n) ? $n : false;
+            $next = $workflow->transitions->first(static fn (WorkflowTransition $t): bool => $t->from_state === $at && ! $t->requires_note);
+            $out[$entry->ulid] = [
+                'text' => $n === false ? '—' : Cast::string(__('entries.step_of', ['n' => $n + 1, 'm' => count($keys)])),
+                'next' => $next instanceof WorkflowTransition ? Cast::string(__('entries.step_next', ['label' => $next->label])) : Cast::string(__('entries.step_last')),
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * The rows' relations, the translations with their excerpt while the member shows "Mô tả" (read in the
+     * same query, never one per row).
+     *
+     * @param  list<string>  $relations
+     * @return list<string>
+     */
+    private function rowRelations(array $relations): array
+    {
+        return in_array('desc', $this->cols, true)
+            ? array_map(static fn (string $r): string => str_starts_with($r, 'translations:') ? $r.',excerpt' : $r, $relations)
+            : $relations;
+    }
+
+    /**
+     * The columns this list may show from "Cột": Chuyên mục and Bước duyệt are a post list's, Mẫu trang
+     * a page list's.
      *
      * @return list<string>
      */
     private function colsHere(): array
     {
-        return $this->entryType === 'post' ? self::COLS : array_values(array_diff(self::COLS, ['cat']));
+        return array_values(array_diff(self::COLS, $this->entryType === 'post' ? ['tpl'] : ['cat', 'step']));
     }
 
     /**
@@ -2018,7 +2079,8 @@ final class Index extends Component
         // The guide (first draw only) words the same workflow, read once for both.
         $postSection = $type === 'post' && $section instanceof ContentSection ? $section : null;
         $roleShows = $postSection !== null && ! FirstHints::dismissed(FirstHints::POSTS_ROLE, $user);
-        $workflow = $postSection !== null && ($roleShows || $this->guideDue) ? app(WorkflowEngine::class)->activeFor($postSection->key) : null;
+        $workflow = $postSection !== null ? app(WorkflowEngine::class)->activeFor($postSection->key) : null;
+        $rowStep = $workflow !== null && in_array('step', $this->cols, true) ? self::rowSteps($workflow, $rows->items()) : [];
         $roleNote = $roleShows ? PostRoleNote::with($user, $workflow, $postSection->localizedLabel(), $scoped) : null;
 
         $canDelete = $deleteAny || $deleteOwn;
@@ -2093,6 +2155,8 @@ final class Index extends Component
             'catOptions' => $catOptions,
             'rowCategory' => $rowCategory,
             'rowCover' => $rowCover,
+            'governed' => $workflow !== null,
+            'rowStep' => $rowStep,
             'roleNote' => $roleNote,
             'filterCount' => $this->filterCount(),
             'filterCountNarrow' => $this->filterCount() + ($this->tab !== 'all' ? 1 : 0),
@@ -2253,7 +2317,7 @@ final class Index extends Component
     {
         $query = $list->base();
         $scopes->selectHasLimits($query, $user, EntryListQuery::COLUMNS);
-        $base = $query->with(self::ROW_RELATIONS)->get();
+        $base = $query->with($this->rowRelations(self::ROW_RELATIONS))->get();
 
         $limited = $base->isNotEmpty()
             && $scopes->learnHasLimits($user, $base->first()->getAttribute(CategoryScopes::HAS_LIMITS)) && $scopes->isLimited($user);
@@ -2607,7 +2671,7 @@ final class Index extends Component
      */
     private function loadRows(EloquentCollection $rows, array $people): void
     {
-        $rows->load(self::ROW_RELATIONS_BUT_AUTHOR);
+        $rows->load($this->rowRelations(self::ROW_RELATIONS_BUT_AUTHOR));
         $byId = [];
         foreach ($people as $person) {
             $byId[$person['id']] = $person;

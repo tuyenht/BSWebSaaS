@@ -213,7 +213,7 @@ it('shows the category column by default, also to a member who saved their colum
         plcatTree();
 
         expect(Livewire::actingAs($fresh)->test(Index::class, ['section' => 'posts'])->get('cols'))->toContain('cat')
-            ->and(Livewire::actingAs($old->fresh())->test(Index::class, ['section' => 'posts'])->get('cols'))->toBe(['cat', 'path', 'creator']);
+            ->and(Livewire::actingAs($old->fresh())->test(Index::class, ['section' => 'posts'])->get('cols'))->toBe(['path', 'cat', 'step', 'views', 'creator']);
 
         // hidden once by the member, it stays hidden
         Livewire::actingAs($old->fresh())->test(Index::class, ['section' => 'posts'])->set('cols', ['path']);

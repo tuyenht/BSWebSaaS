@@ -15,6 +15,9 @@
     // $selected: list<string> the keys shown now. $model: the host's public array property the ticks
     // bind to (wire:model.live) — a fixed name, never input.
     //
+    // An optional `extra` slot comes after the columns, under its own separator and heading (screen 05's
+    // «Nút trên dòng»: a choice that is not a column, so it is never counted as a hidden one).
+    //
     // Opening moves focus to the first choice; Esc puts it back on the button; leaving it (Tab, a click
     // away) closes it.
     $hidden = count(array_diff(array_keys($options), $selected));
@@ -54,5 +57,9 @@
                 {{ $name }}
             </label>
         @endforeach
+        @if (isset($extra) && $extra->hasActualContent())
+            <div role="separator" class="mx-0 my-1 h-px bg-border"></div>
+            {{ $extra }}
+        @endif
     </div>
 </div>

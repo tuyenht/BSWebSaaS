@@ -1649,10 +1649,11 @@
     @container list (width >= 56.25rem) {
         .list-rows[data-kind='posts'] .list-g {
             --list-w-cat: 9.375rem;
+            --list-w-step: 0px;
         }
 
         .list-rows[data-kind='posts'][data-kind] .list-g {
-            grid-template-columns: [chk] 3.5rem [main] minmax(0, 1fr) [cat] fit-content(var(--list-w-cat)) [st] minmax(10.75rem, max-content) [act] auto [end];
+            grid-template-columns: [chk] 3.5rem [main] minmax(0, 1fr) [cat] fit-content(var(--list-w-cat)) [step] fit-content(var(--list-w-step)) [st] minmax(10.75rem, max-content) [act] auto [end];
         }
 
         .list-rows[data-kind='posts'] .list-c-cat {
@@ -1702,7 +1703,92 @@
         }
 
         .list-rows[data-kind='posts'][data-kind]:not([data-hide~='au']):not([data-fold~='au']) .list-g {
-            grid-template-columns: [chk] 3.5rem [main] minmax(0, 1fr) [cat] fit-content(var(--list-w-cat)) [st] minmax(10.75rem, max-content) [au] 8.75rem [act] auto [end];
+            grid-template-columns: [chk] 3.5rem [main] minmax(0, 1fr) [cat] fit-content(var(--list-w-cat)) [step] fit-content(var(--list-w-step)) [st] minmax(10.75rem, max-content) [au] 8.75rem [act] auto [end];
+        }
+    }
+
+    /* ── The posts list's «Bước duyệt» (a section with an approval workflow): a column from 68.75rem, as in
+       the design; narrower, or folded, the step stands in the line under the name. `data-hide~='step'` (not
+       chosen in Cột, or no workflow) turns both off. ──────────────────────────────────────────── */
+    .list-c-step {
+        display: none;
+    }
+
+    .list-step-next {
+        display: block;
+        overflow: hidden;
+        font-size: var(--text-caption);
+        color: var(--color-text-muted);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .list-rows[data-hide~='step'] .list-m[data-for='step'] {
+        display: none;
+    }
+
+    @container list (width >= 68.75rem) {
+        .list-rows[data-kind='posts']:not([data-hide~='step']) .list-g {
+            --list-w-step: 8.25rem;
+        }
+
+        .list-rows[data-kind='posts']:not([data-hide~='step']) .list-c-step {
+            display: block;
+            grid-column: step;
+            min-width: 0;
+        }
+
+        .list-rows[data-kind='posts']:not([data-hide~='step']) .list-r:not(.list-hd) > .list-c-step {
+            padding-top: calc(0.3125rem + (var(--spacing-hit) - var(--list-tap)) / 2);
+        }
+
+        .list-rows[data-kind='posts']:not([data-hide~='step']) .list-m[data-for='step'] {
+            display: none;
+        }
+    }
+
+    /* «Mô tả»: the record's excerpt on one line under its name, cut with an ellipsis (the whole text in its title). */
+    .list-desc {
+        margin: 0.25rem 0 0;
+        overflow: hidden;
+        font-size: var(--text-caption);
+        line-height: 1.45;
+        color: var(--color-text-muted);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* «Hiện thêm nút khi đủ chỗ»: a table row's Nhân bản and Thùng rác beside «Sửa», only those the page script
+       found room for (data-acts); a row without the button keeps its room (list-xe) so the buttons stay in line,
+       and the row's ⋮ leaves out what the row shows (data-xm), itself too when nothing is left in it. Below 900
+       nothing changes. */
+    .list-x {
+        display: none;
+    }
+
+    @container list (width >= 56.25rem) {
+        .list-rows[data-acts~='xd'] .list-x[data-x='xd'],
+        .list-rows[data-acts~='xt'] .list-x[data-x='xt'] {
+            display: inline-flex;
+        }
+
+        .list-rows[data-acts~='xd'] .list-xe[data-x='xd'] {
+            display: block;
+            inline-size: var(--list-b-xd, 0px);
+        }
+
+        .list-rows[data-acts~='xt'] .list-xe[data-x='xt'] {
+            display: block;
+            inline-size: var(--list-b-xt, 0px);
+        }
+
+        .list-rows[data-acts~='xd'] .list-menu [data-xm~='xd'],
+        .list-rows[data-acts~='xt'] .list-menu [data-xm~='xt'] {
+            display: none;
+        }
+
+        .list-rows[data-acts~='xd'][data-acts~='xt'] .list-more:not(:has(.list-mi:not([data-xm]))) {
+            display: none;
         }
     }
 

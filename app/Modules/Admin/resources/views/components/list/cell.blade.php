@@ -9,7 +9,7 @@
     // the row: the empty state), f1–f3 (the short fact columns of a list kind="facts"). `head` makes it a column header; `sort` (ascending, descending
     // or none) says how the list is sorted by it.
     // cat, price, stock and badge are the product list's own columns (list kind="catalog").
-    $cols = ['chk', 'main', 'st', 'au', 'act', 'full', 'f1', 'f2', 'f3', 'cat', 'price', 'stock', 'badge'];
+    $cols = ['chk', 'main', 'st', 'au', 'act', 'full', 'f1', 'f2', 'f3', 'cat', 'step', 'price', 'stock', 'badge'];
     $col = in_array($col, $cols, true) ? $col : 'main';
 @endphp
 <div role="{{ $head ? 'columnheader' : 'cell' }}"@if ($head && $sort) aria-sort="{{ $sort }}"@endif {{ $attributes->merge(['class' => 'list-c list-c-'.$col.(str_starts_with($col, 'f') && $col !== 'full' ? ' list-c-f' : '')]) }}>{{ $slot }}</div>

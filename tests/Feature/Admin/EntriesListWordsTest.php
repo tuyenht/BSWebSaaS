@@ -248,10 +248,10 @@ describe('tools', function (): void {
             grantRole($user, 'editor', ['entries.view']);
             lwEntry($user, 'Một', 'page');
 
-            $list = Livewire::actingAs($user->fresh())->test(Index::class)->set('cols', ['path', 'creator', 'tpl']);
+            $list = Livewire::actingAs($user->fresh())->test(Index::class)->set('cols', ['path', 'desc', 'tpl', 'views', 'creator']);
             expect($list->html())->toContain('aria-label="Chọn cột hiển thị"')->not->toContain('Cột (ẩn');
             $list->set('cols', ['path']);
-            expect($list->html())->toContain('Cột (ẩn 2)');
+            expect($list->html())->toContain('Cột (ẩn 4)');
         });
     });
 

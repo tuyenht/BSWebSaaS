@@ -55,17 +55,33 @@
     $whenText = $when === EntriesIndex::RANGE ? __('entries.when_range', ['from' => $day($from), 'to' => $day($to)]) : ($when !== '' ? ($whenLabels[$when] ?? '') : '');
 
     // What a member may choose to show: "Cột" on a wide list, "Hiện trên thẻ" on phone cards.
-    $colOptions = $isPost ? ['cat' => __('entries.col_category')] : [];
-    $colOptions['path'] = __('entries.col_path');
+    // "Cột" in the design's order: Đường dẫn · Mô tả · Bản dịch · Chuyên mục (Mẫu trang) · Bước duyệt (only
+    // while the section runs an approval workflow) · Lượt xem · Người tạo.
+    $colOptions = ['path' => __('entries.col_path'), 'desc' => __('entries.col_desc')];
     if ($multilingual) {
         $colOptions['langs'] = __('entries.col_language');
     }
-    $colOptions['creator'] = __('entries.col_creator');
-    if (! $isPost) {
-        $colOptions['tpl'] = __('entries.filter_template');
+    $colOptions[$isPost ? 'cat' : 'tpl'] = $isPost ? __('entries.col_category') : __('entries.filter_template');
+    if ($isPost && $governed) {
+        $colOptions['step'] = __('entries.col_step');
     }
-    $cardOptions = array_intersect_key($colOptions, array_flip(['cat', 'tpl', 'path', 'langs']));
-    $cardOptions = (! $isPost ? ['tpl' => $colOptions['tpl']] : []) + $cardOptions;
+    $colOptions['views'] = __('entries.col_views');
+    $colOptions['creator'] = __('entries.col_creator');
+    $cardOptions = [];
+    foreach ([$isPost ? 'cat' : 'tpl', 'path', 'langs'] as $k) {
+        if (isset($colOptions[$k])) {
+            $cardOptions[$k] = $colOptions[$k];
+        }
+    }
+    // «Nút trên dòng»: offered while some row of this view could show Nhân bản or Thùng rác beside «Sửa»
+    $xLabels = [];
+    if ($tab !== 'trash') {
+        foreach (['duplicate' => 'entries.action_duplicate', 'delete' => 'entries.row_trash'] as $can => $key) {
+            if (collect($rowCan)->contains(fn (array $c): bool => $c[$can] && $c['out'] === null)) {
+                $xLabels[] = __('entries.quoted', ['text' => __($key)]);
+            }
+        }
+    }
 
     // The Filter sheet (and from 1024 one button per section). Status groups lead it below 900, where their row hides.
     $sections = [
@@ -217,6 +233,8 @@
              x-data="{
                  mode: 'cols',
                  fold: '',
+                 acts: '',
+                 xNoFit: false,
                  seen: '',
                  ro: null,
                  destroy() { this.ro?.disconnect(); },
@@ -239,12 +257,40 @@
                      }
                      this.fold = out.join(' ');
                      this.fold === '' ? list.removeAttribute('data-fold') : list.setAttribute('data-fold', this.fold);
+                     this.fitActs(list, main, boost);
+                 },
+                 {{-- «Hiện thêm nút khi đủ chỗ» (table only, never in the Trash): Nhân bản, then Thùng rác, join «Sửa» on the rows while the name column keeps 560px (+12 per pixel of text boost; 16 less for one already shown, so it does not flicker at the edge). Rows without the button keep its room, so the buttons stay in line. The ⋮ leaves out what its row shows. --}}
+                 fitActs(list, main, boost) {
+                     const prev = this.acts.split(' '), ae = document.activeElement;
+                     let acts = [];
+                     list.setAttribute('data-acts', '');
+                     if (this.mode === 'cols' && this.$wire.xbtn && this.$wire.tab !== 'trash') {
+                         for (const t of ['xd', 'xt']) {
+                             if (! list.querySelector('.list-x[data-x=' + t + ']:not(.list-xe)')) { continue; }
+                             const next = [...acts, t];
+                             list.setAttribute('data-acts', next.join(' '));
+                             let w = 0;
+                             list.querySelectorAll('.list-x[data-x=' + t + ']:not(.list-xe)').forEach((b) => { w = Math.max(w, Math.ceil(b.getBoundingClientRect().width)); });
+                             list.style.setProperty('--list-b-' + t, w + 'px');
+                             if (main.getBoundingClientRect().width >= 560 + 12 * boost - (prev.includes(t) ? 16 : 0)) { acts = next; } else { break; }
+                         }
+                         this.xNoFit = acts.length === 0;
+                     } else {
+                         this.xNoFit = false;
+                     }
+                     this.acts = acts.join(' ');
+                     list.setAttribute('data-acts', this.acts);
+                     if (ae?.closest?.('.list-x') && ! ae.getClientRects().length) { ae.closest('.list-acts')?.querySelector('.list-more button')?.focus(); }
                  },
                  show(k) { return this.mode === 'line' || (this.mode === 'cols' ? this.$wire.cols : this.$wire.card).includes(k); },
                  get vPath() { return this.show('path'); },
                  get vLangs() { return this.show('langs'); },
                  get vTpl() { return this.show('tpl'); },
                  get vCat() { return this.show('cat'); },
+                 {{-- as in the design, Mô tả, Bước duyệt and Lượt xem follow the member's Cột choice on every width --}}
+                 get vDesc() { return this.$wire.cols.includes('desc'); },
+                 get vStep() { return this.$wire.cols.includes('step'); },
+                 get vViews() { return this.$wire.cols.includes('views'); },
              }"
              x-init="size(true); ro = new ResizeObserver(() => size()); ro.observe($el); $watch('$wire.cols', () => $nextTick(() => size(true))); $wire.$hook('commit', ({ succeed }) => succeed(() => $nextTick(() => size(true))))">
             <div class="flex flex-col gap-3 pb-3 min-[600px]:px-4 min-[600px]:pt-4 min-[900px]:pt-3 @min-[56.25rem]/lt:flex-row @min-[56.25rem]/lt:flex-wrap @min-[56.25rem]/lt:items-center">
@@ -266,7 +312,20 @@
                         :active="$filterCount" :active-narrow="$filterCountNarrow" :results="__('entries.show_n', ['n' => $fmt($matchCount), 'unit' => $noun])" clear="clearAllFilters" />
                     <x-bs-admin::sort-menu data-guide="sort" class="@min-[56.25rem]/lt:ms-auto" :options="$sortOptions" :active="$sortOn" :lit="! $sortIsDefault" set="setSort" />
                     <x-bs-admin::cols-menu data-guide="cols" class="hidden @min-[56.25rem]/lt:block" id="entries-cols" :options="$colOptions" :selected="$cols"
-                        :locked="[__('entries.title_label'), __('entries.col_status'), __('admin.actions')]" />
+                        :locked="[__('entries.title_label'), __('entries.col_status'), __('admin.actions')]">
+                        @if ($xLabels !== [])
+                            <x-slot:extra>
+                                <p class="m-0 px-2 pb-1 pt-1 text-caption font-semibold text-text-muted">{{ __('entries.xbtn_group') }}</p>
+                                <label class="flex min-h-menu-row cursor-pointer items-start gap-2.5 rounded px-2 py-2 text-body text-text hover:bg-surface-hover any-pointer-coarse:min-h-menu-row-touch" data-guide="cols-xbtn">
+                                    <input type="checkbox" wire:model.live="xbtn" aria-describedby="entries-cols-xb-d" class="mt-1 size-4 shrink-0 accent-primary-text">
+                                    <span class="min-w-0 flex-1">{{ __('entries.xbtn') }}
+                                        <span id="entries-cols-xb-d" class="mt-0.5 block text-caption text-text-muted"
+                                            x-text="$wire.xbtn && xNoFit ? {{ \Illuminate\Support\Js::from(__('entries.xbtn_nofit')) }} : {{ \Illuminate\Support\Js::from(__('entries.xbtn_note', ['list' => implode(', ', $xLabels)])) }}">{{ __('entries.xbtn_note', ['list' => implode(', ', $xLabels)]) }}</span>
+                                    </span>
+                                </label>
+                            </x-slot:extra>
+                        @endif
+                    </x-bs-admin::cols-menu>
                 </x-bs-admin::tool-row>
             </div>
 
@@ -307,7 +366,7 @@
             <div x-ref="rows" data-fold-wait class="min-w-0 @max-[56.25rem]/lt:order-3 max-[599.98px]:rounded-md max-[599.98px]:border max-[599.98px]:border-border max-[599.98px]:bg-surface max-[599.98px]:[&_.list-g]:border-t-0">
             <x-bs-admin::list :label="__('entries.list_label', ['label' => $sectionLabel])" :kind="$isPost ? 'posts' : null"
                 busy="tab,setTab,search,sortKey,sortDir,sortBy,setSort,resetSort,page,gotoPage,turnPage,perPage,setPerPage,cursor,catF,langF,creatorF,templateF,transF,when,from,to,clearWhen,toggleFilterValue,resetFilterGroup,clearAllFilters,$refresh"
-                x-bind:data-hide="[mode === 'cols' && ! show('creator') ? 'au' : '', mode === 'cols' && ! show('cat') ? 'cat' : ''].join(' ').trim()" x-bind:data-fold="fold">
+                x-bind:data-hide="[mode === 'cols' && ! show('creator') ? 'au' : '', mode === 'cols' && ! show('cat') ? 'cat' : '', {{ $governed ? 'true' : 'false' }} && vStep ? '' : 'step'].join(' ').trim()" x-bind:data-fold="fold" x-bind:data-acts="acts">
 
                 <x-bs-admin::list.head data-guide="list-head">
                     <x-bs-admin::list.cell head col="chk">
@@ -320,6 +379,9 @@
                     </x-bs-admin::list.cell>
                     @if ($isPost)
                         <x-bs-admin::list.cell head col="cat">{{ __('entries.col_category') }}</x-bs-admin::list.cell>
+                    @endif
+                    @if ($isPost && $governed)
+                        <x-bs-admin::list.cell head col="step">{{ __('entries.col_step') }}</x-bs-admin::list.cell>
                     @endif
                     <x-bs-admin::list.cell head col="st" :sort="$ariaSort('status')">
                         <x-bs-admin::list.sort :active="$sortOn === 'status'" :dir="$sortWay" wire:click="sortBy('status')">{{ __('entries.col_status') }}</x-bs-admin::list.sort>
@@ -399,6 +461,9 @@
                                         @keydown.escape="cancel = true; $el.blur()"
                                         @blur="editing = false; if (! cancel) { $wire.saveTitle(@js($entry->ulid), value) }">
                                 @endif
+                                @if (in_array('desc', $cols, true) && filled($t?->excerpt))
+                                    <p class="list-desc" x-show="vDesc" title="{{ $t->excerpt }}" data-guide="row-desc">{{ $t->excerpt }}</p>
+                                @endif
 
                                 <x-bs-admin::list.meta>
                                     <span class="list-m" x-show="vPath">
@@ -426,6 +491,9 @@
                                     @if ($isPost)
                                         <span class="list-m [overflow-wrap:anywhere]" data-for="cat" x-show="vCat">{{ $rowCategory[$entry->ulid] ?? __('entries.cat_none') }}</span>
                                     @endif
+                                    @if (isset($rowStep[$entry->ulid]))
+                                        <span class="list-m" data-for="step" x-show="vStep">{{ $rowStep[$entry->ulid]['text'] }}</span>
+                                    @endif
                                     @if (isset($parentPaths[$entry->ulid]))
                                         <span class="list-m [overflow-wrap:anywhere]" data-for="parent">{{ __('entries.meta_parent', ['path' => $parentPaths[$entry->ulid]]) }}</span>
                                     @endif
@@ -438,7 +506,7 @@
                                     @endif
                                     {{-- as in the design, views are named only once there are some --}}
                                     @if ($isLive && $entry->view_count > 0)
-                                        <span class="list-m" data-for="views" data-guide="row-views">{{ __('entries.views_count', ['count' => \Illuminate\Support\Number::format($entry->view_count, locale: app()->getLocale())]) }}</span>
+                                        <span class="list-m" data-for="views" data-guide="row-views" x-show="vViews">{{ __('entries.views_count', ['count' => \Illuminate\Support\Number::format($entry->view_count, locale: app()->getLocale())]) }}</span>
                                     @endif
                                     @if ($creator)
                                         <span class="list-m" data-for="au">{{ $creator }}</span>
@@ -458,6 +526,14 @@
 
                         @if ($isPost)
                             <x-bs-admin::list.cell col="cat"><span class="list-ell" title="{{ $rowCategory[$entry->ulid] ?? '' }}">{{ $rowCategory[$entry->ulid] ?? __('entries.cat_none') }}</span></x-bs-admin::list.cell>
+                        @endif
+                        @if ($isPost && $governed)
+                            <x-bs-admin::list.cell col="step">
+                                @if (isset($rowStep[$entry->ulid]))
+                                    <span class="list-ell">{{ $rowStep[$entry->ulid]['text'] }}</span>
+                                    <span class="list-step-next" title="{{ $rowStep[$entry->ulid]['next'] }}">{{ $rowStep[$entry->ulid]['next'] }}</span>
+                                @endif
+                            </x-bs-admin::list.cell>
                         @endif
 
                         <x-bs-admin::list.cell col="st">
@@ -575,19 +651,38 @@
                                             <x-bs-admin::icon name="ri-pencil" class="size-4" /> {{ __('entries.edit_action') }}
                                         </x-bs-admin::button>
                                     @endif
+                                    {{-- «Hiện thêm nút khi đủ chỗ»: drawn only while the member has it on; the page script shows the ones that fit (data-acts) --}}
+                                    @if ($xbtn)
+                                        @if ($may['duplicate'])
+                                            <x-bs-admin::button size="sm" variant="soft" color="secondary" class="list-x" data-x="xd" wire:click="duplicate('{{ $entry->ulid }}')"
+                                                :aria-label="__('entries.row_btn_named', ['action' => __('entries.action_duplicate'), 'title' => $title])">
+                                                <x-bs-admin::icon name="ri-file-copy" class="size-4" /> {{ __('entries.action_duplicate') }}
+                                            </x-bs-admin::button>
+                                        @else
+                                            <span class="list-x list-xe" data-x="xd" aria-hidden="true"></span>
+                                        @endif
+                                        @if ($may['delete'])
+                                            <x-bs-admin::button size="sm" variant="outline" color="danger" class="list-x" data-x="xt" wire:click="trash('{{ $entry->ulid }}')"
+                                                :aria-label="__('entries.row_btn_named', ['action' => __('entries.action_trash'), 'title' => $title])">
+                                                <x-bs-admin::icon name="ri-delete-bin" class="size-4" /> {{ __('entries.row_trash') }}
+                                            </x-bs-admin::button>
+                                        @else
+                                            <span class="list-x list-xe" data-x="xt" aria-hidden="true"></span>
+                                        @endif
+                                    @endif
                                     <x-slot:menu>
                                         @if ($quickEdit)
                                             <x-bs-admin::list.menu-item icon="ri-pencil" x-on:click="$dispatch('list-quick-edit')">{{ __('entries.quick_edit_title') }}</x-bs-admin::list.menu-item>
                                         @endif
                                         @if ($may['duplicate'])
-                                            <x-bs-admin::list.menu-item icon="ri-file-copy" wire:click="duplicate('{{ $entry->ulid }}')">{{ __('entries.action_duplicate') }}</x-bs-admin::list.menu-item>
+                                            <x-bs-admin::list.menu-item icon="ri-file-copy" data-xm="xd" wire:click="duplicate('{{ $entry->ulid }}')">{{ __('entries.action_duplicate') }}</x-bs-admin::list.menu-item>
                                         @endif
                                         @if ($may['delete'])
                                             @if ($quickEdit || $may['duplicate'])
-                                                <x-bs-admin::list.menu-sep />
+                                                <x-bs-admin::list.menu-sep :data-xm="$quickEdit ? 'xt' : 'xt xd'" />
                                             @endif
                                             {{-- at once, with «Hoàn tác» on the message; the server asks first for a page with sub-pages or the Home page --}}
-                                            <x-bs-admin::list.menu-item icon="ri-delete-bin" danger wire:click="trash('{{ $entry->ulid }}')">{{ __('entries.action_trash') }}</x-bs-admin::list.menu-item>
+                                            <x-bs-admin::list.menu-item icon="ri-delete-bin" danger data-xm="xt" wire:click="trash('{{ $entry->ulid }}')">{{ __('entries.action_trash') }}</x-bs-admin::list.menu-item>
                                         @endif
                                     </x-slot:menu>
                                 @endif
@@ -598,7 +693,7 @@
                     {{-- No row on this view: the Trash is empty, nothing matches the search or filters («Bỏ lọc», which
                          also goes back to «Tất cả»), or the status group has nothing --}}
                     <x-bs-admin::list.row>
-                        <x-bs-admin::list.cell col="full" aria-colspan="{{ $isPost ? 6 : 5 }}">
+                        <x-bs-admin::list.cell col="full" aria-colspan="{{ ($isPost ? 6 : 5) + ($isPost && $governed ? 1 : 0) }}">
                             <x-bs-admin::list.state icon="ri-search-eye" :kind="$narrowing ? 'nomatch' : 'none'" data-guide="list-none">
                                 {{ $tab === 'trash' ? __('entries.state_trash_empty') : __($narrowing ? 'entries.state_no_match_'.$type : 'entries.state_group_empty_'.$type) }}
                                 @if ($narrowing)
