@@ -82,6 +82,9 @@ it('guides an owner on a website that publishes straight, naming who sends posts
             ->and($steps['main']['review'])->toContain('do nhóm Cộng tác viên gửi nằm ở tab [[Chờ duyệt]]')
             ->and($steps['main']['status'])->toContain('[[@]]')
             ->and($steps['find'])->toHaveKey('trash')
+            // the group row's «Khác» opens part 4, naming what its menu holds when the step shows
+            ->and(array_key_first($steps['find']))->toBe('more-tabs')
+            ->and($steps['find']['more-tabs'])->toBe('Nút này gom các trạng thái ít dùng: [[@menu]]. Chọn một mục thì mục đó hiện lên hàng tab.')
             ->and($steps['row'])->toHaveKey('more')
             ->and($guide['role']['name'])->not->toBe('')
             ->and($guide['scenario'])->toMatch('/^[0-9a-f]{12}$/')
@@ -159,7 +162,7 @@ it('prints the button with its name, and the guide in each admin language withou
 
     app()->setLocale($locale);
     foreach (Guide::ui() as $key => $text) {
-        expect($text)->toBe($lines['guide.ui.'.$key]);
+        expect($text)->toBe($lines[$key === 'list_sep' ? 'guide.list.sep' : 'guide.ui.'.$key]);
     }
 })->with(['vi', 'en', 'ja', 'zh']);
 
@@ -185,6 +188,8 @@ it('guides the pages list with the same parts, worded for pages, and no part on 
             ->and($guide['purpose'])->toContain('Mọi trang của website nằm ở đây')
             ->and(array_column($row['path']['v'], 't'))->toBe(['row-path-edit', 'row-path-home', 'row-path'])
             ->and($row['path']['v'][1]['text'])->toContain('Trang chủ luôn ở địa chỉ gốc / nên không đổi đường dẫn được.')
+            ->and($find['more-tabs']['v'][0]['t'])->toBe('tabs-more')
+            ->and($find['more-tabs']['v'][0]['title'])->toBe('Khác')
             ->and($find['filter']['v'][1]['text'])->toStartWith('[[Mẫu trang]] lọc theo mẫu của trang')
             ->and($find['cols']['v'][0]['text'])->toContain('mẫu trang');
     });

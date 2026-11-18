@@ -20,6 +20,7 @@
     // $label: the row's name, e.g. "Nhóm tệp".
     //
     // "Khác" opens with Enter, Space or ↓; ↑ ↓ move through it; Esc closes it and focus returns to it.
+    // A screen's guide points at it as data-guide="tabs-more" (a step that drops while it is hidden).
     $fmt = fn (int|string|null $n): ?string => is_int($n) ? \Illuminate\Support\Number::format($n, locale: app()->getLocale()) : $n;
     $setter = fn (string $key): string => '$set('.\Illuminate\Support\Js::from($model).', '.\Illuminate\Support\Js::from($key).')';
     // Stable across re-renders, so a morph never rewrites aria-controls under an open menu
@@ -100,7 +101,7 @@
         @foreach ([...array_filter($groups, fn (array $g): bool => ! ($g['trash'] ?? false)), null, ...array_filter($groups, fn (array $g): bool => $g['trash'] ?? false)] as $group)
             @if ($group === null)
                 <div x-ref="more" hidden class="relative shrink-0">
-                    <button type="button" x-ref="moreButton"
+                    <button type="button" x-ref="moreButton" data-guide="tabs-more"
                             aria-haspopup="menu" aria-controls="{{ $menuId }}" :aria-expanded="open ? 'true' : 'false'"
                             @click="open ? hide() : show()"
                             @keydown.down.prevent="show()"
