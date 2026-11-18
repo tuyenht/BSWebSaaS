@@ -27,6 +27,7 @@ use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Support\EntryTrash;
+use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -61,6 +62,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -198,6 +200,15 @@ final class Index extends Component
     /** The guide («Hướng dẫn») is printed on the screen's first draw only (a redraw keeps it, wire:ignore). */
     private bool $guideDue = false;
 
+    /** Whether the listed section runs an approval workflow, fixed when the screen opens (it offers «Bước duyệt»). */
+    #[Locked]
+    public bool $governed = false;
+
+    /** The workflow read as the screen opened, reused by that first draw (not kept between requests). */
+    private ?Workflow $mountedWorkflow = null;
+
+    private bool $workflowRead = false;
+
     /** The listed type (page / post), fixed when the screen opens. */
     #[Locked]
     public string $entryType = 'page';
@@ -303,6 +314,10 @@ final class Index extends Component
         $this->card = self::known(Cast::arr($view['card'] ?? null), $this->cardHere());
         $this->xbtn = ($view['xbtn'] ?? false) === true;
         $this->guideDue = true;
+        // whether the section runs an approval workflow (offers the Bước duyệt column): asked once, as the screen opens
+        $this->mountedWorkflow = $this->entryType === 'post' && $section instanceof ContentSection ? app(WorkflowEngine::class)->activeFor($section->key) : null;
+        $this->workflowRead = true;
+        $this->governed = $this->mountedWorkflow !== null;
         $this->clean();
     }
 
@@ -1713,16 +1728,21 @@ final class Index extends Component
     private static function rowSteps(Workflow $workflow, array $items): array
     {
         $workflow->loadMissing([
-            'states' => static fn (Relation $q): mixed => $q->orderBy('sort_order')->orderBy('id'),
-            'transitions' => static fn (Relation $q): mixed => $q->orderBy('id'),
+            'states' => static fn (Relation $q): mixed => $q->select(['id', 'workflow_id', 'key', 'sort_order', 'is_initial', 'is_published'])->orderBy('sort_order')->orderBy('id'),
+            'transitions' => static fn (Relation $q): mixed => $q->select(['id', 'workflow_id', 'label', 'from_state', 'requires_note'])->orderBy('id'),
         ]);
         $keys = array_values(array_map(Cast::string(...), $workflow->states->pluck('key')->all()));
-        $first = $workflow->states->firstWhere('is_initial', true)->key ?? ($keys[0] ?? null);
         $out = [];
         foreach ($items as $item) {
             $entry = $item['entry'];
-            $at = $entry->workflow_state ?? $first;
-            $n = array_search($at, $keys, true);
+            // the stage the editor stands the record at: its stored one while the workflow still defines it, a live
+            // record at the published stage, any other at the first (EntryWorkflowResolver::originIn)
+            try {
+                $at = EntryWorkflowResolver::originIn($workflow, $entry);
+            } catch (RuntimeException) {
+                $at = null;
+            }
+            $n = $at === null ? false : array_search($at, $keys, true);
             $n = is_int($n) ? $n : false;
             $next = $workflow->transitions->first(static fn (WorkflowTransition $t): bool => $t->from_state === $at && ! $t->requires_note);
             $out[$entry->ulid] = [
@@ -2079,8 +2099,10 @@ final class Index extends Component
         // The guide (first draw only) words the same workflow, read once for both.
         $postSection = $type === 'post' && $section instanceof ContentSection ? $section : null;
         $roleShows = $postSection !== null && ! FirstHints::dismissed(FirstHints::POSTS_ROLE, $user);
-        $workflow = $postSection !== null ? app(WorkflowEngine::class)->activeFor($postSection->key) : null;
-        $rowStep = $workflow !== null && in_array('step', $this->cols, true) ? self::rowSteps($workflow, $rows->items()) : [];
+        // read only when a post list needs it: the Bước duyệt column is on, the role card shows or the guide is drawn
+        $stepOn = $this->governed && in_array('step', $this->cols, true);
+        $workflow = $postSection !== null && ($stepOn || $roleShows || $this->guideDue) ? ($this->workflowRead ? $this->mountedWorkflow : app(WorkflowEngine::class)->activeFor($postSection->key)) : null;
+        $rowStep = $workflow !== null && $stepOn ? self::rowSteps($workflow, $rows->items()) : [];
         $roleNote = $roleShows ? PostRoleNote::with($user, $workflow, $postSection->localizedLabel(), $scoped) : null;
 
         $canDelete = $deleteAny || $deleteOwn;
@@ -2155,7 +2177,7 @@ final class Index extends Component
             'catOptions' => $catOptions,
             'rowCategory' => $rowCategory,
             'rowCover' => $rowCover,
-            'governed' => $workflow !== null,
+            'governed' => $this->governed,
             'rowStep' => $rowStep,
             'roleNote' => $roleNote,
             'filterCount' => $this->filterCount(),

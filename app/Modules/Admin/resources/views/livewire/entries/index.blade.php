@@ -270,7 +270,7 @@
                              const next = [...acts, t];
                              list.setAttribute('data-acts', next.join(' '));
                              let w = 0;
-                             list.querySelectorAll('.list-x[data-x=' + t + ']:not(.list-xe)').forEach((b) => { w = Math.max(w, Math.ceil(b.getBoundingClientRect().width)); });
+                             list.querySelectorAll('.list-x[data-x=' + t + ']:not(.list-xe)').forEach((b) => { w = Math.max(w, Math.ceil((b.firstElementChild ?? b).getBoundingClientRect().width)); });
                              list.style.setProperty('--list-b-' + t, w + 'px');
                              if (main.getBoundingClientRect().width >= 560 + 12 * boost - (prev.includes(t) ? 16 : 0)) { acts = next; } else { break; }
                          }
@@ -280,7 +280,7 @@
                      }
                      this.acts = acts.join(' ');
                      list.setAttribute('data-acts', this.acts);
-                     if (ae?.closest?.('.list-x') && ! ae.getClientRects().length) { ae.closest('.list-acts')?.querySelector('.list-more button')?.focus(); }
+                     if (ae?.closest?.('.list-x') && ! ae.getClientRects().length) { const row = ae.closest('.list-acts'), more = row?.querySelector('.list-more button'); (more && more.getClientRects().length ? more : row?.querySelector('[data-guide=row-edit]'))?.focus(); }
                  },
                  show(k) { return this.mode === 'line' || (this.mode === 'cols' ? this.$wire.cols : this.$wire.card).includes(k); },
                  get vPath() { return this.show('path'); },
@@ -316,13 +316,14 @@
                         @if ($xLabels !== [])
                             <x-slot:extra>
                                 <p class="m-0 px-2 pb-1 pt-1 text-caption font-semibold text-text-muted">{{ __('entries.xbtn_group') }}</p>
-                                <label class="flex min-h-menu-row cursor-pointer items-start gap-2.5 rounded px-2 py-2 text-body text-text hover:bg-surface-hover any-pointer-coarse:min-h-menu-row-touch" data-guide="cols-xbtn">
-                                    <input type="checkbox" wire:model.live="xbtn" aria-describedby="entries-cols-xb-d" class="mt-1 size-4 shrink-0 accent-primary-text">
-                                    <span class="min-w-0 flex-1">{{ __('entries.xbtn') }}
-                                        <span id="entries-cols-xb-d" class="mt-0.5 block text-caption text-text-muted"
-                                            x-text="$wire.xbtn && xNoFit ? {{ \Illuminate\Support\Js::from(__('entries.xbtn_nofit')) }} : {{ \Illuminate\Support\Js::from(__('entries.xbtn_note', ['list' => implode(', ', $xLabels)])) }}">{{ __('entries.xbtn_note', ['list' => implode(', ', $xLabels)]) }}</span>
-                                    </span>
-                                </label>
+                                <div class="rounded px-2 py-2 hover:bg-surface-hover" data-guide="cols-xbtn">
+                                    <label class="flex min-h-6 cursor-pointer items-start gap-2.5 text-body text-text any-pointer-coarse:min-h-8">
+                                        <input type="checkbox" wire:model.live="xbtn" aria-describedby="entries-cols-xb-d" class="mt-1 size-4 shrink-0 accent-primary-text">
+                                        <span class="min-w-0 flex-1">{{ __('entries.xbtn') }}</span>
+                                    </label>
+                                    <p id="entries-cols-xb-d" class="m-0 mt-0.5 pl-[1.625rem] text-caption text-text-muted"
+                                        x-text="$wire.xbtn && xNoFit ? {{ \Illuminate\Support\Js::from(__('entries.xbtn_nofit')) }} : {{ \Illuminate\Support\Js::from(__('entries.xbtn_note', ['list' => implode(', ', $xLabels)])) }}">{{ __('entries.xbtn_note', ['list' => implode(', ', $xLabels)]) }}</p>
+                                </div>
                             </x-slot:extra>
                         @endif
                     </x-bs-admin::cols-menu>
@@ -654,18 +655,22 @@
                                     {{-- «Hiện thêm nút khi đủ chỗ»: drawn only while the member has it on; the page script shows the ones that fit (data-acts) --}}
                                     @if ($xbtn)
                                         @if ($may['duplicate'])
-                                            <x-bs-admin::button size="sm" variant="soft" color="secondary" class="list-x" data-x="xd" wire:click="duplicate('{{ $entry->ulid }}')"
-                                                :aria-label="__('entries.row_btn_named', ['action' => __('entries.action_duplicate'), 'title' => $title])">
-                                                <x-bs-admin::icon name="ri-file-copy" class="size-4" /> {{ __('entries.action_duplicate') }}
-                                            </x-bs-admin::button>
+                                            <span class="list-x" data-x="xd">
+                                                <x-bs-admin::button size="sm" variant="soft" color="secondary" wire:click="duplicate('{{ $entry->ulid }}')"
+                                                    :aria-label="__('entries.row_btn_named', ['action' => __('entries.action_duplicate'), 'title' => $title])">
+                                                    <x-bs-admin::icon name="ri-file-copy" class="size-4" /> {{ __('entries.action_duplicate') }}
+                                                </x-bs-admin::button>
+                                            </span>
                                         @else
                                             <span class="list-x list-xe" data-x="xd" aria-hidden="true"></span>
                                         @endif
                                         @if ($may['delete'])
-                                            <x-bs-admin::button size="sm" variant="outline" color="danger" class="list-x" data-x="xt" wire:click="trash('{{ $entry->ulid }}')"
-                                                :aria-label="__('entries.row_btn_named', ['action' => __('entries.action_trash'), 'title' => $title])">
-                                                <x-bs-admin::icon name="ri-delete-bin" class="size-4" /> {{ __('entries.row_trash') }}
-                                            </x-bs-admin::button>
+                                            <span class="list-x" data-x="xt">
+                                                <x-bs-admin::button size="sm" variant="outline" color="danger" wire:click="trash('{{ $entry->ulid }}')"
+                                                    :aria-label="__('entries.row_btn_named', ['action' => __('entries.action_trash'), 'title' => $title])">
+                                                    <x-bs-admin::icon name="ri-delete-bin" class="size-4" /> {{ __('entries.row_trash') }}
+                                                </x-bs-admin::button>
+                                            </span>
                                         @else
                                             <span class="list-x list-xe" data-x="xt" aria-hidden="true"></span>
                                         @endif

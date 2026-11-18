@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Livewire\Entries\Index;
+use App\Modules\Admin\Support\FirstHints;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
@@ -8,6 +9,7 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Workflow\Models\Workflow;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Number;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
@@ -171,7 +173,7 @@ it('draws Nhân bản and Thùng rác on the rows only while the member has «Hi
     });
 });
 
-it('leaves «Nút trên dòng» out for a member who may neither copy nor remove a row, and in the Trash', function (): void {
+it('leaves «Nút trên dòng» out for a member who may neither copy nor remove a row', function (): void {
     $user = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
@@ -181,6 +183,108 @@ it('leaves «Nút trên dòng» out for a member who may neither copy nor remove
 
         Livewire::actingAs($user->fresh())->test(Index::class, ['section' => 'tin-tuc'])
             ->assertDontSee(__('entries.xbtn'));
+    });
+});
+
+it('draws no row buttons in the Trash, hides views there and gives a member who may only copy no Thùng rác button', function (): void {
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        grantRole($user, 'editor', ['entries.view', 'entries.create', 'entries.edit.any', 'entries.delete.any']);
+        $section = cmSection();
+        cmPost($user, 'Bài sống', $section, ['view_count' => 4242]);
+        cmPost($user, 'Bài đã xóa', $section, ['view_count' => 9191])->delete();
+
+        $list = Livewire::actingAs($user->fresh())->test(Index::class, ['section' => 'tin-tuc'])
+            ->set('xbtn', true)
+            ->assertSee('data-x="xd"', false)
+            ->assertSee(__('entries.views_count', ['count' => Number::format(4242, locale: app()->getLocale())]));
+
+        $list->call('setTab', 'trash')->assertSet('tab', 'trash')
+            ->assertSee('Bài đã xóa')->assertDontSee('Bài sống')
+            ->assertDontSee('data-x="xd"', false)->assertDontSee('data-x="xt"', false)
+            ->assertDontSee(__('entries.views_count', ['count' => Number::format(9191, locale: app()->getLocale())]));
+    });
+
+    $copier = User::factory()->create();
+    app(Tenancy::class)->enter(1, function () use ($copier, $user): void {
+        grantRole($copier, 'contributor', ['entries.view', 'entries.create', 'entries.edit.any']);
+        $section = ContentSection::query()->where('key', 'tin-tuc')->firstOrFail();
+        cmPost($user, 'Bài của người khác', $section);
+
+        Livewire::actingAs($copier->fresh())->test(Index::class, ['section' => 'tin-tuc'])
+            ->set('xbtn', true)
+            ->assertSee('data-x="xd"', false)
+            ->assertDontSee('<span class="list-x" data-x="xt">', false)
+            ->assertDontSee('data-xm="xt"', false);
+    });
+});
+
+it('leaves only the copy item in the ⋮ of another author\'s post for a member who may create and edit their own, no delete', function (): void {
+    $author = User::factory()->create();
+    $member = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $member): void {
+        grantRole($member, 'writer', ['entries.view', 'entries.create', 'entries.edit.own']);
+        $section = cmSection();
+        cmPost($author, 'Bài người khác', $section);
+
+        $html = Livewire::actingAs($member->fresh())->test(Index::class, ['section' => 'tin-tuc'])->set('xbtn', true)->html();
+        $menu = Str::after($html, 'class="list-more"');
+        // the only item is Nhân bản, the one the row's own button covers: the page's CSS hides the empty ⋮ then
+        expect(substr_count($menu, 'role="menuitem"'))->toBe(1)
+            ->and($menu)->toContain('data-xm="xd"')->not->toContain('data-xm="xt"')
+            ->and($html)->toContain('<span class="list-x" data-x="xd">')->not->toContain('<span class="list-x" data-x="xt">');
+    });
+});
+
+it('stands a record that joined no workflow at the stage its status implies, and one at a stage the workflow dropped at the first', function (): void {
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        grantRole($user, 'editor', ['entries.view']);
+        $section = cmSection();
+        cmWorkflow();
+        // live before the workflow was switched on: no stored stage, so the published one, not «Bước 1»
+        cmPost($user, 'Đã đăng từ trước', $section);
+        Livewire::actingAs($user->fresh())->test(Index::class, ['section' => 'tin-tuc'])
+            ->assertSee(__('entries.step_of', ['n' => 3, 'm' => 3]))->assertSee(__('entries.step_last'))
+            ->assertDontSee(__('entries.step_of', ['n' => 1, 'm' => 3]));
+
+        // a stored stage the workflow no longer defines: re-derived (a draft starts at the first stage)
+        Entry::query()->update(['workflow_state' => 'archived', 'status' => 'draft']);
+        Livewire::actingAs($user->fresh())->test(Index::class, ['section' => 'tin-tuc'])
+            ->assertSee(__('entries.step_of', ['n' => 1, 'm' => 3]))->assertSee(__('entries.step_next', ['label' => 'Gửi biên tập']))
+            ->assertDontSee(__('entries.step_of', ['n' => 3, 'm' => 3]));
+    });
+});
+
+it('reads the workflow on a redraw only while Bước duyệt is on', function (): void {
+    $user = User::factory()->create();
+    $workflowReads = function (Closure $callback): int {
+        $n = 0;
+        DB::listen(function ($q) use (&$n): void {
+            if (str_contains($q->sql, 'from "workflows"')) {
+                $n++;
+            }
+        });
+        $callback();
+
+        return $n;
+    };
+
+    app(Tenancy::class)->enter(1, function () use ($user, $workflowReads): void {
+        grantRole($user, 'editor', ['entries.view']);
+        $user->forceFill(['preferences' => ['hints' => [FirstHints::POSTS_ROLE => true]]])->save();
+        $section = cmSection();
+        cmWorkflow();
+        cmPost($user, 'Bài một', $section);
+
+        $list = Livewire::actingAs($user->fresh())->test(Index::class, ['section' => 'tin-tuc'])->assertSee('list-c-step', false);
+        $on = $workflowReads(fn () => $list->set('search', 'a'));
+        $list->set('cols', ['path']);
+        $off = $workflowReads(fn () => $list->set('search', 'b'));
+        expect($on)->toBe(1)->and($off)->toBe(0);
     });
 });
 

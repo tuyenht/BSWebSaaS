@@ -1758,7 +1758,7 @@
         white-space: nowrap;
     }
 
-    /* «Hiện thêm nút khi đủ chỗ»: a table row's Nhân bản and Thùng rác beside «Sửa», only those the page script
+    /* «Hiện thêm nút khi đủ chỗ»: a table row's Nhân bản and Thùng rác (each button inside its own span, so a utility class on the button cannot beat the hiding) beside «Sửa», only those the page script
        found room for (data-acts); a row without the button keeps its room (list-xe) so the buttons stay in line,
        and the row's ⋮ leaves out what the row shows (data-xm), itself too when nothing is left in it. Below 900
        nothing changes. */
@@ -1787,7 +1787,9 @@
             display: none;
         }
 
-        .list-rows[data-acts~='xd'][data-acts~='xt'] .list-more:not(:has(.list-mi:not([data-xm]))) {
+        .list-rows[data-acts~='xd'][data-acts~='xt'] .list-more:not(:has(.list-mi:not([data-xm]))),
+        .list-rows[data-acts~='xd']:not([data-acts~='xt']) .list-more:not(:has(.list-mi:not([data-xm]), .list-mi[data-xm~='xt'])),
+        .list-rows[data-acts~='xt']:not([data-acts~='xd']) .list-more:not(:has(.list-mi:not([data-xm]), .list-mi[data-xm~='xd'])) {
             display: none;
         }
     }
