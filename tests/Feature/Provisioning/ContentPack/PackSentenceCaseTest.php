@@ -33,6 +33,7 @@ function scIsTitleCase(string $text, array $properNouns): bool
     if (mb_strlen($text) > 80 || $text === mb_strtoupper($text)) {
         return false;
     }
+    usort($properNouns, fn (string $a, string $b): int => mb_strlen($b) <=> mb_strlen($a));
     foreach ($properNouns as $noun) {
         $text = str_replace($noun, ' ', $text);
     }
@@ -44,7 +45,7 @@ function scIsTitleCase(string $text, array $properNouns): bool
         }
         $words[] = $word;
     }
-    if (count($words) < 3) {
+    if (count($words) < 2) {
         return false;
     }
     foreach (array_slice($words, 1) as $word) {
@@ -54,6 +55,14 @@ function scIsTitleCase(string $text, array $properNouns): bool
     }
 
     return true;
+}
+
+/** The key a string sits under, skipping the locale and list positions ("links.2.label" → label, "license_issuer.vi" → license_issuer). */
+function scLabelKey(string $path): string
+{
+    $segments = array_values(array_filter(explode('.', $path), fn (string $s): bool => $s !== 'vi' && ! ctype_digit($s)));
+
+    return (string) end($segments);
 }
 
 /** @return array<string, array<string, mixed>> pack folder → decoded files */
@@ -76,8 +85,8 @@ it('writes Vietnamese headings, labels and titles in sentence case', function ()
                 continue;
             }
             foreach (scVietnameseStrings($data) as $item) {
-                $segments = explode('.', $item['path']);
-                if (! in_array('props', $segments, true) || ! in_array(end($segments), ['heading', 'label', 'cta_label', 'cta2_label', 'title'], true)) {
+                $key = scLabelKey($item['path']);
+                if (! in_array($key, ['heading', 'label', 'title', 'tips', 'license_issuer'], true) && ! str_ends_with($key, '_label')) {
                     continue;
                 }
                 if (scIsTitleCase($item['value'], $nouns)) {
@@ -113,5 +122,10 @@ it('stores every pack string in Unicode NFC', function (): void {
 it('catches a Title Case heading', function (): void {
     expect(scIsTitleCase('Yêu Cầu Báo Giá', []))->toBeTrue()
         ->and(scIsTitleCase('Yêu cầu báo giá', []))->toBeFalse()
-        ->and(scIsTitleCase('Quy trình ISO 9001 Cho An Vinh', ['An Vinh']))->toBeFalse();
+        ->and(scIsTitleCase('Quy trình ISO 9001 Cho An Vinh', ['An Vinh']))->toBeFalse()
+        ->and(scIsTitleCase('Video Xưởng', []))->toBeTrue()
+        ->and(scIsTitleCase('Sở Tài Chính Hà Nội', []))->toBeTrue()
+        ->and(scIsTitleCase('Sở Tài chính Hà Nội', []))->toBeFalse()
+        ->and(scIsTitleCase('Chat Zalo', ['Zalo']))->toBeFalse()
+        ->and(scIsTitleCase('Cơ Khí Chính Xác An Vinh', ['An Vinh', 'Cơ Khí Chính Xác An Vinh']))->toBeFalse();
 });
