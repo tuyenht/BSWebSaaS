@@ -236,6 +236,33 @@ it('refuses the status roads outside the limits: publish, send, draft, private, 
         ->and(cwStatus($live))->toBe('published');
 });
 
+it('judges a status change on the post as it is now, not as the list loaded it', function (): void {
+    [$jobs, $it, $news] = cwTree();
+    $lan = cwMember('editor');
+    cwLimit($lan, $jobs);
+    $live = cwEntry($lan, 'published', $it);
+    $gone = cwEntry($lan, 'published', $it);
+
+    // the list loaded both rows while they sat inside Lan's limits ...
+    $allowed = app(Tenancy::class)->enter(1, fn (): array => [$lan->can('publish', $live), $lan->can('publish', $gone)]);
+
+    // ... then a colleague filed one under News and put the other in the Trash
+    app(Tenancy::class)->enter(1, function () use ($live, $gone, $news): void {
+        Entry::query()->findOrFail($live->id)->assignCategories([$news->id]);
+        Entry::query()->findOrFail($gone->id)->delete();
+    });
+
+    $refusals = [
+        cwRefusal(fn () => app(TransitionEntryStatus::class)->handle($live, EntryStatus::Draft, $lan)),
+        cwRefusal(fn () => app(TransitionEntryStatus::class)->handle($gone, EntryStatus::Private, $lan)),
+    ];
+
+    expect($allowed)->toBe([true, true])
+        ->and($refusals)->toBe(['denied', 'denied'])
+        ->and(cwStatus($live))->toBe('published')
+        ->and(app(Tenancy::class)->enter(1, fn () => Entry::withTrashed()->findOrFail($gone->id)->status))->toBe('published');
+});
+
 // ── The editor ────────────────────────────────────────────────────────────────────────────────
 
 it('opens the editor for a new post but saves it only inside the limits, saying where', function (): void {

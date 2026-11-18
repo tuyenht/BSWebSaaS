@@ -10,6 +10,7 @@ use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
 use DateTimeInterface;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use InvalidArgumentException;
 
@@ -49,7 +50,18 @@ final readonly class TransitionEntryStatus
             throw new InvalidArgumentException(__('entries.err_status_needs_publish_flow', ['status' => $target->value]));
         }
 
-        if (! Gate::forUser($actor)->allows('publish', $entry)) {
+        DB::transaction(fn () => $this->handleLocked($entry, $target, $actor, $publishAt));
+    }
+
+    private function handleLocked(Entry $entry, EntryStatus $target, User $actor, ?DateTimeInterface $publishAt): void
+    {
+        // Take the row lock FIRST, then judge the row as it is now, like PublishEntry: the screen
+        // loaded it earlier, and meanwhile a colleague may have moved it to a category outside this
+        // member's reach, put it under a workflow or sent it to the Trash.
+        Entry::withTrashed()->whereKey($entry->id)->lockForUpdate()->firstOrFail();
+        $entry->refresh();
+
+        if ($entry->trashed() || ! Gate::forUser($actor)->allows('publish', $entry)) {
             throw new AuthorizationException(__('entries.err_status_forbidden'));
         }
 
