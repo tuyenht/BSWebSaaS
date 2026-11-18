@@ -607,7 +607,7 @@
                                             {{-- the live Home page stays published: a draft or private would leave «/» answering 404 (TransitionEntryStatus refuses it too), so those two stay listed, greyed, with the reason --}}
                                             @foreach (['published', 'draft', 'private'] as $opt)
                                                 @if ($isHome && $status === 'published' && $opt !== 'published')
-                                                    <button type="button" role="menuitem" aria-disabled="true" data-home-locked="{{ $opt }}" x-on:click="$bsToast({{ $lockToast(__('entries.home_trash_why')) }})" class="list-mi rounded">
+                                                    <button type="button" aria-disabled="true" data-home-locked="{{ $opt }}" x-on:click="$bsToast({{ $lockToast(__('entries.home_trash_why')) }})" class="list-mi rounded">
                                                         <x-bs-admin::status-pill :status="$opt">{{ __('entries.status_'.$opt) }}</x-bs-admin::status-pill>
                                                     </button>
                                                     <span class="list-mwhy">{{ __('entries.home_trash_why') }}</span>
