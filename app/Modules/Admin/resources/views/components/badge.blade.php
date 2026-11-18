@@ -6,9 +6,10 @@
 @php
     // Mirrors Velzon .badge / soft badge (bg-*-subtle + text-*). line-height ~0.95, caption size
     // (12px at the default text size, following the reader's text size).
+    // break-normal: a badge inside a list name (overflow-wrap:anywhere) must wrap at spaces only, never inside a word.
     // White text sits on the `*-solid` fill; soft text is `*-text` (readable in both schemes);
     // warning keeps its fill and takes dark text.
-    $base = 'inline-flex items-center gap-1 px-2 py-1 text-caption font-medium leading-none';
+    $base = 'inline-flex items-center gap-1 px-2 py-1 text-caption font-medium leading-none break-normal';
     $shape = $pill ? 'rounded-full' : 'rounded';
 
     $solid = [
