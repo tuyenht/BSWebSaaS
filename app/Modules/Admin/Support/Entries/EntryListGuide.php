@@ -156,6 +156,8 @@ final class EntryListGuide
         };
         $filterLabel = Cast::string(__('admin.list.filter'));
         $guide->part('find', $t('part_find'), [
+            // the row's «Khác», shown only when some groups do not fit (the browser drops the step otherwise)
+            Guide::step('more-tabs', [Guide::on('tabs-more', Cast::string(__('admin.list.more_groups')), $t('more_tabs', ['items' => W::menu()]))]),
             $delScope === 'none' ? null : Guide::step('trash', [Guide::on('tab-trash', Cast::string(__('entries.tab_trash')),
                 $t('trash', ['trash' => W::label(Cast::string(__('entries.tab_trash'))), 'restore' => W::label(Cast::string(__('entries.action_restore')))]))]),
             Guide::step('search', [Guide::on('search', $t('search_title'), $t('search'))]),
