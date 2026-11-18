@@ -213,7 +213,7 @@
        {
         "type": "process",
         "props": {
-         "heading": "Quy Trình Làm Việc",
+         "heading": "Quy trình làm việc",
          "description": "Sáu bước rõ ràng giúp khách hàng luôn nắm được tiến độ đơn hàng.",
          "bg": "tint",
          "steps": [
