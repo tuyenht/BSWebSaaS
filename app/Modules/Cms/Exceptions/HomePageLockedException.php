@@ -7,14 +7,16 @@ namespace App\Modules\Cms\Exceptions;
 use Illuminate\Auth\Access\AuthorizationException;
 
 /**
- * A move of the website's Home page to the Trash, refused whatever path asked for it (a screen, a
- * bulk run, a direct call): the website would be left without a Home page. A refusal of the
- * request (403 when nothing catches it), carrying the sentence a member reads.
+ * A move that would leave the website without its Home page, refused whatever path asked for it (a
+ * screen, a bulk run, a direct call): a move to the Trash, or a schedule that takes the live Home page
+ * off until its time. A refusal of the request (403 when nothing catches it), carrying the sentence a
+ * member reads.
  */
 final class HomePageLockedException extends AuthorizationException
 {
-    public function __construct()
+    /** @param  'entries.home_trash_why'|'entries.home_sched_why'  $reason  the lang key of the sentence */
+    public function __construct(string $reason = 'entries.home_trash_why')
     {
-        parent::__construct(__('entries.home_trash_why'));
+        parent::__construct(__($reason));
     }
 }

@@ -616,6 +616,8 @@
                                                     <x-bs-admin::status-pill status="archived">{{ __('entries.status_menu_archived') }}</x-bs-admin::status-pill>
                                                 </button>
                                             @endif
+                                            @if (! ($isHome && $status === 'published'))
+                                            {{-- the live Home page is never scheduled: it would be off the website until its time (TransitionEntryStatus refuses it too) --}}
                                             <div class="mt-0.5 border-t border-border pt-0.5">
                                                 {{-- «Hẹn giờ đăng»: the dialog (one for the list) opens on tomorrow 08:00 of the website's clock, or on the time already set --}}
                                                 <button type="button" data-sched x-on:click="open = false; $dispatch('entries-sched', {{ $Js::from(['ulid' => $entry->ulid, 'for' => __('entries.sched_for', ['title' => $title]), 'hint' => __('entries.sched_hint', ['noun' => __('entries.noun_'.$entry->type)]), 'value' => $isScheduled && $when ? $when->format('Y-m-d\TH:i') : $schedDefault]) }})" class="list-mi rounded">
@@ -628,6 +630,7 @@
                                                     </button>
                                                 @endif
                                             </div>
+                                            @endif
                                         </div>
                                     </div>
                                 @else

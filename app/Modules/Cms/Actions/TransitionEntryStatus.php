@@ -3,11 +3,13 @@
 namespace App\Modules\Cms\Actions;
 
 use App\Modules\Cms\Enums\EntryStatus;
+use App\Modules\Cms\Exceptions\HomePageLockedException;
 use App\Modules\Cms\Exceptions\SchedulePastException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Support\EntryStatusAudit;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
+use App\Modules\Cms\Support\HomePages;
 use App\Modules\Identity\Models\User;
 use DateTimeInterface;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -30,6 +32,9 @@ use InvalidArgumentException;
  * where an approval workflow governs the entry it is refused like a direct publish would be —
  * otherwise "schedule it for a minute from now" would walk straight around the gate. The other
  * targets only ever take content off the public site, which no gate needs to approve.
+ *
+ * The live Home page is never scheduled: until its time it would not be published, so the
+ * website's «/» would answer 404 (RouteResolver serves published entries only).
  */
 final readonly class TransitionEntryStatus
 {
@@ -45,6 +50,7 @@ final readonly class TransitionEntryStatus
 
     /**
      * @throws SchedulePastException a publish time that is missing or not after now
+     * @throws HomePageLockedException scheduling the live Home page (it would be off the website until then)
      * @throws WorkflowGovernedException scheduling content an active workflow governs
      * @throws ModelNotFoundException the entry left the list meanwhile (sent to the Trash or purged)
      */
@@ -106,6 +112,10 @@ final readonly class TransitionEntryStatus
         $governed = $this->workflows->forEntry($entry) !== null;
 
         if ($target === EntryStatus::Scheduled) {
+            if ($entry->status === EntryStatus::Published->value && HomePages::is($entry)) {
+                throw new HomePageLockedException('entries.home_sched_why');
+            }
+
             if ($publishAt === null || $publishAt <= now()) {
                 throw new SchedulePastException;
             }

@@ -3,6 +3,7 @@
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\TransitionEntryStatus;
 use App\Modules\Cms\Enums\EntryStatus;
+use App\Modules\Cms\Exceptions\HomePageLockedException;
 use App\Modules\Cms\Exceptions\SchedulePastException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Identity\Models\User;
@@ -59,6 +60,31 @@ it('schedules with a future datetime', function (): void {
 
         expect($page->fresh()->status)->toBe('scheduled')
             ->and($page->fresh()->published_at->timestamp)->toBe($at->timestamp);
+    });
+});
+
+it('never schedules the live Home page, which keeps answering at «/», but schedules a Home page not yet live', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
+        $home = newlyPublishedPage($editor, 'home');
+
+        // a schedule would leave it unpublished until its time, and «/» would answer 404 meanwhile
+        expect(fn () => app(TransitionEntryStatus::class)->handle($home, EntryStatus::Scheduled, $editor->fresh(), now()->addDay()))
+            ->toThrow(HomePageLockedException::class, __('entries.home_sched_why'));
+        expect($home->fresh()->status)->toBe('published');
+    });
+
+    $this->get('http://a.test/')->assertOk();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        // a Home page that is not on the website yet may be given its time to go live
+        $home = Entry::query()->where('type', 'page')->firstOrFail();
+        app(TransitionEntryStatus::class)->handle($home, EntryStatus::Draft, $editor->fresh());
+        app(TransitionEntryStatus::class)->handle($home->fresh(), EntryStatus::Scheduled, $editor->fresh(), now()->addDay());
+
+        expect($home->fresh()->status)->toBe('scheduled');
     });
 });
 

@@ -222,6 +222,61 @@ it('reads the Home page guard of a whole branch in one go, however many pages it
     });
 });
 
+it('reads the Home page guard of a bulk move in one go per chunk, however many pages are ticked', function (): void {
+    $owner = tuMember('owner', PermissionRegistry::TENANT_PERMISSIONS);
+
+    app(Tenancy::class)->enter(1, function () use ($owner): void {
+        // the Home page reads of one bulk move of $size ticked pages
+        $homeReads = function (int $size) use ($owner): int {
+            $ulids = [];
+            foreach (range(1, $size) as $i) {
+                $ulids[] = tuPage($owner, "Trang {$size}-{$i}")->ulid;
+            }
+            $list = Livewire::actingAs($owner)->test(Index::class)->set('selected', $ulids);
+            $reads = 0;
+            DB::listen(function ($query) use (&$reads): void {
+                if (str_contains($query->sql, 'from "entry_translations"') && str_contains($query->sql, '"slug" in')) {
+                    $reads++;
+                }
+            });
+            $list->call('bulkTrash');
+            foreach ($ulids as $ulid) {
+                expect(Entry::onlyTrashed()->where('ulid', $ulid)->exists())->toBeTrue();
+            }
+
+            return $reads;
+        };
+
+        $small = $homeReads(2);
+        $large = $homeReads(8);
+        expect($large)->toBe($small)->and($small)->toBeLessThanOrEqual(2);
+    });
+});
+
+it('says why when a page became the Home page between the check and the move, and moves nothing', function (): void {
+    $owner = tuMember('owner', PermissionRegistry::TENANT_PERMISSIONS);
+
+    app(Tenancy::class)->enter(1, function () use ($owner): void {
+        $parent = tuPage($owner, 'Giới thiệu');
+        $kid = tuPage($owner, 'Trang con', 'published', $parent);
+        $list = Livewire::actingAs($owner)->test(Index::class);
+
+        // the sub-page becomes the Home page right after the screen's own check (as a colleague's save would)
+        $made = false;
+        DB::listen(function ($query) use (&$made, $kid): void {
+            if (! $made && str_contains($query->sql, 'from "entry_translations"') && str_contains($query->sql, '"slug" in')) {
+                $made = true;
+                DB::table('entry_translations')->where('entry_id', $kid->id)->update(['slug' => 'home']);
+            }
+        });
+        $list->call('trash', $parent->ulid, true)
+            ->assertOk()
+            ->assertDispatched('bs-toast', text: __('entries.home_trash_why'), stay: true)
+            ->assertSet('trashUndo', null);
+        expect($made)->toBeTrue()->and(tuTrashed($parent))->toBeFalse()->and(tuTrashed($kid))->toBeFalse();
+    });
+});
+
 it('keeps refusing the Home page when its answer was read for a batch beforehand', function (): void {
     $owner = tuMember('owner', PermissionRegistry::TENANT_PERMISSIONS);
 

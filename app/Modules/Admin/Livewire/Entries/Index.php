@@ -19,6 +19,7 @@ use App\Modules\Cms\Actions\TransitionEntryStatus;
 use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
+use App\Modules\Cms\Exceptions\HomePageLockedException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Exceptions\SchedulePastException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
@@ -782,6 +783,10 @@ final class Index extends Component
             $this->toastStaleRow(); // sent to the Trash or purged since the list loaded it
 
             return null;
+        } catch (HomePageLockedException $refused) {
+            $this->refuse($refused->getMessage());   // the live Home page: the menu hides the item, the action refuses it
+
+            return null;
         } catch (AuthorizationException) {
             $this->refuse($this->refusalFor($entry, 'status'));
 
@@ -1044,14 +1049,21 @@ final class Index extends Component
         }
 
         $rows = [$entry, ...$kids];
-        DB::transaction(fn (): mixed => app(CategoryItemCounts::class)->batch(function () use ($rows): bool {
-            HomePages::remember($rows);   // the Home page guard on each row, read for the whole branch at once
-            foreach ($rows as $row) {
-                $row->delete();
-            }
+        try {
+            DB::transaction(fn (): mixed => app(CategoryItemCounts::class)->batch(function () use ($rows): bool {
+                HomePages::remember($rows);   // the Home page guard on each row, read for the whole branch at once
+                foreach ($rows as $row) {
+                    $row->delete();
+                }
 
-            return true;
-        }));
+                return true;
+            }));
+        } catch (HomePageLockedException) {
+            // a page of the branch became the Home page after the check above: nothing moved, and the reason is said
+            $this->refuse(Cast::string(__('entries.home_trash_why')));
+
+            return;
+        }
 
         $ulids = array_map(static fn (Entry $row): string => $row->ulid, $rows);
         $this->selected = array_values(array_diff($this->selected, $ulids));
@@ -1249,6 +1261,7 @@ final class Index extends Component
 
                 return (bool) $entry->delete();
             },
+            beforeChunk: HomePages::remember(...),   // the Home page guard of a locked chunk in one read, not one per row
         );
         if ($run === null) {
             return;
@@ -1474,10 +1487,11 @@ final class Index extends Component
      * @param  list<string>|null  $ulids  the rows to act on; the selection when null
      * @param  bool  $capped  refuse more than BULK_LIMIT rows (a selection); false works through any
      *                        number BULK_LIMIT at a time, in one transaction (the rows «Hoàn tác» names)
+     * @param  (callable(list<Entry>): void)|null  $beforeChunk  runs on each locked chunk before its rows
      * @return array{tally: array<string, int>, done: list<string>}|null what the run did; null when
      *                                                                   it did nothing (already told)
      */
-    private function runBulk(string $doneKey, string $skippedKey, callable $eligible, callable $action, ?array $ulids = null, bool $capped = true): ?array
+    private function runBulk(string $doneKey, string $skippedKey, callable $eligible, callable $action, ?array $ulids = null, bool $capped = true, ?callable $beforeChunk = null): ?array
     {
         $fromSelection = $ulids === null;
         $ulids ??= $this->selected;
@@ -1493,8 +1507,11 @@ final class Index extends Component
 
         DB::beginTransaction();
         try {
-            $counts->batch(function () use (&$tally, &$done, $ulids, $counts, $eligible, $action, $doneKey, $skippedKey): void {
+            $counts->batch(function () use (&$tally, &$done, $ulids, $counts, $eligible, $action, $doneKey, $skippedKey, $beforeChunk): void {
                 foreach ($this->selectedChunks($ulids) as $chunk) {
+                    if ($beforeChunk !== null) {
+                        $beforeChunk(array_values($chunk->all()));
+                    }
                     foreach ($chunk as $entry) {
                         $key = $this->bulkRow($counts, $entry, $eligible, $action, $doneKey, $skippedKey);
                         $tally[$key]++;

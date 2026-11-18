@@ -2439,6 +2439,7 @@
     "entries.trash_kids_too_many": "移動できません：このページの下の子ページが多すぎます（:max 件超、または :depth 階層より深い）。先に子ページの一部をゴミ箱に移動してから、もう一度お試しください。",
     "entries.trash_ask_title": "「:name」をゴミ箱に移動しますか？",
     "entries.home_trash_why": "このページを外すには、先に別のページをホームページに選んでください。",
+    "entries.home_sched_why": "ホームページは公開中です。公開を予約すると、その時刻まで表示されなくなります。このページを予約するには、先に別のページをホームページに選んでください。",
     "entries.view_on_site": "ウェブサイトで見る",
     "entries.copy_link": "リンクをコピー",
     "entries.link_copied": "リンクをコピーしました：:url",

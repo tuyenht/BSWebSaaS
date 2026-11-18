@@ -450,6 +450,26 @@ describe('scheduling', function (): void {
             expect($live->fresh()->status)->toBe('published');
         });
     });
+
+    it('hides «Hẹn giờ đăng» on the live Home page, and refuses it there with the reason, kept until closed', function (): void {
+        Carbon::setTestNow('2026-11-18 03:00:00 UTC'); // 10:00 in Viet Nam
+        $owner = rmMember('owner', PermissionRegistry::TENANT_PERMISSIONS, 90);
+
+        app(Tenancy::class)->enter(1, function () use ($owner): void {
+            $home = rmEntry($owner, 'Trang chủ', 'published', slug: 'home');
+            $other = rmEntry($owner, 'Liên hệ', 'published');
+            $list = Livewire::actingAs($owner)->test(Index::class);
+            $html = $list->html();
+
+            expect(rmRowHtml($html, $home->ulid))->not->toContain('data-sched x-on:click')
+                ->and(rmRowHtml($html, $other->ulid))->toContain('data-sched x-on:click');
+
+            // a call made anyway (a tab opened before the page became the Home page) is refused by the action
+            $list->call('scheduleEntry', $home->ulid, '2026-11-19T08:00')->assertReturned(null)
+                ->assertDispatched('bs-toast', text: __('entries.home_sched_why'), stay: true);
+            expect($home->fresh()->status)->toBe('published')->and($home->fresh()->published_at?->isFuture())->toBeFalse();
+        });
+    });
 });
 
 describe('the Trash tab', function (): void {
