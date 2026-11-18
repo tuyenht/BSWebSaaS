@@ -472,7 +472,7 @@ describe('scheduling', function (): void {
         });
     });
 
-    it('offers only «Đã đăng» on the live Home page, refuses a draft or private there with the reason kept until closed, and «/» stays live', function (): void {
+    it('lists «Đã đăng» plus draft and private greyed with the reason on the live Home page, refuses a draft or private there with the reason kept until closed, and «/» stays live', function (): void {
         $owner = rmMember('owner', PermissionRegistry::TENANT_PERMISSIONS, 90);
         $menuItem = static fn (Entry $entry, string $status): string => '$wire.changeStatus('.Js::from($entry->ulid).', '.Js::from($status).')';
 
@@ -483,9 +483,14 @@ describe('scheduling', function (): void {
             $list = Livewire::actingAs($owner)->test(Index::class);
             $html = $list->html();
 
-            expect(rmRowHtml($html, $home->ulid))->toContain($menuItem($home, 'published'))
+            $homeRow = rmRowHtml($html, $home->ulid);
+            expect($homeRow)->toContain($menuItem($home, 'published'))
                 ->not->toContain($menuItem($home, 'draft'))
                 ->not->toContain($menuItem($home, 'private'))
+                ->toContain('data-home-locked="draft"')->toContain('data-home-locked="private"')
+                ->and(substr_count($homeRow, 'aria-disabled="true"'))->toBeGreaterThanOrEqual(2)
+                ->and(substr_count($homeRow, '<span class="list-mwhy">'.e(__('entries.home_trash_why')).'</span>'))->toBe(2)
+                ->and(rmRowHtml($html, $other->ulid))->not->toContain('data-home-locked')
                 ->and(rmRowHtml($html, $other->ulid))->toContain($menuItem($other, 'draft'))->toContain($menuItem($other, 'private'));
 
             // a call made anyway (a tab opened before the page became the Home page) is refused by the action, with why

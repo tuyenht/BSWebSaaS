@@ -604,12 +604,19 @@
                                         <x-bs-admin::status-pill button x-ref="pill" :status="$status" x-on:click="open = ! open" x-bind:aria-expanded="open.toString()" aria-haspopup="true" title="{{ __('entries.status_menu_label') }}">{{ __('entries.status_'.$status) }}<span class="sr-only"> · {{ __('entries.status_menu_label') }}</span></x-bs-admin::status-pill>
                                         <div x-show="open" x-cloak x-transition
                                             class="absolute left-0 z-30 mt-1 w-56 rounded-lg border border-border bg-surface p-1 shadow-lg">
-                                            {{-- the live Home page stays published: a draft or private would leave «/» answering 404 (TransitionEntryStatus refuses it too) --}}
-                                            @foreach (($isHome && $status === 'published') ? ['published'] : ['published', 'draft', 'private'] as $opt)
-                                                <button type="button" x-on:click="$wire.changeStatus(@js($entry->ulid), @js($opt)); open = false" class="list-mi rounded">
-                                                    <x-bs-admin::status-pill :status="$opt">{{ __('entries.status_'.$opt) }}</x-bs-admin::status-pill>
-                                                    @if ($status === $opt)<x-bs-admin::icon name="ri-check" class="ml-auto size-3.5 text-primary-text" />@endif
-                                                </button>
+                                            {{-- the live Home page stays published: a draft or private would leave «/» answering 404 (TransitionEntryStatus refuses it too), so those two stay listed, greyed, with the reason --}}
+                                            @foreach (['published', 'draft', 'private'] as $opt)
+                                                @if ($isHome && $status === 'published' && $opt !== 'published')
+                                                    <button type="button" role="menuitem" aria-disabled="true" data-home-locked="{{ $opt }}" x-on:click="$bsToast({{ $lockToast(__('entries.home_trash_why')) }})" class="list-mi rounded">
+                                                        <x-bs-admin::status-pill :status="$opt">{{ __('entries.status_'.$opt) }}</x-bs-admin::status-pill>
+                                                    </button>
+                                                    <span class="list-mwhy">{{ __('entries.home_trash_why') }}</span>
+                                                @else
+                                                    <button type="button" x-on:click="$wire.changeStatus(@js($entry->ulid), @js($opt)); open = false" class="list-mi rounded">
+                                                        <x-bs-admin::status-pill :status="$opt">{{ __('entries.status_'.$opt) }}</x-bs-admin::status-pill>
+                                                        @if ($status === $opt)<x-bs-admin::icon name="ri-check" class="ml-auto size-3.5 text-primary-text" />@endif
+                                                    </button>
+                                                @endif
                                             @endforeach
                                             @if ($status === 'published' && ! $isHome)
                                                 {{-- off the website, its content kept (archived): the publish right on this row, as every move here --}}
