@@ -1150,9 +1150,18 @@ html:has(.sf-header--sticky) {
     pointer-events: none;
 }
 
-.sf-sbtn:is(:hover, :focus-visible):not([aria-expanded="true"]) .sf-tip,
-.sf-sform__x:is(:hover, :focus-visible) .sf-tip {
+/* Shown on a keyboard focus everywhere, on hover only where a real pointer hovers: a touch screen
+   keeps a tapped control "hovered" after the tap, which would leave the tip over the page. */
+.sf-sbtn:focus-visible:not([aria-expanded="true"]) .sf-tip,
+.sf-sform__x:focus-visible .sf-tip {
     display: block;
+}
+
+@media (hover: hover) {
+    .sf-sbtn:hover:not([aria-expanded="true"]) .sf-tip,
+    .sf-sform__x:hover .sf-tip {
+        display: block;
+    }
 }
 
 /* at the bar's right end the tooltip lines up with the button's right edge, inside the page */
