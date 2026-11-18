@@ -5677,6 +5677,7 @@
     "guide.posts.del_any": "メニューの最後の赤い項目はごみ箱へ移す操作です。あとで元に戻せます。",
     "guide.posts.del_own": "自分の :unit では、メニューの最後にごみ箱へ移す操作があります。あとで元に戻せます。",
     "guide.posts.del_none": "あなたの権限グループでは :unit を削除できません。",
+    "guide.posts.more_tabs": "このボタンには、あまり使わない状態をまとめています：:items。項目を選ぶと、その項目がタブの列に並びます。",
     "guide.posts.trash": "削除した :unit は :trash に :days 日間残り、その後完全に削除されます。そこで :restore を押すと一覧に戻せます。",
     "guide.posts.search_title": "検索",
     "guide.posts.search": "タイトルや URL の一部を入力します。ベトナム語の声調記号はあってもなくても検索できます。入力を消すと一覧はすべて表示に戻ります。",

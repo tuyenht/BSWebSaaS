@@ -5677,6 +5677,7 @@
     "guide.posts.del_any": "Last in the menu, in red, is moving it to the Trash: it can be restored.",
     "guide.posts.del_own": "For a :unit of yours, the menu ends with moving it to the Trash: it can be restored.",
     "guide.posts.del_none": "Your role may not delete a :unit.",
+    "guide.posts.more_tabs": "This button gathers the statuses used less often: :items. Choose one and it takes its place in the row of tabs.",
     "guide.posts.trash": "A deleted :unit stays in :trash for :days days, then is deleted for good. Open it and press :restore to bring the :unit back to the list.",
     "guide.posts.search_title": "Search",
     "guide.posts.search": "Type a few letters of the title or the address; with or without Vietnamese accents both work. Clear what you typed and the whole list comes back.",

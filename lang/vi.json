@@ -5677,6 +5677,7 @@
     "guide.posts.del_any": "Cuối menu, màu đỏ, là chuyển vào Thùng rác: khôi phục lại được.",
     "guide.posts.del_own": "Với :unit của bạn, cuối menu có chuyển vào Thùng rác: khôi phục lại được.",
     "guide.posts.del_none": "Nhóm quyền của bạn không xóa được :unit.",
+    "guide.posts.more_tabs": "Nút này gom các trạng thái ít dùng: :items. Chọn một mục thì mục đó hiện lên hàng tab.",
     "guide.posts.trash": ":Unit đã xóa nằm ở :trash :days ngày rồi tự xóa hẳn. Vào đó, bấm :restore để đưa :unit về danh sách.",
     "guide.posts.search_title": "Tìm",
     "guide.posts.search": "Gõ vài chữ của tiêu đề hoặc đường dẫn; có dấu hay không dấu đều tìm được. Xóa chữ đã gõ là danh sách trở lại đủ.",
