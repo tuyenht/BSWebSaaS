@@ -5,8 +5,8 @@ printf '%s\n' "pnpm $* (in $PWD)" >> "$FAKE/calls.log"
 case "$*" in
     "install --frozen-lockfile") echo "Already up to date" ;;
     "run build")
-        if [ -e "$FAKE/fail-build-once" ]; then rm -f "$FAKE/fail-build-once"; echo "build failed"; exit 1; fi
-        rm -rf public/build   # like Vite: the build empties its folder first
+        rm -rf public/build   # like Vite: the build empties its folder first (a failing build too)
+        if [ -e "$FAKE/fail-build-once" ]; then rm -f "$FAKE/fail-build-once"; mkdir -p public/build/assets; echo half > public/build/assets/half-built.js; echo "build failed"; exit 1; fi
         mkdir -p public/build/assets
         rev=$(git rev-parse --short HEAD)
         ins=$(grep -E 'input' vite.config.js | grep -oE "resources/[^'\"]+" | sort -u)

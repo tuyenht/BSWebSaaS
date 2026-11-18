@@ -346,7 +346,15 @@ LBLOB_COMMIT=$UNMERGED launch
 ok '[ "$RC" != 0 ] && says "chưa nằm trên origin/main" && head_is "$OLD" && [ ! -s "$FAKE/calls.log" ]' "an engine commit not on origin/main is refused (same engine blob)"
 
 echo "== full run on the fake prod"
-fresh "$FULL"; mkdir -p "$PROD/public/build/assets" && echo "old" > "$PROD/public/build/assets/served-before.css" && echo "older" > "$PROD/public/build/assets/kept-from-older.css" && echo '{"resources/css/storefront.css":{"file":"assets/served-before.css"}}' > "$PROD/public/build/manifest.json"; launch
+served() { # the build serving on the fake prod before the deploy: one CSS file its manifest names, one it does not
+    mkdir -p "$PROD/public/build/assets" && echo "old" > "$PROD/public/build/assets/served-before.css" && echo "older" > "$PROD/public/build/assets/kept-from-older.css" \
+        && echo '{"resources/css/storefront.css":{"file":"assets/served-before.css"}}' > "$PROD/public/build/manifest.json"
+}
+fresh "$FULL"; served
+ARC=$RUNS/build-archive; mkdir -p "$ARC/assets" "$RUNS/older-run/prev-build/assets"; echo x > "$RUNS/older-run/prev-build/assets/x.css"
+echo ancient > "$ARC/assets/ancient.css"; touch -d '3 days ago' "$ARC/assets/ancient.css"   # served last 3 days ago: past the 2-day window
+echo recent > "$ARC/assets/recent.css"; touch -d '1 day ago' "$ARC/assets/recent.css"      # served last yesterday: inside it
+launch
 ok '[ "$RC" = 0 ] && says "===== XONG"' "deploy ends XONG (rc $RC)"
 [ "$RC" = 0 ] || tail -25 "$OUT"
 ok 'head_is "$FULL"' "prod HEAD is TARGET"
@@ -366,8 +374,13 @@ ok '[ -n "$O" ] && [ -n "$P" ] && [ -n "$L" ] && [ "$O" -lt "$P" ] && [ "$P" -lt
 ok '[ "$(cat "$FAKE/pre-count")" = 0 ] && [ -e "$FAKE/pre-verified" ] && says "OK   early xem lại sau khi chạy (còn đổi) = 0" && [ -s "$RUNS/${OLD:0:7}-${FULL:0:8}/oneoff-pre-early" ]' "pre-reload one-off: preview 2 → apply 2 → re-preview 0 → verify, its own mark"
 L=$(line_of "artisan octane:reload"); E=$(line_of "artisan storefront:purge-edge --all")
 ok '[ -n "$E" ] && [ "$L" -lt "$E" ] && [ "$(calls "artisan storefront:purge-edge --all")" = 1 ]' "the edge purge is queued once, after the reload ($L < $E)"
+ok '! says "Bỏ qua xoá trang lưu ở Cloudflare"' "a long command list (the writer cut off by an early reader) does not make the purge look missing"
 ok '[ -s "$PROD/public/build/assets/served-before.css" ] && [ -s "$PROD/public/build/assets/storefront.css-${FULL:0:7}" ]' "the previous build's files stay beside the new build"
 ok '[ ! -e "$PROD/public/build/assets/kept-from-older.css" ]' "a file the serving manifest does not name is not carried into the next build"
+ok '[ -s "$ARC/assets/served-before.css" ] && cmp -s "$RUNS/${OLD:0:7}-${FULL:0:8}/served-manifest.json" <(echo '"'"'{"resources/css/storefront.css":{"file":"assets/served-before.css"}}'"'"')' "the serving build's files go to the shared archive, its manifest to the run's state"
+ok '[ -s "$PROD/public/build/assets/recent.css" ] && [ -s "$ARC/assets/recent.css" ]' "an archived file served within the window goes back beside the new build"
+ok '[ ! -e "$PROD/public/build/assets/ancient.css" ] && [ ! -e "$ARC/assets/ancient.css" ]' "an archived file older than the window is pruned and not restored"
+ok '[ ! -e "$RUNS/older-run/prev-build" ]' "a per-run prev-build folder of an older engine is removed"
 PB=$RUNS/${OLD:0:7}-${FULL:0:8}/pages-before
 ok 'grep -qx "/bai-2 200" "$PB" && ! grep -q "^/bai-1 " "$PB" && says "OK   trang /bai-2 (code cũ trên cấu trúc bảng mới; trước: 200) = 200"' "release_pages: the first page that opens is kept and re-checked on the old code in step 4"
 ok 'says "OK   bản build có phần tải sau resources/js/lazy.js = true" && says "OK   bản build: resources/js/app.js có '"'"'bsNewThing'"'"'" && says "OK   bản build: resources/css/storefront.css có '"'"'sf-newclass'"'"'"' "build: lazy chunk and the new strings checked"
@@ -386,6 +399,11 @@ rm -f "$FAKE/no-purge-command"
 ok '[ "$RC" = 0 ] && head_is "$OLD"' "rollback puts the code back on OLD"
 ok '[ "$(calls "MIGRATED")" = 2 ]' "rollback ran no migration"
 ok '[ "$(calls "artisan fake:pre")" = 1 ] && [ "$(calls "artisan octane:reload")" = 2 ]' "rollback reloads without the pre-reload one-off"
+B=$PROD/public/build/assets
+ok '[ -s "$B/storefront.css-${OLD:0:7}" ] && [ -s "$B/storefront.css-${FULL:0:7}" ] && [ -s "$B/app.js-${FULL:0:7}" ] && [ -s "$B/served-before.css" ]' "the rollback build keeps TARGET's files (pages it drew stay styled) beside OLD's"
+launch 5
+ok '[ "$RC" = 0 ] && head_is "$FULL"' "a forward run again after the rollback finishes (a third build)"
+ok '[ -s "$B/served-before.css" ] && [ -s "$B/storefront.css-${OLD:0:7}" ] && [ -s "$B/app.js-${OLD:0:7}" ] && [ -s "$B/storefront.css-${FULL:0:7}" ] && [ -s "$B/app.js-${FULL:0:7}" ]' "three builds within the window: every build's files are still served"
 
 echo "== pre-reload one-off: a stop at the reload, then resume at 7"
 fresh "$FULL"; touch "$FAKE/fail-reload-once"; launch
@@ -426,8 +444,9 @@ ok '[ "$RC" = 0 ] && head_is "$FULL"' "resume at step 4 finishes"
 ok '[ "$(calls "MIGRATED 2100_01_01_000000_add_col")" = 1 ]' "each migration ran once"
 
 echo "== stop in step 6, resume at 6"
-fresh "$FULL"; touch "$FAKE/fail-build-once"; launch
+fresh "$FULL"; served; touch "$FAKE/fail-build-once"; launch
 ok '[ "$RC" = 1 ] && says "DỪNG (bước 6)" && says "Code trên đĩa đã đổi"' "build failure stops with the half-updated warning"
+ok 'says "pnpm run build lỗi: đã trả lại" && [ -s "$PROD/public/build/assets/served-before.css" ] && cmp -s "$PROD/public/build/manifest.json" <(echo '"'"'{"resources/css/storefront.css":{"file":"assets/served-before.css"}}'"'"')' "a failed build (folder already emptied) puts back the serving files and manifest"
 launch 6
 ok '[ "$RC" = 0 ] && head_is "$FULL" && [ "$(calls "MIGRATED")" = 2 ]' "resume at 6 finishes without re-running migrations"
 
