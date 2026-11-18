@@ -19,9 +19,10 @@ return [
         's_maxage' => (int) env('STOREFRONT_EDGE_S_MAXAGE', 86400),
         // Seconds between the purge jobs one sweep queues (storefront:purge-edge --all after a deploy):
         // 100 host names a job. Cloudflare limits purge requests by rate: the Free plan allows 5 a
-        // minute (bucket of 25), so the default of 12 seconds keeps to it. Paid plans (Pro 5 a second,
-        // Business 10 a second) can lower it through STOREFRONT_EDGE_PURGE_PACE.
-        'purge_pace_seconds' => (int) env('STOREFRONT_EDGE_PURGE_PACE', 12),
+        // minute (bucket of 25), so the default of 15 seconds stays under it and leaves room for the
+        // purges sites' own edits send meanwhile. Paid plans (Pro 5 a second, Business 10 a second) can
+        // lower it through STOREFRONT_EDGE_PURGE_PACE.
+        'purge_pace_seconds' => (int) env('STOREFRONT_EDGE_PURGE_PACE', 15),
         'unpurged_s_maxage' => (int) env('STOREFRONT_EDGE_UNPURGED_S_MAXAGE', 300),
         // Kept short: Cloudflare was measured revalidating inline (18/11/2026), so a long window buys
         // nothing, and were an edge or browser ever to serve stale copies asynchronously, a day-long

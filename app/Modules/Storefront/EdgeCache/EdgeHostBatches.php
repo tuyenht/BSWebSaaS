@@ -47,7 +47,7 @@ final class EdgeHostBatches
         // Paced: a burst (every site after a deploy) must neither run into the zone's purge rate limit at
         // once nor hold up the purges a site's own edits queue meanwhile.
         PurgeEdgeHosts::dispatch(array_map('strval', array_keys($this->pending)))
-            ->delay($this->jobs * max(0, Cast::int(config('storefront.edge_cache.purge_pace_seconds'), 12)));
+            ->delay($this->jobs * max(0, Cast::int(config('storefront.edge_cache.purge_pace_seconds'), 15)));
         $this->jobs++;
         $this->pending = [];
     }
