@@ -865,12 +865,12 @@
         flex-shrink: 0;
     }
 
-    /* From a 1024 screen the filters are one button per section (<x-bs-admin::filter-panel>), but with the side menu
+    /* From a 900 screen the filters are one button per section (<x-bs-admin::filter-panel>), but with the side menu
        open the list stays below 900 up to a ~1200 screen, and one line cannot hold them. As board 05 draws it there:
        the filter buttons go first on their own line(s), wrapping (K42: «xuống hàng gọn, không cuộn ngang»), then
        «Chọn tất cả» at the start and Sắp xếp at the end of the next line, 12px between lines. The host lets the filter
-       group shrink and wrap (min-[1024px]:flex-wrap). */
-    @media (min-width: 1024px) {
+       group shrink and wrap (min-[900px]:flex-wrap). */
+    @media (min-width: 900px) {
         @container lt (width < 56.25rem) {
             .list-tools-row {
                 flex-wrap: wrap;

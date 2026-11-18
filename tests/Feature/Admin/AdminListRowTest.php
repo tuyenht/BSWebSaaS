@@ -647,8 +647,8 @@ describe('the posts and pages list on the shared row', function (): void {
     });
 });
 
-it('wraps the tools row from a 1024 screen while the list is below 900, filters first, as board 05 draws it', function (): void {
-    $band = listCssBand('@media (min-width: 1024px) {', '.list-tools-row:is([data-fit=');
+it('wraps the tools row from a 900 screen while the list is below 900, filters first, as board 05 draws it', function (): void {
+    $band = listCssBand('@media (min-width: 900px) {', '.list-tools-row:is([data-fit=');
 
     expect($band)->toContain('@container lt (width < 56.25rem)')
         ->toMatch('/\.list-tools-row\s*\{\s*flex-wrap: wrap;\s*row-gap: 0\.75rem;/')
@@ -658,8 +658,12 @@ it('wraps the tools row from a 1024 screen while the list is below 900, filters 
     // the hosts let their filter group shrink and wrap there
     foreach (['entries', 'catalog'] as $list) {
         expect((string) file_get_contents(base_path("app/Modules/Admin/resources/views/livewire/{$list}/index.blade.php")))
-            ->toContain('flex-nowrap min-[1024px]:min-w-0 min-[1024px]:shrink min-[1024px]:flex-wrap');
+            ->toContain('flex-nowrap min-[900px]:min-w-0 min-[900px]:shrink min-[900px]:flex-wrap');
     }
     expect((string) file_get_contents(base_path('app/Modules/Admin/resources/views/components/filter-panel.blade.php')))
-        ->toContain("'list-filters flex min-w-0 shrink-0 flex-wrap items-center gap-2'");
+        ->toContain("'list-filters flex min-w-0 shrink-0 flex-wrap items-center gap-2'")
+        // one button per section from 900 (K69), the single «Lọc» below
+        ->toContain('<div class="relative hidden shrink-0 min-[900px]:block"')
+        ->toContain('<div class="relative shrink-0 min-[900px]:hidden" data-guide="filter-button"')
+        ->not->toContain('min-[1024px]');
 });
