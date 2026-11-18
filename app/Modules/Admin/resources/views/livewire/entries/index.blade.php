@@ -312,7 +312,7 @@
                             <x-bs-admin::list.check :checked="$allState" :label="$selectAllLabel" visible :wire:click="$selectAllCall" />
                         </div>
                     @endif
-                    <x-bs-admin::filter-panel data-guide="filters" class="ms-auto flex-nowrap @min-[56.25rem]/lt:ms-0 @min-[56.25rem]/lt:min-w-0 @min-[56.25rem]/lt:shrink @min-[56.25rem]/lt:flex-wrap" :sections="$sections"
+                    <x-bs-admin::filter-panel data-guide="filters" class="ms-auto flex-nowrap min-[1024px]:min-w-0 min-[1024px]:shrink min-[1024px]:flex-wrap @min-[56.25rem]/lt:ms-0 @min-[56.25rem]/lt:min-w-0 @min-[56.25rem]/lt:shrink @min-[56.25rem]/lt:flex-wrap" :sections="$sections"
                         :active="$filterCount" :active-narrow="$filterCountNarrow" :results="__('entries.show_n', ['n' => $fmt($matchCount), 'unit' => $noun])" clear="clearAllFilters" />
                     <x-bs-admin::sort-menu data-guide="sort" class="@min-[56.25rem]/lt:ms-auto @min-[56.25rem]/lt:in-data-[below=1]:ms-0" :options="$sortOptions" :active="$sortOn" :lit="! $sortIsDefault" set="setSort" />
                     <x-bs-admin::cols-menu data-guide="cols" class="hidden @min-[56.25rem]/lt:block" id="entries-cols" :options="$colOptions" :selected="$cols"

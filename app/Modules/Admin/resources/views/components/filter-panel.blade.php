@@ -84,7 +84,7 @@
     $pillState = fn (bool $on): string => $on ? 'border-primary-text bg-primary/12 text-primary-text' : 'border-transparent bg-primary/7 text-text hover:bg-primary/12';
     $pillIcon = fn (bool $on): string => 'size-4 shrink-0 group-aria-expanded:text-primary-text '.($on ? 'text-primary-text' : 'text-text-muted');
 @endphp
-<div {{ $attributes->merge(['class' => 'flex min-w-0 shrink-0 flex-wrap items-center gap-2']) }}>
+<div {{ $attributes->merge(['class' => 'list-filters flex min-w-0 shrink-0 flex-wrap items-center gap-2']) }}>
     @foreach (array_filter($view, fn (array $s): bool => ! ($s['sheet'] ?? false)) as $section)
         <div class="relative hidden shrink-0 min-[1024px]:block"
              x-data="{

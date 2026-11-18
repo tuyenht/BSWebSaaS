@@ -865,6 +865,30 @@
         flex-shrink: 0;
     }
 
+    /* From a 1024 screen the filters are one button per section (<x-bs-admin::filter-panel>), but with the side menu
+       open the list stays below 900 up to a ~1200 screen, and one line cannot hold them. As board 05 draws it there:
+       the filter buttons go first on their own line(s), wrapping (K42: «xuống hàng gọn, không cuộn ngang»), then
+       «Chọn tất cả» at the start and Sắp xếp at the end of the next line, 12px between lines. The host lets the filter
+       group shrink and wrap (min-[1024px]:flex-wrap). */
+    @media (min-width: 1024px) {
+        @container lt (width < 56.25rem) {
+            .list-tools-row {
+                flex-wrap: wrap;
+                row-gap: 0.75rem;
+            }
+
+            .list-tools-row > .list-filters {
+                order: -1;
+                flex-basis: 100%;
+            }
+
+            /* «Chọn tất cả» (first in the source) pushes what follows (Sắp xếp) to the line's end */
+            .list-tools-row > :first-child:not(.list-filters) {
+                margin-inline-end: auto;
+            }
+        }
+    }
+
     .list-tools-row:is([data-fit='1'], [data-fit='2'], [data-fit='3']) [data-sort-text],
     .list-tools-row:is([data-fit='2'], [data-fit='3']) [data-lf-text] {
         display: none;
