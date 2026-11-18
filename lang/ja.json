@@ -3657,6 +3657,7 @@
     "monitoring.mail.summary.failed_job_line": ":job: :count 件",
     "monitoring.mail.summary.commands": "失敗した定期コマンド:",
     "monitoring.mail.summary.command_line": ":command: :count 回",
+    "monitoring.mail.summary.disk": "サーバーのディスク使用率は :percent%、空きは :free GB です。満杯になる前に空き容量を確保してください（空きが 5 GB 未満だとデプロイが止まります）。",
     "provisioning.hostname_not_platform_subdomain": "アドレス :host はプラットフォームのサブドメインではないため、何も変更されていません。新しいウェブサイトは your-site.:base のような名前で始めます。お客様独自のドメインは後から site:domain で追加し、公開前に確認されます。",
     "provisioning.hostname_pending_verification": "アドレス :host は別のウェブサイトが所有確認中のため、新しいウェブサイトには使用できず、何も変更されていません。別のアドレスを選んでください。",
     "provisioning.hostname_owned_by_another_tenant": "アドレス :host は既に別のお客様のウェブサイトに属しているため、何も変更されていません。--host を確認するか、所有しているお客様の正確な名前を --tenant に指定してください。",

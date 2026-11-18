@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  * Every morning at 08:00 Vietnam time the operator gets one summary of the counting day that just
  * closed (08:00 to 08:00 — the same day the counters use): each fault with its count and the number
  * of sites it hit, the failed jobs still waiting per job class, and the scheduled commands that
- * failed. Nothing to say = no mail. A data-free heartbeat ping every 5 minutes, only when its
+ * failed, plus the server disk once it is fuller than the warning level. Nothing to say = no mail. A data-free heartbeat ping every 5 minutes, only when its
  * address is configured, proves from outside that the scheduler is alive.
  */
 
@@ -39,6 +39,7 @@ function monitoringScheduled(string $needle): ?ScheduledEvent
 
 beforeEach(function (): void {
     $this->monitoringPrefix = enableMonitoring();
+    config(['monitoring.disk.warn_percent' => 101]); // the runner's own disk never decides a test; the disk tests set it
     DB::connection('pgsql_admin')->table('failed_jobs')->delete();
 });
 
@@ -134,4 +135,26 @@ it('pings the heartbeat with a bare GET every 5 minutes, only when its address i
         && $request->method() === 'GET'
         && $request->body() === '');
     Http::assertSentCount(1);
+});
+
+it('warns about a full server disk even on a quiet day, with how full and how much is free', function (): void {
+    $this->travelTo(Carbon::parse('2026-10-10 01:00:30', 'UTC'));
+    config(['monitoring.disk.warn_percent' => 0]); // any disk is "full" at 0%
+
+    $this->artisan('monitoring:summary')->assertSuccessful();
+
+    $mails = monitoringMails();
+    $used = (int) floor((disk_total_space(base_path()) - disk_free_space(base_path())) * 100 / disk_total_space(base_path()));
+    expect($mails)->toHaveCount(1)
+        ->and($mails[0]->getTextBody())->toContain('Ổ đĩa máy chủ đã dùng '.$used.'%')
+        ->toContain('GB');
+});
+
+it('says nothing about the disk while it is below the warning level', function (): void {
+    $this->travelTo(Carbon::parse('2026-10-10 01:00:30', 'UTC'));
+    config(['monitoring.disk.warn_percent' => 100]);
+
+    $this->artisan('monitoring:summary')->assertSuccessful();
+
+    expect(monitoringMails())->toBe([]);
 });

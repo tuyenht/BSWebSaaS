@@ -16,8 +16,9 @@ use Throwable;
 /**
  * The morning summary of the counting day that just closed (DayWindow): each fault with its count
  * and the sites it hit, the failed jobs still waiting per job class, the scheduled commands that
- * failed. Sent only when there is something to say; a fault lasting days so shows up every
- * morning. Scheduled at monitoring.summary_at in monitoring.timezone (routes/console.php).
+ * failed, and the server disk once it is fuller than monitoring.disk.warn_percent (dev and prod
+ * share it; a deploy stops below 5 GB free). Sent only when there is something to say; a fault
+ * lasting days so shows up every morning. Scheduled at monitoring.summary_at in monitoring.timezone (routes/console.php).
  */
 final class SendDailySummary extends Command
 {
@@ -37,7 +38,9 @@ final class SendDailySummary extends Command
         $window = $counter->window($id);
         $failedJobs = $this->failedJobsByClass();
 
-        if ($window['counts'] === [] && $window['commands'] === [] && $failedJobs === []) {
+        $disk = $this->fullDisk();
+
+        if ($window['counts'] === [] && $window['commands'] === [] && $failedJobs === [] && $disk === null) {
             return self::SUCCESS;
         }
 
@@ -84,9 +87,40 @@ final class SendDailySummary extends Command
             }
         }
 
+        if ($disk !== null) {
+            $lines[] = '';
+            $lines[] = $mailer->t('monitoring.mail.summary.disk', [
+                'percent' => $mailer->number($disk['percent']),
+                'free' => $mailer->number($disk['free_gb']),
+            ]);
+        }
+
         $mailer->sendSummary($mailer->t('monitoring.mail.summary.subject', ['date' => $start->format('d/m/Y')]), implode("\n", $lines));
 
         return self::SUCCESS;
+    }
+
+    /**
+     * The disk holding the app when it is at or above the warning level, else null (also when the
+     * size cannot be read: the summary never fails over it).
+     *
+     * @return array{percent: int, free_gb: int}|null
+     */
+    private function fullDisk(): ?array
+    {
+        $path = base_path();
+        $total = @disk_total_space($path);
+        $free = @disk_free_space($path);
+
+        if ($total === false || $free === false || $total <= 0) {
+            return null;
+        }
+
+        $percent = (int) floor(($total - $free) * 100 / $total);
+
+        return $percent >= (int) config('monitoring.disk.warn_percent', 85)
+            ? ['percent' => $percent, 'free_gb' => (int) floor($free / 1_073_741_824)]
+            : null;
     }
 
     /** What the fault was, from its sample: where it happened, its class and the line of ours. */

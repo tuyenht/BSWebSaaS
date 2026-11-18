@@ -7,6 +7,15 @@
 
 ## 2026
 
+### 2026-11-19 — Ổ đĩa máy chủ đầy 96%: dọn, mở rộng bước dọn đêm, cảnh báo trong thư tổng hợp
+
+- **Sự cố (18/11 23:4x):** deploy prod dừng ở bước 0 vì ổ sao lưu còn 4 GB (cần 5 GB); `/` dùng 92/96 GB. Prod vẫn chạy bản cũ, không mất dữ liệu.
+- **Nguyên nhân (đo):** công cụ kiểm màn hình chuyển sang Google Chrome; mỗi lần chạy để lại một hồ sơ tạm khoảng 170 MB (`/tmp/*shot-*`, `.chrome-*`, `prof-*` trong `plans/` và thư mục tạm của các phiên) mà bước dọn đêm (chỉ biết thư mục của Chromium bản snap) không thấy: 166 hồ sơ, 8,2 GB. Ảnh đo trong `plans/` không có hạn lưu (8 GB cũ hơn 14 ngày). `plans/reports/d1-261019` gồm 353 bản chép trọn bản thiết kế (91% trùng). Ổ dữ liệu ẩn danh của container đo K116 (14/11) còn sót, 6,2 GB. 6 Chrome mồ côi (cha đã chết) chạy tới gần 4 ngày.
+- **Đã làm (owner duyệt 19/11):** owner xoá ổ K116 và chạy `plans/tools/cleanup-disk-261119.sh apply` (ảnh cũ, hồ sơ tạm, 7 image không dùng); AI tắt 6 Chrome mồ côi; gộp tệp trùng bằng liên kết cứng trong các thư mục đo không ai ghi quá 7 ngày (`plans/tools/dedupe-frozen-261119.py`: 100.738 tệp, 10 GB, không tệp nào đổi nội dung). Ổ: 4,4 GB trống → 39 GB (60%).
+- **Thay đổi trên host:** `/usr/local/sbin/bsweb-daily-housekeeping` (chạy 04:15 hằng ngày) thêm mục 1b: tắt Chrome chạy ẩn của root có cha là init quá 2 giờ (giữ trình duyệt của agent-browser); xoá hồ sơ Chrome (thư mục có `Local State`) trong `/tmp` và `plans/` không trình duyệt nào dùng và không đổi trong 24 giờ; xoá ảnh/video đo cũ hơn 14 ngày trong `plans/reports` và `plans/design-canvas/checks`; chỉ liệt kê (không xoá) ổ dữ liệu Docker ẩn danh không dùng. `DRY_RUN=1` để chạy thử. Bản trước: `/root/bsweb-daily-housekeeping.bak-261119`. Gỡ: chép bản trước đè lên.
+- **Cảnh báo:** thư tổng hợp 08:00 (`monitoring:summary`) ghi dòng ổ đĩa khi `/` dùng từ 85% (`monitoring.disk.warn_percent`), kể cả ngày không có lỗi.
+- **Lưu ý:** tệp trong thư mục đã gộp là liên kết cứng; sửa tại chỗ một tệp sẽ đổi mọi bản trùng của nó (các thư mục này là lưu trữ, không sửa).
+
 ### 2026-11-14 — Máy chủ ảnh files.baoson.net chuyển sang HTTP/3 (Cloudflare, không đổi code)
 
 - **Vì sao:** av1 dùng HTTP/3 ngay lần xem đầu (bản ghi DNS HTTPS `alpn=h3,h2`), còn `files.baoson.net` chỉ `h2`, vì nó vẫn là tên miền công khai của R2 (R2 không quảng bá h3), Worker `baoson-media` chỉ nằm đè lên qua route. Đo netem 150 ms/1,6 Mbit, Chrome, 7 lần: LCP trung vị 2264 → 2064 ms khi máy chủ ảnh có h3. Chủ dự án duyệt làm theo khuyến nghị (audit Fable 5.2 + Opus 5.5, 14/11).
