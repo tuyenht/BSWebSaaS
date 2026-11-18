@@ -369,3 +369,19 @@ it('adds no query per row for Mô tả, Bước duyệt, Lượt xem and the row
     $count(false);
     expect($count(true) - $count(false))->toBe($few)->and($few)->toBeLessThanOrEqual(2);
 })->with(['desc' => [['desc'], false], 'step' => [['step'], false], 'views' => [['views'], false], 'buttons' => [[], true], 'others' => [['langs', 'cat', 'creator'], false]]);
+
+it('opens the Cột panel toward the room it has, and lets the tools flow from the left once they sit under the search', function (): void {
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        grantRole($user, 'editor', ['entries.view']);
+        cmPost($user, 'Bài một', cmSection());
+
+        Livewire::actingAs($user->fresh())->test(Index::class, ['section' => 'tin-tuc'])
+            // the panel's side is picked on opening: right edge on the button's, or left edge when the button wrapped to the line's start
+            ->assertSeeHtml('this.side = this.roomSide()')
+            ->assertSeeHtml(':class="side === \'start\' ? \'start-0\' : \'end-0\'"')
+            // Sắp xếp stops pushing to the right edge when the tools row went under the search, as on the board
+            ->assertSeeHtml('@min-[56.25rem]/lt:ms-auto @min-[56.25rem]/lt:in-data-[below=1]:ms-0');
+    });
+});
