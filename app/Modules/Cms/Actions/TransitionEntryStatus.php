@@ -55,7 +55,34 @@ final readonly class TransitionEntryStatus
         DB::transaction(fn () => $this->handleLocked($entry, $target, $actor, $publishAt));
     }
 
-    private function handleLocked(Entry $entry, EntryStatus $target, User $actor, ?DateTimeInterface $publishAt): void
+    /**
+     * «Hủy hẹn giờ»: a scheduled entry will not go live at its time after all, and goes back to a
+     * draft to be worked on, under the same lock and guard as every other move here. A row that is
+     * no longer scheduled (entries:publish-due published it, or a colleague moved it meanwhile) is
+     * left as it is — never taken off the website by this. The publish time goes with the schedule.
+     *
+     * @return bool whether the entry was moved back to a draft (false: it was no longer scheduled)
+     *
+     * @throws AuthorizationException the member may not change this entry's status
+     * @throws ModelNotFoundException the entry left the list meanwhile (sent to the Trash or purged)
+     */
+    public function unschedule(Entry $entry, User $actor): bool
+    {
+        return DB::transaction(function () use ($entry, $actor): bool {
+            $this->lockAndAuthorize($entry, $actor);
+            if ($entry->status !== EntryStatus::Scheduled->value) {
+                return false;
+            }
+
+            $governed = $this->workflows->forEntry($entry) !== null;
+            $entry->update(['status' => EntryStatus::Draft->value, 'published_at' => null] + ($governed ? ['workflow_state' => null] : []));
+            EntryStatusAudit::record($entry, EntryStatus::Scheduled->value, EntryStatus::Draft->value, 'status-menu', $actor, ['unscheduled' => true]);
+
+            return true;
+        });
+    }
+
+    private function lockAndAuthorize(Entry $entry, User $actor): void
     {
         // Take the row lock FIRST, then judge the row as it is now, like PublishEntry: the screen
         // loaded it earlier, and meanwhile a colleague may have sent it to the Trash (or the Trash
@@ -68,6 +95,11 @@ final readonly class TransitionEntryStatus
         if (! Gate::forUser($actor)->allows('publish', $entry)) {
             throw new AuthorizationException(__('entries.err_status_forbidden'));
         }
+    }
+
+    private function handleLocked(Entry $entry, EntryStatus $target, User $actor, ?DateTimeInterface $publishAt): void
+    {
+        $this->lockAndAuthorize($entry, $actor);
 
         $governed = $this->workflows->forEntry($entry) !== null;
 

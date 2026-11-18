@@ -16,7 +16,6 @@ use App\Modules\Cms\Actions\DuplicateEntry;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
 use App\Modules\Cms\Actions\TransitionEntryStatus;
-use App\Modules\Cms\Actions\UnscheduleEntry;
 use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
@@ -796,7 +795,7 @@ final class Index extends Component
 
     /**
      * «Hủy hẹn giờ» (asked first in the browser): the scheduled row goes back to a draft and will not
-     * go live at its time (UnscheduleEntry, the publish right on this row, judged on the locked row).
+     * go live at its time (TransitionEntryStatus::unschedule, the publish right on this row, judged on the locked row).
      */
     public function unschedule(string $ulid): void
     {
@@ -808,7 +807,7 @@ final class Index extends Component
         }
 
         try {
-            $moved = app(UnscheduleEntry::class)->handle($entry, $this->actingUser());
+            $moved = app(TransitionEntryStatus::class)->unschedule($entry, $this->actingUser());
         } catch (ModelNotFoundException) {
             $this->toastStaleRow();
 
