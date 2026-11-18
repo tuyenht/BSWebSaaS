@@ -18,6 +18,7 @@ use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Workflow\Actions\InstantiateWorkflow;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -528,3 +529,41 @@ it('lists posts on an absolute query ceiling for a publisher, a sender and an ow
     'own-only 10' => [10, 'own', 20],
     'own-only 20' => [20, 'own', 20],
 ]);
+
+// In a section that runs an approval workflow, each row's moves (the pill's menu) and the bulk bar's are read
+// from the workflow loaded once for the page: the stages and moves add two queries, never one per row.
+it('lists governed posts with every row\'s workflow moves on a flat query budget, at 10 and 20 rows', function (string $who, int $ceiling): void {
+    $member = User::factory()->create();
+    $other = User::factory()->create();
+    $ulids = [];
+
+    app(Tenancy::class)->enter(1, function () use ($member, $other, $who, &$ulids): void {
+        grantRole($member, 'wf-'.$who, $who === 'approver'
+            ? ['entries.view', 'entries.edit.any', 'entries.publish', 'entries.submit', 'entries.review', 'entries.approve']
+            : ['entries.view', 'entries.create', 'entries.edit.own', 'entries.submit']);
+        $root = app(CreateTaxonomy::class)->handle('post_cat', null, new TaxonomyData(names: ['vi' => 'Tin tức']));
+        ContentSection::query()->create([
+            'key' => 'tin-tuc', 'label' => 'Tin tức', 'entry_type' => 'post', 'taxonomy_id' => $root->id,
+            'permission_prefix' => 'entries', 'sort_order' => 1,
+        ]);
+        foreach (range(1, 20) as $i) {
+            $status = ['draft', 'pending', 'published'][$i % 3];
+            $entry = Entry::query()->create(['type' => 'post', 'status' => $status, 'workflow_state' => $status === 'pending' ? 'pending' : null,
+                'author_id' => $i % 2 ? $member->id : $other->id, 'meta' => []]);
+            $entry->translations()->create(['locale' => 'vi', 'title' => "Bài {$i}", 'slug' => "bai-{$i}", 'status' => $status, 'body' => ['blocks' => []]]);
+            $entry->assignCategories([$root->id]);
+            $ulids[] = $entry->ulid;
+        }
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: true);
+    });
+
+    $load = function (int $rows) use ($member): int {
+        app()->forgetScopedInstances();
+
+        return countQueries(fn () => $this->actingAs($member)->get('http://a.test/admin/content?section=tin-tuc&per_page='.$rows)->assertOk()->assertSee('data-wf=', false));
+    };
+    $load(10);   // warm caches (permissions, preferences)
+
+    // the ungoverned list's 21, plus the stages and the moves (and, for a sender, the role card's reading of the flow)
+    expect($load(10))->toBe($load(20))->toBeLessThanOrEqual($ceiling);
+})->with(['approver' => ['approver', 24], 'sender' => ['sender', 26]]);

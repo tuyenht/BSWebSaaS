@@ -162,6 +162,28 @@ final readonly class EntryWorkflowResolver
     }
 
     /**
+     * The moves $actor may make on $entry from the stage it stands at: the engine's rule (an edge
+     * from that stage whose permission the actor holds) and mayApply(), in the workflow's order.
+     * Read from the workflow's loaded `states` and `transitions` when they are loaded, so a list can
+     * ask it for every row at no query per row (load both on the workflow first).
+     *
+     * @return list<WorkflowTransition>
+     */
+    public function movesFor(Workflow $workflow, Entry $entry, User $actor): array
+    {
+        $from = self::originIn($workflow, $entry);
+        $transitions = $workflow->relationLoaded('transitions')
+            ? $workflow->transitions->sortBy('id')
+            : $workflow->transitions()->orderBy('id')->get();
+
+        return array_values($transitions
+            ->filter(fn (WorkflowTransition $t): bool => $t->from_state === $from
+                && $actor->can($t->required_permission)
+                && $this->mayApply($t, $entry, $actor))
+            ->all());
+    }
+
+    /**
      * Refuse moving on a pending change that would file its post under a category outside the
      * actor's limits — the entry's own category is mayApply()'s business. Call it inside the row
      * lock, next to authorizeMove().

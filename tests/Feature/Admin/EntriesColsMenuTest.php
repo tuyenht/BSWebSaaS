@@ -295,7 +295,7 @@ it('stands a record that joined no workflow at the stage its status implies, and
     });
 });
 
-it('reads the workflow on a redraw only while Bước duyệt is on', function (): void {
+it('reads the workflow once on every redraw while the section runs one, Bước duyệt on or off (the row moves need it)', function (): void {
     $user = User::factory()->create();
     $workflowReads = function (Closure $callback): int {
         $n = 0;
@@ -320,7 +320,8 @@ it('reads the workflow on a redraw only while Bước duyệt is on', function (
         $on = $workflowReads(fn () => $list->set('search', 'a'));
         $list->set('cols', ['path']);
         $off = $workflowReads(fn () => $list->set('search', 'b'));
-        expect($on)->toBe(1)->and($off)->toBe(0);
+        // the status pill and the bulk bar offer the workflow's moves, so the column is no longer what decides
+        expect($on)->toBe(1)->and($off)->toBe(1);
     });
 });
 
