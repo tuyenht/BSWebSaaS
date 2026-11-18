@@ -137,7 +137,9 @@ it('bulk-trashes only live rows this person may delete', function (): void {
         expect(bulkFind($mine)->trashed())->toBeTrue()
             ->and(bulkFind($mineTrashed)->deleted_at?->toIso8601String())->toBe($deletedAt)
             ->and(bulkFind($theirs)->trashed())->toBeFalse();
-        $component->assertDispatched('bs-toast', text: bulkToast('entries.bulk_trashed', 1, ['entries.bulk_skipped' => 2]))->assertSet('selected', []);
+        $component->assertSet('toastMsg', bulkToast('entries.bulk_trashed', 1, ['entries.bulk_skipped' => 2]))
+            ->assertSet('trashUndo', [$mine->ulid])
+            ->assertSet('selected', []);
     });
 });
 

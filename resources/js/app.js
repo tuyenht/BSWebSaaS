@@ -26,6 +26,10 @@ import './admin-lazy.js';
 // The shared name-column rule of table-style lists (window.bsListFold): side columns fold under the name.
 import './admin-list-fold.js';
 
+// A shared list's states (Alpine.data 'bsListState'): a list request that did not come back gives way to
+// «Chưa tải được danh sách … Thử lại».
+import './admin-list-state.js';
+
 // The "Nút liên hệ nổi" screen (window.bsFloatingContact): a channel's own icon picture, uploaded to the
 // media library, and the preview frame's reopening of the dial or the "Thêm" sheet.
 import './admin-floating-contact.js';

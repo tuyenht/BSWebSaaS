@@ -6,6 +6,7 @@ namespace App\Modules\Admin\Support\Entries;
 
 use App\Modules\Admin\Support\Guide\Guide;
 use App\Modules\Admin\Support\Guide\GuideText as W;
+use App\Modules\Cms\Support\EntryTrash;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Support\RoleLabel;
@@ -159,7 +160,8 @@ final class EntryListGuide
             // the row's «Khác», shown only when some groups do not fit (the browser drops the step otherwise)
             Guide::step('more-tabs', [Guide::on('tabs-more', Cast::string(__('admin.list.more_groups')), $t('more_tabs', ['items' => W::menu()]))]),
             $delScope === 'none' ? null : Guide::step('trash', [Guide::on('tab-trash', Cast::string(__('entries.tab_trash')),
-                $t('trash', ['trash' => W::label(Cast::string(__('entries.tab_trash'))), 'restore' => W::label(Cast::string(__('entries.action_restore')))]))]),
+                $t('trash', ['trash' => W::label(Cast::string(__('entries.tab_trash'))), 'restore' => W::label(Cast::string(__('entries.action_restore'))),
+                    'days' => (string) EntryTrash::days()]))]),
             Guide::step('search', [Guide::on('search', $t('search_title'), $t('search'))]),
             $screen['filters'] === [] ? null : Guide::step('filter', [
                 Guide::on('filter-button', $filterLabel, $t('filter_one', ['filter' => W::label($filterLabel), 'names' => implode(Cast::string(__('guide.list.sep')), array_map(W::lower(...), array_column($screen['filters'], 'label')))])),

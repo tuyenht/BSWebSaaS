@@ -338,7 +338,8 @@ it('trashes then restores a row', function (): void {
 
         $component = Livewire::actingAs($editor->fresh())->test(Index::class)
             ->call('trash', $page->ulid)
-            ->assertDispatched('bs-toast');
+            ->assertSet('toastMsg', __('entries.trashed_one', ['name' => 'Xoá thử']))
+            ->assertSet('trashUndo', [$page->ulid]);
         expect($page->fresh()->trashed())->toBeTrue();
 
         $component->call('restore', $page->ulid);
@@ -406,7 +407,7 @@ it('bulk-trashes the selected rows and clears the selection', function (): void 
         Livewire::actingAs($editor->fresh())->test(Index::class)
             ->set('selected', [$a->ulid, $b->ulid])
             ->call('bulkTrash')
-            ->assertDispatched('bs-toast')
+            ->assertSet('trashUndo', [$a->ulid, $b->ulid])
             ->assertSet('selected', []);
 
         expect($a->fresh()->trashed())->toBeTrue()
