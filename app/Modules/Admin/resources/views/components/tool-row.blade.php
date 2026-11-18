@@ -1,12 +1,14 @@
 @php
     // The one-line tools row of a record list below 900 (canvas .ql-tools, K69): [Chọn tất cả] … [Lọc (n)] [Sắp xếp].
-    // It never wraps and never scrolls sideways: when the buttons do not fit, the Sort button drops its word first
+    // It never wraps and never scrolls sideways (below 900): when the buttons do not fit, the Sort button drops its word first
     // (data-fit="1"), then the Filter button (data-fit="2"), each keeping its icon, tooltip, accessible name and the
     // Filter count badge; only then may the select-all label wrap (data-fit="3"). The words are the ones marked
     // [data-sort-text] and [data-lf-text]; the rules live in resources/css/admin-list.css (.list-tools-row).
     // A host may let the row wrap from some width up (it then goes down as one group beside a wider row), or make it
     // `display: contents` (its items join that row); it is not measured then. A wrapping row says whether it went
-    // below the item before it (data-below="1"), so that item (the search) can take the whole line, as on the canvas. A Livewire re-render puts the server HTML back, so the row measures again after each one.
+    // below the item before it (data-below="1"), so that item (the search) can take the whole line, as on the canvas;
+    // a row that went below lets its buttons flow from the left with no gap (the host drops the Sort button's push to
+    // the right edge with in-data-[below=1]:ms-0), so no button stands alone at either end of a line. A Livewire re-render puts the server HTML back, so the row measures again after each one.
 @endphp
 <div {{ $attributes->merge(['class' => 'list-tools-row']) }} wire:ignore.self
      x-data="{

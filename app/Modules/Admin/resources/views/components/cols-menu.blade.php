@@ -18,6 +18,9 @@
     // An optional `extra` slot comes after the columns, under its own separator and heading (screen 05's
     // «Nút trên dòng»: a choice that is not a column, so it is never counted as a hidden one).
     //
+    // The panel opens under the button, its right edge on the button's, unless that would run past the
+    // left of the toolbar onto the side menu (the button wrapped to the start of a line): then its left
+    // edge is on the button's.
     // Opening moves focus to the first choice; Esc puts it back on the button; leaving it (Tab, a click
     // away) closes it.
     $hidden = count(array_diff(array_keys($options), $selected));
@@ -28,7 +31,9 @@
 <div {{ $attributes->merge(['class' => 'relative shrink-0']) }}
      x-data="{
          open: false,
-         show() { this.open = true; this.whenShown(() => this.$refs.colsPanel.querySelector('input:not([disabled])')?.focus()); },
+         side: 'end',
+         show() { this.side = this.roomSide(); this.open = true; this.whenShown(() => this.$refs.colsPanel.querySelector('input:not([disabled])')?.focus()); },
+         roomSide() { const b = this.$refs.cols.getBoundingClientRect(), w = 15 * parseFloat(getComputedStyle(document.documentElement).fontSize); const edge = Math.max(8, this.$root.parentElement.getBoundingClientRect().left); return b.right - w < edge && b.left + w <= document.documentElement.clientWidth - 8 ? 'start' : 'end'; },
          hide(back = true) { if (! this.open) return; this.open = false; if (back) this.$refs.cols.focus(); },
          whenShown(fn, tries = 20) { this.$refs.colsPanel.getClientRects().length || ! tries ? fn() : setTimeout(() => this.whenShown(fn, tries - 1), 16); },
      }"
@@ -40,7 +45,8 @@
         <x-bs-admin::icon name="chevron-down" class="size-4 text-text-muted transition-transform" ::class="open && 'rotate-180'" />
     </button>
     <div x-show="open" x-cloak x-transition x-ref="colsPanel" id="{{ $id }}" role="group" aria-label="{{ __('admin.list.cols_panel') }}"
-        class="absolute end-0 top-full z-60 mt-1.5 w-60 rounded-md border border-border bg-surface p-1.5 shadow-lg">
+        :class="side === 'start' ? 'start-0' : 'end-0'"
+        class="absolute top-full z-60 mt-1.5 w-60 rounded-md border border-border bg-surface p-1.5 shadow-lg">
         <p id="{{ $id }}-req" class="m-0 px-2 pb-1 pt-1.5 text-caption font-semibold text-text-muted">{{ __('admin.list.cols_required') }}</p>
         @foreach ($locked as $name)
             <label title="{{ $lockedTitle }}" class="flex min-h-menu-row cursor-not-allowed items-center gap-2.5 rounded px-2 text-body text-text-muted any-pointer-coarse:min-h-menu-row-touch">
