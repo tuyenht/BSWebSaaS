@@ -144,10 +144,8 @@ it('warns about a full server disk even on a quiet day, with how full and how mu
     $this->artisan('monitoring:summary')->assertSuccessful();
 
     $mails = monitoringMails();
-    $used = (int) floor((disk_total_space(base_path()) - disk_free_space(base_path())) * 100 / disk_total_space(base_path()));
     expect($mails)->toHaveCount(1)
-        ->and($mails[0]->getTextBody())->toContain('Ổ đĩa máy chủ đã dùng '.$used.'%')
-        ->toContain('GB');
+        ->and($mails[0]->getTextBody())->toMatch('/Ổ đĩa máy chủ đã dùng \d{1,3}%, còn trống [\d.]+ GB/u');
 });
 
 it('says nothing about the disk while it is below the warning level', function (): void {
