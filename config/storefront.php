@@ -18,10 +18,15 @@ return [
     'edge_cache' => [
         's_maxage' => (int) env('STOREFRONT_EDGE_S_MAXAGE', 86400),
         // Seconds between the purge jobs one sweep queues (storefront:purge-edge --all after a deploy):
-        // 30 host names a job, so the default sends about 900 names a minute.
-        'purge_pace_seconds' => (int) env('STOREFRONT_EDGE_PURGE_PACE', 2),
+        // 100 host names a job. Cloudflare limits purge requests by rate: the Free plan allows 5 a
+        // minute (bucket of 25), so the default of 12 seconds keeps to it. Paid plans (Pro 5 a second,
+        // Business 10 a second) can lower it through STOREFRONT_EDGE_PURGE_PACE.
+        'purge_pace_seconds' => (int) env('STOREFRONT_EDGE_PURGE_PACE', 12),
         'unpurged_s_maxage' => (int) env('STOREFRONT_EDGE_UNPURGED_S_MAXAGE', 300),
-        'stale_while_revalidate' => (int) env('STOREFRONT_EDGE_SWR', 86400),
+        // Kept short: Cloudflare was measured revalidating inline (18/11/2026), so a long window buys
+        // nothing, and were an edge or browser ever to serve stale copies asynchronously, a day-long
+        // window would undo the cut at the site's midnight.
+        'stale_while_revalidate' => (int) env('STOREFRONT_EDGE_SWR', 60),
         'query_allow' => ['page', 'sau', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'],
         // The search suggestions (EdgeCacheHeaders:suggest): asked several times a second while a visitor
         // types, the same answer for everyone. A change to the site purges them with its pages (the purge

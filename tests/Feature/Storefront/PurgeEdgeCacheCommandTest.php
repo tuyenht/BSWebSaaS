@@ -6,10 +6,11 @@ use App\Modules\Storefront\EdgeCache\PurgeEdgeHosts;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Log;
 
 /*
- * `storefront:purge-edge` drops edge-cached pages by host name, 30 names per Cloudflare call: every
+ * `storefront:purge-edge` drops edge-cached pages by host name, 100 names per Cloudflare call: every
  * website's (--all, after a deploy that changes how pages look) or the ones named. Names outside the
  * platform's zone are never sent. With no edge configured it says so and does nothing.
  */
@@ -19,28 +20,28 @@ beforeEach(function (): void {
     Cache::flush();
 });
 
-/** Gives site 1 and site 2 twenty platform host names each, and site 1 a customer domain. */
+/** Gives site 1 and site 2 seventy platform host names each, and site 1 a customer domain. */
 function purgeEdgeManyHosts(): void
 {
     $rows = [['site_id' => 1, 'hostname' => 'congty-an.vn', 'kind' => 'custom', 'is_primary' => false, 'is_redirect' => false, 'verified_at' => now(), 'created_at' => now(), 'updated_at' => now()]];
-    foreach (range(1, 40) as $n) {
+    foreach (range(1, 140) as $n) {
         $rows[] = ['site_id' => $n % 2 + 1, 'hostname' => "ten-{$n}.test", 'kind' => 'subdomain', 'is_primary' => false, 'is_redirect' => false, 'verified_at' => now(), 'created_at' => now(), 'updated_at' => now()];
     }
     DB::connection('pgsql_admin')->table('domains')->insert($rows);
 }
 
-it('purges every website\'s hosts in the zone, 30 names a call, never a customer domain', function (): void {
+it('purges every website\'s hosts in the zone, 100 names a call, never a customer domain', function (): void {
     $edge = edgeCacheRecorder();
     purgeEdgeManyHosts();
 
     $this->artisan('storefront:purge-edge', ['--all' => true])
-        ->expectsOutputToContain('Queued the purge of 42 host names in 2 jobs.')
+        ->expectsOutputToContain('Queued the purge of 142 host names in 2 jobs.')
         ->assertSuccessful();
 
     $sent = array_merge(...array_map(fn (array $call): array => $call[1], $edge->calls));
     expect(array_column($edge->calls, 0))->toBe(['hosts', 'hosts'])
-        ->and(array_map(fn (array $call): int => count($call[1]), $edge->calls))->toBe([30, 12])
-        ->and($sent)->toHaveCount(42)->toContain('a.test', 'b.test', 'ten-40.test')->not->toContain('congty-an.vn');
+        ->and(array_map(fn (array $call): int => count($call[1]), $edge->calls))->toBe([100, 42])
+        ->and($sent)->toHaveCount(142)->toContain('a.test', 'b.test', 'ten-140.test')->not->toContain('congty-an.vn');
 });
 
 it('spaces the jobs of one sweep out, so a deploy\'s purge does not hit the zone all at once', function (): void {
@@ -90,6 +91,7 @@ it('names a website it does not know, and fails', function (): void {
 
 it('retries a refused batch later, purging its homes at once', function (): void {
     $edge = edgeCacheRecorder(hostsAccepted: false);
+    Exceptions::fake(); // the report would add a log line of its own
     Log::spy();
 
     $job = (new PurgeEdgeHosts(['a.test', 'congty-an.vn', 'b.test']))->withFakeQueueInteractions();

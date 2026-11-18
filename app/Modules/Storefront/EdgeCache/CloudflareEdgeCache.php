@@ -11,7 +11,7 @@ use Throwable;
 
 /**
  * Cloudflare's purge API for one zone (POST /zones/{zone}/purge_cache). The token needs only
- * "Zone → Cache Purge". At most 30 host names or URLs go in one call (the limit below Enterprise).
+ * "Zone → Cache Purge". At most 100 host names or URLs go in one call (any plan; purge by host is limited by request rate, not by plan).
  * A refusal (rate limit, plan, bad token) or a network fault answers false and leaves a warning in
  * the log; nothing is thrown, so a failed purge never fails the write that caused it.
  */
@@ -19,7 +19,7 @@ final readonly class CloudflareEdgeCache implements EdgeCache
 {
     private const string API = 'https://api.cloudflare.com/client/v4/zones/';
 
-    private const int PER_CALL = 30;
+    private const int PER_CALL = 100;
 
     public function __construct(private string $zoneId, private string $token) {}
 
