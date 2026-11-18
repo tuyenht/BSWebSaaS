@@ -30,6 +30,7 @@ use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Domains\DomainName;
 use App\Modules\Tenancy\Entitlement\Entitlement;
+use App\Modules\Tenancy\Events\PublicSiteChanged;
 use App\Modules\Tenancy\Exceptions\DomainChangeRejectedException;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\Domain;
@@ -268,6 +269,9 @@ final readonly class ProvisionSite
 
         // 3) Activate.
         $site->update(['status' => 'active']);
+        if ($site->wasChanged('status')) {
+            event(new PublicSiteChanged($site->id));
+        }
 
         Audit::record('provisioning.site.provisioned', [
             'site_id' => $site->id,

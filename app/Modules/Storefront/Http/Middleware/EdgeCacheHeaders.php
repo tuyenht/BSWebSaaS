@@ -6,6 +6,10 @@ namespace App\Modules\Storefront\Http\Middleware;
 
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\PreviewMode;
+use App\Modules\Storefront\EdgeCache\PurgeSiteEdgeCache;
+use App\Modules\Tenancy\Context\SiteTime;
+use App\Modules\Theme\Theming\StorefrontSettings;
+use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Cookie\CookieJar;
 use Illuminate\Http\Request;
@@ -30,13 +34,22 @@ use Symfony\Component\HttpFoundation\Response;
  * A route may name its own rules (`EdgeCacheHeaders:suggest` reads `storefront.edge_cache.suggest`):
  * its own times and its own query keys in place of the pages', every other condition the same; a
  * name with no rules shares nothing.
+ *
+ * The pages' own lifetime is long because a change purges them (Storefront\EdgeCache), and is cut
+ * where no purge reaches: on a host outside the platform's zone (a customer's own domain, which our
+ * purge cannot name) to `unpurged_s_maxage`, and on every host to the site's next midnight (at least
+ * a minute), when what a page shows by date alone — a job's deadline state, "closing soon" — moves
+ * with no write to purge it.
  */
 final readonly class EdgeCacheHeaders
 {
     /** What Symfony sends for a response nobody gave caching rules: the controller left them to us. */
     private const string UNSET = 'no-cache, private';
 
-    public function __construct(private CookieJar $cookies) {}
+    /** The shortest a page is kept when the site's midnight is seconds away. */
+    private const int MIDNIGHT_FLOOR = 60;
+
+    public function __construct(private CookieJar $cookies, private StorefrontSettings $settings) {}
 
     /**
      * @param  Closure(Request): Response  $next
@@ -52,12 +65,28 @@ final readonly class EdgeCacheHeaders
         $response->headers->set('Cache-Control', $known && $this->shareable($request, $response, Cast::strings(config($config.'.query_allow')))
             ? sprintf(
                 'public, max-age=0, s-maxage=%d, stale-while-revalidate=%d',
-                max(0, Cast::int(config($config.'.s_maxage'), 300)),
+                $rules === null ? $this->pageLifetime($request) : max(0, Cast::int(config($config.'.s_maxage'), 300)),
                 max(0, Cast::int(config($config.'.stale_while_revalidate'), 86400)),
             )
             : StorefrontSession::PRIVATE);
 
         return $response;
+    }
+
+    /** How long the edge may keep a public page of this host: the configured day, cut as the class says. */
+    private function pageLifetime(Request $request): int
+    {
+        $seconds = max(0, Cast::int(config('storefront.edge_cache.s_maxage'), 86400));
+
+        if (PurgeSiteEdgeCache::inZone([$request->getHost()]) === []) {
+            $seconds = min($seconds, max(0, Cast::int(config('storefront.edge_cache.unpurged_s_maxage'), 300)));
+        }
+
+        // the zone rides the page's one settings read (SiteTime would query again)
+        $now = CarbonImmutable::now(SiteTime::zoneFrom($this->settings->get('general', 'timezone')));
+        $midnight = $now->addDay()->startOfDay();
+
+        return min($seconds, max(self::MIDNIGHT_FLOOR, $midnight->getTimestamp() - $now->getTimestamp()));
     }
 
     /** @param list<string> $queryAllow */

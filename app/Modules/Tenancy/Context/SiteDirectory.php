@@ -7,6 +7,8 @@ namespace App\Modules\Tenancy\Context;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Models\Domain;
 use App\Modules\Tenancy\Models\Site;
+use Closure;
+use Illuminate\Support\Collection;
 
 /**
  * Public read surface over the GLOBAL site registry (sites + domains — D6, no RLS): by host for
@@ -54,5 +56,38 @@ final readonly class SiteDirectory
     public function hostsOf(int $siteId): array
     {
         return Cast::strings(Domain::query()->where('site_id', $siteId)->orderBy('id')->pluck('hostname')->all());
+    }
+
+    /**
+     * Every host name of the site that $host resolves to (SiteResolver: a live name, also one that
+     * only redirects), or [] when it resolves to none.
+     *
+     * @return list<string>
+     */
+    public function hostsOfSiteWith(string $host): array
+    {
+        $resolved = $this->sites->resolve($host);
+
+        return $resolved === null ? [] : $this->hostsOf($resolved->siteId);
+    }
+
+    /**
+     * Every host name of the platform — or only of the websites whose customer is on $planId — handed
+     * to $each $size at a time, walked by id (never the whole table at once).
+     *
+     * @param  Closure(list<string>): void  $each
+     */
+    public function eachHostChunk(int $size, Closure $each, ?int $planId = null): void
+    {
+        $query = Domain::query()->select(['id', 'hostname']);
+        if ($planId !== null) {
+            $query->whereIn('site_id', Site::query()->select('sites.id')
+                ->join('tenants', 'tenants.id', '=', 'sites.tenant_id')
+                ->where('tenants.plan_id', $planId));
+        }
+
+        $query->chunkById($size, static function (Collection $rows) use ($each): void {
+            $each(Cast::strings($rows->pluck('hostname')->all()));
+        });
     }
 }

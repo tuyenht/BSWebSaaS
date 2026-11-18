@@ -21,13 +21,42 @@ use Illuminate\Support\Facades\DB;
  */
 final class EdgeCachePurges
 {
-    /** Tables whose rows reach a public page (content, catalogue, menus, settings, theme, addresses). */
-    private const array TABLES = [
-        'content_sections', 'entries', 'entry_taxonomies', 'entry_translations', 'form_fields', 'forms',
+    /**
+     * Tables whose rows reach a public page (content, catalogue, menus, settings, theme, addresses,
+     * the block library a page places, the words the search suggestions match). Every tenant table
+     * is here or in NOT_SHOWN (a test holds it).
+     */
+    public const array TABLES = [
+        'content_block_translations', 'content_blocks',
+        'content_sections', 'entries', 'entry_search_words', 'entry_taxonomies', 'entry_translations', 'form_fields', 'forms',
         'media', 'mediables', 'menu_assignments', 'menu_item_translations', 'menu_items', 'menus',
-        'product_images', 'product_taxonomies', 'product_translations', 'products', 'redirects', 'routes',
+        'product_images', 'product_site_words', 'product_taxonomies', 'product_translations', 'products', 'redirects', 'routes',
         'site_features', 'site_locales', 'site_modules', 'site_profile_translations', 'site_profiles',
-        'site_settings', 'taxonomies', 'taxonomy_translations',
+        'site_settings', 'taxonomies', 'taxonomy_search_words', 'taxonomy_translations',
+    ];
+
+    /** Tenant tables no public page reads: a write to them purges nothing. */
+    public const array NOT_SHOWN = [
+        // where a library block is placed: written with the page that places it, read by the admin
+        'block_usages',
+        // the contact-button click tally: written by visitors, read by the admin's statistics
+        'contact_click_daily',
+        // unpublished drafts and past versions: publishing one writes entries / entry_translations
+        'entry_drafts', 'entry_revisions',
+        // what visitors sent through a form: the admin's inbox
+        'form_submissions',
+        // admin members: invitations, their roles, the categories a member may edit
+        'invitation_category_scopes', 'invitation_roles', 'invitations', 'member_category_scopes',
+        // the admin library's folders: no media address names its folder
+        'media_folders',
+        // the admin product search's word table (the storefront search reads its own columns)
+        'product_search_words',
+        // notices to the website's managers
+        'site_notifications',
+        // the isolation self-check's rows
+        'tenant_probes',
+        // approval workflows and their history: a transition that publishes writes entries
+        'workflow_log', 'workflow_states', 'workflow_transitions', 'workflows',
     ];
 
     /** @var array<int, true> */

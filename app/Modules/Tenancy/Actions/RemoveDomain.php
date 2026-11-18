@@ -8,6 +8,7 @@ use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Domains\DomainName;
 use App\Modules\Tenancy\Domains\PrimaryDomain;
+use App\Modules\Tenancy\Events\PublicSiteChanged;
 use App\Modules\Tenancy\Exceptions\DomainChangeRejectedException;
 use App\Modules\Tenancy\Models\Domain;
 use App\Modules\Tenancy\Models\Site;
@@ -74,6 +75,7 @@ final readonly class RemoveDomain
         // The removed names, and every other host of the site: its primary may have just changed.
         $this->sites->forget(...$removed);
         $this->sites->forgetSite($siteId);
+        event(new PublicSiteChanged($siteId, $removed));
 
         return $removed;
     }

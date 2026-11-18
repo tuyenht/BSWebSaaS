@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Tenancy\Actions;
 
+use App\Modules\Tenancy\Events\PlanGrantsChanged;
 use App\Modules\Tenancy\Exceptions\FeatureChangeRejectedException;
 use App\Modules\Tenancy\Models\Plan;
 use App\Modules\Tenancy\Models\PlanFeature;
@@ -51,6 +52,8 @@ final readonly class SetPlanFeatures
                     ['value' => json_encode($value, JSON_THROW_ON_ERROR)],
                 );
             }
+
+            event(new PlanGrantsChanged($plan->id));
         });
     }
 }

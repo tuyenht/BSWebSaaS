@@ -16,6 +16,7 @@ it('touches member category limits only through the reader and the known writers
         'app/Modules/Cms/Listeners/ForgetMemberCategoryScopes.php',        // left the site / never limited
         'app/Modules/Cms/Actions/Taxonomies/DeleteTaxonomy.php',           // moves rows onto a merge target
         'app/Modules/Cms/Listeners/CopyInvitationCategoryScopes.php',      // an accepted invitation's limits
+        'app/Modules/Storefront/EdgeCache/EdgeCachePurges.php',            // names the table as never shown; never touches it
     ];
 
     $offenders = [];
@@ -46,6 +47,7 @@ it('touches invitation category limits only through the reader and the known wri
         'app/Modules/Cms/Actions/InviteMemberWithCategories.php',          // guarded writer, with the invitation
         'app/Modules/Cms/Listeners/CopyInvitationCategoryScopes.php',      // reads them on accept
         'app/Modules/Cms/Actions/Taxonomies/DeleteTaxonomy.php',           // moves rows onto a merge target
+        'app/Modules/Storefront/EdgeCache/EdgeCachePurges.php',            // names the table as never shown; never touches it
     ];
 
     $offenders = [];

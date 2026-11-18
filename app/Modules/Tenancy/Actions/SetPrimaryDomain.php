@@ -8,6 +8,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Domains\DomainName;
+use App\Modules\Tenancy\Events\PublicSiteChanged;
 use App\Modules\Tenancy\Exceptions\DomainChangeRejectedException;
 use App\Modules\Tenancy\Models\Domain;
 use App\Modules\Tenancy\Models\Site;
@@ -66,6 +67,8 @@ final readonly class SetPrimaryDomain
                 // Clear first: the database allows one primary per site at any moment.
                 Domain::query()->where('site_id', $siteId)->where('is_primary', true)->update(['is_primary' => false]);
                 $domain->forceFill(['is_primary' => true])->save();
+                // its other hosts now send visitors to the new primary instead of showing pages
+                event(new PublicSiteChanged($siteId));
             }
 
             return [$domain, Cast::strings($rows->pluck('hostname')->all())];
