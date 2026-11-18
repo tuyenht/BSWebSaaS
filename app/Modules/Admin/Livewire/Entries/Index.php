@@ -4,10 +4,10 @@ namespace App\Modules\Admin\Livewire\Entries;
 
 use App\Modules\Admin\Support\CategoryTree;
 use App\Modules\Admin\Support\Entries\EntryListFilter;
+use App\Modules\Admin\Support\Entries\EntryListGuide;
 use App\Modules\Admin\Support\Entries\EntryListQuery;
 use App\Modules\Admin\Support\Entries\ListCursor;
 use App\Modules\Admin\Support\Entries\ListGroup;
-use App\Modules\Admin\Support\Entries\PostListGuide;
 use App\Modules\Admin\Support\Entries\PostRoleNote;
 use App\Modules\Admin\Support\FirstHints;
 use App\Modules\Cms\Actions\DuplicateEntry;
@@ -1428,11 +1428,15 @@ final class Index extends Component
         $sorts = array_values(array_filter(array_keys(self::SORTS), fn (string $key): bool => $this->sortsHere($key)));
 
         // The member's guide, on the first draw only: the filters and columns this list offers them,
-        // and the role card's own reading when the card shows.
+        // and the role card's own reading. A post list whose card this member has put away prints it
+        // once more, hidden, for the guide's tour to open on its first step (the design's role bar).
         $guide = null;
-        if ($this->guideDue && $postSection !== null) {
+        $tourRoleNote = null;
+        if ($this->guideDue && ($postSection !== null || $type === 'page')) {
             $filters = [];
-            if ($catOptions !== [] || $this->catF !== []) {
+            if ($type === 'page') {
+                $filters[] = ['key' => 'tpl', 'label' => Cast::string(__('entries.filter_template'))];
+            } elseif ($catOptions !== [] || $this->catF !== []) {
                 $filters[] = ['key' => 'cat', 'label' => Cast::string(__('entries.col_category'))];
             }
             if ($multilingual) {
@@ -1442,16 +1446,27 @@ final class Index extends Component
             if (count($read['facets']['creator']) >= 2 || $this->creatorF !== []) {
                 $filters[] = ['key' => 'creator', 'label' => Cast::string(__('entries.col_creator'))];
             }
-            $filters[] = ['key' => 'when', 'label' => Cast::string(__('entries.f_when'))];
-            $cols = [Cast::string(__('entries.col_category')), Cast::string(__('entries.col_path'))];
+            if ($type === 'post') {
+                $filters[] = ['key' => 'when', 'label' => Cast::string(__('entries.f_when'))];
+            }
+            $cols = $type === 'post' ? [Cast::string(__('entries.col_category'))] : [];
+            $cols[] = Cast::string(__('entries.col_path'));
             if ($multilingual) {
                 $cols[] = Cast::string(__('entries.col_language'));
             }
             $cols[] = Cast::string(__('entries.col_creator'));
-            $guide = PostListGuide::for($user, [
-                'title' => $postSection->localizedLabel(),
+            if ($type === 'page') {
+                $cols[] = Cast::string(__('entries.filter_template'));
+            }
+            $title = $section instanceof ContentSection ? $section->localizedLabel() : Cast::string(__('entries.section_fallback'));
+            if ($postSection !== null && $roleNote === null) {
+                $tourRoleNote = PostRoleNote::with($user, $workflow, $title, $scoped);
+            }
+            $guide = EntryListGuide::for($user, [
+                'type' => $type,
+                'title' => $title,
                 'scoped' => $scoped,
-                'roleNote' => $roleNote,
+                'roleNote' => $roleNote ?? $tourRoleNote,
                 'multilingual' => $multilingual,
                 'locales' => count($locales),
                 'sorts' => $sorts,
@@ -1482,6 +1497,7 @@ final class Index extends Component
             'sortIsDefault' => $sortKey === $this->defaultSortKey() && $sortDir === self::naturalDir($sortKey),
             'sorts' => $sorts,
             'guide' => $guide,
+            'tourRoleNote' => $tourRoleNote,
             'multilingual' => $multilingual,
             'type' => $type,
             'matchCount' => $read['total'],

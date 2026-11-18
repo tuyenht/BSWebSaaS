@@ -17,32 +17,40 @@ use App\Modules\Workflow\Models\WorkflowTransition;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * The guide of a post list («Quản lý bài viết»), in four parts: adding a post and getting it onto
- * the website, what each row offers, finding posts, and working on many at once. Each step is the
- * member's own: who may publish, who sends for review, whether the section runs an approval
- * workflow and how many steps it has, what they may edit or delete — all from their permissions and
- * the section's workflow, with the button names the list itself draws. Steps for things they cannot
- * do are left out; the elements each step points at are marked data-guide="…" in the list's view.
+ * The guide of an entry list — «Quản lý bài viết» (a post section) or the Pages list — in the
+ * design's parts: adding a record and getting it onto the website, what each row offers, finding
+ * records, and working on many at once. Each step is the member's own: who may publish, who sends
+ * for review, whether the section runs an approval workflow and how many steps it has, what they may
+ * edit or delete — all from their permissions and the section's workflow (pages never run one), with
+ * the button names the list itself draws. Steps for things they cannot do are left out; the elements
+ * each step points at are marked data-guide="…" in the list's view. Both lists read the same lines
+ * (guide.posts.*), the record's noun filled in; a page list's own role words are guide.pages.*.
+ *
+ * The design's part on the page tree (its child-page button, dragging rows, moving up and down, the
+ * flat-list note) is not part of the guide: the Pages list draws none of those yet.
  */
-final class PostListGuide
+final class EntryListGuide
 {
     /**
-     * @param  array{title: string, scoped: bool, roleNote: array{role: string, governed: bool, text: string, summary: string}|null,
+     * @param  array{type: string, title: string, scoped: bool, roleNote: array{role: string, governed: bool, text: string, summary: string}|null,
      *     multilingual: bool, locales: int, sorts: list<string>, cols: list<string>, filters: list<array{key: string, label: string}>}  $screen
      */
     public static function for(User $user, array $screen, ?Workflow $workflow): Guide
     {
-        $note = $screen['roleNote'] ?? PostRoleNote::with($user, $workflow, $screen['title'], $screen['scoped']);
+        $page = $screen['type'] === 'page';
+        $workflow = $page ? null : $workflow;
+        $note = $page ? self::pageNote($user, $screen['title']) : ($screen['roleNote'] ?? PostRoleNote::with($user, $workflow, $screen['title'], $screen['scoped']));
         $can = fn (string $permission): bool => $user->can($permission);
         $editScope = $can('entries.edit.any') ? 'any' : ($can('entries.edit.own') ? 'own' : 'none');
         $delScope = $can('entries.delete.any') ? 'any' : ($can('entries.delete.own') ? 'own' : 'none');
         $canCreate = $can('entries.create');
         $canPublish = $can('entries.publish');
-        $t = self::t(...);
+        $unit = Cast::string(__('entries.noun_'.($page ? 'page' : 'post')));
+        $t = fn (string $key, array $replace = []): string => self::t($key, $replace, $unit);
         $st = fn (string $status): string => Cast::string(__('entries.status_'.$status));
 
         $guide = new Guide(
-            'posts',
+            $page ? 'pages' : 'posts',
             $screen['title'],
             $note['role'].'|'.($workflow instanceof Workflow ? $workflow->key : 'direct'),
             ['name' => $note['role'], 'may' => W::lower($note['summary']), 'note' => $note['text']],
@@ -63,7 +71,7 @@ final class PostListGuide
         };
 
         // Part 1 · adding a post and getting it onto the website
-        $add = Cast::string(__('entries.add_post'));
+        $add = Cast::string(__('entries.add_'.($page ? 'page' : 'post')));
         $addText = null;
         if ($canCreate) {
             $A = ['add' => W::label($add)];
@@ -77,7 +85,7 @@ final class PostListGuide
             } elseif ($canPublish) {
                 $addText = $t('add_publish', $A);
             } elseif ($can('entries.submit')) {
-                $addText = $t('add_submit', $A + ['who' => self::who($holding('entries.publish'))]);
+                $addText = $t('add_submit', $A + ['who' => self::who($holding('entries.publish'), $unit)]);
             } else {
                 $addText = $t('add_write', $A);
             }
@@ -91,7 +99,7 @@ final class PostListGuide
             'filter' => W::label(Cast::string(__('admin.list.filter'))), 'status' => W::label(Cast::string(__('entries.status_label')))];
 
         $guide->part('main', $t($canCreate ? 'part_main_create' : 'part_main_view'), [
-            Guide::step('intro', [Guide::on('role', $t('intro_title'), $t('intro', ['role' => W::quote($note['role']), 'may' => W::lower($note['summary']), 'note' => $note['text']]))], intro: true),
+            $page ? null : Guide::step('intro', [Guide::on('role', $t('intro_title'), $t('intro', ['role' => W::quote($note['role']), 'may' => W::lower($note['summary']), 'note' => $note['text']]))], intro: true),
             $addText === null ? null : Guide::step('add', [Guide::on('add', $add, $addText)]),
             Guide::step('tabs', [
                 Guide::on('tabs', $t('tabs_title'), $t('tabs', ['draft' => W::label($st('draft')), 'published' => W::label($st('published'))])),
@@ -124,6 +132,7 @@ final class PostListGuide
             ]))),
             Guide::step('path', array_values(array_filter([
                 $mayEdit ? Guide::on('row-path-edit', $t('path_title'), $t('path_edit')) : null,
+                $page ? Guide::on('row-path-home', $t('path_title'), $t('path_home')) : null,
                 Guide::on('row-path', $t('path_title'), $t('path_plain')),
             ]))),
             $screen['multilingual'] ? Guide::step('langs', [Guide::on('row-langs', $t('langs_title'),
@@ -133,12 +142,13 @@ final class PostListGuide
                 ($more === [] ? $t('more') : $t('more_items', ['items' => W::words($more)])).' '.$t('del_'.$delScope))]),
         ]);
 
-        // Part 4 · finding posts (part 3, the page tree, belongs to the Pages list)
+        // Part 4 · finding records (part 3, the page tree, is left out: see the class note)
         $phrase = function (array $f) use ($t): string {
             $label = Cast::string($f['label']);
 
             return match ($f['key']) {
                 'cat' => $t('f_cat', ['name' => W::label($label)]),
+                'tpl' => $t('f_tpl', ['name' => W::label($label)]),
                 'trans' => $t('f_trans', ['name' => W::label($label)]),
                 'creator' => $t('f_creator', ['name' => W::label($label)]),
                 default => $t('f_other', ['name' => W::label($label), 'what' => W::lower($label)]),
@@ -146,6 +156,8 @@ final class PostListGuide
         };
         $filterLabel = Cast::string(__('admin.list.filter'));
         $guide->part('find', $t('part_find'), [
+            // the row's «Khác», shown only when some groups do not fit (the browser drops the step otherwise)
+            Guide::step('more-tabs', [Guide::on('tabs-more', Cast::string(__('admin.list.more_groups')), $t('more_tabs', ['items' => W::menu()]))]),
             $delScope === 'none' ? null : Guide::step('trash', [Guide::on('tab-trash', Cast::string(__('entries.tab_trash')),
                 $t('trash', ['trash' => W::label(Cast::string(__('entries.tab_trash'))), 'restore' => W::label(Cast::string(__('entries.action_restore')))]))]),
             Guide::step('search', [Guide::on('search', $t('search_title'), $t('search'))]),
@@ -251,18 +263,42 @@ final class PostListGuide
     }
 
     /**
-     * A line of the posts list's guide, the unit ("bài viết") filled in.
+     * What a page list says of the member: their highest role, the straight publishing every page
+     * goes through, and what they may do with pages (the post card's words, with pages for posts).
      *
-     * @param  array<string, string|int>  $replace
+     * @return array{role: string, governed: bool, text: string, summary: string}
      */
-    private static function t(string $key, array $replace = []): string
+    private static function pageNote(User $user, string $title): array
     {
-        return Cast::string(__('guide.posts.'.$key, $replace + ['unit' => Cast::string(__('entries.noun_post'))]));
+        $note = PostRoleNote::with($user, null, $title, false);
+        $may = match (true) {
+            $user->can('entries.publish') => __('entries.role_may_publish'),
+            $user->can('entries.submit') => __('entries.role_may_submit'),
+            default => __('entries.role_view_only'),
+        };
+        $edit = $user->can('entries.edit.any') ? 'any' : ($user->can('entries.edit.own') ? 'own' : 'none');
+
+        return ['summary' => Cast::string($may).' · '.Cast::string(__('guide.pages.role_edit_'.$edit))] + $note;
+    }
+
+    /**
+     * A line of a list's guide, the record's noun ("bài viết", "trang") filled in.
+     *
+     * @param  array<mixed>  $replace
+     */
+    private static function t(string $key, array $replace, string $unit): string
+    {
+        $words = ['unit' => $unit];
+        foreach ($replace as $name => $value) {
+            $words[(string) $name] = is_int($value) ? $value : Cast::string($value);
+        }
+
+        return Cast::string(__('guide.posts.'.$key, $words));
     }
 
     /** @param  list<string>  $roles */
-    private static function who(array $roles): string
+    private static function who(array $roles, string $unit): string
     {
-        return $roles === [] ? Cast::string(__('guide.posts.who_none')) : Cast::string(__('guide.posts.who', ['roles' => W::join($roles, 'or')]));
+        return $roles === [] ? Cast::string(__('guide.posts.who_none', ['unit' => $unit])) : Cast::string(__('guide.posts.who', ['roles' => W::join($roles, 'or')]));
     }
 }

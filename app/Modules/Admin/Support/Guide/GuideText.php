@@ -31,6 +31,12 @@ final class GuideText
         return '[[@]]';
     }
 
+    /** What the menu the step's element opens holds at that moment («Khác»: the groups that do not fit). */
+    public static function menu(): string
+    {
+        return '[[@menu]]';
+    }
+
     /**
      * Several labels: "[[a]], [[b]] và [[c]]".
      *

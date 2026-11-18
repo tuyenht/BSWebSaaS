@@ -145,22 +145,7 @@
         </nav>
         <x-bs-admin::title-row :title="$pageTitle" title-id="entries-title">
             <x-slot:help>
-                @if ($isPost)
-                    <x-bs-admin::guide :guide="$guide" />
-                @else
-                    {{-- the popup opens under the (?) from 768; below, under the whole row (the (?) is at its end) --}}
-                    <div class="inline-block align-middle md:relative" x-data="{ open: false }" @keydown.escape.prevent.stop="open && (open = false, $refs.help.focus())" @click.outside="open = false">
-                        <button type="button" x-ref="help" @click="open = ! open" :aria-expanded="open ? 'true' : 'false'" aria-controls="entries-help"
-                                aria-label="{{ __('admin.list.help_named', ['name' => $pageTitle]) }}" title="{{ __('admin.list.help') }}"
-                                class="hit-area inline-flex size-control items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-hover hover:text-text-strong">
-                            <x-bs-admin::icon name="ri-question-mark" class="size-5" />
-                        </button>
-                        <div x-show="open" x-cloak id="entries-help" role="region" aria-label="{{ __('admin.list.help') }}"
-                             class="absolute start-0 top-full z-60 mt-1.5 w-[min(22rem,calc(100vw-2rem))] rounded-md border border-border bg-surface p-3 text-body text-text shadow-lg max-md:start-auto max-md:end-0">
-                            <p class="m-0 [overflow-wrap:anywhere]">{{ __('entries.help_'.$type) }}</p>
-                        </div>
-                    </div>
-                @endif
+                <x-bs-admin::guide :guide="$guide" />
             </x-slot:help>
             <x-bs-admin::button color="primary" class="shrink-0" data-guide="add" :href="route('admin.entries.create', $sectionKey ? ['section' => $sectionKey] : [])"
                 :label="__('entries.add_'.$type)" :short="__('admin.list.add_short')">
@@ -172,20 +157,18 @@
 
     {{-- Where the member stands here: their role, how this section publishes (straight, or through its approval
          workflow — then the card takes the accent tint) and what they may do. It stays until they press "Đã hiểu",
-         remembered for them on the server; focus then goes to the list's name. --}}
+         remembered for them on the server; focus then goes to the list's name. Once put away, the first draw prints
+         it once more, hidden, inside a part redraws leave alone: the guide's tour opens it for its first step and
+         closes it again after (resources/js/admin-guide.js). --}}
     @if ($roleNote)
-        <section aria-label="{{ __('entries.role_aria') }}" data-role-note data-guide="role" data-gov="{{ $roleNote['governed'] ? '1' : '0' }}"
-                 @class([
-                     'flex flex-wrap items-center gap-x-2.5 gap-y-1.5 rounded-md border px-3.5 py-2 text-small text-text',
-                     'border-primary/25 bg-primary/6' => $roleNote['governed'],
-                     'border-border bg-surface' => ! $roleNote['governed'],
-                 ])>
-            <x-bs-admin::icon name="ri-shield-user" class="size-[min(1.5rem,calc(1rem+var(--user-text-boost)))] shrink-0 text-primary-text" />
-            <span class="inline-flex items-center whitespace-nowrap rounded-full bg-primary/12 px-2.5 py-0.5 text-caption font-bold text-primary-text">{{ $roleNote['role'] }}</span>
-            <span class="min-w-0 flex-[1_1_16rem] [overflow-wrap:anywhere]">{{ $roleNote['text'] }}</span>
-            <span class="text-caption text-text-muted [overflow-wrap:anywhere]">{{ $roleNote['summary'] }}</span>
-            <x-bs-admin::hint-ok :key="\App\Modules\Admin\Support\FirstHints::POSTS_ROLE" focus="#entries-title" class="ms-auto" />
-        </section>
+        @include('admin::livewire.entries.partials.role-card', ['note' => $roleNote, 'copy' => false])
+    @endif
+    @if ($isPost)
+        <div wire:ignore class="contents" data-guide-role-box>
+            @if ($tourRoleNote)
+                @include('admin::livewire.entries.partials.role-card', ['note' => $tourRoleNote, 'copy' => true])
+            @endif
+        </div>
     @endif
 
     {{-- The list card: groups (from 900) · search + tools · the active-filter line · the rows · the pager. Below 600
@@ -374,7 +357,7 @@
                                 <x-bs-admin::list.meta>
                                     <span class="list-m" x-show="vPath">
                                         @if ($isHome)
-                                            <span class="inline-flex items-center gap-1 font-mono text-caption" data-guide="row-path" title="{{ __('entries.home_locked') }}">{{ $path ?? '/' }} <x-bs-admin::icon name="ri-lock" class="size-3" /></span>
+                                            <span class="inline-flex items-center gap-1 font-mono text-caption" data-guide="row-path-home" title="{{ __('entries.home_locked') }}">{{ $path ?? '/' }} <x-bs-admin::icon name="ri-lock" class="size-3" /></span>
                                         @elseif ($quickEdit)
                                             <span wire:key="slug-{{ $entry->ulid }}-{{ $slugLeaf }}" x-data="{ editing: false, value: @js($slugLeaf ?? ''), cancel: false }">
                                                 <button type="button" x-show="! editing" data-guide="row-path-edit"

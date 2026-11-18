@@ -75,7 +75,7 @@ it('keeps each short word inside its full label, so the name says what is seen',
     }
 })->with(['vi', 'en', 'ja', 'zh']);
 
-it('shows the posts list «+ Thêm» beside the guide and the pages list beside its old help', function (): void {
+it('shows the posts and pages lists «+ Thêm» beside the guide', function (): void {
     app(Tenancy::class)->enter(1, fn () => ContentSection::query()->create(['key' => 'posts', 'label' => 'Tin tức', 'entry_type' => 'post', 'permission_prefix' => 'entries', 'sort_order' => 1]));
     $owner = trOwner();
 
@@ -83,7 +83,8 @@ it('shows the posts list «+ Thêm» beside the guide and the pages list beside 
         ->assertSeeInOrder(['id="entries-title"', 'data-title-help', 'data-guide-open', 'data-guide="add"', trWords(__('entries.add_post'), __('admin.list.add_short'))], false);
 
     $this->actingAs($owner)->get('http://a.test/admin/content')->assertOk()
-        ->assertSeeInOrder(['id="entries-title"', 'data-title-help', 'entries-help', trWords(__('entries.add_page'), __('admin.list.add_short'))], false);
+        ->assertSeeInOrder(['id="entries-title"', 'data-title-help', 'data-guide-open', 'data-guide="add"', trWords(__('entries.add_page'), __('admin.list.add_short'))], false)
+        ->assertDontSee('entries-help', false);
 });
 
 it('shows the members list «Mời» with «Mời thành viên» kept as the button\'s name', function (): void {

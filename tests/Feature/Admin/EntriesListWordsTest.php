@@ -261,7 +261,9 @@ describe('tools', function (): void {
             }
 
             $list = Livewire::actingAs($user->fresh())->test(Index::class);
-            expect($list->html())->toContain('Chọn tất cả')->not->toContain('Chọn cả trang');
+            // the list's own words, not its guide's (the guide explains both names)
+            $words = (string) preg_replace('#<script[^>]*data-guide-ctx[^>]*>.*?</script>#s', '', $list->html());
+            expect($words)->toContain('Chọn tất cả')->not->toContain('Chọn cả trang');
 
             $list->call('setPerPage', 10);
             expect($list->html())->toContain('Chọn cả trang');

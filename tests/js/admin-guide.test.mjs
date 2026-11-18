@@ -1,4 +1,5 @@
-// A screen's «Hướng dẫn» (resources/js/admin-guide.js) — the drawer, «Chỉ cho tôi» and a part's tour —
+// A screen's «Hướng dẫn» (resources/js/admin-guide.js) — the drawer, «Chỉ cho tôi», a part's tour, the
+// first-visit bubble and the put-away role card a tour opens —
 // in a DOM without a browser: `node --test tests/js/admin-guide.test.mjs`.
 import assert from 'node:assert/strict';
 import { register } from 'node:module';
@@ -16,6 +17,8 @@ const ui = {
     steps: ':n bước', steps_one: '1 bước', seen: 'Đã xem', show: 'Chỉ cho tôi', show_named: 'Chỉ cho tôi: :step', run: 'Đi qua :n bước', run_one: 'Đi qua 1 bước',
     exit: 'Thoát', exit_tip: 'Thoát (Esc)', back: 'Quay lại Hướng dẫn', prev: 'Trước', prev_aria: 'Bước trước', next: 'Tiếp', next_aria: 'Bước tiếp',
     done: 'Xong', next_part: 'Xem tiếp: :title', count: 'Phần :i/:n · bước :k/:m', count_intro: 'Phần :i/:n', title_sep: ':title:', quote: '«:x»',
+    offer_title: 'Lần đầu dùng màn này?', offer_title_changed: 'Cách làm ở màn này vừa thay đổi', offer_changed: 'Quyền hoặc quy trình duyệt của bạn đã khác trước.',
+    offer_text: 'Xem hướng dẫn khoảng 1 phút, đúng với quyền của bạn.', offer_later: 'Để sau', offer_now: 'Xem ngay', list_sep: ', ',
 };
 const on = (t, title, text) => ({ t, title, text });
 const ctx = {
@@ -27,7 +30,10 @@ const ctx = {
             { id: 'search', intro: false, v: [on('search', 'Tìm', 'Gõ tên bài.')] },
             { id: 'sort', intro: false, v: [on('sort-wide', 'Sắp xếp', 'Bấm [[@]].'), on('sort', 'Sắp xếp', 'Bấm [[@]] để đổi thứ tự.')] },
         ] },
-        { id: 'find', title: 'Tìm bài', steps: [{ id: 'cols', intro: false, v: [on('cols', 'Cột', 'Bấm [[@]] để chọn cột.')] }] },
+        { id: 'find', title: 'Tìm bài', steps: [
+            { id: 'more-tabs', intro: false, v: [on('tabs-more', 'Khác', 'Nút này gom các trạng thái ít dùng: [[@menu]]. Chọn một mục thì mục đó hiện lên hàng tab.')] },
+            { id: 'cols', intro: false, v: [on('cols', 'Cột', 'Bấm [[@]] để chọn cột.')] },
+        ] },
     ],
     ui,
 };
@@ -37,7 +43,11 @@ const dom = new JSDOM(
         '<button type="button" data-guide-open aria-expanded="false">Hướng dẫn</button>' +
         '<section data-guide="role">Vai trò</section><button type="button" data-guide="add">Thêm bài viết</button>' +
         '<div data-guide="search" hidden><input></div><button type="button" data-guide="sort-wide" hidden>Sắp xếp</button>' +
-        '<button type="button" data-guide="sort">Mới nhất ▾</button><button type="button" data-guide="cols">Cột · menu</button></main>' +
+        '<button type="button" data-guide="sort">Mới nhất ▾</button><button type="button" data-guide="cols">Cột · menu</button>' +
+        // a group row's «Khác», hidden while every group fits; its menu shows only the groups that do not
+        '<div hidden data-more-w><button type="button" data-guide="tabs-more" aria-haspopup="menu" aria-controls="gm-1">Khác</button></div>' +
+        '<div id="gm-1" role="menu" style="display:none"><button type="button" role="menuitemradio" style="display:none"><span>Tất cả</span></button>' +
+        '<button type="button" role="menuitemradio"><span>Bản nháp</span><span>3</span></button><button type="button" role="menuitemradio"><span>Riêng tư</span></button></div></main>' +
         '<script type="application/json" data-guide-ctx>' + JSON.stringify(ctx) + '</script>' +
         '<template data-guide-icons><span data-i="close"><svg></svg></span><span data-i="cursor"><svg></svg></span><span data-i="check"><svg></svg></span></template>' +
         '</body></html>',
@@ -67,6 +77,15 @@ const g = await import('../../resources/js/admin-guide.js');
 const $ = (s) => document.querySelector(s);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const esc = () => document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+const tab = (shiftKey = false) => document.activeElement.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Tab', shiftKey, bubbles: true, cancelable: true }));
+// a finger pressing and lifting at (x, y): the pointer fields a touch carries
+const touch = (el, x, y) => {
+    for (const type of ['pointerdown', 'pointerup']) {
+        const ev = new window.MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y });
+        Object.defineProperties(ev, { pointerType: { value: 'touch' }, pointerId: { value: 7 } });
+        el.dispatchEvent(ev);
+    }
+};
 const opener = $('[data-guide-open]');
 
 test('the drawer opens from its button, lists only the steps on the screen, and gives focus back on close', () => {
@@ -135,4 +154,183 @@ test('a part\'s tour ends with «Xong», which marks the part seen for this memb
     assert.equal(g.state().panel.querySelector('[aria-controls="bg-ch-1"] .bg-seen').textContent, 'Đã xem');
     assert.equal(g.state().panel.querySelector('[aria-controls="bg-ch-0"] .bg-seen'), null);
     esc();
+});
+
+test('the first visit offers the guide in a dialog that dims the page; focus moves in, Tab stays on its buttons, Esc is «Để sau»', () => {
+    localStorage.clear();
+    const field = $('[data-guide="sort"]');
+    field.focus();
+    g.offer();
+
+    const b = g.state().offer;
+    assert.ok(b && b.getAttribute('role') === 'dialog' && b.getAttribute('aria-modal') === 'true');
+    assert.equal(b.getAttribute('aria-labelledby'), 'bg-o-t');
+    assert.equal($('#bg-o-t').textContent, 'Lần đầu dùng màn này?');
+    assert.equal($('#bg-o-d').textContent, 'Xem hướng dẫn khoảng 1 phút, đúng với quyền của bạn.');
+    assert.deepEqual([...b.querySelectorAll('button')].map((x) => x.textContent), ['Để sau', 'Xem ngay']);
+    assert.equal(document.activeElement, b);
+    // a layer that takes every press, the ring whose shadow dims the page around «Hướng dẫn», then the bubble
+    assert.deepEqual([...document.body.children].slice(-3).map((x) => x.className), ['bg-offer-catch', 'bg-offer-hole bg-nm', 'bg-offer bg-nm']);
+    assert.equal($('.bg-offer-hole').getAttribute('aria-hidden'), 'true');
+    assert.equal($('.bg-offer-hole').style.width, '128px'); // the button and 4px around it
+
+    const [later, now] = b.querySelectorAll('button');
+    tab();
+    assert.equal(document.activeElement, later);
+    tab();
+    assert.equal(document.activeElement, now);
+    tab();
+    assert.equal(document.activeElement, later);
+    tab(true);
+    assert.equal(document.activeElement, now);
+    // focus sent onto the page comes back, and no key reaches the page
+    field.focus();
+    assert.equal(document.activeElement, b);
+    let reached = 0;
+    field.addEventListener('keydown', () => reached++);
+    field.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+    assert.equal(reached, 0);
+
+    esc();
+    assert.equal(g.state().offer, null);
+    assert.equal($('.bg-offer-hole'), null);
+    assert.equal($('.bg-offer-catch'), null);
+    assert.equal(document.activeElement, field); // back where it was
+    assert.deepEqual(JSON.parse(localStorage.getItem('bs-guide-seen:m1')), { 'posts|abc123': 'later' });
+
+    g.offer();
+    assert.equal(g.state().offer, null);
+});
+
+test('the bubble says the screen changed when another role or workflow was remembered; «Để sau» gives focus to «Hướng dẫn»', () => {
+    localStorage.clear();
+    localStorage.setItem('bs-guide-seen:m1', JSON.stringify({ 'posts|old': 'done' }));
+    document.activeElement.blur();
+    g.offer();
+
+    assert.equal($('#bg-o-t').textContent, 'Cách làm ở màn này vừa thay đổi');
+    assert.match($('#bg-o-d').textContent, /^Quyền hoặc quy trình duyệt của bạn đã khác trước\. Xem hướng dẫn/);
+    g.state().offer.querySelector('.bg-prev').click();
+    assert.equal(g.state().offer, null);
+    assert.equal(document.activeElement, opener);
+    assert.equal(JSON.parse(localStorage.getItem('bs-guide-seen:m1'))['posts|abc123'], 'later');
+});
+
+test('the dimmed page neither scrolls nor takes a press: a press on it is «Để sau», on the ringed button it opens the drawer', async () => {
+    localStorage.clear();
+    g.offer();
+    const layer = $('.bg-offer-catch');
+    for (const type of ['pointerdown', 'wheel', 'touchmove']) {
+        const ev = new window.Event(type, { bubbles: true, cancelable: true });
+        layer.dispatchEvent(ev);
+        assert.ok(ev.defaultPrevented, type);
+    }
+    assert.ok(g.state().offer);
+    layer.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true, clientX: 600, clientY: 400 }));
+    assert.equal(g.state().offer, null);
+    assert.equal(JSON.parse(localStorage.getItem('bs-guide-seen:m1'))['posts|abc123'], 'later');
+
+    // a finger: read when it lifts off the layer
+    localStorage.clear();
+    g.offer();
+    touch($('.bg-offer-catch'), 600, 400);
+    assert.equal(g.state().offer, null);
+    assert.equal(JSON.parse(localStorage.getItem('bs-guide-seen:m1'))['posts|abc123'], 'later');
+
+    // the ringed «Hướng dẫn» opens the drawer (which, as ever, remembers the member has found it)
+    localStorage.clear();
+    g.offer();
+    $('.bg-offer-catch').dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true, clientX: 50, clientY: 90 }));
+    assert.equal(g.state().offer, null);
+    assert.ok(g.state().panel);
+    assert.equal(g.state().opener, opener);
+    esc();
+    assert.equal(g.state().panel, null);
+    assert.equal(document.activeElement, opener);
+
+    localStorage.clear();
+    g.offer();
+    g.state().offer.querySelector('.bg-next').click();
+    assert.equal(g.state().offer, null);
+    assert.equal($('.bg-offer-catch'), null);
+    await wait(60);
+    assert.equal(g.state().card.querySelector('#bg-t').textContent, 'Nhóm quyền');
+    esc();
+    assert.equal(JSON.parse(localStorage.getItem('bs-guide-seen:m1'))['posts|abc123'], 'skip');
+});
+
+test('the «Khác» step shows only while its button does, and names the groups its menu holds', () => {
+    const titles = () => [...g.state().panel.querySelectorAll('#bg-ch-1 li')].map((li) => li.querySelector('b').textContent);
+    g.openPanel(opener);
+    assert.deepEqual(titles(), ['Cột:']);
+    esc();
+
+    $('[data-more-w]').hidden = false;
+    g.openPanel(opener);
+    assert.deepEqual(titles(), ['Khác:', 'Cột:']);
+    assert.match(g.state().panel.querySelector('#bg-ch-1 li').textContent, /Nút này gom các trạng thái ít dùng: bản nháp, riêng tư\. Chọn một mục/);
+    esc();
+    $('[data-more-w]').hidden = true;
+});
+
+test('a tour opens the put-away role card for its first step and closes it again when it ends', async () => {
+    localStorage.clear();
+    const live = $('main > [data-guide="role"]');
+    live.hidden = true;
+    const copy = document.createElement('section');
+    copy.hidden = true;
+    copy.setAttribute('data-role-copy', '');
+    copy.setAttribute('data-guide', 'role');
+    copy.textContent = 'Vai trò (đã ẩn)';
+    live.after(copy);
+
+    g.startTour('main');
+    assert.equal(copy.hidden, false);
+    await wait(60);
+    assert.equal(g.state().card.querySelector('#bg-t').textContent, 'Nhóm quyền');
+    esc();
+    assert.equal(g.state().card, null);
+    assert.equal(copy.hidden, true);
+
+    g.startTour('find'); // a part with no step on the role card leaves the put-away card alone
+    assert.equal(copy.hidden, true);
+    await wait(60);
+    assert.equal(copy.hidden, true);
+    esc();
+
+    copy.remove();
+    live.hidden = false;
+});
+
+test('another dialog the page opens: the bubble steps aside and focus stays in that dialog', () => {
+    localStorage.clear();
+    g.offer();
+    assert.ok(g.state().offer);
+    const other = document.createElement('div');
+    other.setAttribute('role', 'dialog');
+    other.innerHTML = '<input id="other-in">';
+    document.body.append(other);
+    const input = other.querySelector('input');
+    input.focus();
+    assert.equal(document.activeElement, input); // the trap does not pull it back
+    document.dispatchEvent(new window.Event('scroll'));
+    assert.equal(g.state().offer, null);
+    assert.equal(document.activeElement, input); // and «Hướng dẫn» does not take it
+    other.remove();
+});
+
+test('while the bubble is open the keys that scroll the page do nothing, and Space still presses its button', () => {
+    localStorage.clear();
+    g.offer();
+    for (const key of [' ', 'PageDown', 'PageUp', 'ArrowDown', 'ArrowUp', 'Home', 'End']) {
+        const ev = new window.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+        document.body.dispatchEvent(ev);
+        assert.ok(ev.defaultPrevented, key);
+    }
+    g.state().offer.querySelector('.bg-prev').focus();
+    const sp = new window.KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
+    document.activeElement.dispatchEvent(sp);
+    assert.equal(sp.defaultPrevented, false);
+    esc();
+    assert.equal(g.state().offer, null);
 });

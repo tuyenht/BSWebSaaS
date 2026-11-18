@@ -1,6 +1,8 @@
 // The admin guide («Hướng dẫn», x-bs-admin::guide): the drawer listing a screen's guide in parts, «Chỉ
-// cho tôi» ringing one element, and a part's tour across the screen. Loaded on the first press of a
-// [data-guide-open] button (app.js), so a screen pays nothing until then.
+// cho tôi» ringing one element, a part's tour across the screen, and the bubble offering the guide on
+// a member's first visit to a screen. Loaded on the first press of a [data-guide-open] button, or on
+// entering a screen whose guide this member has not been offered yet (app.js), so a screen pays
+// nothing until then.
 //
 // A port of the design canvas guide engine: the same drawer,
 // cards, card placement, focus return and memory. Only the data differs: the canvas read the screen's
@@ -13,7 +15,7 @@ import '../css/admin-guide.css';
 
 const KEY = 'bs-guide-seen';
 const CKEY = 'bs-guide-ch';
-const GUI_SEL = '.bg-panel,.bg-scrim,.bg-card,.bg-hole';
+const GUI_SEL = '.bg-panel,.bg-scrim,.bg-card,.bg-hole,.bg-offer,.bg-offer-catch,.bg-offer-hole';
 const QV_SEL =
     'button, a[href], input, select, textarea, [role=button], [role=tab], [role=switch], [role=checkbox], [role=radio], [role=link], [role=combobox], [tabindex="0"], [draggable=true], [role=menuitem], [role=menuitemradio], [role=menuitemcheckbox], [role=option]';
 
@@ -107,8 +109,21 @@ const qv = (s) => {
     s = nrm(s);
     return hasLabel(s) ? quote(s) : lower(s);
 };
+// the items the menu `el` opens holds now (those it shows once open: a row's «Khác» holds the groups
+// that do not fit), each lowered at its start, in the language's list
+const menuWords = (el) => {
+    const m = el && document.getElementById(el.getAttribute('aria-controls') || '');
+    if (!m) {
+        return '';
+    }
+    return Array.from(m.querySelectorAll('[role^="menuitem"]'))
+        .filter((x) => !x.hidden && x.style.display !== 'none')
+        .map((x) => lower(lab(x.querySelector('span') || x)))
+        .filter(Boolean)
+        .join(say('list_sep'));
+};
 // a step's words as HTML: plain text escaped, each [[Label]] quoted when a control on the screen
-// carries it ([[@]] = the label of the element the step points at)
+// carries it ([[@]] = the label of the element the step points at, [[@menu]] = what its menu holds)
 function rich(text, el) {
     return String(text || '')
         .split(/(\[\[[^\]]+\]\])/)
@@ -116,6 +131,9 @@ function rich(text, el) {
             const m = /^\[\[([^\]]+)\]\]$/.exec(part);
             if (!m) {
                 return esc(part);
+            }
+            if (m[1] === '@menu') {
+                return esc(menuWords(el));
             }
             return esc(qv(m[1] === '@' ? lab(el) : m[1]));
         })
@@ -220,7 +238,7 @@ function okFull(e) {
     if (!e || !e.focus || !document.contains(e) || e === document.body || e === document.documentElement || !vis(e)) {
         return false;
     }
-    if (e.disabled || e.closest('[inert],[aria-hidden="true"],.bg-panel,.bg-scrim')) {
+    if (e.disabled || e.closest('[inert],[aria-hidden="true"],.bg-panel,.bg-scrim,.bg-offer,.bg-offer-catch')) {
         return false;
     }
     const r = e.getBoundingClientRect();
@@ -341,6 +359,7 @@ const runOf = (n) => (n === 1 ? say('run_one') : say('run', { n }));
 /** Open the drawer from `btn`; opt.ch = the part shown open, opt.step = the step whose «Chỉ cho tôi» takes focus. */
 export function openPanel(btn, opt = {}) {
     closePanel();
+    hideOffer(true);
     opener = btn || document.activeElement;
     const g = guide();
     if (!g) {
@@ -481,6 +500,7 @@ export function endTour(done) {
         o[slot()] = done ? 'done' : 'skip';
         save(memo(KEY), o);
     }
+    roleBar('rehide');
     focusBack(opener);
 }
 
@@ -1034,6 +1054,7 @@ function runChapter(b, i) {
 }
 /** Run the part `id` (none: the first) on the screen. */
 export function startTour(id) {
+    hideOffer();
     if (!guide()) {
         dropTour();
         return;
@@ -1042,12 +1063,19 @@ export function startTour(id) {
         dropTour();
         showMode = false;
     }
+    // a part whose steps point at the role card opens it again if it was put away; other parts leave it
+    const g = guide();
+    const part = (typeof id === 'string' && g.parts.find((p) => p.id === id)) || g.parts[0];
+    if (part && (part.steps || []).some((s) => (s.v || []).some((v) => v.t === 'role'))) {
+        roleBar('show');
+    }
     setTimeout(
         () => {
             const b = build();
             const chs = b.chapters;
             if (!chs.length) {
                 dropTour();
+                roleBar('rehide');
                 focusBack(opener);
                 return;
             }
@@ -1141,10 +1169,343 @@ function closeShow(back) {
     }
 }
 
-// Esc leaves the card, else closes the drawer; Tab stays inside the open drawer
+// ---------- the first-visit offer: a dialog under «Hướng dẫn», never a tour of its own accord ----------
+// On entering a screen this member has not been offered its guide on (per member, website, screen and
+// scenario, as the parts seen), a bubble under the button offers it: «Xem ngay» runs the first part,
+// «Để sau» puts it away for good — the button stays. While it shows, the rest of the screen is dimmed so
+// the member knows where to look: a ring of light leaves «Hướng dẫn» clear, and the page neither scrolls
+// nor takes a press under it. It is a dialog: focus moves into it, Tab goes round its two buttons, and
+// Esc or a press on the dimmed page is «Để sau»; a press on the ringed button opens the drawer. Focus then
+// goes back where it was, or to «Hướng dẫn». It is tried for 4 seconds, given up once the member
+// presses, types or scrolls; it goes away (remembering nothing) when another dialog opens or the button
+// leaves the screen. Three layers at the end of the page: one catching presses (1498), the ring whose
+// shadow is the dim (1499), the bubble (1500).
+let offerEl = null;
+let offCatch = null;
+let offHole = null;
+let offPrev = null;
+let offerT = null;
+let tryT = null;
+let lastAct = 0;
+['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach((ev) =>
+    document.addEventListener(
+        ev,
+        () => {
+            lastAct = Date.now();
+        },
+        { passive: true, capture: true },
+    ),
+);
+const openBtn = () => {
+    const ls = document.querySelectorAll('[data-guide-open]');
+    for (let i = 0; i < ls.length; i++) {
+        if (vis(ls[i])) {
+            return ls[i];
+        }
+    }
+    return null;
+};
+const inView = (r) => r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth;
+/** Take the bubble away, remembering nothing; focus inside it goes to «Hướng dẫn» unless the caller places it. */
+export function hideOffer(keep) {
+    const had = !!(offerEl && document.activeElement && offerEl.contains(document.activeElement));
+    [offerEl, offCatch, offHole].forEach((n) => n && n.remove());
+    offerEl = offCatch = offHole = null;
+    if (had && !keep) {
+        focusTo(guideHome());
+    }
+    clearInterval(offerT);
+    clearInterval(tryT);
+    offerT = tryT = null;
+}
+// «Để sau»: remembered, so the screen does not offer it again; focus goes back where it was when that
+// control still shows whole, else to «Hướng dẫn»
+function dismissOffer() {
+    if (!offerEl) {
+        return;
+    }
+    if (guide()) {
+        const s = load(memo(KEY));
+        s[slot()] = 'later';
+        save(memo(KEY), s);
+    }
+    const p = offPrev;
+    offPrev = null;
+    hideOffer(true);
+    focusTo(okFull(p) ? p : guideHome());
+}
+// another dialog open (not the guide's own): the bubble would cover it
+function offerBlocked() {
+    const ds = document.querySelectorAll('[role=dialog],[role=alertdialog],[aria-modal=true]');
+    for (let i = 0; i < ds.length; i++) {
+        const d = ds[i];
+        if ((offerEl && offerEl.contains(d)) || d.classList.contains('bg-panel')) {
+            continue;
+        }
+        if (vis(d)) {
+            return true;
+        }
+    }
+    return false;
+}
+function placeOffer() {
+    if (!offerEl) {
+        return;
+    }
+    const l = openBtn();
+    if (offerBlocked()) {
+        // another dialog took the screen: step aside and leave focus where that dialog put it
+        hideOffer(true);
+        return;
+    }
+    if (!l || !inView(l.getBoundingClientRect())) {
+        hideOffer();
+        return;
+    }
+    const r = l.getBoundingClientRect();
+    const w = offerEl.offsetWidth;
+    const left = Math.max(12, Math.min(r.right - w, innerWidth - w - 12));
+    const top = r.bottom + 10;
+    offerEl.style.left = left + 'px';
+    offerEl.style.top = top + 'px';
+    offerEl.style.maxHeight = Math.max(120, innerHeight - top - 8) + 'px';
+    offerEl.style.setProperty('--ax', Math.max(12, Math.min(w - 24, r.left + r.width / 2 - left - 6)) + 'px');
+    // the ring follows the button's own corners (a round button: a round ring)
+    const br = parseFloat(getComputedStyle(l).borderTopLeftRadius) || 0;
+    const pad = 4;
+    offHole.style.left = r.left - pad + 'px';
+    offHole.style.top = r.top - pad + 'px';
+    offHole.style.width = r.width + 2 * pad + 'px';
+    offHole.style.height = r.height + 2 * pad + 'px';
+    offHole.style.borderRadius = br >= r.height / 2 - 1 ? '999px' : br + pad + 'px';
+}
+// the dimmed page takes the press: on the ringed «Hướng dẫn» it opens the drawer, anywhere else it is «Để sau»
+function catchPresses(layer) {
+    const stop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+    ['pointerdown', 'mousedown', 'touchstart', 'wheel', 'touchmove', 'contextmenu'].forEach((ev) => layer.addEventListener(ev, stop, { passive: false }));
+    let down = null;
+    let touchT = 0;
+    let done = false;
+    const act = (x, y) => {
+        if (done || !offerEl) {
+            return;
+        }
+        done = true;
+        const b = openBtn();
+        const r = b && b.getBoundingClientRect();
+        if (r && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
+            offPrev = null;
+            hideOffer(true);
+            openPanel(b);
+        } else {
+            dismissOffer();
+        }
+    };
+    // a mouse or a pen: the click. A finger: its pointerdown is held back (no scroll, no press through),
+    // so the browser sends no click; the press is read when that same finger lifts off the layer.
+    layer.addEventListener('click', (e) => {
+        stop(e);
+        if (e.pointerType === 'touch' || Date.now() - touchT < 800) {
+            return;
+        }
+        act(e.clientX, e.clientY);
+    });
+    layer.addEventListener('pointerdown', (e) => {
+        down = e.pointerType === 'touch' ? e.pointerId : null;
+    });
+    layer.addEventListener('pointercancel', () => {
+        down = null;
+    });
+    layer.addEventListener('pointerup', (e) => {
+        if (e.pointerType !== 'touch' || down === null || e.pointerId !== down) {
+            return;
+        }
+        down = null;
+        stop(e);
+        touchT = Date.now();
+        act(e.clientX, e.clientY);
+    });
+}
+// shown now when it can be; 'stop' when no more tries are needed (remembered, or the guide is open)
+function tryOffer() {
+    if (offerEl || tourEl || panel) {
+        return 'stop';
+    }
+    const g = guide();
+    if (!g) {
+        return false;
+    }
+    const o = load(memo(KEY));
+    if (o[slot()]) {
+        return 'stop';
+    }
+    const l = openBtn();
+    if (!l || !inView(l.getBoundingClientRect()) || offerBlocked()) {
+        return false;
+    }
+    // remembered for another scenario of this screen: their role or workflow has changed since
+    const changed = Object.keys(o).some((k) => k.indexOf(g.screen + '|') === 0);
+    const title = say(changed ? 'offer_title_changed' : 'offer_title');
+    const text = (changed ? say('offer_changed') + ' ' : '') + say('offer_text');
+    const nm = reduce() ? ' bg-nm' : '';
+    offPrev = document.activeElement;
+    offCatch = document.createElement('div');
+    offCatch.className = 'bg-offer-catch';
+    offHole = document.createElement('div');
+    offHole.className = 'bg-offer-hole' + nm;
+    offHole.setAttribute('aria-hidden', 'true');
+    offerEl = document.createElement('div');
+    offerEl.className = 'bg-offer' + nm;
+    offerEl.setAttribute('role', 'dialog');
+    offerEl.setAttribute('aria-modal', 'true');
+    offerEl.setAttribute('aria-labelledby', 'bg-o-t');
+    offerEl.setAttribute('aria-describedby', 'bg-o-d');
+    offerEl.tabIndex = -1;
+    offerEl.innerHTML =
+        '<div class="bg-offer-in"><b id="bg-o-t">' + esc(title) + '</b><span id="bg-o-d">' + esc(text) + '</span></div><div class="bg-nav"><span class="n"></span><button class="bg-prev" type="button">' +
+        esc(say('offer_later')) + '</button><button class="bg-next" type="button">' + esc(say('offer_now')) + '</button></div>';
+    offerEl.querySelector('.bg-prev').onclick = dismissOffer;
+    offerEl.querySelector('.bg-next').onclick = () => {
+        opener = openBtn();
+        offPrev = null;
+        hideOffer(true);
+        startTour();
+    };
+    catchPresses(offCatch);
+    // a wheel over the bubble scrolls its own words when they overflow, never the page under it
+    offerEl.addEventListener(
+        'wheel',
+        (e) => {
+            const inn = offerEl && offerEl.querySelector('.bg-offer-in');
+            if (!inn || !inn.contains(e.target) || inn.scrollHeight <= inn.clientHeight) {
+                e.preventDefault();
+            }
+        },
+        { passive: false },
+    );
+    document.body.append(offCatch, offHole, offerEl);
+    placeOffer();
+    if (!offerEl) {
+        return false;
+    }
+    offerT = setInterval(placeOffer, 300);
+    try {
+        offerEl.focus({ preventScroll: true });
+    } catch {
+        offerEl.focus();
+    }
+    return 'stop';
+}
+/** On entering a screen: offer its guide, tried every 200 ms for 4 seconds until the member acts. */
+export function offer() {
+    hideOffer();
+    const t0 = Date.now();
+    const step = () => {
+        if (lastAct > t0 || Date.now() - t0 > 4000 || tryOffer() === 'stop') {
+            clearInterval(tryT);
+            tryT = null;
+        }
+    };
+    tryT = setInterval(step, 200);
+    step();
+}
+// focus that leaves the bubble (a screen reader's own move, a script) is brought back into it
+document.addEventListener(
+    'focusin',
+    (e) => {
+        // a dialog the page opens itself keeps the focus it took
+        if (offerEl && e.target instanceof Element && !offerEl.contains(e.target) && !e.target.closest('[role=dialog],[role=alertdialog],[aria-modal=true]')) {
+            try {
+                offerEl.focus({ preventScroll: true });
+            } catch {
+                offerEl.focus();
+            }
+        }
+    },
+    true,
+);
+document.addEventListener('scroll', placeOffer, true);
+window.addEventListener('resize', placeOffer);
+
+// ---------- the role card during a tour ----------
+// A post list whose role card the member put away prints it once more, hidden ([data-role-copy]): a
+// tour opens it for its first step and closes it again when it ends. The card on show is left alone.
+let rbEl = null;
+function roleBar(mode) {
+    if (mode === 'show') {
+        const el = document.querySelector('[data-role-copy]');
+        if (rbEl || !el || target('role')) {
+            return;
+        }
+        rbEl = el;
+        clearTimeout(el._bgT);
+        el.hidden = false;
+        if (reduce()) {
+            return;
+        }
+        el.classList.add('bg-rb', 'bg-rb-gone');
+        void el.offsetHeight;
+        el.style.maxHeight = el.scrollHeight + 'px';
+        el.classList.remove('bg-rb-gone');
+        el._bgT = setTimeout(() => {
+            el.style.maxHeight = '';
+        }, 300);
+        return;
+    }
+    const el = rbEl;
+    rbEl = null;
+    if (!el || !document.contains(el)) {
+        return;
+    }
+    clearTimeout(el._bgT);
+    if (reduce()) {
+        el.hidden = true;
+        return;
+    }
+    el.classList.add('bg-rb');
+    el.style.maxHeight = el.scrollHeight + 'px';
+    void el.offsetHeight;
+    el.classList.add('bg-rb-gone');
+    el._bgT = setTimeout(() => {
+        el.hidden = true;
+        el.classList.remove('bg-rb-gone');
+        el.style.maxHeight = '';
+    }, 300);
+}
+
+const SCROLL_KEYS = [' ', 'PageDown', 'PageUp', 'ArrowDown', 'ArrowUp', 'Home', 'End'];
+// The first-visit bubble holds the keyboard: Esc is «Để sau», Tab goes round its two buttons and no key
+// reaches the page. Otherwise Esc leaves the card, else closes the drawer; Tab stays inside the open drawer.
 document.addEventListener(
     'keydown',
     (e) => {
+        if (offerEl) {
+            e.stopPropagation();
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                dismissOffer();
+                return;
+            }
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const bs = [offerEl.querySelector('.bg-prev'), offerEl.querySelector('.bg-next')];
+                const i = bs.indexOf(document.activeElement);
+                bs[i < 0 ? (e.shiftKey ? 1 : 0) : (i + 1) % 2].focus();
+                return;
+            }
+            // the keys that scroll the page would move «Hướng dẫn» out of view (a button keeps Space: it presses it)
+            if (SCROLL_KEYS.includes(e.key) && !(e.key === ' ' && document.activeElement instanceof Element && document.activeElement.tagName === 'BUTTON')) {
+                e.preventDefault();
+            }
+            if (!offerEl.contains(document.activeElement)) {
+                e.preventDefault();
+                offerEl.focus();
+            }
+            return;
+        }
         if (e.key === 'Tab' && panel && !tourEl) {
             const f = Array.from(panel[1].querySelectorAll('button, a[href], [tabindex="0"]')).filter((x) => !x.closest('[hidden]'));
             if (!f.length) {
@@ -1175,7 +1536,9 @@ document.addEventListener(
 );
 // leaving the screen takes the guide away with it, writing nothing
 document.addEventListener('livewire:navigating', () => {
+    hideOffer(true);
     dropTour();
+    rbEl = null;
     showMode = false;
     if (panel) {
         panel.forEach((n) => n.remove());
@@ -1185,4 +1548,4 @@ document.addEventListener('livewire:navigating', () => {
 });
 
 /** For the tests: what is open. */
-export const state = () => ({ panel: panel ? panel[1] : null, card: tourEl, hole, opener });
+export const state = () => ({ panel: panel ? panel[1] : null, card: tourEl, hole, opener, offer: offerEl });
