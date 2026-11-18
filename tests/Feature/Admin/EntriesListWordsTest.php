@@ -85,7 +85,8 @@ describe('header', function (): void {
                 ->assertSeeHtml('>'.e(__('entries.section_fallback')).'</h1>')
                 ->assertSee('Thêm trang')
                 ->assertDontSee('Thêm bài viết')
-                ->assertSee(__('entries.desc_page'))
+                ->assertSee(__('entries.desc_page', ['label' => 'trang']))
+                ->assertSee(__('entries.mdesc_page'))
                 ->assertSeeHtml('placeholder="Ví dụ: lịch sử"');
         });
     });

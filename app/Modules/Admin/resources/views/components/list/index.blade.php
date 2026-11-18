@@ -8,7 +8,8 @@
     // per line to 900, a table with a header row from 900. Rows and header share one grid, so a
     // column header always stands over its cells. `select` is the select-all bar shown below 900,
     // where the header row (and its select-all box) is hidden. `data-hide="au"` drops the author
-    // column and its name in the row's meta line too. `kind="facts"` is a list of records with no
+    // column and its name in the row's meta line too; `data-fold="au"` (written by the page's measuring
+    // script, resources/js/admin-list-fold.js) moves the author from its column into the meta line. `kind="facts"` is a list of records with no
     // select box and short fact columns (f1–f3): a card below 600, a table with a header from 768.
     // `data-cols="people"` on a facts list lets f1 share the room with the name and sizes the status
     // and actions columns by the body text (the members list: role chips, a labelled button + ⋮).

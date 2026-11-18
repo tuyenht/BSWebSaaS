@@ -5,7 +5,9 @@
  |                        wrapping whole onto its own line, right-aligned, when it does not fit;
  |   600–899              one record per line: [select] [name + meta] [status] [buttons];
  |   from 900 (56.25rem)  a table: a header row and the rows on ONE grid (subgrid), so a header
- |                        always stands over its column; the author column joins from 1280 (80rem).
+ |                        always stands over its column; the author column joins it whenever it
+ |                        fits (the page script folds it into the line under the name, data-fold,
+ |                        only when the name text would get less than its shared minimum).
  | Widths are in rem so the switches move with the reader's text size. Every size comes from the
  | shared tokens (--spacing-hit, --spacing-control-row, --text-*); a screen passes content only.
  | Names and meta text wrap and are never clipped.
@@ -993,16 +995,19 @@
         }
     }
 
-    @container list (width >= 80rem) {
-        .list-rows:not([data-hide~='au']) .list-g {
+    /* The author column: drawn from 900 unless the member turned it off (data-hide~='au') or the page script
+       folded it into the line under the name (data-fold~='au', when the name text would get less than the
+       shared minimum, resources/js/admin-list-fold.js). While it is a column, the name leaves the meta line. */
+    @container list (width >= 56.25rem) {
+        .list-rows:not([data-hide~='au']):not([data-fold~='au']) .list-g {
             grid-template-columns: [chk] 3.5rem [main] minmax(0, 1fr) [st] minmax(10.75rem, max-content) [au] 8.75rem [act] auto [end];
         }
 
-        .list-rows:not([data-hide~='au']) .list-c-au {
+        .list-rows:not([data-hide~='au']):not([data-fold~='au']) .list-c-au {
             display: block;
         }
 
-        .list-rows:not([data-hide~='au']) .list-m[data-for='au'] {
+        .list-rows:not([data-hide~='au']):not([data-fold~='au']) .list-m[data-for='au'] {
             display: none;
         }
     }
@@ -1560,10 +1565,22 @@
         .list-rows[data-kind='posts'][data-hide~='cat'] .list-c-cat {
             display: none;
         }
-    }
 
-    @container list (width >= 80rem) {
-        .list-rows[data-kind='posts'][data-kind]:not([data-hide~='au']) .list-g {
+        /* The page script folds the category into the line under the name first, then the author, while the
+           name text would get less than the shared minimum (data-fold, resources/js/admin-list-fold.js). */
+        .list-rows[data-kind='posts'][data-fold~='cat'] .list-g {
+            --list-w-cat: 0px;
+        }
+
+        .list-rows[data-kind='posts'][data-fold~='cat'] .list-c-cat {
+            display: none;
+        }
+
+        .list-rows[data-kind='posts'][data-fold~='cat'] .list-m[data-for='cat'] {
+            display: inline;
+        }
+
+        .list-rows[data-kind='posts'][data-kind]:not([data-hide~='au']):not([data-fold~='au']) .list-g {
             grid-template-columns: [chk] 3.5rem [main] minmax(0, 1fr) [cat] fit-content(var(--list-w-cat)) [st] minmax(10.75rem, max-content) [au] 8.75rem [act] auto [end];
         }
     }
@@ -1858,5 +1875,18 @@
         .list-rows[data-kind='catalog'] .list-langs2 .list-m[data-for='langs']::before {
             content: none;
         }
+    }
+}
+
+/* A list whose columns fold by measured room stays unseen (visibility, so it still measures) until the page
+   script has folded it once; the animation lets go by itself if that script never runs. */
+[data-fold-wait] {
+    visibility: hidden;
+    animation: list-fold-release 0s 1.5s forwards;
+}
+
+@keyframes list-fold-release {
+    to {
+        visibility: visible;
     }
 }
