@@ -17,6 +17,9 @@ return [
     // by the site's next midnight, when what it shows by date alone (a deadline "closing soon") moves.
     'edge_cache' => [
         's_maxage' => (int) env('STOREFRONT_EDGE_S_MAXAGE', 86400),
+        // Seconds between the purge jobs one sweep queues (storefront:purge-edge --all after a deploy):
+        // 30 host names a job, so the default sends about 900 names a minute.
+        'purge_pace_seconds' => (int) env('STOREFRONT_EDGE_PURGE_PACE', 2),
         'unpurged_s_maxage' => (int) env('STOREFRONT_EDGE_UNPURGED_S_MAXAGE', 300),
         'stale_while_revalidate' => (int) env('STOREFRONT_EDGE_SWR', 86400),
         'query_allow' => ['page', 'sau', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'],

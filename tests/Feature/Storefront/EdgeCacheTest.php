@@ -403,12 +403,14 @@ it('purges the homes at once when the edge refuses a host purge, then tries the 
 
     $first = (new PurgeSiteEdgeCache(1))->withFakeQueueInteractions();
     $first->handle($edge, app(SiteDirectory::class));
-    $first->assertReleased(60);
+    $first->assertReleased();
+    expect($first->job->releaseDelay)->toBeGreaterThanOrEqual(60)->toBeLessThanOrEqual(90);
 
     $third = (new PurgeSiteEdgeCache(1))->withFakeQueueInteractions();
     $third->job->attempts = 3;
     $third->handle($edge, app(SiteDirectory::class));
-    $third->assertReleased(180);
+    $third->assertReleased();
+    expect($third->job->releaseDelay)->toBeGreaterThanOrEqual(180)->toBeLessThanOrEqual(210);
 
     expect($first->tries)->toBe(5)
         ->and($edge->calls)->toBe([['hosts', ['a.test']], ['urls', ['https://a.test/']], ['hosts', ['a.test']], ['urls', ['https://a.test/']]]);

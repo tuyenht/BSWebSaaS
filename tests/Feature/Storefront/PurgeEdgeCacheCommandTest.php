@@ -43,6 +43,23 @@ it('purges every website\'s hosts in the zone, 30 names a call, never a customer
         ->and($sent)->toHaveCount(42)->toContain('a.test', 'b.test', 'ten-40.test')->not->toContain('congty-an.vn');
 });
 
+it('spaces the jobs of one sweep out, so a deploy\'s purge does not hit the zone all at once', function (): void {
+    edgeCacheRecorder();
+    purgeEdgeManyHosts();
+    config(['storefront.edge_cache.purge_pace_seconds' => 5]);
+    Bus::fake();
+
+    $this->artisan('storefront:purge-edge', ['--all' => true])->assertSuccessful();
+
+    $delays = [];
+    Bus::assertDispatched(PurgeEdgeHosts::class, function (PurgeEdgeHosts $job) use (&$delays): bool {
+        $delays[] = $job->delay;
+
+        return true;
+    });
+    expect($delays)->toBe([0, 5]);
+});
+
 it('purges only the websites named, by host name or by id', function (): void {
     $edge = edgeCacheRecorder();
     DB::connection('pgsql_admin')->table('domains')->insert([
@@ -79,7 +96,8 @@ it('retries a refused batch later, purging its homes at once', function (): void
     $job->job->attempts = 2;
     $job->handle($edge);
 
-    $job->assertReleased(120);
+    $job->assertReleased();
+    expect($job->job->releaseDelay)->toBeGreaterThanOrEqual(120)->toBeLessThanOrEqual(150);
     expect($edge->calls)->toBe([['hosts', ['a.test', 'b.test']], ['urls', ['https://a.test/', 'https://b.test/']]]);
 
     $last = (new PurgeEdgeHosts(['a.test']))->withFakeQueueInteractions();

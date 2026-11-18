@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Storefront\EdgeCache;
 
+use App\Modules\Shared\Support\Cast;
+
 /**
  * Gathers host names into PurgeEdgeHosts jobs of 30 (the most one Cloudflare purge call takes below
  * Enterprise), keeping only names inside the platform's zone, each once within a job. Call flush() after the last
@@ -42,7 +44,10 @@ final class EdgeHostBatches
             return;
         }
 
-        PurgeEdgeHosts::dispatch(array_map('strval', array_keys($this->pending)));
+        // Paced: a burst (every site after a deploy) must neither run into the zone's purge rate limit at
+        // once nor hold up the purges a site's own edits queue meanwhile.
+        PurgeEdgeHosts::dispatch(array_map('strval', array_keys($this->pending)))
+            ->delay($this->jobs * max(0, Cast::int(config('storefront.edge_cache.purge_pace_seconds'), 2)));
         $this->jobs++;
         $this->pending = [];
     }

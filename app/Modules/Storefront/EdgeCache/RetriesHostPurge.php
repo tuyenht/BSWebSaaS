@@ -37,7 +37,8 @@ trait RetriesHostPurge
 
         $attempt = $this->attempts();
         if ($attempt < $this->tries) {
-            $this->release(self::RETRY_STEP * $attempt);
+            // a little spread, so refused batches do not all come back in the same second
+            $this->release(self::RETRY_STEP * $attempt + random_int(0, intdiv(self::RETRY_STEP, 2)));
 
             return;
         }
