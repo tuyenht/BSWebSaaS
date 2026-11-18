@@ -348,10 +348,12 @@ ok '[ "$RC" != 0 ] && says "chưa nằm trên origin/main" && head_is "$OLD" && 
 echo "== full run on the fake prod"
 served() { # the build serving on the fake prod before the deploy: one CSS file its manifest names, one it does not
     mkdir -p "$PROD/public/build/assets" && echo "old" > "$PROD/public/build/assets/served-before.css" && echo "older" > "$PROD/public/build/assets/kept-from-older.css" \
-        && echo '{"resources/css/storefront.css":{"file":"assets/served-before.css"}}' > "$PROD/public/build/manifest.json"
+        && echo '{"resources/css/storefront.css":{"file":"assets/served-before.css"},"x":{"file":"../escape.css"}}' > "$PROD/public/build/manifest.json" \
+        && echo bad > "$PROD/public/escape.css"
 }
 fresh "$FULL"; served
 ARC=$RUNS/build-archive; mkdir -p "$ARC/assets" "$RUNS/older-run/prev-build/assets"; echo x > "$RUNS/older-run/prev-build/assets/x.css"
+mkdir -p "$RUNS/stale-run/prev-build/assets"; echo s > "$RUNS/stale-run/prev-build/assets/stale.css"; touch -d '3 days ago' "$RUNS/stale-run/prev-build"
 echo ancient > "$ARC/assets/ancient.css"; touch -d '3 days ago' "$ARC/assets/ancient.css"   # served last 3 days ago: past the 2-day window
 echo recent > "$ARC/assets/recent.css"; touch -d '1 day ago' "$ARC/assets/recent.css"      # served last yesterday: inside it
 launch
@@ -377,7 +379,10 @@ ok '[ -n "$E" ] && [ "$L" -lt "$E" ] && [ "$(calls "artisan storefront:purge-edg
 ok '! says "Bỏ qua xoá trang lưu ở Cloudflare"' "a long command list (the writer cut off by an early reader) does not make the purge look missing"
 ok '[ -s "$PROD/public/build/assets/served-before.css" ] && [ -s "$PROD/public/build/assets/storefront.css-${FULL:0:7}" ]' "the previous build's files stay beside the new build"
 ok '[ ! -e "$PROD/public/build/assets/kept-from-older.css" ]' "a file the serving manifest does not name is not carried into the next build"
-ok '[ -s "$ARC/assets/served-before.css" ] && cmp -s "$RUNS/${OLD:0:7}-${FULL:0:8}/served-manifest.json" <(echo '"'"'{"resources/css/storefront.css":{"file":"assets/served-before.css"}}'"'"')' "the serving build's files go to the shared archive, its manifest to the run's state"
+ok '[ -s "$ARC/assets/served-before.css" ] && cmp -s "$RUNS/${OLD:0:7}-${FULL:0:8}/served-manifest.json" <(echo '"'"'{"resources/css/storefront.css":{"file":"assets/served-before.css"},"x":{"file":"../escape.css"}}'"'"')' "the serving build's files go to the shared archive, its manifest to the run's state"
+ok '[ -s "$PROD/public/build/assets/x.css" ] && [ -s "$ARC/assets/x.css" ] && [ ! -e "$RUNS/older-run/prev-build" ]' "an older engine's recent kept copy joins the archive before its folder goes"
+ok '[ ! -e "$PROD/public/build/assets/stale.css" ] && [ ! -e "$RUNS/stale-run/prev-build" ]' "an older engine's kept copy past the window is dropped"
+ok '[ ! -e "$ARC/../escape.css" ] && [ ! -e "$ARC/escape.css" ] && ! find "$ARC" -name escape.css | grep -q .' "a manifest name leaving public/build is never archived"
 ok '[ -s "$PROD/public/build/assets/recent.css" ] && [ -s "$ARC/assets/recent.css" ]' "an archived file served within the window goes back beside the new build"
 ok '[ ! -e "$PROD/public/build/assets/ancient.css" ] && [ ! -e "$ARC/assets/ancient.css" ]' "an archived file older than the window is pruned and not restored"
 ok '[ ! -e "$RUNS/older-run/prev-build" ]' "a per-run prev-build folder of an older engine is removed"
@@ -446,7 +451,7 @@ ok '[ "$(calls "MIGRATED 2100_01_01_000000_add_col")" = 1 ]' "each migration ran
 echo "== stop in step 6, resume at 6"
 fresh "$FULL"; served; touch "$FAKE/fail-build-once"; launch
 ok '[ "$RC" = 1 ] && says "DỪNG (bước 6)" && says "Code trên đĩa đã đổi"' "build failure stops with the half-updated warning"
-ok 'says "pnpm run build lỗi: đã trả lại" && [ -s "$PROD/public/build/assets/served-before.css" ] && cmp -s "$PROD/public/build/manifest.json" <(echo '"'"'{"resources/css/storefront.css":{"file":"assets/served-before.css"}}'"'"')' "a failed build (folder already emptied) puts back the serving files and manifest"
+ok 'says "pnpm run build lỗi: đã trả lại" && [ -s "$PROD/public/build/assets/served-before.css" ] && cmp -s "$PROD/public/build/manifest.json" <(echo '"'"'{"resources/css/storefront.css":{"file":"assets/served-before.css"},"x":{"file":"../escape.css"}}'"'"')' "a failed build (folder already emptied) puts back the serving files and manifest"
 launch 6
 ok '[ "$RC" = 0 ] && head_is "$FULL" && [ "$(calls "MIGRATED")" = 2 ]' "resume at 6 finishes without re-running migrations"
 

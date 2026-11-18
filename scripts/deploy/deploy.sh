@@ -559,7 +559,13 @@ build() { # the build empties public/build. A page drawn by an earlier build (ke
     # shared by every deploy (forward, resume and rollback alike), each stamped with the last time it served.
     local mins=$(( ASSET_KEEP_DAYS * 1440 ))
     pushd "$PROD" >/dev/null
-    find "$DEPLOY_RUNS" -mindepth 2 -maxdepth 2 -type d \( -name prev-build -o -name prev-build.tmp \) -exec rm -rf {} +   # the per-run copies of older engines
+    # the per-run copies an older engine kept: one taken within the window may still back a page at the edge or in a
+    # tab, so its files join the archive (stamped now) before the folders go
+    mkdir -p "$ARCHIVE"
+    find "$DEPLOY_RUNS" -mindepth 2 -maxdepth 2 -type d -name prev-build -mmin "-$mins" -print0 | while IFS= read -r -d '' f; do
+        cp -r --update=none "$f"/. "$ARCHIVE"/   # no -p: a copied file is stamped now
+    done
+    find "$DEPLOY_RUNS" -mindepth 2 -maxdepth 2 -type d \( -name prev-build -o -name prev-build.tmp \) -exec rm -rf {} +
     archive_served
     pnpm install --frozen-lockfile
     if ! pnpm run build; then
