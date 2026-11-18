@@ -23,6 +23,9 @@
 # ---------------------------------------------------------------- profile: one place ties prod path ⇔ prefix
 PROD_PATH=/opt/bswebsaas/prod
 PROD_PREFIX=bsweb_prod_
+# a public page may stay at the Cloudflare edge until its site's next midnight (up to a day): every build that
+# served within this many days keeps its CSS/JS beside the new build (README "Kept build files"); a test profile may set it
+ASSET_KEEP_DAYS=2
 load_profile() {
     if [ -z "${DEPLOY_PROFILE:-}" ]; then
         PROD=$PROD_PATH PREFIX=$PROD_PREFIX COMPOSE_PROJECT=bsweb-prod
@@ -550,26 +553,51 @@ composer_install() { # always: also refreshes the optimized class map (a moved c
     if has_class composer-lock; then echo "Laravel: trước $(cat "$STATE/laravel-version"), bây giờ $(art --version)"
     else expect "phiên bản Laravel sau composer" "$(art --version)" "$(cat "$STATE/laravel-version")"; fi
 }
-build() { # the build empties public/build: the previous build's files go back in beside the new ones (never over
-    # them), so a page drawn before the reload (an edge copy, an open tab loading a lazy part) still finds its CSS
-    # and JS. Only the files the serving build's manifest names are kept (older kept files are not carried
-    # again, so the folder never grows past two builds); the copy is taken once, so a resume or a rollback
-    # build restores that same set.
-    local keep=$STATE/prev-build f
+build() { # the build empties public/build. A page drawn by an earlier build (kept at the edge until its site's
+    # next midnight, or open in a tab loading a lazy part) must still find its CSS and JS, so every build that
+    # served within ASSET_KEEP_DAYS goes back in beside the new one (never over it). The files live in one archive
+    # shared by every deploy (forward, resume and rollback alike), each stamped with the last time it served.
+    local mins=$(( ASSET_KEEP_DAYS * 1440 ))
     pushd "$PROD" >/dev/null
-    if [ ! -e "$keep" ]; then
-        mkdir -p "$keep.tmp"
-        if [ -s public/build/manifest.json ]; then
-            jq -r '[.[] | .file, (.css // [])[], (.assets // [])[]] | unique[]' public/build/manifest.json | while read -r f; do
-                if [ -f "public/build/$f" ]; then mkdir -p "$keep.tmp/$(dirname "$f")"; cp -a "public/build/$f" "$keep.tmp/$f"; fi
-            done
-        fi
-        mv "$keep.tmp" "$keep"
-    fi
+    # the per-run copies an older engine kept: one taken within the window may still back a page at the edge or in a
+    # tab, so its files join the archive (stamped now) before the folders go
+    mkdir -p "$ARCHIVE"
+    find "$DEPLOY_RUNS" -mindepth 2 -maxdepth 2 -type d -name prev-build -mmin "-$mins" -print0 | while IFS= read -r -d '' f; do
+        cp -r --update=none "$f"/. "$ARCHIVE"/   # no -p: a copied file is stamped now
+    done
+    find "$DEPLOY_RUNS" -mindepth 2 -maxdepth 2 -type d \( -name prev-build -o -name prev-build.tmp \) -exec rm -rf {} +
+    archive_served
     pnpm install --frozen-lockfile
-    pnpm run build
-    cp -a -n "$keep"/. public/build/
+    if ! pnpm run build; then
+        # Vite has emptied public/build: put the serving files and their manifest back, so the old code keeps serving with its assets
+        restore_archived "$mins"
+        if [ -s "$STATE/served-manifest.json" ]; then cp "$STATE/served-manifest.json" public/build/manifest.json; fi
+        die "pnpm run build lỗi: đã trả lại tệp CSS/JS và manifest của bản đang phục vụ (code cũ vẫn đủ giao diện)"
+    fi
+    restore_archived "$mins"
+    find "$ARCHIVE" -type f ! -mmin "-$mins" -delete
+    find "$ARCHIVE" -mindepth 1 -type d -empty -delete
+    echo "OK   giữ tệp CSS/JS của các bản build đã phục vụ trong $ASSET_KEEP_DAYS ngày: $(find "$ARCHIVE" -type f | wc -l) tệp"
     popd >/dev/null
+}
+archive_served() { # the files the serving manifest names, into the archive, stamped "served now"; the manifest into $STATE
+    local f m=public/build/manifest.json
+    mkdir -p "$ARCHIVE"
+    if [ ! -s "$m" ]; then echo "LƯU Ý chưa có public/build/manifest.json: không có tệp nào đang phục vụ để giữ"; return 0; fi
+    cp "$m" "$STATE/served-manifest.json"
+    jq -r '[.[] | .file, (.css // [])[], (.assets // [])[]] | unique[]' "$m" | while IFS= read -r f; do
+        case "/$f/" in */../*|//*) continue ;; esac   # a path that would leave public/build or the archive
+        [ -f "public/build/$f" ] || continue
+        mkdir -p "$ARCHIVE/$(dirname "$f")"
+        cp "public/build/$f" "$ARCHIVE/$f"; touch "$ARCHIVE/$f"
+    done
+}
+restore_archived() { # restore_archived <minutes>: every archived file stamped within that many minutes, never over a file there
+    local f
+    find "$ARCHIVE" -type f -mmin "-$1" -printf '%P\n' | while IFS= read -r f; do
+        mkdir -p "public/build/$(dirname "$f")"
+        cp -p --update=none "$ARCHIVE/$f" "public/build/$f"
+    done
 }
 s6() {
     local m x f
@@ -603,7 +631,8 @@ reload() { # reload [pre]: "pre" (step 7 only, never the rollback) runs ONEOFFS_
 edge_purge() { # drop every site's pages kept at the Cloudflare edge: they were drawn by the code just replaced. The
     # purge is queued (Horizon runs it, retrying a refusal); a fault here never stops the deploy, the pages then
     # age out within the edge lifetime. Code without the command (a rollback to an older commit) skips it.
-    if art list --raw 2>/dev/null | grep -q '^storefront:purge-edge '; then
+    # grep -c reads the whole list: grep -q stops at the match, and the cut-off writer would fail the pipe (pipefail)
+    if art list --raw 2>/dev/null | grep -c '^storefront:purge-edge ' >/dev/null; then
         art storefront:purge-edge --all || echo "CẢNH BÁO: chưa xếp được việc xoá trang lưu ở Cloudflare; trang cũ hết hạn theo thời gian lưu"
     else
         echo "Bỏ qua xoá trang lưu ở Cloudflare: bản code này chưa có storefront:purge-edge"
@@ -745,7 +774,7 @@ mode_plan() { # git only, on the dev repo; prod is never touched (docker/gh/ssh/
         note "3 kiểm chỉ đọc: chờ = ${#MIGRATIONS[@]} tệp mới, idle in transaction, chụp cấu trúc bảng"
         note "4 migrate từng tệp (code cũ vẫn phục vụ; tệp không khởi động lại PgBouncer không được đổi cột), rồi so cấu trúc bảng (bớt/đổi = đúng SCHEMA_REMOVED_OK), mọi trang của bước 0 như trước trên code cũ"
     else note "3–4 không có migration (chỉ kiểm không còn chờ)"; fi
-    note "5 đổi code + composer install · 6 pnpm install + build ($(wc -w <<< "$VITE") input)"
+    note "5 đổi code + composer install · 6 pnpm install + build ($(wc -w <<< "$VITE") input), rồi đặt lại cạnh bản mới tệp CSS/JS của mọi bản build đã phục vụ trong $ASSET_KEEP_DAYS ngày (trang lưu ở Cloudflare hay tab đang mở vẫn đủ giao diện); build lỗi thì trả lại tệp và manifest đang phục vụ rồi dừng"
     note "7 view:clear, optimize,${ONEOFFS_PRE[*]:+ một lần trước khi nạp lại (code mới, worker cũ còn phục vụ): ${ONEOFFS_PRE[*]},} octane:reload, khởi động lại horizon + scheduler$(restart_needed_plan && echo ', PgBouncer'), xếp việc xoá trang lưu ở Cloudflare$(case " $CLASSES " in *" permission "*) echo ', rbac:sync rồi octane:reload lần nữa' ;; esac)$(case " $CLASSES " in *" sanitizer "*) echo ", resanitize ${RESANITIZE}" ;; esac)${ONEOFFS[*]:+, một lần: ${ONEOFFS[*]}}"
     note "8 kiểm sau: trang như trước, CSS mới, lịch chạy (+${SCHEDULE_ADDED[*]:-} −${SCHEDULE_REMOVED[*]:-}), mật khẩu superuser, cached plan"
     echo "Dòng anh chạy (giữ nguyên; muốn chạy tiếp từ một bước thì thêm số bước trước dấu ;):"
@@ -774,6 +803,7 @@ mode_run() {
     NAME=${OLD:0:7}-${TARGET:0:8}
     STATE=$DEPLOY_RUNS/$NAME
     MIGDIR=$STATE/migrations
+    ARCHIVE=$DEPLOY_RUNS/build-archive   # shared by every deploy: the asset files of the builds that served lately
     TS=$(date +%Y%m%d-%H%M%S)
     LOG=$DEPLOY_RUNS/$NAME-run-$TS.log
     ( umask 077 && mkdir -p "$STATE" && chmod 700 "$DEPLOY_RUNS" "$STATE" && : > "$LOG" )

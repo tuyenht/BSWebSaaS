@@ -26,7 +26,7 @@ before the dump.
 
 | Kind | Classes | What the engine does |
 |---|---|---|
-| auto | code, view, text, assets, config, routes, queue, composer, env-doc, public, tooling | always: `composer install`, `pnpm install --frozen-lockfile` + build (the files the serving build's manifest names are put back beside the new build, so a page drawn before the reload still finds them), `view:clear`, `optimize`, `octane:reload`, restart horizon + scheduler, then `storefront:purge-edge --all` queues the purge of every site's pages at the Cloudflare edge (skipped when the code has no such command; a failure only warns) |
+| auto | code, view, text, assets, config, routes, queue, composer, env-doc, public, tooling | always: `composer install`, `pnpm install --frozen-lockfile` + build (every build that served within `ASSET_KEEP_DAYS`, default 2, keeps its CSS/JS beside the new build, so a page drawn before the reload still finds them; see Kept build files), `view:clear`, `optimize`, `octane:reload`, restart horizon + scheduler, then `storefront:purge-edge --all` queues the purge of every site's pages at the Cloudflare edge (skipped when the code has no such command; a failure only warns) |
 | declare (must be listed in `DECLARED`) | migration | stage each file from TARGET (blob checked) and run it alone while the old code serves; PgBouncer `restart -t 2` after every attempt of a flagged file; retry a lock timeout 3 times; schema delta before/after (new indexes valid, new FKs validated); every page of step 0 (`PAGES` plus `release_pages`) answers as before on the old code; removed or changed snapshot lines must equal `SCHEMA_REMOVED_OK` exactly (lines as the snapshot prints them: `col\|table\|column\|type\|null`, `idx\|table\|index\|valid`, `con\|table\|name\|type\|validated`; a column type keeps its spaces, e.g. `timestamp(0) with time zone`) |
 | | schedule | `schedule:list` before and after: the added and removed jobs must equal `SCHEDULE_ADDED` / `SCHEDULE_REMOVED` |
 | | sanitizer | `cms:resanitize-bodies --dry-run`; it writes only with `RESANITIZE=apply`, then runs `media:reconcile-content-usage` |
@@ -72,6 +72,20 @@ the deploy must not pass here), `release_before` (step 0),
 `"<vite input> <string>"` pairs: the plan checks the string is in `resources/` at TARGET and not at OLD,
 step 6 checks it is in that input's built file.
 
+## Kept build files
+
+A public page may stay at the Cloudflare edge until its site's next midnight, and a browser may keep a page it
+already opened, so CSS and JS named by an earlier build must still answer after a deploy. `build()` (step 6, and
+the rollback) keeps one archive shared by every deploy, `deploy-runs/build-archive/`, outside `public/build`:
+
+- before every build (forward, resume, rollback): every file the serving `manifest.json` names is copied into the
+  archive and stamped "served now" (its mtime); that manifest is saved to the run's state as `served-manifest.json`;
+- after a successful build: every archived file stamped within `ASSET_KEEP_DAYS` (default 2 = a day at the edge
+  plus margin) goes back into `public/build`, never over a file there (`cp --update=none`); older files are deleted;
+- a failed `pnpm run build` (Vite has already emptied `public/build`): the archive's recent files and the saved
+  manifest go back, so the old code keeps serving with its assets, then the run stops in step 6;
+- `prev-build` folders left in run folders by older engines are removed.
+
 ## Tests
 
 `bash scripts/deploy/tests/run.sh [empty dir]` builds a fake prod: a synthetic git history and its clone,
@@ -82,7 +96,10 @@ CI, dump and lock guards, the profile guards, the migration flag shapes, the exa
 `PGB_SKIP`, a page that breaks on the old code in step 4, a removal line whose column type holds spaces, the
 build markers, an engine commit off `origin/main`, an owner line whose launcher cannot be read, the release
 guard on a first run and on a resume from step 2, the pre-reload one-off (its place between `optimize` and
-`octane:reload`, its own mark on a resume at 7, none in rollback), and the worked release file's own checks
+`octane:reload`, its own mark on a resume at 7, none in rollback), the kept build files (a rollback keeps
+TARGET's files, three builds keep all three, a file past the window is pruned and not restored, a failed build
+puts the serving files and manifest back, an old `prev-build` folder is removed), the edge purge (once, after
+the reload, read from a long command list; skipped by code without the command), and the worked release file's own checks
 (trash deadline as the release guard, `ProductTrash::SINCE`, brand fill count, contact page, rollback layouts). A test profile may never use the prod prefix, the prod
 folder or the real `docker`.
 
