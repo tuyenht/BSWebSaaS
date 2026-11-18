@@ -41,9 +41,9 @@
          "subheading": "Chuyên gia công khuôn dập, khuôn ép nhựa, khuôn đúc áp lực với độ bền và tuổi thọ vượt trội."
         }
        ],
-       "cta_label": "Yêu Cầu Báo Giá",
+       "cta_label": "Yêu cầu báo giá",
        "cta_url": "/lien-he",
-       "cta2_label": "Xem Sản Phẩm",
+       "cta2_label": "Xem sản phẩm",
        "cta2_url": "/san-pham",
        "autoplay": 5,
        "overlay": 60
@@ -52,7 +52,7 @@
      {
       "type": "about",
       "props": {
-       "heading": "Chế Tác Tinh Hoa - Nâng Tầm Chính Xác",
+       "heading": "Chế tác tinh hoa – nâng tầm chính xác",
        "paragraphs": [
         "An Vinh tự hào mang đến các giải pháp toàn diện về thiết kế và gia công đồ gá, jig, khuôn mẫu và các chi tiết máy công nghệ cao.",
         "Với đội ngũ kỹ sư dày dạn kinh nghiệm, hệ thống máy móc CNC hiện đại và quy trình quản lý chất lượng nghiêm ngặt theo tiêu chuẩn ISO 9001:2015, chúng tôi cam kết mỗi sản phẩm xuất xưởng đều đạt đúng dung sai trên bản vẽ, đáp ứng các yêu cầu kỹ thuật khắt khe của khách hàng trong và ngoài nước."
@@ -63,12 +63,12 @@
        "links": [
         {
          "icon": "info",
-         "label": "Về Chúng Tôi",
+         "label": "Về chúng tôi",
          "url": "/gioi-thieu"
         },
         {
          "icon": "document",
-         "label": "Hồ Sơ Năng Lực",
+         "label": "Hồ sơ năng lực",
          "url": "/ho-so-nang-luc"
         },
         {
@@ -78,7 +78,7 @@
         },
         {
          "icon": "building",
-         "label": "Quy Trình Làm Việc",
+         "label": "Quy trình làm việc",
          "url": "/nang-luc"
         }
        ],
@@ -137,23 +137,23 @@
      {
       "type": "features",
       "props": {
-       "heading": "Năng Lực Triển Khai Vượt Trội",
+       "heading": "Năng lực triển khai vượt trội",
        "description": "Mỗi dự án thành công là kết tinh của một quy trình làm việc chuyên nghiệp, từ khâu thiết kế đến kiểm soát chất lượng, đảm bảo mang lại giá trị tối ưu cho khách hàng.",
        "variant": "top-rule",
        "bg": "tint",
        "items": [
         {
-         "title": "Tư Vấn & Thiết Kế 3D Tối Ưu",
+         "title": "Tư vấn & thiết kế 3D tối ưu",
          "icon": "box",
          "text": "Từ ý tưởng đến bản vẽ 3D chi tiết, chúng tôi mô phỏng và tối ưu hóa mọi khía cạnh để đảm bảo giải pháp hiệu quả và tiết kiệm chi phí."
         },
         {
-         "title": "Sản Xuất Chính Xác Trên Hệ Thống CNC",
+         "title": "Sản xuất chính xác trên hệ thống CNC",
          "icon": "wrench",
          "text": "Với dàn máy phay, tiện, cắt dây CNC, chúng tôi cam kết mọi chi tiết đều đạt dung sai kỹ thuật theo bản vẽ."
         },
         {
-         "title": "Lắp Ráp & Kiểm Định Chất Lượng QA/QC",
+         "title": "Lắp ráp & kiểm định chất lượng QA/QC",
          "icon": "shield",
          "text": "Quy trình lắp ráp chuyên nghiệp và kiểm định chất lượng nghiêm ngặt trước khi bàn giao."
         }
@@ -163,7 +163,7 @@
      {
       "type": "entry_grid",
       "props": {
-       "heading": "Dự Án Nổi Bật",
+       "heading": "Dự án nổi bật",
        "description": "Những dự án thực tế là minh chứng rõ nét cho năng lực và cam kết của An Vinh về chất lượng.",
        "taxonomy_slug": "du-an",
        "limit": 8,
@@ -1086,7 +1086,7 @@
       "type": "form",
       "props": {
        "form_key": "contact",
-       "heading": "Gửi Yêu Cầu Tư Vấn",
+       "heading": "Gửi yêu cầu tư vấn",
        "description": "Điền vào biểu mẫu bên dưới và chúng tôi sẽ liên hệ lại với bạn trong thời gian sớm nhất.",
        "map_embed": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d12503.468002335805!2d105.85833024594946!3d21.29902948043917!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31351dc82e015dad%3A0xc3a6d44da6b27bb9!2zQ8O0bmcgdHkgY8ahIGtow60gQW4gVmluaA!5e0!3m2!1svi!2s!4v1762317872785!5m2!1svi!2s",
        "map_source": "branches"

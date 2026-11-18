@@ -425,7 +425,7 @@ final readonly class SeedAnVinhContent
                 'image_url' => $heroId,
             ]],
             ['type' => 'about', 'props' => [
-                'heading' => 'Chế Tác Tinh Hoa - Nâng Tầm Chính Xác',
+                'heading' => 'Chế tác tinh hoa – nâng tầm chính xác',
                 'paragraphs' => [
                     'Là đơn vị hàng đầu trong lĩnh vực cơ khí chính xác tại Việt Nam, An Vinh tự hào mang đến các giải pháp toàn diện về thiết kế và gia công đồ gá, jig, khuôn mẫu và các chi tiết máy công nghệ cao.',
                     'Với đội ngũ kỹ sư dày dạn kinh nghiệm, hệ thống máy móc CNC hiện đại nhập khẩu từ Nhật Bản và quy trình quản lý chất lượng nghiêm ngặt theo tiêu chuẩn ISO 9001:2015, chúng tôi cam kết mỗi sản phẩm xuất xưởng đều đạt độ chính xác tuyệt đối, đáp ứng những yêu cầu kỹ thuật khắt khe nhất của khách hàng trong và ngoài nước.',
@@ -511,7 +511,7 @@ final readonly class SeedAnVinhContent
 
         $blocks = [
             ['type' => 'about', 'props' => [
-                'heading' => 'Về An Vinh - Chế Tác Tinh Hoa, Kiến Tạo Tương Lai',
+                'heading' => 'Về An Vinh – chế tác tinh hoa, kiến tạo tương lai',
                 'paragraphs' => [
                     'Là đơn vị hàng đầu trong lĩnh vực cơ khí chính xác tại Việt Nam, An Vinh tự hào mang đến các giải pháp toàn diện về thiết kế và gia công đồ gá, jig, khuôn mẫu và các chi tiết máy công nghệ cao.',
                     'Với đội ngũ kỹ sư dày dạn kinh nghiệm, hệ thống máy móc CNC hiện đại nhập khẩu từ Nhật Bản và quy trình quản lý chất lượng nghiêm ngặt theo tiêu chuẩn ISO 9001:2015, chúng tôi cam kết mỗi sản phẩm xuất xưởng đều đạt độ chính xác tuyệt đối, đáp ứng những yêu cầu kỹ thuật khắt khe nhất của khách hàng trong và ngoài nước.',
@@ -576,7 +576,7 @@ final readonly class SeedAnVinhContent
                 ],
             ]],
             ['type' => 'richtext', 'props' => [
-                'heading' => 'Khách Hàng Nói Về Chúng Tôi',
+                'heading' => 'Khách hàng nói về chúng tôi',
                 'paragraphs' => [
                     '"An Vinh đã chứng tỏ là một đối tác đáng tin cậy. Các sản phẩm đồ gá của họ có độ chính xác cao, giúp dây chuyền sản xuất của chúng tôi hoạt động ổn định và hiệu quả hơn." — Trưởng phòng Kỹ thuật, VinFast',
                     '"Chúng tôi đánh giá cao sự chuyên nghiệp và khả năng đáp ứng nhanh chóng các yêu cầu kỹ thuật phức tạp từ An Vinh. Chất lượng khuôn mẫu vượt ngoài mong đợi." — Giám đốc Sản xuất, Hutchinson',
