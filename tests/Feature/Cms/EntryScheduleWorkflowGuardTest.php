@@ -52,7 +52,7 @@ it('refuses to schedule a post an active workflow governs', function (): void {
     $editor = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
-        grantRole($editor, 'editor', ['entries.publish']);
+        grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
         $entry = schedulableNewsPost();
         app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: true);
 
@@ -67,7 +67,7 @@ it('still schedules a post whose section workflow exists but is switched off', f
     $editor = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
-        grantRole($editor, 'editor', ['entries.publish']);
+        grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
         $entry = schedulableNewsPost();
         app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: false);
 
@@ -153,7 +153,7 @@ it('leaves a pre-workflow scheduled post alone once its section is governed, whi
     $editor = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
-        grantRole($editor, 'editor', ['entries.publish']);
+        grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
 
         // Scheduled while tier-1 was in force…
         $post = schedulableNewsPost();

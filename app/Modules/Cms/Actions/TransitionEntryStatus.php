@@ -18,9 +18,10 @@ use InvalidArgumentException;
  * draft (take offline), scheduled (auto-publish at published_at), private (finished but
  * deliberately non-public), archived (retired). Going straight to `published` is NOT here —
  * that must run through PublishEntry so the canonical route + 301 stay in sync — and `pending`
- * is only ever the output of a submit. Every transition needs the `publish` ability: changing
- * a page's lifecycle (above all taking a live page offline) is a publisher control, the same
- * guard PublishEntry applies so a submit-only author cannot unpublish live content.
+ * is only ever the output of a submit. Every transition needs the `publish` ability (which
+ * includes the right to edit this entry): changing a page's lifecycle (above all taking a live
+ * page offline) is a publisher control, the same guard PublishEntry applies so a submit-only
+ * author cannot unpublish live content.
  *
  * `scheduled` is the one target that later ENDS in `published` (via entries:publish-due), so
  * where an approval workflow governs the entry it is refused like a direct publish would be —

@@ -151,7 +151,7 @@ final readonly class SaveEntryDraft
         // Without a workflow there is no "send for review" step: the publishers learn of a change
         // when it first appears, and the one who applies it tells its author.
         if ($tellPublishers) {
-            $this->notifier->awaitingReview($entry, $locale, $actor, 'entries.publish', $change);
+            $this->notifier->awaitingPublisher($entry, $locale, $actor, $change);
         }
 
         return $change;

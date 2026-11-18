@@ -96,7 +96,7 @@ it('leaves tier-1 publishing untouched when no workflow is active', function ():
     $editor = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
-        grantRole($editor, 'editor', ['entries.publish', 'entries.submit']);
+        grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish', 'entries.submit']);
         $entry = newsPost();
 
         // The whole point of default-OFF: existing sites keep publishing exactly as before.
@@ -205,7 +205,7 @@ it('keeps a live post that predates the workflow at the published stage — join
 
     app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
         grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
-        grantRole($editor, 'editor', ['entries.publish', 'entries.review']);
+        grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish', 'entries.review']);
         $entry = newsPost($author);
         app(PublishEntry::class)->handle($entry, 'vi', $editor->fresh());   // live under tier-1
         activeNewsWorkflow();                                               // switched on afterwards

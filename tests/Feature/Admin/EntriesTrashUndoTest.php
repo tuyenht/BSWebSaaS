@@ -222,13 +222,13 @@ it('counts on each bulk button the rows it would act on, with the reasons for th
             'trash' => ['label' => 'Chuyển vào Thùng rác (5)', 'ok' => 5],
         ])->and($list->viewData('bulkSkip'))->toBe('“Đăng” bỏ qua 2 trang: 2 trang đã đăng.');
 
-        // an own-only publisher: publishing reaches every row (the policy's publish is not own-only), the
-        // Trash only their own: a colleague's rows are left out as «của người khác»
+        // an own-only publisher: publishing needs the right to edit the row, so like the Trash it reaches
+        // only their own rows; a colleague's rows are left out as «của người khác»
         $list = Livewire::actingAs($own)->test(Index::class)->set('selected', $all);
         expect(tuBulk($list))->toBe([
-            'publish' => ['label' => 'Đăng (3)', 'ok' => 3],
-            'unpublish' => ['label' => 'Gỡ khỏi website (2)', 'ok' => 2],
-            'draft' => ['label' => 'Đưa về nháp (3)', 'ok' => 3],
+            'publish' => ['label' => 'Đăng (1)', 'ok' => 1],
+            'unpublish' => ['label' => 'Gỡ khỏi website (1)', 'ok' => 1],
+            'draft' => ['label' => 'Đưa về nháp (1)', 'ok' => 1],
             'duplicate' => ['label' => 'Nhân bản (5)', 'ok' => 5],
             'trash' => ['label' => 'Chuyển vào Thùng rác (2)', 'ok' => 2],
         ])->and(collect($list->viewData('bulk'))->firstWhere('key', 'trash')['title'])
@@ -251,7 +251,7 @@ it('counts on each bulk button the rows it would act on, with the reasons for th
         $trash = collect($list->viewData('bulk'))->firstWhere('key', 'trash');
         expect($trash['ok'])->toBe(0)
             ->and($trash['none'])->toBe('Không có trang nào làm được việc “Chuyển vào Thùng rác”: 1 trang của người khác.')
-            ->and($list->viewData('bulkSkip'))->toBe('“Đăng” bỏ qua 1 trang: 1 trang đã đăng.');
+            ->and($list->viewData('bulkSkip'))->toBe('“Đăng” bỏ qua 1 trang: 1 trang của người khác.');
     });
 });
 
