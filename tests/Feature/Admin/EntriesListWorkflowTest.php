@@ -293,7 +293,7 @@ it('asks first before a bulk move takes live posts off the website, and not for 
         $ask = e((string) Js::from(__('entries.wf_off_bulk_title', ['count' => 1, 'noun' => __('entries.noun_post')])));
         $list = Livewire::actingAs($m['approver'])->test(Index::class, ['section' => 'posts'])
             ->set('selected', [$live->ulid, $pending->ulid]);
-        $list->assertSeeHtml('data-bulk="tr-archive"')->assertSeeHtml($ask)
+        $list->assertSeeHtml('data-bulk="tr-archive"')->assertSeeHtml($ask)->assertSeeHtml('$wire.bulkTransition(&#039;archive&#039;))')
             ->assertSeeHtml(e((string) Js::from(__('entries.wf_off_ok'))));
 
         // the approve on the pending row alone takes nothing offline: the bar asks nothing (the live row's own pill still asks)

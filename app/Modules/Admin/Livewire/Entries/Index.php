@@ -553,29 +553,36 @@ final class Index extends Component
         }
         $user = $this->actingUser();
         $locale = app(SiteLocale::class)->default();
-        // «Gỡ khỏi website» is for a live row this member may publish, never the Home page: the
-        // bulk bar's rule, judged here too (the menu only hides it)
-        if ($status === EntryStatus::Archived->value) {
-            $why = $this->whyNotUnpublish($entry, $user, $this->homeIds([$entry->ulid]));
-            if ($why === 'entries.skip_home') {
-                $this->toast(__('entries.skip_home_note'));
-
-                return;
-            }
-            if ($why === 'entries.skip_not_live') {
-                $this->toastStaleRow();   // no longer live (moved meanwhile): the menu offered it on a live row only
-
-                return;
-            }
-            if ($why !== null) {
-                $this->refuse($this->refusalFor($entry, 'status'));
-
-                return;
-            }
-        }
-
         try {
-            if ($status === EntryStatus::Pending->value) {
+            if ($status === EntryStatus::Archived->value) {
+                // «Gỡ khỏi website» is for a live row this member may publish, never the Home page: the
+                // bulk bar's rule, judged on the locked row (the menu only hides it, and a colleague
+                // may have moved the row meanwhile)
+                $why = DB::transaction(function () use ($entry, $user): ?string {
+                    $locked = Entry::query()->whereKey($entry->id)->lockForUpdate()->first()
+                        ?? throw (new ModelNotFoundException)->setModel(Entry::class, [$entry->id]);
+                    $entry->setRawAttributes($locked->getAttributes(), true);
+                    $why = $this->whyNotUnpublish($entry, $user, $this->homeIds([$entry->ulid]));
+                    if ($why === null) {
+                        app(TransitionEntryStatus::class)->handle($entry, EntryStatus::Archived, $user);
+                    }
+
+                    return $why;
+                });
+                if ($why === 'entries.skip_home') {
+                    $this->toast(__('entries.skip_home_note'));
+
+                    return;
+                }
+                if ($why === 'entries.skip_not_live') {
+                    $this->toastStaleRow();   // no longer live (moved meanwhile): the menu offered it on a live row only
+
+                    return;
+                }
+                if ($why !== null) {
+                    throw new AuthorizationException;
+                }
+            } elseif ($status === EntryStatus::Pending->value) {
                 // Only a sender sends: a publisher's PublishEntry would publish instead.
                 if ($user->can('publish', $entry) || ! $user->can('submit', $entry)) {
                     throw new AuthorizationException;
@@ -588,9 +595,9 @@ final class Index extends Component
             }
             if ($status === EntryStatus::Published->value) {
                 app(PublishEntry::class)->handle($entry, $locale, $user);
-            } elseif (in_array($status, [EntryStatus::Draft->value, EntryStatus::Private->value, EntryStatus::Archived->value], true)) {
+            } elseif (in_array($status, [EntryStatus::Draft->value, EntryStatus::Private->value], true)) {
                 app(TransitionEntryStatus::class)->handle($entry, EntryStatus::from($status), $user);
-            } else {
+            } elseif ($status !== EntryStatus::Archived->value) {
                 return; // scheduled has its own datetime path; unknown values are ignored
             }
         } catch (WorkflowGovernedException) {
