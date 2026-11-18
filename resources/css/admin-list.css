@@ -882,9 +882,9 @@
                 flex-basis: 100%;
             }
 
-            /* «Chọn tất cả» (first in the source) pushes what follows (Sắp xếp) to the line's end */
-            .list-tools-row > :first-child:not(.list-filters) {
-                margin-inline-end: auto;
+            /* Sắp xếp (next after the filters in the source) goes to the line's end, with or without «Chọn tất cả» */
+            .list-tools-row > .list-filters + * {
+                margin-inline-start: auto;
             }
         }
     }

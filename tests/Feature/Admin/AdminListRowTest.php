@@ -653,7 +653,7 @@ it('wraps the tools row from a 1024 screen while the list is below 900, filters 
     expect($band)->toContain('@container lt (width < 56.25rem)')
         ->toMatch('/\.list-tools-row\s*\{\s*flex-wrap: wrap;\s*row-gap: 0\.75rem;/')
         ->toMatch('/\.list-tools-row > \.list-filters\s*\{\s*order: -1;\s*flex-basis: 100%;/')
-        ->toMatch('/\.list-tools-row > :first-child:not\(\.list-filters\)\s*\{\s*margin-inline-end: auto;/');
+        ->toMatch('/\.list-tools-row > \.list-filters \+ \*\s*\{\s*margin-inline-start: auto;/');
 
     // the hosts let their filter group shrink and wrap there
     foreach (['entries', 'catalog'] as $list) {
