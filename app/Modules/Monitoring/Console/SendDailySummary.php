@@ -8,6 +8,7 @@ use App\Modules\Monitoring\Support\DayWindow;
 use App\Modules\Monitoring\Support\ErrorCounter;
 use App\Modules\Monitoring\Support\ErrorEvent;
 use App\Modules\Monitoring\Support\NoticeMailer;
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -118,7 +119,7 @@ final class SendDailySummary extends Command
 
         $percent = (int) floor(($total - $free) * 100 / $total);
 
-        return $percent >= (int) config('monitoring.disk.warn_percent', 85)
+        return $percent >= Cast::int(config('monitoring.disk.warn_percent'), 85)
             ? ['percent' => $percent, 'free_gb' => (int) floor($free / 1_073_741_824)]
             : null;
     }
