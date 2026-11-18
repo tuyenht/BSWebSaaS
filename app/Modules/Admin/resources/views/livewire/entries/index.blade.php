@@ -545,7 +545,7 @@
                             <div class="list-stw" data-guide="row-status">
                                 @if ($governed && ! $trashed && array_key_exists($entry->ulid, $rowMoves))
                                     {{-- a section with an approval workflow: the engine's moves this member may make from the row's stage
-                                         (a move that asks for a reason opens the reason dialog; the first approval asks first) --}}
+                                         (a move that asks for a reason opens the reason dialog; the first approval asks first, and so does a move that takes a live post off the website) --}}
                                     @if ($rowMoves[$entry->ulid] !== [])
                                         <div x-data="{ open: false }" @click.outside="open = false" @keydown.escape="if (open) { open = false; $refs.pill.focus() }" class="relative inline-block">
                                             <x-bs-admin::status-pill button x-ref="pill" :status="$status" x-on:click="open = ! open" x-bind:aria-expanded="open.toString()" aria-haspopup="true" title="{{ __('entries.status_menu_label') }}">{{ __('entries.status_'.$status) }}<span class="sr-only"> · {{ __('entries.status_menu_label') }}</span></x-bs-admin::status-pill>
@@ -557,9 +557,15 @@
                                                         $moveCall = match (true) {
                                                             $move['note'] => '$dispatch(\'entries-wf-note\', '.$Js::from(['ulid' => $entry->ulid, 'key' => $move['key'], 'title' => __('entries.wf_note_title', ['label' => $move['label']])]).')',
                                                             $move['first'] => '$bsConfirm({ icon: \'question\', danger: false, title: '.$Js::from(__('entries.wf_ap_title', ['title' => $title])).', text: '.$Js::from(__('entries.wf_ap_text')).', confirm: '.$Js::from(__('entries.wf_ap_ok')).', cancel: '.$Js::from(__('entries.wf_ap_cancel')).' }).then(ok => ok && '.$run.')',
+                                                            $move['off'] => '$bsConfirm({ icon: \'warning\', title: '.$Js::from(__('entries.wf_off_title', ['title' => $title])).', text: '.$Js::from(__('entries.wf_off_text')).', confirm: '.$Js::from(__('entries.wf_off_ok')).', cancel: '.$Js::from(__('entries.wf_off_cancel')).' }).then(ok => ok && '.$run.')',
                                                             default => $run,
                                                         };
-                                                        $moveFlag = $move['first'] ? ' data-first' : ($move['note'] ? ' data-note' : '');
+                                                        $moveFlag = match (true) {
+                                                            $move['first'] => ' data-first',
+                                                            $move['off'] => ' data-off',
+                                                            $move['note'] => ' data-note',
+                                                            default => '',
+                                                        };
                                                     @endphp
                                                     <button type="button" data-wf="{{ $move['key'] }}" data-row="{{ $entry->ulid }}"{!! $moveFlag !!} x-on:click="open = false; {{ $moveCall }}" class="list-mi rounded">
                                                         <x-bs-admin::icon :name="$move['icon']" class="size-4 shrink-0" /><span class="min-w-0 [overflow-wrap:anywhere]">{{ $move['label'] }}</span>

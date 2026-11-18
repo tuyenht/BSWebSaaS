@@ -553,6 +553,26 @@ final class Index extends Component
         }
         $user = $this->actingUser();
         $locale = app(SiteLocale::class)->default();
+        // «Gỡ khỏi website» is for a live row this member may publish, never the Home page: the
+        // bulk bar's rule, judged here too (the menu only hides it)
+        if ($status === EntryStatus::Archived->value) {
+            $why = $this->whyNotUnpublish($entry, $user, $this->homeIds([$entry->ulid]));
+            if ($why === 'entries.skip_home') {
+                $this->toast(__('entries.skip_home_note'));
+
+                return;
+            }
+            if ($why === 'entries.skip_not_live') {
+                $this->toastStaleRow();   // no longer live (moved meanwhile): the menu offered it on a live row only
+
+                return;
+            }
+            if ($why !== null) {
+                $this->refuse($this->refusalFor($entry, 'status'));
+
+                return;
+            }
+        }
 
         try {
             if ($status === EntryStatus::Pending->value) {
@@ -1744,11 +1764,12 @@ final class Index extends Component
     /**
      * Each row's workflow moves for this member (the pill's menu): the engine's moves from the row's
      * stage that this member may make, from the loaded workflow (no query per row). The first move
-     * that puts a not-yet-live post on the website asks first; a move that demands a reason opens
-     * the reason dialog.
+     * that puts a not-yet-live post on the website asks first, and so does one that takes a live
+     * post off it (`off`: no template brings an archived post back from the list); a move that
+     * demands a reason opens the reason dialog.
      *
      * @param  array<int|string, array{entry: Entry, depth: int}>  $items
-     * @return array<string, list<array{key: string, label: string, note: bool, first: bool, icon: string}>>
+     * @return array<string, list<array{key: string, label: string, note: bool, first: bool, off: bool, icon: string}>>
      */
     private static function rowMoves(Workflow $workflow, array $items, User $user): array
     {
@@ -1768,6 +1789,7 @@ final class Index extends Component
                     'label' => $move->label,
                     'note' => $move->requires_note,
                     'first' => ! $move->requires_note && $live && $entry->status !== EntryStatus::Published->value,
+                    'off' => ! $move->requires_note && ! $live && $entry->status === EntryStatus::Published->value,
                     'icon' => match (true) {
                         $move->requires_note => 'ri-arrow-go-back',
                         $live => 'ri-check-double',

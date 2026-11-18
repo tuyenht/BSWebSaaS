@@ -1,15 +1,21 @@
 <?php
 
 use App\Modules\Admin\Livewire\Entries\Index;
+use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\MemberCategoryScope;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Identity\Models\User;
+use App\Modules\Notifications\Notifications\SiteNotice;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Workflow\Actions\InstantiateWorkflow;
 use App\Modules\Workflow\Models\WorkflowLog;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Js;
 use Livewire\Livewire;
 
 /*
@@ -71,9 +77,9 @@ function elwMembers(): array
     return array_map(fn (User $u): User => $u->fresh() ?? $u, $members);
 }
 
-function elwGoverned(): void
+function elwGoverned(string $template = 'admin_approval'): void
 {
-    app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+    app(InstantiateWorkflow::class)->handle($template, 'posts', active: true);
 }
 
 it('offers on each row the moves this member may make from its stage', function (): void {
@@ -133,7 +139,8 @@ it('moves a row through the engine, and refuses a send-back without its reason',
         // a member without the move's right is refused, the row left as it was
         $draft = elwPost($cat, $m['sender'], 'nhap');
         Livewire::actingAs($m['publisher'])->test(Index::class, ['section' => 'posts'])
-            ->call('applyTransition', $draft->ulid, 'submit');
+            ->call('applyTransition', $draft->ulid, 'submit')
+            ->assertDispatched('bs-toast', text: __('entries.refused_status'));
         expect($draft->fresh()->status)->toBe('draft')->and($draft->fresh()->workflow_state)->toBeNull();
     });
 });
@@ -230,5 +237,137 @@ it('keeps the direct moves where no workflow runs', function (): void {
         // the engine path answers plainly when no workflow governs the row
         $list->call('applyTransition', $a->ulid, 'approve')
             ->assertDispatched('bs-toast', text: __('admin.wfb.err_not_governed'));
+    });
+});
+
+it('archives through the engine\'s own move and tells no reviewer, in either template', function (string $template): void {
+    app(Tenancy::class)->enter(1, function () use ($template): void {
+        $m = elwMembers();
+        $cat = elwSection();
+        $reviewer = User::factory()->create();   // would hear of anything left waiting for review
+        grantRole($reviewer, 'elw-reviewer', ['entries.view', 'entries.edit.any', 'entries.review', 'entries.approve']);
+        $live = elwPost($cat, $m['sender'], 'live', 'published');
+        elwGoverned($template);
+        Notification::fake();
+
+        app(ApplyEntryWorkflowTransition::class)->handle($live, 'vi', $m['approver'], 'archive', null);
+
+        $live->refresh();
+        expect($live->status)->toBe('archived')->and($live->workflow_state)->toBe('archived');
+        Notification::assertNotSentTo([$reviewer, $m['sender']], SiteNotice::class,
+            fn (SiteNotice $notice): bool => $notice->kind === 'workflow.pending_review');
+        Notification::assertNothingSent();
+    });
+})->with(['admin_approval', 'editorial']);
+
+it('asks first before a move takes a live post off the website, and only then', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $m = elwMembers();
+        $cat = elwSection();
+        $live = elwPost($cat, $m['sender'], 'live', 'published');
+        $pending = elwPost($cat, $m['sender'], 'cho', 'pending');
+        $draft = elwPost($cat, $m['sender'], 'nhap');
+        elwGoverned();
+
+        Livewire::actingAs($m['approver'])->test(Index::class, ['section' => 'posts'])
+            ->assertSeeHtml('data-wf="archive" data-row="'.$live->ulid.'" data-off')
+            ->assertSeeHtml(e((string) Js::from(__('entries.wf_off_title', ['title' => 'Bài live']))))
+            ->assertSeeHtml(e((string) Js::from(__('entries.wf_off_text'))))
+            // a live post's send-back asks for its reason instead; the other rows' moves never take a post offline
+            ->assertSeeHtml('data-wf="retract" data-row="'.$live->ulid.'" data-note')
+            ->assertSeeHtml('data-wf="approve" data-row="'.$pending->ulid.'" data-first')
+            ->assertSeeHtml('data-wf="submit" data-row="'.$draft->ulid.'" x-on:click')
+            ->assertDontSeeHtml('data-row="'.$pending->ulid.'" data-off')
+            ->assertDontSeeHtml('data-row="'.$draft->ulid.'" data-off');
+    });
+});
+
+it('refuses a workflow move it may not make and leaves the row as it was', function (): void {
+    $otherSite = app(Tenancy::class)->enter(2, function (): Entry {
+        $author = User::factory()->create();
+
+        return elwPost(elwSection(), $author, 'site-b', 'pending');
+    });
+
+    app(Tenancy::class)->enter(1, function () use ($otherSite): void {
+        $m = elwMembers();
+        $cat = elwSection();
+        $pending = elwPost($cat, $m['sender'], 'cho', 'pending');
+        $trashed = elwPost($cat, $m['sender'], 'rac', 'pending');
+        $trashed->delete();
+        elwGoverned();
+        $list = Livewire::actingAs($m['approver'])->test(Index::class, ['section' => 'posts']);
+
+        // another site's row, and a row in the Trash: not on this list
+        $list->call('applyTransition', $otherSite->ulid, 'approve')
+            ->assertDispatched('bs-toast', text: __('entries.row_stale'));
+        $list->call('applyTransition', $trashed->ulid, 'approve')
+            ->assertDispatched('bs-toast', text: __('entries.row_stale'));
+        expect(Entry::withTrashed()->find($trashed->id)->status)->toBe('pending');
+
+        // a reason over the limit
+        $list->call('applyTransition', $pending->ulid, 'reject', str_repeat('a', 2001))
+            ->assertDispatched('bs-toast', text: __('entries.wf_note_too_long', ['max' => 2000]));
+        expect($pending->fresh()->status)->toBe('pending')->and(WorkflowLog::query()->count())->toBe(0);
+    });
+
+    app(Tenancy::class)->enter(2, function () use ($otherSite): void {
+        expect($otherSite->fresh()->status)->toBe('pending')->and($otherSite->fresh()->workflow_state)->toBe('pending');
+    });
+});
+
+it('refuses an approver limited to other categories, on one row and in bulk', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $m = elwMembers();
+        $cat = elwSection();
+        $elsewhere = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 1]);
+        $elsewhere->translations()->create(['locale' => 'vi', 'name' => 'Sự kiện', 'slug' => 'su-kien']);
+        MemberCategoryScope::query()->create(['user_id' => $m['approver']->id, 'taxonomy_id' => $elsewhere->id]);
+        app(CategoryScopes::class)->forget();
+        $pending = elwPost($cat, $m['sender'], 'cho', 'pending');
+        elwGoverned();
+        $why = app(CategoryScopes::class)->refusal($m['approver']);
+
+        $list = Livewire::actingAs($m['approver'])->test(Index::class, ['section' => 'posts']);
+        $list->call('applyTransition', $pending->ulid, 'approve')
+            ->assertDispatched('bs-toast', text: $why);
+        expect($pending->fresh()->status)->toBe('pending');
+
+        $list->set('selected', [$pending->ulid])->call('bulkTransition', 'approve')
+            ->assertDispatched('bs-toast', text: __('entries.bulk_moved', ['label' => 'Duyệt đăng', 'count' => 0, 'noun' => __('entries.noun_post')]).' '.__('entries.bulk_skipped', ['count' => 1]));
+        expect($pending->fresh()->status)->toBe('pending')->and(WorkflowLog::query()->count())->toBe(0);
+    });
+});
+
+it('refuses taking a post off the website from someone who may not, from the Home page and from a draft', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $m = elwMembers();
+        $cat = elwSection();
+        $ownOnly = User::factory()->create();
+        grantRole($ownOnly, 'elw-own-publisher', ['entries.view', 'entries.edit.own', 'entries.publish']);
+        $live = elwPost($cat, $m['sender'], 'live', 'published');
+        $draft = elwPost($cat, $m['sender'], 'nhap');
+
+        // a publisher of their own posts only, on someone else's
+        Livewire::actingAs($ownOnly->fresh())->test(Index::class, ['section' => 'posts'])
+            ->call('changeStatus', $live->ulid, 'archived')
+            ->assertDispatched('bs-toast', text: __('entries.refused_status'));
+        expect($live->fresh()->status)->toBe('published');
+
+        // a draft is not on the website (a stale menu)
+        Livewire::actingAs($m['publisher'])->test(Index::class, ['section' => 'posts'])
+            ->call('changeStatus', $draft->ulid, 'archived')
+            ->assertDispatched('bs-toast', text: __('entries.row_stale'));
+        expect($draft->fresh()->status)->toBe('draft');
+
+        // the Home page stays on the website
+        $owner = User::factory()->create();
+        grantRole($owner, 'elw-owner', ['entries.view', 'entries.edit.any', 'entries.publish']);
+        $home = Entry::query()->create(['type' => 'page', 'status' => 'published', 'author_id' => $owner->id, 'meta' => [], 'published_at' => now()->subDay()]);
+        $home->translations()->create(['locale' => 'vi', 'title' => 'Trang chủ', 'slug' => 'home', 'status' => 'published', 'body' => ['blocks' => []]]);
+        Livewire::actingAs($owner->fresh())->test(Index::class)
+            ->call('changeStatus', $home->ulid, 'archived')
+            ->assertDispatched('bs-toast', text: __('entries.skip_home_note'));
+        expect($home->fresh()->status)->toBe('published');
     });
 });
