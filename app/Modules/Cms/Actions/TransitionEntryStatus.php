@@ -3,10 +3,13 @@
 namespace App\Modules\Cms\Actions;
 
 use App\Modules\Cms\Enums\EntryStatus;
+use App\Modules\Cms\Exceptions\HomePageLockedException;
+use App\Modules\Cms\Exceptions\SchedulePastException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Support\EntryStatusAudit;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
+use App\Modules\Cms\Support\HomePages;
 use App\Modules\Identity\Models\User;
 use DateTimeInterface;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -29,6 +32,10 @@ use InvalidArgumentException;
  * where an approval workflow governs the entry it is refused like a direct publish would be —
  * otherwise "schedule it for a minute from now" would walk straight around the gate. The other
  * targets only ever take content off the public site, which no gate needs to approve.
+ *
+ * The live Home page never leaves `published` here (not to a draft, private, archived, nor a
+ * schedule that hides it until its time): the website's «/» would answer 404 (RouteResolver serves
+ * published entries only). A member picks another page as the Home page first.
  */
 final readonly class TransitionEntryStatus
 {
@@ -43,6 +50,8 @@ final readonly class TransitionEntryStatus
     public function __construct(private EntryWorkflowResolver $workflows) {}
 
     /**
+     * @throws SchedulePastException a publish time that is missing or not after now
+     * @throws HomePageLockedException any move of the live Home page (it would leave the website, «/» with it)
      * @throws WorkflowGovernedException scheduling content an active workflow governs
      * @throws ModelNotFoundException the entry left the list meanwhile (sent to the Trash or purged)
      */
@@ -55,7 +64,34 @@ final readonly class TransitionEntryStatus
         DB::transaction(fn () => $this->handleLocked($entry, $target, $actor, $publishAt));
     }
 
-    private function handleLocked(Entry $entry, EntryStatus $target, User $actor, ?DateTimeInterface $publishAt): void
+    /**
+     * «Hủy hẹn giờ»: a scheduled entry will not go live at its time after all, and goes back to a
+     * draft to be worked on, under the same lock and guard as every other move here. A row that is
+     * no longer scheduled (entries:publish-due published it, or a colleague moved it meanwhile) is
+     * left as it is — never taken off the website by this. The publish time goes with the schedule.
+     *
+     * @return bool whether the entry was moved back to a draft (false: it was no longer scheduled)
+     *
+     * @throws AuthorizationException the member may not change this entry's status
+     * @throws ModelNotFoundException the entry left the list meanwhile (sent to the Trash or purged)
+     */
+    public function unschedule(Entry $entry, User $actor): bool
+    {
+        return DB::transaction(function () use ($entry, $actor): bool {
+            $this->lockAndAuthorize($entry, $actor);
+            if ($entry->status !== EntryStatus::Scheduled->value) {
+                return false;
+            }
+
+            $governed = $this->workflows->forEntry($entry) !== null;
+            $entry->update(['status' => EntryStatus::Draft->value, 'published_at' => null] + ($governed ? ['workflow_state' => null] : []));
+            EntryStatusAudit::record($entry, EntryStatus::Scheduled->value, EntryStatus::Draft->value, 'status-menu', $actor, ['unscheduled' => true]);
+
+            return true;
+        });
+    }
+
+    private function lockAndAuthorize(Entry $entry, User $actor): void
     {
         // Take the row lock FIRST, then judge the row as it is now, like PublishEntry: the screen
         // loaded it earlier, and meanwhile a colleague may have sent it to the Trash (or the Trash
@@ -68,12 +104,24 @@ final readonly class TransitionEntryStatus
         if (! Gate::forUser($actor)->allows('publish', $entry)) {
             throw new AuthorizationException(__('entries.err_status_forbidden'));
         }
+    }
+
+    private function handleLocked(Entry $entry, EntryStatus $target, User $actor, ?DateTimeInterface $publishAt): void
+    {
+        $this->lockAndAuthorize($entry, $actor);
+
+        // Every target here takes a live entry off the website (none is `published`): the live Home
+        // page would leave «/» answering 404 (RouteResolver serves published entries only), so it is
+        // refused whichever target was asked for, with the sentence that says why.
+        if ($entry->status === EntryStatus::Published->value && HomePages::is($entry)) {
+            throw new HomePageLockedException($target === EntryStatus::Scheduled ? 'entries.home_sched_why' : 'entries.home_offline_why');
+        }
 
         $governed = $this->workflows->forEntry($entry) !== null;
 
         if ($target === EntryStatus::Scheduled) {
             if ($publishAt === null || $publishAt <= now()) {
-                throw new InvalidArgumentException(__('entries.err_schedule_in_past'));
+                throw new SchedulePastException;
             }
 
             if ($governed) {

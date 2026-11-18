@@ -10,6 +10,7 @@ use App\Modules\Admin\Support\Entries\ListCursor;
 use App\Modules\Admin\Support\Entries\ListGroup;
 use App\Modules\Admin\Support\Entries\PostRoleNote;
 use App\Modules\Admin\Support\FirstHints;
+use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\DuplicateEntry;
 use App\Modules\Cms\Actions\PublishEntry;
@@ -18,7 +19,9 @@ use App\Modules\Cms\Actions\TransitionEntryStatus;
 use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
+use App\Modules\Cms\Exceptions\HomePageLockedException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
+use App\Modules\Cms\Exceptions\SchedulePastException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
@@ -28,8 +31,10 @@ use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
+use App\Modules\Cms\Support\EntryReviewReach;
 use App\Modules\Cms\Support\EntryTrash;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
+use App\Modules\Cms\Support\HomePages;
 use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -197,6 +202,14 @@ final class Index extends Component
     /** "Hiện thêm nút khi đủ chỗ" (Cột): a wide row also shows Nhân bản and Thùng rác beside «Sửa» when they fit; kept in their own preferences. */
     public bool $xbtn = false;
 
+    /**
+     * For a member who may edit only their own records: whether the list opens filtered to «Của tôi»
+     * (until they take that filter off; then it opens on everyone's, and back once they put it on
+     * again). Kept in their own preferences; the browser cannot set it.
+     */
+    #[Locked]
+    public bool $mineFirst = true;
+
     private ?string $sectionFor = null;
 
     private ?ContentSection $sectionRow = null;
@@ -256,6 +269,12 @@ final class Index extends Component
 
     /** What a phone card may add ("Hiện trên thẻ"), all off until the member turns them on. */
     private const array CARD = ['cat', 'tpl', 'path', 'langs'];
+
+    /**
+     * «Trong phạm vi của tôi», the first choice of Chuyên mục for a member limited to some categories:
+     * the posts filed (by their main category) in the categories they may write in. Never a category key.
+     */
+    public const string CAT_SCOPE = '__scope__';
 
     /** Sentinel value for the "no template" (null template_override) filter option. */
     private const string TEMPLATE_NONE = '__default__';
@@ -320,6 +339,13 @@ final class Index extends Component
         $this->cols = self::known([...$this->cols, ...array_diff(self::COLS_DEFAULT, $offered)], $cols);
         $this->card = self::known(Cast::arr($view['card'] ?? null), $this->cardHere());
         $this->xbtn = ($view['xbtn'] ?? false) === true;
+        $this->mineFirst = ($view['mine'] ?? true) !== false;
+        // a member who may edit only their own records opens on «Của tôi» (the design's first view for
+        // them), unless the address already chooses filters or they took that filter off before
+        if ($this->mineFirst && $this->ownOnly() && $this->creatorF === [] && $this->catF === [] && $this->langF === []
+            && $this->templateF === [] && $this->transF === [] && $this->when === '' && $this->from === '' && $this->to === '') {
+            $this->creatorF = [(string) $this->actingUser()->ulid];
+        }
         $this->guideDue = true;
         // whether the section runs an approval workflow (offers the Bước duyệt column): asked once, as the screen opens
         $this->mountedWorkflow = $this->entryType === 'post' && $section instanceof ContentSection ? app(WorkflowEngine::class)->activeFor($section->key) : null;
@@ -357,6 +383,9 @@ final class Index extends Component
         }
         if ($name === 'catF') {
             $this->settleCategories($this->catBefore);
+        }
+        if ($name === 'creatorF') {
+            $this->rememberMine();
         }
         if (in_array($name, ['tab', 'catF', 'transF', 'langF', 'creatorF', 'templateF', 'when', 'from', 'to', 'sortKey', 'sortDir'], true)) {
             $this->clean();
@@ -492,6 +521,7 @@ final class Index extends Component
             $this->langF = $this->toggleIn($this->langF, $value);
         } elseif ($group === 'creator') {
             $this->creatorF = $this->toggleIn($this->creatorF, $value);
+            $this->rememberMine();
         } elseif ($group === 'template') {
             $this->templateF = $this->toggleIn($this->templateF, $value);
         } elseif ($group === 'trans' && in_array($value, self::TRANS, true)) {
@@ -509,6 +539,7 @@ final class Index extends Component
             $this->langF = [];
         } elseif ($group === 'creator') {
             $this->creatorF = [];
+            $this->rememberMine();
         } elseif ($group === 'template') {
             $this->templateF = [];
         } elseif ($group === 'trans') {
@@ -524,6 +555,7 @@ final class Index extends Component
         $this->catF = [];
         $this->langF = [];
         $this->creatorF = [];
+        $this->rememberMine();
         $this->templateF = [];
         $this->transF = [];
         $this->when = $this->from = $this->to = '';
@@ -606,6 +638,10 @@ final class Index extends Component
             return;
         } catch (ModelNotFoundException) {
             $this->toastStaleRow(); // sent to the Trash or purged since the list loaded it
+
+            return;
+        } catch (HomePageLockedException $refused) {
+            $this->refuse($refused->getMessage());   // the live Home page: the menu hides the move, the action refuses it
 
             return;
         } catch (AuthorizationException) {
@@ -711,17 +747,68 @@ final class Index extends Component
         ), 'entries.bulk_moved', 'entries.bulk_skipped', replace: $replace);
     }
 
-    public function scheduleEntry(string $ulid, string $publishAt): void
+    /**
+     * «Hẹn giờ đăng» from the row's dialog (its time is the website's own). A time that is missing
+     * or not after now is the field's error: it is returned, and the dialog keeps it on the field
+     * until it is put right (a past time would let entries:publish-due publish the row on its very
+     * next run). Anything else (done, refused, a row that changed) is a message, and the dialog closes.
+     *
+     * @return string|null the field's error, or null once the dialog may close
+     */
+    public function scheduleEntry(string $ulid, string $publishAt): ?string
     {
-        // Future-only: a past (or now) time would let entries:publish-due publish it on its very
-        // next run, so "scheduled" would flash and vanish. Reject it with a plain-language toast.
+        if (trim($publishAt) === '') {
+            return Cast::string(__('entries.sched_err_empty'));
+        }
         $when = $this->parseSchedule($publishAt);
-        if ($when === null || ! $when->isFuture()) {
-            $this->toast(__('entries.schedule_future_only'));
-
-            return;
+        if ($when === null) {
+            return Cast::string(__('entries.sched_err_empty'));
+        }
+        if (! $when->isFuture()) {
+            return Cast::string(__('entries.sched_err_past'));
         }
 
+        $entry = $this->findLiveEntry($ulid);
+        if ($entry === null) {
+            $this->toastStaleRow();
+
+            return null;
+        }
+
+        try {
+            app(TransitionEntryStatus::class)->handle($entry, EntryStatus::Scheduled, $this->actingUser(), $when);
+        } catch (SchedulePastException) {
+            return Cast::string(__('entries.sched_err_past'));   // the time passed while the row was locked
+        } catch (WorkflowGovernedException) {
+            $this->toast(__('entries.workflow_governed'));
+
+            return null;
+        } catch (ModelNotFoundException) {
+            $this->toastStaleRow(); // sent to the Trash or purged since the list loaded it
+
+            return null;
+        } catch (HomePageLockedException $refused) {
+            $this->refuse($refused->getMessage());   // the live Home page: the menu hides the item, the action refuses it
+
+            return null;
+        } catch (AuthorizationException) {
+            $this->refuse($this->refusalFor($entry, 'status'));
+
+            return null;
+        }
+
+        $at = app(SiteTime::class)->forDisplay($when);
+        $this->toast(__('entries.scheduled_set_at', ['date' => $at?->format('d/m/Y'), 'time' => $at?->format('H:i')]));
+
+        return null;
+    }
+
+    /**
+     * «Hủy hẹn giờ» (asked first in the browser): the scheduled row goes back to a draft and will not
+     * go live at its time (TransitionEntryStatus::unschedule, the publish right on this row, judged on the locked row).
+     */
+    public function unschedule(string $ulid): void
+    {
         $entry = $this->findLiveEntry($ulid);
         if ($entry === null) {
             $this->toastStaleRow();
@@ -730,13 +817,9 @@ final class Index extends Component
         }
 
         try {
-            app(TransitionEntryStatus::class)->handle($entry, EntryStatus::Scheduled, $this->actingUser(), $when);
-        } catch (WorkflowGovernedException) {
-            $this->toast(__('entries.workflow_governed'));
-
-            return;
+            $moved = app(TransitionEntryStatus::class)->unschedule($entry, $this->actingUser());
         } catch (ModelNotFoundException) {
-            $this->toastStaleRow(); // sent to the Trash or purged since the list loaded it
+            $this->toastStaleRow();
 
             return;
         } catch (AuthorizationException) {
@@ -744,8 +827,13 @@ final class Index extends Component
 
             return;
         }
+        if (! $moved) {
+            $this->toastStaleRow();   // published or moved meanwhile: left as it is
 
-        $this->toast(__('entries.scheduled_set'));
+            return;
+        }
+
+        $this->toast(__('entries.unsched_done', ['noun' => __('entries.noun_'.$entry->type), 'step' => __('entries.status_draft')]));
     }
 
     /** Parse the datetime-local value in the site's zone → UTC; null when empty or malformed (only a forged/broken submit sends that). */
@@ -791,7 +879,13 @@ final class Index extends Component
 
         $value = trim($value);
         $translation = $entry->translationFor(app(SiteLocale::class)->default());
-        if ($value === '' || $translation === null || $translation->title === $value) {
+        if ($value === '') {
+            // the row shows its old title again (the browser puts it back in the field too)
+            $this->dispatch('bs-toast', text: __('entries.title_empty_kept'), icon: self::infoIcon());
+
+            return;
+        }
+        if ($translation === null || $translation->title === $value) {
             return;
         }
 
@@ -830,14 +924,14 @@ final class Index extends Component
         }
 
         if ($translation->slug === PathBuilder::HOME_SLUG) {
-            $this->toast(__('entries.home_locked'));
+            $this->fieldError(Cast::string(__('entries.home_locked')));
 
             return;
         }
 
         $slug = Slugger::make($value, $locale, PHP_INT_MAX);
         if ($slug === '') {
-            $this->toast(__('entries.slug_untranslatable'));
+            $this->fieldError(Cast::string(__('entries.slug_untranslatable')));
 
             return;
         }
@@ -856,7 +950,7 @@ final class Index extends Component
                 $this->recordLiveEdit($entry, $translation);
             });
         } catch (RouteConflictException $e) {
-            $this->toast(__($e->reserved() ? 'entries.slug_reserved' : 'entries.slug_conflict'));
+            $this->fieldError(Cast::string(__($e->reserved() ? 'entries.slug_reserved' : 'entries.slug_conflict')));
 
             return;
         }
@@ -866,15 +960,15 @@ final class Index extends Component
 
     /**
      * The editor's rule for one field (EntryContentRules), so an inline edit cannot store what the
-     * editor would refuse. A refusal is the rule's plain-language message, as a toast: the list's
-     * inline fields have no error line of their own.
+     * editor would refuse. A refusal is the rule's plain-language message, in a message that stays
+     * until it is closed (fieldError): the list's inline fields have no error line of their own.
      */
     private function passesContentRule(string $field, string $value): bool
     {
         $rules = app(EntryContentRules::class);
         $validator = Validator::make([$field => $value], [$field => $rules->rules()[$field]], $rules->messages());
         if ($validator->fails()) {
-            $this->toast($validator->errors()->first($field));
+            $this->fieldError($validator->errors()->first($field));
 
             return false;
         }
@@ -915,8 +1009,8 @@ final class Index extends Component
     /**
      * «Chuyển vào Thùng rác» on a row: done at once, and the message offers «Hoàn tác» for 10 seconds
      * (the Trash keeps the row EntryTrash::days() days besides). It asks first only where the design
-     * does: a page with sub-pages, which go with it so their addresses do not break, and the Home page.
-     * The question goes to the browser (entries-ask-trash), whose «Chuyển» calls back with $confirmed;
+     * does: a page with sub-pages, which go with it so their addresses do not break. The Home page
+     * never goes (HomePages; the row offers the item locked, with the reason). The question goes to the browser (entries-ask-trash), whose «Chuyển» calls back with $confirmed;
      * the sub-pages are looked up again then, so the answer is about the tree as it is now.
      */
     public function trash(string $ulid, bool $confirmed = false): void
@@ -937,9 +1031,14 @@ final class Index extends Component
 
             return;
         }
-        $home = $this->homeIds([$entry->ulid]) !== [];
-        if (! $confirmed && ($kids !== [] || $home)) {
-            $this->askTrash($entry, count($kids), $home);
+        // the Home page never goes to the Trash, nor with a branch it sits in: another page becomes the Home page first
+        if ($this->homeIds(array_map(static fn (Entry $row): string => $row->ulid, [$entry, ...$kids])) !== []) {
+            $this->refuse(Cast::string(__('entries.home_trash_why')));
+
+            return;
+        }
+        if (! $confirmed && $kids !== []) {
+            $this->askTrash($entry, count($kids));
 
             return;
         }
@@ -954,13 +1053,21 @@ final class Index extends Component
         }
 
         $rows = [$entry, ...$kids];
-        DB::transaction(fn (): mixed => app(CategoryItemCounts::class)->batch(function () use ($rows): bool {
-            foreach ($rows as $row) {
-                $row->delete();
-            }
+        try {
+            DB::transaction(fn (): mixed => app(CategoryItemCounts::class)->batch(function () use ($rows): bool {
+                HomePages::remember($rows);   // the Home page guard on each row, read for the whole branch at once
+                foreach ($rows as $row) {
+                    $row->delete();
+                }
 
-            return true;
-        }));
+                return true;
+            }));
+        } catch (HomePageLockedException) {
+            // a page of the branch became the Home page after the check above: nothing moved, and the reason is said
+            $this->refuse(Cast::string(__('entries.home_trash_why')));
+
+            return;
+        }
 
         $ulids = array_map(static fn (Entry $row): string => $row->ulid, $rows);
         $this->selected = array_values(array_diff($this->selected, $ulids));
@@ -1158,6 +1265,7 @@ final class Index extends Component
 
                 return (bool) $entry->delete();
             },
+            beforeChunk: HomePages::remember(...),   // the Home page guard of a locked chunk in one read, not one per row
         );
         if ($run === null) {
             return;
@@ -1383,10 +1491,11 @@ final class Index extends Component
      * @param  list<string>|null  $ulids  the rows to act on; the selection when null
      * @param  bool  $capped  refuse more than BULK_LIMIT rows (a selection); false works through any
      *                        number BULK_LIMIT at a time, in one transaction (the rows «Hoàn tác» names)
+     * @param  (callable(list<Entry>): void)|null  $beforeChunk  runs on each locked chunk before its rows
      * @return array{tally: array<string, int>, done: list<string>}|null what the run did; null when
      *                                                                   it did nothing (already told)
      */
-    private function runBulk(string $doneKey, string $skippedKey, callable $eligible, callable $action, ?array $ulids = null, bool $capped = true): ?array
+    private function runBulk(string $doneKey, string $skippedKey, callable $eligible, callable $action, ?array $ulids = null, bool $capped = true, ?callable $beforeChunk = null): ?array
     {
         $fromSelection = $ulids === null;
         $ulids ??= $this->selected;
@@ -1402,8 +1511,11 @@ final class Index extends Component
 
         DB::beginTransaction();
         try {
-            $counts->batch(function () use (&$tally, &$done, $ulids, $counts, $eligible, $action, $doneKey, $skippedKey): void {
+            $counts->batch(function () use (&$tally, &$done, $ulids, $counts, $eligible, $action, $doneKey, $skippedKey, $beforeChunk): void {
                 foreach ($this->selectedChunks($ulids) as $chunk) {
+                    if ($beforeChunk !== null) {
+                        $beforeChunk(array_values($chunk->all()));
+                    }
                     foreach ($chunk as $entry) {
                         $key = $this->bulkRow($counts, $entry, $eligible, $action, $doneKey, $skippedKey);
                         $tally[$key]++;
@@ -1495,21 +1607,13 @@ final class Index extends Component
     }
 
     /**
-     * Ask before a row goes to the Trash, in the design's words: a page with sub-pages (they go
-     * with it) or the Home page (the website has none until it comes back).
+     * Ask before a page with sub-pages goes to the Trash (they go with it), in the design's words.
      */
-    private function askTrash(Entry $entry, int $kids, bool $home): void
+    private function askTrash(Entry $entry, int $kids): void
     {
-        $homeText = Cast::string(__('entries.trash_ask_home_text'));
-        if ($kids > 0) {
-            $title = __('entries.trash_ask_kids_title', ['count' => $kids]);
-            $text = ($home ? $homeText.' ' : '').Cast::string(__('entries.trash_ask_kids_text', ['days' => EntryTrash::days()]));
-            $ok = __('entries.trash_ask_kids_ok', ['count' => $kids + 1]);
-        } else {
-            $title = __('entries.trash_ask_title', ['name' => $this->titleOf($entry)]);
-            $text = $homeText;
-            $ok = __('entries.action_trash');
-        }
+        $title = __('entries.trash_ask_kids_title', ['count' => $kids]);
+        $text = Cast::string(__('entries.trash_ask_kids_text', ['days' => EntryTrash::days()]));
+        $ok = __('entries.trash_ask_kids_ok', ['count' => $kids + 1]);
 
         $this->dispatch('entries-ask-trash', ulid: $entry->ulid, title: Cast::string($title), text: $text, ok: Cast::string($ok), cancel: Cast::string(__('admin.cancel')));
     }
@@ -1563,29 +1667,14 @@ final class Index extends Component
     }
 
     /**
-     * Which of these rows is the website's Home page (a page whose address is the root «/»: the
-     * home slug in a language), in one query.
+     * Which of these rows is the website's Home page (HomePages), in one query.
      *
      * @param  list<string>  $ulids
      * @return array<int, true> entry id => true
      */
     private function homeIds(array $ulids): array
     {
-        if ($ulids === []) {
-            return [];
-        }
-        $ids = EntryTranslation::query()
-            ->whereIn('slug', [PathBuilder::HOME_SLUG, ''])
-            ->whereIn('entry_id', Entry::withTrashed()->select('id')->where('type', 'page')->whereIn('ulid', $ulids))
-            ->distinct()
-            ->pluck('entry_id');
-
-        $homes = [];
-        foreach ($ids as $id) {
-            $homes[Cast::int($id)] = true;
-        }
-
-        return $homes;
+        return HomePages::among($ulids);
     }
 
     /**
@@ -1868,6 +1957,21 @@ final class Index extends Component
         $this->dispatch('bs-toast', text: $message, icon: self::lockIcon(), stay: true, close: __('admin.close'));
     }
 
+    /**
+     * A quick edit the rules refuse (an empty slug, a taken address, a title too long): the reason with
+     * the error mark, kept until the member closes it, never a message that hides by itself.
+     */
+    private function fieldError(string $message): void
+    {
+        $this->closeToast();
+        $this->dispatch('bs-toast', text: $message, icon: Blade::render('<x-bs-admin::icon name="ri-error-warning" class="size-4" />'), stay: true, close: __('admin.close'));
+    }
+
+    private static function infoIcon(): string
+    {
+        return Blade::render('<x-bs-admin::icon name="ri-information" class="size-4" />');
+    }
+
     private static function lockIcon(): string
     {
         return Blade::render('<x-bs-admin::icon name="ri-lock" class="size-4" />');
@@ -1959,11 +2063,37 @@ final class Index extends Component
      * What is kept of the member's view choices, with the columns the list offered then, so a column
      * added later starts as its default says for them.
      *
-     * @return array{cols: list<string>, card: list<string>, xbtn: bool, offered: list<string>}
+     * «mine» is kept only once an own-only member has turned «Của tôi» off.
+     *
+     * @return array{cols: list<string>, card: list<string>, xbtn: bool, offered: list<string>, mine?: false}
      */
     private function savedView(): array
     {
-        return ['cols' => $this->cols, 'card' => $this->card, 'xbtn' => $this->xbtn, 'offered' => $this->colsHere()];
+        return ['cols' => $this->cols, 'card' => $this->card, 'xbtn' => $this->xbtn, 'offered' => $this->colsHere()] + ($this->mineFirst ? [] : ['mine' => false]);
+    }
+
+    /** May this member edit only their own records (no right over everyone's)? */
+    private function ownOnly(): bool
+    {
+        $user = $this->actingUser();
+
+        return ! $user->can('entries.edit.any') && $user->can('entries.edit.own');
+    }
+
+    /**
+     * «Của tôi» was put on or taken off by an own-only member: the next time the list opens as they left it
+     * (kept only when it changes, so other members and other filters cost nothing).
+     */
+    private function rememberMine(): void
+    {
+        if (! $this->ownOnly()) {
+            return;
+        }
+        $mine = in_array((string) $this->actingUser()->ulid, $this->creatorF, true);
+        if ($mine !== $this->mineFirst) {
+            $this->mineFirst = $mine;
+            $this->saveView();
+        }
     }
 
     /**
@@ -2162,7 +2292,7 @@ final class Index extends Component
      */
     private function filterCount(): int
     {
-        return ($this->catF === [] ? 0 : count($this->categoryTree()->topmost($this->catF))) + count($this->templateF) + count($this->transF) + count($this->creatorF) + count($this->langF)
+        return ($this->catF === [] ? 0 : count($this->categoryTree()->topmost($this->catF)) + (in_array(self::CAT_SCOPE, $this->catF, true) ? 1 : 0)) + count($this->templateF) + count($this->transF) + count($this->creatorF) + count($this->langF)
             + ($this->when !== '' ? 1 : 0);
     }
 
@@ -2193,6 +2323,7 @@ final class Index extends Component
             return;
         }
         $tree = $this->categoryTree();
+        $scope = in_array(self::CAT_SCOPE, $this->catF, true);
         $now = $tree->known($this->catF);
         $before = $tree->known($before);
         $set = $now;
@@ -2202,7 +2333,7 @@ final class Index extends Component
         foreach (array_diff($before, $now) as $removed) {
             $set = array_diff($set, $tree->keysUnder($removed), $tree->keysAbove($removed));
         }
-        $this->catF = array_values(array_unique($set));
+        $this->catF = array_values(array_unique([...($scope ? [self::CAT_SCOPE] : []), ...$set]));
     }
 
     public function render(): View
@@ -2231,9 +2362,15 @@ final class Index extends Component
         [$from, $until] = $this->period();
         // the section's categories (one read): the Chuyên mục filter's choices and each row's category path
         $tree = $this->categoryTree();
-        $this->catF = $tree->known($this->catF);
+        // «Trong phạm vi của tôi» stays chosen only for a member limited to some categories of posts
+        $scopeOn = $type === 'post' && in_array(self::CAT_SCOPE, $this->catF, true) && $scopes->isLimited($user);
+        $catKeys = $tree->known($this->catF);
+        $this->catF = [...($scopeOn ? [self::CAT_SCOPE] : []), ...$catKeys];
         $filter = new EntryListFilter($type === 'post' ? 'post' : 'page', $this->tab, $section?->taxonomy_id, $this->search, $this->langF, $this->creatorF,
-            $this->templateF, $this->transF, $locales, $locale, $from, $until, $tree->idsUnder($this->catF));
+            $this->templateF, $this->transF, $locales, $locale, $from, $until, $tree->idsUnder($catKeys),
+            $scopeOn ? ($scopes->allowedTaxonomyIds($user) ?? []) : null,
+            // the Trash: everyone's for who may remove any record, only their own for who may remove only theirs, none otherwise
+            $user->can('entries.delete.any') ? null : ($user->can('entries.delete.own') ? (int) $user->id : 0));
         // Whether this member has category limits here rides along on the rows' own query, so a
         // member without limits costs the list nothing more; so does a post's cover (its storage key
         // alone, never the whole meta).
@@ -2288,6 +2425,11 @@ final class Index extends Component
         $rowCovered = [];
         $rowEditable = [];
         $rowCan = [];
+        // «Xem trước» for a reviewer who may not edit every row: whether a row waits at their step is read
+        // for the whole page at once (their stages once, the sections of the rows on those stages in one go)
+        if (! $editAny && $user->can('review', Entry::class)) {
+            app(EntryReviewReach::class)->prime($user, array_map(static fn (array $item): Entry => $item['entry'], $rows->items()));
+        }
         foreach ($rows->items() as $item) {
             $entry = $item['entry'];
             $ulid = $entry->ulid;
@@ -2307,6 +2449,15 @@ final class Index extends Component
                     ? self::scopeWhy($type, $scopeRefusal) : null,
                 // a locked Thùng rác is shown on such a row only to a role that could otherwise remove it
                 'deleteRole' => $deleteAny || ($deleteOwn && $own),
+                // inside their limits, a member who may move only their own records to the Trash sees it locked on a
+                // colleague's, with the reason the server would give (a member with no Trash right never sees it)
+                'trashWhy' => $covered && ! $deleteAny && $deleteOwn && ! $own && ! $entry->trashed()
+                    ? Cast::string(__('entries.refused_others_delete', ['noun' => __('entries.noun_'.$type)])) : null,
+                // the Home page (HomePages, read from the translations the row carries): its Thùng rác is locked with the reason
+                'home' => $type === 'page' && $entry->translations->contains(static fn (EntryTranslation $t): bool => in_array($t->slug, [PathBuilder::HOME_SLUG, ''], true)),
+                // «Xem trước» of a row visitors cannot see yet (admin.entries.preview), for who may open it
+                'preview' => ! $entry->trashed() && $entry->status !== EntryStatus::Published->value && $user->can('preview', $entry)
+                    ? route('admin.entries.preview', ['ulid' => $ulid]) : null,
             ];
         }
         // A member limited to some categories may add no page (a page has no category): the add button
@@ -2338,8 +2489,15 @@ final class Index extends Component
             $catOptions[] = ['value' => $option['ulid'], 'label' => $option['label'], 'depth' => $option['depth']]
                 + ($counted ? ['count' => $this->countLabel($option['count'])] : []);
         }
+        // a member limited to some categories finds «Trong phạm vi của tôi» first (the design's first line of Chuyên mục)
+        if ($scoped && $catOptions !== []) {
+            array_unshift($catOptions, ['value' => self::CAT_SCOPE, 'label' => Cast::string(__('entries.f_scope')), 'depth' => 0]);
+        }
         $catChips = array_map(fn (array $c): array => ['group' => 'cat', 'value' => $c['ulid'], 'label' => Cast::string(__('entries.chip_cat', ['name' => $c['label']]))],
-            $tree->topmost($this->catF));
+            $tree->topmost($catKeys));
+        if ($scopeOn) {
+            array_unshift($catChips, ['group' => 'cat', 'value' => self::CAT_SCOPE, 'label' => Cast::string(__('entries.f_scope'))]);
+        }
 
         // The role card stays until this member presses "Đã hiểu"; nothing of it is read after that.
         // The guide (first draw only) words the same workflow, read once for both.
@@ -2380,7 +2538,7 @@ final class Index extends Component
                 $filters[] = ['key' => 'trans', 'label' => Cast::string(__('entries.f_trans'))];
                 $filters[] = ['key' => 'lang', 'label' => Cast::string(__('entries.col_language'))];
             }
-            if (count($read['facets']['creator']) >= 2 || $this->creatorF !== []) {
+            if (self::creatorShown($read['facets']['creator']) || $this->creatorF !== []) {
                 $filters[] = ['key' => 'creator', 'label' => Cast::string(__('entries.col_creator'))];
             }
             if ($type === 'post') {
@@ -2460,6 +2618,11 @@ final class Index extends Component
             // whoever may delete (their own or any) reaches the Trash, to restore what they removed
             'canSeeTrash' => $canDelete,
             'siteTime' => app(SiteTime::class),
+            // «Sao chép đường dẫn» copies the full public address (the website's own host)
+            'publicOrigin' => request()->getScheme().'://'.SeoFields::publicHost(),
+            // «Hẹn giờ đăng» opens on tomorrow 08:00 of the website's clock
+            'schedDefault' => app(SiteTime::class)->now()->addDay()->setTime(8, 0)->format('Y-m-d\TH:i'),
+            'siteNow' => app(SiteTime::class)->now()->format('Y-m-d\TH:i:s'),
         ]);
     }
 
@@ -3007,10 +3170,12 @@ final class Index extends Component
     }
 
     /**
-     * The Người tạo options from the counted authors: the member first, as "Của tôi (…)".
+     * The Người tạo options from the counted authors: the member first, as "Của tôi (…)" — always, even
+     * before they have written anything here (then counted 0, and marked `added`: that line alone does
+     * not make the filter appear, creatorShown()).
      *
      * @param  list<array{id: int, ulid: string, name: string, count: int}>  $authors
-     * @return list<array{value: string, label: string, count?: int|string, active: bool}>
+     * @return list<array{value: string, label: string, count?: int|string, active: bool, added?: true}>
      */
     private function creatorOptions(array $authors, User $me, bool $counted): array
     {
@@ -3028,7 +3193,23 @@ final class Index extends Component
             }
         }
 
+        if (($out[0]['value'] ?? null) !== $mine) {
+            array_unshift($out, ['value' => $mine, 'label' => Cast::string(__('entries.f_mine', ['name' => $me->name]))]
+                + ($counted ? ['count' => $this->countLabel(0)] : []) + ['active' => in_array($mine, $this->creatorF, true), 'added' => true]);
+        }
+
         return $out;
+    }
+
+    /**
+     * Whether Người tạo is offered: as in the design, once the rows have at least two authors (the
+     * member's own «Của tôi» line, added when they have written nothing, does not count).
+     *
+     * @param  list<array<string, mixed>>  $options
+     */
+    public static function creatorShown(array $options): bool
+    {
+        return count(array_filter($options, static fn (array $o): bool => ($o['added'] ?? false) !== true)) >= 2;
     }
 
     /**
@@ -3085,10 +3266,11 @@ final class Index extends Component
     }
 
     /**
-     * Author facet: distinct authors (by ulid, never the raw id) + their page counts.
+     * Author facet: distinct authors (by ulid, never the raw id) + their page counts; the member's own
+     * «Của tôi» first, always (counted 0 and marked `added` when they have written none, as creatorOptions()).
      *
      * @param  EloquentCollection<int, Entry>  $base
-     * @return list<array{value: string, label: string, count: int, active: bool}>
+     * @return list<array{value: string, label: string, count: int, active: bool, added?: true}>
      */
     private function creatorFacet(EloquentCollection $base, User $me): array
     {
@@ -3110,6 +3292,9 @@ final class Index extends Component
         if (isset($byUlid[$mine])) {
             $byUlid[$mine]['label'] = __('entries.f_mine', ['name' => $byUlid[$mine]['label']]);
             $byUlid = [$mine => $byUlid[$mine]] + $byUlid;
+        } else {
+            $byUlid = [$mine => ['value' => $mine, 'label' => Cast::string(__('entries.f_mine', ['name' => $me->name])), 'count' => 0,
+                'active' => in_array($mine, $this->creatorF, true), 'added' => true]] + $byUlid;
         }
 
         return array_values($byUlid);

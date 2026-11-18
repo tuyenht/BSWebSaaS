@@ -117,6 +117,10 @@ final class EntryListQuery
     {
         if ($tab === 'trash') {
             $query->onlyTrashed();
+            // a member who may move only their own records to the Trash sees (and counts) only their own there
+            if ($this->filter->trashOwner !== null) {
+                $query->where('entries.author_id', $this->filter->trashOwner);
+            }
         } elseif (in_array($tab, EntryListFilter::STATUS_TABS, true)) {
             $query->where('entries.status', $tab);
         }
@@ -166,6 +170,15 @@ final class EntryListQuery
                 ->whereColumn('ft.entry_id', 'entries.id')
                 ->where('ft.position', 0)
                 ->whereRaw('ft.taxonomy_id = any(?::bigint[])', [self::pgArray($f->categories)]));
+        }
+
+        if ($f->within !== null) {
+            // «Trong phạm vi của tôi»: filed (by the main category) in a category the member may write in
+            $query->whereExists(fn (QueryBuilder $primary) => $primary->selectRaw('1')->from('entry_taxonomies as fw')
+                ->where('fw.site_id', $this->siteId)
+                ->whereColumn('fw.entry_id', 'entries.id')
+                ->where('fw.position', 0)
+                ->whereRaw('fw.taxonomy_id = any(?::bigint[])', [self::pgArray($f->within)]));
         }
 
         if ($f->trans !== []) {
@@ -802,7 +815,10 @@ final class EntryListQuery
             ];
         }
 
-        return ["select distinct e.author_id from entries e where e.site_id = ? and e.type = '{$this->type}' and e.deleted_at {$deleted} and e.author_id is not null", [$this->siteId]];
+        $own = $this->filter->tab === 'trash' && $this->filter->trashOwner !== null;
+
+        return ["select distinct e.author_id from entries e where e.site_id = ? and e.type = '{$this->type}' and e.deleted_at {$deleted} and e.author_id is not null"
+            .($own ? ' and e.author_id = ?' : ''), [$this->siteId, ...($own ? [$this->filter->trashOwner] : [])]];
     }
 
     /**
@@ -815,7 +831,10 @@ final class EntryListQuery
     {
         $deleted = $this->filter->tab === 'trash' ? 'is not null' : 'is null';
         $out = [];
-        foreach (DB::select("select distinct e.template_override as v from entries e where e.site_id = ? and e.type = '{$this->type}' and e.deleted_at {$deleted} order by 1 nulls first", [$this->siteId]) as $row) {
+        $own = $this->filter->tab === 'trash' && $this->filter->trashOwner !== null;
+        $sql = "select distinct e.template_override as v from entries e where e.site_id = ? and e.type = '{$this->type}' and e.deleted_at {$deleted}"
+            .($own ? ' and e.author_id = ?' : '').' order by 1 nulls first';
+        foreach (DB::select($sql, [$this->siteId, ...($own ? [$this->filter->trashOwner] : [])]) as $row) {
             $value = ((array) $row)['v'] ?? null;
             $out[] = is_string($value) ? $value : EntryListFilter::TEMPLATE_NONE;
         }

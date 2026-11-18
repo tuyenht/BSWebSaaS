@@ -309,6 +309,9 @@ Route::prefix(config('admin.prefix', 'admin'))
         Route::get('/content/review', ReviewInbox::class)->middleware('can:review,App\\Modules\\Cms\\Models\\Entry')->name('admin.entries.review');
         Route::get('/content/create', Editor::class)->middleware('can:entries.create')->name('admin.entries.create');
         Route::get('/content/{ulid}/edit', Editor::class)->name('admin.entries.edit');
+        // «Xem trước»: the real storefront page of a page or post of this site, whatever its status, for
+        // whoever may open it (EntryPolicy::preview): never cached or indexed, its forms switched off.
+        Route::get('/content/{ulid}/preview', [StorefrontController::class, 'preview'])->middleware('can:entries.view')->name('admin.entries.preview');
 
         // Chuyên mục (?section=…): the component re-checks taxonomies.manage on every request (boot) and per method.
         Route::get('/taxonomies', CategoriesIndex::class)->middleware('can:taxonomies.manage')->name('admin.taxonomies.index');

@@ -25,6 +25,7 @@
         @if ($hint)<span class="list-mi-k" aria-hidden="true">{{ $hint }}</span>@endif
     </button>
     @if ($why)
-        <span class="list-mwhy">{{ $why }}</span>
+        {{-- the reason goes with its item when the table shows that item on the row instead (data-xm) --}}
+        <span class="list-mwhy"@if ($attributes->has('data-xm')) data-xm="{{ $attributes->get('data-xm') }}"@endif>{{ $why }}</span>
     @endif
 @endif

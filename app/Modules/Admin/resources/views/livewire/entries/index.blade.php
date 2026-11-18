@@ -102,7 +102,7 @@
     if ($multilingual || $langF !== []) {
         $sections[] = ['key' => 'lang', 'label' => __('entries.col_language'), 'icon' => 'ri-global', 'model' => 'langF', 'multiple' => true, 'value' => $langF, 'options' => $facets['lang']];
     }
-    if (count($facets['creator']) >= 2 || $creatorF !== []) {
+    if (EntriesIndex::creatorShown($facets['creator']) || $creatorF !== []) {
         $sections[] = ['key' => 'creator', 'label' => __('entries.col_creator'), 'icon' => 'ri-user-3', 'model' => 'creatorF', 'multiple' => true, 'value' => $creatorF, 'options' => $facets['creator']];
     }
     if ($isPost) {
@@ -436,10 +436,20 @@
                         // outside the member's limits: «🔒 Xem» and the reason instead of «Sửa», its items locked
                         $out = $trashed ? null : $may['out'];
                         $outWhy = $out !== null ? (preg_replace('/[.。]$/u', '', $out) ?? $out) : null;
+                        // «Xem trước» of a row visitors cannot see yet opens the admin's preview (for who may open it);
+                        // a published one opens on the website
+                        $viewHref = $isLive ? $path : $may['preview'];
+                        // Thùng rác shown locked with its reason: the Home page (for who may remove the row otherwise), or a
+                        // colleague's record for a member who may remove only their own
+                        $trashLock = $trashed ? null : (($may['home'] && $may['delete']) ? __('entries.home_trash_why') : $may['trashWhy']);
                     @endphp
-                    <x-bs-admin::list.row :selected="$isSelected" wire:key="entry-{{ $entry->ulid }}"
-                        x-data="{ editing: false, value: {{ $Js::from($t?->title ?? '') }}, cancel: false }"
-                        x-on:list-quick-edit="editing = true; cancel = false">
+                    {{-- data-rk: the row the focus comes back to after a pick from its ⋮ or its status (window.bsListFocus).
+                         Quick title edit: it opens on the title the row shows now (data-t, kept current by each render);
+                         Esc or an empty title puts that title back in the field. --}}
+                    <x-bs-admin::list.row :selected="$isSelected" wire:key="entry-{{ $entry->ulid }}" data-rk="{{ $entry->ulid }}"
+                        x-data="{ editing: false, value: '', orig: '', cancel: false, slugEd: false }"
+                        x-on:list-quick-edit="orig = value = $refs.ti?.dataset.t ?? ''; editing = true; cancel = false"
+                        x-on:list-quick-slug="slugEd = true">
                         <x-bs-admin::list.cell col="chk">
                             <x-bs-admin::list.check data-guide="row-check" :checked="$isSelected" :label="__('entries.select_named', ['title' => $title])" wire:click="toggleSelectAll(['{{ $entry->ulid }}'])" />
                         </x-bs-admin::list.cell>
@@ -459,33 +469,35 @@
                                         :quick-edit="$quickEdit ? __('entries.quick_edit_named', ['title' => $title]) : null" :child="$depth > 0">{{ $title }}</x-bs-admin::list.name>
                                 </div>
                                 @if ($quickEdit)
-                                    <input type="text" x-show="editing" x-cloak x-model="value" class="list-in"
+                                    <input type="text" x-show="editing" x-cloak x-model="value" class="list-in" x-ref="ti" data-t="{{ $t?->title ?? '' }}"
                                         aria-label="{{ __('entries.quick_edit_named', ['title' => $title]) }}"
                                         x-init="$watch('editing', on => on && $nextTick(() => { $el.focus(); $el.select() }))"
                                         @keydown.enter.prevent="cancel = false; $el.blur()"
-                                        @keydown.escape="cancel = true; $el.blur()"
-                                        @blur="editing = false; if (! cancel) { $wire.saveTitle(@js($entry->ulid), value) }">
+                                        @keydown.escape="cancel = true; value = orig; $el.blur()"
+                                        @blur="if (! editing) { return } editing = false; if (! cancel) { const v = value; if (v.trim() === '') { value = orig } $wire.saveTitle(@js($entry->ulid), v) }">
                                 @endif
                                 @if (in_array('desc', $cols, true) && filled($t?->excerpt))
                                     <p class="list-desc" x-show="vDesc" data-guide="row-desc">{{ $t->excerpt }}</p>
                                 @endif
 
                                 <x-bs-admin::list.meta>
-                                    <span class="list-m" x-show="vPath">
+                                    <span class="list-m" x-show="vPath || slugEd">
                                         @if ($isHome)
                                             <span class="inline-flex items-center gap-1 font-mono text-caption" data-guide="row-path-home" title="{{ __('entries.home_locked') }}">{{ $path ?? '/' }} <x-bs-admin::icon name="ri-lock" class="size-3" /></span>
                                         @elseif ($quickEdit)
-                                            <span wire:key="slug-{{ $entry->ulid }}-{{ $slugLeaf }}" x-data="{ editing: false, value: @js($slugLeaf ?? ''), cancel: false }">
+                                            {{-- «Sửa đường dẫn» in the ⋮ (while the path column is off) opens this same field (slugEd on the row) --}}
+                                            <span wire:key="slug-{{ $entry->ulid }}-{{ $slugLeaf }}" x-data="{ editing: false, value: @js($slugLeaf ?? ''), orig: @js($slugLeaf ?? ''), cancel: false, open() { this.value = this.orig; this.editing = true; this.cancel = false; this.$nextTick(() => { this.$refs.slugInput.focus(); this.$refs.slugInput.select() }) } }"
+                                                x-init="$watch('slugEd', (on) => on && open())">
                                                 <button type="button" x-show="! editing" data-guide="row-path-edit"
-                                                    @click="editing = true; cancel = false; $nextTick(() => { $refs.slugInput.focus(); $refs.slugInput.select() })"
+                                                    @click="open()"
                                                     title="{{ $path }} · {{ __('entries.edit_hint') }}"
                                                     class="list-path font-mono text-caption text-text-muted [overflow-wrap:anywhere] transition-colors hover:bg-primary-soft hover:text-primary-text">{{ $path ?? '—' }}</button>
                                                 <span x-show="editing" x-cloak class="inline-flex w-full items-center gap-0.5 font-mono text-caption">
                                                     <span class="whitespace-nowrap text-placeholder">{{ $slugPrefix }}</span>
                                                     <input type="text" x-ref="slugInput" x-model="value" aria-label="{{ __('entries.col_path') }}"
                                                         @keydown.enter.prevent="cancel = false; $el.blur()"
-                                                        @keydown.escape="cancel = true; $el.blur()"
-                                                        @blur="editing = false; if (! cancel) { $wire.saveSlug(@js($entry->ulid), value) }"
+                                                        @keydown.escape="cancel = true; value = orig; $el.blur()"
+                                                        @blur="editing = false; slugEd = false; if (! cancel) { $wire.saveSlug(@js($entry->ulid), value) }"
                                                         class="min-h-tap-cell min-w-0 flex-1 rounded border border-primary-text bg-surface px-1">
                                                 </span>
                                             </span>
@@ -588,15 +600,23 @@
                                         </div>
                                     </div>
                                 @elseif ($may['publish'] && ! $trashed)
-                                    <div x-data="{ open: false, sched: false }" @click.outside="open = false; sched = false" @keydown.escape="if (open || sched) { open = false; sched = false; $refs.pill.focus() }" class="relative inline-block">
+                                    <div x-data="{ open: false }" @click.outside="open = false" @keydown.escape="if (open) { open = false; $refs.pill.focus() }" class="relative inline-block">
                                         <x-bs-admin::status-pill button x-ref="pill" :status="$status" x-on:click="open = ! open" x-bind:aria-expanded="open.toString()" aria-haspopup="true" title="{{ __('entries.status_menu_label') }}">{{ __('entries.status_'.$status) }}<span class="sr-only"> · {{ __('entries.status_menu_label') }}</span></x-bs-admin::status-pill>
                                         <div x-show="open" x-cloak x-transition
                                             class="absolute left-0 z-30 mt-1 w-56 rounded-lg border border-border bg-surface p-1 shadow-lg">
+                                            {{-- the live Home page stays published: a draft or private would leave «/» answering 404 (TransitionEntryStatus refuses it too), so those two stay listed, greyed, with the reason --}}
                                             @foreach (['published', 'draft', 'private'] as $opt)
-                                                <button type="button" x-on:click="$wire.changeStatus(@js($entry->ulid), @js($opt)); open = false" class="list-mi rounded">
-                                                    <x-bs-admin::status-pill :status="$opt">{{ __('entries.status_'.$opt) }}</x-bs-admin::status-pill>
-                                                    @if ($status === $opt)<x-bs-admin::icon name="ri-check" class="ml-auto size-3.5 text-primary-text" />@endif
-                                                </button>
+                                                @if ($isHome && $status === 'published' && $opt !== 'published')
+                                                    <button type="button" aria-disabled="true" data-home-locked="{{ $opt }}" x-on:click="$bsToast({{ $lockToast(__('entries.home_trash_why')) }})" class="list-mi rounded">
+                                                        <x-bs-admin::status-pill :status="$opt">{{ __('entries.status_'.$opt) }}</x-bs-admin::status-pill>
+                                                    </button>
+                                                    <span class="list-mwhy">{{ __('entries.home_trash_why') }}</span>
+                                                @else
+                                                    <button type="button" x-on:click="$wire.changeStatus(@js($entry->ulid), @js($opt)); open = false" class="list-mi rounded">
+                                                        <x-bs-admin::status-pill :status="$opt">{{ __('entries.status_'.$opt) }}</x-bs-admin::status-pill>
+                                                        @if ($status === $opt)<x-bs-admin::icon name="ri-check" class="ml-auto size-3.5 text-primary-text" />@endif
+                                                    </button>
+                                                @endif
                                             @endforeach
                                             @if ($status === 'published' && ! $isHome)
                                                 {{-- off the website, its content kept (archived): the publish right on this row, as every move here --}}
@@ -604,18 +624,21 @@
                                                     <x-bs-admin::status-pill status="archived">{{ __('entries.status_menu_archived') }}</x-bs-admin::status-pill>
                                                 </button>
                                             @endif
+                                            @if (! ($isHome && $status === 'published'))
+                                            {{-- the live Home page is never scheduled: it would be off the website until its time (TransitionEntryStatus refuses it too) --}}
                                             <div class="mt-0.5 border-t border-border pt-0.5">
-                                                <button type="button" @click="sched = ! sched" x-bind:aria-expanded="sched.toString()" class="list-mi rounded">
-                                                    <x-bs-admin::status-pill status="scheduled">{{ __('entries.status_scheduled') }}</x-bs-admin::status-pill>
-                                                    <x-bs-admin::icon name="chevron-down" class="ml-auto size-3.5 text-placeholder transition-transform" ::class="sched && 'rotate-180'" />
+                                                {{-- «Hẹn giờ đăng»: the dialog (one for the list) opens on tomorrow 08:00 of the website's clock, or on the time already set --}}
+                                                <button type="button" data-sched x-on:click="open = false; $dispatch('entries-sched', {{ $Js::from(['ulid' => $entry->ulid, 'for' => __('entries.sched_for', ['title' => $title]), 'hint' => __('entries.sched_hint', ['noun' => __('entries.noun_'.$entry->type)]), 'value' => $isScheduled && $when ? $when->format('Y-m-d\TH:i') : $schedDefault]) }})" class="list-mi rounded">
+                                                    <x-bs-admin::status-pill status="scheduled">{{ __('entries.sched_title') }}</x-bs-admin::status-pill>
                                                 </button>
-                                                <div x-show="sched" x-cloak class="px-2 pb-1.5 pt-1">
-                                                    <label for="sched-{{ $entry->ulid }}" class="mb-1 block text-caption text-text-muted">{{ __('entries.schedule_at') }}</label>
-                                                    <input id="sched-{{ $entry->ulid }}" type="datetime-local" x-ref="when" min="{{ $siteTime->now()->format('Y-m-d\TH:i') }}"
-                                                        class="field w-full rounded border border-border-input bg-surface px-2 text-text">
-                                                    <x-bs-admin::button size="sm" class="mt-1.5 w-full" x-on:click="$wire.scheduleEntry({{ $Js::from($entry->ulid) }}, $refs.when.value); open = false; sched = false">{{ __('entries.schedule_set_action') }}</x-bs-admin::button>
-                                                </div>
+                                                @if ($isScheduled)
+                                                    {{-- «Hủy hẹn giờ», asked first: back to a draft, never published at that time --}}
+                                                    <button type="button" data-unsched x-on:click="open = false; $bsConfirm({ icon: 'warning', title: {{ $Js::from(__('entries.unsched_title')) }}, text: {{ $Js::from(__('entries.unsched_text', ['noun' => __('entries.noun_'.$entry->type), 'time' => $when?->format('H:i'), 'date' => $when?->format('d/m/Y'), 'step' => __('entries.status_draft')])) }}, confirm: {{ $Js::from(__('entries.unsched')) }}, cancel: {{ $Js::from(__('entries.unsched_keep')) }} }).then(ok => { window.bsListFocus?.expect({{ $Js::from($entry->ulid) }}, 'st', ! ok); ok && $wire.unschedule({{ $Js::from($entry->ulid) }}) })" class="list-mi rounded">
+                                                        <x-bs-admin::icon name="ri-arrow-go-back" class="size-4 shrink-0" /><span>{{ __('entries.unsched') }}</span>
+                                                    </button>
+                                                @endif
                                             </div>
+                                            @endif
                                         </div>
                                     </div>
                                 @else
@@ -658,8 +681,8 @@
                                     @endif
                                 @elseif ($out !== null)
                                     {{-- outside the member's limits: one «🔒 Xem» that opens the record (on the website, or a preview), saying why it does not open the editor --}}
-                                    @if ($path)
-                                        <x-bs-admin::button size="sm" variant="soft" color="secondary" :href="$path" :navigate="false" target="_blank" rel="noopener" data-guide="row-view"
+                                    @if ($viewHref)
+                                        <x-bs-admin::button size="sm" variant="soft" color="secondary" :href="$viewHref" :navigate="false" target="_blank" rel="noopener" data-guide="row-view"
                                             :title="__($isLive ? 'entries.locked_view_live' : 'entries.locked_view_preview', ['why' => $outWhy])"
                                             :aria-label="__('entries.locked_view_named', ['title' => $title, 'why' => $outWhy]).' ('.__('entries.opens_new_tab').')'">
                                             <x-bs-admin::icon name="ri-lock" class="size-4" /> {{ __('admin.view') }}
@@ -681,10 +704,10 @@
                                         @endif
                                     </x-slot:menu>
                                 @else
-                                    @if ($path)
+                                    @if ($viewHref)
                                         {{-- both open in a new tab and say so: a published record on the website, any other as a preview. The button sits in its own span (list-x) so the table can hide it when the name column needs the room; the ⋮ then offers «Xem» --}}
                                         <span class="list-x" data-x="xv">
-                                            <x-bs-admin::button size="sm" variant="soft" color="secondary" :href="$path" :navigate="false" target="_blank" rel="noopener"
+                                            <x-bs-admin::button size="sm" variant="soft" color="secondary" :href="$viewHref" :navigate="false" target="_blank" rel="noopener"
                                                 :title="$isLive ? __('entries.opens_new_tab') : __('entries.action_preview')" data-guide="row-view" :aria-label="__('entries.view_named', ['title' => $title]).' ('.__('entries.opens_new_tab').')'">
                                                 <x-bs-admin::icon :name="$isLive ? 'ri-external-link' : 'ri-eye'" class="size-4" /> {{ __('admin.view') }}
                                             </x-bs-admin::button>
@@ -711,7 +734,17 @@
                                         @else
                                             <span class="list-x list-xe" data-x="xd" aria-hidden="true"></span>
                                         @endif
-                                        @if ($may['delete'])
+                                        @if ($trashLock !== null)
+                                            {{-- locked (the Home page; a colleague's record for a member who may remove only their own): the reason in a bubble on tap, hover or focus, taking no room --}}
+                                            <span class="list-x" data-x="xt">
+                                                <x-bs-admin::list.lock-tip :why="$trashLock">
+                                                    <x-bs-admin::button size="sm" variant="outline" color="danger" aria-disabled="true" data-locked class="aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+                                                        :aria-label="__('entries.row_btn_named', ['action' => __('entries.action_trash'), 'title' => $title]).' — '.$trashLock">
+                                                        <x-bs-admin::icon name="ri-delete-bin" class="size-4" /> {{ __('entries.row_trash') }}
+                                                    </x-bs-admin::button>
+                                                </x-bs-admin::list.lock-tip>
+                                            </span>
+                                        @elseif ($may['delete'])
                                             <span class="list-x" data-x="xt">
                                                 <x-bs-admin::button size="sm" variant="outline" color="danger" wire:click="trash('{{ $entry->ulid }}')"
                                                     :aria-label="__('entries.row_btn_named', ['action' => __('entries.action_trash'), 'title' => $title])">
@@ -722,21 +755,34 @@
                                             <span class="list-x list-xe" data-x="xt" aria-hidden="true"></span>
                                         @endif
                                     @endif
+                                    {{-- as the design's ⋮: Xem trên website (published) or Xem trước · Sao chép đường dẫn | Sửa nhanh tiêu đề ·
+                                         Sửa đường dẫn (only while the path column is off) · Nhân bản | Chuyển vào Thùng rác (locked on the Home page) --}}
                                     <x-slot:menu>
+                                        @if ($viewHref)
+                                            <x-bs-admin::list.menu-item :icon="$isLive ? 'ri-external-link' : 'ri-eye'" data-xm="xv" :href="$viewHref" target="_blank" rel="noopener" :aria-label="($isLive ? __('entries.view_on_site') : __('entries.action_preview')).': '.$title.' ('.__('entries.opens_new_tab').')'">{{ $isLive ? __('entries.view_on_site') : __('entries.action_preview') }}</x-bs-admin::list.menu-item>
+                                        @endif
                                         @if ($path)
-                                            <x-bs-admin::list.menu-item :icon="$isLive ? 'ri-external-link' : 'ri-eye'" data-xm="xv" :href="$path" target="_blank" rel="noopener" :aria-label="__('entries.view_named', ['title' => $title]).' ('.__('entries.opens_new_tab').')'">{{ __('admin.view') }}</x-bs-admin::list.menu-item>
+                                            <x-bs-admin::list.menu-item icon="ri-link" data-copy x-on:click="(navigator.clipboard ? navigator.clipboard.writeText({{ $Js::from($publicOrigin.$path) }}) : Promise.reject()).then(() => $bsToast({ text: {{ $Js::from(__('entries.link_copied', ['url' => $publicOrigin.$path])) }} }), () => $bsToast({ text: {{ $Js::from(__('admin.domains_copy_failed', ['text' => $publicOrigin.$path])) }}, stay: true }))">{{ __('entries.copy_link') }}</x-bs-admin::list.menu-item>
+                                        @endif
+                                        @if (($viewHref || $path) && ($quickEdit || $may['duplicate']))
+                                            <x-bs-admin::list.menu-sep />
                                         @endif
                                         @if ($quickEdit)
                                             <x-bs-admin::list.menu-item icon="ri-pencil" x-on:click="$dispatch('list-quick-edit')">{{ __('entries.quick_edit_title') }}</x-bs-admin::list.menu-item>
+                                            @if (! $isHome && $path)
+                                                <x-bs-admin::list.menu-item icon="ri-link" data-path-edit x-show="! vPath" x-on:click="$dispatch('list-quick-slug')">{{ __('entries.edit_path') }}</x-bs-admin::list.menu-item>
+                                            @endif
                                         @endif
                                         @if ($may['duplicate'])
                                             <x-bs-admin::list.menu-item icon="ri-file-copy" data-xm="xd" wire:click="duplicate('{{ $entry->ulid }}')">{{ __('entries.action_duplicate') }}</x-bs-admin::list.menu-item>
                                         @endif
-                                        @if ($may['delete'])
-                                            @if ($quickEdit || $may['duplicate'])
-                                                <x-bs-admin::list.menu-sep :data-xm="$quickEdit ? 'xt' : 'xt xd'" />
-                                            @endif
-                                            {{-- at once, with «Hoàn tác» on the message; the server asks first for a page with sub-pages or the Home page --}}
+                                        @if ($trashLock !== null)
+                                            <x-bs-admin::list.menu-sep data-xm="xt" />
+                                            {{-- locked, with the reason under it (the server refuses it too) --}}
+                                            <x-bs-admin::list.menu-item icon="ri-delete-bin" danger data-xm="xt" :why="$trashLock" x-on:click="$bsToast({{ $lockToast($trashLock) }})">{{ __('entries.action_trash') }}</x-bs-admin::list.menu-item>
+                                        @elseif ($may['delete'])
+                                            <x-bs-admin::list.menu-sep data-xm="xt" />
+                                            {{-- at once, with «Hoàn tác» on the message; the server asks first for a page with sub-pages --}}
                                             <x-bs-admin::list.menu-item icon="ri-delete-bin" danger data-xm="xt" wire:click="trash('{{ $entry->ulid }}')">{{ __('entries.action_trash') }}</x-bs-admin::list.menu-item>
                                         @endif
                                     </x-slot:menu>
@@ -788,7 +834,7 @@
                         $pgPrev = $turn($pager['prev']);
                         $pgNext = $turn($pager['next']);
                     @endphp
-                    <nav aria-label="Pagination" data-guide="pager" class="flex flex-wrap items-center gap-2">
+                    <nav aria-label="{{ __('admin.pagination.nav') }}" data-guide="pager" class="flex flex-wrap items-center gap-2">
                         <button type="button" @if ($pgPrev) wire:click="{{ $pgPrev }}" @endif @disabled($pgPrev === null)
                             aria-label="{{ __('admin.pagination.previous') }}"
                             @class(['pager-link', 'text-text-muted hover:bg-surface-hover' => $pgPrev !== null, 'cursor-not-allowed text-icon-ghost' => $pgPrev === null])>
@@ -838,6 +884,34 @@
                 <x-slot:footer>
                     <x-bs-admin::button color="light" x-on:click="wfNote = null">{{ __('admin.cancel') }}</x-bs-admin::button>
                     <x-bs-admin::button color="primary" x-on:click="send()"><x-bs-admin::icon name="ri-send-plane" class="size-4" /> {{ __('entries.wf_note_ok') }}</x-bs-admin::button>
+                </x-slot:footer>
+            </x-bs-admin::modal>
+        </div>
+    @endif
+
+    {{-- «Hẹn giờ đăng» of one row (from its status menu): the website's own clock. A missing or past time is the
+         field's error, kept under the field until it is put right (checked when the field is left and on save,
+         Enter saves); the server judges the time again and answers with the same error. --}}
+    @if ($canPublish)
+        <div x-data="{ sched: null, value: '', err: '', busy: false,
+                open(d) { this.sched = d; this.value = d.value; this.err = ''; $nextTick(() => document.getElementById('entries-sched-at')?.focus()); },
+                check() { if (! this.value.trim()) { return {{ Js::from(__('entries.sched_err_empty')) }} } return this.value <= {{ Js::from($siteNow) }}.slice(0, 16) ? {{ Js::from(__('entries.sched_err_past')) }} : '' },
+                save() { if (this.busy) { return } this.err = this.check(); if (this.err) { document.getElementById('entries-sched-at')?.focus(); return } const d = this.sched; this.busy = true;
+                    $wire.scheduleEntry(d.ulid, this.value).then((e) => { this.busy = false; if (e) { this.err = e; document.getElementById('entries-sched-at')?.focus(); return } this.sched = null; window.bsListFocus?.expect(d.ulid, 'st', true) }, () => { this.busy = false }) } }"
+            x-on:entries-sched.window="open($event.detail)">
+            <x-bs-admin::modal state="sched" close="sched = null" :close-label="__('admin.close')" :title="__('entries.sched_title')">
+                <p class="m-0 text-small text-text-muted [overflow-wrap:anywhere]" x-text="sched ? sched.for : ''"></p>
+                <div class="flex flex-col gap-1.5">
+                    <label for="entries-sched-at" class="text-small font-semibold text-text">{{ __('entries.sched_label') }}</label>
+                    <input id="entries-sched-at" type="datetime-local" x-model="value" x-on:blur="err = check()" x-on:input="err && (err = check())" x-on:keydown.enter.prevent="save()"
+                        aria-describedby="entries-sched-err entries-sched-hint" x-bind:aria-invalid="(err !== '').toString()"
+                        class="field w-full rounded border bg-surface px-3 text-text" x-bind:class="err ? 'border-danger-text' : 'border-border-input'">
+                    <x-bs-admin::field-error id="entries-sched-err" x-cloak x-show="err" role="alert"><span x-text="err"></span></x-bs-admin::field-error>
+                    <p id="entries-sched-hint" class="m-0 text-caption text-text-muted" x-text="sched ? sched.hint : ''"></p>
+                </div>
+                <x-slot:footer>
+                    <x-bs-admin::button color="light" x-on:click="sched = null">{{ __('admin.cancel') }}</x-bs-admin::button>
+                    <x-bs-admin::button color="primary" data-sched-save x-on:click="save()"><x-bs-admin::icon name="ri-calendar-schedule" class="size-4" /> {{ __('entries.sched_title') }}</x-bs-admin::button>
                 </x-slot:footer>
             </x-bs-admin::modal>
         </div>

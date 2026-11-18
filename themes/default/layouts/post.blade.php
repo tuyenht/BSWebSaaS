@@ -48,7 +48,10 @@
 @include('theme::partials.head')
 </head>
 <body>
-    <a class="sf-skip" href="#noi-dung">{{ __('storefront.skip_to_content') }}</a>
+    <a class="sf-skip" href="#noi-dung"@if (! empty($preview)) target="_self"@endif>{{ __('storefront.skip_to_content') }}</a>
+@if (! empty($preview))
+    <p class="sf-preview" role="note">{{ __(! empty($previewLive) ? 'storefront.preview_band_live' : 'storefront.preview_band') }}</p>
+@endif
     @include('theme::partials.header', ['menu' => $menu ?? [], 'brand' => $brand ?? null])
 @if ($sfRail)
     <div class="post-progress" aria-hidden="true"><span class="post-progress__bar"></span></div>

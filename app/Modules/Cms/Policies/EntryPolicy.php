@@ -4,6 +4,7 @@ namespace App\Modules\Cms\Policies;
 
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Support\CategoryScopes;
+use App\Modules\Cms\Support\EntryReviewReach;
 use App\Modules\Identity\Models\User;
 use Illuminate\Auth\Access\Response;
 
@@ -23,7 +24,10 @@ use Illuminate\Auth\Access\Response;
  */
 final class EntryPolicy
 {
-    public function __construct(private readonly CategoryScopes $scopes) {}
+    public function __construct(
+        private readonly CategoryScopes $scopes,
+        private readonly EntryReviewReach $reviewReach,
+    ) {}
 
     public function viewAny(User $user): bool
     {
@@ -59,6 +63,19 @@ final class EntryPolicy
         return ($user->can('entries.edit.any')
             || ($user->can('entries.edit.own') && $this->owns($user, $entry)))
             && $this->scopes->coversEntry($user, $entry);
+    }
+
+    /**
+     * «Xem trước»: the admin's preview of this entry as the website would draw it, whatever its status.
+     * Whoever may open it in the editor (update); or a reviewer or approver, only while it waits at a
+     * step they may act on — exactly what their review inbox shows them (EntryReviewReach), never a
+     * colleague's unsent draft or an entry parked at another person's step. Never only on the
+     * strength of seeing the list.
+     */
+    public function preview(User $user, Entry $entry): bool
+    {
+        return $user->can('entries.view')
+            && ($this->update($user, $entry) || ($this->review($user) && $this->reviewReach->waitsFor($user, $entry)));
     }
 
     public function delete(User $user, Entry $entry): bool

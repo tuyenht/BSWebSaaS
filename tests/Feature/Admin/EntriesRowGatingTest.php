@@ -157,7 +157,8 @@ it('gives an own-only member their own rows and only a look at a colleague\'s', 
     $theirs = rgEntry($colleague, 'Bài của người khác', 'published', $events);
 
     app(Tenancy::class)->enter(1, function () use ($me, $mine, $theirs): void {
-        $list = rgPosts($me)->assertOk();
+        // an own-only member opens on «Của tôi»: everyone's rows, to see the colleague's
+        $list = rgPosts($me)->call('resetFilterGroup', 'creator')->assertOk();
         expect($list->viewData('rowCan')[$mine->ulid])->toMatchArray(['publish' => true, 'delete' => true, 'duplicate' => true, 'out' => null])
             ->and($list->viewData('rowCan')[$theirs->ulid])->toMatchArray(['publish' => false, 'send' => false, 'delete' => false, 'duplicate' => true, 'out' => null])
             ->and($list->viewData('rowEditable')[$theirs->ulid])->toBeFalse();
@@ -257,7 +258,7 @@ it('gives a submit-only member «Gửi duyệt» on their draft, in the status m
     $theirs = rgEntry($owner, 'Bài của chủ', 'draft', $events);
 
     app(Tenancy::class)->enter(1, function () use ($me, $draft, $second, $waiting, $theirs): void {
-        $list = rgPosts($me)->assertOk();
+        $list = rgPosts($me)->call('resetFilterGroup', 'creator')->assertOk();
         $can = $list->viewData('rowCan');
         expect($can[$draft->ulid])->toMatchArray(['publish' => false, 'send' => true, 'delete' => false])
             ->and($can[$waiting->ulid]['send'])->toBeFalse()
@@ -326,7 +327,7 @@ it('shows a locked «Thùng rác» only to a role that could otherwise remove th
 
     app(Tenancy::class)->enter(1, function () use ($page, $lan, $nobody): void {
         // no delete right at all: no locked Thùng rác, on a page or a post
-        expect(Livewire::actingAs($nobody)->test(Index::class)->viewData('rowCan')[$page->ulid]['deleteRole'])->toBeFalse();
+        expect(Livewire::actingAs($nobody)->test(Index::class)->call('resetFilterGroup', 'creator')->viewData('rowCan')[$page->ulid]['deleteRole'])->toBeFalse();
         // the editor role may delete any: its locked Thùng rác stays, with the reason
         $may = Livewire::actingAs($lan)->test(Index::class)->viewData('rowCan')[$page->ulid];
         expect($may['deleteRole'])->toBe($lan->can('entries.delete.any') || $lan->can('entries.delete.own'));

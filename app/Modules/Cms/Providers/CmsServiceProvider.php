@@ -37,6 +37,7 @@ use App\Modules\Cms\Routing\EntryPageLinks;
 use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Cms\Support\CategoryScopes;
+use App\Modules\Cms\Support\EntryReviewReach;
 use App\Modules\Cms\Support\LayoutSlotBlocks;
 use App\Modules\Rbac\Events\CustomRolePermissionsAdding;
 use App\Modules\Rbac\Events\InvitationAccepted;
@@ -66,6 +67,10 @@ final class CmsServiceProvider extends ServiceProvider
         // CategoryScopes memoizes per request which categories a member may write in; scoped for the
         // same reason — a limit read in one request must never answer for another.
         $this->app->scoped(CategoryScopes::class);
+
+        // EntryReviewReach memoizes per request which stages each member acts on; scoped with the
+        // section and limit memos it reads, so a queue read in one request never answers for another.
+        $this->app->scoped(EntryReviewReach::class);
 
         // The category totals' open bulk batches belong to one request or job; scoped so a batch
         // can never be carried into the next Octane operation.

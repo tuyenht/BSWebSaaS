@@ -332,7 +332,7 @@ describe('the posts and pages list on the shared row', function (): void {
             expect($source)->not->toMatch('/\\btruncate\\b|line-clamp/')
                 // a phone card shows the path and languages only once the member turns them on in
                 // "Hiện trên thẻ" (kept in their own preferences, see EntriesListHeaderTest)
-                ->and($source)->toContain('x-show="vPath"')
+                ->and($source)->toContain('x-show="vPath || slugEd"')
                 ->and($source)->toContain('show="vLangs"');
         });
     });
@@ -399,8 +399,9 @@ describe('the posts and pages list on the shared row', function (): void {
             Livewire::actingAs($user->fresh())->test(Index::class)
                 ->assertSee('Chỉ xem')
                 ->assertDontSeeHtml('class="list-qe"')
-                // the ⋮ holds only «Xem», for the width where the row's button gives way: no edit, copy or trash
-                ->assertSeeHtml('data-xm="xv"')
+                // the ⋮ of a draft holds only «Sao chép đường dẫn»: no «Xem trước» without the right to preview it, no edit, duplicate or trash
+                ->assertDontSeeHtml('data-xm="xv"')
+                ->assertSeeHtml('data-copy')
                 ->assertDontSeeHtml('data-xm="xd"')
                 ->assertDontSeeHtml('$wire.trash(')
                 ->assertDontSeeHtml('wire:click="trash(');
@@ -634,7 +635,8 @@ describe('the posts and pages list on the shared row', function (): void {
                 $mine = listRowEntry($user, 'Bài của tôi', 'bai-cua-toi');
                 $theirs = listRowEntry($other, 'Bài người khác', 'bai-nguoi-khac');
 
-                $html = Livewire::actingAs($user->fresh())->test(Index::class)->html();
+                // an own-only member opens on «Của tôi»: everyone's rows, to see a colleague's too
+                $html = Livewire::actingAs($user->fresh())->test(Index::class)->call('resetFilterGroup', 'creator')->html();
 
                 expect($html)->toContain('<a href="'.e(route('admin.entries.edit', ['ulid' => $mine->ulid, 'locale' => 'en'])).'" wire:navigate class="list-lc"')
                     ->and($html)->not->toContain(e(route('admin.entries.edit', ['ulid' => $theirs->ulid, 'locale' => 'en'])))

@@ -21,6 +21,7 @@ use App\Modules\Cms\Taxonomy\CategoryTemplates;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\PreviewMode;
 use App\Modules\Shared\Support\SafeLink;
 use App\Modules\Storefront\Support\ArticleData;
 use App\Modules\Storefront\Support\Breadcrumbs;
@@ -34,6 +35,7 @@ use App\Modules\Storefront\Support\SlotContext;
 use App\Modules\Storefront\Support\ThankYouPages;
 use App\Modules\Storefront\Support\TitleDisambiguator;
 use App\Modules\Tenancy\Context\SiteLocale;
+use App\Modules\Theme\Chrome\StorefrontCsp;
 use App\Modules\Theme\Rendering\PageRenderer;
 use App\Modules\Theme\Rendering\TemplateCatalog;
 use App\Modules\Theme\Rendering\TemplateResolver;
@@ -41,6 +43,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Query\JoinClause;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -139,6 +142,46 @@ final readonly class StorefrontController
     }
 
     /**
+     * The admin's preview of a page or post (admin.entries.preview): the real storefront page of an
+     * entry of the current site, whatever its status, drawn exactly as a published one would be, for
+     * a member who may open it (EntryPolicy::preview). It lives under the admin's protected routes
+     * (signed in, a member of this site) and is addressed by the entry's ulid: a draft has no public
+     * address yet. An entry the member may not preview, one of another site (RLS), one in the Trash, a
+     * language the site does not have or one the entry lacks all answer the same 404. Like the product preview
+     * (ProductPreviewController): never cached or indexed, no referrer, the storefront's own
+     * Content-Security-Policy, framed only by the admin, no view counted and its forms switched off.
+     */
+    public function preview(Request $request, string $ulid): Response
+    {
+        $default = $this->locale->default();
+        $locale = $request->query('locale', $default);
+        abort_unless(is_string($locale) && $this->locale->isEnabled($locale), 404);
+
+        $entry = Entry::query()->where('ulid', $ulid)->first();
+        // not allowed answers like a missing entry (as the product preview does): a ulid probe learns nothing
+        abort_unless($entry !== null && Gate::allows('preview', $entry), 404);
+        $translation = $entry->translationFor($locale);
+        abort_if($translation === null, 404);
+
+        // The page's own strings in the content's language, as on the public pages.
+        app()->setLocale($locale);
+        PreviewMode::enable($request);
+
+        $path = $this->paths->forEntry($entry, $locale, (string) $translation->slug);
+        $chrome = $this->pageChrome->for($locale, $default, $this->paths->publicUrl($path, $locale), []);
+
+        $response = $this->renderEntry(new ResolvedContent($entry, $translation), $locale, $path, $chrome, preview: true);
+        $response->headers->add([
+            'Cache-Control' => 'private, no-store',
+            'X-Robots-Tag' => 'noindex, nofollow',
+            'Referrer-Policy' => 'no-referrer',
+            'Content-Security-Policy' => StorefrontCsp::header()."; frame-ancestors 'self'",
+        ]);
+
+        return $response;
+    }
+
+    /**
      * The page chrome for the active locale (PageChrome: header, footer, menus, business identity),
      * with the hreflang alternates of the resolved content (none for a page that was not found).
      *
@@ -203,7 +246,7 @@ final readonly class StorefrontController
     /**
      * @param  array<string, mixed>  $chrome  page chrome (menu, lang, hreflang)
      */
-    private function renderEntry(ResolvedContent $content, string $locale, string $path, array $chrome): Response
+    private function renderEntry(ResolvedContent $content, string $locale, string $path, array $chrome, bool $preview = false): Response
     {
         $entry = $content->entry;
 
@@ -307,6 +350,16 @@ final readonly class StorefrontController
         $brandName = data_get($chrome, 'brand.name');
         if ($path === '/' && is_string($brandName) && trim($brandName) !== '') {
             $extra['websiteLd'] = ['@context' => 'https://schema.org', '@type' => 'WebSite', 'name' => trim($brandName), 'url' => $canonical, 'inLanguage' => $locale];
+        }
+
+        // A preview (preview()) prints none of what tells search engines or link previews about a page
+        // (no canonical, share image or JSON-LD: the head leaves them out), counts no view, asks not to
+        // be indexed and says on the page that it is a preview.
+        if ($preview) {
+            unset($extra['viewBeacon'], $extra['canonical'], $extra['ogImage']);
+            $extra['preview'] = true;
+            $extra['previewLive'] = $entry->status === 'published';
+            $extra['robots'] = 'noindex, nofollow';
         }
 
         $html = $this->renderer->render(
