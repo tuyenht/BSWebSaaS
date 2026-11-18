@@ -89,7 +89,7 @@ describe('header', function (): void {
                 ->assertSee('Thêm trang')
                 ->assertDontSee('Thêm bài viết')
                 ->assertSee(__('entries.desc_page', ['label' => 'trang']))
-                ->assertSee(__('entries.mdesc_page'))
+                ->assertSee('Sắp xếp, đăng và sửa các trang.')
                 ->assertSeeHtml('placeholder="Ví dụ: lịch sử"');
         });
     });

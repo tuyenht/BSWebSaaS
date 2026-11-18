@@ -2229,7 +2229,7 @@
     "entries.desc_page": "网站上的所有:label：搜索、筛选、更改状态并直接在行内编辑。",
     "entries.desc_post": "网站上的所有:label：搜索、筛选、更改状态并直接在行内编辑。",
     "entries.mdesc_post": "在行内搜索、筛选并快速编辑文章。",
-    "entries.mdesc_page": "排序、发布和编辑网站的页面。",
+    "entries.mdesc_page": "排序、发布和编辑页面。",
     "entries.sort_order": "网站上的顺序",
     "entries.sort_name": "标题（A–Z）",
     "entries.sort_updated": "最近编辑",

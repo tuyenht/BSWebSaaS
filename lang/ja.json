@@ -2229,7 +2229,7 @@
     "entries.desc_page": "ウェブサイトのすべての:label：検索・絞り込み・状態の変更・行内での編集ができます。",
     "entries.desc_post": "ウェブサイトのすべての:label：検索・絞り込み・状態の変更・行内での編集ができます。",
     "entries.mdesc_post": "記事を行内で検索・絞り込み・すばやく編集できます。",
-    "entries.mdesc_page": "ウェブサイトのページを並べ替え・公開・編集します。",
+    "entries.mdesc_page": "ページを並べ替え・公開・編集します。",
     "entries.sort_order": "サイト上の順序",
     "entries.sort_name": "タイトル (A–Z)",
     "entries.sort_updated": "最近編集した順",
