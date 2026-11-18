@@ -10,12 +10,14 @@ use App\Modules\Admin\Support\Entries\ListCursor;
 use App\Modules\Admin\Support\Entries\ListGroup;
 use App\Modules\Admin\Support\Entries\PostRoleNote;
 use App\Modules\Admin\Support\FirstHints;
+use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\DuplicateEntry;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
 use App\Modules\Cms\Actions\TransitionEntryStatus;
 use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Enums\RevisionKind;
+use App\Modules\Cms\Exceptions\EntryNotGovernedException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
@@ -38,7 +40,9 @@ use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Workflow\Exceptions\InvalidTransitionException;
 use App\Modules\Workflow\Models\Workflow;
+use App\Modules\Workflow\Models\WorkflowState;
 use App\Modules\Workflow\Models\WorkflowTransition;
 use App\Modules\Workflow\Services\WorkflowEngine;
 use Carbon\CarbonImmutable;
@@ -258,6 +262,9 @@ final class Index extends Component
 
     /** The most rows one bulk action takes: every one is locked and worked through in a single request. */
     private const int BULK_LIMIT = 200;
+
+    /** The longest reason a move from the list takes (the reason dialog stops there too). */
+    private const int NOTE_MAX = 2000;
 
     /** A page list this size or smaller is read whole and sorted, filtered and treed in memory. */
     private const int PAGES_IN_MEMORY = 1000;
@@ -529,11 +536,12 @@ final class Index extends Component
     }
 
     /**
-     * Row status menu → published (via PublishEntry, route-synced) or draft/private (via the
-     * engine); for a member who may only send for review, pending («Gửi duyệt», via PublishEntry,
-     * which sends a draft). A post whose section runs an approval workflow cannot be published from
-     * here — that is the editor's approval block — so the refusal comes back as a plain toast, as
-     * does a move this member may not make on this row.
+     * Row status menu → published (via PublishEntry, route-synced) or draft/private/archived («Gỡ
+     * khỏi website — giữ lại nội dung», via TransitionEntryStatus, which needs the publish right on
+     * this row); for a member who may only send for review, pending («Gửi duyệt», via PublishEntry,
+     * which sends a draft). A post whose section runs an approval workflow moves through
+     * applyTransition() instead; a direct publish of one (a tab opened before the workflow was
+     * switched on) comes back as a plain toast, as does a move this member may not make on this row.
      */
     public function changeStatus(string $ulid, string $status): void
     {
@@ -560,7 +568,7 @@ final class Index extends Component
             }
             if ($status === EntryStatus::Published->value) {
                 app(PublishEntry::class)->handle($entry, $locale, $user);
-            } elseif ($status === EntryStatus::Draft->value || $status === EntryStatus::Private->value) {
+            } elseif (in_array($status, [EntryStatus::Draft->value, EntryStatus::Private->value, EntryStatus::Archived->value], true)) {
                 app(TransitionEntryStatus::class)->handle($entry, EntryStatus::from($status), $user);
             } else {
                 return; // scheduled has its own datetime path; unknown values are ignored
@@ -580,6 +588,100 @@ final class Index extends Component
         }
 
         $this->toast(__('entries.status_changed'));
+    }
+
+    /**
+     * The row status menu in a section that runs an approval workflow: one of the engine's moves
+     * («Gửi duyệt», «Duyệt đăng», «Trả lại» …). The engine judges it on the locked row (the move's
+     * right, the row's stage, the reason a move demands); this only checks what it is sent and says
+     * how it went. A move that demands a reason is refused without one here first.
+     */
+    public function applyTransition(string $ulid, string $key, string $note = ''): void
+    {
+        $note = trim($note);
+        if (mb_strlen($note) > self::NOTE_MAX) {
+            $this->toast(__('entries.wf_note_too_long', ['max' => self::NOTE_MAX]));
+
+            return;
+        }
+        $entry = $this->findLiveEntry($ulid);
+        if ($entry === null) {
+            $this->toastStaleRow();
+
+            return;
+        }
+        $workflow = app(EntryWorkflowResolver::class)->forEntry($entry);
+        if ($workflow === null) {
+            $this->toast(__('admin.wfb.err_not_governed'));
+
+            return;
+        }
+        $transition = $workflow->transitions()->where('key', $key)->first();
+        if (! $transition instanceof WorkflowTransition) {
+            $this->toast(__('admin.wfb.err_stale'));
+
+            return;
+        }
+        if ($transition->requires_note && $note === '') {
+            $this->toast(__('admin.wfb.note_missing'));
+
+            return;
+        }
+
+        try {
+            $this->move($entry, $key, $note);
+        } catch (InvalidTransitionException) {
+            $this->toast(__('admin.wfb.err_stale'));   // moved on elsewhere meanwhile, or the flow changed
+
+            return;
+        } catch (AuthorizationException) {
+            $this->refuse($this->refusalFor($entry, 'status'));
+
+            return;
+        } catch (RouteConflictException) {
+            $this->toast(__('admin.inbox.err_slug'));
+
+            return;
+        } catch (EntryNotGovernedException) {
+            $this->toast(__('admin.wfb.err_not_governed'));
+
+            return;
+        }
+
+        $this->toast(__($note !== '' ? 'entries.wf_moved_note' : 'entries.wf_moved', ['label' => $transition->label]));
+    }
+
+    /**
+     * The bulk bar in a section that runs an approval workflow: one of the engine's moves that needs
+     * no reason, made on each ticked row through the engine. A row it cannot move (another stage,
+     * not this member's to move, moved on meanwhile) is skipped and counted in the one toast.
+     */
+    public function bulkTransition(string $key): void
+    {
+        $workflow = $this->governed ? $this->sectionWorkflow() : null;
+        $transition = $workflow?->transitions->firstWhere('key', $key);
+        if (! $workflow instanceof Workflow || ! $transition instanceof WorkflowTransition || $transition->requires_note) {
+            $this->toast(__($workflow === null ? 'admin.wfb.err_not_governed' : 'admin.wfb.err_stale'));
+
+            return;
+        }
+        $user = $this->actingUser();
+        $replace = ['label' => $transition->label, 'noun' => __('entries.noun_'.$this->entryType)];
+
+        $this->reportBulk($this->runBulk(
+            'entries.bulk_moved',
+            'entries.bulk_skipped',
+            fn (Entry $entry): bool => $this->whyNotMove($entry, $user, $workflow, $key) === null,
+            function (Entry $entry) use ($key): bool {
+                try {
+                    $this->move($entry, $key, '');
+                } catch (InvalidTransitionException|EntryNotGovernedException) {
+                    return false;   // left its stage or its workflow meanwhile: skipped, not failed
+                }
+
+                return true;
+            },
+        ), 'entries.bulk_moved', 'entries.bulk_skipped', replace: $replace);
     }
 
     public function scheduleEntry(string $ulid, string $publishAt): void
@@ -1081,6 +1183,31 @@ final class Index extends Component
      */
 
     /**
+     * A workflow move is for a row standing at the move's stage that this member may move
+     * (EntryWorkflowResolver::movesFor, the rule the pill offers by); the engine judges it again.
+     * The stage reason names the stage, so it is returned already worded.
+     */
+    private function whyNotMove(Entry $entry, User $user, Workflow $workflow, string $key): ?string
+    {
+        if ($entry->trashed()) {
+            return 'entries.skip_in_trash';
+        }
+        foreach (app(EntryWorkflowResolver::class)->movesFor($workflow, $entry, $user) as $move) {
+            if ($move->key === $key) {
+                return null;
+            }
+        }
+        $transition = $workflow->transitions->firstWhere('key', $key);
+        if ($transition instanceof WorkflowTransition && $transition->from_state !== EntryWorkflowResolver::originIn($workflow, $entry)) {
+            $stage = $workflow->states->firstWhere('key', $transition->from_state);
+
+            return Cast::string(__('entries.skip_not_at_step', ['step' => $stage instanceof WorkflowState ? $stage->label : $transition->from_state]));
+        }
+
+        return $this->whyRefused($entry, $user, 'edit');
+    }
+
+    /**
      * @param  array<int, true>  $homes  the Home page among the rows (homeIds())
      * @param  array<int, true>  $parents  the pages among the rows with live sub-pages (parentIds())
      */
@@ -1282,11 +1409,12 @@ final class Index extends Component
      * why the Home page, or a page with sub-pages, was left out when one was among the rows.
      *
      * @param  array{tally: array<string, int>, done: list<string>}  $run
+     * @param  array<string, string>  $replace
      */
-    private function bulkMessage(array $run, string $doneKey, string $skippedKey, bool $homeAmong = false, bool $parentAmong = false): string
+    private function bulkMessage(array $run, string $doneKey, string $skippedKey, bool $homeAmong = false, bool $parentAmong = false, array $replace = []): string
     {
         $tally = $run['tally'];
-        $parts = [Cast::string(__($doneKey, ['count' => $tally[$doneKey]]))];
+        $parts = [Cast::string(__($doneKey, ['count' => $tally[$doneKey]] + $replace))];
         foreach ([$skippedKey, 'entries.bulk_governed', 'entries.bulk_failed'] as $key) {
             if ($tally[$key] > 0) {
                 $parts[] = Cast::string(__($key, ['count' => $tally[$key]]));
@@ -1302,11 +1430,14 @@ final class Index extends Component
         return implode(' ', $parts);
     }
 
-    /** @param  array{tally: array<string, int>, done: list<string>}|null  $run */
-    private function reportBulk(?array $run, string $doneKey, string $skippedKey, bool $homeAmong = false): void
+    /**
+     * @param  array{tally: array<string, int>, done: list<string>}|null  $run
+     * @param  array<string, string>  $replace  more words for the done line («Đã “Duyệt đăng” 3 bài viết»)
+     */
+    private function reportBulk(?array $run, string $doneKey, string $skippedKey, bool $homeAmong = false, array $replace = []): void
     {
         if ($run !== null) {
-            $this->toast($this->bulkMessage($run, $doneKey, $skippedKey, $homeAmong));
+            $this->toast($this->bulkMessage($run, $doneKey, $skippedKey, $homeAmong, replace: $replace));
         }
     }
 
@@ -1562,6 +1693,95 @@ final class Index extends Component
      * every case, and the list re-renders as it is now — never a 404 over the page.
      */
 
+    /**
+     * Make workflow move $key on $entry through the engine, in the language the entry has: the site
+     * default when it has that text, otherwise its first translation (a post written only in another
+     * language would otherwise fail on the missing default text).
+     *
+     * @throws InvalidTransitionException|AuthorizationException|RouteConflictException|EntryNotGovernedException
+     */
+    private function move(Entry $entry, string $key, string $note): void
+    {
+        $default = app(SiteLocale::class)->default();
+        $locale = $entry->translationFor($default) !== null
+            ? $default
+            : Cast::string($entry->translations()->orderBy('id')->value('locale'), $default);
+
+        app(ApplyEntryWorkflowTransition::class)->handle($entry, $locale, $this->actingUser(), $key, $note !== '' ? $note : null);
+    }
+
+    /**
+     * The listed section's active workflow with its stages and moves loaded (two queries, once per
+     * request), or null when the section runs none. Read again on every request: a workflow switched
+     * off while the list stayed open is seen at once.
+     */
+    private function sectionWorkflow(): ?Workflow
+    {
+        if (! $this->workflowRead) {
+            $this->mountedWorkflow = $this->entryType === 'post' && is_string($this->section) && $this->section !== ''
+                ? app(WorkflowEngine::class)->activeFor($this->section) : null;
+            $this->workflowRead = true;
+        }
+        $this->mountedWorkflow?->loadMissing(self::flowParts());
+
+        return $this->mountedWorkflow;
+    }
+
+    /**
+     * The workflow's stages and moves as the list reads them (the step column, the pill's moves and
+     * the bulk bar's), in their order.
+     *
+     * @return array<string, Closure(Relation<*, *, *>): mixed>
+     */
+    private static function flowParts(): array
+    {
+        return [
+            'states' => static fn (Relation $q): mixed => $q->select(['id', 'workflow_id', 'key', 'label', 'sort_order', 'is_initial', 'is_published', 'is_terminal'])->orderBy('sort_order')->orderBy('id'),
+            'transitions' => static fn (Relation $q): mixed => $q->select(['id', 'workflow_id', 'key', 'label', 'from_state', 'to_state', 'required_permission', 'requires_note'])->orderBy('id'),
+        ];
+    }
+
+    /**
+     * Each row's workflow moves for this member (the pill's menu): the engine's moves from the row's
+     * stage that this member may make, from the loaded workflow (no query per row). The first move
+     * that puts a not-yet-live post on the website asks first; a move that demands a reason opens
+     * the reason dialog.
+     *
+     * @param  array<int|string, array{entry: Entry, depth: int}>  $items
+     * @return array<string, list<array{key: string, label: string, note: bool, first: bool, icon: string}>>
+     */
+    private static function rowMoves(Workflow $workflow, array $items, User $user): array
+    {
+        $resolver = app(EntryWorkflowResolver::class);
+        $out = [];
+        foreach ($items as $item) {
+            $entry = $item['entry'];
+            if ($entry->trashed()) {
+                continue;
+            }
+            $moves = [];
+            foreach ($resolver->movesFor($workflow, $entry, $user) as $move) {
+                $to = $workflow->states->firstWhere('key', $move->to_state);
+                $live = $to instanceof WorkflowState && $to->is_published;
+                $moves[] = [
+                    'key' => $move->key,
+                    'label' => $move->label,
+                    'note' => $move->requires_note,
+                    'first' => ! $move->requires_note && $live && $entry->status !== EntryStatus::Published->value,
+                    'icon' => match (true) {
+                        $move->requires_note => 'ri-arrow-go-back',
+                        $live => 'ri-check-double',
+                        $to instanceof WorkflowState && $to->is_terminal => 'ri-archive',
+                        default => 'ri-send-plane',
+                    },
+                ];
+            }
+            $out[$entry->ulid] = $moves;
+        }
+
+        return $out;
+    }
+
     /** A row that is not in the Trash — anything else is null, like an unknown ulid. */
     private function findLiveEntry(string $ulid): ?Entry
     {
@@ -1727,10 +1947,7 @@ final class Index extends Component
      */
     private static function rowSteps(Workflow $workflow, array $items): array
     {
-        $workflow->loadMissing([
-            'states' => static fn (Relation $q): mixed => $q->select(['id', 'workflow_id', 'key', 'sort_order', 'is_initial', 'is_published'])->orderBy('sort_order')->orderBy('id'),
-            'transitions' => static fn (Relation $q): mixed => $q->select(['id', 'workflow_id', 'label', 'from_state', 'requires_note'])->orderBy('id'),
-        ]);
+        $workflow->loadMissing(self::flowParts());
         $keys = array_values(array_map(Cast::string(...), $workflow->states->pluck('key')->all()));
         $out = [];
         foreach ($items as $item) {
@@ -2101,17 +2318,20 @@ final class Index extends Component
         $roleShows = $postSection !== null && ! FirstHints::dismissed(FirstHints::POSTS_ROLE, $user);
         // read only when a post list needs it: the Bước duyệt column is on, the role card shows or the guide is drawn
         $stepOn = $this->governed && in_array('step', $this->cols, true);
-        $workflow = $postSection !== null && ($stepOn || $roleShows || $this->guideDue) ? ($this->workflowRead ? $this->mountedWorkflow : app(WorkflowEngine::class)->activeFor($postSection->key)) : null;
-        if ($stepOn && $workflow === null) {
-            // the section's workflow was switched off while the list stayed open: drop the column now, not on reload
+        // ... and whenever the section runs one: the pill and the bulk bar offer its moves
+        $workflow = $postSection !== null && ($this->governed || $stepOn || $roleShows || $this->guideDue) ? ($this->workflowRead ? $this->mountedWorkflow : app(WorkflowEngine::class)->activeFor($postSection->key)) : null;
+        if ($this->governed && $workflow === null) {
+            // the section's workflow was switched off while the list stayed open: drop the column and the moves now, not on reload
             $this->governed = false;
             $stepOn = false;
         }
+        $flow = $this->governed ? $workflow->loadMissing(self::flowParts()) : null;
         $rowStep = $workflow !== null && $stepOn ? self::rowSteps($workflow, $rows->items()) : [];
+        $rowMoves = $flow !== null ? self::rowMoves($flow, $rows->items(), $user) : [];
         $roleNote = $roleShows ? PostRoleNote::with($user, $workflow, $postSection->localizedLabel(), $scoped) : null;
 
         $canDelete = $deleteAny || $deleteOwn;
-        $bulk = $this->bulkPlan($user, $locale, $type);
+        $bulk = $this->bulkPlan($user, $locale, $type, $flow);
         [$sortKey, $sortDir] = $this->sorting();
         $sorts = array_values(array_filter(array_keys(self::SORTS), fn (string $key): bool => $this->sortsHere($key)));
 
@@ -2184,6 +2404,7 @@ final class Index extends Component
             'rowCover' => $rowCover,
             'governed' => $this->governed,
             'rowStep' => $rowStep,
+            'rowMoves' => $rowMoves,
             'roleNote' => $roleNote,
             'filterCount' => $this->filterCount(),
             'filterCountNarrow' => $this->filterCount() + ($this->tab !== 'all' ? 1 : 0),
@@ -2225,9 +2446,13 @@ final class Index extends Component
      * on pages (the Home page among them, and those with live sub-pages). More than BULK_LIMIT
      * ticked reads no row: every button says the run would refuse them.
      *
-     * @return array{actions: list<array{key: string, label: string, name: string, icon: string, color: string, call: string, ok: int, title: string, none: ?string, confirm: ?array{title: string, text: string, ok: string}}>, skip: ?string}
+     * In a section that runs an approval workflow ($flow) the status buttons are the workflow's
+     * moves that need no reason, at most two, among those this member may make on a ticked row
+     * («Duyệt đăng (3)»); each runs bulkTransition() with its key (`arg`).
+     *
+     * @return array{actions: list<array{key: string, label: string, name: string, icon: string, color: string, call: string, arg: ?string, ok: int, title: string, none: ?string, confirm: ?array{title: string, text: string, ok: string}}>, skip: ?string}
      */
-    private function bulkPlan(User $user, string $locale, string $type): array
+    private function bulkPlan(User $user, string $locale, string $type, ?Workflow $flow = null): array
     {
         if ($this->selected === []) {
             return ['actions' => [], 'skip' => null];
@@ -2241,7 +2466,7 @@ final class Index extends Component
             ->with(self::primaryCategoryOnly() + ['translations' => static function (Relation $text) use ($locale): void {
                 $text->where('locale', $locale)->select(['id', 'entry_id', 'locale', 'status', 'title']);
             }])
-            ->get(['id', 'site_id', 'ulid', 'type', 'status', 'author_id', 'deleted_at']);
+            ->get(['id', 'site_id', 'ulid', 'type', 'status', 'author_id', 'deleted_at', 'workflow_state']);
         $homes = $type === 'page' ? $this->homeIds($picked) : [];
         $parents = $type === 'page' ? $this->parentIds($picked) : [];
         $gone = count($picked) - $rows->count();   // gone meanwhile (purged by a colleague): never acted on
@@ -2255,7 +2480,28 @@ final class Index extends Component
                 $specs[] = ['destroy', 'entries.action_destroy', 'ri-delete-bin-2', 'danger', 'bulkForceDelete', fn (Entry $e): ?string => $this->whyNotForceDelete($e, $user)];
             }
         } else {
-            if ($user->can('entries.publish')) {
+            if ($flow !== null) {
+                // the moves the ticked rows offer this member, in the workflow's order; two at most
+                $offered = [];
+                foreach ($rows as $row) {
+                    if (! $row->trashed()) {
+                        foreach (app(EntryWorkflowResolver::class)->movesFor($flow, $row, $user) as $move) {
+                            $offered[$move->key] = true;
+                        }
+                    }
+                }
+                $taken = 0;
+                foreach ($flow->transitions as $move) {
+                    if ($taken === 2 || $move->requires_note || ! isset($offered[$move->key])) {
+                        continue;
+                    }
+                    $taken++;
+                    $to = $flow->states->firstWhere('key', $move->to_state);
+                    $key = $move->key;
+                    $specs[] = ['tr-'.$key, $move->label, $to instanceof WorkflowState && $to->is_published ? 'ri-check-double' : 'ri-send-plane', 'primary', 'bulkTransition',
+                        fn (Entry $e): ?string => $this->whyNotMove($e, $user, $flow, $key), $key];
+                }
+            } elseif ($user->can('entries.publish')) {
                 $specs[] = ['publish', 'entries.bulk_publish', 'ri-send-plane', 'primary', 'bulkPublish', fn (Entry $e): ?string => $this->whyNotPublish($e, $user, $locale)];
                 $specs[] = ['unpublish', 'entries.bulk_unpublish', 'ri-eye-off', 'primary', 'bulkUnpublish', fn (Entry $e): ?string => $this->whyNotUnpublish($e, $user, $homes)];
                 $specs[] = ['draft', 'entries.bulk_draft', 'ri-draft', 'primary', 'bulkDraft', fn (Entry $e): ?string => $this->whyNotDraft($e, $user, $homes)];
@@ -2274,15 +2520,19 @@ final class Index extends Component
         $skip = null;
         if ($tooMany) {
             $refusal = Cast::string(__('entries.bulk_too_many', ['max' => self::BULK_LIMIT]));
-            foreach ($specs as [$key, $labelKey, $icon, $color, $call]) {
-                $name = Cast::string(__($labelKey));
-                $actions[] = ['key' => $key, 'label' => $name, 'name' => $name, 'icon' => $icon, 'color' => $color, 'call' => $call,
+            foreach ($specs as $spec) {
+                [$key, $labelKey, $icon, $color, $call] = $spec;
+                $arg = $spec[6] ?? null;
+                $name = $arg !== null ? $labelKey : Cast::string(__($labelKey));   // a workflow move's label is the site's own words
+                $actions[] = ['key' => $key, 'label' => $name, 'name' => $name, 'icon' => $icon, 'color' => $color, 'call' => $call, 'arg' => $arg,
                     'ok' => 0, 'title' => $refusal, 'none' => $refusal, 'confirm' => null];
             }
 
             return ['actions' => $actions, 'skip' => $specs === [] ? null : $refusal];
         }
-        foreach ($specs as [$key, $labelKey, $icon, $color, $call, $why]) {
+        foreach ($specs as $spec) {
+            [$key, $labelKey, $icon, $color, $call, $why] = $spec;
+            $arg = $spec[6] ?? null;
             $ok = 0;
             $bad = [];
             $first = null;
@@ -2298,7 +2548,7 @@ final class Index extends Component
             if ($gone > 0) {
                 $bad['entries.skip_gone'] = $gone;
             }
-            $name = Cast::string(__($labelKey));
+            $name = $arg !== null ? $labelKey : Cast::string(__($labelKey));
             $skipped = count($this->selected) - $ok;
             $reasons = implode(' · ', array_map(
                 static fn (string $reason, int $n): string => Cast::string(__('entries.bulk_skip_part', ['count' => $n, 'noun' => $noun, 'why' => __($reason)])),
@@ -2310,6 +2560,7 @@ final class Index extends Component
                 'icon' => $icon,
                 'color' => $color,
                 'call' => $call,
+                'arg' => $arg,
                 'ok' => $ok,
                 'title' => Cast::string($ok === 0
                     ? __('entries.bulk_title_none', ['noun' => $noun, 'why' => $reasons])

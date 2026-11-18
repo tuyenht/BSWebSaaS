@@ -92,9 +92,12 @@ final readonly class ApplyEntryWorkflowTransition
 
             // Map the workflow stage onto the public lifecycle: live only when the stage says so;
             // back at the start = a draft again; anywhere in between = in the pipeline, not public.
+            // An end of the line that is not live (a site's «Lưu trữ») is off the website with its
+            // content kept: archived, never "waiting for review".
             $status = match (true) {
                 $destination->is_published => 'published',
                 $destination->is_initial => 'draft',
+                $destination->is_terminal => 'archived',
                 default => 'pending',
             };
 
@@ -142,6 +145,7 @@ final readonly class ApplyEntryWorkflowTransition
         match ($entry->status) {
             'published' => $this->notifier->published($entry, $locale, $actor),
             'draft' => $this->notifier->returned($entry, $locale, $actor, $note),
+            'archived' => null,   // taken off the website: nothing waits for anyone
             default => $assignTo === null ? $this->notifier->awaitingReview($entry, $locale, $actor, 'entries.review') : null,
         };
     }

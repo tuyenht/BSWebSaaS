@@ -350,7 +350,7 @@
                             $click = match (true) {
                                 $action['none'] !== null => '$bsToast('.Js::from(['text' => $action['none']]).')',
                                 $action['confirm'] !== null => '$bsConfirm({ icon: \'trash-danger\', title: '.Js::from($action['confirm']['title']).', text: '.Js::from($action['confirm']['text']).', confirm: '.Js::from($action['confirm']['ok']).', cancel: '.Js::from(__('admin.cancel')).' }).then(ok => ok && $wire.'.$action['call'].'())',
-                                default => '$wire.'.$action['call'].'()',
+                                default => '$wire.'.$action['call'].'('.($action['arg'] !== null ? Js::from($action['arg']) : '').')',
                             };
                         @endphp
                         <x-bs-admin::button size="sm" variant="soft" :color="$action['color']" :title="$action['title']" data-bulk="{{ $action['key'] }}"
@@ -543,7 +543,34 @@
 
                         <x-bs-admin::list.cell col="st">
                             <div class="list-stw" data-guide="row-status">
-                                @if ($may['send'] && ! $trashed)
+                                @if ($governed && ! $trashed && array_key_exists($entry->ulid, $rowMoves))
+                                    {{-- a section with an approval workflow: the engine's moves this member may make from the row's stage
+                                         (a move that asks for a reason opens the reason dialog; the first approval asks first) --}}
+                                    @if ($rowMoves[$entry->ulid] !== [])
+                                        <div x-data="{ open: false }" @click.outside="open = false" @keydown.escape="if (open) { open = false; $refs.pill.focus() }" class="relative inline-block">
+                                            <x-bs-admin::status-pill button x-ref="pill" :status="$status" x-on:click="open = ! open" x-bind:aria-expanded="open.toString()" aria-haspopup="true" title="{{ __('entries.status_menu_label') }}">{{ __('entries.status_'.$status) }}<span class="sr-only"> · {{ __('entries.status_menu_label') }}</span></x-bs-admin::status-pill>
+                                            <div x-show="open" x-cloak x-transition
+                                                class="absolute left-0 z-30 mt-1 w-64 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-surface p-1 shadow-lg">
+                                                @foreach ($rowMoves[$entry->ulid] as $move)
+                                                    @php
+                                                        $run = '$wire.applyTransition('.$Js::from($entry->ulid).', '.$Js::from($move['key']).')';
+                                                        $moveCall = match (true) {
+                                                            $move['note'] => '$dispatch(\'entries-wf-note\', '.$Js::from(['ulid' => $entry->ulid, 'key' => $move['key'], 'title' => __('entries.wf_note_title', ['label' => $move['label']])]).')',
+                                                            $move['first'] => '$bsConfirm({ icon: \'question\', danger: false, title: '.$Js::from(__('entries.wf_ap_title', ['title' => $title])).', text: '.$Js::from(__('entries.wf_ap_text')).', confirm: '.$Js::from(__('entries.wf_ap_ok')).', cancel: '.$Js::from(__('entries.wf_ap_cancel')).' }).then(ok => ok && '.$run.')',
+                                                            default => $run,
+                                                        };
+                                                        $moveFlag = $move['first'] ? ' data-first' : ($move['note'] ? ' data-note' : '');
+                                                    @endphp
+                                                    <button type="button" data-wf="{{ $move['key'] }}" data-row="{{ $entry->ulid }}"{!! $moveFlag !!} x-on:click="open = false; {{ $moveCall }}" class="list-mi rounded">
+                                                        <x-bs-admin::icon :name="$move['icon']" class="size-4 shrink-0" /><span class="min-w-0 [overflow-wrap:anywhere]">{{ $move['label'] }}</span>
+                                                    </button>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @else
+                                        <x-bs-admin::status-pill :status="$status">{{ __('entries.status_'.$status) }}</x-bs-admin::status-pill>
+                                    @endif
+                                @elseif ($may['send'] && ! $trashed)
                                     {{-- a sender's one move here: «Gửi duyệt» on their draft --}}
                                     <div x-data="{ open: false }" @click.outside="open = false" @keydown.escape="if (open) { open = false; $refs.pill.focus() }" class="relative inline-block">
                                         <x-bs-admin::status-pill button x-ref="pill" :status="$status" x-on:click="open = ! open" x-bind:aria-expanded="open.toString()" aria-haspopup="true" title="{{ __('entries.status_menu_label') }}">{{ __('entries.status_'.$status) }}<span class="sr-only"> · {{ __('entries.status_menu_label') }}</span></x-bs-admin::status-pill>
@@ -565,6 +592,12 @@
                                                     @if ($status === $opt)<x-bs-admin::icon name="ri-check" class="ml-auto size-3.5 text-primary-text" />@endif
                                                 </button>
                                             @endforeach
+                                            @if ($status === 'published' && ! $isHome)
+                                                {{-- off the website, its content kept (archived): the publish right on this row, as every move here --}}
+                                                <button type="button" x-on:click="$wire.changeStatus(@js($entry->ulid), 'archived'); open = false" class="list-mi rounded">
+                                                    <x-bs-admin::status-pill status="archived">{{ __('entries.status_menu_archived') }}</x-bs-admin::status-pill>
+                                                </button>
+                                            @endif
                                             <div class="mt-0.5 border-t border-border pt-0.5">
                                                 <button type="button" @click="sched = ! sched" x-bind:aria-expanded="sched.toString()" class="list-mi rounded">
                                                     <x-bs-admin::status-pill status="scheduled">{{ __('entries.status_scheduled') }}</x-bs-admin::status-pill>
@@ -775,6 +808,33 @@
             </div>
         </div>
     </div>
+    @endif
+
+    @if ($governed)
+        {{-- A workflow move that asks for a reason («Trả lại», «Gỡ bài» …): the shared form dialog. The reason is
+             required here and again by the server and the engine; the author is told it word for word. --}}
+        <div x-data="{ wfNote: null, note: '', bad: false,
+                ask(d) { this.wfNote = d; this.note = ''; this.bad = false; $nextTick(() => document.getElementById('entries-wf-note')?.focus()); },
+                send() { if (! this.note.trim()) { this.bad = true; return; } const d = this.wfNote; this.wfNote = null; $wire.applyTransition(d.ulid, d.key, this.note); } }"
+            x-on:entries-wf-note.window="ask($event.detail)">
+            <x-bs-admin::modal state="wfNote" close="wfNote = null" :close-label="__('admin.close')">
+                <x-slot:heading><span x-text="wfNote ? wfNote.title : ''"></span></x-slot:heading>
+                <p class="m-0 text-small text-text-muted">{{ __('entries.wf_note_hint') }}</p>
+                <div class="flex flex-col gap-1.5">
+                    <label for="entries-wf-note" class="text-small font-semibold text-text">{{ __('admin.wfb.note_label') }} <span class="text-danger-text" aria-hidden="true">*</span></label>
+                    <textarea id="entries-wf-note" x-model="note" x-on:input="bad = false" rows="4" maxlength="2000" required
+                        aria-describedby="entries-wf-note-err" x-bind:aria-invalid="bad.toString()"
+                        class="field w-full rounded border bg-surface px-3 py-2 text-text"
+                        x-bind:class="bad ? 'border-danger-text' : 'border-border-input'"
+                        placeholder="{{ __('entries.wf_note_placeholder') }}"></textarea>
+                    <x-bs-admin::field-error id="entries-wf-note-err" x-cloak x-show="bad">{{ __('admin.wfb.note_missing') }}</x-bs-admin::field-error>
+                </div>
+                <x-slot:footer>
+                    <x-bs-admin::button color="light" x-on:click="wfNote = null">{{ __('admin.cancel') }}</x-bs-admin::button>
+                    <x-bs-admin::button color="primary" x-on:click="send()"><x-bs-admin::icon name="ri-send-plane" class="size-4" /> {{ __('entries.wf_note_ok') }}</x-bs-admin::button>
+                </x-slot:footer>
+            </x-bs-admin::modal>
+        </div>
     @endif
 
     {{-- A move to the Trash and its «Hoàn tác» (10 seconds); it rises above the bulk bar while that bar sticks to the bottom. --}}
