@@ -667,3 +667,13 @@ it('wraps the tools row from a 900 screen while the list is below 900, filters f
         ->toContain('<div class="relative shrink-0 min-[900px]:hidden" data-guide="filter-button"')
         ->not->toContain('min-[1024px]');
 });
+
+it('keeps a badge beside a list name from breaking inside a word', function (): void {
+    // A list name wraps anywhere so a long title never clips; a badge inherits that and would split
+    // «Bạn» into «Bạ» and «n» in a narrow cell, so the badge itself wraps at spaces only.
+    expect(listCss())->toMatch('/\.list-name\s*\{[^}]*overflow-wrap:\s*anywhere/');
+
+    $html = (string) $this->blade('<x-bs-admin::list.name>Nguyễn Văn A <x-bs-admin::badge soft pill>Bạn</x-bs-admin::badge></x-bs-admin::list.name>');
+
+    expect($html)->toMatch('/<span class="[^"]*\bbreak-normal\b[^"]*">Bạn<\/span>/');
+});
