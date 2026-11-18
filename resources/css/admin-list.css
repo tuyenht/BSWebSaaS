@@ -1716,11 +1716,9 @@
 
     .list-step-next {
         display: block;
-        overflow: hidden;
         font-size: var(--text-caption);
         color: var(--color-text-muted);
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        overflow-wrap: anywhere;
     }
 
     .list-rows[data-hide~='step'] .list-m[data-for='step'] {
@@ -1747,15 +1745,13 @@
         }
     }
 
-    /* «Mô tả»: the record's excerpt on one line under its name, cut with an ellipsis (the whole text in its title). */
+    /* «Mô tả»: the record's excerpt under its name, wrapped in full like every other list text (never cut). */
     .list-desc {
         margin: 0.25rem 0 0;
-        overflow: hidden;
         font-size: var(--text-caption);
         line-height: 1.45;
         color: var(--color-text-muted);
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        overflow-wrap: anywhere;
     }
 
     /* «Hiện thêm nút khi đủ chỗ»: a table row's Nhân bản and Thùng rác (each button inside its own span, so a utility class on the button cannot beat the hiding) beside «Sửa», only those the page script

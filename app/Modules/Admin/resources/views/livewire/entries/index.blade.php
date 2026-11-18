@@ -463,7 +463,7 @@
                                         @blur="editing = false; if (! cancel) { $wire.saveTitle(@js($entry->ulid), value) }">
                                 @endif
                                 @if (in_array('desc', $cols, true) && filled($t?->excerpt))
-                                    <p class="list-desc" x-show="vDesc" title="{{ $t->excerpt }}" data-guide="row-desc">{{ $t->excerpt }}</p>
+                                    <p class="list-desc" x-show="vDesc" data-guide="row-desc">{{ $t->excerpt }}</p>
                                 @endif
 
                                 <x-bs-admin::list.meta>
@@ -532,7 +532,7 @@
                             <x-bs-admin::list.cell col="step">
                                 @if (isset($rowStep[$entry->ulid]))
                                     <span class="list-ell">{{ $rowStep[$entry->ulid]['text'] }}</span>
-                                    <span class="list-step-next" title="{{ $rowStep[$entry->ulid]['next'] }}">{{ $rowStep[$entry->ulid]['next'] }}</span>
+                                    <span class="list-step-next">{{ $rowStep[$entry->ulid]['next'] }}</span>
                                 @endif
                             </x-bs-admin::list.cell>
                         @endif

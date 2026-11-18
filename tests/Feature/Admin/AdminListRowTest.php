@@ -296,7 +296,7 @@ describe('the posts and pages list on the shared row', function (): void {
             Entry::query()->whereKey($entry->getKey())->update(['view_count' => 1234, 'status' => 'published', 'published_at' => now()]);
 
             Livewire::actingAs($user->fresh())->test(Index::class)
-                ->assertSeeHtml('data-for="views" data-guide="row-views">1.234 lượt xem</span>');
+                ->assertSeeHtml('data-for="views" data-guide="row-views" x-show="vViews">1.234 lượt xem</span>');
         });
     });
 
