@@ -403,27 +403,27 @@ describe('view choices', function (): void {
             lhSection();
 
             Livewire::actingAs($lan->fresh())->test(Index::class)
-                ->assertSet('cols', ['path', 'langs', 'creator'])
+                ->assertSet('cols', ['path', 'langs', 'views', 'creator'])
                 ->assertSet('card', [])
                 ->set('cols', ['creator', 'bogus', 'path'])
                 ->assertSet('cols', ['path', 'creator'])
                 ->set('card', ['langs', 'tpl']);
 
             $saved = $lan->fresh()->preferences['lists']['entries.page'] ?? null;
-            expect($saved)->toEqual(['cols' => ['path', 'creator'], 'card' => ['tpl', 'langs']]);
+            expect($saved)->toEqual(['cols' => ['path', 'creator'], 'card' => ['tpl', 'langs'], 'xbtn' => false, 'offered' => ['path', 'desc', 'langs', 'tpl', 'views', 'creator']]);
 
             // the next visit opens with the member's choice; another member keeps the defaults
             Livewire::actingAs($lan->fresh())->test(Index::class)
                 ->assertSet('cols', ['path', 'creator'])
                 ->assertSet('card', ['tpl', 'langs']);
             Livewire::actingAs($an->fresh())->test(Index::class)
-                ->assertSet('cols', ['path', 'langs', 'creator'])
+                ->assertSet('cols', ['path', 'langs', 'views', 'creator'])
                 ->assertSet('card', []);
             expect($an->fresh()->preferences['lists'] ?? null)->toBeNull();
 
             // each list keeps its own choice: the posts section starts from the defaults (its own Chuyên mục first)
             Livewire::actingAs($lan->fresh())->test(Index::class, ['section' => 'tin-tuc'])
-                ->assertSet('cols', ['cat', 'path', 'langs', 'creator'])
+                ->assertSet('cols', ['path', 'langs', 'cat', 'step', 'views', 'creator'])
                 ->set('cols', []);
             expect($lan->fresh()->preferences['lists'])->toHaveKeys(['entries.page', 'entries.post.tin-tuc'])
                 ->and($lan->fresh()->preferences['lists']['entries.post.tin-tuc']['cols'])->toBe([]);
@@ -466,7 +466,7 @@ describe('view choices', function (): void {
             $saved = $user->fresh()->preferences;
             expect($saved['theme'])->toBe(['mode' => 'dark'])
                 ->and($saved['lists']['entries.post.tin-tuc'])->toEqual(['cols' => [], 'card' => []])
-                ->and($saved['lists']['entries.page'])->toEqual(['cols' => ['creator'], 'card' => []]);
+                ->and($saved['lists']['entries.page'])->toEqual(['cols' => ['creator'], 'card' => [], 'xbtn' => false, 'offered' => ['path', 'desc', 'langs', 'tpl', 'views', 'creator']]);
         });
     });
 
@@ -477,7 +477,7 @@ describe('view choices', function (): void {
         app(Tenancy::class)->enter(1, function () use ($user): void {
             grantRole($user, 'editor', ['entries.view']);
             Livewire::actingAs($user->fresh())->test(Index::class)->set('card', ['tpl']);
-            expect($user->fresh()->preferences)->toEqual(['theme' => ['mode' => 'dark'], 'lists' => ['entries.page' => ['cols' => ['path', 'langs', 'creator'], 'card' => ['tpl']]]]);
+            expect($user->fresh()->preferences)->toEqual(['theme' => ['mode' => 'dark'], 'lists' => ['entries.page' => ['cols' => ['path', 'langs', 'views', 'creator'], 'card' => ['tpl'], 'xbtn' => false, 'offered' => ['path', 'desc', 'langs', 'tpl', 'views', 'creator']]]]);
         });
     });
 

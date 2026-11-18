@@ -75,6 +75,17 @@ final readonly class EntryWorkflowResolver
      */
     public function originFor(Workflow $workflow, Entry $entry): string
     {
+        return self::originIn($workflow, $entry);
+    }
+
+    /**
+     * originFor without the resolver: pure, reading only the entry and the workflow's states, so a list can
+     * name every row's stage from states it already holds (load `states` on the workflow first to read none per row).
+     *
+     * @throws RuntimeException the workflow defines no initial stage
+     */
+    public static function originIn(Workflow $workflow, Entry $entry): string
+    {
         // Trust the stored pointer only while this workflow still defines it. A post re-filed
         // into another section, or one whose template was swapped without its pointer being
         // cleared, would otherwise be handed a stage the engine does not know: no transition
