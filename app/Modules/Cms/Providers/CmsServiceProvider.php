@@ -9,6 +9,7 @@ use App\Modules\Cms\Console\FillMissingUlids;
 use App\Modules\Cms\Console\FlushEntryViews;
 use App\Modules\Cms\Console\PruneEntryRevisions;
 use App\Modules\Cms\Console\PublishDueEntries;
+use App\Modules\Cms\Console\PurgeTrashedEntries;
 use App\Modules\Cms\Console\PurgeTrashedMenuItems;
 use App\Modules\Cms\Console\RebuildTaxonomyPaths;
 use App\Modules\Cms\Console\ReconcileCategoryCounts;
@@ -136,6 +137,7 @@ final class CmsServiceProvider extends ServiceProvider
                 ResanitizePageBodies::class,
                 FillMissingUlids::class,
                 PurgeTrashedMenuItems::class,
+                PurgeTrashedEntries::class,
                 CountWrongTemplates::class,
                 ReconcileCategoryCounts::class,
             ]);

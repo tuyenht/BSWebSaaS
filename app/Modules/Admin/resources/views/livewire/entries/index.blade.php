@@ -131,7 +131,8 @@
     $allState = $pageUlids !== [] && $pageSelected === count($pageUlids) ? true : ($pageSelected > 0 ? 'mixed' : false);
     $selectAllCall = 'toggleSelectAll(['.collect($pageUlids)->map(fn (string $u): string => "'".$u."'")->implode(',').'])';
 @endphp
-<div class="entries-index flex flex-col gap-3">
+<div class="entries-index flex flex-col gap-3"
+    @if ($canDelete) x-on:entries-ask-trash.window="$bsConfirm({ icon: 'trash', title: $event.detail.title, text: $event.detail.text, confirm: $event.detail.ok, cancel: $event.detail.cancel }).then(ok => ok && $wire.trash($event.detail.ulid, true))" @endif>
 
     {{-- The header, as the admin shell draws it: the trail «⌂ › section › Danh sách» (the section a link back to its
          list), the title row (the name, then the (?) guide and the main button as one group at the end of the row),
@@ -190,7 +191,7 @@
 
         {{-- What shows on each record follows the list's own width: below 600 the member's card choice, 600–899
              every detail, from 900 their column choice (both kept in their own preferences). --}}
-        <div class="@container/lt min-w-0"
+        <div class="@container/lt flex min-w-0 flex-col"
              x-data="{
                  mode: 'cols',
                  fold: '',
@@ -251,56 +252,27 @@
                 :summary="$filtering ? __('entries.match_of', ['n' => $fmt($matchCount), 'm' => $fmt($counts[$tab] ?? $baseCount), 'unit' => $noun]) : null"
                 :chips="$chips" :clear="$filtering ? 'clearAllFilters' : null" />
 
-            {{-- Bulk action bar — appears once one or more rows are selected --}}
-            @if (count($selected) > 0)
-                <div data-guide="bulk-bar" class="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 min-[600px]:mx-4">
-                    <span class="text-sm font-medium text-primary-text">{{ __('entries.bulk_selected', ['noun' => $noun, 'count' => count($selected)]) }}</span>
-                    @if ($tab === 'trash')
-                        @if ($canDelete)
-                            <button type="button" wire:click="bulkRestore"
-                                class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-accent hover:text-accent">
-                                <x-bs-admin::icon name="ri-refresh" class="size-3.5 text-body-muted" /> {{ __('entries.action_restore') }}
-                            </button>
-                            <button type="button"
-                                x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('entries.force_delete_confirm_selected', ['noun' => $noun])), confirm: @js(__('entries.action_destroy')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.bulkForceDelete())"
-                                class="inline-flex items-center gap-1.5 rounded border border-admin-danger/30 bg-surface px-2.5 py-1 text-sm font-medium text-admin-danger-text transition-colors hover:bg-admin-danger/10">
-                                <x-bs-admin::icon name="ri-delete-bin" class="size-3.5" /> {{ __('entries.action_destroy') }}
-                            </button>
-                        @endif
-                    @else
-                        @if ($canPublish)
-                            <button type="button" wire:click="bulkPublish"
-                                class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-accent hover:text-accent">
-                                <x-bs-admin::icon name="ri-check" class="size-3.5 text-admin-success-text" /> {{ __('entries.bulk_publish') }}
-                            </button>
-                            <button type="button" wire:click="bulkDraft"
-                                class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-accent hover:text-accent">
-                                <x-bs-admin::icon name="ri-pencil" class="size-3.5 text-body-muted" /> {{ __('entries.bulk_draft') }}
-                            </button>
-                        @elseif ($canSend)
-                            <button type="button" wire:click="bulkPublish"
-                                class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-text transition-colors hover:border-primary-text hover:text-primary-text">
-                                <x-bs-admin::icon name="ri-inbox-unarchive" class="size-3.5 text-text-muted" /> {{ __('entries.ed.submit') }}
-                            </button>
-                        @endif
-                        @if ($canCreate)
-                            <button type="button" wire:click="bulkDuplicate"
-                                class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-accent hover:text-accent">
-                                <x-bs-admin::icon name="ri-file-copy" class="size-3.5 text-body-muted" /> {{ __('entries.action_duplicate') }}
-                            </button>
-                        @endif
-                        @if ($canDelete)
-                            <button type="button"
-                                x-on:click="$bsConfirm({ icon: 'trash', text: @js(__('entries.trash_confirm_selected', ['noun' => $noun])), confirm: @js(__('entries.action_trash')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.bulkTrash())"
-                                class="inline-flex items-center gap-1.5 rounded border border-admin-danger/30 bg-surface px-2.5 py-1 text-sm font-medium text-admin-danger-text transition-colors hover:bg-admin-danger/10">
-                                <x-bs-admin::icon name="ri-delete-bin" class="size-3.5" /> {{ __('entries.action_trash') }}
-                            </button>
-                        @endif
-                    @endif
-                    <button type="button" wire:click="clearSelection" class="ml-auto inline-flex items-center gap-1 text-sm text-body-muted transition-colors hover:text-body-text">
-                        <x-bs-admin::icon name="ri-close" class="size-3.5" /> {{ __('entries.bulk_deselect') }}
-                    </button>
-                </div>
+            {{-- The shared bulk bar (components/list/bulk): each button counts the ticked rows it would really act on,
+                 and the line under it names what the first one leaves out and why. Below 900 it sticks to the bottom of
+                 the screen, after the rows. A button with nothing to do says why instead of running; Xóa vĩnh viễn asks
+                 first (it cannot be undone), Chuyển vào Thùng rác does not (its message has «Hoàn tác»). --}}
+            @if (count($selected) > 0 && $bulk !== [])
+                <x-bs-admin::list.bulk data-guide="bulk-bar" :label="__('entries.bulk_region')" :status="__('entries.bulk_selected', ['noun' => $noun, 'count' => $num(count($selected))])"
+                    :clear-label="__('entries.bulk_deselect')" :skip="$bulkSkip">
+                    @foreach ($bulk as $action)
+                        @php
+                            $click = match (true) {
+                                $action['none'] !== null => '$bsToast('.Js::from(['text' => $action['none']]).')',
+                                $action['confirm'] !== null => '$bsConfirm({ icon: \'trash-danger\', title: '.Js::from($action['confirm']['title']).', text: '.Js::from($action['confirm']['text']).', confirm: '.Js::from($action['confirm']['ok']).', cancel: '.Js::from(__('admin.cancel')).' }).then(ok => ok && $wire.'.$action['call'].'())',
+                                default => '$wire.'.$action['call'].'()',
+                            };
+                        @endphp
+                        <x-bs-admin::button size="sm" variant="soft" :color="$action['color']" :title="$action['title']" data-bulk="{{ $action['key'] }}"
+                            aria-disabled="{{ $action['ok'] > 0 ? 'false' : 'true' }}" class="aria-disabled:opacity-60" x-on:click="{{ $click }}">
+                            <x-bs-admin::icon :name="$action['icon']" class="size-4" /> {{ $action['label'] }}
+                        </x-bs-admin::button>
+                    @endforeach
+                </x-bs-admin::list.bulk>
             @endif
 
 
@@ -310,7 +282,7 @@
             @endphp
             {{-- The shared list row: a card below 600, one record per line to 900, a table from 900 (by the list's own
                  width). Below 600 the rows carry the card frame; select-all lives in the tools row above. --}}
-            <div x-ref="rows" data-fold-wait class="min-w-0 max-[599.98px]:rounded-md max-[599.98px]:border max-[599.98px]:border-border max-[599.98px]:bg-surface max-[599.98px]:[&_.list-g]:border-t-0">
+            <div x-ref="rows" data-fold-wait class="min-w-0 @max-[56.25rem]/lt:order-3 max-[599.98px]:rounded-md max-[599.98px]:border max-[599.98px]:border-border max-[599.98px]:bg-surface max-[599.98px]:[&_.list-g]:border-t-0">
             <x-bs-admin::list :label="__('entries.list_label', ['label' => $sectionLabel])" :kind="$isPost ? 'posts' : null"
                 x-bind:data-hide="[mode === 'cols' && ! show('creator') ? 'au' : '', mode === 'cols' && ! show('cat') ? 'cat' : ''].join(' ').trim()" x-bind:data-fold="fold">
 
@@ -358,6 +330,13 @@
                             ? __('entries.scheduled_at', ['date' => $when->format('d/m/Y'), 'time' => $when->format('H:i')])
                             : \App\Modules\Admin\Support\EditedWhen::short($when, $nowAt, recentDays: 7, dayThisYear: false)) : null;
                         $whenFull = $when ? \App\Modules\Admin\Support\EditedWhen::full($when) : null;
+                        // a trashed row says when it goes for good («Tự xóa vĩnh viễn sau N ngày») instead of its last edit
+                        $purgeText = null;
+                        if ($trashed && $entry->deleted_at !== null) {
+                            $daysLeft = \App\Modules\Cms\Support\EntryTrash::daysLeft($entry->deleted_at, $nowAt);
+                            $purgeText = $daysLeft > 0 ? __('entries.trash_days_left', ['n' => $num($daysLeft)]) : __('entries.trash_goes_today');
+                            $whenText = null;
+                        }
                         // visitors see only a published record, so only its views are named
                         $isLive = $status === 'published' && ! $trashed;
                         $slugLeaf = $t?->slug;
@@ -441,6 +420,9 @@
                                     @if ($creator)
                                         <span class="list-m" data-for="au">{{ $creator }}</span>
                                     @endif
+                                    @if ($purgeText)
+                                        <span class="list-m" data-for="when" data-guide="row-purge">{{ $purgeText }}</span>
+                                    @endif
                                     @if ($whenText)
                                         <span class="list-m" data-for="when"><x-bs-admin::list.when :at="$when" :text="$whenText" :full="$whenFull" :exact="$isScheduled" /></span>
                                     @endif
@@ -497,7 +479,12 @@
                                     <x-bs-admin::status-pill :status="$status">{{ __('entries.status_'.$status) }}</x-bs-admin::status-pill>
                                 @endif
                             </div>
-                            @if ($out !== null)
+                            @if ($purgeText)
+                                <div class="list-st-meta">
+                                    <x-bs-admin::icon name="ri-delete-bin" class="size-3 shrink-0" />
+                                    <span>{{ $purgeText }}</span>
+                                </div>
+                            @elseif ($out !== null)
                                 <div class="list-lk" data-guide="row-lock"><x-bs-admin::icon name="ri-lock" class="size-3 shrink-0" /><span>{{ $out }}</span></div>
                             @elseif ($whenText)
                                 <div class="list-st-meta">
@@ -576,8 +563,8 @@
                                             @if ($quickEdit || $may['duplicate'])
                                                 <x-bs-admin::list.menu-sep />
                                             @endif
-                                            <x-bs-admin::list.menu-item icon="ri-delete-bin" danger
-                                                x-on:click="$bsConfirm({ icon: 'trash', text: {{ $Js::from(__('entries.trash_confirm', ['noun' => __('entries.noun_'.$entry->type)])) }}, confirm: {{ $Js::from(__('entries.action_trash')) }}, cancel: {{ $Js::from(__('admin.cancel')) }} }).then(ok => ok && $wire.trash({{ $Js::from($entry->ulid) }}))">{{ __('entries.action_trash') }}</x-bs-admin::list.menu-item>
+                                            {{-- at once, with «Hoàn tác» on the message; the server asks first for a page with sub-pages or the Home page --}}
+                                            <x-bs-admin::list.menu-item icon="ri-delete-bin" danger wire:click="trash('{{ $entry->ulid }}')">{{ __('entries.action_trash') }}</x-bs-admin::list.menu-item>
                                         @endif
                                     </x-slot:menu>
                                 @endif
@@ -600,7 +587,7 @@
             </x-bs-admin::list>
             </div>
 
-            <div class="mt-4 flex flex-wrap items-center justify-between gap-3 min-[600px]:px-4">
+            <div class="mt-4 flex flex-wrap items-center justify-between gap-3 @max-[56.25rem]/lt:order-5 min-[600px]:px-4">
                 <span class="text-caption text-text-muted">
                     {{ __('entries.footer_showing', ['noun' => $noun, 'first' => $num($pager['from']), 'last' => $num($pager['to']), 'total' => $fmt($pager['total'])]) }}
                 </span>
@@ -649,4 +636,7 @@
             </div>
         </div>
     </div>
+
+    {{-- A move to the Trash and its «Hoàn tác» (10 seconds); it rises above the bulk bar while that bar sticks to the bottom. --}}
+    <x-bs-admin::toast :message="$toastMsg" :tone="$toastTone" :seq="$toastSeq" dismiss="closeToast" :undo="$trashUndo !== null ? 'undoTrash' : null" :raised="count($selected) > 0 && $bulk !== []" />
 </div>

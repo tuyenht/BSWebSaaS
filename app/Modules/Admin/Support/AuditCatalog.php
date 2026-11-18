@@ -35,7 +35,7 @@ final class AuditCatalog
         ],
         'content' => [
             'entries.status.changed', 'entries.change.applied', 'entries.change.discarded', 'entries.change.folded',
-            'entries.revision.restored', 'catalog.product.purged',
+            'entries.revision.restored', 'entries.entry.purged', 'catalog.product.purged',
             'cms.content_block.created', 'cms.content_block.updated', 'cms.content_block.body_saved',
             'cms.content_block.published', 'cms.content_block.unpublished', 'cms.content_block.duplicated',
             'cms.content_block.deleted',
