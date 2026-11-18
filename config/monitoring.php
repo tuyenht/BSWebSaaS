@@ -43,6 +43,12 @@ return [
     // How many faults the daily summary lists before it says "and N more".
     'summary_limit' => 50,
 
+    // The daily summary warns once the disk holding the app is at least this full (percent used).
+    // Dev and prod share one disk; a deploy stops when its backup disk has under 5 GB free.
+    'disk' => [
+        'warn_percent' => 85,
+    ],
+
     // The Cloudflare Workers free plan: one daily allowance for the whole account, counted per UTC
     // day (it resets at 07:00 Vietnam time). The owner gets one mail per threshold (percent of the
     // limit) per day; after `failure_hours` hours in a row without a readable count, one mail a

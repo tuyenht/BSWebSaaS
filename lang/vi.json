@@ -3657,6 +3657,7 @@
     "monitoring.mail.summary.failed_job_line": ":job: :count việc",
     "monitoring.mail.summary.commands": "Lệnh định kỳ bị lỗi:",
     "monitoring.mail.summary.command_line": ":command: :count lần",
+    "monitoring.mail.summary.disk": "Ổ đĩa máy chủ đã dùng :percent%, còn trống :free GB. Hãy dọn bớt trước khi đầy (deploy dừng khi còn dưới 5 GB).",
     "provisioning.hostname_not_platform_subdomain": "Địa chỉ :host không phải tên miền phụ của nền tảng nên chưa có gì thay đổi. Website mới bắt đầu bằng một tên dạng ten-website.:base; tên miền riêng của khách hàng được gắn sau bằng site:domain và phải được xác minh trước khi chạy.",
     "provisioning.hostname_pending_verification": "Đang có một website chờ xác minh quyền sở hữu địa chỉ :host nên không thể dùng địa chỉ này cho website mới, chưa có gì thay đổi. Hãy chọn địa chỉ khác.",
     "provisioning.hostname_owned_by_another_tenant": "Tên miền :host đã thuộc website của một khách hàng khác nên chưa có gì thay đổi. Hãy kiểm tra lại --host, hoặc truyền --tenant đúng tên khách hàng đang sở hữu tên miền này.",
