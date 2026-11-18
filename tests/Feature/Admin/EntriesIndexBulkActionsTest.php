@@ -190,11 +190,11 @@ it('bulk-drafts only live rows that are not drafts already', function (): void {
     $colleague = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($editor, $colleague): void {
-        grantRole($editor, 'editor', ['entries.view', 'entries.publish']);
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.own', 'entries.publish']);
         $live = bulkRow($editor, 'Đang chạy');
         $draft = bulkRow($editor, 'Bản nháp', 'draft', 'draft');
         $trashed = bulkRow($editor, 'Đã xóa', trashed: true);
-        $theirs = bulkRow($colleague, 'Của đồng nghiệp');   // a publisher may take anyone's page offline
+        $theirs = bulkRow($colleague, 'Của đồng nghiệp');   // not theirs to edit, so not theirs to take offline
 
         $component = Livewire::actingAs($editor->fresh())->test(Index::class)
             ->set('selected', [$live->ulid, $draft->ulid, $trashed->ulid, $theirs->ulid])
@@ -202,12 +202,12 @@ it('bulk-drafts only live rows that are not drafts already', function (): void {
 
         $trashed = bulkFind($trashed);
         expect(bulkFind($live)->status)->toBe('draft')
-            ->and(bulkFind($theirs)->status)->toBe('draft')
+            ->and(bulkFind($theirs)->status)->toBe('published')
             ->and($trashed->status)->toBe('published')
             ->and($trashed->trashed())->toBeTrue()
             // draft → draft is not a change: no audit row claims one.
             ->and(AuditLog::query()->where('action', EntryStatusAudit::ACTION)->where('meta->entry_ulid', $draft->ulid)->count())->toBe(0);
-        $component->assertDispatched('bs-toast', text: bulkToast('entries.bulk_drafted', 2, ['entries.bulk_skipped' => 2]));
+        $component->assertDispatched('bs-toast', text: bulkToast('entries.bulk_drafted', 1, ['entries.bulk_skipped' => 3]));
     });
 });
 
@@ -308,7 +308,7 @@ it('abandons the whole run on a deadlock and leaves the request usable', functio
     $editor = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
-        grantRole($editor, 'editor', ['entries.view', 'entries.publish']);
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.own', 'entries.publish']);
         $first = bulkRow($editor, 'Một');
         $second = bulkRow($editor, 'Hai');
         $third = bulkRow($editor, 'Ba');

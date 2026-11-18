@@ -301,7 +301,7 @@ it('lets edit.own restore only its own entries and edit.any restore anyone\'s', 
     $chief = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($publisher, $author, $other, $chief): void {
-        grantRole($publisher, 'publisher', ['entries.publish']);
+        grantRole($publisher, 'publisher', ['entries.edit.any', 'entries.publish']);
         grantRole($author, 'author', ['entries.edit.own']);
         grantRole($other, 'author', ['entries.edit.own']);
         grantRole($chief, 'chief', ['entries.edit.any']);

@@ -25,21 +25,46 @@ use Illuminate\Database\Eloquent\Builder;
 final class EntryNotifier
 {
     /**
-     * Waiting for review: everyone on the site holding $permission (the one who can act on it) whose
+     * Waiting for review at a workflow stage: everyone on the site holding $permission (the one the
+     * stage's next move needs — approving is not editing, so no edit right is asked) whose
      * category limits reach the post — and, for a change that re-files it, its new category too:
      * the same people the review queue shows it to (CategoryScopes).
      */
     public function awaitingReview(Entry $entry, string $locale, User $actor, string $permission, ?EntryDraft $change = null): void
+    {
+        $this->tellWaiting($entry, $locale, $actor, $permission, $change, mustEdit: false);
+    }
+
+    /**
+     * Waiting for a publisher, where no workflow governs the entry: the holders of entries.publish
+     * who could act on it — publishing or applying needs the right to edit THIS entry
+     * (EntryPolicy::publish): edit.any, or edit.own while being its author — inside their
+     * category limits. A publisher who could not put it online is not told.
+     */
+    public function awaitingPublisher(Entry $entry, string $locale, User $actor, ?EntryDraft $change = null): void
+    {
+        $this->tellWaiting($entry, $locale, $actor, 'entries.publish', $change, mustEdit: true);
+    }
+
+    private function tellWaiting(Entry $entry, string $locale, User $actor, string $permission, ?EntryDraft $change, bool $mustEdit): void
     {
         $categories = [$entry->type === 'post' ? $entry->primaryCategory()?->id : null];
         $target = $change !== null ? ($change->content['shared']['primary_category_id'] ?? null) : null;
         if (is_int($target)) {
             $categories[] = $target;
         }
+        $authorId = $entry->author_id;
 
         Notify::holdersOf(
             $permission, 'workflow.pending_review', $this->facts($entry, $locale, $actor, $change), $actor,
-            fn (Builder $members) => app(CategoryScopes::class)->whereMayWriteIn($members, ...$categories),
+            function (Builder $members) use ($categories, $mustEdit, $authorId): void {
+                app(CategoryScopes::class)->whereMayWriteIn($members, ...$categories);
+                if ($mustEdit) {
+                    $members->where(fn (Builder $editor) => $editor->holdingPermission('entries.edit.any')
+                        ->when($authorId !== null, fn (Builder $any) => $any->orWhere(fn (Builder $own) => $own
+                            ->holdingPermission('entries.edit.own')->whereKey($authorId))));
+                }
+            },
         );
     }
 

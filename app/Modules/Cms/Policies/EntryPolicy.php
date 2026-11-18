@@ -94,11 +94,16 @@ final class EntryPolicy
 
     /**
      * Publish straight through (workflow Tầng-1), and the other status moves of this entry (draft,
-     * private, schedule): only grants carrying entries.publish, inside the member's category limits.
+     * private, schedule, applying its pending change): entries.publish AND the right to edit this
+     * entry — edit.any, or edit.own on one's own entry — inside the member's category limits
+     * (update). Putting content online or taking it off is part of working on it, so a publisher
+     * cannot do it to an entry they could not change. An entry not saved yet is judged with its
+     * future author set (the editor does). Approvers of a workflow do not come through here: their
+     * moves are judged by the workflow engine and EntryWorkflowResolver::mayApply.
      */
     public function publish(User $user, Entry $entry): bool
     {
-        return $user->can('entries.publish') && $this->scopes->coversEntry($user, $entry);
+        return $user->can('entries.publish') && $this->update($user, $entry);
     }
 
     /**

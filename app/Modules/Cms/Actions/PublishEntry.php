@@ -17,11 +17,12 @@ use RuntimeException;
 
 /**
  * Workflow Tầng-1 (design.md §15.4 — permission-driven, no configuration). An actor
- * carrying entries.publish publishes straight through: entry + translation go
- * `published`, published_at is stamped, and the route is synced (with a 301 on a slug
- * change). Anyone else who may send this entry (EntryPolicy::submit: entries.submit plus the
- * right to edit it) parks a DRAFT as `pending` for a publisher to review. Only published
- * entries with a published translation reach the public (RouteResolver).
+ * carrying entries.publish who may also edit this entry (EntryPolicy::publish) publishes
+ * straight through: entry + translation go `published`, published_at is stamped, and the
+ * route is synced (with a 301 on a slug change). Anyone else who may send this entry
+ * (EntryPolicy::submit: entries.submit plus the right to edit it) parks a DRAFT as `pending`
+ * for a publisher to review. Only published entries with a published translation reach the
+ * public (RouteResolver).
  *
  * Tầng-1 remains the behaviour for every site that has not switched a workflow on — which is
  * all of them by default. Where one IS active, this straight-through path would be a hole
@@ -137,7 +138,7 @@ final readonly class PublishEntry
 
             EntryStatusAudit::record($entry, $from, 'pending', 'submit', $actor);
 
-            $this->notifier->awaitingReview($entry, $locale, $actor, 'entries.publish');   // the publishers
+            $this->notifier->awaitingPublisher($entry, $locale, $actor);   // the publishers who may edit it
 
             return ['status' => 'pending', 'moved' => true];
         }

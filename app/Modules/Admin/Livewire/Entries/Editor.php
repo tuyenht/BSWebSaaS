@@ -234,7 +234,7 @@ final class Editor extends Component
     #[Locked]
     public ?string $sectionKey = null;
 
-    /** The member may publish this entry (the publish right inside their category limits), as of the last open or save. */
+    /** The member may publish this entry (the publish right and the right to edit it, inside their category limits), as of the last open or save. */
     #[Locked]
     public bool $mayPublish = false;
 
@@ -299,9 +299,11 @@ final class Editor extends Component
             $this->categoryId = $this->type === 'post' && $contentSection instanceof ContentSection && $contentSection->taxonomy_id !== null
                 ? (int) $contentSection->taxonomy_id
                 : null;
-            $draft = new Entry(['type' => $this->type]);
-            // The preview files a post under the pre-filled category, so the publish rule below
-            // reads the member's category limits off that category, as it will once saved.
+            // Not saved yet: it will be this user's own once the first save persists it, so the
+            // publish rule below (which needs the right to edit it) judges it as theirs. The
+            // preview files a post under the pre-filled category, so that rule also reads the
+            // member's category limits off that category, as it will once saved.
+            $draft = new Entry(['type' => $this->type, 'author_id' => $this->user()->id]);
             $this->address = $this->previewAddress($draft);
             $this->placeInList($contentSection instanceof ContentSection && $this->type === 'post' ? $contentSection : null);
             $this->mayPublish = $this->user()->can('publish', $draft);
