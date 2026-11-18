@@ -14,7 +14,7 @@ use Illuminate\Queue\InteractsWithQueue;
 /**
  * Drops the edge-cached pages of every website whose customer is on one plan, after what the plan
  * grants changed (PlanGrantsChanged). Walks the domains by id and queues their in-zone names in
- * PurgeEdgeHosts jobs of 30, so a plan with thousands of websites never loads them at once or sends
+ * PurgeEdgeHosts jobs of 100, so a plan with thousands of websites never loads them at once or sends
  * one call per site. One waiting job per plan.
  */
 final class PurgePlanEdgeCache implements ShouldBeUniqueUntilProcessing, ShouldQueue

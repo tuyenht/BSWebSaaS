@@ -66,7 +66,7 @@ final readonly class EdgeCacheHeaders
             ? sprintf(
                 'public, max-age=0, s-maxage=%d, stale-while-revalidate=%d',
                 $rules === null ? $this->pageLifetime($request) : max(0, Cast::int(config($config.'.s_maxage'), 300)),
-                max(0, Cast::int(config($config.'.stale_while_revalidate'), 86400)),
+                max(0, Cast::int(config($config.'.stale_while_revalidate'), 60)),
             )
             : StorefrontSession::PRIVATE);
 

@@ -13,6 +13,7 @@ use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Shared\Contracts\EdgeCache;
 use App\Modules\Storefront\EdgeCache\CloudflareEdgeCache;
 use App\Modules\Storefront\EdgeCache\EdgeCachePurges;
+use App\Modules\Storefront\EdgeCache\EdgePurgeRefused;
 use App\Modules\Storefront\EdgeCache\NullEdgeCache;
 use App\Modules\Storefront\EdgeCache\PurgeSiteEdgeCache;
 use App\Modules\Storefront\Http\Middleware\EdgeCacheHeaders;
@@ -23,6 +24,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
@@ -47,7 +49,7 @@ beforeEach(function (): void {
     $this->travelTo(CarbonImmutable::parse('2026-11-18 12:00:00', 'Asia/Ho_Chi_Minh'));
 });
 
-const EDGE_PUBLIC = 'max-age=0, public, s-maxage=300, stale-while-revalidate=86400';
+const EDGE_PUBLIC = 'max-age=0, public, s-maxage=300, stale-while-revalidate=60';
 
 it('lets the edge keep a page for a visitor with no session: no cookie, a public s-maxage', function (string $path): void {
     $response = $this->get('http://a.test'.$path)->assertOk();
@@ -229,7 +231,7 @@ it('purges nothing until both the zone and the purge token are configured', func
     'both' => ['zone-ân', 'token-ân', CloudflareEdgeCache::class],
 ]);
 
-it('asks Cloudflare to purge by host, 30 names a call, and reports a refusal', function (): void {
+it('asks Cloudflare to purge by host, 100 names a call, and reports a refusal', function (): void {
     Http::fake([
         'api.cloudflare.com/client/v4/zones/zone-1/purge_cache' => Http::sequence()
             ->push(['success' => true])
@@ -237,15 +239,15 @@ it('asks Cloudflare to purge by host, 30 names a call, and reports a refusal', f
             ->push(['success' => false, 'errors' => [['code' => 1134, 'message' => 'rate limited']]], 429),
     ]);
     $edge = new CloudflareEdgeCache('zone-1', 'secret-purge-token');
-    $hosts = array_map(static fn (int $n): string => "site-{$n}.platform.test", range(1, 31));
+    $hosts = array_map(static fn (int $n): string => "site-{$n}.platform.test", range(1, 101));
 
     expect($edge->purgeHosts($hosts))->toBeTrue()
         ->and($edge->purgeUrls(['https://a.test/']))->toBeFalse();
 
     Http::assertSentCount(3);
     Http::assertSent(fn (HttpRequest $request): bool => $request->hasHeader('Authorization', 'Bearer secret-purge-token')
-        && $request->method() === 'POST' && count($request['hosts'] ?? []) === 30);
-    Http::assertSent(fn (HttpRequest $request): bool => ($request['hosts'] ?? null) === ['site-31.platform.test']);
+        && $request->method() === 'POST' && count($request['hosts'] ?? []) === 100);
+    Http::assertSent(fn (HttpRequest $request): bool => ($request['hosts'] ?? null) === ['site-101.platform.test']);
     Http::assertSent(fn (HttpRequest $request): bool => ($request['files'] ?? null) === ['https://a.test/']);
 });
 
@@ -346,7 +348,7 @@ it('keeps a page of a host inside the zone a day, cut at the site\'s midnight, n
     $this->travelTo(CarbonImmutable::parse($at, 'Asia/Ho_Chi_Minh'));
 
     expect($this->get('http://a.test/')->assertOk()->headers->get('Cache-Control'))
-        ->toBe("max-age=0, public, s-maxage={$seconds}, stale-while-revalidate=86400");
+        ->toBe("max-age=0, public, s-maxage={$seconds}, stale-while-revalidate=60");
 })->with([
     'midday: twelve hours to midnight' => ['2026-11-18 12:00:00', 43200],
     'just after midnight: a whole day, no more' => ['2026-11-18 00:00:00', 86400],
@@ -383,7 +385,7 @@ it('keeps a page of a host outside the zone (a customer\'s own domain) only the 
     config(['tenancy.base_domains' => ['baoson.net'], 'storefront.edge_cache.unpurged_s_maxage' => 240]);
 
     expect($this->get('http://a.test/')->assertOk()->headers->get('Cache-Control'))
-        ->toBe('max-age=0, public, s-maxage=240, stale-while-revalidate=86400');
+        ->toBe('max-age=0, public, s-maxage=240, stale-while-revalidate=60');
 
     $this->travelTo(CarbonImmutable::parse('2026-11-18 23:59:00', 'Asia/Ho_Chi_Minh'));
     expect($this->get('http://a.test/')->headers->get('Cache-Control'))->toContain('s-maxage=60,');
@@ -419,6 +421,7 @@ it('purges the homes at once when the edge refuses a host purge, then tries the 
 
 it('logs an error naming the site and its hosts when the last try is still refused', function (): void {
     $edge = edgeCacheRecorder(hostsAccepted: false);
+    Exceptions::fake(); // the report would add a log line of its own
     Log::spy();
 
     $last = (new PurgeSiteEdgeCache(1))->withFakeQueueInteractions();
@@ -427,6 +430,22 @@ it('logs an error naming the site and its hosts when the last try is still refus
 
     $last->assertNotReleased();
     Log::shouldHaveReceived('error')->once()->withArgs(fn (string $message, array $context): bool => $context['site_id'] === 1 && $context['hosts'] === ['a.test']);
+});
+
+it('reports the refusal to the exception reporting after the last try, and the job still ends', function (): void {
+    Exceptions::fake();
+    $edge = edgeCacheRecorder(hostsAccepted: false);
+
+    $last = (new PurgeSiteEdgeCache(1))->withFakeQueueInteractions();
+    $last->job->attempts = 5;
+    $last->handle($edge, app(SiteDirectory::class));
+
+    $last->assertNotReleased();
+    Exceptions::assertReported(fn (EdgePurgeRefused $e): bool => $e->hosts === ['a.test'] && str_contains($e->getMessage(), 'a.test'));
+
+    $early = (new PurgeSiteEdgeCache(1))->withFakeQueueInteractions();
+    $early->handle($edge, app(SiteDirectory::class));
+    Exceptions::assertReportedCount(1);
 });
 
 it('settles once the host purge goes through', function (): void {

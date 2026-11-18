@@ -12,7 +12,7 @@ use Illuminate\Queue\InteractsWithQueue;
 
 /**
  * Drops every edge-cached page of a batch of host names, whatever sites they belong to: one
- * Cloudflare call for up to 30 names (EdgeHostBatches fills them). Queued by `storefront:purge-edge`
+ * Cloudflare call for up to 100 names (EdgeHostBatches fills them). Queued by `storefront:purge-edge`
  * and by a change to a plan's grants. Only names inside the platform's zone go; a refusal is pursued
  * as RetriesHostPurge says.
  */

@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
  * purges per minute), the home page of each host goes by URL at once — the edit a site owner looks
  * at first — and the host purge is tried again later, a minute more each time: with pages kept a day
  * at the edge, settling for the homes would leave every other page stale until it expires. After
- * the last try the refusal is logged as an error, naming the hosts still stale.
+ * the last try the refusal is logged as an error and reported (EdgePurgeRefused), naming the hosts still stale.
  *
  * For a job that uses InteractsWithQueue.
  */
@@ -44,5 +44,8 @@ trait RetriesHostPurge
         }
 
         Log::error('The edge cache kept refusing a purge by host: these sites show old pages until they expire.', $context + ['hosts' => $hosts, 'attempts' => $attempt]);
+
+        // Also to the exception reporting the monitoring summary counts, so a refused purge is seen.
+        report(new EdgePurgeRefused($hosts, $attempt));
     }
 }

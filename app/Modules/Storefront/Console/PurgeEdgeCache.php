@@ -13,7 +13,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Str;
 
 /**
- * Queue the purge of edge-cached pages by host name, 30 names per Cloudflare call (PurgeEdgeHosts):
+ * Queue the purge of edge-cached pages by host name, 100 names per Cloudflare call (PurgeEdgeHosts):
  * of every website (`--all`, after a deploy that changes how pages look), or of the websites named
  * by id or by any of their host names (`--site=12 --site=congty.baoson.net`). Only names inside the
  * platform's zone are purged. Domains are read by id, a chunk at a time. With no edge configured it
@@ -25,7 +25,7 @@ final class PurgeEdgeCache extends Command
         {--all : every website that has a host name inside the platform zone}
         {--site=* : a website id or one of its host names (repeatable)}';
 
-    protected $description = 'Queue the purge of edge-cached storefront pages (Cloudflare), 30 host names per call';
+    protected $description = 'Queue the purge of edge-cached storefront pages (Cloudflare), 100 host names per call';
 
     /** Domain rows read at a time with --all. */
     private const int CHUNK = 1000;
