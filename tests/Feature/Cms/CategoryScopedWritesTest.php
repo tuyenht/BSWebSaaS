@@ -34,6 +34,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Workflow\Actions\InstantiateWorkflow;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
@@ -234,6 +235,33 @@ it('refuses the status roads outside the limits: publish, send, draft, private, 
     expect($refusals)->toBe(['denied', 'denied', 'denied', 'denied'])
         ->and(cwStatus($draft))->toBe('draft')
         ->and(cwStatus($live))->toBe('published');
+});
+
+it('judges a status change on the post as it is now, not as the list loaded it', function (): void {
+    [$jobs, $it] = cwTree();
+    $lan = cwMember('editor');
+    cwLimit($lan, $jobs);
+    $gone = cwEntry($lan, 'published', $it);
+
+    // the list loaded the row while it was live and Lan's to change ...
+    $allowed = app(Tenancy::class)->enter(1, fn (): bool => $lan->can('publish', $gone));
+
+    // ... then a colleague sent it to the Trash
+    app(Tenancy::class)->enter(1, fn () => Entry::query()->findOrFail($gone->id)->delete());
+
+    $thrown = null;
+    try {
+        app(Tenancy::class)->enter(1, fn () => app(TransitionEntryStatus::class)->handle($gone, EntryStatus::Private, $lan));
+    } catch (ModelNotFoundException $e) {
+        $thrown = $e::class;
+    }
+
+    $after = app(Tenancy::class)->enter(1, fn (): Entry => Entry::withTrashed()->findOrFail($gone->id));
+
+    expect($allowed)->toBeTrue()
+        ->and($thrown)->toBe(ModelNotFoundException::class)
+        ->and($after->status)->toBe('published')
+        ->and($after->trashed())->toBeTrue();
 });
 
 // ── The editor ────────────────────────────────────────────────────────────────────────────────

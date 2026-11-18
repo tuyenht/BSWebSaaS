@@ -10,6 +10,8 @@ use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
 use DateTimeInterface;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use InvalidArgumentException;
 
@@ -42,12 +44,26 @@ final readonly class TransitionEntryStatus
 
     /**
      * @throws WorkflowGovernedException scheduling content an active workflow governs
+     * @throws ModelNotFoundException the entry left the list meanwhile (sent to the Trash or purged)
      */
     public function handle(Entry $entry, EntryStatus $target, User $actor, ?DateTimeInterface $publishAt = null): void
     {
         if (! in_array($target->value, self::ALLOWED, true)) {
             throw new InvalidArgumentException(__('entries.err_status_needs_publish_flow', ['status' => $target->value]));
         }
+
+        DB::transaction(fn () => $this->handleLocked($entry, $target, $actor, $publishAt));
+    }
+
+    private function handleLocked(Entry $entry, EntryStatus $target, User $actor, ?DateTimeInterface $publishAt): void
+    {
+        // Take the row lock FIRST, then judge the row as it is now, like PublishEntry: the screen
+        // loaded it earlier, and meanwhile a colleague may have sent it to the Trash (or the Trash
+        // purged it) or changed its status. Only the row's own columns are read again: the loaded
+        // relations stay, so a bulk run of 200 rows costs one locking read per row, not a reload.
+        $locked = Entry::query()->whereKey($entry->id)->lockForUpdate()->first()
+            ?? throw (new ModelNotFoundException)->setModel(Entry::class, [$entry->id]);
+        $entry->setRawAttributes($locked->getAttributes(), true);
 
         if (! Gate::forUser($actor)->allows('publish', $entry)) {
             throw new AuthorizationException(__('entries.err_status_forbidden'));
