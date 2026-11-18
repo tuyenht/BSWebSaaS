@@ -706,19 +706,26 @@ it('refuses a limited member every list action on a post outside their limits, a
     $chief = cwMember('editor');
     cwLimit($lan, $jobs);
 
-    $run = function (User $who, int $answer) use ($news): array {
+    // a refusal is the limits sentence in a toast that stays, never an error page
+    $run = function (User $who, bool $refused) use ($news): array {
         $draft = cwEntry(null, 'draft', $news);
         $live = cwEntry(null, 'published', $news);
         $quick = cwEntry(null, 'draft', $news);
         $binned = cwEntry(null, 'draft', $news);
         app(Tenancy::class)->enter(1, fn () => Entry::query()->whereKey($binned->id)->first()?->delete());
 
-        return app(Tenancy::class)->enter(1, function () use ($who, $answer, $draft, $live, $quick, $binned): array {
+        return app(Tenancy::class)->enter(1, function () use ($who, $refused, $draft, $live, $quick, $binned): array {
             $list = fn () => Livewire::actingAs($who)->test(Index::class, ['section' => 'tin-tuc']);
             $list()->set('selected', [$draft->ulid])->call('bulkPublish');
             $list()->set('selected', [$live->ulid])->call('bulkDraft');
-            $list()->call('saveTitle', $quick->ulid, 'Tên mới')->assertStatus($answer);
-            $list()->set('tab', 'trash')->call('restore', $binned->ulid)->assertStatus($answer);
+            $title = $list()->call('saveTitle', $quick->ulid, 'Tên mới')->assertOk();
+            $restore = $list()->set('tab', 'trash')->call('restore', $binned->ulid)->assertOk();
+            if ($refused) {
+                $why = app(CategoryScopes::class)->refusal($who);
+                expect($why)->toContain('Tuyển dụng');
+                $title->assertDispatched('bs-toast', text: $why, stay: true);
+                $restore->assertDispatched('bs-toast', text: $why, stay: true);
+            }
 
             return [
                 Entry::query()->whereKey($draft->id)->value('status'),
@@ -729,8 +736,8 @@ it('refuses a limited member every list action on a post outside their limits, a
         });
     };
 
-    expect($run($lan, 403))->toBe(['draft', 'published', false, true])
-        ->and($run($chief, 200))->toBe(['published', 'draft', true, false]);
+    expect($run($lan, true))->toBe(['draft', 'published', false, true])
+        ->and($run($chief, false))->toBe(['published', 'draft', true, false]);
 });
 
 it('takes each member\'s limits lock before moving their limits onto a merge target', function (): void {

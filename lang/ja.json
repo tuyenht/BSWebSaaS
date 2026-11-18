@@ -2110,6 +2110,7 @@
     "entries.filter_none": "なし",
     "entries.status_changed": "ステータスを更新しました",
     "entries.scheduled_set": "公開予約を設定しました",
+    "entries.err_duplicate_refused": "この項目を複製する権限がありません。",
     "entries.duplicated": ":nounを複製しました",
     "entries.trashed": "ゴミ箱に移動しました",
     "entries.restored": ":nounを復元しました",
@@ -5654,5 +5655,14 @@
     "guide.posts.crumb": "画面名の上の小さな行は、今どのセクションにいるかを示します。追加・編集画面では、この行のセクション名を押すと一覧に戻れます。",
     "guide.pages.role_edit_any": "すべてのページを編集できます",
     "guide.pages.role_edit_own": "自分のページのみ編集できます",
-    "guide.pages.role_edit_none": "ページは編集できません"
+    "guide.pages.role_edit_none": "ページは編集できません",
+    "entries.refused_status": "あなたのロールではこのステータスを変更できません。",
+    "entries.refused_others_edit": "この:nounは他の人のものです。編集できるのは自分が作成した:nounだけです。",
+    "entries.refused_others_delete": "この:nounは他の人のものです。ゴミ箱に移せるのは自分が作成した:nounだけです。",
+    "entries.refused_role_edit": "あなたのロールではこの:nounを編集できません。",
+    "entries.refused_role_delete": "あなたのロールではこの:nounを削除できません。",
+    "entries.scope_page_refusal": ":why — ページは編集できません。",
+    "entries.locked_view_live": ":why — クリックしてウェブサイトで表示",
+    "entries.locked_view_preview": ":why — クリックしてプレビュー",
+    "entries.locked_view_named": "「:title」を表示 — :why"
 }

@@ -2110,6 +2110,7 @@
     "entries.filter_none": "无",
     "entries.status_changed": "状态已更新",
     "entries.scheduled_set": "已设置发布计划",
+    "entries.err_duplicate_refused": "您无权复制此项。",
     "entries.duplicated": "已复制:noun",
     "entries.trashed": "已移到回收站",
     "entries.restored": "已恢复:noun",
@@ -5654,5 +5655,14 @@
     "guide.posts.crumb": "页面名称上方的小字一行显示您所在的栏目。在添加或编辑页面，点击这一行中的栏目名即可返回列表。",
     "guide.pages.role_edit_any": "可编辑所有页面",
     "guide.pages.role_edit_own": "仅可编辑自己的页面",
-    "guide.pages.role_edit_none": "不可编辑页面"
+    "guide.pages.role_edit_none": "不可编辑页面",
+    "entries.refused_status": "您的角色无法更改此状态。",
+    "entries.refused_others_edit": "这是别人的:noun——您只能编辑自己创建的:noun。",
+    "entries.refused_others_delete": "这是别人的:noun——您只能将自己创建的:noun移到回收站。",
+    "entries.refused_role_edit": "您的角色无法编辑此:noun。",
+    "entries.refused_role_delete": "您的角色无法删除此:noun。",
+    "entries.scope_page_refusal": ":why——无法编辑页面。",
+    "entries.locked_view_live": ":why——点击在网站上查看",
+    "entries.locked_view_preview": ":why——点击预览",
+    "entries.locked_view_named": "查看“:title”——:why"
 }

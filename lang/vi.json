@@ -2110,6 +2110,7 @@
     "entries.filter_none": "Không có",
     "entries.status_changed": "Đã đổi trạng thái",
     "entries.scheduled_set": "Đã đặt lịch đăng",
+    "entries.err_duplicate_refused": "Bạn không được nhân bản bài này.",
     "entries.duplicated": "Đã nhân bản :noun",
     "entries.trashed": "Đã chuyển vào thùng rác",
     "entries.restored": "Đã khôi phục :noun",
@@ -2123,7 +2124,7 @@
     "entries.schedule_set_action": "Đặt lịch",
     "entries.schedule_future_only": "Thời điểm hẹn giờ phải ở tương lai.",
     "entries.bulk_selected": "Đã chọn :count :noun",
-    "entries.bulk_publish": "Xuất bản",
+    "entries.bulk_publish": "Đăng",
     "entries.bulk_draft": "Chuyển nháp",
     "entries.bulk_deselect": "Bỏ chọn",
     "entries.select_all": "Chọn tất cả",
@@ -5654,5 +5655,14 @@
     "guide.posts.crumb": "Dòng nhỏ trên tên màn cho biết bạn đang ở mục nào. Ở màn thêm hoặc sửa, bấm tên mục trong dòng này để quay về danh sách.",
     "guide.pages.role_edit_any": "sửa được mọi trang",
     "guide.pages.role_edit_own": "chỉ sửa trang của mình",
-    "guide.pages.role_edit_none": "không sửa trang"
+    "guide.pages.role_edit_none": "không sửa trang",
+    "entries.refused_status": "Nhóm quyền của bạn không đổi được trạng thái này.",
+    "entries.refused_others_edit": "Đây là :noun của người khác — bạn chỉ sửa được :noun do mình tạo.",
+    "entries.refused_others_delete": "Đây là :noun của người khác — bạn chỉ chuyển vào Thùng rác được :noun do mình tạo.",
+    "entries.refused_role_edit": "Nhóm quyền của bạn không sửa được :noun này.",
+    "entries.refused_role_delete": "Nhóm quyền của bạn không xóa được :noun này.",
+    "entries.scope_page_refusal": ":why — không sửa được Trang.",
+    "entries.locked_view_live": ":why — bấm để xem trên website",
+    "entries.locked_view_preview": ":why — bấm để xem trước",
+    "entries.locked_view_named": "Xem “:title” — :why"
 }

@@ -2,6 +2,8 @@
 
 use App\Modules\Admin\Support\Catalog\ProductListQuery;
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
+use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
@@ -12,6 +14,7 @@ use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteSetting;
@@ -484,3 +487,44 @@ it('keeps the invitations view flat whatever the number of invitations', functio
     // any), and the top bar's bell: 170 more invitations add no query
     expect($many)->toBe($few)->and($few)->toBe(21);
 });
+
+// The posts list answers each row's actions (status menu, send for review, duplicate, trash) from what
+// the rows carry, so the query count is one flat ceiling per kind of member, whatever the row count.
+it('lists posts on an absolute query ceiling for a publisher, a sender and an own-only member, at 10 and 20 rows', function (int $rows, string $who, int $ceiling): void {
+    $member = User::factory()->create();
+    $other = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($member, $other, $who, $rows): void {
+        grantRole($member, 'rg-'.$who, match ($who) {
+            'publisher' => ['entries.view', 'entries.create', 'entries.edit.any', 'entries.delete.any', 'entries.publish'],
+            'sender' => ['entries.view', 'entries.create', 'entries.edit.own', 'entries.submit'],
+            default => ['entries.view', 'entries.create', 'entries.edit.own', 'entries.delete.own'],
+        });
+        $root = app(CreateTaxonomy::class)->handle('post_cat', null, new TaxonomyData(names: ['vi' => 'Tin tức']));
+        ContentSection::query()->create([
+            'key' => 'tin-tuc', 'label' => 'Tin tức', 'entry_type' => 'post', 'taxonomy_id' => $root->id,
+            'permission_prefix' => 'entries', 'sort_order' => 1,
+        ]);
+        foreach (range(1, $rows) as $i) {
+            $entry = Entry::query()->create(['type' => 'post', 'status' => $i % 3 ? 'draft' : 'published', 'author_id' => $i % 2 ? $member->id : $other->id, 'meta' => []]);
+            $entry->translations()->create(['locale' => 'vi', 'title' => "Bài {$i}", 'slug' => "bai-{$i}", 'status' => 'draft', 'body' => ['blocks' => []]]);
+            $entry->assignCategories([$root->id]);
+        }
+    });
+
+    $load = function () use ($member): int {
+        app()->forgetScopedInstances();
+
+        return countQueries(fn () => $this->actingAs($member)->get('http://a.test/admin/content?section=tin-tuc')->assertOk());
+    };
+    $load();   // warm caches (permissions, preferences)
+
+    expect($load())->toBeLessThanOrEqual($ceiling);
+})->with([
+    'publisher 10' => [10, 'publisher', 21],
+    'publisher 20' => [20, 'publisher', 21],
+    'sender 10' => [10, 'sender', 21],
+    'sender 20' => [20, 'sender', 21],
+    'own-only 10' => [10, 'own', 20],
+    'own-only 20' => [20, 'own', 20],
+]);
