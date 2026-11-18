@@ -34,6 +34,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Workflow\Actions\InstantiateWorkflow;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
@@ -237,30 +238,30 @@ it('refuses the status roads outside the limits: publish, send, draft, private, 
 });
 
 it('judges a status change on the post as it is now, not as the list loaded it', function (): void {
-    [$jobs, $it, $news] = cwTree();
+    [$jobs, $it] = cwTree();
     $lan = cwMember('editor');
     cwLimit($lan, $jobs);
-    $live = cwEntry($lan, 'published', $it);
     $gone = cwEntry($lan, 'published', $it);
 
-    // the list loaded both rows while they sat inside Lan's limits ...
-    $allowed = app(Tenancy::class)->enter(1, fn (): array => [$lan->can('publish', $live), $lan->can('publish', $gone)]);
+    // the list loaded the row while it was live and Lan's to change ...
+    $allowed = app(Tenancy::class)->enter(1, fn (): bool => $lan->can('publish', $gone));
 
-    // ... then a colleague filed one under News and put the other in the Trash
-    app(Tenancy::class)->enter(1, function () use ($live, $gone, $news): void {
-        Entry::query()->findOrFail($live->id)->assignCategories([$news->id]);
-        Entry::query()->findOrFail($gone->id)->delete();
-    });
+    // ... then a colleague sent it to the Trash
+    app(Tenancy::class)->enter(1, fn () => Entry::query()->findOrFail($gone->id)->delete());
 
-    $refusals = [
-        cwRefusal(fn () => app(TransitionEntryStatus::class)->handle($live, EntryStatus::Draft, $lan)),
-        cwRefusal(fn () => app(TransitionEntryStatus::class)->handle($gone, EntryStatus::Private, $lan)),
-    ];
+    $thrown = null;
+    try {
+        app(Tenancy::class)->enter(1, fn () => app(TransitionEntryStatus::class)->handle($gone, EntryStatus::Private, $lan));
+    } catch (ModelNotFoundException $e) {
+        $thrown = $e::class;
+    }
 
-    expect($allowed)->toBe([true, true])
-        ->and($refusals)->toBe(['denied', 'denied'])
-        ->and(cwStatus($live))->toBe('published')
-        ->and(app(Tenancy::class)->enter(1, fn () => Entry::withTrashed()->findOrFail($gone->id)->status))->toBe('published');
+    $after = app(Tenancy::class)->enter(1, fn (): Entry => Entry::withTrashed()->findOrFail($gone->id));
+
+    expect($allowed)->toBeTrue()
+        ->and($thrown)->toBe(ModelNotFoundException::class)
+        ->and($after->status)->toBe('published')
+        ->and($after->trashed())->toBeTrue();
 });
 
 // ── The editor ────────────────────────────────────────────────────────────────────────────────

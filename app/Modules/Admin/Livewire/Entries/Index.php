@@ -43,6 +43,7 @@ use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -537,6 +538,10 @@ final class Index extends Component
             $this->toast(__('entries.workflow_governed'));
 
             return;
+        } catch (ModelNotFoundException) {
+            $this->toastStaleRow(); // sent to the Trash or purged since the list loaded it
+
+            return;
         } catch (AuthorizationException) {
             $this->refuse($this->refusalFor($entry, 'status'));
 
@@ -568,6 +573,10 @@ final class Index extends Component
             app(TransitionEntryStatus::class)->handle($entry, EntryStatus::Scheduled, $this->actingUser(), $when);
         } catch (WorkflowGovernedException) {
             $this->toast(__('entries.workflow_governed'));
+
+            return;
+        } catch (ModelNotFoundException) {
+            $this->toastStaleRow(); // sent to the Trash or purged since the list loaded it
 
             return;
         } catch (AuthorizationException) {
