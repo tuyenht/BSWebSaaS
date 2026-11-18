@@ -581,6 +581,17 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content?section=posts')->assertOk()->getContent();
     expect($html)->toContain('Khánh thành nhà xưởng gia công', 'data-role-note', 'Kiến thức › Gia công CNC', 'loading="lazy"', 'data-img="0"');
     file_put_contents($dir.'/post-list.html', $html);
+
+    // The same list's other states for axe: a search that matches nothing («Bỏ lọc»), and the
+    // Trash with one post in it (each row tells the days it has left).
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content?section=posts&q=khong-co-bai-nao-khop')->assertOk()->getContent();
+    file_put_contents($dir.'/post-list-nomatch.html', $html);
+    app(Tenancy::class)->enter(1, fn () => Entry::query()->where('type', 'post')->where('status', 'archived')->firstOrFail()->delete());
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content?section=posts&tab=trash')->assertOk()->getContent();
+    expect($html)->toContain('Tham gia Hội chợ Mechanical Expo 2026');
+    file_put_contents($dir.'/post-list-trash.html', $html);
     config(['media' => $mediaConfig]);
 
     // The product editor with the same shared Google part (no short description: a product has
@@ -819,5 +830,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-te-page="suspended"');
     file_put_contents($dir.'/error-suspended.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 52);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 54);
 });
