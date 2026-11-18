@@ -157,7 +157,7 @@ it('puts the row\'s Xem in its own span and offers «Xem» in the ⋮ for the wi
         $html = Livewire::actingAs($user->fresh())->test(Index::class, ['section' => 'tin-tuc'])->html();
         $menu = Str::between($html, 'class="list-menu', '</div>');
         expect($html)->toContain('<span class="list-x" data-x="xv">')
-            ->and($menu)->toContain('data-xm="xv"')->toContain('target="_blank"')->toContain('>'.__('admin.view').'<');
+            ->and($menu)->toContain('data-xm="xv"')->toContain('target="_blank"')->toContain('>'.__('entries.view_on_site').'<');
     });
 });
 
@@ -265,11 +265,12 @@ it('leaves only the copy item in the ⋮ of another author\'s post for a member 
         $section = cmSection();
         cmPost($author, 'Bài người khác', $section);
 
-        $html = Livewire::actingAs($member->fresh())->test(Index::class, ['section' => 'tin-tuc'])->set('xbtn', true)->html();
+        // an own-only member opens on «Của tôi»: everyone's rows, to see the colleague's
+        $html = Livewire::actingAs($member->fresh())->test(Index::class, ['section' => 'tin-tuc'])->call('resetFilterGroup', 'creator')->set('xbtn', true)->html();
         $menu = Str::after($html, 'class="list-more"');
-        // the items are Xem and Nhân bản, both covered by the row's own buttons: the page's CSS hides the empty ⋮ then
-        expect(substr_count($menu, 'role="menuitem"'))->toBe(2)
-            ->and($menu)->toContain('data-xm="xv"')->toContain('data-xm="xd"')->not->toContain('data-xm="xt"')
+        // Xem and Nhân bản are covered by the row's own buttons; «Sao chép đường dẫn» has no row button, so the ⋮ stays
+        expect(substr_count($menu, 'role="menuitem"'))->toBe(3)
+            ->and($menu)->toContain('data-xm="xv"')->toContain('data-xm="xd"')->toContain('data-copy')->not->toContain('data-xm="xt"')
             ->and($html)->toContain('<span class="list-x" data-x="xd">')->not->toContain('<span class="list-x" data-x="xt">');
     });
 });

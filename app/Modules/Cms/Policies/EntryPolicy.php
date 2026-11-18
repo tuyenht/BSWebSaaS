@@ -61,6 +61,17 @@ final class EntryPolicy
             && $this->scopes->coversEntry($user, $entry);
     }
 
+    /**
+     * «Xem trước»: the admin's preview of this entry as the website would draw it, whatever its status.
+     * Whoever may open it in the editor (update), or review it (the review inbox shows them what they
+     * approve) inside their category limits; never only on the strength of seeing the list.
+     */
+    public function preview(User $user, Entry $entry): bool
+    {
+        return $user->can('entries.view')
+            && ($this->update($user, $entry) || ($this->review($user) && $this->scopes->coversEntry($user, $entry)));
+    }
+
     public function delete(User $user, Entry $entry): bool
     {
         return ($user->can('entries.delete.any')

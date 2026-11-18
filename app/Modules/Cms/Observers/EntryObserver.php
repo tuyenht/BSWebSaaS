@@ -3,7 +3,9 @@
 namespace App\Modules\Cms\Observers;
 
 use App\Modules\Cms\Events\EntryPublished;
+use App\Modules\Cms\Exceptions\HomePageLockedException;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Support\HomePages;
 use App\Modules\Media\Models\Mediable;
 
 /**
@@ -17,6 +19,9 @@ use App\Modules\Media\Models\Mediable;
  *
  * It also announces an entry going public (EntryPublished), whichever path published it, so a
  * listener such as "Tự thêm trang mới" never depends on one action remembering to tell it.
+ *
+ * And it keeps the website's Home page out of the Trash, whichever path tries to move it there
+ * (HomePages): the last guard behind the screens' own checks.
  */
 final class EntryObserver
 {
@@ -31,6 +36,14 @@ final class EntryObserver
     {
         if ($entry->wasChanged('status') && $entry->status === 'published') {
             event(new EntryPublished($entry->id, $entry->type));
+        }
+    }
+
+    /** A move to the Trash (a soft delete) of the Home page is refused; a purge from the Trash is not. */
+    public function deleting(Entry $entry): void
+    {
+        if (! $entry->isForceDeleting() && HomePages::is($entry)) {
+            throw new HomePageLockedException;
         }
     }
 

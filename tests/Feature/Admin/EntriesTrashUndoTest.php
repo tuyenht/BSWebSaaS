@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Livewire\Entries\Index;
+use App\Modules\Cms\Exceptions\HomePageLockedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\MemberCategoryScope;
 use App\Modules\Cms\Models\Taxonomy;
@@ -17,7 +18,7 @@ use Livewire\Livewire;
 /*
  * «Chuyển vào Thùng rác» happens at once, on a row or for the rows ticked, and the message offers
  * «Hoàn tác» for 10 seconds, which brings every one of them back. It asks first only for a page with
- * sub-pages (they go with it) and for the Home page. The bulk bar counts, on each button, the ticked
+ * sub-pages (they go with it); the Home page never goes (another page becomes it first). The bulk bar counts, on each button, the ticked
  * rows that button would really act on, by the same rule the action runs by, and says under the bar
  * why the rest are left out. A trashed row says how many days it has before it is deleted for good.
  */
@@ -138,23 +139,55 @@ it('asks first for a page with sub-pages, then moves the whole branch and brings
     });
 });
 
-it('asks first for the Home page, in the design\'s words', function (): void {
+it('never moves the Home page to the Trash, from the row or a direct call, and says why', function (): void {
     $owner = tuMember('owner', PermissionRegistry::TENANT_PERMISSIONS);
 
     app(Tenancy::class)->enter(1, function () use ($owner): void {
         $home = tuPage($owner, 'Trang chủ', 'published', null, 'home');
         $list = Livewire::actingAs($owner)->test(Index::class);
 
-        $list->call('trash', $home->ulid)->assertDispatched('entries-ask-trash',
-            ulid: $home->ulid,
-            title: 'Chuyển “Trang chủ” vào Thùng rác?',
-            text: 'Website sẽ không còn trang chủ cho tới khi bạn khôi phục trang này từ Thùng rác.',
-            ok: __('entries.action_trash'),
-        );
+        // asked or not, the answer is the reason, kept until closed
+        foreach ([false, true] as $confirmed) {
+            $list->call('trash', $home->ulid, $confirmed)
+                ->assertNotDispatched('entries-ask-trash')
+                ->assertDispatched('bs-toast', text: 'Muốn bỏ trang này, hãy chọn trang khác làm Trang chủ trước.', stay: true)
+                ->assertSet('trashUndo', null);
+        }
+        expect(tuTrashed($home))->toBeFalse();
+    });
+});
+
+it('never moves a branch with the Home page in it to the Trash', function (): void {
+    $owner = tuMember('owner', PermissionRegistry::TENANT_PERMISSIONS);
+
+    app(Tenancy::class)->enter(1, function () use ($owner): void {
+        $parent = tuPage($owner, 'Giới thiệu');
+        $home = tuPage($owner, 'Trang chủ', 'published', $parent, 'home');
+
+        Livewire::actingAs($owner)->test(Index::class)
+            ->call('trash', $parent->ulid, true)
+            ->assertDispatched('bs-toast', text: __('entries.home_trash_why'), stay: true);
+        expect(tuTrashed($parent))->toBeFalse()->and(tuTrashed($home))->toBeFalse();
+    });
+});
+
+it('refuses a move of the Home page to the Trash outside the screens too, but lets the Trash purge it', function (): void {
+    $owner = tuMember('owner', PermissionRegistry::TENANT_PERMISSIONS);
+
+    app(Tenancy::class)->enter(1, function () use ($owner): void {
+        $home = tuPage($owner, 'Trang chủ', 'published', null, 'home');
+
+        expect(fn () => $home->delete())->toThrow(HomePageLockedException::class, __('entries.home_trash_why'));
         expect(tuTrashed($home))->toBeFalse();
 
-        $list->call('trash', $home->ulid, true)->assertSet('trashUndo', [$home->ulid]);
-        expect(tuTrashed($home))->toBeTrue();
+        // a page that is not the Home page goes as before
+        $other = tuPage($owner, 'Liên hệ');
+        $other->delete();
+        expect(tuTrashed($other))->toBeTrue();
+
+        // a permanent purge is not a move to the Trash
+        $home->forceDelete();
+        expect(Entry::withTrashed()->whereKey($home->id)->exists())->toBeFalse();
     });
 });
 

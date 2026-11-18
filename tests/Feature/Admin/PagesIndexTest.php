@@ -111,7 +111,7 @@ it('shows soft-deleted pages only in the trash tab', function (): void {
     $user = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
-        grantRole($user, 'editor', ['entries.view']);
+        grantRole($user, 'editor', ['entries.view', 'entries.delete.any']); // the Thùng rác is theirs who may remove
         $trashed = makePageEntry($user, 'Đã xoá rồi', 'da-xoa');
         makePageEntry($user, 'Còn sống', 'con-song');
         $trashed->delete();
@@ -308,7 +308,8 @@ it('rejects scheduling a page for a past time so the publish-due cron cannot ins
 
         Livewire::actingAs($editor->fresh())->test(Index::class)
             ->call('scheduleEntry', $page->ulid, now()->subDay()->format('Y-m-d\TH:i'))
-            ->assertDispatched('bs-toast', text: __('entries.schedule_future_only'));
+            ->assertReturned(__('entries.sched_err_past'))   // kept on the dialog's field, not a message
+            ->assertNotDispatched('bs-toast');
 
         expect($page->fresh()->status)->toBe('draft'); // rejected — still a draft, never scheduled
     });
@@ -632,7 +633,7 @@ it('offers no inline title or slug editor on the Trash tab', function (): void {
     $editor = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
-        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any']);
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any', 'entries.delete.any']);
         makePageEntry($editor, 'Trang trong thùng rác', 'trang-thung-rac')->delete();
 
         Livewire::actingAs($editor->fresh())->test(Index::class)

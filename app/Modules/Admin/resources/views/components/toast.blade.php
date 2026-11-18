@@ -49,7 +49,7 @@
                     <button type="button" x-show="s.act" x-on:click="{{ $action }}()" class="{{ $btn }}" x-text="s.act"></button>
                 @endif
                 @if ($undo)
-                    <button type="button" x-show="s.undo" x-on:click="{{ $undo }}()" class="{{ $btn }}">{{ __('admin.undo') }}</button>
+                    <button type="button" x-show="s.undo" data-toast-undo x-on:click="{{ $undo }}()" class="{{ $btn }}">{{ __('admin.undo') }}</button>
                 @endif
                 <button type="button" x-on:click="{{ $dismiss }}(s.seq)" class="{{ $btn }}">{{ __('admin.close') }}</button>
             </div>
@@ -65,7 +65,7 @@
             <x-bs-admin::icon :name="$icon" class="size-5 shrink-0" />
             <span class="min-w-0 flex-[1_1_13.75rem] [overflow-wrap:anywhere]">{{ $message }}</span>
             @if ($undo)
-                <button type="button" wire:click="{{ $undo }}"
+                <button type="button" data-toast-undo wire:click="{{ $undo }}"
                         class="{{ $btn }}">{{ __('admin.undo') }}</button>
             @endif
             <button type="button" wire:click="{{ $call }}"
