@@ -7,6 +7,7 @@ namespace App\Modules\Tenancy\Actions;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Domains\DomainName;
+use App\Modules\Tenancy\Events\PublicSiteChanged;
 use App\Modules\Tenancy\Exceptions\DomainChangeRejectedException;
 use App\Modules\Tenancy\Models\Domain;
 use App\Modules\Tenancy\Models\Site;
@@ -70,6 +71,7 @@ final readonly class ChooseRunningSpelling
             // The other spelling first: a site has one primary, and a redirect is never primary.
             $other?->forceFill(['is_redirect' => true, 'is_primary' => false])->save();
             $chosen->forceFill(['is_redirect' => false, 'is_primary' => $takesPrimary])->save();
+            event(new PublicSiteChanged($siteId));
 
             return $chosen;
         });

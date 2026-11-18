@@ -19,46 +19,46 @@ use Illuminate\Queue\InteractsWithQueue;
  * and a write made while it runs queues the next one (the lock goes as processing starts), so the
  * purge always follows the last commit.
  *
- * Purge by host name first; when the edge refuses (Cloudflare limits host purges per minute) the
- * home pages go by URL, the edit a site owner looks at first, and the rest ages out within
- * `storefront.edge_cache.s_maxage`. When even that fails the job tries again a minute later.
+ * Purge by host name; a refusal is pursued as RetriesHostPurge says (the home pages by URL at once,
+ * the host purge again later, an error logged after the last try). `$alsoHosts` names hosts that no
+ * longer belong to the site (a removed or renamed domain), purged together with its own: what the
+ * edge kept for them must go too. Such a dispatch is never dropped as a duplicate of a waiting plain
+ * one: its unique id carries a hash of those names.
  *
  * Only names inside the platform's own zone go (`tenancy.base_domains` and their subdomains): a
  * purge call naming a host of another zone is refused whole by Cloudflare. A customer's own domain
- * is not purged and its pages age out within `s_maxage` (Cloudflare for SaaS would cover it later).
+ * is not purged; its pages are kept only `storefront.edge_cache.unpurged_s_maxage` (EdgeCacheHeaders)
+ * and age out (Cloudflare for SaaS would cover it later).
  */
 final class PurgeSiteEdgeCache implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
     use Dispatchable;
     use InteractsWithQueue;
     use Queueable;
-
-    public int $tries = 3;
+    use RetriesHostPurge;
 
     public int $uniqueFor = 600;
 
-    public function __construct(public readonly int $siteId) {}
+    /** @param list<string> $alsoHosts hosts the site no longer has, purged with its own */
+    public function __construct(public readonly int $siteId, public readonly array $alsoHosts = []) {}
 
     public function uniqueId(): string
     {
-        return (string) $this->siteId;
+        if ($this->alsoHosts === []) {
+            return (string) $this->siteId;
+        }
+
+        $names = array_values(array_unique(array_map(static fn (string $host): string => strtolower(rtrim($host, '.')), $this->alsoHosts)));
+        sort($names);
+
+        return $this->siteId.':'.hash('xxh128', implode("\n", $names));
     }
 
     public function handle(EdgeCache $edge, SiteDirectory $sites): void
     {
-        $hosts = self::inZone($sites->hostsOf($this->siteId));
-        if ($hosts === []) {
-            return;
-        }
+        $hosts = self::inZone(array_values(array_unique([...$sites->hostsOf($this->siteId), ...$this->alsoHosts])));
 
-        if ($edge->purgeHosts($hosts)) {
-            return;
-        }
-
-        $homes = array_map(static fn (string $host): string => 'https://'.$host.'/', $hosts);
-        if (! $edge->purgeUrls($homes) && $this->attempts() < $this->tries) {
-            $this->release(60);
-        }
+        $this->purgeOrRetry($edge, $hosts, ['site_id' => $this->siteId]);
     }
 
     /**

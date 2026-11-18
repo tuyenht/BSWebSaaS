@@ -10,7 +10,9 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Models\Permission;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
+use App\Modules\Shared\Contracts\EdgeCache;
 use App\Modules\Shared\Support\SiteSearchWords;
+use App\Modules\Storefront\EdgeCache\EdgeCachePurges;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Contracts\Validation\UncompromisedVerifier;
 use Illuminate\Mail\Transport\ArrayTransport;
@@ -413,4 +415,40 @@ function forgetContactClicks(): void
         array_push($keys, "contact_clicks:{$site}", "contact_clicks:flushing:{$site}", "contact_clicks:applying:{$site}");
     }
     Redis::del(...$keys);
+}
+
+/*
+|--------------------------------------------------------------------------
+| Edge cache recorder
+|--------------------------------------------------------------------------
+| Records every purge instead of calling an edge (Cloudflare); a.test / b.test sit in its zone.
+*/
+function edgeCacheRecorder(bool $hostsAccepted = true): object
+{
+    $fake = new class($hostsAccepted) implements EdgeCache
+    {
+        /** @var list<array{0: string, 1: list<string>}> */
+        public array $calls = [];
+
+        public function __construct(private bool $hostsAccepted) {}
+
+        public function purgeHosts(array $hosts): bool
+        {
+            $this->calls[] = ['hosts', $hosts];
+
+            return $this->hostsAccepted;
+        }
+
+        public function purgeUrls(array $urls): bool
+        {
+            $this->calls[] = ['urls', $urls];
+
+            return true;
+        }
+    };
+    app()->instance(EdgeCache::class, $fake);
+    app()->forgetInstance(EdgeCachePurges::class); // built with the null driver during the seeding
+    config(['tenancy.base_domains' => ['test']]);   // a.test / b.test sit in the purged zone
+
+    return $fake;
 }

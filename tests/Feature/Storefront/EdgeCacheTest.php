@@ -16,11 +16,15 @@ use App\Modules\Storefront\EdgeCache\EdgeCachePurges;
 use App\Modules\Storefront\EdgeCache\NullEdgeCache;
 use App\Modules\Storefront\EdgeCache\PurgeSiteEdgeCache;
 use App\Modules\Storefront\Http\Middleware\EdgeCacheHeaders;
+use App\Modules\Tenancy\Context\SiteDirectory;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Theme\Theming\StorefrontSettings;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
@@ -39,38 +43,9 @@ beforeEach(function (): void {
     seedHomepage(1, 'Mở đầu Ân Vĩnh');
     seedHomepage(2, 'Mở đầu Bình Định');
     Cache::flush();
+    // midday on the sites' clock (GMT+7): the site's midnight is twelve hours away
+    $this->travelTo(CarbonImmutable::parse('2026-11-18 12:00:00', 'Asia/Ho_Chi_Minh'));
 });
-
-/** Records every purge instead of calling an edge. */
-function edgeCacheRecorder(bool $hostsAccepted = true): object
-{
-    $fake = new class($hostsAccepted) implements EdgeCache
-    {
-        /** @var list<array{0: string, 1: list<string>}> */
-        public array $calls = [];
-
-        public function __construct(private bool $hostsAccepted) {}
-
-        public function purgeHosts(array $hosts): bool
-        {
-            $this->calls[] = ['hosts', $hosts];
-
-            return $this->hostsAccepted;
-        }
-
-        public function purgeUrls(array $urls): bool
-        {
-            $this->calls[] = ['urls', $urls];
-
-            return true;
-        }
-    };
-    app()->instance(EdgeCache::class, $fake);
-    app()->forgetInstance(EdgeCachePurges::class); // built with the null driver during the seeding
-    config(['tenancy.base_domains' => ['test']]);   // a.test / b.test sit in the purged zone
-
-    return $fake;
-}
 
 const EDGE_PUBLIC = 'max-age=0, public, s-maxage=300, stale-while-revalidate=86400';
 
@@ -364,4 +339,136 @@ it('keeps a lead whose Turnstile token fails out of the inbox, with no notice se
     $lead = app(Tenancy::class)->enter(1, fn () => FormSubmission::query()->sole());
     expect($lead->status)->toBe('spam')->and($lead->is_spam)->toBeTrue();
     Notification::assertNothingSent();
+});
+
+it('keeps a page of a host inside the zone a day, cut at the site\'s midnight, never under a minute', function (string $at, int $seconds): void {
+    config(['tenancy.base_domains' => ['test']]);
+    $this->travelTo(CarbonImmutable::parse($at, 'Asia/Ho_Chi_Minh'));
+
+    expect($this->get('http://a.test/')->assertOk()->headers->get('Cache-Control'))
+        ->toBe("max-age=0, public, s-maxage={$seconds}, stale-while-revalidate=86400");
+})->with([
+    'midday: twelve hours to midnight' => ['2026-11-18 12:00:00', 43200],
+    'just after midnight: a whole day, no more' => ['2026-11-18 00:00:00', 86400],
+    'thirty seconds before midnight: the one-minute floor' => ['2026-11-18 23:59:30', 60],
+]);
+
+it('reads the midnight on the site\'s own clock', function (): void {
+    config(['tenancy.base_domains' => ['test']]);
+    DB::connection('pgsql_admin')->table('site_settings')->insert([
+        'site_id' => 1, 'group_name' => 'general', 'key' => 'timezone', 'value' => json_encode(['tz' => 'Asia/Tokyo']),
+        'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    // 12:00 in Hồ Chí Minh City is 14:00 in Tokyo: ten hours to site A's midnight; B keeps GMT+7
+    expect($this->get('http://a.test/')->headers->get('Cache-Control'))->toContain('s-maxage=36000,')
+        ->and($this->get('http://b.test/')->headers->get('Cache-Control'))->toContain('s-maxage=43200,');
+});
+
+it('reads the zone in the page\'s one settings read, and no other general setting', function (): void {
+    DB::connection('pgsql_admin')->table('site_settings')->insert([
+        ['site_id' => 1, 'group_name' => 'general', 'key' => 'timezone', 'value' => json_encode(['tz' => 'Asia/Tokyo']), 'created_at' => now(), 'updated_at' => now()],
+        ['site_id' => 1, 'group_name' => 'general', 'key' => 'brand', 'value' => json_encode(['name' => 'An']), 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    [$zone, $brand] = app(Tenancy::class)->enter(1, fn (): array => [
+        app(StorefrontSettings::class)->get('general', 'timezone'),
+        app(StorefrontSettings::class)->get('general', 'brand'),
+    ]);
+
+    expect($zone)->toBe(['tz' => 'Asia/Tokyo'])->and($brand)->toBeNull();
+});
+
+it('keeps a page of a host outside the zone (a customer\'s own domain) only the unpurged lifetime', function (): void {
+    config(['tenancy.base_domains' => ['baoson.net'], 'storefront.edge_cache.unpurged_s_maxage' => 240]);
+
+    expect($this->get('http://a.test/')->assertOk()->headers->get('Cache-Control'))
+        ->toBe('max-age=0, public, s-maxage=240, stale-while-revalidate=86400');
+
+    $this->travelTo(CarbonImmutable::parse('2026-11-18 23:59:00', 'Asia/Ho_Chi_Minh'));
+    expect($this->get('http://a.test/')->headers->get('Cache-Control'))->toContain('s-maxage=60,');
+});
+
+it('leaves a route\'s own edge rules uncut by the midnight or the zone', function (): void {
+    config(['storefront.edge_cache.probe' => ['s_maxage' => 600, 'stale_while_revalidate' => 3, 'query_allow' => []]]);
+    Route::get('/_edge-probe-late', fn () => response('x'))->middleware(EdgeCacheHeaders::class.':probe');
+    $this->travelTo(CarbonImmutable::parse('2026-11-18 23:59:30', 'Asia/Ho_Chi_Minh'));
+
+    expect($this->get('/_edge-probe-late')->headers->get('Cache-Control'))->toBe('max-age=0, public, s-maxage=600, stale-while-revalidate=3');
+});
+
+it('purges the homes at once when the edge refuses a host purge, then tries the hosts again later, a minute more each time', function (): void {
+    $edge = edgeCacheRecorder(hostsAccepted: false);
+    Log::spy();
+
+    $first = (new PurgeSiteEdgeCache(1))->withFakeQueueInteractions();
+    $first->handle($edge, app(SiteDirectory::class));
+    $first->assertReleased(60);
+
+    $third = (new PurgeSiteEdgeCache(1))->withFakeQueueInteractions();
+    $third->job->attempts = 3;
+    $third->handle($edge, app(SiteDirectory::class));
+    $third->assertReleased(180);
+
+    expect($first->tries)->toBe(5)
+        ->and($edge->calls)->toBe([['hosts', ['a.test']], ['urls', ['https://a.test/']], ['hosts', ['a.test']], ['urls', ['https://a.test/']]]);
+    Log::shouldNotHaveReceived('error');
+});
+
+it('logs an error naming the site and its hosts when the last try is still refused', function (): void {
+    $edge = edgeCacheRecorder(hostsAccepted: false);
+    Log::spy();
+
+    $last = (new PurgeSiteEdgeCache(1))->withFakeQueueInteractions();
+    $last->job->attempts = 5;
+    $last->handle($edge, app(SiteDirectory::class));
+
+    $last->assertNotReleased();
+    Log::shouldHaveReceived('error')->once()->withArgs(fn (string $message, array $context): bool => $context['site_id'] === 1 && $context['hosts'] === ['a.test']);
+});
+
+it('settles once the host purge goes through', function (): void {
+    $edge = edgeCacheRecorder();
+
+    $job = (new PurgeSiteEdgeCache(1))->withFakeQueueInteractions();
+    $job->handle($edge, app(SiteDirectory::class));
+
+    $job->assertNotReleased();
+    expect($edge->calls)->toBe([['hosts', ['a.test']]]);
+});
+
+it('purges the hosts a site no longer has with its own, and never merges such a purge with a plain one', function (): void {
+    $edge = edgeCacheRecorder();
+
+    (new PurgeSiteEdgeCache(1, ['cu.a.test', 'congty-cu.vn']))->handle($edge, app(SiteDirectory::class));
+
+    expect($edge->calls)->toBe([['hosts', ['a.test', 'cu.a.test']]])
+        ->and((new PurgeSiteEdgeCache(1))->uniqueId())->toBe('1')
+        ->and((new PurgeSiteEdgeCache(1, ['cu.a.test']))->uniqueId())->not->toBe('1')->toStartWith('1:')
+        ->and((new PurgeSiteEdgeCache(1, ['x.test', 'CU.a.test']))->uniqueId())->toBe((new PurgeSiteEdgeCache(1, ['cu.a.test', 'x.test']))->uniqueId())
+        ->and((new PurgeSiteEdgeCache(1, ['x.test']))->uniqueId())->not->toBe((new PurgeSiteEdgeCache(1, ['y.test']))->uniqueId());
+});
+
+it('classifies every tenant table: what a public page reads purges, the rest is named as not shown', function (): void {
+    $tenantTables = array_map(fn (object $row): string => $row->relname, DB::select(<<<'SQL'
+        select c.relname
+        from pg_class c
+        join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = 'public'
+          and c.relkind in ('r', 'p')
+          and not c.relispartition
+          and c.relrowsecurity
+          and exists (
+            select 1 from information_schema.columns col
+            where col.table_schema = 'public' and col.table_name = c.relname and col.column_name = 'site_id'
+          )
+        order by c.relname
+    SQL));
+
+    expect($tenantTables)->not->toBeEmpty()
+        // a new tenant table: add it to EdgeCachePurges::TABLES when a public page reads it, else to NOT_SHOWN
+        ->and(array_values(array_diff($tenantTables, EdgeCachePurges::TABLES, EdgeCachePurges::NOT_SHOWN)))->toBe([])
+        // a name in neither the schema nor a list (a dropped or renamed table) is stale
+        ->and(array_values(array_diff([...EdgeCachePurges::TABLES, ...EdgeCachePurges::NOT_SHOWN], $tenantTables)))->toBe([])
+        ->and(array_values(array_intersect(EdgeCachePurges::TABLES, EdgeCachePurges::NOT_SHOWN)))->toBe([]);
 });

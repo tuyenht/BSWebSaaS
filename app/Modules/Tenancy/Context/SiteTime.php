@@ -148,9 +148,7 @@ final class SiteTime
             ->pluck('value', 'key');
 
         $zone = $values[self::KEY] ?? null;
-        $this->memo[$site] = is_array($zone) && isset($zone['tz']) && is_string($zone['tz']) && $this->isValidZone($zone['tz'])
-            ? $zone['tz']
-            : self::DEFAULT_ZONE;
+        $this->memo[$site] = self::zoneFrom($zone);
 
         $format = $values[self::FORMAT_KEY] ?? null;
         $this->formats[$site] = is_array($format) && in_array($format['format'] ?? null, self::DATE_FORMATS, true)
@@ -158,8 +156,15 @@ final class SiteTime
             : 'auto';
     }
 
-    private function isValidZone(string $tz): bool
+    /**
+     * The zone a stored `general`/`timezone` value names (`{"tz": "Asia/Ho_Chi_Minh"}`), or the
+     * platform default when it is absent or not a valid zone — for a reader that already holds the
+     * row (the storefront's one settings read) and need not query again.
+     */
+    public static function zoneFrom(mixed $stored): string
     {
-        return in_array($tz, DateTimeZone::listIdentifiers(), true);
+        return is_array($stored) && isset($stored['tz']) && is_string($stored['tz']) && in_array($stored['tz'], DateTimeZone::listIdentifiers(), true)
+            ? $stored['tz']
+            : self::DEFAULT_ZONE;
     }
 }

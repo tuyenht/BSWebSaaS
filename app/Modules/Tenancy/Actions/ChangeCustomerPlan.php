@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Modules\Tenancy\Actions;
 
+use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Events\PublicSiteChanged;
 use App\Modules\Tenancy\Exceptions\PlanChangeRejectedException;
 use App\Modules\Tenancy\Models\Plan;
+use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\Tenant;
 use App\Modules\Tenancy\Models\TenantHistory;
 use Illuminate\Support\Facades\DB;
@@ -62,6 +65,11 @@ final readonly class ChangeCustomerPlan
                 'reason' => $reason,
                 'actor_user_id' => $actorUserId,
             ]);
+
+            // what the customer's websites may show follows the plan
+            foreach (Site::query()->where('tenant_id', $customer->id)->orderBy('id')->pluck('id') as $siteId) {
+                event(new PublicSiteChanged(Cast::int($siteId)));
+            }
 
             return $was;
         });

@@ -9,11 +9,16 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\EdgeCachePause;
 use App\Modules\Storefront\Console\FlushContactClicks;
 use App\Modules\Storefront\Console\PruneContactClicks;
+use App\Modules\Storefront\Console\PurgeEdgeCache;
 use App\Modules\Storefront\Console\RebuildSiteSearchWords;
 use App\Modules\Storefront\EdgeCache\CloudflareEdgeCache;
 use App\Modules\Storefront\EdgeCache\EdgeCachePurges;
 use App\Modules\Storefront\EdgeCache\NullEdgeCache;
+use App\Modules\Storefront\EdgeCache\PurgeOnPublicChange;
 use App\Modules\Storefront\Support\DrawerProducts;
+use App\Modules\Tenancy\Events\DomainNeedsAttention;
+use App\Modules\Tenancy\Events\PlanGrantsChanged;
+use App\Modules\Tenancy\Events\PublicSiteChanged;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\Events\TransactionRolledBack;
 use Illuminate\Support\Facades\DB;
@@ -48,7 +53,7 @@ final class StorefrontServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if ($this->app->runningInConsole()) {
-            $this->commands([FlushContactClicks::class, PruneContactClicks::class, RebuildSiteSearchWords::class]);
+            $this->commands([FlushContactClicks::class, PruneContactClicks::class, PurgeEdgeCache::class, RebuildSiteSearchWords::class]);
         }
 
         // app(), not $this->app: under Octane each request runs in a clone of the booted app.
@@ -62,5 +67,10 @@ final class StorefrontServiceProvider extends ServiceProvider
                 app(EdgeCachePurges::class)->rolledBack();
             }
         });
+
+        // Changes made outside a tenant context that still change public pages (domains, plans).
+        Event::listen(PublicSiteChanged::class, [PurgeOnPublicChange::class, 'site']);
+        Event::listen(PlanGrantsChanged::class, [PurgeOnPublicChange::class, 'plan']);
+        Event::listen(DomainNeedsAttention::class, [PurgeOnPublicChange::class, 'domain']);
     }
 }

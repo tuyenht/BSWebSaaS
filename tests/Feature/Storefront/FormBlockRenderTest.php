@@ -545,8 +545,10 @@ it('renders a page with a consent form within its query budget', function (): vo
         $html = $this->get('http://a.test/lien-he')->assertOk()->getContent();
     });
 
+    // 13 for the page, + the site's settings read for its time zone (how long the edge may keep the
+    // page, EdgeCacheHeaders): this page reads no other setting, so that read is its own here
     expect($html)->toContain('lead-form__policy')
-        ->and($count)->toBe(13);
+        ->and($count)->toBe(14);
 });
 
 /**

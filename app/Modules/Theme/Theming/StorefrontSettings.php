@@ -6,11 +6,13 @@ namespace App\Modules\Theme\Theming;
 
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Models\SiteSetting;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * The site settings a storefront page reads — the `theme` group (design tokens), the
- * `storefront` group (header, footer), the `seo` group (SiteSeo) and the `catalog` group (the
- * catalog mode and the contact page the product page's quote button follows) — loaded in ONE query and
+ * `storefront` group (header, footer), the `seo` group (SiteSeo), the `catalog` group (the
+ * catalog mode and the contact page the product page's quote button follows) and the site's time zone
+ * (`general`/`timezone`, for how long the edge may keep the page) — loaded in ONE query and
  * memoized per site for the request, so the tokens, the header, the footer and the page's search
  * settings share a single read. Registered scoped
  * (ThemeServiceProvider), so the memo is flushed between Octane requests; it is keyed by site
@@ -52,7 +54,11 @@ final class StorefrontSettings
     private function load(): array
     {
         $values = [];
-        foreach (SiteSetting::query()->whereIn('group_name', self::GROUPS)->get(['group_name', 'key', 'value']) as $setting) {
+        $rows = SiteSetting::query()
+            ->where(static fn (Builder $q): Builder => $q->whereIn('group_name', self::GROUPS)
+                ->orWhere(static fn (Builder $q): Builder => $q->where('group_name', 'general')->where('key', 'timezone')))
+            ->get(['group_name', 'key', 'value']);
+        foreach ($rows as $setting) {
             $values[(string) $setting->group_name][(string) $setting->key] = $setting->value;
         }
 
