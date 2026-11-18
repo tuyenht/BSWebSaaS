@@ -9,9 +9,9 @@
 ])
 @php
     // The filters of a record list (canvas [data-lf] / .lf-* / .ql-pop, K69 + K46), two surfaces from one list of sections:
-    // - From 1024px: one light button per section (icon + name + ▾; tinted pill, outlined in the accent colour while it
+    // - From 900px (K69 moved it from 1024, as board 05 draws it): one light button per section (icon + name + ▾; tinted pill, outlined in the accent colour while it
     //   filters or is open), each opening that section's own small panel.
-    // - Below 1024px: one "Lọc" button (with how many conditions are on) opening the Filter sheet from the bottom of the
+    // - Below 900px: one "Lọc" button (with how many conditions are on) opening the Filter sheet from the bottom of the
     //   screen: "Bộ lọc" + ✕, every section, [Bỏ lọc] [Xem N …]. Status groups come first when the list has them (they
     //   live here below 900px), "Hiện trên thẻ" last. The sheet has two columns when the screen is at least 29 body-text
     //   widths wide: on the left one button per section saying in words what it is set to ("Ảnh, Tài liệu PDF"; nothing
@@ -27,7 +27,7 @@
     //            which have their own row from 900px; "Hiện trên thẻ"). class: added to the section and its jump
     //            button in the sheet, to show it only at some widths (the groups: `min-[900px]:hidden`).
     //            reset: the host's public method that clears this section alone. It adds a footer to the section's own panel
-    //            from 1024px: [Bỏ chọn] [$results], so the panel closes with the count of what it found.
+    //            from 900px: [Bỏ chọn] [$results], so the panel closes with the count of what it found.
     // $active: how many conditions are on (shown on the Lọc button and in its name).
     // $activeNarrow: the count below 900px when it differs — a list whose status groups have their own row from 900
     //            and live in the sheet below adds a chosen group there only (canvas fN / fNm). The button shows
@@ -84,9 +84,9 @@
     $pillState = fn (bool $on): string => $on ? 'border-primary-text bg-primary/12 text-primary-text' : 'border-transparent bg-primary/7 text-text hover:bg-primary/12';
     $pillIcon = fn (bool $on): string => 'size-4 shrink-0 group-aria-expanded:text-primary-text '.($on ? 'text-primary-text' : 'text-text-muted');
 @endphp
-<div {{ $attributes->merge(['class' => 'flex min-w-0 shrink-0 flex-wrap items-center gap-2']) }}>
+<div {{ $attributes->merge(['class' => 'list-filters flex min-w-0 shrink-0 flex-wrap items-center gap-2']) }}>
     @foreach (array_filter($view, fn (array $s): bool => ! ($s['sheet'] ?? false)) as $section)
-        <div class="relative hidden shrink-0 min-[1024px]:block"
+        <div class="relative hidden shrink-0 min-[900px]:block"
              x-data="{
                  open: false,
                  show() { this.open = true; this.whenShown(() => { this.place(); (this.$refs.panel.querySelector('input:checked') || this.$refs.panel.querySelector('input'))?.focus(); }); },
@@ -127,7 +127,7 @@
         </div>
     @endforeach
 
-    <div class="relative shrink-0 min-[1024px]:hidden" data-guide="filter-button"
+    <div class="relative shrink-0 min-[900px]:hidden" data-guide="filter-button"
          x-data="{
              open: false, cols: 1, cur: null, pin: null, prog: 0,
              // two columns once the screen is at least 29 body-text widths wide; decided on opening and on resize only
@@ -146,7 +146,7 @@
              trap(e) { const f = this.focusables(); if (! f.length) return; const first = f[0], last = f[f.length - 1]; if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (! e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); } },
          }"
          @keydown.escape.prevent.stop="hide()"
-         @resize.window="open && (window.innerWidth >= 1024 ? hide(false) : decide())">
+         @resize.window="open && (window.innerWidth >= 900 ? hide(false) : decide())">
         <button type="button" x-ref="button" data-lf
                 @click="open ? hide() : show()"
                 :aria-expanded="open ? 'true' : 'false'" aria-controls="{{ $panelId }}"
