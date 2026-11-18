@@ -171,6 +171,13 @@ function listCssBand(string $from, string $to): string
     return substr($css, (int) $start, (int) $end - (int) $start);
 }
 
+it('keeps «Xem» on the row below 900 and moves it into ⋮ only in the table', function (): void {
+    $narrow = listCssBand('/* the cards and the line layout keep «Xem» on the row', '@container list (width >= 56.25rem)');
+
+    expect($narrow)->toContain(".list-x[data-x='xv']:not(.list-xe) {\n            display: inline-flex;")
+        ->and($narrow)->toContain(".list-menu [data-xm~='xv'] {\n            display: none;");
+});
+
 it('keeps a phone card to the name, one detail line and one row of status and buttons', function (): void {
     $card = listCssBand('@container list (width < 37.5rem)', '@container list (37.5rem <= width < 56.25rem)');
 

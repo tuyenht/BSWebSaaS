@@ -650,6 +650,8 @@
                                                 <x-bs-admin::icon :name="$isLive ? 'ri-external-link' : 'ri-eye'" class="size-4" /> {{ __('admin.view') }}
                                             </x-bs-admin::button>
                                         </span>
+                                    @else
+                                        <span class="list-x list-xe" data-x="xv" aria-hidden="true"></span>
                                     @endif
                                     {{-- «Sửa» only on a row this member may edit: the editor would refuse the others --}}
                                     @if ($quickEdit)
