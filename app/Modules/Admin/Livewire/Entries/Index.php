@@ -6,6 +6,7 @@ use App\Modules\Admin\Support\CategoryTree;
 use App\Modules\Admin\Support\Entries\EntryListFilter;
 use App\Modules\Admin\Support\Entries\EntryListGuide;
 use App\Modules\Admin\Support\Entries\EntryListQuery;
+use App\Modules\Admin\Support\Entries\EntryRefusal;
 use App\Modules\Admin\Support\Entries\ListCursor;
 use App\Modules\Admin\Support\Entries\ListGroup;
 use App\Modules\Admin\Support\Entries\PostRoleNote;
@@ -2469,39 +2470,13 @@ final class Index extends Component
     }
 
     /**
-     * Why this member may not $verb this row, in the design's words: outside their category limits
-     * (a page: every page, for a limited member), someone else's record for an own-only right, or
-     * not a right their role has.
+     * Why this member may not $verb this row, in the design's words (EntryRefusal, which the editor says too).
      *
      * @param  'edit'|'delete'|'status'  $verb
      */
     private function refusalFor(Entry $entry, string $verb): string
     {
-        $user = $this->actingUser();
-        $scopes = app(CategoryScopes::class);
-        if (! $scopes->coversEntry($user, $entry)) {
-            return self::scopeWhy($entry->type, $scopes->refusal($user));
-        }
-        if ($verb === 'status') {
-            return Cast::string(__('entries.refused_status'));
-        }
-        $noun = __('entries.noun_'.$entry->type);
-        $own = $entry->author_id !== null && $entry->author_id === $user->id;
-
-        return Cast::string(! $own && $user->can('entries.'.$verb.'.own')
-            ? __('entries.refused_others_'.$verb, ['noun' => $noun])
-            : __('entries.refused_role_'.$verb, ['noun' => $noun]));
-    }
-
-    /**
-     * The limits sentence for a row of $type: for a page it adds that pages are out of reach (a
-     * page has no category, so no limit ever covers it).
-     */
-    private static function scopeWhy(string $type, string $refusal): string
-    {
-        return $type === 'page'
-            ? Cast::string(__('entries.scope_page_refusal', ['why' => preg_replace('/[.。]$/u', '', $refusal) ?? $refusal]))
-            : $refusal;
+        return EntryRefusal::for($this->actingUser(), $entry, $verb);
     }
 
     /**
@@ -2937,7 +2912,7 @@ final class Index extends Component
                 'delete' => $user->can('delete', $entry),
                 'duplicate' => $canCreate && $covered,
                 'out' => ! $covered && $scopeRefusal !== null && ($editAny || ($editOwn && $own))
-                    ? self::scopeWhy($type, $scopeRefusal) : null,
+                    ? EntryRefusal::scopeWhy($type, $scopeRefusal) : null,
                 // a locked Thùng rác is shown on such a row only to a role that could otherwise remove it
                 'deleteRole' => $deleteAny || ($deleteOwn && $own),
                 // inside their limits, a member who may move only their own records to the Trash sees it locked on a
@@ -2997,7 +2972,7 @@ final class Index extends Component
         // A member limited to some categories may add no page (a page has no category): the add button
         // stays, locked, with the reason.
         $addLock = $type === 'page' && $canCreate && $scopes->isLimited($user)
-            ? self::scopeWhy('page', $scopeRefusal ?? $scopes->refusal($user)) : null;
+            ? EntryRefusal::scopeWhy('page', $scopeRefusal ?? $scopes->refusal($user)) : null;
 
         // Each post row's main category, as a path from the top of the section's tree, and its cover in a
         // small rendition (both from what the rows already carry: no query per row).

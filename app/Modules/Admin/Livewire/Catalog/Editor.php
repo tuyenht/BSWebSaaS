@@ -35,6 +35,7 @@ use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\DB;
@@ -236,21 +237,75 @@ final class Editor extends Component
      * «Chuyển vào thùng rác» in the ⋮, for a saved product — the same move as the list's row, through
      * the same checks (the plan has the catalog; the policy asked about the product, with the member's
      * category limits): the product goes to the Trash, keeping its translations, images and sku, and
-     * the editor leaves for the list, which says so.
+     * the editor leaves for the list, which says so. A right taken away since the screen opened (the
+     * role's, or the product now outside the member's category limits) is refused in words. A product
+     * already in the Trash (another tab, another member) is not moved again — that would restart its
+     * purge clock — and the member gets the list's words for a product that is gone: the row is read
+     * again and locked before it moves.
      */
     public function trash(): void
     {
         abort_if($this->ulid === null, 404);
         abort_unless($this->entitled(), 403);
-        $product = $this->resolveOrFail($this->ulid);
-        $this->authorize('delete', $product);
+        $product = Product::query()->where('ulid', $this->ulid)->first();
+        if ($product === null) {
+            $this->productGone();
 
-        $name = $product->translations()->where('locale', $this->locale)->value('name');
-        $product->delete();
+            return;
+        }
+        try {
+            $this->authorize('delete', $product);
+        } catch (AuthorizationException) {
+            $this->mayTrash = false;
+            $this->dispatch('bs-toast', text: $this->trashRefusal(), stay: true, close: Cast::string(__('admin.close')));
 
-        // nothing is left to save: the page leaves without asking about unsaved changes
+            return;
+        }
+
+        $name = DB::transaction(function () use ($product): ?string {
+            $live = Product::query()->whereKey($product->id)->lockForUpdate()->first();
+            if ($live === null) {
+                return null;
+            }
+            $name = $live->translations()->where('locale', $this->locale)->value('name');
+            $live->delete();
+
+            return is_string($name) ? $name : '';
+        });
+        if ($name === null) {
+            $this->productGone();
+
+            return;
+        }
+
+        // nothing is left to save: the page leaves without asking about unsaved changes, and is not drawn
+        // again for a product that is now in the Trash
         $this->saved = $this->tracked();
-        $this->js('window.bsLeaveTo('.Js::encode(route('admin.catalog.index')).', '.Js::encode(['text' => Cast::string(__('catalog.toast_trashed', ['name' => is_string($name) && $name !== '' ? $name : ($this->name !== '' ? $this->name : __('catalog.untitled'))]))]).')');
+        $this->skipRender();
+        $this->js('window.bsLeaveTo('.Js::encode(route('admin.catalog.index')).', '.Js::encode(['text' => Cast::string(__('catalog.toast_trashed', ['name' => $name !== '' ? $name : ($this->name !== '' ? $this->name : __('catalog.untitled'))]))]).')');
+    }
+
+    /**
+     * Why the member may not move this product to the Trash: outside their product category limits
+     * (the policy's own sentence, naming the categories they may change), or not a right their role has.
+     */
+    private function trashRefusal(): string
+    {
+        $user = auth()->user();
+
+        return $user instanceof User && $user->can('catalog.manage')
+            ? app(CategoryScopes::class)->refusal($user, CategoryScopes::PRODUCTS)
+            : Cast::string(__('catalog.ed.refused_trash'));
+    }
+
+    /**
+     * The product is no longer live (in the Trash, or gone): the list's words for it, in a message that
+     * stays until it is closed. The screen stays as it is, so nothing typed is lost.
+     */
+    private function productGone(): void
+    {
+        $this->skipRender();
+        $this->dispatch('bs-toast', text: Cast::string(__('catalog.row_gone')), stay: true, close: Cast::string(__('admin.close')));
     }
 
     private function entitled(): bool

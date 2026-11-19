@@ -3,16 +3,21 @@
 use App\Modules\Admin\Livewire\Catalog\Editor as ProductEditor;
 use App\Modules\Admin\Livewire\Entries\Editor as EntryEditor;
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
+use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Models\ContentSection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Js;
 use Livewire\Livewire;
+use Spatie\Permission\PermissionRegistrar;
 
 /*
  * The frame every add/edit screen shares (components/editor-frame.blade.php; design 01 Admin Shell):
@@ -116,13 +121,48 @@ describe('posts and pages', function (): void {
             $c = Livewire::actingAs($member)->test(EntryEditor::class, ['ulid' => $post->ulid])
                 ->assertSeeHtmlInOrder(['aria-current="page">Sửa</span>', 'Sửa tin tức</h1>', 'Sửa nội dung, ảnh, đường dẫn và cách hiện trên Google — mở từ dòng trong danh sách.'])
                 ->assertSeeHtml('href="'.route('admin.entries.preview', ['ulid' => $post->ulid]).'"')
+                ->assertSeeHtml('"id":"preview"')
                 ->assertSeeHtml('wire:click="trash"')
                 ->assertSee('Chuyển vào thùng rác');
             assertChildBar($c);
         });
     });
 
-    it('leaves the Trash item out for a member who may not delete the post, and the method refuses them', function (): void {
+    it('draws no «Xem trước» for a member who may not preview the post, and the guide has no step for it', function (): void {
+        $author = frameMember(['entries.view', 'entries.create', 'entries.edit.any']);
+        $member = frameMember(['entries.edit.any']);
+
+        app(Tenancy::class)->enter(1, function () use ($author, $member): void {
+            frameSection();
+            $post = frameEntry('post', $author, 'Bài không xem trước', 'bai-khong-xem-truoc');
+            Livewire::actingAs($member)->test(EntryEditor::class, ['ulid' => $post->ulid])
+                ->assertSeeHtml('data-guide-ctx')
+                ->assertSeeHtml('"id":"more"')
+                ->assertDontSeeHtml('data-guide="preview"')
+                ->assertDontSeeHtml('"id":"preview"');
+        });
+    });
+
+    it('moves a post to the Trash once: a second move keeps its Trash date and says the post changed', function (): void {
+        $member = frameMember(['entries.view', 'entries.create', 'entries.edit.any', 'entries.delete.own']);
+
+        app(Tenancy::class)->enter(1, function () use ($member): void {
+            frameSection();
+            $post = frameEntry('post', $member, 'Bài bỏ hai lần', 'bai-bo-hai-lan');
+            $c = Livewire::actingAs($member)->test(EntryEditor::class, ['ulid' => $post->ulid])->call('trash');
+            $trashedAt = Entry::onlyTrashed()->whereKey($post->id)->value('deleted_at');
+            expect($trashedAt)->not->toBeNull();
+
+            $this->travel(5)->minutes();
+            $c->call('trash')
+                ->assertOk()
+                ->assertDispatched('bs-toast', text: 'Bài này vừa được người khác thay đổi — danh sách đã được tải lại.');
+
+            expect(Entry::onlyTrashed()->whereKey($post->id)->value('deleted_at'))->toEqual($trashedAt);
+        });
+    });
+
+    it('leaves the Trash item out for a member who may not delete the post, and the method refuses them in words', function (): void {
         $author = frameMember(['entries.view', 'entries.create', 'entries.edit.any']);
         $member = frameMember(['entries.view', 'entries.edit.any', 'entries.delete.own']);
 
@@ -133,7 +173,8 @@ describe('posts and pages', function (): void {
                 ->assertDontSee('Chuyển vào thùng rác')
                 ->assertDontSeeHtml('wire:click="trash"')
                 ->call('trash')
-                ->assertForbidden();
+                ->assertOk()
+                ->assertDispatched('bs-toast', text: 'Đây là bài viết của người khác — bạn chỉ chuyển vào Thùng rác được bài viết do mình tạo.');
 
             expect(Entry::query()->whereKey($post->id)->exists())->toBeTrue();
         });
@@ -244,6 +285,93 @@ describe('products', function (): void {
 
             expect(Product::query()->whereKey($product->id)->exists())->toBeFalse()
                 ->and(Product::onlyTrashed()->whereKey($product->id)->exists())->toBeTrue();
+        });
+    });
+
+    it('refuses in words a member whose delete right went after the screen opened; the product stays', function (): void {
+        $member = frameMember(['catalog.view', 'catalog.manage']);
+
+        app(Tenancy::class)->enter(1, function () use ($member): void {
+            $product = Product::query()->create(['status' => 'draft']);
+            $product->translations()->create(['locale' => 'vi', 'name' => 'Khuôn dập', 'slug' => 'khuon-dap']);
+            $c = Livewire::actingAs($member)->test(ProductEditor::class, ['ulid' => $product->ulid])->assertSeeHtml('wire:click="trash"');
+
+            $member->roles()->firstOrFail()->revokePermissionTo('catalog.manage');
+            app(PermissionRegistrar::class)->forgetCachedPermissions();
+            auth()->setUser($member->fresh() ?? $member);
+            $c->call('trash')
+                ->assertOk()
+                ->assertDispatched('bs-toast', text: 'Nhóm quyền của bạn không xóa được sản phẩm này.');
+
+            expect(Product::query()->whereKey($product->id)->exists())->toBeTrue();
+        });
+    });
+
+    it('refuses in words a product that is now outside the member\'s category limits; the product stays', function (): void {
+        [$moulds, $jigs] = app(Tenancy::class)->enter(1, fn (): array => [
+            app(CreateTaxonomy::class)->handle('product_cat', null, new TaxonomyData(names: ['vi' => 'Khuôn'])),
+            app(CreateTaxonomy::class)->handle('product_cat', null, new TaxonomyData(names: ['vi' => 'Đồ gá'])),
+        ]);
+        $product = app(Tenancy::class)->enter(1, function () use ($moulds): Product {
+            $product = Product::query()->create(['status' => 'draft']);
+            $product->translations()->create(['locale' => 'vi', 'name' => 'Khuôn ép', 'slug' => 'khuon-ep']);
+            $product->assignCategories([$moulds->id]);
+
+            return $product;
+        });
+        $member = frameMember(['catalog.view', 'catalog.manage']);
+        $limits = fn () => DB::connection('pgsql_admin')->table('member_category_scopes');
+        $limits()->insert(['site_id' => 1, 'user_id' => $member->id, 'taxonomy_id' => $moulds->id]);
+        app(TeamContext::class)->forget();
+
+        app(Tenancy::class)->enter(1, function () use ($member, $product, $moulds, $jigs, $limits): void {
+            app(CategoryScopes::class)->forget();
+            $c = Livewire::actingAs($member)->test(ProductEditor::class, ['ulid' => $product->ulid])->assertSeeHtml('wire:click="trash"');
+
+            // another admin narrows the member's limits to «Đồ gá» while the screen is open
+            $limits()->where('user_id', $member->id)->where('taxonomy_id', $moulds->id)->delete();
+            $limits()->insert(['site_id' => 1, 'user_id' => $member->id, 'taxonomy_id' => $jigs->id]);
+            app(CategoryScopes::class)->forget();
+            $c->call('trash')
+                ->assertOk()
+                ->assertDispatched('bs-toast', text: 'Bạn chỉ được sửa sản phẩm trong: Đồ gá.');
+
+            expect(Product::query()->whereKey($product->id)->exists())->toBeTrue();
+        });
+    });
+
+    it('refuses the move with a 403 once the website\'s plan no longer has the catalog; the product stays', function (): void {
+        $member = frameMember(['catalog.view', 'catalog.manage']);
+
+        app(Tenancy::class)->enter(1, function () use ($member): void {
+            $product = Product::query()->create(['status' => 'draft']);
+            $product->translations()->create(['locale' => 'vi', 'name' => 'Bàn gá', 'slug' => 'ban-ga']);
+            $c = Livewire::actingAs($member)->test(ProductEditor::class, ['ulid' => $product->ulid]);
+
+            DB::connection('pgsql_admin')->table('site_modules')->where('site_id', 1)->where('module_key', 'catalog')->update(['enabled' => false]);
+            app()->forgetInstance(Entitlement::class);
+            $c->call('trash')->assertForbidden();
+
+            expect(Product::query()->whereKey($product->id)->exists())->toBeTrue();
+        });
+    });
+
+    it('moves a product to the Trash once: a second move keeps its Trash date and says it is gone', function (): void {
+        $member = frameMember(['catalog.view', 'catalog.manage']);
+
+        app(Tenancy::class)->enter(1, function () use ($member): void {
+            $product = Product::query()->create(['status' => 'draft']);
+            $product->translations()->create(['locale' => 'vi', 'name' => 'Khuôn bỏ hai lần', 'slug' => 'khuon-bo-hai-lan']);
+            $c = Livewire::actingAs($member)->test(ProductEditor::class, ['ulid' => $product->ulid])->call('trash');
+            $trashedAt = Product::onlyTrashed()->whereKey($product->id)->value('deleted_at');
+            expect($trashedAt)->not->toBeNull();
+
+            $this->travel(5)->minutes();
+            $c->call('trash')
+                ->assertOk()
+                ->assertDispatched('bs-toast', text: 'Sản phẩm này không còn trong danh sách — có thể đã bị xóa hoặc người khác vừa đổi nó. Hãy tải lại danh sách.');
+
+            expect(Product::onlyTrashed()->whereKey($product->id)->value('deleted_at'))->toEqual($trashedAt);
         });
     });
 

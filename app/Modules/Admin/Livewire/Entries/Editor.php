@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Livewire\Entries;
 use App\Modules\Admin\Livewire\Concerns\EditsButtonActions;
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\BlockKinds;
+use App\Modules\Admin\Support\Entries\EntryRefusal;
 use App\Modules\Admin\Support\EntryProseBody;
 use App\Modules\Admin\Support\Guide\EditorGuide;
 use App\Modules\Admin\Support\Locales;
@@ -31,6 +32,7 @@ use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Support\EntryCategoryWriter;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Cms\Support\HomePages;
+use App\Modules\Cms\Support\PageRules;
 use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
@@ -1281,6 +1283,11 @@ final class Editor extends Component
         $unit = $this->unit();
         $title = Cast::string(__($this->ulid === null ? 'entries.ed.h1_new' : 'entries.ed.h1_edit', ['unit' => $unit]));
         $listUrl = route('admin.entries.index', $this->sectionKey !== null ? ['section' => $this->sectionKey] : []);
+        // «Xem trước» is drawn with its link, or locked with the reason on a record not saved yet; a member
+        // without the preview right gets no button, so the guide has no step for it either
+        $preview = $this->ulid !== null && $this->mayPreview
+            ? ['url' => route('admin.entries.preview', ['ulid' => $this->ulid] + ($this->locale !== app(SiteLocale::class)->default() ? ['locale' => $this->locale] : [])), 'why' => null]
+            : ['url' => null, 'why' => $this->ulid === null ? Cast::string(__('admin.editor.preview_new')) : null];
 
         return view('admin::livewire.entries.editor', [
             'unit' => $unit,
@@ -1292,11 +1299,9 @@ final class Editor extends Component
                 ],
                 'description' => Cast::string(__($this->ulid === null ? 'entries.ed.desc_new' : 'entries.ed.desc_edit', ['unit' => $unit])),
                 'guide' => $this->guideDue
-                    ? EditorGuide::for('editor-'.$this->type, $title, $unit, $this->ulid === null, $actions)->toArray($this->user(), app(CurrentSite::class)->id())
+                    ? EditorGuide::for('editor-'.$this->type, $title, $unit, $this->ulid === null, $actions, $preview['url'] !== null || $preview['why'] !== null)->toArray($this->user(), app(CurrentSite::class)->id())
                     : null,
-                'preview' => $this->ulid !== null && $this->mayPreview
-                    ? ['url' => route('admin.entries.preview', ['ulid' => $this->ulid] + ($this->locale !== app(SiteLocale::class)->default() ? ['locale' => $this->locale] : [])), 'why' => null]
-                    : ['url' => null, 'why' => $this->ulid === null ? Cast::string(__('admin.editor.preview_new')) : null],
+                'preview' => $preview,
                 'trash' => $this->ulid !== null && $this->mayTrash ? ['why' => $this->isHome ? Cast::string(__('entries.home_trash_why')) : null] : null,
             ],
             'siteZone' => app(SiteTime::class)->zone(),
@@ -1686,42 +1691,72 @@ final class Editor extends Component
         return $posts->first();
     }
 
-    /** This entry's edit address, in the language being edited when that is not the site's default. */
     /**
      * «Chuyển vào thùng rác» in the ⋮, for a saved entry — the same move the list's row makes, through
      * the same policy (EntryPolicy::delete): the entry goes to the Trash (kept EntryTrash::days() days)
      * and the editor leaves for its list, which says so. The Home page never goes (another page becomes
      * the Home page first), and a page with sub-pages goes from the Pages list, where its sub-pages go
-     * with it; both are refused here with the reason, nothing moved.
+     * with it; both are refused here with the reason, nothing moved. A right taken away since the
+     * screen opened is refused in words, as the list refuses it. An entry already in the Trash (another
+     * tab, another member) is not moved again — that would restart its purge clock — and the member is
+     * told it changed. A page goes as the list moves it: under the site's page-tree lock (PageRules::lock,
+     * taken first), then its row, read again and locked, so no page is moved under it meanwhile.
      */
     public function trash(): void
     {
         abort_if($this->ulid === null, 404);
-        $entry = $this->resolveOrFail($this->ulid);
-        $this->authorize('delete', $entry);
-
-        if ($entry->type === 'page' && Entry::query()->where('type', 'page')->where('parent_id', $entry->id)->exists()) {
-            $this->refuseTrash(Cast::string(__('admin.editor.trash_kids')));
+        $entry = Entry::query()->where('ulid', $this->ulid)->first();
+        if ($entry === null) {
+            $this->staleRow();
 
             return;
         }
         try {
-            DB::transaction(fn (): mixed => app(CategoryItemCounts::class)->batch(function () use ($entry): bool {
-                HomePages::remember([$entry]);
+            $this->authorize('delete', $entry);
+        } catch (AuthorizationException) {
+            $this->mayTrash = false;
+            $this->refuseTrash(EntryRefusal::for($this->user(), $entry, 'delete'));
 
-                return (bool) $entry->delete();
+            return;
+        }
+
+        try {
+            $outcome = DB::transaction(fn (): mixed => app(CategoryItemCounts::class)->batch(function () use ($entry): string {
+                if ($entry->type === 'page') {
+                    PageRules::lock(app(CurrentSite::class)->id());
+                }
+                $live = Entry::query()->whereKey($entry->id)->lockForUpdate()->first();
+                if ($live === null) {
+                    return 'gone';
+                }
+                if ($live->type === 'page' && Entry::query()->where('type', 'page')->where('parent_id', $live->id)->exists()) {
+                    return 'kids';
+                }
+                HomePages::remember([$live]);
+                $live->delete();
+
+                return 'done';
             }));
         } catch (HomePageLockedException) {
-            $this->isHome = true;
-            $this->refuseTrash(Cast::string(__('entries.home_trash_why')));
+            $outcome = 'home';
+        }
+
+        if ($outcome !== 'done') {
+            match ($outcome) {
+                'gone' => $this->staleRow(),
+                'kids' => $this->refuseTrash(Cast::string(__('admin.editor.trash_kids'))),
+                default => $this->refuseHome(),
+            };
 
             return;
         }
 
         $name = $entry->translationFor($this->locale)?->title;
         $listUrl = route('admin.entries.index', $this->sectionKey !== null ? ['section' => $this->sectionKey] : []);
-        // nothing is left to save: the page leaves without asking about unsaved changes
+        // nothing is left to save: the page leaves without asking about unsaved changes, and is not drawn
+        // again for an entry that is now in the Trash
         $this->saved = $this->tracked();
+        $this->skipRender();
         $this->js('window.bsLeaveTo('.Js::encode($listUrl).', '.Js::encode(['text' => Cast::string(__('entries.trashed_one', ['name' => $name ?? $this->unit()]))]).')');
     }
 
@@ -1729,6 +1764,23 @@ final class Editor extends Component
     private function refuseTrash(string $why): void
     {
         $this->dispatch('bs-toast', text: $why, stay: true, close: Cast::string(__('admin.close')));
+    }
+
+    /** The Home page never goes to the Trash: the ⋮ item shows locked from now on, and the reason is said. */
+    private function refuseHome(): void
+    {
+        $this->isHome = true;
+        $this->refuseTrash(Cast::string(__('entries.home_trash_why')));
+    }
+
+    /**
+     * The entry is no longer live (in the Trash, or gone): the list's own words for a row that changed.
+     * The screen stays as it is, so nothing typed is lost, and is not drawn again from a row that is gone.
+     */
+    private function staleRow(): void
+    {
+        $this->skipRender();
+        $this->dispatch('bs-toast', text: Cast::string(__('entries.row_stale')));
     }
 
     /** What the frame's «Xem trước» and ⋮ offer for a saved entry: the member's preview and delete rights, and whether it is the Home page. */
@@ -1740,6 +1792,7 @@ final class Editor extends Component
         $this->isHome = $this->mayTrash && HomePages::is($entry);
     }
 
+    /** This entry's edit address, in the language being edited when that is not the site's default. */
     private function editUrl(Entry $entry): string
     {
         $query = $this->locale !== app(SiteLocale::class)->default() ? ['locale' => $this->locale] : [];

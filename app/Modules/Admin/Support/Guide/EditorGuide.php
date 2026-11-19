@@ -18,7 +18,8 @@ final class EditorGuide
     /**
      * @param  string  $screen  the screen's own memory key: editor-post · editor-page · editor-product
      * @param  array{secondary: string|null, primary: string|null}  $actions  the save buttons the bar draws
-     * @param  bool  $previewBar  whether «Xem trước» sits in the bar (the frame's previewBar)
+     * @param  bool  $previewBar  whether «Xem trước» is drawn in the bar (the frame's previewBar is on and the
+     *                            button has a link or a reason to say): no step points at a button not drawn
      */
     public static function for(string $screen, string $title, string $unit, bool $isNew, array $actions, bool $previewBar = true): Guide
     {
