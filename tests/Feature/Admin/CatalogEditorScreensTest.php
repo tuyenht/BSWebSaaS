@@ -189,8 +189,8 @@ describe('the ⋮ status moves', function (): void {
             expect(Product::query()->whereKey($product->id)->value('status'))->toBe('draft');
 
             $c->assertDontSee(__('catalog.ed.menu_to_draft'))->call('toDraft')->assertNotFound();
-            // «Khôi phục» belongs to the Trash card only
-            $c->call('restore')->assertNotFound();
+            // «Khôi phục» belongs to the Trash card only (a fresh screen: a refused call leaves no state to go on with)
+            Livewire::actingAs($manager)->test(Editor::class, ['ulid' => $product->ulid])->call('restore')->assertNotFound();
         });
     });
 
