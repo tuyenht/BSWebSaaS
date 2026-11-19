@@ -576,8 +576,10 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
 
     // The post editor's «Chuyên mục» card (board 07): a post filed under two categories of its section and
     // one of another (that section's name beside it), «Chuyên mục chính» under the list, «Thêm chuyên mục
-    // mới» for the owner. The post is taken away again: the lists below count their own posts.
-    $filed = app(Tenancy::class)->enter(1, function () use ($owner): Entry {
+    // mới» for the owner. The post and the category made for it are taken away again: the screens
+    // below count their own.
+    $tech = null;
+    $filed = app(Tenancy::class)->enter(1, function () use ($owner, &$tech): Entry {
         $jobs = Taxonomy::query()->whereKey(ContentSection::query()->where('key', 'pv-jobs')->value('taxonomy_id'))->firstOrFail();
         $tech = app(CreateTaxonomy::class)->handle('post_cat', $jobs, new TaxonomyData(names: ['vi' => 'Kỹ thuật viên']));
         $id = fn (string $name): int => (int) Taxonomy::query()->where('vocabulary', 'post_cat')
@@ -593,7 +595,11 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$filed->ulid.'/edit')->assertOk()->getContent();
     expect($html)->toContain('id="entry-cat-main"', 'Kỹ thuật viên', 'Tuyển dụng', __('entries.ed.cat_add'));
     file_put_contents($dir.'/post-editor-categories.html', $html);
-    app(Tenancy::class)->enter(1, fn () => $filed->forceDelete());
+    app(Tenancy::class)->enter(1, function () use ($filed, $tech): void {
+        $filed->forceDelete();
+        $tech?->translations()->delete();
+        $tech?->delete();
+    });
 
     // The news list (Tin tức): posts in the categories above, with cover pictures, several statuses
     // and two authors, as the posts variant of the list board shows them. A cover is the picture's

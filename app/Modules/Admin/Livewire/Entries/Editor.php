@@ -513,7 +513,7 @@ final class Editor extends Component
         // A save that changes no shared field leaves the entry row alone: this language's own row
         // carries when it was last saved.
         $this->savedAt = self::iso($translation?->updated_at);
-        $this->storedPrint = self::printOf($translation, $entry->meta, $category?->id);
+        $this->storedPrint = self::printOf($translation, $entry->meta, $this->categoryIds);
         $this->loadedAt = self::iso(CarbonImmutable::now());
         $this->mayPublish = $this->user()->can('publish', $entry);
         $this->frameRights($entry);
@@ -677,16 +677,27 @@ final class Editor extends Component
         if ($ids === [] && $root !== null && $scopes->coversId($user, $root)) {
             $ids = [$root];
         }
-        if ($ids !== [] && ! $scopes->coversId($user, $ids[0])) {
+        $previous = $this->categoryId;
+        // a category the member may lead with: inside their limits and, while an approval workflow
+        // governs this section, in this section (the save refuses any other as the main one)
+        $free = fn (int $id): bool => $scopes->coversId($user, $id) && (! $this->homeGoverned() || $choices->sectionOf($id) === $this->sectionKey);
+        if ($ids !== [] && ! $scopes->coversId($user, $ids[0]) || $ids !== [] && $ids[0] !== $previous && ! $free($ids[0])) {
+            $lead = null;
             foreach ($ids as $at => $id) {
-                if ($scopes->coversId($user, $id)) {
-                    array_splice($ids, $at, 1);
-                    array_unshift($ids, $id);
+                if ($free($id)) {
+                    $lead = $at;
                     break;
                 }
             }
+            if ($lead !== null) {
+                $id = $ids[$lead];
+                array_splice($ids, $lead, 1);
+                array_unshift($ids, $id);
+            } elseif ($root !== null && $free($root)) {
+                // none left to lead: the post goes back to its section's own category, the rest kept
+                array_unshift($ids, $root);
+            }
         }
-        $previous = $this->categoryId;
         $this->categoryIds = $ids;
         $this->categoryId = $ids[0] ?? null;
         $this->resetErrorBag(['categoryId', 'categoryIds', 'categoryIds.*']);
@@ -706,11 +717,28 @@ final class Editor extends Component
         $choices = $this->choices();
         $user = $this->user();
         $scopes = app(CategoryScopes::class);
+        $governed = $this->homeGoverned();
+        $home = $choices->rootOf($this->sectionKey);
         $ids = [];
         foreach ($kept as $value) {
             $id = self::idOrNull($value);
-            if ($id !== null && $choices->has($id) && ($scopes->coversId($user, $id) || in_array($id, $this->categoryIds, true))) {
-                $ids[] = $id;
+            $mine = $id !== null && in_array($id, $this->categoryIds, true);
+            if ($id === null || ! $choices->has($id)
+                // a section's own category is no row: only this section's, as «no category ticked»
+                || ($choices->isSectionRoot($id) && $id !== $home)
+                || ! ($scopes->coversId($user, $id) || $mine)
+                // another section's category stays as it is while a workflow governs this one
+                || ($governed && $choices->sectionOf($id) !== $this->sectionKey && ! $mine)) {
+                continue;
+            }
+            $ids[] = $id;
+        }
+        if ($governed) {
+            // and one the post is under is not dropped either
+            foreach ($this->categoryIds as $id) {
+                if ($choices->sectionOf($id) !== $this->sectionKey && ! in_array($id, $ids, true)) {
+                    $ids[] = $id;
+                }
             }
         }
         if ($ids !== []) {
@@ -767,12 +795,41 @@ final class Editor extends Component
     private function filedUnder(Entry $entry): array
     {
         $ids = array_values(array_unique($this->categoryIds));
-        $user = $this->user();
-        $scopes = app(CategoryScopes::class);
-        if ($entry->type !== 'post' || ! $scopes->isLimited($user)) {
+        if ($entry->type !== 'post') {
             return $ids;
         }
-        $stored = $this->storedCategories($entry);
+        $choices = $this->choices();
+        // a section's own category means «no category»: only ever the main one
+        $ids = array_values(array_filter($ids, static fn (int $id, int $at): bool => $at === 0 || ! $choices->isSectionRoot($id), ARRAY_FILTER_USE_BOTH));
+        $stored = null;
+        if ($this->homeGoverned()) {
+            // while an approval workflow governs the post's section, its categories in other
+            // sections stay exactly as stored, whatever path the list came by
+            $stored = $this->storedCategories($entry);
+            $before = [];
+            $after = [];
+            foreach ($stored as $id) {
+                if ($choices->sectionOf($id) !== $this->sectionKey) {
+                    $before[] = $id;
+                }
+            }
+            foreach ($ids as $id) {
+                if ($choices->sectionOf($id) !== $this->sectionKey) {
+                    $after[] = $id;
+                }
+            }
+            sort($before);
+            sort($after);
+            if ($before !== $after) {
+                throw ValidationException::withMessages(['categoryIds' => Cast::string(__('entries.ed.cat_why_workflow', ['section' => $choices->sectionLabel($this->sectionKey) ?? $this->listLabel, 'unit' => $this->unit()]))]);
+            }
+        }
+        $user = $this->user();
+        $scopes = app(CategoryScopes::class);
+        if (! $scopes->isLimited($user)) {
+            return $ids;
+        }
+        $stored ??= $this->storedCategories($entry);
         $form = array_values(array_filter($ids, static fn (int $id): bool => $scopes->coversId($user, $id) || in_array($id, $stored, true)));
         if ($ids !== [] && ($form[0] ?? null) !== $ids[0]) {
             throw ValidationException::withMessages(['categoryId' => $scopes->refusal($user)]);
@@ -847,7 +904,9 @@ final class Editor extends Component
         $user = $this->user();
         $scopes = app(CategoryScopes::class);
         $limited = $scopes->isLimited($user);
-        $rows = $choices->rows($this->sectionKey, $this->categoryIds, $scopes->allowedTaxonomyIds($user), $this->homeGoverned(), $this->unit());
+        // the same answer the save gives (CategoryScopes::coversId), category by category
+        $inside = $limited ? static fn (int $id): bool => $scopes->coversId($user, $id) : null;
+        $rows = $choices->rows($this->sectionKey, $this->categoryIds, $inside, $this->homeGoverned(), $this->unit());
         // «Chuyên mục chính» offers the ticked rows in the post's order, the main one first
         $byUlid = array_column($rows, null, 'ulid');
         $primary = [];
@@ -2190,7 +2249,8 @@ final class Editor extends Component
 
     /**
      * The fingerprint of what is stored now, read inside the save's transaction after the entry's
-     * row lock: this language's row and, for a post, its main category. The cover comes from the
+     * row lock: this language's row and, for a post, its categories in order (the main one first:
+     * another save that ticked or unticked one is a change too). The cover comes from the
      * locked entry row.
      *
      * @return array{print: array<string, string>, translation: EntryTranslation|null}
@@ -2200,22 +2260,17 @@ final class Editor extends Component
         // The whole row: the save writes through this same model, so the check costs no extra read.
         $translation = $entry->translations()->where('locale', $this->locale)->first();
 
-        return ['print' => self::printOf($translation, $entry->meta, $this->storedCategory($entry)), 'translation' => $translation];
-    }
-
-    /** A post's main category as stored now (a page has none). */
-    private function storedCategory(Entry $entry): ?int
-    {
-        return $this->type === 'post' ? self::idOrNull($entry->taxonomies()->wherePivot('position', 0)->value('taxonomies.id')) : null;
+        return ['print' => self::printOf($translation, $entry->meta, $this->type === 'post' ? $this->storedCategories($entry) : []), 'translation' => $translation];
     }
 
     /**
      * One fingerprint per value a save writes. The body is compared with its keys in a fixed order, so
      * the database's own key order never reads as a change.
      *
+     * @param  list<int>  $categoryIds  a post's categories, the main one first (none for a page)
      * @return array<string, string>
      */
-    private static function printOf(?EntryTranslation $translation, mixed $meta, ?int $categoryId): array
+    private static function printOf(?EntryTranslation $translation, mixed $meta, array $categoryIds): array
     {
         $cover = is_array($meta) ? ($meta['image_url'] ?? null) : null;
 
@@ -2227,7 +2282,7 @@ final class Editor extends Component
             'seo_title' => md5((string) $translation?->seo_title),
             'seo_description' => md5((string) $translation?->seo_description),
             'cover' => md5(is_string($cover) ? $cover : ''),
-            'category' => (string) ($categoryId ?? ''),
+            'category' => implode(',', $categoryIds),
         ];
     }
 
@@ -2301,16 +2356,20 @@ final class Editor extends Component
         $storedBody = $prose->read($storedBlocks);
         $cover = data_get($entry->meta, 'image_url');
         $categories = [];
+        $theirIds = array_values(array_filter(array_map(self::idOrNull(...), explode(',', $print['category'] ?? ''))));
         if (($print['category'] ?? '') !== ($this->storedPrint['category'] ?? '')) {
             $categories = TaxonomyTranslation::query()
-                ->whereIn('taxonomy_id', array_filter([$this->categoryId, self::idOrNull($print['category'])]))
+                ->whereIn('taxonomy_id', array_values(array_unique([...$this->categoryIds, ...$theirIds])))
                 ->where('locale', $this->locale)
                 ->pluck('name', 'taxonomy_id')->all();
         }
-        $categoryName = static function (?int $id) use ($categories): string {
-            $name = $id !== null ? ($categories[$id] ?? null) : '';
+        // a post's categories as the card lists them, the main one first
+        $categoryNames = static function (array $ids) use ($categories): string {
+            return implode(', ', array_map(static function (mixed $id) use ($categories): string {
+                $name = $categories[Cast::int($id)] ?? null;
 
-            return is_string($name) ? $name : (string) __('entries.unnamed');
+                return is_string($name) ? $name : (string) __('entries.unnamed');
+            }, $ids));
         };
 
         $fields = [
@@ -2323,7 +2382,7 @@ final class Editor extends Component
             'seo_title' => [__('admin.seo.title_label'), $this->seoTitle, (string) $translation?->seo_title],
             'seo_description' => [__('admin.seo.description_label'), $this->seoDescription, (string) $translation?->seo_description],
             'cover' => [__('entries.ed.card_cover'), $this->coverName($this->coverImageKey), $this->coverName(is_string($cover) ? $cover : '')],
-            'category' => [__('entries.ed.card_category'), $categoryName($this->categoryId), $categoryName(self::idOrNull($print['category']))],
+            'category' => [__('entries.ed.card_category'), $categoryNames($this->categoryIds), $categoryNames($theirIds)],
         ];
 
         $rows = [];
@@ -3472,7 +3531,7 @@ final class Editor extends Component
         $this->loadedAt = $this->savedAt;
         // What this save stored is what the next one compares against (the written model holds it).
         // The main category just written is the form's own value, so it needs no second read.
-        $this->storedPrint = self::printOf($translation, $entry->meta, $this->type === 'post' ? $this->categoryId : null);
+        $this->storedPrint = self::printOf($translation, $entry->meta, $this->type === 'post' ? $this->categoryIds : []);
         $this->mayPublish = $this->user()->can('publish', $entry);
         if ($wasNew) {
             $this->frameRights($entry);

@@ -461,7 +461,7 @@
                             <div class="relative">
                                 <div id="entry-category" x-ref="list" x-on:scroll.passive="measure()" tabindex="-1"
                                      class="ped-cl entry-cat-list overflow-y-auto overflow-x-hidden rounded border border-border [scrollbar-gutter:stable]"
-                                     role="group" aria-label="{{ __('entries.ed.cat_group') }}" @error('categoryId') aria-invalid="true" aria-describedby="entry-category-e" @enderror>
+                                     role="group" aria-label="{{ __('entries.ed.cat_group') }}" @if ($errors->has('categoryId') || $errors->has('categoryIds')) aria-invalid="true" aria-describedby="{{ trim(($errors->has('categoryId') ? 'entry-category-e ' : '').($errors->has('categoryIds') ? 'entry-categories-e' : '')) }}" @endif>
                                     @foreach ($categoryCard['rows'] as $i => $category)
                                         <div wire:key="ecat-{{ $category['ulid'] }}" class="ped-cr" data-d="{{ $category['depth'] }}" x-bind:data-d="searching ? 0 : {{ $category['depth'] }}"
                                              data-lock="{{ $category['locked'] ? '1' : '0' }}" x-show="hit(@js($category['path'].$category['label']))">
@@ -498,6 +498,7 @@
                                 <span class="min-w-0 [overflow-wrap:anywhere]" x-text="{{ Js::from(__('entries.ed.cat_more')) }}.replace(':n', below)"></span>
                             </p>
                             @error('categoryId') <p id="entry-category-e" class="{{ $error }} mt-0">{{ $message }}</p> @enderror
+                            @error('categoryIds') <p id="entry-categories-e" class="{{ $error }} mt-0">{{ $message }}</p> @enderror
                             @error('categoryIds.*') <p class="{{ $error }} mt-0">{{ $message }}</p> @enderror
                             @if ($categoryCard['primary'] !== [])
                                 <div class="flex flex-col gap-1.5">
@@ -530,7 +531,7 @@
                                 </div>
                                 @if ($categoryCard['add']['lock'] === null)
                                     <div class="entry-cas-w" x-show="adding" x-cloak x-on:click.self="phone() && close()">
-                                        <div class="entry-cas" role="group" aria-labelledby="entry-cas-t"
+                                        <div class="entry-cas" role="group" aria-labelledby="entry-cas-t" x-trap="adding && phone()"
                                              x-on:keydown.escape.stop.prevent="ask ? (ask = false) : (phone() ? close() : end())">
                                             <div class="entry-cas-h">
                                                 <h2 id="entry-cas-t">{{ __('entries.ed.cat_add') }}</h2>

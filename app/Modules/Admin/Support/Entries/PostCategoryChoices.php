@@ -178,25 +178,24 @@ final class PostCategoryChoices
      * The card's rows: every category that can be chosen (a key, not a section's own category), the
      * home section's first, parents before children (indented two levels at most), with the names
      * above it (for a search result), whether it is ticked or the main one, the section it belongs to
-     * when that is not the home one, and whether it is locked — outside the member's limits ($allowed:
-     * the categories they may write in, null when not limited; such a row shows only when ticked), or
+     * when that is not the home one, and whether it is locked — outside the member's limits ($inside:
+     * whether they may write in a category, null when not limited; such a row shows only when ticked), or
      * in another section while an approval workflow governs the home one ($governed).
      *
      * @param  list<int>  $categoryIds  the post's categories, the main one first
-     * @param  list<int>|null  $allowed
+     * @param  (callable(int): bool)|null  $inside
      * @param  string  $unit  what the post is called in the sentences ("tin tức")
      * @return list<array{ulid: string, label: string, depth: int, path: string, on: bool, main: bool, section: string|null, locked: bool, why: string|null, moves: bool}>
      */
-    public function rows(?string $homeKey, array $categoryIds, ?array $allowed, bool $governed, string $unit): array
+    public function rows(?string $homeKey, array $categoryIds, ?callable $inside, bool $governed, string $unit): array
     {
         $on = array_flip($categoryIds);
         $main = $categoryIds[0] ?? null;
-        $inside = $allowed === null ? null : array_flip($allowed);
         $rows = [];
         foreach ($this->ordered($homeKey) as [$id, $depth]) {
             $ulid = $this->nodes[$id]['ulid'];
             $ticked = isset($on[$id]);
-            $outside = $inside !== null && ! isset($inside[$id]);
+            $outside = $inside !== null && ! $inside($id);
             if ($ulid === null || ($outside && ! $ticked)) {
                 continue;
             }

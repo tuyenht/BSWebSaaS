@@ -231,9 +231,14 @@ it('does not file a post again under a category outside the limits taken out els
                 DB::table('entry_taxonomies')->where('entry_id', $post->id)->where('taxonomy_id', $notices->id)->delete();
             }
         });
-        $form->call('save')->assertHasNoErrors()->assertSet('categoryIds', [$events->id, $fairs->id]);
+        // the categories changed under the save: it asks first, nothing written
+        $form->call('save');
+        expect($done)->toBeTrue()->and($form->get('stale'))->not->toBeNull()
+            ->and(eccCategoriesOf($post))->toBe([$events->id]);
 
-        expect($done)->toBeTrue()->and(eccCategoriesOf($post))->toBe([$events->id, $fairs->id]);
+        // «keep mine»: the list is held against what is stored now, «Thông báo» not filed again
+        $form->call('keepMine')->assertHasNoErrors()->assertSet('categoryIds', [$events->id, $fairs->id]);
+        expect(eccCategoriesOf($post))->toBe([$events->id, $fairs->id]);
     });
 });
 
@@ -279,6 +284,78 @@ it('locks another section\'s categories while an approval workflow governs the p
     });
 
     expect(eccCategoriesOf($post))->toBe([$events->id]);
+});
+
+it('asks before writing over categories another save ticked since the form opened', function (): void {
+    $root = eccSection('tin-tuc', 'Tin tức');
+    $events = eccCategory('Sự kiện', $root);
+    $notices = eccCategory('Thông báo', $root);
+    $fairs = eccCategory('Hội chợ', $root);
+    $editor = eccMember('editor');
+    $post = eccPost($editor, $events);
+
+    app(Tenancy::class)->enter(1, function () use ($editor, $post, $events, $notices, $fairs): void {
+        $mine = Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid]);
+        // a colleague files the post under «Thông báo» too (not the main one) and saves first
+        Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid])
+            ->call('toggleCategory', $notices->ulid)->call('save')->assertHasNoErrors();
+        expect(eccCategoriesOf($post))->toBe([$events->id, $notices->id]);
+
+        $mine->call('toggleCategory', $fairs->ulid)->call('save');
+        $stale = $mine->get('stale');
+        expect($stale)->not->toBeNull()
+            ->and(array_column($stale['rows'], 'label'))->toContain(__('entries.ed.card_category'))
+            ->and(eccCategoriesOf($post))->toBe([$events->id, $notices->id]);
+    });
+});
+
+it('keeps another section\'s categories as stored while a workflow governs, whatever path the list comes by', function (): void {
+    $news = eccSection('tin-tuc', 'Tin tức');
+    $events = eccCategory('Sự kiện', $news);
+    $jobs = eccSection('tuyen-dung', 'Tuyển dụng', 2);
+    $it = eccCategory('Kỹ thuật', $jobs);
+    $sales = eccCategory('Kinh doanh', $jobs);
+    $editor = eccMember('editor');
+    $post = eccPost($editor, $events, $it);
+    app(Tenancy::class)->enter(1, fn () => app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: true));
+    app()->forgetScopedInstances();
+
+    app(Tenancy::class)->enter(1, function () use ($editor, $post, $news, $events, $jobs, $it, $sales): void {
+        // the device's copy: another section's category added, a stored one dropped, a section's own one
+        Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid])
+            ->call('restoreKept', ['categoryIds' => [$events->id, $sales->id, $jobs->id]])
+            ->assertSet('categoryIds', [$events->id, $it->id]);
+
+        // the one-category field the earlier picker used drops «Kỹ thuật»: the save refuses it
+        Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid])
+            ->set('categoryId', $events->id)->assertSet('categoryIds', [$events->id])
+            ->call('save')->assertHasErrors(['categoryIds']);
+        expect(eccCategoriesOf($post))->toBe([$events->id, $it->id]);
+
+        // the main one unticked with only a locked row left: the section's own category leads, «Kỹ thuật» stays
+        Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid])
+            ->call('toggleCategory', $events->ulid)->assertSet('categoryIds', [$news->id, $it->id])->assertSet('categoryId', $news->id)
+            ->call('save')->assertHasNoErrors();
+        expect(eccCategoriesOf($post))->toBe([$news->id, $it->id]);
+    });
+});
+
+it('moves a post to the section of a main category in another one when it is saved', function (): void {
+    $news = eccSection('tin-tuc', 'Tin tức');
+    $events = eccCategory('Sự kiện', $news);
+    $jobs = eccSection('tuyen-dung', 'Tuyển dụng', 2);
+    $it = eccCategory('Kỹ thuật', $jobs);
+    $editor = eccMember('editor');
+    $post = eccPost($editor, $events);
+
+    app(Tenancy::class)->enter(1, function () use ($editor, $post, $events, $it): void {
+        Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid])
+            ->assertSet('sectionKey', 'tin-tuc')
+            ->call('toggleCategory', $it->ulid)->call('setMainCategory', $it->ulid)
+            ->call('save')->assertHasNoErrors()
+            ->assertSet('sectionKey', 'tuyen-dung');
+        expect(eccCategoriesOf($post))->toBe([$it->id, $events->id]);
+    });
 });
 
 it('adds a new category from the card for who may manage categories, inside the limits and the depth', function (): void {
