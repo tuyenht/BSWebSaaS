@@ -117,7 +117,7 @@
                                     <span>{{ $leads ?? trans_choice('form_builder.leads_n', 0, ['n' => 0]) }}</span>
                                     <span @class(['text-warning-text' => $mail === null])>{{ $mail ?? __('form_builder.mail_none') }}</span>
                                 </p>
-                                <button type="button" role="switch" class="switch-row -ms-1 w-auto font-medium text-text" aria-checked="{{ $row['active'] ? 'true' : 'false' }}"
+                                <button type="button" role="switch" class="switch-row" aria-checked="{{ $row['active'] ? 'true' : 'false' }}"
                                     aria-label="{{ __('form_builder.switch_aria', ['name' => $row['name']]) }}"
                                     wire:click="setActive({{ Js::from($row['ulid']) }}, {{ $row['active'] ? 'false' : 'true' }})" wire:loading.attr="disabled" wire:target="setActive">
                                     {{ $row['active'] ? __('form_builder.on') : __('form_builder.off') }}
