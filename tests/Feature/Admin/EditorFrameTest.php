@@ -203,7 +203,7 @@ describe('posts and pages', function (): void {
                 ->assertSet('trashUndo', [$post->ulid])
                 ->assertSeeHtml('wire:click="undoTrash"');
             $js = implode("\n", array_map(static fn (mixed $x): string => is_array($x) ? (string) ($x['expression'] ?? '') : (string) $x, $list->effects['xjs'] ?? []));
-            expect($js)->toContain('history.replaceState')->not->toContain(EntriesIndex::TRASHED_IN_EDITOR.'=');
+            expect($js)->toContain('setTimeout(')->toContain('searchParams.delete("trashed")');
 
             $list->call('undoTrash')->assertSet('trashUndo', null);
             expect(Entry::query()->whereKey($post->id)->exists())->toBeTrue();
@@ -257,6 +257,12 @@ describe('posts and pages', function (): void {
             $post->delete();
             Entry::onlyTrashed()->whereKey($post->id)->update(['deleted_at' => now()->subMinutes(2)]);
             $silent($post->ulid, 'posts');       // moved more than a minute ago: an old address
+
+            // another member's post, moved just now: not this member's to bring back, so not said
+            $other = User::factory()->create();
+            $colleague = frameEntry('post', $other, 'Bài của đồng nghiệp', 'bai-cua-dong-nghiep');
+            $colleague->delete();
+            $silent($colleague->ulid, 'posts');
         });
     });
 

@@ -2058,9 +2058,10 @@ final class Index extends Component
     /**
      * The editor moved its entry to the Trash and left for this list: the list says so in its own
      * message, with the same 10 seconds of «Hoàn tác» as a move made here (undoTrash brings it back
-     * through the same rule and policy). The parameter leaves the address at once, so a reload says
-     * nothing; only an entry of this list's kind moved within the last minute and still in the Trash
-     * is said (one restored or purged meanwhile says nothing).
+     * through the same rule and policy). The parameter leaves the address once Livewire has written
+     * its own (a timeout after its history batch), so a reload says nothing; only an entry of this
+     * list's kind moved within the last minute, still in the Trash and one this member may bring back
+     * is said (one restored or purged meanwhile, or another member's, says nothing).
      */
     private function sayTrashedInEditor(): void
     {
@@ -2068,10 +2069,11 @@ final class Index extends Component
         if (! is_string($ulid) || $ulid === '') {
             return;
         }
-        $this->js('history.replaceState(history.state, "", '.Js::encode(request()->fullUrlWithoutQuery([self::TRASHED_IN_EDITOR])).')');
+        $param = Js::encode(self::TRASHED_IN_EDITOR);
+        $this->js('setTimeout(() => { const u = new URL(window.location.href); if (u.searchParams.has('.$param.')) { u.searchParams.delete('.$param.'); history.replaceState(history.state, "", u); } })');
         $entry = Entry::onlyTrashed()->where('ulid', $ulid)->where('type', $this->entryType)
-            ->where('deleted_at', '>=', now()->subMinute())->first(['id', 'ulid', 'type']);
-        if ($entry !== null) {
+            ->where('deleted_at', '>=', now()->subMinute())->first(['id', 'ulid', 'type', 'author_id', 'parent_id']);
+        if ($entry !== null && Auth::user()?->can('restore', $entry) === true) {
             $this->sayTrashed([$entry->ulid], Cast::string(__('entries.trashed_one', ['name' => $this->titleOf($entry)])));
         }
     }
