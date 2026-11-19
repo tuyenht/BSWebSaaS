@@ -17,6 +17,7 @@ use App\Modules\Catalog\Support\CatalogMode;
 use App\Modules\Catalog\Support\ProductGallery;
 use App\Modules\Catalog\Support\ProductPrice;
 use App\Modules\Catalog\Support\ProductSearchWords;
+use App\Modules\Catalog\Support\SkuCode;
 use App\Modules\Catalog\Support\UniqueViolation;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\SiteRoute;
@@ -426,6 +427,7 @@ final class Editor extends Component
     public function updatedSku(): void
     {
         $this->authorizeEdit();
+        $this->sku = $this->sku !== null ? SkuCode::normalize($this->sku) : null;
         $this->recheck('sku');
     }
 
@@ -697,7 +699,7 @@ final class Editor extends Component
             'stock' => ['nullable', 'string', $this->stockReads(...)],
             'featured' => ['boolean'],
             'bestseller' => ['boolean'],
-            'sku' => ['nullable', 'string', 'max:255', $this->skuIsFree(...)],
+            'sku' => ['nullable', 'string', 'max:'.SkuCode::MAX, $this->skuIsFree(...)],
             'status' => ['required', Rule::in(['draft', 'published', 'archived'])],
             'imageMediaIds' => ['array'],
             // RLS scopes the exists to this site. Deliberately NOT whereNull(deleted_at): an
@@ -1231,7 +1233,7 @@ final class Editor extends Component
 
         // A cleared input arrives as '' — store NULL: an '' sku would enter the partial
         // UNIQUE(site_id, sku) index and collide with the next skuless product.
-        $this->sku = $this->sku !== null ? PlainText::line($this->sku) : null;
+        $this->sku = $this->sku !== null ? SkuCode::normalize($this->sku) : null;
         $this->saleStartsAt ??= '';
         $this->saleEndsAt ??= '';
         $this->sku = $this->sku === '' ? null : $this->sku;
@@ -1634,8 +1636,9 @@ final class Editor extends Component
      */
     private function skuIsFree(string $attribute, mixed $value, \Closure $fail): void
     {
-        // as the save stores it (persist() tidies the code first), so leaving the field says what a save would
-        $value = is_string($value) ? PlainText::line($value) : '';
+        // as the save stores it (persist() normalises the code first), compared exactly so the
+        // (site_id, sku) index serves the lookup
+        $value = is_string($value) ? SkuCode::normalize($value) : '';
         if ($value === '') {
             return;
         }
