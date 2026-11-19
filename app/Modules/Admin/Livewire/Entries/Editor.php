@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Livewire\Entries;
 
 use App\Modules\Admin\Livewire\Concerns\EditsButtonActions;
+use App\Modules\Admin\Livewire\Concerns\ShowsEntryRevisions;
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\BlockKinds;
 use App\Modules\Admin\Support\Entries\EntryRefusal;
@@ -112,6 +113,7 @@ final class Editor extends Component
 {
     use AuthorizesRequests;
     use EditsButtonActions;
+    use ShowsEntryRevisions;
     use WithMediaLibraryPicker;
 
     /** How many trail rows the block shows before "Xem thêm" (design: 3, +3 per load). */
@@ -1696,6 +1698,7 @@ final class Editor extends Component
             'schedule' => $this->schedulePanel($workflow),
             'statusPanel' => $this->statusPanel(),
             'scheduleBand' => $this->scheduleBand($workflow),
+            'revisions' => $this->revisionPanel(),
         ]);
     }
 
