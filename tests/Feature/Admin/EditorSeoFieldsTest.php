@@ -482,13 +482,32 @@ it('renders the shared part with the limits from the one limits class', function
 it('mirrors the design limit table', function (): void {
     expect(SeoFields::LIMITS)->toMatchArray([
         'excerpt' => ['min' => 80, 'best' => [120, 200], 'display' => 200, 'max' => 240, 'hard' => 255],
+        'title' => ['min' => 20, 'best' => [30, 60], 'display' => 60, 'max' => 100],
         'seoTitle' => ['min' => 20, 'best' => [35, 60], 'display' => 60, 'max' => 80],
         'seoDesc' => ['min' => 70, 'best' => [150, 160], 'display' => 160, 'max' => 200],
     ])
         ->and(SeoFields::hardCap('excerpt'))->toBe(255)
+        ->and(SeoFields::hardCap('title'))->toBe(125)
         ->and(SeoFields::hardCap('seoTitle'))->toBe(100)
         ->and(SeoFields::hardCap('seoDesc'))->toBe(250);
 });
+
+it('draws the length meter under the title of a post and of a page, linked to its input', function (string $type): void {
+    $user = seoFieldsEditor();
+
+    app(Tenancy::class)->enter(1, function () use ($user, $type): void {
+        $entry = Entry::query()->create(['type' => $type, 'status' => 'draft', 'author_id' => $user->id, 'meta' => []]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Giới thiệu', 'slug' => 'gioi-thieu', 'status' => 'draft', 'body' => ['blocks' => []]]);
+
+        $html = Livewire::actingAs($user)->test(EntryEditor::class, ['ulid' => $entry->ulid])->html();
+
+        expect($html)->toContain('id="entry-title-c"')
+            ->toContain('aria-describedby="entry-title-c')
+            ->toContain('headingMeter.text')
+            ->toContain('maxlength="'.SeoFields::hardCap('title').'"')
+            ->toContain(e(__('entries.ed.title_hint')));
+    });
+})->with(['post', 'page']);
 
 it('opens the editor and saves on the same number of queries with the fields set', function (): void {
     $user = seoFieldsEditor();

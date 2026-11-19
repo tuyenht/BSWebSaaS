@@ -11,9 +11,13 @@
      520 / 300, as the board). --}}
 @php
     use App\Modules\Admin\Livewire\Entries\Editor;
+    use App\Modules\Admin\Support\SeoFields;
     use Illuminate\Support\Js;
 
     $isPage = $type === 'page';
+    $bandIcons = ['empty' => 'ri-edit', 'short' => 'ri-arrow-up', 'near' => 'ri-arrow-right-up', 'good' => 'ri-check', 'long' => 'ri-error-warning', 'over' => 'ri-close-circle'];
+    // The heading's meter is the shared part's (bsSeoFields), read from the `title` field with the design's title limits.
+    $headingConfig = SeoFields::clientConfig(['heading' => 'title', 'title' => null, 'description' => null], $address);
     $dirty = __('catalog.ed.sv_dirty');
     // Where this member's copy of unsaved text on this device lives (admin-kept.js): per member,
     // entry and language, never the numeric id.
@@ -86,7 +90,7 @@
 
         <div class="flex min-w-0 flex-wrap items-start gap-5">
             <div class="flex min-w-0 flex-[999_1_520px] flex-col gap-4">
-                <section class="{{ $card }} px-5 py-4" aria-label="{{ $isPage ? __('entries.ed.title_page') : __('entries.ed.title_post') }}">
+                <section class="{{ $card }} px-5 py-4" aria-label="{{ $isPage ? __('entries.ed.title_page') : __('entries.ed.title_post') }}" x-data="bsSeoFields({{ Js::from($headingConfig) }})">
                     <div class="mb-1.5 flex flex-wrap items-center gap-2">
                         <label for="entry-title" class="{{ $label }}">
                             <span>{{ $isPage ? __('entries.ed.title_page') : __('entries.ed.title_post') }} <span class="text-danger-text" aria-hidden="true">*</span></span>
@@ -95,8 +99,24 @@
                             @endif
                         </label>
                     </div>
-                    <input type="text" id="entry-title" wire:model="title" lang="{{ $locale }}" aria-required="true"
-                           @error('title') aria-invalid="true" aria-describedby="entry-title-e" @enderror class="field {{ $fieldLook }}">
+                    <input type="text" id="entry-title" wire:model="title" lang="{{ $locale }}" aria-required="true" maxlength="{{ SeoFields::hardCap('title') }}"
+                           aria-describedby="entry-title-c @error('title') entry-title-e @enderror" @error('title') aria-invalid="true" @enderror class="field {{ $fieldLook }}">
+                    <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span class="seo-meter min-w-24 flex-1" :data-b="headingMeter.band" aria-hidden="true">
+                            <span class="seo-meter__zone" :style="{ left: headingMeter.lo + '%', width: headingMeter.zw + '%' }"></span>
+                            <span class="seo-meter__fill" :style="{ width: headingMeter.pct + '%' }"></span>
+                            <span class="seo-meter__tick" :style="{ left: headingMeter.tick + '%' }"></span>
+                        </span>
+                        <span id="entry-title-c" class="seo-count" :data-b="headingMeter.band" data-b="empty">
+                            @foreach ($bandIcons as $band => $icon)
+                                <x-bs-admin::icon :name="$icon" x-show="headingMeter.band === '{{ $band }}'" x-cloak />
+                            @endforeach
+                            <span x-text="headingMeter.text"></span>
+                        </span>
+                    </div>
+                    <p x-show="headingMeter.band === 'empty'" class="mt-1.5 flex items-center gap-1.5 text-caption text-text-muted">
+                        <x-bs-admin::icon name="ri-information" class="size-4 shrink-0" />{{ __('entries.ed.title_hint') }}
+                    </p>
                     @error('title') <p id="entry-title-e" class="{{ $error }}">{{ $message }}</p> @enderror
 
                     <div class="mt-3.5">

@@ -58,6 +58,7 @@
     "entries.ed.pub_link_aria": "Xem trên website, :url (mở thẻ mới)",
     "entries.ed.title_page": "Tiêu đề trang",
     "entries.ed.title_post": "Tiêu đề",
+    "entries.ed.title_hint": "Bắt buộc — đường dẫn tự tạo từ tiêu đề này.",
     "entries.ed.slug": "Đường dẫn",
     "entries.ed.card_publish": "Đăng",
     "entries.ed.card_category": "Chuyên mục",
