@@ -1,0 +1,97 @@
+/* The upload list under the "Thiết bị của tôi" dropzone (design board 13), drawn by
+   resources/js/media-upload-rows.js. Plain classes, not utilities: Tailwind does not see classes
+   made in JS. A row: kind icon · name (the extension never cut) + state · bar, reason or size ·
+   «Thử lại» · ×. */
+.mp-up {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: var(--color-surface);
+}
+.mp-up[data-st='err'] {
+    border-color: color-mix(in srgb, var(--color-danger-base) 40%, transparent);
+    background: color-mix(in srgb, var(--color-danger-base) 4%, var(--color-surface));
+}
+.mp-upth {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 6px;
+    font-size: calc(1.125rem + var(--user-text-boost));
+    background: var(--color-surface-hover);
+    color: var(--color-text-muted);
+}
+.mp-up[data-st='err'] .mp-upth { color: var(--color-danger-text); }
+.mp-up[data-st='done'] .mp-upth { color: var(--color-success-text); }
+.mp-upmain { flex: 1 1 auto; min-width: 0; }
+.mp-upr {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+    font-size: calc(0.8125rem + var(--user-text-boost));
+    color: var(--color-text);
+}
+.mp-upnm { display: block; flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; line-height: 1.4; }
+.mp-ups {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: calc(0.75rem + var(--user-text-boost));
+    font-weight: 600;
+    white-space: nowrap;
+}
+.mp-up[data-st='run'] .mp-ups { color: var(--color-text-muted); }
+.mp-up[data-st='done'] .mp-ups { color: var(--color-success-text); }
+.mp-up[data-st='err'] .mp-ups { color: var(--color-danger-text); }
+.mp-upbar { height: 5px; margin-top: 6px; overflow: hidden; border-radius: 5px; background: var(--color-border); }
+.mp-upbar > span { display: block; height: 100%; border-radius: 5px; background: var(--color-primary); transition: width 0.2s; }
+.mp-upmsg {
+    margin: 4px 0 0;
+    font-size: calc(0.8125rem + var(--user-text-boost));
+    line-height: 1.5;
+    color: var(--color-danger-text);
+}
+.mp-upmeta { margin: 2px 0 0; font-size: calc(0.75rem + var(--user-text-boost)); color: var(--color-text-muted); }
+.mp-upx {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-width: var(--spacing-control-row);
+    min-height: var(--spacing-control-row);
+    padding: 0 8px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--color-text-muted);
+    font: inherit;
+    font-size: calc(0.8125rem + var(--user-text-boost));
+    cursor: pointer;
+}
+.mp-upx:hover { background: var(--color-surface-hover); }
+.mp-upx.rt { border-color: var(--color-border-input); color: var(--color-primary-text); font-weight: 600; }
+.mp-upx[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) {
+    .mp-upbar > span { transition: none; }
+}
+
+/* the list block under the dropzone; with nothing in the list it takes no room */
+.mp-upwrap {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.mp-upwrap:has([data-up-summary]:empty) {
+    margin-top: 0;
+    gap: 0;
+}

@@ -26,6 +26,29 @@ export async function imageDimensions(file) {
 }
 
 /**
+ * The error a refused request becomes: the server's plain sentence, and its reason code
+ * (MediaRejectedException::REASONS) so the upload list can show the board's sentence and offer
+ * «Thử lại» only when a second try can help. A 5xx is "unexpected"; 413 is "too_large".
+ */
+export function withReason(error, reason, status) {
+    if (typeof reason === 'string' && reason !== '') {
+        error.reason = reason;
+    } else if (status === 413) {
+        error.reason = 'too_large';
+    } else if (status >= 500) {
+        error.reason = 'unexpected';
+    }
+
+    return error;
+}
+
+async function rejection(res, fallback) {
+    const err = await res.json().catch(() => ({}));
+
+    return withReason(new Error(err.message || fallback), err.reason, res.status);
+}
+
+/**
  * Wire the presign/register (R2) or XHR (local dev) upload plugin onto an Uppy instance from the
  * island's data-* config. Returns { directToStorage, registerFile } — the caller calls registerFile
  * on each `upload-success` (R2 path) to finalize the row (the real magic-byte/size/hash gate).
@@ -57,8 +80,7 @@ export function usePipeline(uppy, cfg, AwsS3, XHRUpload) {
                     body: JSON.stringify({ filename: file.name, mime: file.type, size: file.size }),
                 });
                 if (!res.ok) {
-                    const err = await res.json().catch(() => ({}));
-                    throw new Error(err.message || 'Không tạo được phiên tải lên.');
+                    throw await rejection(res, 'Không tạo được phiên tải lên.');
                 }
 
                 const data = await res.json();
@@ -81,12 +103,22 @@ export function usePipeline(uppy, cfg, AwsS3, XHRUpload) {
             fieldName: 'file',
             formData: true,
             headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken() },
-            getResponseError(responseText) {
-                try {
-                    return new Error(JSON.parse(responseText).message || 'Tải lên thất bại.');
-                } catch {
-                    return new Error('Tải lên thất bại.');
+            // a refusal is final; only a lost connection or a server fault is sent again
+            shouldRetry: (xhr) => xhr.status === 0 || xhr.status >= 500,
+            // the server's answer to a refused file becomes the error Uppy reports (its reason code and
+            // sentence); without this Uppy reports only the HTTP status text
+            onAfterResponse(xhr) {
+                if (xhr.status < 400) {
+                    return;
                 }
+                let body = {};
+                try {
+                    body = JSON.parse(xhr.responseText) || {};
+                } catch {
+                    // not JSON (a proxy's page): the plain fallback below
+                }
+
+                throw withReason(new Error(body.message || 'Tải lên thất bại.'), body.reason, xhr.status);
             },
         });
     }
@@ -96,6 +128,7 @@ export function usePipeline(uppy, cfg, AwsS3, XHRUpload) {
     async function registerFile(file) {
         const res = await fetch(cfg.registerUrl, {
             method: 'POST',
+            signal: AbortSignal.timeout(60_000), // a call that never answers fails instead of holding the batch
             headers: {
                 'Content-Type': 'application/json',
                 Accept: 'application/json',
@@ -109,8 +142,7 @@ export function usePipeline(uppy, cfg, AwsS3, XHRUpload) {
             }),
         });
         if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            throw new Error(err.message || 'Không lưu được tệp.');
+            throw await rejection(res, 'Không lưu được tệp.');
         }
         return true;
     }

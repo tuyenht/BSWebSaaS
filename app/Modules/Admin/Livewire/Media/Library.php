@@ -27,10 +27,10 @@ use Livewire\Component;
  * grid/list), the files page by page from a cursor, selection with move / Trash / restore / purge,
  * and the upload panel. Files and folders are addressed by ulid and slug only — never a bigint id.
  * Read is gated by media.view (re-checked in boot(): the livewire/update endpoint bypasses route
- * middleware); every action re-checks its own right: a new folder needs media.folders and deleting
- * for good needs media.purge (both the website admin's), moving files into a folder stays with
- * media.upload and the Trash with media.delete. The upload panes and the detail panel are the
- * shared picker's (WithMediaLibraryPicker in manage mode).
+ * middleware); every action re-checks its own right: making, renaming or reordering a
+ * folder needs media.folders and deleting for good needs media.purge (both the website admin's),
+ * moving files into a folder stays with media.upload and the Trash with media.delete. The upload
+ * panes and the detail panel are the shared picker's (WithMediaLibraryPicker in manage mode).
  */
 #[Layout('admin::layouts.app')]
 final class Library extends Component
@@ -93,6 +93,12 @@ final class Library extends Component
     /** @var list<string> the files the last move to Trash took (for Hoàn tác) */
     #[Locked]
     public array $undoTrash = [];
+
+    /** The slug of the folder whose name is being changed ('' = none). */
+    #[Locked]
+    public string $renaming = '';
+
+    public string $renameName = '';
 
     public ?string $toast = null;
 
@@ -269,9 +275,12 @@ final class Library extends Component
         $this->pickerSource = null;
     }
 
-    /** A finished upload batch: the new files are the newest, so the list starts again. */
+    /**
+     * A finished upload batch: the new files are the newest, so the list starts again. The upload
+     * panel stays open either way (its list shows what failed), so the failure count is not needed.
+     */
     #[On('media-uploaded')]
-    public function onPickerMediaUploaded(): void
+    public function onPickerMediaUploaded(int $failed = 0): void
     {
         $this->status = 'live';
         $this->restart();
@@ -300,18 +309,9 @@ final class Library extends Component
 
         $name = trim($this->newFolderName);
         $this->resetErrorBag('newFolderName');
-        if ($name === '') {
-            $this->addError('newFolderName', __('media.lib.folder_name_required'));
-
-            return;
-        }
-        if (mb_strlen($name) > self::FOLDER_NAME_MAX) {
-            $this->addError('newFolderName', __('media.lib.folder_name_long', ['max' => self::FOLDER_NAME_MAX]));
-
-            return;
-        }
-        if (MediaFolder::query()->whereRaw('lower(name) = lower(?)', [$name])->exists()) {
-            $this->addError('newFolderName', __('media.lib.folder_name_taken'));
+        $error = self::folderNameError($name);
+        if ($error !== null) {
+            $this->addError('newFolderName', $error);
 
             return;
         }
@@ -339,6 +339,94 @@ final class Library extends Component
     public function closeFolderSheet(): void
     {
         $this->folderSheetOpen = false;
+    }
+
+    /** "Đổi tên": the name changes, the slug (the folder's address in the admin) stays. */
+    public function openRename(string $slug): void
+    {
+        abort_unless(Gate::allows('media.folders'), 403);
+
+        $folder = self::folderBySlug($slug);
+        $this->folderSheetOpen = false;
+        if ($folder === null) {
+            return;
+        }
+        $this->cancelNewFolder();
+        $this->renaming = (string) $folder->slug;
+        $this->renameName = $folder->name;
+        $this->resetErrorBag('renameName');
+    }
+
+    public function cancelRename(): void
+    {
+        $this->renaming = '';
+        $this->renameName = '';
+        $this->resetErrorBag('renameName');
+    }
+
+    public function saveRename(): void
+    {
+        abort_unless(Gate::allows('media.folders'), 403);
+
+        $folder = self::folderBySlug($this->renaming);
+        if ($folder === null) {
+            $this->cancelRename(); // gone meanwhile, or never this site's
+
+            return;
+        }
+        $name = trim($this->renameName);
+        $this->resetErrorBag('renameName');
+        $error = self::folderNameError($name, $folder->id);
+        if ($error !== null) {
+            $this->addError('renameName', $error);
+
+            return;
+        }
+
+        $old = $folder->name;
+        $this->cancelRename();
+        if ($old === $name) {
+            return;
+        }
+        $folder->update(['name' => $name]);
+        $this->say(__('media.lib.folder_renamed', ['old' => $old, 'name' => $name]));
+    }
+
+    /** "Chuyển lên" (-1) / "Chuyển xuống" (+1): swaps the folder with its neighbour in the list. */
+    public function moveFolder(string $slug, int $step): void
+    {
+        abort_unless(Gate::allows('media.folders'), 403);
+
+        $this->folderSheetOpen = false;
+        $step = $step < 0 ? -1 : 1;
+        // the folders locked for the swap, so two people moving at once never leave equal positions
+        $moved = DB::transaction(function () use ($slug, $step): bool {
+            /** @var list<MediaFolder> $order */
+            $order = MediaFolder::query()->orderBy('position')->orderBy('name')->orderBy('id')
+                ->lockForUpdate()->get(['id', 'slug', 'name', 'position'])->all();
+            $at = null;
+            foreach ($order as $i => $folder) {
+                if ((string) $folder->slug === $slug) {
+                    $at = $i;
+                }
+            }
+            $to = $at === null ? -1 : $at + $step;
+            if ($at === null || $to < 0 || $to >= count($order)) {
+                return false;
+            }
+            [$order[$at], $order[$to]] = [$order[$to], $order[$at]];
+            foreach ($order as $i => $folder) {
+                if ($folder->position !== $i + 1) {
+                    MediaFolder::query()->whereKey($folder->id)->update(['position' => $i + 1]);
+                }
+            }
+
+            return true;
+        });
+
+        if ($moved) {
+            $this->say(__($step < 0 ? 'media.lib.folder_moved_up' : 'media.lib.folder_moved_down'));
+        }
     }
 
     public function openMove(): void
@@ -399,10 +487,10 @@ final class Library extends Component
 
         $rows = Media::query()->whereIn('ulid', $this->picked)->get();
         $rows->each->delete(); // one by one, so the observers fire
-        $this->undoTrash = Cast::strings($rows->pluck('ulid')->all());
         $this->picked = [];
         $this->askTrashOpen = false;
         $this->say(__('media.lib.trashed', ['n' => $rows->count()]));
+        $this->undoTrash = Cast::strings($rows->pluck('ulid')->all()); // after say(): this toast's Hoàn tác
     }
 
     public function cancelTrash(): void
@@ -620,6 +708,27 @@ final class Library extends Component
         return number_format($bytes / 1048576, 1, ',', '.').' MB';
     }
 
+    /** A folder of this site by its slug (the scope and RLS keep another site's out), or null. */
+    private static function folderBySlug(string $slug): ?MediaFolder
+    {
+        return $slug === '' ? null : MediaFolder::query()->where('slug', $slug)->first();
+    }
+
+    /** Why a folder name cannot be used (empty, too long, already in use here), or null when it can. */
+    private static function folderNameError(string $name, ?int $except = null): ?string
+    {
+        if ($name === '') {
+            return Cast::string(__('media.lib.folder_name_required'));
+        }
+        if (mb_strlen($name) > self::FOLDER_NAME_MAX) {
+            return Cast::string(__('media.lib.folder_name_long', ['max' => self::FOLDER_NAME_MAX]));
+        }
+        $taken = MediaFolder::query()->whereRaw('lower(name) = lower(?)', [$name])
+            ->when($except !== null, fn (Builder $q) => $q->whereKeyNot($except))->exists();
+
+        return $taken ? Cast::string(__('media.lib.folder_name_taken')) : null;
+    }
+
     private function canPick(): bool
     {
         return $this->status === 'trash' ? Gate::allows('media.delete') : (Gate::allows('media.upload') || Gate::allows('media.delete'));
@@ -694,8 +803,10 @@ final class Library extends Component
         $this->picked = [];
     }
 
+    /** A new toast; its Hoàn tác, if any, is set by the caller after this (an older one never carries over). */
     private function say(string $message, string $tone = 'success'): void
     {
+        $this->undoTrash = [];
         $this->toast = $message;
         $this->toastTone = $tone;
         $this->toastSeq++;

@@ -16,6 +16,7 @@ use Livewire\Livewire;
 beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
+    enableCatalog();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
 });
@@ -126,13 +127,14 @@ it('does not fail with a server error on a code an old lower-case row spells dif
     });
 });
 
-it('still refuses a member with view only: the editor cannot be opened and nothing is written', function (): void {
+it('still refuses a member with view only: a new product opens on the no-permission card and nothing is written', function (): void {
     $viewer = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($viewer): void {
         grantRole($viewer, 'cat-viewer', ['catalog.view']);
 
-        Livewire::actingAs($viewer->fresh())->test(Editor::class)->assertForbidden();
+        Livewire::actingAs($viewer->fresh())->test(Editor::class)->assertSet('screen', 'noperm')
+            ->set('sku', 'AB-1')->assertForbidden();
 
         expect(Product::query()->count())->toBe(0);
     });

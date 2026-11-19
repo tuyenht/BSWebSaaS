@@ -23,6 +23,7 @@
 
 use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Admin\Livewire\Catalog\Index;
+use App\Modules\Admin\Livewire\Media\Library;
 use App\Modules\Admin\Livewire\NotificationBell;
 use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog;
 use App\Modules\Admin\Livewire\SeoSettings;
@@ -52,6 +53,7 @@ use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
+use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Rbac\Actions\InviteMember;
@@ -774,6 +776,28 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('Giá &amp; tồn kho');
     file_put_contents($dir.'/product-new-price.html', $html);
 
+    // The product editor with three categories (the first the main one) and a strip of three pictures, and a
+    // product opened from the Trash (the same product read only is drawn at the end: the plan's member limit).
+    [$filed, $binned] = app(Tenancy::class)->enter(1, function () use ($priced): array {
+        $priced->assignCategories(array_map(intval(...), Taxonomy::query()->where('vocabulary', 'product_cat')->orderBy('id')->limit(3)->pluck('id')->all()));
+        foreach (array_values(Media::query()->where('collection', 'library')->orderBy('id')->limit(3)->pluck('id')->all()) as $i => $id) {
+            $priced->images()->create(['media_id' => (int) $id, 'position' => $i]);
+        }
+        $binned = Product::query()->create(['status' => 'published', 'published_at' => now(), 'sku' => 'DG-CNC-005']);
+        $binned->translations()->create(['locale' => 'vi', 'name' => 'Bàn gá phay đa năng', 'slug' => 'ban-ga-phay-da-nang']);
+        $binned->delete();
+
+        return [$priced->ulid, $binned->ulid];
+    });
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog/'.$filed.'/edit')->assertOk()->getContent();
+    expect($html)->toContain('ped-strip', 'Mục chính', 'Đặt làm ảnh đại diện');
+    file_put_contents($dir.'/product-editor-full.html', $html);
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog/'.$binned.'/edit')->assertOk()->getContent();
+    expect($html)->toContain('data-state="trash"', 'wire:click="restore"');
+    file_put_contents($dir.'/product-editor-trash.html', $html);
+
     // The page editor's «Hẹn giờ đăng» on a scheduled page, then with a changed time that has passed (the
     // reason under the field); and the Home page, whose link is the website's root and locked.
     $planned = app(Tenancy::class)->enter(1, function () use ($owner): array {
@@ -944,6 +968,12 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($viewer)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/general')->assertForbidden()->getContent();
     expect($html)->toContain('class="te-ok"');
     file_put_contents($dir.'/error-noperm-sent.html', $html);
+    // The product editor read only, for a member who may only see products (no new member: the plan's limit).
+    app(Tenancy::class)->enter(1, fn () => grantRole($viewer, 'cat-viewer', ['catalog.view']));
+    $this->flushSession();
+    $html = $this->actingAs($viewer)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog/'.$filed.'/edit')->assertOk()->getContent();
+    expect($html)->toContain('data-state="readonly"', 'ped-strip')->not->toContain('wire:click="publish"');
+    file_put_contents($dir.'/product-editor-readonly.html', $html);
     app('auth')->forgetGuards();
     $this->flushSession();
     $html = $this->get('http://'.ADMIN_PREVIEW_HOST.'/admin/session-expired')->assertOk()->getContent();
@@ -953,5 +983,37 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-te-page="suspended"');
     file_put_contents($dir.'/error-suspended.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 69);
+    // The media library's folder column (design board 12): three folders, the open one with its ⋮ menu,
+    // and the same folder being renamed in place. The component is put in place of the page's own
+    // root, as for the product list.
+    $mediaConfig = config('media');
+    config(['media.driver' => 'cloudflare', 'media.cloudflare.base' => 'http://'.ADMIN_PREVIEW_HOST]);
+    app(Tenancy::class)->enter(1, function (): void {
+        DB::connection('pgsql_admin')->table('sites')->where('id', 1)->update(['status' => 'active']);
+        foreach ([['Ảnh xưởng', 'anh-xuong', 4], ['Sản phẩm', 'san-pham', 2], ['Hồ sơ công ty', 'ho-so-cong-ty', 0]] as $i => [$name, $slug, $files]) {
+            $folder = MediaFolder::query()->create(['name' => $name, 'slug' => $slug, 'position' => $i + 1]);
+            for ($n = 1; $n <= $files; $n++) {
+                $hash = hash('sha256', $slug.$n);
+                Media::query()->create(['collection' => 'library', 'slug' => $slug.'-'.$n, 'hash' => $hash, 'folder_id' => $folder->id,
+                    'original_filename' => $slug.'-'.$n.'.jpg', 'storage_key' => 's/library/'.$slug.'-'.$n.'-'.substr($hash, 0, 12).'.jpg',
+                    'mime' => 'image/jpeg', 'size' => 98_000, 'width' => 1200, 'height' => 800]);
+            }
+        }
+    });
+    $this->flushSession();
+    app('livewire')->flushState();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/media')->assertOk()->getContent();
+    expect($html)->toContain('Ảnh xưởng', 'Hồ sơ công ty');
+    file_put_contents($dir.'/media-folders.html', $html);
+    $library = fn () => Livewire::actingAs($owner)->test(Library::class)->call('setFolder', 'anh-xuong');
+    $media = 'app\\.modules\\.admin\\.livewire\\.media\\.library';
+    $open = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($library()));
+    expect($open)->toContain("openRename('anh-xuong')");
+    file_put_contents($dir.'/media-folder-open.html', $swap($html, $open, $media));
+    $rename = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($library()->call('openRename', 'anh-xuong')));
+    expect($rename)->toContain('wire:model="renameName"');
+    file_put_contents($dir.'/media-folder-rename.html', $swap($html, $rename, $media));
+    config(['media' => $mediaConfig]);
+
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 75);
 });
