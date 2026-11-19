@@ -104,14 +104,18 @@ final readonly class SaveEntryDraft
             }
 
             $content = $change !== null ? $change->content : ['v' => RecordEntryRevision::FORMAT, 'locales' => []];
-            $sharedNow = array_replace(
-                $content['shared'] ?? $this->liveShared($entry),
-                array_intersect_key($shared, array_flip(EntryDraft::SHARED_FIELDS)),
-            );
+            $sharedBefore = $content['shared'] ?? $this->liveShared($entry);
+            $sharedNow = array_replace($sharedBefore, array_intersect_key($shared, array_flip(EntryDraft::SHARED_FIELDS)));
             $textNow = array_replace(
                 $content['locales'][$locale] ?? $this->liveText($entry, $locale),
                 array_intersect_key($text, array_flip(EntryDraft::LOCALE_FIELDS)),
             );
+            // the featured picture changed or went and no words were sent for it: the old picture's
+            // words are not carried over to the new one (as the editor's direct save does)
+            $cover = static fn (array $values): array => [data_get($values, 'meta.image_url'), $values['cover_media_id'] ?? null];
+            if (! array_key_exists('cover_alt', $text) && $cover($sharedBefore) !== $cover($sharedNow)) {
+                $textNow['cover_alt'] = null;
+            }
 
             $sharedNow['primary_category_id'] = $this->category($entry, $actor, $sharedNow['primary_category_id'] ?? null);
             // A layout of the wrong role is refused only when this request sent it. One carried over from

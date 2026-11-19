@@ -826,6 +826,12 @@ it('carries a live post\'s cover words through a pending change, and sets the on
         expect($entry->fresh()->translationFor('vi')->cover_alt)->toBe('Thợ đứng máy');   // visitors keep the live words
         app(ApplyEntryDraft::class)->handle($entry->fresh(), $publisher, $change->version());
         expect($entry->fresh()->translationFor('vi'))->title->toBe('Bản tin mới')->cover_alt->toBe('Thợ đứng máy phay');
+
+        // another picture held with no words for it: the old picture's words are not carried over
+        $change = app(SaveEntryDraft::class)->handle($entry->fresh(), $author, 'vi', ['title' => 'Ảnh mới'], ['meta' => ['image_url' => 'a/library/kho-dddddddddddd.png']]);
+        expect($change->content['locales']['vi']['cover_alt'])->toBeNull();
+        app(ApplyEntryDraft::class)->handle($entry->fresh(), $publisher, $change->version());
+        expect($entry->fresh()->translationFor('vi')->cover_alt)->toBeNull();
     });
 });
 

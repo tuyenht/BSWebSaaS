@@ -3026,8 +3026,11 @@ final class Editor extends Component
             // renamed, a cover's content mark or a view count changes none of them.
             $stored = $this->storedNow($entry);
             if ($this->storedPrint !== []) {
-                // a form opened before «Mô tả ảnh» existed read it as empty
+                // a form opened before «Mô tả ảnh» existed read it as empty (and so did a question it asked then)
                 $this->storedPrint += ['cover_alt' => md5('')];
+            }
+            if ($this->overwrite !== null) {
+                $this->overwrite += ['cover_alt' => md5('')];
             }
             if ($stored['print'] !== $this->storedPrint && $stored['print'] !== $this->overwrite) {
                 if ($filled) {
