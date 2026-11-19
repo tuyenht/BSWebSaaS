@@ -1,7 +1,7 @@
 // Where the focus goes back to after a row's action on a shared list (resources/js/admin-list-focus.js):
 // `node --test tests/js/admin-list-focus.test.mjs`.
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { mock, test } from 'node:test';
 import { JSDOM } from 'jsdom';
 
 const dom = new JSDOM(`<!doctype html><html><body>
@@ -18,7 +18,7 @@ const { window } = dom;
 globalThis.window = window;
 globalThis.document = window.document;
 globalThis.Element = window.Element;
-const { backTarget } = await import('../../resources/js/admin-list-focus.js');
+const { backTarget, carriesTrash, menuMove, trashHeld, trashDrawn, TRASH_HOLD_MS } = await import('../../resources/js/admin-list-focus.js');
 const doc = window.document;
 // jsdom lays nothing out: "shown" is whatever is still in the page and not marked hidden here
 const shown = (el) => !!el && el.isConnected && ! el.closest('[data-hidden]');
@@ -61,3 +61,93 @@ test('the list asks for a return through window.bsListFocus', () => {
     window.document.getElementById('itemA').dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
     assert.equal(typeof window.bsListFocus.expect, 'function');
 });
+
+test('a trash button ignores clicks while its move is on the way and for 600 ms after the list is drawn again', () => {
+    const row = doc.createElement('div');
+    row.innerHTML = '<button id="trashA" data-trash><span id="trashAi">Thùng rác</span></button><button id="trashB" data-trash>Thùng rác</button>';
+    doc.body.append(row);
+    const reached = [];
+    for (const id of ['trashA', 'trashB']) {
+        doc.getElementById(id).addEventListener('click', () => reached.push(id)); // what wire:click would do
+    }
+    const click = (id) => doc.getElementById(id).dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true }));
+
+    assert.equal(TRASH_HOLD_MS, 600);
+    assert.equal(trashHeld(), false);
+    click('trashAi'); // a press on the button's text counts as the button
+    assert.deepEqual(reached, ['trashA']);
+    // the second click of a double click, before the answer: held, whichever row's button it lands on
+    click('trashA');
+    click('trashB');
+    assert.deepEqual(reached, ['trashA']);
+    // the answer is drawn: still held for 600 ms, then the next row's button works again
+    mock.timers.enable({ apis: ['Date'], now: Date.now() });
+    try {
+        trashDrawn();
+        mock.timers.tick(TRASH_HOLD_MS - 1);
+        click('trashB');
+        assert.deepEqual(reached, ['trashA']);
+        mock.timers.tick(1);
+        click('trashB');
+        assert.deepEqual(reached, ['trashA', 'trashB']);
+        trashDrawn(); // its own answer starts the next hold
+        assert.equal(trashHeld(), true);
+        mock.timers.tick(TRASH_HOLD_MS);
+        assert.equal(trashHeld(), false);
+    } finally {
+        mock.timers.reset();
+        row.remove();
+    }
+});
+
+test('while a trash button is held a click on anything else still goes through, and a hold never outlives a lost answer', () => {
+    const row = doc.createElement('div');
+    row.innerHTML = '<button id="trashC" data-trash>Thùng rác</button><button id="otherC">Sửa</button>';
+    doc.body.append(row);
+    let n = 0;
+    doc.getElementById('otherC').addEventListener('click', () => n++);
+    // a minute on, past the hold the test before left (its clock ran ahead of the real one)
+    mock.timers.enable({ apis: ['Date'], now: Date.now() + 60000 });
+    try {
+        doc.getElementById('trashC').dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true }));
+        assert.equal(trashHeld(), true);
+        doc.getElementById('otherC').dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true }));
+        assert.equal(n, 1);
+        // the answer never comes (the connection dropped): after 15 s the button works again
+        mock.timers.tick(15000);
+        assert.equal(trashHeld(), true);
+        mock.timers.tick(1);
+        assert.equal(trashHeld(), false);
+    } finally {
+        mock.timers.reset();
+        row.remove();
+    }
+});
+
+test('only the answer that carries the move to the Trash starts the 600 ms', () => {
+    const msg = (...names) => ({ getActions: () => names.map((name) => ({ name })) });
+    assert.equal(carriesTrash(msg('trash')), true);
+    assert.equal(carriesTrash(msg('search', 'trash')), true);
+    assert.equal(carriesTrash(msg('changeStatus')), false); // a status change sent just before: the hold stays
+    assert.equal(carriesTrash(msg()), false);
+    assert.equal(carriesTrash({}), true); // a message that does not list its calls: every answer counts
+});
+
+test('a list menu opens on its first item that shows and its keys skip the hidden ones (a published page’s «Xem trên website»)', () => {
+    const m = doc.createElement('div');
+    m.setAttribute('role', 'menu');
+    m.innerHTML = '<a id="m0" role="menuitem" data-xm href="#">Xem trên website</a><button id="m1" role="menuitem">Sao chép</button>'
+        + '<button id="m2" role="menuitem">Nhân bản</button><button id="m3" role="menuitem" data-xm>Ẩn</button>';
+    doc.body.append(m);
+    const isShown = (el) => !el.hasAttribute('data-xm'); // the row shows these as its own buttons
+    assert.equal(menuMove(m, 'first', isShown)?.id, 'm1');
+    assert.equal(doc.activeElement.id, 'm1');
+    assert.equal(menuMove(m, 'next', isShown)?.id, 'm2');
+    assert.equal(menuMove(m, 'next', isShown)?.id, 'm1'); // wraps past the hidden ones
+    assert.equal(menuMove(m, 'prev', isShown)?.id, 'm2');
+    assert.equal(menuMove(m, 'last', isShown)?.id, 'm2');
+    assert.equal(menuMove(m, 'first', () => false), null); // nothing shows: the focus stays where it is
+    assert.equal(doc.activeElement.id, 'm2');
+    m.remove();
+});
+

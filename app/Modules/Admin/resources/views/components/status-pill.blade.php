@@ -2,6 +2,7 @@
     'status' => 'draft',
     'button' => false,
     'count' => false,
+    'dot' => false,
 ])
 @php
     // The one record-status pill of every list row (design .ql-st): a light tint of its own ink,
@@ -14,6 +15,8 @@
     // Unknown statuses read as plain text with no icon.
     // `count` draws the small number bubble of a status group (design .ql-tab .n): the same ink and
     // tint as the group's records, no glyph; "all" takes the accent ink and "trash" the danger ink.
+    // `dot` draws only the status's colour as a small round mark (design .ql-dot), beside a status's
+    // name in a status menu; it says nothing to a screen reader, the name beside it does.
     $tones = [
         // a website's own domain name: its state, and the main / platform / working-again marks
         'domain-wait' => ['[--c:var(--color-warning-text)]', 'ri-time'],
@@ -58,6 +61,8 @@
 @endphp
 @if ($count)
     <span data-s="{{ $status }}" {{ $attributes->merge(['class' => "inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-caption leading-normal font-semibold tabular-nums text-(color:--c) bg-[color-mix(in_srgb,var(--c)_11%,var(--color-surface))] $tone"]) }}>{{ $slot }}</span>
+@elseif ($dot)
+    <span data-s="{{ $status }}" aria-hidden="true" {{ $attributes->merge(['class' => "size-2 shrink-0 rounded-full bg-(color:--c) $tone"]) }}></span>
 @elseif ($button)
     <button type="button" data-s="{{ $status }}" {{ $attributes->merge(['class' => "hit-area $base $tone cursor-pointer transition-colors hover:bg-[color-mix(in_srgb,var(--c)_18%,var(--color-surface))] aria-expanded:bg-[color-mix(in_srgb,var(--c)_18%,var(--color-surface))]"]) }}>
         @if ($icon)<x-bs-admin::icon :name="$icon" :class="$glyph" />@endif

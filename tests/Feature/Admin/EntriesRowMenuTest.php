@@ -460,7 +460,7 @@ describe('scheduling', function (): void {
         });
     });
 
-    it('hides «Hẹn giờ đăng» on the live Home page, and refuses it there with the reason, kept until closed', function (): void {
+    it('greys «Hẹn giờ đăng» on the live Home page with its reason, and refuses it there with the reason, kept until closed', function (): void {
         Carbon::setTestNow('2026-11-18 03:00:00 UTC'); // 10:00 in Viet Nam
         $owner = rmMember('owner', PermissionRegistry::TENANT_PERMISSIONS, 90);
 
@@ -471,6 +471,8 @@ describe('scheduling', function (): void {
             $html = $list->html();
 
             expect(rmRowHtml($html, $home->ulid))->not->toContain('data-sched x-on:click')
+                ->toContain('data-home-locked="scheduled" x-on:click="$bsToast(')
+                ->toContain('<span class="text-caption text-text-muted">'.e(__('entries.home_sched_why')).'</span>')
                 ->and(rmRowHtml($html, $other->ulid))->toContain('data-sched x-on:click');
 
             // a call made anyway (a tab opened before the page became the Home page) is refused by the action
@@ -480,7 +482,7 @@ describe('scheduling', function (): void {
         });
     });
 
-    it('lists «Đã đăng» plus draft and «Gỡ khỏi website» greyed with the reason on the live Home page, refuses a draft or a take-off there with the reason, and «/» stays live', function (): void {
+    it('lists draft and «Gỡ khỏi website» greyed with the reason on the live Home page, never its own «Đã đăng», refuses a draft or a take-off there with the reason, and «/» stays live', function (): void {
         $owner = rmMember('owner', PermissionRegistry::TENANT_PERMISSIONS, 90);
         $menuItem = static fn (Entry $entry, string $status): string => '$wire.changeStatus('.Js::from($entry->ulid).', '.Js::from($status).')';
 
@@ -492,12 +494,13 @@ describe('scheduling', function (): void {
             $html = $list->html();
 
             $homeRow = rmRowHtml($html, $home->ulid);
-            expect($homeRow)->toContain($menuItem($home, 'published'))
+            expect($homeRow)->not->toContain($menuItem($home, 'published'))
                 ->not->toContain($menuItem($home, 'draft'))
                 ->not->toContain($menuItem($home, 'archived'))
                 ->toContain('data-home-locked="draft"')->toContain('data-home-locked="archived"')
                 ->and(substr_count($homeRow, 'aria-disabled="true"'))->toBeGreaterThanOrEqual(2)
-                ->and(substr_count($homeRow, '<span class="list-mwhy">'.e(__('entries.home_trash_why')).'</span>'))->toBe(2)
+                // the reason sits in each greyed item, under its name
+                ->and(substr_count($homeRow, '<span class="text-caption text-text-muted">'.e(__('entries.home_trash_why')).'</span>'))->toBe(2)
                 ->and(rmRowHtml($html, $other->ulid))->not->toContain('data-home-locked')
                 ->and(rmRowHtml($html, $other->ulid))->toContain($menuItem($other, 'draft'))->toContain($menuItem($other, 'archived'))
                 // «Gỡ khỏi website» is short, and says what it does on a small second line
@@ -523,6 +526,32 @@ describe('scheduling', function (): void {
         });
 
         $this->get('http://a.test/')->assertOk();
+    });
+
+    it('lists the statuses as board 05 orders them, Đã đăng · Hẹn giờ đăng · Bản nháp · Gỡ khỏi website, never the row’s own, a scheduled row keeping «Hẹn giờ đăng» (a new time) beside «Hủy hẹn giờ»', function (): void {
+        $owner = rmMember('owner', PermissionRegistry::TENANT_PERMISSIONS, 90);
+
+        app(Tenancy::class)->enter(1, function () use ($owner): void {
+            $live = rmEntry($owner, 'Đang đăng', 'published');
+            $draft = rmEntry($owner, 'Bản nháp');
+            $later = rmEntry($owner, 'Hẹn giờ');
+            $later->forceFill(['status' => 'scheduled', 'published_at' => now()->addDay()])->save();
+            $html = Livewire::actingAs($owner)->test(Index::class)->html();
+
+            // the status menu's items of a row, in the order drawn: a move to a status, «Hẹn giờ đăng», «Hủy hẹn giờ»
+            $items = static function (string $row, Entry $entry): array {
+                preg_match_all('/data-unsched |data-sched |\$wire\.changeStatus\('.preg_quote(Js::from($entry->ulid)->toHtml(), '/').", '([a-z]+)'\\)/", $row, $m, PREG_SET_ORDER);
+
+                return array_map(static fn (array $hit): string => $hit[1] ?? trim(str_replace('data-', '', $hit[0])), $m);
+            };
+            $menu = static fn (string $row): string => substr($row, (int) strpos($row, 'role="menu" aria-label="'.e(__('entries.status_menu_label')).'"'));
+
+            expect($items($menu(rmRowHtml($html, $live->ulid)), $live))->toBe(['sched', 'draft', 'archived'])
+                ->and($items($menu(rmRowHtml($html, $draft->ulid)), $draft))->toBe(['published', 'sched'])
+                ->and($items($menu(rmRowHtml($html, $later->ulid)), $later))->toBe(['published', 'sched', 'unsched', 'draft'])
+                // the menu is named, and says so over its items
+                ->and(rmRowHtml($html, $live->ulid))->toContain('<div class="list-lmh" aria-hidden="true">'.e(__('entries.status_menu_label')).'</div>');
+        });
     });
 
     it('offers the statuses of a draft on a Home page not yet on the website, never the retired private, and publishes it', function (): void {

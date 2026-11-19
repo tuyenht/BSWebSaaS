@@ -9,7 +9,8 @@
     // (wrapping), Home and End move between its role="menuitem" rows, Tab closes it, and a pick closes
     // it with the focus handed back through the host's `close(true)`. The host's x-data supplies
     // `open`, `up` (true: open upwards) and `close(back)`; this panel supplies nothing but the behaviour,
-    // so every menu on a list reacts to the keys alike. `bind-label` is an Alpine expression for a name
+    // so every menu on a list reacts to the keys alike. The keys move between the items that show
+    // (window.bsMenu, admin-list-focus.js): an item the row shows as its own button is hidden here. `bind-label` is an Alpine expression for a name
     // the browser draws. `sheet` is the bottom sheet the menu turns into on a narrow screen (list.actions):
     // 'title' below a 600 screen, 'row' below a 900 list; there Tab and Shift+Tab move round the items
     // instead of closing it (the host's `sheet` is true while it is a sheet).
@@ -17,9 +18,9 @@
 <div x-ref="menu" x-show="open" x-cloak role="menu" aria-label="{{ $label }}"
     @if ($bindLabel && $sheet !== 'title') x-bind:aria-label="{{ $bindLabel }}" @endif
     @if ($sheet) data-sheet="{{ $sheet }}" @endif x-bind:data-up="up ? 'true' : null"
-    x-on:keydown.down.prevent="$focus.within($refs.menu).wrap().next()" x-on:keydown.up.prevent="$focus.within($refs.menu).wrap().prev()"
-    x-on:keydown.home.prevent="$focus.within($refs.menu).first()" x-on:keydown.end.prevent="$focus.within($refs.menu).last()"
-    x-on:keydown.tab="$data.sheet ? ($event.preventDefault(), $event.shiftKey ? $focus.within($refs.menu).wrap().prev() : $focus.within($refs.menu).wrap().next()) : (open = false)" x-on:click.capture="$event.target.closest('[role=menuitem]') && close(true)"
+    x-on:keydown.down.prevent="window.bsMenu.move($refs.menu, 'next')" x-on:keydown.up.prevent="window.bsMenu.move($refs.menu, 'prev')"
+    x-on:keydown.home.prevent="window.bsMenu.move($refs.menu, 'first')" x-on:keydown.end.prevent="window.bsMenu.move($refs.menu, 'last')"
+    x-on:keydown.tab="$data.sheet ? ($event.preventDefault(), window.bsMenu.move($refs.menu, $event.shiftKey ? 'prev' : 'next')) : (open = false)" x-on:click.capture="$event.target.closest('[role=menuitem]') && close(true)"
     {{ $attributes }}>
     {{ $slot }}
 </div>

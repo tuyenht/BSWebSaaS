@@ -99,7 +99,7 @@
                  x-on:click.outside="open = false" x-on:keydown.escape.prevent.stop="close(true)">
                 <x-bs-admin::button variant="outline" color="secondary" icon x-ref="more" data-guide="more"
                                     aria-label="{{ $more }}" title="{{ __('admin.list.more') }}" aria-haspopup="menu" ::aria-expanded="open.toString()"
-                                    x-on:click="open = ! open; open && $nextTick(() => $focus.within($refs.menu).first())">
+                                    x-on:click="open = ! open; open && $nextTick(() => window.bsMenu.move($refs.menu, 'first'))">
                     <x-bs-admin::icon name="ri-more-2-fill" :class="$glyph" />
                 </x-bs-admin::button>
                 <x-bs-admin::list.menu class="list-menu" :label="$more">
