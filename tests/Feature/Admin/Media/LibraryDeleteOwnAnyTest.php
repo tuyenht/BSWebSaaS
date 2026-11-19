@@ -405,3 +405,38 @@ it('splits each holder of the old right: system owner/admin/editor and purgers g
         ->and($direct_())->toBe(['media.delete'])
         ->and(Permission::query()->where('name', 'like', 'media.delete.%')->count())->toBe(0);
 });
+
+it('keeps a custom role narrowed by the split at its own files after rbac:sync, as every deploy runs it', function (): void {
+    $registrar = app(PermissionRegistrar::class);
+    $registrar->forgetCachedPermissions();
+    // the catalog before the split: media.delete, without the halves
+    Permission::query()->whereIn('name', ['media.delete.own', 'media.delete.any'])->delete();
+    $old = Permission::findOrCreate('media.delete', PermissionRegistry::GUARD);
+    $registrar->forgetCachedPermissions();
+
+    [$custom, $member] = app(Tenancy::class)->enter(1, function () use ($old): array {
+        $custom = Role::findOrCreate('ho-tro-anh', PermissionRegistry::GUARD);
+        $custom->givePermissionTo([$old, 'media.view', 'media.upload']);
+        $member = User::factory()->create();
+        $member->assignRole($custom);
+
+        return [$custom, $member];
+    });
+
+    $migration = require base_path('database/migrations/2080_01_01_000200_split_media_delete_permission.php');
+    $migration->up();
+    $this->artisan('rbac:sync')->assertSuccessful();
+    $this->artisan('rbac:sync')->assertSuccessful(); // the next deploy too
+
+    $held = DB::table('role_has_permissions')->join('permissions', 'permissions.id', '=', 'permission_id')
+        ->where('role_id', $custom->id)->where('permissions.name', 'like', 'media.%')->orderBy('permissions.name')->pluck('permissions.name')->all();
+    expect($held)->toBe(['media.delete', 'media.delete.own', 'media.upload', 'media.view']);
+
+    $registrar->forgetCachedPermissions();
+    app(Tenancy::class)->enter(1, function () use ($member): void {
+        $fresh = $member->fresh();
+        expect($fresh?->can('media.delete.own'))->toBeTrue()
+            ->and($fresh?->can('media.delete.any'))->toBeFalse()
+            ->and($fresh?->can('media.purge'))->toBeFalse();
+    });
+});
