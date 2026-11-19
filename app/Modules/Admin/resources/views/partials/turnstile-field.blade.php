@@ -25,7 +25,8 @@
     <div wire:ignore class="auth-turnstile">
         <div class="cf-turnstile" data-sitekey="{{ \App\Modules\Shared\Support\Cast::string(config('services.turnstile.site_key')) }}"
              data-size="flexible" data-theme="light" data-language="{{ app()->getLocale() }}" data-callback="bsTurnstileOk" data-error-callback="bsTurnstileClear"
-             data-expired-callback="bsTurnstileClear" data-timeout-callback="bsTurnstileClear"></div>
+             data-expired-callback="bsTurnstileClear" data-timeout-callback="bsTurnstileClear"
+             data-before-interactive-callback="bsTurnstileAsk" data-after-interactive-callback="bsTurnstileAsked"></div>
     </div>
     @once
         <script>
@@ -38,6 +39,16 @@
                 bsTurnstileWaiting.splice(0).forEach(function (go) { go(); });
             };
             window.bsTurnstileClear = function () { bsTurnstileLast = ''; };
+            // When Cloudflare asks the person to tick its box, a send already waiting stops its 15 s clock
+            // and its sending look (a refusal would reset the box mid-tick) and goes on by itself after the
+            // tick. A press while the box is asking is sent at once, as before this wait existed: the server
+            // answers that the check is not done.
+            var bsTurnstileAsking = false;
+            window.bsTurnstileAsk = function () {
+                bsTurnstileAsking = true;
+                bsTurnstileWaiting.forEach(function (go) { go.pause(); });
+            };
+            window.bsTurnstileAsked = function () { bsTurnstileAsking = false; };
 
             // Cloudflare's widget iframe carries a hard min-width:300px inside a CLOSED shadow root, so
             // external CSS can't shrink it — on a form narrower than 300px it overflows the field. Scale
@@ -86,7 +97,15 @@
                 var field = box && form.querySelector('[data-bs-turnstile-token]');
                 if (!field || !window.Livewire) { return; } // no Livewire yet: its wire:submit is not bound either
                 var token = bsTurnstileToken(box);
-                if (token || form.bsTurnstileGiveUp) {
+                // The page has loaded but Cloudflare's script has not (blocked or failed): no answer will
+                // come, so send now and let the server say so, instead of a 15 s wait on every press.
+                var noScript = document.readyState === 'complete' && !window.turnstile;
+                if (token || form.bsTurnstileGiveUp || noScript || bsTurnstileAsking) {
+                    if (!token && bsTurnstileAsking && form.bsTurnstileWaiting) {
+                        // This press replaces the send that was waiting for the tick.
+                        bsTurnstileWaiting.splice(0).forEach(function (go) { go.pause(); });
+                        form.bsTurnstileWaiting = false;
+                    }
                     field.value = token;
                     field.dispatchEvent(new Event('input', { bubbles: true }));
                     return;
@@ -96,13 +115,15 @@
                 if (form.bsTurnstileWaiting) { return; }
                 form.bsTurnstileWaiting = true;
                 var button = e.submitter || form.querySelector('button[type="submit"]');
-                if (button) { button.disabled = true; button.setAttribute('aria-busy', 'true'); }
                 var timer;
-                var go = function () {
+                var idle = function () {
                     clearTimeout(timer);
+                    if (button) { button.disabled = false; button.removeAttribute('aria-busy'); }
+                };
+                var go = function () {
                     var i = bsTurnstileWaiting.indexOf(go);
                     if (i >= 0) { bsTurnstileWaiting.splice(i, 1); }
-                    if (button) { button.disabled = false; button.removeAttribute('aria-busy'); }
+                    idle();
                     form.bsTurnstileWaiting = false;
                     // A later task: a form ignores requestSubmit() while one of its submit events runs. The
                     // give-up mark lives only for this send (requestSubmit fires its submit event at once, or
@@ -113,8 +134,10 @@
                         form.bsTurnstileGiveUp = false;
                     });
                 };
-                timer = setTimeout(go, 15000);
+                go.pause = idle;
                 bsTurnstileWaiting.push(go);
+                if (button) { button.disabled = true; button.setAttribute('aria-busy', 'true'); }
+                timer = setTimeout(go, 15000);
             }, true);
 
             document.addEventListener('livewire:init', function () {
