@@ -148,3 +148,12 @@ it('keeps the search words of a changed code', function (): void {
     $words = DB::connection('pgsql_admin')->table('product_search_words')->where('product_id', $id)->get()->map(fn ($r) => json_encode($r))->implode('');
     expect($words)->toContain('zz');
 });
+
+it('clears a code made only of spaces instead of writing an empty one', function (): void {
+    $a = nskProduct(1, 'a', '   ');
+    $b = nskProduct(1, 'b', '  ');
+
+    $this->artisan('catalog:normalize-skus')->expectsOutputToContain('Changed 2 SKU(s)')->assertSuccessful();
+
+    expect(nskSku(1, $a))->toBeNull()->and(nskSku(1, $b))->toBeNull();
+});

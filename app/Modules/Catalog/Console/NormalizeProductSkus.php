@@ -89,7 +89,7 @@ final class NormalizeProductSkus extends Command
      * One chunk of the site (inside its context): products after $after in id order with a SKU.
      *
      * @param  array<string, true>  $planned
-     * @return array{read: int, last: int, changed: int, clash: list<string>, long: list<string>, log: list<array{product_id: int, from: string, to: string}>}
+     * @return array{read: int, last: int, changed: int, clash: list<string>, long: list<string>, log: list<array{product_id: int, from: string, to: string|null}>}
      */
     private function step(int $after, bool $dry, array &$planned): array
     {
@@ -106,13 +106,17 @@ final class NormalizeProductSkus extends Command
         $log = [];
         foreach ($products as $listed) {
             // the row is read again under its lock: a save running meanwhile is never overwritten
-            $product = Product::query()->withTrashed()->whereKey($listed->id)->lockForUpdate()->first();
+            $product = Product::query()->withTrashed()->whereKey($listed->id)->when(! $dry, static fn ($query) => $query->lockForUpdate())->first();
             $old = $product?->sku;
             if (! $product instanceof Product || $old === null) {
                 continue;
             }
             $new = SkuCode::normalize($old);
-            if (mb_strlen($new) > SkuCode::MAX) {
+            if ($new === '') {
+                // only spaces: the editor stores no code at all, never '' (it would enter the unique index)
+                $new = null;
+            }
+            if (mb_strlen((string) $new) > SkuCode::MAX) {
                 $long[] = $this->describe($product, $old);
 
                 continue;
@@ -120,16 +124,20 @@ final class NormalizeProductSkus extends Command
             if ($new === $old) {
                 continue;
             }
-            $taken = isset($planned[$new])
-                || Product::query()->withTrashed()->where('sku', $new)->whereKeyNot($product->id)->exists();
+            $taken = $new !== null && (isset($planned[$new])
+                || Product::query()->withTrashed()->where('sku', $new)->whereKeyNot($product->id)->exists());
             if ($taken) {
                 $clash[] = $this->describe($product, $old);
 
                 continue;
             }
             $changed++;
-            $planned[$new] = true;
             if ($dry) {
+                // a real run finds its own earlier writes in the table; only a dry run must remember them
+                if ($new !== null) {
+                    $planned[$new] = true;
+                }
+
                 continue;
             }
             // a savepoint: a save racing for the same code loses only this row, which is listed
@@ -141,7 +149,6 @@ final class NormalizeProductSkus extends Command
                 });
             } catch (UniqueConstraintViolationException) {
                 $changed--;
-                unset($planned[$new]);
                 $clash[] = $this->describe($product, $old);
 
                 continue;
