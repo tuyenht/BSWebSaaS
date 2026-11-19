@@ -770,6 +770,28 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('Giá &amp; tồn kho');
     file_put_contents($dir.'/product-new-price.html', $html);
 
+    // The product editor with three categories (the first the main one) and a strip of three pictures, and a
+    // product opened from the Trash (the same product read only is drawn at the end: the plan's member limit).
+    [$filed, $binned] = app(Tenancy::class)->enter(1, function () use ($priced): array {
+        $priced->assignCategories(array_map(intval(...), Taxonomy::query()->where('vocabulary', 'product_cat')->orderBy('id')->limit(3)->pluck('id')->all()));
+        foreach (array_values(Media::query()->where('collection', 'library')->orderBy('id')->limit(3)->pluck('id')->all()) as $i => $id) {
+            $priced->images()->create(['media_id' => (int) $id, 'position' => $i]);
+        }
+        $binned = Product::query()->create(['status' => 'published', 'published_at' => now(), 'sku' => 'DG-CNC-005']);
+        $binned->translations()->create(['locale' => 'vi', 'name' => 'Bàn gá phay đa năng', 'slug' => 'ban-ga-phay-da-nang']);
+        $binned->delete();
+
+        return [$priced->ulid, $binned->ulid];
+    });
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog/'.$filed.'/edit')->assertOk()->getContent();
+    expect($html)->toContain('ped-strip', 'Mục chính', 'Đặt làm ảnh đại diện');
+    file_put_contents($dir.'/product-editor-full.html', $html);
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog/'.$binned.'/edit')->assertOk()->getContent();
+    expect($html)->toContain('data-state="trash"', 'wire:click="restore"');
+    file_put_contents($dir.'/product-editor-trash.html', $html);
+
     // The page editor's «Hẹn giờ đăng» on a scheduled page, then with a changed time that has passed (the
     // reason under the field); and the Home page, whose link is the website's root and locked.
     $planned = app(Tenancy::class)->enter(1, function () use ($owner): array {
@@ -897,6 +919,12 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($viewer)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/general')->assertForbidden()->getContent();
     expect($html)->toContain('class="te-ok"');
     file_put_contents($dir.'/error-noperm-sent.html', $html);
+    // The product editor read only, for a member who may only see products (no new member: the plan's limit).
+    app(Tenancy::class)->enter(1, fn () => grantRole($viewer, 'cat-viewer', ['catalog.view']));
+    $this->flushSession();
+    $html = $this->actingAs($viewer)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog/'.$filed.'/edit')->assertOk()->getContent();
+    expect($html)->toContain('data-state="readonly"', 'ped-strip')->not->toContain('wire:click="publish"');
+    file_put_contents($dir.'/product-editor-readonly.html', $html);
     app('auth')->forgetGuards();
     $this->flushSession();
     $html = $this->get('http://'.ADMIN_PREVIEW_HOST.'/admin/session-expired')->assertOk()->getContent();
@@ -906,5 +934,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-te-page="suspended"');
     file_put_contents($dir.'/error-suspended.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 64);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 67);
 });

@@ -28,6 +28,7 @@ use Livewire\Livewire;
 beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
+    enableCatalog();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
 });
@@ -57,32 +58,70 @@ function seedCatalogMedia(string $suffix = 'a'): int
     return $media->id;
 }
 
-it('gates the create and edit routes — 200 with catalog.manage, 403 with view only', function (): void {
+it('opens the create and edit routes to who may see products — the form to change, to read only, or the no-permission card', function (): void {
     $manager = User::factory()->create();
     $viewer = User::factory()->create();
+    $nobody = User::factory()->create();
 
-    $ulid = app(Tenancy::class)->enter(1, function () use ($manager, $viewer): string {
+    $ulid = app(Tenancy::class)->enter(1, function () use ($manager, $viewer, $nobody): string {
         grantRole($manager, 'cat-manager', ['catalog.view', 'catalog.manage']);
         grantRole($viewer, 'cat-viewer', ['catalog.view']);
+        grantRole($nobody, 'cat-none', ['media.view']);
 
         return Product::query()->create(['status' => 'draft'])->ulid;
     });
 
     // 200s also prove the component is registered with Livewire (an unregistered
     // admin component renders as a 500 "Unable to find component").
-    $this->actingAs($manager->fresh())->get('http://a.test/admin/catalog/create')->assertOk();
-    $this->actingAs($manager->fresh())->get("http://a.test/admin/catalog/{$ulid}/edit")->assertOk();
-    $this->actingAs($viewer->fresh())->get('http://a.test/admin/catalog/create')->assertForbidden();
-    $this->actingAs($viewer->fresh())->get("http://a.test/admin/catalog/{$ulid}/edit")->assertForbidden();
+    $this->actingAs($manager->fresh())->get('http://a.test/admin/catalog/create')->assertOk()->assertSee('Thêm sản phẩm');
+    $this->actingAs($manager->fresh())->get("http://a.test/admin/catalog/{$ulid}/edit")->assertOk()->assertSee('Sửa sản phẩm')->assertDontSee('Chỉ được xem.');
+    // only the right to see products: adding one is the no-permission card, a product is read only
+    $this->actingAs($viewer->fresh())->get('http://a.test/admin/catalog/create')->assertOk()->assertSee('Bạn chưa được thêm sản phẩm')->assertSee('“cat-viewer”', false);
+    $this->actingAs($viewer->fresh())->get("http://a.test/admin/catalog/{$ulid}/edit")->assertOk()
+        ->assertSee('Xem sản phẩm')->assertSee('Chỉ được xem.')->assertDontSee('wire:click="publish"', false)->assertDontSee('data-guide="trash"', false);
+    $this->actingAs($nobody->fresh())->get("http://a.test/admin/catalog/{$ulid}/edit")->assertOk()->assertSee('Bạn chưa được xem sản phẩm');
 });
 
-it('refuses non-managers at the component itself (livewire/update bypasses route middleware)', function (): void {
+it('refuses every write of a member who may only see products, on the server (the update endpoint skips route middleware)', function (string $call, array $args): void {
+    $viewer = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($viewer, $call, $args): void {
+        grantRole($viewer, 'cat-viewer', ['catalog.view', 'media.view']);
+        $category = seedProductCategory();
+        $media = seedCatalogMedia();
+        $product = Product::query()->create(['status' => 'published', 'published_at' => now()]);
+        $product->translations()->create(['locale' => 'vi', 'name' => 'Đồ gá', 'slug' => 'do-ga']);
+        $product->images()->create(['media_id' => $media, 'position' => 0]);
+        $ulid = Taxonomy::query()->whereKey($category)->value('ulid');
+
+        $c = Livewire::actingAs($viewer->fresh())->test(Editor::class, ['ulid' => $product->ulid])->assertSet('canEdit', false);
+        $args = array_map(static fn (mixed $a): mixed => $a === '@cat' ? $ulid : ($a === '@media' ? $media : $a), $args);
+        $call === 'set' ? $c->set(...$args)->assertForbidden() : $c->call($call, ...$args)->assertForbidden();
+
+        expect(Product::query()->whereKey($product->id)->value('status'))->toBe('published')
+            ->and(DB::table('product_taxonomies')->count())->toBe(0)
+            ->and(DB::table('product_images')->count())->toBe(1);
+    });
+})->with([
+    'save' => ['save', []], 'publish' => ['publish', []], 'unpublish' => ['unpublish', []], 'toDraft' => ['toDraft', []],
+    'autosave' => ['autosave', []], 'resetChanges' => ['resetChanges', []],
+    'toggleCategory' => ['toggleCategory', ['@cat']], 'setMainCategory' => ['setMainCategory', ['@cat']],
+    'removeImage' => ['removeImage', [0]], 'moveImage' => ['moveImage', [0, 0]], 'setCover' => ['setCover', [0]],
+    'pickImage' => ['pickImage', ['@media']], 'set price' => ['set', ['price', '10']],
+]);
+
+it('refuses a new product to a member who may only see products, and writes nothing', function (): void {
     $viewer = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($viewer): void {
         grantRole($viewer, 'cat-viewer', ['catalog.view']);
 
-        Livewire::actingAs($viewer->fresh())->test(Editor::class)->assertForbidden();
+        Livewire::actingAs($viewer->fresh())->test(Editor::class)
+            ->assertSet('screen', 'noperm')
+            ->set('name', 'Lén')->set('slug', 'len')
+            ->call('save')->assertForbidden();
+
+        expect(Product::query()->count())->toBe(0);
     });
 });
 

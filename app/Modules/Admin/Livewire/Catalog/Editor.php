@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Livewire\Catalog;
 
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
+use App\Modules\Admin\Support\CategoryTree;
 use App\Modules\Admin\Support\Guide\EditorGuide;
 use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Catalog\Actions\ChangeProductSlug;
@@ -22,12 +23,12 @@ use App\Modules\Catalog\Support\UniqueViolation;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
-use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Rbac\Support\RoleLabel;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\PlainText;
 use App\Modules\Shared\Support\RichTextSanitizer;
@@ -39,11 +40,13 @@ use App\Modules\Tenancy\Entitlement\Entitlement;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Relations\Pivot;
+use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Js;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\MessageBag;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -95,7 +98,7 @@ final class Editor extends Component
     private const array AS_TYPED = ['name', 'slug', 'summary', 'price', 'salePrice', 'stock', 'seoTitle', 'seoDescription', 'sku'];
 
     /** The fields counted as changes, in the order the form shows them. */
-    public const array TRACKED = ['name', 'slug', 'summary', 'imageMediaIds', 'price', 'stock', 'salePrice', 'saleStartsAt', 'saleEndsAt', 'description', 'seoTitle', 'seoDescription', 'categoryId', 'sku', 'featured', 'bestseller'];
+    public const array TRACKED = ['name', 'slug', 'summary', 'imageMediaIds', 'price', 'stock', 'salePrice', 'saleStartsAt', 'saleEndsAt', 'description', 'seoTitle', 'seoDescription', 'categoryIds', 'sku', 'featured', 'bestseller'];
 
     /** A sale's start or end as the site's wall clock, the way a datetime-local field gives it. */
     private const string MOMENT = 'Y-m-d\\TH:i';
@@ -110,6 +113,48 @@ final class Editor extends Component
     /** The ⋮ offers «Chuyển vào thùng rác»: a saved product the member may delete (the policy, with their category limits), as of the last open or save. */
     #[Locked]
     public bool $mayTrash = false;
+
+    /**
+     * What the screen shows in place of the form, in the board's order: 'plan' (the website's plan has
+     * no catalog), 'noperm' (no right to see products, or to add one), 'error' (the product could not
+     * be read: «Thử lại»), 'trash' (the product is in the Trash: «Khôi phục»); 'form' otherwise.
+     */
+    #[Locked]
+    public string $screen = 'form';
+
+    /**
+     * The member may change this product (catalog.manage, the product inside their category limits).
+     * Without it a member who may see products gets the form to read only («Chỉ được xem»): every field
+     * locked, no save, no ⋮ — and every write below refuses them on the server as well.
+     */
+    #[Locked]
+    public bool $canEdit = true;
+
+    /** The Trash card offers «Khôi phục» (the policy's restore, asked about the product). */
+    #[Locked]
+    public bool $mayRestore = false;
+
+    /**
+     * The message at the bottom of the screen that carries «Hoàn tác» (components/toast): its words,
+     * its counter (a new number for every message) and what «Hoàn tác» puts back — 'trash' (the product
+     * moved to the Trash from here) or 'image' (a picture taken off the product, `undoImage`).
+     */
+    #[Locked]
+    public string $toastMsg = '';
+
+    #[Locked]
+    public int $toastSeq = 0;
+
+    #[Locked]
+    public ?string $undo = null;
+
+    /**
+     * The picture «Hoàn tác» puts back, and where it stood.
+     *
+     * @var array{id: int, at: int}|null
+     */
+    #[Locked]
+    public ?array $undoImage = null;
 
     /** The guide is printed with the first draw only (the browser keeps it; later round trips skip it). */
     private bool $guideDue = false;
@@ -136,8 +181,18 @@ final class Editor extends Component
     #[Locked]
     public bool $multiLocale = false;
 
-    /** Primary category id (product_cat vocabulary); optional until the P3 reconcile seeds them. */
+    /** The main category's id (product_cat vocabulary): the first of categoryIds, kept in step with it. */
     public ?int $categoryId = null;
+
+    /**
+     * Every category the product is filed under, its main one («Mục chính») first — the pivot's
+     * positions 0..n-1. Changed only by the list's boxes and stars (toggleCategory, setMainCategory,
+     * asked by key), never sent by the browser.
+     *
+     * @var list<int>
+     */
+    #[Locked]
+    public array $categoryIds = [];
 
     /**
      * The Google preview's address around the slug (SeoFields::address): built on mount and again
@@ -248,10 +303,13 @@ final class Editor extends Component
     /** A product's published status (a product, not an entry: no entry revision road applies). */
     private const string PRODUCT_LIVE = 'published';
 
-    /** Only the publish button writes a status; set for the length of that one request. */
+    /** Only the status buttons (Đăng, and the ⋮'s «Gỡ khỏi website» / «Đưa về nháp») write a status; set for the length of that one request. */
     private bool $publishing = false;
 
-    /** The status the page showed when the publish button was pressed; the button only changes a product still in it. */
+    /** The status that button writes. */
+    private string $target = self::PRODUCT_LIVE;
+
+    /** The status the page showed when a status button was pressed; the button only changes a product still in it. */
     private ?string $publishFrom = null;
 
     /** Set while saving: the stored status differed from the one the page showed, so the button wrote none. */
@@ -270,9 +328,32 @@ final class Editor extends Component
         $this->clock = $zone === SiteTime::DEFAULT_ZONE ? Cast::string(__('catalog.ed.zone_vn')) : $zone;
         $this->selling = ! app(CatalogMode::class)->isBrochure();
         $this->multiLocale = count(app(SiteLocale::class)->enabled()) > 1;
+        $this->open($ulid);
+    }
+
+    /**
+     * What the screen opens on, in the board's order: the plan first (no catalog: its card, nothing
+     * read), then the right to see products (none: the no-permission card; a new product needs the
+     * right to add one), then the product — a product of another website or one gone for good is a
+     * 404, one outside the member's category limits a 403 — and a product in the Trash its card. A
+     * read that fails (the database busy) gives the card with «Thử lại», nothing lost. Otherwise the
+     * form, to change or (without the right to manage products) to read only.
+     */
+    private function open(?string $ulid): void
+    {
+        $this->screen = 'form';
+        if (! $this->entitled()) {
+            $this->screen = 'plan';
+
+            return;
+        }
 
         if ($ulid === null) {
-            $this->authorize('create', Product::class);
+            if (! Gate::allows('create', Product::class)) {
+                $this->screen = 'noperm';
+
+                return;
+            }
             $this->address = $this->previewAddress(null);
             $this->saved = $this->tracked();
             $this->guideDue = true;
@@ -280,18 +361,152 @@ final class Editor extends Component
             return;
         }
 
-        $product = $this->resolveOrFail($ulid);
-        $this->authorize('update', $product);
-        $this->load($product);
-        $this->mayTrash = $this->mayDelete($product);
+        if (! Gate::allows('viewAny', Product::class)) {
+            $this->screen = 'noperm';
+
+            return;
+        }
+
+        try {
+            // a savepoint inside the request's tenancy transaction: a failed read leaves it usable for the page
+            $product = DB::transaction(function () use ($ulid): Product {
+                $product = Product::withTrashed()->where('ulid', $ulid)->firstOrFail();
+                // its categories read once: the policy's limits (main category) and the form both use them
+                $product->setRelation('taxonomies', $product->taxonomies()->wherePivot('position', '<', Product::FACET_POSITION_BASE)->get());
+                $this->authorize('view', $product);
+                $this->load($product);
+
+                return $product;
+            });
+        } catch (QueryException $e) {
+            report($e);
+            $this->ulid = $ulid;
+            $this->screen = 'error';
+
+            return;
+        }
+
+        $this->canEdit = Gate::allows('update', $product);
+        $this->mayTrash = $this->canEdit && $this->mayDelete($product);
         $this->guideDue = true;
+        if ($product->trashed()) {
+            $this->screen = 'trash';
+            $this->mayRestore = Gate::allows('restore', $product);
+        }
+    }
+
+    /** «Thử lại» on the card of a product that could not be read: open it again. */
+    public function retry(): void
+    {
+        if ($this->screen !== 'error' || $this->ulid === null) {
+            return;
+        }
+        $this->open($this->ulid);
+    }
+
+    /**
+     * «Khôi phục» on the Trash card: the product comes back as a draft (not on the website until it is
+     * published again), its SKU and address kept — the list's restore, through the same checks (the
+     * plan, the policy asked about the product with the member's category limits). The form shows
+     * again with what it held. A product restored meanwhile elsewhere just shows the form; one deleted
+     * for good is said in words.
+     */
+    public function restore(): void
+    {
+        // only from the Trash card: the error card holds a key nothing has checked yet
+        abort_unless($this->screen === 'trash', 404);
+        $this->bringBack(asDraft: true);
+    }
+
+    /**
+     * «Hoàn tác» on the message at the bottom: after «Chuyển vào thùng rác» the product comes back
+     * exactly as it was (its status kept, like the list's undo) and the form shows again with what was
+     * typed; after «Bỏ khỏi sản phẩm» the picture goes back where it stood. A message without one (or
+     * already closed) does nothing.
+     */
+    public function undoLast(): void
+    {
+        $undo = $this->undo;
+        $image = $this->undoImage;
+        $this->clearToast();
+        if ($undo === 'trash' && $this->screen === 'trash') {
+            $this->bringBack(asDraft: false);
+        } elseif ($undo === 'image' && $image !== null && $this->screen === 'form') {
+            $this->authorizeEdit();
+            $ids = array_values(array_filter($this->imageMediaIds, static fn (int $id): bool => $id !== $image['id']));
+            array_splice($ids, max(0, min($image['at'], count($ids))), 0, [$image['id']]);
+            $this->imageMediaIds = $ids;
+        }
+    }
+
+    private function bringBack(bool $asDraft): void
+    {
+        abort_if($this->ulid === null, 404);
+        abort_unless($this->entitled(), 403);
+
+        $back = DB::transaction(function () use ($asDraft): ?Product {
+            $product = Product::onlyTrashed()->where('ulid', $this->ulid)->lockForUpdate()->first();
+            if ($product === null) {
+                // back already (another tab, another member): nothing to do but show the form
+                return Product::query()->where('ulid', $this->ulid)->first();
+            }
+            $this->authorize('restore', $product);
+            $product->restore();
+            if ($asDraft) {
+                $product->forceFill(['status' => 'draft'])->save();
+            }
+
+            return $product;
+        });
+        if ($back === null) {
+            $this->productGone();
+
+            return;
+        }
+
+        $this->screen = 'form';
+        $this->status = $back->status;
+        $this->publishedAt = self::iso($back->published_at);
+        $this->liveUrl = $this->status === 'published' ? $this->address['base'].$this->slug : null;
+        $this->checked = null;
+        $this->canEdit = Gate::allows('update', $back);
+        $this->mayTrash = $this->canEdit && $this->mayDelete($back);
+        if ($asDraft) {
+            $this->dispatch('bs-toast', text: Cast::string(__('catalog.ed.toast_restored')));
+        }
+    }
+
+    /** Close the message the member (or its timer) names; a newer message stays. */
+    public function closeToast(int $seq): void
+    {
+        if ($seq === $this->toastSeq) {
+            $this->clearToast();
+        }
+    }
+
+    private function clearToast(): void
+    {
+        $this->toastMsg = '';
+        $this->undo = null;
+        $this->undoImage = null;
+    }
+
+    /**
+     * @param  array{id: int, at: int}|null  $image
+     */
+    private function say(string $message, ?string $undo, ?array $image = null): void
+    {
+        $this->toastMsg = $message;
+        $this->toastSeq++;
+        $this->undo = $undo;
+        $this->undoImage = $image;
     }
 
     /**
      * «Chuyển vào thùng rác» in the ⋮, for a saved product — the same move as the list's row, through
      * the same checks (the plan has the catalog; the policy asked about the product, with the member's
      * category limits): the product goes to the Trash, keeping its translations, images and sku, and
-     * the editor leaves for the list, which says so. A right taken away since the screen opened (the
+     * the screen shows the Trash card with a message that offers «Hoàn tác». A right taken away since the screen opened (the
      * role's, or the product now outside the member's category limits) is refused in words. A product
      * already in the Trash (another tab, another member) is not moved again — that would restart its
      * purge clock — and the member gets the list's words for a product that is gone: the row is read
@@ -332,11 +547,12 @@ final class Editor extends Component
             return;
         }
 
-        // nothing is left to save: the page leaves without asking about unsaved changes, and is not drawn
-        // again for a product that is now in the Trash
-        $this->saved = $this->tracked();
-        $this->skipRender();
-        $this->js('window.bsLeaveTo('.Js::encode(route('admin.catalog.index')).', '.Js::encode(['text' => Cast::string(__('catalog.toast_trashed', ['name' => $name !== '' ? $name : ($this->name !== '' ? $this->name : __('catalog.untitled'))]))]).')');
+        // the board's way: the screen stays, shows the Trash card in place of the form (which keeps what
+        // was typed, for «Hoàn tác») and says so with «Hoàn tác»
+        $this->screen = 'trash';
+        $this->mayRestore = Gate::allows('restore', $product);
+        $this->checked = null;
+        $this->say(Cast::string(__('catalog.toast_trashed', ['name' => $name !== '' ? $name : ($this->name !== '' ? $this->name : __('catalog.untitled'))])), 'trash');
     }
 
     /**
@@ -378,7 +594,67 @@ final class Editor extends Component
     public function updatedCategoryId(): void
     {
         $this->authorizeEdit();
+        // the main category set on its own: it leads the list (none: the main one leaves it)
+        $others = array_values(array_filter(array_slice($this->categoryIds, 1), fn (int $id): bool => $id !== $this->categoryId));
+        $this->categoryIds = $this->categoryId !== null ? [$this->categoryId, ...$others] : $others;
+        $this->categoryId = $this->categoryIds[0] ?? null;
         $this->address = $this->previewAddress($this->pickedCategory());
+    }
+
+    /**
+     * A box in the categories list: file the product under the category too, or take it out. The
+     * first category ticked becomes the main one; when the main one is unticked the next one takes
+     * its place. A member limited to some product categories adds or takes out only categories inside
+     * them (the list offers no other; a stored one outside stays); a category of another website or
+     * none at all is refused. Nothing is saved until the product is.
+     */
+    public function toggleCategory(string $ulid): void
+    {
+        $this->authorizeEdit();
+        $id = $this->categoryIdOf($ulid);
+        $this->authorizeFiling($id);
+        if (in_array($id, $this->categoryIds, true)) {
+            $this->categoryIds = array_values(array_filter($this->categoryIds, static fn (int $at): bool => $at !== $id));
+        } else {
+            $this->categoryIds[] = $id;
+        }
+        $this->categoryChanged();
+    }
+
+    /** «Đặt làm mục chính» on a ticked category: it moves to the front, the main category now. */
+    public function setMainCategory(string $ulid): void
+    {
+        $this->authorizeEdit();
+        $id = $this->categoryIdOf($ulid);
+        abort_unless(in_array($id, $this->categoryIds, true), 404);
+        $this->authorizeFiling($id);
+        $this->categoryIds = [$id, ...array_values(array_filter($this->categoryIds, static fn (int $at): bool => $at !== $id))];
+        $this->categoryChanged();
+    }
+
+    /** A product category of this website by its key (RLS keeps other websites' out): its id, or a 404. */
+    private function categoryIdOf(string $ulid): int
+    {
+        $id = Taxonomy::query()->where('vocabulary', 'product_cat')->where('ulid', $ulid)->value('id');
+        abort_unless(is_numeric($id), 404);
+
+        return (int) $id;
+    }
+
+    /** A category the member puts the product under must be inside their product limits (CatalogPolicy::fileUnder). */
+    private function authorizeFiling(int $id): void
+    {
+        $this->authorize('fileUnder', [Product::class, $id]);
+    }
+
+    private function categoryChanged(): void
+    {
+        $previous = $this->categoryId;
+        $this->categoryId = $this->categoryIds[0] ?? null;
+        $this->resetErrorBag('categoryId');
+        if ($previous !== $this->categoryId) {
+            $this->address = $this->previewAddress($this->pickedCategory());
+        }
     }
 
     /** Leaving the price: shown the Vietnamese way when it reads, checked, and the sale price checked again if it was refused. */
@@ -485,9 +761,32 @@ final class Editor extends Component
     /** "Đăng" / "Cập nhật": save it published. Nothing saved, the status stays as it was. */
     public function publish(): void
     {
+        $this->saveAs(self::PRODUCT_LIVE);
+    }
+
+    /**
+     * «Gỡ khỏi website» in the ⋮ of a published product: save it archived — visitors no longer see it,
+     * its content and address kept. A save like the others: a field to fix stops it.
+     */
+    public function unpublish(): void
+    {
+        abort_if($this->ulid === null || $this->status !== self::PRODUCT_LIVE, 404);
+        $this->saveAs('archived');
+    }
+
+    /** «Đưa về nháp» in the ⋮ of a published or archived product: save it as a draft. */
+    public function toDraft(): void
+    {
+        abort_if($this->ulid === null || ! in_array($this->status, [self::PRODUCT_LIVE, 'archived'], true), 404);
+        $this->saveAs('draft');
+    }
+
+    private function saveAs(string $status): void
+    {
         $this->authorizeEdit();
         $was = $this->status;
         $this->publishing = true;
+        $this->target = $status;
         $this->publishFrom = $was;
 
         try {
@@ -540,6 +839,9 @@ final class Editor extends Component
      */
     public function autosave(): void
     {
+        if ($this->screen !== 'form') {
+            return; // a timer left over from the form (the product just went to the Trash): nothing to save
+        }
         $this->authorizeEdit();
         if ($this->status !== 'draft' || $this->changeCount() === 0) {
             return;
@@ -562,7 +864,7 @@ final class Editor extends Component
         $this->saveFailed = false;
 
         if ($this->ulid === null) {
-            $this->reset('name', 'slug', 'description', 'summary', 'seoTitle', 'seoDescription', 'categoryId', 'price', 'salePrice', 'saleStartsAt', 'saleEndsAt', 'stock', 'featured', 'bestseller', 'sku', 'imageMediaIds', 'summaryStored', 'summaryShown');
+            $this->reset('name', 'slug', 'description', 'summary', 'seoTitle', 'seoDescription', 'categoryId', 'categoryIds', 'price', 'salePrice', 'saleStartsAt', 'saleEndsAt', 'stock', 'featured', 'bestseller', 'sku', 'imageMediaIds', 'summaryStored', 'summaryShown');
             $this->address = $this->previewAddress(null);
             $this->saved = $this->tracked();
 
@@ -591,11 +893,16 @@ final class Editor extends Component
      */
     protected function addGalleryImage(int $mediaId): void
     {
+        $this->authorizeEdit();
         if (! in_array($mediaId, $this->imageMediaIds, true)) {
             $this->imageMediaIds[] = $mediaId;
         }
     }
 
+    /**
+     * «Bỏ khỏi sản phẩm»: the picture leaves the product (it stays in the Library), with «Hoàn tác»
+     * that puts it back where it stood. Taking the main picture off says which one takes its place.
+     */
     public function removeImage(int $index): void
     {
         $this->authorizeEdit();
@@ -604,8 +911,36 @@ final class Editor extends Component
         }
 
         $ids = $this->imageMediaIds;
+        $id = $ids[$index];
         array_splice($ids, $index, 1); // splice re-packs the keys — still a list
         $this->imageMediaIds = $ids;
+
+        $names = Media::query()->whereIn('id', array_filter([$id, $index === 0 ? ($ids[0] ?? null) : null]))->pluck('original_filename', 'id');
+        $name = Cast::string($names->get($id)) ?: Cast::string(__('catalog.ed.img_unnamed'));
+        $next = $index === 0 && $ids !== [] ? (Cast::string($names->get($ids[0])) ?: Cast::string(__('catalog.ed.img_unnamed'))) : null;
+        $this->say(Cast::string($next !== null
+            ? __('catalog.ed.toast_img_cover_removed', ['name' => $name, 'next' => $next])
+            : __('catalog.ed.toast_img_removed', ['name' => $name])), 'image', ['id' => $id, 'at' => $index]);
+    }
+
+    /** A picture dragged to another place in the strip (or moved by its buttons): it moves there, the others close up. */
+    public function moveImage(int $from, int $to): void
+    {
+        $this->authorizeEdit();
+        if (! array_key_exists($from, $this->imageMediaIds) || ! array_key_exists($to, $this->imageMediaIds) || $from === $to) {
+            return;
+        }
+
+        $ids = $this->imageMediaIds;
+        $moved = array_splice($ids, $from, 1);
+        array_splice($ids, $to, 0, $moved);
+        $this->imageMediaIds = $ids;
+    }
+
+    /** «Đặt làm ảnh đại diện»: the picture moves to the front — the first picture is the product's main one. */
+    public function setCover(int $index): void
+    {
+        $this->moveImage($index, 0);
     }
 
     public function moveImageUp(int $index): void
@@ -622,14 +957,16 @@ final class Editor extends Component
 
     public function render(): View
     {
+        $isNew = $this->ulid === null;
+        $title = Cast::string(__($isNew ? 'catalog.create_title' : ($this->canEdit ? 'catalog.edit_title' : 'catalog.ed.view_title')));
+        $user = auth()->user();
+        if ($this->screen !== 'form') {
+            return $this->stateView($title, $isNew, $user instanceof User ? $user : null);
+        }
         $urls = app(MediaUrlResolver::class);
         $actions = $this->actions();
-        $isNew = $this->ulid === null;
-        $title = Cast::string(__($isNew ? 'catalog.create_title' : 'catalog.edit_title'));
-        $user = auth()->user();
         $selling = $this->selling;
-        $categories = $this->availableCategories();
-        $this->rememberCategoryName($categories);
+        $categories = $this->categoryRows();
 
         return view('admin::livewire.catalog.editor', [
             'frame' => [
@@ -651,6 +988,7 @@ final class Editor extends Component
             'selling' => $selling,
             'priceCard' => $this->priceCard(),
             'mayOpenSettings' => $user instanceof User && $user->can('settings.manage'),
+            'mayManageCategories' => $user instanceof User && $user->can('taxonomies.manage'),
             'galleryImages' => $this->galleryImages($urls),
             'pickerMedia' => $this->pickerMedia(),
             'urls' => $urls,
@@ -660,6 +998,25 @@ final class Editor extends Component
             'publishCard' => $this->publishCard($selling),
             'summaryWarning' => $this->summaryWarning(),
             'changes' => $this->changeCount(),
+            'roRole' => ! $this->canEdit && $user instanceof User ? RoleLabel::topOf($user) : null,
+        ]);
+    }
+
+    /**
+     * The card in place of the form (the board's states): the trail and the screen's name above it, the
+     * card's own words and buttons, and the message at the bottom (the Trash card's «Hoàn tác»).
+     */
+    private function stateView(string $title, bool $isNew, ?User $user): View
+    {
+        return view('admin::livewire.catalog.editor-state', [
+            'title' => $title,
+            'crumbs' => [
+                ['label' => Cast::string(__('catalog.ed.crumb_list')), 'url' => route('admin.catalog.index')],
+                ['label' => Cast::string(__($isNew ? 'admin.editor.crumb_new' : 'admin.editor.crumb_edit'))],
+            ],
+            'role' => $user !== null && $this->screen === 'noperm' ? RoleLabel::topOf($user) : null,
+            'mayList' => $user !== null && $this->screen === 'noperm' && $user->can('viewAny', Product::class),
+            'supportMail' => $this->screen === 'plan' ? (Cast::string(config('support.mailbox')) ?: Cast::string(config('mail.from.address'))) : '',
         ]);
     }
 
@@ -692,6 +1049,11 @@ final class Editor extends Component
             // a member limited to some product categories must pick one inside them (CatalogPolicy::fileUnder)
             'categoryId' => [Rule::requiredIf(fn (): bool => $this->limitedOnProducts()), 'nullable', 'integer',
                 $this->categoryExists(...), $this->categoryIsInsideLimits(...)],
+            // the other categories: each one a product category of this website (RLS), and one the
+            // product was not under before inside the member's limits (one already there they cannot
+            // see is kept as it is)
+            'categoryIds' => ['array', 'max:'.(Product::FACET_POSITION_BASE - 1)],
+            'categoryIds.*' => ['integer', 'distinct', $this->categoryExists(...), $this->addedCategoryIsInsideLimits(...)],
             'price' => ['nullable', 'string', $this->amountReads(...)],
             'salePrice' => ['nullable', 'string', $this->amountReads(...), $this->saleIsBelowPrice(...)],
             'saleStartsAt' => ['string', $this->momentReads(...)],
@@ -727,12 +1089,14 @@ final class Editor extends Component
     }
 
     /**
-     * Every action re-checks the right to manage products (the update endpoint skips route
-     * middleware) — about the stored product itself, so a member limited to some product categories
-     * is refused one outside them.
+     * Every action re-checks the plan and the right to manage products (the update endpoint skips
+     * route middleware, and the routes leave both to this screen so it can show their cards) — about
+     * the stored product itself, so a member limited to some product categories is refused one outside
+     * them, and a member who may only see products is refused every write.
      */
     private function authorizeEdit(): void
     {
+        abort_unless($this->entitled(), 403);
         if ($this->ulid === null) {
             $this->authorize('create', Product::class);
 
@@ -763,6 +1127,50 @@ final class Editor extends Component
         if ($user instanceof User && is_numeric($value) && ! app(CategoryScopes::class)->coversId($user, (int) $value, CategoryScopes::PRODUCTS)) {
             $fail($this->limitsRefusal());
         }
+    }
+
+    /** A category the product was not under when last saved is inside the member's product limits. */
+    private function addedCategoryIsInsideLimits(string $attribute, mixed $value, \Closure $fail): void
+    {
+        $before = json_decode($this->saved['categoryIds'] ?? '[]', true);
+        if (is_numeric($value) && ! in_array((int) $value, is_array($before) ? $before : [], true)) {
+            $this->categoryIsInsideLimits($attribute, $value, $fail);
+        }
+    }
+
+    /** A category's place among the product's (its pivot position; none reads as past every category). */
+    private static function pivotPosition(Taxonomy $taxonomy): int
+    {
+        $pivot = $taxonomy->relationLoaded('pivot') ? $taxonomy->getRelation('pivot') : null;
+        $position = $pivot instanceof Pivot ? $pivot->getAttribute('position') : null;
+
+        return is_numeric($position) ? (int) $position : Product::FACET_POSITION_BASE;
+    }
+
+    /**
+     * The categories to store: the form's list, plus every category the product is stored under now
+     * (read under the row lock, so one added elsewhere since the form opened counts) that lies outside
+     * the member's product limits — a member limited to some categories never takes out one they
+     * cannot see. A member not limited on products stores the form's list as it is.
+     *
+     * @return list<int>
+     */
+    private function filedUnder(Product $product): array
+    {
+        $user = auth()->user();
+        if ($product->wasRecentlyCreated || ! $user instanceof User || ! $this->limitedOnProducts()) {
+            return $this->categoryIds;
+        }
+        $relation = $product->taxonomies();
+        $stored = array_map(Cast::int(...), $relation->newPivotQuery()
+            ->where('position', '<', Product::FACET_POSITION_BASE)
+            ->orderBy('position')
+            ->pluck($relation->getRelatedPivotKeyName())
+            ->all());
+        $scopes = app(CategoryScopes::class);
+        $kept = array_filter($stored, fn (int $id): bool => ! in_array($id, $this->categoryIds, true) && ! $scopes->coversId($user, $id, CategoryScopes::PRODUCTS));
+
+        return [...$this->categoryIds, ...array_values($kept)];
     }
 
     /** Fill the form from a saved product. */
@@ -799,7 +1207,13 @@ final class Editor extends Component
         usort($changed, fn (?DateTimeInterface $a, ?DateTimeInterface $b): int => ($b?->getTimestamp() ?? 0) <=> ($a?->getTimestamp() ?? 0));
         $this->savedAt = self::iso($changed[0]);
 
-        $category = $product->primaryCategory();
+        // every category in one read (or the one the screen opened with), the main one (position 0) first
+        $categories = $product->relationLoaded('taxonomies')
+            ? $product->taxonomies->filter(static fn (Taxonomy $taxonomy): bool => self::pivotPosition($taxonomy) < Product::FACET_POSITION_BASE)
+                ->sortBy(static fn (Taxonomy $taxonomy): int => self::pivotPosition($taxonomy))
+            : $product->taxonomies()->wherePivot('position', '<', Product::FACET_POSITION_BASE)->get();
+        $this->categoryIds = array_values($categories->map(static fn (Taxonomy $taxonomy): int => $taxonomy->id)->all());
+        $category = $categories->first();
         $this->categoryId = $category?->id;
         $this->address = $this->previewAddress($category);
         $this->imageMediaIds = $this->normalizeIds($product->images()->pluck('media_id')->all());
@@ -867,6 +1281,7 @@ final class Editor extends Component
     {
         $wasNew = $this->ulid === null;
         $wasLive = $this->liveUrl !== null;
+        $wasStatus = $this->publishFrom ?? $this->status;
         $slugWasBlank = trim($this->slug) === '';
         // A draft saving itself while the person types stores the tidied text but leaves the fields
         // exactly as typed: a space at the end of a word or a new line must not vanish under the
@@ -943,6 +1358,9 @@ final class Editor extends Component
                 $this->statusChangedElsewhere => __('catalog.ed.toast_status_elsewhere', ['status' => __('catalog.ed.chip_'.$this->status)]),
                 $this->status === 'published' && ! $wasLive => __('catalog.ed.toast_published', ['url' => $this->liveUrl]),
                 $this->status === 'published' => __('catalog.ed.toast_updated'),
+                // a move from the ⋮ (the board's words)
+                $this->publishing && $this->status === 'archived' && $wasLive => __('catalog.ed.toast_unpublished'),
+                $this->publishing && $this->status === 'draft' && $wasStatus !== 'draft' => __('catalog.ed.toast_to_draft'),
                 $this->status === 'draft' => __('catalog.ed.toast_draft', ['time' => $time]),
                 default => __('catalog.ed.toast_saved', ['time' => $time]),
             });
@@ -953,13 +1371,17 @@ final class Editor extends Component
 
     /**
      * The two save buttons: the secondary one saves keeping the status (none on a published
-     * product), the main one saves it published.
+     * product), the main one saves it published. A member who may only read the product gets
+     * neither (the board's read-only form: no save, no ⋮ actions, no bar along the bottom).
      *
-     * @return array{secondary: string|null, primary: string, primaryAction: string, primaryIcon: string}
+     * @return array{secondary: string|null, primary: string|null, primaryAction: string, primaryIcon: string}
      */
     private function actions(): array
     {
         $live = $this->status === 'published';
+        if (! $this->canEdit) {
+            return ['secondary' => null, 'primary' => null, 'primaryAction' => 'publish', 'primaryIcon' => 'ri-global'];
+        }
 
         return [
             'secondary' => match ($this->status) {
@@ -1228,7 +1650,7 @@ final class Editor extends Component
         $this->skippedFor = null;
         $untouched = ['description' => $this->description, 'imageMediaIds' => $this->imageMediaIds];
         if ($this->ulid === null) {
-            $this->status = $this->publishing ? 'published' : 'draft';
+            $this->status = $this->publishing ? $this->target : 'draft';
         }
 
         // A cleared input arrives as '' — store NULL: an '' sku would enter the partial
@@ -1293,7 +1715,7 @@ final class Editor extends Component
             }
         }
         if ($this->publishing) {
-            $this->status = self::PRODUCT_LIVE;
+            $this->status = $this->target;
         }
         try {
             $this->validate();
@@ -1366,7 +1788,7 @@ final class Editor extends Component
             ],
         );
 
-        $product->assignCategories($this->categoryId !== null ? [$this->categoryId] : []);
+        $product->assignCategories($this->filedUnder($product));
         if ($product->wasRecentlyCreated && in_array(true, $flags, true)) {
             // a new product's labels through the list's own write, once it is filed (the right to
             // change it is asked about its category); it has none until one is switched on
@@ -1449,47 +1871,45 @@ final class Editor extends Component
     }
 
     /**
-     * Product categories (product_cat) for the picker, mapped to id + localized name.
+     * The categories list (the board's «Chuyên mục»): every product category in menu order, parents
+     * before children (indented two levels at most), with the names above it for a search result,
+     * whether the product is under it and whether it is the main one. A member limited to some product
+     * categories is offered only those inside the limits (a category the product is under that they
+     * cannot see stays as it is). Keys only: no id reaches the page.
      *
-     * @return list<array{id: int, name: string}>
+     * @return list<array{ulid: string, label: string, depth: int, path: string, on: bool, main: bool}>
      */
-    private function availableCategories(): array
+    private function categoryRows(): array
     {
+        $tree = CategoryTree::products(app(CurrentSite::class)->id(), $this->locale);
         $user = auth()->user();
-        // a member limited to some product categories is offered only those inside the limits
         $within = $user instanceof User ? app(CategoryScopes::class)->allowedTaxonomyIds($user, CategoryScopes::PRODUCTS) : null;
-        $categories = Taxonomy::query()
-            ->where('vocabulary', 'product_cat')
-            ->when($within !== null, static fn ($query) => $query->whereKey($within ?? []))
-            ->with('translations:id,taxonomy_id,locale,name,slug')
-            ->get()
-            ->map(function (Taxonomy $taxonomy): array {
-                $translation = $taxonomy->translationFor($this->locale);
+        $inside = $within === null ? null : array_flip($within);
+        $main = $this->categoryIds[0] ?? null;
+        $rows = [];
+        foreach ($tree->choices() as $choice) {
+            $id = $tree->idOf($choice['ulid']);
+            if ($id === null || ($inside !== null && ! isset($inside[$id]))) {
+                continue;
+            }
+            $rows[] = ['ulid' => $choice['ulid'], 'label' => $choice['label'], 'depth' => $choice['depth'], 'path' => $choice['path'],
+                'on' => in_array($id, $this->categoryIds, true), 'main' => $id === $main];
+        }
+        $this->rememberCategoryName($main !== null ? $tree->label($main) : null);
 
-                return [
-                    'id' => $taxonomy->id,
-                    'name' => $translation instanceof TaxonomyTranslation ? $translation->name : __('catalog.unnamed'),
-                ];
-            })
-            ->all();
-
-        return array_values($categories);
+        return $rows;
     }
 
     /**
-     * Keep the drawn main category's name (from the list just built, no query of its own): when the
-     * category is gone from the list, the name learnt for that id is kept.
-     *
-     * @param  list<array{id: int, name: string}>  $categories
+     * Keep the main category's name (from the tree just read, no query of its own): when the category
+     * is gone from it, the name learnt for that id is kept.
      */
-    private function rememberCategoryName(array $categories): void
+    private function rememberCategoryName(?string $name): void
     {
-        foreach ($categories as $category) {
-            if ($category['id'] === $this->categoryId) {
-                $this->categoryShown = $category;
+        if ($this->categoryId !== null && $name !== null) {
+            $this->categoryShown = ['id' => $this->categoryId, 'name' => $name];
 
-                return;
-            }
+            return;
         }
         if (($this->categoryShown['id'] ?? null) !== $this->categoryId) {
             $this->categoryShown = null;

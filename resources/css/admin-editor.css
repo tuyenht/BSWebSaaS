@@ -206,3 +206,267 @@
         display: inline;
     }
 }
+
+/* The product's categories (board 09 «Chuyên mục»): a box per category, the whole row its target, 44
+   high; children indent two levels at most (none while searching, where the names above show instead).
+   «Đặt làm mục chính» sits above the row's target. */
+.ped-cr {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.125rem 0.5rem;
+    min-height: 2.75rem;
+    padding: 0.25rem 0.5rem;
+    border-bottom: 1px solid var(--color-border);
+    box-sizing: border-box;
+}
+
+.ped-cr:last-of-type {
+    border-bottom: 0;
+}
+
+.ped-cr[data-d='1'] {
+    padding-inline-start: 1.75rem;
+}
+
+.ped-cr[data-d='2'] {
+    padding-inline-start: 3rem;
+}
+
+.ped-cr > label {
+    display: flex;
+    flex: 1 1 8.75rem;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    color: var(--color-text);
+    cursor: pointer;
+}
+
+.ped-cr > label::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+}
+
+.ped-cr > label > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.ped-cr input {
+    flex: none;
+    width: 1.125rem;
+    height: 1.125rem;
+    accent-color: var(--color-primary-text);
+}
+
+.ped-cr input:disabled + span {
+    cursor: default;
+}
+
+.ped-cr .ped-star,
+.ped-cr .ped-main {
+    position: relative;
+    z-index: 1;
+}
+
+.ped-star {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: var(--spacing-control-row);
+    padding: 0 0.5rem;
+    border: 0;
+    border-radius: 0.25rem;
+    background: transparent;
+    font: inherit;
+    font-size: var(--text-caption);
+    color: var(--color-primary-text);
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.ped-star:hover {
+    background: var(--color-surface-hover);
+}
+
+/* The product's pictures (board 09 «Ảnh sản phẩm»): one strip that scrolls sideways, ‹ › at its ends when it overflows. */
+.ped-strip {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.ped-imgs {
+    display: flex;
+    flex: 0 1 auto;
+    flex-wrap: nowrap;
+    gap: 0.625rem;
+    min-width: 0;
+    margin: 0;
+    padding: 2px;
+    box-sizing: border-box;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 2px;
+    scrollbar-width: thin;
+}
+
+.ped-im {
+    position: relative;
+    display: flex;
+    flex: 0 0 calc(8rem + 4 * var(--user-text-boost));
+    flex-direction: column;
+    gap: 0.375rem;
+    min-width: 0;
+    padding: 0.375rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    background: var(--color-surface);
+    scroll-snap-align: start;
+}
+
+.ped-im[data-sel='1'] {
+    border-color: var(--color-primary-text);
+    background: color-mix(in srgb, var(--color-primary-text) 6%, var(--color-surface));
+}
+
+.ped-im[data-over='1'] {
+    border-style: dashed;
+    border-color: var(--color-primary-text);
+}
+
+.ped-im[draggable='true'] {
+    cursor: grab;
+}
+
+.ped-imb {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0.25rem;
+    background: transparent;
+    cursor: pointer;
+}
+
+.ped-imf {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 0.25rem;
+    background: var(--color-surface-muted);
+    overflow: hidden;
+}
+
+.ped-imn {
+    min-width: 0;
+    font-size: var(--text-caption);
+    line-height: 1.4;
+    color: var(--color-text-muted);
+    overflow-wrap: anywhere;
+}
+
+.ped-imaddw {
+    display: flex;
+    flex: none;
+    align-self: stretch;
+    scroll-snap-align: start;
+}
+
+.ped-imadd {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    width: calc(5.5rem + 2 * var(--user-text-boost));
+    min-height: var(--spacing-hit);
+    padding: 0.5rem;
+    box-sizing: border-box;
+    border: 1px dashed var(--color-border-input);
+    border-radius: 0.375rem;
+    background: var(--color-surface);
+    font: inherit;
+    font-size: var(--text-small);
+    color: var(--color-primary-text);
+    cursor: pointer;
+}
+
+.ped-imadd:hover,
+.ped-sarr:hover {
+    background: var(--color-surface-hover);
+}
+
+.ped-sarr {
+    display: inline-flex;
+    flex: 0 0 var(--spacing-hit);
+    align-items: center;
+    justify-content: center;
+    width: var(--spacing-hit);
+    height: var(--spacing-hit);
+    padding: 0;
+    box-sizing: border-box;
+    border: 1px solid var(--color-border-input);
+    border-radius: 0.25rem;
+    background: var(--color-surface);
+    color: var(--color-text-strong);
+    cursor: pointer;
+}
+
+.ped-tb {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    background: var(--color-surface-muted);
+}
+
+.ped-tb > span {
+    flex: 1 1 11.25rem;
+    min-width: 0;
+    font-size: var(--text-small);
+    color: var(--color-text-muted);
+    overflow-wrap: anywhere;
+}
+
+.ped-tb strong {
+    color: var(--color-text-strong);
+}
+
+.ped-imempty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    min-height: 10rem;
+    padding: 1rem;
+    border: 1px dashed var(--color-border-input);
+    border-radius: 0.375rem;
+    background: var(--color-surface-muted);
+    text-align: center;
+    color: var(--color-text-muted);
+}
+
+.ped-imempty > * {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+.ped-main {
+    white-space: nowrap;
+}

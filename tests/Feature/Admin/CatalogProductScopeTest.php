@@ -195,7 +195,7 @@ it('opens and saves in the editor only a product inside the limits, under a cate
         Livewire::actingAs($this->lead)->test(Editor::class, ['ulid' => $this->loose->ulid])->assertForbidden();
 
         $edit = Livewire::actingAs($this->lead)->test(Editor::class, ['ulid' => $this->inside->ulid])->assertOk();
-        expect(array_column($edit->viewData('categories'), 'id'))->toEqualCanonicalizing([$this->moulds->id, $this->small->id]);
+        expect(array_column($edit->viewData('categories'), 'ulid'))->toEqualCanonicalizing([$this->moulds->ulid, $this->small->ulid]);
         $edit->set('categoryId', $this->jigs->id)->call('save')->assertHasErrors(['categoryId']);
         expect(cpsMain($this->inside))->toBe($this->small->id);
         $edit->set('categoryId', null)->call('save')->assertHasErrors(['categoryId' => 'required']);
