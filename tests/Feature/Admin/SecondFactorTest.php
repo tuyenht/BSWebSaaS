@@ -237,8 +237,13 @@ it('shows "please wait" for a resend too soon as a refusal, not as good news', f
         Livewire::test(EmailOtpChallenge::class)
             ->call('resend')
             ->assertSeeHtml('auth-alert auth-alert--success')
+            ->set('code', '000000')
+            ->call('verify')
+            ->assertHasErrors('code')
             ->call('resend')
             ->assertSet('resent', 'wait')
+            ->assertHasNoErrors()
+            ->assertSet('code', '000000')
             ->assertSeeHtml('auth-alert auth-alert--error')
             ->assertDontSeeHtml('auth-alert auth-alert--success');
     });
@@ -264,5 +269,24 @@ it('words the resend notice in the language just switched to, in the right colou
     app(Tenancy::class)->enter(1, function (): void {
         $page = Livewire::test(EmailOtpChallenge::class)->call('resend')->call('switchLocale', 'en');
         $page->assertSee(trans('auth.otp_resent', [], 'en'), false)->assertSeeHtml('auth-alert auth-alert--success');
+    });
+});
+
+it('accepts an emailed code pasted or typed with spaces in it', function (): void {
+    seedTenancy();
+    Notification::fake();
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $otp = app(EmailOtp::class);
+        $otp->send($user);
+        $code = null;
+        Notification::assertSentTo($user, EmailOtpNotification::class, function (EmailOtpNotification $note) use (&$code): bool {
+            $code = (new ReflectionProperty($note, 'code'))->getValue($note);
+
+            return true;
+        });
+
+        expect($otp->verify($user, ' '.substr((string) $code, 0, 3).' '.substr((string) $code, 3)."\t"))->toBeTrue();
     });
 });

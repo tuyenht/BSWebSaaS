@@ -1234,9 +1234,10 @@ function dismissOffer() {
     hideOffer(true);
     focusTo(okFull(p) ? p : guideHome());
 }
-// another dialog open (not the guide's own): the bubble would cover it
+// another dialog open (not the guide's own), or a menu or sheet the member has open (a row's ⋮, a status
+// menu): the bubble would cover it and take its focus
 function offerBlocked() {
-    const ds = document.querySelectorAll('[role=dialog],[role=alertdialog],[aria-modal=true]');
+    const ds = document.querySelectorAll('[role=dialog],[role=alertdialog],[aria-modal=true],[role=menu]');
     for (let i = 0; i < ds.length; i++) {
         const d = ds[i];
         if ((offerEl && offerEl.contains(d)) || d.classList.contains('bg-panel')) {
@@ -1254,8 +1255,15 @@ function placeOffer() {
     }
     const l = openBtn();
     if (offerBlocked()) {
-        // another dialog took the screen: step aside and leave focus where that dialog put it
+        // another dialog took the screen: step aside and leave focus where that dialog put it. A menu
+        // opened while the bubble held the focus could not take it: it goes to the menu's first item.
+        const had = !!(document.activeElement && offerEl.contains(document.activeElement));
         hideOffer(true);
+        const menu = had ? [...document.querySelectorAll('[role=menu]')].find(vis) : null;
+        const item = menu ? [...menu.querySelectorAll('[role=menuitem],[role=menuitemradio],[role=menuitemcheckbox]')].find(vis) : null;
+        if (item) {
+            focusTo(item);
+        }
         return;
     }
     if (!l || !inView(l.getBoundingClientRect())) {
@@ -1416,8 +1424,8 @@ export function offer() {
 document.addEventListener(
     'focusin',
     (e) => {
-        // a dialog the page opens itself keeps the focus it took
-        if (offerEl && e.target instanceof Element && !offerEl.contains(e.target) && !e.target.closest('[role=dialog],[role=alertdialog],[aria-modal=true]')) {
+        // a dialog the page opens itself, or a menu or sheet the member opened, keeps the focus it took
+        if (offerEl && e.target instanceof Element && !offerEl.contains(e.target) && !e.target.closest('[role=dialog],[role=alertdialog],[aria-modal=true],[role=menu]')) {
             try {
                 offerEl.focus({ preventScroll: true });
             } catch {

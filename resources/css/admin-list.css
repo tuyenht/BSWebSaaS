@@ -1072,24 +1072,27 @@
             border-width: 1px 0 0;
             border-radius: 0.75rem 0.75rem 0 0;
         }
-
-        .list-menu[data-sheet='row'] .list-mh {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            padding: 0.5rem 0.875rem 0.25rem;
-            font-size: var(--text-caption);
-            font-weight: 600;
-            color: var(--color-text-muted);
-            overflow-wrap: anywhere;
-        }
     }
 
+    /* Its title, «Thao tác khác cho "…"», in the small muted heading type over the items: on the sheet
+       and on the menu beside the ⋮ alike (board 05 draws it at every width). */
+    .list-menu[data-sheet='row'] .list-mh {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        padding: 0.5rem 0.875rem 0.25rem;
+        font-size: var(--text-caption);
+        font-weight: 600;
+        color: var(--color-text-muted);
+        overflow-wrap: anywhere;
+    }
+
+    /* A list's menus and popovers come in with a short rise (the sheet from the bottom alike); none
+       when the member asks for less motion. */
     @media (prefers-reduced-motion: no-preference) {
-        @container list (width < 56.25rem) {
-            .list-menu[data-sheet='row'] {
-                animation: list-sheet-in 0.16s ease-out;
-            }
+        .list-menu,
+        .list-stm {
+            animation: list-sheet-in 0.16s ease-out;
         }
     }
 
@@ -2449,6 +2452,14 @@
 [data-fold-wait] {
     visibility: hidden;
     animation: list-fold-release 0s 1.5s forwards;
+}
+
+/* The open ⋮ wears the accent edge on a light accent fill, as the board's open buttons do, under the
+   pointer too (outside the layers, so the button's hover tint does not take the fill away). Its fixed size
+   takes the 1px edge inside, so nothing moves. */
+.list-more > [data-guide='row-more'][aria-expanded='true'] {
+    border: 1px solid var(--color-primary-text);
+    background: color-mix(in srgb, var(--color-primary-text) 7%, var(--color-surface));
 }
 
 @keyframes list-sheet-in {

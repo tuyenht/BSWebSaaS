@@ -36,7 +36,7 @@
                 aria-label="{{ __('admin.list.more_for', ['name' => $name]) }}" title="{{ __('admin.list.more') }}"
                 {{ $attributes->only([])->merge($boundLabel ? ['x-bind:aria-label' => $boundLabel] : []) }}
                 aria-haspopup="menu" ::aria-expanded="open.toString()"
-                x-on:click="up = window.innerHeight - $el.getBoundingClientRect().bottom < 300; open = ! open; sheet && lock(false); open && $nextTick(() => { getComputedStyle($refs.menu).getPropertyValue('--list-sheet').trim() === '1' && lock(true); $focus.within($refs.menu).first() })">
+                x-on:click="up = window.innerHeight - $el.getBoundingClientRect().bottom < 300; open = ! open; sheet && lock(false); open && $nextTick(() => { getComputedStyle($refs.menu).getPropertyValue('--list-sheet').trim() === '1' && lock(true); window.bsMenu.move($refs.menu, 'first') })">
                 <x-bs-admin::icon name="ri-more-2-fill" class="list-more-i" />
             </x-bs-admin::button>
             <div x-show="open" x-cloak class="list-sheet-bg" data-sheet="{{ $sheet }}" x-on:click="close(true)"></div>

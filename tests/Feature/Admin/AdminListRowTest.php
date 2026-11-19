@@ -105,7 +105,10 @@ it('turns a row menu without a title into the phone sheet board 05 draws, titled
         // while it is a sheet Tab stays inside and the page does not scroll; the stylesheet says when it is one
         ->and($html)->toContain("getPropertyValue('--list-sheet').trim() === '1' && lock(true)")
         ->and($html)->toContain("if (on) { this.was = de.overflow; de.overflow = 'hidden' } else { de.overflow = this.was }")
-        ->and($html)->toContain('x-on:keydown.tab="$data.sheet ? ($event.preventDefault(), $event.shiftKey ? $focus.within($refs.menu).wrap().prev() : $focus.within($refs.menu).wrap().next()) : (open = false)"')
+        ->and($html)->toContain('x-on:keydown.tab="$data.sheet ? ($event.preventDefault(), window.bsMenu.move($refs.menu, $event.shiftKey ? \'prev\' : \'next\')) : (open = false)"')
+        // the keys and the opening move only between the items that show (an item the row shows as its own button is hidden)
+        ->and($html)->toContain('x-on:keydown.down.prevent="window.bsMenu.move($refs.menu, \'next\')"')
+        ->and($html)->toContain("window.bsMenu.move(\$refs.menu, 'first')")
         // the same items: the Livewire action and the reason of an item that cannot be used yet
         ->and($html)->toContain('wire:click="duplicate"')
         ->and($html)->toContain('<span class="list-mwhy">Bài chưa đăng</span>');
@@ -116,7 +119,15 @@ it('turns a row menu without a title into the phone sheet board 05 draws, titled
     expect($css)->toMatch("/@container list \\(width < 56\\.25rem\\) \\{\\s*\\.list-sheet-bg\\[data-sheet='row'\\] \\{[^}]*position: fixed;[^}]*\\}\\s*\\.list-menu\\[data-sheet='row'\\] \\{\\s*--list-sheet: 1;\\s*position: fixed;\\s*inset: auto 0 0 0;/")
         ->and($css)->toMatch("/@media \\(max-width: 37\\.4999rem\\) \\{\\s*\\.list-sheet-bg\\[data-sheet='title'\\] \\{[^}]*\\}\\s*\\.list-menu\\[data-sheet='title'\\] \\{\\s*--list-sheet: 1;/")
         ->and($css)->toMatch('/\\.list-mh,\\s*\\.list-sheet-bg,\\s*\\.list-mx \\{\\s*display: none;/')
-        ->and($css)->toMatch('/@media \\(prefers-reduced-motion: no-preference\\) \\{\\s*@container list \\(width < 56\\.25rem\\) \\{\\s*\\.list-menu\\[data-sheet=\'row\'\\] \\{\\s*animation: list-sheet-in/')
+        // every list menu and the status menu rise in (the sheet alike), never for one who asked for less motion
+        ->and($css)->toMatch('/@media \\(prefers-reduced-motion: no-preference\\) \\{\\s*\\.list-menu,\\s*\\.list-stm \\{\\s*animation: list-sheet-in 0\\.16s ease-out;/')
+        // the row menu's title shows at every width (board 05 draws it beside the ⋮ at 1366 too), and the open ⋮ wears the accent edge
+        ->and($css)->toMatch("/\\.list-menu\\[data-sheet='row'\\] \\.list-mh \\{\\s*display: flex;/")
+        // … in no width rule: only the stylesheet's own @layer wraps it
+        ->and(substr_count($before = substr($css, 0, (int) strpos($css, ".list-menu[data-sheet='row'] .list-mh {")), '{') - substr_count($before, '}'))->toBe(1)
+        ->and($css)->toMatch("/\\.list-more > \\[data-guide='row-more'\\]\\[aria-expanded='true'\\] \\{\\s*border: 1px solid var\\(--color-primary-text\\);/")
+        // … outside every layer, so the button's hover tint does not take the fill away
+        ->and(substr_count($open = substr($css, 0, (int) strpos($css, ".list-more > [data-guide='row-more'][aria-expanded='true'] {")), '{') - substr_count($open, '}'))->toBe(0)
         ->and(substr_count($css, '--list-sheet: 1;'))->toBe(2);
 });
 
