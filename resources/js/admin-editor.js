@@ -9,6 +9,8 @@
 //    typed stays in the form.
 // The buttons are plain wire:click buttons, so they work before this part has loaded.
 
+import * as kept from './admin-kept.js';
+
 const SAVES = ['save', 'publish', 'autosave'];
 
 /** A field's value as the server writes it in `saved` (Editor::tracked). */
@@ -57,11 +59,12 @@ export function stateText(state, words, n, status) {
 }
 
 /**
- * @param {{ fields: string[], words: Record<string, string>, delay?: number, autosave?: boolean, extra?: string }} cfg
+ * @param {{ fields: string[], words: Record<string, string>, delay?: number, autosave?: boolean, extra?: string, keep?: { key: string } }} cfg
  *   the counted fields, the words of each state, the wait before a draft saves itself (ms);
  *   `autosave: false` for an editor whose drafts do not save themselves; `extra` names a $wire
  *   property holding a count of changes the server keeps itself (a list the browser cannot write
- *   the way the server does), added to the browser's count.
+ *   the way the server does), added to the browser's count; `keep` (the editor of live content) names the
+ *   key under which unsaved changes are copied to this device (admin-kept.js).
  */
 export function editorSave(cfg) {
     const delay = cfg.delay ?? 3000;
@@ -70,6 +73,9 @@ export function editorSave(cfg) {
     let effect = null;
     let page = null;
     let onInput = null;
+    let keepTimer = null;
+    let onSaved = null;
+    let onHide = null;
 
     return {
         busy: false,
@@ -84,6 +90,19 @@ export function editorSave(cfg) {
                 this.typed = true;
             };
             page.addEventListener('input', onInput, true);
+
+            // Live content with unsaved changes also lives on this device (the band «Có thay đổi chưa
+            // lưu từ …» offers it back): written a second after the last change and when the page is
+            // left, forgotten once a save really stored the text.
+            if (cfg.keep) {
+                onSaved = () => {
+                    clearTimeout(keepTimer);
+                    kept.remove(cfg.keep.key);
+                };
+                onHide = () => this.keepNow();
+                window.addEventListener('admin-editor-saved', onSaved);
+                window.addEventListener('pagehide', onHide);
+            }
 
             const id = this.$wire ? this.$wire.$id : null;
             const lw = window.Livewire;
@@ -129,12 +148,20 @@ export function editorSave(cfg) {
                     const n = countChanges(cfg.fields, (f) => wire.$get(f), wire.saved) + (cfg.extra ? Number(wire.$get(cfg.extra)) || 0 : 0);
                     this.n = n;
                     this.schedule(n, wire.status, values);
+                    this.keepSoon(n, wire.status);
                 });
             }
         },
 
         destroy() {
             clearTimeout(timer);
+            clearTimeout(keepTimer);
+            if (onSaved) {
+                window.removeEventListener('admin-editor-saved', onSaved);
+            }
+            if (onHide) {
+                window.removeEventListener('pagehide', onHide);
+            }
             if (page && onInput) {
                 page.removeEventListener('input', onInput, true);
             }
@@ -144,6 +171,22 @@ export function editorSave(cfg) {
             if (effect && window.Alpine && typeof window.Alpine.release === 'function') {
                 window.Alpine.release(effect);
             }
+        },
+
+        keepSoon(n, status) {
+            clearTimeout(keepTimer);
+            if (!cfg.keep || n === 0 || status !== 'published') {
+                return;
+            }
+            keepTimer = setTimeout(() => this.keepNow(), 1000);
+        },
+
+        keepNow() {
+            clearTimeout(keepTimer);
+            if (!cfg.keep || this.n === 0 || this.$wire.status !== 'published') {
+                return;
+            }
+            kept.write(cfg.keep.key, kept.valuesOf(this.$wire));
         },
 
         schedule(n, status) {

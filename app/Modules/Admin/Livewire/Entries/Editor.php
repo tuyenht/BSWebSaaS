@@ -1257,6 +1257,8 @@ final class Editor extends Component
         return view('admin::livewire.entries.editor', [
             'unit' => $this->unit(),
             'siteZone' => app(SiteTime::class)->zone(),
+            'siteDateFormat' => app(SiteTime::class)->dateFormat(),
+            'userUlid' => $this->user()->ulid,
             'listUrl' => route('admin.entries.index', $this->sectionKey !== null ? ['section' => $this->sectionKey] : []),
             'note' => $this->saveNote(),
             'actions' => $actions,
@@ -1309,7 +1311,17 @@ final class Editor extends Component
         return $kinds;
     }
 
-    /** "Bỏ thay đổi" (the leave dialog): back to the saved entry, a new one back to an empty form. */
+    /**
+     * "Bỏ thay đổi" on the leave dialog: as resetChanges, and the copy this device kept of the
+     * unsaved text goes too (the member chose to drop it).
+     */
+    public function discardChanges(): void
+    {
+        $this->resetChanges();
+        $this->dispatch('admin-editor-saved');
+    }
+
+    /** Back to the saved entry, a new one back to an empty form. */
     public function resetChanges(): void
     {
         $this->resetErrorBag();
@@ -2184,10 +2196,13 @@ final class Editor extends Component
 
         $this->saveFailed = false;
         $this->converted = false;
+        // The browser forgets the copy it kept of this text on the device: it is stored now.
+        $this->dispatch('admin-editor-saved');
         $this->savedAt = self::iso(CarbonImmutable::now());
         $this->loadedAt = $this->savedAt;
         // What this save stored is what the next one compares against (the written model holds it).
-        $this->storedPrint = self::printOf($translation, $entry->meta, $this->storedCategory($entry));
+        // The main category just written is the form's own value, so it needs no second read.
+        $this->storedPrint = self::printOf($translation, $entry->meta, $this->type === 'post' ? $this->categoryId : null);
         $this->mayPublish = $this->user()->can('publish', $entry);
         $this->saved = $this->tracked();
 

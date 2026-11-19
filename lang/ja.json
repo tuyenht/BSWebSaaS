@@ -36,6 +36,7 @@
     "entries.ed.stale_diff_show": "違いを見る",
     "entries.ed.stale_diff_hide": "違いを隠す",
     "entries.ed.stale_take": "新しい版を使う",
+    "entries.ed.stale_keep_failed": "あなたの版をこの端末に一時保存できませんでした（ブラウザの保存領域がいっぱいか、使用が禁止されています）。必要な文章をコピーするか、別のボタンを選んでください。",
     "entries.ed.stale_keep": "自分の版を残す",
     "entries.ed.stale_mine": "自分の版: :value",
     "entries.ed.stale_theirs": "保存されたばかりの版: :value",

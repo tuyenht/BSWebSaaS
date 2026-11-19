@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Livewire\Entries\Editor;
+use App\Modules\Admin\Livewire\Entries\Index;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\PublishScheduledEntry;
@@ -11,8 +12,10 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Workflow\Actions\InstantiateWorkflow;
+use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -466,5 +469,83 @@ it('closes the question without saving, and the next save asks again', function 
         $mine->call('save');
         expect($mine->get('stale'))->not->toBeNull()
             ->and($page->fresh()->translationFor('vi')->title)->toBe('Giới thiệu công ty');
+    });
+});
+
+it('raises no alarm when another member saves a different language only', function (): void {
+    [$a, $b] = staleSaveMembers();
+
+    app(Tenancy::class)->enter(1, function () use ($a, $b): void {
+        SiteLocale::query()->firstOrCreate(['locale' => 'en'], ['is_default' => false, 'enabled' => true]);
+        $page = staleSavePage();
+        $page->translations()->create(['locale' => 'en', 'title' => 'About', 'slug' => 'about', 'status' => 'draft', 'body' => ['blocks' => []]]);
+
+        $mine = Livewire::actingAs($b)->test(Editor::class, ['ulid' => $page->ulid]);
+        Livewire::actingAs($a)->test(Editor::class, ['ulid' => $page->ulid, 'locale' => 'en'])
+            ->set('title', 'About us')->call('save')->assertHasNoErrors();
+
+        $this->actingAs($b);
+        $mine->set('title', 'Về An Vinh')->call('save')->assertHasNoErrors()->assertSet('stale', null);
+        expect($page->fresh()->translationFor('vi')->title)->toBe('Về An Vinh');
+    });
+});
+
+it('asks when another member changed only the address or only the Google fields', function (string $field, string $value): void {
+    [, $b] = staleSaveMembers();
+
+    app(Tenancy::class)->enter(1, function () use ($b, $field, $value): void {
+        $page = staleSavePage();
+        $mine = Livewire::actingAs($b)->test(Editor::class, ['ulid' => $page->ulid]);
+        $page->translations()->where('locale', 'vi')->update([$field => $value]);
+
+        $mine->set('excerpt', 'Mô tả mới')->call('save');
+        expect($mine->get('stale'))->not->toBeNull()
+            ->and($page->fresh()->translationFor('vi')->excerpt)->toBe('Về chúng tôi');
+    });
+})->with([
+    'address only' => ['slug', 'gioi-thieu-moi'],
+    'Google title only' => ['seo_title', 'Giới thiệu | An Vinh'],
+    'Google description only' => ['seo_description', 'Công ty cơ khí chính xác'],
+]);
+
+it('asks when the list\'s inline title or address edit by another member came first', function (string $action, string $value, string $column): void {
+    [$a, $b] = staleSaveMembers();
+
+    app(Tenancy::class)->enter(1, function () use ($a, $b, $action, $value, $column): void {
+        $page = staleSavePage();
+        $mine = Livewire::actingAs($b)->test(Editor::class, ['ulid' => $page->ulid]);
+        Livewire::actingAs($a)->test(Index::class)->call($action, $page->ulid, $value);
+        expect($page->fresh()->translationFor('vi')->{$column})->not->toBe($column === 'title' ? 'Giới thiệu' : 'gioi-thieu');
+
+        $this->actingAs($b);
+        $mine->set('excerpt', 'Mô tả mới')->call('save');
+        expect($mine->get('stale'))->not->toBeNull()
+            ->and($page->fresh()->translationFor('vi')->excerpt)->toBe('Về chúng tôi');
+    });
+})->with([
+    'title' => ['saveTitle', 'Giới thiệu công ty', 'title'],
+    'address' => ['saveSlug', 'gioi-thieu-cong-ty', 'slug'],
+]);
+
+it('takes the entry row lock before the list\'s inline address edit, and refuses a trashed row', function (): void {
+    [$a] = staleSaveMembers();
+
+    app(Tenancy::class)->enter(1, function () use ($a): void {
+        $page = staleSavePage();
+        $sql = [];
+        DB::listen(function ($query) use (&$sql): void {
+            $sql[] = strtolower($query->sql);
+        });
+
+        Livewire::actingAs($a)->test(Index::class)->call('saveSlug', $page->ulid, 'gioi-thieu-moi');
+
+        $locks = array_values(array_filter($sql, fn (string $q): bool => str_contains($q, 'from "entries"') && str_contains($q, 'for update')));
+        expect($locks)->not->toBeEmpty()
+            ->and($page->fresh()->translationFor('vi')->slug)->toBe('gioi-thieu-moi');
+
+        // A row trashed meanwhile (the lock sees it) is refused, as saveTitle does.
+        $page->delete();
+        Livewire::actingAs($a)->test(Index::class)->call('saveSlug', $page->ulid, 'khac-nua');
+        expect($page->translations()->where('locale', 'vi')->value('slug'))->toBe('gioi-thieu-moi');
     });
 });

@@ -18,7 +18,11 @@
     $isPage = $type === 'page';
     $h1 = $isNew ? __('entries.ed.h1_new', ['unit' => $unit]) : __('entries.ed.h1_edit', ['unit' => $unit]);
     $dirty = __('catalog.ed.sv_dirty');
-    $saveConfig = ['fields' => Editor::TRACKED, 'autosave' => false, 'extra' => 'blocksChanged', 'words' => [
+    // Where this member's copy of unsaved text on this device lives (admin-kept.js): per member,
+    // entry and language, never the numeric id.
+    $keptKey = $ulid !== null ? 'bs-entry-kept:'.$userUlid.':'.$ulid.':'.$locale : null;
+    $keptWhen = ['zone' => $siteZone, 'format' => $siteDateFormat, 'lang' => app()->getLocale()];
+    $saveConfig = ['fields' => Editor::TRACKED, 'autosave' => false, 'extra' => 'blocksChanged', 'keep' => $keptKey !== null ? ['key' => $keptKey] : null, 'words' => [
         'dirty' => $dirty,
         'dirtyDraft' => $dirty,
         'dirtyLive' => $dirty,
@@ -95,20 +99,22 @@
             {{-- Text kept on this device by «Lấy bản mới» (the stale question below): «Khôi phục» puts it
                  back in the form, unsaved; «Bỏ» forgets it. Browser state only, never sent until asked. --}}
             <div wire:ignore x-data="{
-                    key: @js('bs-entry-kept:'.$ulid.':'.$locale),
+                    key: @js($keptKey),
+                    cfg: @js($keptWhen),
                     rec: null,
-                    init() { try { const r = JSON.parse(window.localStorage.getItem(this.key) || 'null'); if (r && r.at && r.values) { this.rec = r; } } catch (e) {} },
-                    forget() { try { window.localStorage.removeItem(this.key); } catch (e) {} this.rec = null; },
+                    init() { const go = () => { this.rec = window.bsKept.read(this.key); }; if (window.bsKept) { go(); } else { window.addEventListener('bs-kept-ready', go, { once: true }); } },
+                    forget() { if (window.bsKept) { window.bsKept.remove(this.key); } this.rec = null; },
+                    at(r) { return r && window.bsKept ? window.bsKept.when(r.at, this.cfg) : ''; },
                     say(text) { if (typeof window.bsToast === 'function') { window.bsToast({ text: text }); } },
                     drop() { this.forget(); this.say(@js(__('entries.ed.kept_dropped'))); },
-                    restore() { const r = this.rec; if (!r) { return; } $wire.restoreKept(r.values).then(() => { this.forget(); this.say(@js(__('entries.ed.kept_restored')).replace(':time', r.at)); }); },
+                    restore() { const r = this.rec; if (!r) { return; } $wire.restoreKept(r.values).then(() => { this.forget(); this.say(@js(__('entries.ed.kept_restored')).replace(':time', this.at(r))); }); },
                  }"
                  x-on:bs-entry-kept.window="if ($event.detail && $event.detail.key === key) { rec = $event.detail.rec; }"
                  x-show="rec" x-cloak role="status" data-entry-kept
                  class="flex flex-wrap items-start gap-2.5 rounded-md border border-[color-mix(in_srgb,var(--color-warning-text)_35%,var(--color-surface))] bg-[color-mix(in_srgb,var(--color-warning-text)_9%,var(--color-surface))] px-3.5 py-2.5 text-[calc(0.84375rem+var(--user-text-boost))] leading-normal text-text">
                 <x-bs-admin::icon name="ri-hard-drive-2" class="mt-px size-[min(1.5rem,calc(1.125rem+var(--user-text-boost)))] shrink-0 text-warning-text" />
                 <div class="flex min-w-0 flex-[1_1_16.25rem] flex-col gap-0.5 [overflow-wrap:anywhere]">
-                    <b class="font-semibold text-text-strong" x-text="rec ? @js(__('entries.ed.kept_head')).replace(':time', rec.at) : ''"></b>
+                    <b class="font-semibold text-text-strong" x-text="rec ? @js(__('entries.ed.kept_head')).replace(':time', at(rec)) : ''"></b>
                     <span>{{ __('entries.ed.kept_sub') }}</span>
                 </div>
                 <div class="flex max-w-full flex-[0_1_auto] flex-wrap gap-2">
@@ -419,7 +425,7 @@
         </div>
     </div>
 
-    <x-bs-admin::unsaved-dialog :count="$changes" :label="$h1" :save="$leave['method']" discard="resetChanges" :body="$leave['body']" :save-label="$leave['save']" :discard-label="$leave['discard']" />
+    <x-bs-admin::unsaved-dialog :count="$changes" :label="$h1" :save="$leave['method']" discard="discardChanges" :body="$leave['body']" :save-label="$leave['save']" :discard-label="$leave['discard']" />
 
     @if ($stale !== null)
         {{-- Someone else saved since this form was loaded (Editor::askBeforeOverwrite; design 07, the
@@ -430,19 +436,19 @@
         <div wire:key="entry-stale-{{ md5(json_encode($stale['print'])) }}"
              x-data="{
                 diff: false,
+                keepFailed: false,
                 opener: null,
                 init() { this.opener = document.activeElement; },
                 destroy() { const o = this.opener; if (o && o.isConnected) { o.focus(); } },
+                // True when the text is on this device now; false (a full or blocked store) keeps the
+                // question open, because taking the new version would lose it.
                 keep() {
-                    const w = $wire;
-                    const values = { title: w.title, slug: w.slug, excerpt: w.excerpt, seoTitle: w.seoTitle, seoDescription: w.seoDescription, coverImageKey: w.coverImageKey, categoryId: w.categoryId };
-                    if (w.prose) { values.bodyHtml = w.bodyHtml; } else { values.blocks = JSON.parse(JSON.stringify(w.blocks || [])); }
-                    let at = '';
-                    try { at = new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: @js($siteZone) }).format(new Date()); } catch (e) {}
-                    const key = @js('bs-entry-kept:'.$ulid.':'.$locale);
-                    const rec = { at: at, values: values };
-                    try { window.localStorage.setItem(key, JSON.stringify(rec)); } catch (e) {}
-                    window.dispatchEvent(new CustomEvent('bs-entry-kept', { detail: { key: key, rec: rec } }));
+                    const k = window.bsKept;
+                    const rec = k ? k.write(@js($keptKey), k.valuesOf($wire)) : null;
+                    this.keepFailed = !rec;
+                    if (rec) { window.dispatchEvent(new CustomEvent('bs-entry-kept', { detail: { key: @js($keptKey), rec: rec } })); }
+
+                    return !!rec;
                 },
              }"
              x-on:keydown.escape.window="$wire.closeStale()"
@@ -461,6 +467,10 @@
                         <x-bs-admin::icon name="ri-information" class="mt-[3px] size-[1.15em] shrink-0 text-text-muted" />
                         <span>{{ $stale['line'] }}</span>
                     </div>
+                    <div x-show="keepFailed" x-cloak role="alert" class="flex items-start gap-2 rounded-sm border border-danger-text px-2.5 py-2 text-danger-text">
+                        <x-bs-admin::icon name="ri-error-warning" class="mt-[3px] size-[1.15em] shrink-0" />
+                        <span>{{ __('entries.ed.stale_keep_failed') }}</span>
+                    </div>
                     @foreach ($stale['rows'] as $row)
                         <div x-show="diff" x-cloak class="flex flex-col gap-[3px] rounded-sm border border-[color-mix(in_srgb,var(--color-warning-text)_40%,var(--color-surface))] bg-[color-mix(in_srgb,var(--color-warning-text)_8%,var(--color-surface))] px-2.5 py-2">
                             <span class="text-[calc(0.78125rem+var(--user-text-boost))] font-semibold text-text-muted">{{ $row['label'] }}</span>
@@ -474,7 +484,7 @@
                         <x-bs-admin::icon name="ri-git-commit" :class="$glyph" />
                         <span x-text="diff ? @js(__('entries.ed.stale_diff_hide')) : @js(__('entries.ed.stale_diff_show'))">{{ __('entries.ed.stale_diff_show') }}</span>
                     </x-bs-admin::button>
-                    <x-bs-admin::button variant="outline" color="secondary" size="sm" x-on:click="keep(); $wire.takeNewer()" wire:loading.attr="disabled" wire:target="takeNewer,keepMine">
+                    <x-bs-admin::button variant="outline" color="secondary" size="sm" x-on:click="if (keep()) { $wire.takeNewer(); }" wire:loading.attr="disabled" wire:target="takeNewer,keepMine">
                         <x-bs-admin::icon name="ri-download-2" :class="$glyph" /> {{ __('entries.ed.stale_take') }}
                     </x-bs-admin::button>
                     <x-bs-admin::button color="primary" size="sm" wire:click="keepMine" wire:loading.attr="disabled" wire:target="takeNewer,keepMine">

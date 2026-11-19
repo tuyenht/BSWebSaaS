@@ -36,6 +36,7 @@
     "entries.ed.stale_diff_show": "Show differences",
     "entries.ed.stale_diff_hide": "Hide differences",
     "entries.ed.stale_take": "Take the new version",
+    "entries.ed.stale_keep_failed": "Your version could not be kept on this device (the browser's storage is full or blocked). Copy the text you need, or choose another button.",
     "entries.ed.stale_keep": "Keep my version",
     "entries.ed.stale_mine": "My version: :value",
     "entries.ed.stale_theirs": "Just saved: :value",

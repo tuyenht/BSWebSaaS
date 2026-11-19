@@ -36,6 +36,7 @@
     "entries.ed.stale_diff_show": "Xem khác biệt",
     "entries.ed.stale_diff_hide": "Ẩn khác biệt",
     "entries.ed.stale_take": "Lấy bản mới",
+    "entries.ed.stale_keep_failed": "Chưa giữ được bản của bạn trên máy này (bộ nhớ trình duyệt đầy hoặc bị chặn). Hãy sao chép phần chữ cần giữ, hoặc chọn nút khác.",
     "entries.ed.stale_keep": "Giữ bản của tôi",
     "entries.ed.stale_mine": "Bản của tôi: :value",
     "entries.ed.stale_theirs": "Bản vừa lưu: :value",

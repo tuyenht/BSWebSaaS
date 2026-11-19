@@ -101,7 +101,7 @@
         </button>
 
         <div class="my-1 border-t border-border"></div>
-        <form method="POST" action="{{ \App\Modules\Admin\Support\AdminPlane::route('logout') }}" role="none">
+        <form method="POST" action="{{ \App\Modules\Admin\Support\AdminPlane::route('logout') }}" role="none" data-bs-signout>
             @csrf
             <button type="submit" role="menuitem"
                     class="flex min-h-menu-row w-full items-center gap-2.5 px-4 py-2 text-body text-danger-text transition-colors hover:bg-surface-hover any-pointer-coarse:min-h-menu-row-touch">

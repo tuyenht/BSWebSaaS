@@ -36,6 +36,7 @@
     "entries.ed.stale_diff_show": "查看差异",
     "entries.ed.stale_diff_hide": "隐藏差异",
     "entries.ed.stale_take": "采用新版本",
+    "entries.ed.stale_keep_failed": "无法在此设备上保存您的版本（浏览器存储已满或被禁用）。请先复制需要的文字，或选择其他按钮。",
     "entries.ed.stale_keep": "保留我的版本",
     "entries.ed.stale_mine": "我的版本：:value",
     "entries.ed.stale_theirs": "刚保存的版本：:value",
