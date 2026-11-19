@@ -57,8 +57,8 @@ function returnPath() {
     return window.location.pathname + window.location.search;
 }
 
-function expiredUrl(base) {
-    return `${base}?to=${encodeURIComponent(returnPath())}`;
+function expiredUrl(base, signIn = false) {
+    return `${base}?to=${encodeURIComponent(returnPath())}${signIn ? '&signin=1' : ''}`;
 }
 
 function focusables(root) {
@@ -157,9 +157,11 @@ function sessionGuard(cfg) {
             this.$nextTick(() => back?.isConnected && back.focus());
         },
 
+        // At 0:00 the dialog has already said the session ended: "Đăng nhập lại" opens the sign-in
+        // straight away (the server remembers this page to come back to), never a second notice.
         async extend() {
             if (this.ended || !cfg.ping) {
-                window.location.assign(expiredUrl(cfg.expired));
+                window.location.assign(expiredUrl(cfg.expired, this.ended));
                 return;
             }
             if (this._busy) {

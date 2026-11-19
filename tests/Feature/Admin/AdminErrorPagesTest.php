@@ -278,6 +278,17 @@ it('opens "session expired" for a Livewire 419 and keeps only this admin\'s own 
     }
 });
 
+it('opens the sign-in straight from the ended-session dialog, still coming back to the page', function (): void {
+    $this->get('http://a.test/admin/session-expired?to='.urlencode('/admin/content?section=pages').'&signin=1')
+        ->assertRedirect(route('admin.login'))
+        ->assertSessionHas('url.intended', 'http://a.test/admin/content?section=pages');
+
+    $this->flushSession();
+    $this->get('http://a.test/admin/session-expired?to='.urlencode('//evil.test/admin').'&signin=1')
+        ->assertRedirect(route('admin.login'))
+        ->assertSessionMissing('url.intended');
+});
+
 it('keeps the query of the page to come back to (a list\'s filter, the trash tab)', function (): void {
     $this->get('http://a.test/admin/session-expired?to='.urlencode('/admin/content?tab=trash&q=b%C3%A0n'))
         ->assertOk()
