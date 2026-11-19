@@ -69,7 +69,7 @@ function leadNotice(int $site, User $user, FormSubmission $lead): void
 function noticedLeads(): array
 {
     return DB::connection('pgsql_admin')->table('site_notifications')->where('kind', 'lead.new')
-        ->orderBy('id')->pluck(DB::raw("data->>'submission'"))->map(fn ($v): string => (string) $v)->all();
+        ->orderBy('id')->selectRaw("data->>'submission' as lead")->pluck('lead')->map(fn ($v): string => (string) $v)->all();
 }
 
 /** @return array{forms: int, fields: int, leads: int} rows left for $form, read past RLS */
@@ -271,7 +271,9 @@ it('asks again, deleting nothing, when leads came in after the question', functi
             ->assertSet('deleting.leads', 2)
             ->assertSet('toastMsg', __('form_builder.toast_more_leads'))
             ->assertSee(__('form_builder.del_ok_leads', ['leads' => trans_choice('form_builder.leads_n', 2, ['n' => 2])]));
-        expect(formRowsLeft($form))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 2]);
+        // read in the same transaction: the new lead is not committed yet
+        expect(Form::query()->whereKey($form->id)->exists())->toBeTrue()
+            ->and(FormSubmission::query()->where('form_id', $form->id)->count())->toBe(2);
 
         $page->call('confirmDelete')->assertSet('confirmOpen', false)->assertSet('toastTone', 'success');
     });
