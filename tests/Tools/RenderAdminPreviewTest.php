@@ -21,6 +21,7 @@
  * render with the real compiled CSS/JS, so build the front end first (pnpm run build).
  */
 
+use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Admin\Livewire\Catalog\Index;
 use App\Modules\Admin\Livewire\NotificationBell;
 use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog;
@@ -746,6 +747,29 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $dialog = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($mount()->call('toggleSelect', [$ulids[0], $ulids[1]])->call('openCategory')));
     file_put_contents($dir.'/product-list-category.html', $swap($html, $dialog));
 
+    // The product editor on a selling site: the price card open with a sale running and both labels, a
+    // new product's empty card, and the card after a save its sale price stopped (the editor's root put in
+    // place of the page's own, as above).
+    $priced = app(Tenancy::class)->enter(1, function (): Product {
+        $product = Product::query()->create(['status' => 'draft', 'sku' => 'DG-CNC-004', 'price' => 12500000, 'sale_price' => 9900000,
+            'sale_starts_at' => '2026-11-01 01:00:00', 'stock' => 3, 'is_featured' => true, 'is_bestseller' => true]);
+        $product->translations()->create(['locale' => 'vi', 'name' => 'Đồ gá kẹp phôi CNC 4 trục', 'slug' => 'do-ga-kep-phoi-cnc-4-truc']);
+
+        return $product;
+    });
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog/'.$priced->ulid.'/edit')->assertOk()->getContent();
+    expect($html)->toContain('Giá &amp; tồn kho', '9.900.000')->not->toContain('Mở khối giá');
+    file_put_contents($dir.'/product-editor-price.html', $html);
+    $failed = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($owner)->test(Editor::class, ['ulid' => $priced->ulid])
+        ->set('salePrice', '12.500.000')->call('save')));
+    expect($failed)->toContain('Giá khuyến mãi cần thấp hơn giá bán');
+    file_put_contents($dir.'/product-editor-price-error.html', $swap($html, $failed, 'admin\\.catalog\\.editor'));
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog/create')->assertOk()->getContent();
+    expect($html)->toContain('Giá &amp; tồn kho');
+    file_put_contents($dir.'/product-new-price.html', $html);
+
     // The members screen with a realistic team: several roles, one member in two of them, a very long name and
     // email, a member at the owner's level (no buttons, says why). Then the roles panel and the invite dialog open.
     $people = app(Tenancy::class)->enter(1, function (): array {
@@ -859,5 +883,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-te-page="suspended"');
     file_put_contents($dir.'/error-suspended.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 58);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 61);
 });

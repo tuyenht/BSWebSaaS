@@ -25,8 +25,12 @@ use Illuminate\Support\Carbon;
  * @property int $site_id
  * @property string|null $sku
  * @property int|null $price
+ * @property int|null $sale_price
+ * @property Carbon|null $sale_starts_at
+ * @property Carbon|null $sale_ends_at
  * @property int|null $stock
  * @property bool $is_featured
+ * @property bool $is_bestseller
  * @property string $status
  * @property Carbon|null $published_at
  * @property array<string, mixed> $meta

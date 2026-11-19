@@ -7,6 +7,7 @@ use App\Modules\Admin\Support\Guide\EditorGuide;
 use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Catalog\Actions\ChangeProductSlug;
 use App\Modules\Catalog\Actions\ChangeProductStatus;
+use App\Modules\Catalog\Actions\FlagProduct;
 use App\Modules\Catalog\Actions\RenameProduct;
 use App\Modules\Catalog\Exceptions\ProductEditRefused;
 use App\Modules\Catalog\Models\Product;
@@ -14,6 +15,7 @@ use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Catalog\Support\AppRoutePaths;
 use App\Modules\Catalog\Support\CatalogMode;
 use App\Modules\Catalog\Support\ProductGallery;
+use App\Modules\Catalog\Support\ProductPrice;
 use App\Modules\Catalog\Support\ProductSearchWords;
 use App\Modules\Catalog\Support\UniqueViolation;
 use App\Modules\Cms\Exceptions\RouteConflictException;
@@ -38,6 +40,7 @@ use DateTimeInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Js;
 use Illuminate\Support\MessageBag;
@@ -65,6 +68,14 @@ use Livewire\Component;
  * fixing; a published product never does, its changes wait for "Cập nhật". What changed since the
  * last save is counted against the saved values (`saved`), for the save state and the leave dialog.
  *
+ * The price card follows the board: the price, then (in the group) the stock and the sale with its
+ * start and end, all whole đồng typed the Vietnamese way and read strictly (ProductPrice), checked
+ * when a field is left and again on save; a message stays until the field is fixed. A website that
+ * only presents its products (CatalogMode brochure) folds the card behind a note: the amounts are kept
+ * and shown to visitors once the website sells. The labels «Nổi bật» / «Bán chạy» are form fields
+ * saved with the rest, written through the list's own action (FlagProduct). A save a field stops
+ * says how many fields need fixing and puts the cursor in the first one.
+ *
  * A published product is saved together with its public address (the `routes` row the storefront
  * resolves, composed by the site's permalink preset): created on first publish, moved with a 301
  * from the old path when the slug or primary category changes. A path another page or category
@@ -80,10 +91,13 @@ final class Editor extends Component
     public const int SUMMARY_MAX = 255;
 
     /** The text fields a draft saving itself leaves as typed (see commit()). */
-    private const array AS_TYPED = ['name', 'slug', 'summary', 'price', 'seoTitle', 'seoDescription', 'sku'];
+    private const array AS_TYPED = ['name', 'slug', 'summary', 'price', 'salePrice', 'stock', 'seoTitle', 'seoDescription', 'sku'];
 
     /** The fields counted as changes, in the order the form shows them. */
-    public const array TRACKED = ['name', 'slug', 'summary', 'imageMediaIds', 'price', 'description', 'seoTitle', 'seoDescription', 'categoryId', 'sku'];
+    public const array TRACKED = ['name', 'slug', 'summary', 'imageMediaIds', 'price', 'stock', 'salePrice', 'saleStartsAt', 'saleEndsAt', 'description', 'seoTitle', 'seoDescription', 'categoryId', 'sku', 'featured', 'bestseller'];
+
+    /** A sale's start or end as the site's wall clock, the way a datetime-local field gives it. */
+    private const string MOMENT = 'Y-m-d\\TH:i';
 
     #[Locked]
     public ?string $ulid = null;
@@ -137,8 +151,33 @@ final class Editor extends Component
     #[Locked]
     public string $addressHost = '';
 
-    /** VND integer (D5); kept as a string for input round-tripping, cast on persist. */
+    /** VND integer (D5), shown and typed the Vietnamese way (1.250.000); read by ProductPrice on save. */
     public ?string $price = null;
+
+    /** The sale price, like the price; below it. */
+    public ?string $salePrice = null;
+
+    /** When the sale starts and ends, the site's wall clock (MOMENT); '' leaves that side open. */
+    public ?string $saleStartsAt = '';
+
+    public ?string $saleEndsAt = '';
+
+    /** Blank = the stock is not tracked; 0 = sold out. */
+    public ?string $stock = null;
+
+    /** The labels «Nổi bật» / «Bán chạy». */
+    public bool $featured = false;
+
+    public bool $bestseller = false;
+
+    /**
+     * The main category as last drawn (its id and name), so a save after another tab deleted it can
+     * name it. Server data.
+     *
+     * @var array{id: int, name: string}|null
+     */
+    #[Locked]
+    public ?array $categoryShown = null;
 
     public ?string $sku = null;
 
@@ -180,6 +219,17 @@ final class Editor extends Component
     #[Locked]
     public bool $saveFailed = false;
 
+    /** The website's clock the sale times are typed in, as the price card names it (read once, on opening). */
+    #[Locked]
+    public string $clock = '';
+
+    /**
+     * Whether the website sells (CatalogMode commerce), as the list and the storefront decide it: the
+     * price card is open, else folded behind a note. Read once, on opening.
+     */
+    #[Locked]
+    public bool $selling = false;
+
     /** The address visitors open, as saved (host and path), while the product is published. */
     #[Locked]
     public ?string $liveUrl = null;
@@ -215,6 +265,9 @@ final class Editor extends Component
     public function mount(?string $ulid = null): void
     {
         $this->locale = app(SiteLocale::class)->default();
+        $zone = app(SiteTime::class)->zone();
+        $this->clock = $zone === SiteTime::DEFAULT_ZONE ? Cast::string(__('catalog.ed.zone_vn')) : $zone;
+        $this->selling = ! app(CatalogMode::class)->isBrochure();
         $this->multiLocale = count(app(SiteLocale::class)->enabled()) > 1;
 
         if ($ulid === null) {
@@ -327,11 +380,104 @@ final class Editor extends Component
         $this->address = $this->previewAddress($this->pickedCategory());
     }
 
+    /** Leaving the price: shown the Vietnamese way when it reads, checked, and the sale price checked again if it was refused. */
+    public function updatedPrice(): void
+    {
+        $this->authorizeEdit();
+        $this->price = self::tidyAmount($this->price, ProductPrice::AMOUNT_DIGITS);
+        $this->recheck('price', ...($this->shownErrors()->has('salePrice') ? ['salePrice'] : []));
+    }
+
+    public function updatedSalePrice(): void
+    {
+        $this->authorizeEdit();
+        $this->salePrice = self::tidyAmount($this->salePrice, ProductPrice::AMOUNT_DIGITS);
+        $this->recheck('salePrice');
+    }
+
+    public function updatedStock(): void
+    {
+        $this->authorizeEdit();
+        $count = ProductPrice::readable($this->stock, ProductPrice::STOCK_DIGITS) ? ProductPrice::parse($this->stock, ProductPrice::STOCK_DIGITS) : false;
+        $this->stock = match (true) {
+            $count === null => null,
+            is_int($count) => (string) $count,
+            default => $this->stock,
+        };
+        $this->recheck('stock');
+    }
+
+    /** Leaving the start: checked, and the end checked against it. */
+    public function updatedSaleStartsAt(): void
+    {
+        $this->authorizeEdit();
+        $this->saleStartsAt ??= '';
+        $this->recheck('saleStartsAt', ...($this->saleEndsAt !== '' ? ['saleEndsAt'] : []));
+    }
+
+    public function updatedSaleEndsAt(): void
+    {
+        $this->authorizeEdit();
+        $this->saleEndsAt ??= '';
+        $this->recheck('saleEndsAt');
+    }
+
+    /** Leaving the SKU: a code another product holds is said at once (the board's check on leaving the field). */
+    public function updatedSku(): void
+    {
+        $this->authorizeEdit();
+        $this->recheck('sku');
+    }
+
+    /**
+     * Check these fields alone, each message kept or cleared on its own field; the others stay as
+     * they are.
+     */
+    private function recheck(string ...$fields): void
+    {
+        foreach ($fields as $field) {
+            try {
+                $this->validateOnly($field);
+            } catch (ValidationException $e) {
+                // validateOnly hands back this field's messages merged with the others already shown
+                $this->setErrorBag($e->validator->errors());
+            }
+        }
+    }
+
+    /** The messages the page shows now. */
+    private function shownErrors(): MessageBag
+    {
+        $bag = $this->getErrorBag();
+
+        return $bag instanceof MessageBag ? $bag : new MessageBag;
+    }
+
+    /** A typed amount the Vietnamese way when it reads (null when blank); otherwise as typed, for the person to fix. */
+    private static function tidyAmount(?string $typed, int $digits): ?string
+    {
+        if (! ProductPrice::readable($typed, $digits)) {
+            return $typed;
+        }
+        $amount = ProductPrice::parse($typed, $digits);
+
+        return $amount === null ? null : ProductPrice::format($amount);
+    }
+
     /** "Lưu nháp" / "Lưu": save, keeping the status. */
     public function save(): void
     {
         $this->authorizeEdit();
-        $this->commit(quiet: false);
+        try {
+            $saved = $this->commit(quiet: false);
+        } catch (ValidationException $e) {
+            $this->sayWhatToFix($e->validator->errors());
+
+            throw $e;
+        }
+        if (! $saved) {
+            $this->sayWhatToFix($this->shownErrors());
+        }
     }
 
     /** "Đăng" / "Cập nhật": save it published. Nothing saved, the status stays as it was. */
@@ -346,6 +492,7 @@ final class Editor extends Component
             $saved = $this->commit(quiet: false);
         } catch (ValidationException $e) {
             $this->status = $was;
+            $this->sayWhatToFix($e->validator->errors());
 
             throw $e;
         } finally {
@@ -355,7 +502,33 @@ final class Editor extends Component
 
         if (! $saved) {
             $this->status = $was;
+            $this->sayWhatToFix($this->shownErrors());
         }
+    }
+
+    /**
+     * A button save a field stopped: how many fields need fixing, in a message that stays until it is
+     * closed, and the cursor in the first of them (the page opens «Thêm tùy chọn» and the price card
+     * when the field is inside them).
+     */
+    private function sayWhatToFix(MessageBag $errors): void
+    {
+        $fields = [];
+        foreach ($errors->keys() as $key) {
+            $fields[Str::before($key, '.')] = true;
+        }
+        if (! $this->saveFailed || $fields === []) {
+            return;
+        }
+
+        $this->dispatch('bs-toast',
+            text: Cast::string(__('catalog.ed.toast_fix', ['n' => count($fields)])),
+            icon: Blade::render('<x-bs-admin::icon name="ri-error-warning" class="size-4" />'),
+            stay: true,
+            close: Cast::string(__('admin.close')),
+        );
+        // after the page has drawn the messages and opened the groups that hold them
+        $this->js('window.setTimeout(() => { const el = document.querySelector(\'[data-catalog-editor] [aria-invalid="true"]\'); if (el) { el.focus() } }, 60)');
     }
 
     /**
@@ -387,7 +560,7 @@ final class Editor extends Component
         $this->saveFailed = false;
 
         if ($this->ulid === null) {
-            $this->reset('name', 'slug', 'description', 'summary', 'seoTitle', 'seoDescription', 'categoryId', 'price', 'sku', 'imageMediaIds', 'summaryStored', 'summaryShown');
+            $this->reset('name', 'slug', 'description', 'summary', 'seoTitle', 'seoDescription', 'categoryId', 'price', 'salePrice', 'saleStartsAt', 'saleEndsAt', 'stock', 'featured', 'bestseller', 'sku', 'imageMediaIds', 'summaryStored', 'summaryShown');
             $this->address = $this->previewAddress(null);
             $this->saved = $this->tracked();
 
@@ -452,6 +625,9 @@ final class Editor extends Component
         $isNew = $this->ulid === null;
         $title = Cast::string(__($isNew ? 'catalog.create_title' : 'catalog.edit_title'));
         $user = auth()->user();
+        $selling = $this->selling;
+        $categories = $this->availableCategories();
+        $this->rememberCategoryName($categories);
 
         return view('admin::livewire.catalog.editor', [
             'frame' => [
@@ -469,14 +645,17 @@ final class Editor extends Component
                     : ['url' => route('admin.catalog.preview', ['ulid' => $this->ulid]), 'why' => null],
                 'trash' => ! $isNew && $this->mayTrash ? ['why' => null] : null,
             ],
-            'categories' => $this->availableCategories(),
+            'categories' => $categories,
+            'selling' => $selling,
+            'priceCard' => $this->priceCard(),
+            'mayOpenSettings' => $user instanceof User && $user->can('settings.manage'),
             'galleryImages' => $this->galleryImages($urls),
             'pickerMedia' => $this->pickerMedia(),
             'urls' => $urls,
             'actions' => $actions,
             'note' => $this->saveNote(),
             'leave' => $this->leaveWords(),
-            'publishCard' => $this->publishCard(),
+            'publishCard' => $this->publishCard($selling),
             'summaryWarning' => $this->summaryWarning(),
             'changes' => $this->changeCount(),
         ]);
@@ -499,12 +678,7 @@ final class Editor extends Component
     {
         // Uniqueness is validated app-side within the current site (validator queries run under
         // RLS): the slug keys the P3 ETL and the future product route; the sku has a partial
-        // UNIQUE(site_id, sku) index that would otherwise surface as a raw 500.
-        $uniqueSku = Rule::unique('products', 'sku');
-        if ($this->productId !== null) {
-            $uniqueSku->ignore($this->productId);
-        }
-
+        // UNIQUE(site_id, sku) index (products in the Trash too) that would otherwise surface as a raw 500.
         return [
             'name' => ['required', 'string', $this->nameIsValid(...)],
             'slug' => ['required', 'string', 'max:200', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $this->slugIsFree(...)],
@@ -515,9 +689,15 @@ final class Editor extends Component
             'seoDescription' => ['nullable', 'string', 'max:255'],
             // a member limited to some product categories must pick one inside them (CatalogPolicy::fileUnder)
             'categoryId' => [Rule::requiredIf(fn (): bool => $this->limitedOnProducts()), 'nullable', 'integer',
-                Rule::exists('taxonomies', 'id')->where('vocabulary', 'product_cat'), $this->categoryIsInsideLimits(...)],
-            'price' => ['nullable', 'integer', 'min:0'],
-            'sku' => ['nullable', 'string', 'max:255', $uniqueSku],
+                $this->categoryExists(...), $this->categoryIsInsideLimits(...)],
+            'price' => ['nullable', 'string', $this->amountReads(...)],
+            'salePrice' => ['nullable', 'string', $this->amountReads(...), $this->saleIsBelowPrice(...)],
+            'saleStartsAt' => ['string', $this->momentReads(...)],
+            'saleEndsAt' => ['string', $this->momentReads(...), $this->saleEndsAfterStart(...)],
+            'stock' => ['nullable', 'string', $this->stockReads(...)],
+            'featured' => ['boolean'],
+            'bestseller' => ['boolean'],
+            'sku' => ['nullable', 'string', 'max:255', $this->skuIsFree(...)],
             'status' => ['required', Rule::in(['draft', 'published', 'archived'])],
             'imageMediaIds' => ['array'],
             // RLS scopes the exists to this site. Deliberately NOT whereNull(deleted_at): an
@@ -535,8 +715,6 @@ final class Editor extends Component
     {
         return [
             'slug.regex' => __('catalog.slug_format'),
-            'sku.unique' => __('catalog.sku_taken'),
-            'categoryId.exists' => __('catalog.category_invalid'),
             ...($this->limitedOnProducts() ? ['categoryId.required' => $this->limitsRefusal()] : []),
             'imageMediaIds.*.exists' => __('catalog.gallery_invalid'),
             'imageMediaIds.*.integer' => __('catalog.gallery_invalid'),
@@ -591,7 +769,14 @@ final class Editor extends Component
         $this->ulid = $product->ulid;
         $this->productId = $product->id;
         $this->sku = $product->sku;
-        $this->price = $product->price !== null ? (string) $product->price : null;
+        $this->price = $product->price !== null ? ProductPrice::format($product->price) : null;
+        $this->salePrice = $product->sale_price !== null ? ProductPrice::format($product->sale_price) : null;
+        $time = app(SiteTime::class);
+        $this->saleStartsAt = $time->forDisplay($product->sale_starts_at)?->format(self::MOMENT) ?? '';
+        $this->saleEndsAt = $time->forDisplay($product->sale_ends_at)?->format(self::MOMENT) ?? '';
+        $this->stock = $product->stock !== null ? (string) $product->stock : null;
+        $this->featured = $product->is_featured;
+        $this->bestseller = $product->is_bestseller;
         $this->status = $product->status;
         $this->publishedAt = self::iso($product->published_at);
 
@@ -842,7 +1027,7 @@ final class Editor extends Component
      *
      * @return array{status: string, chip: string, published: string, updated: string, seen: string}
      */
-    private function publishCard(): array
+    private function publishCard(bool $selling): array
     {
         $time = app(SiteTime::class);
         $when = fn (?string $iso): ?string => $iso === null ? null : $time->forDisplay(CarbonImmutable::parse($iso))?->format('d/m/Y H:i');
@@ -851,10 +1036,14 @@ final class Editor extends Component
 
         $seen = __('catalog.ed.seen_no');
         if ($this->status === 'published') {
-            $price = $this->saved['price'] ?? '';
-            $seen = ! app(CatalogMode::class)->isBrochure() && $price !== ''
-                ? __('catalog.ed.seen_price', ['price' => number_format((int) $price, 0, ',', '.')])
-                : __('catalog.ed.seen_ask');
+            $price = ProductPrice::parse($this->saved['price'] ?? null);
+            $sale = ProductPrice::parse($this->saved['salePrice'] ?? null);
+            $onSale = ProductPrice::saleApplies($price, $sale, $this->moment($this->saved['saleStartsAt'] ?? ''), $this->moment($this->saved['saleEndsAt'] ?? ''), CarbonImmutable::now());
+            $seen = match (true) {
+                ! $selling || $price === null => __('catalog.ed.seen_ask'),
+                $onSale && $sale !== null => __('catalog.ed.seen_sale', ['price' => ProductPrice::format($sale)]),
+                default => __('catalog.ed.seen_price', ['price' => ProductPrice::format($price)]),
+            };
         }
 
         return [
@@ -1043,8 +1232,12 @@ final class Editor extends Component
         // A cleared input arrives as '' — store NULL: an '' sku would enter the partial
         // UNIQUE(site_id, sku) index and collide with the next skuless product.
         $this->sku = $this->sku !== null ? PlainText::line($this->sku) : null;
+        $this->saleStartsAt ??= '';
+        $this->saleEndsAt ??= '';
         $this->sku = $this->sku === '' ? null : $this->sku;
         $this->price = $this->price === '' ? null : $this->price;
+        $this->salePrice = $this->salePrice === '' ? null : $this->salePrice;
+        $this->stock = $this->stock === '' ? null : $this->stock;
 
         // Editor HTML is sanitized BEFORE validation so length checks and what the admin sees
         // re-rendered are exactly what gets stored (junk-only input collapses to '').
@@ -1111,10 +1304,33 @@ final class Editor extends Component
             throw $e;
         }
 
+        $price = ProductPrice::parse($this->price);
+        $sale = ProductPrice::parse($this->salePrice);
+        $stock = ProductPrice::parse($this->stock, ProductPrice::STOCK_DIGITS);
         $attributes = [
             'sku' => $this->sku,
-            'price' => $this->price !== null ? (int) $this->price : null,
+            'price' => $price,
+            'sale_price' => $sale,
+            'stock' => $stock,
         ];
+        // a sale's start and end are written together when either changed here (checked against each
+        // other above), so a stored instant with seconds is kept as it is when neither did
+        $timesChanged = $this->saleStartsAt !== ($this->saved['saleStartsAt'] ?? '') || $this->saleEndsAt !== ($this->saved['saleEndsAt'] ?? '');
+        if ($timesChanged) {
+            $attributes['sale_starts_at'] = $this->moment($this->saleStartsAt);
+            $attributes['sale_ends_at'] = $this->moment($this->saleEndsAt);
+        }
+        // the fields show what is stored (a draft saving itself puts back what was typed: commit())
+        $this->price = $price !== null ? ProductPrice::format($price) : null;
+        $this->salePrice = $sale !== null ? ProductPrice::format($sale) : null;
+        $this->stock = $stock !== null ? (string) $stock : null;
+        // only the labels switched here: one another tab or the list changed meanwhile is not put back
+        $flags = [];
+        foreach (['featured' => 'featured', 'best' => 'bestseller'] as $flag => $field) {
+            if ($this->{$field} !== (($this->saved[$field] ?? '') === '1')) {
+                $flags[$flag] = $this->{$field};
+            }
+        }
 
         // where the product goes: inside the person's product limits (validated above; held here too)
         $this->authorize('fileUnder', [Product::class, $this->categoryId]);
@@ -1128,6 +1344,10 @@ final class Editor extends Component
             $this->authorize('update', $product);
             // the product row before its translation, like every other write of a name or a SKU
             ProductSearchWords::lock($product->site_id, $product->id);
+            // the labels through the list's own write, saved in the same statement as the other fields
+            if ($flags !== []) {
+                app(FlagProduct::class)->fill($product, $flags);
+            }
             $product->update($this->publishing ? $attributes + ['status' => $this->status] : $attributes);
         }
 
@@ -1145,7 +1365,21 @@ final class Editor extends Component
         );
 
         $product->assignCategories($this->categoryId !== null ? [$this->categoryId] : []);
+        if ($product->wasRecentlyCreated && in_array(true, $flags, true)) {
+            // a new product's labels through the list's own write, once it is filed (the right to
+            // change it is asked about its category); it has none until one is switched on
+            app(FlagProduct::class)->handle($product, $flags);
+        }
         app(ProductGallery::class)->sync($product, $this->imageMediaIds);
+        // once every write went through: what this tab did not write shows as stored, so the form never
+        // shows a value the save did not keep
+        $this->featured = (bool) $product->is_featured;
+        $this->bestseller = (bool) $product->is_bestseller;
+        if (! $timesChanged) {
+            $time = app(SiteTime::class);
+            $this->saleStartsAt = $time->forDisplay($product->sale_starts_at)?->format(self::MOMENT) ?? '';
+            $this->saleEndsAt = $time->forDisplay($product->sale_ends_at)?->format(self::MOMENT) ?? '';
+        }
 
         if ($product->status === 'published') {
             // Drafts and archived products keep whatever address they had — the storefront renders
@@ -1238,6 +1472,212 @@ final class Editor extends Component
             ->all();
 
         return array_values($categories);
+    }
+
+    /**
+     * Keep the drawn main category's name (from the list just built, no query of its own): when the
+     * category is gone from the list, the name learnt for that id is kept.
+     *
+     * @param  list<array{id: int, name: string}>  $categories
+     */
+    private function rememberCategoryName(array $categories): void
+    {
+        foreach ($categories as $category) {
+            if ($category['id'] === $this->categoryId) {
+                $this->categoryShown = $category;
+
+                return;
+            }
+        }
+        if (($this->categoryShown['id'] ?? null) !== $this->categoryId) {
+            $this->categoryShown = null;
+        }
+    }
+
+    /**
+     * What the price card says beside its fields, from what is typed now: what visitors see for the
+     * price, and whether the sale applies at this moment.
+     *
+     * @return array{shown: string|null, keep: string, sale: string}
+     */
+    private function priceCard(): array
+    {
+        $price = ProductPrice::readable($this->price) ? ProductPrice::parse($this->price) : false;
+        $shown = match (true) {
+            $price === null => Cast::string(__('catalog.price_ask')),
+            is_int($price) => Cast::string(__('catalog.ed.amount', ['amount' => ProductPrice::format($price)])),
+            default => null,
+        };
+
+        $sale = ProductPrice::readable($this->salePrice) ? ProductPrice::parse($this->salePrice) : null;
+        $amount = is_int($price) ? $price : null;
+        $now = CarbonImmutable::now();
+        $words = match (true) {
+            $amount === null || $sale === null || $sale >= $amount => __('catalog.ed.sale_open_end'),
+            ProductPrice::saleApplies($amount, $sale, $this->moment($this->saleStartsAt), $this->moment($this->saleEndsAt), $now) => __('catalog.ed.sale_now', ['price' => ProductPrice::format($sale)]),
+            default => __('catalog.ed.sale_off_window'),
+        };
+
+        return [
+            'shown' => $shown,
+            'keep' => is_int($price) ? Cast::string(__('catalog.ed.fold_keep_price', ['price' => $shown])) : Cast::string(__('catalog.ed.fold_keep')),
+            'sale' => Cast::string(__('catalog.ed.sale_zone', ['zone' => $this->clock])).' '.Cast::string($words),
+        ];
+    }
+
+    /** A sale's start or end typed in the site's wall clock, as the UTC instant stored; null when blank or unreadable. */
+    private function moment(?string $local): ?CarbonImmutable
+    {
+        if ($local === null || preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $local) !== 1) {
+            return null;
+        }
+        $read = CarbonImmutable::createFromFormat('!'.self::MOMENT, $local, app(SiteTime::class)->zone());
+        if (! $read instanceof CarbonImmutable || $read->format(self::MOMENT) !== $local) {
+            return null; // 2026-02-30 and the like
+        }
+
+        return $read->utc();
+    }
+
+    /**
+     * An amount is whole đồng in digits, grouped the Vietnamese way or not (ProductPrice).
+     *
+     * @param  \Closure(string): mixed  $fail
+     */
+    private function amountReads(string $attribute, mixed $value, \Closure $fail): void
+    {
+        if (! is_string($value) || ProductPrice::readable($value)) {
+            return;
+        }
+        $fail(ProductPrice::wellFormed($value) ? __('catalog.ed.amount_too_big') : __('catalog.ed.amount_invalid'));
+    }
+
+    /**
+     * A sale price needs a price, and is below it; the message gives one for example (about 10% off,
+     * rounded to the thousand). A price that does not read says so on its own field.
+     *
+     * @param  \Closure(string): mixed  $fail
+     */
+    private function saleIsBelowPrice(string $attribute, mixed $value, \Closure $fail): void
+    {
+        if (! is_string($value) || ! ProductPrice::readable($value)) {
+            return;
+        }
+        $sale = ProductPrice::parse($value);
+        if ($sale === null) {
+            return;
+        }
+        if (! ProductPrice::readable($this->price)) {
+            return;
+        }
+        $price = ProductPrice::parse($this->price);
+        if ($price === null) {
+            $fail(__('catalog.ed.sale_needs_price'));
+
+            return;
+        }
+        if ($sale >= $price) {
+            if ($price === 0) {
+                $fail(__('catalog.ed.sale_not_below_free'));
+
+                return;
+            }
+            // about 10% off, in whole thousands (the board's example); a small price gets 10% off as it is
+            $example = intdiv($price * 9 + 5000, 10000) * 1000;
+            if ($example <= 0 || $example >= $price) {
+                $example = max(intdiv($price * 9, 10), 1) < $price ? max(intdiv($price * 9, 10), 1) : $price - 1;
+            }
+            $fail(__('catalog.ed.sale_not_below', ['price' => ProductPrice::format($price), 'example' => ProductPrice::format($example)]));
+        }
+    }
+
+    /**
+     * @param  \Closure(string): mixed  $fail
+     */
+    private function momentReads(string $attribute, mixed $value, \Closure $fail): void
+    {
+        if (is_string($value) && $value !== '' && $this->moment($value) === null) {
+            $fail(__('catalog.ed.sale_when_invalid'));
+        }
+    }
+
+    /**
+     * The end of a sale comes after its start (the message on the end, naming the start).
+     *
+     * @param  \Closure(string): mixed  $fail
+     */
+    private function saleEndsAfterStart(string $attribute, mixed $value, \Closure $fail): void
+    {
+        $end = is_string($value) ? $this->moment($value) : null;
+        $start = $this->moment($this->saleStartsAt);
+        if ($end !== null && $start !== null && $end <= $start) {
+            $fail(__('catalog.ed.sale_end_before', ['start' => app(SiteTime::class)->forDisplay($start)?->format('d/m/Y H:i')]));
+        }
+    }
+
+    /**
+     * @param  \Closure(string): mixed  $fail
+     */
+    private function stockReads(string $attribute, mixed $value, \Closure $fail): void
+    {
+        if (is_string($value) && ! ProductPrice::readable($value, ProductPrice::STOCK_DIGITS)) {
+            $fail(__('catalog.ed.stock_invalid'));
+        }
+    }
+
+    /**
+     * No other product of this site holds the code, the Trash included (the unique index covers both).
+     * The message names that product and says whether it is in the Trash — for a member limited to some
+     * product categories only when it is inside them; otherwise it says the code is taken.
+     *
+     * @param  \Closure(string): mixed  $fail
+     */
+    private function skuIsFree(string $attribute, mixed $value, \Closure $fail): void
+    {
+        // as the save stores it (persist() tidies the code first), so leaving the field says what a save would
+        $value = is_string($value) ? PlainText::line($value) : '';
+        if ($value === '') {
+            return;
+        }
+        $other = Product::withTrashed()
+            ->where('sku', $value)
+            ->when($this->productId !== null, fn ($query) => $query->whereKeyNot($this->productId))
+            ->first(['id', 'site_id', 'deleted_at']);
+        if (! $other instanceof Product) {
+            return;
+        }
+
+        $user = auth()->user();
+        $scopes = app(CategoryScopes::class);
+        if ($user instanceof User && $scopes->isLimited($user, CategoryScopes::PRODUCTS)
+            && ! $scopes->coversId($user, $other->primaryCategory()?->id, CategoryScopes::PRODUCTS)) {
+            $fail(__('catalog.sku_taken'));
+
+            return;
+        }
+        $name = $other->translations()->where('locale', $this->locale)->value('name');
+        $name = is_string($name) && $name !== '' ? $name : __('catalog.untitled');
+        $fail(__($other->trashed() ? 'catalog.ed.sku_taken_trash' : 'catalog.ed.sku_taken_named', ['sku' => $value, 'name' => $name]));
+    }
+
+    /**
+     * The picked category is a product category of this site (RLS). One deleted meanwhile (another tab,
+     * another member) is named, when this page drew it, so the member knows which one to replace.
+     *
+     * @param  \Closure(string): mixed  $fail
+     */
+    private function categoryExists(string $attribute, mixed $value, \Closure $fail): void
+    {
+        if (! is_numeric($value)) {
+            return;
+        }
+        $id = (int) $value;
+        if (Taxonomy::query()->whereKey($id)->where('vocabulary', 'product_cat')->exists()) {
+            return;
+        }
+        $fail(($this->categoryShown['id'] ?? null) === $id
+            ? __('catalog.ed.category_gone', ['name' => $this->categoryShown['name']])
+            : __('catalog.category_invalid'));
     }
 
     private function resolveOrFail(string $ulid): Product

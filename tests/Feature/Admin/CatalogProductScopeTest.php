@@ -213,12 +213,26 @@ it('creates a product only under a category inside the limits', function (): voi
         $new()->set('categoryId', $this->jigs->id)->call('save')->assertHasErrors(['categoryId']);
         expect(DB::table('product_translations')->where('site_id', 1)->where('slug', 'khuon-dap')->exists())->toBeFalse();
 
-        $new()->set('categoryId', $this->small->id)->call('save')->assertHasNoErrors();
+        // labelled before its first save: the label is written once the product is filed inside the limits
+        $new()->set('categoryId', $this->small->id)->set('featured', true)->call('save')->assertHasNoErrors();
         $id = DB::table('product_translations')->where('site_id', 1)->where('slug', 'khuon-dap')->value('product_id');
-        expect((int) DB::table('product_taxonomies')->where('site_id', 1)->where('product_id', $id)->where('position', 0)->value('taxonomy_id'))->toBe($this->small->id);
+        expect((int) DB::table('product_taxonomies')->where('site_id', 1)->where('product_id', $id)->where('position', 0)->value('taxonomy_id'))->toBe($this->small->id)
+            ->and(DB::table('products')->where('site_id', 1)->where('id', $id)->value('is_featured'))->toBeTrue();
 
         // a member not limited on products may still save one under no category
         Livewire::actingAs($free)->test(Editor::class)->set('name', 'Bàn gá')->set('slug', 'ban-ga')->call('save')->assertHasNoErrors();
+    });
+});
+
+it('never names a product outside the limits whose SKU is taken', function (): void {
+    cpsIn(function (): void {
+        DB::table('products')->where('id', $this->outside->id)->update(['sku' => 'DG-01']);
+
+        Livewire::actingAs($this->lead)->test(Editor::class, ['ulid' => $this->inside->ulid])
+            ->set('sku', 'DG-01')
+            ->assertHasErrors(['sku'])
+            ->assertSee(__('catalog.sku_taken'))
+            ->assertDontSee('Đồ gá hàn');
     });
 });
 
