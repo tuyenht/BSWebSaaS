@@ -735,6 +735,9 @@
                                     @endif
                                     <x-slot:menu>
                                         <x-bs-admin::list.menu-item icon="ri-pencil" :why="$outWhy" x-on:click="$bsToast({{ $lockToast($out) }})">{{ __('entries.quick_edit_title') }}</x-bs-admin::list.menu-item>
+                                        @if ($may['child'] !== null || $may['childWhy'] !== null)
+                                            <x-bs-admin::list.menu-item icon="ri-add" data-child :why="$may['childWhy'] ?? $outWhy" x-on:click="$bsToast({{ $lockToast($may['childWhy'] ?? $out) }})">{{ __('entries.row_add_child') }}</x-bs-admin::list.menu-item>
+                                        @endif
                                         @if ($canCreate)
                                             <x-bs-admin::list.menu-item icon="ri-file-copy" :why="$outWhy" x-on:click="$bsToast({{ $lockToast($out) }})">{{ __('entries.action_duplicate') }}</x-bs-admin::list.menu-item>
                                         @endif
@@ -810,7 +813,7 @@
                                         @if ($path)
                                             <x-bs-admin::list.menu-item icon="ri-link" data-copy x-on:click="(navigator.clipboard ? navigator.clipboard.writeText({{ $Js::from($publicOrigin.$path) }}) : Promise.reject()).then(() => $bsToast({ text: {{ $Js::from(__('entries.link_copied', ['url' => $publicOrigin.$path])) }} }), () => $bsToast({ text: {{ $Js::from(__('admin.domains_copy_failed', ['text' => $publicOrigin.$path])) }}, stay: true }))">{{ __('entries.copy_link') }}</x-bs-admin::list.menu-item>
                                         @endif
-                                        @if (($viewHref || $path) && ($quickEdit || $may['duplicate']))
+                                        @if (($viewHref || $path) && ($quickEdit || $may['duplicate'] || $may['child'] !== null || $may['childWhy'] !== null))
                                             <x-bs-admin::list.menu-sep />
                                         @endif
                                         @if ($quickEdit)
@@ -818,6 +821,12 @@
                                             @if (! $isHome && $path)
                                                 <x-bs-admin::list.menu-item icon="ri-link" data-path-edit x-show="! vPath" x-on:click="$dispatch('list-quick-slug')">{{ __('entries.edit_path') }}</x-bs-admin::list.menu-item>
                                             @endif
+                                        @endif
+                                        {{-- «Thêm trang con»: the editor with this page as the parent (never on the Home page or a page on the last level) --}}
+                                        @if ($may['child'] !== null)
+                                            <x-bs-admin::list.menu-item icon="ri-add" data-child :href="$may['child']">{{ __('entries.row_add_child') }}</x-bs-admin::list.menu-item>
+                                        @elseif ($may['childWhy'] !== null)
+                                            <x-bs-admin::list.menu-item icon="ri-add" data-child :why="$may['childWhy']" x-on:click="$bsToast({{ $lockToast($may['childWhy']) }})">{{ __('entries.row_add_child') }}</x-bs-admin::list.menu-item>
                                         @endif
                                         @if ($may['duplicate'])
                                             <x-bs-admin::list.menu-item icon="ri-file-copy" data-xm="xd" wire:click="duplicate('{{ $entry->ulid }}')">{{ __('entries.action_duplicate') }}</x-bs-admin::list.menu-item>
