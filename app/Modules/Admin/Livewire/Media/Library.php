@@ -275,9 +275,12 @@ final class Library extends Component
         $this->pickerSource = null;
     }
 
-    /** A finished upload batch: the new files are the newest, so the list starts again. */
+    /**
+     * A finished upload batch: the new files are the newest, so the list starts again. The upload
+     * panel stays open either way (its list shows what failed), so the failure count is not needed.
+     */
     #[On('media-uploaded')]
-    public function onPickerMediaUploaded(): void
+    public function onPickerMediaUploaded(int $failed = 0): void
     {
         $this->status = 'live';
         $this->restart();

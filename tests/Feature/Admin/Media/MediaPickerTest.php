@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Livewire\Catalog\Editor;
+use App\Modules\Admin\Livewire\Media\Library;
 use App\Modules\Admin\Support\MediaUsageLocator;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductImage;
@@ -1042,6 +1043,48 @@ it('opens the device pane with media.upload and lands on the library after a bat
             ->dispatch('media-uploaded')                 // the island fires this after register
             ->assertSet('pickerTab', 'library')
             ->assertSet('pickerSource', null);
+    });
+});
+
+it('keeps the device pane open when a file of the batch failed, so its reason stays in view', function (): void {
+    $user = pickerManager(['media.upload']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'editor')
+            ->call('openPickerSource', 'device')
+            ->dispatch('media-uploaded', failed: 2)
+            ->assertSet('pickerSource', 'device')
+            ->dispatch('media-uploaded', failed: 0)
+            ->assertSet('pickerTab', 'library')
+            ->assertSet('pickerSource', null);
+    });
+});
+
+it('gives the device pane the upload list: a plain sentence per refusal and the row labels', function (): void {
+    $user = pickerManager(['media.upload']);
+    app()->setLocale('vi');
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $html = Livewire::actingAs($user)->test(Library::class)
+            ->call('openUpload')
+            ->call('openPickerSource', 'device')
+            ->assertSet('pickerSource', 'device')
+            ->html();
+
+        expect(preg_match('/data-msgs="([^"]*)"/', $html, $m))->toBe(1);
+        $msgs = json_decode(html_entity_decode($m[1], ENT_QUOTES), true);
+        // what the board says for each refusal a device upload can meet; the size limit comes from the upload rule
+        expect(array_keys($msgs))->toBe(['unsupported_type', 'unsupported_svg', 'too_large', 'image_too_large', 'file_invalid',
+            'upload_session_invalid', 'upload_missing', 'storage_failed', 'unexpected'])
+            ->and($msgs['too_large'])->toBe('Tệp nặng :size, quá mức 10 MB. Hãy nén ảnh hoặc giảm kích thước rồi tải lên lại.')
+            ->and($msgs['storage_failed'])->toBe('Chưa lưu được tệp — không phải lỗi của bạn. Bấm Thử lại sau ít phút.');
+
+        expect(preg_match('/data-labels="([^"]*)"/', $html, $m))->toBe(1);
+        $labels = json_decode(html_entity_decode($m[1], ENT_QUOTES), true);
+        expect($labels)->toMatchArray(['retry' => 'Thử lại', 'failed' => 'Chưa tải được', 'stop' => 'Dừng tải :name',
+            'headErr' => ':n tệp chưa tải được', 'meta' => ':size · :w × :h điểm ảnh · đã vào Thư viện'])
+            ->and($html)->toContain('data-up-summary', 'Ẩn tệp đã xong', 'template data-icon="retry"');
     });
 });
 

@@ -9,6 +9,9 @@
 /* Shared record-list rows (<x-bs-admin::list>): layout by the list's own width. */
 @import './admin-list.css';
 
+/* The upload list under the picker's device dropzone (design board 13), drawn in JS. */
+@import './admin-upload.css';
+
 /* The approval-workflow list (design 18): its table → three columns → flat rows by the page's width. */
 @import './admin-workflow.css';
 
