@@ -132,6 +132,14 @@ describe('the row ⋮', function (): void {
                 ->toContain(__('entries.copy_link'))
                 ->toContain((string) Js::from($origin.'/gioi-thieu'))
                 ->and($origin)->toStartWith('http');
+
+            // the ⋮ keeps «Xem trước» first even while the row shows «Xem»: the draft's item carries no data-xm, so the table never hides it,
+            // while a published row's «Xem trên website» still leaves the ⋮ when the row shows the button
+            $draftItem = Str::between(rmRowHtml($html, $draft->ulid), 'class="list-menu', '</div>');
+            $liveItem = Str::between(rmRowHtml($html, $live->ulid), 'class="list-menu', '</div>');
+            expect($draftItem)->toContain(e(route('admin.entries.preview', ['ulid' => $draft->ulid])))
+                ->not->toContain('data-xm="xv"')
+                ->and($liveItem)->toContain('data-xm="xv"');
         });
     });
 

@@ -800,11 +800,12 @@
                                             <span class="list-x list-xe" data-x="xt" aria-hidden="true"></span>
                                         @endif
                                     @endif
+                                    {{-- «Xem trước» (not published) stays first in ⋮ even while the row shows «Xem» (no data-xm); «Xem trên website» leaves it then --}}
                                     {{-- as the design's ⋮: Xem trên website (published) or Xem trước · Sao chép đường dẫn | Sửa nhanh tiêu đề ·
                                          Sửa đường dẫn (only while the path column is off) · Nhân bản | Chuyển vào Thùng rác (locked on the Home page) --}}
                                     <x-slot:menu>
                                         @if ($viewHref)
-                                            <x-bs-admin::list.menu-item :icon="$isLive ? 'ri-external-link' : 'ri-eye'" data-xm="xv" :href="$viewHref" target="_blank" rel="noopener" :aria-label="($isLive ? __('entries.view_on_site') : __('entries.action_preview')).': '.$title.' ('.__('entries.opens_new_tab').')'">{{ $isLive ? __('entries.view_on_site') : __('entries.action_preview') }}</x-bs-admin::list.menu-item>
+                                            <x-bs-admin::list.menu-item :icon="$isLive ? 'ri-external-link' : 'ri-eye'" :data-xm="$isLive ? 'xv' : null" :href="$viewHref" target="_blank" rel="noopener" :aria-label="($isLive ? __('entries.view_on_site') : __('entries.action_preview')).': '.$title.' ('.__('entries.opens_new_tab').')'">{{ $isLive ? __('entries.view_on_site') : __('entries.action_preview') }}</x-bs-admin::list.menu-item>
                                         @endif
                                         @if ($path)
                                             <x-bs-admin::list.menu-item icon="ri-link" data-copy x-on:click="(navigator.clipboard ? navigator.clipboard.writeText({{ $Js::from($publicOrigin.$path) }}) : Promise.reject()).then(() => $bsToast({ text: {{ $Js::from(__('entries.link_copied', ['url' => $publicOrigin.$path])) }} }), () => $bsToast({ text: {{ $Js::from(__('admin.domains_copy_failed', ['text' => $publicOrigin.$path])) }}, stay: true }))">{{ __('entries.copy_link') }}</x-bs-admin::list.menu-item>
