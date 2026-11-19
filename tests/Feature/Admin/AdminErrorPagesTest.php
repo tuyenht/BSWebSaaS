@@ -471,3 +471,10 @@ it('answers an unknown console address with "not found" for a guest and "no perm
 
     $this->actingAs(User::factory()->create())->get($platform.'/khong-co')->assertForbidden();
 });
+
+it('opens the platform sign-in straight from the ended-session dialog', function (): void {
+    $platform = 'http://'.config('tenancy.platform_host');
+    $this->get($platform.'/session-expired?to='.urlencode('/tenants').'&signin=1')
+        ->assertRedirect(route('platform.login'))
+        ->assertSessionHas('url.intended', $platform.'/tenants');
+});

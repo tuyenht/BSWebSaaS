@@ -266,3 +266,22 @@ it('words the resend notice in the language just switched to, in the right colou
         $page->assertSee(trans('auth.otp_resent', [], 'en'), false)->assertSeeHtml('auth-alert auth-alert--success');
     });
 });
+
+it('accepts an emailed code pasted or typed with spaces in it', function (): void {
+    seedTenancy();
+    Notification::fake();
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $otp = app(EmailOtp::class);
+        $otp->send($user);
+        $code = null;
+        Notification::assertSentTo($user, EmailOtpNotification::class, function (EmailOtpNotification $note) use (&$code): bool {
+            $code = (new ReflectionProperty($note, 'code'))->getValue($note);
+
+            return true;
+        });
+
+        expect($otp->verify($user, ' '.substr((string) $code, 0, 3).' '.substr((string) $code, 3)."\t"))->toBeTrue();
+    });
+});

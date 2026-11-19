@@ -77,7 +77,9 @@ final class EmailOtp
             return false;
         }
 
-        if (! hash_equals(Cast::string($record['hash']), hash('sha256', trim($code)))) {
+        // A code copied from the email or typed in groups ("158 668") is the same code: spaces go,
+        // as for the authenticator app's code. The code itself is digits only, so this widens nothing.
+        if (! hash_equals(Cast::string($record['hash']), hash('sha256', (string) preg_replace('/\s+/', '', $code)))) {
             return false;
         }
 
