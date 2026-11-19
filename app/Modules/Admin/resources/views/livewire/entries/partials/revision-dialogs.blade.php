@@ -100,7 +100,7 @@
 <x-bs-admin::modal model="revAskOpen" size="narrow" compact alert :close-label="__('entries.rev.cancel')" data-entry-rev-ask wire:loading.attr="aria-busy" wire:target="restoreRevision">
     <x-slot:heading>
         <span class="flex items-center gap-2.5">
-            <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-accent)_10%,var(--color-surface))] text-accent" aria-hidden="true">
+            <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-primary-text)_10%,var(--color-surface))] text-primary-text" aria-hidden="true">
                 <x-bs-admin::icon name="ri-history" class="size-[min(1.5rem,calc(1.125rem+var(--user-text-boost)))]" />
             </span>
             <span>{{ $revAsk['title'] ?? '' }}</span>
