@@ -5908,7 +5908,7 @@
     "media.lib.folder_deleted": "Folder \":name\" deleted.",
     "media.lib.folder_deleted_n": "Folder \":name\" deleted, :n files back in All images (Unsorted).",
     "media.lib.folder_deleted_no_undo": "Folder \":name\" deleted, :n files back in All images (Unsorted). The folder had too many files for Undo.",
-    "media.lib.folder_deleting": "Moving :n files of folder \":name\" back to All images (Unsorted)… The folder disappears once they are moved; there is no Undo.",
+    "media.lib.folder_deleting": "Moving the files of folder \":name\" back to All images (Unsorted)… The folder disappears once they are moved; there is no Undo. If the folder is still there after a few minutes, delete it again.",
     "media.lib.folder_back": "Folder \":name\" restored.",
     "media.lib.folder_undo_gone": "It is too late to undo this. Create the folder again and move the files into it if you need to.",
     "media.lib.folder_sheet_title": "Folder \":name\"",

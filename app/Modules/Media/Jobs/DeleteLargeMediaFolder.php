@@ -11,6 +11,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Throwable;
 
 /**
  * Deletes a media folder that holds more files than one web request should touch (config
@@ -48,6 +49,14 @@ final class DeleteLargeMediaFolder implements ShouldBeUniqueUntilProcessing, Sho
         return $this->siteId.':'.$this->folderId;
     }
 
+    /** Out of tries: the folder stays, partly emptied, and a new delete of it starts again where this left off. */
+    public function failed(?Throwable $e): void
+    {
+        if ($e !== null) {
+            report($e);
+        }
+    }
+
     /** True when the run finished the folder; false when it handed over to a next run. */
     public function handle(Tenancy $tenancy): bool
     {
@@ -80,7 +89,8 @@ final class DeleteLargeMediaFolder implements ShouldBeUniqueUntilProcessing, Sho
             if ($ids === []) {
                 return null;
             }
-            Media::withTrashed()->where('folder_id', $this->folderId)->whereIn('id', $ids)->update(['folder_id' => null]);
+            // toBase: like the foreign key's SET NULL, the files' updated_at is left alone
+            Media::withTrashed()->where('folder_id', $this->folderId)->whereIn('id', $ids)->toBase()->update(['folder_id' => null]);
 
             return $ids[count($ids) - 1];
         });

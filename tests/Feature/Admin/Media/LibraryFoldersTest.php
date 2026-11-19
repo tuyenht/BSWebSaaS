@@ -530,7 +530,7 @@ it('leaves a folder with more files than one request moves to a queued job, and 
             ->call('confirmDeleteFolder')
             ->assertSet('folderInBatches', false)
             ->assertSet('undoFolder', '')
-            ->assertSet('toast', 'Đang chuyển 2 tệp của thư mục "Lớn lon" về Tất cả ảnh (Chưa phân loại)… Thư mục biến mất khi chuyển xong, không có Hoàn tác.')
+            ->assertSet('toast', 'Đang chuyển các tệp của thư mục "Lớn lon" về Tất cả ảnh (Chưa phân loại)… Thư mục biến mất khi chuyển xong, không có Hoàn tác. Nếu vài phút sau thư mục vẫn còn, hãy xóa lại.')
             ->assertDontSee('undoFolderDelete', false);
     });
 
@@ -619,7 +619,15 @@ it('sweeps again when more files than one batch came into a large folder below w
             DB::table('media')->whereIn('id', [$early[0]->id, $early[1]->id])->update(['folder_id' => $folder->id]);
         }
     });
+    $unfiled = 0; // the job's own batches (folder_id set to null), one file each here
+    DB::listen(function ($query) use (&$unfiled): void {
+        if (str_starts_with($query->sql, 'update "media" set "folder_id" = ?') && array_key_exists(0, $query->bindings) && $query->bindings[0] === null) {
+            $unfiled++;
+        }
+    });
     expect((new DeleteLargeMediaFolder(1, $folder->id))->handle(app(Tenancy::class)))->toBeTrue()
         ->and($moved)->toBeTrue()
+        // 3 in the first sweep, the 2 that came in below the cursor in a second one: never left to the row delete
+        ->and($unfiled)->toBe(5)
         ->and(fdLeft(1, $folder->id))->toBe(['filed' => 0, 'folder' => false]);
 });

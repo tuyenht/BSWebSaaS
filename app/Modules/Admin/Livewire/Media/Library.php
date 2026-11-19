@@ -914,12 +914,13 @@ final class Library extends Component
             if ($row === null) {
                 return null;
             }
-            $live = Media::query()->where('folder_id', $row->id)->count();
             if (self::tooManyInline($row->id)) {
+                // no count of a folder this big inside the request: the job says nothing per file either
                 DeleteLargeMediaFolder::dispatch(app(CurrentSite::class)->id(), $row->id); // once this commits
 
-                return ['live' => $live, 'ids' => null, 'row' => $row, 'later' => true];
+                return ['live' => 0, 'ids' => null, 'row' => $row, 'later' => true];
             }
+            $live = Media::query()->where('folder_id', $row->id)->count();
             $ids = self::tooManyForUndo($row->id) ? null : Media::withTrashed()->where('folder_id', $row->id)->pluck('id')
                 ->map(fn (mixed $id): int => Cast::int($id))->all();
             $row->delete();
@@ -951,7 +952,7 @@ final class Library extends Component
             $this->cancelRename();
         }
         $this->say(match (true) {
-            $later => __('media.lib.folder_deleting', ['name' => $name, 'n' => number_format($live, 0, ',', '.')]),
+            $later => __('media.lib.folder_deleting', ['name' => $name]),
             $ids === null => __('media.lib.folder_deleted_no_undo', ['name' => $name, 'n' => number_format($live, 0, ',', '.')]),
             $live > 0 => __('media.lib.folder_deleted_n', ['name' => $name, 'n' => number_format($live, 0, ',', '.')]),
             default => __('media.lib.folder_deleted', ['name' => $name]),

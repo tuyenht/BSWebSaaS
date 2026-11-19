@@ -5908,7 +5908,7 @@
     "media.lib.folder_deleted": "已删除文件夹“:name”。",
     "media.lib.folder_deleted_n": "已删除文件夹“:name”，:n 个文件回到“全部图片”（未分类）。",
     "media.lib.folder_deleted_no_undo": "已删除文件夹“:name”，:n 个文件回到“全部图片”（未分类）。文件夹文件太多，无法撤销。",
-    "media.lib.folder_deleting": "正在将文件夹“:name”的 :n 个文件移回“全部图片”（未分类）… 移完后文件夹会消失，无法撤销。",
+    "media.lib.folder_deleting": "正在将文件夹“:name”的文件移回“全部图片”（未分类）… 移完后文件夹会消失，无法撤销。如果几分钟后文件夹仍在，请再删除一次。",
     "media.lib.folder_back": "已恢复文件夹“:name”。",
     "media.lib.folder_undo_gone": "时间太久，已无法撤销。如有需要，请重新创建文件夹并把文件移进去。",
     "media.lib.folder_sheet_title": "文件夹“:name”",
