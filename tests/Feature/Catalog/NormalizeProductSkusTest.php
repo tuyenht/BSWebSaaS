@@ -5,7 +5,9 @@ use App\Modules\Catalog\Models\Product;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 
 /*
@@ -156,4 +158,26 @@ it('clears a code made only of spaces instead of writing an empty one', function
     $this->artisan('catalog:normalize-skus')->expectsOutputToContain('Changed 2 SKU(s)')->assertSuccessful();
 
     expect(nskSku(1, $a))->toBeNull()->and(nskSku(1, $b))->toBeNull();
+});
+
+it('lists a row that loses a race for its new code and still applies the rest of the chunk', function (): void {
+    $a = nskProduct(1, 'a', 'r 1');
+    $b = nskProduct(1, 'b', 'r 2');
+    $c = nskProduct(1, 'c', 'r 3');
+
+    // another save takes «R-2» between the command's check and its write
+    $armed = true;
+    Product::saving(function (Product $product) use (&$armed): void {
+        if ($armed && $product->sku === 'R-2') {
+            $armed = false;
+            Product::withoutEvents(fn () => Product::query()->create(['site_id' => 1, 'ulid' => (string) Str::ulid(), 'status' => 'draft', 'sku' => 'R-2']));
+        }
+    });
+
+    $exit = Artisan::call('catalog:normalize-skus');
+    $out = Artisan::output();
+    expect($out)->toContain('site 1: clash, not changed: product b ("r 2")')->toContain('Changed 2 SKU(s) on 2 site(s); 1 clash(es) and 0 over-long')
+        ->and($exit)->toBe(0);
+
+    expect(nskSku(1, $a))->toBe('R-1')->and(nskSku(1, $b))->toBe('r 2')->and(nskSku(1, $c))->toBe('R-3');
 });
