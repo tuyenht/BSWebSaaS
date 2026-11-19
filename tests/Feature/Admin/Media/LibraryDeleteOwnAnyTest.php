@@ -135,11 +135,21 @@ it('counts the question from the files still there when a chosen one is gone mea
         $page = Livewire::actingAs($me)->test(Library::class)
             ->call('togglePick', $mine->ulid)->call('togglePick', $gone->ulid)->call('togglePick', $theirs->ulid);
         Media::query()->whereKey($gone->id)->first()?->forceDelete(); // someone deleted it for good meanwhile
-        $page->call('trashPicked')
+        $page->call('cancelTrash') // a re-render: the line under the buttons counts only what is still there
+            ->assertSee('1 tệp còn lại là của người khác')
+            ->call('trashPicked')
             ->assertSet('askTrashOpen', true)
             ->assertSet('trashKept', 1)
             ->assertSet('trashGo', 1)
             ->assertSee('Chuyển 1 tệp của bạn vào Thùng rác?');
+    });
+
+    // «own», when every chosen file of theirs is gone: the choice is cleared, no «someone else's» message
+    $alone = delFile(1, 'cua-toi-mat-luon.png', $me);
+    app(Tenancy::class)->enter(1, function () use ($me, $alone): void {
+        $page = Livewire::actingAs($me)->test(Library::class)->call('togglePick', $alone->ulid);
+        Media::query()->whereKey($alone->id)->first()?->forceDelete();
+        $page->call('trashPicked')->assertSet('picked', [])->assertSet('toastTone', 'success')->assertSet('askTrashOpen', false);
     });
 
     // «any», when every chosen file is gone: the choice is cleared, with no «someone else's» message

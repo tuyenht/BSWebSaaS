@@ -126,7 +126,7 @@ it('lets media.view only look: every change is refused', function (string $metho
     'undo' => ['undo', []],
 ]);
 
-it('keeps the Trash closed to someone without media.delete', function (): void {
+it('keeps the Trash closed to someone without a delete right', function (): void {
     $user = libUser(['media.view', 'media.upload']);
     $gone = libFile(1, 'da-xoa.png');
     app(Tenancy::class)->enter(1, fn () => $gone->delete());

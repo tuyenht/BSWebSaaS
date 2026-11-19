@@ -805,7 +805,7 @@ final class Library extends Component
         $chosen = Media::query()->whereIn('ulid', $this->picked)->count();
         $mine = app(MediaDeleteRights::class)->trashable(Media::query()->whereIn('ulid', $this->picked))->count();
         if ($mine === 0) {
-            if (MediaDeleteRights::any()) {
+            if ($chosen === 0 || MediaDeleteRights::any()) {
                 $this->picked = []; // the chosen files are gone meanwhile: nothing left to send
 
                 return;
@@ -992,9 +992,10 @@ final class Library extends Component
         $totals = ['n' => 0, 'bytes' => 0];
         $current = null;
         $mineN = null;
+        $chosenN = null;
         try {
             // a savepoint inside the request's tenancy transaction: a failed read leaves it usable
-            DB::transaction(function () use ($directory, $canDelete, $canDeleteAny, $trash, &$folders, &$counts, &$page, &$totals, &$current, &$mineN): void {
+            DB::transaction(function () use ($directory, $canDelete, $canDeleteAny, $trash, &$folders, &$counts, &$page, &$totals, &$current, &$mineN, &$chosenN): void {
                 $folders = MediaFolder::inTreeOrder(MediaFolder::query()->orderBy('position')->orderBy('name')->orderBy('id')
                     ->get(['id', 'name', 'slug', 'parent_id', 'position']));
                 $current = $this->currentFolder($folders);
@@ -1014,6 +1015,8 @@ final class Library extends Component
                     $mineN = $trash
                         ? MediaDeleteRights::restorable(Media::onlyTrashed()->whereIn('ulid', $this->picked))->count()
                         : app(MediaDeleteRights::class)->trashable(Media::query()->whereIn('ulid', $this->picked))->count();
+                    // the chosen files still there (one deleted meanwhile neither goes nor stays)
+                    $chosenN = ($trash ? Media::onlyTrashed() : Media::query())->whereIn('ulid', $this->picked)->count();
                 }
             });
         } catch (QueryException $e) {
@@ -1065,6 +1068,7 @@ final class Library extends Component
             'canDeleteAny' => $canDeleteAny,
             // «own», with files chosen: how many of them the Trash button / Khôi phục acts on
             'mineN' => $mineN,
+            'chosenN' => $chosenN,
             'canFolders' => Gate::allows('media.folders'),
             'canPurge' => $canPurge,
             'urls' => app(MediaUrlResolver::class),

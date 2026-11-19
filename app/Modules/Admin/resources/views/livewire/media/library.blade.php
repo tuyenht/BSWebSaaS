@@ -240,7 +240,7 @@
                     @php
                         // «own» (board 12): the Trash button and Khôi phục act only on this person's files;
                         // one line under them says why the rest stay
-                        $skipN = $mineN === null ? 0 : count($picked) - $mineN;
+                        $skipN = $mineN === null ? 0 : ($chosenN ?? count($picked)) - $mineN;
                         $skipWhy = $skipN <= 0 ? null : ($trash
                             ? __('media.lib.restore_skip', ['n' => $num($skipN)])
                             : ($mineN > 0 ? __('media.lib.trash_skip_rest', ['n' => $num($skipN)]) : __('media.lib.trash_skip_all')));
