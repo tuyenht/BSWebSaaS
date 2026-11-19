@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Cms\Models;
 
+use App\Modules\Cms\Jobs\RecountCategoryPublicCounts;
 use App\Modules\Cms\Support\TaxonomySearchWords;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
@@ -38,6 +39,10 @@ class TaxonomyTranslation extends Model
      * rewrites this language's storefront search words in the same transaction (TaxonomySearchWords),
      * from the name just saved (or the saved row read back when the model does not hold it); a moved
      * row first takes its words off where it was. Other saves write nothing.
+     *
+     * A new row (or one moved to another language or category) starts at 0 public items and is
+     * counted off the request once the save commits (RecountCategoryPublicCounts): an existing top
+     * category's total is its whole branch. The storefront shows no number until then.
      */
     #[\Override]
     protected static function booted(): void
@@ -49,11 +54,18 @@ class TaxonomyTranslation extends Model
                 TaxonomySearchWords::putSaved($row->site_id, $row->id);
             }
         };
-        static::created($sync);
-        static::updated(static function (self $row) use ($sync): void {
+        $count = static function (self $row): void {
+            RecountCategoryPublicCounts::dispatch($row->site_id, [$row->taxonomy_id], $row->locale);
+        };
+        static::created(static function (self $row) use ($sync, $count): void {
+            $sync($row);
+            $count($row);
+        });
+        static::updated(static function (self $row) use ($sync, $count): void {
             if ($row->wasChanged(['locale', 'taxonomy_id'])) {
                 TaxonomySearchWords::put($row->site_id, Cast::int($row->getOriginal('taxonomy_id')), Cast::string($row->getOriginal('locale')), null);
                 $sync($row);
+                $count($row);
             } elseif ($row->wasChanged('name')) {
                 $sync($row);
             }

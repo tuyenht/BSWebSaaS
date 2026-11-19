@@ -86,6 +86,7 @@ final class CatalogServiceProvider extends ServiceProvider
             items: 'products',
             /** @param list<int> $ids */
             changed: static fn (array $ids) => Product::markContentChanged($ids),
+            translations: 'product_translations',
         );
 
         // A gallery picture whose file goes into the media trash leaves the product page at once (the

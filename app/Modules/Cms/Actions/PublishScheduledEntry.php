@@ -6,6 +6,7 @@ use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Support\CategoryPublicCounts;
 use App\Modules\Cms\Support\EntryStatusAudit;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use Illuminate\Support\Facades\DB;
@@ -33,6 +34,7 @@ final readonly class PublishScheduledEntry
         private RouteSync $routes,
         private EntryWorkflowResolver $workflows,
         private RecordEntryRevision $revisions,
+        private CategoryPublicCounts $publicCounts,
     ) {}
 
     /**
@@ -46,7 +48,7 @@ final readonly class PublishScheduledEntry
     {
         // Atomic: if any locale's route sync conflicts, roll the whole publish back rather than
         // leave the entry `published` with some locales unrouted.
-        if (! DB::transaction(fn (): bool => $this->publishLocked($entry))) {
+        if (! DB::transaction(fn (): bool => $this->publicCounts->track('entry_taxonomies', [$entry->id], fn (): bool => $this->publishLocked($entry)))) {
             return false;
         }
 

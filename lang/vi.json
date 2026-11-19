@@ -3534,6 +3534,8 @@
     "storefront.search.suggest_close": "đóng",
     "storefront.search.suggest_heading_groups": "Nhóm",
     "storefront.search.suggest_kind_posts": "Bài viết",
+    "storefront.search.suggest_kind_count": ":kind · :count mục",
+    "storefront.search.suggest_kind_count_one": ":kind · 1 mục",
     "storefront.search.suggest_sku": "Mã :sku",
     "storefront.search.suggest_all_n": "Xem tất cả :count kết quả cho “:q”",
     "storefront.search.suggest_all_n_one": "Xem 1 kết quả cho “:q”",

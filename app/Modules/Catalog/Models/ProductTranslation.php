@@ -4,6 +4,7 @@ namespace App\Modules\Catalog\Models;
 
 use App\Modules\Catalog\Support\ProductSearchWords;
 use App\Modules\Catalog\Support\ProductSiteWords;
+use App\Modules\Cms\Concerns\CountsInCategoryPublicTotals;
 use App\Modules\Cms\Concerns\TracksContentChange;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
@@ -29,10 +30,22 @@ use Illuminate\Support\Carbon;
 class ProductTranslation extends Model
 {
     use BelongsToSite;
+    use CountsInCategoryPublicTotals;
     use TracksContentChange;
 
     #[\Override]
     protected $guarded = [];
+
+    /** The categories' public totals follow this row's language (CountsInCategoryPublicTotals). */
+    public function categoryPivot(): string
+    {
+        return 'product_taxonomies';
+    }
+
+    public function categoryItemColumn(): string
+    {
+        return 'product_id';
+    }
 
     /**
      * A new name, a changed one or a language removed rewrites the product's admin search words

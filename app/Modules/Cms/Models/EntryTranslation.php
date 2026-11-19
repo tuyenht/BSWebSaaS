@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Cms\Models;
 
 use App\Modules\Cms\Casts\SanitizedPageBody;
+use App\Modules\Cms\Concerns\CountsInCategoryPublicTotals;
 use App\Modules\Cms\Concerns\TracksContentChange;
 use App\Modules\Cms\Support\EntrySearchWords;
 use App\Modules\Shared\Support\Cast;
@@ -36,10 +37,32 @@ use Illuminate\Support\Carbon;
 class EntryTranslation extends Model
 {
     use BelongsToSite;
+    use CountsInCategoryPublicTotals;
     use TracksContentChange;
 
     #[\Override]
     protected $guarded = [];
+
+    /** The categories' public totals follow this row's language (CountsInCategoryPublicTotals). */
+    public function categoryPivot(): string
+    {
+        return 'entry_taxonomies';
+    }
+
+    public function categoryItemColumn(): string
+    {
+        return 'entry_id';
+    }
+
+    /**
+     * A post counts in a language only with its translation there published.
+     *
+     * @return list<string>
+     */
+    public function publicCountColumns(): array
+    {
+        return ['status'];
+    }
 
     /**
      * A language added or removed, a changed title or excerpt, or a row moved to another language or

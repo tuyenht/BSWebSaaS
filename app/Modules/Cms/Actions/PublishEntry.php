@@ -6,6 +6,7 @@ use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Support\CategoryPublicCounts;
 use App\Modules\Cms\Support\EntryNotifier;
 use App\Modules\Cms\Support\EntryStatusAudit;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
@@ -36,6 +37,7 @@ final readonly class PublishEntry
         private EntryWorkflowResolver $workflows,
         private EntryNotifier $notifier,
         private RecordEntryRevision $revisions,
+        private CategoryPublicCounts $publicCounts,
     ) {}
 
     /**
@@ -103,7 +105,9 @@ final readonly class PublishEntry
             // Atomic: a RouteConflictException from sync must roll back the status flip, or the
             // entry is left `published` with no reachable route — a silent 404. A savepoint, so
             // the caller can catch that and carry on (the bulk bar does).
-            DB::transaction(function () use ($entry, $translation, $locale, $actor): void {
+            // The categories' public totals follow the flip of the entry and its translation, as one
+            // change (CategoryPublicCounts), in the same savepoint.
+            DB::transaction(fn () => $this->publicCounts->track('entry_taxonomies', [$entry->id], function () use ($entry, $translation, $locale, $actor): void {
                 $entry->update([
                     'status' => 'published',
                     'published_at' => $entry->published_at ?? now(),
@@ -114,7 +118,7 @@ final readonly class PublishEntry
 
                 // What just went public is kept, in the same transaction as the flip.
                 $this->revisions->forAllLocales($entry, RevisionKind::Publish, $actor);
-            });
+            }));
 
             EntryStatusAudit::record($entry, $from, 'published', 'publish', $actor);
 
@@ -133,8 +137,10 @@ final readonly class PublishEntry
                 return ['status' => $from, 'moved' => false];
             }
 
-            $entry->update(['status' => 'pending']);
-            $translation->update(['status' => 'pending']);
+            $this->publicCounts->track('entry_taxonomies', [$entry->id], function () use ($entry, $translation): void {
+                $entry->update(['status' => 'pending']);
+                $translation->update(['status' => 'pending']);
+            });
 
             EntryStatusAudit::record($entry, $from, 'pending', 'submit', $actor);
 
