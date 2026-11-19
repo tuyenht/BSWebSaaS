@@ -474,6 +474,9 @@
             @if ($folderNoUndo)
                 <x-bs-admin::confirm-line icon="ri-error-warning">{{ __('media.lib.folder_delete_l3') }}</x-bs-admin::confirm-line>
             @endif
+            @if ($folderInBatches)
+                <x-bs-admin::confirm-line icon="ri-time">{{ __('media.lib.folder_delete_l4') }}</x-bs-admin::confirm-line>
+            @endif
         </x-bs-admin::confirm-dialog>
     @endif
 

@@ -25,6 +25,8 @@ use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
 use App\Modules\Admin\Livewire\Entries\ReviewInbox;
 use App\Modules\Admin\Livewire\FloatingContactSettings;
 use App\Modules\Admin\Livewire\ForgotPassword;
+use App\Modules\Admin\Livewire\Forms\FormEditor;
+use App\Modules\Admin\Livewire\Forms\FormList;
 use App\Modules\Admin\Livewire\Forms\Inbox as FormsInbox;
 use App\Modules\Admin\Livewire\GeneralSettings;
 use App\Modules\Admin\Livewire\IntegrationsSettings;
@@ -326,6 +328,11 @@ Route::prefix(config('admin.prefix', 'admin'))
         // request (the livewire/update endpoint bypasses route middleware). Addressed by ulid (D2).
         Route::get('/forms', FormsInbox::class)->name('admin.forms.index');
         Route::get('/forms/{ulid}', FormsInbox::class)->name('admin.forms.show');
+        // Biểu mẫu (the forms themselves, contacts module): no `can:` here either — the screens show
+        // the plan and no-permission cards themselves and ask FormPolicy on every request and write.
+        Route::get('/form-builder', FormList::class)->name('admin.form-builder.index');
+        Route::get('/form-builder/create/{purpose}', FormEditor::class)->name('admin.form-builder.create');
+        Route::get('/form-builder/{ulid}/edit', FormEditor::class)->name('admin.form-builder.edit');
 
         // Media library (DAM). Read gated by media.view; upload/delete re-gate media.upload/.delete
         // inside the component (the livewire/update endpoint bypasses this route middleware).
