@@ -1093,6 +1093,9 @@ final class Index extends Component
                     }
                 }
                 $rows = [$live, ...$kids];
+                // rows locked in id order, as every bulk path locks them: written in tree order, a sub-page with a lower
+                // id than its parent would wait on a bulk publish that holds it while that one waits on the parent
+                Entry::query()->whereKey(array_map(static fn (Entry $row): int => $row->id, $rows))->orderBy('id')->lockForUpdate()->pluck('id');
                 HomePages::remember($rows);   // the Home page guard on each row, read for the whole branch at once
                 foreach ($rows as $row) {
                     $row->delete();

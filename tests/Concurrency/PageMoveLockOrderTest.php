@@ -159,6 +159,38 @@ it('puts a page in the Trash and brings it back under the page-tree lock, before
     });
 });
 
+it('locks a page and its sub-pages in id order before it puts the branch in the Trash', function (): void {
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'owner', PermissionRegistry::TENANT_PERMISSIONS));
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        // the sub-page was made first, then moved under a newer page: its id is lower than its parent's
+        $kid = Entry::query()->create(['type' => 'page', 'status' => 'draft']);
+        $parent = Entry::query()->create(['type' => 'page', 'status' => 'draft']);
+        $kid->forceFill(['parent_id' => $parent->id])->save();
+        foreach ([[$parent, 'cha'], [$kid, 'con']] as [$row, $slug]) {
+            $row->translations()->create(['locale' => 'vi', 'title' => 'T '.$slug, 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);
+        }
+        $list = Livewire::actingAs($user->fresh() ?? $user)->test(Index::class);
+
+        $statements = plStatements(fn () => $list->call('trash', $parent->ulid, true));
+        expect($parent->fresh()?->trashed())->toBeTrue()->and($kid->fresh()?->trashed())->toBeTrue();
+
+        // integer keys are written into the SQL, not bound: read the locked ids from the IN list
+        $ids = function (string $sql): array {
+            preg_match('/"entries"\."id" in \(([\d, ]+)\)/', $sql, $m);
+
+            return array_map(intval(...), explode(',', $m[1] ?? ''));
+        };
+        $locked = plFirst($statements, fn (string $sql): bool => str_contains($sql, 'for update')
+            && in_array($kid->id, $ids($sql), true) && in_array($parent->id, $ids($sql), true));
+        $firstWrite = plFirst($statements, fn (string $sql): bool => str_starts_with(ltrim($sql), 'update "entries" set "deleted_at"'));
+        expect($locked)->toBeInt()->and($firstWrite)->toBeInt()->and($locked)->toBeLessThan($firstWrite)
+            ->and(plFirst($statements, plPageLock(...)))->toBeLessThan($locked)
+            ->and($statements[$locked][0])->toContain('order by "id" asc');
+    });
+});
+
 it('never takes the page-tree lock for a post', function (): void {
     $user = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($user, 'owner', PermissionRegistry::TENANT_PERMISSIONS));
