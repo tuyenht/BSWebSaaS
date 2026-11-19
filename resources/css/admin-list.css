@@ -307,8 +307,8 @@
     }
 
     /* A sub-page in the page tree: indented 32 a level (20 below 600, the card), with no mark of its own; from a
-       list 768 wide the guide lines join it to its parent (the shared tree's lines: TreeRows::guides), drawn from
-       the middle of the parent's grip (the name block starts 4rem in, in the line and the table layouts alike) and
+       list 768 wide the guide lines join it to its parent (the shared tree's lines: TreeRows::guides), drawn below
+       the parent's address line at the x of its grip (the name block starts 4rem in, in the line and the table layouts alike) and
        level with the name's first line. Where the lines are not drawn, «Thuộc: …» names the parent: shown from 600
        to 767, read aloud below 600. A page of a flat list (searched, filtered, sorted otherwise) leads its name
        with its parents' titles, muted, and names its parent for screen readers below 600. */
@@ -368,7 +368,10 @@
     }
 
     .list-gl[data-k='down'] {
-        top: calc(var(--list-gy) + 0.75rem);
+        /* a parent's own stub starts below its address line, as board 05 draws it: from the grip it would run through
+           the «/…» under the name */
+        top: auto;
+        height: 0.5rem;
     }
 
     @container list (width >= 48rem) {
