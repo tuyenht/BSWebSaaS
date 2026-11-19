@@ -20,16 +20,20 @@ use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\CategoryRelinker;
+use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Support\BlockMediaUsage;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
+use App\Modules\Cms\Support\HomePages;
+use App\Modules\Cms\Support\PageRules;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Media\Models\Media;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Storefront\Support\ThankYouPages;
+use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
@@ -258,8 +262,16 @@ final class Applier
         $desired = $planned->desired;
         $status = Cast::string($desired['status'] ?? null);
         $isPost = $planned->item->kind === 'post';
-        // A page whose pack item names a parent (or null) gets it; one that names none keeps its own.
-        $parent = array_key_exists('parent', $desired) ? ['parent_id' => $this->parentPage(Cast::stringOrNull($desired['parent']), $planner)] : [];
+        // A page whose pack item names a parent (or null) gets it; one that names none keeps its own. The
+        // page tree's rules hold for a pack as for a move in the admin (PageRules): checked under the
+        // site's page-tree lock, so a move made meanwhile cannot slip past them.
+        $parent = [];
+        if (! $isPost && array_key_exists('parent', $desired)) {
+            PageRules::lock(app(CurrentSite::class)->id());
+            $parentId = $this->parentPage(Cast::stringOrNull($desired['parent']), $planner);
+            $this->checkPageTree($planned, $parentId, Cast::stringOrNull($desired['parent']));
+            $parent = ['parent_id' => $parentId];
+        }
 
         if ($planned->recordId === null) {
             $entry = Entry::query()->create([
@@ -331,6 +343,37 @@ final class Applier
 
         return $this->ids[$key] ?? $planner->liveTarget($key)
             ?? throw new PackRejected("Refused: {$key} is needed as a parent page but does not exist on the site.");
+    }
+
+    /**
+     * Refuse a pack page the page tree cannot hold: under the Home page (it has no sub-pages), the Home
+     * page itself under a parent, under itself or a page below it, or deeper than PageRules::MAX_DEPTH
+     * levels with the pages already under it (those in the Trash included).
+     */
+    private function checkPageTree(PlanItem $planned, ?int $parentId, ?string $parentKey): void
+    {
+        if ($parentId === null) {
+            return;
+        }
+        $key = $planned->item->key;
+        $existing = $planned->recordId === null ? null : Entry::withTrashed()->find($planned->recordId);
+        if ($existing instanceof Entry ? HomePages::is($existing) : self::pageSlug($planned->item->anchor()) === PathBuilder::HOME_SLUG) {
+            throw new PackRejected("Refused: {$key} is the Home page and cannot sit under {$parentKey}.");
+        }
+        $parent = Entry::withTrashed()->find($parentId);
+        if (! $parent instanceof Entry) {
+            throw new PackRejected("Refused: {$parentKey} is needed as a parent page but does not exist on the site.");
+        }
+        if (HomePages::is($parent)) {
+            throw new PackRejected("Refused: {$key} cannot sit under {$parentKey}, the Home page (it has no sub-pages).");
+        }
+        if ($existing instanceof Entry && ($parent->id === $existing->id || in_array($existing->id, PageRules::ancestorsOf($parent), true))) {
+            throw new PackRejected("Refused: {$key} cannot sit under {$parentKey}, which is itself or one of its own sub-pages.");
+        }
+        $height = $existing instanceof Entry ? PageRules::heightOf($existing) : 1;
+        if ($height === null || PageRules::levelOf($parent) + $height > PageRules::MAX_DEPTH) {
+            throw new PackRejected('Refused: '.$key.' under '.$parentKey.' would make the page tree deeper than '.PageRules::MAX_DEPTH.' levels.');
+        }
     }
 
     private function recordRevisions(Entry $entry): void
