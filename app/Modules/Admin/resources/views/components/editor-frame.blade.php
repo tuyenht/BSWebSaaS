@@ -23,6 +23,8 @@
     'previewBar' => true,
     // «Chuyển vào thùng rác»: null when the member may not (or nothing is saved yet); ['why' => ?string] — locked with the reason
     'trash' => null,
+    // the line under «Chuyển vào thùng rác» when it can be undone («Có Hoàn tác 10 giây»), set off by a separator (products); null: none
+    'trashHint' => null,
     // what the ⋮ is named for: the record being edited
     'name' => '',
 ])
@@ -111,10 +113,20 @@
                     @if ($actions['secondary'] !== null)
                         <x-bs-admin::list.menu-item icon="ri-save-3" wire:click="save" wire:loading.attr="disabled" wire:target="{{ $target }}">{{ $actions['secondary'] }}</x-bs-admin::list.menu-item>
                     @endif
+                    {{-- the screen's own items (a product's «Gỡ khỏi website» / «Đưa về nháp») --}}
+                    @isset($menu)
+                        {{ $menu }}
+                    @endisset
+                    @if ($trash !== null && $trashHint !== null)
+                        <x-bs-admin::list.menu-sep />
+                    @endif
                     @if ($trash !== null && ($trash['why'] ?? null) !== null)
                         <x-bs-admin::list.menu-item icon="ri-delete-bin" danger :why="$trash['why']" data-guide="trash">{{ __('admin.editor.trash') }}</x-bs-admin::list.menu-item>
                     @elseif ($trash !== null)
                         <x-bs-admin::list.menu-item icon="ri-delete-bin" danger data-guide="trash" wire:click="trash" wire:loading.attr="disabled" wire:target="{{ $target }},trash">{{ __('admin.editor.trash') }}</x-bs-admin::list.menu-item>
+                        @if ($trashHint !== null)
+                            <span class="list-mwhy">{{ $trashHint }}</span>
+                        @endif
                     @endif
                     {{-- Cỡ chữ: on a phone the admin's top bar (and its way to the member's settings) is gone --}}
                     <div class="ped-fs" role="group" aria-labelledby="ped-fs-h">

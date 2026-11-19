@@ -30,9 +30,23 @@ final readonly class CatalogPolicy
         return $user->can('catalog.view');
     }
 
-    public function view(User $user): bool
+    /**
+     * Seeing one product (the editor, to change or to read only): the right to see products, and for a
+     * member limited to some product categories a product filed under one of them — the products list
+     * shows them no other (its main category decides, as there).
+     */
+    public function view(User $user, ?Product $product = null): Response
     {
-        return $user->can('catalog.view');
+        if (! $user->can('catalog.view')) {
+            return Response::deny();
+        }
+        if ($product === null || ! $this->scopes->isLimited($user, CategoryScopes::PRODUCTS)) {
+            return Response::allow();
+        }
+
+        return $this->scopes->coversId($user, $product->primaryCategory()?->id, CategoryScopes::PRODUCTS)
+            ? Response::allow()
+            : Response::deny($this->scopes->refusal($user, CategoryScopes::PRODUCTS));
     }
 
     public function create(User $user): bool

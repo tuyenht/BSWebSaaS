@@ -111,6 +111,17 @@ function seedTenancy(): void
     ]);
 }
 
+/**
+ * Give a seeded site the catalog module (its plan has products): the products list and the product
+ * editor show their plan card and refuse every write otherwise.
+ */
+function enableCatalog(int $siteId = 1): void
+{
+    DB::connection('pgsql_admin')->table('site_modules')->insertOrIgnore([
+        ['site_id' => $siteId, 'module_key' => 'catalog', 'enabled' => true, 'created_at' => now(), 'updated_at' => now()],
+    ]);
+}
+
 /*
 |--------------------------------------------------------------------------
 | RBAC reset helper (P0.3)
