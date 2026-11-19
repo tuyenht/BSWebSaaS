@@ -74,6 +74,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Js;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
@@ -273,6 +274,13 @@ final class Index extends Component
     /** Translation states: every site language has content, some do, only one does. */
     public const array TRANS = ['full', 'partial', 'none'];
 
+    /**
+     * The address parameter the editor adds, with the entry's ulid, when it leaves for this list after
+     * «Chuyển vào Thùng rác»: the list says the move with its own message and «Hoàn tác»
+     * (sayTrashedInEditor). In the address, not the session, so each tab says its own move.
+     */
+    public const string TRASHED_IN_EDITOR = 'trashed';
+
     /** Sort keys, each with the one type it belongs to (null = both). */
     public const array SORTS = ['order' => 'page', 'name' => null, 'updated' => null, 'pub' => 'post', 'status' => null, 'views' => null, 'creator' => null];
 
@@ -370,6 +378,7 @@ final class Index extends Component
         $this->workflowRead = true;
         $this->governed = $this->mountedWorkflow !== null;
         $this->clean();
+        $this->sayTrashedInEditor();
     }
 
     public function updatedSearch(): void
@@ -2043,6 +2052,27 @@ final class Index extends Component
     {
         if ($run !== null) {
             $this->toast($this->bulkMessage($run, $doneKey, $skippedKey, $homeAmong, replace: $replace));
+        }
+    }
+
+    /**
+     * The editor moved its entry to the Trash and left for this list: the list says so in its own
+     * message, with the same 10 seconds of «Hoàn tác» as a move made here (undoTrash brings it back
+     * through the same rule and policy). The parameter leaves the address at once, so a reload says
+     * nothing; only an entry of this list's kind moved within the last minute and still in the Trash
+     * is said (one restored or purged meanwhile says nothing).
+     */
+    private function sayTrashedInEditor(): void
+    {
+        $ulid = request()->query(self::TRASHED_IN_EDITOR);
+        if (! is_string($ulid) || $ulid === '') {
+            return;
+        }
+        $this->js('history.replaceState(history.state, "", '.Js::encode(request()->fullUrlWithoutQuery([self::TRASHED_IN_EDITOR])).')');
+        $entry = Entry::onlyTrashed()->where('ulid', $ulid)->where('type', $this->entryType)
+            ->where('deleted_at', '>=', now()->subMinute())->first(['id', 'ulid', 'type']);
+        if ($entry !== null) {
+            $this->sayTrashed([$entry->ulid], Cast::string(__('entries.trashed_one', ['name' => $this->titleOf($entry)])));
         }
     }
 
