@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Http\Controllers;
 
 use App\Modules\Admin\Errors\AdminErrorPages;
+use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Theme\AdminBrandColor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Http\Middleware\EnsurePlatformAccess;
@@ -18,9 +19,10 @@ use Symfony\Component\HttpFoundation\Response as BaseResponse;
  * The admin session's own endpoints (design board 25):
  *  - ping: "Tiếp tục làm việc" in the session-ending dialog — any signed-in request keeps the
  *    session, so this one only answers "204, still yours".
- *  - expired: the "Phiên làm việc đã hết" page a Livewire request refused with 419 (or the dialog
- *    at 0:00) opens. It remembers the admin page the member was on, on this host only, so signing
- *    in again lands there.
+ *  - expired: the "Phiên làm việc đã hết" page a Livewire request refused with 419 opens. It
+ *    remembers the admin page the member was on, on this host only, so signing in again lands
+ *    there. The dialog at 0:00 has already said the session ended, so its "Đăng nhập lại" asks
+ *    with signin=1: the same page is remembered and the sign-in opens at once (no second notice).
  *  - unknown: an /admin address that is no screen goes back to the first page with a notice.
  */
 final class SessionController
@@ -35,6 +37,9 @@ final class SessionController
         $back = AdminErrorPages::safeReturnPath($request, Cast::string($request->query('to')));
         if ($back !== null) {
             $request->session()->put('url.intended', $request->getSchemeAndHttpHost().$back);
+        }
+        if ($request->query('signin') === '1') {
+            return redirect()->to(AdminPlane::route('login'));
         }
 
         return response()->view('admin::errors.page', [
