@@ -13,6 +13,7 @@ use App\Modules\Admin\Support\FirstHints;
 use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\DuplicateEntry;
+use App\Modules\Cms\Actions\MovePage;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
 use App\Modules\Cms\Actions\TransitionEntryStatus;
@@ -20,11 +21,13 @@ use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
 use App\Modules\Cms\Exceptions\HomePageLockedException;
+use App\Modules\Cms\Exceptions\PageMoveRejectedException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Exceptions\SchedulePastException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RouteSync;
@@ -35,6 +38,7 @@ use App\Modules\Cms\Support\EntryReviewReach;
 use App\Modules\Cms\Support\EntryTrash;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Cms\Support\HomePages;
+use App\Modules\Cms\Support\PageRules;
 use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -42,6 +46,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\ConcurrencyError;
 use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Context\CurrentSite;
+use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -153,6 +158,15 @@ final class Index extends Component
      */
     #[Locked]
     public ?array $trashUndo = null;
+
+    /**
+     * The page the shown message moved in the tree, and where it was: «Hoàn tác» puts it back there
+     * (MovePage, asked of the policy again). Locked, so the browser cannot name another page or place.
+     *
+     * @var array{page: string, parent: string|null, position: int, name: string}|null
+     */
+    #[Locked]
+    public ?array $moveUndo = null;
 
     /** @var list<string> selected content-locales — OR within the group. */
     #[Url(as: 'lang')]
@@ -289,10 +303,7 @@ final class Index extends Component
     private const int PAGES_IN_MEMORY = 1000;
 
     /** At most this many pages ride below the top pages of one page of the tree. */
-    private const int TREE_CHILDREN = 1000;
-
-    /** The deepest branch of sub-pages one move to the Trash takes along. */
-    private const int TREE_DEPTH = 12;
+    private const int TREE_CHILDREN = PageRules::WALK_SIZE;
 
     /** What a row shows besides its own columns, loaded for the rows of the page only. */
     private const array ROW_RELATIONS = [
@@ -1027,7 +1038,7 @@ final class Index extends Component
 
         $kids = $entry->type === 'page' ? $this->liveSubPages($entry) : [];
         if ($kids === null) {   // too big a branch to move in one go: nothing moves, and the member is told
-            $this->refuse(Cast::string(__('entries.trash_kids_too_many', ['max' => $this->subPageCap(), 'depth' => self::TREE_DEPTH])));
+            $this->refuse(Cast::string(__('entries.trash_kids_too_many', ['max' => $this->subPageCap(), 'depth' => PageRules::WALK_DEPTH])));
 
             return;
         }
@@ -1114,12 +1125,362 @@ final class Index extends Component
             : $this->say(Cast::string(__('entries.undo_trash_done', ['count' => $back, 'noun' => __('entries.noun_'.$this->entryType)])));
     }
 
+    /**
+     * A drop in the page tree (the row's grip): the page, with every page under it, goes under
+     * $parentUlid (null: the top level), as its first sub-page ('child') or just before / after the
+     * sibling $refUlid. Places are named by a neighbour, not a number, because the top level is paged.
+     * Only while the list shows the whole tree in website order; MovePage judges the move again.
+     */
+    public function movePage(string $ulid, ?string $parentUlid = null, string $rel = 'child', ?string $refUlid = null): void
+    {
+        if (! in_array($rel, ['child', 'before', 'after'], true) || ($rel !== 'child' && $refUlid === null)) {
+            return;
+        }
+        if (! $this->treeMode()) {
+            $this->refuse(Cast::string(__('entries.move_off_why')));
+
+            return;
+        }
+        $page = $this->movablePage($ulid);
+        if ($page === null) {
+            return;
+        }
+        $parent = null;
+        if ($parentUlid !== null && ($parent = $this->findLivePage($parentUlid)) === null) {
+            $this->toastStaleRow();
+
+            return;
+        }
+        $siblings = $this->pageSiblingUlids($parent?->id, $page->id);
+        $at = $refUlid === null ? false : array_search($refUlid, $siblings, true);
+        if ($rel !== 'child' && $at === false) {
+            $this->toastStaleRow();   // the neighbour moved or went to the Trash since the list was drawn
+
+            return;
+        }
+        $position = $rel === 'child' ? 0 : Cast::int($at) + ($rel === 'after' ? 1 : 0);
+        $this->runPageMove($page, $parent, $position, 'drag');
+    }
+
+    /**
+     * «Chuyển lên» / «Chuyển xuống» (the row's ⋮): one place up or down among the pages under the same
+     * parent. Only while the list shows the whole tree in website order.
+     */
+    public function movePageStep(string $ulid, string $dir): void
+    {
+        if (! in_array($dir, ['up', 'down'], true)) {
+            return;
+        }
+        if (! $this->treeMode()) {
+            $this->refuse(Cast::string(__('entries.move_off_why')));
+
+            return;
+        }
+        $page = $this->movablePage($ulid);
+        if ($page === null) {
+            return;
+        }
+        $parent = null;
+        if ($page->parent_id !== null && ($parent = Entry::query()->whereKey($page->parent_id)->where('type', 'page')->first()) === null) {
+            $this->toastStaleRow();
+
+            return;
+        }
+        $siblings = $this->pageSiblingUlids($page->parent_id);
+        $to = Cast::int(array_search($page->ulid, $siblings, true)) + ($dir === 'up' ? -1 : 1);
+        if ($to < 0 || $to >= count($siblings)) {
+            $this->dispatch('bs-toast', text: __($dir === 'up' ? 'entries.move_at_top' : 'entries.move_at_bottom'), icon: self::infoIcon());
+
+            return;
+        }
+        $this->runPageMove($page, $parent, $to, $dir);
+    }
+
+    /**
+     * «Chuyển đến…»: the page, with every page under it, becomes the last sub-page of $parentUlid (null:
+     * the last top page). The place does not depend on how the list is sorted or filtered, so the
+     * dialog is offered in every view.
+     */
+    public function movePageTo(string $ulid, ?string $parentUlid = null): void
+    {
+        $page = $this->movablePage($ulid);
+        if ($page === null) {
+            return;
+        }
+        $parent = null;
+        if ($parentUlid !== null && ($parent = $this->findLivePage($parentUlid)) === null) {
+            $this->toastStaleRow();
+
+            return;
+        }
+        if ($page->parent_id === $parent?->id) {
+            $this->dispatch('bs-toast', text: __('entries.mv_here_already'), icon: self::infoIcon());
+
+            return;
+        }
+        $this->runPageMove($page, $parent, PHP_INT_MAX, 'to');
+    }
+
+    /**
+     * The places «Chuyển đến…» offers for a page, in tree order: the top level, then every live page
+     * but the Home page, the page itself and the pages under it. Each says what the move would make of
+     * it, or why it is locked (the rules MovePage holds). Null, with the reason shown, for a page this
+     * member may not move. «nested» says whether a move changes the page's address (the dialog's hint).
+     *
+     * @return array{nested: bool, opts: list<array{k: string|null, name: string, lv: int, here: bool, why: string|null, label: string|null, path: string|null}>}|null
+     */
+    public function moveTargets(string $ulid): ?array
+    {
+        $page = $this->movablePage($ulid);
+        if ($page === null) {
+            return null;
+        }
+        $locale = app(SiteLocale::class)->default();
+        $pages = Entry::query()->where('type', 'page')
+            ->with(['translations' => fn ($query) => $query->select(['id', 'entry_id', 'locale', 'title', 'slug'])->where('locale', $locale)])
+            ->orderBy('position')->orderBy('id')
+            ->limit(PageRules::WALK_SIZE)
+            ->get(['id', 'site_id', 'ulid', 'type', 'parent_id', 'position']);
+        $byId = $pages->keyBy('id');
+        $kids = [];
+        foreach ($pages as $row) {
+            $kids[$row->parent_id !== null && $byId->has($row->parent_id) ? $row->parent_id : 0][] = $row;
+        }
+        $slugOf = static fn (Entry $row): string => trim(Cast::string($row->translations->first()?->slug), '/');
+        $isHome = static fn (Entry $row): bool => in_array($slugOf($row), [PathBuilder::HOME_SLUG, ''], true);
+        $nested = app(PermalinkConfig::class)->pagesNested();
+        $height = PageRules::heightOf($page);
+        $leaf = $slugOf($page);
+
+        // the tree in order, leaving out the page's own branch; each row's nested path (a Home parent adds nothing)
+        $order = [];
+        $walk = static function (int $parentId, int $lv, string $prefix) use (&$walk, &$order, $kids, $page, $slugOf, $isHome): void {
+            foreach ($kids[$parentId] ?? [] as $row) {
+                if ($row->id === $page->id || $lv > PageRules::WALK_DEPTH) {
+                    continue;
+                }
+                $path = $isHome($row) ? '' : $prefix.'/'.$slugOf($row);
+                $order[] = ['row' => $row, 'lv' => $lv, 'path' => $path];
+                $walk($row->id, $lv + 1, $path);
+            }
+        };
+        $walk(0, 1, '');
+
+        $candidates = [['row' => null, 'lv' => 0, 'path' => '']];
+        foreach ($order as $item) {
+            if (! $isHome($item['row'])) {
+                $candidates[] = $item;
+            }
+        }
+        $newPaths = [];
+        foreach ($candidates as $c) {
+            $newPaths[] = $c['path'].'/'.$leaf;
+        }
+        $taken = $nested ? array_flip(array_map(Cast::string(...), SiteRoute::query()->where('locale', $locale)->whereIn('path', $newPaths)
+            ->where(fn ($query) => $query->whereNull('entry_id')->orWhere('entry_id', '!=', $page->id))->pluck('path')->all())) : [];
+        $current = $nested ? app(PathBuilder::class)->forEntry($page, $locale, $leaf) : null;
+
+        $out = [];
+        foreach ($candidates as $c) {
+            $row = $c['row'];
+            $here = $page->parent_id === $row?->id;
+            $ns = $c['path'].'/'.$leaf;
+            $why = null;
+            if ($height === null) {
+                $why = Cast::string(__('entries.move_refused_branch_too_big'));
+            } elseif ($c['lv'] + $height > PageRules::MAX_DEPTH) {
+                $why = self::depthWhy($height);
+            } elseif ($nested && $ns !== $current && isset($taken[$ns])) {
+                $why = Cast::string(__('entries.move_path_taken_label', ['path' => $ns]));
+            }
+            $out[] = [
+                'k' => $row?->ulid,
+                'name' => $row === null ? Cast::string(__('entries.mv_top')) : Cast::string($row->translations->first()?->title, Cast::string(__('entries.untitled'))),
+                'lv' => $c['lv'],
+                'here' => $here,
+                'why' => $here ? null : $why,
+                'label' => $here ? Cast::string(__('entries.mv_here')) : ($why !== null
+                    ? Cast::string(__('entries.mv_locked', ['why' => mb_strtolower(mb_substr($why, 0, 1)).mb_substr($why, 1)]))
+                    : Cast::string($nested && $ns !== $current ? __('entries.mv_becomes_path', ['n' => $c['lv'] + 1, 'path' => $ns]) : __('entries.mv_becomes', ['n' => $c['lv'] + 1]))),
+                'path' => $nested && $ns !== $current ? $ns : null,
+            ];
+        }
+
+        return ['nested' => $nested, 'opts' => $out];
+    }
+
+    /** «Hoàn tác» on the message of a move in the page tree: the page goes back where it was (MovePage, asked again). */
+    public function undoMovePage(): void
+    {
+        $undo = $this->moveUndo;
+        $this->toastMsg = '';
+        $this->moveUndo = null;
+        if ($undo === null) {
+            return;
+        }
+        $page = $this->movablePage($undo['page']);
+        if ($page === null) {
+            return;
+        }
+        $parent = null;
+        if ($undo['parent'] !== null && ($parent = $this->findLivePage($undo['parent'])) === null) {
+            $this->toastStaleRow();
+
+            return;
+        }
+        if ($this->tryPageMove($page, $parent, $undo['position'], 'undo') !== null) {
+            $this->say(Cast::string(__('entries.move_undone', ['name' => $undo['name']])));
+        }
+    }
+
+    /**
+     * Is the page list showing its whole tree in website order — every page, nothing searched or
+     * filtered, «Thứ tự trên website» from the top? Only then does a place on the screen say where a
+     * page goes, so a drop and «Chuyển lên / xuống» are offered only then.
+     */
+    private function treeMode(): bool
+    {
+        [$key, $dir] = $this->sorting();
+
+        return $this->entryType === 'page' && $this->tab === 'all' && trim($this->search) === '' && $this->filterCount() === 0
+            && $key === 'order' && $dir === 'asc';
+    }
+
+    /**
+     * The live page a move names, if this member may move it (`update` on it and `fileUnder('page')`,
+     * as MovePage asks again); otherwise null, with the reason (or the stale-row message) shown.
+     */
+    private function movablePage(string $ulid): ?Entry
+    {
+        if ($this->entryType !== 'page') {
+            return null;
+        }
+        $page = $this->findLivePage($ulid);
+        if ($page === null) {
+            $this->toastStaleRow();
+
+            return null;
+        }
+        try {
+            $this->authorize('update', $page);
+            $this->authorize('fileUnder', [Entry::class, 'page', null]);
+        } catch (AuthorizationException) {
+            $this->refuse($this->refusalFor($page, 'edit'));
+
+            return null;
+        }
+
+        return $page;
+    }
+
+    private function findLivePage(string $ulid): ?Entry
+    {
+        return Entry::query()->where('ulid', $ulid)->where('type', 'page')->first();
+    }
+
+    /**
+     * The live pages under $parentId (the top pages when null), in website order, by ulid.
+     *
+     * @return list<string>
+     */
+    private function pageSiblingUlids(?int $parentId, ?int $except = null): array
+    {
+        $ulids = Entry::query()->where('type', 'page')
+            ->when($parentId === null, fn ($query) => $query->whereNull('parent_id'), fn ($query) => $query->where('parent_id', $parentId))
+            ->when($except !== null, fn ($query) => $query->whereKeyNot($except))
+            ->orderBy('position')->orderBy('id')
+            ->pluck('ulid')->all();
+
+        return array_values(array_map(Cast::string(...), $ulids));
+    }
+
+    /**
+     * Run a move and say what it did, with «Hoàn tác» for 10 seconds.
+     *
+     * @param  'drag'|'up'|'down'|'to'  $how
+     */
+    private function runPageMove(Entry $page, ?Entry $parent, int $position, string $how): void
+    {
+        $name = $this->titleOf($page);
+        $from = $page->parent_id === null ? null : Entry::withTrashed()->whereKey($page->parent_id)->first(['id', 'site_id', 'ulid', 'parent_id']);
+        $result = $this->tryPageMove($page, $parent, $position, $how);
+        if ($result === null) {
+            return;
+        }
+        if (! $result['reparented'] && $result['position'] === $result['from_position']) {
+            return;   // dropped where it already was
+        }
+
+        // a drop beside its old parent leaves that group; «Chuyển đến…» names where the page went
+        $message = match (true) {
+            $how === 'up', $how === 'down' => __('entries.move_step_'.$how, ['name' => $name]),
+            ! $result['reparented'] => __('entries.move_done', ['name' => $name]),
+            $how === 'drag' && $from !== null && $from->parent_id === $parent?->id => __('entries.move_done_out', ['name' => $name, 'group' => $this->titleOf($from)]),
+            $parent === null => __('entries.move_done_top', ['name' => $name]),
+            default => __('entries.move_done_in', ['name' => $name, 'parent' => $this->titleOf($parent)]),
+        };
+        $change = $result['paths'][app(SiteLocale::class)->default()] ?? null;
+        if ($change !== null) {
+            $message .= $page->status === EntryStatus::Published->value
+                ? __('entries.move_suffix_live', ['old' => $change['from'], 'new' => $change['to']])
+                : __('entries.move_suffix_path', ['new' => $change['to']]);
+        }
+
+        $this->say(Cast::string($message), null, ['page' => $page->ulid, 'parent' => $from?->ulid, 'position' => $result['from_position'], 'name' => $name]);
+    }
+
+    /**
+     * MovePage, with its refusals answered in the design's words (a drop adds that the tree stays as it was).
+     *
+     * @param  'drag'|'up'|'down'|'to'|'undo'  $how
+     * @return array{from_parent: int|null, from_position: int, parent: int|null, position: int, reparented: bool, paths: array<string, array{from: string, to: string}>}|null
+     */
+    private function tryPageMove(Entry $page, ?Entry $parent, int $position, string $how): ?array
+    {
+        try {
+            return app(MovePage::class)->handle($page, $parent, $position);
+        } catch (PageMoveRejectedException $refused) {
+            if (in_array($refused->reason, ['page_invalid', 'parent_invalid'], true)) {
+                $this->toastStaleRow();
+
+                return null;
+            }
+            $why = self::moveWhy($refused);
+            $this->refuse($how === 'drag' ? $why.' '.Cast::string(__('entries.move_tree_kept')) : $why);
+        } catch (AuthorizationException) {
+            $this->refuse($this->refusalFor($page, 'edit'));
+        }
+
+        return null;
+    }
+
+    /** Why the page tree refused a move, in the design's words. */
+    private static function moveWhy(PageMoveRejectedException $refused): string
+    {
+        return match ($refused->reason) {
+            'too_deep' => self::depthWhy($refused->height),
+            'path_taken' => Cast::string(__('entries.move_path_taken', ['path' => $refused->path])),
+            default => Cast::string(__('entries.move_refused_'.$refused->reason)),
+        };
+    }
+
+    /** The three-level rule, said for a branch of $height levels (1: a page without sub-pages). */
+    private static function depthWhy(int $height): string
+    {
+        return Cast::string(match (true) {
+            $height <= 1 => __('entries.move_depth_page'),
+            $height === 2 => __('entries.move_depth_branch_l1', ['n' => $height]),
+            default => __('entries.move_depth_branch_top', ['n' => $height]),
+        });
+    }
+
     /** The toast's «Đóng» or its timer: clears only the message it was shown for. */
     public function closeToast(?int $seq = null): void
     {
         if ($seq === null || $seq === $this->toastSeq) {
             $this->toastMsg = '';
             $this->trashUndo = null;
+            $this->moveUndo = null;
         }
     }
 
@@ -1597,13 +1958,17 @@ final class Index extends Component
         $this->say($message, $all);
     }
 
-    /** @param  list<string>|null  $undo  the rows «Hoàn tác» brings back out of the Trash */
-    private function say(string $message, ?array $undo = null): void
+    /**
+     * @param  list<string>|null  $undo  the rows «Hoàn tác» brings back out of the Trash
+     * @param  array{page: string, parent: string|null, position: int, name: string}|null  $moveUndo  the page «Hoàn tác» moves back
+     */
+    private function say(string $message, ?array $undo = null, ?array $moveUndo = null): void
     {
         $this->toastMsg = $message;
         $this->toastTone = 'success';
         $this->toastSeq++;
         $this->trashUndo = $undo;
+        $this->moveUndo = $moveUndo;
     }
 
     /**
@@ -1619,42 +1984,18 @@ final class Index extends Component
     }
 
     /**
-     * Every live page under this one (its sub-pages, theirs, …), read level by level as RouteSync
-     * walks the tree, with a cap on depth and size against a looped or huge tree. A branch past the
-     * cap — more than subPageCap() pages in all, or deeper than TREE_DEPTH levels — is null: the whole
-     * branch is too big to move at once, and no part of it is moved, so no sub-page is ever left
-     * behind its parent without a word.
+     * Every live page under this one (its sub-pages, theirs, …), read level by level by the one capped
+     * walk of the page tree (PageRules::subPages). A branch past the cap — more than subPageCap() pages
+     * in all, or deeper than PageRules::WALK_DEPTH levels — is null: the whole branch is too big to move
+     * at once, and no part of it is moved, so no sub-page is ever left behind its parent without a word.
      *
      * @return list<Entry>|null
      */
     private function liveSubPages(Entry $page): ?array
     {
-        $cap = $this->subPageCap();
-        $found = [];
-        $seen = [$page->id => true];
-        $frontier = [$page->id];
-        for ($depth = 0; $frontier !== []; $depth++) {
-            $room = $cap - count($found);
-            // one more than there is room for: finding it means the branch is over the cap
-            $children = Entry::query()->where('type', 'page')->whereIn('parent_id', $frontier)->orderBy('id')
-                ->limit($room + 1)
-                ->get(['id', 'site_id', 'ulid', 'type', 'status', 'parent_id', 'author_id', 'deleted_at', 'updated_at']);
-            // past the size cap, or a level below the deepest one a branch may have (a 12-level branch
-            // passes: the 13th read only looks for pages under it)
-            if ($children->count() > $room || ($depth >= self::TREE_DEPTH && $children->isNotEmpty())) {
-                return null;
-            }
-            $frontier = [];
-            foreach ($children as $child) {
-                if (! isset($seen[$child->id])) {
-                    $seen[$child->id] = true;
-                    $found[] = $child;
-                    $frontier[] = $child->id;
-                }
-            }
-        }
+        $levels = PageRules::subPages($page, $this->subPageCap());
 
-        return $found;
+        return $levels === null ? null : array_merge([], ...$levels);
     }
 
     /**
@@ -2455,10 +2796,39 @@ final class Index extends Component
                     ? Cast::string(__('entries.refused_others_delete', ['noun' => __('entries.noun_'.$type)])) : null,
                 // the Home page (HomePages, read from the translations the row carries): its Thùng rác is locked with the reason
                 'home' => $type === 'page' && $entry->translations->contains(static fn (EntryTranslation $t): bool => in_array($t->slug, [PathBuilder::HOME_SLUG, ''], true)),
+                // a page this member may move in the tree (`update` on it; a member limited to some categories
+                // covers no page): its grip and «Chuyển lên / xuống / đến…»
+                'move' => $type === 'page' && $edit && $covered && ! $entry->trashed(),
                 // «Xem trước» of a row visitors cannot see yet (admin.entries.preview), for who may open it
                 'preview' => ! $entry->trashed() && $entry->status !== EntryStatus::Published->value && $user->can('preview', $entry)
                     ? route('admin.entries.preview', ['ulid' => $ulid]) : null,
             ];
+        }
+        // The page tree in website order: each row's parent, by ulid, for the drag (read from the rows; a
+        // parent drawn on another page of the list in one more query)
+        $treeMode = $this->treeMode();
+        $rowParent = [];
+        if ($treeMode) {
+            $ulidOf = [];
+            foreach ($rows->items() as $item) {
+                $ulidOf[$item['entry']->id] = $item['entry']->ulid;
+            }
+            $missing = [];
+            foreach ($rows->items() as $item) {
+                $parentId = $item['entry']->parent_id;
+                if ($parentId !== null && ! isset($ulidOf[$parentId])) {
+                    $missing[$parentId] = $parentId;
+                }
+            }
+            if ($missing !== []) {
+                foreach (Entry::query()->whereKey(array_values($missing))->get(['id', 'site_id', 'ulid']) as $parent) {
+                    $ulidOf[$parent->id] = $parent->ulid;
+                }
+            }
+            foreach ($rows->items() as $item) {
+                $parentId = $item['entry']->parent_id;
+                $rowParent[$item['entry']->ulid] = $parentId === null ? null : ($ulidOf[$parentId] ?? null);
+            }
         }
         // A member limited to some categories may add no page (a page has no category): the add button
         // stays, locked, with the reason.
@@ -2581,6 +2951,10 @@ final class Index extends Component
             'rowCovered' => $rowCovered,
             'rowEditable' => $rowEditable,
             'rowCan' => $rowCan,
+            // the page tree in website order: rows may be dragged and moved one place up or down
+            'treeMode' => $treeMode,
+            'rowParent' => $rowParent,
+            // «Chuyển đến…» says the address follows the new parent only where page addresses nest
             'scopeRefusal' => $scopeRefusal,
             'addLock' => $addLock,
             'counts' => $counts,
@@ -2957,8 +3331,8 @@ final class Index extends Component
     }
 
     /**
-     * The top pages of a page of the tree, each followed by every page below it (one level of
-     * indent, in website order), as the list has always shown them.
+     * The top pages of a page of the tree, each followed by the pages below it, each level in website
+     * order within its own parent, at its own depth (0 for a top page).
      *
      * @param  EloquentCollection<int, Entry>  $tops
      * @param  EloquentCollection<int, Entry>  $below
@@ -2966,31 +3340,46 @@ final class Index extends Component
      */
     private function hangBelow(EloquentCollection $tops, EloquentCollection $below, string $dir): array
     {
-        $byId = [];
-        foreach ($tops->concat($below) as $entry) {
-            $byId[$entry->id] = $entry;
-        }
-        $topIds = array_flip($tops->modelKeys());
         $children = [];
         foreach ($below as $entry) {
-            $root = $entry;
-            for ($guard = 0; ! isset($topIds[$root->id]) && $root->parent_id !== null && isset($byId[$root->parent_id]) && $guard < 64; $guard++) {
-                $root = $byId[$root->parent_id];
-            }
-            if (isset($topIds[$root->id]) && $root->id !== $entry->id) {
-                $children[$root->id][] = $entry;
+            if ($entry->parent_id !== null) {
+                $children[$entry->parent_id][] = $entry;
             }
         }
-
         $way = $dir === 'desc' ? -1 : 1;
+
+        return self::nest(array_values($tops->all()), $children,
+            static fn (Entry $a, Entry $b): int => (($a->position <=> $b->position) ?: ($a->id <=> $b->id)) * $way);
+    }
+
+    /**
+     * Each top row followed by the rows under it, depth first: a parent's own rows sorted by $order,
+     * each at its depth (0 for a top row). A row already drawn is never drawn again, so a parent loop
+     * in bad data cannot spin.
+     *
+     * @param  list<Entry>  $tops  in the order they are shown
+     * @param  array<int, list<Entry>>  $children  parent id → the rows directly under it
+     * @param  callable(Entry, Entry): int  $order
+     * @return list<array{entry: Entry, depth: int}>
+     */
+    private static function nest(array $tops, array $children, callable $order): array
+    {
         $items = [];
-        foreach ($tops as $top) {
-            $items[] = ['entry' => $top, 'depth' => 0];
-            $group = $children[$top->id] ?? [];
-            usort($group, fn (Entry $a, Entry $b): int => (($a->position <=> $b->position) ?: ($a->id <=> $b->id)) * $way);
-            foreach ($group as $child) {
-                $items[] = ['entry' => $child, 'depth' => 1];
+        $seen = [];
+        $visit = static function (Entry $entry, int $depth) use (&$visit, &$items, &$seen, $children, $order): void {
+            if (isset($seen[$entry->id])) {
+                return;
             }
+            $seen[$entry->id] = true;
+            $items[] = ['entry' => $entry, 'depth' => $depth];
+            $group = $children[$entry->id] ?? [];
+            usort($group, $order);
+            foreach ($group as $child) {
+                $visit($child, $depth + 1);
+            }
+        };
+        foreach ($tops as $top) {
+            $visit($top, 0);
         }
 
         return $items;
@@ -3401,8 +3790,9 @@ final class Index extends Component
     }
 
     /**
-     * Group children directly under their (matched) parent; promote a child whose parent is
-     * filtered out to the top level. Only top-level rows are sorted; children follow their parent.
+     * Group children directly under their (matched) parent, at every level; promote a child whose
+     * parent is filtered out to the top level. Each parent's own rows are sorted among themselves
+     * (the top level among the top rows); children always follow their parent.
      *
      * @param  EloquentCollection<int, Entry>  $entries
      * @return Collection<int, array{entry: Entry, depth: int}>
@@ -3410,41 +3800,35 @@ final class Index extends Component
     private function buildTree(EloquentCollection $entries, string $locale): Collection
     {
         $matched = [];
-        $byId = [];
         foreach ($entries as $entry) {
             $matched[$entry->id] = true;
-            $byId[$entry->id] = $entry;
         }
         $comparator = $this->comparator($locale);
 
-        /** @var array<int, Entry> $tops */
+        /** @var list<Entry> $tops */
         $tops = [];
         /** @var array<int, list<Entry>> $children */
         $children = [];
-
         foreach ($entries as $entry) {
-            $root = $entry;
-            while ($root->parent_id !== null && isset($matched[$root->parent_id])) {
-                $root = $byId[$root->parent_id];
-            }
-
-            if ($root->id === $entry->id) {
-                $tops[] = $entry;
+            if ($entry->parent_id !== null && isset($matched[$entry->parent_id]) && $entry->parent_id !== $entry->id) {
+                $children[$entry->parent_id][] = $entry;
             } else {
-                $children[$root->id][] = $entry;
+                $tops[] = $entry;
             }
         }
-
         usort($tops, $comparator);
+        $ordered = self::nest($tops, $children, $comparator);
 
-        /** @var list<array{entry: Entry, depth: int}> $ordered */
-        $ordered = [];
-        foreach ($tops as $top) {
-            $ordered[] = ['entry' => $top, 'depth' => 0];
-            $group = $children[$top->id] ?? [];
-            usort($group, $comparator);
-            foreach ($group as $child) {
-                $ordered[] = ['entry' => $child, 'depth' => 1];
+        // rows in a parent loop (bad data) hang under no top row: they are shown at the top level, last
+        if (count($ordered) < $entries->count()) {
+            $drawn = [];
+            foreach ($ordered as $item) {
+                $drawn[$item['entry']->id] = true;
+            }
+            $rest = array_values(array_filter($entries->all(), static fn (Entry $entry): bool => ! isset($drawn[$entry->id])));
+            usort($rest, $comparator);
+            foreach ($rest as $entry) {
+                $ordered[] = ['entry' => $entry, 'depth' => 0];
             }
         }
 

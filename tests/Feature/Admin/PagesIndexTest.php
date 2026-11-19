@@ -129,16 +129,18 @@ it('renders at a flat query budget regardless of row count', function (): void {
     $user = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
-        grantRole($user, 'editor', ['entries.view']);
+        grantRole($user, 'editor', ['entries.view', 'entries.edit.any']);
         Livewire::actingAs($user->fresh())->test(Index::class); // warm permission/config caches
 
+        $pages = [];
         foreach (range(1, 4) as $i) {
-            makePageEntry($user, "Trang {$i}", "trang-{$i}");
+            $pages[$i] = makePageEntry($user, "Trang {$i}", "trang-{$i}");
         }
         $few = countQueries(fn () => Livewire::actingAs($user->fresh())->test(Index::class));
 
+        // the new rows hang two levels below the first ones: a three-level tree costs the same
         foreach (range(5, 18) as $i) {
-            makePageEntry($user, "Trang {$i}", "trang-{$i}");
+            $pages[$i] = makePageEntry($user, "Trang {$i}", "trang-{$i}", parentId: $i <= 10 ? $pages[$i % 4 + 1]->id : $pages[$i - 6]->id);
         }
         $many = countQueries(fn () => Livewire::actingAs($user->fresh())->test(Index::class));
 

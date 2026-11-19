@@ -369,7 +369,7 @@
             {{-- The shared list row: a card below 600, one record per line to 900, a table from 900 (by the list's own
                  width). Below 600 the rows carry the card frame; select-all lives in the tools row above. --}}
             <div x-ref="rows" data-fold-wait class="min-w-0 @max-[56.25rem]/lt:order-3 max-[599.98px]:rounded-md max-[599.98px]:border max-[599.98px]:border-border max-[599.98px]:bg-surface max-[599.98px]:[&_.list-g]:border-t-0">
-            <x-bs-admin::list :label="__('entries.list_label', ['label' => $sectionLabel])" :kind="$isPost ? 'posts' : null"
+            <x-bs-admin::list :label="__('entries.list_label', ['label' => $sectionLabel])" :kind="$isPost ? 'posts' : null" :data-page-tree="$treeMode ? '1' : null"
                 busy="tab,setTab,search,sortKey,sortDir,sortBy,setSort,resetSort,page,gotoPage,turnPage,perPage,setPerPage,cursor,catF,langF,creatorF,templateF,transF,when,from,to,clearWhen,toggleFilterValue,resetFilterGroup,clearAllFilters,$refresh"
                 x-bind:data-hide="[mode === 'cols' && ! show('creator') ? 'au' : '', mode === 'cols' && ! show('cat') ? 'cat' : '', {{ $governed ? 'true' : 'false' }} && vStep ? '' : 'step'].join(' ').trim()" x-bind:data-fold="fold" x-bind:data-acts="acts">
 
@@ -442,11 +442,18 @@
                         // Thùng rác shown locked with its reason: the Home page (for who may remove the row otherwise), or a
                         // colleague's record for a member who may remove only their own
                         $trashLock = $trashed ? null : (($may['home'] && $may['delete']) ? __('entries.home_trash_why') : $may['trashWhy']);
+                        // the page tree in website order: a page row carries its place (data-pk/pp/lv) for the drag; its grip
+                        // for who may move it, greyed with the reason outside the member's limits (none on the Home page)
+                        $inTree = ! $isPost && $treeMode && ! $trashed;
+                        $grip = $inTree && ! $isHome && ($may['move'] || $out !== null)
+                            ? ['title' => $may['move'] ? __('entries.grip_title') : $outWhy, 'off' => ! $may['move']] : null;
                     @endphp
                     {{-- data-rk: the row the focus comes back to after a pick from its ⋮ or its status (window.bsListFocus).
                          Quick title edit: it opens on the title the row shows now (data-t, kept current by each render);
                          Esc or an empty title puts that title back in the field. --}}
                     <x-bs-admin::list.row :selected="$isSelected" wire:key="entry-{{ $entry->ulid }}" data-rk="{{ $entry->ulid }}"
+                        :data-pk="$inTree ? $entry->ulid : null" :data-pp="$inTree ? ($rowParent[$entry->ulid] ?? '') : null" :data-lv="$inTree ? $depth + 1 : null"
+                        :data-home="$inTree && $isHome ? '1' : null" :data-name="$inTree ? $title : null"
                         x-data="{ editing: false, value: '', orig: '', cancel: false, slugEd: false }"
                         x-on:list-quick-edit="orig = value = $refs.ti?.dataset.t ?? ''; editing = true; cancel = false"
                         x-on:list-quick-slug="slugEd = true">
@@ -463,10 +470,10 @@
                                     <span class="list-th" data-img="0" title="{{ __('entries.cover_none') }}" aria-hidden="true"><x-bs-admin::icon name="ri-image-add" class="size-5" /></span>
                                 @endif
                             @endif
-                            <div @class(['pl-5' => $depth, 'min-w-0 flex-1' => $isPost])>
+                            <div @class(['pl-5' => $depth === 1, 'pl-10' => $depth >= 2, 'min-w-0 flex-1' => $isPost])>
                                 <div x-show="! editing">
                                     <x-bs-admin::list.name :data-guide="$quickEdit ? 'row-title-qe' : 'row-title'" :href="$quickEdit ? route('admin.entries.edit', ['ulid' => $entry->ulid]) : ($trashed ? null : $path)" :external="! $quickEdit"
-                                        :quick-edit="$quickEdit ? __('entries.quick_edit_named', ['title' => $title]) : null" :child="$depth > 0">{{ $title }}</x-bs-admin::list.name>
+                                        :quick-edit="$quickEdit ? __('entries.quick_edit_named', ['title' => $title]) : null" :child="$depth > 0" :grip="$grip">{{ $title }}</x-bs-admin::list.name>
                                 </div>
                                 @if ($quickEdit)
                                     <input type="text" x-show="editing" x-cloak x-model="value" class="list-in" x-ref="ti" data-t="{{ $t?->title ?? '' }}"
@@ -698,6 +705,11 @@
                                         @if ($canCreate)
                                             <x-bs-admin::list.menu-item icon="ri-file-copy" :why="$outWhy" x-on:click="$bsToast({{ $lockToast($out) }})">{{ __('entries.action_duplicate') }}</x-bs-admin::list.menu-item>
                                         @endif
+                                        @if (! $isPost && ! $isHome)
+                                            <x-bs-admin::list.menu-item icon="ri-arrow-up" :why="$outWhy" x-on:click="$bsToast({{ $lockToast($out) }})">{{ __('entries.row_move_up') }}</x-bs-admin::list.menu-item>
+                                            <x-bs-admin::list.menu-item icon="ri-arrow-down" :why="$outWhy" x-on:click="$bsToast({{ $lockToast($out) }})">{{ __('entries.row_move_down') }}</x-bs-admin::list.menu-item>
+                                            <x-bs-admin::list.menu-item icon="ri-drag-move-2" :why="$outWhy" x-on:click="$bsToast({{ $lockToast($out) }})">{{ __('entries.row_move_to') }}</x-bs-admin::list.menu-item>
+                                        @endif
                                         @if ($may['deleteRole'])
                                             <x-bs-admin::list.menu-sep />
                                             <x-bs-admin::list.menu-item icon="ri-delete-bin" danger :why="$outWhy" x-on:click="$bsToast({{ $lockToast($out) }})">{{ __('entries.action_trash') }}</x-bs-admin::list.menu-item>
@@ -775,6 +787,20 @@
                                         @endif
                                         @if ($may['duplicate'])
                                             <x-bs-admin::list.menu-item icon="ri-file-copy" data-xm="xd" wire:click="duplicate('{{ $entry->ulid }}')">{{ __('entries.action_duplicate') }}</x-bs-admin::list.menu-item>
+                                        @endif
+                                        {{-- moves in the page tree: one place up or down only while the list shows the tree in website order
+                                             (the reason under the first of the two otherwise); «Chuyển đến…» in every view, never on the Home page --}}
+                                        @if ($may['move'])
+                                            @if ($treeMode)
+                                                <x-bs-admin::list.menu-item icon="ri-arrow-up" data-move="up" wire:click="movePageStep('{{ $entry->ulid }}', 'up')">{{ __('entries.row_move_up') }}</x-bs-admin::list.menu-item>
+                                                <x-bs-admin::list.menu-item icon="ri-arrow-down" data-move="down" wire:click="movePageStep('{{ $entry->ulid }}', 'down')">{{ __('entries.row_move_down') }}</x-bs-admin::list.menu-item>
+                                            @else
+                                                <x-bs-admin::list.menu-item icon="ri-arrow-up" data-move="up" :why="__('entries.move_off_why')" x-on:click="$bsToast({{ $lockToast(__('entries.move_off_why')) }})">{{ __('entries.row_move_up') }}</x-bs-admin::list.menu-item>
+                                                <x-bs-admin::list.menu-item icon="ri-arrow-down" data-move="down" off x-on:click="$bsToast({{ $lockToast(__('entries.move_off_why')) }})">{{ __('entries.row_move_down') }}</x-bs-admin::list.menu-item>
+                                            @endif
+                                            @if (! $isHome)
+                                                <x-bs-admin::list.menu-item icon="ri-drag-move-2" data-move="to" x-on:click="$dispatch('entries-mv', { ulid: {{ $Js::from($entry->ulid) }}, name: {{ $Js::from($title) }} })">{{ __('entries.row_move_to') }}</x-bs-admin::list.menu-item>
+                                            @endif
                                         @endif
                                         @if ($trashLock !== null)
                                             <x-bs-admin::list.menu-sep data-xm="xt" />
@@ -917,6 +943,63 @@
         </div>
     @endif
 
-    {{-- A move to the Trash and its «Hoàn tác» (10 seconds); it rises above the bulk bar while that bar sticks to the bottom. --}}
-    <x-bs-admin::toast :message="$toastMsg" :tone="$toastTone" :seq="$toastSeq" dismiss="closeToast" :undo="$trashUndo !== null ? 'undoTrash' : null" :raised="count($selected) > 0 && $bulk !== []" />
+    {{-- The page tree (pages only, outside the Trash): the drag by a row's grip and «Chuyển đến…» (Alpine.data 'bsPageMove',
+         resources/js/admin-page-tree.js). The places come from the server (moveTargets), each saying what the move makes of it
+         or why it is locked; the server judges the move again. --}}
+    @if (! $isPost && $tab !== 'trash')
+        @php
+            $treeTexts = [
+                'dnd' => [
+                    'start' => __('admin.tree.drag_start', ['noun' => __('entries.tree_noun')]),
+                    'child' => __('admin.tree.will_child', ['noun' => __('entries.tree_noun')]),
+                    'before' => __('admin.tree.will_before'),
+                    'after' => __('admin.tree.will_after'),
+                    'self' => __('admin.tree.no_self', ['noun' => __('entries.tree_noun')]),
+                ],
+                'gone' => __('entries.move_gone'),
+                'home' => __('entries.move_refused_parent_home'),
+                'depthPage' => __('entries.move_depth_page'),
+                'depthL1' => __('entries.move_depth_branch_l1'),
+                'depthTop' => __('entries.move_depth_branch_top'),
+                'kept' => __('admin.tree.kept'),
+                'pick' => __('entries.mv_pick'),
+                'goTop' => __('entries.mv_go_top'),
+                'goIn' => __('entries.mv_go_in'),
+                'pickFirst' => __('entries.mv_pick_first'),
+                'hint' => __('entries.mv_hint'),
+                'hintFlat' => __('entries.mv_hint_flat'),
+                'lock' => $lockMark,
+                'info' => \Illuminate\Support\Facades\Blade::render('<x-bs-admin::icon name="ri-information" class="size-4" />'),
+                'close' => __('admin.close'),
+            ];
+        @endphp
+        <div x-data="bsPageMove({{ Js::from($treeTexts) }})" x-on:entries-mv.window="open($event.detail)">
+            <x-bs-admin::sr-live x-ref="live" />
+            <x-bs-admin::modal state="mv" close="close()" :close-label="__('admin.close')">
+                <x-slot:heading><span class="[overflow-wrap:anywhere]" x-text="mv ? {{ Js::from(__('entries.mv_title')) }}.replace(':name', () => mv.name) : ''"></span></x-slot:heading>
+                <div class="flex flex-col gap-3">
+                    <x-bs-admin::search :label="__('entries.mv_search')" :placeholder="__('entries.mv_search_ph')" id="entries-mv-q" x-bind:value="mv ? mv.q : ''" x-on:input="if (mv) { mv.q = $event.target.value }" />
+                    <p x-show="mv && mv.opts" class="m-0 text-small text-text-muted" x-text="hint"></p>
+                    <div role="radiogroup" aria-label="{{ __('entries.mv_group') }}" class="flex flex-col gap-1.5">
+                        <p x-show="mv && ! mv.opts" class="m-0 text-small text-text-muted">{{ __('entries.mv_loading') }}</p>
+                        <template x-for="o in shown" :key="o.k || 'top'">
+                            <label class="flex min-h-hit cursor-pointer items-start gap-3 rounded border border-border px-3 py-2 has-[:checked]:border-primary-text has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-75"
+                                x-bind:style="'margin-left:' + (Math.max(0, o.lv - 1) * 20) + 'px'">
+                                <input type="radio" name="entries-mv" class="mt-1" x-bind:disabled="o.here || !! o.why" x-bind:checked="mv && mv.to === o.k" x-on:change="pick(o)" />
+                                <span class="flex min-w-0 flex-col"><span class="font-semibold text-text-strong [overflow-wrap:anywhere]" x-text="o.name"></span><span class="text-caption text-text-muted [overflow-wrap:anywhere]" x-text="o.label"></span></span>
+                            </label>
+                        </template>
+                        <p x-show="mv && mv.opts && shown.length === 0" class="m-0 text-small text-text-muted" x-text="mv ? {{ Js::from(__('entries.mv_none')) }}.replace(':q', () => mv.q) : ''"></p>
+                    </div>
+                </div>
+                <x-slot:footer>
+                    <x-bs-admin::button color="light" x-on:click="close()">{{ __('admin.cancel') }}</x-bs-admin::button>
+                    <x-bs-admin::button color="primary" x-on:click="go()" x-bind:aria-disabled="chosen ? null : 'true'"><x-bs-admin::icon name="ri-drag-move-2" class="size-4" /> <span x-text="btn">{{ __('entries.mv_pick') }}</span></x-bs-admin::button>
+                </x-slot:footer>
+            </x-bs-admin::modal>
+        </div>
+    @endif
+
+    {{-- A move to the Trash or in the page tree, and its «Hoàn tác» (10 seconds); it rises above the bulk bar while that bar sticks to the bottom. --}}
+    <x-bs-admin::toast :message="$toastMsg" :tone="$toastTone" :seq="$toastSeq" dismiss="closeToast" :undo="$trashUndo !== null ? 'undoTrash' : ($moveUndo !== null ? 'undoMovePage' : null)" :raised="count($selected) > 0 && $bulk !== []" />
 </div>

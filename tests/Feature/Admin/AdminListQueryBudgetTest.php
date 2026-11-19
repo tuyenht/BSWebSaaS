@@ -40,11 +40,16 @@ it('lists admin entries on a flat query budget (no N+1 across rows)', function (
     $editor = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
-        grantRole($editor, 'editor', ['entries.view']);
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any']);
 
-        // Several page entries so an N+1 over rows / their translations would blow the ceiling.
+        // Several page entries so an N+1 over rows / their translations would blow the ceiling,
+        // drawn as a three-level tree (pages 5-7 under page 1, 8-10 under page 5) with the grip
+        // and the move items, so neither the tree nor the move rights may cost a query per row.
+        $ids = [];
         foreach (range(1, 10) as $i) {
-            $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft']);
+            $parent = $i >= 8 ? $ids[5] : ($i >= 5 ? $ids[1] : null);
+            $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'parent_id' => $parent, 'position' => $i]);
+            $ids[$i] = $entry->id;
             $entry->translations()->create([
                 'locale' => 'vi', 'title' => "Page {$i}", 'slug' => "page-{$i}", 'status' => 'draft', 'body' => ['blocks' => []],
             ]);

@@ -4,6 +4,7 @@
     'child' => false,
     'act' => null,
     'external' => false,
+    'grip' => null,
 ])
 @php
     // A record's name: a link to its editor (plain text when it has none, such as a Trash row),
@@ -13,8 +14,13 @@
     // editor to open (a Trash row says what to do instead).
     // `external` opens the href in a new tab instead of inside the admin (a record's public page).
     // `child` puts the tree mark of a child record (a sub-page) before the name, in its indent.
+    // `grip` (['title' => tip, 'off' => bool]) puts a tree's drag grip first: the row is dragged by it,
+    // and an `off` grip is greyed with the reason as its tip (the host's script reads data-grip).
 @endphp
 <span {{ $attributes->merge(['class' => 'list-tl']) }}>
+    @if ($grip)
+        <span class="list-grip" data-grip aria-hidden="true" title="{{ $grip['title'] }}" draggable="{{ $grip['off'] ? 'false' : 'true' }}"@if ($grip['off']) data-off="1"@endif><x-bs-admin::icon name="ri-draggable" class="list-grip-i" /></span>
+    @endif
     @if ($child)
         <x-bs-admin::icon name="chevron-right" class="list-tree" />
     @endif
