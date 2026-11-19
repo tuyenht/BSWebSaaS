@@ -6298,5 +6298,9 @@
     "form_builder.leave_save": "Save and leave",
     "form_builder.leave_discard": "Discard changes and leave",
     "form_builder.fields_none": "Add at least one field visitors fill in (tick boxes do not count), for example \"Full name\".",
-    "form_builder.forms_max": "This website already has :max forms, the most it can have. Reuse an existing form instead."
+    "form_builder.forms_max": "This website already has :max forms, the most it can have. Reuse an existing form instead.",
+    "leads.form_off_band": "The form \":name\" is off — visitors cannot send new requests. Contacts already received are all kept.",
+    "leads.form_on": "Turn back on",
+    "leads.form_on_ask": "Ask an administrator to turn it back on in Forms.",
+    "leads.form_on_toast": "The form \":name\" is on again — visitors can send it now"
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Livewire\Forms;
 
 use App\Modules\Admin\Support\Leads\LeadListQuery;
+use App\Modules\Forms\Actions\SetFormStatus;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormField;
 use App\Modules\Forms\Models\FormSubmission;
@@ -166,6 +167,25 @@ final class Inbox extends Component
         $this->formF = [];
         $this->when = $this->from = $this->to = '';
         $this->updated('formF');
+    }
+
+    /**
+     * «Bật lại» on the band over the list: the switched-off form takes leads again at once. Asks
+     * the leads write permission and then FormPolicy, as the «Biểu mẫu» screen's own switch does.
+     */
+    public function turnFormOn(string $ulid): void
+    {
+        $this->guardWrite();
+        $form = Form::query()->where('ulid', $ulid)->first();
+        if ($form === null || Gate::denies('update', $form)) {
+            $this->say(__('form_builder.toast_cannot'), 'error');
+
+            return;
+        }
+        app(SetFormStatus::class)->handle($form, true);
+        $names = Cast::arr($form->name);
+        $name = Cast::string($names[app()->getLocale()] ?? $names['vi'] ?? (array_values($names)[0] ?? ''));
+        $this->say(__('leads.form_on_toast', ['name' => $name !== '' ? $name : __('leads.form_untitled')]));
     }
 
     /** The status of the lead being read (the status buttons, "Là thư rác", "Không phải thư rác"). */
@@ -339,6 +359,7 @@ final class Inbox extends Component
             'empty' => ! $read['any'],
             'failed' => $read['failed'] ?? false,
             'canManage' => $canManage,
+            'offForms' => $this->offForms($read['forms']),
             'filterCount' => count($this->formF) + ($this->when !== '' ? 1 : 0),
             'siteTime' => $siteTime,
             'cap' => LeadListQuery::CAP,
@@ -498,6 +519,18 @@ final class Inbox extends Component
     {
         abort_unless($this->entitled(), 403);
         abort_unless(Gate::allows('forms.manage'), 403);
+    }
+
+    /**
+     * The band over the list speaks of the website's own contact form only, whatever the form
+     * filter holds: when it is switched off, most leads stop.
+     *
+     * @param  Collection<int, Form>  $forms
+     * @return Collection<int, Form>
+     */
+    private function offForms(Collection $forms): Collection
+    {
+        return $forms->filter(fn (Form $form): bool => $form->status === 'disabled' && $form->isSystem())->values();
     }
 
     /** Whether this site's plan includes "Khách liên hệ" (read once per request). */
