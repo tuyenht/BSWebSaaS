@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Livewire\Catalog\Editor as ProductEditor;
 use App\Modules\Admin\Livewire\Entries\Editor as EntryEditor;
+use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
 use App\Modules\Cms\Data\TaxonomyData;
@@ -180,18 +181,88 @@ describe('posts and pages', function (): void {
         });
     });
 
-    it('moves a post to the Trash from the ⋮ and leaves for its list, which says so', function (): void {
+    it('moves a post to the Trash from the ⋮ and leaves for its list, which says so with «Hoàn tác»', function (): void {
         $member = frameMember(['entries.view', 'entries.create', 'entries.edit.any', 'entries.delete.own']);
 
         app(Tenancy::class)->enter(1, function () use ($member): void {
             frameSection();
             $post = frameEntry('post', $member, 'Bài sẽ bỏ', 'bai-se-bo');
+            $listUrl = route('admin.entries.index', ['section' => 'posts', EntriesIndex::TRASHED_IN_EDITOR => $post->ulid]);
             Livewire::actingAs($member)->test(EntryEditor::class, ['ulid' => $post->ulid])
                 ->call('trash')
-                ->assertJs('window.bsLeaveTo('.Js::encode(route('admin.entries.index', ['section' => 'posts'])).', '.Js::encode(['text' => 'Đã chuyển “Bài sẽ bỏ” vào Thùng rác']).')');
+                ->assertJs('window.bsLeaveTo('.Js::encode($listUrl).')');
 
             expect(Entry::query()->whereKey($post->id)->exists())->toBeFalse()
                 ->and(Entry::onlyTrashed()->whereKey($post->id)->exists())->toBeTrue();
+
+            // the list says it in its own message, whose «Hoàn tác» brings the post back, and takes the
+            // parameter out of the address so a reload says nothing
+            $list = Livewire::withQueryParams(['section' => 'posts', EntriesIndex::TRASHED_IN_EDITOR => $post->ulid])
+                ->actingAs($member)->test(EntriesIndex::class, ['section' => 'posts'])
+                ->assertSet('toastMsg', 'Đã chuyển “Bài sẽ bỏ” vào Thùng rác')
+                ->assertSet('trashUndo', [$post->ulid])
+                ->assertSeeHtml('wire:click="undoTrash"');
+            $js = implode("\n", array_map(static fn (mixed $x): string => is_array($x) ? (string) ($x['expression'] ?? '') : (string) $x, $list->effects['xjs'] ?? []));
+            expect($js)->toContain('setTimeout(')->toContain('searchParams.delete("trashed")');
+
+            $list->call('undoTrash')->assertSet('trashUndo', null);
+            expect(Entry::query()->whereKey($post->id)->exists())->toBeTrue();
+        });
+    });
+
+    it('moves a page to the Trash from the editor and the Pages list offers «Hoàn tác»', function (): void {
+        $member = frameMember(['entries.view', 'entries.create', 'entries.edit.any', 'entries.delete.own']);
+
+        app(Tenancy::class)->enter(1, function () use ($member): void {
+            frameEntry('page', $member, 'Trang chủ', 'trang-chu', 'published');
+            $page = frameEntry('page', $member, 'Trang sẽ bỏ', 'trang-se-bo');
+            Livewire::actingAs($member)->test(EntryEditor::class, ['ulid' => $page->ulid])
+                ->call('trash')
+                ->assertJs('window.bsLeaveTo('.Js::encode(route('admin.entries.index', [EntriesIndex::TRASHED_IN_EDITOR => $page->ulid])).')');
+
+            Livewire::withQueryParams([EntriesIndex::TRASHED_IN_EDITOR => $page->ulid])->actingAs($member)->test(EntriesIndex::class)
+                ->assertSet('toastMsg', 'Đã chuyển “Trang sẽ bỏ” vào Thùng rác')
+                ->assertSet('trashUndo', [$page->ulid])
+                ->call('undoTrash')
+                ->assertSet('trashUndo', null);
+            expect(Entry::query()->whereKey($page->id)->exists())->toBeTrue();
+        });
+    });
+
+    it('says nothing for an entry not of this list, no longer in the Trash, moved long ago, or of another site', function (): void {
+        $member = frameMember(['entries.view', 'entries.create', 'entries.edit.any', 'entries.delete.own']);
+        $silent = function (string $ulid, ?string $section) use ($member): void {
+            Livewire::withQueryParams(array_filter(['section' => $section, EntriesIndex::TRASHED_IN_EDITOR => $ulid]))
+                ->actingAs($member)->test(EntriesIndex::class, ['section' => $section])
+                ->assertSet('toastMsg', '')->assertSet('trashUndo', null);
+        };
+
+        $theirs = app(Tenancy::class)->enter(2, function () use ($member): string {
+            $entry = frameEntry('post', $member, 'Bài site B', 'bai-site-b');
+            $entry->delete();
+
+            return $entry->ulid;
+        });
+
+        app(Tenancy::class)->enter(1, function () use ($member, $silent, $theirs): void {
+            frameSection();
+            $post = frameEntry('post', $member, 'Bài sẽ bỏ', 'bai-se-bo');
+            $post->delete();
+            $silent($post->ulid, null);          // the Pages list does not list a post
+            $silent($theirs, 'posts');           // another site's entry is not found here
+
+            Entry::onlyTrashed()->whereKey($post->id)->restore();
+            $silent($post->ulid, 'posts');       // brought back meanwhile (another tab)
+
+            $post->delete();
+            Entry::onlyTrashed()->whereKey($post->id)->update(['deleted_at' => now()->subMinutes(2)]);
+            $silent($post->ulid, 'posts');       // moved more than a minute ago: an old address
+
+            // another member's post, moved just now: not this member's to bring back, so not said
+            $other = User::factory()->create();
+            $colleague = frameEntry('post', $other, 'Bài của đồng nghiệp', 'bai-cua-dong-nghiep');
+            $colleague->delete();
+            $silent($colleague->ulid, 'posts');
         });
     });
 
