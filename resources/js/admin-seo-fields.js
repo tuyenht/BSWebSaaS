@@ -88,6 +88,12 @@ document.addEventListener('alpine:init', () => {
             return this.meter('excerpt', this.value('excerpt'));
         },
 
+        // The post or page heading itself, measured by the design's `title` limits (35-60 → 30-60,
+        // cut at 60, red above 100), not the Google title's.
+        get headingMeter() {
+            return this.meter('title', this.value('heading'));
+        },
+
         get titleMeter() {
             return this.meter('seoTitle', this.value('title'));
         },

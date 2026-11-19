@@ -58,6 +58,7 @@
     "entries.ed.pub_link_aria": "サイトで見る、:url(新しいタブ)",
     "entries.ed.title_page": "ページタイトル",
     "entries.ed.title_post": "タイトル",
+    "entries.ed.title_hint": "必須 — URL はこのタイトルから自動で作られます。",
     "entries.ed.slug": "アドレス",
     "entries.ed.card_publish": "公開",
     "entries.ed.card_category": "カテゴリー",

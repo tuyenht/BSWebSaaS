@@ -58,6 +58,7 @@
     "entries.ed.pub_link_aria": "在网站上查看，:url（新标签页）",
     "entries.ed.title_page": "页面标题",
     "entries.ed.title_post": "标题",
+    "entries.ed.title_hint": "必填 — 网址会根据此标题自动生成。",
     "entries.ed.slug": "链接地址",
     "entries.ed.card_publish": "发布",
     "entries.ed.card_category": "分类",

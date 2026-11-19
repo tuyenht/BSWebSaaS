@@ -8,7 +8,7 @@ use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Tenancy\Context\ResolvedHost;
 
 /**
- * The length limits of the short excerpt and the Google title and description: the one table the
+ * The length limits of the heading (the post or page title), the short excerpt and the Google title and description: the one table the
  * shared "Hiện thế nào trên Google" part (<x-bs-admin::seo-fields>) reads for its meters, its
  * Google preview and its typing caps. It mirrors the design's limit table (content-seo.js LIMITS)
  * field for field, so no screen declares its own numbers.
@@ -26,6 +26,7 @@ final class SeoFields
     /** @var array<string, array{min: int, best: array{0: int, 1: int}, display: int, max: int, hard?: int}> */
     public const array LIMITS = [
         'excerpt' => ['min' => 80, 'best' => [120, 200], 'display' => 200, 'max' => 240, 'hard' => 255],
+        'title' => ['min' => 20, 'best' => [30, 60], 'display' => 60, 'max' => 100],
         'seoTitle' => ['min' => 20, 'best' => [35, 60], 'display' => 60, 'max' => 80],
         'seoDesc' => ['min' => 70, 'best' => [150, 160], 'display' => 160, 'max' => 200],
     ];
@@ -47,7 +48,7 @@ final class SeoFields
      * the preview's address and the words of its meters and empty states. `$words` replaces some of
      * them for a screen that previews something else (the site's home page in the settings).
      *
-     * @param  array{excerpt?: string|null, title: string|null, description: string|null, pageTitle?: string|null, slug?: string|null}  $models
+     * @param  array{excerpt?: string|null, heading?: string|null, title: string|null, description: string|null, pageTitle?: string|null, slug?: string|null}  $models
      * @param  array{base: string, home: string|null, homeSlug: string}  $address
      * @param  array<string, string>  $words
      * @return array<string, mixed>
@@ -57,7 +58,7 @@ final class SeoFields
         return [
             'open' => $open,
             'limits' => self::LIMITS,
-            'models' => ['excerpt' => $models['excerpt'] ?? null, 'title' => $models['title'], 'description' => $models['description'],
+            'models' => ['excerpt' => $models['excerpt'] ?? null, 'heading' => $models['heading'] ?? null, 'title' => $models['title'], 'description' => $models['description'],
                 'pageTitle' => $models['pageTitle'] ?? null, 'slug' => $models['slug'] ?? null],
             'address' => $address,
             'words' => $words + [
@@ -67,6 +68,7 @@ final class SeoFields
                 'over' => __('admin.seo.meter_over'),
                 'notes' => ['short' => __('admin.seo.note_short'), 'near' => __('admin.seo.note_near'), 'good' => __('admin.seo.note_good'), 'over' => __('admin.seo.note_over')],
                 'cut' => [
+                    'title' => __('admin.seo.cut_title'),
                     'excerpt' => __('admin.seo.cut_excerpt'),
                     'seoTitle' => __('admin.seo.cut_title'),
                     'seoDesc' => __('admin.seo.cut_description', ['display' => self::LIMITS['seoDesc']['display']]),

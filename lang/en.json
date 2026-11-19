@@ -58,6 +58,7 @@
     "entries.ed.pub_link_aria": "View on the website, :url (opens a new tab)",
     "entries.ed.title_page": "Page title",
     "entries.ed.title_post": "Title",
+    "entries.ed.title_hint": "Required — the address is built from this title.",
     "entries.ed.slug": "Address",
     "entries.ed.card_publish": "Publish",
     "entries.ed.card_category": "Category",
