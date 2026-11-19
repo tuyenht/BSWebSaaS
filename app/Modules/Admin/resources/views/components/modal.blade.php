@@ -55,7 +55,7 @@
      until the last open dialog closes. A root whose aria-busy is "true" (wire:loading.attr) is not
      closed while it works. --}}
 <div x-data="{{ $state }}" data-bs-modal
-     x-effect="if (open) { document.body.style.overflow = 'hidden'; } else { setTimeout(() => { if (! [...document.querySelectorAll('[data-bs-modal]')].some((m) => window.Alpine.$data(m).open)) { document.body.style.overflow = ''; } }); }"
+     x-effect="if (open) { document.body.style.overflow = 'hidden'; } else { requestAnimationFrame(() => { if (! [...document.querySelectorAll('[data-bs-modal]')].some((m) => window.Alpine.$data(m).open)) { document.body.style.overflow = ''; } }); }"
      @keydown.escape.window="if (open) { const up = [...document.querySelectorAll('[aria-modal=true]')].filter((d) => d.getClientRects().length > 0); if (up.length === 0 || $el.contains(up[up.length - 1])) { hide(); } }"
      {{ $attributes }}>
     @isset($trigger)
