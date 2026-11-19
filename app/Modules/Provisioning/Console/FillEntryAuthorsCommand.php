@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Provisioning\Console;
 
+use App\Modules\Audit\Facades\Audit;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Provisioning\Support\FirstOwner;
 use App\Modules\Shared\Support\Cast;
@@ -15,10 +16,11 @@ use Throwable;
 
 /**
  * Names a creator («Người tạo») for posts and pages that were written with none: what a content
- * pack or a demo seed made before they named one. Each such entry gets the first member recorded
- * as having saved it (its oldest revision with a person behind it); one nobody ever saved gets the
- * website's first owner, as a pack writes now. No account is ever deleted, so an empty creator is
- * always one that was never recorded, not a person who left.
+ * pack or a demo seed made before they named one. Each gets the website's first owner, as a pack
+ * writes now. Never the first member who saved it: the creator carries the «own» rights (EntryPolicy)
+ * and the workflow notices, and an editor who fixed a typo on a pack post did not create it. No
+ * account is ever deleted, so an empty creator is always one never recorded, not a person who left.
+ * Each site that gets creators is audited with the count.
  *
  * Only entries whose creator is still empty are written (checked again in the UPDATE), so a second
  * run, or one while staff edit, reports 0. Trashed entries are filled too. Naming the creator is not
@@ -34,7 +36,7 @@ final class FillEntryAuthorsCommand extends Command
     protected $signature = 'site:fill-entry-authors {--site= : Only this site (its id); default every site} {--dry-run : Count, write nothing}';
 
     #[\Override]
-    protected $description = 'Name a creator for posts and pages saved without one (first saver, else the first owner); safe to re-run.';
+    protected $description = 'Name the first owner as creator of posts and pages saved without one; safe to re-run.';
 
     public function handle(Tenancy $tenancy, FirstOwner $owner): int
     {
@@ -88,6 +90,10 @@ final class FillEntryAuthorsCommand extends Command
             $written += $done;
         } while ($read === self::CHUNK);
 
+        if (! $dry && $written > 0) {
+            $tenancy->enter($siteId, fn () => Audit::record('content.entry_authors_filled', ['meta' => ['count' => $written, 'author' => 'first_owner']]));
+        }
+
         return [$missing, $written, $ownerId];
     }
 
@@ -107,21 +113,17 @@ final class FillEntryAuthorsCommand extends Command
             return [0, 0, $after];
         }
 
-        $in = implode(', ', array_fill(0, count($ids), '?'));
-        $saver = 'SELECT r.created_by FROM entry_revisions r WHERE r.site_id = e.site_id AND r.entry_id = e.id AND r.created_by IS NOT NULL ORDER BY r.id LIMIT 1';
-
+        if ($ownerId === null) {
+            return [count($ids), 0, (int) end($ids)];
+        }
         if ($dry) {
-            $count = DB::selectOne(
-                "SELECT count(*) AS n FROM entries e WHERE e.site_id = ? AND e.author_id IS NULL AND e.id IN ({$in}) AND COALESCE(({$saver}), ?::bigint) IS NOT NULL",
-                [$siteId, ...$ids, $ownerId],
-            );
-
-            return [count($ids), Cast::int(is_object($count) ? ($count->n ?? 0) : 0), (int) end($ids)];
+            return [count($ids), count($ids), (int) end($ids)];
         }
 
+        $in = implode(', ', array_fill(0, count($ids), '?'));
         $written = DB::update(
-            "UPDATE entries e SET author_id = COALESCE(({$saver}), ?::bigint) WHERE e.site_id = ? AND e.author_id IS NULL AND e.id IN ({$in}) AND COALESCE(({$saver}), ?::bigint) IS NOT NULL",
-            [$ownerId, $siteId, ...$ids, $ownerId],
+            "UPDATE entries SET author_id = ? WHERE site_id = ? AND author_id IS NULL AND id IN ({$in})",
+            [$ownerId, $siteId, ...$ids],
         );
 
         return [count($ids), $written, (int) end($ids)];

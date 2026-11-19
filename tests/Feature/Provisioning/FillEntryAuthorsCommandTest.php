@@ -76,22 +76,36 @@ it('names the first owner for an entry nobody saved, trashed ones too, and leave
         ->and(authorOf($site, $trashed)['author'])->toBe(ownerIdOf('mot.platform.test'));
 });
 
-it('names the first member who saved the entry before the owner', function (): void {
+it('names the owner even when a member saved the entry first, so no one gains «own» rights on it', function (): void {
     $site = authorSite('Tác Giả Một', 'mot.platform.test');
     $post = authorlessPost($site);
     $editor = User::query()->create(['name' => 'Biên Tập', 'email' => 'bt@mot.test', 'password' => 'x-strong-password']);
-    app(Tenancy::class)->enter($site, function () use ($post, $editor, $site): void {
-        foreach ([null, $editor->id] as $by) {
-            DB::table('entry_revisions')->insert([
-                'ulid' => (string) Str::ulid(), 'site_id' => $site, 'entry_id' => $post, 'locale' => 'vi',
-                'kind' => 'edit', 'snapshot' => '{}', 'created_by' => $by,
-            ]);
-        }
-    });
+    app(Tenancy::class)->enter($site, fn () => DB::table('entry_revisions')->insert([
+        'ulid' => (string) Str::ulid(), 'site_id' => $site, 'entry_id' => $post, 'locale' => 'vi',
+        'kind' => 'edit', 'snapshot' => '{}', 'created_by' => $editor->id,
+    ]));
 
     $this->artisan('site:fill-entry-authors', ['--site' => (string) $site])->assertSuccessful();
 
-    expect(authorOf($site, $post)['author'])->toBe($editor->id);
+    expect(authorOf($site, $post)['author'])->toBe(ownerIdOf('mot.platform.test'))
+        ->and(app(Tenancy::class)->enter($site, fn () => DB::table('audit_logs')->where('action', 'content.entry_authors_filled')->count()))->toBe(1);
+});
+
+it('walks a site past one chunk, and past a full chunk it must skip on a site with no owner', function (): void {
+    $one = authorSite('Tác Giả Một', 'mot.platform.test');
+    $two = authorSite('Tác Giả Hai', 'hai.platform.test');
+    foreach ([$one, $two] as $site) {
+        app(Tenancy::class)->enter($site, function () use ($site): void {
+            $rows = array_map(fn (): array => ['ulid' => (string) Str::ulid(), 'site_id' => $site, 'type' => 'post', 'status' => 'draft', 'created_at' => now(), 'updated_at' => now()], range(1, 501));
+            DB::table('entries')->insert($rows);
+        });
+    }
+    DB::connection('pgsql_admin')->table('model_has_roles')->where('site_id', $one)->delete();
+
+    $this->artisan('site:fill-entry-authors')->expectsOutputToContain('Filled 501 creator(s)')->assertSuccessful();
+
+    expect(app(Tenancy::class)->enter($two, fn () => Entry::query()->whereNull('author_id')->count()))->toBe(0)
+        ->and(app(Tenancy::class)->enter($one, fn () => Entry::query()->whereNull('author_id')->count()))->toBe(501);
 });
 
 it('never replaces a creator, keeps to each site, and writes nothing the second time', function (): void {
