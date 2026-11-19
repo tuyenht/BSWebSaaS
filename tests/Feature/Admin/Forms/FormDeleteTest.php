@@ -11,6 +11,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Number;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 
@@ -295,6 +296,48 @@ it('says so, and deletes nothing more, when the form went between the question a
             ->assertSet('toastMsg', __('form_builder.toast_gone'));
     });
 
-    expect(formRowsLeft($kept))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 1])
+    // the action itself, reached after the form went: nothing done, nothing audited
+    $again = app(Tenancy::class)->enter(1, fn (): ?array => app(DeleteForm::class)->handle($form));
+
+    expect($again)->toBeNull()
+        ->and(formRowsLeft($kept))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 1])
         ->and(formDeleteAudits())->toBe(0);
+});
+
+it('deletes at once when "more than 10,000" was shown, however many came in since', function (): void {
+    $manager = blockLibraryUser(1, 'admin');
+    $form = deletableForm(1, 'bao-gia', 'Yêu cầu báo giá');
+    $over = FormList::LEAD_CAP + 1;
+    DB::connection('pgsql_admin')->statement(
+        "insert into form_submissions (ulid, site_id, form_id, data, name, status, is_spam, created_at, updated_at)
+         select upper(substr(md5(g::text || ':' || ?), 1, 26)), 1, ?, '{}', 'Khách', 'new', false, now(), now() from generate_series(1, ?) g",
+        [$form->id, $form->id, $over],
+    );
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $form, $over): void {
+        $page = Livewire::actingAs($manager)->test(FormList::class)->call('askDelete', $form->ulid)->assertSet('deleting.leads', $over);
+        FormSubmission::query()->create(['form_id' => $form->id, 'data' => [], 'name' => 'Khách mới', 'status' => 'new', 'is_spam' => false]);
+        $page->call('confirmDelete')
+            ->assertSet('confirmOpen', false)
+            ->assertSet('toastMsg', __('form_builder.toast_deleted_leads', ['leads' => trans_choice('form_builder.leads_n', $over + 1, ['n' => Number::format($over + 1, locale: app()->getLocale())])]));
+    });
+
+    expect(formRowsLeft($form))->toBe(['forms' => 0, 'fields' => 0, 'leads' => 0]);
+});
+
+it('asks again with "more than 10,000" when leads came in past the cap after a smaller count', function (): void {
+    $manager = blockLibraryUser(1, 'admin');
+    $form = deletableForm(1, 'bao-gia', 'Yêu cầu báo giá', leads: 1);
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $form): void {
+        $page = Livewire::actingAs($manager)->test(FormList::class)->call('askDelete', $form->ulid)->assertSet('deleting.leads', 1);
+        DB::statement(
+            "insert into form_submissions (ulid, site_id, form_id, data, name, status, is_spam, created_at, updated_at)
+             select upper(substr(md5(g::text || ':x:' || ?), 1, 26)), 1, ?, '{}', 'Khách', 'new', false, now(), now() from generate_series(1, ?) g",
+            [$form->id, $form->id, FormList::LEAD_CAP + 5],
+        );
+        $page->call('confirmDelete')->assertSet('confirmOpen', true)->assertSet('deleting.leads', FormList::LEAD_CAP + 1);
+    });
+
+    expect(formRowsLeft($form)['forms'])->toBe(1);
 });

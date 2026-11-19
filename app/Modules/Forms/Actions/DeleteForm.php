@@ -55,7 +55,8 @@ final class DeleteForm
                 return ['deleted' => false, 'leads' => $leads];
             }
 
-            // the site's notices are kept 90 days (notifications:prune), so this reads a bounded set
+            // no index leads with kind: this reads every notice of the site's last 90 days (they are
+            // pruned after that, notifications:prune) — acceptable for a rare action, not measured
             SiteNotification::query()->where('kind', 'lead.new')
                 ->whereIn(DB::raw("data->>'submission'"), FormSubmission::query()->where('form_id', $locked->id)->select('ulid'))
                 ->delete();
