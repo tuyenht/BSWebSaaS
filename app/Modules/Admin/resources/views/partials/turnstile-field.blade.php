@@ -36,9 +36,13 @@
             var bsTurnstileWaiting = [];
             window.bsTurnstileOk = function (token) {
                 bsTurnstileLast = token;
+                bsTurnstileAsking = false;
                 bsTurnstileWaiting.splice(0).forEach(function (go) { go(); });
             };
-            window.bsTurnstileClear = function () { bsTurnstileLast = ''; };
+            window.bsTurnstileClear = function () {
+                bsTurnstileLast = '';
+                bsTurnstileWaiting.forEach(function (go) { go.resume(); });
+            };
             // When Cloudflare asks the person to tick its box, a send already waiting stops its 15 s clock
             // and its sending look (a refusal would reset the box mid-tick) and goes on by itself after the
             // tick. A press while the box is asking is sent at once, as before this wait existed: the server
@@ -48,7 +52,12 @@
                 bsTurnstileAsking = true;
                 bsTurnstileWaiting.forEach(function (go) { go.pause(); });
             };
-            window.bsTurnstileAsked = function () { bsTurnstileAsking = false; };
+            // The box stopped asking: a token follows (and sends), or it failed, and then the paused sends
+            // take up their busy look and 15 s clock again instead of waiting for ever.
+            window.bsTurnstileAsked = function () {
+                bsTurnstileAsking = false;
+                bsTurnstileWaiting.forEach(function (go) { go.resume(); });
+            };
 
             // Cloudflare's widget iframe carries a hard min-width:300px inside a CLOSED shadow root, so
             // external CSS can't shrink it — on a form narrower than 300px it overflows the field. Scale
@@ -120,6 +129,11 @@
                     clearTimeout(timer);
                     if (button) { button.disabled = false; button.removeAttribute('aria-busy'); }
                 };
+                var busy = function () {
+                    clearTimeout(timer);
+                    if (button) { button.disabled = true; button.setAttribute('aria-busy', 'true'); }
+                    timer = setTimeout(go, 15000);
+                };
                 var go = function () {
                     var i = bsTurnstileWaiting.indexOf(go);
                     if (i >= 0) { bsTurnstileWaiting.splice(i, 1); }
@@ -135,9 +149,9 @@
                     });
                 };
                 go.pause = idle;
+                go.resume = busy;
                 bsTurnstileWaiting.push(go);
-                if (button) { button.disabled = true; button.setAttribute('aria-busy', 'true'); }
-                timer = setTimeout(go, 15000);
+                busy();
             }, true);
 
             document.addEventListener('livewire:init', function () {
@@ -148,6 +162,7 @@
                     var input = el && el.querySelector('input[name="cf-turnstile-response"]');
                     if (input) { input.value = ''; }
                     bsTurnstileLast = '';
+                    bsTurnstileAsking = false; // the new check asks again if it needs a tick
                     if (window.turnstile && el) { window.turnstile.reset(el); }
                 });
             });
