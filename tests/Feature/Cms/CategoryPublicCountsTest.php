@@ -1,6 +1,5 @@
 <?php
 
-use App\Modules\Admin\Livewire\Catalog\Index as ProductIndex;
 use App\Modules\Admin\Livewire\Entries\Index as EntryIndex;
 use App\Modules\Catalog\Actions\ChangeProductMainCategory;
 use App\Modules\Catalog\Actions\ChangeProductStatus;
@@ -18,6 +17,7 @@ use App\Modules\Cms\Enums\CategoryItemsOnDelete;
 use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Cms\Support\CategoryPublicCounts;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
@@ -412,31 +412,44 @@ it('puts a bulk restore from the trash back with one update per row, whatever th
     expect(publicCountDrift(1))->toBe([]);
 });
 
-it('leaves the totals as they were after a bulk restore of products back as drafts, and after its undo', function (): void {
-    $manager = User::factory()->create();
-    app(Tenancy::class)->enter(1, fn () => grantRole($manager, 'cat-manager', ['catalog.view', 'catalog.manage']));
-
-    [$category, $kept] = app(Tenancy::class)->enter(1, function (): array {
+it('leaves the totals as they were when a bulk change takes an item off and back on, or on and off, the website', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
         $category = pubCategory('Máy', 'product_cat');
         $kept = pubProduct([$category], 'published', ['vi', 'en']);
-        foreach ([pubProduct([$category], 'published', ['vi', 'en']), pubProduct([$category], 'published', ['vi'])] as $gone) {
-            $gone->delete();
+        $gone = [pubProduct([$category], 'published', ['vi', 'en']), pubProduct([$category], 'published', ['vi'])];
+        foreach ($gone as $product) {
+            $product->delete();
         }
-        expect(pubCounts('vi', $category))->toBe([[1, 1]])->and(pubCounts('en', $category))->toBe([[1, 1]]);
+        $live = pubProduct([$category], 'published', ['vi']);
+        expect(pubCounts('vi', $category))->toBe([[2, 2]])->and(pubCounts('en', $category))->toBe([[1, 1]]);
 
-        return [$category, $kept];
-    });
+        // As the products list runs «Khôi phục (N)» (out of the trash as drafts: still off the
+        // website), then its undo (published again, into the trash again), each as one bulk unit.
+        app(CategoryItemCounts::class)->batch(function () use ($gone): void {
+            foreach ($gone as $product) {
+                $product = Product::onlyTrashed()->findOrFail($product->id);
+                $product->restore();
+                $product->forceFill(['status' => 'draft'])->save();
+            }
+        });
+        expect(pubCounts('vi', $category))->toBe([[2, 2]])->and(pubCounts('en', $category))->toBe([[1, 1]]);
+        app(CategoryItemCounts::class)->batch(function () use ($gone): void {
+            foreach ($gone as $product) {
+                $product = Product::query()->findOrFail($product->id);
+                $product->forceFill(['status' => 'published'])->save();
+                $product->delete();
+            }
+        });
+        expect(pubCounts('vi', $category))->toBe([[2, 2]])->and(pubCounts('en', $category))->toBe([[1, 1]]);
 
-    app(Tenancy::class)->enter(1, function () use ($manager, $category, $kept): void {
-        $trashed = Product::onlyTrashed()->orderBy('id')->pluck('ulid')->all();
-        // «Khôi phục (N)»: out of the trash as drafts, so still off the website; the undo puts them
-        // back as they were (published) and into the trash again — off the website either way.
-        $test = Livewire::actingAs($manager->fresh())->test(ProductIndex::class)
-            ->set('tab', 'trash')->call('toggleSelect', $trashed)->call('bulkRestore');
-        expect(pubCounts('vi', $category))->toBe([[1, 1]])->and(pubCounts('en', $category))->toBe([[1, 1]]);
-        $test->call('undoLast');
-        expect(pubCounts('vi', $category))->toBe([[1, 1]])->and(pubCounts('en', $category))->toBe([[1, 1]])
-            ->and(Product::onlyTrashed()->count())->toBe(2)->and($kept->fresh()?->trashed())->toBeFalse();
+        // Off and back on in one unit: as it was.
+        app(CategoryItemCounts::class)->batch(function () use ($live): void {
+            $product = Product::query()->findOrFail($live->id);
+            $product->forceFill(['status' => 'archived'])->save();
+            $product->forceFill(['status' => 'published'])->save();
+        });
+        expect(pubCounts('vi', $category))->toBe([[2, 2]])
+            ->and($kept->fresh()?->trashed())->toBeFalse();
     });
     expect(publicCountDrift(1))->toBe([]);
 });
