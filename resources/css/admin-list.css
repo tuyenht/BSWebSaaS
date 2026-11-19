@@ -281,10 +281,6 @@
         flex: none;
     }
 
-    .list-tl > .list-tree {
-        align-self: center;
-    }
-
     /* The text sits centred in a box at least one target tall; a wrapped title grows by its lines only,
        not by the target's spare height (the slot is plain text, so it stays one flex item). */
     .list-name {
@@ -310,15 +306,211 @@
         text-align: left;
     }
 
-    /* The tree mark of a child record, drawn in the 1.25rem indent the screen gives it. */
-    .list-tree {
-        display: inline-block;
+    /* A sub-page in the page tree: indented 32 a level (20 below 600, the card), with no mark of its own; from a
+       list 768 wide the guide lines join it to its parent (the shared tree's lines: TreeRows::guides), drawn below
+       the parent's address line at the x of its grip (the name block starts 4rem in, in the line and the table layouts alike) and
+       level with the name's first line. Where the lines are not drawn, «Thuộc: …» names the parent: shown from 600
+       to 767, read aloud below 600. A page of a flat list (searched, filtered, sorted otherwise) leads its name
+       with its parents' titles, muted, and names its parent for screen readers below 600. */
+    .list-ind {
+        padding-left: calc(var(--list-lv, 1) * 2rem);
+    }
+
+    .list-r:has(> .list-g-tree) {
+        --list-line: color-mix(in srgb, var(--color-border-input) 60%, var(--color-surface));
+        --list-gy: calc(clamp(0.625rem, 2.5cqw, 0.75rem) + var(--list-tap) / 2);
+        position: relative;
+    }
+
+    .list-g-tree {
+        display: none;
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+    }
+
+    .list-gl {
+        --d: 1;
+        position: absolute;
+        top: -1px;
+        bottom: 0;
+        left: calc(4rem + (var(--d) - 1) * 2rem + 0.75rem);
+        width: 1px;
+        background: var(--list-line);
+    }
+
+    .list-gl[data-d='2'] {
+        --d: 2;
+    }
+
+    .list-gl[data-d='3'] {
+        --d: 3;
+    }
+
+    .list-gl:is([data-k='t'], [data-k='l']) {
+        width: 0.75rem;
+        background: linear-gradient(var(--list-line), var(--list-line)) 0 0 / 1px 100% no-repeat;
+    }
+
+    .list-gl[data-k='l'] {
+        bottom: auto;
+        height: calc(var(--list-gy) + 1px);
+    }
+
+    .list-gl:is([data-k='t'], [data-k='l'])::after {
+        content: '';
+        position: absolute;
+        top: calc(var(--list-gy) + 1px);
+        left: 0;
+        width: 100%;
+        height: 1px;
+        background: var(--list-line);
+    }
+
+    .list-gl[data-k='down'] {
+        /* a parent's own stub starts below its address line, as board 05 draws it: from the grip it would run through
+           the «/…» under the name */
+        top: auto;
+        height: 0.5rem;
+    }
+
+    @container list (width >= 48rem) {
+        .list-g-tree {
+            display: block;
+        }
+    }
+
+    @container list (width >= 56.25rem) {
+        .list-r:has(> .list-g-tree) {
+            --list-gy: calc(0.3125rem + var(--spacing-hit) / 2);
+        }
+    }
+
+    .list-of {
+        display: none;
+        font-size: var(--text-caption);
+        line-height: 1.4;
+        color: var(--color-text-muted);
+        overflow-wrap: anywhere;
+    }
+
+    @container list (37.5rem <= width < 48rem) {
+        .list-of[data-of='tree'] {
+            display: block;
+        }
+    }
+
+    @container list (width < 37.5rem) {
+        .list-ind {
+            padding-left: calc(var(--list-lv, 1) * 1.25rem);
+        }
+
+        .list-of {
+            display: block;
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            margin: -1px;
+            padding: 0;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+            border: 0;
+        }
+    }
+
+    .list-anc {
+        color: var(--color-text-muted);
+        font-weight: 500;
+    }
+
+    /* The note over a page list shown flat: why the tree and the drag are off, and the way back to them. */
+    .list-note {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.375rem 0.625rem;
+        margin-bottom: 0.75rem;
+        padding: 0.5625rem 0.75rem;
+        border: 1px solid var(--color-border);
+        border-radius: 0.375rem;
+        background: var(--color-surface-muted);
+        font-size: var(--text-small);
+        line-height: 1.45;
+        color: var(--color-text);
+    }
+
+    .list-note-i {
         flex: none;
-        width: 0.875rem;
-        height: 0.875rem;
-        margin-inline: -1.25rem 0.375rem;
-        vertical-align: -0.125rem;
-        color: var(--color-text-faint);
+        width: min(1.5rem, calc(1rem + var(--user-text-boost)));
+        height: min(1.5rem, calc(1rem + var(--user-text-boost)));
+        color: var(--color-info-text);
+    }
+
+    .list-note-t {
+        flex: 1 1 15rem;
+        min-width: 0;
+    }
+
+    /* A page row of the page tree (pages in website order): the grip before its name, shown on a
+       table-wide list with a fine pointer only (touch and narrow lists move pages through ⋮), and the
+       drag states the shared tree draws (admin-tree.css): the row being dragged fades, the row a drop
+       would go into is outlined — accent when allowed, red when refused — and a moved row flashes. */
+    .list-grip {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        width: 1.5rem;
+        align-self: center;
+        color: var(--color-text-muted);
+        cursor: grab;
+    }
+
+    .list-grip[data-off='1'] {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    .list-grip-i {
+        width: calc(1rem + var(--user-text-boost));
+        height: calc(1rem + var(--user-text-boost));
+    }
+
+    @container list (width < 56.25rem) {
+        .list-grip {
+            display: none;
+        }
+    }
+
+    @media (any-pointer: coarse) {
+        .list-grip {
+            display: none;
+        }
+    }
+
+    .list-r[data-drag='1'] {
+        opacity: 0.5;
+    }
+
+    .list-r[data-drop='in'] {
+        background: color-mix(in srgb, var(--color-primary-text) 10%, var(--color-surface));
+        box-shadow: inset 0 0 0 2px var(--color-primary-text);
+    }
+
+    .list-r[data-drop='bad'] {
+        background: color-mix(in srgb, var(--color-danger-text) 8%, var(--color-surface));
+        box-shadow: inset 0 0 0 2px var(--color-danger-text);
+    }
+
+    .list-r[data-flash='1'] {
+        animation: tree-flash 1s ease-out;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .list-r[data-flash='1'] {
+            animation: none;
+        }
     }
 
     a.list-name:hover {

@@ -15,10 +15,13 @@ use App\Modules\Provisioning\ContentPack\CanonicalHash;
 use App\Modules\Provisioning\ContentPack\Ledger;
 use App\Modules\Provisioning\ContentPack\PackReader;
 use App\Modules\Provisioning\ContentPack\Planner;
+use App\Modules\Provisioning\Support\FirstOwner;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Tests\Fixtures\ContentPacks;
@@ -473,6 +476,79 @@ it('makes a page a conflict when its parent cannot be given', function (Closure 
     }, 'its parent page page:/gioi-thieu would not exist after this load'],
 ]);
 
+it('refuses a load that would break the page tree and changes nothing', function (Closure $setup, string $message): void {
+    $setup($this);
+    $before = ContentPacks::in($this->siteId, fn (): array => Entry::query()->where('type', 'page')->orderBy('id')->pluck('parent_id', 'id')->all());
+
+    [$exit, $output] = ContentPacks::run();
+    if ($exit === 0) {
+        [$exit, $output] = ContentPacks::run(options: ['--apply' => true, '--plan' => ContentPacks::fingerprint($output)]);
+    }
+    expect($exit)->toBe(1, $output)->and($output)->toContain($message)
+        ->and(ContentPacks::in($this->siteId, fn () => SiteRoute::query()->where('path', '/doi-ngu')->exists()))->toBeFalse()
+        ->and(ContentPacks::in($this->siteId, fn (): array => Entry::query()->where('type', 'page')->orderBy('id')->pluck('parent_id', 'id')->all()))->toBe($before);
+})->with([
+    'a page under the Home page, which the pack check already turns away' => [function ($test): void {
+        ContentPacks::load();
+        cpAddChildPage($test->folder, ['parent' => 'page:/']);
+    }, 'page:/doi-ngu: parent must be the key of another page (page:/<slug>), not the home page.'],
+    'a fourth level' => [function ($test): void {
+        ContentPacks::load();
+        ContentPacks::in($test->siteId, function (): void {
+            $top = Entry::query()->create(['type' => 'page', 'status' => 'draft']);
+            $mid = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'parent_id' => $top->id]);
+            Entry::query()->whereKey(SiteRoute::query()->where('path', '/gioi-thieu')->value('entry_id'))->update(['parent_id' => $mid->id]);
+        });
+        cpAddChildPage($test->folder);
+    }, 'Refused: page:/doi-ngu under page:/gioi-thieu would make the page tree deeper than 3 levels.'],
+]);
+
+it('re-applies a page whose parent is unchanged even in a tree that predates the three-level rule', function (): void {
+    cpAddChildPage($this->folder);
+    ContentPacks::load();
+    ContentPacks::in($this->siteId, function (): void {
+        $top = Entry::query()->create(['type' => 'page', 'status' => 'draft']);
+        $mid = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'parent_id' => $top->id]);
+        Entry::query()->whereKey(SiteRoute::query()->where('path', '/gioi-thieu')->value('entry_id'))->update(['parent_id' => $mid->id]);
+    });
+    ContentPacks::item($this->folder, 'pages.json', 'page:/doi-ngu', function (array $item): array {
+        $item['title'] = ['vi' => 'Đội ngũ kỹ sư'];
+
+        return $item;
+    });
+
+    [$exit, $output] = ContentPacks::load();
+
+    expect($exit)->toBe(0, $output)
+        ->and(cpChildPage($this->siteId)['parent'])->toBe(cpChildPage($this->siteId)['gioiThieu'])
+        ->and(ContentPacks::in($this->siteId, fn () => EntryTranslation::query()->where('slug', 'doi-ngu')->value('title')))->toBe('Đội ngũ kỹ sư');
+});
+
+it('takes the page-tree lock before the apply row-locks any page, the order a move in the admin takes them', function (): void {
+    cpAddChildPage($this->folder);
+    [$exit, $output] = ContentPacks::run();
+    expect($exit)->toBe(0, $output);
+
+    $statements = [];
+    DB::listen(function (QueryExecuted $query) use (&$statements): void {
+        $statements[] = [strtolower($query->sql), $query->bindings];
+    });
+    [$exit, $output] = ContentPacks::run(options: ['--apply' => true, '--plan' => ContentPacks::fingerprint($output)]);
+    expect($exit)->toBe(0, $output);
+
+    $pageLock = null;
+    $firstRowLock = null;
+    foreach ($statements as $i => [$sql, $bindings]) {
+        if ($pageLock === null && str_contains($sql, 'pg_advisory_xact_lock') && ($bindings[0] ?? null) === 'pages:'.$this->siteId) {
+            $pageLock = $i;
+        }
+        if ($firstRowLock === null && str_contains($sql, 'from "entries"') && str_contains($sql, 'for update')) {
+            $firstRowLock = $i;
+        }
+    }
+    expect($pageLock)->toBeInt()->and($firstRowLock)->toBeInt()->and($pageLock)->toBeLessThan($firstRowLock);
+});
+
 it('never takes another site\'s page for the parent a page names', function (): void {
     config(['tenancy.assert' => 'strict']);
     $other = StorefrontCards::site('Other', 'other.platform.test');
@@ -700,4 +776,17 @@ it('keeps the live card label of a category whose pack item does not name one', 
     [, $plan] = ContentPacks::run();
     expect(ContentPacks::verdict($plan, 'tax:post_cat/tin-tuc'))->toBe('unchanged')
         ->and(cpLabelAndByline($this->siteId)['label'])->toBe('Bản tin');
+});
+
+it('names the website\'s first owner as the creator of every post and page a pack makes', function (): void {
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output);
+
+    ContentPacks::in($this->siteId, function (): void {
+        $owner = app(FirstOwner::class)->id();
+
+        expect($owner)->not->toBeNull()
+            ->and(Entry::query()->withTrashed()->whereNull('author_id')->count())->toBe(0)
+            ->and(Entry::query()->withTrashed()->where('author_id', '!=', $owner)->count())->toBe(0);
+    });
 });

@@ -11,8 +11,10 @@ use App\Modules\Admin\Support\Entries\ListGroup;
 use App\Modules\Admin\Support\Entries\PostRoleNote;
 use App\Modules\Admin\Support\FirstHints;
 use App\Modules\Admin\Support\SeoFields;
+use App\Modules\Admin\Support\TreeRows;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\DuplicateEntry;
+use App\Modules\Cms\Actions\MovePage;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
 use App\Modules\Cms\Actions\TransitionEntryStatus;
@@ -20,11 +22,13 @@ use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
 use App\Modules\Cms\Exceptions\HomePageLockedException;
+use App\Modules\Cms\Exceptions\PageMoveRejectedException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Exceptions\SchedulePastException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RouteSync;
@@ -35,6 +39,7 @@ use App\Modules\Cms\Support\EntryReviewReach;
 use App\Modules\Cms\Support\EntryTrash;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Cms\Support\HomePages;
+use App\Modules\Cms\Support\PageRules;
 use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -42,6 +47,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\ConcurrencyError;
 use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Context\CurrentSite;
+use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -153,6 +159,15 @@ final class Index extends Component
      */
     #[Locked]
     public ?array $trashUndo = null;
+
+    /**
+     * The page the shown message moved in the tree, and where it was: «Hoàn tác» puts it back there
+     * (MovePage, asked of the policy again). Locked, so the browser cannot name another page or place.
+     *
+     * @var array{page: string, parent: string|null, position: int, name: string}|null
+     */
+    #[Locked]
+    public ?array $moveUndo = null;
 
     /** @var list<string> selected content-locales — OR within the group. */
     #[Url(as: 'lang')]
@@ -289,10 +304,7 @@ final class Index extends Component
     private const int PAGES_IN_MEMORY = 1000;
 
     /** At most this many pages ride below the top pages of one page of the tree. */
-    private const int TREE_CHILDREN = 1000;
-
-    /** The deepest branch of sub-pages one move to the Trash takes along. */
-    private const int TREE_DEPTH = 12;
+    private const int TREE_CHILDREN = PageRules::WALK_SIZE;
 
     /** What a row shows besides its own columns, loaded for the rows of the page only. */
     private const array ROW_RELATIONS = [
@@ -565,6 +577,19 @@ final class Index extends Component
             $this->selected = [];
         }
         $this->restart();
+    }
+
+    /**
+     * «Về thứ tự trên website» (the note over a page list shown flat): every filter, the search words and
+     * the group go, and the list sorts by «Thứ tự trên website» again, so it shows the page tree.
+     */
+    public function backToSiteOrder(): void
+    {
+        if ($this->entryType !== 'page') {
+            return;
+        }
+        $this->clearAllFilters();
+        $this->setSorting('order', 'asc');
     }
 
     /**
@@ -1022,7 +1047,10 @@ final class Index extends Component
      * (the Trash keeps the row EntryTrash::days() days besides). It asks first only where the design
      * does: a page with sub-pages, which go with it so their addresses do not break. The Home page
      * never goes (HomePages; the row offers the item locked, with the reason). The question goes to the browser (entries-ask-trash), whose «Chuyển» calls back with $confirmed;
-     * the sub-pages are looked up again then, so the answer is about the tree as it is now.
+     * the sub-pages are looked up again then, so the answer is about the tree as it is now. A page goes
+     * under the site's page-tree lock (PageRules::lock, taken first, as a move takes it): its branch is
+     * read and moved inside it, so no page can be moved under it meanwhile and stay live under a parent
+     * in the Trash.
      */
     public function trash(string $ulid, bool $confirmed = false): void
     {
@@ -1036,50 +1064,68 @@ final class Index extends Component
             return;
         }
 
-        $kids = $entry->type === 'page' ? $this->liveSubPages($entry) : [];
-        if ($kids === null) {   // too big a branch to move in one go: nothing moves, and the member is told
-            $this->refuse(Cast::string(__('entries.trash_kids_too_many', ['max' => $this->subPageCap(), 'depth' => self::TREE_DEPTH])));
-
-            return;
-        }
-        // the Home page never goes to the Trash, nor with a branch it sits in: another page becomes the Home page first
-        if ($this->homeIds(array_map(static fn (Entry $row): string => $row->ulid, [$entry, ...$kids])) !== []) {
-            $this->refuse(Cast::string(__('entries.home_trash_why')));
-
-            return;
-        }
-        if (! $confirmed && $kids !== []) {
-            $this->askTrash($entry, count($kids));
-
-            return;
-        }
-        // the sub-pages go with their parent or not at all: a parent gone with a child left behind breaks its address
         $user = $this->actingUser();
-        foreach ($kids as $kid) {
-            if (! $user->can('delete', $kid)) {
-                $this->refuse(Cast::string(__('entries.trash_kids_refused')));
-
-                return;
-            }
-        }
-
-        $rows = [$entry, ...$kids];
         try {
-            DB::transaction(fn (): mixed => app(CategoryItemCounts::class)->batch(function () use ($rows): bool {
+            /** @var array{0: string, 1?: list<Entry>} $outcome */
+            $outcome = DB::transaction(fn (): mixed => app(CategoryItemCounts::class)->batch(function () use ($entry, $confirmed, $user): array {
+                if ($entry->type === 'page') {
+                    PageRules::lock(app(CurrentSite::class)->id());
+                }
+                $live = Entry::query()->whereKey($entry->id)->first();
+                if ($live === null) {
+                    return ['gone'];
+                }
+                $kids = $live->type === 'page' ? $this->liveSubPages($live) : [];
+                if ($kids === null) {   // too big a branch to move in one go: nothing moves, and the member is told
+                    return ['too_many'];
+                }
+                // the Home page never goes to the Trash, nor with a branch it sits in: another page becomes the Home page first
+                if ($this->homeIds(array_map(static fn (Entry $row): string => $row->ulid, [$live, ...$kids])) !== []) {
+                    return ['home'];
+                }
+                if (! $confirmed && $kids !== []) {
+                    return ['ask', $kids];
+                }
+                // the sub-pages go with their parent or not at all: a parent gone with a child left behind breaks its address
+                foreach ($kids as $kid) {
+                    if (! $user->can('delete', $kid)) {
+                        return ['kids_refused'];
+                    }
+                }
+                $rows = [$live, ...$kids];
+                // rows locked in id order, as every bulk path locks them: written in tree order, a sub-page with a lower
+                // id than its parent would wait on a bulk publish that holds it while that one waits on the parent
+                Entry::query()->whereKey(array_map(static fn (Entry $row): int => $row->id, $rows))->orderBy('id')->lockForUpdate()->pluck('id');
                 HomePages::remember($rows);   // the Home page guard on each row, read for the whole branch at once
                 foreach ($rows as $row) {
                     $row->delete();
                 }
 
-                return true;
+                return ['done', $rows];
             }));
         } catch (HomePageLockedException) {
             // a page of the branch became the Home page after the check above: nothing moved, and the reason is said
-            $this->refuse(Cast::string(__('entries.home_trash_why')));
-
-            return;
+            $outcome = ['home'];
         }
 
+        $rows = $outcome[1] ?? [];
+        match ($outcome[0]) {
+            'gone' => $this->toastStaleRow(),
+            'too_many' => $this->refuse(Cast::string(__('entries.trash_kids_too_many', ['max' => $this->subPageCap(), 'depth' => PageRules::WALK_DEPTH]))),
+            'home' => $this->refuse(Cast::string(__('entries.home_trash_why'))),
+            'ask' => $this->askTrash($entry, count($rows)),
+            'kids_refused' => $this->refuse(Cast::string(__('entries.trash_kids_refused'))),
+            default => $this->saidTrashed($entry, $rows),
+        };
+    }
+
+    /**
+     * The message of a move to the Trash, with its «Hoàn tác».
+     *
+     * @param  list<Entry>  $rows  the rows it moved, the one the member picked first
+     */
+    private function saidTrashed(Entry $entry, array $rows): void
+    {
         $ulids = array_map(static fn (Entry $row): string => $row->ulid, $rows);
         $this->selected = array_values(array_diff($this->selected, $ulids));
         $this->sayTrashed($ulids, count($rows) === 1
@@ -1114,6 +1160,7 @@ final class Index extends Component
             },
             $ulids,
             capped: false,
+            first: $this->lockPageTree(...),
         );
         if ($run === null) {
             return;
@@ -1125,12 +1172,428 @@ final class Index extends Component
             : $this->say(Cast::string(__('entries.undo_trash_done', ['count' => $back, 'noun' => __('entries.noun_'.$this->entryType)])));
     }
 
+    /**
+     * A drop in the page tree (the row's grip): the page, with every page under it, goes under
+     * $parentUlid (null: the top level), as its first sub-page ('child') or just before / after the
+     * sibling $refUlid. Places are named by a neighbour, not a number, because the top level is paged;
+     * MovePage finds the neighbour inside its lock (a neighbour gone meanwhile: the row is stale). Only
+     * while the list shows the whole tree in website order.
+     */
+    public function movePage(string $ulid, ?string $parentUlid = null, string $rel = 'child', ?string $refUlid = null): void
+    {
+        if (! in_array($rel, ['child', 'before', 'after'], true) || ($rel !== 'child' && $refUlid === null)) {
+            return;
+        }
+        if (! $this->treeMode()) {
+            $this->refuse(Cast::string(__('entries.move_off_why')));
+
+            return;
+        }
+        $page = $this->movablePage($ulid);
+        if ($page === null) {
+            return;
+        }
+        $parent = null;
+        if ($parentUlid !== null && ($parent = $this->findLivePage($parentUlid)) === null) {
+            $this->toastStaleRow();
+
+            return;
+        }
+        $this->runPageMove($page, 'drag', static fn (MovePage $move): array => $move->beside($page, $parent, $rel, $refUlid));
+    }
+
+    /**
+     * «Chuyển lên» / «Chuyển xuống» (the row's ⋮): one place up or down among the pages under the parent
+     * the page has when MovePage holds the tree (never a move to another parent). Only while the list
+     * shows the whole tree in website order.
+     */
+    public function movePageStep(string $ulid, string $dir): void
+    {
+        if ($dir !== 'up' && $dir !== 'down') {
+            return;
+        }
+        if (! $this->treeMode()) {
+            $this->refuse(Cast::string(__('entries.move_off_why')));
+
+            return;
+        }
+        $page = $this->movablePage($ulid);
+        if ($page === null) {
+            return;
+        }
+        $this->runPageMove($page, $dir, static fn (MovePage $move): array => $move->step($page, $dir));
+    }
+
+    /**
+     * «Chuyển đến…»: the page, with every page under it, becomes the last sub-page of $parentUlid (null: the
+     * last top page). The place does not depend on how the list is sorted or filtered, so the dialog is
+     * offered in every view.
+     */
+    public function movePageTo(string $ulid, ?string $parentUlid = null): void
+    {
+        $page = $this->movablePage($ulid);
+        if ($page === null) {
+            return;
+        }
+        $parent = null;
+        if ($parentUlid !== null && ($parent = $this->findLivePage($parentUlid)) === null) {
+            $this->toastStaleRow();
+
+            return;
+        }
+        $this->runPageMove($page, 'to', static fn (MovePage $move): array => $move->into($page, $parent));
+    }
+
+    /**
+     * The places «Chuyển đến…» offers for a page, in tree order: the top level, then the live pages read
+     * level by level from the top (PageRules::MAX_DEPTH levels; a page under a page in the Trash is not
+     * offered), leaving out the Home page (HomePages), the page itself and the pages under it. Each says
+     * what the move would make of it, or why it is locked, by the rules MovePage holds (the address it
+     * would take is checked in every language the page is published in). At most PageRules::WALK_SIZE
+     * places: past that «more» is true and the dialog says the list is cut. Null, with the reason shown,
+     * for a page this member may not move. «nested» says whether a move changes the page's address.
+     *
+     * @return array{nested: bool, more: bool, opts: list<array{k: string|null, name: string, lv: int, here: bool, why: string|null, label: string|null, path: string|null}>}|null
+     */
+    public function moveTargets(string $ulid): ?array
+    {
+        $page = $this->movablePage($ulid);
+        if ($page === null) {
+            return null;
+        }
+        $locale = app(SiteLocale::class)->default();
+        $nested = app(PermalinkConfig::class)->pagesNested();
+        $cap = PageRules::WALK_SIZE;
+
+        // the tree from the top, one level at a time, without the page's own branch
+        $levels = [];
+        $more = false;
+        $found = 0;
+        $frontier = null;
+        for ($lv = 1; $lv <= PageRules::MAX_DEPTH && ($frontier === null || $frontier !== []); $lv++) {
+            $rows = Entry::query()->where('type', 'page')->whereKeyNot($page->id)
+                ->when($frontier === null, fn ($query) => $query->whereNull('parent_id'), fn ($query) => $query->whereIn('parent_id', $frontier))
+                ->orderBy('position')->orderBy('id')
+                ->limit($cap - $found + 1)
+                ->get(['id', 'site_id', 'ulid', 'type', 'parent_id', 'position']);
+            if ($rows->count() > $cap - $found) {
+                $more = true;
+                $rows = $rows->take($cap - $found);
+            }
+            $levels[$lv] = $rows;
+            $found += $rows->count();
+            $frontier = array_values(array_map(static fn (Entry $row): int => $row->id, $rows->all()));
+            if ($more) {
+                break;
+            }
+        }
+        $all = (new EloquentCollection(array_merge([$page], ...array_map(static fn (EloquentCollection $rows): array => $rows->all(), array_values($levels)))));
+        $all->load(['translations' => fn ($query) => $query->select(['id', 'entry_id', 'locale', 'title', 'slug', 'status'])->orderBy('locale')]);
+        $homes = HomePages::among(array_values(array_map(static fn (Entry $row): string => $row->ulid, $all->all())));
+        $byId = $all->keyBy('id');
+
+        // a row's slug in a language (none: ''), and the one the dialog shows: the default language's, else any
+        $slugIn = static fn (Entry $row, string $lc): string => trim(Cast::string($row->translations->firstWhere('locale', $lc)?->slug), '/');
+        $shownSlug = static function (Entry $row) use ($slugIn, $locale): string {
+            $slug = $slugIn($row, $locale);
+            foreach ($slug === '' ? $row->translations : [] as $translation) {
+                $slug = trim(Cast::string($translation->slug), '/');
+                if ($slug !== '') {
+                    break;
+                }
+            }
+
+            return $slug;
+        };
+        $title = static function (Entry $row) use ($locale): string {
+            $text = Cast::string($row->translations->firstWhere('locale', $locale)?->title);
+            foreach ($text === '' ? $row->translations : [] as $translation) {
+                $text = Cast::string($translation->title);
+                if ($text !== '') {
+                    break;
+                }
+            }
+
+            return $text !== '' ? $text : Cast::string(__('entries.untitled'));
+        };
+        // a candidate parent's address prefix, as PathBuilder composes a nested path (a Home or slug-less page adds nothing)
+        $prefix = static function (Entry $row, Closure $slugOf) use ($byId, $homes): string {
+            $parts = [];
+            for ($at = $row, $hops = 0; $at instanceof Entry && $hops < PageRules::MAX_DEPTH; $at = $byId->get($at->parent_id ?? 0), $hops++) {
+                $slug = isset($homes[$at->id]) ? '' : Cast::string($slugOf($at));
+                if ($slug === '' || $slug === PathBuilder::HOME_SLUG) {
+                    break;
+                }
+                array_unshift($parts, $slug);
+            }
+
+            return $parts === [] ? '' : '/'.implode('/', $parts);
+        };
+
+        // the tree in website order: each level's rows hung under their parent
+        $kids = [];
+        foreach ($levels as $rows) {
+            foreach ($rows as $row) {
+                $kids[$row->parent_id ?? 0][] = $row;
+            }
+        }
+        $order = [];
+        $walk = static function (int $parentId, int $lv) use (&$walk, &$order, $kids): void {
+            foreach ($kids[$parentId] ?? [] as $row) {
+                $order[] = ['row' => $row, 'lv' => $lv];
+                $walk($row->id, $lv + 1);
+            }
+        };
+        $walk(0, 1);
+        $candidates = [['row' => null, 'lv' => 0]];
+        foreach ($order as $item) {
+            if (! isset($homes[$item['row']->id])) {
+                $candidates[] = $item;
+            }
+        }
+
+        // where the page's address would land in each language it is published in, and which of those are taken
+        $leafShown = $shownSlug($page);
+        $published = [];
+        foreach ($page->status === EntryStatus::Published->value ? $page->translations : [] as $translation) {
+            if ($translation->status === EntryStatus::Published->value && trim((string) $translation->slug, '/') !== '') {
+                $published[] = (string) $translation->locale;
+            }
+        }
+        $wanted = [];
+        foreach ($candidates as $i => $c) {
+            foreach ($published as $lc) {
+                $p = ($c['row'] === null ? '' : $prefix($c['row'], static fn (Entry $row): string => $slugIn($row, $lc))).'/'.$slugIn($page, $lc);
+                $wanted[$i][$lc] = $p;
+            }
+        }
+        $taken = [];
+        if ($nested && $wanted !== []) {
+            $query = SiteRoute::query()->where(fn ($query) => $query->whereNull('entry_id')->orWhere('entry_id', '!=', $page->id));
+            $query->where(function ($query) use ($wanted): void {
+                foreach (array_unique(array_keys(array_merge(...array_values($wanted)))) as $lc) {
+                    $paths = array_values(array_unique(array_map(static fn (array $byLocale): string => $byLocale[$lc], $wanted)));
+                    $query->orWhere(fn ($inLocale) => $inLocale->where('locale', $lc)->whereIn('path', $paths));
+                }
+            });
+            foreach ($query->get(['id', 'locale', 'path']) as $route) {
+                $taken[$route->locale.' '.$route->path] = true;
+            }
+        }
+
+        $home = isset($homes[$page->id]);
+        $height = $home ? null : PageRules::heightOf($page);
+        $current = $page->parent_id === null ? '' : (($row = $byId->get($page->parent_id)) instanceof Entry ? $prefix($row, $shownSlug) : null);
+        $out = [];
+        foreach ($candidates as $i => $c) {
+            $row = $c['row'];
+            $here = $page->parent_id === $row?->id;
+            $at = $row === null ? '' : $prefix($row, $shownSlug);
+            $ns = $nested && $leafShown !== '' && $at !== $current ? $at.'/'.$leafShown : null;
+            $clash = null;
+            foreach ($nested ? ($wanted[$i] ?? []) : [] as $lc => $p) {
+                if (isset($taken[$lc.' '.$p])) {
+                    $clash = $p;
+                    break;
+                }
+            }
+            $why = match (true) {
+                $here => null,
+                $home => Cast::string(__('entries.move_refused_home_locked')),
+                $height === null => Cast::string(__('entries.move_refused_branch_too_big')),
+                $c['lv'] + $height > PageRules::MAX_DEPTH => self::depthWhy($height),
+                $clash !== null => Cast::string(__('entries.move_path_taken_label', ['path' => $clash])),
+                default => null,
+            };
+            $out[] = [
+                'k' => $row?->ulid,
+                'name' => $row === null ? Cast::string(__('entries.mv_top')) : $title($row),
+                'lv' => $c['lv'],
+                'here' => $here,
+                'why' => $why,
+                'label' => $here ? Cast::string(__('entries.mv_here')) : ($why !== null
+                    ? Cast::string(__('entries.mv_locked', ['why' => mb_strtolower(mb_substr($why, 0, 1)).mb_substr($why, 1)]))
+                    : Cast::string($ns !== null ? __('entries.mv_becomes_path', ['n' => $c['lv'] + 1, 'path' => $ns]) : __('entries.mv_becomes', ['n' => $c['lv'] + 1]))),
+                'path' => $ns,
+            ];
+        }
+
+        return ['nested' => $nested, 'more' => $more, 'opts' => $out];
+    }
+
+    /**
+     * «Hoàn tác» on the message of a move in the page tree: the page goes back to the parent and place
+     * MovePage reported it left (MovePage, asked again).
+     */
+    public function undoMovePage(): void
+    {
+        $undo = $this->moveUndo;
+        $this->toastMsg = '';
+        $this->moveUndo = null;
+        if ($undo === null) {
+            return;
+        }
+        $page = $this->movablePage($undo['page']);
+        if ($page === null) {
+            return;
+        }
+        $parent = null;
+        if ($undo['parent'] !== null && ($parent = $this->findLivePage($undo['parent'])) === null) {
+            $this->toastStaleRow();
+
+            return;
+        }
+        if ($this->tryPageMove($page, 'undo', static fn (MovePage $move): array => $move->handle($page, $parent, $undo['position'])) !== null) {
+            $this->say(Cast::string(__('entries.move_undone', ['name' => $undo['name']])));
+        }
+    }
+
+    /**
+     * Is the page list showing its whole tree in website order — every page, nothing searched or
+     * filtered, «Thứ tự trên website» from the top? Only then does a place on the screen say where a
+     * page goes, so a drop and «Chuyển lên / xuống» are offered only then.
+     */
+    private function treeMode(): bool
+    {
+        [$key, $dir] = $this->sorting();
+
+        return $this->entryType === 'page' && $this->tab === 'all' && trim($this->search) === '' && $this->filterCount() === 0
+            && $key === 'order' && $dir === 'asc';
+    }
+
+    /**
+     * The live page a move names, if this member may move it (`update` on it and `fileUnder('page')`,
+     * as MovePage asks again); otherwise null, with the reason (or the stale-row message) shown.
+     */
+    private function movablePage(string $ulid): ?Entry
+    {
+        if ($this->entryType !== 'page') {
+            return null;
+        }
+        $page = $this->findLivePage($ulid);
+        if ($page === null) {
+            $this->toastStaleRow();
+
+            return null;
+        }
+        try {
+            $this->authorize('update', $page);
+            $this->authorize('fileUnder', [Entry::class, 'page', null]);
+        } catch (AuthorizationException) {
+            $this->refuse($this->refusalFor($page, 'edit'));
+
+            return null;
+        }
+
+        return $page;
+    }
+
+    private function findLivePage(string $ulid): ?Entry
+    {
+        return Entry::query()->where('ulid', $ulid)->where('type', 'page')->first();
+    }
+
+    /**
+     * Run a move and say what it did, with «Hoàn tác» for 10 seconds. Everything the message and the undo
+     * say comes from what MovePage reports it did inside its lock, never from rows read before it.
+     *
+     * @param  'drag'|'up'|'down'|'to'  $how
+     * @param  Closure(MovePage): array{from_parent: int|null, from_position: int, parent: int|null, position: int, reparented: bool, paths: array<string, array{from: string, to: string}>}  $move
+     */
+    private function runPageMove(Entry $page, string $how, Closure $move): void
+    {
+        $result = $this->tryPageMove($page, $how, $move);
+        if ($result === null) {
+            return;
+        }
+        if (! $result['reparented'] && $result['position'] === $result['from_position']) {
+            return;   // dropped where it already was
+        }
+
+        $name = $this->titleOf($page);
+        $places = array_values(array_filter([$result['from_parent'], $result['parent']], 'is_int'));
+        $known = $places === [] ? collect() : Entry::withTrashed()->whereKey($places)->get(['id', 'site_id', 'ulid', 'parent_id'])->keyBy('id');
+        $from = $result['from_parent'] === null ? null : $known->get($result['from_parent']);
+        $parent = $result['parent'] === null ? null : $known->get($result['parent']);
+
+        // a drop beside its old parent leaves that group; «Chuyển đến…» names where the page went
+        $message = match (true) {
+            $how === 'up', $how === 'down' => __('entries.move_step_'.$how, ['name' => $name]),
+            ! $result['reparented'] => __('entries.move_done', ['name' => $name]),
+            $how === 'drag' && $from instanceof Entry && $from->parent_id === $result['parent'] => __('entries.move_done_out', ['name' => $name, 'group' => $this->titleOf($from)]),
+            ! $parent instanceof Entry => __('entries.move_done_top', ['name' => $name]),
+            default => __('entries.move_done_in', ['name' => $name, 'parent' => $this->titleOf($parent)]),
+        };
+        $change = $result['paths'][app(SiteLocale::class)->default()] ?? null;
+        if ($change !== null) {
+            $message .= $page->status === EntryStatus::Published->value
+                ? __('entries.move_suffix_live', ['old' => $change['from'], 'new' => $change['to']])
+                : __('entries.move_suffix_path', ['new' => $change['to']]);
+        }
+
+        $this->say(Cast::string($message), null, ['page' => $page->ulid, 'parent' => $from instanceof Entry ? $from->ulid : null, 'position' => $result['from_position'], 'name' => $name]);
+    }
+
+    /**
+     * A MovePage call, with its refusals answered in the design's words (a drop adds that the tree stays
+     * as it was; the edge of a list and «already here» are notes, not refusals).
+     *
+     * @param  'drag'|'up'|'down'|'to'|'undo'  $how
+     * @param  Closure(MovePage): array{from_parent: int|null, from_position: int, parent: int|null, position: int, reparented: bool, paths: array<string, array{from: string, to: string}>}  $move
+     * @return array{from_parent: int|null, from_position: int, parent: int|null, position: int, reparented: bool, paths: array<string, array{from: string, to: string}>}|null
+     */
+    private function tryPageMove(Entry $page, string $how, Closure $move): ?array
+    {
+        try {
+            return $move(app(MovePage::class));
+        } catch (PageMoveRejectedException $refused) {
+            $note = ['at_top' => 'entries.move_at_top', 'at_bottom' => 'entries.move_at_bottom', 'here_already' => 'entries.mv_here_already'][$refused->reason] ?? null;
+            if ($note !== null) {
+                $this->dispatch('bs-toast', text: __($note), icon: self::infoIcon());
+
+                return null;
+            }
+            if (in_array($refused->reason, ['page_invalid', 'parent_invalid', 'anchor_gone'], true)) {
+                $this->toastStaleRow();
+
+                return null;
+            }
+            $why = self::moveWhy($refused);
+            $this->refuse($how === 'drag' ? $why.' '.Cast::string(__('entries.move_tree_kept')) : $why);
+        } catch (AuthorizationException) {
+            $this->refuse($this->refusalFor($page, 'edit'));
+        }
+
+        return null;
+    }
+
+    /** Why the page tree refused a move, in the design's words. */
+    private static function moveWhy(PageMoveRejectedException $refused): string
+    {
+        return match ($refused->reason) {
+            'too_deep' => self::depthWhy($refused->height),
+            'path_taken' => Cast::string(__('entries.move_path_taken', ['path' => $refused->path])),
+            default => Cast::string(__('entries.move_refused_'.$refused->reason)),
+        };
+    }
+
+    /** The three-level rule, said for a branch of $height levels (1: a page without sub-pages). */
+    private static function depthWhy(int $height): string
+    {
+        return Cast::string(match (true) {
+            $height <= 1 => __('entries.move_depth_page'),
+            $height === 2 => __('entries.move_depth_branch_l1', ['n' => $height]),
+            default => __('entries.move_depth_branch_top', ['n' => $height]),
+        });
+    }
+
     /** The toast's «Đóng» or its timer: clears only the message it was shown for. */
     public function closeToast(?int $seq = null): void
     {
         if ($seq === null || $seq === $this->toastSeq) {
             $this->toastMsg = '';
             $this->trashUndo = null;
+            $this->moveUndo = null;
         }
     }
 
@@ -1145,7 +1608,18 @@ final class Index extends Component
         if (! $this->allowed('restore', $entry, 'delete')) {
             return;
         }
-        $entry->restore();
+        // a page comes back under the site's page-tree lock, taken first as a move takes it, then read again
+        $back = DB::transaction(function () use ($entry): bool {
+            $this->lockPageTree();
+            $trashed = Entry::onlyTrashed()->whereKey($entry->id)->first();
+
+            return $trashed !== null && $trashed->restore();
+        });
+        if (! $back) {
+            $this->toastStaleRow();
+
+            return;
+        }
 
         $this->toast(__('entries.restored', ['noun' => __('entries.noun_'.$entry->type)]));
     }
@@ -1264,19 +1738,28 @@ final class Index extends Component
     public function bulkTrash(): void
     {
         $user = $this->actingUser();
-        $homes = $this->homeIds($this->selected);
-        $parents = $this->parentIds($this->selected);
+        $selected = $this->selected;
+        $homes = $this->homeIds($selected);
+        $parents = [];
 
         $run = $this->runBulk(
             'entries.bulk_trashed',
             'entries.bulk_skipped',
-            fn (Entry $entry): bool => $this->whyNotTrash($entry, $user, $homes, $parents) === null,
+            function (Entry $entry) use ($user, $homes, &$parents): bool {
+                return $this->whyNotTrash($entry, $user, $homes, $parents) === null;
+            },
             function (Entry $entry): bool {
                 $this->authorize('delete', $entry);
 
                 return (bool) $entry->delete();
             },
             beforeChunk: HomePages::remember(...),   // the Home page guard of a locked chunk in one read, not one per row
+            // pages: the page tree holds still first (a page moved under a ticked one meanwhile would stay live under
+            // a parent in the Trash), and which ticked pages still have live sub-pages is read inside it
+            first: function () use ($selected, &$parents): void {
+                $this->lockPageTree();
+                $parents = $this->parentIds($selected);
+            },
         );
         if ($run === null) {
             return;
@@ -1299,6 +1782,7 @@ final class Index extends Component
 
                 return $entry->restore();
             },
+            first: $this->lockPageTree(...),
         ), 'entries.bulk_restored', 'entries.bulk_skipped_trash');
     }
 
@@ -1503,10 +1987,11 @@ final class Index extends Component
      * @param  bool  $capped  refuse more than BULK_LIMIT rows (a selection); false works through any
      *                        number BULK_LIMIT at a time, in one transaction (the rows «Hoàn tác» names)
      * @param  (callable(list<Entry>): void)|null  $beforeChunk  runs on each locked chunk before its rows
+     * @param  (callable(): void)|null  $first  runs first inside the run's transaction, before any row is read
      * @return array{tally: array<string, int>, done: list<string>}|null what the run did; null when
      *                                                                   it did nothing (already told)
      */
-    private function runBulk(string $doneKey, string $skippedKey, callable $eligible, callable $action, ?array $ulids = null, bool $capped = true, ?callable $beforeChunk = null): ?array
+    private function runBulk(string $doneKey, string $skippedKey, callable $eligible, callable $action, ?array $ulids = null, bool $capped = true, ?callable $beforeChunk = null, ?callable $first = null): ?array
     {
         $fromSelection = $ulids === null;
         $ulids ??= $this->selected;
@@ -1522,6 +2007,9 @@ final class Index extends Component
 
         DB::beginTransaction();
         try {
+            if ($first !== null) {
+                $first();
+            }
             $counts->batch(function () use (&$tally, &$done, $ulids, $counts, $eligible, $action, $doneKey, $skippedKey, $beforeChunk): void {
                 foreach ($this->selectedChunks($ulids) as $chunk) {
                     if ($beforeChunk !== null) {
@@ -1608,13 +2096,17 @@ final class Index extends Component
         $this->say($message, $all);
     }
 
-    /** @param  list<string>|null  $undo  the rows «Hoàn tác» brings back out of the Trash */
-    private function say(string $message, ?array $undo = null): void
+    /**
+     * @param  list<string>|null  $undo  the rows «Hoàn tác» brings back out of the Trash
+     * @param  array{page: string, parent: string|null, position: int, name: string}|null  $moveUndo  the page «Hoàn tác» moves back
+     */
+    private function say(string $message, ?array $undo = null, ?array $moveUndo = null): void
     {
         $this->toastMsg = $message;
         $this->toastTone = 'success';
         $this->toastSeq++;
         $this->trashUndo = $undo;
+        $this->moveUndo = $moveUndo;
     }
 
     /**
@@ -1630,42 +2122,18 @@ final class Index extends Component
     }
 
     /**
-     * Every live page under this one (its sub-pages, theirs, …), read level by level as RouteSync
-     * walks the tree, with a cap on depth and size against a looped or huge tree. A branch past the
-     * cap — more than subPageCap() pages in all, or deeper than TREE_DEPTH levels — is null: the whole
-     * branch is too big to move at once, and no part of it is moved, so no sub-page is ever left
-     * behind its parent without a word.
+     * Every live page under this one (its sub-pages, theirs, …), read level by level by the one capped
+     * walk of the page tree (PageRules::subPages). A branch past the cap — more than subPageCap() pages
+     * in all, or deeper than PageRules::WALK_DEPTH levels — is null: the whole branch is too big to move
+     * at once, and no part of it is moved, so no sub-page is ever left behind its parent without a word.
      *
      * @return list<Entry>|null
      */
     private function liveSubPages(Entry $page): ?array
     {
-        $cap = $this->subPageCap();
-        $found = [];
-        $seen = [$page->id => true];
-        $frontier = [$page->id];
-        for ($depth = 0; $frontier !== []; $depth++) {
-            $room = $cap - count($found);
-            // one more than there is room for: finding it means the branch is over the cap
-            $children = Entry::query()->where('type', 'page')->whereIn('parent_id', $frontier)->orderBy('id')
-                ->limit($room + 1)
-                ->get(['id', 'site_id', 'ulid', 'type', 'status', 'parent_id', 'author_id', 'deleted_at', 'updated_at']);
-            // past the size cap, or a level below the deepest one a branch may have (a 12-level branch
-            // passes: the 13th read only looks for pages under it)
-            if ($children->count() > $room || ($depth >= self::TREE_DEPTH && $children->isNotEmpty())) {
-                return null;
-            }
-            $frontier = [];
-            foreach ($children as $child) {
-                if (! isset($seen[$child->id])) {
-                    $seen[$child->id] = true;
-                    $found[] = $child;
-                    $frontier[] = $child->id;
-                }
-            }
-        }
+        $levels = PageRules::subPages($page, $this->subPageCap());
 
-        return $found;
+        return $levels === null ? null : array_merge([], ...$levels);
     }
 
     /**
@@ -1675,6 +2143,18 @@ final class Index extends Component
     private function subPageCap(): int
     {
         return max(1, min(self::TREE_CHILDREN, Cast::int(config('cms.trash_subpages_max'), self::TREE_CHILDREN)));
+    }
+
+    /**
+     * On the Trang list, take the site's page-tree lock (PageRules::lock) for the rest of the transaction:
+     * a page going to or coming back from the Trash waits for a move in the tree, and a move waits for it.
+     * Taken before any row lock, as a move takes it. Other lists never touch the tree.
+     */
+    private function lockPageTree(): void
+    {
+        if ($this->entryType === 'page') {
+            PageRules::lock(app(CurrentSite::class)->id());
+        }
     }
 
     /**
@@ -2466,10 +2946,53 @@ final class Index extends Component
                     ? Cast::string(__('entries.refused_others_delete', ['noun' => __('entries.noun_'.$type)])) : null,
                 // the Home page (HomePages, read from the translations the row carries): its Thùng rác is locked with the reason
                 'home' => $type === 'page' && $entry->translations->contains(static fn (EntryTranslation $t): bool => in_array($t->slug, [PathBuilder::HOME_SLUG, ''], true)),
+                // a page this member may move in the tree (`update` on it; a member limited to some categories
+                // covers no page): its grip and «Chuyển lên / xuống / đến…»
+                'move' => $type === 'page' && $edit && $covered && ! $entry->trashed(),
                 // «Xem trước» of a row visitors cannot see yet (admin.entries.preview), for who may open it
                 'preview' => ! $entry->trashed() && $entry->status !== EntryStatus::Published->value && $user->can('preview', $entry)
                     ? route('admin.entries.preview', ['ulid' => $ulid]) : null,
             ];
+        }
+        // The page tree in website order: each row's parent, by ulid, for the drag, and by title for the
+        // «Thuộc: …» line (read from the rows; a parent drawn on another page of the list in one more
+        // query), and the guide lines joining each row to its parent (TreeRows::guides, the shared tree's rule)
+        $treeMode = $this->treeMode();
+        $rowParent = [];
+        $rowOf = [];
+        $rowGuides = [];
+        if ($treeMode) {
+            $known = [];
+            foreach ($rows->items() as $item) {
+                $known[$item['entry']->id] = $item['entry'];
+            }
+            $missing = [];
+            foreach ($rows->items() as $item) {
+                $parentId = $item['entry']->parent_id;
+                if ($parentId !== null && ! isset($known[$parentId])) {
+                    $missing[$parentId] = $parentId;
+                }
+            }
+            if ($missing !== []) {
+                $outside = Entry::query()->whereKey(array_values($missing))
+                    ->with(['translations' => fn ($query) => $query->select(['id', 'entry_id', 'locale', 'title'])->where('locale', $locale)])
+                    ->get(['id', 'site_id', 'ulid']);
+                foreach ($outside as $parent) {
+                    $known[$parent->id] = $parent;
+                }
+            }
+            $levels = [];
+            foreach ($rows->items() as $item) {
+                $parent = $known[$item['entry']->parent_id ?? 0] ?? null;
+                $rowParent[$item['entry']->ulid] = $parent?->ulid;
+                if ($parent instanceof Entry) {
+                    $rowOf[$item['entry']->ulid] = Cast::string($parent->translations->firstWhere('locale', $locale)->title ?? __('entries.untitled'));
+                }
+                $levels[] = $item['depth'] + 1;
+            }
+            foreach (TreeRows::guides($levels) as $i => $guides) {
+                $rowGuides[$rows->items()[$i]['entry']->ulid] = $guides;
+            }
         }
         // A member limited to some categories may add no page (a page has no category): the add button
         // stays, locked, with the reason.
@@ -2592,6 +3115,12 @@ final class Index extends Component
             'rowCovered' => $rowCovered,
             'rowEditable' => $rowEditable,
             'rowCan' => $rowCan,
+            // the page tree in website order: rows may be dragged and moved one place up or down
+            'treeMode' => $treeMode,
+            'rowParent' => $rowParent,
+            'rowOf' => $rowOf,
+            'rowGuides' => $rowGuides,
+            // «Chuyển đến…» says the address follows the new parent only where page addresses nest
             'scopeRefusal' => $scopeRefusal,
             'addLock' => $addLock,
             'counts' => $counts,
@@ -2804,7 +3333,7 @@ final class Index extends Component
      * the facets, the filters and the tree are made in memory, as the list always has.
      *
      * @param  list<string>  $locales
-     * @return array{rows: LengthAwarePaginator<int, array{entry: Entry, depth: int}>, pager: array<string, mixed>, parents: array<string, string>, facets: array{lang: list<array<string, mixed>>, creator: list<array<string, mixed>>, template: list<array<string, mixed>>, trans: list<array<string, mixed>>}, total: int, limited: bool, counts: array<string, int>}
+     * @return array{rows: LengthAwarePaginator<int, array{entry: Entry, depth: int}>, pager: array<string, mixed>, parents: array<string, list<string>>, facets: array{lang: list<array<string, mixed>>, creator: list<array<string, mixed>>, template: list<array<string, mixed>>, trans: list<array<string, mixed>>}, total: int, limited: bool, counts: array<string, int>}
      */
     private function readInMemory(EntryListQuery $list, string $locale, array $locales, User $user, CategoryScopes $scopes): array
     {
@@ -2825,11 +3354,35 @@ final class Index extends Component
 
         // OR within a group, AND across groups — applied in memory, on the rows already loaded.
         $filtered = $base->filter(fn (Entry $entry): bool => $this->passesFilters($entry, $locales, $from, $until));
-        $rows = $this->paginate($this->buildTree($filtered, $locale));
+        $flat = $this->entryType === 'page' && ! $this->treeMode();
+        if (! $flat) {
+            $ordered = $this->buildTree($filtered, $locale);
+        } elseif ($this->sorting()[0] === 'order') {
+            // a page list shown flat, as the database read shows it: each row on its own line, naming the pages
+            // above it; in website order a page still follows the page it sits under
+            $ordered = $this->buildTree($filtered, $locale)->map(static fn (array $item): array => ['entry' => $item['entry'], 'depth' => 0]);
+        } else {
+            $all = $filtered->all();
+            usort($all, $this->comparator($locale));
+            $ordered = collect(array_map(static fn (Entry $entry): array => ['entry' => $entry, 'depth' => 0], $all));
+        }
+        $rows = $this->paginate($ordered);
         $this->cursor = '';
 
+        $parents = [];
+        if ($flat) {
+            $onPage = array_map(static fn (array $item): Entry => $item['entry'], $rows->items());
+            $parentIds = array_values(array_unique(array_filter(array_map(static fn (Entry $entry): ?int => $entry->parent_id, $onPage), 'is_int')));
+            $paths = $list->ancestorTitles($parentIds, Cast::string(__('entries.untitled')));
+            foreach ($onPage as $entry) {
+                if ($entry->parent_id !== null && ($paths[$entry->parent_id] ?? []) !== []) {
+                    $parents[$entry->ulid] = $paths[$entry->parent_id];
+                }
+            }
+        }
+
         return ['rows' => $rows, 'pager' => $this->pager($rows->currentPage(), $rows->total(), count($rows->items()), null, null),
-            'parents' => [], 'facets' => $facets, 'total' => $filtered->count(), 'limited' => $limited, 'counts' => []];
+            'parents' => $parents, 'facets' => $facets, 'total' => $filtered->count(), 'limited' => $limited, 'counts' => []];
     }
 
     /**
@@ -2844,7 +3397,7 @@ final class Index extends Component
      * @param  bool  $tabs  read the group counts with the facets
      * @param  array<string, int>  $counts  the group counts already read
      * @param  list<string>  $locales
-     * @return array{rows: LengthAwarePaginator<int, array{entry: Entry, depth: int}>, pager: array<string, mixed>, parents: array<string, string>, facets: array{lang: list<array<string, mixed>>, creator: list<array<string, mixed>>, template: list<array<string, mixed>>, trans: list<array<string, mixed>>}, total: int, limited: bool, counts: array<string, int>}
+     * @return array{rows: LengthAwarePaginator<int, array{entry: Entry, depth: int}>, pager: array<string, mixed>, parents: array<string, list<string>>, facets: array{lang: list<array<string, mixed>>, creator: list<array<string, mixed>>, template: list<array<string, mixed>>, trans: list<array<string, mixed>>}, total: int, limited: bool, counts: array<string, int>}
      */
     private function readInSql(EntryListQuery $list, bool $tabs, array $counts, string $locale, array $locales, bool $multilingual, User $user, CategoryScopes $scopes): array
     {
@@ -2909,7 +3462,7 @@ final class Index extends Component
                 $paths = $list->ancestorTitles($parentIds, __('entries.untitled'));
                 foreach ($entries as $entry) {
                     if ($entry->parent_id !== null && ($paths[$entry->parent_id] ?? []) !== []) {
-                        $parents[$entry->ulid] = implode(' › ', $paths[$entry->parent_id]);
+                        $parents[$entry->ulid] = $paths[$entry->parent_id];
                     }
                 }
             }
@@ -2968,8 +3521,8 @@ final class Index extends Component
     }
 
     /**
-     * The top pages of a page of the tree, each followed by every page below it (one level of
-     * indent, in website order), as the list has always shown them.
+     * The top pages of a page of the tree, each followed by the pages below it, each level in website
+     * order within its own parent, at its own depth (0 for a top page).
      *
      * @param  EloquentCollection<int, Entry>  $tops
      * @param  EloquentCollection<int, Entry>  $below
@@ -2977,31 +3530,46 @@ final class Index extends Component
      */
     private function hangBelow(EloquentCollection $tops, EloquentCollection $below, string $dir): array
     {
-        $byId = [];
-        foreach ($tops->concat($below) as $entry) {
-            $byId[$entry->id] = $entry;
-        }
-        $topIds = array_flip($tops->modelKeys());
         $children = [];
         foreach ($below as $entry) {
-            $root = $entry;
-            for ($guard = 0; ! isset($topIds[$root->id]) && $root->parent_id !== null && isset($byId[$root->parent_id]) && $guard < 64; $guard++) {
-                $root = $byId[$root->parent_id];
-            }
-            if (isset($topIds[$root->id]) && $root->id !== $entry->id) {
-                $children[$root->id][] = $entry;
+            if ($entry->parent_id !== null) {
+                $children[$entry->parent_id][] = $entry;
             }
         }
-
         $way = $dir === 'desc' ? -1 : 1;
+
+        return self::nest(array_values($tops->all()), $children,
+            static fn (Entry $a, Entry $b): int => (($a->position <=> $b->position) ?: ($a->id <=> $b->id)) * $way);
+    }
+
+    /**
+     * Each top row followed by the rows under it, depth first: a parent's own rows sorted by $order,
+     * each at its depth (0 for a top row). A row already drawn is never drawn again, so a parent loop
+     * in bad data cannot spin.
+     *
+     * @param  list<Entry>  $tops  in the order they are shown
+     * @param  array<int, list<Entry>>  $children  parent id → the rows directly under it
+     * @param  callable(Entry, Entry): int  $order
+     * @return list<array{entry: Entry, depth: int}>
+     */
+    private static function nest(array $tops, array $children, callable $order): array
+    {
         $items = [];
-        foreach ($tops as $top) {
-            $items[] = ['entry' => $top, 'depth' => 0];
-            $group = $children[$top->id] ?? [];
-            usort($group, fn (Entry $a, Entry $b): int => (($a->position <=> $b->position) ?: ($a->id <=> $b->id)) * $way);
-            foreach ($group as $child) {
-                $items[] = ['entry' => $child, 'depth' => 1];
+        $seen = [];
+        $visit = static function (Entry $entry, int $depth) use (&$visit, &$items, &$seen, $children, $order): void {
+            if (isset($seen[$entry->id])) {
+                return;
             }
+            $seen[$entry->id] = true;
+            $items[] = ['entry' => $entry, 'depth' => $depth];
+            $group = $children[$entry->id] ?? [];
+            usort($group, $order);
+            foreach ($group as $child) {
+                $visit($child, $depth + 1);
+            }
+        };
+        foreach ($tops as $top) {
+            $visit($top, 0);
         }
 
         return $items;
@@ -3412,8 +3980,9 @@ final class Index extends Component
     }
 
     /**
-     * Group children directly under their (matched) parent; promote a child whose parent is
-     * filtered out to the top level. Only top-level rows are sorted; children follow their parent.
+     * Group children directly under their (matched) parent, at every level; promote a child whose
+     * parent is filtered out to the top level. Each parent's own rows are sorted among themselves
+     * (the top level among the top rows); children always follow their parent.
      *
      * @param  EloquentCollection<int, Entry>  $entries
      * @return Collection<int, array{entry: Entry, depth: int}>
@@ -3421,41 +3990,35 @@ final class Index extends Component
     private function buildTree(EloquentCollection $entries, string $locale): Collection
     {
         $matched = [];
-        $byId = [];
         foreach ($entries as $entry) {
             $matched[$entry->id] = true;
-            $byId[$entry->id] = $entry;
         }
         $comparator = $this->comparator($locale);
 
-        /** @var array<int, Entry> $tops */
+        /** @var list<Entry> $tops */
         $tops = [];
         /** @var array<int, list<Entry>> $children */
         $children = [];
-
         foreach ($entries as $entry) {
-            $root = $entry;
-            while ($root->parent_id !== null && isset($matched[$root->parent_id])) {
-                $root = $byId[$root->parent_id];
-            }
-
-            if ($root->id === $entry->id) {
-                $tops[] = $entry;
+            if ($entry->parent_id !== null && isset($matched[$entry->parent_id]) && $entry->parent_id !== $entry->id) {
+                $children[$entry->parent_id][] = $entry;
             } else {
-                $children[$root->id][] = $entry;
+                $tops[] = $entry;
             }
         }
-
         usort($tops, $comparator);
+        $ordered = self::nest($tops, $children, $comparator);
 
-        /** @var list<array{entry: Entry, depth: int}> $ordered */
-        $ordered = [];
-        foreach ($tops as $top) {
-            $ordered[] = ['entry' => $top, 'depth' => 0];
-            $group = $children[$top->id] ?? [];
-            usort($group, $comparator);
-            foreach ($group as $child) {
-                $ordered[] = ['entry' => $child, 'depth' => 1];
+        // rows in a parent loop (bad data) hang under no top row: they are shown at the top level, last
+        if (count($ordered) < $entries->count()) {
+            $drawn = [];
+            foreach ($ordered as $item) {
+                $drawn[$item['entry']->id] = true;
+            }
+            $rest = array_values(array_filter($entries->all(), static fn (Entry $entry): bool => ! isset($drawn[$entry->id])));
+            usort($rest, $comparator);
+            foreach ($rest as $entry) {
+                $ordered[] = ['entry' => $entry, 'depth' => 0];
             }
         }
 

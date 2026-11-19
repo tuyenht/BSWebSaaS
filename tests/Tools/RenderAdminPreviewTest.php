@@ -178,6 +178,28 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         file_put_contents($dir.'/'.$name.'.html', $html);
     }
 
+    // The Trang list as a page tree three levels deep (each row with its grip and the move items), and
+    // the same list searched, where a drag and «Chuyển lên / xuống» are locked with their reason.
+    app(Tenancy::class)->enter(1, function () use ($owner): void {
+        $under = function (?Entry $parent, string $title, string $slug, int $position) use ($owner): Entry {
+            $entry = Entry::query()->create(['type' => 'page', 'status' => 'published', 'author_id' => $owner->id, 'parent_id' => $parent?->id, 'position' => $position]);
+            $entry->translations()->create(['locale' => 'vi', 'title' => $title, 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);
+
+            return $entry;
+        };
+        $services = $under(null, 'Dịch vụ', 'dich-vu', 1);
+        $cnc = $under($services, 'Gia công CNC', 'gia-cong-cnc', 0);
+        $under($cnc, 'Phay CNC 5 trục', 'phay-cnc-5-truc', 0);
+        $under($cnc, 'Tiện CNC', 'tien-cnc', 1);
+        $under($services, 'Xử lý bề mặt', 'xu-ly-be-mat', 1);
+        $under(Entry::query()->whereHas('translations', fn ($q) => $q->where('slug', 'gioi-thieu'))->first(), 'Đội ngũ', 'doi-ngu', 0);
+    });
+    foreach (['list-tree' => '/admin/content', 'list-tree-search' => '/admin/content?q=CNC'] as $name => $path) {
+        app('livewire')->flushState();
+        $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.$path)->assertOk()->getContent();
+        file_put_contents($dir.'/'.$name.'.html', $html);
+    }
+
     // The page editor with blocks carrying looks, so the "Trình bày" panel under each block shows its
     // chosen, joined and split states; its buttons show "Khi bấm nút" with an older address sorted
     // into a kind, a new button searching for its page, an unsafe link's problem and a call.
@@ -837,5 +859,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-te-page="suspended"');
     file_put_contents($dir.'/error-suspended.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 56);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 58);
 });

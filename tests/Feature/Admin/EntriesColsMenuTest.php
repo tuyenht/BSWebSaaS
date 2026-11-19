@@ -386,3 +386,19 @@ it('opens the Cột panel toward the room it has, and lets the tools flow from t
             ->assertSeeHtml('@min-[56.25rem]/lt:ms-auto @min-[56.25rem]/lt:in-data-[below=1]:ms-0');
     });
 });
+
+it('draws a creator\'s initials only when the post names one, a plain «—» otherwise (board 05)', function (): void {
+    $user = User::factory()->create(['name' => 'Lan Anh']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        grantRole($user, 'editor', ['entries.view']);
+        $section = cmSection();
+        cmPost($user, 'Có người tạo', $section);
+        cmPost($user, 'Không người tạo', $section)->forceFill(['author_id' => null])->save();
+
+        $html = Livewire::actingAs($user->fresh())->test(Index::class, ['section' => 'tin-tuc'])->html();
+
+        expect(substr_count($html, 'class="list-avi"'))->toBe(1)
+            ->and($html)->toContain('>LA</span>');
+    });
+});

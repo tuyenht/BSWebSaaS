@@ -17,6 +17,9 @@ import './admin-workflow-settings.js';
 // The shared admin tree: collapse, the one drag rule and the keyboard moves (Alpine.data 'bsTree').
 import './admin-tree.js';
 
+// The Trang list's page tree: dragging a page by its grip and «Chuyển đến…» (Alpine.data 'bsPageMove').
+import './admin-page-tree.js';
+
 // The shared "Hiện thế nào trên Google" part: length meters + Google preview (Alpine.data 'bsSeoFields').
 import './admin-seo-fields.js';
 
