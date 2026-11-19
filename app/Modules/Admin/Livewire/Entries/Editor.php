@@ -677,6 +677,12 @@ final class Editor extends Component
         $root = $choices->rootOf($this->sectionKey);
         if ($ids === [] && $root !== null && $scopes->coversId($user, $root)) {
             $ids = [$root];
+        } elseif ($ids === [] && $root !== null && $this->categoryIds !== []) {
+            // the last category taken out and the section's own one outside the member's limits:
+            // the change is refused, the list stays as it was
+            $this->addError('categoryIds', $scopes->refusal($user));
+
+            return;
         }
         $previous = $this->categoryId;
         // a category the member may lead with: inside their limits and, while an approval workflow

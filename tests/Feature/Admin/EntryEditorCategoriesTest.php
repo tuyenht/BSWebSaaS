@@ -256,6 +256,19 @@ it('refuses to take out the last category a limited member may lead with, the li
         ->assertSet('categoryIds', [$events->id, $notices->id])->assertSet('categoryId', $events->id));
 });
 
+it('refuses to take out a limited member\'s only category when the section\'s own one is outside the limits', function (): void {
+    $root = eccSection('tin-tuc', 'Tin tức');
+    $events = eccCategory('Sự kiện', $root);
+    $lan = eccMember('editor');
+    eccLimit($lan, $events);
+    $post = eccPost($lan, $events);
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($lan)->test(Editor::class, ['ulid' => $post->ulid])
+        ->call('toggleCategory', $events->ulid)
+        ->assertHasErrors(['categoryIds'])
+        ->assertSet('categoryIds', [$events->id])->assertSet('categoryId', $events->id));
+});
+
 it('files a new post under a section\'s own category only as the main one, whatever path the list comes by', function (): void {
     $root = eccSection('tin-tuc', 'Tin tức');
     $events = eccCategory('Sự kiện', $root);
