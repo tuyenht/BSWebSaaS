@@ -32,7 +32,7 @@ window.Livewire = {
         };
     },
 };
-const { valueText, countChanges, overState, stateText } = await import('../../resources/js/admin-editor.js');
+const { valueText, countChanges, overState, stateText, savesItself } = await import('../../resources/js/admin-editor.js');
 
 const words = { offlineToast: 'Chưa lưu được vì mất kết nối.', offlineToastIcon: '<svg></svg>', dirty: ':n thay đổi chưa lưu', dirtyDraft: ':n thay đổi chưa lưu — tự lưu sau 3 giây', dirtyLive: ':n thay đổi chưa lưu — bấm Cập nhật để khách thấy', saving: 'Đang lưu…', offline: 'Chưa lưu được — mất kết nối' };
 const rerun = () => effects.slice().forEach((fn) => fn());
@@ -226,5 +226,99 @@ test('the offline toast is raised once when the state turns offline, not on ever
     trip('save', 'failure')();
     assert.equal(shown.length, 2, 'a new loss after coming back raises it again');
     delete window.bsToast;
+    c.destroy();
+});
+
+test('with autosaveNew a record not saved yet saves itself like a draft; live content never does', (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    assert.equal(savesItself({ autosaveNew: true }, null), true);
+    assert.equal(savesItself({ autosaveNew: true }, 'published'), false);
+    assert.equal(savesItself({}, null), false);
+    assert.equal(savesItself({ autosave: false, autosaveNew: true }, 'draft'), false);
+
+    const cfg = { delay: 2000, autosaveNew: true };
+    const { c, calls, state } = editor({ status: null }, cfg);
+    state.values.name = 'Giới thiệu';
+    rerun();
+    assert.equal(c.text(), '1 thay đổi chưa lưu — tự lưu sau 3 giây', 'a new record reads as a draft');
+    t.mock.timers.tick(1999);
+    assert.deepEqual(calls, []);
+    t.mock.timers.tick(1);
+    assert.deepEqual(calls, ['autosave']);
+    c.destroy();
+
+    const live = editor({ status: 'scheduled' }, cfg);
+    live.state.values.name = 'Đang gõ';
+    rerun();
+    t.mock.timers.tick(10000);
+    assert.deepEqual(live.calls, []);
+    live.c.destroy();
+});
+
+test('the record\'s own save reads Đang tự lưu…, a button\'s save Đang lưu…', (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const w = { ...words, autosaving: 'Đang tự lưu…' };
+    assert.equal(stateText('saving', w, 1, 'draft', true), 'Đang tự lưu…');
+    assert.equal(stateText('saving', words, 1, 'draft', true), 'Đang lưu…', 'without the words the plain line stays');
+
+    const { c, state } = editor({}, { words: w });
+    state.values.name = 'Đồ gá';
+    rerun();
+    const auto = trip('autosave', 'success');
+    assert.equal(c.text(), 'Đang tự lưu…');
+    auto();
+    const own = trip('save', 'success');
+    assert.equal(c.text(), 'Đang lưu…');
+    own();
+    c.destroy();
+});
+
+test('a lost autosave is tried again as an autosave, never as a save', (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const { c, calls, state } = editor();
+    state.values.name = 'Đồ gá';
+    rerun();
+    trip('autosave', 'failure')();
+    assert.equal(c.state(), 'offline');
+    c.retry();
+    assert.deepEqual(calls, ['autosave']);
+    c.destroy();
+});
+
+test('with `needs` a record saves itself only while those fields have text, and says so', (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const { c, calls, state } = editor({ status: null }, { delay: 2000, autosaveNew: true, needs: ['name'] });
+    state.values.summary = 'Chỉ có mô tả';
+    rerun();
+    assert.equal(c.text(), '1 thay đổi chưa lưu', 'no promise of a save that will not come');
+    t.mock.timers.tick(5000);
+    assert.deepEqual(calls, []);
+    state.values.name = 'Đồ gá';
+    rerun();
+    assert.equal(c.text(), '2 thay đổi chưa lưu — tự lưu sau 3 giây');
+    t.mock.timers.tick(2000);
+    assert.deepEqual(calls, ['autosave']);
+    c.destroy();
+
+    // a saved draft whose needed field was emptied does not promise a save either
+    const draft = editor({ saved: { name: 'Đồ gá', summary: '' }, values: { name: '', summary: '' } }, { needs: ['name'] });
+    assert.equal(draft.c.text(), '1 thay đổi chưa lưu');
+    draft.c.destroy();
+});
+
+test('a change in a `noAuto` field counts as unsaved but never starts the record\'s own save', (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const { c, calls, state } = editor({}, { fields: ['name', 'summary'], noAuto: ['summary'] });
+    state.values.summary = 'published';
+    rerun();
+    assert.equal(c.n, 1);
+    assert.equal(c.text(), '1 thay đổi chưa lưu', 'no promise of a save by itself');
+    t.mock.timers.tick(10000);
+    assert.deepEqual(calls, []);
+    state.values.name = 'Đồ gá';
+    rerun();
+    assert.equal(c.text(), '2 thay đổi chưa lưu — tự lưu sau 3 giây');
+    t.mock.timers.tick(3000);
+    assert.deepEqual(calls, ['autosave']);
     c.destroy();
 });

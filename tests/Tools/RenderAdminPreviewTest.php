@@ -782,7 +782,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     });
     $this->flushSession();
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$planned[0]->ulid.'/edit')->assertOk()->getContent();
-    expect($html)->toContain('id="entry-sched-at"');
+    expect($html)->toContain('id="entry-sched-at"', 'data-sched-band', 'data-status-btn');
     file_put_contents($dir.'/editor-scheduled.html', $html);
     $past = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($owner)->test(App\Modules\Admin\Livewire\Entries\Editor::class, ['ulid' => $planned[0]->ulid])
         ->set('scheduleAt', now()->subDay()->format('Y-m-d\TH:i'))));
