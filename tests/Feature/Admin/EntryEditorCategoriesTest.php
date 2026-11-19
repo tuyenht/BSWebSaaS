@@ -242,6 +242,33 @@ it('does not file a post again under a category outside the limits taken out els
     });
 });
 
+it('refuses to take out the last category a limited member may lead with, the list kept as it was', function (): void {
+    $root = eccSection('tin-tuc', 'Tin tức');
+    $events = eccCategory('Sự kiện', $root);
+    $notices = eccCategory('Thông báo', $root);
+    $lan = eccMember('editor');
+    eccLimit($lan, $events);
+    $post = eccPost($lan, $events, $notices);
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($lan)->test(Editor::class, ['ulid' => $post->ulid])
+        ->call('toggleCategory', $events->ulid)
+        ->assertHasErrors(['categoryIds'])
+        ->assertSet('categoryIds', [$events->id, $notices->id])->assertSet('categoryId', $events->id));
+});
+
+it('files a new post under a section\'s own category only as the main one, whatever path the list comes by', function (): void {
+    $root = eccSection('tin-tuc', 'Tin tức');
+    $events = eccCategory('Sự kiện', $root);
+    $editor = eccMember('editor');
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($editor)->test(Editor::class, ['section' => 'tin-tuc'])
+        ->call('restoreKept', ['categoryIds' => [$events->id, $root->id]])
+        ->assertSet('categoryIds', [$events->id])
+        ->set('title', 'Hội thảo')->set('slug', 'hoi-thao')->call('save')->assertHasNoErrors());
+
+    expect(eccCategoriesOf(app(Tenancy::class)->enter(1, fn () => Entry::query()->sole())))->toBe([$events->id]);
+});
+
 it('opens a new post of a limited member on the first category of the section inside the limits', function (): void {
     $root = eccSection('tin-tuc', 'Tin tức');
     eccCategory('Thông báo', $root);
@@ -326,11 +353,20 @@ it('keeps another section\'s categories as stored while a workflow governs, what
             ->call('restoreKept', ['categoryIds' => [$events->id, $sales->id, $jobs->id]])
             ->assertSet('categoryIds', [$events->id, $it->id]);
 
-        // the one-category field the earlier picker used drops «Kỹ thuật»: the save refuses it
+        // the one-category field the earlier picker used drops «Kỹ thuật»: the save keeps it
         Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid])
             ->set('categoryId', $events->id)->assertSet('categoryIds', [$events->id])
-            ->call('save')->assertHasErrors(['categoryIds']);
+            ->call('save')->assertHasNoErrors();
         expect(eccCategoriesOf($post))->toBe([$events->id, $it->id]);
+
+        // another section's category filed elsewhere while the form was open: «keep mine» keeps it too
+        $form = Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid]);
+        $post->assignCategories([$events->id, $it->id, $sales->id]);
+        $form->set('title', 'Bài đã sửa')->call('save');
+        expect($form->get('stale'))->not->toBeNull();
+        $form->call('keepMine')->assertHasNoErrors();
+        expect(eccCategoriesOf($post))->toBe([$events->id, $it->id, $sales->id]);
+        $post->assignCategories([$events->id, $it->id]);
 
         // the main one unticked with only a locked row left: the section's own category leads, «Kỹ thuật» stays
         Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid])
@@ -395,12 +431,16 @@ it('adds a new category from the card for who may manage categories, inside the 
     });
 });
 
-it('reads the categories once whatever their number', function (): void {
+it('reads the categories once whatever their number', function (bool $limited): void {
     $root = eccSection('tin-tuc', 'Tin tức');
     $first = eccCategory('Sự kiện', $root);
-    eccCategory('Thông báo', $root);
+    $notices = eccCategory('Thông báo', $root);
     $editor = eccMember('editor');
-    $post = eccPost($editor, $first);
+    // a limited member's post also under a category outside the limits: its row reads as locked
+    $post = $limited ? eccPost($editor, $first, $notices) : eccPost($editor, $first);
+    if ($limited) {
+        eccLimit($editor, $first);
+    }
 
     $open = function () use ($editor, $post): int {
         app()->forgetScopedInstances();
@@ -409,10 +449,11 @@ it('reads the categories once whatever their number', function (): void {
     };
     $open();   // warm the member's caches first
     $few = $open();
+    auth()->guard()->forgetUser();   // the categories are made by the website, not the limited member
     foreach (range(1, 30) as $n) {
         eccCategory('Mục '.$n, $n % 2 === 0 ? $root : $first);
     }
     $many = $open();
 
     expect($many)->toBe($few);
-});
+})->with(['every category' => [false], 'limited to some' => [true]]);

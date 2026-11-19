@@ -670,7 +670,8 @@ final class Editor extends Component
      */
     private function categoriesChanged(PostCategoryChoices $choices, array $ids): void
     {
-        $ids = array_values(array_unique($ids));
+        // a section's own category means «no category»: only ever the main one, whatever path the list came by
+        $ids = array_values(array_filter(array_values(array_unique($ids)), static fn (int $id, int $at): bool => $at === 0 || ! $choices->isSectionRoot($id), ARRAY_FILTER_USE_BOTH));
         $user = $this->user();
         $scopes = app(CategoryScopes::class);
         $root = $choices->rootOf($this->sectionKey);
@@ -696,6 +697,13 @@ final class Editor extends Component
             } elseif ($root !== null && $free($root)) {
                 // none left to lead: the post goes back to its section's own category, the rest kept
                 array_unshift($ids, $root);
+            } else {
+                // nothing the member may lead with: the change is refused, the list stays as it was
+                $this->addError('categoryIds', $scopes->coversId($user, $ids[0])
+                    ? Cast::string(__('entries.ed.cat_why_workflow', ['section' => $choices->sectionLabel($this->sectionKey) ?? $this->listLabel, 'unit' => $this->unit()]))
+                    : $scopes->refusal($user));
+
+                return;
             }
         }
         $this->categoryIds = $ids;
@@ -804,25 +812,22 @@ final class Editor extends Component
         $stored = null;
         if ($this->homeGoverned()) {
             // while an approval workflow governs the post's section, its categories in other
-            // sections stay exactly as stored, whatever path the list came by
+            // sections stay exactly as stored (read now, under the save), whatever path the list
+            // came by: one the form adds is dropped, one it lost is kept (the main one is held by
+            // the rules on categoryId)
             $stored = $this->storedCategories($entry);
-            $before = [];
-            $after = [];
-            foreach ($stored as $id) {
-                if ($choices->sectionOf($id) !== $this->sectionKey) {
-                    $before[] = $id;
-                }
-            }
+            $held = [];
             foreach ($ids as $id) {
-                if ($choices->sectionOf($id) !== $this->sectionKey) {
-                    $after[] = $id;
+                if ($choices->sectionOf($id) === $this->sectionKey || in_array($id, $stored, true)) {
+                    $held[] = $id;
                 }
             }
-            sort($before);
-            sort($after);
-            if ($before !== $after) {
-                throw ValidationException::withMessages(['categoryIds' => Cast::string(__('entries.ed.cat_why_workflow', ['section' => $choices->sectionLabel($this->sectionKey) ?? $this->listLabel, 'unit' => $this->unit()]))]);
+            foreach ($stored as $id) {
+                if ($choices->sectionOf($id) !== $this->sectionKey && ! in_array($id, $held, true)) {
+                    $held[] = $id;
+                }
             }
+            $ids = $held;
         }
         $user = $this->user();
         $scopes = app(CategoryScopes::class);
