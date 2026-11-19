@@ -430,6 +430,9 @@
             :ok="__('media.lib.folder_delete_ok', ['n' => $num($doomedN)])" confirm="confirmDeleteFolder" cancel="cancelDeleteFolder">
             <x-bs-admin::confirm-line icon="ri-image-2">{{ __('media.lib.folder_delete_l1', ['n' => $num($doomedN)]) }}</x-bs-admin::confirm-line>
             <x-bs-admin::confirm-line icon="ri-links">{{ __('media.lib.folder_delete_l2') }}</x-bs-admin::confirm-line>
+            @if ($folderNoUndo)
+                <x-bs-admin::confirm-line icon="ri-error-warning">{{ __('media.lib.folder_delete_l3') }}</x-bs-admin::confirm-line>
+            @endif
         </x-bs-admin::confirm-dialog>
     @endif
 

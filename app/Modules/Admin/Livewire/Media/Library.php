@@ -23,6 +23,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use Throwable;
 
 /**
  * The media library page (/admin/media): a folder column, the tools row (search, filters, sort,
@@ -108,6 +109,10 @@ final class Library extends Component
     #[Locked]
     public string $folderToDelete = '';
 
+    /** The folder asked about holds more files than Hoàn tác keeps (config media.folder_undo_max_files). */
+    #[Locked]
+    public bool $folderNoUndo = false;
+
     /** The key of the last folder delete kept for Hoàn tác (the folder and its files, server side). */
     #[Locked]
     public string $undoFolder = '';
@@ -122,9 +127,6 @@ final class Library extends Component
 
     /** How long a deleted folder can be brought back with Hoàn tác (the toast itself stays 10 seconds). */
     public const int FOLDER_UNDO_MINUTES = 15;
-
-    /** Above this many files a folder delete keeps no Hoàn tác (the question before it is the guard). */
-    public const int FOLDER_UNDO_MAX_FILES = 100_000;
 
     /** Properties that change which files are listed: the page and the selection start again. */
     private const array LIST_PROPS = ['search', 'kinds', 'formats', 'uses', 'sort', 'per', 'status', 'folder'];
@@ -334,13 +336,16 @@ final class Library extends Component
             return;
         }
 
-        $folder = new MediaFolder;
-        $maxPosition = MediaFolder::query()->max('position');
-        $folder = MediaFolder::query()->create([
-            'name' => $name,
-            'slug' => $folder->uniqueSlug($name, $name),
-            'position' => (is_numeric($maxPosition) ? (int) $maxPosition : 0) + 1,
-        ]);
+        // the list locked as a move or a Hoàn tác locks it, so the new last place is nobody else's
+        $folder = DB::transaction(function () use ($name): MediaFolder {
+            $maxPosition = MediaFolder::query()->orderBy('id')->lock('for no key update')->pluck('position')->max();
+
+            return MediaFolder::query()->create([
+                'name' => $name,
+                'slug' => (new MediaFolder)->uniqueSlug($name, $name),
+                'position' => (is_numeric($maxPosition) ? (int) $maxPosition : 0) + 1,
+            ]);
+        });
 
         $this->cancelNewFolder();
         $this->setFolder((string) $folder->slug);
@@ -460,12 +465,14 @@ final class Library extends Component
         if ($folder === null) {
             return;
         }
-        if (! Media::query()->where('folder_id', $folder->id)->exists()) {
+        $noUndo = self::tooManyForUndo($folder->id);
+        if (! $noUndo && ! Media::query()->where('folder_id', $folder->id)->exists()) {
             $this->deleteFolder($folder);
 
             return;
         }
         $this->folderToDelete = (string) $folder->slug;
+        $this->folderNoUndo = $noUndo;
         $this->askFolderOpen = true;
     }
 
@@ -473,6 +480,7 @@ final class Library extends Component
     {
         $this->askFolderOpen = false;
         $this->folderToDelete = '';
+        $this->folderNoUndo = false;
     }
 
     public function confirmDeleteFolder(): void
@@ -486,12 +494,17 @@ final class Library extends Component
         }
     }
 
-    /** "Hoàn tác" after a folder delete: the folder comes back with the files that were in it. */
+    /**
+     * "Hoàn tác" after a folder delete: the folder comes back at its place in the list with the files
+     * that were in it. A folder of the same name made meanwhile keeps its name; the one coming back
+     * takes the first free "Tên (2)", "Tên (3)"…, so no file is left out of its folder.
+     */
     public function undoFolderDelete(): void
     {
         abort_unless(Gate::allows('media.folders'), 403);
 
-        $kept = $this->undoFolder === '' ? null : Cache::pull(self::folderUndoKey($this->undoFolder));
+        $key = self::folderUndoKey($this->undoFolder);
+        $kept = $this->undoFolder === '' ? null : Cache::pull($key);
         $this->undoFolder = '';
         if (! is_array($kept) || ! is_string($kept['name'] ?? null) || ! is_string($kept['slug'] ?? null) || ! is_string($kept['ids'] ?? null)) {
             $this->say(__('media.lib.folder_undo_gone'), 'error');
@@ -499,16 +512,39 @@ final class Library extends Component
             return;
         }
 
-        $folder = MediaFolder::query()->create([
-            'name' => $kept['name'],
-            'slug' => (new MediaFolder)->uniqueSlug($kept['slug'], $kept['name']),
-            'position' => Cast::int($kept['position'] ?? 0),
-        ]);
-        /** @var list<int> $ids */
-        $ids = $kept['ids'] === '' ? [] : array_values(unpack('q*', $kept['ids']) ?: []);
-        foreach (array_chunk($ids, 1000) as $chunk) {
-            // only files still in no folder: one moved elsewhere meanwhile stays where it was put
-            Media::withTrashed()->whereIn('id', $chunk)->whereNull('folder_id')->update(['folder_id' => $folder->id]);
+        try {
+            $folder = DB::transaction(function () use ($kept): MediaFolder {
+                // the list locked like a move: the folders from its old place down step one place down
+                $position = max(1, Cast::int($kept['position'] ?? 1));
+                // FOR NO KEY UPDATE: a file moved into a folder meanwhile (its key check) is not blocked
+                $order = MediaFolder::query()->orderBy('position')->orderBy('name')->orderBy('id')
+                    ->lock('for no key update')->get(['id', 'position']);
+                $position = min($position, $order->count() + 1);
+                foreach ($order->values() as $i => $other) {
+                    $want = $i + 1 < $position ? $i + 1 : $i + 2;
+                    if ($other->position !== $want) {
+                        MediaFolder::query()->whereKey($other->id)->update(['position' => $want]);
+                    }
+                }
+
+                $folder = MediaFolder::query()->create([
+                    'name' => self::freeFolderName($kept['name']),
+                    'slug' => (new MediaFolder)->uniqueSlug($kept['slug'], $kept['name']),
+                    'position' => $position,
+                ]);
+                /** @var list<int> $ids */
+                $ids = $kept['ids'] === '' ? [] : array_values(unpack('q*', $kept['ids']) ?: []);
+                foreach (array_chunk($ids, 1000) as $chunk) {
+                    // only files still in no folder: one moved elsewhere meanwhile stays where it was put
+                    Media::withTrashed()->whereIn('id', $chunk)->whereNull('folder_id')->update(['folder_id' => $folder->id]);
+                }
+
+                return $folder;
+            });
+        } catch (Throwable $e) {
+            Cache::put($key, $kept, now()->addMinutes(self::FOLDER_UNDO_MINUTES)); // the next try still has it
+
+            throw $e;
         }
 
         $this->setFolder((string) $folder->slug);
@@ -816,6 +852,25 @@ final class Library extends Component
         return $taken ? Cast::string(__('media.lib.folder_name_taken')) : null;
     }
 
+    /** The name itself when no folder here uses it, else the first free "Tên (2)", "Tên (3)"… within the length limit. */
+    private static function freeFolderName(string $name): string
+    {
+        $candidate = $name;
+        for ($n = 2; self::folderNameError($candidate) !== null && $n < 1000; $n++) {
+            $suffix = ' ('.$n.')';
+            $candidate = mb_substr($name, 0, self::FOLDER_NAME_MAX - mb_strlen($suffix)).$suffix;
+        }
+
+        return $candidate;
+    }
+
+    /** More files (Trash included) than Hoàn tác keeps — answered without counting past the limit. */
+    private static function tooManyForUndo(int $folderId): bool
+    {
+        return Media::withTrashed()->where('folder_id', $folderId)
+            ->offset(Cast::int(config('media.folder_undo_max_files', 100000)))->exists();
+    }
+
     /** The cache key of a folder delete kept for Hoàn tác: this site's, this member's, this delete's. */
     private static function folderUndoKey(string $token): string
     {
@@ -829,12 +884,27 @@ final class Library extends Component
      */
     private function deleteFolder(MediaFolder $folder): void
     {
-        $live = Media::query()->where('folder_id', $folder->id)->count();
-        $ids = Media::withTrashed()->where('folder_id', $folder->id)->limit(self::FOLDER_UNDO_MAX_FILES + 1)->pluck('id')
-            ->map(fn (mixed $id): int => Cast::int($id))->all();
+        // The folder row locked first: an upload into it (its foreign-key check) waits for this delete,
+        // or committed before it and is counted; a second delete of the same folder finds it gone.
+        $done = DB::transaction(function () use ($folder): ?array {
+            $row = MediaFolder::query()->whereKey($folder->id)->lockForUpdate()->first();
+            if ($row === null) {
+                return null;
+            }
+            $live = Media::query()->where('folder_id', $row->id)->count();
+            $ids = self::tooManyForUndo($row->id) ? null : Media::withTrashed()->where('folder_id', $row->id)->pluck('id')
+                ->map(fn (mixed $id): int => Cast::int($id))->all();
+            $row->delete();
+
+            return ['live' => $live, 'ids' => $ids, 'row' => $row];
+        });
+        if ($done === null) {
+            return;
+        }
+        ['live' => $live, 'ids' => $ids, 'row' => $folder] = $done;
 
         $token = '';
-        if (count($ids) <= self::FOLDER_UNDO_MAX_FILES) {
+        if ($ids !== null) {
             $token = Str::random(40);
             Cache::put(self::folderUndoKey($token), [
                 'name' => $folder->name,
@@ -845,7 +915,6 @@ final class Library extends Component
         }
         $name = $folder->name;
         $wasOpen = $this->folder === (string) $folder->slug;
-        $folder->delete();
 
         if ($wasOpen) {
             $this->setFolder('');
@@ -853,9 +922,11 @@ final class Library extends Component
         if ($this->renaming === (string) $folder->slug) {
             $this->cancelRename();
         }
-        $this->say($live > 0
-            ? __('media.lib.folder_deleted_n', ['name' => $name, 'n' => number_format($live, 0, ',', '.')])
-            : __('media.lib.folder_deleted', ['name' => $name]));
+        $this->say(match (true) {
+            $ids === null => __('media.lib.folder_deleted_no_undo', ['name' => $name, 'n' => number_format($live, 0, ',', '.')]),
+            $live > 0 => __('media.lib.folder_deleted_n', ['name' => $name, 'n' => number_format($live, 0, ',', '.')]),
+            default => __('media.lib.folder_deleted', ['name' => $name]),
+        });
         $this->undoFolder = $token; // after say(): this toast's Hoàn tác
     }
 

@@ -137,7 +137,7 @@ it('gives a folder rename its own toast: the Hoàn tác of a move to the Trash b
     });
 });
 
-it('keeps the folder actions to the website admin: author and editor see no ⋮ and are refused', function (string $role): void {
+it('keeps the folder actions to the website admin: every other role sees no ⋮ and is refused', function (string $role): void {
     $user = fdUser($role);
     $folder = fdFolder(1, 'Ảnh xưởng', 'anh-xuong', 1);
     fdFolder(1, 'Sản phẩm', 'san-pham', 2);
@@ -229,7 +229,8 @@ it('deletes an empty folder at once, with Hoàn tác', function (string $role): 
 
         $page->call('undoFolderDelete')->assertSet('folder', 'trong')->assertSet('undoFolder', '')
             ->assertSet('toast', 'Đã khôi phục thư mục "Trống".');
-        expect(MediaFolder::query()->where('slug', 'trong')->value('position'))->toBe(3);
+        // its old place was the third, but it is the only folder now: it comes back first
+        expect(MediaFolder::query()->where('slug', 'trong')->value('position'))->toBe(1);
     });
 })->with(['admin', 'owner']);
 
@@ -292,6 +293,144 @@ it('gives a folder delete its own Hoàn tác: a later toast takes it away', func
             ->assertSet('undoFolder', '')->assertDontSee('undoFolderDelete', false);
         $page->call('undoFolderDelete')->assertSet('toastTone', 'error');
         expect(MediaFolder::query()->where('slug', 'trong')->exists())->toBeFalse();
+    });
+});
+
+it('brings a folder back at its old place and under a free name when the name was taken meanwhile', function (): void {
+    $user = fdUser('admin');
+    fdFolder(1, 'Một', 'mot', 1);
+    $folder = fdFolder(1, 'Ảnh xưởng', 'anh-xuong', 2);
+    fdFolder(1, 'Ba', 'ba', 3);
+    $file = fdFile(1, 'a.png', $folder);
+
+    app(Tenancy::class)->enter(1, function () use ($user, $file): void {
+        $page = Livewire::actingAs($user)->test(Library::class)
+            ->call('askDeleteFolder', 'anh-xuong')->call('confirmDeleteFolder');
+        expect($page->get('undoFolder'))->not->toBe('');
+
+        // meanwhile someone makes a folder of the same name; it lands last
+        Livewire::actingAs($user)->test(Library::class)->call('openNewFolder')->set('newFolderName', 'ảnh xưởng')->call('createFolder')
+            ->assertSet('folder', 'anh-xuong');
+
+        $page->call('undoFolderDelete')->assertSet('toast', 'Đã khôi phục thư mục "Ảnh xưởng (2)".');
+        $back = MediaFolder::query()->where('name', 'Ảnh xưởng (2)')->firstOrFail();
+        expect(Media::query()->find($file->id)?->folder_id)->toBe($back->id)
+            ->and((string) $back->slug)->toBe('anh-xuong-2');
+    });
+
+    // back at its old place, every place used once
+    expect(fdOrder(1))->toBe(['mot', 'anh-xuong-2', 'ba', 'anh-xuong'])
+        ->and(app(Tenancy::class)->enter(1, fn () => MediaFolder::query()->orderBy('position')->pluck('position')->all()))->toBe([1, 2, 3, 4]);
+});
+
+it('deletes a folder holding only files in the Trash at once; Hoàn tác puts them back', function (): void {
+    $user = fdUser('admin');
+    $folder = fdFolder(1, 'Cũ', 'cu', 1);
+    $file = fdFile(1, 'old.png', $folder);
+    app(Tenancy::class)->enter(1, fn () => $file->delete());
+
+    app(Tenancy::class)->enter(1, function () use ($user, $file): void {
+        $page = Livewire::actingAs($user)->test(Library::class)->call('askDeleteFolder', 'cu')
+            ->assertSet('askFolderOpen', false)->assertSet('toast', 'Đã xóa thư mục "Cũ".');
+        expect(Media::onlyTrashed()->find($file->id)?->folder_id)->toBeNull();
+        $page->call('undoFolderDelete');
+        expect(Media::onlyTrashed()->find($file->id)?->folder_id)->toBe(MediaFolder::query()->where('slug', 'cu')->value('id'));
+    });
+});
+
+it('says before and after that a folder with too many files has no Hoàn tác', function (): void {
+    config(['media.folder_undo_max_files' => 2]);
+    $user = fdUser('admin');
+    $folder = fdFolder(1, 'Lớn', 'lon', 1);
+    $small = fdFolder(1, 'Nhỏ', 'nho', 2);
+    foreach (['a', 'b'] as $n) {
+        fdFile(1, "{$n}.png", $folder);
+        fdFile(1, "s{$n}.png", $small);
+    }
+    $trashed = fdFile(1, 'c.png', $folder); // the Trash counts too: 3 files > 2
+    app(Tenancy::class)->enter(1, fn () => $trashed->delete());
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Livewire::actingAs($user)->test(Library::class)
+            ->call('askDeleteFolder', 'lon')
+            ->assertSet('folderNoUndo', true)
+            ->assertSee('Thư mục có quá nhiều tệp nên sau khi xóa sẽ không hoàn tác được.')
+            ->call('confirmDeleteFolder')
+            ->assertSet('undoFolder', '')
+            ->assertSet('toast', 'Đã xóa thư mục "Lớn", 2 tệp về Tất cả ảnh (Chưa phân loại). Thư mục quá nhiều tệp nên không có Hoàn tác.')
+            ->assertDontSee('undoFolderDelete', false);
+
+        // exactly at the limit: Hoàn tác is kept
+        Livewire::actingAs($user)->test(Library::class)
+            ->call('askDeleteFolder', 'nho')
+            ->assertSet('folderNoUndo', false)
+            ->assertDontSee('Thư mục có quá nhiều tệp nên sau khi xóa sẽ không hoàn tác được.')
+            ->call('confirmDeleteFolder')
+            ->assertNotSet('undoFolder', '');
+    });
+});
+
+it('keeps a folder Hoàn tác under this site and this member only', function (): void {
+    $user = fdUser('admin');
+    $other = fdUser('admin');
+    fdFolder(1, 'Trống', 'trong', 1);
+    fdFolder(1, 'Hai', 'hai', 2);
+
+    app(Tenancy::class)->enter(1, function () use ($user, $other): void {
+        $page = Livewire::actingAs($user)->test(Library::class)->call('askDeleteFolder', 'trong');
+        expect(Cache::has('media:folder-undo:1:'.$user->id.':'.$page->get('undoFolder')))->toBeTrue();
+
+        // another member of the site pressing the same Hoàn tác finds nothing kept for them
+        test()->actingAs($other);
+        $page->call('undoFolderDelete')->assertSet('toast', 'Đã quá lâu nên không hoàn tác được nữa. Tạo lại thư mục rồi chuyển tệp vào nếu cần.');
+        expect(MediaFolder::query()->where('slug', 'trong')->exists())->toBeFalse();
+
+        // and the member's own kept delete stays theirs
+        test()->actingAs($user);
+        $mine = Livewire::actingAs($user)->test(Library::class)->call('askDeleteFolder', 'hai');
+        test()->actingAs($other);
+        $mine->call('undoFolderDelete')->assertSet('toastTone', 'error');
+        test()->actingAs($user);
+        expect(MediaFolder::query()->where('slug', 'hai')->exists())->toBeFalse();
+    });
+});
+
+it('keeps the Hoàn tác of a folder delete when bringing it back fails, for another try', function (): void {
+    $user = fdUser('admin');
+    $folder = fdFolder(1, 'Ảnh xưởng', 'anh-xuong', 1);
+    $file = fdFile(1, 'a.png', $folder);
+
+    app(Tenancy::class)->enter(1, function () use ($user, $file): void {
+        $page = Livewire::actingAs($user)->test(Library::class)->call('askDeleteFolder', 'anh-xuong')->call('confirmDeleteFolder');
+        $key = 'media:folder-undo:1:'.$user->id.':'.$page->get('undoFolder');
+
+        $fail = true;
+        MediaFolder::creating(function () use (&$fail): void {
+            if ($fail) {
+                throw new RuntimeException('the database refused');
+            }
+        });
+        expect(fn () => $page->call('undoFolderDelete'))->toThrow(RuntimeException::class);
+        expect(Cache::has($key))->toBeTrue()
+            ->and(MediaFolder::query()->count())->toBe(0)
+            ->and(Media::query()->find($file->id)?->folder_id)->toBeNull();
+    });
+});
+
+it('asks before deleting a folder whose Trash alone is too big for Hoàn tác', function (): void {
+    config(['media.folder_undo_max_files' => 1]);
+    $user = fdUser('admin');
+    $folder = fdFolder(1, 'Cũ', 'cu', 1);
+    foreach (['a', 'b'] as $n) {
+        $f = fdFile(1, "{$n}.png", $folder);
+        app(Tenancy::class)->enter(1, fn () => $f->delete());
+    }
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Livewire::actingAs($user)->test(Library::class)->call('askDeleteFolder', 'cu')
+            ->assertSet('askFolderOpen', true)->assertSet('folderNoUndo', true)
+            ->assertSee('Thư mục có quá nhiều tệp nên sau khi xóa sẽ không hoàn tác được.');
+        expect(MediaFolder::query()->where('slug', 'cu')->exists())->toBeTrue();
     });
 });
 

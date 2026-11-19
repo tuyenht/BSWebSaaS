@@ -42,4 +42,8 @@ return [
     // it (row + R2 object). Manual "empty trash" / "delete permanently" purge immediately regardless.
     'trash_retention_days' => (int) env('MEDIA_TRASH_RETENTION_DAYS', 30),
 
+    // A folder delete keeps what Hoàn tác needs (the files' ids) for a few minutes; a folder with
+    // more files than this (Trash included) is deleted without Hoàn tác, and the question says so.
+    'folder_undo_max_files' => (int) env('MEDIA_FOLDER_UNDO_MAX_FILES', 100000),
+
 ];
