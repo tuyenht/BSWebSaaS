@@ -8,6 +8,54 @@
 const WAIT_MS = 15000;
 let pending = null;
 
+// After a move to the Trash the rows under it move up, so the second click of a double click (or a quick
+// repeat) would land on the «Thùng rác» of the row that took its place. As board 05 does, a trash button
+// (data-trash: the row's button and its ⋮ item) ignores clicks while its move is on the way to the server
+// and for TRASH_HOLD_MS after the list is drawn again.
+export const TRASH_HOLD_MS = 600;
+let trashSent = 0;   // when the click that waits for the server's answer was made (0: none waits)
+let trashUntil = 0;  // until then a trash button ignores clicks
+
+/** Whether a trash button ignores a click now. */
+export function trashHeld(now = Date.now()) {
+    if (trashSent && now - trashSent > WAIT_MS) {
+        trashSent = 0;
+    }
+    return trashSent !== 0 || now < trashUntil;
+}
+
+/** The server's answer to a move to the Trash is drawn: the hold runs on for TRASH_HOLD_MS. */
+export function trashDrawn(now = Date.now()) {
+    if (trashSent) {
+        trashSent = 0;
+        trashUntil = now + TRASH_HOLD_MS;
+    }
+}
+
+// Only the answer that carries the move starts the 600 ms: another answer finishing first (a search, a
+// status change sent just before) leaves the hold on. A Livewire whose message does not list its calls
+// counts every answer, as before.
+export function carriesTrash(message) {
+    const calls = typeof message?.getActions === 'function' ? message.getActions() : null;
+
+    return calls === null || calls.some((a) => a?.name === 'trash');
+}
+
+// registered before the other listeners on the page, so a held click reaches nothing else (Livewire, the menu)
+document.addEventListener('click', (e) => {
+    const t = e.target instanceof Element ? e.target.closest('[data-trash]') : null;
+    if (! t) {
+        return;
+    }
+    if (trashHeld()) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        return;
+    }
+    hook();
+    trashSent = Date.now();
+}, true);
+
 const shown = (el) => !!el && el.isConnected && el.getClientRects().length > 0;
 
 /**
@@ -96,8 +144,42 @@ function hook() {
         return;
     }
     hooked = true;
-    window.Livewire.interceptMessage(({ onFinish }) => onFinish(() => { if (pending) { setTimeout(() => settle(), 0); } }));
+    window.Livewire.interceptMessage(({ message, onFinish }) => onFinish(() => {
+        if (carriesTrash(message)) {
+            trashDrawn();
+        }
+        if (pending) {
+            setTimeout(() => settle(), 0);
+        }
+    }));
 }
 document.addEventListener('livewire:init', hook);
 
+// A list menu's keys and its opening (<x-bs-admin::list.menu>, the ⋮ of <x-bs-admin::list.actions>): the
+// arrows (wrapping), Home and End move between the items that show, and the menu opens on its first one.
+// An item the row already shows as its own button (data-xm, e.g. «Xem trên website» on a page) is hidden
+// in the menu; Alpine's $focus counts hidden items too, so a move onto one went nowhere, and the menu of
+// such a row (every published page, in the page tree too) opened with the focus left outside it.
+const ITEMS = '[role=menuitem],[role=menuitemradio],[role=menuitemcheckbox]';
+
+/**
+ * Focus an item of `menu`: 'first', 'last', or the 'next' / 'prev' one from the focused item, wrapping.
+ * @returns {HTMLElement|null} the item focused, or null when the menu shows none
+ */
+export function menuMove(menu, to, isShown = shown) {
+    const items = menu ? [...menu.querySelectorAll(ITEMS)].filter(isShown) : [];
+    if (items.length === 0) {
+        return null;
+    }
+    const at = items.findIndex((el) => el === document.activeElement || el.contains(document.activeElement));
+    const step = to === 'prev' ? -1 : 1;
+    const t = to === 'first' || (to === 'next' && at < 0) ? items[0]
+        : to === 'last' || (to === 'prev' && at < 0) ? items[items.length - 1]
+            : items[(at + step + items.length) % items.length];
+    try { t.focus({ preventScroll: false }); } catch (_) { t.focus(); }
+
+    return t;
+}
+
 window.bsListFocus = { expect };
+window.bsMenu = { move: (menu, to) => menuMove(menu, to) };

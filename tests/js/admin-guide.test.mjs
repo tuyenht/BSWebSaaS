@@ -319,6 +319,45 @@ test('another dialog the page opens: the bubble steps aside and focus stays in t
     other.remove();
 });
 
+test('a menu or sheet the member has open keeps its focus: no bubble while it is open, and one already up steps aside', () => {
+    localStorage.clear();
+    // a row's ⋮ menu (on a narrow list a sheet, the same role="menu"), open, its first item focused
+    const menu = document.createElement('div');
+    menu.setAttribute('role', 'menu');
+    menu.innerHTML = '<button type="button" role="menuitem">Sao chép đường dẫn</button>';
+    document.body.append(menu);
+    const item = menu.querySelector('button');
+    item.focus();
+    g.offer();
+    assert.equal(g.state().offer, null);
+    assert.equal(document.activeElement, item);
+    g.hideOffer(true);
+
+    // closed: the bubble comes; a menu opened after it (a screen reader's own press) keeps the focus it takes
+    menu.style.display = 'none';
+    g.offer();
+    assert.ok(g.state().offer);
+    menu.style.display = '';
+    item.focus();
+    assert.equal(document.activeElement, item); // the trap does not pull it back
+    document.dispatchEvent(new window.Event('scroll'));
+    assert.equal(g.state().offer, null);
+    assert.equal(document.activeElement, item); // and «Hướng dẫn» does not take it
+
+    // a menu that opened while the bubble held the focus (its first item could not take it): when the
+    // bubble steps aside the focus goes to that first item, never to the page
+    g.hideOffer(true);
+    menu.style.display = 'none';
+    g.offer();
+    assert.ok(g.state().offer);
+    assert.ok(g.state().offer.contains(document.activeElement));
+    menu.style.display = '';
+    document.dispatchEvent(new window.Event('scroll'));
+    assert.equal(g.state().offer, null);
+    assert.equal(document.activeElement, item);
+    menu.remove();
+});
+
 test('while the bubble is open the keys that scroll the page do nothing, and Space still presses its button', () => {
     localStorage.clear();
     g.offer();
