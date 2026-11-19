@@ -17,6 +17,7 @@ use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\EnsureMediaFromKey;
+use App\Modules\Provisioning\Support\FirstOwner;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Rendering\LayoutSlots;
@@ -66,6 +67,7 @@ final readonly class SeedMeasurementSite
         private RouteSync $routes,
         private TaxonomyPaths $paths,
         private EnsureMediaFromKey $media,
+        private FirstOwner $owner,
     ) {}
 
     public function handle(): void
@@ -257,7 +259,7 @@ final readonly class SeedMeasurementSite
             return;
         }
 
-        $entry = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
+        $entry = Entry::query()->create(['type' => 'page', 'author_id' => $this->owner->id(), 'status' => 'published', 'published_at' => now()]);
         $entry->translations()->create([
             'locale' => $locale, 'title' => $title, 'slug' => trim($path, '/'), 'status' => 'published',
             'seo_description' => 'Trang mẫu dùng để đo tốc độ tải và khả năng truy cập.', 'body' => ['blocks' => $blocks],
@@ -457,7 +459,7 @@ final readonly class SeedMeasurementSite
             return;
         }
 
-        $entry = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
+        $entry = Entry::query()->create(['type' => 'page', 'author_id' => $this->owner->id(), 'status' => 'published', 'published_at' => now()]);
         $entry->translations()->create([
             'locale' => $locale, 'title' => 'Trang đo tốc độ', 'slug' => trim(self::PAGE_PATH, '/'), 'status' => 'published',
             'seo_description' => 'Trang mẫu dùng để đo tốc độ tải và khả năng truy cập.', 'body' => ['blocks' => $blocks],
@@ -496,7 +498,7 @@ final readonly class SeedMeasurementSite
         }
 
         $entry = Entry::query()->create([
-            'type' => 'post', 'status' => 'published', 'published_at' => $publishedAt, 'meta' => ['image_url' => $image],
+            'type' => 'post', 'author_id' => $this->owner->id(), 'status' => 'published', 'published_at' => $publishedAt, 'meta' => ['image_url' => $image],
         ]);
         $entry->translations()->create([
             'locale' => $locale, 'title' => $title, 'slug' => $slug, 'status' => 'published', 'excerpt' => $excerpt,

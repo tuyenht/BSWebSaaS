@@ -15,6 +15,18 @@
 //    until the wait is over, and "Sao chép mã" for the fault's reference.
 
 const ACTIVITY_KEY = 'bs-admin-activity';
+
+// Text the entry editor keeps on this device (admin-kept.js) goes when the member signs out: every
+// form marked data-bs-signout (the user menu; the session dialog's button submits it too).
+document.addEventListener('submit', (e) => {
+    if (e.target instanceof Element && e.target.hasAttribute('data-bs-signout')) {
+        try {
+            Object.keys(localStorage).filter((k) => k.startsWith('bs-entry-kept:')).forEach((k) => localStorage.removeItem(k));
+        } catch {
+            // storage blocked: nothing was kept
+        }
+    }
+});
 const WARN_SECONDS = 120;
 
 function readActivity() {
@@ -179,7 +191,7 @@ function sessionGuard(cfg) {
 
         logout() {
             this.announce(cfg.words?.logout);
-            this.$refs.logoutForm?.submit();
+            this.$refs.logoutForm?.requestSubmit();
         },
 
         onKey(event) {

@@ -15,6 +15,7 @@ use App\Modules\Provisioning\ContentPack\CanonicalHash;
 use App\Modules\Provisioning\ContentPack\Ledger;
 use App\Modules\Provisioning\ContentPack\PackReader;
 use App\Modules\Provisioning\ContentPack\Planner;
+use App\Modules\Provisioning\Support\FirstOwner;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
@@ -775,4 +776,17 @@ it('keeps the live card label of a category whose pack item does not name one', 
     [, $plan] = ContentPacks::run();
     expect(ContentPacks::verdict($plan, 'tax:post_cat/tin-tuc'))->toBe('unchanged')
         ->and(cpLabelAndByline($this->siteId)['label'])->toBe('Bản tin');
+});
+
+it('names the website\'s first owner as the creator of every post and page a pack makes', function (): void {
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output);
+
+    ContentPacks::in($this->siteId, function (): void {
+        $owner = app(FirstOwner::class)->id();
+
+        expect($owner)->not->toBeNull()
+            ->and(Entry::query()->withTrashed()->whereNull('author_id')->count())->toBe(0)
+            ->and(Entry::query()->withTrashed()->where('author_id', '!=', $owner)->count())->toBe(0);
+    });
 });
