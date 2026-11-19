@@ -21,7 +21,7 @@
         </select>
     @endif
     @error('newFolderParent')
-        <p id="{{ $fid }}-perr" class="m-0 flex items-start gap-1.5 text-small text-danger-text" role="alert"><x-bs-admin::icon name="ri-error-warning" class="mt-0.5 size-4 shrink-0" /><span>{{ $message }}</span></p>
+        <x-bs-admin::field-error id="{{ $fid }}-perr">{{ $message }}</x-bs-admin::field-error>
     @enderror
     <div class="flex flex-wrap justify-end gap-2">
         <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="cancelNewFolder">{{ __('media.lib.cancel') }}</x-bs-admin::button>
