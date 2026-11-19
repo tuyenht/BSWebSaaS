@@ -6312,5 +6312,9 @@
     "form_builder.toast_deleted": "フォームを削除しました",
     "form_builder.toast_deleted_leads": "フォームと :leads を削除しました",
     "form_builder.toast_gone": "このフォームはもうありません。誰かが削除した可能性があります。一覧を再読み込みしました。",
-    "form_builder.toast_more_leads": "新しい問い合わせが届きました。削除される件数を確認してから、もう一度確定してください。"
+    "form_builder.toast_more_leads": "新しい問い合わせが届きました。削除される件数を確認してから、もう一度確定してください。",
+    "leads.form_off_band": "フォーム「:name」はオフです — 新しい問い合わせは送信できません。受信済みの問い合わせはすべて残っています。",
+    "leads.form_on": "再びオンにする",
+    "leads.form_on_ask": "管理者に「フォーム」で再びオンにするよう依頼してください。",
+    "leads.form_on_toast": "フォーム「:name」を再びオンにしました — すぐに送信できます"
 }

@@ -6312,5 +6312,9 @@
     "form_builder.toast_deleted": "Form deleted",
     "form_builder.toast_deleted_leads": "Form and :leads deleted",
     "form_builder.toast_gone": "This form is no longer there — someone may have just deleted it. The list has been reloaded.",
-    "form_builder.toast_more_leads": "New contacts have just come in. Check how many will be deleted, then confirm again."
+    "form_builder.toast_more_leads": "New contacts have just come in. Check how many will be deleted, then confirm again.",
+    "leads.form_off_band": "The form \":name\" is off — visitors cannot send new requests. Contacts already received are all kept.",
+    "leads.form_on": "Turn back on",
+    "leads.form_on_ask": "Ask an administrator to turn it back on in Forms.",
+    "leads.form_on_toast": "The form \":name\" is on again — visitors can send it now"
 }

@@ -270,6 +270,13 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         ->call('askDelete', $quote->ulid)->assertSet('confirmOpen', true)->html());
     expect($ask)->toContain('role="alertdialog"', __('form_builder.del_off'));
     file_put_contents($dir.'/form-builder-delete.html', str_replace('</body>', $ask.'</body>', $formsPage));
+    // The leads inbox while the website's contact form is switched off: the band with «Bật lại».
+    $contact = app(Tenancy::class)->enter(1, fn (): Form => Form::query()->where('key', Form::SYSTEM_KEY)->firstOrFail());
+    app(Tenancy::class)->enter(1, fn () => $contact->update(['status' => 'disabled']));
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/forms')->assertOk()->getContent();
+    expect($html)->toContain('data-state="form-off"');
+    file_put_contents($dir.'/leads-form-off.html', $html);
+    app(Tenancy::class)->enter(1, fn () => $contact->update(['status' => 'active']));
 
     // The platform Audit log, as a support operator, with a member's row and a support sign-in row.
     DB::connection('pgsql_admin')->statement('truncate audit_logs restart identity cascade');
@@ -1035,5 +1042,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     file_put_contents($dir.'/media-folder-rename.html', $swap($html, $rename, $media));
     config(['media' => $mediaConfig]);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 79);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 80);
 });

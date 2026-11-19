@@ -6312,5 +6312,9 @@
     "form_builder.toast_deleted": "已删除表单",
     "form_builder.toast_deleted_leads": "已删除表单及 :leads",
     "form_builder.toast_gone": "此表单已不存在——可能刚被他人删除。列表已重新加载。",
-    "form_builder.toast_more_leads": "刚收到新的联系。请确认将被删除的数量，然后再次确认。"
+    "form_builder.toast_more_leads": "刚收到新的联系。请确认将被删除的数量，然后再次确认。",
+    "leads.form_off_band": "表单“:name”已关闭 — 访客无法提交新的请求。已收到的联系全部保留。",
+    "leads.form_on": "重新开启",
+    "leads.form_on_ask": "请管理员在“表单”中重新开启。",
+    "leads.form_on_toast": "已重新开启表单“:name”— 访客现在即可提交"
 }
