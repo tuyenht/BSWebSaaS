@@ -183,14 +183,14 @@ it('says the password is missing and puts the cursor in the first empty field', 
         ->assertDispatched('auth-focus', field: 'email');
 });
 
-it('reads the bot-check token from the widget on every send, so an early press waits instead of failing', function (): void {
-    // The widget's answer reaches Livewire through an event that is lost when it fires before Livewire
-    // is ready, and a press before the check answers has nothing to send. The page therefore reads
-    // Cloudflare's own hidden field when the form is sent and holds the send until it is filled.
+it('renders the hidden field and the send hook that hand the bot-check token to Livewire', function (): void {
+    // Only the markup is checkable here (no browser in Pest): the hidden wire:model field outside
+    // wire:ignore, and the capture-phase send hook that fills it from Cloudflare's own field. The waiting
+    // behaviour itself was checked in Chromium, Firefox and WebKit (see the pull request).
     config(['services.turnstile.site_key' => 'test-site', 'services.turnstile.secret_key' => 'test-secret']);
 
     Livewire::test(Login::class)
+        ->assertSeeHtml('<input type="hidden" wire:model="turnstileToken" data-bs-turnstile-token>')
         ->assertSeeHtml('input[name="cf-turnstile-response"]')
-        ->assertSeeHtml("document.addEventListener('submit', function (e) {")
-        ->assertSeeHtml('wire.turnstileToken = token;');
+        ->assertSeeHtml("document.addEventListener('submit', function (e) {");
 });

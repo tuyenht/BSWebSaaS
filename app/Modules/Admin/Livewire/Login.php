@@ -18,7 +18,6 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\On;
 use Livewire\Component;
 
 /**
@@ -43,14 +42,8 @@ final class Login extends Component
 
     public string $password = '';
 
-    /** Cloudflare Turnstile token, pushed in from the widget's solve callback (see turnstile-field). */
+    /** Cloudflare Turnstile token, sent with the login call through a hidden wire:model field (see turnstile-field). */
     public string $turnstileToken = '';
-
-    #[On('turnstile-token')]
-    public function setTurnstileToken(string $token): void
-    {
-        $this->turnstileToken = $token;
-    }
 
     /**
      * Cloudflare Turnstile tokens are single-use: a successful verify consumes the token, and a

@@ -126,7 +126,7 @@ it('records whether a refused bot check had no token or a token Cloudflare turne
         ->assertHasErrors('email');
 
     $row = AuditLog::query()->where('action', 'auth.login.captcha_failed')->sole();
-    expect($row->meta['token'] ?? null)->toBe($expected);
+    expect($row->meta)->toBe(['token' => $expected]); // a label only, never the token itself
 })->with([
     'no token' => ['', 'missing'],
     'refused token' => ['bad-token', 'refused'],

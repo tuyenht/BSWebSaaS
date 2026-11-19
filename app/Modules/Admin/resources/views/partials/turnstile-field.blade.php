@@ -9,9 +9,9 @@
     (its locale switcher does NOT use wire:navigate), so there is no SPA-morph re-render to manage.
 
     wire:ignore keeps Livewire from morphing the iframe when the component re-renders (e.g. an error).
-    The solved token is pushed into the component via the turnstile-token event, and read again from
-    the widget on every send (a send before the check answers waits for it); login() verifies it
-    server-side. Turnstile tokens are single-use, so after any rejected attempt login() dispatches
+    The token goes to the component when the form is sent: read from the widget, written into a hidden
+    wire:model field outside wire:ignore (a send before the check answers waits for it); login()
+    verifies it server-side. Turnstile tokens are single-use, so after any rejected attempt login() dispatches
     bs-turnstile-reset to issue a fresh token — else a corrected retry is refused as a duplicate.
 
     Looks: light theme (the sign-in card is light only) and the page's language (checked 20/11/2026:
@@ -21,6 +21,7 @@
     The frame around it is drawn by auth.css, not by Cloudflare (see .auth-turnstile there).
 --}}
 @if (\App\Modules\Admin\Support\LoginTurnstile::active())
+    <input type="hidden" wire:model="turnstileToken" data-bs-turnstile-token>
     <div wire:ignore class="auth-turnstile">
         <div class="cf-turnstile" data-sitekey="{{ \App\Modules\Shared\Support\Cast::string(config('services.turnstile.site_key')) }}"
              data-size="flexible" data-theme="light" data-language="{{ app()->getLocale() }}" data-callback="bsTurnstileOk" data-error-callback="bsTurnstileClear"
@@ -28,13 +29,15 @@
     </div>
     @once
         <script>
-            // Sends waiting for the check (below) go on as soon as a token arrives.
+            // The check's latest answer, kept in case Cloudflare's own hidden field is filled after the
+            // callback runs. Sends waiting for the check (below) go on as soon as it answers.
+            var bsTurnstileLast = '';
             var bsTurnstileWaiting = [];
             window.bsTurnstileOk = function (token) {
-                window.Livewire && window.Livewire.dispatch('turnstile-token', { token: token });
+                bsTurnstileLast = token;
                 bsTurnstileWaiting.splice(0).forEach(function (go) { go(); });
             };
-            window.bsTurnstileClear = function () { window.Livewire && window.Livewire.dispatch('turnstile-token', { token: '' }); };
+            window.bsTurnstileClear = function () { bsTurnstileLast = ''; };
 
             // Cloudflare's widget iframe carries a hard min-width:300px inside a CLOSED shadow root, so
             // external CSS can't shrink it — on a form narrower than 300px it overflows the field. Scale
@@ -67,26 +70,25 @@
             window.addEventListener('resize', window.bsFitTurnstile);
             window.bsFitTurnstile();
 
-            // The token reaches the form through the event above, which is lost when the check answers
-            // before Livewire is ready, and missing when «Đăng nhập» is pressed before the check answers.
-            // So every send reads the token from the widget itself, before Livewire sees the send (capture
-            // phase on document runs before the form's own wire:submit listeners). No token yet: the send
-            // waits (the button shows its sending state) and goes on when the check answers. If it never
-            // answers within 15 s, the form is sent anyway and the server refuses it with its message.
+            // Every send reads the token from the widget, before Livewire sees the send (a capture listener
+            // on document runs before the form's own wire:submit listeners), and hands it over through the
+            // hidden wire:model field, so it goes out with the login call. No token yet («Đăng nhập» pressed
+            // before the check answered): the send waits, the button shows its sending state, and it goes
+            // on as soon as the check answers. If it never answers within 15 s, the form is sent anyway and
+            // the server refuses it with its message.
             var bsTurnstileToken = function (box) {
                 var input = box.querySelector('input[name="cf-turnstile-response"]');
-                return input ? input.value : '';
+                return (input && input.value) || bsTurnstileLast;
             };
             document.addEventListener('submit', function (e) {
                 var form = e.target;
                 var box = form.querySelector && form.querySelector('.auth-turnstile > .cf-turnstile');
-                var root = box && form.closest('[wire\\:id]');
-                var wire = root && window.Livewire && window.Livewire.find(root.getAttribute('wire:id'));
-                if (!wire) { return; }
+                var field = box && form.querySelector('[data-bs-turnstile-token]');
+                if (!field || !window.Livewire) { return; } // no Livewire yet: its wire:submit is not bound either
                 var token = bsTurnstileToken(box);
                 if (token || form.bsTurnstileGiveUp) {
-                    form.bsTurnstileGiveUp = false;
-                    wire.turnstileToken = token; // sent with this action, no request of its own
+                    field.value = token;
+                    field.dispatchEvent(new Event('input', { bubbles: true }));
                     return;
                 }
                 e.preventDefault();
@@ -102,9 +104,14 @@
                     if (i >= 0) { bsTurnstileWaiting.splice(i, 1); }
                     if (button) { button.disabled = false; button.removeAttribute('aria-busy'); }
                     form.bsTurnstileWaiting = false;
-                    form.bsTurnstileGiveUp = !bsTurnstileToken(box);
-                    // A later task: a form ignores requestSubmit() while one of its submit events runs.
-                    setTimeout(function () { form.requestSubmit(button && button.form === form ? button : undefined); });
+                    // A later task: a form ignores requestSubmit() while one of its submit events runs. The
+                    // give-up mark lives only for this send (requestSubmit fires its submit event at once, or
+                    // none when the browser's own field check stops it).
+                    setTimeout(function () {
+                        form.bsTurnstileGiveUp = !bsTurnstileToken(box);
+                        form.requestSubmit(button && button.form === form ? button : undefined);
+                        form.bsTurnstileGiveUp = false;
+                    });
                 };
                 timer = setTimeout(go, 15000);
                 bsTurnstileWaiting.push(go);
@@ -112,9 +119,12 @@
 
             document.addEventListener('livewire:init', function () {
                 window.Livewire.on('bs-turnstile-reset', function () {
-                    // The server already cleared turnstileToken; just re-challenge so the widget's own
-                    // callback delivers a fresh single-use token.
+                    // The server already cleared turnstileToken; drop the spent token here too (a quick retry
+                    // must wait for the new one, never resend it) and re-challenge for a fresh single-use token.
                     var el = document.querySelector('.cf-turnstile');
+                    var input = el && el.querySelector('input[name="cf-turnstile-response"]');
+                    if (input) { input.value = ''; }
+                    bsTurnstileLast = '';
                     if (window.turnstile && el) { window.turnstile.reset(el); }
                 });
             });
