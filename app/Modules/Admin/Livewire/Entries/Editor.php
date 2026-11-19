@@ -17,11 +17,14 @@ use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\MovePage;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
+use App\Modules\Cms\Actions\TransitionEntryStatus;
+use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
 use App\Modules\Cms\Exceptions\HomePageLockedException;
 use App\Modules\Cms\Exceptions\PageMoveRejectedException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
+use App\Modules\Cms\Exceptions\SchedulePastException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
@@ -127,7 +130,7 @@ final class Editor extends Component
      * The fields the save state and the leave dialog count against the saved entry. The block list
      * is counted apart (blocksChanged): the browser cannot write it the way the server does.
      */
-    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryId', 'coverImageKey', 'parentUlid'];
+    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryId', 'coverImageKey', 'parentUlid', 'scheduleAt'];
 
     /** Which entry is being edited — server-resolved (mount/persist); never client-set. */
     #[Locked]
@@ -319,6 +322,25 @@ final class Editor extends Component
     #[Locked]
     public bool $pageHome = false;
 
+    /**
+     * «Hẹn giờ đăng» of a scheduled entry (board 07): when it goes live, in the website's clock (a
+     * datetime-local value). Client-set; judged when the field is left (updatedScheduleAt) and again by
+     * the save, which moves the time through TransitionEntryStatus.
+     */
+    public string $scheduleAt = '';
+
+    /** The time the entry was scheduled for as the form opened, in the website's clock ('' when none): kept unchanged, it is not judged again. */
+    #[Locked]
+    public string $scheduleLoaded = '';
+
+    /** This language's version has never been saved, and this form has not saved: its link may follow the title. */
+    #[Locked]
+    public bool $slugFresh = false;
+
+    /** The member typed this version's link: it no longer follows the title. */
+    #[Locked]
+    public bool $slugTouched = false;
+
     /** The parent picked before this round trip's change (updatingParentUlid), to put back a refused pick. */
     protected ?string $parentBefore = null;
 
@@ -398,6 +420,7 @@ final class Editor extends Component
             if ($this->type === 'page') {
                 $this->presetParent($parent ?? request()->query('parent'));
             }
+            $this->slugFresh = true;
             $this->saved = $this->tracked();
             $this->guideDue = true;
 
@@ -439,6 +462,17 @@ final class Editor extends Component
         if ($this->type === 'page') {
             $this->loadParent($entry, $translation);
         }
+        // a language not written yet takes its link from its title, as a new entry does (never the Home page)
+        if ($this->pageHome && ! $translation instanceof EntryTranslation) {
+            // the Home page's new language is the root too, never a link made from its title — unless another
+            // page already holds the root in this language: then this page is an ordinary page here
+            $this->pageHome = ! EntryTranslation::query()->where('locale', $this->locale)->where('entry_id', '!=', $entry->id)
+                ->whereIn('entry_id', Entry::query()->select('id')->where('type', 'page'))   // a post's 'home' sits under its category, never the root
+                ->whereIn('slug', [PathBuilder::HOME_SLUG, ''])->exists();
+            $this->slug = $this->pageHome ? PathBuilder::HOME_SLUG : '';
+        }
+        $this->slugFresh = ! $translation instanceof EntryTranslation && ! $this->pageHome;
+        $this->loadSchedule($entry);
         $this->saved = $this->tracked();
         $this->guideDue = true;
 
@@ -452,6 +486,64 @@ final class Editor extends Component
     {
         if ($this->type === 'post') {
             $this->address = $this->previewAddress();
+        }
+    }
+
+    /**
+     * The link follows the title (board 07) while this language's version has never been saved, this form
+     * has not saved and its link was not typed: each change of title makes it again, free on this website.
+     * The Home page's link never changes.
+     */
+    public function updatedTitle(): void
+    {
+        if (! $this->slugFresh || $this->slugTouched || $this->pageHome) {
+            return;
+        }
+        $this->authorizeEditing();
+        $this->slug = '';
+        $this->fillBlankSlug();
+    }
+
+    /**
+     * The link, as the field is left. The Home page keeps its own: it is the website's root «/». An
+     * emptied link is made again from the title, and said; a typed one stops following the title.
+     */
+    public function updatedSlug(): void
+    {
+        $this->authorizeEditing();
+        if ($this->pageHome) {
+            $this->slug = $this->saved['slug'] ?? '';
+
+            return;
+        }
+        if (trim($this->slug) !== '') {
+            $this->slugTouched = true;
+
+            return;
+        }
+        $this->slugTouched = false;
+        $this->resetErrorBag('slug');
+        if ($this->fillBlankSlug()) {
+            $this->dispatch('bs-toast', text: Cast::string(__('entries.ed.slug_auto', ['slug' => $this->slug])));
+        }
+    }
+
+    /**
+     * «Hẹn giờ đăng», as the field is left: an empty time is refused, and a time changed from the one the
+     * entry was scheduled for must be after now; the reason stays under the field until it is put right.
+     */
+    public function updatedScheduleAt(): void
+    {
+        $this->authorizeEditing();
+        $this->resetErrorBag('scheduleAt');
+        if (! $this->schedulable()) {
+            $this->scheduleAt = $this->scheduleLoaded;
+
+            return;
+        }
+        $why = $this->scheduleError();
+        if ($why !== null) {
+            $this->addError('scheduleAt', $why);
         }
     }
 
@@ -612,8 +704,10 @@ final class Editor extends Component
         $this->resetErrorBag('bodyHtml');
     }
 
+    /** «Xóa khối» on a block's row in «Trình dựng» (asked first in the browser): the block leaves this language's layout, unsaved. */
     public function removeBlock(int $index): void
     {
+        $this->authorizeEditing();
         if (! array_key_exists($index, $this->blocks)) {
             return;
         }
@@ -629,6 +723,37 @@ final class Editor extends Component
                 default => $this->openBlock,
             };
         }
+        $this->dispatch('bs-toast', text: Cast::string(__('entries.ed.block_removed')));
+        // No block left, or only one formatted text: the body is written text again, in «Soạn thảo».
+        if ($blocks === [] || (count($blocks) === 1 && $blocks[0]['type'] === EntryProseBody::TYPE)) {
+            /** @var array<string, mixed> $props */
+            $props = $blocks === [] ? [] : $blocks[0]['props'];
+            $html = $props['html'] ?? '';
+            $this->prose = true;
+            $this->blocks = [];
+            $this->openBlock = null;
+            $this->bodyHtml = is_string($html) ? $html : '';
+            $this->proseLook = $props !== [] ? EntryProseBody::look($props) : [];
+            $this->resetErrorBag('blocks');
+            // the writing area was not on the page: the browser starts it now
+            $this->js("document.dispatchEvent(new Event('bs-rich-editors-remount'))");
+        }
+    }
+
+    /**
+     * «Xóa» on the written body's row in «Trình dựng» (asked first in the browser): all of this language's
+     * text goes, unsaved; the writing area shows it empty.
+     */
+    public function clearProse(): void
+    {
+        $this->authorizeEditing();
+        if (! $this->prose) {
+            return;
+        }
+        $this->bodyHtml = '';
+        $this->resetErrorBag(['bodyHtml', 'blocks']);
+        $this->dispatch('admin-editor-set-html', target: 'bodyHtml', html: '');
+        $this->dispatch('bs-toast', text: Cast::string(__('entries.ed.block_removed')));
     }
 
     public function moveUp(int $index): void
@@ -874,7 +999,15 @@ final class Editor extends Component
     /** "Lưu nháp" / "Lưu" / "Cập nhật" on content that is not live: save, the status kept. */
     public function save(): void
     {
-        if (! $this->persist('save') instanceof Entry) {
+        $schedulable = $this->schedulable();
+        if ($schedulable && $this->refuseSchedule()) {
+            return;
+        }
+        $entry = $this->persist('save');
+        if (! $entry instanceof Entry) {
+            return;
+        }
+        if ($schedulable && ! $this->moveSchedule($entry)) {
             return;
         }
 
@@ -1353,6 +1486,8 @@ final class Editor extends Component
             'kinds' => $this->blockKinds(),
             'prosePreview' => $this->prose ? EntryProseBody::preview($this->bodyHtml) : '',
             'localeLabel' => Locales::label($this->locale),
+            // the Home page's locked link: the website's root in this language
+            'homePath' => app(PathBuilder::class)->publicUrl('/', $this->locale),
             // «Trang cha» is one value for every language: it is changed in the website's default language only
             'sharedLock' => $this->locale !== app(SiteLocale::class)->default(),
             'sharedWhy' => Cast::string(__('entries.ed.shared_guard', ['lang' => Locales::label(app(SiteLocale::class)->default())])),
@@ -1374,6 +1509,7 @@ final class Editor extends Component
             'workflow' => $workflow !== null
                 ? $this->workflowPanel($workflow, $this->ulid !== null ? $this->resolveOrFail($this->ulid) : null)
                 : null,
+            'schedule' => $this->schedulePanel($workflow),
         ]);
     }
 
@@ -1414,7 +1550,7 @@ final class Editor extends Component
         $preset = $this->ulid === null ? $this->parentLoaded : null;
         $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
             'transitionNote', 'assignTo', 'showMediaPicker', 'showBlockImagePicker', 'blockImagePickerPath', 'stale', 'overwrite',
-            'parentUlid', 'parentLoaded', 'parentName', 'pageHome');
+            'parentUlid', 'parentLoaded', 'parentName', 'pageHome', 'scheduleAt', 'scheduleLoaded', 'slugFresh', 'slugTouched');
         $this->mount($this->ulid, $this->sectionKey, $this->locale, $preset);
     }
 
@@ -1691,6 +1827,10 @@ final class Editor extends Component
     {
         $count = $this->blocksChanged;
         foreach ($this->tracked() as $field => $value) {
+            // «Hẹn giờ đăng» counts only while the entry is scheduled: published or a draft, the time no longer applies
+            if ($field === 'scheduleAt' && $this->status !== EntryStatus::Scheduled->value) {
+                continue;
+            }
             if ($field !== 'blocks' && ($this->saved[$field] ?? '') !== $value) {
                 $count++;
             }
@@ -1923,14 +2063,18 @@ final class Editor extends Component
     /**
      * The page's place in the tree as the form opens: its parent (in the Trash too: it is still under it),
      * and whether it is the Home page — known already when the frame asked (a member who may delete it),
-     * else read from the language being edited (its slug is the Home one), with no query: a page that is
-     * the Home page in another language only still has its move refused on save (MovePage).
+     * else read from the language being edited (its slug is the Home one), with no query, or asked once when
+     * that language is not written yet: a page that is the Home page in another written language only still
+     * has its move refused on save (MovePage).
      */
     private function loadParent(Entry $entry, ?EntryTranslation $translation): void
     {
-        $this->pageHome = $this->mayTrash
-            ? $this->isHome
-            : $translation instanceof EntryTranslation && in_array($translation->slug, [PathBuilder::HOME_SLUG, ''], true);
+        $this->pageHome = match (true) {
+            $this->mayTrash => $this->isHome,
+            $translation instanceof EntryTranslation => in_array($translation->slug, [PathBuilder::HOME_SLUG, ''], true),
+            // a language not written yet has no slug to tell: asked once, so its link stays the root
+            default => HomePages::is($entry),
+        };
         $parent = $entry->parent_id === null ? null : Entry::withTrashed()->whereKey($entry->parent_id)->first(['id', 'site_id', 'ulid', 'type']);
         $this->parentUlid = $parent?->ulid;
         $this->parentLoaded = $parent?->ulid;
@@ -1988,20 +2132,26 @@ final class Editor extends Component
     }
 
     /**
-     * A new page's first save under the picked parent, in its own savepoint of the request's transaction
+     * A new page's first save in the website's page tree, in its own savepoint of the request's transaction
      * (the page-tree lock is held to the end of the request, through the translation and a publish): the
-     * site's page-tree lock FIRST (PageRules::lock), then the parent read again and checked — a live page of this website, not
-     * the Home page, with room for one more level — and the page made the last of its sub-pages. A
-     * refusal writes nothing and keeps the form as typed (null). The address is checked when the page
-     * is published (RouteSync), as for every page.
+     * site's page-tree lock FIRST (PageRules::lock), as every writer of the tree takes it, then the page made
+     * the last of the top-level pages, or, under the picked parent, the parent read again and checked — a
+     * live page of this website, not the Home page, with room for one more level — and the page made the
+     * last of its sub-pages. A refusal writes nothing and keeps the form as typed (null). The address is
+     * checked when the page is published (RouteSync), as for every page.
      *
      * @param  array<string, mixed>  $fields
      */
-    private function createUnderParent(array $fields): ?Entry
+    private function createInTree(array $fields): ?Entry
     {
         try {
             $entry = DB::transaction(function () use ($fields): Entry {
                 PageRules::lock(app(CurrentSite::class)->id());
+                if ($this->parentUlid === null) {
+                    $last = Entry::query()->where('type', 'page')->whereNull('parent_id')->max('position');
+
+                    return Entry::query()->create($fields + ['position' => $last === null ? 0 : Cast::int($last) + 1]);
+                }
                 $parent = $this->findPage((string) $this->parentUlid) ?? throw new PageMoveRejectedException('parent_invalid');
                 if (HomePages::is($parent)) {
                     throw new PageMoveRejectedException('parent_home');
@@ -2602,8 +2752,8 @@ final class Editor extends Component
                 'author_id' => $this->user()->id,
                 'meta' => [], // a fresh instance's meta is null until set; [] keeps the merge below array-typed
             ];
-            $entry = $this->type === 'page' && $this->parentUlid !== null
-                ? $this->createUnderParent($fields)
+            $entry = $this->type === 'page'
+                ? $this->createInTree($fields)
                 : Entry::query()->create($fields);
             if (! $entry instanceof Entry) {
                 if ($filled) {
@@ -2707,6 +2857,8 @@ final class Editor extends Component
 
         $this->saveFailed = false;
         $this->converted = false;
+        // saved by the member: the link no longer follows the title
+        $this->slugFresh = false;
         // The browser forgets the copy it kept of this text on the device: it is stored now.
         $this->dispatch('admin-editor-saved');
         $this->savedAt = self::iso(CarbonImmutable::now());
@@ -2719,6 +2871,8 @@ final class Editor extends Component
             $this->frameRights($entry);
         }
         $this->saved = $this->tracked();
+        // the save stores the text; «Hẹn giờ đăng» is moved after it (save → moveSchedule), so until then it is still unsaved
+        $this->saved['scheduleAt'] = $this->scheduleLoaded;
 
         if ($wasNew) {
             // The address becomes this entry's edit address, so a reload (or reopening it from the
@@ -2743,6 +2897,144 @@ final class Editor extends Component
         }
 
         return $translation->exists ? $translation->status : 'draft';
+    }
+
+    /**
+     * «Hẹn giờ đăng» as the form opens: the time a scheduled entry goes live, in the website's clock; one
+     * scheduled with no time yet starts on tomorrow 08:00 of that clock, as the list's «Hẹn giờ đăng» does.
+     */
+    private function loadSchedule(Entry $entry): void
+    {
+        if ($entry->status !== EntryStatus::Scheduled->value) {
+            return;
+        }
+        $siteTime = app(SiteTime::class);
+        $this->scheduleLoaded = $siteTime->forDisplay($entry->published_at)?->format('Y-m-d\TH:i') ?? '';
+        $this->scheduleAt = $this->scheduleLoaded !== ''
+            ? $this->scheduleLoaded
+            : $siteTime->now()->addDay()->setTime(8, 0)->format('Y-m-d\TH:i');
+    }
+
+    /**
+     * The time can be changed here: a saved, scheduled entry, by a member who may publish it, that no
+     * approval workflow governs (scheduling governed content is refused, TransitionEntryStatus).
+     */
+    private function schedulable(): bool
+    {
+        return $this->ulid !== null && $this->status === EntryStatus::Scheduled->value && $this->mayPublish
+            && $this->governingWorkflow() === null;
+    }
+
+    /**
+     * Why the time in the field cannot be kept (the list's two sentences), or null: an empty field always,
+     * a time changed from the one the entry was scheduled for when it is not after now. The time is read
+     * in the website's clock by SiteTime::toStorage, the list's parser.
+     */
+    private function scheduleError(): ?string
+    {
+        if (trim($this->scheduleAt) === '') {
+            return Cast::string(__('entries.sched_err_empty'));
+        }
+        if ($this->scheduleAt === $this->scheduleLoaded) {
+            return null;
+        }
+        $when = $this->scheduleTime();
+        if ($when === null) {
+            return Cast::string(__('entries.sched_err_empty'));
+        }
+
+        return $when->isFuture() ? null : Cast::string(__('entries.sched_err_past'));
+    }
+
+    /** The field's time in UTC; null when it is not a time (only a forged or broken submit sends that). */
+    private function scheduleTime(): ?CarbonImmutable
+    {
+        try {
+            return app(SiteTime::class)->toStorage($this->scheduleAt);
+        } catch (\Exception) {
+            return null;
+        }
+    }
+
+    /** Before a save: a time that cannot be kept stops it, says why under the field and puts the cursor there. */
+    private function refuseSchedule(): bool
+    {
+        $this->resetErrorBag('scheduleAt');
+        $why = $this->scheduleError();
+        if ($why === null) {
+            return false;
+        }
+        $this->addError('scheduleAt', $why);
+        $this->js("document.getElementById('entry-sched-at')?.focus()");
+
+        return true;
+    }
+
+    /**
+     * After the save: a changed time is set through TransitionEntryStatus (the publish right on the locked
+     * row, a time after now). False, the reason under the field, when it refuses.
+     */
+    private function moveSchedule(Entry $entry): bool
+    {
+        if ($this->scheduleAt === $this->scheduleLoaded) {
+            return true;
+        }
+        // its status changed since the form opened (published, a draft…): the time no longer applies, never re-scheduled
+        // from here; the form takes the stored status, so the field and its unsaved count go
+        if ($entry->status !== EntryStatus::Scheduled->value) {
+            $this->status = $entry->status;
+            $this->scheduleAt = $this->scheduleLoaded;
+            $this->saved['scheduleAt'] = $this->scheduleLoaded;
+            $this->dispatch('bs-toast', text: Cast::string(__('entries.ed.sched_gone', ['unit' => $this->unit()])), stay: true, close: Cast::string(__('admin.close')));
+
+            return false;
+        }
+        $why = null;
+        try {
+            $when = $this->scheduleTime() ?? throw new SchedulePastException;
+            app(TransitionEntryStatus::class)->handle($entry, EntryStatus::Scheduled, $this->user(), $when);
+        } catch (SchedulePastException) {
+            $why = Cast::string(__('entries.sched_err_past'));   // the time passed while the save waited
+        } catch (WorkflowGovernedException) {
+            $why = Cast::string(__('entries.workflow_governed'));
+        } catch (HomePageLockedException $refused) {
+            $why = $refused->getMessage();
+        } catch (AuthorizationException) {
+            $why = EntryRefusal::for($this->user(), $entry, 'status');
+        }
+        if ($why !== null) {
+            $this->saved['scheduleAt'] = $this->scheduleLoaded;
+            $this->addError('scheduleAt', $why);
+            $this->js("document.getElementById('entry-sched-at')?.focus()");
+
+            return false;
+        }
+        $this->scheduleLoaded = $this->scheduleAt;
+        $this->saved['scheduleAt'] = $this->scheduleAt;
+
+        return true;
+    }
+
+    /**
+     * The «Hẹn giờ đăng» field of the "Đăng" card, or null when the time cannot be changed here.
+     *
+     * @return array{zone: string, note: string}|null
+     */
+    private function schedulePanel(?Workflow $workflow): ?array
+    {
+        if ($this->ulid === null || $this->status !== EntryStatus::Scheduled->value || ! $this->mayPublish || $workflow !== null) {
+            return null;
+        }
+        $offset = intdiv(app(SiteTime::class)->now()->getOffset(), 60);
+        $zone = 'GMT'.($offset < 0 ? '-' : '+').intdiv(abs($offset), 60).(abs($offset) % 60 !== 0 ? ':'.str_pad((string) (abs($offset) % 60), 2, '0', STR_PAD_LEFT) : '');
+        $at = preg_match('/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/', $this->scheduleAt, $m) === 1
+            ? $m[4].':'.$m[5].' '.$m[3].'/'.$m[2].'/'.$m[1]
+            : Cast::string(__('entries.ed.sched_when_set'));
+
+        return [
+            'zone' => Cast::string(__('entries.ed.sched_zone', ['zone' => $zone])),
+            'note' => Cast::string(__('entries.ed.sched_note', ['unit' => Str::ucfirst($this->unit()), 'time' => $at])),
+        ];
     }
 
     private function resolveSection(?string $key): ?ContentSection

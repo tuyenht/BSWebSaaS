@@ -770,6 +770,29 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('Giá &amp; tồn kho');
     file_put_contents($dir.'/product-new-price.html', $html);
 
+    // The page editor's «Hẹn giờ đăng» on a scheduled page, then with a changed time that has passed (the
+    // reason under the field); and the Home page, whose link is the website's root and locked.
+    $planned = app(Tenancy::class)->enter(1, function () use ($owner): array {
+        $at = Entry::query()->create(['type' => 'page', 'status' => 'scheduled', 'author_id' => $owner->id, 'published_at' => now()->addDays(3)->setTime(2, 30)]);
+        $at->translations()->create(['locale' => 'vi', 'title' => 'Tuyển dụng', 'slug' => 'tuyen-dung', 'status' => 'draft', 'body' => ['blocks' => []]]);
+        $home = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $owner->id]);
+        $home->translations()->create(['locale' => 'vi', 'title' => 'Trang chủ', 'slug' => 'home', 'status' => 'draft', 'body' => ['blocks' => []]]);
+
+        return [$at, $home];
+    });
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$planned[0]->ulid.'/edit')->assertOk()->getContent();
+    expect($html)->toContain('id="entry-sched-at"');
+    file_put_contents($dir.'/editor-scheduled.html', $html);
+    $past = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($owner)->test(App\Modules\Admin\Livewire\Entries\Editor::class, ['ulid' => $planned[0]->ulid])
+        ->set('scheduleAt', now()->subDay()->format('Y-m-d\TH:i'))));
+    expect($past)->toContain(e(__('entries.sched_err_past')));
+    file_put_contents($dir.'/editor-scheduled-error.html', $swap($html, $past, 'admin\\.entries\\.editor'));
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$planned[1]->ulid.'/edit')->assertOk()->getContent();
+    expect($html)->toContain(e(__('entries.ed.slug_home_hint')));
+    file_put_contents($dir.'/editor-home.html', $html);
+
     // The members screen with a realistic team: several roles, one member in two of them, a very long name and
     // email, a member at the owner's level (no buttons, says why). Then the roles panel and the invite dialog open.
     $people = app(Tenancy::class)->enter(1, function (): array {
@@ -883,5 +906,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-te-page="suspended"');
     file_put_contents($dir.'/error-suspended.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 61);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 64);
 });

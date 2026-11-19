@@ -211,17 +211,18 @@ it('makes a post link from the title', function (): void {
     });
 });
 
-it('leaves the link blank when the save fails validation, so a later title change still works', function (): void {
+it('keeps the link following the title when the save fails validation, so a later title change still works', function (): void {
     $user = slugEditor();
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
         slugPostSection();
 
+        // an emptied link is made again from the title (board 07); nothing saved, it still follows the title
         $editor = Livewire::actingAs($user)->test(EntryEditor::class, ['section' => 'posts'])
             ->set('title', 'Khai trương xưởng mới')->set('slug', '')->set('categoryId', null)
             ->call('save')
             ->assertHasErrors(['categoryId'])
-            ->assertSet('slug', '');
+            ->assertSet('slug', 'khai-truong-xuong-moi')->assertSet('slugFresh', true);
         expect(Entry::query()->count())->toBe(0);
 
         // The title changes and a category is picked: the link follows the new title.

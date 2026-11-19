@@ -148,6 +148,7 @@
     }
 
     [data-child-screen] .ped-tl {
+        order: 0;
         flex: 1 1 0;
         gap: 0;
         justify-content: center;

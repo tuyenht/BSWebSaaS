@@ -99,7 +99,10 @@
                             @endif
                         </label>
                     </div>
+                    {{-- While the link follows the title (a version never saved, its link not typed: Editor::updatedTitle),
+                         a pause in the typing sends the title and the server makes the link again. --}}
                     <input type="text" id="entry-title" wire:model="title" lang="{{ $locale }}" aria-required="true" maxlength="{{ SeoFields::hardCap('title') }}"
+                           x-on:input.debounce.400ms="$wire.slugFresh && ! $wire.slugTouched && ! $wire.pageHome && $wire.$refresh()"
                            aria-describedby="entry-title-c @error('title') entry-title-e @enderror" @error('title') aria-invalid="true" @enderror class="field {{ $fieldLook }}">
                     <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
                         <span class="seo-meter min-w-24 flex-1" :data-b="headingMeter.band" aria-hidden="true">
@@ -120,10 +123,25 @@
                     @error('title') <p id="entry-title-e" class="{{ $error }}">{{ $message }}</p> @enderror
 
                     <div class="mt-3.5">
-                        <label for="entry-slug" class="{{ $label }} mb-1.5">{{ __('entries.ed.slug') }}</label>
-                        <input type="text" id="entry-slug" wire:model="slug" dir="ltr" autocomplete="off" spellcheck="false"
-                               @error('slug') aria-invalid="true" aria-describedby="entry-slug-e" @enderror class="field {{ $fieldLook }}">
-                        @error('slug') <p id="entry-slug-e" class="{{ $error }}">{{ $message }}</p> @enderror
+                        @if ($pageHome)
+                            {{-- The Home page is the website's root: its link is shown, locked, never changed (Editor::updatedSlug) --}}
+                            <span id="entry-slug-l" class="{{ $label }} mb-1.5">{{ __('entries.ed.slug') }}</span>
+                            <p class="m-0 flex min-h-(--spacing-control) items-center gap-1.5 rounded-md border border-dashed border-border-input bg-surface-muted px-3 font-mono text-body text-text-muted">
+                                <span dir="ltr">{{ $homePath }}</span><x-bs-admin::icon name="ri-lock" class="size-4 shrink-0" />
+                            </p>
+                            <p id="entry-slug-h" class="mt-1.5 mb-0 flex items-start gap-1.5 text-caption text-text-muted">
+                                <x-bs-admin::icon name="ri-lock" class="mt-0.5 size-3.5 shrink-0" />{{ __('entries.ed.slug_home_hint') }}
+                            </p>
+                        @else
+                            {{-- Left empty, the link is made from the title as the field is left (Editor::updatedSlug) --}}
+                            <label for="entry-slug" class="{{ $label }} mb-1.5">{{ __('entries.ed.slug') }}</label>
+                            <input type="text" id="entry-slug" wire:model.blur="slug" dir="ltr" autocomplete="off" spellcheck="false"
+                                   aria-describedby="entry-slug-h @error('slug') entry-slug-e @enderror" @error('slug') aria-invalid="true" @enderror class="field {{ $fieldLook }}">
+                            @error('slug') <p id="entry-slug-e" class="{{ $error }}">{{ $message }}</p> @enderror
+                            <p id="entry-slug-h" class="mt-1.5 mb-0 flex items-start gap-1.5 text-caption text-text-muted">
+                                <x-bs-admin::icon name="ri-magic" class="mt-0.5 size-3.5 shrink-0" />{{ __('entries.ed.slug_hint') }}
+                            </p>
+                        @endif
                     </div>
                 </section>
 
@@ -140,8 +158,14 @@
                     $tabOn = 'border-primary-text font-semibold text-primary-text';
                     $tabOff = 'border-transparent font-medium text-text-muted hover:text-text';
                     $rowButton = 'hit-area inline-flex size-control-row shrink-0 items-center justify-center rounded border border-border bg-surface text-text-muted transition-colors hover:bg-surface-hover hover:text-text';
+                    // «Xóa khối?» asks first and names the language whose layout loses it (design 07)
+                    $askDelete = fn (string $text): string => '$bsConfirm({ icon: \'trash-danger\', title: '.\Illuminate\Support\Js::from(__('entries.ed.del_title'))
+                        .', text: '.\Illuminate\Support\Js::from($text.' '.__('entries.ed.del_final'))
+                        .', confirm: '.\Illuminate\Support\Js::from(__('entries.ed.block_remove'))
+                        .', cancel: '.\Illuminate\Support\Js::from(__('admin.cancel')).' })';
                 @endphp
-                <section class="{{ $card }} overflow-hidden" aria-labelledby="entry-body-h" x-data="{ tab: 'text', openBlock: $wire.entangle('openBlock') }">
+                <section class="{{ $card }} overflow-hidden" aria-labelledby="entry-body-h" x-data="{ tab: 'text', openBlock: $wire.entangle('openBlock') }"
+                         @unless ($isPage) x-on:bs-rich-editors-remount.document="tab = 'text'" @endunless>
                     <h2 id="entry-body-h" class="sr-only">{{ __('entries.ed.body_label') }}</h2>
                     <div class="flex min-w-0 items-center gap-3 overflow-hidden border-b border-border px-4">
                         @if ($showBuilder)
@@ -208,6 +232,11 @@
                                         <x-bs-admin::button variant="outline" color="secondary" size="sm" class="shrink-0" x-on:click="tab = 'text'">
                                             <x-bs-admin::icon name="ri-pencil" :class="$glyph" /> {{ __('entries.ed.builder_prose_edit') }}
                                         </x-bs-admin::button>
+                                        <button type="button" class="{{ $rowButton }} hover:border-danger-text hover:text-danger-text"
+                                                x-on:click="{{ $askDelete(__('entries.ed.del_prose_text', ['lang' => $localeLabel])) }}.then(ok => ok && $wire.clearProse())"
+                                                title="{{ __('entries.ed.block_remove') }}" aria-label="{{ __('entries.ed.block_remove') }}: {{ __('entries.ed.builder_prose_label') }}">
+                                            <x-bs-admin::icon name="ri-delete-bin" class="size-4" />
+                                        </button>
                                     </div>
                                 @else
                                     <p class="m-0 rounded-md border border-border bg-surface-muted p-4 text-center text-small text-text-muted">{{ __('entries.ed.builder_none') }}</p>
@@ -244,7 +273,8 @@
                                                         x-on:click="openBlock = openBlock === {{ $i }} ? null : {{ $i }}" x-bind:aria-expanded="openBlock === {{ $i }} ? 'true' : 'false'">
                                                     <x-bs-admin::icon name="ri-pencil" class="size-4" />
                                                 </button>
-                                                <button type="button" class="{{ $rowButton }} hover:border-danger-text hover:text-danger-text" wire:click="removeBlock({{ $i }})"
+                                                <button type="button" class="{{ $rowButton }} hover:border-danger-text hover:text-danger-text"
+                                                        x-on:click="{{ $askDelete(__('entries.ed.del_block_text', ['lang' => $localeLabel, 'unit' => mb_strtolower($unit)])) }}.then(ok => ok && $wire.removeBlock({{ $i }}))"
                                                         title="{{ __('entries.ed.block_remove') }}" aria-label="{{ __('entries.ed.block_remove') }}: {{ $kind['label'] }}">
                                                     <x-bs-admin::icon name="ri-delete-bin" class="size-4" />
                                                 </button>
@@ -328,12 +358,33 @@
                 <x-bs-admin::seo-fields excerpt="excerpt" part="card" :kind="$type" :address="$address" :locale="$locale" :multi-locale="$multiLocale" id="entry-seo" />
             </div>
 
-            <div class="flex min-w-0 flex-[1_1_300px] flex-col gap-4">
+            {{-- A page's «Thuộc tính trang» waits behind «Thêm tùy chọn» (design 07), open or closed per browser as in the
+                 product editor (localStorage 'bs-editor'); a refused «Trang cha» opens it. --}}
+            <div class="flex min-w-0 flex-[1_1_300px] flex-col gap-4"
+                 @if ($isPage) x-data="{ more: false, init() { try { this.more = JSON.parse(localStorage.getItem('bs-editor') || '{}').more === true } catch (e) {} }, setMore(on) { this.more = on; try { const o = JSON.parse(localStorage.getItem('bs-editor') || '{}') || {}; o.more = on; localStorage.setItem('bs-editor', JSON.stringify(o)) } catch (e) {} } }" @endif>
                 <section class="{{ $card }} overflow-hidden" aria-labelledby="entry-pub-h">
                     <div class="flex items-center justify-between gap-2.5 border-b border-border px-4 py-3">
                         <h2 id="entry-pub-h" class="{{ $cardTitle }}">{{ __('entries.ed.card_publish') }}</h2>
                         <x-bs-admin::status-pill :status="$pill['status']">{{ $pill['label'] }}</x-bs-admin::status-pill>
                     </div>
+                    @if ($schedule !== null)
+                        {{-- «Hẹn giờ đăng» (design 07): when a scheduled entry goes live, in the website's clock. Judged as the
+                             field is left and again by the save, which stops at a missing or past time (Editor::updatedScheduleAt). --}}
+                        <div class="p-4">
+                            <label for="entry-sched-at" class="{{ $label }} mb-1.5">
+                                {{ __('entries.sched_title') }} <span class="font-normal text-text-muted">· {{ $schedule['zone'] }}</span>
+                            </label>
+                            <input type="datetime-local" id="entry-sched-at" wire:model.blur="scheduleAt" aria-required="true"
+                                   aria-describedby="entry-sched-n @error('scheduleAt') entry-sched-e @enderror" @error('scheduleAt') aria-invalid="true" @enderror
+                                   class="field {{ $fieldLook }}">
+                            @error('scheduleAt')
+                                <x-bs-admin::field-error id="entry-sched-e" class="mt-1.5">{{ $message }}</x-bs-admin::field-error>
+                            @enderror
+                            <p id="entry-sched-n" class="mt-1.5 mb-0 flex items-start gap-1.5 text-caption text-warning-text">
+                                <x-bs-admin::icon name="ri-time" class="mt-0.5 size-3.5 shrink-0" />{{ $schedule['note'] }}
+                            </p>
+                        </div>
+                    @endif
                     @if ($workflow !== null)
                         <div class="p-4">
                             {{-- An active workflow governs this post: its steps and moves replace "Đăng". --}}
@@ -386,8 +437,22 @@
                 @endcan
 
                 @if ($isPage && ! $pageHome)
+                    <button type="button" x-on:click="setMore(! more)" x-bind:aria-expanded="more ? 'true' : 'false'" aria-expanded="false" aria-controls="entry-props"
+                            aria-label="{{ __('catalog.ed.more') }} — {{ __('entries.ed.more_sub_page') }}"
+                            x-bind:aria-label="more ? @js(__('catalog.ed.less').' — '.__('catalog.ed.less_sub')) : @js(__('catalog.ed.more').' — '.__('entries.ed.more_sub_page'))"
+                            class="grid w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2.5 gap-y-1 rounded-md border border-dashed border-border-input px-4 py-2.5 text-left text-body font-semibold text-primary-text transition-colors min-h-12 hover:bg-[color-mix(in_srgb,var(--color-primary-text)_6%,var(--color-surface))]">
+                        <x-bs-admin::icon name="ri-add" :class="$glyph" x-show="! more" />
+                        <x-bs-admin::icon name="ri-subtract" :class="$glyph" x-show="more" x-cloak />
+                        <span x-text="more ? @js(__('catalog.ed.less')) : @js(__('catalog.ed.more'))">{{ __('catalog.ed.more') }}</span>
+                        <span class="col-start-2 text-small font-normal text-text-muted" aria-hidden="true">
+                            <span class="ped-ms-l" x-text="more ? @js(__('catalog.ed.less_sub')) : @js(__('entries.ed.more_sub_page'))">{{ __('entries.ed.more_sub_page') }}</span>
+                            {{-- the short line of the phone's child screen --}}
+                            <span class="ped-ms-s" x-text="more ? @js(__('catalog.ed.less_sub_s')) : @js(__('entries.ed.more_sub_page'))">{{ __('entries.ed.more_sub_page') }}</span>
+                        </span>
+                    </button>
+                    @error('parentUlid') <span hidden x-init="more = true"></span> @enderror
                     {{-- «Thuộc tính trang» (design 07): where the page sits in the website's page tree, shared by every language --}}
-                    <section class="{{ $card }}" aria-labelledby="entry-props-h" data-page-props>
+                    <section id="entry-props" class="{{ $card }}" aria-labelledby="entry-props-h" data-page-props x-show="more" x-cloak>
                         <div class="{{ $cardHead }}">
                             <h2 id="entry-props-h" class="{{ $cardTitle }}">{{ __('entries.ed.card_page_props') }}</h2>
                             @if ($sharedLock)

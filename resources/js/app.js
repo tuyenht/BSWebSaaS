@@ -119,6 +119,9 @@ async function mountRichEditors() {
 }
 
 document.addEventListener('livewire:navigated', mountRichEditors);
+// A form that brings its writing area onto the page without a navigation (the post/page editor, when
+// removing a block leaves only written text) asks for the editors to be started again.
+document.addEventListener('bs-rich-editors-remount', mountRichEditors);
 
 // Quick-upload dropzone on the picker's source-select screen: drag-drop or "browse files" stages
 // the File objects on window.__pendingPickerFiles and opens the device pane, whose island drains

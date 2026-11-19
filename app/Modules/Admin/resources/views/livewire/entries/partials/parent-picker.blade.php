@@ -63,7 +63,7 @@
                 @if ($sharedLock) aria-disabled="true" @endif
                 @error('parentUlid') aria-invalid="true" aria-describedby="entry-parent-e" @enderror
                 x-on:click="toggle()" x-on:keydown.arrow-down.prevent="open || toggle()"
-                class="field flex w-full items-center gap-2 rounded-md border border-border-input bg-surface px-3 text-start text-text transition-colors focus:border-primary-text aria-expanded:border-primary-text aria-invalid:border-danger-text aria-disabled:cursor-not-allowed aria-disabled:opacity-60">
+                class="field flex w-full items-center gap-2 rounded-md border border-border-input bg-surface-muted px-3 text-start aria-expanded:bg-surface text-text transition-colors focus:border-primary-text aria-expanded:border-primary-text aria-invalid:border-danger-text aria-disabled:cursor-not-allowed aria-disabled:opacity-60">
             <x-bs-admin::icon name="ri-node-tree" :class="$glyph.' text-text-muted'" />
             <span id="entry-parent-v" class="min-w-0 flex-1 truncate">
                 <span x-show="pick === null">{{ $shown }}</span><span x-show="pick !== null" x-cloak x-text="pick"></span>

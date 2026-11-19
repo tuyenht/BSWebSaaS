@@ -56,14 +56,15 @@
         @endif
     </header>
 
-    <div class="ped-bar flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-bg py-2 @max-[48rem]:flex-nowrap @max-[48rem]:gap-2"
+    <div class="ped-bar flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-bg py-2 @max-[48rem]:gap-x-2"
          x-ignore wire:ignore.self data-bs-lazy="bsEditorSave" x-data="bsEditorSave({{ \Illuminate\Support\Js::from($saveConfig) }})" x-bind:data-sv-over="state() ? 'on' : false">
         <x-bs-admin::button variant="ghost" :href="$backUrl" data-guide="back" class="shrink-0 @max-[37.5rem]:w-(--spacing-control) @max-[37.5rem]:px-0"
                             title="{{ $backLabel }}" aria-label="{{ $backLabel }}">
             <x-bs-admin::icon name="ri-arrow-left" :class="$glyph" /><span class="@max-[37.5rem]:hidden">{{ __('entries.ed.back') }}</span>
         </x-bs-admin::button>
 
-        <div class="ped-tl flex min-w-0 flex-col items-start gap-1 @max-[48rem]:flex-1">
+        {{-- At 768 and narrower the save state takes a line of its own under the buttons (design 07) --}}
+        <div class="ped-tl flex min-w-0 flex-col items-start gap-1 @max-[48rem]:order-1 @max-[48rem]:basis-full">
             {{-- the name in the bar shows on the phone's one bar only, where the header above is gone: one h1 shows at a time --}}
             <h1 class="ped-h1 m-0" title="{{ $title }}">{{ $title }}</h1>
             <x-bs-admin::save-state :note="$note" data-guide="state" class="max-w-full" />

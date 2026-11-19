@@ -481,3 +481,33 @@ it('reads «Trang cha» on a flat budget, whatever the number of pages', functio
     $seed(31, 40);
     expect($open())->toBe($before);
 });
+
+it('makes a new top-level page the last of the top level, read under the page-tree lock taken first', function (): void {
+    $writer = acWriter();
+
+    app(Tenancy::class)->enter(1, function () use ($writer): void {
+        acPage('a', position: 0);
+        acPage('b', position: 3);
+
+        // another writer adds a top-level page right after this save takes the lock (as it would, waiting on it)
+        $sql = [];
+        $racer = null;
+        DB::listen(function ($query) use (&$sql, &$racer): void {
+            $sql[] = $query->sql;
+            if ($racer === null && str_contains($query->sql, 'pg_advisory_xact_lock') && in_array('pages:1', $query->bindings, true)) {
+                $racer = acPage('racer', position: 7);
+            }
+        });
+        Livewire::actingAs($writer)->test(Editor::class)
+            ->set('title', 'Trang mới')->set('slug', 'trang-moi')
+            ->call('save')->assertHasNoErrors();
+
+        $lock = array_search(true, array_map(fn (string $q): bool => str_contains($q, 'pg_advisory_xact_lock'), $sql), true);
+        $insert = array_search(true, array_map(fn (string $q): bool => str_starts_with(ltrim($q), 'insert into "entries"'), $sql), true);
+        $page = Entry::query()->whereHas('translations', fn ($q) => $q->where('slug', 'trang-moi'))->sole();
+        expect($racer)->not->toBeNull()
+            ->and($lock)->toBeInt()->and($insert)->toBeInt()->and($lock)->toBeLessThan($insert)
+            ->and($page->parent_id)->toBeNull()
+            ->and($page->position)->toBe(8);
+    });
+});
