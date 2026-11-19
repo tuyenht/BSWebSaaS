@@ -145,16 +145,18 @@ it('blocks even a valid login once the per-IP failure ceiling is hit (spray guar
     $this->assertGuest();
 });
 
-it('draws the login Turnstile widget light, inside the field-width frame the page owns', function (): void {
+it('draws the login Turnstile widget light, in the page language, inside the frame the page owns', function (string $locale): void {
     // The page draws the frame (auth.css .auth-turnstile), because Cloudflare's own border sits inside
     // their iframe and loses its right edge at fractional widths (Windows display scaling 125%/150%).
-    // The login card is light only, so the widget must not follow a dark system theme.
+    // The login card is light only, so the widget must not follow a dark system theme, and its words
+    // follow the page's language rather than the browser's.
     config(['services.turnstile.site_key' => 'test-site', 'services.turnstile.secret_key' => 'test-secret']);
+    app()->setLocale($locale);
 
     Livewire::test(Login::class)
         ->assertSeeHtml('<div wire:ignore class="auth-turnstile">')
-        ->assertSeeHtml('data-size="flexible" data-theme="light"');
-});
+        ->assertSeeHtml('data-size="flexible" data-theme="light" data-language="'.$locale.'"');
+})->with(['vi', 'en', 'ja', 'zh']);
 
 it('puts the cursor back in the password after a wrong password', function (): void {
     $user = User::factory()->create(['email_verified_at' => now(), 'password' => 'correct-horse']);

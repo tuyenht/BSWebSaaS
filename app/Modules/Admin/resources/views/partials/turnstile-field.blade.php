@@ -12,11 +12,17 @@
     The solved token is pushed into the component via the turnstile-token event; login() verifies it
     server-side. Turnstile tokens are single-use, so after any rejected attempt login() dispatches
     bs-turnstile-reset to issue a fresh token — else a corrected retry is refused as a duplicate.
+
+    Looks: light theme (the sign-in card is light only) and the page's language (checked 20/11/2026:
+    Cloudflare draws vi, en, ja and zh as they are; a code it lacks falls back to English with a console
+    warning, never an error). The widget keeps the language it was drawn in when the in-place language
+    switch re-renders the form (redrawing it would throw away a solved check); the next load follows.
+    The frame around it is drawn by auth.css, not by Cloudflare (see .auth-turnstile there).
 --}}
 @if (\App\Modules\Admin\Support\LoginTurnstile::active())
     <div wire:ignore class="auth-turnstile">
         <div class="cf-turnstile" data-sitekey="{{ \App\Modules\Shared\Support\Cast::string(config('services.turnstile.site_key')) }}"
-             data-size="flexible" data-theme="light" data-callback="bsTurnstileOk" data-error-callback="bsTurnstileClear"
+             data-size="flexible" data-theme="light" data-language="{{ app()->getLocale() }}" data-callback="bsTurnstileOk" data-error-callback="bsTurnstileClear"
              data-expired-callback="bsTurnstileClear" data-timeout-callback="bsTurnstileClear"></div>
     </div>
     @once
@@ -37,13 +43,17 @@
                     var host = el.parentElement;
                     if (!host.clientWidth) return;
                     var scale = Math.min(1, (host.clientWidth + 2) / 300);
-                    el.style.transformOrigin = 'top left';
-                    el.style.transform = scale < 1 ? 'scale(' + scale + ')' : 'none';
-                    el.style.marginBottom = scale < 1 ? -(el.offsetHeight * (1 - scale) + scale) + 'px' : '';
+                    var transform = scale < 1 ? 'scale(' + scale + ')' : 'none';
+                    var margin = scale < 1 ? -(el.offsetHeight * (1 - scale) + scale) + 'px' : '';
+                    // Write only on a change: each write resizes the observed host and calls this again.
+                    if (el.style.transform !== transform) { el.style.transformOrigin = 'top left'; el.style.transform = transform; }
+                    if (el.style.marginBottom !== margin) { el.style.marginBottom = margin; }
                 });
             };
             document.querySelectorAll('.auth-turnstile').forEach(function (host) {
-                var fit = new ResizeObserver(window.bsFitTurnstile);
+                // Fit on the next frame, not inside the observer's delivery: a size change made there
+                // makes Safari report "ResizeObserver loop completed with undelivered notifications".
+                var fit = new ResizeObserver(function () { requestAnimationFrame(window.bsFitTurnstile); });
                 fit.observe(host);
                 // The widget's height arrives after the script draws it: refit then too.
                 fit.observe(host.querySelector('.cf-turnstile'));
