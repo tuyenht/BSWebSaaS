@@ -6,7 +6,7 @@
      blocks, or any body laid out in blocks), the shared "Hiện thế nào trên Google" card. Side: Đăng (status, the approval steps where a
      workflow governs the post), Chuyên mục (posts), Ảnh đại diện. The save state at rest is drawn
      here; typing, saving and a lost connection are drawn over it in the browser (bsEditorSave,
-     resources/js/admin-editor.js; this editor's drafts do not save themselves). The block list is
+     resources/js/admin-editor.js; a new entry or a draft saves itself 2 seconds after the last change). The block list is
      counted by the server (blocksChanged). Columns follow the editor's own width (flex basis
      520 / 300, as the board). --}}
 @php
@@ -23,11 +23,14 @@
     // entry and language, never the numeric id.
     $keptKey = $ulid !== null ? 'bs-entry-kept:'.$userUlid.':'.$ulid.':'.$locale : null;
     $keptWhen = ['zone' => $siteZone, 'format' => $siteDateFormat, 'lang' => app()->getLocale()];
-    $saveConfig = ['fields' => Editor::TRACKED, 'autosave' => false, 'extra' => 'blocksChanged', 'keep' => $keptKey !== null ? ['key' => $keptKey] : null, 'words' => [
+    // A new entry or a draft saves itself 2 seconds after the last change (Editor::autosave, board 07); content
+    // on the website never does: its unsaved text is kept on this device until «Cập nhật».
+    $saveConfig = ['fields' => Editor::TRACKED, 'delay' => 2000, 'autosaveNew' => true, 'needs' => ['title'], 'noAuto' => ['statusTo', 'scheduleAt'], 'extra' => 'blocksChanged', 'keep' => $keptKey !== null ? ['key' => $keptKey] : null, 'words' => [
         'dirty' => $dirty,
-        'dirtyDraft' => $dirty,
-        'dirtyLive' => $dirty,
+        'dirtyDraft' => __('entries.ed.sv_dirty_draft'),
+        'dirtyLive' => __('entries.ed.sv_dirty_live'),
         'saving' => __('catalog.ed.sv_saving'),
+        'autosaving' => __('entries.ed.sv_autosaving'),
         'offline' => __('catalog.ed.sv_offline'),
         'offlineToast' => __('catalog.ed.toast_offline'),
         'offlineToastIcon' => \Illuminate\Support\Facades\Blade::render('<x-bs-admin::icon name="ri-wifi-off" class="size-4" />'),
@@ -44,7 +47,7 @@
 <div class="entry-editor @container" data-entry-editor data-kind="{{ $type }}">
     <x-bs-admin::editor-frame :title="$frame['title']" :crumbs="$frame['crumbs']" :description="$frame['description']" :guide="$frame['guide']"
                               :back-url="$listUrl" :back-label="__('entries.ed.back_title', ['list' => mb_strtolower($listLabel)])"
-                              :note="$note" :save-config="$saveConfig" :actions="$actions" target="save,publish,applyTransition" :save-tip="__('entries.ed.save_tip')"
+                              :note="$note" :save-config="$saveConfig" :actions="$actions" target="save,publish,applyTransition" :save-tip="__($pill['status'] === 'draft' ? 'entries.ed.save_tip_auto' : 'entries.ed.save_tip')"
                               :preview="$frame['preview']" :trash="$frame['trash']" :name="$title !== '' ? $title : $frame['title']">
         @if ($liveUrl !== null)
             <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-[color-mix(in_srgb,var(--color-success-text)_9%,var(--color-surface))] px-3.5 py-2.5 text-body font-semibold text-success-text">
@@ -53,6 +56,24 @@
                 <a href="{{ '//'.$liveUrl }}" target="_blank" rel="noopener" class="hit-area underline underline-offset-2" aria-label="{{ __('entries.ed.pub_link_aria', ['url' => $liveUrl]) }}">{{ __('entries.ed.pub_link') }}</a>
                 <span class="min-w-0 font-normal [overflow-wrap:anywhere] @max-[35rem]:hidden">{{ $liveUrl }}</span>
             </div>
+        @endif
+        @if ($scheduleBand !== null)
+            {{-- A scheduled entry (board 07's band, the list's «Hủy hẹn giờ»): when it goes live, and the way back to a
+                 draft, asked first (Editor::unschedule). The time itself is changed in the "Đăng" card. --}}
+            <x-bs-admin::alert role="status" color="warning" icon="ri-time" data-sched-band>
+                <div class="flex flex-wrap items-start gap-2.5">
+                    <div class="flex min-w-0 flex-[1_1_16.25rem] flex-col gap-0.5 [overflow-wrap:anywhere]">
+                        <b class="font-semibold text-text-strong">{{ $scheduleBand['head'] }}</b>
+                        <span>{{ $scheduleBand['sub'] }}</span>
+                    </div>
+                    <div class="flex max-w-full flex-[0_1_auto] flex-wrap gap-2">
+                        <x-bs-admin::button variant="outline" color="secondary" size="sm" data-unsched
+                                            x-data x-on:click="$bsConfirm({ icon: 'warning', title: {{ Js::from($scheduleBand['ask']['title']) }}, text: {{ Js::from($scheduleBand['ask']['text']) }}, confirm: {{ Js::from($scheduleBand['ask']['confirm']) }}, cancel: {{ Js::from($scheduleBand['ask']['cancel']) }} }).then(ok => { ok && $wire.unschedule() })">
+                            <x-bs-admin::icon name="ri-close-circle" :class="$glyph" /> {{ __('entries.unsched') }}
+                        </x-bs-admin::button>
+                    </div>
+                </div>
+            </x-bs-admin::alert>
         @endif
         @error('workflow') <p class="{{ $error }} m-0">{{ $message }}</p> @enderror
         @if ($ulid !== null)
@@ -363,33 +384,39 @@
                  parent (an existing one, or preset by «Thêm trang con»), so the chosen parent shows. --}}
             <div class="flex min-w-0 flex-[1_1_300px] flex-col gap-4"
                  @if ($isPage) @if ($parentUlid !== null) data-more-open @endif x-data="{ more: false, init() { if ('moreOpen' in this.$el.dataset) { this.more = true; return } try { this.more = JSON.parse(localStorage.getItem('bs-editor') || '{}').more === true } catch (e) {} }, setMore(on) { this.more = on; try { const o = JSON.parse(localStorage.getItem('bs-editor') || '{}') || {}; o.more = on; localStorage.setItem('bs-editor', JSON.stringify(o)) } catch (e) {} } }" @endif>
-                <section class="{{ $card }} overflow-hidden" aria-labelledby="entry-pub-h">
+                <section class="{{ $card }}" aria-labelledby="entry-pub-h">
                     <div class="flex items-center justify-between gap-2.5 border-b border-border px-4 py-3">
                         <h2 id="entry-pub-h" class="{{ $cardTitle }}">{{ __('entries.ed.card_publish') }}</h2>
                         <x-bs-admin::status-pill :status="$pill['status']">{{ $pill['label'] }}</x-bs-admin::status-pill>
                     </div>
-                    @if ($schedule !== null)
-                        {{-- «Hẹn giờ đăng» (design 07): when a scheduled entry goes live, in the website's clock. Judged as the
-                             field is left and again by the save, which stops at a missing or past time (Editor::updatedScheduleAt). --}}
-                        <div class="p-4">
-                            <label for="entry-sched-at" class="{{ $label }} mb-1.5">
-                                {{ __('entries.sched_title') }} <span class="font-normal text-text-muted">· {{ $schedule['zone'] }}</span>
-                            </label>
-                            <input type="datetime-local" id="entry-sched-at" wire:model.blur="scheduleAt" aria-required="true"
-                                   aria-describedby="entry-sched-n @error('scheduleAt') entry-sched-e @enderror" @error('scheduleAt') aria-invalid="true" @enderror
-                                   class="field {{ $fieldLook }}">
-                            @error('scheduleAt')
-                                <x-bs-admin::field-error id="entry-sched-e" class="mt-1.5">{{ $message }}</x-bs-admin::field-error>
-                            @enderror
-                            <p id="entry-sched-n" class="mt-1.5 mb-0 flex items-start gap-1.5 text-caption text-warning-text">
-                                <x-bs-admin::icon name="ri-time" class="mt-0.5 size-3.5 shrink-0" />{{ $schedule['note'] }}
-                            </p>
-                        </div>
-                    @endif
-                    @if ($workflow !== null)
-                        <div class="p-4">
-                            {{-- An active workflow governs this post: its steps and moves replace "Đăng". --}}
-                            @include('admin::livewire.entries.partials.workflow-status')
+                    @if ($statusPanel !== null || $schedule !== null || $workflow !== null)
+                        <div class="flex flex-col gap-3.5 p-4">
+                            @if ($statusPanel !== null)
+                                @include('admin::livewire.entries.partials.status-choice', ['panel' => $statusPanel])
+                            @endif
+                            @if ($schedule !== null)
+                                {{-- «Hẹn giờ đăng» (design 07): when a scheduled entry (or one set to be) goes live, in the website's clock;
+                                     a new pick starts on tomorrow 08:00. Judged as the field is left and again by the save, which stops at a
+                                     missing or past time and puts the cursor here (Editor::updatedScheduleAt, refuseSchedule). --}}
+                                <div>
+                                    <label for="entry-sched-at" class="{{ $label }} mb-1.5">
+                                        {{ __('entries.sched_title') }} <span class="font-normal text-text-muted">· {{ $schedule['zone'] }}</span>
+                                    </label>
+                                    <input type="datetime-local" id="entry-sched-at" wire:model.blur="scheduleAt" aria-required="true"
+                                           aria-describedby="entry-sched-n @error('scheduleAt') entry-sched-e @enderror" @error('scheduleAt') aria-invalid="true" @enderror
+                                           class="field {{ $fieldLook }}">
+                                    @error('scheduleAt')
+                                        <x-bs-admin::field-error id="entry-sched-e" class="mt-1.5">{{ $message }}</x-bs-admin::field-error>
+                                    @enderror
+                                    <p id="entry-sched-n" class="mt-1.5 mb-0 flex items-start gap-1.5 text-caption text-warning-text">
+                                        <x-bs-admin::icon name="ri-time" class="mt-0.5 size-3.5 shrink-0" />{{ $schedule['note'] }}
+                                    </p>
+                                </div>
+                            @endif
+                            @if ($workflow !== null)
+                                {{-- An active workflow governs this post: its steps and moves replace "Đăng". --}}
+                                <div>@include('admin::livewire.entries.partials.workflow-status')</div>
+                            @endif
                         </div>
                     @endif
                 </section>
