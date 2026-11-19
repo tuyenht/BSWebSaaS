@@ -10,6 +10,7 @@ use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Catalog\Actions\ChangeProductMainCategory;
 use App\Modules\Catalog\Actions\ChangeProductSlug;
 use App\Modules\Catalog\Actions\ChangeProductStatus;
+use App\Modules\Catalog\Actions\FlagProduct;
 use App\Modules\Catalog\Actions\ForceDeleteProducts;
 use App\Modules\Catalog\Actions\RenameProduct;
 use App\Modules\Catalog\Exceptions\ProductEditRefused;
@@ -163,9 +164,6 @@ final class Index extends Component
 
     /** The URL parameters of the filters: a visit with none of them applies the remembered ones. */
     private const array FILTER_PARAMS = ['cat', 'tr', 'tag', 'stock', 'sale'];
-
-    /** The label columns a row can switch, by the name the menu sends. */
-    private const array FLAGS = ['featured' => 'is_featured', 'best' => 'is_bestseller'];
 
     /** The most rows one bulk action takes: the largest page. */
     private const int SELECT_MAX = 50;
@@ -583,21 +581,20 @@ final class Index extends Component
     public function toggleFlag(string $ulid, string $flag, bool $on): void
     {
         $this->guardWrite('update');
-        abort_unless(isset(self::FLAGS[$flag]), 422);
+        abort_unless(isset(FlagProduct::FLAGS[$flag]), 422);
         $product = $this->live($ulid);
         if ($product === null) {
             return;
         }
         $this->guardRow('update', $product);
-        $column = self::FLAGS[$flag];
-        $was = (bool) $product->getAttribute($column);
+        // the editor's switches write through the same action
+        $was = app(FlagProduct::class)->handle($product, [$flag => $on])[$flag];
         $message = __($on ? 'catalog.toast_flag_on' : 'catalog.toast_flag_off', ['label' => __('catalog.tag_'.$flag), 'name' => $this->nameOf($product)]);
         if ($was === $on) {
             $this->say($message);
 
             return;
         }
-        $product->forceFill([$column => $on])->save();
         $this->say($message, 'success', ['kind' => 'flag', 'ulid' => $ulid, 'flag' => $flag, 'was' => $was]);
     }
 
@@ -681,11 +678,11 @@ final class Index extends Component
             case 'flag':
                 $this->guardWrite('update');
                 $flag = Cast::string($op['flag'] ?? '');
-                abort_unless(isset(self::FLAGS[$flag]), 422);
+                abort_unless(isset(FlagProduct::FLAGS[$flag]), 422);
                 $product = $this->live($ulid, quiet: true);
                 if ($product !== null) {
                     $this->guardRow('update', $product);
-                    $product->forceFill([self::FLAGS[$flag] => (bool) ($op['was'] ?? false)])->save();
+                    app(FlagProduct::class)->handle($product, [$flag => (bool) ($op['was'] ?? false)]);
                 }
                 break;
             case 'bulk_status':

@@ -138,7 +138,7 @@ it('loads an existing product into the form and updates it in place', function (
             ->test(Editor::class, ['ulid' => $product->ulid])
             ->assertSet('name', 'Đồ gá')
             ->assertSet('slug', 'do-ga')
-            ->assertSet('price', '1000000')
+            ->assertSet('price', '1.000.000')    // shown the Vietnamese way
             ->assertSet('sku', 'DG-001')
             ->set('name', 'Đồ gá CNC')
             ->call('save')
@@ -676,7 +676,9 @@ it('shows the SKU message on the SKU field when the SKU is taken by a request th
             ->set('sku', 'RACE-1')
             ->call('save')
             ->assertHasErrors(['sku' => __('catalog.sku_taken')])
-            ->assertHasNoErrors(['slug']);
+            ->assertHasNoErrors(['slug'])
+            // the save says it stopped, as when a field check stops it
+            ->assertDispatched('bs-toast', fn (string $name, array $params): bool => $params['text'] === __('catalog.ed.toast_fix', ['n' => 1]));
     });
 });
 

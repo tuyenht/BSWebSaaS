@@ -1,11 +1,13 @@
 {{-- The product editor (design 09): the frame every editor shares (components/editor-frame.blade.php:
      the Shell's header, the bar that stays under the admin's top bar, the ⋮, the bottom bar of a
      narrow editor, the phone's one bar), then the cards in the board's order. Main column: Thông tin sản
-     phẩm (name; slug and summary in the "Thêm tùy chọn" group), Ảnh sản phẩm, Giá, Mô tả, the
-     shared "Hiện thế nào trên Google" card, the "Thêm tùy chọn" button. Side column: Đăng (status,
-     first publication, last save, what visitors see), then in the group Chuyên mục and Mã SKU. The
-     group stays open or closed per browser (localStorage 'bs-editor'), and opens when a field in it
-     has an error. The save state at rest is drawn here; typing, saving and a lost connection are
+     phẩm (name; slug and summary in the "Thêm tùy chọn" group), Ảnh sản phẩm, Giá & tồn kho (the
+     price; in the group the stock and the sale with its start and end; folded behind a note while the
+     website only presents its products), Mô tả, the shared "Hiện thế nào trên Google" card, the "Thêm
+     tùy chọn" button. Side column: Đăng (status, first publication, last save, what visitors see),
+     then in the group Chuyên mục and Mã & nhãn (SKU, «Nổi bật», «Bán chạy»). The group stays open or
+     closed per browser (localStorage 'bs-editor'), and opens (with the price card) when a field in it
+     has an error. Amounts, stock, dates and the SKU are checked when the field is left. The save state at rest is drawn here; typing, saving and a lost connection are
      drawn over it in the browser (resources/js/admin-editor.js). The description is a Jodit island
      (lazy chunk) inside wire:ignore; its HTML syncs back deferred. Sizes come from the control
      tokens; the layout follows the editor's own width (container queries). --}}
@@ -35,7 +37,11 @@
     $cardTitle = 'm-0 text-[calc(1rem+var(--user-text-boost))] font-semibold leading-tight text-text';
     $chip = $multiLocale ? strtoupper($locale) : null;
     $glyph = 'size-[1.15em] shrink-0';
-    $more = ['slug', 'summary', 'sku', 'categoryId'];
+    $moneyBox = 'flex min-w-0 items-center rounded-md border border-border-input bg-surface-muted focus-within:border-primary-text has-aria-invalid:border-danger-text';
+    $fold = 'flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-border bg-surface-muted px-3 py-2.5 text-small text-text';
+    $subLabel = 'mb-1.5 block text-small font-medium text-text-strong';
+    $stockWords = ['none' => __('catalog.ed.stock_hint_none'), 'out' => __('catalog.ed.stock_hint_out'), 'in' => __('catalog.ed.stock_hint_in')];
+    $stockKind = static fn (?string $typed): string => ($digits = preg_replace('/\D/', '', (string) $typed)) === '' ? 'none' : ((int) $digits === 0 ? 'out' : 'in');
 @endphp
 <div class="catalog-editor @container" data-catalog-editor>
     <x-bs-admin::editor-frame :title="$frame['title']" :crumbs="$frame['crumbs']" :description="$frame['description']" :guide="$frame['guide']"
@@ -181,11 +187,85 @@
                     </div>
                 </section>
 
-                <section class="rounded-md border border-border bg-surface shadow-card" aria-labelledby="ped-h-price">
-                    <div class="{{ $cardHead }}"><h2 id="ped-h-price" class="{{ $cardTitle }}">{{ __('catalog.card_price') }}</h2></div>
-                    <div class="p-4">
-                        <x-bs-admin::input :label="__('catalog.price_label')" name="catalog-price" type="number" min="0" step="1" inputmode="numeric" wire:model="price" aria-describedby="catalog-price-h" />
-                        <p id="catalog-price-h" class="mt-1 text-sm text-text-muted">{{ __('catalog.price_hint') }}</p>
+                {{-- Giá & tồn kho (board 09): the price; in the group the stock and the sale. A website that only
+                     presents its products folds the card behind a note (the amounts are kept); a field to fix
+                     inside it opens it. Two columns while the card is wide enough. --}}
+                <section class="@container rounded-md border border-border bg-surface shadow-card" aria-labelledby="ped-h-price" x-data="{ priceOpen: false }">
+                    <div class="{{ $cardHead }}"><h2 id="ped-h-price" class="{{ $cardTitle }}">{{ $selling ? __('catalog.ed.card_price_stock') : __('catalog.card_price') }}</h2></div>
+                    <div class="flex flex-col gap-4 p-4">
+                        @unless ($selling)
+                            <div class="{{ $fold }}" x-show="! priceOpen">
+                                <x-bs-admin::icon name="ri-presentation" class="size-[min(24px,calc(1.125rem+var(--user-text-boost)))] shrink-0 text-primary-text" />
+                                <span class="min-w-0 flex-[1_1_16rem]">{{ __('catalog.ed.fold_note') }} {{ $priceCard['keep'] }}</span>
+                                @if ($mayOpenSettings)
+                                    <x-bs-admin::button variant="ghost" size="sm" :href="route('admin.settings.catalog')">
+                                        <x-bs-admin::icon name="ri-settings-3" :class="$glyph" />{{ __('catalog.ed.fold_settings') }}
+                                    </x-bs-admin::button>
+                                @endif
+                                <x-bs-admin::button variant="outline" color="secondary" size="sm" aria-expanded="false" aria-controls="catalog-price-fields" x-on:click="priceOpen = true; $nextTick(() => $refs.priceFirst.focus())">
+                                    <x-bs-admin::icon name="ri-arrow-down-s" :class="$glyph" />{{ __('catalog.ed.fold_open') }}
+                                </x-bs-admin::button>
+                            </div>
+                        @endunless
+                        <div id="catalog-price-fields" class="flex flex-col gap-4" @unless ($selling) x-show="priceOpen" x-cloak @endunless>
+                            @unless ($selling)
+                                <div class="{{ $fold }}">
+                                    <x-bs-admin::icon name="ri-presentation" class="size-[min(24px,calc(1.125rem+var(--user-text-boost)))] shrink-0 text-primary-text" />
+                                    <span class="min-w-0 flex-[1_1_16rem]">{{ __('catalog.ed.fold_intro') }}</span>
+                                    <x-bs-admin::button variant="ghost" size="sm" aria-expanded="true" aria-controls="catalog-price-fields" x-on:click="priceOpen = false">
+                                        <x-bs-admin::icon name="ri-arrow-up-s" :class="$glyph" />{{ __('catalog.ed.fold_close') }}
+                                    </x-bs-admin::button>
+                                </div>
+                            @endunless
+                            <div class="grid gap-x-4 gap-y-3.5 @min-[32.5rem]:grid-cols-2">
+                                <div>
+                                    <label for="catalog-price" class="{{ $label }} mb-1.5">{{ __('catalog.ed.price_label') }}</label>
+                                    <div class="{{ $moneyBox }}">
+                                        <input type="text" id="catalog-price" x-ref="priceFirst" wire:model.blur="price" inputmode="numeric" autocomplete="off" placeholder="1.250.000"
+                                               aria-describedby="catalog-price-h @error('price') catalog-price-e @enderror" @error('price') aria-invalid="true" @enderror class="field min-w-0 flex-1 border-0 bg-transparent px-3 text-right tabular-nums text-text placeholder:text-placeholder">
+                                        <span class="pe-3 font-semibold text-text-muted" aria-hidden="true">₫</span>
+                                    </div>
+                                    @error('price') <x-bs-admin::field-error id="catalog-price-e" class="mt-1" x-init="priceOpen = true">{{ $message }}</x-bs-admin::field-error> @enderror
+                                    <p id="catalog-price-h" class="{{ $hint }}">{{ __('catalog.ed.price_hint') }}@if ($priceCard['shown'] !== null) {{ __('catalog.ed.price_seen') }} <b class="font-semibold text-text-strong">{{ $priceCard['shown'] }}</b>@endif</p>
+                                </div>
+                                <div x-show="more" x-cloak>
+                                    <label for="catalog-stock" class="{{ $label }} mb-1.5">{{ __('catalog.ed.stock_label') }}</label>
+                                    <input type="text" id="catalog-stock" wire:model.blur="stock" inputmode="numeric" autocomplete="off" placeholder="24"
+                                           aria-describedby="catalog-stock-h @error('stock') catalog-stock-e @enderror" @error('stock') aria-invalid="true" @enderror class="field block w-full rounded-md border border-border-input bg-surface-muted px-3 text-text placeholder:text-placeholder transition-colors focus:border-primary-text aria-invalid:border-danger-text">
+                                    @error('stock') <x-bs-admin::field-error id="catalog-stock-e" class="mt-1" x-init="priceOpen = true; setMore(true)">{{ $message }}</x-bs-admin::field-error> @enderror
+                                    <p id="catalog-stock-h" class="{{ $hint }}" x-data="{ words: {{ Js::from($stockWords) }} }"
+                                       x-text="words[(() => { const d = String($wire.stock ?? '').replace(/\D/g, ''); return d === '' ? 'none' : (Number(d) === 0 ? 'out' : 'in') })()]">{{ $stockWords[$stockKind($stock)] }}</p>
+                                </div>
+                            </div>
+                            <div x-show="more" x-cloak>
+                                <p class="{{ $label }} mb-2">{{ __('catalog.ed.sale_head') }}</p>
+                                <div class="grid gap-x-4 gap-y-3.5 @min-[32.5rem]:grid-cols-2">
+                                    <div>
+                                        <label for="catalog-sale" class="{{ $subLabel }}">{{ __('catalog.ed.sale_label') }}</label>
+                                        <div class="{{ $moneyBox }}">
+                                            <input type="text" id="catalog-sale" wire:model.blur="salePrice" inputmode="numeric" autocomplete="off" placeholder="1.090.000"
+                                                   @error('salePrice') aria-invalid="true" aria-describedby="catalog-sale-e" @enderror class="field min-w-0 flex-1 border-0 bg-transparent px-3 text-right tabular-nums text-text placeholder:text-placeholder">
+                                            <span class="pe-3 font-semibold text-text-muted" aria-hidden="true">₫</span>
+                                        </div>
+                                        @error('salePrice') <x-bs-admin::field-error id="catalog-sale-e" class="mt-1" x-init="priceOpen = true; setMore(true)">{{ $message }}</x-bs-admin::field-error> @enderror
+                                    </div>
+                                    <div aria-hidden="true"></div>
+                                    <div>
+                                        <label for="catalog-sale-from" class="{{ $subLabel }}">{{ __('catalog.ed.sale_from') }}</label>
+                                        <input type="datetime-local" id="catalog-sale-from" wire:model.blur="saleStartsAt" aria-describedby="catalog-sale-h @error('saleStartsAt') catalog-sale-from-e @enderror"
+                                               @error('saleStartsAt') aria-invalid="true" @enderror class="field block w-full rounded-md border border-border-input bg-surface-muted px-3 text-text placeholder:text-placeholder transition-colors focus:border-primary-text aria-invalid:border-danger-text">
+                                        @error('saleStartsAt') <x-bs-admin::field-error id="catalog-sale-from-e" class="mt-1" x-init="priceOpen = true; setMore(true)">{{ $message }}</x-bs-admin::field-error> @enderror
+                                    </div>
+                                    <div>
+                                        <label for="catalog-sale-to" class="{{ $subLabel }}">{{ __('catalog.ed.sale_to') }}</label>
+                                        <input type="datetime-local" id="catalog-sale-to" wire:model.blur="saleEndsAt" aria-describedby="catalog-sale-h @error('saleEndsAt') catalog-sale-to-e @enderror"
+                                               @error('saleEndsAt') aria-invalid="true" @enderror class="field block w-full rounded-md border border-border-input bg-surface-muted px-3 text-text placeholder:text-placeholder transition-colors focus:border-primary-text aria-invalid:border-danger-text">
+                                        @error('saleEndsAt') <x-bs-admin::field-error id="catalog-sale-to-e" class="mt-1" x-init="priceOpen = true; setMore(true)">{{ $message }}</x-bs-admin::field-error> @enderror
+                                    </div>
+                                </div>
+                                <p id="catalog-sale-h" class="{{ $hint }}">{{ $priceCard['sale'] }}</p>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -266,14 +346,27 @@
                 </section>
 
                 <section class="rounded-md border border-border bg-surface shadow-card" aria-labelledby="ped-h-sku" x-show="more" x-cloak>
-                    <div class="{{ $cardHead }}"><h2 id="ped-h-sku" class="{{ $cardTitle }}">{{ __('catalog.card_opt_sku') }}</h2></div>
-                    <div class="p-4">
-                        <label for="catalog-sku" class="{{ $label }} mb-1.5">{{ __('catalog.card_opt_sku') }}</label>
-                        <input type="text" id="catalog-sku" wire:model="sku" dir="ltr" autocomplete="off" spellcheck="false"
-                               aria-describedby="catalog-sku-h @error('sku') catalog-sku-e @enderror" @error('sku') aria-invalid="true" @enderror
-                               class="field block w-full rounded-md border border-border-input bg-surface-muted px-3 font-mono text-text placeholder:text-placeholder transition-colors focus:border-primary-text aria-invalid:border-danger-text">
-                        @error('sku') <p id="catalog-sku-e" class="{{ $error }}" x-init="setMore(true)">{{ $message }}</p> @enderror
-                        <p id="catalog-sku-h" class="{{ $hint }}">{{ __('catalog.ed.sku_hint') }}</p>
+                    <div class="{{ $cardHead }}"><h2 id="ped-h-sku" class="{{ $cardTitle }}">{{ __('catalog.ed.card_code_tags') }}</h2></div>
+                    <div class="flex flex-col gap-3 p-4">
+                        <div>
+                            <label for="catalog-sku" class="{{ $label }} mb-1.5">{{ __('catalog.card_opt_sku') }}</label>
+                            <input type="text" id="catalog-sku" wire:model.blur="sku" dir="ltr" autocomplete="off" spellcheck="false" placeholder="AV-DP-D10"
+                                   aria-describedby="catalog-sku-h @error('sku') catalog-sku-e @enderror" @error('sku') aria-invalid="true" @enderror
+                                   class="field block w-full rounded-md border border-border-input bg-surface-muted px-3 font-mono text-text placeholder:text-placeholder transition-colors focus:border-primary-text aria-invalid:border-danger-text">
+                            @error('sku') <x-bs-admin::field-error id="catalog-sku-e" class="mt-1" x-init="setMore(true)">{{ $message }}</x-bs-admin::field-error> @enderror
+                            <p id="catalog-sku-h" class="{{ $hint }}">{{ __('catalog.ed.sku_hint') }}</p>
+                        </div>
+                        {{-- the labels are form fields, saved with the rest (FlagProduct, the list's write) --}}
+                        @foreach (['featured' => ['catalog-flag-ft', 'catalog.ed.flag_featured', 'catalog.ed.flag_featured_on', $featured], 'bestseller' => ['catalog-flag-bs', 'catalog.ed.flag_best', 'catalog.ed.flag_best_on', $bestseller]] as $flag => [$flagId, $flagLabel, $flagOn, $flagIsOn])
+                            <div class="flex min-h-11 items-center gap-3">
+                                <span class="min-w-0 flex-1">
+                                    <span id="{{ $flagId }}" class="block font-semibold text-text-strong">{{ __($flagLabel) }}</span>
+                                    <span class="block text-small text-text-muted" x-text="$wire.{{ $flag }} ? @js(__($flagOn)) : @js(__('catalog.ed.flag_off'))">{{ $flagIsOn ? __($flagOn) : __('catalog.ed.flag_off') }}</span>
+                                </span>
+                                <button type="button" class="switch hit-area" role="switch" aria-labelledby="{{ $flagId }}" aria-checked="{{ $flagIsOn ? 'true' : 'false' }}"
+                                        x-bind:aria-checked="$wire.{{ $flag }} ? 'true' : 'false'" x-on:click="$wire.{{ $flag }} = ! $wire.{{ $flag }}"></button>
+                            </div>
+                        @endforeach
                     </div>
                 </section>
             </div>

@@ -441,12 +441,18 @@ describe('authorization', function (): void {
                 'moveImageUp' => $editor->call('moveImageUp', 0),
                 'moveImageDown' => $editor->call('moveImageDown', 0),
                 'categoryId' => $editor->set('categoryId', 1),
+                'price' => $editor->set('price', '1.250.000'),
+                'salePrice' => $editor->set('salePrice', '1.000.000'),
+                'saleStartsAt' => $editor->set('saleStartsAt', '2026-11-20T08:00'),
+                'saleEndsAt' => $editor->set('saleEndsAt', '2026-11-30T08:00'),
+                'stock' => $editor->set('stock', '24'),
+                'sku' => $editor->set('sku', 'DG-9'),
             };
 
             $answer->assertForbidden();
             expect($product->fresh()->translationFor('vi')?->name)->toBe('Đồ gá hàn');
         });
-    })->with(['save', 'publish', 'autosave', 'resetChanges', 'removeImage', 'moveImageUp', 'moveImageDown', 'categoryId']);
+    })->with(['save', 'publish', 'autosave', 'resetChanges', 'removeImage', 'moveImageUp', 'moveImageDown', 'categoryId', 'price', 'salePrice', 'saleStartsAt', 'saleEndsAt', 'stock', 'sku']);
 });
 
 describe('a product changed elsewhere while the editor is open', function (): void {
@@ -613,7 +619,8 @@ describe('query budget', function (): void {
         });
 
         $get = countQueries(fn () => $this->actingAs($user)->get("http://a.test/admin/catalog/{$ulid}/edit")->assertOk());
-        expect($get)->toBeLessThanOrEqual(24);
+        // the price card names the website's clock (its time zone, read once on opening)
+        expect($get)->toBeLessThanOrEqual(25);
 
         $auto = 0;
         app(Tenancy::class)->enter(1, function () use ($user, $ulid, &$auto): void {
