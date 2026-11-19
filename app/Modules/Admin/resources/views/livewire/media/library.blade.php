@@ -237,9 +237,19 @@
                 @endif
 
                 @if ($picked !== [] && $canPick)
-                    <x-bs-admin::list.bulk :label="__('media.lib.bulk_region')" :status="__('media.lib.picked', ['n' => $num(count($picked))])" clear="clearPicked" :clear-label="__('media.lib.unpick')">
+                    @php
+                        // «own» (board 12): the Trash button and Khôi phục act only on this person's files;
+                        // one line under them says why the rest stay
+                        $skipN = $mineN === null ? 0 : count($picked) - $mineN;
+                        $skipWhy = $skipN <= 0 ? null : ($trash
+                            ? __('media.lib.restore_skip', ['n' => $num($skipN)])
+                            : ($mineN > 0 ? __('media.lib.trash_skip_rest', ['n' => $num($skipN)]) : __('media.lib.trash_skip_all')));
+                    @endphp
+                    <x-bs-admin::list.bulk :label="__('media.lib.bulk_region')" :status="__('media.lib.picked', ['n' => $num(count($picked))])" clear="clearPicked" :clear-label="__('media.lib.unpick')" :skip="$canDelete ? $skipWhy : null">
                         @if ($trash)
-                            <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="restorePicked"><x-bs-admin::icon name="ri-arrow-go-back" class="size-4" />{{ __('media.lib.restore_n', ['n' => $num(count($picked))]) }}</x-bs-admin::button>
+                            @if ($mineN === null || $mineN > 0)
+                                <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="restorePicked"><x-bs-admin::icon name="ri-arrow-go-back" class="size-4" />{{ __('media.lib.restore_n', ['n' => $num($mineN ?? count($picked))]) }}</x-bs-admin::button>
+                            @endif
                             @if ($canPurge)
                                 <x-bs-admin::button size="sm" variant="soft" color="danger" wire:click="askPurge(false)"><x-bs-admin::icon name="ri-delete-bin-2" class="size-4" />{{ __('media.lib.purge_n', ['n' => $num(count($picked))]) }}</x-bs-admin::button>
                             @endif
@@ -247,8 +257,8 @@
                             @if ($canUpload)
                                 <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="openMove"><x-bs-admin::icon name="ri-folder-transfer" class="size-4" />{{ __('media.lib.move_n', ['n' => $num(count($picked))]) }}</x-bs-admin::button>
                             @endif
-                            @if ($canDelete)
-                                <x-bs-admin::button size="sm" variant="soft" color="danger" wire:click="trashPicked"><x-bs-admin::icon name="ri-delete-bin" class="size-4" />{{ __('media.lib.trash_n', ['n' => $num(count($picked))]) }}</x-bs-admin::button>
+                            @if ($canDelete && ($mineN === null || $mineN > 0))
+                                <x-bs-admin::button size="sm" variant="soft" color="danger" wire:click="trashPicked"><x-bs-admin::icon name="ri-delete-bin" class="size-4" />{{ $mineN === null ? __('media.lib.trash_n', ['n' => $num(count($picked))]) : __('media.lib.trash_mine_n', ['n' => $num($mineN)]) }}</x-bs-admin::button>
                             @endif
                         @endif
                     </x-bs-admin::list.bulk>
@@ -511,7 +521,17 @@
         </x-bs-admin::modal>
     @endif
 
-    @if ($canDelete)
+    @if ($canDelete && $trashKept > 0)
+        {{-- «own»: some chosen files stay (someone else's, or in use); the rest go --}}
+        @php
+            $goN = $trashGo;
+        @endphp
+        <x-bs-admin::confirm-dialog model="askTrashOpen" :title="__('media.lib.ask_trash_mine_title', ['n' => $num($goN)])" icon="ri-error-warning"
+            :ok="__('media.lib.ask_trash_mine_ok', ['n' => $num($goN)])" confirm="confirmTrash" cancel="cancelTrash">
+            <x-bs-admin::confirm-line icon="ri-user-3">{{ __('media.lib.ask_trash_kept', ['n' => $num($trashKept)]) }}</x-bs-admin::confirm-line>
+            <x-bs-admin::confirm-line icon="ri-arrow-go-back">{{ __('media.lib.ask_trash_l2', ['days' => $retention]) }}</x-bs-admin::confirm-line>
+        </x-bs-admin::confirm-dialog>
+    @elseif ($canDelete)
         <x-bs-admin::confirm-dialog model="askTrashOpen" :title="__('media.lib.ask_trash_title', ['n' => $num(count($picked))])" icon="ri-error-warning"
             :ok="__('media.lib.ask_trash_ok')" confirm="confirmTrash" cancel="cancelTrash">
             <x-bs-admin::confirm-line icon="ri-links">{{ __('media.lib.ask_trash_l1') }}</x-bs-admin::confirm-line>

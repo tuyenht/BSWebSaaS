@@ -17,7 +17,8 @@
     $typical = ['settings.manage', 'users.manage', 'entries.publish', 'entries.approve', 'entries.edit.any', 'catalog.manage', 'entries.review', 'entries.create', 'entries.edit.own', 'media.upload', 'forms.manage', 'entries.submit', 'entries.view', 'media.view', 'forms.view', 'catalog.view'];
     $permLabel = fn (string $p): string => __('admin.members.perm.'.$p);
     $describe = function ($role) use ($typical, $permLabel): string {
-        $perms = $role->permissions->pluck('name')->all();
+        // only the permissions the catalog still has (a retired one kept for a rollback is not counted)
+        $perms = array_values(array_intersect($role->permissions->pluck('name')->all(), PermissionRegistry::TENANT_PERMISSIONS));
         if (count(array_intersect(PermissionRegistry::TENANT_PERMISSIONS, $perms)) >= count(PermissionRegistry::TENANT_PERMISSIONS)) {
             return __('admin.members.does_all');
         }

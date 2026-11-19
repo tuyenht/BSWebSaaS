@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Livewire\Media;
 
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
+use App\Modules\Admin\Support\MediaDeleteRights;
 use App\Modules\Admin\Support\MediaLibraryDirectory;
 use App\Modules\Admin\Support\MediaUsageLocator;
 use App\Modules\Identity\Models\User;
@@ -33,7 +34,8 @@ use Throwable;
  * Read is gated by media.view (re-checked in boot(): the livewire/update endpoint bypasses route
  * middleware); every action re-checks its own right: making, renaming, reordering or deleting a
  * folder needs media.folders and deleting for good needs media.purge (both the website admin's),
- * moving files into a folder stays with media.upload and the Trash with media.delete. The upload
+ * moving files into a folder stays with media.upload and the Trash with media.delete.own / .any
+ * (MediaDeleteRights: «own» = only this person's own uploads that nobody uses). The upload
  * panes and the detail panel are the shared picker's (WithMediaLibraryPicker in manage mode).
  */
 #[Layout('admin::layouts.app')]
@@ -44,7 +46,7 @@ final class Library extends Component
     /** '' = all files, '-' = files in no folder, else a folder slug. */
     public string $folder = '';
 
-    /** 'live' or 'trash' (the Trash needs media.delete, checked wherever it is read). */
+    /** 'live' or 'trash' (the Trash needs a delete right, checked wherever it is read). */
     public string $status = 'live';
 
     public string $search = '';
@@ -91,6 +93,14 @@ final class Library extends Component
     public string $moveTo = '';
 
     public bool $askTrashOpen = false;
+
+    /** How many chosen files stay out of that Trash move (someone else's, or in use): the question's wording. */
+    #[Locked]
+    public int $trashKept = 0;
+
+    /** With media.delete.own: how many of the chosen files the asked question sends (its title and OK). */
+    #[Locked]
+    public int $trashGo = 0;
 
     public bool $askPurgeOpen = false;
 
@@ -179,7 +189,7 @@ final class Library extends Component
 
     public function setFolder(string $key): void
     {
-        $toTrash = $key === '~trash' && Gate::allows('media.delete');
+        $toTrash = $key === '~trash' && MediaDeleteRights::some();
         $this->folder = $toTrash ? '' : $key;
         $this->status = $toTrash ? 'trash' : 'live';
         $this->clean();
@@ -784,14 +794,31 @@ final class Library extends Component
         $this->say(__('media.lib.moved', ['n' => $n, 'folder' => $target !== null ? $target->name : __('media.lib.unfiled')]));
     }
 
-    /** "Chuyển vào Thùng rác": asks first only when a chosen file is used somewhere. */
+    /**
+     * "Chuyển vào Thùng rác": asks first when a chosen file is used somewhere, or (with
+     * media.delete.own) when some chosen files stay because they are someone else's or in use.
+     */
     public function trashPicked(): void
     {
-        abort_unless(Gate::allows('media.delete'), 403);
+        abort_unless(MediaDeleteRights::some(), 403);
 
-        $query = Media::query()->whereIn('ulid', $this->picked);
-        app(MediaUsageLocator::class)->constrain($query, true);
-        if ($query->exists()) {
+        $chosen = Media::query()->whereIn('ulid', $this->picked)->count();
+        $mine = app(MediaDeleteRights::class)->trashable(Media::query()->whereIn('ulid', $this->picked))->count();
+        if ($mine === 0) {
+            if (MediaDeleteRights::any()) {
+                $this->picked = []; // the chosen files are gone meanwhile: nothing left to send
+
+                return;
+            }
+            $this->say(__('media.lib.trash_none_mine'), 'error');
+
+            return;
+        }
+        $this->trashKept = $chosen - $mine;
+        $this->trashGo = $mine;
+        $used = Media::query()->whereIn('ulid', $this->picked);
+        app(MediaUsageLocator::class)->constrain($used, true);
+        if ($this->trashKept > 0 || $used->exists()) {
             $this->askTrashOpen = true;
 
             return;
@@ -801,12 +828,15 @@ final class Library extends Component
 
     public function confirmTrash(): void
     {
-        abort_unless(Gate::allows('media.delete'), 403);
+        abort_unless(MediaDeleteRights::some(), 403);
 
-        $rows = Media::query()->whereIn('ulid', $this->picked)->get();
+        // only what this person may send: someone else's file (or one in use, for «own») stays
+        $rows = app(MediaDeleteRights::class)->trashable(Media::query()->whereIn('ulid', $this->picked))->get();
         $rows->each->delete(); // one by one, so the observers fire
         $this->picked = [];
         $this->askTrashOpen = false;
+        $this->trashKept = 0;
+        $this->trashGo = 0;
         $this->say(__('media.lib.trashed', ['n' => $rows->count()]));
         $this->undoTrash = Cast::strings($rows->pluck('ulid')->all()); // after say(): this toast's Hoàn tác
     }
@@ -814,28 +844,31 @@ final class Library extends Component
     public function cancelTrash(): void
     {
         $this->askTrashOpen = false;
+        $this->trashKept = 0;
+        $this->trashGo = 0;
     }
 
     /** "Hoàn tác" on the toast after a move to Trash. */
     public function undo(): void
     {
-        abort_unless(Gate::allows('media.delete'), 403);
+        abort_unless(MediaDeleteRights::some(), 403);
 
-        $n = Media::onlyTrashed()->whereIn('ulid', $this->undoTrash)->get()->each->restore()->count();
+        $n = MediaDeleteRights::restorable(Media::onlyTrashed()->whereIn('ulid', $this->undoTrash))->get()->each->restore()->count();
         $this->undoTrash = [];
         $this->say(__('media.lib.restored', ['n' => $n]));
     }
 
     public function restorePicked(): void
     {
-        abort_unless(Gate::allows('media.delete'), 403);
+        abort_unless(MediaDeleteRights::some(), 403);
 
-        $n = Media::onlyTrashed()->whereIn('ulid', $this->picked)->get()->each->restore()->count();
+        // with media.delete.own only what this person put in the Trash comes back out
+        $n = MediaDeleteRights::restorable(Media::onlyTrashed()->whereIn('ulid', $this->picked))->get()->each->restore()->count();
         $this->picked = [];
         $this->say(__('media.lib.restored', ['n' => $n]));
     }
 
-    /** Deleting for good is the website admin's right (media.purge); restore stays with media.delete. */
+    /** Deleting for good is the website admin's right (media.purge); restore stays with the delete rights. */
     public function askPurge(bool $all = false): void
     {
         abort_unless(Gate::allows('media.purge'), 403);
@@ -946,7 +979,8 @@ final class Library extends Component
     public function render(): View
     {
         $this->clean();
-        $canDelete = Gate::allows('media.delete');
+        $canDelete = MediaDeleteRights::some();
+        $canDeleteAny = MediaDeleteRights::any();
         $canPurge = Gate::allows('media.purge');
         $trash = $this->status === 'trash' && $canDelete;
         $directory = app(MediaLibraryDirectory::class);
@@ -957,16 +991,30 @@ final class Library extends Component
         $page = ['rows' => new Collection, 'older' => null, 'newer' => null, 'lost' => false];
         $totals = ['n' => 0, 'bytes' => 0];
         $current = null;
+        $mineN = null;
         try {
             // a savepoint inside the request's tenancy transaction: a failed read leaves it usable
-            DB::transaction(function () use ($directory, $canDelete, $trash, &$folders, &$counts, &$page, &$totals, &$current): void {
+            DB::transaction(function () use ($directory, $canDelete, $canDeleteAny, $trash, &$folders, &$counts, &$page, &$totals, &$current, &$mineN): void {
                 $folders = MediaFolder::inTreeOrder(MediaFolder::query()->orderBy('position')->orderBy('name')->orderBy('id')
                     ->get(['id', 'name', 'slug', 'parent_id', 'position']));
                 $current = $this->currentFolder($folders);
                 $counts = $directory->counts($canDelete);
+                if ($canDelete && ! $canDeleteAny) {
+                    // «own»: the Trash holds only this person's own files
+                    $counts['trash'] = MediaDeleteRights::visibleTrash(Media::onlyTrashed())->count();
+                }
                 $query = $directory->filtered($this->filters($current, $folders, $trash));
+                if ($trash) {
+                    MediaDeleteRights::visibleTrash($query);
+                }
                 $page = $directory->page($query, $this->sort, $this->per, $this->after, $this->before);
                 $totals = $directory->totals($query);
+                if ($canDelete && ! $canDeleteAny && $this->picked !== []) {
+                    // «own», with files chosen: how many of them the Trash button / Khôi phục acts on
+                    $mineN = $trash
+                        ? MediaDeleteRights::restorable(Media::onlyTrashed()->whereIn('ulid', $this->picked))->count()
+                        : app(MediaDeleteRights::class)->trashable(Media::query()->whereIn('ulid', $this->picked))->count();
+                }
             });
         } catch (QueryException $e) {
             report($e);
@@ -1014,6 +1062,9 @@ final class Library extends Component
             'trash' => $trash,
             'canUpload' => Gate::allows('media.upload'),
             'canDelete' => $canDelete,
+            'canDeleteAny' => $canDeleteAny,
+            // «own», with files chosen: how many of them the Trash button / Khôi phục acts on
+            'mineN' => $mineN,
             'canFolders' => Gate::allows('media.folders'),
             'canPurge' => $canPurge,
             'urls' => app(MediaUrlResolver::class),
@@ -1249,15 +1300,15 @@ final class Library extends Component
 
     private function canPick(): bool
     {
-        return $this->status === 'trash' ? Gate::allows('media.delete') : (Gate::allows('media.upload') || Gate::allows('media.delete'));
+        return $this->status === 'trash' ? MediaDeleteRights::some() : (Gate::allows('media.upload') || MediaDeleteRights::some());
     }
 
     /** @return Builder<Media> the files of the place in view, without conditions */
     private function placeQuery(): Builder
     {
-        $trash = $this->status === 'trash' && Gate::allows('media.delete');
+        $trash = $this->status === 'trash' && MediaDeleteRights::some();
 
-        return $trash ? Media::onlyTrashed() : Media::query();
+        return $trash ? MediaDeleteRights::visibleTrash(Media::onlyTrashed()) : Media::query();
     }
 
     /** @param  Collection<int, MediaFolder>  $folders */
@@ -1307,7 +1358,7 @@ final class Library extends Component
         if (! in_array($this->per, MediaLibraryDirectory::PER_PAGE, true)) {
             $this->per = 24;
         }
-        if ($this->status !== 'trash' || ! Gate::allows('media.delete')) {
+        if ($this->status !== 'trash' || ! MediaDeleteRights::some()) {
             $this->status = 'live';
         }
         if (mb_strlen($this->search) > MediaLibraryDirectory::SEARCH_MAX) {

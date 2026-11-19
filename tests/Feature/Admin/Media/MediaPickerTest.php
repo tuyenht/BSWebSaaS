@@ -206,8 +206,8 @@ it('never selects, filters into, or moves into another site\'s data', function (
     });
 });
 
-it('bulk delete soft-deletes the selection behind media.delete', function (): void {
-    $user = pickerManager(['media.delete']);
+it('bulk delete soft-deletes the selection behind media.delete.any', function (): void {
+    $user = pickerManager(['media.delete.any']);
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
         $a = seedPickerMedia('d1');
@@ -225,7 +225,7 @@ it('bulk delete soft-deletes the selection behind media.delete', function (): vo
     });
 });
 
-it('403s bulk delete without media.delete and folder create without media.folders', function (): void {
+it('403s bulk delete without a delete right and folder create without media.folders', function (): void {
     $user = pickerManager(); // media.view only
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
@@ -638,7 +638,7 @@ it('never opens the detail of another site\'s image', function (): void {
 });
 
 it('shows only trashed media in the trash view and keeps live media out', function (): void {
-    $user = pickerManager(['media.delete']);
+    $user = pickerManager(['media.delete.any']);
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
         $live = seedPickerMedia('live', ['original_filename' => 'con-song.jpg']);
@@ -661,7 +661,7 @@ it('shows only trashed media in the trash view and keeps live media out', functi
 });
 
 it('restores a trashed image to its original folder', function (): void {
-    $user = pickerManager(['media.delete']);
+    $user = pickerManager(['media.delete.any']);
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
         $folder = MediaFolder::query()->create(['name' => 'Sản phẩm', 'slug' => 'san-pham']);
@@ -682,7 +682,7 @@ it('restores a trashed image to its original folder', function (): void {
 });
 
 it('permanently deletes a trashed image + its R2 object (purge fires the observer)', function (): void {
-    $user = pickerManager(['media.delete', 'media.purge']);
+    $user = pickerManager(['media.delete.any', 'media.purge']);
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
         Storage::fake('r2');
@@ -702,7 +702,7 @@ it('permanently deletes a trashed image + its R2 object (purge fires the observe
 });
 
 it('empties the whole trash but never touches live media', function (): void {
-    $user = pickerManager(['media.delete', 'media.purge']);
+    $user = pickerManager(['media.delete.any', 'media.purge']);
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
         Storage::fake('r2');
@@ -721,8 +721,8 @@ it('empties the whole trash but never touches live media', function (): void {
     });
 });
 
-it('lets media.delete restore from the picker Trash but keeps deleting for good to media.purge', function (): void {
-    $user = pickerManager(['media.delete']); // the editor's media rights: no media.purge
+it('lets media.delete.any restore from the picker Trash but keeps deleting for good to media.purge', function (): void {
+    $user = pickerManager(['media.delete.any']); // the editor's media rights: no media.purge
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
         Storage::fake('r2');
@@ -751,7 +751,7 @@ it('lets media.delete restore from the picker Trash but keeps deleting for good 
 });
 
 it('shows the delete-for-good controls in the picker Trash to media.purge', function (): void {
-    $user = pickerManager(['media.delete', 'media.purge']);
+    $user = pickerManager(['media.delete.any', 'media.purge']);
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
         $m = seedPickerMedia('bin');
@@ -788,8 +788,9 @@ it('gives each shipped role exactly its picker media actions, control and server
 
     app(Tenancy::class)->enter(1, function () use ($user, $role, $action, $allowed): void {
         Storage::fake('r2');
-        // The author holds no media.delete, so the Trash view itself stays shut to them (pinned below).
-        $inTrash = $role !== 'author';
+        // The author may delete only what they uploaded, so here the files are theirs (someone
+        // else's are pinned below and in LibraryDeleteOwnAnyTest).
+        $mine = $role === 'author' ? ['created_by' => $user->id] : [];
         $picker = fn () => Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery');
         $see = $allowed ? 'assertSeeHtml' : 'assertDontSeeHtml';
 
@@ -803,7 +804,7 @@ it('gives each shipped role exactly its picker media actions, control and server
         }
 
         if ($action === 'trash') {
-            $m = seedPickerMedia('live');
+            $m = seedPickerMedia('live', $mine);
             $component = $picker()->call('togglePickerItem', $m->id)
                 ->{$see}('$wire.pickerBulkDelete()')
                 ->call('pickerBulkDelete');
@@ -813,17 +814,12 @@ it('gives each shipped role exactly its picker media actions, control and server
             return;
         }
 
-        $a = seedPickerMedia('bin-a');
-        $b = seedPickerMedia('bin-b');
+        $a = seedPickerMedia('bin-a', $mine);
+        $b = seedPickerMedia('bin-b', $mine);
         $a->delete();
         $b->delete();
 
-        $component = $picker();
-        if ($inTrash) {
-            $component->call('openPickerTrash')->assertSet('pickerTrash', true)->call('togglePickerItem', $a->id);
-        } else {
-            $component->assertDontSeeHtml('wire:click="openPickerTrash"')->set('pickerSelected', [$a->id]);
-        }
+        $component = $picker()->call('openPickerTrash')->assertSet('pickerTrash', true)->call('togglePickerItem', $a->id);
 
         [$control, $method] = match ($action) {
             'restore' => ['wire:click="restorePickerSelection"', 'restorePickerSelection'],
@@ -843,8 +839,8 @@ it('gives each shipped role exactly its picker media actions, control and server
     });
 })->with([
     'author · folders' => ['author', 'folders', false],
-    'author · trash' => ['author', 'trash', false],
-    'author · restore' => ['author', 'restore', false],
+    'author · trash' => ['author', 'trash', true],
+    'author · restore' => ['author', 'restore', true],
     'author · purge' => ['author', 'purge', false],
     'author · empty trash' => ['author', 'empty trash', false],
     'editor · folders' => ['editor', 'folders', false],
@@ -864,20 +860,23 @@ it('gives each shipped role exactly its picker media actions, control and server
     'owner · empty trash' => ['owner', 'empty trash', true],
 ]);
 
-it('keeps the picker Trash shut to the author: no Trash entry and opening it is refused', function (): void {
+it('shows the author only their own files in the picker Trash, and someone else\'s stays trashed', function (): void {
     $user = pickerTemplateUser('author');
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
-        seedPickerMedia('bin')->delete();
+        $theirs = seedPickerMedia('bin');
+        $theirs->delete();
 
         Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery')
-            ->assertDontSeeHtml('wire:click="openPickerTrash"')
-            ->call('openPickerTrash')->assertStatus(403);
+            ->assertSeeHtml('wire:click="openPickerTrash"')
+            ->call('openPickerTrash')->assertSet('pickerTrash', true)
+            ->assertDontSee('anh-bin.jpg')
+            ->set('pickerSelected', [$theirs->id])->call('restorePickerSelection');
         expect(Media::onlyTrashed()->count())->toBe(1);
     });
 });
 
-it('403s restore/purge/empty without media.delete', function (): void {
+it('403s restore/purge/empty without a delete right', function (): void {
     $user = pickerManager(); // media.view only
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
@@ -893,7 +892,7 @@ it('403s restore/purge/empty without media.delete', function (): void {
     });
 });
 
-it('403s opening the trash view without media.delete and lists nothing trashed', function (): void {
+it('403s opening the trash view without a delete right and lists nothing trashed', function (): void {
     $user = pickerManager(['media.upload']); // may view + upload, may not delete
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
@@ -924,7 +923,7 @@ it('refuses a client write that switches on the trash view (locked property)', f
     });
 });
 
-it('refuses the trash list itself when the trash flag is on without media.delete (defence in depth)', function (): void {
+it('refuses the trash list itself when the trash flag is on without a delete right (defence in depth)', function (): void {
     $user = pickerManager(); // media.view only
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
@@ -938,7 +937,7 @@ it('refuses the trash list itself when the trash flag is on without media.delete
     });
 });
 
-it('refuses selecting a trashed file when the trash flag is on without media.delete', function (): void {
+it('refuses selecting a trashed file when the trash flag is on without a delete right', function (): void {
     $user = pickerManager(); // media.view only
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
@@ -953,7 +952,7 @@ it('refuses selecting a trashed file when the trash flag is on without media.del
     });
 });
 
-it('refuses a pasted-URL copy that would take a trashed file out of the Trash without media.delete', function (): void {
+it('refuses a pasted-URL copy that would take a trashed file out of the Trash without a delete right', function (): void {
     $user = pickerManager(['media.upload']);
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
@@ -1001,8 +1000,8 @@ it('drops a refused URL preview so a second insert does not hit the deleted stag
     });
 });
 
-it('restores a trashed file from a pasted-URL copy for someone holding media.delete', function (): void {
-    $user = pickerManager(['media.upload', 'media.delete']);
+it('restores a trashed file from a pasted-URL copy for someone holding media.delete.any', function (): void {
+    $user = pickerManager(['media.upload', 'media.delete.any']);
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
         Storage::fake('r2');
