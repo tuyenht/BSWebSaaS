@@ -28,6 +28,7 @@ use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Media\Models\Media;
+use App\Modules\Provisioning\Support\FirstOwner;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Storefront\Support\ThankYouPages;
 use App\Modules\Tenancy\Context\PermalinkConfig;
@@ -63,6 +64,7 @@ final class Applier
         private readonly PermalinkConfig $permalinks,
         private readonly SectionResolver $sections,
         private readonly BlockMediaUsage $blockUsage,
+        private readonly FirstOwner $owner,
     ) {}
 
     /** Returns how many items were written. */
@@ -264,6 +266,7 @@ final class Applier
         if ($planned->recordId === null) {
             $entry = Entry::query()->create([
                 'type' => $planned->item->kind,
+                'author_id' => $this->owner->id(),   // a pack item has no typist: the website's first owner
                 'status' => $status,
                 'published_at' => $this->publishedAt($planned->item, $status),
                 'meta' => $isPost ? $this->postMeta([], $desired) : [],

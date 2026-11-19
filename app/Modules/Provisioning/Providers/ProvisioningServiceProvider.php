@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Provisioning\Providers;
 
 use App\Modules\Provisioning\Console\FillBrandImagesFromBrandCommand;
+use App\Modules\Provisioning\Console\FillEntryAuthorsCommand;
 use App\Modules\Provisioning\Console\ImportAdminUnitsCommand;
 use App\Modules\Provisioning\Console\LinkContactPageCommand;
 use App\Modules\Provisioning\Console\LoadContentPackCommand;
@@ -41,6 +42,7 @@ final class ProvisioningServiceProvider extends ServiceProvider
                 SyncProductRoutesCommand::class,
                 SiteLocaleCommand::class,
                 LinkContactPageCommand::class,
+                FillEntryAuthorsCommand::class,
                 SiteFeatureCommand::class,
                 PlatformPlanCommand::class,
                 SiteDomainCommand::class,

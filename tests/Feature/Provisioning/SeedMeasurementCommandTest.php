@@ -7,6 +7,7 @@ use App\Modules\Cms\Models\MenuItemTranslation;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Media\Models\Media;
 use App\Modules\Provisioning\Actions\SeedMeasurementSite;
+use App\Modules\Provisioning\Support\FirstOwner;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Tests\Fixtures\StorefrontCards;
@@ -120,4 +121,18 @@ it('refuses a host outside the platform base domains, an unknown site and produc
     $this->artisan('site:seed-measurement', ['--host' => 'cwv.platform.test'])->assertFailed();
 
     expect(measurementCounts($siteId))->toBe($before);
+});
+
+it('names the website\'s owner as the creator of every page and post it seeds', function (): void {
+    $siteId = StorefrontCards::site('Đo tốc độ', 'cwv.platform.test');
+
+    $this->artisan('site:seed-measurement', ['--host' => 'cwv.platform.test'])->assertSuccessful();
+
+    app(Tenancy::class)->enter($siteId, function (): void {
+        $owner = app(FirstOwner::class)->id();
+
+        expect($owner)->not->toBeNull()
+            ->and(Entry::query()->count())->toBeGreaterThan(2)
+            ->and(Entry::query()->where(fn ($q) => $q->whereNull('author_id')->orWhere('author_id', '!=', $owner))->count())->toBe(0);
+    });
 });
