@@ -32,7 +32,8 @@ use Throwable;
  *   path that missed it) into a failed save for the person; `cms:reconcile-category-counts`
  *   corrects the drift every night and logs it.
  * - batch() gathers the changes of a bulk action and writes ONE update per category at its end;
- *   a nested batch around each row drops the changes of a row that rolled back.
+ *   a nested batch around each row drops the changes of a row that rolled back. It holds back the
+ *   categories' public totals (CategoryPublicCounts) the same way, written after these.
  *
  * Holds the open batches of one request or job: bound scoped, so nothing outlives an Octane
  * operation.
@@ -45,6 +46,7 @@ final class CategoryItemCounts
     public function __construct(
         private readonly CategoryDependents $dependents,
         private readonly CurrentSite $site,
+        private readonly CategoryPublicCounts $public,
     ) {}
 
     /** An item that counts moved from one main category to another (null: none). */
@@ -104,18 +106,22 @@ final class CategoryItemCounts
      */
     public function batch(Closure $work): mixed
     {
-        $this->batches[] = [];
-        try {
-            $result = $work();
-        } catch (Throwable $e) {
-            array_pop($this->batches);
+        // The public totals' batch is the outer one: written after these, so every writer updates
+        // `taxonomies` before `taxonomy_translations`.
+        return $this->public->batch(function () use ($work): mixed {
+            $this->batches[] = [];
+            try {
+                $result = $work();
+            } catch (Throwable $e) {
+                array_pop($this->batches);
 
-            throw $e;
-        }
+                throw $e;
+            }
 
-        $this->adjust(array_pop($this->batches) ?? []);
+            $this->adjust(array_pop($this->batches) ?? []);
 
-        return $result;
+            return $result;
+        });
     }
 
     /**

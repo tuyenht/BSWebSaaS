@@ -8,6 +8,7 @@ use App\Modules\Audit\Facades\Audit;
 use App\Modules\Cms\Actions\Taxonomies\Concerns\EditsTaxonomyTree;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Exceptions\TaxonomyChangeRejectedException;
+use App\Modules\Cms\Jobs\RecountCategoryPublicCounts;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\CategoryChange;
 use App\Modules\Cms\Routing\CategoryRelinker;
@@ -111,6 +112,16 @@ final readonly class MoveTaxonomy
             if ($reparented) {
                 $this->renumber($oldParent, $this->siblings($taxonomy->vocabulary, $oldParent));
                 $this->paths->refreshBranch($taxonomy->id);
+                // The branch's items now count toward other categories above it: the public tree
+                // totals of the ancestors the old and new chains do not share are counted again, off
+                // the request once this commits (a top category's total is its whole branch).
+                $oldChain = $oldParent === null ? [] : [...TaxonomyTree::ancestorsOf($oldParent), $oldParent];
+                $newChain = $newParent === null ? [] : [...TaxonomyTree::ancestorsOf($newParent), $newParent];
+                $changed = array_values(array_unique([...array_diff($oldChain, $newChain), ...array_diff($newChain, $oldChain)]));
+                if ($changed !== []) {
+                    sort($changed);
+                    RecountCategoryPublicCounts::dispatch($this->site->id(), $changed);
+                }
                 // Which section a post belongs to follows its category's ancestors: forget the old answer.
                 $this->sections->flush();
 

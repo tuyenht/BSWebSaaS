@@ -14,6 +14,7 @@ use App\Modules\Storefront\Http\Controllers\SearchSuggestController;
 use App\Modules\Storefront\Search\SearchSuggestions;
 use App\Modules\Storefront\Search\SiteSearch;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Theming\StorefrontSettings;
 use Carbon\CarbonImmutable;
@@ -62,9 +63,9 @@ function sgProduct(string $name, ?string $sku = null, array $attributes = [], ?C
 }
 
 /** A category of the current site with its address (its page). */
-function sgCategory(string $name, string $vocabulary = 'post_cat', ?string $listTemplate = null, bool $route = true): Taxonomy
+function sgCategory(string $name, string $vocabulary = 'post_cat', ?string $listTemplate = null, bool $route = true, ?Taxonomy $parent = null): Taxonomy
 {
-    $category = Taxonomy::query()->create(['vocabulary' => $vocabulary, 'parent_id' => null, 'position' => 0, 'list_template' => $listTemplate]);
+    $category = Taxonomy::query()->create(['vocabulary' => $vocabulary, 'parent_id' => $parent?->id, 'position' => 0, 'list_template' => $listTemplate]);
     $slug = Str::slug($name).'-'.$category->id;
     $category->translations()->create(['locale' => 'vi', 'name' => $name, 'slug' => $slug]);
     app(TaxonomyPaths::class)->refreshBranch($category->id);
@@ -524,4 +525,78 @@ it('says the count is a floor when the words are too common and the newest items
 
     expect($json['total'])->toBe(1)
         ->and($json['total_more'])->toBeTrue();
+});
+
+/** How many of these titles the page at $url lists. */
+function sgListed(string $url, string ...$titles): int
+{
+    $html = (string) test()->get($url)->assertOk()->getContent();
+
+    return count(array_filter($titles, fn (string $title): bool => str_contains($html, $title)));
+}
+
+it('tells how many posts the category page lists, by its real layout, and no number when it lists none', function (): void {
+    [$titles, $cards, $follow] = app(Tenancy::class)->enter(1, function (): array {
+        $titles = sgCategory('Khuôn mẫu');                                       // default layout: its own posts
+        $child = sgCategory('Khuôn ép', parent: $titles);
+        $cards = sgCategory('Dự án', listTemplate: 'grid-project');             // cards: its whole branch
+        $follow = sgCategory('Hạng mục', listTemplate: '@parent', parent: $cards);   // follows its parent's cards
+        sgCategory('Tuyển dụng');                                                // nothing public
+        sgPost('Bai mot khuon', [$titles->id]);
+        sgPost('Bai hai khuon', [$titles->id]);
+        sgPost('Bai con khuon', [$child->id]);
+        sgPost('Bai nhap khuon', [$titles->id], ['status' => 'draft']);
+        sgPost('Du an mot', [$cards->id]);
+        sgPost('Du an hai', [$follow->id]);
+
+        return [$titles, $cards, $follow];
+    });
+
+    expect(sgGet('a.test', 'khuon mau')['items'][0]['meta'])->toBe('Bài viết · 2 mục')
+        ->and(sgListed("http://a.test/khuon-mau-{$titles->id}", 'Bai mot khuon', 'Bai hai khuon', 'Bai con khuon', 'Bai nhap khuon'))->toBe(2)
+        ->and(sgGet('a.test', 'du an')['items'][0]['meta'])->toBe('Bài viết · 2 mục')
+        ->and(sgListed("http://a.test/du-an-{$cards->id}", 'Du an mot', 'Du an hai'))->toBe(2)
+        ->and(sgGet('a.test', 'hang muc')['items'][0]['meta'])->toBe('Bài viết · 1 mục')
+        ->and(sgListed("http://a.test/hang-muc-{$follow->id}", 'Du an mot', 'Du an hai'))->toBe(1)
+        ->and(sgGet('a.test', 'tuyen dung')['items'][0]['meta'])->toBe('Bài viết');
+});
+
+it('counts in the page\'s language', function (): void {
+    DB::connection('pgsql_admin')->table('site_locales')->insert(['site_id' => 1, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'is_public' => true, 'created_at' => now(), 'updated_at' => now()]);
+    $cards = app(Tenancy::class)->enter(1, function (): Taxonomy {
+        $cards = sgCategory('Dự án', listTemplate: 'grid-project');
+        $cards->translations()->create(['locale' => 'en', 'name' => 'Projects', 'slug' => 'projects']);
+        SiteRoute::query()->create(['locale' => 'en', 'path' => '/projects', 'taxonomy_id' => $cards->id]);
+        sgPost('Du an mot', [$cards->id]);
+        sgPost('Project one', [$cards->id], locale: 'en');
+        sgPost('Project two', [$cards->id], locale: 'en');
+
+        return $cards;
+    });
+
+    expect(sgGet('a.test', 'projects', '/en')['items'][0]['meta'])->toBe('Posts · 2 items')
+        ->and(sgListed('http://a.test/en/projects', 'Du an mot', 'Project one', 'Project two'))->toBe(2)
+        ->and(sgGet('a.test', 'du an')['items'][0]['meta'])->toBe('Bài viết · 1 mục')
+        ->and(sgListed("http://a.test/du-an-{$cards->id}", 'Du an mot', 'Project one', 'Project two'))->toBe(1);
+});
+
+it('counts the products a product category lists, and every product on the catalog root, with the number in the site\'s format', function (): void {
+    [$root, $child] = app(Tenancy::class)->enter(1, function (): array {
+        $root = sgCategory('Sản phẩm', 'product_cat');
+        $child = sgCategory('Đồ gá', 'product_cat', parent: $root);
+        ContentSection::query()->create(['key' => 'products', 'label' => 'Sản phẩm', 'taxonomy_id' => $root->id]);
+        sgProduct('Do ga mot')->assignCategories([$child->id]);
+        sgProduct('San pham le');
+
+        return [$root, $child];
+    });
+
+    expect(sgGet('a.test', 'do ga')['items'][0]['meta'])->toBe('Sản phẩm · 1 mục')
+        ->and(sgListed("http://a.test/do-ga-{$child->id}", 'Do ga mot', 'San pham le'))->toBe(1)
+        ->and(sgGet('a.test', 'san pham')['items'][0]['meta'])->toBe('Sản phẩm · 2 mục')
+        ->and(sgListed("http://a.test/san-pham-{$root->id}", 'Do ga mot', 'San pham le'))->toBe(2);
+
+    // Past a thousand, the Vietnamese way («1.234»), straight from the stored total.
+    app(Tenancy::class)->enter(1, fn () => DB::table('taxonomy_translations')->where('taxonomy_id', $child->id)->update(['public_own_count' => 1234]));
+    expect(sgGet('a.test', 'do ga')['items'][0]['meta'])->toBe('Sản phẩm · 1.234 mục');
 });

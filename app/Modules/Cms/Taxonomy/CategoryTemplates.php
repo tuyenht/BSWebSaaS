@@ -52,22 +52,50 @@ final class CategoryTemplates
         return $category;
     }
 
+    /**
+     * The list layout of a category read with the list layouts stored above it (nearest first, at
+     * most TaxonomyRules::MAX_DEPTH of them): the same answer as list(), for a reader that took the
+     * chain in its own statement (the search suggestion). No query.
+     *
+     * @param  list<string|null>  $above
+     */
+    public function listFromChain(string $vocabulary, ?string $stored, array $above): ?string
+    {
+        return self::pick(TemplateCatalog::kindOf($vocabulary), TemplateCatalog::ROLE_LIST, $stored, $above);
+    }
+
     private function resolve(Taxonomy $category, string $column, string $role): ?string
     {
         $kind = TemplateCatalog::kindOf($category->vocabulary);
         $stored = $category->getAttribute($column);
-        if (! is_string($stored) || $stored === '') {
+        if (! is_string($stored) || $stored !== TemplateCatalog::PARENT || $category->parent_id === null) {
+            return self::pick($kind, $role, is_string($stored) ? $stored : null, []);
+        }
+
+        $above = [];
+        foreach ($this->chain($category, false) as $row) {
+            $above[] = $column === 'list_template' ? $row['list_template'] : $row['detail_template'];
+        }
+
+        return self::pick($kind, $role, $stored, $above);
+    }
+
+    /**
+     * A stored name that fits the role and kind; "follow the parent": the nearest name above that
+     * fits (an empty one or another "follow" is passed over); anything else: null.
+     *
+     * @param  list<string|null>  $above
+     */
+    private static function pick(string $kind, string $role, ?string $stored, array $above): ?string
+    {
+        if ($stored === null || $stored === '') {
             return null;
         }
         if ($stored !== TemplateCatalog::PARENT) {
             return TemplateCatalog::fits($stored, $role, $kind) ? $stored : null;
         }
-        if ($category->parent_id === null) {
-            return null;
-        }
 
-        foreach ($this->chain($category, false) as $row) {
-            $value = $column === 'list_template' ? $row['list_template'] : $row['detail_template'];
+        foreach ($above as $value) {
             if ($value !== null && $value !== TemplateCatalog::PARENT && TemplateCatalog::fits($value, $role, $kind)) {
                 return $value;
             }

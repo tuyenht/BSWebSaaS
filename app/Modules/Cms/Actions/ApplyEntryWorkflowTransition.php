@@ -6,6 +6,7 @@ use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Support\CategoryPublicCounts;
 use App\Modules\Cms\Support\EntryNotifier;
 use App\Modules\Cms\Support\EntryStatusAudit;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
@@ -38,6 +39,7 @@ final readonly class ApplyEntryWorkflowTransition
         private RouteSync $routes,
         private EntryNotifier $notifier,
         private RecordEntryRevision $revisions,
+        private CategoryPublicCounts $publicCounts,
     ) {}
 
     /**
@@ -62,7 +64,9 @@ final readonly class ApplyEntryWorkflowTransition
 
         $fromStatus = $entry->status;
 
-        $destinationKey = DB::transaction(function () use ($entry, $translation, $locale, $actor, $workflow, $transitionKey, $note, $assignTo): string {
+        // The categories' public totals follow the entry and its translation as one change
+        // (CategoryPublicCounts), inside the transition's transaction.
+        $destinationKey = DB::transaction(fn (): string => $this->publicCounts->track('entry_taxonomies', [$entry->id], function () use ($entry, $translation, $locale, $actor, $workflow, $transitionKey, $note, $assignTo): string {
             // Take the row lock FIRST, then read. A shared review inbox makes two people acting
             // on the same post routine; if the stage were read before the lock, both would read
             // the same value, then queue on the lock and both pass the engine's origin guard —
@@ -120,7 +124,7 @@ final readonly class ApplyEntryWorkflowTransition
             }
 
             return $destination->key;
-        });
+        }));
 
         // The workflow_log row is the transition's own record; this line is what lets ONE
         // query answer "who changed this entry's status, by any road" across tier-1 and tier-2.

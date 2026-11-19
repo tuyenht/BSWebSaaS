@@ -3534,6 +3534,8 @@
     "storefront.search.suggest_close": "閉じる",
     "storefront.search.suggest_heading_groups": "カテゴリー",
     "storefront.search.suggest_kind_posts": "記事",
+    "storefront.search.suggest_kind_count": ":kind · :count 件",
+    "storefront.search.suggest_kind_count_one": ":kind · 1 件",
     "storefront.search.suggest_sku": "品番 :sku",
     "storefront.search.suggest_all_n": "「:q」の結果 :count 件をすべて見る",
     "storefront.search.suggest_all_n_one": "「:q」の結果 1 件を見る",
