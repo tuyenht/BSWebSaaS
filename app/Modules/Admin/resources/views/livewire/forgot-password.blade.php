@@ -4,8 +4,8 @@
         {{ __('auth.forgot_subtitle') }}
     </p>
 
-    @if ($status)
-        <div class="auth-alert auth-alert--success" style="margin-bottom:14px">{{ $status }}</div>
+    @if ($sent)
+        <div class="auth-alert auth-alert--success" style="margin-bottom:14px">{{ __('auth.reset_link_sent') }}</div>
     @endif
     @error('email')
         <div class="auth-alert auth-alert--error" style="margin-bottom:14px">{{ $message }}</div>

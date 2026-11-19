@@ -9,6 +9,7 @@ use App\Modules\Identity\TwoFactor\TwoFactorService;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Livewire;
 use PragmaRX\Google2FA\Google2FA;
 
@@ -161,4 +162,107 @@ it('rejects an invalid TOTP code and stays guest', function (): void {
         ->assertHasErrors('code');
 
     $this->assertGuest();
+});
+
+// ── The cursor goes where the next keystroke belongs ─────────────────────────────────
+it('empties the code, drops its error and puts the cursor back after a new code is sent', function (): void {
+    seedTenancy();
+    Notification::fake();
+    $user = User::factory()->create();
+    session(['2fa.user_id' => $user->getAuthIdentifier()]);
+
+    app(Tenancy::class)->enter(1, function (): void {
+        Livewire::test(EmailOtpChallenge::class)
+            ->set('code', '158668')
+            ->call('verify')
+            ->assertHasErrors('code')
+            ->assertDispatched('auth-focus', field: 'code')
+            ->call('resend')
+            ->assertSet('code', '')
+            ->assertHasNoErrors()
+            ->assertSet('resent', 'sent')
+            ->assertDispatched('auth-focus', field: 'code')
+            ->set('code', '000000')
+            ->call('verify')
+            ->assertSet('resent', '')
+            ->assertHasErrors('code');
+    });
+});
+
+it('starts an empty code with the cursor in it when switching to or from a recovery code', function (): void {
+    $user = User::factory()->create(['two_factor_secret' => 'JBSWY3DPEHPK3PXP', 'two_factor_confirmed_at' => now()]);
+    session(['2fa.user_id' => $user->getAuthIdentifier()]);
+
+    Livewire::test(TwoFactorChallenge::class)
+        ->set('code', '000000')
+        ->call('verify')
+        ->assertHasErrors('code')
+        ->call('switchMode')
+        ->assertSet('useRecovery', true)
+        ->assertSet('code', '')
+        ->assertHasNoErrors()
+        ->assertDispatched('auth-focus', field: 'code')
+        ->call('switchMode')
+        ->assertSet('useRecovery', false);
+});
+
+it('sends no new code while the code is locked, and keeps saying how long to wait', function (): void {
+    seedTenancy();
+    Notification::fake();
+    $user = User::factory()->create();
+    session(['2fa.user_id' => $user->getAuthIdentifier()]);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $page = Livewire::test(EmailOtpChallenge::class);
+        foreach (range(1, 6) as $ignored) {
+            $page->set('code', '000000')->call('verify');
+        }
+        expect($page->errors()->first('code'))->toBe(__('auth.otp_locked', ['seconds' => RateLimiter::availableIn('email-otp-verify:'.$user->id)]));
+
+        $page->call('resend')
+            ->assertHasErrors('code')
+            ->assertSet('resent', '')
+            ->assertDispatched('auth-focus', field: 'code');
+        Notification::assertNothingSentTo($user);
+    });
+});
+
+it('shows "please wait" for a resend too soon as a refusal, not as good news', function (): void {
+    seedTenancy();
+    Notification::fake();
+    $user = User::factory()->create();
+    session(['2fa.user_id' => $user->getAuthIdentifier()]);
+
+    app(Tenancy::class)->enter(1, function (): void {
+        Livewire::test(EmailOtpChallenge::class)
+            ->call('resend')
+            ->assertSeeHtml('auth-alert auth-alert--success')
+            ->call('resend')
+            ->assertSet('resent', 'wait')
+            ->assertSeeHtml('auth-alert auth-alert--error')
+            ->assertDontSeeHtml('auth-alert auth-alert--success');
+    });
+});
+
+it('keeps the wait on screen when switching code kind while locked', function (): void {
+    $user = User::factory()->create(['two_factor_secret' => 'JBSWY3DPEHPK3PXP', 'two_factor_confirmed_at' => now()]);
+    session(['2fa.user_id' => $user->getAuthIdentifier()]);
+
+    $page = Livewire::test(TwoFactorChallenge::class);
+    foreach (range(1, 6) as $ignored) {
+        $page->set('code', '000000')->call('verify');
+    }
+    $page->call('switchMode')->assertSet('useRecovery', true)->assertSet('code', '')->assertHasErrors('code');
+});
+
+it('words the resend notice in the language just switched to, in the right colour', function (): void {
+    seedTenancy();
+    Notification::fake();
+    $user = User::factory()->create();
+    session(['2fa.user_id' => $user->getAuthIdentifier()]);
+
+    app(Tenancy::class)->enter(1, function (): void {
+        $page = Livewire::test(EmailOtpChallenge::class)->call('resend')->call('switchLocale', 'en');
+        $page->assertSee(trans('auth.otp_resent', [], 'en'), false)->assertSeeHtml('auth-alert auth-alert--success');
+    });
 });

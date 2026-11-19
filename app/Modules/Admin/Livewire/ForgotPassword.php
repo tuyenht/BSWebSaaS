@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Livewire\Concerns\FocusesAuthField;
 use App\Modules\Admin\Livewire\Concerns\SwitchesLocale;
 use App\Modules\Admin\Notifications\ResetPasswordLinkNotification;
 use App\Modules\Admin\Support\AdminPlane;
@@ -27,6 +28,7 @@ use Livewire\Component;
 #[Layout('admin::layouts.auth')]
 final class ForgotPassword extends Component
 {
+    use FocusesAuthField;
     use SwitchesLocale;
 
     private const int MAX_PER_EMAIL = 5;   // reset requests per email+IP per hour
@@ -35,12 +37,15 @@ final class ForgotPassword extends Component
 
     public string $email = '';
 
-    public string $status = '';
+    /** The uniform "link sent" line shows; the view words it, so it follows a language switch. */
+    public bool $sent = false;
 
     public function submit(): void
     {
         // The field is labelled "Account", not "Email": name it the same way in its error message.
-        $this->validate(['email' => 'required|email'], [], ['email' => Str::lower(__('auth.email_label'))]);
+        // A new request: the last "link sent" line no longer applies.
+        $this->sent = false;
+        $this->validateOrFocus(['email' => 'required|email'], ['email' => Str::lower(__('auth.email_label'))]);
 
         $ip = (string) request()->ip();
         $key = 'admin-forgot:'.sha1(Str::lower($this->email).'|'.$ip);
@@ -78,7 +83,7 @@ final class ForgotPassword extends Component
     /** Uniform "sent" reply — identical whether the address exists or the request was capped. */
     private function sentResponse(): void
     {
-        $this->status = __('auth.reset_link_sent');
+        $this->sent = true;
         $this->reset('email');
     }
 

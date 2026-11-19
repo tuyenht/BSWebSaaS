@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Livewire\Concerns\FocusesAuthField;
 use App\Modules\Admin\Livewire\Concerns\SwitchesLocale;
 use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Audit\Facades\Audit;
@@ -23,6 +24,7 @@ use Livewire\Component;
 #[Layout('admin::layouts.auth')]
 final class ResetPassword extends Component
 {
+    use FocusesAuthField;
     use SwitchesLocale;
 
     public string $token = '';
@@ -42,11 +44,11 @@ final class ResetPassword extends Component
     public function resetPassword(): mixed
     {
         // The email shows as "Account" on this page too: name it the same way in its error message.
-        $this->validate([
+        $this->validateOrFocus([
             'token' => 'required',
             'email' => 'required|email',
             'password' => ['required', 'confirmed', PasswordRule::defaults()],
-        ], [], ['email' => Str::lower(__('auth.email_label'))]);
+        ], ['email' => Str::lower(__('auth.email_label'))]);
 
         $status = Password::reset(
             [

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Livewire\Concerns\FocusesAuthField;
 use App\Modules\Admin\Livewire\Concerns\SwitchesLocale;
 use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Support\EmailOtp;
@@ -29,6 +30,7 @@ use Livewire\Component;
 #[Layout('admin::layouts.auth')]
 final class Login extends Component
 {
+    use FocusesAuthField;
     use SwitchesLocale;
 
     private const int MAX_ATTEMPTS = 5;         // per email+IP — targeted brute force
@@ -66,10 +68,10 @@ final class Login extends Component
     public function login(): mixed
     {
         // The field is labelled "Account", not "Email": name it the same way in its error message.
-        $this->validate([
+        $this->validateOrFocus([
             'email' => 'required|email',
             'password' => 'required',
-        ], [], ['email' => Str::lower(__('auth.email_label'))]);
+        ], ['email' => Str::lower(__('auth.email_label'))]);
 
         $ip = (string) request()->ip();
 
@@ -116,6 +118,7 @@ final class Login extends Component
             ]);
             $this->refreshChallenge();
             $this->addError('email', __('auth.invalid_credentials'));
+            $this->focusField('password');
 
             return null;
         }
@@ -125,6 +128,7 @@ final class Login extends Component
         if (! $user instanceof User) {
             $this->refreshChallenge();
             $this->addError('email', __('auth.invalid_credentials'));
+            $this->focusField('password');
 
             return null;
         }
@@ -144,6 +148,7 @@ final class Login extends Component
             ]);
             $this->refreshChallenge();
             $this->addError('email', __('auth.invalid_credentials'));
+            $this->focusField('password');
 
             return null;
         }

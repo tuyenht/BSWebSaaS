@@ -68,6 +68,9 @@
             {{-- A Google/Facebook sign-in that came back without success: from this host (flashed) or another (a code in the address) --}}
             @if ($oauthError = $errors->first('oauth') ?: \App\Modules\Admin\Support\OAuthError::messageFor(request()->query('oauth_error')))
                 <div class="auth-alert auth-alert--error">{{ $oauthError }}</div>
+            @elseif ($errors->has('password'))
+                {{-- An empty password: say so (the banner is the only place errors show here). --}}
+                <div class="auth-alert auth-alert--error">{{ $errors->first('password') }}</div>
             @endif
         @enderror
 

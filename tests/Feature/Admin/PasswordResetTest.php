@@ -29,7 +29,7 @@ it('throttles forgot-password past the hourly cap and keeps every reply uniform'
             Livewire::test(ForgotPassword::class)
                 ->set('email', $user->email)
                 ->call('submit')
-                ->assertSet('status', __('auth.reset_link_sent'))
+                ->assertSet('sent', true)
                 ->assertHasNoErrors();
         }
     });
@@ -74,7 +74,7 @@ it('queues the reset mail with a request-built link so the reply never blocks on
         Livewire::test(ForgotPassword::class)
             ->set('email', $user->email)
             ->call('submit')
-            ->assertSet('status', __('auth.reset_link_sent'));
+            ->assertSet('sent', true);
     });
 
     Notification::assertSentTo($user, ResetPasswordLinkNotification::class, function (ResetPasswordLinkNotification $notification) use ($user): bool {
@@ -83,5 +83,40 @@ it('queues the reset mail with a request-built link so the reply never blocks on
         expect($notification->actorId)->toBe($user->id);
 
         return true;
+    });
+});
+
+it('drops the last "link sent" line on a new request and puts the cursor in the account field', function (): void {
+    seedTenancy();
+    Notification::fake();
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Livewire::test(ForgotPassword::class)
+            ->set('email', $user->email)
+            ->call('submit')
+            ->assertSet('sent', true)
+            ->set('email', '')
+            ->call('submit')
+            ->assertSet('sent', false)
+            ->assertHasErrors('email')
+            ->assertDispatched('auth-focus', field: 'email');
+    });
+});
+
+it('puts the cursor in the new password when it is refused', function (): void {
+    seedTenancy();
+    fakePwnedVerifier();
+    $user = User::factory()->create();
+    $token = Password::createToken($user);
+
+    app(Tenancy::class)->enter(1, function () use ($user, $token): void {
+        Livewire::test(ResetPassword::class)
+            ->set('token', $token)->set('email', $user->email)
+            ->set('password', 'short')
+            ->set('password_confirmation', 'short')
+            ->call('resetPassword')
+            ->assertHasErrors('password')
+            ->assertDispatched('auth-focus', field: 'password');
     });
 });

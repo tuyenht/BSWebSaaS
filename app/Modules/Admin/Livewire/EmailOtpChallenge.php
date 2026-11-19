@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Livewire\Concerns\FocusesAuthField;
 use App\Modules\Admin\Livewire\Concerns\SwitchesLocale;
 use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Support\EmailOtp;
@@ -23,11 +24,13 @@ use Livewire\Component;
 #[Layout('admin::layouts.auth')]
 final class EmailOtpChallenge extends Component
 {
+    use FocusesAuthField;
     use SwitchesLocale;
 
     public string $code = '';
 
-    public string $sentStatus = '';
+    /** What the last "Gửi lại mã" did: 'sent', 'wait' or '' (none). The view words it, so it follows a language switch. */
+    public string $resent = '';
 
     public function mount(): mixed
     {
@@ -40,7 +43,9 @@ final class EmailOtpChallenge extends Component
 
     public function verify(): mixed
     {
-        $this->validate(['code' => 'required|string']);
+        // A new try: "Đã gửi mã mới." no longer applies.
+        $this->resent = '';
+        $this->validateOrFocus(['code' => 'required|string']);
 
         $user = User::find(session('2fa.user_id'));
         if (! $user instanceof User) {
@@ -59,7 +64,7 @@ final class EmailOtpChallenge extends Component
             return $this->redirectRoute(AdminPlane::prefix().'.login', navigate: false);
         }
 
-        $rlKey = 'email-otp-verify:'.Cast::int($user->getAuthIdentifier());
+        $rlKey = self::verifyKey($user);
         if (RateLimiter::tooManyAttempts($rlKey, 5)) {
             // Hard cap: burn the code so it can't be brute-forced — a fresh one is required.
             app(EmailOtp::class)->invalidate($user);
@@ -68,7 +73,10 @@ final class EmailOtpChallenge extends Component
                 'actor_label' => $user->email,
                 'meta' => ['factor' => 'email_otp'],
             ]);
-            $this->addError('code', __('auth.otp_locked'));
+            // Say how long, and that a new code is needed (this one is burned): a fresh code sent
+            // before the wait is over would be refused all the same.
+            $this->addError('code', __('auth.otp_locked', ['seconds' => RateLimiter::availableIn($rlKey)]));
+            $this->focusField('code');
 
             return null;
         }
@@ -76,6 +84,7 @@ final class EmailOtpChallenge extends Component
         if (! app(EmailOtp::class)->verify($user, $this->code)) {
             RateLimiter::hit($rlKey, 600);
             $this->addError('code', __('auth.otp_invalid'));
+            $this->focusField('code');
 
             return null;
         }
@@ -99,15 +108,37 @@ final class EmailOtpChallenge extends Component
     {
         $user = User::find(session('2fa.user_id'));
 
-        // canResend = the cooldown gate; send() returns false when an hourly abuse cap is hit. Either
-        // way the user sees the same "wait" message (no signal about which limit stopped them).
-        if ($user instanceof User && app(EmailOtp::class)->canResend($user) && app(EmailOtp::class)->send($user)) {
-            $this->sentStatus = __('auth.otp_resent');
+        // Locked out after too many wrong codes: a new code would be refused until the wait is over,
+        // so none is sent; the wait stays on screen instead of a "sent" that cannot be used.
+        if ($user instanceof User && RateLimiter::tooManyAttempts(self::verifyKey($user), 5)) {
+            $this->resent = '';
+            $this->resetErrorBag();
+            $this->addError('code', __('auth.otp_locked', ['seconds' => RateLimiter::availableIn(self::verifyKey($user))]));
+            $this->focusField('code');
 
             return;
         }
 
-        $this->sentStatus = __('auth.otp_resend_wait');
+        // canResend = the cooldown gate; send() returns false when an hourly abuse cap is hit. Either
+        // way the user sees the same "wait" message (no signal about which limit stopped them).
+        if ($user instanceof User && app(EmailOtp::class)->canResend($user) && app(EmailOtp::class)->send($user)) {
+            // The old code no longer counts: empty the field and drop its error so only the new
+            // code's notice shows, then put the cursor there for the code from the new email.
+            $this->reset('code');
+            $this->resetErrorBag();
+            $this->resent = 'sent';
+            $this->focusField('code');
+
+            return;
+        }
+
+        $this->resent = 'wait';
+        $this->focusField('code');
+    }
+
+    private static function verifyKey(User $user): string
+    {
+        return 'email-otp-verify:'.Cast::int($user->getAuthIdentifier());
     }
 
     public function render(): View

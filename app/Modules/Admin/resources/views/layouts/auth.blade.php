@@ -17,7 +17,10 @@
     <style>html{font-size:14px}</style>
     @livewireStyles
 </head>
-<body>
+{{-- A sign-in step puts the cursor back where the next keystroke belongs (a wrong code, a fresh
+     code sent, a wrong password): the component dispatches auth-focus with the field's id; the
+     text already there is selected so typing replaces it. --}}
+<body x-data x-on:auth-focus.window="$nextTick(() => { const el = document.getElementById($event.detail.field); if (el) { el.focus(); el.select?.(); } })">
 @php
     $brandName = config('admin.brand.name');
     $locales = \App\Modules\Admin\Support\Locales::available();

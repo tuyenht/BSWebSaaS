@@ -4,8 +4,9 @@
         {{ __('auth.otp_subtitle') }}
     </p>
 
-    @if ($sentStatus)
-        <div class="auth-alert auth-alert--success" style="margin-bottom:14px">{{ $sentStatus }}</div>
+    {{-- "Đã gửi mã mới." is good news; "Vui lòng đợi…" is a refusal and looks like one. --}}
+    @if ($resent !== '')
+        <div @class(['auth-alert', 'auth-alert--success' => $resent === 'sent', 'auth-alert--error' => $resent !== 'sent']) style="margin-bottom:14px">{{ $resent === 'sent' ? __('auth.otp_resent') : __('auth.otp_resend_wait') }}</div>
     @endif
     @error('code')
         <div class="auth-alert auth-alert--error" style="margin-bottom:14px">{{ $message }}</div>

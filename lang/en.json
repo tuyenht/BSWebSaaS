@@ -334,7 +334,7 @@
     "auth.invalid_credentials": "Invalid email or password.",
     "auth.captcha_failed": "We couldn't verify you're human. Please try again.",
     "auth.too_many_attempts": "Too many attempts. Please try again in :seconds seconds.",
-    "auth.otp_locked": "Too many attempts — request a new code.",
+    "auth.otp_locked": "Too many wrong codes. After :seconds seconds, choose “Resend code” to get a new one.",
     "admin.dashboard": "Overview",
     "admin.menu": "Menu",
     "admin.search_placeholder": "Search pages, posts, products, settings…",
