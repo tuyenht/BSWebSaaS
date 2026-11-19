@@ -1,14 +1,18 @@
 <?php
 
 use App\Modules\Admin\Livewire\Entries\Index;
+use App\Modules\Cms\Actions\MovePage;
 use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
 use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\MemberCategoryScope;
 use App\Modules\Cms\Support\CategoryScopes;
+use App\Modules\Cms\Support\PageRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteSetting;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
 /*
@@ -254,5 +258,129 @@ it('draws the grip and the move items only for who may move a page', function ()
 
         $seen = Livewire::actingAs($viewer->fresh())->test(Index::class)->html();
         expect($seen)->not->toContain('data-grip')->and($seen)->not->toContain('data-move=');
+    });
+});
+
+it('leaves out a Home page with an empty slug, names a page without a default-language slug by another, and never builds an empty segment', function (): void {
+    $user = ptEditor();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        SiteSetting::query()->updateOrCreate(['group_name' => 'permalinks', 'key' => 'pages'], ['value' => ['pattern' => 'nested']]);
+        $home = ptPage($user, 'x-home');
+        $home->translations()->update(['slug' => '']);
+        $en = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $user->id, 'position' => 1]);
+        $en->translations()->create(['locale' => 'en', 'title' => 'About', 'slug' => 'about', 'status' => 'draft', 'body' => ['blocks' => []]]);
+        $p = ptPage($user, 'p', position: 2);
+
+        $targets = Livewire::actingAs($user)->test(Index::class)->instance()->moveTargets($p->ulid);
+        $by = collect($targets['opts'] ?? [])->keyBy(fn (array $o): string => $o['k'] ?? 'top');
+
+        expect($targets['more'] ?? null)->toBeFalse()
+            ->and($by->keys()->all())->toBe(['top', $en->ulid])
+            ->and($by[$en->ulid]['name'])->toBe('About')
+            ->and($by[$en->ulid]['path'])->toBe('/about/p');
+        foreach ($by as $option) {
+            expect((string) $option['path'])->not->toContain('//')->and((string) $option['label'])->not->toContain('//');
+        }
+    });
+});
+
+it('lists «Chuyển đến…» places level by level from the top, never a page under one in the Trash, and says when it stops at the cap', function (): void {
+    $user = ptEditor();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $gone = ptPage($user, 'gone');
+        $orphan = ptPage($user, 'orphan', $gone);
+        $gone->delete();
+        $p = ptPage($user, 'p', position: 1);
+        $list = Livewire::actingAs($user)->test(Index::class)->instance();
+
+        $targets = $list->moveTargets($p->ulid);
+        expect(collect($targets['opts'] ?? [])->pluck('k')->all())->toBe([null])
+            ->and($targets['more'] ?? null)->toBeFalse()
+            ->and($orphan->fresh()?->parent_id)->toBe($gone->id);
+
+        DB::connection('pgsql_admin')->statement(
+            'insert into entries (ulid, site_id, type, status, position, created_at, updated_at)
+             select lpad(g::text, 26, \'0\'), 1, \'page\', \'draft\', g + 10, now(), now() from generate_series(1, ?) g',
+            [PageRules::WALK_SIZE + 5],
+        );
+        $capped = $list->moveTargets($p->ulid);
+        expect($capped['more'] ?? null)->toBeTrue()
+            ->and(count($capped['opts'] ?? []))->toBe(PageRules::WALK_SIZE + 1);   // the top level, then the cap
+    });
+});
+
+it('builds «Hoàn tác» from where the page really was when the move ran', function (): void {
+    $user = ptEditor();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $a = ptPage($user, 'a');
+        $b = ptPage($user, 'b', position: 1);
+        $c = ptPage($user, 'c', position: 2);
+        $p = ptPage($user, 'p', $a);
+        $list = Livewire::actingAs($user)->test(Index::class);
+
+        // another member moves p under c meanwhile; this screen still shows it under a
+        app(MovePage::class)->handle($p, $c, 0);
+        $list->call('movePageTo', $p->ulid, $b->ulid)
+            ->assertSet('moveUndo.parent', $c->ulid)
+            ->assertSet('moveUndo.position', 0);
+
+        $list->call('undoMovePage');
+        expect($p->fresh()?->parent_id)->toBe($c->id)->and(ptOrder($a))->toBe([]);
+    });
+});
+
+it('turns a move into a page that went to the Trash meanwhile into the stale-row message', function (): void {
+    $user = ptEditor();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $a = ptPage($user, 'a');
+        $p = ptPage($user, 'p', position: 1);
+        $list = Livewire::actingAs($user)->test(Index::class);
+        $a->delete();
+
+        $list->call('movePageTo', $p->ulid, $a->ulid)->assertDispatched('bs-toast', text: __('entries.row_stale'));
+        $list->call('movePage', $p->ulid, $a->ulid, 'child', null)->assertDispatched('bs-toast', text: __('entries.row_stale'));
+        expect($p->fresh()?->parent_id)->toBeNull();
+    });
+});
+
+it('draws the tree with guide lines and «Thuộc: …», no chevron, and a flat list with its chain, the note and the way back', function (): void {
+    $user = ptEditor();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $a = ptPage($user, 'a');
+        $a1 = ptPage($user, 'a1', $a);
+        ptPage($user, 'a11', $a1);
+        ptPage($user, 'b', position: 1);
+
+        $tree = Livewire::actingAs($user)->test(Index::class);
+        $html = $tree->html();
+        expect($html)->toContain('class="list-gl" data-d="1" data-k="down"')
+            ->and($html)->toContain('class="list-gl" data-d="1" data-k="l"')
+            ->and($html)->toContain('class="list-gl" data-d="2" data-k="l"')
+            ->and($html)->toContain(e(__('entries.meta_of', ['name' => 'T a1'])))
+            ->and($html)->not->toContain('list-tree')
+            ->and($html)->not->toContain('data-flat-note');
+
+        $searched = Livewire::actingAs($user)->test(Index::class)->set('search', 'a11')->html();
+        expect($searched)->toContain('data-flat-note')
+            ->and($searched)->toContain(e(__('entries.flat_note_filter')))
+            ->and($searched)->toContain('<span class="list-anc">T a › T a1 › </span>')
+            ->and($searched)->toContain('data-of="flat"')
+            ->and($searched)->not->toContain('wire:click="backToSiteOrder"');
+
+        Livewire::actingAs($user)->test(Index::class)->set('search', 'a11')->call('sortBy', 'name')
+            ->assertSeeHtml('wire:click="backToSiteOrder"')
+            ->assertSee(__('entries.back_to_order'))
+            ->call('backToSiteOrder')
+            ->assertSet('search', '')
+            ->assertSet('sortKey', '')
+            ->assertDontSeeHtml('data-flat-note');
+
+        Livewire::actingAs($user)->test(Index::class)->call('sortBy', 'name')
+            ->assertSee(__('entries.flat_note_sort'));
     });
 });

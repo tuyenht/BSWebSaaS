@@ -14,6 +14,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 /*
  * Moving a page in a site's page tree (MovePage): the page goes with every page under it, both
@@ -287,5 +288,119 @@ it('asks the policy of the person signed in', function (): void {
         expect(fn () => app(MovePage::class)->handle($theirs, null, 0))->toThrow(AuthorizationException::class);
         app(MovePage::class)->handle($mine, null, 5);
         expect($mine->fresh()?->position)->toBe(1);
+    });
+});
+
+it('moves a nested branch in two languages with the page under it, and a draft page under it gets no address', function (): void {
+    DB::connection('pgsql_admin')->table('site_locales')->insert(['site_id' => 1, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'created_at' => now(), 'updated_at' => now()]);
+
+    app(Tenancy::class)->enter(1, function (): void {
+        mpPublisher();
+        mpNested();
+        $editor = User::query()->orderByDesc('id')->firstOrFail();
+        $both = function (string $vi, string $en, ?Entry $parent, bool $publish) use ($editor): Entry {
+            $page = mpPage($vi, $parent);
+            $page->translations()->create(['locale' => 'en', 'title' => 'E '.$en, 'slug' => $en, 'status' => 'draft', 'body' => ['blocks' => []]]);
+            foreach ($publish ? ['vi', 'en'] : [] as $locale) {
+                app(PublishEntry::class)->handle($page->fresh() ?? $page, $locale, $editor);
+            }
+
+            return $page->fresh() ?? $page;
+        };
+        $services = $both('dich-vu', 'services', null, true);
+        $design = $both('thiet-ke', 'design', null, true);
+        $logo = $both('logo', 'logo', $design, true);
+        $samples = $both('mau', 'samples', $logo, true);
+        $draft = $both('nhap', 'draft', $logo, false);
+        $path = fn (Entry $page, string $locale): ?string => SiteRoute::query()->where('entry_id', $page->id)->where('locale', $locale)->value('path');
+
+        expect($path($samples, 'en'))->toBe('/design/logo/samples');
+
+        $result = app(MovePage::class)->handle($logo, $services, 0);
+
+        expect($result['paths'])->toHaveKeys(['vi', 'en'])
+            ->and($result['paths']['en'])->toBe(['from' => '/design/logo', 'to' => '/services/logo'])
+            ->and($path($logo, 'vi'))->toBe('/dich-vu/logo')
+            ->and($path($samples, 'vi'))->toBe('/dich-vu/logo/mau')
+            ->and($path($samples, 'en'))->toBe('/services/logo/samples')
+            ->and(Redirect::query()->where('locale', 'en')->where('from_path', '/design/logo/samples')->value('to_path'))->toBe('/services/logo/samples')
+            ->and(Redirect::query()->where('locale', 'vi')->where('from_path', '/thiet-ke/logo/mau')->value('to_path'))->toBe('/dich-vu/logo/mau')
+            ->and(SiteRoute::query()->where('entry_id', $draft->id)->exists())->toBeFalse()
+            ->and(Redirect::query()->where('entry_id', $draft->id)->exists())->toBeFalse()
+            ->and(PageRules::levelOf($samples->fresh() ?? $samples))->toBe(3);
+    });
+});
+
+it('steps among the siblings the page has when the move runs, never back under the parent the screen showed', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $a = mpPage('a');
+        $b = mpPage('b', position: 1);
+        mpPage('x', $a);
+        $page = mpPage('p', $a, position: 1);
+        mpPage('y', $b);
+        $shown = $page->fresh() ?? $page;   // the row as the screen read it: under a, second
+        $move = app(MovePage::class);
+
+        // another member drops it under b, after y, meanwhile
+        $move->handle($page, $b, 1);
+        $result = $move->step($shown, 'up');
+
+        expect($result['parent'])->toBe($b->id)
+            ->and($result['from_parent'])->toBe($b->id)
+            ->and(mpOrder($b))->toBe(['p', 'y'])
+            ->and(mpOrder($a))->toBe(['x'])
+            ->and(mpRefusal(fn () => $move->step($shown, 'up')))->toBe('at_top');
+    });
+});
+
+it('places a page beside the neighbour found inside the lock, and refuses one that left the list', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $a = mpPage('a');
+        $b = mpPage('b', position: 1);
+        $c = mpPage('c', position: 2);
+        $move = app(MovePage::class);
+
+        $move->beside($c, null, 'after', $a->ulid);
+        expect(mpOrder(null))->toBe(['a', 'c', 'b']);
+
+        $b->delete();
+        expect(mpRefusal(fn () => $move->beside($a, null, 'after', $b->ulid)))->toBe('anchor_gone')
+            ->and(mpRefusal(fn () => $move->beside($a, $c, 'before', $c->ulid)))->toBe('anchor_gone')
+            ->and(mpOrder(null))->toBe(['a', 'c']);
+    });
+});
+
+it('reports the parent and place the page really left, for an undo that returns it there', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $a = mpPage('a');
+        $b = mpPage('b', position: 1);
+        $c = mpPage('c', position: 2);
+        mpPage('c0', $c);
+        $page = mpPage('p', $a);
+        $shown = $page->fresh() ?? $page;   // the screen read it under a
+        $move = app(MovePage::class);
+
+        $move->handle($page, $c, 1);   // moved under c, second, meanwhile
+        $result = $move->into($shown, $b);
+
+        expect($result['from_parent'])->toBe($c->id)->and($result['from_position'])->toBe(1);
+
+        $move->handle($page->fresh() ?? $page, $c, $result['from_position']);
+        expect(mpOrder($c))->toBe(['c0', 'p'])->and(mpOrder($b))->toBe([]);
+    });
+});
+
+it('refuses to renumber a sibling list past the cap rather than read it unbounded', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $parent = mpPage('cha');
+        $page = mpPage('p');
+        DB::statement(   // in the test's own transaction, so the parent it names is there
+            'insert into entries (ulid, site_id, type, status, parent_id, position, created_at, updated_at)
+             select lpad(g::text, 26, \'0\'), 1, \'page\', \'draft\', ?, g, now(), now() from generate_series(1, ?) g',
+            [$parent->id, MovePage::SIBLINGS_MAX + 1],
+        );
+
+        expect(mpRefusal(fn () => app(MovePage::class)->handle($page, $parent, 0)))->toBe('siblings_too_many')
+            ->and($page->fresh()?->parent_id)->toBeNull();
     });
 });

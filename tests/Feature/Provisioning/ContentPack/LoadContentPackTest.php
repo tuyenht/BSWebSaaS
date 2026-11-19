@@ -18,7 +18,9 @@ use App\Modules\Provisioning\ContentPack\Planner;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Tests\Fixtures\ContentPacks;
@@ -499,6 +501,52 @@ it('refuses a load that would break the page tree and changes nothing', function
         cpAddChildPage($test->folder);
     }, 'Refused: page:/doi-ngu under page:/gioi-thieu would make the page tree deeper than 3 levels.'],
 ]);
+
+it('re-applies a page whose parent is unchanged even in a tree that predates the three-level rule', function (): void {
+    cpAddChildPage($this->folder);
+    ContentPacks::load();
+    ContentPacks::in($this->siteId, function (): void {
+        $top = Entry::query()->create(['type' => 'page', 'status' => 'draft']);
+        $mid = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'parent_id' => $top->id]);
+        Entry::query()->whereKey(SiteRoute::query()->where('path', '/gioi-thieu')->value('entry_id'))->update(['parent_id' => $mid->id]);
+    });
+    ContentPacks::item($this->folder, 'pages.json', 'page:/doi-ngu', function (array $item): array {
+        $item['title'] = ['vi' => 'Đội ngũ kỹ sư'];
+
+        return $item;
+    });
+
+    [$exit, $output] = ContentPacks::load();
+
+    expect($exit)->toBe(0, $output)
+        ->and(cpChildPage($this->siteId)['parent'])->toBe(cpChildPage($this->siteId)['gioiThieu'])
+        ->and(ContentPacks::in($this->siteId, fn () => EntryTranslation::query()->where('slug', 'doi-ngu')->value('title')))->toBe('Đội ngũ kỹ sư');
+});
+
+it('takes the page-tree lock before the apply row-locks any page, the order a move in the admin takes them', function (): void {
+    cpAddChildPage($this->folder);
+    [$exit, $output] = ContentPacks::run();
+    expect($exit)->toBe(0, $output);
+
+    $statements = [];
+    DB::listen(function (QueryExecuted $query) use (&$statements): void {
+        $statements[] = [strtolower($query->sql), $query->bindings];
+    });
+    [$exit, $output] = ContentPacks::run(options: ['--apply' => true, '--plan' => ContentPacks::fingerprint($output)]);
+    expect($exit)->toBe(0, $output);
+
+    $pageLock = null;
+    $firstRowLock = null;
+    foreach ($statements as $i => [$sql, $bindings]) {
+        if ($pageLock === null && str_contains($sql, 'pg_advisory_xact_lock') && ($bindings[0] ?? null) === 'pages:'.$this->siteId) {
+            $pageLock = $i;
+        }
+        if ($firstRowLock === null && str_contains($sql, 'from "entries"') && str_contains($sql, 'for update')) {
+            $firstRowLock = $i;
+        }
+    }
+    expect($pageLock)->toBeInt()->and($firstRowLock)->toBeInt()->and($pageLock)->toBeLessThan($firstRowLock);
+});
 
 it('never takes another site\'s page for the parent a page names', function (): void {
     config(['tenancy.assert' => 'strict']);

@@ -264,7 +264,8 @@ final class Applier
         $isPost = $planned->item->kind === 'post';
         // A page whose pack item names a parent (or null) gets it; one that names none keeps its own. The
         // page tree's rules hold for a pack as for a move in the admin (PageRules): checked under the
-        // site's page-tree lock, so a move made meanwhile cannot slip past them.
+        // site's page-tree lock, which the load command already took before planning (taking it again in
+        // the same transaction is a no-op), so a move made meanwhile cannot slip past them.
         $parent = [];
         if (! $isPost && array_key_exists('parent', $desired)) {
             PageRules::lock(app(CurrentSite::class)->id());
@@ -357,7 +358,12 @@ final class Applier
         }
         $key = $planned->item->key;
         $existing = $planned->recordId === null ? null : Entry::withTrashed()->find($planned->recordId);
-        if ($existing instanceof Entry ? HomePages::is($existing) : self::pageSlug($planned->item->anchor()) === PathBuilder::HOME_SLUG) {
+        // the page already sits there: re-applying a pack never refuses the tree it built (nor one that predates the rules)
+        if ($existing instanceof Entry && $existing->parent_id === $parentId) {
+            return;
+        }
+        // a new page is the Home page when its key names the root (`page:/`, or a home / empty slug)
+        if ($existing instanceof Entry ? HomePages::is($existing) : in_array(trim($planned->item->anchor(), '/'), [PathBuilder::HOME_SLUG, ''], true)) {
             throw new PackRejected("Refused: {$key} is the Home page and cannot sit under {$parentKey}.");
         }
         $parent = Entry::withTrashed()->find($parentId);

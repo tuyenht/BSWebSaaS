@@ -368,6 +368,23 @@
             @endphp
             {{-- The shared list row: a card below 600, one record per line to 900, a table from 900 (by the list's own
                  width). Below 600 the rows carry the card frame; select-all lives in the tools row above. --}}
+            @php
+                // A page list shown flat (searched, filtered, a group, or another sort): the note says why the tree and
+                // the drag are off, with «Về thứ tự trên website» while another sort is on (it clears the filters too)
+                $orderOff = $sortOn !== 'order' || $sortWay !== 'asc';
+                $flatNote = ! $isPost && ! $treeMode && $tab !== 'trash' && ($filtering || $orderOff);
+            @endphp
+            @if ($flatNote)
+                <div class="list-note @max-[56.25rem]/lt:order-3" data-flat-note>
+                    <x-bs-admin::icon name="ri-node-tree" class="list-note-i" />
+                    <span class="list-note-t">{{ $filtering ? __('entries.flat_note_filter') : __('entries.flat_note_sort') }}</span>
+                    @if ($orderOff)
+                        <x-bs-admin::button size="sm" variant="outline" color="neutral" wire:click="backToSiteOrder">
+                            <x-bs-admin::icon name="ri-node-tree" class="size-4" /> {{ __('entries.back_to_order') }}
+                        </x-bs-admin::button>
+                    @endif
+                </div>
+            @endif
             <div x-ref="rows" data-fold-wait class="min-w-0 @max-[56.25rem]/lt:order-3 max-[599.98px]:rounded-md max-[599.98px]:border max-[599.98px]:border-border max-[599.98px]:bg-surface max-[599.98px]:[&_.list-g]:border-t-0">
             <x-bs-admin::list :label="__('entries.list_label', ['label' => $sectionLabel])" :kind="$isPost ? 'posts' : null" :data-page-tree="$treeMode ? '1' : null"
                 busy="tab,setTab,search,sortKey,sortDir,sortBy,setSort,resetSort,page,gotoPage,turnPage,perPage,setPerPage,cursor,catF,langF,creatorF,templateF,transF,when,from,to,clearWhen,toggleFilterValue,resetFilterGroup,clearAllFilters,$refresh"
@@ -457,6 +474,10 @@
                         x-data="{ editing: false, value: '', orig: '', cancel: false, slugEd: false }"
                         x-on:list-quick-edit="orig = value = $refs.ti?.dataset.t ?? ''; editing = true; cancel = false"
                         x-on:list-quick-slug="slugEd = true">
+                        @if ($inTree && ($rowGuides[$entry->ulid] ?? []) !== [])
+                            {{-- the lines joining a sub-page to its parent, the shared tree's rule (drawn from a list 768 wide) --}}
+                            <span class="list-g-tree" aria-hidden="true">@foreach ($rowGuides[$entry->ulid] as $g)<span class="list-gl" data-d="{{ $g['d'] }}" data-k="{{ $g['k'] }}"></span>@endforeach</span>
+                        @endif
                         <x-bs-admin::list.cell col="chk">
                             <x-bs-admin::list.check data-guide="row-check" :checked="$isSelected" :label="__('entries.select_named', ['title' => $title])" wire:click="toggleSelectAll(['{{ $entry->ulid }}'])" />
                         </x-bs-admin::list.cell>
@@ -470,10 +491,22 @@
                                     <span class="list-th" data-img="0" title="{{ __('entries.cover_none') }}" aria-hidden="true"><x-bs-admin::icon name="ri-image-add" class="size-5" /></span>
                                 @endif
                             @endif
-                            <div @class(['pl-5' => $depth === 1, 'pl-10' => $depth >= 2, 'min-w-0 flex-1' => $isPost])>
+                            <div @class(['list-ind' => $depth > 0, 'min-w-0 flex-1' => $isPost])@if ($depth > 0) style="--list-lv: {{ $depth }}"@endif>
+                                {{-- «Thuộc: …»: a sub-page of the tree names its parent where the lines are not drawn (600–767; read
+                                     aloud below 600); a page of a flat list names it for screen readers (its chain leads the name) --}}
+                                @if ($inTree && $depth > 0 && isset($rowOf[$entry->ulid]))
+                                    <span class="list-of" data-of="tree">{{ __('entries.meta_of', ['name' => $rowOf[$entry->ulid]]) }}</span>
+                                @elseif (! $treeMode && isset($parentPaths[$entry->ulid]))
+                                    <span class="list-of" data-of="flat">{{ __('entries.meta_of', ['name' => last($parentPaths[$entry->ulid])]) }}</span>
+                                @endif
+                                @php
+                                    // a flat row leads with the pages above it, muted (no @if inside the slot: Livewire would mark it)
+                                    $chain = $treeMode ? [] : ($parentPaths[$entry->ulid] ?? []);
+                                    $nameHtml = $chain === [] ? e($title) : '<span><span class="list-anc">'.e(implode(' › ', $chain)).' › </span>'.e($title).'</span>';
+                                @endphp
                                 <div x-show="! editing">
                                     <x-bs-admin::list.name :data-guide="$quickEdit ? 'row-title-qe' : 'row-title'" :href="$quickEdit ? route('admin.entries.edit', ['ulid' => $entry->ulid]) : ($trashed ? null : $path)" :external="! $quickEdit"
-                                        :quick-edit="$quickEdit ? __('entries.quick_edit_named', ['title' => $title]) : null" :child="$depth > 0" :grip="$grip">{{ $title }}</x-bs-admin::list.name>
+                                        :quick-edit="$quickEdit ? __('entries.quick_edit_named', ['title' => $title]) : null" :grip="$grip">{!! $nameHtml !!}</x-bs-admin::list.name>
                                 </div>
                                 @if ($quickEdit)
                                     <input type="text" x-show="editing" x-cloak x-model="value" class="list-in" x-ref="ti" data-t="{{ $t?->title ?? '' }}"
@@ -517,9 +550,6 @@
                                     @endif
                                     @if (isset($rowStep[$entry->ulid]))
                                         <span class="list-m" data-for="step" x-show="vStep">{{ $rowStep[$entry->ulid]['text'] }}</span>
-                                    @endif
-                                    @if (isset($parentPaths[$entry->ulid]))
-                                        <span class="list-m [overflow-wrap:anywhere]" data-for="parent">{{ __('entries.meta_parent', ['path' => $parentPaths[$entry->ulid]]) }}</span>
                                     @endif
                                     <x-bs-admin::list.langs :locales="$locales" :source="$locale" :name="$title" show="vLangs"
                                         :has="$entry->translations->pluck('locale')->all()"
@@ -990,6 +1020,7 @@
                             </label>
                         </template>
                         <p x-show="mv && mv.opts && shown.length === 0" class="m-0 text-small text-text-muted" x-text="mv ? {{ Js::from(__('entries.mv_none')) }}.replace(':q', () => mv.q) : ''"></p>
+                        <p x-show="mv && mv.opts && mv.more" x-cloak class="m-0 text-small text-text-muted" data-mv-more>… {{ __('entries.mv_more', ['n' => $num(\App\Modules\Cms\Support\PageRules::WALK_SIZE)]) }}</p>
                     </div>
                 </div>
                 <x-slot:footer>

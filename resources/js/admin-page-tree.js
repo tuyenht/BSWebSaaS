@@ -154,7 +154,7 @@ function pageMove(t) {
 
         // ---- «Chuyển đến…» ----------------------------------------------------------------------
         open(d) {
-            this.mv = { ulid: d.ulid, name: d.name, q: '', opts: null, nested: false, to: undefined, opener: document.activeElement };
+            this.mv = { ulid: d.ulid, name: d.name, q: '', opts: null, nested: false, more: false, to: undefined, opener: document.activeElement };
             this.$nextTick(() => document.getElementById('entries-mv-q')?.focus());
             this.$wire.moveTargets(d.ulid).then((r) => {
                 if (!this.mv || this.mv.ulid !== d.ulid) {
@@ -165,6 +165,7 @@ function pageMove(t) {
                     return;
                 }
                 this.mv.nested = !!r.nested;
+                this.mv.more = !!r.more;   // the list stops at the server's cap: the dialog says so
                 this.mv.opts = r.opts;
             });
         },
