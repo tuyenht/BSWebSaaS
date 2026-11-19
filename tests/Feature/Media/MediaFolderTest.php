@@ -113,3 +113,53 @@ it('makes a folder path from a name in any script, numbered when taken, and keep
             ->and($folder->uniqueSlug('!!!', 'Ảnh'))->toBe('anh');                         // nothing usable typed → from the name
     });
 });
+
+it('keeps a sub-folder under a folder of its own site: another site\'s folder is refused as parent', function (): void {
+    $theirs = seedMediaFolder(1);
+
+    // the composite key (site_id, parent_id) → (site_id, id) checks the parent on site 2, where it is not
+    expect(fn () => seedMediaFolder(2, ['name' => 'Con', 'slug' => 'con', 'parent_id' => $theirs->id]))
+        ->toThrow(QueryException::class, 'media_folders_parent_fk');
+    // nor can a folder of site 2 be moved under it later
+    $mine = seedMediaFolder(2, ['name' => 'Của B', 'slug' => 'cua-b']);
+    expect(fn () => app(Tenancy::class)->enter(2, fn () => MediaFolder::query()->whereKey($mine->id)->update(['parent_id' => $theirs->id])))
+        ->toThrow(QueryException::class, 'media_folders_parent_fk');
+
+    expect(app(Tenancy::class)->enter(2, fn () => MediaFolder::query()->whereNotNull('parent_id')->count()))->toBe(0);
+});
+
+it('keeps folders to two levels: no sub-folder under a sub-folder, no parent for a folder with sub-folders', function (): void {
+    $top = seedMediaFolder(1);
+    $child = seedMediaFolder(1, ['name' => 'Con', 'slug' => 'con', 'parent_id' => $top->id]);
+    $other = seedMediaFolder(1, ['name' => 'Khác', 'slug' => 'khac']);
+
+    expect(fn () => seedMediaFolder(1, ['name' => 'Cháu', 'slug' => 'chau', 'parent_id' => $child->id]))
+        ->toThrow(QueryException::class, 'at most two levels');
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => MediaFolder::query()->whereKey($top->id)->update(['parent_id' => $other->id])))
+        ->toThrow(QueryException::class, 'has sub-folders');
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => MediaFolder::query()->whereKey($other->id)->update(['parent_id' => $other->id])))
+        ->toThrow(QueryException::class);
+
+    // a sub-folder moves to another top-level folder, and back to the top
+    app(Tenancy::class)->enter(1, function () use ($child, $other): void {
+        MediaFolder::query()->whereKey($child->id)->update(['parent_id' => $other->id]);
+        MediaFolder::query()->whereKey($child->id)->update(['parent_id' => null]);
+    });
+    expect(app(Tenancy::class)->enter(1, fn () => MediaFolder::query()->whereKey($child->id)->value('parent_id')))->toBeNull();
+});
+
+it('deletes a folder\'s sub-folders with it; their files go back to no folder', function (): void {
+    [$childId, $mediaId] = app(Tenancy::class)->enter(1, function (): array {
+        $top = MediaFolder::query()->create(['name' => 'Cha', 'slug' => 'cha']);
+        $child = MediaFolder::query()->create(['name' => 'Con', 'slug' => 'con', 'parent_id' => $top->id]);
+        $media = seedMediaInFolder(['folder_id' => $child->id]);
+        $top->delete();
+
+        return [$child->id, $media->id];
+    });
+
+    app(Tenancy::class)->enter(1, function () use ($childId, $mediaId): void {
+        expect(MediaFolder::query()->find($childId))->toBeNull()
+            ->and(Media::query()->find($mediaId)?->folder_id)->toBeNull();
+    });
+});

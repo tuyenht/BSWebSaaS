@@ -6,16 +6,21 @@ use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * A flat per-site folder organizing the media library (the picker's sidebar tree). Tenant table
- * (site_id + RLS); BelongsToSite auto-scopes + stamps. Deleting a folder never deletes its files —
- * the media.folder_id FK SET NULLs them back to the root "Tất cả ảnh" view. `name` is free Unicode;
+ * A per-site folder organizing the media library, at most two levels: a top-level folder
+ * (parent_id NULL) may hold sub-folders, a sub-folder holds none — the database refuses a third
+ * level, and its composite foreign key (site_id, parent_id) keeps the parent on the same site.
+ * Tenant table (site_id + RLS); BelongsToSite auto-scopes + stamps. Deleting a folder deletes its
+ * sub-folders and never their files — the media.folder_id FK SET NULLs them back to the root
+ * "Tất cả ảnh" view. `name` is free Unicode, unique among the folders of one parent;
  * `slug` is ASCII [a-z0-9-], unique per site, and used ONLY for admin URLs/filters — image links
  * derive from media.storage_key, so renaming a folder never breaks an inserted image.
  *
  * @property int $site_id
+ * @property int|null $parent_id
  * @property string $name
  * @property string $slug
  * @property int $position
@@ -37,12 +42,30 @@ final class MediaFolder extends Model
 
     /**
      * Holds the website's folder-list lock to the end of the transaction. Every write that adds,
-     * reorders, deletes or brings back a folder takes it first, so they run one at a time per site:
-     * two at once never hand out the same place, nor lock the folder rows in different orders.
+     * reorders, moves, deletes or brings back a folder takes it first, so they run one at a time per
+     * site: two at once never hand out the same place, nor lock the folder rows in different orders,
+     * nor pass the two-level check against each other's old state (the database trigger that keeps
+     * folders to two levels takes the same key).
      */
     public static function lockTree(int $siteId): void
     {
         DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', ['media_folders:'.$siteId]);
+    }
+
+    /**
+     * The folders in the order every list shows them: each top-level folder followed by its
+     * sub-folders, each level in its own order (the input's).
+     *
+     * @param  Collection<int, self>  $all  ordered by place
+     * @return Collection<int, self>
+     */
+    public static function inTreeOrder(Collection $all): Collection
+    {
+        $kids = $all->whereNotNull('parent_id')->groupBy('parent_id');
+
+        return $all->whereNull('parent_id')
+            ->flatMap(fn (self $top): array => array_merge([$top], $kids->get($top->id, new Collection)->all()))
+            ->values();
     }
 
     /**

@@ -11,6 +11,7 @@ use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Media\Services\ExternalImageFetcher;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Media\Support\MediaKey;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\VideoEmbed;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -20,6 +21,7 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
@@ -718,16 +720,21 @@ trait WithMediaLibraryPicker
 
         // Hand-edited slug wins (sanitized to ASCII); otherwise derive from the name. uniqueSlug
         // forces the [a-z0-9-] shape and appends -2/-3… on a same-site collision — never an error.
-        $folder = new MediaFolder;
+        // A top-level folder, at the end of the top level, under the site's folder-list lock like
+        // every folder write (the library's own form is where a sub-folder is made); the slug is
+        // picked inside the lock so two people adding the same name at once get -2, not an error.
         $candidate = $this->pickerNewFolderSlugEdited ? $this->pickerNewFolderSlug : $name;
-        $slug = $folder->uniqueSlug($candidate, $name);
+        $folder = DB::transaction(function () use ($name, $candidate): MediaFolder {
+            MediaFolder::lockTree(app(CurrentSite::class)->id());
+            $slug = (new MediaFolder)->uniqueSlug($candidate, $name);
+            $maxPosition = MediaFolder::query()->whereNull('parent_id')->max('position');
 
-        $maxPosition = MediaFolder::query()->max('position');
-        $folder = MediaFolder::query()->create([
-            'name' => $name,
-            'slug' => $slug,
-            'position' => (is_numeric($maxPosition) ? (int) $maxPosition : 0) + 1,
-        ]);
+            return MediaFolder::query()->create([
+                'name' => $name,
+                'slug' => $slug,
+                'position' => (is_numeric($maxPosition) ? (int) $maxPosition : 0) + 1,
+            ]);
+        });
 
         $this->reset('pickerNewFolderOpen', 'pickerNewFolderName', 'pickerNewFolderSlug',
             'pickerNewFolderSlugEdited', 'pickerNewFolderSlugFallback');
@@ -739,7 +746,7 @@ trait WithMediaLibraryPicker
      * Everything the picker modal renders, in one request-cached bundle (the Blade partial
      * reads $this->mediaPickerState). Empty shell while closed, so hidden modals cost nothing.
      *
-     * @return array{open: bool, page?: LengthAwarePaginator<int, Media>, folders?: EloquentCollection<int, MediaFolder>, total?: int, formats?: array<int, string>, selectedPreview?: EloquentCollection<int, Media>, urls?: MediaUrlResolver, detail?: Media|null, detailUsages?: list<array{kind: string, role: string, label: string, url: string|null}>, detailUploader?: string|null, contentLocale?: string, trashTotal?: int}
+     * @return array{open: bool, page?: LengthAwarePaginator<int, Media>, folders?: Collection<int, MediaFolder>, total?: int, formats?: array<int, string>, selectedPreview?: EloquentCollection<int, Media>, urls?: MediaUrlResolver, detail?: Media|null, detailUsages?: list<array{kind: string, role: string, label: string, url: string|null}>, detailUploader?: string|null, contentLocale?: string, trashTotal?: int}
      */
     #[Computed]
     public function mediaPickerState(): array
@@ -771,7 +778,7 @@ trait WithMediaLibraryPicker
         return [
             'open' => true,
             'page' => $page,
-            'folders' => MediaFolder::query()->withCount('media')->orderBy('position')->orderBy('name')->get(),
+            'folders' => self::pickerFolders(),
             'total' => Media::query()->count(),
             'formats' => $formats,
             'selectedPreview' => Media::query()->whereIn('id', array_slice($this->pickerSelected, 0, 3))->get(),
@@ -782,6 +789,30 @@ trait WithMediaLibraryPicker
             'contentLocale' => $this->pickerContentLocale(),
             'trashTotal' => Gate::allows('media.delete') ? Media::onlyTrashed()->count() : 0,
         ];
+    }
+
+    /**
+     * The folders in tree order (each top-level folder, then its sub-folders), each with
+     * media_count = its files and, for a top-level folder, its sub-folders' files too.
+     *
+     * @return Collection<int, MediaFolder>
+     */
+    private static function pickerFolders(): Collection
+    {
+        $all = MediaFolder::query()->withCount('media')->orderBy('position')->orderBy('name')->orderBy('id')->get();
+        $kidsN = [];
+        foreach ($all as $f) {
+            if ($f->parent_id !== null) {
+                $kidsN[$f->parent_id] = ($kidsN[$f->parent_id] ?? 0) + Cast::int($f->getAttribute('media_count'));
+            }
+        }
+        foreach ($all as $f) {
+            if (isset($kidsN[$f->id])) {
+                $f->setAttribute('media_count', Cast::int($f->getAttribute('media_count')) + $kidsN[$f->id]);
+            }
+        }
+
+        return MediaFolder::inTreeOrder($all);
     }
 
     /**
@@ -808,7 +839,10 @@ trait WithMediaLibraryPicker
         $query = Media::query();
 
         if ($this->pickerFolderId !== null) {
-            $query->where('folder_id', $this->pickerFolderId);
+            // a folder holds its sub-folders' files too, as in the library
+            // the ids first, then one IN list: an OR with a sub-select cannot use the folder index
+            $query->whereIn('folder_id', [$this->pickerFolderId,
+                ...MediaFolder::query()->where('parent_id', $this->pickerFolderId)->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->all()]);
         }
 
         match ($this->pickerType) {
