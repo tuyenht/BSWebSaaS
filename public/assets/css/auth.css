@@ -242,16 +242,34 @@
    to a 300px floor — so stretch .cf-turnstile to the field width and the widget grows to match it
    (desktop). Below 300px the iframe (a hard min-width inside a closed shadow root) can't shrink, so the
    JS scaler (bsFitTurnstile) scales .cf-turnstile down to fit (mobile). min-width:0 lets the host box
-   track the field width so the scaler measures it right. */
+   track the field width so the scaler measures it right.
+
+   The frame is OURS, not Cloudflare's: their 1px border is drawn inside their iframe, so at a fractional
+   field width (Windows display scaling 125%/150% gives 320.4px) the right edge falls outside the iframe
+   and disappears, and the mobile scaler thins it to ~0.7px. So .cf-turnstile sits 1px outside the host on
+   every side, the host clips it (overflow:hidden clips at the padding box, i.e. under our border) and
+   draws its own 1px border with the same colour and radius as the inputs. bsFitTurnstile keeps the host
+   height hugging the scaled widget. No frame while the widget has not been drawn (empty .cf-turnstile). */
 .auth-turnstile {
   display: flex;
   min-width: 0;
   max-width: 100%;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  /* slate-200 — the inputs' border */
+  border-radius: 10.5px;
+  /* the inputs' radius */
+}
+
+.auth-turnstile:has(> .cf-turnstile:empty) {
+  border-color: transparent;
 }
 
 .auth-turnstile .cf-turnstile {
-  width: 100%; /* give the flexible widget the full field width to expand into (desktop fill) */
-  max-width: 100%;
+  flex: none;
+  width: calc(100% + 2px); /* give the flexible widget the full field width to expand into (desktop fill) */
+  max-width: none;
+  margin: -1px; /* Cloudflare's own border lands under ours and is clipped */
 }
 
 /* ---- Input Group ---- */

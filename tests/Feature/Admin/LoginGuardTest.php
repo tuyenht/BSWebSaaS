@@ -144,3 +144,14 @@ it('blocks even a valid login once the per-IP failure ceiling is hit (spray guar
 
     $this->assertGuest();
 });
+
+it('draws the login Turnstile widget light, inside the field-width frame the page owns', function (): void {
+    // The page draws the frame (auth.css .auth-turnstile), because Cloudflare's own border sits inside
+    // their iframe and loses its right edge at fractional widths (Windows display scaling 125%/150%).
+    // The login card is light only, so the widget must not follow a dark system theme.
+    config(['services.turnstile.site_key' => 'test-site', 'services.turnstile.secret_key' => 'test-secret']);
+
+    Livewire::test(Login::class)
+        ->assertSeeHtml('<div wire:ignore class="auth-turnstile">')
+        ->assertSeeHtml('data-size="flexible" data-theme="light"');
+});
