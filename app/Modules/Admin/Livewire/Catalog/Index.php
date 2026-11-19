@@ -23,6 +23,7 @@ use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Support\CategoryItemCounts;
+use App\Modules\Cms\Support\CategoryPublicCounts;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Identity\Models\User;
@@ -1088,29 +1089,32 @@ final class Index extends Component
         $routes = $action->routePaths(array_values($rows->modelKeys()));
         $counts = app(CategoryItemCounts::class);
         $marked = [];
-        foreach ($rows as $product) {
-            $ids = [];
-            foreach (Cast::strings($items[$product->ulid] ?? null) as $key) {
-                $found = $taxonomies->get($key);
-                if ($found instanceof Taxonomy) {
-                    $ids[] = $found->id;
+        // The public totals per language: one reading of every product before and after, not one per product.
+        app(CategoryPublicCounts::class)->track('product_taxonomies', array_values(array_map(static fn (mixed $id): int => Cast::int($id), $rows->modelKeys())), function () use ($rows, $items, $taxonomies, $action, $routes, $counts, &$marked, &$back, &$blocked): void {
+            foreach ($rows as $product) {
+                $ids = [];
+                foreach (Cast::strings($items[$product->ulid] ?? null) as $key) {
+                    $found = $taxonomies->get($key);
+                    if ($found instanceof Taxonomy) {
+                        $ids[] = $found->id;
+                    }
+                }
+                $main = $ids === [] ? null : $taxonomies->firstWhere('id', $ids[0]);
+                try {
+                    $filed = $counts->batch(fn (): array => DB::transaction(fn (): array => $action->file($product, $ids, $main instanceof Taxonomy ? $main : null, $routes[$product->id] ?? [])));
+                    $back++;
+                    if ($filed['mainChanged']) {
+                        $marked[] = $product->id;
+                    }
+                } catch (RouteConflictException|AuthorizationException) {
+                    // AuthorizationException: the categories to put back are outside the member's product limits now
+                    $blocked++;
+                } catch (UniqueConstraintViolationException $e) {
+                    UniqueViolation::refusal($e);
+                    $blocked++;
                 }
             }
-            $main = $ids === [] ? null : $taxonomies->firstWhere('id', $ids[0]);
-            try {
-                $filed = $counts->batch(fn (): array => DB::transaction(fn (): array => $action->file($product, $ids, $main instanceof Taxonomy ? $main : null, $routes[$product->id] ?? [])));
-                $back++;
-                if ($filed['mainChanged']) {
-                    $marked[] = $product->id;
-                }
-            } catch (RouteConflictException|AuthorizationException) {
-                // AuthorizationException: the categories to put back are outside the member's product limits now
-                $blocked++;
-            } catch (UniqueConstraintViolationException $e) {
-                UniqueViolation::refusal($e);
-                $blocked++;
-            }
-        }
+        });
         $action->markMoved($marked);
     }
 

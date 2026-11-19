@@ -3534,6 +3534,8 @@
     "storefront.search.suggest_close": "close",
     "storefront.search.suggest_heading_groups": "Categories",
     "storefront.search.suggest_kind_posts": "Posts",
+    "storefront.search.suggest_kind_count": ":kind · :count items",
+    "storefront.search.suggest_kind_count_one": ":kind · 1 item",
     "storefront.search.suggest_sku": "Code :sku",
     "storefront.search.suggest_all_n": "See all :count results for “:q”",
     "storefront.search.suggest_all_n_one": "See the 1 result for “:q”",

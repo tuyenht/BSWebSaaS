@@ -7,6 +7,7 @@ namespace App\Modules\Cms\Routing;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Support\CategoryItemCounts;
+use App\Modules\Cms\Support\CategoryPublicCounts;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\PermalinkConfig;
@@ -22,8 +23,8 @@ use Illuminate\Support\Facades\DB;
  *  - refile(): before categories are deleted, move their items onto another category (which takes
  *    the deleted one's rank) or detach them, renumber each item's categories 0..n-1 so position 0 is
  *    a primary again — facet terms from FACET_POSITION_BASE up are never touched — then re-sync;
- *    the categories' item totals follow every main category it changes (CategoryItemCounts), and
- *    so does the content mark of every item whose main category it changes (the page's breadcrumb).
+ *    the categories' item totals follow every main category it changes (CategoryItemCounts), their
+ *    public totals every filing it changes (CategoryPublicCounts), and so does the content mark of every item whose main category it changes (the page's breadcrumb).
  * Paths are re-synced only for kinds whose permalink preset can carry the change (follows()): on a
  * site where everything is flat, a category change touches no item route.
  *
@@ -46,6 +47,7 @@ final readonly class CategoryRelinker
         private RouteSync $routes,
         private CurrentSite $site,
         private CategoryItemCounts $counts,
+        private CategoryPublicCounts $public,
     ) {}
 
     /**
@@ -106,6 +108,8 @@ final readonly class CategoryRelinker
         // side back (an error to retry, never a wrong total).
         $before = [];
         $now = [];
+        $publicBefore = [];
+        $publicNow = [];
         foreach ($this->kinds() as $kind) {
             $follows = $this->follows($kind['section'], [CategoryChange::Refiled]);
             $after = 0;
@@ -135,10 +139,12 @@ final readonly class CategoryRelinker
                     ->lockForUpdate()
                     ->pluck('id');
                 $before = self::sum($before, $this->counts->primaries($kind['pivot'], $chunk));
+                $publicBefore[] = $this->public->reading($kind['pivot'], $chunk);
                 $mainsBefore = $this->mains($kind['pivot'], $kind['column'], $chunk);
                 $this->rewrite($kind['pivot'], $kind['column'], $deleted, $targetId, $chunk);
                 $mainsNow = $this->mains($kind['pivot'], $kind['column'], $chunk);
                 $now = self::sum($now, $this->counts->primaries($kind['pivot'], $chunk));
+                $publicNow[] = $this->public->reading($kind['pivot'], $chunk);
                 ($kind['changed'])(array_values(array_filter(
                     $chunk,
                     static fn (int $item): bool => ($mainsBefore[$item] ?? null) !== ($mainsNow[$item] ?? null),
@@ -151,6 +157,13 @@ final readonly class CategoryRelinker
             } while (count($chunk) === self::CHUNK);
         }
         $this->counts->settle($before, $now);
+        // After the item totals (the order every writer keeps). The deleted categories' own rows are
+        // written too, then go with their translations (cascade).
+        $this->public->batch(function () use ($publicBefore, $publicNow): void {
+            foreach ($publicBefore as $i => $reading) {
+                $this->public->settle($reading, $publicNow[$i]);
+            }
+        });
 
         return ['items' => $items, 'routes' => $routes];
     }
@@ -239,12 +252,12 @@ final readonly class CategoryRelinker
      * Cms's own entries, then every registered kind. A null section means posts: their preset
      * depends on the section their primary category puts them in.
      *
-     * @return list<array{pivot: string, column: string, section: string|null, resync: Closure(list<int>): int, items: string, changed: Closure(list<int>): void}>
+     * @return list<array{pivot: string, column: string, section: string|null, resync: Closure(list<int>): int, items: string, changed: Closure(list<int>): void, translations: string|null}>
      */
     private function kinds(): array
     {
         return [
-            ['pivot' => 'entry_taxonomies', 'column' => 'entry_id', 'section' => null, 'resync' => $this->resyncEntries(...), 'items' => 'entries', 'changed' => Entry::markContentChanged(...)],
+            ['pivot' => 'entry_taxonomies', 'column' => 'entry_id', 'section' => null, 'resync' => $this->resyncEntries(...), 'items' => 'entries', 'changed' => Entry::markContentChanged(...), 'translations' => 'entry_translations'],
             ...array_values($this->dependents->all()),
         ];
     }

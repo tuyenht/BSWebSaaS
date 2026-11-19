@@ -12,6 +12,8 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Support\CategoryItemCounts;
+use App\Modules\Cms\Support\CategoryPublicCounts;
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -54,36 +56,40 @@ final class ChangeProductMainCategory
         $tally = ['moved' => 0, 'same' => 0, 'redirected' => 0, 'failed' => 0, 'before' => []];
         $marked = [];
 
-        foreach ($products as $product) {
-            $now = $this->categoryIds($product);
-            if (($now[0] ?? null) === $to->id) {
-                $tally['same']++;
+        // The public totals per language: one reading of every product before and after (a product
+        // whose savepoint rolled back reads as it was), not one per product.
+        app(CategoryPublicCounts::class)->track('product_taxonomies', array_values(array_map(static fn (mixed $id): int => Cast::int($id), $products->modelKeys())), function () use ($products, $to, $counts, $routes, &$tally, &$marked): void {
+            foreach ($products as $product) {
+                $now = $this->categoryIds($product);
+                if (($now[0] ?? null) === $to->id) {
+                    $tally['same']++;
 
-                continue;
+                    continue;
+                }
+                $list = [$to->id, ...array_values(array_diff($now, [$now[0] ?? 0, $to->id]))];
+                $was = $this->categoryUlids($product, $now);   // before the change: it drops the loaded list
+
+                try {
+                    $filed = $counts->batch(fn (): array => DB::transaction(fn (): array => $this->file($product, $list, $to, $routes[$product->id] ?? [])));
+                } catch (RouteConflictException) {
+                    $tally['failed']++;
+
+                    continue;
+                } catch (UniqueConstraintViolationException $e) {
+                    UniqueViolation::refusal($e);   // a known address clash is a refusal; anything else is rethrown
+                    $tally['failed']++;
+
+                    continue;
+                }
+
+                $tally['moved']++;
+                $tally['redirected'] += $filed['redirected'] ? 1 : 0;
+                $tally['before'][$product->ulid] = $was;
+                if ($filed['mainChanged']) {
+                    $marked[] = $product->id;
+                }
             }
-            $list = [$to->id, ...array_values(array_diff($now, [$now[0] ?? 0, $to->id]))];
-            $was = $this->categoryUlids($product, $now);   // before the change: it drops the loaded list
-
-            try {
-                $filed = $counts->batch(fn (): array => DB::transaction(fn (): array => $this->file($product, $list, $to, $routes[$product->id] ?? [])));
-            } catch (RouteConflictException) {
-                $tally['failed']++;
-
-                continue;
-            } catch (UniqueConstraintViolationException $e) {
-                UniqueViolation::refusal($e);   // a known address clash is a refusal; anything else is rethrown
-                $tally['failed']++;
-
-                continue;
-            }
-
-            $tally['moved']++;
-            $tally['redirected'] += $filed['redirected'] ? 1 : 0;
-            $tally['before'][$product->ulid] = $was;
-            if ($filed['mainChanged']) {
-                $marked[] = $product->id;
-            }
-        }
+        });
         $this->markMoved($marked);
 
         return $tally;

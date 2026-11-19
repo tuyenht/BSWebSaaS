@@ -3534,6 +3534,8 @@
     "storefront.search.suggest_close": "关闭",
     "storefront.search.suggest_heading_groups": "分类",
     "storefront.search.suggest_kind_posts": "文章",
+    "storefront.search.suggest_kind_count": ":kind · :count 项",
+    "storefront.search.suggest_kind_count_one": ":kind · 1 项",
     "storefront.search.suggest_sku": "编号 :sku",
     "storefront.search.suggest_all_n": "查看“:q”的全部 :count 个结果",
     "storefront.search.suggest_all_n_one": "查看“:q”的 1 个结果",

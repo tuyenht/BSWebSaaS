@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Storefront\Search;
 
+use App\Modules\Cms\Routing\CategoryDependents;
 use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Cms\Taxonomy\CategoryTemplates;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\VietnameseFold;
@@ -14,6 +16,7 @@ use App\Modules\Theme\Rendering\TemplateCatalog;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\JoinClause;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Number;
 
 /**
  * The rows under a search box while the visitor types (SiteSuggest finds them), at most
@@ -24,8 +27,12 @@ use Illuminate\Support\Facades\DB;
  * bold), its group and the group's key (fixed words or the category's slug, never an id), an icon name,
  * its address (PathBuilder), the picture's address at THUMB_WIDTH from its storage key (null: no
  * picture, the box draws a tile with the icon) and its meta line: a product's code (the part typed
- * marked), a post's day in the site's format, a category's kind. Never a description.
- * One more read for the category names, and one for the site's day format when a dated row is shown.
+ * marked), a post's day in the site's format, a category's kind and how many items a visitor finds
+ * on its page in this language («Sản phẩm · 12 mục», CategoryPublicCounts: by the category's real
+ * list layout, its own items or its whole branch; the catalog root's branch; no number at 0).
+ * Never a description, never the admin total of a category (it counts drafts).
+ * One more read for the category names, counts and layouts, and one for the site's day format when
+ * a dated row is shown.
  */
 final readonly class SearchSuggestions
 {
@@ -42,6 +49,8 @@ final readonly class SearchSuggestions
         private CurrentSite $current,
         private MediaUrlResolver $media,
         private SiteTime $time,
+        private CategoryTemplates $templates,
+        private CategoryDependents $dependents,
     ) {}
 
     /**
@@ -69,7 +78,7 @@ final readonly class SearchSuggestions
                 'icon' => 'folder',
                 'url' => $this->paths->publicUrl($category['path'], $locale),
                 'thumb' => null,
-                'meta' => Cast::string(__($category['vocabulary'] === 'product_cat' ? 'storefront.search.group_products' : 'storefront.search.suggest_kind_posts')),
+                'meta' => self::categoryMeta($category, $locale),
             ];
         }
 
@@ -162,6 +171,40 @@ final readonly class SearchSuggestions
     }
 
     /**
+     * The content sections whose category is a catalog root (every public item of the kind listed
+     * there): the ones the counted kinds registered (CategoryDependents), as a text[] literal.
+     */
+    private function catalogSections(): string
+    {
+        $keys = [];
+        foreach ($this->dependents->all() as $kind) {
+            if ($kind['translations'] !== null) {
+                $keys[] = '"'.str_replace(['\\', '"'], ['\\\\', '\\"'], $kind['section']).'"';
+            }
+        }
+
+        return '{'.implode(',', $keys).'}';
+    }
+
+    /**
+     * A category row's meta line: its kind, then how many items its page lists in this language
+     * («Sản phẩm · 12 mục»); the kind alone when it lists none.
+     *
+     * @param  array{vocabulary: string, count: int}  $category
+     */
+    private static function categoryMeta(array $category, string $locale): string
+    {
+        $kind = Cast::string(__($category['vocabulary'] === 'product_cat' ? 'storefront.search.group_products' : 'storefront.search.suggest_kind_posts'));
+        if ($category['count'] <= 0) {
+            return $kind;
+        }
+
+        return $category['count'] === 1
+            ? Cast::string(__('storefront.search.suggest_kind_count_one', ['kind' => $kind]))
+            : Cast::string(__('storefront.search.suggest_kind_count', ['kind' => $kind, 'count' => Number::format($category['count'], locale: $locale)]));
+    }
+
+    /**
      * The picture's address from what a row stores: a storage key (no scheme, has a slash) at
      * THUMB_WIDTH; a full web address as it is (a cover saved before keys were stored); else null.
      */
@@ -235,10 +278,15 @@ final readonly class SearchSuggestions
     }
 
     /**
-     * The names, slugs, kinds, list layouts and page addresses of these categories in this language, in one read.
+     * The names, slugs, kinds, real list layouts, page addresses and public counts of these
+     * categories in this language, in one read. The layout is the one the category page renders on
+     * (CategoryTemplates: "follow the parent" turned into a name, from the layouts stored above it,
+     * read here by parent_id up to TaxonomyRules::MAX_DEPTH); the count is the one that layout lists:
+     * the category's own items, or its whole branch on a card layout and on the catalog root (whose
+     * page lists every product).
      *
      * @param  list<int>  $ids
-     * @return array<int, array{name: string, slug: string, vocabulary: string, template: string|null, path: string|null}>
+     * @return array<int, array{name: string, slug: string, vocabulary: string, template: string|null, path: string|null, count: int}>
      */
     private function categories(array $ids, string $locale): array
     {
@@ -248,9 +296,14 @@ final readonly class SearchSuggestions
         $site = $this->current->id();
         $rows = DB::table('taxonomies as t')
             ->join('taxonomy_translations as tt', fn (JoinClause $join) => $join->on('tt.taxonomy_id', '=', 't.id')->where('tt.site_id', '=', $site)->where('tt.locale', '=', $locale))
+            ->leftJoin('taxonomies as up1', fn (JoinClause $join) => $join->on('up1.id', '=', 't.parent_id')->where('up1.site_id', '=', $site))
+            ->leftJoin('taxonomies as up2', fn (JoinClause $join) => $join->on('up2.id', '=', 'up1.parent_id')->where('up2.site_id', '=', $site))
+            ->leftJoin('taxonomies as up3', fn (JoinClause $join) => $join->on('up3.id', '=', 'up2.parent_id')->where('up3.site_id', '=', $site))
             ->where('t.site_id', $site)->whereIn('t.id', $ids)
-            ->select(['t.id', 't.vocabulary', 't.list_template', 'tt.name', 'tt.slug'])
+            ->select(['t.id', 't.vocabulary', 't.list_template', 'tt.name', 'tt.slug', 'tt.public_own_count', 'tt.public_tree_count',
+                'up1.list_template as up1_template', 'up2.list_template as up2_template', 'up3.list_template as up3_template'])
             ->selectSub(DB::table('routes as r')->select('r.path')->where('r.site_id', $site)->where('r.locale', $locale)->whereColumn('r.taxonomy_id', 't.id')->orderBy('r.id')->limit(1), 'path')
+            ->selectRaw('exists (select 1 from content_sections cs where cs.site_id = ? and cs.key = any(cast(? as text[])) and cs.taxonomy_id = t.id) as catalog_root', [$site, $this->catalogSections()])
             ->get();
         $out = [];
         foreach ($rows as $row) {
@@ -259,12 +312,18 @@ final readonly class SearchSuggestions
             if ($name === '') {
                 continue;
             }
+            $vocabulary = Cast::string($row['vocabulary'] ?? '');
+            $template = $this->templates->listFromChain($vocabulary, Cast::stringOrNull($row['list_template'] ?? null), [
+                Cast::stringOrNull($row['up1_template'] ?? null), Cast::stringOrNull($row['up2_template'] ?? null), Cast::stringOrNull($row['up3_template'] ?? null),
+            ]);
+            $branch = (bool) ($row['catalog_root'] ?? false) || TemplateCatalog::cards($template) !== null;
             $out[Cast::int($row['id'] ?? 0)] = [
                 'name' => $name,
                 'slug' => Cast::string($row['slug'] ?? ''),
-                'vocabulary' => Cast::string($row['vocabulary'] ?? ''),
-                'template' => Cast::stringOrNull($row['list_template'] ?? null),
+                'vocabulary' => $vocabulary,
+                'template' => $template,
                 'path' => Cast::stringOrNull($row['path'] ?? null),
+                'count' => Cast::int($branch ? ($row['public_tree_count'] ?? 0) : ($row['public_own_count'] ?? 0)),
             ];
         }
 

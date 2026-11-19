@@ -6,6 +6,7 @@ namespace App\Modules\Cms\Concerns;
 
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\CategoryItemCounts;
+use App\Modules\Cms\Support\CategoryPublicCounts;
 use App\Modules\Shared\Support\Cast;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\Pivot;
@@ -38,6 +39,12 @@ use InvalidArgumentException;
  * restores of one item at once queue behind each other, so the second sees what the first wrote
  * and never counts the same change twice. The row is locked before any category row (the counter
  * updates come last), the order every other writer of an item keeps.
+ *
+ * The categories' public totals per language (CategoryPublicCounts) follow the item on the same
+ * roads — a change of its categories, the trash, restore and permanent delete — and on a change of
+ * its `status` (an item is public only once published), read before and after each write on the
+ * locked row. A caller that wraps several writes of one item in CategoryPublicCounts::track() is
+ * counted once, and these events stay silent for it.
  */
 trait HasCategoryTaxonomies
 {
@@ -50,6 +57,25 @@ trait HasCategoryTaxonomies
     /** Whether the restore under way brings the item back from the trash. */
     private bool $restoringFromTrash = false;
 
+    /**
+     * The public totals' reading taken before the write under way (CategoryPublicCounts::begin()).
+     *
+     * @var array{kind: string, id: int, before: array<string, array{0: int, 1: int}>, asIfLive: bool}|null
+     */
+    private ?array $publicCountsBefore = null;
+
+    /** Whether $publicCountsBefore belongs to the status update under way (not to a restore). */
+    private bool $publicCountsOnUpdate = false;
+
+    /** Whether the status save under way puts the item on the website (so what it adds after is read). */
+    private bool $publicCountsAfter = false;
+
+    /**
+     * Whether the row lockLiveState() just locked is published: an item that is not adds nothing to
+     * the public totals before or after a trash, a restore or a re-filing, so they are not read.
+     */
+    private bool $lockedPublished = false;
+
     public static function bootHasCategoryTaxonomies(): void
     {
         // A soft or permanent delete of a LIVE item leaves its main category's total. Read while
@@ -57,7 +83,20 @@ trait HasCategoryTaxonomies
         // is gone — a delete another listener cancels changes nothing, and deleting an item that
         // is already in the trash (a second trash, a purge) does not count it out twice.
         static::registerModelEvent('deleting', static function (self $item): void {
-            $item->mainLeftByDelete = $item->countsInCategoryTotals() && $item->lockLiveState() === true ? $item->mainCategoryId() : null;
+            $live = $item->countsInCategoryTotals() && $item->lockLiveState() === true;
+            $item->mainLeftByDelete = $live ? $item->mainCategoryId() : null;
+            // Its public share is read now, while its translations and filings are still there — or,
+            // for a trash inside a bulk action, read with the others when the action ends.
+            $public = app(CategoryPublicCounts::class);
+            $pivot = $item->taxonomies()->getTable();
+            $trash = ! $item->isForceDeleting();   // both hosts keep a trash (SoftDeletes)
+            $id = Cast::int($item->getKey());
+            // A permanent delete of an item that went off the website earlier in the bulk action is
+            // read too (as if live): the action's end takes out what the item added when it began.
+            $item->publicCountsBefore = ($live && $item->lockedPublished && ! ($trash && $public->deferred('out', $pivot, $id)))
+                || (! $trash && $item->countsInCategoryTotals() && $public->wentOff($pivot, $id))
+                ? $public->begin($pivot, $id, locked: true)
+                : null;
         });
         static::registerModelEvent('deleted', static function (self $item): void {
             $main = $item->mainLeftByDelete;
@@ -65,12 +104,22 @@ trait HasCategoryTaxonomies
             if ($main !== null) {
                 app(CategoryItemCounts::class)->adjust([$main => -1]);
             }
+            $public = $item->publicCountsBefore;
+            $item->publicCountsBefore = null;
+            app(CategoryPublicCounts::class)->end($public, countsAfter: false);
         });
         // Only a restore out of the trash brings it back (restore() on a live row saves it again).
         // Both the copy and the stored row must be in the trash: restore() writes only what it
         // changed on the copy, so a copy that already looks live writes nothing.
         static::registerModelEvent('restoring', static function (self $item): void {
             $item->restoringFromTrash = $item->trashed() && $item->countsInCategoryTotals() && $item->lockLiveState() === false;
+            // In the trash it adds nothing to the public totals: nothing to read before. Inside a bulk
+            // action it is read with the others when the action ends.
+            $public = app(CategoryPublicCounts::class);
+            $pivot = $item->taxonomies()->getTable();
+            $item->publicCountsBefore = $item->restoringFromTrash && $item->lockedPublished && ! $public->deferred('in', $pivot, Cast::int($item->getKey()))
+                ? $public->begin($pivot, Cast::int($item->getKey()), locked: true, countsNow: false)
+                : null;
         });
         static::registerModelEvent('restored', static function (self $item): void {
             $fromTrash = $item->restoringFromTrash;
@@ -78,6 +127,39 @@ trait HasCategoryTaxonomies
             $main = $fromTrash ? $item->mainCategoryId() : null;
             if ($main !== null) {
                 app(CategoryItemCounts::class)->adjust([$main => 1]);
+            }
+            $public = $item->publicCountsBefore;
+            $item->publicCountsBefore = null;
+            app(CategoryPublicCounts::class)->end($public);
+        });
+        // A stored item going on or off the website (its status to or from published; a change
+        // between two unpublished statuses moves nothing). Inside a restore (its own save) the
+        // restore's reading covers it; an item in the trash adds nothing either way. In an open batch
+        // (a bulk change) it is read once with the others when the batch closes.
+        static::registerModelEvent('updating', static function (self $item): void {
+            $item->publicCountsOnUpdate = false;   // never a reading left by a save that failed
+            $item->publicCountsAfter = false;
+            if ($item->restoringFromTrash || ! $item->isDirty('status') || $item->trashed() || ! $item->countsInCategoryTotals()) {
+                return;
+            }
+            $was = $item->getOriginal('status') === 'published';
+            $now = $item->getAttribute('status') === 'published';
+            $public = app(CategoryPublicCounts::class);
+            $pivot = $item->taxonomies()->getTable();
+            if ($was === $now || $public->deferred($was ? 'out' : 'in', $pivot, Cast::int($item->getKey()))) {
+                return;
+            }
+            // What it added before is read only if it was on the website, what it adds after only if it is.
+            $item->publicCountsBefore = $public->begin($pivot, Cast::int($item->getKey()), countsNow: $was);
+            $item->publicCountsOnUpdate = $item->publicCountsBefore !== null;
+            $item->publicCountsAfter = $now;
+        });
+        static::registerModelEvent('updated', static function (self $item): void {
+            if ($item->publicCountsOnUpdate) {
+                $public = $item->publicCountsBefore;
+                $item->publicCountsBefore = null;
+                $item->publicCountsOnUpdate = false;
+                app(CategoryPublicCounts::class)->end($public, $item->publicCountsAfter);
             }
         });
     }
@@ -127,6 +209,13 @@ trait HasCategoryTaxonomies
 
         // Before reading the old main category: see the class comment.
         $counts = $this->exists && $this->countsInCategoryTotals() && $this->lockLiveState() === true;
+        // The public totals: what the item adds before the re-filing (the row is locked above) — also
+        // for an item that went off the website earlier in the bulk action (read as if live).
+        $publicCounts = app(CategoryPublicCounts::class);
+        $pivotTable = $this->taxonomies()->getTable();
+        $public = ($counts && $this->lockedPublished) || ($this->exists && $this->countsInCategoryTotals() && $publicCounts->wentOff($pivotTable, Cast::int($this->getKey())))
+            ? $publicCounts->begin($pivotTable, Cast::int($this->getKey()), locked: true)
+            : null;
 
         // The facet terms to keep and the main category now, in one read.
         $relation = $this->taxonomies();
@@ -153,6 +242,7 @@ trait HasCategoryTaxonomies
         if ($counts) {
             app(CategoryItemCounts::class)->moved($from, $taxonomyIds[0] ?? null);
         }
+        app(CategoryPublicCounts::class)->end($public);
         // Only the main category is on the page (the breadcrumb); the others are not.
         $mainChanged = $this->exists && $from !== ($taxonomyIds[0] ?? null);
         if ($mainChanged && $markContent) {
@@ -194,14 +284,16 @@ trait HasCategoryTaxonomies
 
     /**
      * Lock this item's row for the rest of the caller's transaction and tell whether it is out of
-     * the trash, as stored (null: the row is gone). The site scope stays on.
+     * the trash, as stored (null: the row is gone); whether it is published is kept in
+     * $lockedPublished. The site scope stays on.
      */
     private function lockLiveState(): ?bool
     {
         $row = $this->newQueryWithoutScope(SoftDeletingScope::class)
             ->whereKey($this->getKey())
             ->lockForUpdate()
-            ->first([$this->getKeyName(), $this->getDeletedAtColumn()]);
+            ->first([$this->getKeyName(), $this->getDeletedAtColumn(), 'status']);
+        $this->lockedPublished = $row !== null && $row->getAttribute('status') === 'published';
 
         return $row === null ? null : ! $row->trashed();
     }

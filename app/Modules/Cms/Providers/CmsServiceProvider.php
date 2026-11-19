@@ -13,6 +13,7 @@ use App\Modules\Cms\Console\PurgeTrashedEntries;
 use App\Modules\Cms\Console\PurgeTrashedMenuItems;
 use App\Modules\Cms\Console\RebuildTaxonomyPaths;
 use App\Modules\Cms\Console\ReconcileCategoryCounts;
+use App\Modules\Cms\Console\ReconcileCategoryPublicCounts;
 use App\Modules\Cms\Console\ResanitizePageBodies;
 use App\Modules\Cms\Console\RetirePrivateEntryStatus;
 use App\Modules\Cms\Console\SnapshotPublishedEntries;
@@ -37,6 +38,7 @@ use App\Modules\Cms\Routing\CategoryDependents;
 use App\Modules\Cms\Routing\EntryPageLinks;
 use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Support\CategoryItemCounts;
+use App\Modules\Cms\Support\CategoryPublicCounts;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\EntryReviewReach;
 use App\Modules\Cms\Support\LayoutSlotBlocks;
@@ -76,6 +78,7 @@ final class CmsServiceProvider extends ServiceProvider
         // The category totals' open bulk batches belong to one request or job; scoped so a batch
         // can never be carried into the next Octane operation.
         $this->app->scoped(CategoryItemCounts::class);
+        $this->app->scoped(CategoryPublicCounts::class);
 
         // The blocks of the slots around posts, lists and products: reads the request's settings memo
         // and the request's locales, so it is scoped with them and never outlives a request.
@@ -146,6 +149,7 @@ final class CmsServiceProvider extends ServiceProvider
                 PurgeTrashedEntries::class,
                 CountWrongTemplates::class,
                 ReconcileCategoryCounts::class,
+                ReconcileCategoryPublicCounts::class,
                 RetirePrivateEntryStatus::class,
             ]);
         }
