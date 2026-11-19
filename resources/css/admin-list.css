@@ -2458,8 +2458,8 @@
    pointer too (outside the layers, so the button's hover tint does not take the fill away). Its fixed size
    takes the 1px edge inside, so nothing moves. */
 .list-more > [data-guide='row-more'][aria-expanded='true'] {
-    border: 1px solid var(--color-accent);
-    background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface));
+    border: 1px solid var(--color-primary-text);
+    background: color-mix(in srgb, var(--color-primary-text) 7%, var(--color-surface));
 }
 
 @keyframes list-sheet-in {

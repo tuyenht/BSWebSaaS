@@ -125,7 +125,7 @@ it('turns a row menu without a title into the phone sheet board 05 draws, titled
         ->and($css)->toMatch("/\\.list-menu\\[data-sheet='row'\\] \\.list-mh \\{\\s*display: flex;/")
         // … in no width rule: only the stylesheet's own @layer wraps it
         ->and(substr_count($before = substr($css, 0, (int) strpos($css, ".list-menu[data-sheet='row'] .list-mh {")), '{') - substr_count($before, '}'))->toBe(1)
-        ->and($css)->toMatch("/\\.list-more > \\[data-guide='row-more'\\]\\[aria-expanded='true'\\] \\{\\s*border: 1px solid var\\(--color-accent\\);/")
+        ->and($css)->toMatch("/\\.list-more > \\[data-guide='row-more'\\]\\[aria-expanded='true'\\] \\{\\s*border: 1px solid var\\(--color-primary-text\\);/")
         // … outside every layer, so the button's hover tint does not take the fill away
         ->and(substr_count($open = substr($css, 0, (int) strpos($css, ".list-more > [data-guide='row-more'][aria-expanded='true'] {")), '{') - substr_count($open, '}'))->toBe(0)
         ->and(substr_count($css, '--list-sheet: 1;'))->toBe(2);
