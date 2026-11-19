@@ -288,6 +288,19 @@ test('taken off with the page: no guard is left behind', async () => {
     assert.equal(hooks.length, 0);
 });
 
+test('once the record is gone (moved to the Trash from the editor), leaving asks nothing', async () => {
+    const { c } = page(2);
+    window.dispatchEvent(new window.CustomEvent('admin-editor-leave'));
+    assert.equal(await navigate('/admin/content?section=posts'), true);
+    assert.equal(c.open, false);
+    const e = new window.Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(e);
+    assert.equal(e.defaultPrevented, false);
+    // another page's guard is its own: a fresh one asks again
+    page(1);
+    assert.equal(await navigate('/admin/posts'), false);
+});
+
 test('the buttons sit on one row only when all three fit; otherwise stacked, the main one first', () => {
     assert.equal(layoutOf(520, [150, 70, 200]), 'row');
     assert.equal(layoutOf(400, [150, 70, 200]), 'col');

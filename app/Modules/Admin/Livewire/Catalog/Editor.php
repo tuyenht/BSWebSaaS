@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Livewire\Catalog;
 
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
+use App\Modules\Admin\Support\Guide\EditorGuide;
 use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Catalog\Actions\ChangeProductSlug;
 use App\Modules\Catalog\Actions\ChangeProductStatus;
@@ -24,16 +25,20 @@ use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\PlainText;
 use App\Modules\Shared\Support\RichTextSanitizer;
 use App\Modules\Shared\Support\Slugger;
+use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
+use App\Modules\Tenancy\Entitlement\Entitlement;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Js;
 use Illuminate\Support\MessageBag;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -85,6 +90,13 @@ final class Editor extends Component
     /** Resolved product id, for the unique-rule self-ignores; server-set, never client-set. */
     #[Locked]
     public ?int $productId = null;
+
+    /** The ⋮ offers «Chuyển vào thùng rác»: a saved product the member may delete (the policy, with their category limits), as of the last open or save. */
+    #[Locked]
+    public bool $mayTrash = false;
+
+    /** The guide is printed with the first draw only (the browser keeps it; later round trips skip it). */
+    private bool $guideDue = false;
 
     /** Server-resolved from the site's default locale; never client-set. */
     #[Locked]
@@ -208,6 +220,7 @@ final class Editor extends Component
             $this->authorize('create', Product::class);
             $this->address = $this->previewAddress(null);
             $this->saved = $this->tracked();
+            $this->guideDue = true;
 
             return;
         }
@@ -215,6 +228,41 @@ final class Editor extends Component
         $product = $this->resolveOrFail($ulid);
         $this->authorize('update', $product);
         $this->load($product);
+        $this->mayTrash = $this->mayDelete($product);
+        $this->guideDue = true;
+    }
+
+    /**
+     * «Chuyển vào thùng rác» in the ⋮, for a saved product — the same move as the list's row, through
+     * the same checks (the plan has the catalog; the policy asked about the product, with the member's
+     * category limits): the product goes to the Trash, keeping its translations, images and sku, and
+     * the editor leaves for the list, which says so.
+     */
+    public function trash(): void
+    {
+        abort_if($this->ulid === null, 404);
+        abort_unless($this->entitled(), 403);
+        $product = $this->resolveOrFail($this->ulid);
+        $this->authorize('delete', $product);
+
+        $name = $product->translations()->where('locale', $this->locale)->value('name');
+        $product->delete();
+
+        // nothing is left to save: the page leaves without asking about unsaved changes
+        $this->saved = $this->tracked();
+        $this->js('window.bsLeaveTo('.Js::encode(route('admin.catalog.index')).', '.Js::encode(['text' => Cast::string(__('catalog.toast_trashed', ['name' => is_string($name) && $name !== '' ? $name : ($this->name !== '' ? $this->name : __('catalog.untitled'))]))]).')');
+    }
+
+    private function entitled(): bool
+    {
+        return in_array('catalog', app(Entitlement::class)->entitledModuleKeys(), true);
+    }
+
+    private function mayDelete(Product $product): bool
+    {
+        $user = auth()->user();
+
+        return $user instanceof User && $user->can('delete', $product);
     }
 
     /** The catalog's permalink preset may put the category in the address: the preview follows the pick. */
@@ -345,13 +393,32 @@ final class Editor extends Component
     public function render(): View
     {
         $urls = app(MediaUrlResolver::class);
+        $actions = $this->actions();
+        $isNew = $this->ulid === null;
+        $title = Cast::string(__($isNew ? 'catalog.create_title' : 'catalog.edit_title'));
+        $user = auth()->user();
 
         return view('admin::livewire.catalog.editor', [
+            'frame' => [
+                'title' => $title,
+                'crumbs' => [
+                    ['label' => Cast::string(__('catalog.ed.crumb_list')), 'url' => route('admin.catalog.index')],
+                    ['label' => Cast::string(__($isNew ? 'admin.editor.crumb_new' : 'admin.editor.crumb_edit'))],
+                ],
+                'description' => Cast::string(__($isNew ? 'catalog.ed.desc_new' : 'catalog.ed.desc_edit')),
+                'guide' => $this->guideDue && $user instanceof User
+                    ? EditorGuide::for('editor-product', $title, Cast::string(__('guide.editor.unit_product')), $isNew, $actions, false)->toArray($user, app(CurrentSite::class)->id())
+                    : null,
+                'preview' => $isNew
+                    ? ['url' => null, 'why' => Cast::string(__('admin.editor.preview_new'))]
+                    : ['url' => route('admin.catalog.preview', ['ulid' => $this->ulid]), 'why' => null],
+                'trash' => ! $isNew && $this->mayTrash ? ['why' => null] : null,
+            ],
             'categories' => $this->availableCategories(),
             'galleryImages' => $this->galleryImages($urls),
             'pickerMedia' => $this->pickerMedia(),
             'urls' => $urls,
-            'actions' => $this->actions(),
+            'actions' => $actions,
             'note' => $this->saveNote(),
             'leave' => $this->leaveWords(),
             'publishCard' => $this->publishCard(),
@@ -622,6 +689,7 @@ final class Editor extends Component
         $this->saved = $this->tracked();
 
         if ($wasNew) {
+            $this->mayTrash = $this->mayDelete($product);
             // The address becomes this product's edit address, so a reload keeps editing it; the
             // form stays as it is (no new page), the focus and the scroll where they were.
             $this->js('history.replaceState(history.state, "", '.json_encode(route('admin.catalog.edit', ['ulid' => $product->ulid])).')');
@@ -645,7 +713,7 @@ final class Editor extends Component
      * The two save buttons: the secondary one saves keeping the status (none on a published
      * product), the main one saves it published.
      *
-     * @return array{secondary: string|null, primary: string, primaryIcon: string}
+     * @return array{secondary: string|null, primary: string, primaryAction: string, primaryIcon: string}
      */
     private function actions(): array
     {
@@ -658,6 +726,7 @@ final class Editor extends Component
                 default => (string) __('catalog.ed.save_draft'),
             },
             'primary' => (string) ($live ? __('catalog.ed.update') : __('catalog.ed.publish')),
+            'primaryAction' => 'publish',
             'primaryIcon' => $live ? 'ri-refresh' : 'ri-global',
         ];
     }

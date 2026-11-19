@@ -9,6 +9,8 @@
 // `stay` keeps it until the person closes it (a refusal that says what to do: an error stays until
 // dismissed), with a close button named `close` and a 44px hit area.
 
+import { leaveTo, takeNextToast } from './admin-next-toast.js';
+
 const CHECK_SVG =
     '<svg viewBox="0 0 24 24" width="16" height="16" fill="#0ab39c" aria-hidden="true" style="flex:none;">' +
     '<path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22ZM17.4571 9.45711L11 15.9142L6.79289 11.7071L8.20711 10.2929L11 13.0858L16.0429 8.04289L17.4571 9.45711Z"/></svg>';
@@ -58,3 +60,19 @@ document.addEventListener('bs-toast', (event) => {
 });
 
 window.bsToast = bsToast;
+
+// An editor that moved its record to the Trash leaves for the list and says so there (admin-next-toast.js).
+document.addEventListener('livewire:navigated', () => {
+    let store = null;
+    try {
+        store = window.sessionStorage;
+    } catch {
+        store = null;
+    }
+    const opts = store ? takeNextToast(store) : null;
+    if (opts) {
+        bsToast(opts);
+    }
+});
+
+window.bsLeaveTo = (url, toast) => leaveTo(url, toast, { show: bsToast });

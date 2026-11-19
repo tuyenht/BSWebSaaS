@@ -1,6 +1,6 @@
-/* The product editor's frame (catalog/editor.blade.php): the save-state pill beside the title, the
-   bar of buttons that stays under the admin's top bar while the page scrolls, and on a narrow page
-   the same buttons in a bar along the bottom. */
+/* The editors' shared frame (components/editor-frame.blade.php: posts, pages, products): the save-state
+   pill, the bar of buttons that stays under the admin's top bar while the page scrolls, on a narrow
+   page the save buttons in a bar along the bottom, and the phone's one bar of a child screen. */
 .ped-bar {
     position: sticky;
     top: calc(var(--topbar-height) + var(--support-bar-h, 0px));
@@ -70,4 +70,138 @@
 /* The browser's state (typing, saving, no connection) covers the server's one. */
 [data-sv-over] .bs-save-state-rest {
     display: none;
+}
+
+/* Parts of the bar drawn for the phone's one bar only: the name, the (?) and, in the ⋮, Xem trước and
+   Cỡ chữ (the admin's top bar, with its way to the member's settings, is gone there). */
+.ped-h1,
+.ped-help,
+.ped-child-mi,
+.ped-fs,
+.ped-ms-s {
+    display: none;
+}
+
+.ped-fs {
+    padding: 0.5rem 0.875rem 0.625rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.ped-fs-h {
+    margin: 0 0 0.375rem;
+    font-size: var(--text-caption);
+    font-weight: 600;
+    color: var(--color-text-muted);
+}
+
+.ped-fs-g {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.375rem;
+}
+
+.ped-fs-g > button {
+    min-height: var(--spacing-control);
+    padding: 0 0.25rem;
+    border: 1px solid var(--color-border-input);
+    border-radius: 0.25rem;
+    background: var(--color-surface);
+    font: inherit;
+    font-size: var(--text-small);
+    color: var(--color-text);
+    cursor: pointer;
+}
+
+@media (any-pointer: coarse) {
+    .ped-fs-g > button {
+        min-height: var(--spacing-hit);
+    }
+}
+
+.ped-fs-g > button[aria-checked='true'] {
+    border-color: var(--color-primary-text);
+    background: var(--color-primary-soft);
+    font-weight: 600;
+    color: var(--color-primary-text);
+}
+
+/* A child screen (an add or edit screen, data-child-screen on the content column) on a phone — below 600px,
+   or a screen 500px high or less: no admin top bar and no header; the editor's bar is ONE bar 56px high:
+   ← · the name (one line, «…» only when it truly lacks room, the full name in its title) over the short
+   save state · (?) · ⋮. Xem trước moves into the ⋮. */
+@media (max-width: 599.98px), (max-height: 500px) {
+    [data-child-screen] > .admin-topbar {
+        display: none;
+    }
+
+    [data-child-screen] > main {
+        padding-top: 0;
+    }
+
+    [data-child-screen] .ped-bar {
+        top: var(--support-bar-h, 0px);
+        flex-wrap: nowrap;
+        gap: 0 0.5rem;
+        box-sizing: border-box;
+        height: 3.5rem;
+        padding-block: 0;
+    }
+
+    [data-child-screen] .ped-tl {
+        flex: 1 1 0;
+        gap: 0;
+        justify-content: center;
+    }
+
+    [data-child-screen] .ped-h1 {
+        display: block;
+        width: 0;
+        min-width: 100%;
+        overflow: hidden;
+        font-size: calc(1.125rem + var(--user-text-boost));
+        font-weight: 600;
+        line-height: 1.25;
+        color: var(--color-text-strong);
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+
+    [data-child-screen] .ped-bar .bs-save-state {
+        min-height: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        font-size: min(0.875rem, calc(0.75rem + var(--user-text-boost) * 0.5));
+        white-space: nowrap;
+    }
+
+    [data-child-screen] :is(.ped-sp, .ped-pv) {
+        display: none;
+    }
+
+    [data-child-screen] .ped-acts {
+        flex: none;
+        gap: 0.5rem;
+    }
+
+    [data-child-screen] .ped-help {
+        display: inline-flex;
+    }
+
+    [data-child-screen] .ped-child-mi {
+        display: flex;
+    }
+
+    [data-child-screen] .ped-fs {
+        display: block;
+    }
+
+    /* «Thêm tùy chọn»: the short line under it (the full one is its accessible name) */
+    [data-child-screen] .ped-ms-l {
+        display: none;
+    }
+
+    [data-child-screen] .ped-ms-s {
+        display: inline;
+    }
 }

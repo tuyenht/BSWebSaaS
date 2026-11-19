@@ -1,0 +1,272 @@
+<?php
+
+use App\Modules\Admin\Livewire\Catalog\Editor as ProductEditor;
+use App\Modules\Admin\Livewire\Entries\Editor as EntryEditor;
+use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Identity\Models\User;
+use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\ContentSection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Js;
+use Livewire\Livewire;
+
+/*
+ * The frame every add/edit screen shares (components/editor-frame.blade.php; design 01 Admin Shell):
+ * one header — the trail «⌂ › list › Thêm mới | Sửa», the name with «(?) Hướng dẫn» at the end of its
+ * row and one line on what the screen is for — then the bar ← Quay lại · save state · Xem trước ·
+ * Lưu nháp · ⋮ · the main button. The ⋮ holds Lưu nháp, «Chuyển vào thùng rác» on a saved record for a
+ * member who may delete it (the list's policy, asked again by the method), and, for the phone's one
+ * bar of a child screen, Xem trước and Cỡ chữ. On a phone the layout marks the screen as a child
+ * screen, so its own bar replaces the admin's top bar.
+ */
+
+beforeEach(function (): void {
+    truncateRbac();
+    seedTenancy();
+    $this->artisan('rbac:sync')->assertSuccessful();
+    app(TeamContext::class)->forget();
+    app()->setLocale('vi');
+});
+
+function frameSection(): void
+{
+    $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
+    $category->translations()->create(['locale' => 'vi', 'name' => 'Tin tức', 'slug' => 'tin-tuc']);
+    ContentSection::query()->create([
+        'key' => 'posts', 'label' => 'Tin tức', 'entry_type' => 'post', 'taxonomy_id' => $category->id,
+        'permission_prefix' => 'entries', 'sort_order' => 1,
+    ]);
+}
+
+function frameEntry(string $type, User $author, string $title, string $slug, string $status = 'draft'): Entry
+{
+    $entry = Entry::query()->create(['type' => $type, 'status' => $status, 'author_id' => $author->id, 'meta' => []]);
+    $entry->translations()->create(['locale' => 'vi', 'title' => $title, 'slug' => $slug, 'status' => $status, 'body' => ['blocks' => []]]);
+
+    return $entry->fresh() ?? $entry;
+}
+
+function frameMember(array $permissions): User
+{
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'frame-role', $permissions));
+
+    return $user->fresh() ?? $user;
+}
+
+/** The phone's one bar (a child screen): the name in the bar, the second (?), Xem trước and Cỡ chữ in the ⋮. */
+function assertChildBar(mixed $component): void
+{
+    $component->assertSeeHtml('class="ped-h1 m-0"')
+        ->assertSeeHtml('ped-help')
+        ->assertSeeHtml('class="list-mi ped-child-mi"')
+        ->assertSeeHtml('class="ped-fs"')
+        ->assertSee('Cỡ chữ')
+        ->assertSeeHtml('role="menuitemradio"');
+}
+
+describe('posts and pages', function (): void {
+    it('draws a new post with the Shell header, the guide, the bar and the ⋮ without the Trash', function (): void {
+        $member = frameMember(['entries.view', 'entries.create', 'entries.edit.any', 'entries.delete.any', 'entries.publish']);
+
+        app(Tenancy::class)->enter(1, function () use ($member): void {
+            frameSection();
+            $c = Livewire::actingAs($member)->test(EntryEditor::class, ['section' => 'posts'])
+                ->assertSeeHtmlInOrder([
+                    '<header class="ped-head',
+                    'href="'.route('admin.entries.index', ['section' => 'posts']).'"', '>Tin tức</a>', 'aria-current="page">Thêm mới</span>',
+                    'id="editor-title" tabindex="-1"', 'Thêm tin tức</h1>', 'data-guide-open',
+                    'Viết tin tức mới: nội dung, ảnh, đường dẫn và cách hiện trên Google.',
+                    '</header>',
+                    'data-guide="back"', 'data-guide="state"', 'data-guide="preview"', 'data-guide="save"', 'data-guide="more"', 'data-guide="main"',
+                ])
+                ->assertSeeHtml('data-guide-ctx')
+                ->assertSeeHtml('"screen":"editor-post"')
+                // nothing saved yet: Xem trước says why it waits, and the ⋮ has no Trash item
+                ->assertSeeHtml('aria-disabled="true"')
+                ->assertSee('Hãy lưu nháp một lần, rồi xem trước được.')
+                ->assertSeeHtml('aria-haspopup="menu"')
+                ->assertDontSee('Chuyển vào thùng rác');
+            assertChildBar($c);
+        });
+    });
+
+    it('prints the guide once: a later round trip leaves it out', function (): void {
+        $member = frameMember(['entries.view', 'entries.create', 'entries.edit.any']);
+
+        app(Tenancy::class)->enter(1, function () use ($member): void {
+            frameSection();
+            Livewire::actingAs($member)->test(EntryEditor::class, ['section' => 'posts'])
+                ->assertSeeHtml('data-guide-ctx')
+                ->set('title', 'Tin mới')
+                ->assertDontSeeHtml('data-guide-ctx');
+        });
+    });
+
+    it('offers Xem trước of the saved version and the Trash item on a post the member may delete', function (): void {
+        $member = frameMember(['entries.view', 'entries.create', 'entries.edit.any', 'entries.delete.any']);
+
+        app(Tenancy::class)->enter(1, function () use ($member): void {
+            frameSection();
+            $post = frameEntry('post', $member, 'Khai trương xưởng mới', 'khai-truong');
+            $c = Livewire::actingAs($member)->test(EntryEditor::class, ['ulid' => $post->ulid])
+                ->assertSeeHtmlInOrder(['aria-current="page">Sửa</span>', 'Sửa tin tức</h1>', 'Sửa nội dung, ảnh, đường dẫn và cách hiện trên Google — mở từ dòng trong danh sách.'])
+                ->assertSeeHtml('href="'.route('admin.entries.preview', ['ulid' => $post->ulid]).'"')
+                ->assertSeeHtml('wire:click="trash"')
+                ->assertSee('Chuyển vào thùng rác');
+            assertChildBar($c);
+        });
+    });
+
+    it('leaves the Trash item out for a member who may not delete the post, and the method refuses them', function (): void {
+        $author = frameMember(['entries.view', 'entries.create', 'entries.edit.any']);
+        $member = frameMember(['entries.view', 'entries.edit.any', 'entries.delete.own']);
+
+        app(Tenancy::class)->enter(1, function () use ($author, $member): void {
+            frameSection();
+            $post = frameEntry('post', $author, 'Bài của người khác', 'bai-nguoi-khac');
+            Livewire::actingAs($member)->test(EntryEditor::class, ['ulid' => $post->ulid])
+                ->assertDontSee('Chuyển vào thùng rác')
+                ->assertDontSeeHtml('wire:click="trash"')
+                ->call('trash')
+                ->assertForbidden();
+
+            expect(Entry::query()->whereKey($post->id)->exists())->toBeTrue();
+        });
+    });
+
+    it('moves a post to the Trash from the ⋮ and leaves for its list, which says so', function (): void {
+        $member = frameMember(['entries.view', 'entries.create', 'entries.edit.any', 'entries.delete.own']);
+
+        app(Tenancy::class)->enter(1, function () use ($member): void {
+            frameSection();
+            $post = frameEntry('post', $member, 'Bài sẽ bỏ', 'bai-se-bo');
+            Livewire::actingAs($member)->test(EntryEditor::class, ['ulid' => $post->ulid])
+                ->call('trash')
+                ->assertJs('window.bsLeaveTo('.Js::encode(route('admin.entries.index', ['section' => 'posts'])).', '.Js::encode(['text' => 'Đã chuyển “Bài sẽ bỏ” vào Thùng rác']).')');
+
+            expect(Entry::query()->whereKey($post->id)->exists())->toBeFalse()
+                ->and(Entry::onlyTrashed()->whereKey($post->id)->exists())->toBeTrue();
+        });
+    });
+
+    it('shows the Trash item locked on the Home page, with the reason, and the method moves nothing', function (): void {
+        $member = frameMember(['entries.view', 'entries.create', 'entries.edit.any', 'entries.delete.any']);
+
+        app(Tenancy::class)->enter(1, function () use ($member): void {
+            $home = frameEntry('page', $member, 'Trang chủ', PathBuilder::HOME_SLUG);
+            Livewire::actingAs($member)->test(EntryEditor::class, ['ulid' => $home->ulid])
+                ->assertSee('Chuyển vào thùng rác')
+                ->assertSee('Muốn bỏ trang này, hãy chọn trang khác làm Trang chủ trước.')
+                ->assertDontSeeHtml('wire:click="trash"')
+                ->call('trash')
+                ->assertDispatched('bs-toast', text: 'Muốn bỏ trang này, hãy chọn trang khác làm Trang chủ trước.');
+
+            expect(Entry::query()->whereKey($home->id)->exists())->toBeTrue();
+        });
+    });
+
+    it('refuses a page that has sub-pages: they go with it from the Pages list', function (): void {
+        $member = frameMember(['entries.view', 'entries.create', 'entries.edit.any', 'entries.delete.any']);
+
+        app(Tenancy::class)->enter(1, function () use ($member): void {
+            $parent = frameEntry('page', $member, 'Dịch vụ', 'dich-vu');
+            $child = frameEntry('page', $member, 'Gia công', 'gia-cong');
+            $child->forceFill(['parent_id' => $parent->id])->save();
+
+            Livewire::actingAs($member)->test(EntryEditor::class, ['ulid' => $parent->ulid])
+                ->assertSee('Chuyển vào thùng rác')
+                ->call('trash')
+                ->assertDispatched('bs-toast', text: 'Trang này còn trang con. Hãy chuyển nó vào Thùng rác từ danh sách Trang: các trang con đi cùng để đường dẫn không bị gãy.');
+
+            expect(Entry::query()->whereKey($parent->id)->exists())->toBeTrue();
+        });
+    });
+
+    it('draws a page being edited with the same frame', function (): void {
+        $member = frameMember(['entries.view', 'entries.create', 'entries.edit.any', 'entries.delete.any', 'entries.publish']);
+
+        app(Tenancy::class)->enter(1, function () use ($member): void {
+            $page = frameEntry('page', $member, 'Giới thiệu', 'gioi-thieu');
+            $c = Livewire::actingAs($member)->test(EntryEditor::class, ['ulid' => $page->ulid])
+                ->assertSeeHtmlInOrder(['aria-current="page">Sửa</span>', 'Sửa trang</h1>', 'data-guide="back"', 'data-guide="preview"', 'data-guide="more"'])
+                ->assertSeeHtml('"screen":"editor-page"')
+                ->assertSeeHtml('wire:click="trash"');
+            assertChildBar($c);
+        });
+    });
+});
+
+describe('products', function (): void {
+    beforeEach(function (): void {
+        DB::connection('pgsql_admin')->table('site_modules')->insert([
+            ['site_id' => 1, 'module_key' => 'catalog', 'enabled' => true, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+    });
+
+    it('draws a new product with the Shell header, «Sản phẩm» as a link, and no Trash item', function (): void {
+        $member = frameMember(['catalog.view', 'catalog.manage']);
+
+        app(Tenancy::class)->enter(1, function () use ($member): void {
+            $c = Livewire::actingAs($member)->test(ProductEditor::class)
+                ->assertSeeHtmlInOrder([
+                    '<header class="ped-head', 'href="'.route('admin.catalog.index').'"', '>Sản phẩm</a>', 'aria-current="page">Thêm mới</span>',
+                    'Thêm sản phẩm</h1>', 'data-guide-open', 'Nhập tên, ảnh, giá và mô tả — phần còn lại nằm trong “Thêm tùy chọn”.', '</header>',
+                    'data-guide="back"', 'data-guide="save"', 'data-guide="more"', 'data-guide="main"',
+                ])
+                // the product board keeps «Xem trước» out of the bar: it is the phone's ⋮ item only
+                ->assertDontSeeHtml('data-guide="preview"')
+                ->assertSeeHtml('"screen":"editor-product"')
+                ->assertSeeHtml('ped-child-mi')
+                ->assertDontSee('Chuyển vào thùng rác');
+            assertChildBar($c);
+        });
+    });
+
+    it('offers Xem trước (in the phone\'s ⋮) and the Trash item on a saved product; the move leaves for the list', function (): void {
+        $member = frameMember(['catalog.view', 'catalog.manage']);
+
+        app(Tenancy::class)->enter(1, function () use ($member): void {
+            $product = Product::query()->create(['status' => 'draft']);
+            $product->translations()->create(['locale' => 'vi', 'name' => 'Đồ gá hàn', 'slug' => 'do-ga-han']);
+
+            Livewire::actingAs($member)->test(ProductEditor::class, ['ulid' => $product->ulid])
+                ->assertSeeHtmlInOrder(['aria-current="page">Sửa</span>', 'Sửa sản phẩm</h1>', 'Sửa ảnh, giá, mô tả và cách hiện trên Google — mở từ dòng trong danh sách.'])
+                ->assertSeeHtml('href="'.route('admin.catalog.preview', ['ulid' => $product->ulid]).'"')
+                ->assertDontSeeHtml('ped-pv')
+                ->assertSeeHtml('wire:click="trash"')
+                ->call('trash')
+                ->assertJs('window.bsLeaveTo('.Js::encode(route('admin.catalog.index')).', '.Js::encode(['text' => 'Đã chuyển “Đồ gá hàn” vào Thùng rác.']).')');
+
+            expect(Product::query()->whereKey($product->id)->exists())->toBeFalse()
+                ->and(Product::onlyTrashed()->whereKey($product->id)->exists())->toBeTrue();
+        });
+    });
+
+    it('shows the address before the slug inside the field, not a bare slash', function (): void {
+        $member = frameMember(['catalog.view', 'catalog.manage']);
+
+        app(Tenancy::class)->enter(1, function () use ($member): void {
+            $c = Livewire::actingAs($member)->test(ProductEditor::class);
+            $base = $c->get('address')['base'];
+
+            expect($base)->toContain('/');
+            $c->assertSeeHtml('dir="ltr">'.e($base).'</span>');
+        });
+    });
+});
+
+it('marks the add and edit screens as child screens for the phone, and no other', function (): void {
+    $member = frameMember(['entries.view', 'entries.create', 'entries.edit.any']);
+
+    app(Tenancy::class)->enter(1, function (): void {
+        frameSection();
+    });
+
+    $this->actingAs($member)->get('http://a.test/admin/content/create?section=posts')->assertOk()->assertSee('data-child-screen', false);
+    $this->actingAs($member)->get('http://a.test/admin/content?section=posts')->assertOk()->assertDontSee('data-child-screen', false);
+});
