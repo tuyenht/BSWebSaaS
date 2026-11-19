@@ -334,7 +334,7 @@
     "auth.invalid_credentials": "メールアドレスまたはパスワードが正しくありません。",
     "auth.captcha_failed": "人間であることを確認できませんでした。もう一度お試しください。",
     "auth.too_many_attempts": "試行回数が多すぎます。:seconds 秒後にもう一度お試しください。",
-    "auth.otp_locked": "試行回数が多すぎます — 新しいコードを請求してください。",
+    "auth.otp_locked": "誤ったコードの入力が多すぎます。:seconds 秒後に「コードを再送信」を押して新しいコードを受け取ってください。",
     "admin.dashboard": "概要",
     "admin.menu": "メニュー",
     "admin.search_placeholder": "ページ・投稿・製品・設定を検索…",

@@ -334,7 +334,7 @@
     "auth.invalid_credentials": "邮箱或密码不正确。",
     "auth.captcha_failed": "无法验证您是真人，请重试。",
     "auth.too_many_attempts": "尝试次数过多，请在 :seconds 秒后重试。",
-    "auth.otp_locked": "尝试次数过多 — 请重新获取验证码。",
+    "auth.otp_locked": "错误次数过多。请在 :seconds 秒后点击“重新发送代码”获取新验证码。",
     "admin.dashboard": "概览",
     "admin.menu": "菜单",
     "admin.search_placeholder": "搜索页面、文章、产品、设置…",

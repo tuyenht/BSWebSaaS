@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Livewire\Concerns\FocusesAuthField;
 use App\Modules\Admin\Livewire\Concerns\SwitchesLocale;
 use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Audit\Facades\Audit;
@@ -23,6 +24,7 @@ use Livewire\Component;
 #[Layout('admin::layouts.auth')]
 final class TwoFactorChallenge extends Component
 {
+    use FocusesAuthField;
     use SwitchesLocale;
 
     public string $code = '';
@@ -40,7 +42,7 @@ final class TwoFactorChallenge extends Component
 
     public function verify(): mixed
     {
-        $this->validate(['code' => 'required|string']);
+        $this->validateOrFocus(['code' => 'required|string']);
 
         $user = User::find(session('2fa.user_id'));
 
@@ -63,7 +65,7 @@ final class TwoFactorChallenge extends Component
         // Bound TOTP/recovery guesses the same way the email OTP challenge is (parity): 5 wrong
         // codes lock the challenge for 10 minutes, so a stolen password can't be paired with an
         // online brute-force of the 6-digit code.
-        $rlKey = 'admin-2fa-verify:'.Cast::int($user->getAuthIdentifier());
+        $rlKey = self::verifyKey($user);
         if (RateLimiter::tooManyAttempts($rlKey, 5)) {
             Audit::record('auth.2fa.locked', [
                 'actor_id' => $user->getAuthIdentifier(),
@@ -71,6 +73,7 @@ final class TwoFactorChallenge extends Component
                 'meta' => ['factor' => $this->useRecovery ? 'recovery' : 'totp'],
             ]);
             $this->addError('code', __('auth.too_many_attempts', ['seconds' => RateLimiter::availableIn($rlKey)]));
+            $this->focusField('code');
 
             return null;
         }
@@ -85,6 +88,7 @@ final class TwoFactorChallenge extends Component
         if (! $ok) {
             RateLimiter::hit($rlKey, 600);
             $this->addError('code', __('auth.two_factor_invalid'));
+            $this->focusField('code');
 
             return null;
         }
@@ -102,6 +106,28 @@ final class TwoFactorChallenge extends Component
         // Back to the page that sent the visitor to sign in (a protected page, or an invitation
         // link) — the session's intended URL, set on this host only — else the dashboard.
         return $this->redirectIntended(route(AdminPlane::prefix().'.dashboard'), navigate: false);
+    }
+
+    /**
+     * Between the app's code and a recovery code: the other kind's text and error no longer
+     * apply, so the field starts empty with the cursor in it. A lock covers both kinds, so its
+     * wait stays on screen.
+     */
+    public function switchMode(): void
+    {
+        $this->useRecovery = ! $this->useRecovery;
+        $this->reset('code');
+        $this->resetErrorBag();
+        $user = User::find(session('2fa.user_id'));
+        if ($user instanceof User && RateLimiter::tooManyAttempts(self::verifyKey($user), 5)) {
+            $this->addError('code', __('auth.too_many_attempts', ['seconds' => RateLimiter::availableIn(self::verifyKey($user))]));
+        }
+        $this->focusField('code');
+    }
+
+    private static function verifyKey(User $user): string
+    {
+        return 'admin-2fa-verify:'.Cast::int($user->getAuthIdentifier());
     }
 
     public function render(): View

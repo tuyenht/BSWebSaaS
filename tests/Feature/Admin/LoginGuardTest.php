@@ -155,3 +155,28 @@ it('draws the login Turnstile widget light, inside the field-width frame the pag
         ->assertSeeHtml('<div wire:ignore class="auth-turnstile">')
         ->assertSeeHtml('data-size="flexible" data-theme="light"');
 });
+
+it('puts the cursor back in the password after a wrong password', function (): void {
+    $user = User::factory()->create(['email_verified_at' => now(), 'password' => 'correct-horse']);
+
+    Livewire::test(Login::class)
+        ->set('email', $user->email)
+        ->set('password', 'wrong-horse')
+        ->call('login')
+        ->assertHasErrors('email')
+        ->assertDispatched('auth-focus', field: 'password');
+});
+
+it('says the password is missing and puts the cursor in the first empty field', function (): void {
+    Livewire::test(Login::class)
+        ->set('email', 'someone@example.test')
+        ->call('login')
+        ->assertHasErrors('password')
+        ->assertSeeHtml('auth-alert auth-alert--error')
+        ->assertDispatched('auth-focus', field: 'password');
+
+    Livewire::test(Login::class)
+        ->call('login')
+        ->assertHasErrors(['email', 'password'])
+        ->assertDispatched('auth-focus', field: 'email');
+});

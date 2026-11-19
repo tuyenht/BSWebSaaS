@@ -34,7 +34,7 @@
     </form>
 
     <div style="text-align:center;margin-top:14px">
-        <button type="button" wire:click="$toggle('useRecovery')"
+        <button type="button" wire:click="switchMode"
                 style="color:#3b82f6;font-size:13px;background:none;border:0;cursor:pointer;padding:0">
             {{ $useRecovery ? __('auth.use_totp') : __('auth.use_recovery') }}
         </button>

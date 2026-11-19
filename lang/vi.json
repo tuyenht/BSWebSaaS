@@ -334,7 +334,7 @@
     "auth.invalid_credentials": "Thông tin đăng nhập không đúng.",
     "auth.captcha_failed": "Chưa xác minh được bạn là người thật. Vui lòng thử lại.",
     "auth.too_many_attempts": "Quá nhiều lần thử. Vui lòng thử lại sau :seconds giây.",
-    "auth.otp_locked": "Quá nhiều lần thử — hãy yêu cầu mã mới.",
+    "auth.otp_locked": "Nhập sai quá nhiều lần. Sau :seconds giây, bấm «Gửi lại mã» để nhận mã mới.",
     "admin.dashboard": "Tổng quan",
     "admin.menu": "Menu",
     "admin.search_placeholder": "Tìm trang, bài viết, sản phẩm, cài đặt…",
