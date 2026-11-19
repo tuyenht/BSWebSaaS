@@ -170,6 +170,50 @@ describe('the cards in place of the form', function (): void {
     });
 });
 
+describe('saving from a card', function (): void {
+    it('refuses a save on the card of a product that could not be read, and writes nothing', function (string $call): void {
+        $manager = cesMember(['catalog.view', 'catalog.manage']);
+
+        app(Tenancy::class)->enter(1, function () use ($manager, $call): void {
+            $product = cesProduct();
+            $fail = true;
+            DB::beforeExecuting(function (string $query) use (&$fail): void {
+                if ($fail && str_contains($query, 'from "products"') && str_contains($query, '"ulid" =')) {
+                    throw new QueryException('pgsql', $query, [], new RuntimeException('server busy'));
+                }
+            });
+            $c = Livewire::actingAs($manager)->test(Editor::class, ['ulid' => $product->ulid])->assertSet('screen', 'error');
+            $fail = false;
+            $before = DB::table('products')->where('id', $product->id)->first();
+
+            $c->set('name', 'Lén')->set('slug', 'len')->call($call)->assertNotFound();
+
+            expect(DB::table('products')->where('id', $product->id)->first())->toEqual($before)
+                ->and(DB::table('product_translations')->where('product_id', $product->id)->value('name'))->toBe('Đồ gá hàn');
+        });
+    })->with(['save', 'publish']);
+
+    it('refuses a save on the Trash card, even once the product came back elsewhere, and writes nothing', function (string $call): void {
+        $manager = cesMember(['catalog.view', 'catalog.manage']);
+
+        app(Tenancy::class)->enter(1, function () use ($manager, $call): void {
+            $product = cesProduct();
+            $product->delete();
+
+            Livewire::actingAs($manager)->test(Editor::class, ['ulid' => $product->ulid])->assertSet('screen', 'trash')->call($call)->assertNotFound();
+            expect(Product::onlyTrashed()->whereKey($product->id)->exists())->toBeTrue();
+
+            // restored by another member while this card stays open
+            $c = Livewire::actingAs($manager)->test(Editor::class, ['ulid' => $product->ulid])->assertSet('screen', 'trash');
+            $product->restore();
+            $before = DB::table('products')->where('id', $product->id)->first();
+            $c->call($call)->assertNotFound();
+
+            expect(DB::table('products')->where('id', $product->id)->first())->toEqual($before);
+        });
+    })->with(['save', 'publish']);
+});
+
 describe('the ⋮ status moves', function (): void {
     it('takes a published product off the website or back to draft, each a full save with its words', function (): void {
         $manager = cesMember(['catalog.view', 'catalog.manage']);
@@ -222,7 +266,21 @@ describe('read only', function (): void {
                 ->assertSeeHtml('<strong>C45</strong>')->assertDontSeeHtml('<script>alert(1)')
                 ->assertDontSeeHtml('wire:click="publish"')->assertDontSeeHtml('wire:click="unpublish"')->assertDontSeeHtml('data-guide="trash"')
                 ->assertDontSeeHtml('wire:click="openImagePicker"')
-                ->assertSee(__('catalog.ed.img_empty'))->assertDontSee(__('catalog.ed.img_choose'));
+                ->assertSee(__('catalog.ed.img_empty'))->assertDontSee(__('catalog.ed.img_choose'))
+                // the preview page is for who may manage products; the ⋮ stays with «Cỡ chữ» only
+                ->assertDontSeeHtml(route('admin.catalog.preview', ['ulid' => $product->ulid]))
+                ->assertSeeHtml('data-guide="more"')->assertSee(__('admin.account.text_size'));
+        });
+    });
+
+    it('offers «Xem trước» to who may change the product', function (): void {
+        $manager = cesMember(['catalog.view', 'catalog.manage']);
+
+        app(Tenancy::class)->enter(1, function () use ($manager): void {
+            $product = cesProduct('published');
+
+            Livewire::actingAs($manager)->test(Editor::class, ['ulid' => $product->ulid])
+                ->assertSet('canEdit', true)->assertSeeHtml(route('admin.catalog.preview', ['ulid' => $product->ulid]));
         });
     });
 
@@ -309,6 +367,13 @@ describe('several categories', function (): void {
                 ->call('toggleCategory', $sub->ulid)->call('save')->assertHasNoErrors();
             expect(cesCategories($product))->toBe([$inside->id, $outside->id]);
 
+            // a category outside the limits taken out elsewhere after the form opened is not filed again
+            $product->assignCategories([$inside->id, $outside->id]);
+            $stale = Livewire::actingAs($lead)->test(Editor::class, ['ulid' => $product->ulid])->assertSet('categoryIds', [$inside->id, $outside->id]);
+            $product->assignCategories([$inside->id]);
+            $stale->set('name', 'Khuôn ép lần ba')->call('save')->assertHasNoErrors()->assertSet('categoryIds', [$inside->id])->assertSet('categoryId', $inside->id);
+            expect(cesCategories($product))->toBe([$inside->id]);
+
             $product2 = cesProduct(name: 'Khuôn dập', slug: 'khuon-dap');
             $product2->assignCategories([$inside->id]);
             Livewire::actingAs($lead)->test(Editor::class, ['ulid' => $product2->ulid])->call('toggleCategory', $outside->ulid)->assertForbidden();
@@ -346,6 +411,23 @@ describe('the picture strip', function (): void {
 });
 
 describe('another website', function (): void {
+    it('refuses another website\'s picture put in the gallery by hand, and attaches nothing', function (): void {
+        $siteB = cesMember(['catalog.view', 'catalog.manage', 'media.view'], 'cat-manager-b', 2);
+        enableCatalog(2);
+
+        $mediaA = app(Tenancy::class)->enter(1, fn (): int => cesMedia('a'));
+
+        app(Tenancy::class)->enter(2, function () use ($siteB, $mediaA): void {
+            $own = cesProduct(name: 'Bàn gá', slug: 'ban-ga');
+
+            Livewire::actingAs($siteB)->test(Editor::class, ['ulid' => $own->ulid])
+                ->set('imageMediaIds', [$mediaA])->call('save')->assertHasErrors(['imageMediaIds.0']);
+        });
+
+        expect(DB::connection('pgsql_admin')->table('product_images')->where('media_id', $mediaA)->count())->toBe(0)
+            ->and(DB::connection('pgsql_admin')->table('product_images')->where('site_id', 2)->count())->toBe(0);
+    });
+
     it('never opens or changes another website\'s product, nor files under its category', function (): void {
         $siteA = cesMember(['catalog.view', 'catalog.manage']);
         $siteB = cesMember(['catalog.view', 'catalog.manage'], 'cat-manager-b', 2);

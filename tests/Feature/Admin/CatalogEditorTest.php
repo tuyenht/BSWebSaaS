@@ -95,8 +95,15 @@ it('refuses every write of a member who may only see products, on the server (th
         $ulid = Taxonomy::query()->whereKey($category)->value('ulid');
 
         $c = Livewire::actingAs($viewer->fresh())->test(Editor::class, ['ulid' => $product->ulid])->assertSet('canEdit', false);
-        $args = array_map(static fn (mixed $a): mixed => $a === '@cat' ? $ulid : ($a === '@media' ? $media : $a), $args);
-        $call === 'set' ? $c->set(...$args)->assertForbidden() : $c->call($call, ...$args)->assertForbidden();
+        $args = array_map(static fn (mixed $a): mixed => match ($a) {
+            '@cat' => $ulid, '@catId' => $category, '@media' => $media, default => $a,
+        }, $args);
+        match ($call) {
+            'set' => $c->set(...$args)->assertForbidden(),
+            // the ⋮'s move refuses in words (a right taken away since the screen opened is told, not a dead end)
+            'trash' => $c->call('trash')->assertOk()->assertDispatched('bs-toast', text: __('catalog.ed.refused_trash'))->assertSet('screen', 'form'),
+            default => $c->call($call, ...$args)->assertForbidden(),
+        };
 
         expect(Product::query()->whereKey($product->id)->value('status'))->toBe('published')
             ->and(DB::table('product_taxonomies')->count())->toBe(0)
@@ -108,6 +115,11 @@ it('refuses every write of a member who may only see products, on the server (th
     'toggleCategory' => ['toggleCategory', ['@cat']], 'setMainCategory' => ['setMainCategory', ['@cat']],
     'removeImage' => ['removeImage', [0]], 'moveImage' => ['moveImage', [0, 0]], 'setCover' => ['setCover', [0]],
     'pickImage' => ['pickImage', ['@media']], 'set price' => ['set', ['price', '10']],
+    'trash' => ['trash', []], 'undoLast' => ['undoLast', []],
+    'moveImageUp' => ['moveImageUp', [0]], 'moveImageDown' => ['moveImageDown', [0]],
+    'set categoryId' => ['set', ['categoryId', '@catId']], 'set sku' => ['set', ['sku', 'DG-9']],
+    'set stock' => ['set', ['stock', '5']], 'set salePrice' => ['set', ['salePrice', '5']],
+    'set saleStartsAt' => ['set', ['saleStartsAt', '2026-11-20T08:00']], 'set saleEndsAt' => ['set', ['saleEndsAt', '2026-11-30T08:00']],
 ]);
 
 it('refuses a new product to a member who may only see products, and writes nothing', function (): void {

@@ -194,13 +194,33 @@ it('opens and saves in the editor only a product inside the limits, under a cate
         Livewire::actingAs($this->lead)->test(Editor::class, ['ulid' => $this->outside->ulid])->assertForbidden();
         Livewire::actingAs($this->lead)->test(Editor::class, ['ulid' => $this->loose->ulid])->assertForbidden();
 
+        // a category outside the limits is refused as soon as it is picked, like the list's boxes and stars
+        Livewire::actingAs($this->lead)->test(Editor::class, ['ulid' => $this->inside->ulid])->set('categoryId', $this->jigs->id)->assertForbidden();
+        expect(cpsMain($this->inside))->toBe($this->small->id);
+
         $edit = Livewire::actingAs($this->lead)->test(Editor::class, ['ulid' => $this->inside->ulid])->assertOk();
         expect(array_column($edit->viewData('categories'), 'ulid'))->toEqualCanonicalizing([$this->moulds->ulid, $this->small->ulid]);
-        $edit->set('categoryId', $this->jigs->id)->call('save')->assertHasErrors(['categoryId']);
-        expect(cpsMain($this->inside))->toBe($this->small->id);
         $edit->set('categoryId', null)->call('save')->assertHasErrors(['categoryId' => 'required']);
         $edit->set('categoryId', $this->moulds->id)->call('save')->assertHasNoErrors();
         expect(cpsMain($this->inside))->toBe($this->moulds->id);
+    });
+});
+
+it('refuses a save or a move to the Trash once the product left the limits after the form opened, and changes no row', function (): void {
+    cpsIn(function (): void {
+        $save = Livewire::actingAs($this->lead)->test(Editor::class, ['ulid' => $this->inside->ulid])->assertSet('canEdit', true);
+        $trash = Livewire::actingAs($this->lead)->test(Editor::class, ['ulid' => $this->inside->ulid]);
+        // another member moves the product under a category outside the lead's limits
+        $this->inside->assignCategories([$this->jigs->id]);
+        $before = cpsRow($this->inside);
+
+        $save->set('name', 'Khuôn ép lén')->call('save')->assertForbidden();
+        $trash->call('trash')->assertOk()->assertSet('screen', 'form')->assertSet('mayTrash', false)
+            ->assertDispatched('bs-toast', text: app(CategoryScopes::class)->refusal($this->lead, CategoryScopes::PRODUCTS));
+
+        expect(cpsRow($this->inside))->toEqual($before)
+            ->and(cpsMain($this->inside))->toBe($this->jigs->id)
+            ->and(DB::table('product_translations')->where('site_id', 1)->where('product_id', $this->inside->id)->value('name'))->toBe('Khuôn ép nhựa');
     });
 });
 
@@ -210,7 +230,7 @@ it('creates a product only under a category inside the limits', function (): voi
         $new = fn (): mixed => Livewire::actingAs($this->lead)->test(Editor::class)->set('name', 'Khuôn dập')->set('slug', 'khuon-dap');
 
         $new()->call('save')->assertHasErrors(['categoryId' => 'required']);
-        $new()->set('categoryId', $this->jigs->id)->call('save')->assertHasErrors(['categoryId']);
+        $new()->set('categoryId', $this->jigs->id)->assertForbidden();
         expect(DB::table('product_translations')->where('site_id', 1)->where('slug', 'khuon-dap')->exists())->toBeFalse();
 
         // labelled before its first save: the label is written once the product is filed inside the limits

@@ -125,7 +125,8 @@ final class Editor extends Component
     /**
      * The member may change this product (catalog.manage, the product inside their category limits).
      * Without it a member who may see products gets the form to read only («Chỉ được xem»): every field
-     * locked, no save, no ⋮ — and every write below refuses them on the server as well.
+     * locked, no save, no «Xem trước» (its page is for who may manage products), the ⋮ holding only
+     * «Cỡ chữ» — and every write below refuses them on the server as well.
      */
     #[Locked]
     public bool $canEdit = true;
@@ -426,6 +427,8 @@ final class Editor extends Component
      */
     public function undoLast(): void
     {
+        // only who could make the change can take it back (a member who may only read has nothing to undo)
+        abort_unless($this->canEdit, 403);
         $undo = $this->undo;
         $image = $this->undoImage;
         $this->clearToast();
@@ -594,6 +597,11 @@ final class Editor extends Component
     public function updatedCategoryId(): void
     {
         $this->authorizeEdit();
+        // like the list's boxes and stars: a category outside the member's limits is refused (none is
+        // left to the save, which asks for one in words)
+        if ($this->categoryId !== null) {
+            $this->authorizeFiling($this->categoryId);
+        }
         // the main category set on its own: it leads the list (none: the main one leaves it)
         $others = array_values(array_filter(array_slice($this->categoryIds, 1), fn (int $id): bool => $id !== $this->categoryId));
         $this->categoryIds = $this->categoryId !== null ? [$this->categoryId, ...$others] : $others;
@@ -746,6 +754,8 @@ final class Editor extends Component
     public function save(): void
     {
         $this->authorizeEdit();
+        // only the form saves: a card in its place (the Trash, a read that failed) holds nothing to keep
+        abort_unless($this->screen === 'form', 404);
         try {
             $saved = $this->commit(quiet: false);
         } catch (ValidationException $e) {
@@ -784,6 +794,7 @@ final class Editor extends Component
     private function saveAs(string $status): void
     {
         $this->authorizeEdit();
+        abort_unless($this->screen === 'form', 404);
         $was = $this->status;
         $this->publishing = true;
         $this->target = $status;
@@ -979,9 +990,12 @@ final class Editor extends Component
                 'guide' => $this->guideDue && $user instanceof User
                     ? EditorGuide::for('editor-product', $title, Cast::string(__('guide.editor.unit_product')), $isNew, $actions, false)->toArray($user, app(CurrentSite::class)->id())
                     : null,
-                'preview' => $isNew
-                    ? ['url' => null, 'why' => Cast::string(__('admin.editor.preview_new'))]
-                    : ['url' => route('admin.catalog.preview', ['ulid' => $this->ulid]), 'why' => null],
+                // the preview page is for who may manage products: a member who may only read gets none
+                'preview' => match (true) {
+                    ! $this->canEdit => ['url' => null, 'why' => null],
+                    $isNew => ['url' => null, 'why' => Cast::string(__('admin.editor.preview_new'))],
+                    default => ['url' => route('admin.catalog.preview', ['ulid' => $this->ulid]), 'why' => null],
+                },
                 'trash' => ! $isNew && $this->mayTrash ? ['why' => null] : null,
             ],
             'categories' => $categories,
@@ -1148,17 +1162,22 @@ final class Editor extends Component
     }
 
     /**
-     * The categories to store: the form's list, plus every category the product is stored under now
-     * (read under the row lock, so one added elsewhere since the form opened counts) that lies outside
-     * the member's product limits — a member limited to some categories never takes out one they
-     * cannot see. A member not limited on products stores the form's list as it is.
+     * The categories to store, decided before anything is written. A new product, or a member not
+     * limited on products, stores the form's list as it is. For a member limited to some categories the
+     * list is held against what the product is stored under now (read under the row lock, so a change
+     * made elsewhere since the form opened counts): a category outside their limits is kept only while
+     * the product is still under it (one taken out elsewhere is not filed again), and every stored one
+     * outside the limits stays (they never take out one they cannot see). The main category is never
+     * dropped that way — it would move the product's address — the save is refused on its field instead.
      *
      * @return list<int>
+     *
+     * @throws ValidationException
      */
-    private function filedUnder(Product $product): array
+    private function filedUnder(?Product $product): array
     {
         $user = auth()->user();
-        if ($product->wasRecentlyCreated || ! $user instanceof User || ! $this->limitedOnProducts()) {
+        if ($product === null || ! $user instanceof User || ! $this->limitedOnProducts()) {
             return $this->categoryIds;
         }
         $relation = $product->taxonomies();
@@ -1168,9 +1187,14 @@ final class Editor extends Component
             ->pluck($relation->getRelatedPivotKeyName())
             ->all());
         $scopes = app(CategoryScopes::class);
-        $kept = array_filter($stored, fn (int $id): bool => ! in_array($id, $this->categoryIds, true) && ! $scopes->coversId($user, $id, CategoryScopes::PRODUCTS));
+        $inside = static fn (int $id): bool => $scopes->coversId($user, $id, CategoryScopes::PRODUCTS);
+        $form = array_values(array_filter($this->categoryIds, static fn (int $id): bool => $inside($id) || in_array($id, $stored, true)));
+        if ($this->categoryIds !== [] && ($form[0] ?? null) !== $this->categoryIds[0]) {
+            throw ValidationException::withMessages(['categoryId' => $this->limitsRefusal()]);
+        }
+        $kept = array_filter($stored, static fn (int $id): bool => ! in_array($id, $form, true) && ! $inside($id));
 
-        return [...$this->categoryIds, ...array_values($kept)];
+        return [...$form, ...array_values($kept)];
     }
 
     /** Fill the form from a saved product. */
@@ -1372,7 +1396,7 @@ final class Editor extends Component
     /**
      * The two save buttons: the secondary one saves keeping the status (none on a published
      * product), the main one saves it published. A member who may only read the product gets
-     * neither (the board's read-only form: no save, no ⋮ actions, no bar along the bottom).
+     * neither (the board's read-only form: no save, the ⋮ holding only «Cỡ chữ», no bar along the bottom).
      *
      * @return array{secondary: string|null, primary: string|null, primaryAction: string, primaryIcon: string}
      */
@@ -1719,6 +1743,8 @@ final class Editor extends Component
         }
         try {
             $this->validate();
+            // where the product is filed, held against the stored categories under the row lock
+            $filing = $this->filedUnder($stored);
         } catch (ValidationException $e) {
             // A link made for a save that failed must not stay behind: it would pin the old name.
             if ($filled) {
@@ -1788,7 +1814,7 @@ final class Editor extends Component
             ],
         );
 
-        $product->assignCategories($this->filedUnder($product));
+        $product->assignCategories($filing);
         if ($product->wasRecentlyCreated && in_array(true, $flags, true)) {
             // a new product's labels through the list's own write, once it is filed (the right to
             // change it is asked about its category); it has none until one is switched on
@@ -1810,6 +1836,8 @@ final class Editor extends Component
             // only published ones, so their route rows are harmless and keep old links stable.
             app(ChangeProductStatus::class)->publishEffects($product, $this->locale, $this->slug);
         }
+        // the list shows what was stored (as on opening): a category dropped above leaves it
+        $this->categoryIds = $filing;
 
         return $product;
     }
