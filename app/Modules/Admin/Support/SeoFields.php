@@ -29,6 +29,8 @@ final class SeoFields
         'title' => ['min' => 20, 'best' => [30, 60], 'display' => 60, 'max' => 100],
         'seoTitle' => ['min' => 20, 'best' => [35, 60], 'display' => 60, 'max' => 80],
         'seoDesc' => ['min' => 70, 'best' => [150, 160], 'display' => 160, 'max' => 200],
+        // the featured image's words («Mô tả ảnh»): a screen reader reads about 125 characters
+        'alt' => ['min' => 10, 'best' => [25, 125], 'display' => 125, 'max' => 150],
     ];
 
     /** A stand-in slug for composing the path around it; never shown. */
@@ -48,7 +50,7 @@ final class SeoFields
      * the preview's address and the words of its meters and empty states. `$words` replaces some of
      * them for a screen that previews something else (the site's home page in the settings).
      *
-     * @param  array{excerpt?: string|null, heading?: string|null, title: string|null, description: string|null, pageTitle?: string|null, slug?: string|null}  $models
+     * @param  array{excerpt?: string|null, heading?: string|null, title: string|null, description: string|null, pageTitle?: string|null, slug?: string|null, alt?: string|null}  $models
      * @param  array{base: string, home: string|null, homeSlug: string}  $address
      * @param  array<string, string>  $words
      * @return array<string, mixed>
@@ -59,7 +61,7 @@ final class SeoFields
             'open' => $open,
             'limits' => self::LIMITS,
             'models' => ['excerpt' => $models['excerpt'] ?? null, 'heading' => $models['heading'] ?? null, 'title' => $models['title'], 'description' => $models['description'],
-                'pageTitle' => $models['pageTitle'] ?? null, 'slug' => $models['slug'] ?? null],
+                'pageTitle' => $models['pageTitle'] ?? null, 'slug' => $models['slug'] ?? null, 'alt' => $models['alt'] ?? null],
             'address' => $address,
             'words' => $words + [
                 'empty' => __('admin.seo.meter_empty'),
@@ -72,6 +74,7 @@ final class SeoFields
                     'excerpt' => __('admin.seo.cut_excerpt'),
                     'seoTitle' => __('admin.seo.cut_title'),
                     'seoDesc' => __('admin.seo.cut_description', ['display' => self::LIMITS['seoDesc']['display']]),
+                    'alt' => __('admin.seo.cut_alt'),
                 ],
                 'emptyTitle' => __('admin.seo.preview_title_empty'),
                 'emptyDescription' => __('admin.seo.preview_description_empty'),

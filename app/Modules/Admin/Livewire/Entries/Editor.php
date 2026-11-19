@@ -134,7 +134,7 @@ final class Editor extends Component
      * The fields the save state and the leave dialog count against the saved entry. The block list
      * is counted apart (blocksChanged): the browser cannot write it the way the server does.
      */
-    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryId', 'coverImageKey', 'parentUlid', 'scheduleAt', 'statusTo'];
+    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryId', 'coverImageKey', 'coverAlt', 'parentUlid', 'scheduleAt', 'statusTo'];
 
     /** Which entry is being edited — server-resolved (mount/persist); never client-set. */
     #[Locked]
@@ -183,6 +183,12 @@ final class Editor extends Component
 
     /** Featured/OG image — the picked media's storage_key, persisted to entry.meta['image_url']. */
     public string $coverImageKey = '';
+
+    /**
+     * «Mô tả ảnh»: this language's words for the featured image (entry_translations.cover_alt), what
+     * Google and a screen reader take from it; empty = the picture's own words, then the title.
+     */
+    public string $coverAlt = '';
 
     /** Whether the library picker is open (its media grid is only queried while true). */
     public bool $showMediaPicker = false;
@@ -461,6 +467,7 @@ final class Editor extends Component
             $this->excerpt = $translation->excerpt ?? '';
             $this->seoTitle = $translation->seo_title ?? '';
             $this->seoDescription = $translation->seo_description ?? '';
+            $this->coverAlt = $translation->cover_alt ?? '';
         }
 
         $cover = data_get($entry->meta, 'image_url');
@@ -1562,6 +1569,8 @@ final class Editor extends Component
     public function clearCover(): void
     {
         $this->coverImageKey = '';
+        // the words described the picture taken off: a new picture is described afresh
+        $this->coverAlt = '';
     }
 
     /** The rich editor shows a library picture at an address the save can read back to the picture. */
@@ -1737,7 +1746,7 @@ final class Editor extends Component
         $this->saveFailed = false;
         // A language with no saved version yet loads nothing back: start from an empty form.
         $preset = $this->ulid === null ? $this->parentLoaded : null;
-        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
+        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'coverAlt', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
             'transitionNote', 'assignTo', 'showMediaPicker', 'showBlockImagePicker', 'blockImagePickerPath', 'stale', 'overwrite',
             'parentUlid', 'parentLoaded', 'parentName', 'pageHome', 'scheduleAt', 'scheduleLoaded', 'statusTo', 'autoSaved', 'slugFresh', 'slugTouched');
         $this->mount($this->ulid, $this->sectionKey, $this->locale, $preset);
@@ -1802,7 +1811,7 @@ final class Editor extends Component
     public function restoreKept(array $kept): void
     {
         $this->authorizeEditing();
-        foreach (['title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey'] as $field) {
+        foreach (['title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'coverAlt'] as $field) {
             if (is_string($kept[$field] ?? null)) {
                 $this->{$field} = $kept[$field];
             }
@@ -1860,6 +1869,7 @@ final class Editor extends Component
             'seo_title' => md5((string) $translation?->seo_title),
             'seo_description' => md5((string) $translation?->seo_description),
             'cover' => md5(is_string($cover) ? $cover : ''),
+            'cover_alt' => md5((string) $translation?->cover_alt),
             'category' => (string) ($categoryId ?? ''),
         ];
     }
@@ -1956,6 +1966,7 @@ final class Editor extends Component
             'seo_title' => [__('admin.seo.title_label'), $this->seoTitle, (string) $translation?->seo_title],
             'seo_description' => [__('admin.seo.description_label'), $this->seoDescription, (string) $translation?->seo_description],
             'cover' => [__('entries.ed.card_cover'), $this->coverName($this->coverImageKey), $this->coverName(is_string($cover) ? $cover : '')],
+            'cover_alt' => [__('entries.ed.cover_alt_label'), $this->coverAlt, (string) $translation?->cover_alt],
             'category' => [__('entries.ed.card_category'), $categoryName($this->categoryId), $categoryName(self::idOrNull($print['category']))],
         ];
 
@@ -2742,6 +2753,8 @@ final class Editor extends Component
     protected function rules(): array
     {
         $rules = self::onFormFields(app(EntryContentRules::class)->rules());
+        // the featured image's words: one line of plain text (normalized before validation)
+        $rules['coverAlt'] = ['nullable', 'string', 'max:'.EntryContentRules::COVER_ALT_MAX, $this->plainCoverAlt(...)];
 
         // A post's URL is its category slug + post slug, so a post must have a category.
         if ($this->type === 'post') {
@@ -2810,7 +2823,16 @@ final class Editor extends Component
             ...self::onFormFields(app(EntryContentRules::class)->messages()),
             'categoryId.required' => __('entries.category_required'),
             'categoryId.exists' => __('entries.category_invalid'),
+            'coverAlt.max' => __('entries.ed.cover_alt_too_long', ['max' => EntryContentRules::COVER_ALT_MAX]),
         ];
+    }
+
+    /** «Mô tả ảnh» is words, never markup (EntryContentRules::coverAlt, as a restored version is held). */
+    private function plainCoverAlt(string $attribute, mixed $value, Closure $fail): void
+    {
+        if (is_string($value) && PlainText::hasMarkup($value)) {
+            $fail(__('entries.ed.cover_alt_markup'));
+        }
     }
 
     /**
@@ -2920,6 +2942,7 @@ final class Editor extends Component
         $this->excerpt = PlainText::lines($this->excerpt);
         $this->seoTitle = SeoFields::singleLine($this->seoTitle);
         $this->seoDescription = SeoFields::singleLine($this->seoDescription);
+        $this->coverAlt = PlainText::label($this->coverAlt);
         $this->blocks = PlainText::linesIn($this->blocks);
 
         $filled = $this->fillBlankSlug();
@@ -3044,6 +3067,7 @@ final class Editor extends Component
             'excerpt' => $this->excerpt !== '' ? $this->excerpt : null,
             'seo_title' => $this->seoTitle !== '' ? $this->seoTitle : null,
             'seo_description' => $this->seoDescription !== '' ? $this->seoDescription : null,
+            'cover_alt' => $this->coverImageKey !== '' && $this->coverAlt !== '' ? $this->coverAlt : null,
             'status' => $this->translationStatus($entry, $translation),
         ])->save();
 

@@ -470,3 +470,41 @@
 .ped-main {
     white-space: nowrap;
 }
+
+/* «Mô tả ảnh» under the featured image: the (?) beside its label opens a short note (board 07). */
+.entry-alt__q {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    margin: -12px -10px -12px -6px;
+    padding: 0;
+    border: 0;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+}
+
+.entry-alt__q:hover {
+    color: var(--color-primary-text);
+}
+
+.entry-alt__pop {
+    position: absolute;
+    inset-inline: 0;
+    top: calc(100% + 0.25rem);
+    z-index: 20;
+    margin: 0;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    background: var(--color-surface);
+    box-shadow: 0 8px 24px rgb(15 18 30 / 0.16);
+    font-size: calc(0.8125rem + var(--user-text-boost));
+    line-height: 1.45;
+    color: var(--color-text);
+    overflow-wrap: anywhere;
+}

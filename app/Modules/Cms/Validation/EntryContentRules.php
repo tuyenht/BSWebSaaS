@@ -39,6 +39,26 @@ final readonly class EntryContentRules
         return mb_strlen($text) > self::AUTHOR_NAME_MAX || PlainText::hasMarkup($text) ? false : $text;
     }
 
+    /**
+     * The words that describe a post's or page's featured image in one language
+     * (entry_translations.cover_alt, varchar(250)): what Google and a screen reader take from it.
+     */
+    public const int COVER_ALT_MAX = 250;
+
+    /**
+     * The featured image's words to store: one line of plain text (PlainText::label), null when
+     * empty. False when they cannot be stored: longer than COVER_ALT_MAX or holding markup.
+     */
+    public static function coverAlt(string $text): string|false|null
+    {
+        $text = PlainText::label($text);
+        if ($text === '') {
+            return null;
+        }
+
+        return mb_strlen($text) > self::COVER_ALT_MAX || PlainText::hasMarkup($text) ? false : $text;
+    }
+
     public function __construct(private ValidPageJson $blocks) {}
 
     /**

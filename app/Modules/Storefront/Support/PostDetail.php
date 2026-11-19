@@ -61,7 +61,7 @@ final readonly class PostDetail
         return $this->dates($post, $translation, $locale) + [
             'excerpt' => trim((string) $translation->excerpt),
             'author' => trim((string) $translation->author_name),
-            'cover' => $this->cover($post, $locale),
+            'cover' => $this->cover($post, $translation, $locale),
         ];
     }
 
@@ -246,20 +246,23 @@ final readonly class PostDetail
     }
 
     /**
-     * The post's cover photo (its featured image): a library photo gets a srcset, its alt text and
-     * its caption (the photo's title in the library) from one read; a stored full link is shown as
-     * it is; a glyph name or nothing means no cover.
+     * The post's cover photo (its featured image): a library photo gets a srcset and its caption
+     * (the photo's title in the library) from one read; a stored full link is shown as it is; a
+     * glyph name or nothing means no cover. Its words (alt) are the post's own for this language
+     * («Mô tả ảnh» in the editor), else the photo's in the library, else the post's title.
      *
      * @return Cover|null
      */
-    private function cover(Entry $post, string $locale): ?array
+    private function cover(Entry $post, EntryTranslation $translation, string $locale): ?array
     {
         $value = $post->meta['image_url'] ?? null;
         if (! is_string($value) || ! str_contains($value, '/')) {
             return null;
         }
+        $own = trim((string) $translation->cover_alt);
+        $title = trim((string) $translation->title);
         if (str_contains($value, '://')) {
-            return ['src' => $value, 'srcset' => null, 'alt' => '', 'caption' => '', 'width' => 1600, 'height' => 900];
+            return ['src' => $value, 'srcset' => null, 'alt' => $own !== '' ? $own : $title, 'caption' => '', 'width' => 1600, 'height' => 900];
         }
 
         $media = Media::query()->where('storage_key', $value)->first(['id', 'storage_key', 'width', 'height', 'alt', 'title']);
@@ -269,7 +272,11 @@ final readonly class PostDetail
         return [
             'src' => $this->media->url($value, self::COVER_WIDTH),
             'srcset' => $this->media->srcset($value, self::COVER_SRCSET_WIDTHS, $media?->width),
-            'alt' => $media !== null ? trim((string) ($media->alt[$locale] ?? '')) : '',
+            'alt' => match (true) {
+                $own !== '' => $own,
+                $media !== null && trim((string) ($media->alt[$locale] ?? '')) !== '' => trim((string) $media->alt[$locale]),
+                default => $title,
+            },
             'caption' => $media !== null ? trim((string) ($media->title[$locale] ?? '')) : '',
             'width' => $width,
             'height' => $height,

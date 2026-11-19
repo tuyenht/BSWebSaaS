@@ -537,19 +537,21 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     file_put_contents($dir.'/appearance.html', $html);
 
     // The post editor with its short description and Google title and description filled, long
-    // enough that the meters show their bands and the Google preview shows where it cuts the text.
-    $post = app(Tenancy::class)->enter(1, function () use ($owner): Entry {
-        $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $owner->id]);
+    // enough that the meters show their bands and the Google preview shows where it cuts the text; a
+    // featured image with its «Mô tả ảnh» under it.
+    $post = app(Tenancy::class)->enter(1, function () use ($owner, $logo): Entry {
+        $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $owner->id, 'meta' => ['image_url' => $logo->storage_key]]);
         $entry->translations()->create(['locale' => 'vi', 'title' => 'Khánh thành nhà xưởng gia công cơ khí chính xác mới tại Khu công nghiệp Phú Nghĩa', 'slug' => 'khanh-thanh-nha-xuong', 'status' => 'draft',
             'excerpt' => 'Nhà xưởng mới rộng 5.000 m² với dây chuyền CNC 5 trục giúp rút ngắn thời gian giao hàng còn một nửa cho khách hàng trong nước và xuất khẩu.',
             'seo_title' => 'Khánh thành nhà xưởng cơ khí chính xác mới tại Phú Nghĩa, Hà Nội năm 2026',
             'seo_description' => 'Nhà xưởng mới rộng 5.000 m² với dây chuyền CNC 5 trục, rút ngắn thời gian giao hàng còn một nửa cho khách hàng trong nước và xuất khẩu sang Nhật Bản, Hàn Quốc.',
+            'cover_alt' => 'Thợ đứng máy phay CNC 5 trục trong nhà xưởng mới',
             'body' => ['blocks' => []]]);
 
         return $entry;
     });
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$post->ulid.'/edit')->assertOk()->getContent();
-    expect($html)->toContain('data-seo-fields', 'wire:model="excerpt"');
+    expect($html)->toContain('data-seo-fields', 'wire:model="excerpt"', 'id="entry-cover-alt"');
     file_put_contents($dir.'/post-editor.html', $html);
     // A new post: the frame's header says «Thêm mới», Xem trước waits for the first save, no Trash.
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/create?section=posts')->assertOk()->getContent();
