@@ -474,12 +474,17 @@ it('answers an unknown console address with "not found" for a guest and "no perm
 
 it('keeps no page to come back to that walks out of the admin or into the sign-in pages', function (): void {
     foreach (['/admin/../tin-tuc', '/admin/./../tin-tuc', '/admin/%2e%2e/tin-tuc', '/admin/%2E%2E/tin-tuc', '/admin/%6cogin',
-        '/admin/content/%2e%2e/%2e%2e/tin-tuc', '/admin/%2flogin'] as $to) {
+        '/admin/content/%2e%2e/%2e%2e/tin-tuc', '/admin/%2flogin', '/admin/%5cposts', '/admin/%2fposts', '/admin/%2e/posts'] as $to) {
         $this->flushSession();
         $this->get('http://a.test/admin/session-expired?to='.urlencode($to).'&signin=1')
             ->assertRedirect(route('admin.login'))
             ->assertSessionMissing('url.intended');
     }
+
+    // A path with an encoded letter of its own (a Vietnamese slug) is still one to come back to.
+    $this->flushSession();
+    $this->get('http://a.test/admin/session-expired?to='.urlencode('/admin/x/b%C3%A0n').'&signin=1')
+        ->assertSessionHas('url.intended', 'http://a.test/admin/x/b%C3%A0n');
 
     $platform = 'http://'.config('tenancy.platform_host');
     foreach (['//evil.test/tenants', '/login', '/../tenants/%2e%2e', '/%6cogin'] as $to) {
