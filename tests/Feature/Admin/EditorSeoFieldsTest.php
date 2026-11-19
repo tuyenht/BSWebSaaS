@@ -31,6 +31,7 @@ beforeEach(function (): void {
     DB::connection('pgsql_admin')->statement('truncate audit_logs restart identity');
     truncateRbac();
     seedTenancy();
+    enableCatalog();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
 });

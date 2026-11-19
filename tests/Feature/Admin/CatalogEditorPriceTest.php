@@ -24,6 +24,7 @@ use Livewire\Livewire;
 beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
+    enableCatalog();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
     app()->setLocale('vi');   // the words checked below are the Vietnamese ones

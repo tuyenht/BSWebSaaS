@@ -4,6 +4,9 @@ use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Catalog\Actions\ChangeProductStatus;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductImage;
+use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
+use App\Modules\Cms\Data\TaxonomyData;
+use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
@@ -25,6 +28,7 @@ use Spatie\Permission\PermissionRegistrar;
 beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
+    enableCatalog();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
     app()->setLocale('vi');   // the words checked below are the Vietnamese ones
@@ -630,5 +634,29 @@ describe('query budget', function (): void {
         // the edit right is asked about the stored product (read once per request) and the member's
         // product-category limits (read once per request)
         expect($auto)->toBeLessThanOrEqual(21);
+    });
+
+    it('opens the edit screen for a member limited to some product categories, and read only, within the same ceiling as an unlimited manager', function (): void {
+        $lead = shellManager();
+        $viewer = User::factory()->create();
+        app(Tenancy::class)->enter(1, fn () => grantRole($viewer, 'cat-viewer', ['catalog.view']));
+        [$ulid, $category] = app(Tenancy::class)->enter(1, function (): array {
+            $category = app(CreateTaxonomy::class)->handle('product_cat', null, new TaxonomyData(names: ['vi' => 'Khuôn']));
+            $product = shellProduct('draft');
+            $product->assignCategories([$category->id]);
+
+            return [$product->ulid, $category->id];
+        });
+        foreach ([$lead, $viewer] as $member) {
+            DB::connection('pgsql_admin')->table('member_category_scopes')->insert(['site_id' => 1, 'user_id' => $member->id, 'taxonomy_id' => $category]);
+        }
+        app(CategoryScopes::class)->forget();
+
+        // the product's categories are read once, for the limits and the form both
+        foreach ([$lead, $viewer] as $member) {
+            $this->flushSession();
+            $get = countQueries(fn () => $this->actingAs($member)->get("http://a.test/admin/catalog/{$ulid}/edit")->assertOk()->assertSee('Khuôn'));
+            expect($get)->toBeLessThanOrEqual(25);
+        }
     });
 });
