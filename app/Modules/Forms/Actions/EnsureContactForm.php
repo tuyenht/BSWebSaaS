@@ -59,6 +59,14 @@ final class EnsureContactForm
             ],
         );
 
+        // A form changed on the «Biểu mẫu» screen is the site's own: its fields and wording stay as the
+        // site left them (a field it removed is not brought back); only the consent box is kept.
+        if (self::isEdited($form)) {
+            $this->ensureConsent($form);
+
+            return $form;
+        }
+
         foreach (self::FIELDS as $field) {
             $placeholder = isset(self::PLACEHOLDERS[$field['key']]) ? ['placeholder' => $this->inEveryLanguage(self::PLACEHOLDERS[$field['key']])] : [];
             $form->fields()->firstOrCreate(['key' => $field['key']], [...$field, 'label' => $this->inEveryLanguage($field['label']), 'options' => $placeholder]);
@@ -67,6 +75,26 @@ final class EnsureContactForm
         $this->fillMissingLanguages($form);
 
         return $form;
+    }
+
+    /**
+     * Give $form its consent box when it has none (the platform's sentence in every interface
+     * language, required, after its last field). Every form a visitor fills in ends with one.
+     */
+    public function ensureConsent(Form $form): void
+    {
+        $form->fields()->firstOrCreate(['key' => Form::CONSENT_KEY], [
+            'type' => 'checkbox',
+            'label' => $this->inEveryLanguage('forms.consent_label'),
+            'is_required' => true,
+            'sort_order' => Cast::int($form->fields()->max('sort_order')) + 1,
+        ]);
+    }
+
+    /** Whether the form was changed on the «Biểu mẫu» screen (SaveForm marks it). */
+    public static function isEdited(Form $form): bool
+    {
+        return (Cast::arr($form->settings)['edited'] ?? false) === true;
     }
 
     /**
@@ -79,7 +107,7 @@ final class EnsureContactForm
      */
     public function refreshConsentLabel(Form $form): bool
     {
-        $field = $form->fields()->where('key', 'consent')->first();
+        $field = $form->fields()->where('key', Form::CONSENT_KEY)->first();
         if ($field === null) {
             return false;
         }

@@ -1761,6 +1761,20 @@
         }
     }
 
+    /* data-cols="forms" (the forms list, board 15): the leads count keeps the board's 130px, the
+       email column takes up to 240px (a long address still wraps anywhere), the name takes the room
+       left. */
+    @container list (width >= 48rem) {
+        .list-rows[data-kind='facts'][data-cols='forms'] .list-c-f1 {
+            flex: 0 0 max(8.125rem, calc(8 * var(--text-body)));
+        }
+
+        .list-rows[data-kind='facts'][data-cols='forms'] .list-c-f2 {
+            flex: 0 1 15rem;
+            min-width: 10rem;
+        }
+    }
+
     /* data-cols="support" (the console's support sessions, board 20): "Dưới tên …" stays under the
        website at every width; the reason is data to read in full (never clipped), so it has its own
        line under the name wherever its column is not drawn (the phone card, and 768–1023); the reason

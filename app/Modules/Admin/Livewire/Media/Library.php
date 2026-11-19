@@ -7,6 +7,7 @@ use App\Modules\Admin\Support\MediaDeleteRights;
 use App\Modules\Admin\Support\MediaLibraryDirectory;
 use App\Modules\Admin\Support\MediaUsageLocator;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Jobs\DeleteLargeMediaFolder;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -126,6 +127,10 @@ final class Library extends Component
     /** The folder asked about holds more files than Hoàn tác keeps (config media.folder_undo_max_files). */
     #[Locked]
     public bool $folderNoUndo = false;
+
+    /** The folder asked about holds more files than one request moves (config media.folder_delete_inline_max_files). */
+    #[Locked]
+    public bool $folderInBatches = false;
 
     public bool $reparentOpen = false;
 
@@ -673,7 +678,8 @@ final class Library extends Component
             return;
         }
         $family = self::familyIds($folder->id);
-        $noUndo = self::tooManyForUndo($family);
+        $inBatches = self::tooManyInline($family);
+        $noUndo = $inBatches || self::tooManyForUndo($family);
         if (! $noUndo && count($family) === 1 && ! Media::query()->where('folder_id', $folder->id)->exists()) {
             $this->deleteFolder($folder);
 
@@ -681,6 +687,7 @@ final class Library extends Component
         }
         $this->folderToDelete = (string) $folder->slug;
         $this->folderNoUndo = $noUndo;
+        $this->folderInBatches = $inBatches;
         $this->askFolderOpen = true;
     }
 
@@ -689,6 +696,7 @@ final class Library extends Component
         $this->askFolderOpen = false;
         $this->folderToDelete = '';
         $this->folderNoUndo = false;
+        $this->folderInBatches = false;
     }
 
     public function confirmDeleteFolder(): void
@@ -1227,6 +1235,18 @@ final class Library extends Component
             ? null : Cast::string(__('media.lib.reparent_why_none'));
     }
 
+    /**
+     * More files (Trash included) in these folders than one web request moves back to no folder —
+     * such a folder is emptied in batches off the request (DeleteLargeMediaFolder), without Hoàn tác.
+     *
+     * @param  list<int>  $folderIds
+     */
+    private static function tooManyInline(array $folderIds): bool
+    {
+        return Media::withTrashed()->whereIn('folder_id', $folderIds)
+            ->offset(Cast::int(config('media.folder_delete_inline_max_files', 20000)))->exists();
+    }
+
     /** The cache key of a folder delete kept for Hoàn tác: this site's, this member's, this delete's. */
     private static function folderUndoKey(string $token): string
     {
@@ -1237,7 +1257,8 @@ final class Library extends Component
      * Deletes the folder and its sub-folders (the parent key's CASCADE): their files (live and in the
      * Trash) go back to no folder through media's foreign key. What Hoàn tác needs — each folder's
      * name, slug, place, parent and files' ids — is kept server side for a few minutes; the page holds
-     * only its random key.
+     * only its random key. A folder with more files than one request moves is left in place and
+     * emptied in batches by a queued job, which then deletes it with its sub-folders.
      */
     private function deleteFolder(MediaFolder $folder): void
     {
@@ -1253,6 +1274,11 @@ final class Library extends Component
                 ->lockForUpdate()->get(['id', 'name', 'slug', 'position']);
             $family = array_values(array_merge([$row->id], $kids->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->all()));
             $live = Media::query()->whereIn('folder_id', $family)->count();
+            if (self::tooManyInline($family)) {
+                DeleteLargeMediaFolder::dispatch(app(CurrentSite::class)->id(), $row->id); // once this commits
+
+                return ['live' => $live, 'files' => null, 'row' => $row, 'kids' => $kids, 'parent' => '', 'slot' => 0, 'later' => true];
+            }
             $files = null;
             if (! self::tooManyForUndo($family)) {
                 $files = [];
@@ -1264,12 +1290,12 @@ final class Library extends Component
             $slot = self::slotOf($row);
             $row->delete();
 
-            return ['live' => $live, 'files' => $files, 'row' => $row, 'kids' => $kids, 'parent' => $parent, 'slot' => $slot];
+            return ['live' => $live, 'files' => $files, 'row' => $row, 'kids' => $kids, 'parent' => $parent, 'slot' => $slot, 'later' => false];
         });
         if ($done === null) {
             return;
         }
-        ['live' => $live, 'files' => $files, 'row' => $folder, 'kids' => $kids, 'parent' => $parent, 'slot' => $slot] = $done;
+        ['live' => $live, 'files' => $files, 'row' => $folder, 'kids' => $kids, 'parent' => $parent, 'slot' => $slot, 'later' => $later] = $done;
 
         $pack = fn (int $id): string => ($files[$id] ?? []) === [] ? '' : pack('q*', ...$files[$id]);
         $token = '';
@@ -1295,6 +1321,7 @@ final class Library extends Component
             $this->cancelRename();
         }
         $this->say(match (true) {
+            $later => __('media.lib.folder_deleting', ['name' => $name, 'n' => number_format($live, 0, ',', '.')]),
             $files === null => __('media.lib.folder_deleted_no_undo', ['name' => $name, 'n' => number_format($live, 0, ',', '.')]),
             $live > 0 => __('media.lib.folder_deleted_n', ['name' => $name, 'n' => number_format($live, 0, ',', '.')]),
             default => __('media.lib.folder_deleted', ['name' => $name]),
