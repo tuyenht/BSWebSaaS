@@ -119,6 +119,21 @@ function bindGlobal() {
             activeFrame.editor.s.insertHTML(html);
         }
     });
+    // The server replaced a field's whole document (the editor took a newer saved version, or put
+    // back the text kept on this device): the frame shows it. The carrier takes the same value
+    // without an `input` event, as the server already holds it: the page does not read as changed.
+    onLivewire('admin-editor-set-html', (params) => {
+        const target = params?.target;
+        const html = params?.html;
+        if (typeof target !== 'string' || typeof html !== 'string') {
+            return;
+        }
+        for (const frame of frames) {
+            if (frame.target === target && frame.wrap.isConnected) {
+                frame.setHtml(html);
+            }
+        }
+    });
     // A button outside the frame that appends a ready fragment to the end of one editor (the
     // product's «Chèn bảng thông số»): [data-rich-append="<target>"] + data-rich-html + data-rich-toast.
     // Delegated, so a Livewire morph of the button never loses the handler.
@@ -255,9 +270,10 @@ function mountFrame(wrap) {
     let idle = 0;
 
     const frame = { wrap, target, editor };
+    let quiet = false;
 
     const push = (raw) => {
-        if (!syncEl || typeof raw !== 'string') {
+        if (!syncEl || typeof raw !== 'string' || quiet) {
             return;
         }
         const value = moveInlineStyles(raw);
@@ -266,6 +282,19 @@ function mountFrame(wrap) {
         }
         syncEl.value = value;
         syncEl.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    // A document the server set (admin-editor-set-html): shown, the carrier matched, nothing sent.
+    frame.setHtml = (html) => {
+        quiet = true;
+        try {
+            editor.value = html;
+        } finally {
+            quiet = false;
+        }
+        if (syncEl) {
+            syncEl.value = moveInlineStyles(editor.value);
+        }
+        counts();
     };
 
     // ── selection kept across a click on the bar or a dialog ──

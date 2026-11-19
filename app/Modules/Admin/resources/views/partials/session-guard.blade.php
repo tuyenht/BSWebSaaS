@@ -68,7 +68,7 @@
                 </div>
             </div>
         </template>
-        <form method="POST" action="{{ \App\Modules\Admin\Support\AdminPlane::route('logout') }}" x-ref="logoutForm" hidden>@csrf</form>
+        <form method="POST" action="{{ \App\Modules\Admin\Support\AdminPlane::route('logout') }}" x-ref="logoutForm" data-bs-signout hidden>@csrf</form>
     @endif
     <div class="sr-only" aria-live="polite" x-text="live"></div>
 </div>

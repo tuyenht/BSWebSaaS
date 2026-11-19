@@ -6,6 +6,8 @@
     'state' => null,
     'close' => null,
     'closeLabel' => null,
+    'compact' => false,
+    'alert' => false,
 ])
 @php
     // Self-contained per-instance modal. $trigger opens it; Escape / backdrop / close button
@@ -24,9 +26,9 @@
     // is open while it is set) and `close` (the Alpine call that clears it) instead of `model`: the
     // same form dialog, the opener taken and focused again the same way. A `heading` slot replaces
     // the title when it is drawn from that state.
-    $sizes = ['sm' => 'max-w-sm', 'md' => 'max-w-lg', 'lg' => 'max-w-2xl', 'wide' => 'max-w-160'];
+    $sizes = ['sm' => 'max-w-sm', 'md' => 'max-w-lg', 'lg' => 'max-w-2xl', 'wide' => 'max-w-160', 'narrow' => 'max-w-120'];
     $box = $sizes[$size] ?? $sizes['md'];
-    $sheetBoxes = ['sm' => 'min-[600px]:max-w-sm', 'md' => 'min-[600px]:max-w-lg', 'lg' => 'min-[600px]:max-w-2xl', 'wide' => 'min-[600px]:max-w-160'];
+    $sheetBoxes = ['sm' => 'min-[600px]:max-w-sm', 'md' => 'min-[600px]:max-w-lg', 'lg' => 'min-[600px]:max-w-2xl', 'wide' => 'min-[600px]:max-w-160', 'narrow' => 'min-[600px]:max-w-120'];
     $sheetBox = $sheetBoxes[$size] ?? $sheetBoxes['md'];
     $tid = ($model ?? $state) !== null ? 'modal-title-'.substr(md5((string) ($model ?? $state)), 0, 8) : 'modal-title-'.\Illuminate\Support\Str::random(6);
     $alpine = $state !== null;
@@ -43,6 +45,10 @@
             ." const back = this.opener; this.opener = null; this.\$nextTick(() => { if (back && back.isConnected) back.focus(); }); }); } }"
         : '{ open: false, opener: null, show() { this.opener = document.activeElement; this.open = true; }, hide() { this.open = false; this.opener?.focus(); } }');
     $form = $model !== null || $alpine;
+    // `compact`: the sheet below 600px stops at 90% of the screen's height (default 92%). `alert`: the
+    // dialog is a question that must be answered or dismissed, so it is an alertdialog.
+    $sheetMax = $compact ? 'max-h-[90dvh]' : 'max-h-[92dvh]';
+    $dialogRole = $alert ? 'alertdialog' : 'dialog';
 @endphp
 <div x-data="{{ $state }}"
      x-effect="document.body.style.overflow = open ? 'hidden' : ''"
@@ -57,8 +63,8 @@
             <div x-show="open" x-transition.opacity @click="hide()" class="absolute inset-0 bg-gray-900/45"></div>
 
             <div x-show="open" x-transition x-trap="open"
-                 role="dialog" aria-modal="true" aria-labelledby="{{ $tid }}"
-                 class="relative flex max-h-[92dvh] w-full flex-col rounded-t-xl bg-surface shadow-lg min-[600px]:max-h-[calc(100dvh-2rem)] {{ $sheetBox }} min-[600px]:rounded-md">
+                 role="{{ $dialogRole }}" aria-modal="true" aria-labelledby="{{ $tid }}"
+                 class="relative flex {{ $sheetMax }} w-full flex-col rounded-t-xl bg-surface shadow-lg min-[600px]:max-h-[calc(100dvh-2rem)] {{ $sheetBox }} min-[600px]:rounded-md">
                 <div class="flex items-start gap-3 border-b border-border px-5 py-4">
                     <div class="min-w-0 flex-1">
                         <h2 id="{{ $tid }}" class="m-0 text-[calc(1.125rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ $heading ?? $title }}</h2>
