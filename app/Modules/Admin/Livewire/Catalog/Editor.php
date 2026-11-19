@@ -517,7 +517,9 @@ final class Editor extends Component
      */
     public function trash(): void
     {
-        abort_if($this->ulid === null, 404);
+        // not from the card of a product that could not be read: nothing has checked its key yet (the
+        // Trash card's own second move is answered below, in words)
+        abort_if($this->ulid === null || $this->screen === 'error', 404);
         abort_unless($this->entitled(), 403);
         $product = Product::query()->where('ulid', $this->ulid)->first();
         if ($product === null) {
@@ -753,9 +755,8 @@ final class Editor extends Component
     /** "Lưu nháp" / "Lưu": save, keeping the status. */
     public function save(): void
     {
+        $this->onTheForm();
         $this->authorizeEdit();
-        // only the form saves: a card in its place (the Trash, a read that failed) holds nothing to keep
-        abort_unless($this->screen === 'form', 404);
         try {
             $saved = $this->commit(quiet: false);
         } catch (ValidationException $e) {
@@ -766,6 +767,16 @@ final class Editor extends Component
         if (! $saved) {
             $this->sayWhatToFix($this->shownErrors());
         }
+    }
+
+    /**
+     * Only the form saves: a card in its place (the Trash, a read that failed) holds nothing to keep —
+     * asked first, before the product is read again. The plan and no-permission cards are refused by
+     * the checks that follow (authorizeEdit).
+     */
+    private function onTheForm(): void
+    {
+        abort_if(in_array($this->screen, ['trash', 'error'], true), 404);
     }
 
     /** "Đăng" / "Cập nhật": save it published. Nothing saved, the status stays as it was. */
@@ -793,8 +804,8 @@ final class Editor extends Component
 
     private function saveAs(string $status): void
     {
+        $this->onTheForm();
         $this->authorizeEdit();
-        abort_unless($this->screen === 'form', 404);
         $was = $this->status;
         $this->publishing = true;
         $this->target = $status;
@@ -1168,7 +1179,8 @@ final class Editor extends Component
      * made elsewhere since the form opened counts): a category outside their limits is kept only while
      * the product is still under it (one taken out elsewhere is not filed again), and every stored one
      * outside the limits stays (they never take out one they cannot see). The main category is never
-     * dropped that way — it would move the product's address — the save is refused on its field instead.
+     * dropped that way — it would move the product's address — the save is refused on its field instead
+     * (a second line of defence: the categoryId rule already refuses a main category outside the limits).
      *
      * @return list<int>
      *

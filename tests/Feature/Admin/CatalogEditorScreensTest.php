@@ -171,7 +171,7 @@ describe('the cards in place of the form', function (): void {
 });
 
 describe('saving from a card', function (): void {
-    it('refuses a save on the card of a product that could not be read, and writes nothing', function (string $call): void {
+    it('refuses a save or a move to the Trash on the card of a product that could not be read, and writes nothing', function (string $call): void {
         $manager = cesMember(['catalog.view', 'catalog.manage']);
 
         app(Tenancy::class)->enter(1, function () use ($manager, $call): void {
@@ -191,7 +191,7 @@ describe('saving from a card', function (): void {
             expect(DB::table('products')->where('id', $product->id)->first())->toEqual($before)
                 ->and(DB::table('product_translations')->where('product_id', $product->id)->value('name'))->toBe('Đồ gá hàn');
         });
-    })->with(['save', 'publish']);
+    })->with(['save', 'publish', 'trash']);
 
     it('refuses a save on the Trash card, even once the product came back elsewhere, and writes nothing', function (string $call): void {
         $manager = cesMember(['catalog.view', 'catalog.manage']);
