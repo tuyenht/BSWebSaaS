@@ -9,7 +9,7 @@
            aria-invalid="{{ $errors->has('renameName') ? 'true' : 'false' }}" @if ($errors->has('renameName')) aria-describedby="{{ $fid }}-err" @endif
            class="field w-full rounded-md border border-border-strong bg-surface px-3 text-text aria-[invalid=true]:border-danger-text">
     @error('renameName')
-        <p id="{{ $fid }}-err" class="m-0 flex items-start gap-1.5 text-small text-danger-text" role="alert"><x-bs-admin::icon name="ri-error-warning" class="mt-0.5 size-4 shrink-0" /><span>{{ $message }}</span></p>
+        <x-bs-admin::field-error id="{{ $fid }}-err">{{ $message }}</x-bs-admin::field-error>
     @enderror
     <div class="flex flex-wrap justify-end gap-2">
         <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="cancelRename">{{ __('media.lib.cancel') }}</x-bs-admin::button>
