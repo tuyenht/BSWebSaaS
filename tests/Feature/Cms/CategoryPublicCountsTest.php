@@ -59,6 +59,14 @@ function pubCategory(string $name, string $vocabulary = 'post_cat', ?Taxonomy $p
     return app(CreateTaxonomy::class)->handle($vocabulary, $parent, new TaxonomyData(names: ['vi' => $name, 'en' => $name.' EN']));
 }
 
+/** Bind the products section to this category: the catalog root, whose branch lists products. */
+function pubCatalogRoot(Taxonomy $category): Taxonomy
+{
+    ContentSection::query()->create(['key' => 'products', 'label' => 'Sản phẩm', 'taxonomy_id' => $category->id]);
+
+    return $category;
+}
+
 /**
  * A post filed under $categories (index 0 = the main one), with a translation per language in $locales (language → status).
  *
@@ -183,7 +191,7 @@ it('collapses a publish of the entry and its translation into one update per row
 
 it('counts a product filed under two categories of one branch once in their parent, once in each own total, per language', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
-        $top = pubCategory('Máy', 'product_cat');
+        $top = pubCatalogRoot(pubCategory('Máy', 'product_cat'));
         $left = pubCategory('Máy tiện', 'product_cat', $top);
         $right = pubCategory('Máy phay', 'product_cat', $top);
         $product = pubProduct([$left, $right], 'published', ['vi']);
@@ -203,7 +211,7 @@ it('counts a product filed under two categories of one branch once in their pare
     expect(publicCountDrift(1))->toBe([]);
 });
 
-it('counts every public product in the catalog root\'s branch total, filed there or not', function (): void {
+it('counts every public product in the catalog root\'s branch total, filed there or not, and none outside the root', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         $root = pubCategory('Sản phẩm', 'product_cat');
         $child = pubCategory('Đồ gá', 'product_cat', $root);
@@ -214,7 +222,95 @@ it('counts every public product in the catalog root\'s branch total, filed there
         pubProduct([$child]);
         pubProduct([$elsewhere, $child]);
 
-        expect(pubCounts('vi', $root, $child, $elsewhere))->toBe([[0, 3], [2, 2], [1, 1]]);
+        // «Khác» is under no catalog root: its page lists posts, so the product filed there is not counted there.
+        expect(pubCounts('vi', $root, $child, $elsewhere))->toBe([[0, 3], [2, 2], [0, 0]]);
+    });
+    expect(publicCountDrift(1))->toBe([]);
+});
+
+it('counts products only at and under the catalog root and posts only elsewhere, as the category page lists one kind', function (): void {
+    [$top, $root, $child, $other] = app(Tenancy::class)->enter(1, function (): array {
+        $top = pubCategory('Cơ khí', 'product_cat');
+        $root = pubCatalogRoot(pubCategory('Sản phẩm', 'product_cat', $top));
+        $child = pubCategory('Đồ gá', 'product_cat', $root);
+        $other = pubCategory('Khuôn', 'product_cat');
+        foreach (range(1, 3) as $i) {
+            pubPost([$child]);
+            pubProduct([$child]);
+            pubProduct([$child]);
+        }
+        pubProduct([$other, $child]);
+        pubPost([$root]);
+        pubPost([$other]);
+        pubPost([$other]);
+
+        // A path is the ids from the top down to the category itself (what the count's SQL splits).
+        expect((string) $child->fresh()?->path)->toBe("{$top->id}.{$root->id}.{$child->id}")
+            ->and((string) $top->fresh()?->path)->toBe((string) $top->id);
+
+        // «Đồ gá» lists its 7 products (3 posts filed there are not on its page); the root lists every
+        // product; «Cơ khí» above the root lists posts: the 4 filed in its branch; «Khuôn» its 2 posts.
+        expect(pubCounts('vi', $top, $root, $child, $other))->toBe([[0, 4], [0, 7], [7, 7], [2, 2]]);
+
+        return [$top, $root, $child, $other];
+    });
+    expect(publicCountDrift(1))->toBe([]);
+
+    // The first fill after the migration gives the same numbers, one summary line per site.
+    app(Tenancy::class)->enter(1, fn () => DB::table('taxonomy_translations')->update(['public_own_count' => 0, 'public_tree_count' => 0]));
+    Log::spy();
+    $this->artisan('cms:reconcile-category-public-counts', ['--fill' => true])
+        ->expectsOutputToContain('Site 1: filled 4 row(s).')
+        ->expectsOutputToContain('corrected 4 row(s)')
+        ->assertSuccessful();
+    Log::shouldHaveReceived('info')->with('Category public counts filled', ['site_id' => 1, 'rows' => 4])->once();
+    Log::shouldNotHaveReceived('warning');
+    app(Tenancy::class)->enter(1, fn () => expect(pubCounts('vi', $top, $root, $child, $other))->toBe([[0, 4], [0, 7], [7, 7], [2, 2]]));
+
+    // «Khuôn» moved under the root lists products from then on (its product, not its posts), and its
+    // posts count in «Cơ khí» above the root; moved out again, as before. Counted once each move commits.
+    app(Tenancy::class)->enter(1, fn () => app(MoveTaxonomy::class)->handle($other->fresh(), $root->fresh(), 0, evenIfSectionChanges: true));
+    app(Tenancy::class)->enter(1, fn () => expect(pubCounts('vi', $top, $root, $child, $other))->toBe([[0, 6], [0, 7], [7, 7], [1, 1]]));
+    expect(publicCountDrift(1))->toBe([]);
+    app(Tenancy::class)->enter(1, fn () => app(MoveTaxonomy::class)->handle($other->fresh(), null, 1, evenIfSectionChanges: true));
+    app(Tenancy::class)->enter(1, fn () => expect(pubCounts('vi', $top, $root, $child, $other))->toBe([[0, 4], [0, 7], [7, 7], [2, 2]]));
+    expect(publicCountDrift(1))->toBe([]);
+});
+
+it('takes out what an item added when a bulk action began, when it went off the website and was written again in it', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $root = pubCatalogRoot(pubCategory('Sản phẩm', 'product_cat'));
+        $from = pubCategory('Cũ', 'product_cat', $root);
+        $to = pubCategory('Mới', 'product_cat', $root);
+        $trashed = pubProduct([$from]);
+        $unpublished = pubProduct([$from]);
+        $purged = pubProduct([$from]);
+        $translated = pubProduct([$from]);
+        $dropped = pubProduct([$from]);
+        expect(pubCounts('vi', $root, $from, $to))->toBe([[0, 5], [5, 5], [0, 0]]);
+
+        app(CategoryItemCounts::class)->batch(function () use ($trashed, $unpublished, $purged, $translated, $dropped, $to): void {
+            // Into the trash, then re-filed: it adds nothing anywhere.
+            $trashed->delete();
+            $trashed->assignCategories([$to->id]);
+            // Off, re-filed, back on: it counts under its new category only.
+            $unpublished->forceFill(['status' => 'draft'])->save();
+            $unpublished->assignCategories([$to->id]);
+            $unpublished->forceFill(['status' => 'published'])->save();
+            // Into the trash, then deleted for good.
+            $purged->delete();
+            Product::onlyTrashed()->findOrFail($purged->id)->forceDelete();
+            // Off, given an English translation, back on: public in English too.
+            $translated->forceFill(['status' => 'archived'])->save();
+            $translated->translations()->create(['locale' => 'en', 'name' => 'Lathe', 'slug' => 'lathe-'.$translated->id]);
+            $translated->forceFill(['status' => 'published'])->save();
+            // Unpublished (not trashed), then deleted for good.
+            $dropped->forceFill(['status' => 'draft'])->save();
+            $dropped->forceDelete();
+        });
+
+        expect(pubCounts('vi', $root, $from, $to))->toBe([[0, 2], [1, 1], [1, 1]])
+            ->and(pubCounts('en', $root, $from, $to))->toBe([[0, 1], [1, 1], [0, 0]]);
     });
     expect(publicCountDrift(1))->toBe([]);
 });
@@ -274,7 +370,7 @@ it('follows a workflow transition onto the website and back', function (): void 
 it('takes a public post and product out in the trash, back on restore, and out for good on a permanent delete', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         $a = pubCategory('A');
-        $p = pubCategory('P', 'product_cat');
+        $p = pubCatalogRoot(pubCategory('P', 'product_cat'));
         $post = pubPost([$a]);
         $product = pubProduct([$p]);
 
@@ -368,7 +464,7 @@ it('fills a category translation added later with the items already public in it
 
 it('follows a product published and unpublished through ChangeProductStatus, and a translation removed', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
-        $category = pubCategory('Máy', 'product_cat');
+        $category = pubCatalogRoot(pubCategory('Máy', 'product_cat'));
         $product = pubProduct([$category], 'draft', ['vi', 'en']);
         $post = pubPost([pubCategory('Tin')], 'published', ['vi' => 'published', 'en' => 'published']);
 
@@ -398,7 +494,7 @@ it('puts a bulk restore from the trash back with one update per row, whatever th
             }
             $count = 0;
             DB::listen(function (QueryExecuted $query) use (&$count): void {
-                $count += (int) (str_contains($query->sql, 'taxonomy_translations') || str_contains(strtolower($query->sql), 'with filed as'));
+                $count += (int) (str_contains($query->sql, 'taxonomy_translations') || str_contains(strtolower($query->sql), '), filed as ('));
             });
             Livewire::actingAs($editor->fresh())->test(EntryIndex::class)
                 ->set('tab', 'trash')->set('selected', array_map(fn (Entry $post): string => $post->ulid, $posts))->call('bulkRestore');
@@ -414,7 +510,7 @@ it('puts a bulk restore from the trash back with one update per row, whatever th
 
 it('leaves the totals as they were when a bulk change takes an item off and back on, or on and off, the website', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
-        $category = pubCategory('Máy', 'product_cat');
+        $category = pubCatalogRoot(pubCategory('Máy', 'product_cat'));
         $kept = pubProduct([$category], 'published', ['vi', 'en']);
         $gone = [pubProduct([$category], 'published', ['vi', 'en']), pubProduct([$category], 'published', ['vi'])];
         foreach ($gone as $product) {
@@ -456,14 +552,15 @@ it('leaves the totals as they were when a bulk change takes an item off and back
 
 it('moves the totals of live products given another main category in bulk, with one reading for them all', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
-        $from = pubCategory('Cũ', 'product_cat');
-        $to = pubCategory('Mới', 'product_cat');
+        $root = pubCatalogRoot(pubCategory('Sản phẩm', 'product_cat'));
+        $from = pubCategory('Cũ', 'product_cat', $root);
+        $to = pubCategory('Mới', 'product_cat', $root);
         $ids = array_map(fn (): int => pubProduct([$from], 'published', ['vi', 'en'])->id, range(1, 3));
         pubProduct([$from], 'draft');
 
         $reads = 0;
         DB::listen(function (QueryExecuted $query) use (&$reads): void {
-            $reads += (int) str_contains(strtolower($query->sql), 'with filed as');
+            $reads += (int) str_contains(strtolower($query->sql), '), filed as (');
         });
         $products = Product::query()->with(['taxonomies', 'translations'])->whereKey($ids)->orderBy('id')->lockForUpdate()->get();
         expect(app(ChangeProductMainCategory::class)->handle($products, $to)['moved'])->toBe(3)
@@ -494,7 +591,7 @@ it('counts two publishes at once in the same category, neither lost', function (
             if (str_starts_with(strtolower($query->sql), 'update taxonomy_translations')) {
                 $writes[] = $query->sql;
             }
-            if ($raced || $query->connectionName !== 'pgsql' || ! str_starts_with(trim(strtolower($query->sql)), 'with filed as')) {
+            if ($raced || $query->connectionName !== 'pgsql' || ! str_contains(strtolower($query->sql), '), filed as (')) {
                 return;
             }
             $raced = true;

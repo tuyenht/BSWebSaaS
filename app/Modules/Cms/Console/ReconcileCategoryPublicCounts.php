@@ -18,8 +18,12 @@ use Throwable;
  * sees on the category's page, by its default and its card layout) and correct
  * `taxonomy_translations.public_own_count` / `public_tree_count` where they drifted. Scheduled
  * nightly, so a write path that missed the counters heals within a day, and the warning it logs per
- * drift (site, category, language, old → new) shows which path that was. Run once after the deploy
- * that adds the counters, to fill the existing rows.
+ * drift (site, category, language, old → new) shows which path that was.
+ *
+ * Run once with `--fill` right after the deploy that adds the counters, to fill the existing rows:
+ * every row starts at 0, so nearly every row differs. That run takes smaller steps (FILL_CHUNK
+ * categories, so each correcting transaction locks fewer rows, for less time, while saves go on)
+ * and logs one summary line per site instead of a warning per row.
  *
  * Site by site, inside each site's tenant context, walking each site's categories by id in chunks
  * (the same predicate as the writer, CategoryPublicCounts::actual()):
@@ -38,14 +42,22 @@ use Throwable;
 final class ReconcileCategoryPublicCounts extends Command
 {
     #[\Override]
-    protected $signature = 'cms:reconcile-category-public-counts {--chunk=200 : Categories counted per step}';
+    protected $signature = 'cms:reconcile-category-public-counts
+        {--chunk= : Categories counted per step (default 200; 20 with --fill)}
+        {--fill : The first fill after the counters were added: small steps, one summary line per site, no warning per row}';
+
+    private const int CHUNK = 200;
+
+    private const int FILL_CHUNK = 20;
 
     #[\Override]
     protected $description = 'Re-count the items visitors see on every category page, per language, and correct the stored totals (safe to re-run)';
 
     public function handle(Tenancy $tenancy, CategoryPublicCounts $counts): int
     {
-        $chunk = max(1, Cast::int($this->option('chunk'), 200));
+        $fill = (bool) $this->option('fill');
+        $given = $this->option('chunk');   // not given, empty or not a number: the mode's default
+        $chunk = max(1, Cast::int($given, $fill ? self::FILL_CHUNK : self::CHUNK));
         $started = microtime(true);
         $sites = 0;
         $checked = 0;
@@ -55,15 +67,22 @@ final class ReconcileCategoryPublicCounts extends Command
         foreach ($tenancy->siteIds() as $siteId) {
             $sites++;
             $after = 0;
+            $filled = 0;
 
             try {
                 do {
                     [$read, $drifted, $after] = $tenancy->enter($siteId, fn (): array => $this->countChunk($counts, $siteId, $after, $chunk));
                     $checked += $read;
                     if ($drifted !== []) {
-                        $corrected += $tenancy->enter($siteId, fn (): int => $this->correct($counts, $siteId, $drifted));
+                        $written = $tenancy->enter($siteId, fn (): int => $this->correct($counts, $siteId, $drifted, $fill));
+                        $corrected += $written;
+                        $filled += $written;
                     }
                 } while ($read === $chunk);
+                if ($fill) {
+                    Log::info('Category public counts filled', ['site_id' => $siteId, 'rows' => $filled]);
+                    $this->line("Site {$siteId}: filled {$filled} row(s).");
+                }
             } catch (Throwable $e) {
                 $failed++;
                 Log::error('Category public count reconcile failed for a site', ['site_id' => $siteId, 'exception' => $e]);
@@ -112,13 +131,16 @@ final class ReconcileCategoryPublicCounts extends Command
 
     /**
      * Lock these categories' rows of the current site, count them again and write the ones that
-     * still differ, logging each. Returns how many rows were corrected.
+     * still differ, logging each (not on the first fill). Returns how many rows were corrected.
      *
      * @param  list<int>  $ids
      */
-    private function correct(CategoryPublicCounts $counts, int $siteId, array $ids): int
+    private function correct(CategoryPublicCounts $counts, int $siteId, array $ids, bool $fill): int
     {
         $written = $counts->recount($ids);
+        if ($fill) {
+            return count($written);
+        }
         foreach ($written as $key => [$from, $to]) {
             [$taxonomyId, $locale] = explode('|', $key, 2);
             Log::warning('Category public count drifted', [

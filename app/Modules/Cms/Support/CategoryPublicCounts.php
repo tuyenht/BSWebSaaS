@@ -29,11 +29,17 @@ use Throwable;
  *  - `public_tree_count(c, L)`: the public items filed under c or any category below it, EACH ITEM
  *    ONCE even when filed under several of them — the card layout. An item adds 1 to every category
  *    on the paths (ltree `taxonomies.path`, ancestors and self) of its filings, taken as a set.
- * A kind's catalog root (the category its content section names, `content_sections.taxonomy_id`:
- * Catalog's product list) lists every public item of the kind, filed or not, so each one adds 1 to
- * the root's tree total once, besides its filings. What this does not mirror (the page differs): a
- * category at or under the catalog root lists posts until the site has a published product, products
- * after; the counts follow the filings. A root named afresh is counted by the nightly reconcile.
+ * A category page lists ONE kind (StorefrontController::renderCategory): the catalog root (the
+ * category a kind's content section names, `content_sections.taxonomy_id`: Catalog's product list)
+ * and every category under it list that kind's items; every other category lists posts. So a kind
+ * with a catalog root adds only to categories at or under it, and posts only to categories under no
+ * catalog root — an item filed under several of them adds to each that lists its kind, and a post
+ * filed under the catalog root's branch still adds to the categories above the root. The catalog
+ * root lists every public item of its kind, filed or not, so each one adds 1 to the root's tree
+ * total once, besides its filings. What this does not mirror: a site with no published product yet
+ * lists posts on the catalog root's branch, whose totals then read 0 (no number is shown at 0). A
+ * category moved into or out of the catalog root's branch is counted again with the move
+ * (MoveTaxonomy); a root named afresh is counted by the nightly reconcile.
  *
  * How a change is counted: the item's contribution (its rows of the two totals) is read before and
  * after the write, with the item's row locked first (FOR UPDATE, in the caller's transaction), and
@@ -98,7 +104,10 @@ final class CategoryPublicCounts
     public function track(string $pivot, array $ids, Closure $work): mixed
     {
         $kind = $this->site->hasId() ? ($this->kinds()[$pivot] ?? null) : null;
-        $ids = array_values(array_filter(array_unique($ids), fn (int $id): bool => ! isset($this->tracked["{$pivot}:{$id}"]) && ! $this->isDeferred($pivot, $id)));
+        // Left out: the items another track() counts, and the ones an open batch reads when it
+        // closes after they came on the website in it. An item that went OFF the website in an open
+        // batch is read as if still live, before and after (see batch()).
+        $ids = array_values(array_filter(array_unique($ids), fn (int $id): bool => ! isset($this->tracked["{$pivot}:{$id}"]) && $this->firstWay($pivot, $id) !== 'in'));
         if ($kind === null || $ids === []) {
             return $work();
         }
@@ -107,8 +116,10 @@ final class CategoryPublicCounts
         if ($ids === []) {
             return $work();
         }
+        $off = array_values(array_filter($ids, fn (int $id): bool => $this->firstWay($pivot, $id) === 'out'));
+        $live = array_values(array_diff($ids, $off));
 
-        $before = $this->contribution($kind, $ids);
+        $before = $this->readings($kind, $live, $off);
         foreach ($ids as $id) {
             $this->tracked["{$pivot}:{$id}"] = true;
         }
@@ -119,7 +130,7 @@ final class CategoryPublicCounts
                 unset($this->tracked["{$pivot}:{$id}"]);
             }
         }
-        $this->settle($before, $this->contribution($kind, $ids));
+        $this->settle($before, $this->readings($kind, $live, $off));
 
         return $result;
     }
@@ -128,29 +139,45 @@ final class CategoryPublicCounts
      * The first half of a model event pair (an item or translation about to be written): lock the
      * item and read what it adds now. Null when the kind is not counted, the item is not one that
      * counts (a page), a track() around it already counts it, or an open batch will read it when it
-     * closes (it went on or off the website in it: that reading is of its final state). $locked: the caller holds the row
-     * lock already. $countsNow false: the item adds nothing now (it is in the trash), no read.
+     * closes after it came on the website in it (that reading is of its final state). An item that
+     * went OFF the website in an open batch is read as if still live, before and after the write
+     * (asIfLive; see batch()). $locked: the caller holds the row lock already. $countsNow false:
+     * the item adds nothing now (it is in the trash), no read.
      *
-     * @return array{kind: string, id: int, before: array<string, array{0: int, 1: int}>}|null
+     * @return array{kind: string, id: int, before: array<string, array{0: int, 1: int}>, asIfLive: bool}|null
      */
     public function begin(string $pivot, int $id, bool $locked = false, bool $countsNow = true): ?array
     {
         $kind = $this->site->hasId() ? ($this->kinds()[$pivot] ?? null) : null;
-        if ($kind === null || isset($this->tracked["{$pivot}:{$id}"]) || $this->isDeferred($pivot, $id)) {
+        $way = $this->firstWay($pivot, $id);
+        if ($kind === null || isset($this->tracked["{$pivot}:{$id}"]) || $way === 'in') {
             return null;
         }
         if (! $locked && $this->lock($kind, [$id]) === []) {
             return null;
         }
+        if ($way === 'out') {
+            return ['kind' => $pivot, 'id' => $id, 'before' => $this->contribution($kind, [$id], asIfLive: true), 'asIfLive' => true];
+        }
 
-        return ['kind' => $pivot, 'id' => $id, 'before' => $countsNow ? $this->contribution($kind, [$id]) : []];
+        return ['kind' => $pivot, 'id' => $id, 'before' => $countsNow ? $this->contribution($kind, [$id]) : [], 'asIfLive' => false];
+    }
+
+    /**
+     * Whether this item went off the website earlier in an open batch: a write to it now (a
+     * re-filing, a translation, a permanent delete) must still be read (begin()), as if live.
+     */
+    public function wentOff(string $pivot, int $id): bool
+    {
+        return $this->site->hasId() && isset($this->kinds()[$pivot]) && $this->firstWay($pivot, $id) === 'out';
     }
 
     /**
      * The second half: read what the item adds now and add the difference. $countsAfter false: the
-     * item adds nothing any more (just trashed or deleted), no read.
+     * item adds nothing any more (just trashed or deleted), no read — except for an as-if-live
+     * reading, which is always taken again (a permanent delete then reads nothing).
      *
-     * @param  array{kind: string, id: int, before: array<string, array{0: int, 1: int}>}|null  $token
+     * @param  array{kind: string, id: int, before: array<string, array{0: int, 1: int}>, asIfLive: bool}|null  $token
      */
     public function end(?array $token, bool $countsAfter = true): void
     {
@@ -159,7 +186,11 @@ final class CategoryPublicCounts
             return;
         }
 
-        $this->settle($token['before'], $countsAfter ? $this->contribution($kind, [$token['id']]) : []);
+        $this->settle($token['before'], match (true) {
+            $token['asIfLive'] => $this->contribution($kind, [$token['id']], asIfLive: true),
+            $countsAfter => $this->contribution($kind, [$token['id']]),
+            default => [],
+        });
     }
 
     /**
@@ -198,8 +229,10 @@ final class CategoryPublicCounts
         // The outermost batch: every item that went on or off the website in it adds what it adds now
         // and takes out what it added when the batch began — nothing if it first came on (it was off
         // then), and if it first went off, what it adds read as if still live (its filings and
-        // translations are still there). Two reads per kind at most, whatever the number of rows. An
-        // item is not written again after it went off in the same batch (no bulk action does).
+        // translations are still there). Two reads per kind at most, whatever the number of rows. A
+        // write to an item after it went off (a re-filing, a translation, a permanent delete) already
+        // added what it changed of that as-if-live reading (begin()/track()), so what is taken out
+        // here is what the item added when the batch began.
         $changes = $done['changes'];
         foreach ($done['deferred'] as $pivot => $items) {
             $kind = $this->kinds()[$pivot] ?? null;
@@ -260,16 +293,38 @@ final class CategoryPublicCounts
         return $kind === null || $ids === [] ? [] : $this->contribution($kind, $ids);
     }
 
-    /** Whether an open batch will read this item when it closes (deferred()). */
-    private function isDeferred(string $pivot, int $id): bool
+    /**
+     * The first way this item went in the open batches ('out' off the website, 'in' on), the
+     * outermost first — the one the outermost batch keeps (deferred()); null when it did not.
+     *
+     * @return 'out'|'in'|null
+     */
+    private function firstWay(string $pivot, int $id): ?string
     {
         foreach ($this->batches as $batch) {
             if (isset($batch['deferred'][$pivot][$id])) {
-                return true;
+                return $batch['deferred'][$pivot][$id];
             }
         }
 
-        return false;
+        return null;
+    }
+
+    /**
+     * What these items add now ($live) plus what these items that went off the website in an open
+     * batch would add if still live ($off), as one map; no read for an empty list.
+     *
+     * @param  array{pivot: string, column: string, items: string, translations: string, lock: string, item: string, translation: string, status: string, filed: string, section: string|null, roots: string, inside: bool}  $kind
+     * @param  list<int>  $live
+     * @param  list<int>  $off
+     * @return array<string, array{0: int, 1: int}>
+     */
+    private function readings(array $kind, array $live, array $off): array
+    {
+        return self::sum(
+            $live === [] ? [] : $this->contribution($kind, $live),
+            $off === [] ? [] : $this->contribution($kind, $off, asIfLive: true),
+        );
     }
 
     /**
@@ -303,14 +358,20 @@ final class CategoryPublicCounts
         $site = $this->site->id();
         $counts = [];
         foreach ($this->kinds() as $kind) {
-            // The categories whose path runs through a wanted one (the taxonomy table is lookup-sized),
-            // then the public items filed under them, each counted once per wanted category.
+            // The categories whose path runs through a wanted one that lists this kind (the taxonomy
+            // table is lookup-sized), then the public items filed under them, each counted once per
+            // wanted category.
+            $scope = self::scope($kind);
             $rows = DB::select(<<<SQL
-                WITH below AS (
+                WITH roots AS (
+                    SELECT CAST(cs.taxonomy_id AS text) AS id FROM content_sections AS cs
+                    WHERE cs.site_id = ? AND cs.key = ANY(CAST(? AS text[])) AND cs.taxonomy_id IS NOT NULL
+                ), below AS (
                     SELECT t.id, CAST(up.id AS bigint) AS taxonomy_id
                     FROM taxonomies AS t
-                    CROSS JOIN LATERAL unnest(string_to_array(COALESCE(CAST(t.path AS text), CAST(t.id AS text)), '.')) AS up(id)
-                    WHERE t.site_id = ? AND CAST(up.id AS bigint) = ANY(CAST(? AS bigint[]))
+                    CROSS JOIN LATERAL string_to_array(COALESCE(CAST(t.path AS text), CAST(t.id AS text)), '.') AS l(labels)
+                    CROSS JOIN LATERAL unnest(l.labels) WITH ORDINALITY AS up(id, n)
+                    WHERE t.site_id = ? AND CAST(up.id AS bigint) = ANY(CAST(? AS bigint[])) AND {$scope}
                 )
                 SELECT below.taxonomy_id, tr.locale,
                     COUNT(DISTINCT i.id) FILTER (WHERE p.taxonomy_id = below.taxonomy_id) AS own,
@@ -320,7 +381,7 @@ final class CategoryPublicCounts
                 JOIN {$kind['items']} AS i ON i.site_id = p.site_id AND i.id = p.{$kind['column']} AND i.deleted_at IS NULL{$kind['item']}{$kind['status']}
                 JOIN {$kind['translations']} AS tr ON tr.site_id = i.site_id AND tr.{$kind['column']} = i.id{$kind['translation']}
                 GROUP BY below.taxonomy_id, tr.locale
-                SQL, [$site, self::array($taxonomyIds), $site]);
+                SQL, [$site, $kind['roots'], $site, self::array($taxonomyIds), $site]);
             $kindCounts = self::rows($rows);
             if ($kind['section'] !== null) {
                 // A wanted catalog root: its tree total is every public item of the kind.
@@ -429,7 +490,7 @@ final class CategoryPublicCounts
     /**
      * Lock these items' rows (id order) and return the ones that can count at all (a page cannot).
      *
-     * @param  array{pivot: string, column: string, items: string, translations: string, lock: string, item: string, translation: string, status: string, filed: string, section: string|null}  $kind
+     * @param  array{pivot: string, column: string, items: string, translations: string, lock: string, item: string, translation: string, status: string, filed: string, section: string|null, roots: string, inside: bool}  $kind
      * @param  list<int>  $ids
      * @return list<int>
      */
@@ -449,10 +510,11 @@ final class CategoryPublicCounts
     /**
      * What these items add to the totals now: 1 to the own total of each category they are filed
      * under, and 1 to the tree total of each category on the paths of their filings (once per item),
-     * in each language they are public in. One statement. $asIfLive: as if the items were neither in
-     * the trash nor off the website (what items just trashed or unpublished added).
+     * in each language they are public in — counting only the categories whose page lists the kind
+     * (scope()). One statement. $asIfLive: as if the items were neither in the trash nor off the
+     * website (what items just trashed or unpublished added).
      *
-     * @param  array{pivot: string, column: string, items: string, translations: string, lock: string, item: string, translation: string, status: string, filed: string, section: string|null}  $kind
+     * @param  array{pivot: string, column: string, items: string, translations: string, lock: string, item: string, translation: string, status: string, filed: string, section: string|null, roots: string, inside: bool}  $kind
      * @param  list<int>  $ids
      * @return array<string, array{0: int, 1: int}>
      */
@@ -460,7 +522,7 @@ final class CategoryPublicCounts
     {
         $live = $asIfLive ? $kind['item'] : ' AND i.deleted_at IS NULL'.$kind['item'].$kind['status'];
         $site = $this->site->id();
-        $bindings = [$site, self::array($ids), $site];
+        $bindings = [$site, $kind['roots'], $site, self::array($ids), $site];
         // Every public item of a kind with a catalog root counts once in the root's tree total.
         $root = '';
         if ($kind['section'] !== null) {
@@ -474,24 +536,33 @@ final class CategoryPublicCounts
                 SQL;
             array_push($bindings, $kind['section'], $site, self::array($ids));
         }
-        // Table and column names are plain identifiers (CategoryDependents checks them). DISTINCT and
-        // UNION (not ALL) in `above`: each item once per category.
+        $scope = self::scope($kind);
+        // Table and column names are plain identifiers (CategoryDependents checks them). `chain`: each
+        // filing's categories from the top down to itself (the path ends with the category's own id),
+        // the ones that list the kind. DISTINCT and UNION (not ALL) in `above`: each item once per category.
         $rows = DB::select(<<<SQL
-            WITH filed AS (
+            WITH roots AS (
+                SELECT CAST(cs.taxonomy_id AS text) AS id FROM content_sections AS cs
+                WHERE cs.site_id = ? AND cs.key = ANY(CAST(? AS text[])) AND cs.taxonomy_id IS NOT NULL
+            ), filed AS (
                 SELECT DISTINCT i.id AS item, tr.locale, p.taxonomy_id
                 FROM {$kind['items']} AS i
                 JOIN {$kind['translations']} AS tr ON tr.site_id = i.site_id AND tr.{$kind['column']} = i.id{$kind['translation']}
                 JOIN {$kind['pivot']} AS p ON p.site_id = i.site_id AND p.{$kind['column']} = i.id{$kind['filed']}
                 WHERE i.site_id = ? AND i.id = ANY(CAST(? AS bigint[])){$live}
-            ), above AS (
-                SELECT DISTINCT filed.item, filed.locale, CAST(up.id AS bigint) AS taxonomy_id
+            ), chain AS (
+                SELECT filed.item, filed.locale, filed.taxonomy_id AS filed_id, CAST(up.id AS bigint) AS taxonomy_id
                 FROM filed
                 JOIN taxonomies AS t ON t.site_id = ? AND t.id = filed.taxonomy_id
-                CROSS JOIN LATERAL unnest(string_to_array(COALESCE(CAST(t.path AS text), CAST(t.id AS text)), '.')) AS up(id)
+                CROSS JOIN LATERAL string_to_array(COALESCE(CAST(t.path AS text), CAST(t.id AS text)), '.') AS l(labels)
+                CROSS JOIN LATERAL unnest(l.labels) WITH ORDINALITY AS up(id, n)
+                WHERE {$scope}
+            ), above AS (
+                SELECT DISTINCT chain.item, chain.locale, chain.taxonomy_id FROM chain
                 {$root}
             )
             SELECT taxonomy_id, locale, SUM(own) AS own, SUM(tree) AS tree FROM (
-                SELECT taxonomy_id, locale, COUNT(*) AS own, 0 AS tree FROM filed GROUP BY taxonomy_id, locale
+                SELECT taxonomy_id, locale, COUNT(*) AS own, 0 AS tree FROM chain WHERE taxonomy_id = filed_id GROUP BY taxonomy_id, locale
                 UNION ALL
                 SELECT taxonomy_id, locale, 0 AS own, COUNT(*) AS tree FROM above GROUP BY taxonomy_id, locale
             ) AS c
@@ -502,10 +573,45 @@ final class CategoryPublicCounts
     }
 
     /**
-     * Posts, then every kind a module registered with a translations table, by pivot. The SQL
-     * fragments are literals (the partial post indexes match a generic plan too).
+     * The categories a kind's items count in, as a condition on a category `up.id` at position
+     * `up.n` of a filing's path labels `l.labels`, given the `roots` (the catalog roots' ids): a kind
+     * with a catalog root, only at or under it (the root is on the path at or above the category);
+     * posts, only under no catalog root (StorefrontController::renderCategory lists one kind).
      *
-     * @return array<string, array{pivot: string, column: string, items: string, translations: string, lock: string, item: string, translation: string, status: string, filed: string, section: string|null}>
+     * @param  array{pivot: string, column: string, items: string, translations: string, lock: string, item: string, translation: string, status: string, filed: string, section: string|null, roots: string, inside: bool}  $kind
+     */
+    private static function scope(array $kind): string
+    {
+        return ($kind['inside'] ? 'EXISTS' : 'NOT EXISTS').' (SELECT 1 FROM roots WHERE array_position(l.labels, roots.id) <= up.n)';
+    }
+
+    /**
+     * The ids of the catalog roots of the counted kinds on the current site (the categories whose
+     * branch lists a kind other than posts): a category moved into or out of one changes what its
+     * branch counts (MoveTaxonomy).
+     *
+     * @return list<int>
+     */
+    public function catalogRoots(): array
+    {
+        $sections = $this->sections();
+        if ($sections === [] || ! $this->site->hasId()) {
+            return [];
+        }
+
+        return array_values(array_map(
+            static fn (mixed $id): int => Cast::int($id),
+            DB::table('content_sections')->where('site_id', $this->site->id())->whereIn('key', $sections)->whereNotNull('taxonomy_id')->orderBy('taxonomy_id')->pluck('taxonomy_id')->all(),
+        ));
+    }
+
+    /**
+     * Posts, then every kind a module registered with a translations table, by pivot. The SQL
+     * fragments are literals (the partial post indexes match a generic plan too). `roots`: the
+     * content sections (a text[] literal) whose category is the catalog root a kind counts under
+     * (`inside`), or that posts stay out of.
+     *
+     * @return array<string, array{pivot: string, column: string, items: string, translations: string, lock: string, item: string, translation: string, status: string, filed: string, section: string|null, roots: string, inside: bool}>
      */
     private function kinds(): array
     {
@@ -513,6 +619,7 @@ final class CategoryPublicCounts
             'pivot' => 'entry_taxonomies', 'column' => 'entry_id', 'items' => 'entries', 'translations' => 'entry_translations',
             'lock' => " AND type = 'post'", 'item' => " AND i.type = 'post'", 'status' => " AND i.status = 'published'",
             'translation' => " AND tr.status = 'published'", 'filed' => ' AND p.position = 0', 'section' => null,
+            'roots' => self::texts($this->sections()), 'inside' => false,
         ]];
         foreach ($this->dependents->all() as $kind) {
             if ($kind['translations'] === null) {
@@ -522,10 +629,28 @@ final class CategoryPublicCounts
                 'pivot' => $kind['pivot'], 'column' => $kind['column'], 'items' => $kind['items'], 'translations' => $kind['translations'],
                 'lock' => '', 'item' => '', 'status' => " AND i.status = 'published'",
                 'translation' => '', 'filed' => ' AND p.position < '.Entry::FACET_POSITION_BASE, 'section' => $kind['section'],
+                'roots' => self::texts([$kind['section']]), 'inside' => true,
             ];
         }
 
         return $kinds;
+    }
+
+    /**
+     * The content sections of the counted kinds other than posts.
+     *
+     * @return list<string>
+     */
+    private function sections(): array
+    {
+        $sections = [];
+        foreach ($this->dependents->all() as $kind) {
+            if ($kind['translations'] !== null) {
+                $sections[] = $kind['section'];
+            }
+        }
+
+        return $sections;
     }
 
     /**
@@ -557,6 +682,16 @@ final class CategoryPublicCounts
         }
 
         return $into;
+    }
+
+    /**
+     * These values as a text[] literal.
+     *
+     * @param  list<string>  $values
+     */
+    private static function texts(array $values): string
+    {
+        return '{'.implode(',', array_map(static fn (string $value): string => '"'.str_replace(['\\', '"'], ['\\\\', '\\"'], $value).'"', $values)).'}';
     }
 
     /** @param  list<int>  $ids */

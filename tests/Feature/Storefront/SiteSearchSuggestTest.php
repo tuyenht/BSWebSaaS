@@ -580,6 +580,43 @@ it('counts in the page\'s language', function (): void {
         ->and(sgListed("http://a.test/du-an-{$cards->id}", 'Du an mot', 'Project one', 'Project two'))->toBe(1);
 });
 
+it('counts only the kind the category page lists: products at and under the catalog root, posts elsewhere', function (): void {
+    [$root, $child, $other] = app(Tenancy::class)->enter(1, function (): array {
+        $root = sgCategory('Sản phẩm', 'product_cat');
+        $child = sgCategory('Đồ gá', 'product_cat', parent: $root);
+        $other = sgCategory('Khuôn mẫu', 'product_cat');
+        ContentSection::query()->create(['key' => 'products', 'label' => 'Sản phẩm', 'taxonomy_id' => $root->id]);
+        foreach (['Bai ga 1', 'Bai ga 2', 'Bai ga 3'] as $title) {
+            sgPost($title, [$child->id]);
+        }
+        foreach (['Bai khuon 1', 'Bai khuon 2'] as $title) {
+            sgPost($title, [$other->id]);
+        }
+        foreach (['Hang A', 'Hang B', 'Hang C', 'Hang D', 'Hang E'] as $name) {
+            sgProduct($name)->assignCategories([$child->id]);
+        }
+        sgProduct('Hang khuon')->assignCategories([$other->id, $child->id]);
+        // Not on the website in Vietnamese: a draft, one in the trash, one with only an English name.
+        sgProduct('Hang nhap', attributes: ['status' => 'draft'])->assignCategories([$child->id]);
+        $gone = sgProduct('Hang xoa');
+        $gone->assignCategories([$child->id]);
+        $gone->delete();
+        sgProduct('Hang tieng Anh', locale: 'en')->assignCategories([$child->id]);
+
+        return [$root, $child, $other];
+    });
+    $names = ['Hang A', 'Hang B', 'Hang C', 'Hang D', 'Hang E', 'Hang khuon', 'Hang nhap', 'Hang xoa', 'Hang tieng Anh', 'Bai ga 1', 'Bai ga 2', 'Bai ga 3', 'Bai khuon 1', 'Bai khuon 2'];
+
+    // The number is what the page lists, read from the page itself.
+    expect(sgGet('a.test', 'do ga')['items'][0]['meta'])->toBe('Sản phẩm · 6 mục')
+        ->and(sgListed("http://a.test/do-ga-{$child->id}", ...$names))->toBe(6)
+        ->and(sgGet('a.test', 'san pham')['items'][0]['meta'])->toBe('Sản phẩm · 6 mục')
+        ->and(sgListed("http://a.test/san-pham-{$root->id}", ...$names))->toBe(6)
+        ->and(sgGet('a.test', 'khuon mau')['items'][0]['label'])->toBe('Khuôn mẫu')
+        ->and(sgGet('a.test', 'khuon mau')['items'][0]['meta'])->toBe('Sản phẩm · 2 mục')
+        ->and(sgListed("http://a.test/khuon-mau-{$other->id}", ...$names))->toBe(2);
+});
+
 it('counts the products a product category lists, and every product on the catalog root, with the number in the site\'s format', function (): void {
     [$root, $child] = app(Tenancy::class)->enter(1, function (): array {
         $root = sgCategory('Sản phẩm', 'product_cat');

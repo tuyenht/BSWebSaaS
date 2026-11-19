@@ -13,6 +13,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\CategoryChange;
 use App\Modules\Cms\Routing\CategoryRelinker;
 use App\Modules\Cms\Routing\SectionResolver;
+use App\Modules\Cms\Support\CategoryPublicCounts;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Cms\Taxonomy\CategoryLimitGuard;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
@@ -59,6 +60,7 @@ final readonly class MoveTaxonomy
         private EntryWorkflowResolver $workflows,
         private CurrentSite $site,
         private CategoryLimitGuard $limits,
+        private CategoryPublicCounts $publicCounts,
     ) {}
 
     /**
@@ -118,6 +120,12 @@ final readonly class MoveTaxonomy
                 $oldChain = $oldParent === null ? [] : [...TaxonomyTree::ancestorsOf($oldParent), $oldParent];
                 $newChain = $newParent === null ? [] : [...TaxonomyTree::ancestorsOf($newParent), $newParent];
                 $changed = array_values(array_unique([...array_diff($oldChain, $newChain), ...array_diff($newChain, $oldChain)]));
+                // A branch moved into or out of a catalog root's branch lists another kind of item
+                // (products there, posts elsewhere): its own categories are counted again too.
+                $roots = $this->publicCounts->catalogRoots();
+                if (array_values(array_intersect($roots, [...$oldChain, $taxonomy->id])) !== array_values(array_intersect($roots, [...$newChain, $taxonomy->id]))) {
+                    $changed = array_values(array_unique([...$changed, ...array_keys($branch)]));
+                }
                 if ($changed !== []) {
                     sort($changed);
                     RecountCategoryPublicCounts::dispatch($this->site->id(), $changed);

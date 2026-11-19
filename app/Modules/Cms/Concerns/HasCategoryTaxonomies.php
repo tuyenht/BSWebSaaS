@@ -60,7 +60,7 @@ trait HasCategoryTaxonomies
     /**
      * The public totals' reading taken before the write under way (CategoryPublicCounts::begin()).
      *
-     * @var array{kind: string, id: int, before: array<string, array{0: int, 1: int}>}|null
+     * @var array{kind: string, id: int, before: array<string, array{0: int, 1: int}>, asIfLive: bool}|null
      */
     private ?array $publicCountsBefore = null;
 
@@ -90,8 +90,12 @@ trait HasCategoryTaxonomies
             $public = app(CategoryPublicCounts::class);
             $pivot = $item->taxonomies()->getTable();
             $trash = ! $item->isForceDeleting();   // both hosts keep a trash (SoftDeletes)
-            $item->publicCountsBefore = $live && $item->lockedPublished && ! ($trash && $public->deferred('out', $pivot, Cast::int($item->getKey())))
-                ? $public->begin($pivot, Cast::int($item->getKey()), locked: true)
+            $id = Cast::int($item->getKey());
+            // A permanent delete of an item that went off the website earlier in the bulk action is
+            // read too (as if live): the action's end takes out what the item added when it began.
+            $item->publicCountsBefore = ($live && $item->lockedPublished && ! ($trash && $public->deferred('out', $pivot, $id)))
+                || (! $trash && $item->countsInCategoryTotals() && $public->wentOff($pivot, $id))
+                ? $public->begin($pivot, $id, locked: true)
                 : null;
         });
         static::registerModelEvent('deleted', static function (self $item): void {
@@ -205,8 +209,13 @@ trait HasCategoryTaxonomies
 
         // Before reading the old main category: see the class comment.
         $counts = $this->exists && $this->countsInCategoryTotals() && $this->lockLiveState() === true;
-        // The public totals: what the item adds before the re-filing (the row is locked above).
-        $public = $counts && $this->lockedPublished ? app(CategoryPublicCounts::class)->begin($this->taxonomies()->getTable(), Cast::int($this->getKey()), locked: true) : null;
+        // The public totals: what the item adds before the re-filing (the row is locked above) — also
+        // for an item that went off the website earlier in the bulk action (read as if live).
+        $publicCounts = app(CategoryPublicCounts::class);
+        $pivotTable = $this->taxonomies()->getTable();
+        $public = ($counts && $this->lockedPublished) || ($this->exists && $this->countsInCategoryTotals() && $publicCounts->wentOff($pivotTable, Cast::int($this->getKey())))
+            ? $publicCounts->begin($pivotTable, Cast::int($this->getKey()), locked: true)
+            : null;
 
         // The facet terms to keep and the main category now, in one read.
         $relation = $this->taxonomies();

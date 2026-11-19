@@ -15,6 +15,7 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\DB;
@@ -574,8 +575,12 @@ it('keeps its query count flat for any number of ticked rows', function (): void
     $manager = bulkManager();
 
     app(Tenancy::class)->enter(1, function () use ($manager): void {
-        $category = bulkCategory('Đồ gá');
-        $other = bulkCategory('Khuôn mẫu');
+        // Both under the catalog root, as on a real site: the products count in their categories'
+        // public totals, so the writes of those totals are measured too.
+        $shop = bulkCategory('Sản phẩm');
+        ContentSection::query()->create(['key' => 'products', 'label' => 'Sản phẩm', 'taxonomy_id' => $shop->id]);
+        $category = app(CreateTaxonomy::class)->handle('product_cat', $shop, new TaxonomyData(names: ['vi' => 'Đồ gá']));
+        $other = app(CreateTaxonomy::class)->handle('product_cat', $shop, new TaxonomyData(names: ['vi' => 'Khuôn mẫu']));
         // every batch gets its own names and addresses, as real products have: a repeated address
         // would let one batch's route writes meet another batch's rows
         $batch = 0;
@@ -652,16 +657,17 @@ it('keeps its query count flat for any number of ticked rows', function (): void
         // route sync): never a lookup of a category, a name or a route per row; opening the dialog reads no row per ticked row.
         // A category change also marks the content of every product it moved, in one statement for them all.
         // The public totals per language: a few statements for all the rows, whatever their number (a status
-        // change read once at the end, a category change read once before and once after).
+        // change read once at the end, a category change read once before and once after; one write per
+        // category row: a status change writes the catalog root's row too).
         expect([$trash2, $trash6])->toBe([15, 23])
             ->and([$restore2, $restore6])->toBe([19, 27])
             ->and([$purge2, $purge6])->toBe([17, 25])
-            ->and([$archive2, $archive6])->toBe([20, 24])
-            ->and([$publish2, $publish6])->toBe([27, 47])
+            ->and([$archive2, $archive6])->toBe([21, 25])
+            ->and([$publish2, $publish6])->toBe([28, 48])
             ->and([$open2, $open6])->toBe([16, 16])
             ->and([$move2, $move6, $move10])->toBe([35, 59, 83])
             ->and([$moveLive2, $moveLive6, $moveLive10])->toBe([41, 73, 105])
-            ->and([$undoStatus2, $undoStatus6])->toBe([25, 41])
+            ->and([$undoStatus2, $undoStatus6])->toBe([26, 42])
             ->and([$undoTrash2, $undoTrash6])->toBe([19, 27])
             ->and([$undoMove2, $undoMove6, $undoMove10])->toBe([35, 59, 83])
             ->and([$undoMoveLive2, $undoMoveLive6])->toBe([41, 73]);

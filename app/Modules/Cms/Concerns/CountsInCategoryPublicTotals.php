@@ -23,7 +23,7 @@ trait CountsInCategoryPublicTotals
     /**
      * The readings taken before the write under way, one per item it touches.
      *
-     * @var list<array{kind: string, id: int, before: array<string, array{0: int, 1: int}>}>
+     * @var list<array{kind: string, id: int, before: array<string, array{0: int, 1: int}>, asIfLive: bool}>
      */
     private array $publicCountsBefore = [];
 
