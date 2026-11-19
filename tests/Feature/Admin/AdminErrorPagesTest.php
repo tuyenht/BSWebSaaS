@@ -472,6 +472,24 @@ it('answers an unknown console address with "not found" for a guest and "no perm
     $this->actingAs(User::factory()->create())->get($platform.'/khong-co')->assertForbidden();
 });
 
+it('keeps no page to come back to that walks out of the admin or into the sign-in pages', function (): void {
+    foreach (['/admin/../tin-tuc', '/admin/./../tin-tuc', '/admin/%2e%2e/tin-tuc', '/admin/%2E%2E/tin-tuc', '/admin/%6cogin',
+        '/admin/content/%2e%2e/%2e%2e/tin-tuc', '/admin/%2flogin'] as $to) {
+        $this->flushSession();
+        $this->get('http://a.test/admin/session-expired?to='.urlencode($to).'&signin=1')
+            ->assertRedirect(route('admin.login'))
+            ->assertSessionMissing('url.intended');
+    }
+
+    $platform = 'http://'.config('tenancy.platform_host');
+    foreach (['//evil.test/tenants', '/login', '/../tenants/%2e%2e', '/%6cogin'] as $to) {
+        $this->flushSession();
+        $this->get($platform.'/session-expired?to='.urlencode($to).'&signin=1')
+            ->assertRedirect(route('platform.login'))
+            ->assertSessionMissing('url.intended');
+    }
+});
+
 it('opens the platform sign-in straight from the ended-session dialog', function (): void {
     $platform = 'http://'.config('tenancy.platform_host');
     $this->get($platform.'/session-expired?to='.urlencode('/tenants').'&signin=1')
