@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Catalog\Providers;
 
 use App\Modules\Catalog\Components\ProductGridComponent;
+use App\Modules\Catalog\Console\NormalizeProductSkus;
 use App\Modules\Catalog\Console\PurgeTrashedProducts;
 use App\Modules\Catalog\Console\RebuildProductSearchWords;
 use App\Modules\Catalog\Models\Product;
@@ -43,7 +44,7 @@ final class CatalogServiceProvider extends ServiceProvider
         Gate::policy(Product::class, CatalogPolicy::class);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([PurgeTrashedProducts::class, RebuildProductSearchWords::class]);
+            $this->commands([NormalizeProductSkus::class, PurgeTrashedProducts::class, RebuildProductSearchWords::class]);
         }
 
         // Register the catalog's data-bound grid into the shared Section Library, so a page (e.g. the

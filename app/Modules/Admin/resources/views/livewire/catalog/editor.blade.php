@@ -350,7 +350,8 @@
                     <div class="flex flex-col gap-3 p-4">
                         <div>
                             <label for="catalog-sku" class="{{ $label }} mb-1.5">{{ __('catalog.card_opt_sku') }}</label>
-                            <input type="text" id="catalog-sku" wire:model.blur="sku" dir="ltr" autocomplete="off" spellcheck="false" placeholder="AV-DP-D10"
+                            <input type="text" id="catalog-sku" wire:model.blur="sku" dir="ltr" autocomplete="off" spellcheck="false" placeholder="AV-DP-D10" maxlength="64"
+                                   x-on:input="if ($event.isComposing) return; const a = $el.selectionStart, v = $el.value.toUpperCase().replace(/\s+/g, '-').slice(0, 64); if (v !== $el.value) { $el.value = v; $el.setSelectionRange(Math.min(a, v.length), Math.min(a, v.length)); }"
                                    aria-describedby="catalog-sku-h @error('sku') catalog-sku-e @enderror" @error('sku') aria-invalid="true" @enderror
                                    class="field block w-full rounded-md border border-border-input bg-surface-muted px-3 font-mono text-text placeholder:text-placeholder transition-colors focus:border-primary-text aria-invalid:border-danger-text">
                             @error('sku') <x-bs-admin::field-error id="catalog-sku-e" class="mt-1" x-init="setMore(true)">{{ $message }}</x-bs-admin::field-error> @enderror
