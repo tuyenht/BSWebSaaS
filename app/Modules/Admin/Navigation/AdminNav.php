@@ -63,6 +63,7 @@ final class AdminNav
         'review-inbox' => 'content',
         'media' => 'tools',
         'contacts' => 'tools',
+        'forms' => 'tools',
         'menus' => 'tools',
         'users' => 'system',
         'settings' => 'system',
@@ -75,12 +76,12 @@ final class AdminNav
      * Screens the shell draws no trail above: the dashboard and the screens that carry their own
      * header (review inbox, component gallery), as on the shell board; and the screens that draw
      * their own trail in their header (content lists and editors, products, every settings
-     * screen), so no page shows two.
+     * screen, the forms list and editor), so no page shows two.
      */
     private const NO_SHELL_TRAIL = [
         'admin.dashboard', 'admin.entries.review', 'admin.gallery',
         'admin.entries.index', 'admin.entries.create', 'admin.entries.edit',
-        'admin.catalog.*', 'admin.settings.*',
+        'admin.catalog.*', 'admin.settings.*', 'admin.form-builder.create', 'admin.form-builder.edit',
     ];
 
     /**
@@ -323,6 +324,7 @@ final class AdminNav
             // they live per content type (see the section loop above), scoped so they never mix.
             ['media', 'admin.media', 'admin.media.index', 'ri-image-2', 'media.view', 'media'],
             ['contacts', 'admin.contacts', 'admin.forms.index', 'ri-mail', 'forms.view', 'contacts'],
+            ['forms', 'form_builder.title', 'admin.form-builder.index', 'ri-survey', 'forms.manage', 'contacts'],
             ['menus', 'admin.menu_builder', 'admin.menus.index', 'ri-node-tree', 'menus.manage', 'menus'],
             ['users', 'admin.users', 'admin.users.index', 'ri-team', 'users.manage', 'users'],
         ];
