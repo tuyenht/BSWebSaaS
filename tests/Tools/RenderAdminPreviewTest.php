@@ -247,6 +247,19 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         file_put_contents($dir.'/'.$name.'.html', $html);
     }
 
+    // Biểu mẫu: the list (the quote form above, with its leads and one recipient), its editor and a
+    // new form from the «Đăng ký tư vấn» starting point.
+    $quote = app(Tenancy::class)->enter(1, function (): Form {
+        $form = Form::query()->where('key', 'bao-gia')->firstOrFail();
+        $form->update(['notify_emails' => ['kinhdoanh@anvinh.vn']]);
+
+        return $form;
+    });
+    foreach (['form-builder' => '/admin/form-builder', 'form-builder-edit' => '/admin/form-builder/'.$quote->ulid.'/edit', 'form-builder-new' => '/admin/form-builder/create/consult'] as $name => $path) {
+        $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.$path)->assertOk()->getContent();
+        file_put_contents($dir.'/'.$name.'.html', $html);
+    }
+
     // The platform Audit log, as a support operator, with a member's row and a support sign-in row.
     DB::connection('pgsql_admin')->statement('truncate audit_logs restart identity cascade');
     $this->artisan('rbac:sync')->assertSuccessful(); // the platform roles
@@ -968,5 +981,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     file_put_contents($dir.'/media-folder-rename.html', $swap($html, $rename, $media));
     config(['media' => $mediaConfig]);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 70);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 73);
 });
