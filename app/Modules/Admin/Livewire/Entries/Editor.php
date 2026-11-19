@@ -21,6 +21,7 @@ use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
+use App\Modules\Cms\Queries\EntryRevisions;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
@@ -226,6 +227,42 @@ final class Editor extends Component
     #[Locked]
     public ?string $savedAt = null;
 
+    /**
+     * What was stored, field by field, when this form was loaded or last saved: a fingerprint of
+     * every value a save writes (this language's title, slug, body, excerpt and Google fields; the
+     * shared cover; a post's main category). A save compares it with what is stored by then, after
+     * taking the entry's row lock: a difference means someone else saved meanwhile, and the save
+     * stops and asks (askBeforeOverwrite). Writes that change none of these values (a status
+     * change, a category moved or renamed, a view count) bump `updated_at` but never this. Empty
+     * for an entry not saved yet.
+     *
+     * @var array<string, string>
+     */
+    #[Locked]
+    public array $storedPrint = [];
+
+    /** When the form was loaded or last saved (ISO, UTC): who saved after it is read off the history. */
+    #[Locked]
+    public ?string $loadedAt = null;
+
+    /**
+     * The question «… vừa được … lưu lúc …» while it is open: its words, the fields that differ (this
+     * form's value and the one just saved), the save it stopped, and the stored fingerprint it showed.
+     *
+     * @var array{title: string, line: string, name: string|null, rows: list<array{label: string, mine: string, theirs: string}>, action: string, transition: string|null, print: array<string, string>}|null
+     */
+    #[Locked]
+    public ?array $stale = null;
+
+    /**
+     * «Giữ bản của tôi»: the stored fingerprint the member saw in the question and chose to write
+     * over. The next save may replace exactly that version; a newer one asks again.
+     *
+     * @var array<string, string>|null
+     */
+    #[Locked]
+    public ?array $overwrite = null;
+
     /** The last save asked for was refused for a field to fix (the save state says so until the next one). */
     #[Locked]
     public bool $saveFailed = false;
@@ -339,6 +376,8 @@ final class Editor extends Component
         // A save that changes no shared field leaves the entry row alone: this language's own row
         // carries when it was last saved.
         $this->savedAt = self::iso($translation?->updated_at);
+        $this->storedPrint = self::printOf($translation, $entry->meta, $category?->id);
+        $this->loadedAt = self::iso(CarbonImmutable::now());
         $this->mayPublish = $this->user()->can('publish', $entry);
         $this->liveAddress = $this->routedAddress($entry->id);
         $this->saved = $this->tracked();
@@ -775,7 +814,9 @@ final class Editor extends Component
     /** "Lưu nháp" / "Lưu" / "Cập nhật" on content that is not live: save, the status kept. */
     public function save(): void
     {
-        $this->persist();
+        if (! $this->persist('save') instanceof Entry) {
+            return;
+        }
 
         $time = app(SiteTime::class)->forDisplay(CarbonImmutable::now())?->format('H:i') ?? '';
         $this->dispatch('bs-toast', text: $this->status === 'draft'
@@ -786,7 +827,10 @@ final class Editor extends Component
     /** "Đăng" / "Cập nhật" (live content) / "Gửi duyệt" (no right to publish): save, then publish or send. */
     public function publish(): void
     {
-        $entry = $this->persist();
+        $entry = $this->persist('publish');
+        if (! $entry instanceof Entry) {
+            return;
+        }
         $was = $this->status;
 
         try {
@@ -817,7 +861,10 @@ final class Editor extends Component
     {
         $this->resetErrorBag(['workflow', 'transitionNote', 'assignTo']);
 
-        $entry = $this->persist();
+        $entry = $this->persist('transition', $key);
+        if (! $entry instanceof Entry) {
+            return;
+        }
         $this->status = $entry->status;
 
         $workflow = app(EntryWorkflowResolver::class)->forEntry($entry);
@@ -1209,6 +1256,7 @@ final class Editor extends Component
 
         return view('admin::livewire.entries.editor', [
             'unit' => $this->unit(),
+            'siteZone' => app(SiteTime::class)->zone(),
             'listUrl' => route('admin.entries.index', $this->sectionKey !== null ? ['section' => $this->sectionKey] : []),
             'note' => $this->saveNote(),
             'actions' => $actions,
@@ -1268,8 +1316,253 @@ final class Editor extends Component
         $this->saveFailed = false;
         // A language with no saved version yet loads nothing back: start from an empty form.
         $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
-            'transitionNote', 'assignTo', 'showMediaPicker', 'showBlockImagePicker', 'blockImagePickerPath');
+            'transitionNote', 'assignTo', 'showMediaPicker', 'showBlockImagePicker', 'blockImagePickerPath', 'stale', 'overwrite');
         $this->mount($this->ulid, $this->sectionKey, $this->locale);
+    }
+
+    /**
+     * «Giữ bản của tôi»: the member has seen the version just saved and keeps theirs. The save the
+     * question stopped runs again and may replace exactly that version (a newer one asks again).
+     */
+    public function keepMine(): void
+    {
+        $this->authorizeEditing();
+        $stale = $this->stale;
+        if ($stale === null) {
+            return;
+        }
+
+        $this->stale = null;
+        $this->overwrite = $stale['print'];
+        match ($stale['action']) {
+            'publish' => $this->publish(),
+            'transition' => $this->applyTransition((string) $stale['transition']),
+            default => $this->save(),
+        };
+    }
+
+    /**
+     * «Lấy bản mới»: the form takes the version just saved. The browser has already kept this form's
+     * text on this device (the «Khôi phục» band brings it back).
+     */
+    public function takeNewer(): void
+    {
+        if ($this->ulid === null) {
+            return;
+        }
+        $name = $this->stale['name'] ?? null;
+
+        $this->resetChanges(); // mount() authorizes `update` again
+        if ($this->prose) {
+            $this->dispatch('admin-editor-set-html', target: 'bodyHtml', html: $this->bodyHtml);
+        }
+        $this->dispatch('bs-toast', text: $name !== null
+            ? __('entries.ed.stale_taken', ['name' => $name])
+            : __('entries.ed.stale_taken_anon'));
+    }
+
+    /** The question closed without a choice (Escape, the backdrop): nothing saved, the next save asks again. */
+    public function closeStale(): void
+    {
+        $this->authorizeEditing();
+        $this->stale = null;
+    }
+
+    /**
+     * «Khôi phục» on the band of text kept on this device: put it back in the form, unsaved. The same
+     * fields the form sends anyway, each checked for its type; the save checks the rest as always.
+     *
+     * @param  array<array-key, mixed>  $kept
+     */
+    public function restoreKept(array $kept): void
+    {
+        $this->authorizeEditing();
+        foreach (['title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey'] as $field) {
+            if (is_string($kept[$field] ?? null)) {
+                $this->{$field} = $kept[$field];
+            }
+        }
+        if ($this->type === 'post' && array_key_exists('categoryId', $kept)) {
+            $this->categoryId = self::idOrNull($kept['categoryId']);
+            $this->updatedCategoryId();
+        }
+        if ($this->prose && is_string($kept['bodyHtml'] ?? null)) {
+            $this->bodyHtml = $kept['bodyHtml'];
+            $this->dispatch('admin-editor-set-html', target: 'bodyHtml', html: $this->bodyHtml);
+        }
+        if (! $this->prose && is_array($kept['blocks'] ?? null)) {
+            $this->openBlock = null;
+            $this->blocks = $this->normalizeBlocks($kept['blocks']);
+        }
+    }
+
+    /**
+     * The fingerprint of what is stored now, read inside the save's transaction after the entry's
+     * row lock: this language's row and, for a post, its main category. The cover comes from the
+     * locked entry row.
+     *
+     * @return array{print: array<string, string>, translation: EntryTranslation|null}
+     */
+    private function storedNow(Entry $entry): array
+    {
+        // The whole row: the save writes through this same model, so the check costs no extra read.
+        $translation = $entry->translations()->where('locale', $this->locale)->first();
+
+        return ['print' => self::printOf($translation, $entry->meta, $this->storedCategory($entry)), 'translation' => $translation];
+    }
+
+    /** A post's main category as stored now (a page has none). */
+    private function storedCategory(Entry $entry): ?int
+    {
+        return $this->type === 'post' ? self::idOrNull($entry->taxonomies()->wherePivot('position', 0)->value('taxonomies.id')) : null;
+    }
+
+    /**
+     * One fingerprint per value a save writes. The body is compared with its keys in a fixed order, so
+     * the database's own key order never reads as a change.
+     *
+     * @return array<string, string>
+     */
+    private static function printOf(?EntryTranslation $translation, mixed $meta, ?int $categoryId): array
+    {
+        $cover = is_array($meta) ? ($meta['image_url'] ?? null) : null;
+
+        return [
+            'title' => md5((string) $translation?->title),
+            'slug' => md5((string) $translation?->slug),
+            'body' => md5((string) json_encode(self::keysSorted($translation instanceof EntryTranslation ? $translation->body : []))),
+            'excerpt' => md5((string) $translation?->excerpt),
+            'seo_title' => md5((string) $translation?->seo_title),
+            'seo_description' => md5((string) $translation?->seo_description),
+            'cover' => md5(is_string($cover) ? $cover : ''),
+            'category' => (string) ($categoryId ?? ''),
+        ];
+    }
+
+    private static function keysSorted(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+        $value = array_map(self::keysSorted(...), $value);
+        if (! array_is_list($value)) {
+            ksort($value);
+        }
+
+        return $value;
+    }
+
+    /**
+     * Someone else saved since the form was loaded: open the question (board 07's stale dialog) with
+     * who saved and when, and each field that differs: this form's value beside the one just saved.
+     * Who: the newest history version of this language saved by another member after the form was
+     * loaded (history is kept for live content); otherwise the words name no one.
+     *
+     * @param  array{print: array<string, string>, translation: EntryTranslation|null}  $stored
+     */
+    private function askBeforeOverwrite(Entry $entry, array $stored, string $action, ?string $transition): void
+    {
+        // The newest few history rows (one query, the history panel's own read), newest first.
+        $me = $this->user()->id;
+        $since = $this->loadedAt !== null ? CarbonImmutable::parse($this->loadedAt) : null;
+        $revision = app(EntryRevisions::class)->forEntry($entry, $this->locale, limit: 5)['rows']->first(
+            static fn ($row): bool => $row->created_by !== null && (int) $row->created_by !== $me
+                && ($since === null || $row->created_at->gt($since)),
+        );
+        $name = $revision?->creator?->name;
+        $name = is_string($name) && $name !== '' ? $name : null;
+
+        $translation = $stored['translation'];
+        $at = $revision?->created_at;
+        if (! $at instanceof DateTimeInterface) {
+            $times = array_filter([$translation?->updated_at, $entry->updated_at], static fn (mixed $t): bool => $t instanceof DateTimeInterface);
+            $at = $times === [] ? null : max($times);
+        }
+        $time = $at instanceof DateTimeInterface
+            ? (app(SiteTime::class)->forDisplay(CarbonImmutable::instance($at))?->format('H:i') ?? '')
+            : '';
+        $what = __($this->type === 'page' ? 'entries.ed.stale_what_page' : 'entries.ed.stale_what_post');
+
+        $this->stale = [
+            'title' => $name !== null
+                ? __('entries.ed.stale_title', ['what' => $what, 'name' => $name, 'time' => $time])
+                : __('entries.ed.stale_title_anon', ['what' => $what, 'time' => $time]),
+            'line' => $name !== null ? __('entries.ed.stale_line', ['name' => $name]) : __('entries.ed.stale_line_anon'),
+            'name' => $name,
+            'rows' => $this->staleRows($entry, $stored['print'], $translation),
+            'action' => $action,
+            'transition' => $transition,
+            'print' => $stored['print'],
+        ];
+    }
+
+    /**
+     * The fields another save changed: label, this form's value, the stored one.
+     *
+     * @param  array<string, string>  $print
+     * @return list<array{label: string, mine: string, theirs: string}>
+     */
+    private function staleRows(Entry $entry, array $print, ?EntryTranslation $translation): array
+    {
+        $prose = app(EntryProseBody::class);
+        $storedBlocks = $this->normalizeBlocks($translation instanceof EntryTranslation ? ($translation->body['blocks'] ?? []) : []);
+        $storedBody = $prose->read($storedBlocks);
+        $cover = data_get($entry->meta, 'image_url');
+        $categories = [];
+        if (($print['category'] ?? '') !== ($this->storedPrint['category'] ?? '')) {
+            $categories = TaxonomyTranslation::query()
+                ->whereIn('taxonomy_id', array_filter([$this->categoryId, self::idOrNull($print['category'])]))
+                ->where('locale', $this->locale)
+                ->pluck('name', 'taxonomy_id')->all();
+        }
+        $categoryName = static function (?int $id) use ($categories): string {
+            $name = $id !== null ? ($categories[$id] ?? null) : '';
+
+            return is_string($name) ? $name : (string) __('entries.unnamed');
+        };
+
+        $fields = [
+            'title' => [__($this->type === 'page' ? 'entries.ed.title_page' : 'entries.ed.title_post'), $this->title, (string) $translation?->title],
+            'slug' => [__('entries.ed.slug'), $this->slug, (string) $translation?->slug],
+            'excerpt' => [__('admin.seo.excerpt_label'), $this->excerpt, (string) $translation?->excerpt],
+            'body' => [__('entries.ed.body_label'),
+                $this->prose ? EntryProseBody::preview($this->bodyHtml, 160) : __('entries.ed.stale_blocks', ['n' => count($this->blocks)]),
+                $storedBody !== null ? EntryProseBody::preview($storedBody['html'], 160) : __('entries.ed.stale_blocks', ['n' => count($storedBlocks)])],
+            'seo_title' => [__('admin.seo.title_label'), $this->seoTitle, (string) $translation?->seo_title],
+            'seo_description' => [__('admin.seo.description_label'), $this->seoDescription, (string) $translation?->seo_description],
+            'cover' => [__('entries.ed.card_cover'), $this->coverName($this->coverImageKey), $this->coverName(is_string($cover) ? $cover : '')],
+            'category' => [__('entries.ed.card_category'), $categoryName($this->categoryId), $categoryName(self::idOrNull($print['category']))],
+        ];
+
+        $rows = [];
+        $empty = (string) __('entries.ed.stale_empty');
+        foreach ($fields as $key => [$label, $mine, $theirs]) {
+            if (($print[$key] ?? '') !== ($this->storedPrint[$key] ?? '')) {
+                $rows[] = [
+                    'label' => (string) $label,
+                    'mine' => is_string($mine) && $mine !== '' ? $mine : $empty,
+                    'theirs' => is_string($theirs) && $theirs !== '' ? $theirs : $empty,
+                ];
+            }
+        }
+
+        return $rows;
+    }
+
+    private static function idOrNull(mixed $value): ?int
+    {
+        return is_numeric($value) && (int) $value > 0 ? (int) $value : null;
+    }
+
+    /** A cover as the member knows it: the picture's file name in the library. */
+    private function coverName(string $key): string
+    {
+        if ($key === '') {
+            return '';
+        }
+        $name = Media::query()->where('storage_key', $key)->value('original_filename');
+
+        return is_string($name) && $name !== '' ? $name : $key;
     }
 
     /**
@@ -1754,7 +2047,13 @@ final class Editor extends Component
     }
 
     /** Validate + persist the entry and its translation (+ category for posts); returns it. */
-    private function persist(): Entry
+    /**
+     * Save the form. `$action` is the button that asked (save · publish · transition, with the
+     * transition's key): when someone else saved this entry since the form was loaded, nothing is
+     * written, the question opens, and its «Giữ bản của tôi» runs that same action again. Returns
+     * null then.
+     */
+    private function persist(string $action = 'save', ?string $transition = null): ?Entry
     {
         // No control character is stored (PostgreSQL refuses a NUL); Google shows its two fields on
         // one line, so a line break or an invisible direction mark never reaches the head either.
@@ -1792,6 +2091,7 @@ final class Editor extends Component
             }
         }
         $wasNew = $this->ulid === null;
+        $current = null;
 
         if ($this->ulid === null) {
             $this->authorize('create', Entry::class);
@@ -1816,7 +2116,24 @@ final class Editor extends Component
             // committed meanwhile is kept, not written over), without a second read.
             $locked = Entry::withTrashed()->whereKey($entry->id)->lockForUpdate()->firstOrFail();
             $entry->setRawAttributes($locked->getAttributes(), true);
+
+            // Ask before writing over someone else's save. Every writer of these values takes the
+            // entry's row first, so what is read now stays as it is until this save commits. The
+            // stored values decide, never a timestamp: a status change, a category moved or
+            // renamed, a cover's content mark or a view count changes none of them.
+            $stored = $this->storedNow($entry);
+            if ($stored['print'] !== $this->storedPrint && $stored['print'] !== $this->overwrite) {
+                if ($filled) {
+                    $this->slug = '';
+                }
+                $this->askBeforeOverwrite($entry, $stored, $action, $transition);
+
+                return null;
+            }
+            $current = $stored['translation'] ?? $entry->translations()->make(['locale' => $this->locale]);
         }
+        $this->overwrite = null;
+        $this->stale = null;
 
         // Featured/OG image: store the picked media's storage_key in entry.meta['image_url'] (the
         // storefront resolves it to an absolute og:image + card thumbnail). Merge so any other meta
@@ -1831,7 +2148,7 @@ final class Editor extends Component
         $sharedChanged = $entry->isDirty('meta');
         $entry->save();
 
-        $translation = $entry->translations()->firstOrNew(['locale' => $this->locale]);
+        $translation = $current ?? $entry->translations()->firstOrNew(['locale' => $this->locale]);
         // This language's body was older plain-text blocks, now written as one formatted-text block:
         // the old body is kept as a revision first, so the history can bring it back.
         if ($this->converted && $translation->exists) {
@@ -1868,6 +2185,9 @@ final class Editor extends Component
         $this->saveFailed = false;
         $this->converted = false;
         $this->savedAt = self::iso(CarbonImmutable::now());
+        $this->loadedAt = $this->savedAt;
+        // What this save stored is what the next one compares against (the written model holds it).
+        $this->storedPrint = self::printOf($translation, $entry->meta, $this->storedCategory($entry));
         $this->mayPublish = $this->user()->can('publish', $entry);
         $this->saved = $this->tracked();
 

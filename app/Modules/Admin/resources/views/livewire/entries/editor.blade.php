@@ -91,6 +91,36 @@
             </div>
         @endif
         @error('workflow') <p class="{{ $error }} m-0">{{ $message }}</p> @enderror
+        @if ($ulid !== null)
+            {{-- Text kept on this device by «Lấy bản mới» (the stale question below): «Khôi phục» puts it
+                 back in the form, unsaved; «Bỏ» forgets it. Browser state only, never sent until asked. --}}
+            <div wire:ignore x-data="{
+                    key: @js('bs-entry-kept:'.$ulid.':'.$locale),
+                    rec: null,
+                    init() { try { const r = JSON.parse(window.localStorage.getItem(this.key) || 'null'); if (r && r.at && r.values) { this.rec = r; } } catch (e) {} },
+                    forget() { try { window.localStorage.removeItem(this.key); } catch (e) {} this.rec = null; },
+                    say(text) { if (typeof window.bsToast === 'function') { window.bsToast({ text: text }); } },
+                    drop() { this.forget(); this.say(@js(__('entries.ed.kept_dropped'))); },
+                    restore() { const r = this.rec; if (!r) { return; } $wire.restoreKept(r.values).then(() => { this.forget(); this.say(@js(__('entries.ed.kept_restored')).replace(':time', r.at)); }); },
+                 }"
+                 x-on:bs-entry-kept.window="if ($event.detail && $event.detail.key === key) { rec = $event.detail.rec; }"
+                 x-show="rec" x-cloak role="status" data-entry-kept
+                 class="flex flex-wrap items-start gap-2.5 rounded-md border border-[color-mix(in_srgb,var(--color-warning-text)_35%,var(--color-surface))] bg-[color-mix(in_srgb,var(--color-warning-text)_9%,var(--color-surface))] px-3.5 py-2.5 text-[calc(0.84375rem+var(--user-text-boost))] leading-normal text-text">
+                <x-bs-admin::icon name="ri-hard-drive-2" class="mt-px size-[min(1.5rem,calc(1.125rem+var(--user-text-boost)))] shrink-0 text-warning-text" />
+                <div class="flex min-w-0 flex-[1_1_16.25rem] flex-col gap-0.5 [overflow-wrap:anywhere]">
+                    <b class="font-semibold text-text-strong" x-text="rec ? @js(__('entries.ed.kept_head')).replace(':time', rec.at) : ''"></b>
+                    <span>{{ __('entries.ed.kept_sub') }}</span>
+                </div>
+                <div class="flex max-w-full flex-[0_1_auto] flex-wrap gap-2">
+                    <x-bs-admin::button variant="soft" color="primary" size="sm" x-on:click="restore()">
+                        <x-bs-admin::icon name="ri-history" :class="$glyph" /> {{ __('entries.ed.kept_restore') }}
+                    </x-bs-admin::button>
+                    <x-bs-admin::button variant="outline" color="secondary" size="sm" x-on:click="drop()">
+                        <x-bs-admin::icon name="ri-close" :class="$glyph" /> {{ __('entries.ed.kept_drop') }}
+                    </x-bs-admin::button>
+                </div>
+            </div>
+        @endif
 
         <div class="flex min-w-0 flex-wrap items-start gap-5">
             <div class="flex min-w-0 flex-[999_1_520px] flex-col gap-4">
@@ -390,6 +420,70 @@
     </div>
 
     <x-bs-admin::unsaved-dialog :count="$changes" :label="$h1" :save="$leave['method']" discard="resetChanges" :body="$leave['body']" :save-label="$leave['save']" :discard-label="$leave['discard']" />
+
+    @if ($stale !== null)
+        {{-- Someone else saved since this form was loaded (Editor::askBeforeOverwrite; design 07, the
+             stale question). «Xem khác biệt» shows each field that differs; «Lấy bản mới» keeps this
+             form's text on this device first (the «Khôi phục» band), then takes the saved version;
+             «Giữ bản của tôi» saves over it. Escape or the backdrop close it without saving. Below
+             600px it is a sheet from the bottom. --}}
+        <div wire:key="entry-stale-{{ md5(json_encode($stale['print'])) }}"
+             x-data="{
+                diff: false,
+                opener: null,
+                init() { this.opener = document.activeElement; },
+                destroy() { const o = this.opener; if (o && o.isConnected) { o.focus(); } },
+                keep() {
+                    const w = $wire;
+                    const values = { title: w.title, slug: w.slug, excerpt: w.excerpt, seoTitle: w.seoTitle, seoDescription: w.seoDescription, coverImageKey: w.coverImageKey, categoryId: w.categoryId };
+                    if (w.prose) { values.bodyHtml = w.bodyHtml; } else { values.blocks = JSON.parse(JSON.stringify(w.blocks || [])); }
+                    let at = '';
+                    try { at = new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: @js($siteZone) }).format(new Date()); } catch (e) {}
+                    const key = @js('bs-entry-kept:'.$ulid.':'.$locale);
+                    const rec = { at: at, values: values };
+                    try { window.localStorage.setItem(key, JSON.stringify(rec)); } catch (e) {}
+                    window.dispatchEvent(new CustomEvent('bs-entry-kept', { detail: { key: key, rec: rec } }));
+                },
+             }"
+             x-on:keydown.escape.window="$wire.closeStale()"
+             class="fixed inset-0 z-90 flex items-end justify-center bg-gray-900/50 min-[600px]:items-center min-[600px]:p-6" data-entry-stale>
+            <div class="absolute inset-0" x-on:click="$wire.closeStale()"></div>
+            <div x-trap.noscroll="true" role="alertdialog" aria-modal="true" aria-labelledby="entry-stale-t" aria-describedby="entry-stale-d"
+                 class="relative flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-xl bg-surface text-text shadow-[0_22px_60px_-20px_rgba(0,0,0,.4)] min-[600px]:max-h-[min(47.5rem,100%)] min-[600px]:max-w-120 min-[600px]:rounded-lg">
+                <div class="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
+                    <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-warning-text)_12%,var(--color-surface))] text-warning-text" aria-hidden="true">
+                        <x-bs-admin::icon name="ri-user-shared" class="size-[min(1.5rem,calc(1.125rem+var(--user-text-boost)))]" />
+                    </span>
+                    <h2 id="entry-stale-t" class="m-0 min-w-0 flex-1 text-[calc(1rem+var(--user-text-boost))] font-bold leading-[1.4] text-text-strong [overflow-wrap:anywhere]">{{ $stale['title'] }}</h2>
+                </div>
+                <div id="entry-stale-d" class="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto overflow-x-hidden px-4 py-3 text-[calc(0.875rem+var(--user-text-boost))] leading-[1.55] [overflow-wrap:anywhere]">
+                    <div class="flex items-start gap-2">
+                        <x-bs-admin::icon name="ri-information" class="mt-[3px] size-[1.15em] shrink-0 text-text-muted" />
+                        <span>{{ $stale['line'] }}</span>
+                    </div>
+                    @foreach ($stale['rows'] as $row)
+                        <div x-show="diff" x-cloak class="flex flex-col gap-[3px] rounded-sm border border-[color-mix(in_srgb,var(--color-warning-text)_40%,var(--color-surface))] bg-[color-mix(in_srgb,var(--color-warning-text)_8%,var(--color-surface))] px-2.5 py-2">
+                            <span class="text-[calc(0.78125rem+var(--user-text-boost))] font-semibold text-text-muted">{{ $row['label'] }}</span>
+                            <span class="text-text-strong">{{ __('entries.ed.stale_mine', ['value' => $row['mine']]) }}</span>
+                            <span class="text-[calc(0.78125rem+var(--user-text-boost))] text-text-muted">{{ __('entries.ed.stale_theirs', ['value' => $row['theirs']]) }}</span>
+                        </div>
+                    @endforeach
+                </div>
+                <div class="flex flex-wrap justify-end gap-2 border-t border-border px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] max-[600px]:*:flex-auto">
+                    <x-bs-admin::button variant="outline" color="secondary" size="sm" x-on:click="diff = !diff" x-bind:aria-expanded="diff ? 'true' : 'false'">
+                        <x-bs-admin::icon name="ri-git-commit" :class="$glyph" />
+                        <span x-text="diff ? @js(__('entries.ed.stale_diff_hide')) : @js(__('entries.ed.stale_diff_show'))">{{ __('entries.ed.stale_diff_show') }}</span>
+                    </x-bs-admin::button>
+                    <x-bs-admin::button variant="outline" color="secondary" size="sm" x-on:click="keep(); $wire.takeNewer()" wire:loading.attr="disabled" wire:target="takeNewer,keepMine">
+                        <x-bs-admin::icon name="ri-download-2" :class="$glyph" /> {{ __('entries.ed.stale_take') }}
+                    </x-bs-admin::button>
+                    <x-bs-admin::button color="primary" size="sm" wire:click="keepMine" wire:loading.attr="disabled" wire:target="takeNewer,keepMine">
+                        <x-bs-admin::icon name="ri-save-3" :class="$glyph" /> {{ __('entries.ed.stale_keep') }}
+                    </x-bs-admin::button>
+                </div>
+            </div>
+        </div>
+    @endif
 
     @can('media.view')
         @if ($showMediaPicker)
