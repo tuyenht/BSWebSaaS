@@ -88,6 +88,49 @@ it('can show its name as visible text instead of an aria-label (the select-all b
         ->and($html)->toContain('<span class="list-ck-label">Chọn tất cả</span>');
 });
 
+it('turns a row menu without a title into the phone sheet board 05 draws, titled for the record', function (): void {
+    $html = (string) $this->blade(
+        '<x-bs-admin::list.actions name="Giới thiệu"><x-slot:menu><x-bs-admin::list.menu-item icon="ri-file-copy" wire:click="duplicate">Nhân bản</x-bs-admin::list.menu-item><x-bs-admin::list.menu-item icon="ri-share-forward" why="Bài chưa đăng">Chia sẻ</x-bs-admin::list.menu-item></x-slot:menu></x-bs-admin::list.actions>'
+    );
+    $title = __('admin.list.more_for', ['name' => 'Giới thiệu']);
+
+    expect($html)->toContain('data-sheet="row"')
+        ->and(substr_count($html, 'data-sheet="row"'))->toBe(2) // the dimmed screen and the menu
+        // the title line repeats the menu's name, so a screen reader hears it once
+        ->and($html)->toContain('<div class="list-mh" aria-hidden="true" >'.e($title).'</div>')
+        ->and($html)->toContain('aria-label="'.e($title).'"')
+        // a tap on the dimmed screen and «Đóng» close it with the focus back on the ⋮
+        ->and($html)->toMatch('/class="list-sheet-bg" data-sheet="row" x-on:click="close\(true\)"/')
+        ->and($html)->toContain('<button type="button" role="menuitem" class="list-mx">'.__('admin.close').'</button>')
+        // while it is a sheet Tab stays inside and the page does not scroll; the stylesheet says when it is one
+        ->and($html)->toContain("getPropertyValue('--list-sheet').trim() === '1' && lock(true)")
+        ->and($html)->toContain("if (on) { this.was = de.overflow; de.overflow = 'hidden' } else { de.overflow = this.was }")
+        ->and($html)->toContain('x-on:keydown.tab="$data.sheet ? ($event.preventDefault(), $event.shiftKey ? $focus.within($refs.menu).wrap().prev() : $focus.within($refs.menu).wrap().next()) : (open = false)"')
+        // the same items: the Livewire action and the reason of an item that cannot be used yet
+        ->and($html)->toContain('wire:click="duplicate"')
+        ->and($html)->toContain('<span class="list-mwhy">Bài chưa đăng</span>');
+
+    // the stylesheet: a sheet only below a 900 list, flagged for the script, from the bottom edge; «Đóng» out of sight
+    // until focused, the motion only for those who have not asked for less
+    $css = listCss();
+    expect($css)->toMatch("/@container list \\(width < 56\\.25rem\\) \\{\\s*\\.list-sheet-bg\\[data-sheet='row'\\] \\{[^}]*position: fixed;[^}]*\\}\\s*\\.list-menu\\[data-sheet='row'\\] \\{\\s*--list-sheet: 1;\\s*position: fixed;\\s*inset: auto 0 0 0;/")
+        ->and($css)->toMatch("/@media \\(max-width: 37\\.4999rem\\) \\{\\s*\\.list-sheet-bg\\[data-sheet='title'\\] \\{[^}]*\\}\\s*\\.list-menu\\[data-sheet='title'\\] \\{\\s*--list-sheet: 1;/")
+        ->and($css)->toMatch('/\\.list-mh,\\s*\\.list-sheet-bg,\\s*\\.list-mx \\{\\s*display: none;/')
+        ->and($css)->toMatch('/@media \\(prefers-reduced-motion: no-preference\\) \\{\\s*@container list \\(width < 56\\.25rem\\) \\{\\s*\\.list-menu\\[data-sheet=\'row\'\\] \\{\\s*animation: list-sheet-in/')
+        ->and(substr_count($css, '--list-sheet: 1;'))->toBe(2);
+});
+
+it('keeps a titled row menu on its own sheet below 600, its title read out', function (): void {
+    $html = (string) $this->blade(
+        '<x-bs-admin::list.actions name="a.vn" title="Thao tác cho a.vn"><x-slot:menu><x-bs-admin::list.menu-item>Gỡ</x-bs-admin::list.menu-item></x-slot:menu></x-bs-admin::list.actions>'
+    );
+
+    expect(substr_count($html, 'data-sheet="title"'))->toBe(2)
+        ->and($html)->not->toContain('data-sheet="row"')
+        ->and($html)->toContain('<div class="list-mh" >Thao tác cho a.vn</div>')
+        ->and($html)->toContain('aria-label="Thao tác cho a.vn"');
+});
+
 it('groups row buttons with a ⋮ menu button named for the record', function (): void {
     $html = (string) $this->blade(
         '<x-bs-admin::list.actions name="Giới thiệu"><x-bs-admin::button size="sm" variant="soft">Sửa</x-bs-admin::button><x-slot:menu><x-bs-admin::list.menu-item icon="ri-file-copy">Nhân bản</x-bs-admin::list.menu-item><x-bs-admin::list.menu-sep /><x-bs-admin::list.menu-item icon="ri-delete-bin" danger>Chuyển vào thùng rác</x-bs-admin::list.menu-item></x-slot:menu></x-bs-admin::list.actions>'
@@ -98,7 +141,8 @@ it('groups row buttons with a ⋮ menu button named for the record', function ()
         ->and($html)->toContain('aria-haspopup="menu"')
         ->and($html)->toContain(':aria-expanded="open.toString()"')
         ->and($html)->toContain('role="menu"')
-        ->and(substr_count($html, 'role="menuitem"'))->toBe(2)
+        // the two items, and «Đóng» for the phone sheet
+        ->and(substr_count($html, 'role="menuitem"'))->toBe(3)
         ->and($html)->toContain('role="separator"')
         ->and($html)->toContain('data-t="danger"')
         // the ⋮ glyph, and Esc closes the menu with focus back on its button

@@ -1004,15 +1004,18 @@
         bottom: calc(100% + 0.375rem);
     }
 
-    /* A menu with a title ("Thao tác cho …"): below 600 a sheet from the bottom over a dimmed
-       screen, the title above its items. */
+    /* The ⋮ menu as a sheet from the bottom of the screen over a dimmed screen, its title above its
+       items (<x-bs-admin::list.actions>). --list-sheet tells the menu's script it is a sheet (Tab stays
+       inside, the page does not scroll). Its «Đóng» item shows only while it has the keyboard focus. */
     .list-mh,
-    .list-sheet-bg {
+    .list-sheet-bg,
+    .list-mx {
         display: none;
     }
 
+    /* A menu with a title ("Thao tác cho …", data-sheet="title"): a sheet below a 600 screen. */
     @media (max-width: 37.4999rem) {
-        .list-sheet-bg {
+        .list-sheet-bg[data-sheet='title'] {
             display: block;
             position: fixed;
             inset: 0;
@@ -1020,7 +1023,8 @@
             background: rgb(15 18 30 / 0.45);
         }
 
-        .list-menu[data-sheet] {
+        .list-menu[data-sheet='title'] {
+            --list-sheet: 1;
             position: fixed;
             inset: auto 0 0 0;
             z-index: 206;
@@ -1031,7 +1035,7 @@
             border-radius: 0.75rem 0.75rem 0 0;
         }
 
-        .list-menu[data-sheet] .list-mh {
+        .list-menu[data-sheet='title'] .list-mh {
             display: block;
             margin-bottom: 0.25rem;
             padding: 0.5rem 0.625rem 0.625rem;
@@ -1040,6 +1044,90 @@
             color: var(--color-text-strong);
             overflow-wrap: anywhere;
         }
+    }
+
+    /* Any other row menu (data-sheet="row"), as board 05 draws it: below a 900 list (a row is a card
+       or one line) a sheet the width of the screen, titled «Thao tác khác cho "…"» in the small
+       muted heading type, the rows as in the menu (48 on touch); from 900 the menu beside the ⋮. */
+    @container list (width < 56.25rem) {
+        .list-sheet-bg[data-sheet='row'] {
+            display: block;
+            position: fixed;
+            inset: 0;
+            z-index: 205;
+            background: rgb(15 18 30 / 0.45);
+        }
+
+        .list-menu[data-sheet='row'] {
+            --list-sheet: 1;
+            position: fixed;
+            inset: auto 0 0 0;
+            z-index: 206;
+            min-width: 0;
+            max-width: none;
+            max-height: 75dvh;
+            overflow: auto;
+            overscroll-behavior: contain;
+            padding: 0.5rem 0 calc(0.5rem + env(safe-area-inset-bottom));
+            border-width: 1px 0 0;
+            border-radius: 0.75rem 0.75rem 0 0;
+        }
+
+        .list-menu[data-sheet='row'] .list-mh {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            padding: 0.5rem 0.875rem 0.25rem;
+            font-size: var(--text-caption);
+            font-weight: 600;
+            color: var(--color-text-muted);
+            overflow-wrap: anywhere;
+        }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        @container list (width < 56.25rem) {
+            .list-menu[data-sheet='row'] {
+                animation: list-sheet-in 0.16s ease-out;
+            }
+        }
+    }
+
+    /* «Đóng»: out of sight (a screen reader still reaches it) until it has the focus (keyboard or a
+       screen reader's move; a finger cannot reach it), then a row like the others. */
+    .list-menu[data-sheet] .list-mx {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    @media (max-width: 37.4999rem) {
+        .list-menu[data-sheet='title'] .list-mx {
+            display: block;
+        }
+    }
+
+    @container list (width < 56.25rem) {
+        .list-menu[data-sheet='row'] .list-mx {
+            display: block;
+        }
+    }
+
+    .list-menu[data-sheet] .list-mx:focus {
+        position: static;
+        width: 100%;
+        height: auto;
+        min-height: var(--spacing-menu-row-touch);
+        padding: 0.5rem 0.875rem;
+        clip-path: none;
+        border: 0;
+        background: var(--color-surface-hover);
+        font: inherit;
+        color: inherit;
+        text-align: left;
     }
 
     /* The one-line tools row below 900 (<x-bs-admin::tool-row>): it never wraps; when the buttons do not fit,
@@ -2361,6 +2449,18 @@
 [data-fold-wait] {
     visibility: hidden;
     animation: list-fold-release 0s 1.5s forwards;
+}
+
+@keyframes list-sheet-in {
+    from {
+        opacity: 0;
+        transform: translateY(0.25rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
 }
 
 @keyframes list-fold-release {
