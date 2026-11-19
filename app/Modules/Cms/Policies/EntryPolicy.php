@@ -111,7 +111,7 @@ final class EntryPolicy
 
     /**
      * Publish straight through (workflow Tầng-1), and the other status moves of this entry (draft,
-     * private, schedule, applying its pending change): entries.publish AND the right to edit this
+     * archived, schedule, applying its pending change): entries.publish AND the right to edit this
      * entry — edit.any, or edit.own on one's own entry — inside the member's category limits
      * (update). Putting content online or taking it off is part of working on it, so a publisher
      * cannot do it to an entry they could not change. An entry not saved yet is judged with its

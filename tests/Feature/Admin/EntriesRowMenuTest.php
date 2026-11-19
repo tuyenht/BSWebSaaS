@@ -480,7 +480,7 @@ describe('scheduling', function (): void {
         });
     });
 
-    it('lists «Đã đăng» plus draft and private greyed with the reason on the live Home page, refuses a draft or private there with the reason kept until closed, and «/» stays live', function (): void {
+    it('lists «Đã đăng» plus draft and «Gỡ khỏi website» greyed with the reason on the live Home page, refuses a draft or a take-off there with the reason, and «/» stays live', function (): void {
         $owner = rmMember('owner', PermissionRegistry::TENANT_PERMISSIONS, 90);
         $menuItem = static fn (Entry $entry, string $status): string => '$wire.changeStatus('.Js::from($entry->ulid).', '.Js::from($status).')';
 
@@ -494,19 +494,28 @@ describe('scheduling', function (): void {
             $homeRow = rmRowHtml($html, $home->ulid);
             expect($homeRow)->toContain($menuItem($home, 'published'))
                 ->not->toContain($menuItem($home, 'draft'))
-                ->not->toContain($menuItem($home, 'private'))
-                ->toContain('data-home-locked="draft"')->toContain('data-home-locked="private"')
+                ->not->toContain($menuItem($home, 'archived'))
+                ->toContain('data-home-locked="draft"')->toContain('data-home-locked="archived"')
                 ->and(substr_count($homeRow, 'aria-disabled="true"'))->toBeGreaterThanOrEqual(2)
                 ->and(substr_count($homeRow, '<span class="list-mwhy">'.e(__('entries.home_trash_why')).'</span>'))->toBe(2)
                 ->and(rmRowHtml($html, $other->ulid))->not->toContain('data-home-locked')
-                ->and(rmRowHtml($html, $other->ulid))->toContain($menuItem($other, 'draft'))->toContain($menuItem($other, 'private'));
+                ->and(rmRowHtml($html, $other->ulid))->toContain($menuItem($other, 'draft'))->toContain($menuItem($other, 'archived'))
+                // «Gỡ khỏi website» is short, and says what it does on a small second line
+                ->and(rmRowHtml($html, $other->ulid))->toContain('>'.e(__('entries.status_menu_archived_hint')).'</span>')
+                // the retired «Không công khai» is offered on neither row
+                ->and($html)->not->toContain($menuItem($home, 'private'))->not->toContain($menuItem($other, 'private'));
 
             // a call made anyway (a tab opened before the page became the Home page) is refused by the action, with why
-            foreach (['draft', 'private'] as $status) {
-                $list->call('changeStatus', $home->ulid, $status)
-                    ->assertDispatched('bs-toast', text: __('entries.home_offline_why'), stay: true);
-                expect($home->fresh()->status)->toBe('published');
-            }
+            $list->call('changeStatus', $home->ulid, 'draft')
+                ->assertDispatched('bs-toast', text: __('entries.home_offline_why'), stay: true);
+            expect($home->fresh()->status)->toBe('published');
+            $list->call('changeStatus', $home->ulid, 'archived')
+                ->assertDispatched('bs-toast', text: __('entries.skip_home_note'));
+            expect($home->fresh()->status)->toBe('published');
+
+            // the retired private, sent anyway (an old tab), is ignored: nothing moves, nothing is said
+            $list->call('changeStatus', $other->ulid, 'private')->assertNotDispatched('bs-toast');
+            expect($other->fresh()->status)->toBe('published');
 
             // another page still changes as asked
             $list->call('changeStatus', $other->ulid, 'draft')->assertDispatched('bs-toast', text: __('entries.status_changed'));
@@ -516,14 +525,20 @@ describe('scheduling', function (): void {
         $this->get('http://a.test/')->assertOk();
     });
 
-    it('offers every status on a Home page not yet on the website, and publishes it', function (): void {
+    it('offers the statuses of a draft on a Home page not yet on the website, never the retired private, and publishes it', function (): void {
         $owner = rmMember('owner', PermissionRegistry::TENANT_PERMISSIONS, 90);
 
         app(Tenancy::class)->enter(1, function () use ($owner): void {
             $home = rmEntry($owner, 'Trang chủ', 'draft', slug: 'home');
             $list = Livewire::actingAs($owner)->test(Index::class);
 
-            expect(rmRowHtml($list->html(), $home->ulid))->toContain('$wire.changeStatus('.Js::from($home->ulid).', '.Js::from('private').')');
+            $row = rmRowHtml($list->html(), $home->ulid);
+            expect($row)->toContain('$wire.changeStatus('.Js::from($home->ulid).', '.Js::from('published').')')
+                ->toContain('data-sched x-on:click')
+                ->not->toContain('data-home-locked')
+                ->not->toContain('$wire.changeStatus('.Js::from($home->ulid).', '.Js::from('private').')')
+                // «Gỡ khỏi website» is for a row on the website: a draft is not on it yet
+                ->not->toContain('$wire.changeStatus('.Js::from($home->ulid).', '.Js::from('archived').')');
 
             $list->call('changeStatus', $home->ulid, 'published')->assertDispatched('bs-toast', text: __('entries.status_changed'));
             expect($home->fresh()->status)->toBe('published');

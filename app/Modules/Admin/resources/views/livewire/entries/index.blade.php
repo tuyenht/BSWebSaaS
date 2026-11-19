@@ -24,7 +24,6 @@
         'published' => 'ri-global',
         'draft' => 'ri-draft',
         'scheduled' => 'ri-calendar-schedule',
-        'private' => 'ri-lock',
         'pending' => 'ri-time',
         'archived' => 'ri-archive',
         'trash' => 'ri-delete-bin',
@@ -33,7 +32,7 @@
 
     // Status groups, as in the design: "Chờ duyệt" only once something waits; Thùng rác only for who may empty it.
     // Each count is drawn in its status's own ink, as the pills on the rows.
-    $groupKeys = ['all', 'published', 'draft', 'scheduled', 'pending', 'private', 'archived'];
+    $groupKeys = ['all', 'published', 'draft', 'scheduled', 'pending', 'archived'];
     $groups = [];
     foreach ($groupKeys as $key) {
         if ($key === 'pending' && ($counts['pending'] ?? 0) === 0 && $tab !== 'pending') {
@@ -640,9 +639,11 @@
                                     <div x-data="{ open: false }" @click.outside="open = false" @keydown.escape="if (open) { open = false; $refs.pill.focus() }" class="relative inline-block">
                                         <x-bs-admin::status-pill button x-ref="pill" :status="$status" x-on:click="open = ! open" x-bind:aria-expanded="open.toString()" aria-haspopup="true" title="{{ __('entries.status_menu_label') }}">{{ __('entries.status_'.$status) }}<span class="sr-only"> · {{ __('entries.status_menu_label') }}</span></x-bs-admin::status-pill>
                                         <div x-show="open" x-cloak x-transition
-                                            class="absolute left-0 z-30 mt-1 w-56 rounded-lg border border-border bg-surface p-1 shadow-lg">
-                                            {{-- the live Home page stays published: a draft or private would leave «/» answering 404 (TransitionEntryStatus refuses it too), so those two stay listed, greyed, with the reason --}}
-                                            @foreach (['published', 'draft', 'private'] as $opt)
+                                            class="absolute left-0 z-30 mt-1 w-64 rounded-lg border border-border bg-surface p-1 shadow-lg">
+                                            {{-- the four states: Đã đăng · Bản nháp · Gỡ khỏi website (a live row only) · Hẹn giờ đăng.
+                                                 The live Home page stays published: a draft or «Gỡ khỏi website» would leave «/» answering 404
+                                                 (TransitionEntryStatus refuses it too), so those two stay listed, greyed, with the reason --}}
+                                            @foreach (['published', 'draft'] as $opt)
                                                 @if ($isHome && $status === 'published' && $opt !== 'published')
                                                     <button type="button" aria-disabled="true" data-home-locked="{{ $opt }}" x-on:click="$bsToast({{ $lockToast(__('entries.home_trash_why')) }})" class="list-mi rounded">
                                                         <x-bs-admin::status-pill :status="$opt">{{ __('entries.status_'.$opt) }}</x-bs-admin::status-pill>
@@ -655,10 +656,18 @@
                                                     </button>
                                                 @endif
                                             @endforeach
-                                            @if ($status === 'published' && ! $isHome)
-                                                {{-- off the website, its content kept (archived): the publish right on this row, as every move here --}}
-                                                <button type="button" x-on:click="$wire.changeStatus(@js($entry->ulid), 'archived'); open = false" class="list-mi rounded">
+                                            @if ($status === 'published' && $isHome)
+                                                <button type="button" aria-disabled="true" data-home-locked="archived" x-on:click="$bsToast({{ $lockToast(__('entries.home_trash_why')) }})" class="list-mi rounded">
                                                     <x-bs-admin::status-pill status="archived">{{ __('entries.status_menu_archived') }}</x-bs-admin::status-pill>
+                                                </button>
+                                                <span class="list-mwhy">{{ __('entries.home_trash_why') }}</span>
+                                            @elseif ($status === 'published')
+                                                {{-- off the website, its content kept (archived): the publish right on this row, as every move here; what it does on a small second line --}}
+                                                <button type="button" data-archive x-on:click="$wire.changeStatus(@js($entry->ulid), 'archived'); open = false" class="list-mi rounded">
+                                                    <span class="flex min-w-0 flex-col items-start gap-1">
+                                                        <x-bs-admin::status-pill status="archived">{{ __('entries.status_menu_archived') }}</x-bs-admin::status-pill>
+                                                        <span class="text-caption text-text-muted">{{ __('entries.status_menu_archived_hint') }}</span>
+                                                    </span>
                                                 </button>
                                             @endif
                                             @if (! ($isHome && $status === 'published'))

@@ -255,8 +255,11 @@ final class Index extends Component
     #[Locked]
     public string $viewKey = 'entries.page';
 
-    /** Tabs that map to a concrete status; the rest: all = every non-trashed, trash = deleted. */
-    private const array STATUS_TABS = ['published', 'draft', 'scheduled', 'private', 'pending', 'archived'];
+    /**
+     * Tabs that map to a concrete status; the rest: all = every non-trashed, trash = deleted. The retired
+     * `private` has no tab: an old row in it is listed under «Tất cả» until cms:retire-private-status moves it.
+     */
+    private const array STATUS_TABS = EntryListFilter::STATUS_TABS;
 
     /** Every status group a member may pick. */
     private const array TABS = ['all', ...self::STATUS_TABS, 'trash'];
@@ -595,9 +598,9 @@ final class Index extends Component
     }
 
     /**
-     * Row status menu → published (via PublishEntry, route-synced) or draft/private/archived («Gỡ
-     * khỏi website — giữ lại nội dung», via TransitionEntryStatus, which needs the publish right on
-     * this row); for a member who may only send for review, pending («Gửi duyệt», via PublishEntry,
+     * Row status menu → published (via PublishEntry, route-synced) or draft/archived («Gỡ khỏi
+     * website», via TransitionEntryStatus, which needs the publish right on this row); the retired
+     * private is not offered and is ignored if sent; for a member who may only send for review, pending («Gửi duyệt», via PublishEntry,
      * which sends a draft). A post whose section runs an approval workflow moves through
      * applyTransition() instead; a direct publish of one (a tab opened before the workflow was
      * switched on) comes back as a plain toast, as does a move this member may not make on this row.
@@ -654,10 +657,10 @@ final class Index extends Component
             }
             if ($status === EntryStatus::Published->value) {
                 app(PublishEntry::class)->handle($entry, $locale, $user);
-            } elseif (in_array($status, [EntryStatus::Draft->value, EntryStatus::Private->value], true)) {
-                app(TransitionEntryStatus::class)->handle($entry, EntryStatus::from($status), $user);
+            } elseif ($status === EntryStatus::Draft->value) {
+                app(TransitionEntryStatus::class)->handle($entry, EntryStatus::Draft, $user);
             } elseif ($status !== EntryStatus::Archived->value) {
-                return; // scheduled has its own datetime path; unknown values are ignored
+                return; // scheduled has its own datetime path; the retired private and unknown values are ignored
             }
         } catch (WorkflowGovernedException) {
             $this->toast(__('entries.workflow_governed'));
@@ -4044,6 +4047,7 @@ final class Index extends Component
     {
         [$key, $dir] = $this->sorting();
         $direction = $dir === 'asc' ? 1 : -1;
+        // the retired `private` keeps its place for an old row until cms:retire-private-status moves it (as EntryListQuery::RANK)
         $rank = ['published' => 0, 'scheduled' => 1, 'pending' => 2, 'draft' => 3, 'private' => 4, 'archived' => 5];
 
         $value = function (Entry $entry) use ($locale, $rank, $key): string|int {

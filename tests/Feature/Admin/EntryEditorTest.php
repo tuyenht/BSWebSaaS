@@ -452,7 +452,7 @@ it('falls back to the default locale when ?locale= is not enabled', function ():
     });
 });
 
-it('saves a scheduled or private page without touching its status or its translation state', function (string $status): void {
+it('saves a scheduled page, or an old page still in the retired private, without touching its status or its translation state', function (string $status): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 

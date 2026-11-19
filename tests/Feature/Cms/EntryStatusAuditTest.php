@@ -60,7 +60,7 @@ it('records publish, the status menu, scheduling and the scheduler, each with it
         $actor = $editor->fresh();
 
         app(PublishEntry::class)->handle($page, 'vi', $actor);                                   // draft → published
-        app(TransitionEntryStatus::class)->handle($page->fresh(), EntryStatus::Private, $actor);  // → private
+        app(TransitionEntryStatus::class)->handle($page->fresh(), EntryStatus::Archived, $actor); // → archived («Gỡ khỏi website»)
         app(TransitionEntryStatus::class)->handle($page->fresh(), EntryStatus::Scheduled, $actor, now()->addMinute());
 
         return $page->fresh();
@@ -72,8 +72,8 @@ it('records publish, the status menu, scheduling and the scheduler, each with it
     app(Tenancy::class)->enter(1, function () use ($page, $editor): void {
         expect(statusTrail($page))->toBe([
             ['draft', 'published', 'publish', $editor->id],
-            ['published', 'private', 'status-menu', $editor->id],
-            ['private', 'scheduled', 'status-menu', $editor->id],
+            ['published', 'archived', 'status-menu', $editor->id],
+            ['archived', 'scheduled', 'status-menu', $editor->id],
             ['scheduled', 'published', 'scheduler', null],   // no user behind the cron
         ]);
 

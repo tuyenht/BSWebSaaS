@@ -218,7 +218,7 @@ it('leaves unlimited members, owners, admins and super_admins as they were, rows
     expect($answers)->toBe(array_fill(0, 4, [true, true, true]));
 });
 
-it('refuses the status roads outside the limits: publish, send, draft, private, schedule', function (): void {
+it('refuses the status roads outside the limits: publish, send, draft, take off the website, schedule', function (): void {
     [$jobs, , $news] = cwTree();
     $lan = cwMember('editor');
     cwLimit($lan, $jobs);
@@ -228,7 +228,7 @@ it('refuses the status roads outside the limits: publish, send, draft, private, 
     $refusals = [
         cwRefusal(fn () => app(PublishEntry::class)->handle($draft, 'vi', $lan)),
         cwRefusal(fn () => app(TransitionEntryStatus::class)->handle($live, EntryStatus::Draft, $lan)),
-        cwRefusal(fn () => app(TransitionEntryStatus::class)->handle($live, EntryStatus::Private, $lan)),
+        cwRefusal(fn () => app(TransitionEntryStatus::class)->handle($live, EntryStatus::Archived, $lan)),
         cwRefusal(fn () => app(TransitionEntryStatus::class)->handle($draft, EntryStatus::Scheduled, $lan, now()->addDay())),
     ];
 
@@ -251,7 +251,7 @@ it('judges a status change on the post as it is now, not as the list loaded it',
 
     $thrown = null;
     try {
-        app(Tenancy::class)->enter(1, fn () => app(TransitionEntryStatus::class)->handle($gone, EntryStatus::Private, $lan));
+        app(Tenancy::class)->enter(1, fn () => app(TransitionEntryStatus::class)->handle($gone, EntryStatus::Archived, $lan));
     } catch (ModelNotFoundException $e) {
         $thrown = $e::class;
     }

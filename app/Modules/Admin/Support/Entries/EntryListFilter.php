@@ -10,8 +10,11 @@ use Carbon\CarbonImmutable;
  */
 final readonly class EntryListFilter
 {
-    /** Tabs that map to one status; "all" is every live row and "trash" every deleted one. */
-    public const array STATUS_TABS = ['published', 'draft', 'scheduled', 'private', 'pending', 'archived'];
+    /**
+     * Tabs that map to one status; "all" is every live row and "trash" every deleted one. The four states
+     * a member sets (published, scheduled, draft, archived) and «Chờ duyệt»; the retired `private` has none.
+     */
+    public const array STATUS_TABS = ['published', 'draft', 'scheduled', 'pending', 'archived'];
 
     /** The "no template" value of the Mẫu trang filter (a null template_override). */
     public const string TEMPLATE_NONE = '__default__';

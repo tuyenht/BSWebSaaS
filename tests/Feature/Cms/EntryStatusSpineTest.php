@@ -21,7 +21,7 @@ beforeEach(function (): void {
     app(TeamContext::class)->forget();
 });
 
-it('persists the two new page states without a CHECK violation', function (): void {
+it('persists scheduled, and still loads the retired private of an old row, without a CHECK violation', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         foreach (['scheduled', 'private'] as $status) {
             $entry = Entry::query()->create(['type' => 'page', 'status' => $status]);
@@ -40,7 +40,7 @@ it('defaults view_count to 0 and stores an increment as an int', function (): vo
     });
 });
 
-it('maps every canonical status and marks only published public', function (): void {
+it('maps every canonical status (the retired private too, for old rows) and marks only published public', function (): void {
     expect(EntryStatus::from('scheduled'))->toBe(EntryStatus::Scheduled)
         ->and(EntryStatus::from('private'))->toBe(EntryStatus::Private)
         ->and(EntryStatus::Published->isPublic())->toBeTrue()
@@ -49,11 +49,11 @@ it('maps every canonical status and marks only published public', function (): v
         ->and(EntryStatus::Draft->isPublic())->toBeFalse();
 });
 
-it('keeps a private page non-public even with a live route', function (): void {
+it('keeps an old private page, and the archived page it becomes, non-public even with a live route', function (string $status): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($editor): void {
+    $tenancy->enter(1, function () use ($editor, $status): void {
         grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
         $page = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
         $page->translations()->create([
@@ -61,9 +61,9 @@ it('keeps a private page non-public even with a live route', function (): void {
         ]);
         app(PublishEntry::class)->handle($page->fresh(), 'vi', $editor->fresh());
 
-        // Deliberately make the live page private — its route row still exists.
-        $page->update(['status' => 'private']);
+        // Deliberately take the live page off the website by a direct write — its route row still exists.
+        $page->update(['status' => $status]);
     });
 
     $this->get('http://a.test/noi-bo')->assertNotFound();
-});
+})->with(['private', 'archived']);

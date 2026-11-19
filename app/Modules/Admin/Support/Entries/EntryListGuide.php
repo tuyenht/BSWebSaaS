@@ -115,7 +115,7 @@ final class EntryListGuide
                 'edit' => W::label(Cast::string(__('entries.edit_action'))), 'view' => W::label(Cast::string(__('admin.view'))), 'preview' => W::label(Cast::string(__('entries.action_preview'))),
             ]))]),
             Guide::step('status', [Guide::on('row-status', $t('status_title'), $canPublish
-                ? $t('status_change', ['label' => W::target(), 'items' => W::words([$st('published'), $st('draft'), $st('private'), $st('scheduled')], 'or')])
+                ? $t('status_change', ['label' => W::target(), 'items' => W::words([$st('published'), $st('draft'), Cast::string(__('entries.status_menu_archived')), Cast::string(__('entries.sched_title'))], 'or')])
                 : $t('status_fixed'))]),
         ]);
 

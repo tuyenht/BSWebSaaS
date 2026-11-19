@@ -36,7 +36,10 @@ final class EntryListQuery
     public const array COLUMNS = ['id', 'ulid', 'site_id', 'type', 'status', 'parent_id', 'template_override', 'author_id',
         'published_at', 'position', 'created_at', 'updated_at', 'deleted_at', 'view_count', 'workflow_state'];
 
-    /** The status order (A to Z): live first, then waiting, then not shown. */
+    /**
+     * The status order (A to Z): live first, then waiting, then not shown. The retired `private` stays
+     * listed so an old row in it is still sorted (and shown) until cms:retire-private-status moves it.
+     */
     private const array RANK = ['published', 'scheduled', 'pending', 'draft', 'private', 'archived'];
 
     /** The collation names sort by (Vietnamese alphabet, case and accents in their places). */

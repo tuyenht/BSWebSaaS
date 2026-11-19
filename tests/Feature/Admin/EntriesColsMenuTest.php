@@ -136,7 +136,7 @@ it('counts views only on a published post, under the member\'s Lượt xem choic
         $section = cmSection();
         cmPost($user, 'Đang lên', $section, ['view_count' => 1234]);
         cmPost($user, 'Còn nháp', $section, ['status' => 'draft', 'view_count' => 777]);
-        cmPost($user, 'Riêng tư', $section, ['status' => 'private', 'view_count' => 555]);
+        cmPost($user, 'Đã gỡ', $section, ['status' => 'archived', 'view_count' => 555]);
 
         Livewire::actingAs($user->fresh())->test(Index::class, ['section' => 'tin-tuc'])
             ->assertSee(__('entries.views_count', ['count' => Number::format(1234, locale: app()->getLocale())]))

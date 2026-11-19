@@ -9,7 +9,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 /**
  * A move that would leave the website without its Home page, refused whatever path asked for it (a
  * screen, a bulk run, a direct call): a move to the Trash, or a status move that takes the live Home
- * page off (a draft, private, archived, or a schedule until its time). A refusal of the request (403 when nothing catches it), carrying the sentence a
+ * page off (a draft, archived, or a schedule until its time). A refusal of the request (403 when nothing catches it), carrying the sentence a
  * member reads.
  */
 final class HomePageLockedException extends AuthorizationException

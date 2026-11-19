@@ -582,7 +582,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
             ['Những điều nên biết trước khi đặt gia công CNC', 'dieu-nen-biet-truoc-khi-dat-gia-cong', 'published', 'Gia công CNC', 1],
             ['Thông báo lịch nghỉ Tết Nguyên đán 2027', 'lich-nghi-tet-2027', 'scheduled', 'Tin công ty', 0],
             ['Chọn vật liệu thép cho chi tiết chịu mài mòn', 'chon-vat-lieu-thep', 'draft', 'Kiến thức', 1],
-            ['Ưu đãi 10% cho đơn gia công đầu tiên', 'uu-dai-don-dau-tien', 'private', 'Khuyến mãi', 0],
+            ['Ưu đãi 10% cho đơn gia công đầu tiên', 'uu-dai-don-dau-tien', 'draft', 'Khuyến mãi', 0],
             ['Tham gia Hội chợ Mechanical Expo 2026', 'hoi-cho-mechanical-expo-2026', 'archived', 'Hội chợ Mechanical Expo', 1],
         ];
         foreach ($rows as $i => [$title, $slug, $status, $category, $byWriter]) {
