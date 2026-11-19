@@ -453,12 +453,19 @@ trait WithMediaLibraryPicker
 
     /**
      * The device uploader island finished a batch (browser → R2 → register). Land on the library
-     * tab so the freshly-uploaded masters (newest-first) are right there to pick.
+     * tab so the freshly-uploaded masters (newest-first) are right there to pick — unless a file in
+     * the upload list failed ($failed, counted by the island): the list stays, as the board keeps it.
      */
     #[On('media-uploaded')]
-    public function onPickerMediaUploaded(): void
+    public function onPickerMediaUploaded(int $failed = 0): void
     {
         if (! $this->showImagePicker) {
+            return;
+        }
+        if ($failed > 0) {
+            // a file did not go up: stay on the upload list, where its reason and «Thử lại» are
+            unset($this->mediaPickerState);
+
             return;
         }
         $this->pickerTab = 'library';

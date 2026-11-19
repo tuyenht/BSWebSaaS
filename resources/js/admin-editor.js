@@ -45,10 +45,27 @@ export function overState({ busy, offline, failed, typed, n }) {
     return n > 0 ? 'dirty' : null;
 }
 
-/** The words of a state. */
-export function stateText(state, words, n, status) {
+/**
+ * Whether a record in this status saves itself: a draft; with `autosaveNew`, also a record not saved yet
+ * (no status). With `needs` (field names) and `get`, only while each of those fields has text: the server
+ * cannot store the record without them, so the line does not promise a save that will not come.
+ */
+export function savesItself(cfg, status, get = null) {
+    if (cfg.autosave === false) {
+        return false;
+    }
+    const fresh = status === null || status === undefined || status === '';
+    if (status !== 'draft' && !(cfg.autosaveNew === true && fresh)) {
+        return false;
+    }
+
+    return !(Array.isArray(cfg.needs) && get) || cfg.needs.every((field) => String(get(field) ?? '').trim() !== '');
+}
+
+/** The words of a state; `auto` when the save on its way is the record's own (words.autosaving, when given). */
+export function stateText(state, words, n, status, auto = false) {
     if (state === 'saving') {
-        return words.saving;
+        return auto && words.autosaving ? words.autosaving : words.saving;
     }
     if (state === 'offline') {
         return words.offline;
@@ -59,9 +76,12 @@ export function stateText(state, words, n, status) {
 }
 
 /**
- * @param {{ fields: string[], words: Record<string, string>, delay?: number, autosave?: boolean, extra?: string, keep?: { key: string } }} cfg
+ * @param {{ fields: string[], words: Record<string, string>, delay?: number, autosave?: boolean, autosaveNew?: boolean, extra?: string, keep?: { key: string } }} cfg
  *   the counted fields, the words of each state, the wait before a draft saves itself (ms);
- *   `autosave: false` for an editor whose drafts do not save themselves; `extra` names a $wire
+ *   `autosave: false` for an editor whose drafts do not save themselves; `autosaveNew` for one whose new
+ *   record (no status yet) saves itself too, as a draft; `needs` lists the fields it cannot be saved without
+ *   (no save by itself while one is empty); `noAuto` lists the fields whose change alone never starts the
+ *   record's own save (the save does not store them); `extra` names a $wire
  *   property holding a count of changes the server keeps itself (a list the browser cannot write
  *   the way the server does), added to the browser's count; `keep` (the editor of live content) names the
  *   key under which unsaved changes are copied to this device (admin-kept.js).
@@ -83,8 +103,12 @@ export function editorSave(cfg) {
         typed: false,
         n: 0,
         last: 'save',
+        auto: false,
+        own: 0,
+        get: null,
 
         init() {
+            this.get = (field) => this.$wire.$get(field);
             page = this.$root.closest('[wire\\:id]') || document.body;
             onInput = () => {
                 this.typed = true;
@@ -117,13 +141,16 @@ export function editorSave(cfg) {
                     }
                     clearTimeout(timer);
                     this.busy = true;
+                    this.auto = names.every((name) => name === 'autosave');
                     const lost = () => {
                         const wasOnline = !this.offline;
                         this.offline = true;
                         if (wasOnline && cfg.words.offlineToast && typeof window.bsToast === 'function') {
                             window.bsToast({ text: cfg.words.offlineToast, icon: cfg.words.offlineToastIcon });
                         }
-                        this.last = names.includes('publish') ? 'publish' : 'save';
+                        // the same save again: a lost autosave stays an autosave (a save would also apply a
+                        // status picked but not yet saved)
+                        this.last = names.includes('publish') ? 'publish' : names.includes('save') ? 'save' : 'autosave';
                     };
                     // Only a request that never reached the server is "no connection"; a refusal
                     // (permission, expired session, server error) is Livewire's own to show.
@@ -147,7 +174,10 @@ export function editorSave(cfg) {
                     const values = cfg.fields.map((f) => valueText(wire.$get(f))).join('\u0000');
                     const n = countChanges(cfg.fields, (f) => wire.$get(f), wire.saved) + (cfg.extra ? Number(wire.$get(cfg.extra)) || 0 : 0);
                     this.n = n;
-                    this.schedule(n, wire.status, values);
+                    // a change the record's own save does not store (`noAuto`: a choice applied only by a button)
+                    // counts as unsaved but never starts that save
+                    this.own = cfg.noAuto ? n - countChanges(cfg.noAuto, (f) => wire.$get(f), wire.saved) : n;
+                    this.schedule(this.own, wire.status, values);
                     this.keepSoon(n, wire.status);
                 });
             }
@@ -191,7 +221,7 @@ export function editorSave(cfg) {
 
         schedule(n, status) {
             clearTimeout(timer);
-            if (n === 0 || status !== 'draft' || cfg.autosave === false) {
+            if (n === 0 || !savesItself(cfg, status, this.get)) {
                 return;
             }
             const fire = () => {
@@ -200,7 +230,7 @@ export function editorSave(cfg) {
 
                     return;
                 }
-                if (this.n > 0 && this.$wire.status === 'draft') {
+                if (this.own > 0 && savesItself(cfg, this.$wire.status, this.get)) {
                     Promise.resolve(this.$wire.autosave()).catch(() => {});
                 }
             };
@@ -212,7 +242,11 @@ export function editorSave(cfg) {
         },
 
         text() {
-            return stateText(this.state(), cfg.words, this.n, this.$wire.status);
+            const status = this.$wire.status;
+
+            const itself = this.own > 0 && savesItself(cfg, status, this.get);
+
+            return stateText(this.state(), cfg.words, this.n, itself ? 'draft' : (status === 'draft' || savesItself(cfg, status, this.get) ? 'none' : status), this.auto);
         },
 
         /** "Thử lại": the save that did not reach the server ("Đăng" again, otherwise a plain save). */

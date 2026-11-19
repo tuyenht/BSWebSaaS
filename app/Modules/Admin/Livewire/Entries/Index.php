@@ -11,6 +11,7 @@ use App\Modules\Admin\Support\Entries\ListCursor;
 use App\Modules\Admin\Support\Entries\ListGroup;
 use App\Modules\Admin\Support\Entries\PageMoveWords;
 use App\Modules\Admin\Support\Entries\PostRoleNote;
+use App\Modules\Admin\Support\Entries\ScheduleInput;
 use App\Modules\Admin\Support\FirstHints;
 use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Admin\Support\TreeRows;
@@ -787,15 +788,10 @@ final class Index extends Component
      */
     public function scheduleEntry(string $ulid, string $publishAt): ?string
     {
-        if (trim($publishAt) === '') {
-            return Cast::string(__('entries.sched_err_empty'));
-        }
-        $when = $this->parseSchedule($publishAt);
-        if ($when === null) {
-            return Cast::string(__('entries.sched_err_empty'));
-        }
-        if (! $when->isFuture()) {
-            return Cast::string(__('entries.sched_err_past'));
+        $when = ScheduleInput::parse($publishAt);
+        $refused = ScheduleInput::error($publishAt);
+        if ($when === null || $refused !== null) {
+            return $refused ?? Cast::string(__('entries.sched_err_empty'));
         }
 
         $entry = $this->findLiveEntry($ulid);
@@ -864,20 +860,6 @@ final class Index extends Component
         }
 
         $this->toast(__('entries.unsched_done', ['noun' => __('entries.noun_'.$entry->type), 'step' => __('entries.status_draft')]));
-    }
-
-    /** Parse the datetime-local value in the site's zone → UTC; null when empty or malformed (only a forged/broken submit sends that). */
-    private function parseSchedule(string $publishAt): ?CarbonImmutable
-    {
-        if (trim($publishAt) === '') {
-            return null;
-        }
-
-        try {
-            return app(SiteTime::class)->toStorage($publishAt);
-        } catch (\Exception) {
-            return null;
-        }
     }
 
     /**

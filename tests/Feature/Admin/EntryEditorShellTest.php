@@ -248,7 +248,8 @@ it('offers Gửi duyệt to a member who may not publish, Cập nhật and the l
             ->call('publish')
             ->assertHasNoErrors()
             ->assertSet('status', 'pending')
-            ->assertDontSee('Gửi duyệt')
+            // «Gửi duyệt» stays in the status list (the board's «Khi lưu, trang sẽ là»), never as the main button
+            ->assertViewHas('actions', fn (array $a): bool => ($a['primary'] ?? '') !== 'Gửi duyệt')
             ->assertSee('Chờ duyệt');
 
         $c = Livewire::actingAs($editor->fresh())

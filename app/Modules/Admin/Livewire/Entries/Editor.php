@@ -8,6 +8,7 @@ use App\Modules\Admin\Support\BlockKinds;
 use App\Modules\Admin\Support\Entries\EntryRefusal;
 use App\Modules\Admin\Support\Entries\PageMoveWords;
 use App\Modules\Admin\Support\Entries\PageParentChoices;
+use App\Modules\Admin\Support\Entries\ScheduleInput;
 use App\Modules\Admin\Support\EntryProseBody;
 use App\Modules\Admin\Support\Guide\EditorGuide;
 use App\Modules\Admin\Support\Locales;
@@ -77,6 +78,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Js;
+use Illuminate\Support\MessageBag;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -130,7 +132,7 @@ final class Editor extends Component
      * The fields the save state and the leave dialog count against the saved entry. The block list
      * is counted apart (blocksChanged): the browser cannot write it the way the server does.
      */
-    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryId', 'coverImageKey', 'parentUlid', 'scheduleAt'];
+    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryId', 'coverImageKey', 'parentUlid', 'scheduleAt', 'statusTo'];
 
     /** Which entry is being edited — server-resolved (mount/persist); never client-set. */
     #[Locked]
@@ -300,6 +302,10 @@ final class Editor extends Component
     #[Locked]
     public bool $isHome = false;
 
+    /** The live page is the website's Home page (whoever edits it): its status stays «Công khai». Read only when it was opened live or the member may delete it. */
+    #[Locked]
+    public bool $homePage = false;
+
     /** «Xem trước» opens the saved version: a saved entry the member may preview (EntryPolicy). */
     #[Locked]
     public bool $mayPreview = false;
@@ -332,6 +338,17 @@ final class Editor extends Component
     /** The time the entry was scheduled for as the form opened, in the website's clock ('' when none): kept unchanged, it is not judged again. */
     #[Locked]
     public string $scheduleLoaded = '';
+
+    /**
+     * «Khi lưu, bài sẽ là» (board 07, the "Đăng" card when no approval workflow governs the entry): the status
+     * the next save moves the entry to, '' for the saved one. Client-set; judged when it is picked
+     * (updatedStatusTo) and again by the save, which moves it through PublishEntry or TransitionEntryStatus.
+     */
+    public string $statusTo = '';
+
+    /** The last save of this visit was the draft's own (autosave): the save state reads «Đã lưu nháp …». */
+    #[Locked]
+    public bool $autoSaved = false;
 
     /** This language's version has never been saved, and this form has not saved: its link may follow the title. */
     #[Locked]
@@ -544,6 +561,140 @@ final class Editor extends Component
         $why = $this->scheduleError();
         if ($why !== null) {
             $this->addError('scheduleAt', $why);
+        }
+    }
+
+    /**
+     * A status picked in «Khi lưu, bài sẽ là»: only one the list offers this member, unlocked; anything else
+     * is put back, the lock's reason said. «Hẹn giờ đăng» starts on tomorrow 08:00 in the website's clock
+     * unless the field already holds a time. The saved status picked again clears the choice.
+     */
+    public function updatedStatusTo(): void
+    {
+        $this->authorizeEditing();
+        $this->resetErrorBag(['statusTo', 'scheduleAt']);
+        $pick = $this->statusTo;
+        $this->statusTo = '';
+        $option = null;
+        foreach ($this->statusOptions() ?? [] as $candidate) {
+            if ($candidate['key'] === $pick) {
+                $option = $candidate;
+            }
+        }
+        if ($option === null) {
+            return;
+        }
+        if ($option['why'] !== '') {
+            $this->dispatch('bs-toast', text: $option['why'], stay: true, close: Cast::string(__('admin.close')));
+
+            return;
+        }
+        if ($pick === ($this->status ?? EntryStatus::Draft->value)) {
+            // back to the saved status: a scheduled entry's field goes back to its saved time
+            $this->scheduleAt = $this->scheduleLoaded;
+
+            return;
+        }
+        if ($pick === EntryStatus::Scheduled->value && $this->status === EntryStatus::Published->value && $this->textChanges() > 0) {
+            // the save would put the edits on the website, then take it off until the time: update or undo them first
+            $this->dispatch('bs-toast', text: Cast::string(__('entries.ed.sched_live_dirty', ['unit' => $this->unit()])), stay: true, close: Cast::string(__('admin.close')));
+
+            return;
+        }
+        $this->statusTo = $pick;
+        if ($pick === EntryStatus::Scheduled->value && trim($this->scheduleAt) === '') {
+            $this->scheduleAt = ScheduleInput::tomorrowEight();
+        }
+        if ($pick !== EntryStatus::Scheduled->value) {
+            $this->scheduleAt = $this->scheduleLoaded;
+        }
+    }
+
+    /**
+     * «Hủy hẹn giờ» on the band of a scheduled entry (asked first in the browser): it goes back to a draft
+     * and will not go live at its time (TransitionEntryStatus::unschedule, the publish right on the locked
+     * row). What is typed in the form stays, unsaved.
+     */
+    public function unschedule(): void
+    {
+        $this->authorizeEditing();
+        if ($this->ulid === null || $this->status !== EntryStatus::Scheduled->value) {
+            return;
+        }
+        $entry = $this->resolveOrFail($this->ulid);
+        try {
+            $moved = app(TransitionEntryStatus::class)->unschedule($entry, $this->user());
+        } catch (AuthorizationException) {
+            $this->dispatch('bs-toast', text: EntryRefusal::for($this->user(), $entry, 'status'), stay: true, close: Cast::string(__('admin.close')));
+
+            return;
+        }
+        $entry->refresh();
+        $this->takeStatus($entry);
+        if (! $moved) {
+            // published or moved meanwhile: left as it is, and the form now says so
+            $this->dispatch('bs-toast', text: Cast::string(__('entries.ed.unsched_gone', ['unit' => $this->unit()])), stay: true, close: Cast::string(__('admin.close')));
+
+            return;
+        }
+        $this->dispatch('bs-toast', text: Cast::string(__('entries.unsched_done', ['noun' => $this->unit(), 'step' => __('entries.status_draft')])));
+        // the band and its button are gone: the cursor goes to the title, which can be edited
+        $this->js("document.getElementById('entry-title')?.focus()");
+    }
+
+    /**
+     * A new entry or a draft saves itself 2 seconds after the last change (the browser asks): through the
+     * same rights, checks and stale-save question as «Lưu nháp», never a status move. Content that is not a
+     * draft never does (live text stays on this device until «Cập nhật»), nor a form with no text changed, nor
+     * a new entry with no title, short description or body yet. A field still to fix is left as it is, the
+     * messages already shown kept.
+     */
+    public function autosave(): void
+    {
+        $this->authorizeEditing();
+        $this->saveItself(true);
+    }
+
+    /**
+     * The draft's own save (see autosave). `$quiet`: a field still to fix leaves what is shown as it is; run
+     * again from «Giữ bản của tôi» (not quiet) the reasons show, as a member's own press expects.
+     */
+    private function saveItself(bool $quiet): void
+    {
+        if ($this->stale !== null || ($this->ulid !== null && $this->status !== EntryStatus::Draft->value)) {
+            return;
+        }
+        if ($this->textChanges() === 0 || ($this->ulid === null && ! $this->worthKeeping())) {
+            return;
+        }
+        if ($this->ulid === null && ! Gate::allows('fileUnder', [Entry::class, $this->type, $this->type === 'post' ? $this->categoryId : null])) {
+            return;   // the member's own save says why; a save by itself does not
+        }
+
+        $bag = $this->getErrorBag();
+        $shown = new MessageBag($bag instanceof MessageBag ? $bag->getMessages() : []);
+        $failed = $this->saveFailed;
+        $wasNew = $this->ulid === null;
+        $fresh = $this->slugFresh;
+        try {
+            $entry = $this->persist('autosave');
+        } catch (ValidationException $refused) {
+            if (! $quiet) {
+                throw $refused;
+            }
+            $this->setErrorBag($shown);
+            $this->saveFailed = $failed;
+
+            return;
+        }
+        if (! $entry instanceof Entry) {
+            return;
+        }
+        // a draft that saved itself keeps its link following the title, as before it was saved
+        $this->slugFresh = $fresh && ! $this->slugTouched;
+        $this->autoSaved = true;
+        if ($wasNew) {
+            $this->dispatch('bs-toast', text: Cast::string(__('entries.ed.toast_auto_first', ['unit' => $this->unit()])));
         }
     }
 
@@ -996,15 +1147,46 @@ final class Editor extends Component
         $this->swapItems($index, $key, $itemIndex, $itemIndex + 1);
     }
 
-    /** "Lưu nháp" / "Lưu" / "Cập nhật" on content that is not live: save, the status kept. */
+    /**
+     * "Lưu nháp" / "Lưu" / "Cập nhật" on content that is not live: save, then move the entry to the status
+     * picked in «Khi lưu, bài sẽ là» (none picked: the status kept). «Công khai» and «Gửi duyệt» are the
+     * publish button's own move (PublishEntry); a draft, a schedule and «Gỡ khỏi website» go through
+     * TransitionEntryStatus. A picked «Hẹn giờ đăng» with an empty or past time stops the save first.
+     */
     public function save(): void
     {
+        $to = $this->statusChoice();
+        if ($to === EntryStatus::Scheduled->value && $this->status === EntryStatus::Published->value && $this->textChanges() > 0) {
+            // edited after «Hẹn giờ đăng» was picked: the save would put the edits on the website and then take it
+            // off until the time; the pick is dropped, so the next save updates the website as it is
+            $this->forgetChoice();
+            $this->dispatch('bs-toast', text: Cast::string(__('entries.ed.sched_live_dirty', ['unit' => $this->unit()])), stay: true, close: Cast::string(__('admin.close')));
+
+            return;
+        }
+        if ($to === EntryStatus::Published->value || $to === EntryStatus::Pending->value) {
+            $this->publish();
+
+            return;
+        }
         $schedulable = $this->schedulable();
         if ($schedulable && $this->refuseSchedule()) {
             return;
         }
         $entry = $this->persist('save');
         if (! $entry instanceof Entry) {
+            return;
+        }
+        $this->autoSaved = false;
+        if ($to !== null) {
+            if ($this->moveStatus($entry, $to)) {
+                $at = $to === EntryStatus::Scheduled->value ? ScheduleInput::parse($this->scheduleLoaded) : null;
+                $at = $at !== null ? app(SiteTime::class)->forDisplay($at) : null;
+                $this->dispatch('bs-toast', text: $at !== null
+                    ? __('entries.scheduled_set_at', ['date' => $at->format('d/m/Y'), 'time' => $at->format('H:i')])
+                    : __('entries.ed.toast_kept', ['status' => $this->statusPill()['label']]));
+            }
+
             return;
         }
         if ($schedulable && ! $this->moveSchedule($entry)) {
@@ -1028,6 +1210,8 @@ final class Editor extends Component
 
         try {
             $this->status = app(PublishEntry::class)->handle($entry, $this->locale, $this->user());
+            $this->autoSaved = false;
+            $this->forgetChoice();
             $this->liveAddress = $this->routedAddress($entry->id);
             $unit = $this->unit();
             $this->dispatch('bs-toast', text: match (true) {
@@ -1510,6 +1694,8 @@ final class Editor extends Component
                 ? $this->workflowPanel($workflow, $this->ulid !== null ? $this->resolveOrFail($this->ulid) : null)
                 : null,
             'schedule' => $this->schedulePanel($workflow),
+            'statusPanel' => $this->statusPanel(),
+            'scheduleBand' => $this->scheduleBand($workflow),
         ]);
     }
 
@@ -1550,7 +1736,7 @@ final class Editor extends Component
         $preset = $this->ulid === null ? $this->parentLoaded : null;
         $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
             'transitionNote', 'assignTo', 'showMediaPicker', 'showBlockImagePicker', 'blockImagePickerPath', 'stale', 'overwrite',
-            'parentUlid', 'parentLoaded', 'parentName', 'pageHome', 'scheduleAt', 'scheduleLoaded', 'slugFresh', 'slugTouched');
+            'parentUlid', 'parentLoaded', 'parentName', 'pageHome', 'scheduleAt', 'scheduleLoaded', 'statusTo', 'autoSaved', 'slugFresh', 'slugTouched');
         $this->mount($this->ulid, $this->sectionKey, $this->locale, $preset);
     }
 
@@ -1571,6 +1757,8 @@ final class Editor extends Component
         match ($stale['action']) {
             'publish' => $this->publish(),
             'transition' => $this->applyTransition((string) $stale['transition']),
+            // a draft's own save stays one: it never applies a status picked and not yet saved
+            'autosave' => $this->saveItself(false),
             default => $this->save(),
         };
     }
@@ -1827,8 +2015,8 @@ final class Editor extends Component
     {
         $count = $this->blocksChanged;
         foreach ($this->tracked() as $field => $value) {
-            // «Hẹn giờ đăng» counts only while the entry is scheduled: published or a draft, the time no longer applies
-            if ($field === 'scheduleAt' && $this->status !== EntryStatus::Scheduled->value) {
+            // «Hẹn giờ đăng» counts only while the entry is (or is set to be) scheduled: otherwise the time does not apply
+            if ($field === 'scheduleAt' && $this->effectiveStatus() !== EntryStatus::Scheduled->value) {
                 continue;
             }
             if ($field !== 'blocks' && ($this->saved[$field] ?? '') !== $value) {
@@ -2276,7 +2464,10 @@ final class Editor extends Component
         $user = $this->user();
         $this->mayPreview = $user->can('preview', $entry);
         $this->mayTrash = $user->can('delete', $entry);
-        $this->isHome = $this->mayTrash && HomePages::is($entry);
+        // asked only where it changes something (the ⋮'s Trash item, the status list of live content): one query
+        $home = ($this->mayTrash || $entry->status === EntryStatus::Published->value) && HomePages::is($entry);
+        $this->homePage = $home;
+        $this->isHome = $this->mayTrash && $home;
     }
 
     /** This entry's edit address, in the language being edited when that is not the site's default. */
@@ -2335,7 +2526,8 @@ final class Editor extends Component
         $today = $at->isSameDay(app(SiteTime::class)->now());
         $time = $at->format('H:i');
         $full = (string) ($today ? __('catalog.ed.sv_full_today', ['time' => $time]) : __('catalog.ed.sv_full_day', ['time' => $time, 'day' => $at->format('d/m/Y')]));
-        $text = (string) ($today ? __('entries.ed.sv_saved', ['when' => $time]) : __('entries.ed.sv_saved', ['when' => $at->format('d/m')]));
+        // the draft's own save reads «Đã lưu nháp …» (board 07); a button's save «Đã lưu …»
+        $text = (string) __($this->autoSaved ? 'entries.ed.sv_auto' : 'entries.ed.sv_saved', ['when' => $today ? $time : $at->format('d/m')]);
 
         return ['key' => 'saved', 'icon' => 'ri-checkbox-circle', 'text' => $text, 'full' => $full, 'tip' => (string) __('catalog.ed.sv_tip', ['text' => $full])];
     }
@@ -2350,7 +2542,9 @@ final class Editor extends Component
      */
     private function actions(?Workflow $workflow): array
     {
-        $status = $this->status ?? 'draft';
+        // the status picked in «Khi lưu, bài sẽ là» decides the buttons, as it decides the save (board 07)
+        $saved = $this->status ?? 'draft';
+        $status = $this->effectiveStatus();
         $draftWord = (string) __($status === 'draft' ? 'entries.save_draft' : 'entries.ed.save_plain');
         if ($workflow !== null) {
             return ['secondary' => $draftWord, 'primary' => null, 'primaryAction' => 'save', 'primaryIcon' => 'ri-save-3'];
@@ -2361,7 +2555,12 @@ final class Editor extends Component
         if (in_array($status, ['published', 'scheduled', 'private', 'archived'], true)) {
             return [
                 'secondary' => null,
-                'primary' => (string) __($canPublish ? 'entries.ed.update' : 'entries.ed.save_plain'),
+                // a new entry set to «Hẹn giờ đăng» is not updated yet: its button reads «Đăng» (board 07)
+                'primary' => (string) __(match (true) {
+                    ! $canPublish => 'entries.ed.save_plain',
+                    $this->ulid === null => 'entries.publish',
+                    default => 'entries.ed.update',
+                }),
                 'primaryAction' => $canPublish && $status === 'published' ? 'publish' : 'save',
                 'primaryIcon' => $canPublish ? 'ri-send-plane-fill' : 'ri-save-3',
             ];
@@ -2370,7 +2569,7 @@ final class Editor extends Component
         return match (true) {
             $canPublish => ['secondary' => $draftWord, 'primary' => (string) __('entries.publish'), 'primaryAction' => 'publish', 'primaryIcon' => 'ri-send-plane-fill'],
             // Already waiting for review: sending it again moves nothing, so only the save stays.
-            $status !== 'pending' && $user->can('entries.submit') => ['secondary' => $draftWord, 'primary' => (string) __('entries.ed.submit'), 'primaryAction' => 'publish', 'primaryIcon' => 'ri-send-plane'],
+            $saved !== 'pending' && $user->can('entries.submit') => ['secondary' => $draftWord, 'primary' => (string) __('entries.ed.submit'), 'primaryAction' => 'publish', 'primaryIcon' => 'ri-send-plane'],
             default => ['secondary' => $draftWord, 'primary' => null, 'primaryAction' => 'save', 'primaryIcon' => 'ri-save-3'],
         };
     }
@@ -2873,6 +3072,8 @@ final class Editor extends Component
         $this->saved = $this->tracked();
         // the save stores the text; «Hẹn giờ đăng» is moved after it (save → moveSchedule), so until then it is still unsaved
         $this->saved['scheduleAt'] = $this->scheduleLoaded;
+        // so is a status picked: only the move after the save takes it (an autosave never does), so it still counts
+        $this->saved['statusTo'] = '';
 
         if ($wasNew) {
             // The address becomes this entry's edit address, so a reload (or reopening it from the
@@ -2910,50 +3111,38 @@ final class Editor extends Component
         }
         $siteTime = app(SiteTime::class);
         $this->scheduleLoaded = $siteTime->forDisplay($entry->published_at)?->format('Y-m-d\TH:i') ?? '';
-        $this->scheduleAt = $this->scheduleLoaded !== ''
-            ? $this->scheduleLoaded
-            : $siteTime->now()->addDay()->setTime(8, 0)->format('Y-m-d\TH:i');
+        $this->scheduleAt = $this->scheduleLoaded !== '' ? $this->scheduleLoaded : ScheduleInput::tomorrowEight();
     }
 
     /**
-     * The time can be changed here: a saved, scheduled entry, by a member who may publish it, that no
-     * approval workflow governs (scheduling governed content is refused, TransitionEntryStatus).
+     * The time can be changed here: an entry scheduled, or with «Hẹn giờ đăng» picked for the next save, by a
+     * member who may publish it, that no approval workflow governs (scheduling governed content is refused,
+     * TransitionEntryStatus).
      */
     private function schedulable(): bool
     {
-        return $this->ulid !== null && $this->status === EntryStatus::Scheduled->value && $this->mayPublish
+        return $this->effectiveStatus() === EntryStatus::Scheduled->value && $this->mayPublish
             && $this->governingWorkflow() === null;
+    }
+
+    /** The status the next save leaves the entry in: the one picked in «Khi lưu, bài sẽ là», else the saved one (a new entry: a draft). */
+    private function effectiveStatus(): string
+    {
+        return $this->statusTo !== '' ? $this->statusTo : ($this->status ?? EntryStatus::Draft->value);
     }
 
     /**
      * Why the time in the field cannot be kept (the list's two sentences), or null: an empty field always,
-     * a time changed from the one the entry was scheduled for when it is not after now. The time is read
-     * in the website's clock by SiteTime::toStorage, the list's parser.
+     * a time changed from the one the entry was scheduled for when it is not after now (ScheduleInput, the
+     * list's own sentences).
      */
     private function scheduleError(): ?string
     {
         if (trim($this->scheduleAt) === '') {
             return Cast::string(__('entries.sched_err_empty'));
         }
-        if ($this->scheduleAt === $this->scheduleLoaded) {
-            return null;
-        }
-        $when = $this->scheduleTime();
-        if ($when === null) {
-            return Cast::string(__('entries.sched_err_empty'));
-        }
 
-        return $when->isFuture() ? null : Cast::string(__('entries.sched_err_past'));
-    }
-
-    /** The field's time in UTC; null when it is not a time (only a forged or broken submit sends that). */
-    private function scheduleTime(): ?CarbonImmutable
-    {
-        try {
-            return app(SiteTime::class)->toStorage($this->scheduleAt);
-        } catch (\Exception) {
-            return null;
-        }
+        return $this->scheduleAt === $this->scheduleLoaded ? null : ScheduleInput::error($this->scheduleAt);
     }
 
     /** Before a save: a time that cannot be kept stops it, says why under the field and puts the cursor there. */
@@ -2991,7 +3180,7 @@ final class Editor extends Component
         }
         $why = null;
         try {
-            $when = $this->scheduleTime() ?? throw new SchedulePastException;
+            $when = ScheduleInput::parse($this->scheduleAt) ?? throw new SchedulePastException;
             app(TransitionEntryStatus::class)->handle($entry, EntryStatus::Scheduled, $this->user(), $when);
         } catch (SchedulePastException) {
             $why = Cast::string(__('entries.sched_err_past'));   // the time passed while the save waited
@@ -3022,7 +3211,7 @@ final class Editor extends Component
      */
     private function schedulePanel(?Workflow $workflow): ?array
     {
-        if ($this->ulid === null || $this->status !== EntryStatus::Scheduled->value || ! $this->mayPublish || $workflow !== null) {
+        if ($this->effectiveStatus() !== EntryStatus::Scheduled->value || ! $this->mayPublish || $workflow !== null) {
             return null;
         }
         $offset = intdiv(app(SiteTime::class)->now()->getOffset(), 60);
@@ -3034,6 +3223,242 @@ final class Editor extends Component
         return [
             'zone' => Cast::string(__('entries.ed.sched_zone', ['zone' => $zone])),
             'note' => Cast::string(__('entries.ed.sched_note', ['unit' => Str::ucfirst($this->unit()), 'time' => $at])),
+        ];
+    }
+
+    /**
+     * «Khi lưu, bài sẽ là» (board 07, the "Đăng" card; none where an approval workflow governs the entry, whose
+     * steps replace it): the statuses this member may pick, in the board's order — «Bản nháp», «Gửi duyệt»
+     * (only for a member who may not publish), «Hẹn giờ đăng», «Công khai», and «Gỡ khỏi website» while the
+     * entry is live. A status they may not reach stays, locked, with the reason; so does every other status
+     * of the live Home page, and every status in a language other than the website's own (it is shared).
+     *
+     * @return list<array{key: string, short: string, sub: string, why: string}>|null
+     */
+    private function statusOptions(): ?array
+    {
+        if ($this->governingWorkflow() !== null) {
+            return null;
+        }
+        $user = $this->user();
+        $saved = $this->status ?? EntryStatus::Draft->value;
+        $publish = $this->mayPublish;
+        // Without the publish right only a draft moves (PublishEntry sends a draft for review; every other move
+        // needs the publish right on the row, TransitionEntryStatus): from any other status both stay locked.
+        $stuck = ! $publish && $saved !== EntryStatus::Draft->value ? Cast::string(__('entries.ed.st_why_move')) : '';
+        $options = [['key' => EntryStatus::Draft->value, 'sub' => Cast::string(__('entries.ed.st_draft_sub')), 'why' => $stuck]];
+        if (! $publish) {
+            $options[] = ['key' => EntryStatus::Pending->value, 'sub' => '', 'why' => $user->can('entries.submit') ? $stuck : Cast::string(__('entries.ed.st_why_submit'))];
+        }
+        $options[] = ['key' => EntryStatus::Scheduled->value, 'sub' => '', 'why' => $publish ? '' : Cast::string(__('entries.ed.st_why_schedule'))];
+        $options[] = ['key' => EntryStatus::Published->value, 'sub' => '', 'why' => $publish ? '' : Cast::string(__('entries.ed.st_why_publish'))];
+        if ($saved === EntryStatus::Published->value) {
+            $options[] = ['key' => EntryStatus::Archived->value, 'sub' => Cast::string(__('entries.status_menu_archived_hint')), 'why' => $publish ? '' : Cast::string(__('entries.ed.st_why_archive'))];
+        }
+        $homeLive = $this->homePage && $saved === EntryStatus::Published->value;
+        $shared = $this->locale !== app(SiteLocale::class)->default()
+            ? Cast::string(__('entries.ed.shared_guard', ['lang' => Locales::label(app(SiteLocale::class)->default())]))
+            : null;
+
+        return array_map(function (array $option) use ($saved, $homeLive, $shared): array {
+            $why = $option['key'] === $saved ? '' : $option['why'];
+            if ($option['key'] !== $saved && $homeLive) {
+                $why = Cast::string(__('entries.home_trash_why'));
+            }
+            if ($shared !== null && $option['key'] !== $saved) {
+                $why = $shared;
+            }
+
+            return ['key' => $option['key'], 'short' => Cast::string(__('entries.ed.st_'.$option['key'])), 'sub' => $why !== '' ? $why : $option['sub'], 'why' => $why];
+        }, $options);
+    }
+
+    /**
+     * The words for a status on the chooser's button: its option's, or (a status with no option for this member,
+     * such as a publisher's entry waiting for review, or one left in a retired status) the status pill's.
+     *
+     * @param  list<array{key: string, short: string, sub: string, why: string}>  $options
+     */
+    private function statusShort(string $status, array $options): string
+    {
+        foreach ($options as $option) {
+            if ($option['key'] === $status) {
+                return $option['short'];
+            }
+        }
+        $key = 'entries.ed.pill_'.$status;
+
+        return Lang::has($key) ? Cast::string(__($key)) : $status;
+    }
+
+    /** The status picked for the next save when it can still be taken (offered, unlocked, not the saved one); otherwise null, the pick dropped. */
+    private function statusChoice(): ?string
+    {
+        if ($this->statusTo === '' || $this->statusTo === ($this->status ?? EntryStatus::Draft->value)) {
+            $this->statusTo = '';
+
+            return null;
+        }
+        foreach ($this->statusOptions() ?? [] as $option) {
+            if ($option['key'] === $this->statusTo && $option['why'] === '') {
+                return $option['key'];
+            }
+        }
+        $this->statusTo = '';
+
+        return null;
+    }
+
+    /**
+     * After the save: the entry moved to the picked status through TransitionEntryStatus (the publish right on
+     * the locked row; a time after now; never the live Home page). False, the reason said, when it refuses: the
+     * text is saved, the status kept, the pick left for another try.
+     */
+    private function moveStatus(Entry $entry, string $to): bool
+    {
+        $transition = app(TransitionEntryStatus::class);
+        $field = 'statusTo';
+        $why = null;
+        try {
+            if ($to === EntryStatus::Scheduled->value) {
+                $field = 'scheduleAt';
+                $transition->handle($entry, EntryStatus::Scheduled, $this->user(), ScheduleInput::parse($this->scheduleAt) ?? throw new SchedulePastException);
+            } elseif ($to === EntryStatus::Draft->value) {
+                // a schedule taken back drops its time too; anything else (moved meanwhile) is taken to a draft
+                if ($entry->status !== EntryStatus::Scheduled->value || ! $transition->unschedule($entry, $this->user())) {
+                    $transition->handle($entry, EntryStatus::Draft, $this->user());
+                }
+            } else {
+                $transition->handle($entry, EntryStatus::Archived, $this->user());
+            }
+        } catch (SchedulePastException) {
+            $why = Cast::string(__('entries.sched_err_past'));   // the time passed while the save waited
+        } catch (WorkflowGovernedException) {
+            $why = Cast::string(__('entries.workflow_governed'));
+        } catch (HomePageLockedException $refused) {
+            $why = $refused->getMessage();
+        } catch (AuthorizationException) {
+            $why = EntryRefusal::for($this->user(), $entry, 'status');
+        }
+        if ($why !== null) {
+            $this->addError($field, $why);
+            if ($field === 'scheduleAt') {
+                $this->js("document.getElementById('entry-sched-at')?.focus()");
+            } else {
+                $this->dispatch('bs-toast', text: $why, stay: true, close: Cast::string(__('admin.close')));
+            }
+
+            return false;
+        }
+        $entry->refresh();
+        $this->takeStatus($entry);
+
+        return true;
+    }
+
+    /** The form takes the stored status: no pick left, the live address, and «Hẹn giờ đăng» as stored (none unless scheduled). */
+    private function takeStatus(Entry $entry): void
+    {
+        $this->status = $entry->status;
+        $this->liveAddress = $this->routedAddress($entry->id);
+        $this->scheduleAt = '';
+        $this->scheduleLoaded = '';
+        $this->loadSchedule($entry);
+        $this->saved['scheduleAt'] = $this->scheduleLoaded;
+        $this->statusTo = '';
+        $this->saved['statusTo'] = '';
+    }
+
+    /** After «Đăng» / «Gửi duyệt»: the pick is used up, and «Hẹn giờ đăng» goes unless the entry is still scheduled. */
+    private function forgetChoice(): void
+    {
+        $this->statusTo = '';
+        $this->saved['statusTo'] = '';
+        if ($this->status !== EntryStatus::Scheduled->value) {
+            $this->scheduleAt = '';
+            $this->scheduleLoaded = '';
+            $this->saved['scheduleAt'] = '';
+        }
+    }
+
+    /** How many of the fields a save writes differ from the saved entry (the status pick and its time are not text). */
+    private function textChanges(): int
+    {
+        $count = $this->blocksHash() !== ($this->saved['blocks'] ?? '') ? 1 : 0;
+        foreach ($this->tracked() as $field => $value) {
+            if (! in_array($field, ['blocks', 'scheduleAt', 'statusTo'], true) && ($this->saved[$field] ?? '') !== $value) {
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    /** A new entry becomes a draft by itself only once its title, short description or body holds text (board 07). */
+    private function worthKeeping(): bool
+    {
+        if (trim($this->title) !== '' || trim($this->excerpt) !== '') {
+            return true;
+        }
+        if ($this->prose) {
+            return trim(html_entity_decode(strip_tags($this->bodyHtml), ENT_QUOTES | ENT_HTML5)) !== '';
+        }
+
+        return $this->blocks !== [];
+    }
+
+    /**
+     * The "Đăng" card's «Khi lưu, bài sẽ là», or null where it is not drawn: the label, the options, the one
+     * picked, and the line under it (the saved status's meaning, or «Chưa áp dụng…» while a pick waits).
+     *
+     * @return array{label: string, options: list<array{key: string, short: string, sub: string, why: string}>, current: string, currentShort: string, pending: string|null, vis: array{icon: string, text: string}, homeWhy: string|null}|null
+     */
+    private function statusPanel(): ?array
+    {
+        $options = $this->statusOptions();
+        if ($options === null) {
+            return null;
+        }
+        $saved = $this->status ?? EntryStatus::Draft->value;
+        $current = $this->effectiveStatus();
+        $icons = ['published' => 'ri-global', 'draft' => 'ri-draft', 'pending' => 'ri-inbox-unarchive', 'scheduled' => 'ri-time', 'archived' => 'ri-archive'];
+
+        return [
+            'label' => Cast::string(__($this->type === 'page' ? 'entries.ed.st_label_page' : 'entries.ed.st_label_post')),
+            'options' => $options,
+            'current' => $current,
+            'currentShort' => $this->statusShort($current, $options),
+            'pending' => $current !== $saved ? Cast::string(__('entries.ed.st_not_yet', ['status' => $this->statusShort($current, $options)])) : null,
+            'vis' => ['icon' => $icons[$saved] ?? 'ri-draft', 'text' => Cast::string(__('entries.ed.vis_'.(isset($icons[$saved]) ? $saved : 'draft')))],
+            'homeWhy' => $this->homePage && $saved === EntryStatus::Published->value ? Cast::string(__('entries.home_trash_why')) : null,
+        ];
+    }
+
+    /**
+     * The band of a scheduled entry (board 07): when it goes live, and «Hủy hẹn giờ» with the question the list
+     * asks first. Only for a member who may publish it, where no approval workflow governs it.
+     *
+     * @return array{head: string, sub: string, ask: array{title: string, text: string, confirm: string, cancel: string}}|null
+     */
+    private function scheduleBand(?Workflow $workflow): ?array
+    {
+        if ($this->ulid === null || $this->status !== EntryStatus::Scheduled->value || ! $this->mayPublish || $workflow !== null) {
+            return null;
+        }
+        $at = preg_match('/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/', $this->scheduleLoaded, $m) === 1 ? $m : null;
+        $time = $at !== null ? $at[4].':'.$at[5] : '';
+        $date = $at !== null ? $at[3].'/'.$at[2].'/'.$at[1] : '';
+        $unit = $this->unit();
+
+        return [
+            'head' => Cast::string(__('entries.ed.sched_band', ['unit' => Str::ucfirst($unit), 'time' => $at !== null ? $time.' '.$date : __('entries.ed.sched_when_set')])),
+            'sub' => Cast::string(__('entries.ed.sched_band_sub', ['unit' => $unit, 'step' => __('entries.status_draft')])),
+            'ask' => [
+                'title' => Cast::string(__('entries.unsched_title')),
+                'text' => Cast::string(__('entries.unsched_text', ['noun' => $unit, 'time' => $time, 'date' => $date, 'step' => __('entries.status_draft')])),
+                'confirm' => Cast::string(__('entries.unsched')),
+                'cancel' => Cast::string(__('entries.unsched_keep')),
+            ],
         ];
     }
 

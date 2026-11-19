@@ -23,6 +23,7 @@
 
 use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Admin\Livewire\Catalog\Index;
+use App\Modules\Admin\Livewire\Media\Library;
 use App\Modules\Admin\Livewire\NotificationBell;
 use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog;
 use App\Modules\Admin\Livewire\SeoSettings;
@@ -48,6 +49,7 @@ use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
+use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Rbac\Actions\InviteMember;
@@ -804,7 +806,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     });
     $this->flushSession();
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$planned[0]->ulid.'/edit')->assertOk()->getContent();
-    expect($html)->toContain('id="entry-sched-at"');
+    expect($html)->toContain('id="entry-sched-at"', 'data-sched-band', 'data-status-btn');
     file_put_contents($dir.'/editor-scheduled.html', $html);
     $past = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($owner)->test(App\Modules\Admin\Livewire\Entries\Editor::class, ['ulid' => $planned[0]->ulid])
         ->set('scheduleAt', now()->subDay()->format('Y-m-d\TH:i'))));
@@ -934,5 +936,37 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-te-page="suspended"');
     file_put_contents($dir.'/error-suspended.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 67);
+    // The media library's folder column (design board 12): three folders, the open one with its ⋮ menu,
+    // and the same folder being renamed in place. The component is put in place of the page's own
+    // root, as for the product list.
+    $mediaConfig = config('media');
+    config(['media.driver' => 'cloudflare', 'media.cloudflare.base' => 'http://'.ADMIN_PREVIEW_HOST]);
+    app(Tenancy::class)->enter(1, function (): void {
+        DB::connection('pgsql_admin')->table('sites')->where('id', 1)->update(['status' => 'active']);
+        foreach ([['Ảnh xưởng', 'anh-xuong', 4], ['Sản phẩm', 'san-pham', 2], ['Hồ sơ công ty', 'ho-so-cong-ty', 0]] as $i => [$name, $slug, $files]) {
+            $folder = MediaFolder::query()->create(['name' => $name, 'slug' => $slug, 'position' => $i + 1]);
+            for ($n = 1; $n <= $files; $n++) {
+                $hash = hash('sha256', $slug.$n);
+                Media::query()->create(['collection' => 'library', 'slug' => $slug.'-'.$n, 'hash' => $hash, 'folder_id' => $folder->id,
+                    'original_filename' => $slug.'-'.$n.'.jpg', 'storage_key' => 's/library/'.$slug.'-'.$n.'-'.substr($hash, 0, 12).'.jpg',
+                    'mime' => 'image/jpeg', 'size' => 98_000, 'width' => 1200, 'height' => 800]);
+            }
+        }
+    });
+    $this->flushSession();
+    app('livewire')->flushState();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/media')->assertOk()->getContent();
+    expect($html)->toContain('Ảnh xưởng', 'Hồ sơ công ty');
+    file_put_contents($dir.'/media-folders.html', $html);
+    $library = fn () => Livewire::actingAs($owner)->test(Library::class)->call('setFolder', 'anh-xuong');
+    $media = 'app\\.modules\\.admin\\.livewire\\.media\\.library';
+    $open = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($library()));
+    expect($open)->toContain("openRename('anh-xuong')");
+    file_put_contents($dir.'/media-folder-open.html', $swap($html, $open, $media));
+    $rename = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($library()->call('openRename', 'anh-xuong')));
+    expect($rename)->toContain('wire:model="renameName"');
+    file_put_contents($dir.'/media-folder-rename.html', $swap($html, $rename, $media));
+    config(['media' => $mediaConfig]);
+
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 70);
 });
