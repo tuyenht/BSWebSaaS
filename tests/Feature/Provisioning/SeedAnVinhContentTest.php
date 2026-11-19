@@ -10,6 +10,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Forms\Models\Form;
+use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Provisioning\Actions\PromoteAnVinhProductPostsToCatalog;
 use App\Modules\Provisioning\Actions\ProvisionSite;
@@ -561,5 +562,17 @@ it('records the contact page it fills as the site\'s contact page setting', func
         $ulid = SiteRoute::query()->where('path', '/lien-he')->firstOrFail()->entry->ulid;
         $value = SiteSetting::query()->where('group_name', 'catalog')->where('key', 'contact_page')->value('value');
         expect($value)->toBe(['entry' => $ulid]);
+    });
+});
+
+it('names the website\'s owner as the creator of every post and page it seeds', function (): void {
+    $site = seedPrecisionSite();
+    app(Tenancy::class)->enter($site->id, fn () => app(SeedAnVinhContent::class)->handle());
+
+    app(Tenancy::class)->enter($site->id, function (): void {
+        $owner = User::query()->where('email', 'owner@anvinh.test')->value('id');
+
+        expect(Entry::query()->count())->toBeGreaterThan(2)
+            ->and(Entry::query()->where(fn ($q) => $q->whereNull('author_id')->orWhere('author_id', '!=', $owner))->count())->toBe(0);
     });
 });

@@ -662,7 +662,10 @@
 
                         <x-bs-admin::list.cell col="au">
                             <span class="list-au">
-                                <span class="list-avi" aria-hidden="true" style="background: {{ $c['bg'] }}; color: {{ $c['fg'] }};">{{ $initials }}</span>
+                                {{-- no recorded creator: a plain «—», no initials disc (board 05) --}}
+                                @if ($creator)
+                                    <span class="list-avi" aria-hidden="true" style="background: {{ $c['bg'] }}; color: {{ $c['fg'] }};">{{ $initials }}</span>
+                                @endif
                                 <span>{{ $creator ?? '—' }}</span>
                             </span>
                         </x-bs-admin::list.cell>

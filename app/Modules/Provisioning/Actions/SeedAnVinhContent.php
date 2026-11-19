@@ -16,6 +16,7 @@ use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Forms\Actions\EnsureContactForm;
 use App\Modules\Media\Services\EnsureMediaFromKey;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Provisioning\Support\FirstOwner;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteProfile;
@@ -224,6 +225,7 @@ final readonly class SeedAnVinhContent
         private MediaUrlResolver $media,
         private EnsureMediaFromKey $ensureMedia,
         private TaxonomyPaths $paths,
+        private FirstOwner $owner,
     ) {}
 
     public function handle(): void
@@ -701,6 +703,7 @@ final readonly class SeedAnVinhContent
 
         $entry = Entry::query()->create([
             'type' => 'post',
+            'author_id' => $this->owner->id(),
             'status' => 'published',
             'published_at' => now(),
             'meta' => ['image_url' => $image],
@@ -751,6 +754,7 @@ final readonly class SeedAnVinhContent
 
         $entry = Entry::query()->create([
             'type' => 'page',
+            'author_id' => $this->owner->id(),
             'status' => 'published',
             'published_at' => now(),
         ]);
