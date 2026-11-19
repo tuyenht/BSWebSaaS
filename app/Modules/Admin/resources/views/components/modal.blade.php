@@ -26,9 +26,9 @@
     // is open while it is set) and `close` (the Alpine call that clears it) instead of `model`: the
     // same form dialog, the opener taken and focused again the same way. A `heading` slot replaces
     // the title when it is drawn from that state.
-    $sizes = ['sm' => 'max-w-sm', 'md' => 'max-w-lg', 'lg' => 'max-w-2xl', 'wide' => 'max-w-160', 'narrow' => 'max-w-120'];
+    $sizes = ['sm' => 'max-w-sm', 'md' => 'max-w-lg', 'lg' => 'max-w-2xl', 'wide' => 'max-w-160', 'wider' => 'max-w-205', 'narrow' => 'max-w-120'];
     $box = $sizes[$size] ?? $sizes['md'];
-    $sheetBoxes = ['sm' => 'min-[600px]:max-w-sm', 'md' => 'min-[600px]:max-w-lg', 'lg' => 'min-[600px]:max-w-2xl', 'wide' => 'min-[600px]:max-w-160', 'narrow' => 'min-[600px]:max-w-120'];
+    $sheetBoxes = ['sm' => 'min-[600px]:max-w-sm', 'md' => 'min-[600px]:max-w-lg', 'lg' => 'min-[600px]:max-w-2xl', 'wide' => 'min-[600px]:max-w-160', 'wider' => 'min-[600px]:max-w-205', 'narrow' => 'min-[600px]:max-w-120'];
     $sheetBox = $sheetBoxes[$size] ?? $sheetBoxes['md'];
     $tid = ($model ?? $state) !== null ? 'modal-title-'.substr(md5((string) ($model ?? $state)), 0, 8) : 'modal-title-'.\Illuminate\Support\Str::random(6);
     $alpine = $state !== null;
@@ -40,7 +40,7 @@
         // the server may open it too, so the opener is taken whenever `open` turns true, and focus goes
         // back to it on close while it is still on the page (a row menu's item is gone by then, but the
         // menu puts focus on its ⋮ before the dialog opens, so the ⋮ is what is kept)
-        ? "{ open: \$wire.entangle('".$model."').live, opener: null, show() { this.open = true; }, hide() { this.open = false; },"
+        ? "{ open: \$wire.entangle('".$model."').live, opener: null, show() { this.open = true; }, hide() { if (this.\$root.getAttribute('aria-busy') !== 'true') { this.open = false; } },"
             ." init() { this.\$watch('open', (v) => { if (v) { this.opener = document.activeElement; return; }"
             ." const back = this.opener; this.opener = null; this.\$nextTick(() => { if (back && back.isConnected) back.focus(); }); }); } }"
         : '{ open: false, opener: null, show() { this.opener = document.activeElement; this.open = true; }, hide() { this.open = false; this.opener?.focus(); } }');
@@ -50,9 +50,13 @@
     $sheetMax = $compact ? 'max-h-[90dvh]' : 'max-h-[92dvh]';
     $dialogRole = $alert ? 'alertdialog' : 'dialog';
 @endphp
-<div x-data="{{ $state }}"
-     x-effect="document.body.style.overflow = open ? 'hidden' : ''"
-     @keydown.escape.window="open && hide()"
+{{-- With one dialog stacked on another (a version opened from the history list) Escape closes only the
+     top one, the last open dialog on the page, wherever the focus is; the page behind stays locked
+     until the last open dialog closes. A root whose aria-busy is "true" (wire:loading.attr) is not
+     closed while it works. --}}
+<div x-data="{{ $state }}" data-bs-modal
+     x-effect="if (open) { document.body.style.overflow = 'hidden'; } else { setTimeout(() => { if (! [...document.querySelectorAll('[data-bs-modal]')].some((m) => window.Alpine.$data(m).open)) { document.body.style.overflow = ''; } }); }"
+     @keydown.escape.window="if (open) { const up = [...document.querySelectorAll('[aria-modal=true]')].filter((d) => d.getClientRects().length > 0); if (up.length === 0 || $el.contains(up[up.length - 1])) { hide(); } }"
      {{ $attributes }}>
     @isset($trigger)
         <div @click="show()" class="inline-flex cursor-pointer">{{ $trigger }}</div>
