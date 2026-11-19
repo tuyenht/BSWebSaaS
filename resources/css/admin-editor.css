@@ -421,7 +421,7 @@
         padding: 0.75rem;
         border: 1px solid var(--color-warning-text);
         border-radius: 0.375rem;
-        background: color-mix(in srgb, var(--color-admin-warning) 12%, var(--color-surface));
+        background: color-mix(in srgb, var(--color-warning-base) 12%, var(--color-surface));
     }
 
     .entry-cas-ask p {
