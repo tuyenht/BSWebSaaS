@@ -12,7 +12,7 @@
     <link rel="icon" href="/favicon.ico" sizes="any">
     <meta name="description" content="{{ $metaDescription ?? config('admin.brand.name').' — '.config('admin.brand.tagline') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <link rel="stylesheet" href="{{ asset('assets/css/auth.css') }}?v=8">
+    <link rel="stylesheet" href="{{ asset('assets/css/auth.css') }}?v=9">
     {{-- auth.css golden-standard values are sized against a 14px root (Velzon convention) --}}
     <style>html{font-size:14px}</style>
     @livewireStyles

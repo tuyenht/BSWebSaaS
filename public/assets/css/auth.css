@@ -249,7 +249,12 @@
    and disappears, and the mobile scaler thins it to ~0.7px. So .cf-turnstile sits 1px outside the host on
    every side, the host clips it (overflow:hidden clips at the padding box, i.e. under our border) and
    draws its own 1px border with the same colour and radius as the inputs. bsFitTurnstile keeps the host
-   height hugging the scaled widget. No frame while the widget has not been drawn (empty .cf-turnstile). */
+   height hugging the scaled widget.
+
+   The iframe is an inline box on a text line, which adds ~6px under it (71px box for a 65px widget):
+   line-height/font-size 0 (inherited into Cloudflare's shadow root) drop that gap, so the frame's bottom
+   edge is the widget's. Until Cloudflare draws the widget, .cf-turnstile keeps the widget's height and the
+   frame shows the widget's background, so nothing below it moves when it appears. */
 .auth-turnstile {
   display: flex;
   min-width: 0;
@@ -259,10 +264,8 @@
   /* slate-200 — the inputs' border */
   border-radius: 10.5px;
   /* the inputs' radius */
-}
-
-.auth-turnstile:has(> .cf-turnstile:empty) {
-  border-color: transparent;
+  background: #f8f8f8;
+  /* the widget's own light background (measured), shown while it loads */
 }
 
 .auth-turnstile .cf-turnstile {
@@ -270,6 +273,12 @@
   width: calc(100% + 2px); /* give the flexible widget the full field width to expand into (desktop fill) */
   max-width: none;
   margin: -1px; /* Cloudflare's own border lands under ours and is clipped */
+  line-height: 0;
+  font-size: 0;
+}
+
+.auth-turnstile .cf-turnstile:empty {
+  height: 65px; /* Cloudflare's widget height: the room is held before it is drawn */
 }
 
 /* ---- Input Group ---- */

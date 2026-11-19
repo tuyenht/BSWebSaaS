@@ -2,6 +2,7 @@
 paths:
   - "resources/js/**"
   - "resources/css/**"
+  - "public/assets/css/**"
   - "app/Modules/**/resources/views/**"
   - "themes/**"
   - "vite.config.js"
@@ -30,5 +31,6 @@ Goal: one copy of each pattern, and a page downloads only what it uses. The CI `
   - a changed font gets a new file name or a Cloudflare purge (fonts are cached 30 days at the edge).
   - Layers: an element that covers its parent (a stretched link `::after`, a shade, a hover panel) stays inside a parent that is its own stacking layer (`isolation: isolate`, as `.sf-card` has). A control drawn over another element (rail and rotator arrows, slider controls) gets a z-index above every layer inside that element. A new section with controls over content goes on a CI tap-check page (`/do-kiem`, seeded by `SeedMeasurementSite`).
   - Check taps on a live site or a fix before it ships: `node scripts/storefront/tap-check.mjs --chrome=<path> --widths=320,390 [--add-css='<css>'] <url>…` (exit 1 = a control covered at its centre, or an arrow tap that opened a card).
+- **Sign-in page Turnstile box** (`public/assets/css/auth.css` `.auth-turnstile` + `partials/turnstile-field.blade.php`): the page draws the frame and clips Cloudflare's own border, because Cloudflare's lost its right edge at fractional widths (Windows display scaling 125%/150%). After touching either file, run `node scripts/admin/turnstile-frame-check.mjs --chrome=<path> <login url>` (exit 1 = an edge missing or the frame off the widget). It needs a drawn widget: a live site, or a local copy of the page with Cloudflare's test key `1x00000000000000000000AA`.
 - **Dependencies:** before adding a package, check its gzipped size and its licence (no GPL), and whether a few lines of our own code do the job. A new entry or lazy chunk needs its budget line: `node scripts/asset-budget.mjs --update`, committed with the change, and the PR says why it grew.
 - **CSS:** Tailwind 4 utilities and the design tokens first. A screen-specific CSS file is a smell: keep it only for a shared part's own styles.
