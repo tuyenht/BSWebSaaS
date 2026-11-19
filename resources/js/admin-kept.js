@@ -122,5 +122,5 @@ export function when(iso, cfg) {
 if (typeof window !== 'undefined') {
     window.bsKept = { PREFIX, read, write, remove, clearAll, prune, valuesOf, when };
     prune();
-    window.dispatchEvent(new CustomEvent('bs-kept-ready'));
+    window.dispatchEvent(new window.CustomEvent('bs-kept-ready'));
 }
