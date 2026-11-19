@@ -211,6 +211,25 @@ final readonly class EntryContentWriter
     }
 
     /**
+     * Whether writing this content would change the shared fields (template, cover, meta), which
+     * belong to every language's page — the same test write() makes, on a copy of the entry, so a
+     * question asked before a restore says what the restore will do.
+     *
+     * @param  EntryContent  $content
+     */
+    public function changesShared(Entry $entry, array $content): bool
+    {
+        $probe = clone $entry;
+        $probe->fill([
+            'template_override' => $content['template_override'],
+            'cover_media_id' => $content['cover_media_id'],
+            'meta' => $content['meta'],
+        ]);
+
+        return $probe->isDirty(['template_override', 'cover_media_id', 'meta']);
+    }
+
+    /**
      * Store the content: the shared fields (template, cover, meta) on the entry, the rest on the
      * locale's translation — created when the entry has lost that language since. Other languages'
      * text is never touched. Returns the saved translation and whether the shared fields changed
