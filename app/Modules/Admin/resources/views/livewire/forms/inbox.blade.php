@@ -183,6 +183,23 @@
         <p class="m-0 text-body text-text-muted [overflow-wrap:anywhere] [text-wrap:pretty]">{{ __('leads.desc') }}</p>
     </header>
 
+    {{-- A switched-off form: visitors cannot send it; its leads stay. «Bật lại» for whoever may change forms. --}}
+    @foreach ($failed ? [] : $offForms as $off)
+        <x-bs-admin::alert color="warning" role="status" data-state="form-off">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <x-bs-admin::icon name="ri-pause-circle" class="size-[min(1.5rem,calc(1.125rem+var(--user-text-boost)))] shrink-0" />
+                <span class="min-w-0 flex-[1_1_260px] [overflow-wrap:anywhere]">{{ __('leads.form_off_band', ['name' => $formName($off)]) }}</span>
+                @can('update', $off)
+                    <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="turnFormOn({{ Js::from($off->ulid) }})" wire:loading.attr="disabled" wire:target="turnFormOn">
+                        <x-bs-admin::icon name="ri-play-circle" class="size-4" /> {{ __('leads.form_on') }}
+                    </x-bs-admin::button>
+                @else
+                    <span>{{ __('leads.form_on_ask') }}</span>
+                @endcan
+            </div>
+        </x-bs-admin::alert>
+    @endforeach
+
     @if ($failed)
         <x-bs-admin::card flush role="alert" data-state="error" class="min-w-0">
             <div class="flex max-w-160 flex-col items-start gap-3 px-6 py-8">

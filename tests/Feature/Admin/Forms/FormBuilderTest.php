@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Livewire\Forms\FormEditor;
 use App\Modules\Admin\Livewire\Forms\FormList;
+use App\Modules\Admin\Livewire\Forms\Inbox;
 use App\Modules\Forms\Actions\EnsureContactForm;
 use App\Modules\Forms\Actions\SaveForm;
 use App\Modules\Forms\Models\Form;
@@ -475,4 +476,77 @@ it('no longer brings back a default field the site removed from its contact form
         expect(fieldKeys($form))->not->toContain('message')
             ->and(fieldKeys($form))->toContain('consent');
     });
+});
+
+it('tells the leads inbox the contact form is off and lets a manager turn it back on', function (): void {
+    $manager = builderManager();
+    $form = seedBuilderForm(1, 'contact', 'Liên hệ', 'disabled');
+
+    $this->actingAs($manager)->get('http://a.test/admin/forms')->assertOk()
+        ->assertSee('data-state="form-off"', false)
+        ->assertSee(__('leads.form_off_band', ['name' => 'Liên hệ']))
+        ->assertSee(__('leads.form_on'));
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $form): void {
+        Livewire::actingAs($manager)->test(Inbox::class)
+            ->call('turnFormOn', $form->ulid)
+            ->assertSet('toastMsg', __('leads.form_on_toast', ['name' => 'Liên hệ']))
+            ->assertDontSee('data-state="form-off"', false);
+        expect(Form::query()->find($form->id)?->status)->toBe('active');
+    });
+});
+
+it('speaks of the contact form only, whatever form the list is filtered to', function (): void {
+    $manager = builderManager();
+    seedBuilderForm(1, 'contact', 'Liên hệ', 'disabled');
+    $quote = seedBuilderForm(1, 'bao-gia', 'Yêu cầu báo giá', 'disabled');
+
+    $this->actingAs($manager)->get('http://a.test/admin/forms?form[]='.$quote->ulid)->assertOk()
+        ->assertSee(__('leads.form_off_band', ['name' => 'Liên hệ']))
+        ->assertDontSee(__('leads.form_off_band', ['name' => 'Yêu cầu báo giá']));
+
+    app(Tenancy::class)->enter(1, fn () => Form::query()->where('key', 'contact')->update(['status' => 'active']));
+    $this->actingAs($manager)->get('http://a.test/admin/forms?form[]='.$quote->ulid)->assertOk()
+        ->assertDontSee('data-state="form-off"', false);
+});
+
+it('changes nothing when the form to turn on is not there', function (string $ulid): void {
+    $manager = builderManager();
+    $form = seedBuilderForm(1, 'contact', 'Liên hệ', 'disabled');
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $form, $ulid): void {
+        Livewire::actingAs($manager)->test(Inbox::class)
+            ->call('turnFormOn', $ulid)
+            ->assertSet('toastTone', 'error');
+        expect(Form::query()->find($form->id)?->status)->toBe('disabled');
+    });
+})->with(['an unknown ulid' => ['01JZZZZZZZZZZZZZZZZZZZZZZZ'], 'not a ulid' => ['nope']]);
+
+it('shows a member who only reads leads the band without the button, and refuses the turn on', function (): void {
+    $viewer = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($viewer, 'editor', ['forms.view']));
+    $form = seedBuilderForm(1, 'contact', 'Liên hệ', 'disabled');
+
+    $this->actingAs($viewer)->get('http://a.test/admin/forms')->assertOk()
+        ->assertSee(__('leads.form_on_ask'))
+        ->assertDontSee('turnFormOn', false);
+
+    app(Tenancy::class)->enter(1, function () use ($viewer, $form): void {
+        Livewire::actingAs($viewer->fresh())->test(Inbox::class)
+            ->call('turnFormOn', $form->ulid)
+            ->assertForbidden();
+        expect(Form::query()->find($form->id)?->status)->toBe('disabled');
+    });
+});
+
+it('never turns on another site\'s form from the inbox', function (): void {
+    $manager = builderManager(1);
+    $other = seedBuilderForm(2, 'contact', 'Liên hệ B', 'disabled');
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $other): void {
+        Livewire::actingAs($manager)->test(Inbox::class)
+            ->call('turnFormOn', $other->ulid)
+            ->assertSet('toastTone', 'error');
+    });
+    app(Tenancy::class)->enter(2, fn () => expect(Form::query()->find($other->id)?->status)->toBe('disabled'));
 });

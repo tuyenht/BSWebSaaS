@@ -6298,5 +6298,9 @@
     "form_builder.leave_save": "保存して移動",
     "form_builder.leave_discard": "変更を破棄して移動",
     "form_builder.fields_none": "訪問者が記入する項目を少なくとも1つ追加してください（チェックボックスは数えません）。例：「氏名」。",
-    "form_builder.forms_max": "このサイトのフォームは :max 件で上限です。既存のフォームを再利用してください。"
+    "form_builder.forms_max": "このサイトのフォームは :max 件で上限です。既存のフォームを再利用してください。",
+    "leads.form_off_band": "フォーム「:name」はオフです — 新しい問い合わせは送信できません。受信済みの問い合わせはすべて残っています。",
+    "leads.form_on": "再びオンにする",
+    "leads.form_on_ask": "管理者に「フォーム」で再びオンにするよう依頼してください。",
+    "leads.form_on_toast": "フォーム「:name」を再びオンにしました — すぐに送信できます"
 }

@@ -6298,5 +6298,9 @@
     "form_builder.leave_save": "保存并离开",
     "form_builder.leave_discard": "放弃更改并离开",
     "form_builder.fields_none": "请至少添加一个供访客填写的字段（勾选框不算），例如“姓名”。",
-    "form_builder.forms_max": "此网站已有 :max 个表单，已达上限。请改用现有表单。"
+    "form_builder.forms_max": "此网站已有 :max 个表单，已达上限。请改用现有表单。",
+    "leads.form_off_band": "表单“:name”已关闭 — 访客无法提交新的请求。已收到的联系全部保留。",
+    "leads.form_on": "重新开启",
+    "leads.form_on_ask": "请管理员在“表单”中重新开启。",
+    "leads.form_on_toast": "已重新开启表单“:name”— 访客现在即可提交"
 }

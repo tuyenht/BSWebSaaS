@@ -6298,5 +6298,9 @@
     "form_builder.leave_save": "Lưu và rời đi",
     "form_builder.leave_discard": "Bỏ thay đổi và rời đi",
     "form_builder.fields_none": "Thêm ít nhất một ô để khách điền (không tính ô tích), ví dụ \"Họ tên\".",
-    "form_builder.forms_max": "Website đã có :max biểu mẫu — tối đa rồi. Hãy dùng lại một biểu mẫu đang có."
+    "form_builder.forms_max": "Website đã có :max biểu mẫu — tối đa rồi. Hãy dùng lại một biểu mẫu đang có.",
+    "leads.form_off_band": "Biểu mẫu \":name\" đang tắt — khách không gửi được yêu cầu mới. Liên hệ đã nhận vẫn còn đủ.",
+    "leads.form_on": "Bật lại",
+    "leads.form_on_ask": "Nhờ người quản trị bật lại ở mục Biểu mẫu.",
+    "leads.form_on_toast": "Đã bật lại biểu mẫu \":name\" — khách gửi được ngay"
 }
