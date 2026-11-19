@@ -2,12 +2,15 @@
 
 use App\Modules\Admin\Livewire\Media\Library;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Jobs\DeleteLargeMediaFolder;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
@@ -488,4 +491,135 @@ it('never deletes a folder of another site, nor brings one back there', function
         expect(MediaFolder::query()->find($mine->id))->toBeNull()
             ->and(Media::query()->find($myFile->id)?->folder_id)->toBeNull();
     });
+});
+
+/** @return array{folder: MediaFolder, files: list<Media>} a folder of $n files, the last one in the Trash */
+function fdBigFolder(int $site, string $slug, int $n): array
+{
+    $folder = fdFolder($site, 'Lớn '.$slug, $slug, 1);
+    $files = [];
+    for ($i = 1; $i <= $n; $i++) {
+        $files[] = fdFile($site, "{$slug}-{$i}.png", $folder);
+    }
+    app(Tenancy::class)->enter($site, fn () => $files[$n - 1]->delete());
+
+    return ['folder' => $folder, 'files' => $files];
+}
+
+/** @return array{filed: int, folder: bool} the files of $site still in the folder, and whether the folder is still there */
+function fdLeft(int $site, int $folderId): array
+{
+    return app(Tenancy::class)->enter($site, fn (): array => [
+        'filed' => Media::withTrashed()->where('folder_id', $folderId)->count(),
+        'folder' => MediaFolder::query()->whereKey($folderId)->exists(),
+    ]);
+}
+
+it('leaves a folder with more files than one request moves to a queued job, and says so before and after', function (): void {
+    config(['media.folder_delete_inline_max_files' => 2]);
+    Queue::fake();
+    $user = fdUser('admin');
+    ['folder' => $folder] = fdBigFolder(1, 'lon', 3); // the Trash counts too: 3 files > 2
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Livewire::actingAs($user)->test(Library::class)
+            ->call('askDeleteFolder', 'lon')
+            ->assertSet('folderInBatches', true)
+            ->assertSet('folderNoUndo', true)
+            ->assertSee('Tệp được chuyển dần về Tất cả ảnh trong vài phút; thư mục biến mất khi chuyển xong.')
+            ->call('confirmDeleteFolder')
+            ->assertSet('folderInBatches', false)
+            ->assertSet('undoFolder', '')
+            ->assertSet('toast', 'Đang chuyển 2 tệp của thư mục "Lớn lon" về Tất cả ảnh (Chưa phân loại)… Thư mục biến mất khi chuyển xong, không có Hoàn tác.')
+            ->assertDontSee('undoFolderDelete', false);
+    });
+
+    // nothing was rewritten inside the request: the job does it
+    Queue::assertPushed(DeleteLargeMediaFolder::class, fn (DeleteLargeMediaFolder $job): bool => $job->siteId === 1 && $job->folderId === $folder->id && $job->after === 0);
+    expect(fdLeft(1, $folder->id))->toBe(['filed' => 3, 'folder' => true]);
+
+    // exactly at the limit the folder goes inside the request, with Hoàn tác
+    $small = fdFolder(1, 'Nhỏ', 'nho', 2);
+    fdFile(1, 'n1.png', $small);
+    fdFile(1, 'n2.png', $small);
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($user)->test(Library::class)
+        ->call('askDeleteFolder', 'nho')->assertSet('folderInBatches', false)->assertSet('folderNoUndo', false)
+        ->call('confirmDeleteFolder')->assertNotSet('undoFolder', ''));
+    expect(fdLeft(1, $small->id))->toBe(['filed' => 0, 'folder' => false]);
+    Queue::assertPushed(DeleteLargeMediaFolder::class, 1);
+});
+
+it('empties a large folder in batches, each in its own site transaction, then deletes it', function (): void {
+    config(['media.folder_delete_batch_files' => 2]);
+    ['folder' => $folder, 'files' => $files] = fdBigFolder(1, 'lon', 5);
+    $other = fdFolder(1, 'Khác', 'khac', 2);
+    $kept = fdFile(1, 'khac.png', $other);
+    $theirs = fdFolder(2, 'Của B', 'cua-b', 1);
+    $theirFile = fdFile(2, 'b.png', $theirs);
+
+    $contexts = 0;
+    $updates = [];
+    DB::listen(function ($query) use (&$contexts, &$updates): void {
+        if (str_contains($query->sql, 'set_config')) {
+            $contexts++;
+        }
+        if (str_starts_with($query->sql, 'update "media"')) {
+            // every batch runs with this site's context set for its own transaction
+            $updates[] = DB::scalar("select current_setting('app.current_site_id', true)");
+        }
+    });
+    $done = (new DeleteLargeMediaFolder(1, $folder->id))->handle(app(Tenancy::class));
+
+    expect($done)->toBeTrue()
+        ->and($updates)->toBe(['1', '1', '1']) // 5 files, 2 at a time
+        ->and($contexts)->toBe(5) // three batches, the empty read that ends them, the delete
+        ->and(fdLeft(1, $folder->id))->toBe(['filed' => 0, 'folder' => false])
+        ->and(app(Tenancy::class)->enter(1, fn () => Media::withTrashed()->whereIn('id', array_map(fn (Media $f): int => $f->id, $files))->count()))->toBe(5)
+        ->and(app(Tenancy::class)->enter(1, fn () => Media::query()->find($kept->id)?->folder_id))->toBe($other->id)
+        ->and(app(Tenancy::class)->enter(2, fn () => Media::query()->find($theirFile->id)?->folder_id))->toBe($theirs->id);
+});
+
+it('never touches another site with a queued folder delete', function (): void {
+    ['folder' => $folder] = fdBigFolder(1, 'lon', 3);
+
+    // a job naming site B with site A's folder finds nothing under site B's context
+    expect((new DeleteLargeMediaFolder(2, $folder->id))->handle(app(Tenancy::class)))->toBeTrue()
+        ->and(fdLeft(1, $folder->id))->toBe(['filed' => 3, 'folder' => true]);
+});
+
+it('picks up a large folder delete where it stopped after a failure, and a second run finds nothing to do', function (): void {
+    config(['media.folder_delete_batch_files' => 2]);
+    ['folder' => $folder] = fdBigFolder(1, 'lon', 5);
+
+    $seen = 0;
+    DB::listen(function ($query) use (&$seen): void {
+        if (str_starts_with($query->sql, 'update "media"') && ++$seen === 2) {
+            throw new RuntimeException('the worker died');
+        }
+    });
+    expect(fn () => (new DeleteLargeMediaFolder(1, $folder->id))->handle(app(Tenancy::class)))->toThrow(RuntimeException::class);
+    // the first batch stayed done; the folder is still there
+    expect(fdLeft(1, $folder->id))->toBe(['filed' => 3, 'folder' => true]);
+
+    expect((new DeleteLargeMediaFolder(1, $folder->id))->handle(app(Tenancy::class)))->toBeTrue()
+        ->and(fdLeft(1, $folder->id))->toBe(['filed' => 0, 'folder' => false])
+        ->and((new DeleteLargeMediaFolder(1, $folder->id))->handle(app(Tenancy::class)))->toBeTrue();
+});
+
+it('sweeps again when more files than one batch came into a large folder below where it had got to', function (): void {
+    config(['media.folder_delete_batch_files' => 1]);
+    $early = [fdFile(1, 'early-1.png'), fdFile(1, 'early-2.png')]; // unfiled, lower ids than the folder's files
+    ['folder' => $folder] = fdBigFolder(1, 'lon', 3);
+
+    // once the job has passed the folder's first file, someone moves the two older files into it
+    $moved = false;
+    DB::listen(function ($query) use (&$moved, $early, $folder): void {
+        if (! $moved && str_starts_with($query->sql, 'update "media"')) {
+            $moved = true;
+            DB::table('media')->whereIn('id', [$early[0]->id, $early[1]->id])->update(['folder_id' => $folder->id]);
+        }
+    });
+    expect((new DeleteLargeMediaFolder(1, $folder->id))->handle(app(Tenancy::class)))->toBeTrue()
+        ->and($moved)->toBeTrue()
+        ->and(fdLeft(1, $folder->id))->toBe(['filed' => 0, 'folder' => false]);
 });

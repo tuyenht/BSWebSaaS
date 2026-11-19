@@ -6,6 +6,7 @@ use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\MediaLibraryDirectory;
 use App\Modules\Admin\Support\MediaUsageLocator;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Jobs\DeleteLargeMediaFolder;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -112,6 +113,10 @@ final class Library extends Component
     /** The folder asked about holds more files than Hoàn tác keeps (config media.folder_undo_max_files). */
     #[Locked]
     public bool $folderNoUndo = false;
+
+    /** The folder asked about holds more files than one request moves (config media.folder_delete_inline_max_files). */
+    #[Locked]
+    public bool $folderInBatches = false;
 
     /** The key of the last folder delete kept for Hoàn tác (the folder and its files, server side). */
     #[Locked]
@@ -467,7 +472,8 @@ final class Library extends Component
         if ($folder === null) {
             return;
         }
-        $noUndo = self::tooManyForUndo($folder->id);
+        $inBatches = self::tooManyInline($folder->id);
+        $noUndo = $inBatches || self::tooManyForUndo($folder->id);
         if (! $noUndo && ! Media::query()->where('folder_id', $folder->id)->exists()) {
             $this->deleteFolder($folder);
 
@@ -475,6 +481,7 @@ final class Library extends Component
         }
         $this->folderToDelete = (string) $folder->slug;
         $this->folderNoUndo = $noUndo;
+        $this->folderInBatches = $inBatches;
         $this->askFolderOpen = true;
     }
 
@@ -483,6 +490,7 @@ final class Library extends Component
         $this->askFolderOpen = false;
         $this->folderToDelete = '';
         $this->folderNoUndo = false;
+        $this->folderInBatches = false;
     }
 
     public function confirmDeleteFolder(): void
@@ -874,6 +882,16 @@ final class Library extends Component
             ->offset(Cast::int(config('media.folder_undo_max_files', 100000)))->exists();
     }
 
+    /**
+     * More files (Trash included) than one web request moves back to no folder — such a folder is
+     * emptied in batches off the request (DeleteLargeMediaFolder), without Hoàn tác.
+     */
+    private static function tooManyInline(int $folderId): bool
+    {
+        return Media::withTrashed()->where('folder_id', $folderId)
+            ->offset(Cast::int(config('media.folder_delete_inline_max_files', 20000)))->exists();
+    }
+
     /** The cache key of a folder delete kept for Hoàn tác: this site's, this member's, this delete's. */
     private static function folderUndoKey(string $token): string
     {
@@ -883,7 +901,8 @@ final class Library extends Component
     /**
      * Deletes the folder: its files (live and in the Trash) go back to no folder through the foreign
      * key. What Hoàn tác needs — the name, slug, place and the files' ids — is kept server side for a
-     * few minutes; the page holds only its random key.
+     * few minutes; the page holds only its random key. A folder with more files than one request
+     * moves is left in place and emptied in batches by a queued job, which then deletes it.
      */
     private function deleteFolder(MediaFolder $folder): void
     {
@@ -896,16 +915,21 @@ final class Library extends Component
                 return null;
             }
             $live = Media::query()->where('folder_id', $row->id)->count();
+            if (self::tooManyInline($row->id)) {
+                DeleteLargeMediaFolder::dispatch(app(CurrentSite::class)->id(), $row->id); // once this commits
+
+                return ['live' => $live, 'ids' => null, 'row' => $row, 'later' => true];
+            }
             $ids = self::tooManyForUndo($row->id) ? null : Media::withTrashed()->where('folder_id', $row->id)->pluck('id')
                 ->map(fn (mixed $id): int => Cast::int($id))->all();
             $row->delete();
 
-            return ['live' => $live, 'ids' => $ids, 'row' => $row];
+            return ['live' => $live, 'ids' => $ids, 'row' => $row, 'later' => false];
         });
         if ($done === null) {
             return;
         }
-        ['live' => $live, 'ids' => $ids, 'row' => $folder] = $done;
+        ['live' => $live, 'ids' => $ids, 'row' => $folder, 'later' => $later] = $done;
 
         $token = '';
         if ($ids !== null) {
@@ -927,6 +951,7 @@ final class Library extends Component
             $this->cancelRename();
         }
         $this->say(match (true) {
+            $later => __('media.lib.folder_deleting', ['name' => $name, 'n' => number_format($live, 0, ',', '.')]),
             $ids === null => __('media.lib.folder_deleted_no_undo', ['name' => $name, 'n' => number_format($live, 0, ',', '.')]),
             $live > 0 => __('media.lib.folder_deleted_n', ['name' => $name, 'n' => number_format($live, 0, ',', '.')]),
             default => __('media.lib.folder_deleted', ['name' => $name]),

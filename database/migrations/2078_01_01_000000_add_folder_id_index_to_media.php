@@ -9,7 +9,9 @@ use Illuminate\Support\Facades\DB;
  * RLS, so the `(site_id, folder_id, position)` index cannot serve it and every site's media rows
  * would be scanned inside the deleting request's transaction. This index leads with folder_id.
  * Most files sit in no folder, so it is partial `WHERE folder_id IS NOT NULL`: the lookup's `=`
- * implies the predicate, so the planner still uses it, and unfiled rows stay out of it.
+ * implies the predicate, so the planner still uses it, and unfiled rows stay out of it. Its second
+ * column, id, serves the batches that empty a large folder before its delete (keyset by id:
+ * `folder_id = $1 AND id > $2 ORDER BY id LIMIT n` reads n entries, never the whole folder).
  *
  * CONCURRENTLY forbids a transaction, so a mid-run failure must be safely re-runnable: an index an
  * interrupted build left INVALID is dropped and built again (IF NOT EXISTS alone would keep it).
@@ -32,7 +34,7 @@ return new class extends Migration
             DB::statement('DROP INDEX CONCURRENTLY IF EXISTS '.self::INDEX);
         }
 
-        DB::statement('CREATE INDEX CONCURRENTLY IF NOT EXISTS '.self::INDEX.' ON media (folder_id) WHERE folder_id IS NOT NULL');
+        DB::statement('CREATE INDEX CONCURRENTLY IF NOT EXISTS '.self::INDEX.' ON media (folder_id, id) WHERE folder_id IS NOT NULL');
     }
 
     public function down(): void
