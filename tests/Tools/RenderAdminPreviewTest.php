@@ -544,6 +544,10 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$post->ulid.'/edit')->assertOk()->getContent();
     expect($html)->toContain('data-seo-fields', 'wire:model="excerpt"');
     file_put_contents($dir.'/post-editor.html', $html);
+    // A new post: the frame's header says «Thêm mới», Xem trước waits for the first save, no Trash.
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/create?section=posts')->assertOk()->getContent();
+    expect($html)->toContain('data-child-screen', 'data-guide="preview"')->not->toContain('wire:click="trash"');
+    file_put_contents($dir.'/post-new.html', $html);
 
     // "Chuyên mục" of the news section: a small tree as deep as it may go (three levels), one category translated,
     // long enough names that a clipped name or a sideways scroll shows up.
@@ -630,6 +634,9 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog/'.$product->ulid.'/edit')->assertOk()->getContent();
     expect($html)->toContain('data-seo-fields')->not->toContain('wire:model="excerpt"');
     file_put_contents($dir.'/product-editor.html', $html);
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog/create')->assertOk()->getContent();
+    expect($html)->toContain('data-child-screen', 'ped-child-mi')->not->toContain('wire:click="trash"');
+    file_put_contents($dir.'/product-new.html', $html);
 
     // Trình đơn on a selling site: a products section with one category and a header setting, so the
     // phone menu area shows its note about the products tab.
@@ -852,5 +859,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-te-page="suspended"');
     file_put_contents($dir.'/error-suspended.html', $html);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 56);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 58);
 });

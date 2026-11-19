@@ -1,17 +1,19 @@
-@props(['guide' => null])
+@props(['guide' => null, 'box' => true, 'iconOnly' => false])
 @php
     // A screen's «Hướng dẫn» (App\Modules\Admin\Support\Guide\Guide): a (?) ring and the word, the word
     // left out below 768px (the name stays in aria-label), its hit area 44px — drawn with shared utilities
     // only, as every admin page loads them. Beside it, the member's guide printed for
     // resources/js/admin-guide.js, which downloads on the first press (app.js). The screen passes the
     // guide on its first draw only; wire:ignore keeps what was printed through the redraws that follow,
-    // so they read nothing more for it.
+    // so they read nothing more for it. A second «Hướng dẫn» on the same screen (an editor's phone bar) passes
+    // :box="false": the guide is printed once; `icon-only` leaves the word out at every width.
 @endphp
 <button type="button" data-guide-open aria-haspopup="dialog" aria-expanded="false"
         aria-label="{{ __('guide.ui.open_aria') }}" title="{{ __('guide.ui.open_tip') }}"
-        {{ $attributes->merge(['class' => 'hit-area relative inline-flex min-h-hit min-w-hit items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 align-middle text-body font-semibold text-primary-text transition-colors hover:bg-surface-hover max-md:px-0']) }}>
-    <span class="inline-flex size-7 shrink-0 items-center justify-center rounded-full border-[1.5px] border-border-input bg-surface" aria-hidden="true"><x-bs-admin::icon name="ri-question-mark" class="size-4" /></span><span class="max-md:hidden">{{ __('guide.ui.open') }}</span>
+        {{ $attributes->merge(['class' => 'hit-area relative inline-flex min-h-hit min-w-hit items-center justify-center gap-1.5 whitespace-nowrap rounded-md '.($iconOnly ? 'px-0' : 'px-3 max-md:px-0').' align-middle text-body font-semibold text-primary-text transition-colors hover:bg-surface-hover']) }}>
+    <span class="inline-flex size-7 shrink-0 items-center justify-center rounded-full border-[1.5px] border-border-input bg-surface" aria-hidden="true"><x-bs-admin::icon name="ri-question-mark" class="size-4" /></span>@unless ($iconOnly)<span class="max-md:hidden">{{ __('guide.ui.open') }}</span>@endunless
 </button>
+@if ($box)
 <div hidden wire:ignore data-guide-box>
     @if (is_array($guide))
         <script type="application/json" data-guide-ctx>@json($guide, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP)</script>
@@ -22,3 +24,4 @@
         </template>
     @endif
 </div>
+@endif

@@ -8,7 +8,7 @@
     // count of changes is not read out at every keystroke, saving and no connection are.
     $glyph = 'size-[1.15em] shrink-0';
 @endphp
-<span {{ $attributes->only('class')->merge(['class' => 'flex min-w-0']) }}>
+<span {{ $attributes->only(['class', 'data-guide'])->merge(['class' => 'flex min-w-0']) }}>
     <span role="status" class="bs-save-state bs-save-state-rest @max-[48rem]:rounded-xl" data-s="{{ $note['key'] }}" title="{{ $note['tip'] }}">
         <x-bs-admin::icon :name="$note['icon']" :class="$glyph" /><span aria-hidden="true">{{ $note['text'] }}</span><span class="sr-only">{{ $note['full'] }}</span>
     </span>

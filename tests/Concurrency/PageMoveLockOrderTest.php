@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\Index;
 use App\Modules\Cms\Actions\MovePage;
 use App\Modules\Cms\Models\Entry;
@@ -188,6 +189,30 @@ it('locks a page and its sub-pages in id order before it puts the branch in the 
         expect($locked)->toBeInt()->and($firstWrite)->toBeInt()->and($locked)->toBeLessThan($firstWrite)
             ->and(plFirst($statements, plPageLock(...)))->toBeLessThan($locked)
             ->and($statements[$locked][0])->toContain('order by "id" asc');
+    });
+});
+
+it('puts a page in the Trash from its editor under the page-tree lock, taken before the page row is locked', function (): void {
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'owner', PermissionRegistry::TENANT_PERMISSIONS));
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'draft']);
+        $page->translations()->create(['locale' => 'vi', 'title' => 'T p', 'slug' => 'p', 'status' => 'draft', 'body' => ['blocks' => []]]);
+        $editor = Livewire::actingAs($user->fresh() ?? $user)->test(Editor::class, ['ulid' => $page->ulid]);
+
+        // the page's row lock: its id bound, or written into the SQL (integer keys of a list are inlined)
+        $rowLock = fn (string $sql, array $bindings): bool => str_contains($sql, 'from "entries"') && str_contains($sql, 'for update')
+            && (in_array($page->id, $bindings, true) || preg_match('/"entries"\."id" (?:= |in \()'.$page->id.'\b/', $sql) === 1);
+        $statements = plStatements(fn () => $editor->call('trash'));
+        $lock = plFirst($statements, plPageLock(...));
+        $locked = plFirst($statements, $rowLock);
+        $firstWrite = plFirst($statements, fn (string $sql): bool => str_starts_with(ltrim($sql), 'update "entries" set "deleted_at"'));
+
+        expect($page->fresh()?->trashed())->toBeTrue()
+            ->and($lock)->toBeInt()->and($locked)->toBeInt()->and($firstWrite)->toBeInt()
+            ->and($lock)->toBeLessThan($locked)
+            ->and($locked)->toBeLessThan($firstWrite);
     });
 });
 

@@ -53,7 +53,7 @@ describe('buttons and title per status', function (): void {
 
         app(Tenancy::class)->enter(1, function () use ($user): void {
             Livewire::actingAs($user)->test(Editor::class)
-                ->assertViewHas('actions', ['secondary' => 'Lưu nháp', 'primary' => 'Đăng', 'primaryIcon' => 'ri-global'])
+                ->assertViewHas('actions', ['secondary' => 'Lưu nháp', 'primary' => 'Đăng', 'primaryAction' => 'publish', 'primaryIcon' => 'ri-global'])
                 ->assertSee('Thêm sản phẩm')
                 ->assertSee('Thêm mới')
                 ->assertSee('Chưa lưu lần nào')
@@ -71,7 +71,7 @@ describe('buttons and title per status', function (): void {
             $product = shellProduct('draft');
 
             Livewire::actingAs($user)->test(Editor::class, ['ulid' => $product->ulid])
-                ->assertViewHas('actions', ['secondary' => 'Lưu nháp', 'primary' => 'Đăng', 'primaryIcon' => 'ri-global'])
+                ->assertViewHas('actions', ['secondary' => 'Lưu nháp', 'primary' => 'Đăng', 'primaryAction' => 'publish', 'primaryIcon' => 'ri-global'])
                 ->assertSee('Sửa sản phẩm')
                 ->assertSee('Thay đổi vừa rồi chưa kịp tự lưu. Rời trang bây giờ thì thay đổi này sẽ mất.')
                 ->assertSee('Lưu nháp và rời đi');
@@ -85,7 +85,7 @@ describe('buttons and title per status', function (): void {
             $product = shellProduct('published');
 
             Livewire::actingAs($user)->test(Editor::class, ['ulid' => $product->ulid])
-                ->assertViewHas('actions', ['secondary' => null, 'primary' => 'Cập nhật', 'primaryIcon' => 'ri-refresh'])
+                ->assertViewHas('actions', ['secondary' => null, 'primary' => 'Cập nhật', 'primaryAction' => 'publish', 'primaryIcon' => 'ri-refresh'])
                 ->assertDontSee('Lưu nháp')
                 ->assertSee('(ghi lần đăng đầu)')
                 ->assertSee('Có — không kèm giá, nút “Liên hệ báo giá”')   // a brochure site, the default
@@ -101,7 +101,7 @@ describe('buttons and title per status', function (): void {
             $product = shellProduct('archived');
 
             Livewire::actingAs($user)->test(Editor::class, ['ulid' => $product->ulid])
-                ->assertViewHas('actions', ['secondary' => 'Lưu', 'primary' => 'Đăng', 'primaryIcon' => 'ri-global'])
+                ->assertViewHas('actions', ['secondary' => 'Lưu', 'primary' => 'Đăng', 'primaryAction' => 'publish', 'primaryIcon' => 'ri-global'])
                 ->assertSee('Đã gỡ khỏi website')
                 ->assertSee('Lưu và rời đi');
         });

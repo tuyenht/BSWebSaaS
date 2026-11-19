@@ -111,6 +111,11 @@ export function unsavedDialog(cfg) {
     let seq = 0;
     let typed = false;
     let typedField = null;
+    // set when the screen's record is gone (moved to the Trash): leaving then asks nothing
+    let released = false;
+    const release = () => {
+        released = true;
+    };
     let root = null;
     // Typed text the server has not seen yet is also shown on the dialog's root (data-typed), so the
     // page's CSS can treat the page as changed before the round trip (a settings save bar on a phone),
@@ -189,12 +194,14 @@ export function unsavedDialog(cfg) {
                 });
             }
             off = guardLeave({ dirty: () => this.dirty(), ask: (goOn, url) => this.ask(goOn, url) });
+            window.addEventListener('admin-editor-leave', release);
         },
 
         destroy() {
             if (off) {
                 off();
             }
+            window.removeEventListener('admin-editor-leave', release);
             if (typeof offHook === 'function') {
                 offHook();
             }
@@ -218,7 +225,7 @@ export function unsavedDialog(cfg) {
         },
 
         dirty() {
-            return this.count() > 0 || typed;
+            return !released && (this.count() > 0 || typed);
         },
 
         async ask(goOn, url) {

@@ -116,7 +116,7 @@ it('draws a post with its section crumb and the Chuyên mục card, a page with 
             ->assertSee('Thêm tin tức')
             ->assertSeeHtmlInOrder([
                 'href="'.route('admin.entries.index', ['section' => 'posts']).'"', '>Tin tức</a>',
-                'aria-current="page">Thêm tin tức</span>',
+                'aria-current="page">Thêm mới</span>', 'id="editor-title" tabindex="-1"', 'Thêm tin tức</h1>',
             ])
             ->assertSee('Tin tức mới — chưa lưu')
             ->assertSee('Chuyên mục')

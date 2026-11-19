@@ -1,8 +1,7 @@
-{{-- The post and page editor (design 07, one screen for both; `type` picks what differs). The crumb,
-     the bar that stays under the admin's top bar (Quay lại · the title and the save state · the save
-     buttons; when the editor's area is under 768px wide, its content under 720px, the buttons move to
-     a bar along the bottom), the status band of live
-     content, then two columns in the board's order. Main: Tiêu đề and Đường dẫn, Mô tả ngắn, the
+{{-- The post and page editor (design 07, one screen for both; `type` picks what differs). The frame
+     every editor shares (components/editor-frame.blade.php: the Shell's header, the bar that stays
+     under the admin's top bar, the ⋮, the bottom bar of a narrow editor, the phone's one bar), then
+     the status band of live content, then two columns in the board's order. Main: Tiêu đề and Đường dẫn, Mô tả ngắn, the
      content card ("Soạn thảo" = the body as one formatted-text document; "Trình dựng" = a page's
      blocks, or any body laid out in blocks), the shared "Hiện thế nào trên Google" card. Side: Đăng (status, the approval steps where a
      workflow governs the post), Chuyên mục (posts), Ảnh đại diện. The save state at rest is drawn
@@ -14,9 +13,7 @@
     use App\Modules\Admin\Livewire\Entries\Editor;
     use Illuminate\Support\Js;
 
-    $isNew = $ulid === null;
     $isPage = $type === 'page';
-    $h1 = $isNew ? __('entries.ed.h1_new', ['unit' => $unit]) : __('entries.ed.h1_edit', ['unit' => $unit]);
     $dirty = __('catalog.ed.sv_dirty');
     // Where this member's copy of unsaved text on this device lives (admin-kept.js): per member,
     // entry and language, never the numeric id.
@@ -41,51 +38,10 @@
     $glyph = 'size-[1.15em] shrink-0';
 @endphp
 <div class="entry-editor @container" data-entry-editor data-kind="{{ $type }}">
-    <div class="mx-auto flex max-w-[80rem] min-w-0 flex-col gap-4">
-        <nav aria-label="{{ __('admin.breadcrumb') }}" class="text-caption text-text-muted @max-[35rem]:hidden">
-            <div class="flex flex-wrap items-center gap-1.5">
-                <a href="{{ route('admin.dashboard') }}" wire:navigate class="hit-area inline-flex items-center transition-colors hover:text-primary-text" title="{{ __('admin.breadcrumb_home') }}">
-                    <x-bs-admin::icon name="ri-home-4" class="size-3.5" /><span class="sr-only">{{ __('admin.breadcrumb_home') }}</span>
-                </a>
-                <x-bs-admin::icon name="ri-arrow-right-s" class="size-3.5 text-placeholder" />
-                <a href="{{ $listUrl }}" wire:navigate class="hit-area transition-colors hover:text-primary-text">{{ $listLabel }}</a>
-                <x-bs-admin::icon name="ri-arrow-right-s" class="size-3.5 text-placeholder" />
-                <span class="font-medium text-text" aria-current="page">{{ $h1 }}</span>
-            </div>
-        </nav>
-
-        <div class="ped-bar flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-bg py-2 @max-[45rem]:flex-nowrap @max-[45rem]:gap-2"
-             x-ignore wire:ignore.self data-bs-lazy="bsEditorSave" x-data="bsEditorSave({{ Js::from($saveConfig) }})" x-bind:data-sv-over="state() ? 'on' : false">
-            <x-bs-admin::button variant="ghost" :href="$listUrl" class="shrink-0 @max-[35rem]:w-(--spacing-control) @max-[35rem]:px-0"
-                                title="{{ __('entries.ed.back_title', ['list' => mb_strtolower($listLabel)]) }}" aria-label="{{ __('entries.ed.back_title', ['list' => mb_strtolower($listLabel)]) }}">
-                <x-bs-admin::icon name="ri-arrow-left" :class="$glyph" /><span class="@max-[35rem]:hidden">{{ __('entries.ed.back') }}</span>
-            </x-bs-admin::button>
-
-            <div class="flex min-w-0 flex-col items-start gap-1 @max-[45rem]:flex-1">
-                <h1 class="m-0 max-w-full truncate text-[calc(1.25rem+var(--user-text-boost))] font-semibold leading-tight text-text-strong" title="{{ $h1 }}">{{ $h1 }}</h1>
-                <x-bs-admin::save-state :note="$note" class="max-w-full" />
-            </div>
-            <span wire:ignore class="contents">
-                <x-bs-admin::button variant="outline" color="secondary" size="sm" class="shrink-0" x-show="state() === 'offline'" x-cloak x-on:click="retry()">
-                    <x-bs-admin::icon name="ri-refresh" :class="$glyph" /> {{ __('catalog.ed.retry') }}
-                </x-bs-admin::button>
-            </span>
-
-            <span class="flex-1 @max-[45rem]:hidden"></span>
-            <div class="flex flex-wrap items-center justify-end gap-2 @max-[45rem]:hidden">
-                @if ($actions['secondary'] !== null)
-                    <x-bs-admin::button variant="outline" color="secondary" wire:click="save" wire:loading.attr="disabled" wire:target="save,publish,applyTransition" title="{{ __('entries.ed.save_tip') }}">
-                        <x-bs-admin::icon name="ri-save-3" :class="$glyph" /> {{ $actions['secondary'] }}
-                    </x-bs-admin::button>
-                @endif
-                @if ($actions['primary'] !== null)
-                    <x-bs-admin::button color="primary" wire:click="{{ $actions['primaryAction'] }}" wire:loading.attr="disabled" wire:target="save,publish,applyTransition">
-                        <x-bs-admin::icon :name="$actions['primaryIcon']" :class="$glyph" /> {{ $actions['primary'] }}
-                    </x-bs-admin::button>
-                @endif
-            </div>
-        </div>
-
+    <x-bs-admin::editor-frame :title="$frame['title']" :crumbs="$frame['crumbs']" :description="$frame['description']" :guide="$frame['guide']"
+                              :back-url="$listUrl" :back-label="__('entries.ed.back_title', ['list' => mb_strtolower($listLabel)])"
+                              :note="$note" :save-config="$saveConfig" :actions="$actions" target="save,publish,applyTransition" :save-tip="__('entries.ed.save_tip')"
+                              :preview="$frame['preview']" :trash="$frame['trash']" :name="$title !== '' ? $title : $frame['title']">
         @if ($liveUrl !== null)
             <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-[color-mix(in_srgb,var(--color-success-text)_9%,var(--color-surface))] px-3.5 py-2.5 text-body font-semibold text-success-text">
                 <x-bs-admin::icon name="ri-checkbox-circle" :class="$glyph" />
@@ -411,21 +367,9 @@
             </div>
         </div>
 
-        <div class="ped-bbar flex gap-2 border-t border-border bg-bg pt-2.5 @min-[45rem]:hidden" x-data>
-            @if ($actions['secondary'] !== null)
-                <x-bs-admin::button variant="outline" color="secondary" class="min-w-0 flex-1" wire:click="save" wire:loading.attr="disabled" wire:target="save,publish,applyTransition" title="{{ __('entries.ed.save_tip') }}">
-                    <x-bs-admin::icon name="ri-save-3" :class="$glyph" /> {{ $actions['secondary'] }}
-                </x-bs-admin::button>
-            @endif
-            @if ($actions['primary'] !== null)
-                <x-bs-admin::button color="primary" class="min-w-0 flex-1" wire:click="{{ $actions['primaryAction'] }}" wire:loading.attr="disabled" wire:target="save,publish,applyTransition">
-                    <x-bs-admin::icon :name="$actions['primaryIcon']" :class="$glyph" /> {{ $actions['primary'] }}
-                </x-bs-admin::button>
-            @endif
-        </div>
-    </div>
+    </x-bs-admin::editor-frame>
 
-    <x-bs-admin::unsaved-dialog :count="$changes" :label="$h1" :save="$leave['method']" discard="discardChanges" :body="$leave['body']" :save-label="$leave['save']" :discard-label="$leave['discard']" />
+    <x-bs-admin::unsaved-dialog :count="$changes" :label="$frame['title']" :save="$leave['method']" discard="discardChanges" :body="$leave['body']" :save-label="$leave['save']" :discard-label="$leave['discard']" />
 
     @if ($stale !== null)
         {{-- Someone else saved since this form was loaded (Editor::askBeforeOverwrite; design 07, the

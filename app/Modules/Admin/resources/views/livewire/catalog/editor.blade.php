@@ -1,6 +1,6 @@
-{{-- The product editor (design 09): the crumb and title, the bar that stays under the admin's top
-     bar (Quay lại · the save state · Thử lại · the save buttons; below 768px wide the buttons move
-     to a bar along the bottom), then the cards in the board's order. Main column: Thông tin sản
+{{-- The product editor (design 09): the frame every editor shares (components/editor-frame.blade.php:
+     the Shell's header, the bar that stays under the admin's top bar, the ⋮, the bottom bar of a
+     narrow editor, the phone's one bar), then the cards in the board's order. Main column: Thông tin sản
      phẩm (name; slug and summary in the "Thêm tùy chọn" group), Ảnh sản phẩm, Giá, Mô tả, the
      shared "Hiện thế nào trên Google" card, the "Thêm tùy chọn" button. Side column: Đăng (status,
      first publication, last save, what visitors see), then in the group Chuyên mục and Mã SKU. The
@@ -14,8 +14,6 @@
     use App\Modules\Admin\Support\SeoFields;
     use Illuminate\Support\Js;
 
-    $isNew = $ulid === null;
-    $title = $isNew ? __('catalog.create_title') : __('catalog.edit_title');
     $bandIcons = ['empty' => 'ri-edit', 'short' => 'ri-arrow-up', 'near' => 'ri-arrow-right-up', 'good' => 'ri-check', 'long' => 'ri-error-warning', 'over' => 'ri-close-circle'];
     // The name and summary meters are the shared part's (bsSeoFields): the name measured like a title, the summary like a short description.
     $infoConfig = SeoFields::clientConfig(['excerpt' => 'summary', 'title' => 'name', 'description' => null, 'pageTitle' => null, 'slug' => 'slug'], $address);
@@ -40,48 +38,10 @@
     $more = ['slug', 'summary', 'sku', 'categoryId'];
 @endphp
 <div class="catalog-editor @container" data-catalog-editor>
-    <div class="mx-auto flex max-w-[80rem] min-w-0 flex-col gap-4">
-        <div>
-            <nav aria-label="{{ __('admin.breadcrumb') }}" class="hidden text-caption text-text-muted min-[600px]:block">
-                <div class="flex flex-wrap items-center gap-1.5">
-                    <x-bs-admin::icon name="ri-home-4" class="size-3.5" />
-                    <span>{{ __('admin.breadcrumb_home') }}</span>
-                    <x-bs-admin::icon name="ri-arrow-right-s" class="size-3.5 text-placeholder" />
-                    <a href="{{ route('admin.catalog.index') }}" wire:navigate class="hit-area transition-colors hover:text-primary-text">{{ __('catalog.ed.crumb_list') }}</a>
-                    <x-bs-admin::icon name="ri-arrow-right-s" class="size-3.5 text-placeholder" />
-                    <span class="font-medium" aria-current="page">{{ $isNew ? __('catalog.ed.crumb_new') : __('catalog.ed.crumb_edit') }}</span>
-                </div>
-            </nav>
-            <h1 class="m-0 mt-0.5 text-[calc(1.25rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ $title }}</h1>
-        </div>
-
-        <div class="ped-bar flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-bg py-2 @max-[48rem]:flex-nowrap @max-[48rem]:gap-2"
-             x-ignore wire:ignore.self data-bs-lazy="bsEditorSave" x-data="bsEditorSave({{ Js::from($saveConfig) }})" x-bind:data-sv-over="state() ? 'on' : false">
-            <x-bs-admin::button variant="ghost" :href="route('admin.catalog.index')" class="shrink-0 @max-[37.5rem]:w-(--spacing-control) @max-[37.5rem]:px-0"
-                                title="{{ __('catalog.ed.back_title') }}" aria-label="{{ __('catalog.ed.back_title') }}">
-                <x-bs-admin::icon name="ri-arrow-left" :class="$glyph" /><span class="@max-[37.5rem]:hidden">{{ __('catalog.ed.back') }}</span>
-            </x-bs-admin::button>
-
-            <x-bs-admin::save-state :note="$note" class="@max-[48rem]:flex-1" />
-            <span wire:ignore class="contents">
-                <x-bs-admin::button variant="outline" color="secondary" size="sm" class="shrink-0" x-show="state() === 'offline'" x-cloak x-on:click="retry()">
-                    <x-bs-admin::icon name="ri-refresh" :class="$glyph" /> {{ __('catalog.ed.retry') }}
-                </x-bs-admin::button>
-            </span>
-
-            <span class="flex-1 @max-[48rem]:hidden"></span>
-            <div class="flex flex-wrap items-center justify-end gap-2 @max-[48rem]:hidden">
-                @if ($actions['secondary'] !== null)
-                    <x-bs-admin::button variant="outline" color="secondary" wire:click="save" wire:loading.attr="disabled" wire:target="save,publish">
-                        <x-bs-admin::icon name="ri-save-3" :class="$glyph" /> {{ $actions['secondary'] }}
-                    </x-bs-admin::button>
-                @endif
-                <x-bs-admin::button color="primary" wire:click="publish" wire:loading.attr="disabled" wire:target="save,publish">
-                    <x-bs-admin::icon :name="$actions['primaryIcon']" :class="$glyph" /> {{ $actions['primary'] }}
-                </x-bs-admin::button>
-            </div>
-        </div>
-
+    <x-bs-admin::editor-frame :title="$frame['title']" :crumbs="$frame['crumbs']" :description="$frame['description']" :guide="$frame['guide']"
+                              :back-url="route('admin.catalog.index')" :back-label="__('catalog.ed.back_title')"
+                              :note="$note" :save-config="$saveConfig" :actions="$actions" target="save,publish"
+                              :preview="$frame['preview']" :preview-bar="false" :trash="$frame['trash']" :name="$name !== '' ? $name : $frame['title']">
         <div class="grid min-w-0 items-start gap-4 @min-[64rem]:grid-cols-3"
              x-data="{ more: false, init() { try { this.more = JSON.parse(localStorage.getItem('bs-editor') || '{}').more === true } catch (e) {} }, setMore(on) { this.more = on; try { const o = JSON.parse(localStorage.getItem('bs-editor') || '{}') || {}; o.more = on; localStorage.setItem('bs-editor', JSON.stringify(o)) } catch (e) {} } }">
             <div class="flex min-w-0 flex-col gap-4 @min-[64rem]:col-span-2">
@@ -124,8 +84,9 @@
                                     <span class="rounded-sm bg-primary-soft px-1.5 text-caption font-bold text-primary-text" title="{{ __('admin.seo.locale_chip_title') }}">{{ $chip }}</span>
                                 @endif
                             </label>
-                            <div class="flex min-w-0 items-center rounded-md border border-border-input bg-surface-muted px-3 focus-within:border-primary-text has-aria-invalid:border-danger-text">
-                                <span class="shrink-0 text-small text-text-muted" dir="ltr">/</span>
+                            {{-- the address before the slug sits inside the field, as the board draws it; a long one wraps --}}
+                            <div class="flex min-w-0 flex-wrap items-center rounded-md border border-border-input bg-surface-muted px-3 focus-within:border-primary-text has-aria-invalid:border-danger-text">
+                                <span class="min-w-0 max-w-full pe-0.5 font-mono text-small leading-snug text-text-muted [overflow-wrap:anywhere]" dir="ltr">{{ $address['base'] }}</span>
                                 <input type="text" id="catalog-slug" wire:model="slug" dir="ltr" spellcheck="false" autocomplete="off"
                                        aria-describedby="catalog-slug-h @error('slug') catalog-slug-e @enderror" @error('slug') aria-invalid="true" @enderror
                                        class="field min-w-0 flex-1 border-0 bg-transparent px-1 font-mono text-text">
@@ -253,11 +214,17 @@
                 <x-bs-admin::seo-fields page-title-model="name" kind="product" :address="$address" :locale="$locale" :multi-locale="$multiLocale" id="catalog-seo" />
 
                 <button type="button" x-on:click="setMore(! more)" x-bind:aria-expanded="more ? 'true' : 'false'" aria-expanded="false"
+                        aria-label="{{ __('catalog.ed.more') }} — {{ __('catalog.ed.more_sub') }}"
+                        x-bind:aria-label="more ? @js(__('catalog.ed.less').' — '.__('catalog.ed.less_sub')) : @js(__('catalog.ed.more').' — '.__('catalog.ed.more_sub'))"
                         class="grid w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2.5 gap-y-1 rounded-md border border-dashed border-border-input px-4 py-2.5 text-left text-body font-semibold text-primary-text transition-colors min-h-12 hover:bg-[color-mix(in_srgb,var(--color-primary-text)_6%,var(--color-surface))]">
                     <x-bs-admin::icon name="ri-add" :class="$glyph" x-show="! more" />
                     <x-bs-admin::icon name="ri-subtract" :class="$glyph" x-show="more" x-cloak />
                     <span x-text="more ? @js(__('catalog.ed.less')) : @js(__('catalog.ed.more'))">{{ __('catalog.ed.more') }}</span>
-                    <span class="col-start-2 text-small font-normal text-text-muted" x-text="more ? @js(__('catalog.ed.less_sub')) : @js(__('catalog.ed.more_sub'))">{{ __('catalog.ed.more_sub') }}</span>
+                    <span class="col-start-2 text-small font-normal text-text-muted" aria-hidden="true">
+                        <span class="ped-ms-l" x-text="more ? @js(__('catalog.ed.less_sub')) : @js(__('catalog.ed.more_sub'))">{{ __('catalog.ed.more_sub') }}</span>
+                        {{-- the short line of the phone's child screen --}}
+                        <span class="ped-ms-s" x-text="more ? @js(__('catalog.ed.less_sub_s')) : @js(__('catalog.ed.more_sub_s'))">{{ __('catalog.ed.more_sub_s') }}</span>
+                    </span>
                 </button>
             </div>
 
@@ -312,19 +279,9 @@
             </div>
         </div>
 
-        <div class="ped-bbar flex gap-2 border-t border-border bg-bg pt-2.5 @min-[48rem]:hidden" x-data>
-            @if ($actions['secondary'] !== null)
-                <x-bs-admin::button variant="outline" color="secondary" class="min-w-0 flex-1" wire:click="save" wire:loading.attr="disabled" wire:target="save,publish">
-                    <x-bs-admin::icon name="ri-save-3" :class="$glyph" /> {{ $actions['secondary'] }}
-                </x-bs-admin::button>
-            @endif
-            <x-bs-admin::button color="primary" class="min-w-0 flex-1" wire:click="publish" wire:loading.attr="disabled" wire:target="save,publish">
-                <x-bs-admin::icon :name="$actions['primaryIcon']" :class="$glyph" /> {{ $actions['primary'] }}
-            </x-bs-admin::button>
-        </div>
-    </div>
+    </x-bs-admin::editor-frame>
 
-    <x-bs-admin::unsaved-dialog :count="$changes" :label="$title" save="save" discard="resetChanges" :body="$leave['body']" :save-label="$leave['save']" />
+    <x-bs-admin::unsaved-dialog :count="$changes" :label="$frame['title']" save="save" discard="resetChanges" :body="$leave['body']" :save-label="$leave['save']" />
 
     {{-- Shared library picker (WithMediaLibraryPicker): gallery mode marks already-attached
          images and stays open for multi-pick; editor mode inserts at the caret and closes. --}}

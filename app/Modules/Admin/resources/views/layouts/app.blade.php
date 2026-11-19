@@ -180,8 +180,10 @@
         </nav>
     </aside>
 
-    {{-- Content column --}}
-    <div class="admin-content flex min-h-screen flex-col pl-0 transition-all duration-200 motion-reduce:transition-none lg:pl-(--sidebar-width)">
+    {{-- Content column. An add or edit screen is a child screen: on a phone its own bar replaces the top bar
+         (data-child-screen, admin-editor.css). --}}
+    <div class="admin-content flex min-h-screen flex-col pl-0 transition-all duration-200 motion-reduce:transition-none lg:pl-(--sidebar-width)"
+         @if (request()->routeIs('admin.entries.create', 'admin.entries.edit', 'admin.catalog.create', 'admin.catalog.edit')) data-child-screen @endif>
 
         {{-- Support session: the bar stays above the topbar, which then sticks under it. --}}
         @include('admin::partials.support-bar')
