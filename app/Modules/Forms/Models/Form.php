@@ -22,6 +22,12 @@ final class Form extends Model
     use BelongsToSite;
     use HasUlidColumn;
 
+    /** The form every site is given (EnsureContactForm): it can be changed and switched off, never deleted. */
+    public const string SYSTEM_KEY = 'contact';
+
+    /** The key of the consent box every form ends with: the platform's sentence, never changed on the screen. */
+    public const string CONSENT_KEY = 'consent';
+
     #[\Override]
     protected $guarded = [];
 
@@ -49,6 +55,11 @@ final class Form extends Model
         $value = $messages[$locale] ?? $messages['vi'] ?? null;
 
         return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    public function isSystem(): bool
+    {
+        return $this->key === self::SYSTEM_KEY;
     }
 
     /** @return HasMany<FormField, $this> */

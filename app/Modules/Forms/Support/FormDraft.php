@@ -1,0 +1,181 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Forms\Support;
+
+use App\Modules\Forms\Models\Form;
+use App\Modules\Shared\Support\Cast;
+use Illuminate\Support\Str;
+
+/**
+ * A form as the «Biểu mẫu» editor holds it while it is being changed: the texts of one language (the
+ * site's main one), whether it takes leads, and its fields in order — the consent box left out (it is
+ * the platform's, always last, and never edited there). A choice field's choices are one per line.
+ * SaveForm writes such a draft back; the other languages and every setting the editor does not show
+ * (an empty field's example, length limits) stay as they were.
+ *
+ * @phpstan-type DraftField array{key: string, type: string, label: string, required: bool, choices: string}
+ * @phpstan-type Draft array{name: string, success: string, active: bool, emails: list<string>, fields: list<DraftField>}
+ */
+final class FormDraft
+{
+    /** The most fields one form holds (the consent box not counted). */
+    public const int MAX_FIELDS = 30;
+
+    /** The most choices one choice field holds. */
+    public const int MAX_CHOICES = 50;
+
+    /** Longest form name, field label and choice, in characters. */
+    public const int MAX_NAME = 120;
+
+    /** Longest thank-you sentence, in characters. */
+    public const int MAX_SUCCESS = 500;
+
+    /** The most addresses one form sends its lead emails to. */
+    public const int MAX_EMAILS = 10;
+
+    /** The most forms a site keeps (the list reads them all at once). */
+    public const int MAX_FORMS = 200;
+
+    /**
+     * Whether a form asks visitors at least one thing besides a tick box: one that does not is
+     * sent through the old contact rules, which ask for fields it never draws.
+     *
+     * @param  array<array-key, mixed>  $types
+     */
+    public static function hasAnswerField(array $types): bool
+    {
+        return array_filter($types, fn (mixed $t): bool => is_string($t) && $t !== 'checkbox') !== [];
+    }
+
+    /**
+     * @return Draft
+     */
+    public static function fromForm(Form $form, string $locale): array
+    {
+        $fields = [];
+        foreach ($form->fields as $field) {
+            if ($field->key === Form::CONSENT_KEY) {
+                continue;
+            }
+            $fields[] = [
+                'key' => $field->key,
+                'type' => $field->type,
+                'label' => self::text($field->label, $locale),
+                'required' => $field->is_required,
+                'choices' => FormFieldTypes::isChoice($field->type) ? implode("\n", array_values(FormFieldTypes::choiceLabels($field, $locale))) : '',
+            ];
+        }
+
+        return [
+            'name' => self::text($form->name, $locale),
+            'success' => Cast::string(Cast::arr($form->success_message)[$locale] ?? null),
+            'active' => $form->status === 'active',
+            'emails' => Cast::strings($form->notify_emails),
+            'fields' => $fields,
+        ];
+    }
+
+    /**
+     * A new form of $purpose, in $locale.
+     *
+     * @return Draft
+     */
+    public static function template(string $purpose, string $locale): array
+    {
+        return [
+            'name' => FormTemplates::name($purpose, $locale),
+            'success' => '',
+            'active' => true,
+            'emails' => [],
+            'fields' => FormTemplates::fields($purpose, $locale),
+        ];
+    }
+
+    /**
+     * The choices of a choice field from the lines typed in $locale: a line whose text is an existing
+     * choice keeps that choice (its stored value and its other languages), a new line gets a value of
+     * its own. Empty and repeated lines are dropped.
+     *
+     * @param  list<array{value: string, label: array<string, string>}>  $existing
+     * @return list<array{value: string, label: array<string, string>}>
+     */
+    public static function choicesFrom(string $lines, string $locale, array $existing): array
+    {
+        $byText = [];
+        foreach ($existing as $choice) {
+            $text = ($choice['label'][$locale] ?? '') ?: (($choice['label']['vi'] ?? '') ?: $choice['value']);
+            $byText[$text] ??= $choice;
+        }
+
+        $out = [];
+        $taken = [];
+        foreach (self::lines($lines) as $line) {
+            $choice = $byText[$line] ?? null;
+            if ($choice === null || isset($taken[$choice['value']])) {
+                $base = Str::slug($line) ?: 'lua-chon';
+                $value = $base;
+                for ($n = 2; isset($taken[$value]) || self::valueOfOther($value, $existing, $line, $locale); $n++) {
+                    $value = $base.'-'.$n;
+                }
+                $choice = ['value' => $value, 'label' => []];
+            }
+            $choice['label'][$locale] = $line;
+            $taken[$choice['value']] = true;
+            $out[] = $choice;
+        }
+
+        return $out;
+    }
+
+    /**
+     * The non-empty lines of a choices box, trimmed, each once.
+     *
+     * @return list<string>
+     */
+    public static function lines(string $text): array
+    {
+        $lines = [];
+        foreach (preg_split('/\R/u', $text) ?: [] as $line) {
+            $line = trim($line);
+            if ($line !== '' && ! in_array($line, $lines, true)) {
+                $lines[] = $line;
+            }
+        }
+
+        return $lines;
+    }
+
+    /** Whether $email can take lead emails: one address of a usual shape, at most 254 characters. */
+    public static function isEmail(string $email): bool
+    {
+        return mb_strlen($email) <= 254 && preg_match('/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/u', $email) === 1
+            && filter_var($email, FILTER_VALIDATE_EMAIL, FILTER_FLAG_EMAIL_UNICODE) !== false;
+    }
+
+    /** A per-language text in $locale, else Vietnamese, else its first language. */
+    public static function text(mixed $map, string $locale): string
+    {
+        $map = Cast::arr($map);
+
+        return Cast::string($map[$locale] ?? null) ?: (Cast::string($map['vi'] ?? null) ?: Cast::string(array_values($map)[0] ?? null));
+    }
+
+    /**
+     * Whether $value already names an existing choice other than the one typed as $line: a new
+     * choice never takes the stored value of another one (its old leads would change meaning).
+     *
+     * @param  list<array{value: string, label: array<string, string>}>  $existing
+     */
+    private static function valueOfOther(string $value, array $existing, string $line, string $locale): bool
+    {
+        foreach ($existing as $choice) {
+            if ($choice['value'] === $value && ((($choice['label'][$locale] ?? '') ?: ($choice['label']['vi'] ?? '')) !== $line)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
