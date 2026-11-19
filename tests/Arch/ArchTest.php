@@ -82,3 +82,11 @@ arch('workflow transitions go through the engine')
 arch('pending changes to live content stay out of the storefront')
     ->expect('App\\Modules\\Cms\\Models\\EntryDraft')
     ->toOnlyBeUsedIn(['App\\Modules\\Cms', 'App\\Modules\\Admin']);
+
+// 5) A page's place in the tree changes through one road: MovePage takes the site's page-tree lock,
+//    then judges the move on the tree as it is (no loop, at most three levels, the Home page fixed)
+//    and moves the addresses. Its refusal and the tree rules stay with the content module and the
+//    callers that answer them (the admin list, a content pack), never a storefront or another module.
+arch('page-tree moves go through MovePage and its rules')
+    ->expect(['App\\Modules\\Cms\\Actions\\MovePage', 'App\\Modules\\Cms\\Exceptions\\PageMoveRejectedException', 'App\\Modules\\Cms\\Support\\PageRules'])
+    ->toOnlyBeUsedIn(['App\\Modules\\Cms', 'App\\Modules\\Admin', 'App\\Modules\\Provisioning']);

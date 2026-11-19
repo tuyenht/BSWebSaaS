@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Provisioning\Console;
 
 use App\Modules\Audit\Facades\Audit;
+use App\Modules\Cms\Support\PageRules;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Provisioning\ContentPack\Applier;
 use App\Modules\Provisioning\ContentPack\Backup;
@@ -143,6 +144,9 @@ final class LoadContentPackCommand extends Command
         try {
             $written = $tenancy->enter($siteId, function () use ($planner, $pack, $site, $host, $forced, $expected, $siteId, $backupFile): int {
                 TaxonomyTree::lock($siteId);
+                // The page tree's lock before plan() row-locks pages: a move in the admin takes it before its row
+                // locks too, so the two wait for each other instead of deadlocking.
+                PageRules::lock($siteId);
                 // Same order as every settings and profile save, so a staff save cannot deadlock with it.
                 SiteWriteLock::take();
                 // Re-planned with the rows it rests on locked, so nothing changes under the write.

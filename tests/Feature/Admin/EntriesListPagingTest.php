@@ -393,7 +393,8 @@ it('shows a filtered list of pages flat, each row naming the pages above it', fu
 
         Livewire::withQueryParams(['tab' => 'draft'])->actingAs($user->fresh())->test(Index::class)
             ->assertSee('Cơ khí chính xác')
-            ->assertSee(__('entries.meta_parent', ['path' => 'Dịch vụ']));
+            ->assertSee(__('entries.meta_of', ['name' => 'Dịch vụ']))
+            ->assertSeeHtml('<span class="list-anc">Dịch vụ › </span>');
     });
 });
 

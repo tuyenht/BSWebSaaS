@@ -91,7 +91,7 @@ it('searches by title', function (): void {
     });
 });
 
-it('keeps a child directly under its parent even when it would sort first', function (): void {
+it('shows pages in another order as a flat list, each child naming the page it sits under', function (): void {
     $user = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
@@ -100,10 +100,11 @@ it('keeps a child directly under its parent even when it would sort first', func
         makePageEntry($user, 'Alpha child', 'alpha-child', 'published', $parent->id);
         makePageEntry($user, 'Beta', 'beta');
 
-        // Sorted by name asc, a detached 'Alpha child' would lead; as a child it must ride under Zeta.
+        // Sorted by name the tree is not drawn: 'Alpha child' leads on its own line and names Zeta above it.
         Livewire::actingAs($user->fresh())->test(Index::class)
             ->call('sortBy', 'name')
-            ->assertSeeInOrder(['Beta', 'Zeta', 'Alpha child']);
+            ->assertSeeHtmlInOrder(['<span class="list-anc">Zeta › </span>Alpha child', 'Beta', 'Zeta'])
+            ->assertSeeHtml('data-flat-note');
     });
 });
 
@@ -129,16 +130,18 @@ it('renders at a flat query budget regardless of row count', function (): void {
     $user = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
-        grantRole($user, 'editor', ['entries.view']);
+        grantRole($user, 'editor', ['entries.view', 'entries.edit.any']);
         Livewire::actingAs($user->fresh())->test(Index::class); // warm permission/config caches
 
+        $pages = [];
         foreach (range(1, 4) as $i) {
-            makePageEntry($user, "Trang {$i}", "trang-{$i}");
+            $pages[$i] = makePageEntry($user, "Trang {$i}", "trang-{$i}");
         }
         $few = countQueries(fn () => Livewire::actingAs($user->fresh())->test(Index::class));
 
+        // the new rows hang two levels below the first ones: a three-level tree costs the same
         foreach (range(5, 18) as $i) {
-            makePageEntry($user, "Trang {$i}", "trang-{$i}");
+            $pages[$i] = makePageEntry($user, "Trang {$i}", "trang-{$i}", parentId: $i <= 10 ? $pages[$i % 4 + 1]->id : $pages[$i - 6]->id);
         }
         $many = countQueries(fn () => Livewire::actingAs($user->fresh())->test(Index::class));
 
