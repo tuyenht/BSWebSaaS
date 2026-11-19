@@ -98,7 +98,7 @@
         @if ($ulid !== null)
             {{-- Text kept on this device by «Lấy bản mới» (the stale question below): «Khôi phục» puts it
                  back in the form, unsaved; «Bỏ» forgets it. Browser state only, never sent until asked. --}}
-            <div wire:ignore x-data="{
+            <div wire:ignore data-entry-kept x-show="rec" x-cloak x-on:bs-entry-kept.window="if ($event.detail && $event.detail.key === key) { rec = $event.detail.rec; }" x-data="{
                     key: @js($keptKey),
                     cfg: @js($keptWhen),
                     rec: null,
@@ -108,11 +108,9 @@
                     say(text) { if (typeof window.bsToast === 'function') { window.bsToast({ text: text }); } },
                     drop() { this.forget(); this.say(@js(__('entries.ed.kept_dropped'))); },
                     restore() { const r = this.rec; if (!r) { return; } $wire.restoreKept(r.values).then(() => { this.forget(); this.say(@js(__('entries.ed.kept_restored')).replace(':time', this.at(r))); }); },
-                 }"
-                 x-on:bs-entry-kept.window="if ($event.detail && $event.detail.key === key) { rec = $event.detail.rec; }"
-                 x-show="rec" x-cloak role="status" data-entry-kept
-                 class="flex flex-wrap items-start gap-2.5 rounded-md border border-[color-mix(in_srgb,var(--color-warning-text)_35%,var(--color-surface))] bg-[color-mix(in_srgb,var(--color-warning-text)_9%,var(--color-surface))] px-3.5 py-2.5 text-[calc(0.84375rem+var(--user-text-boost))] leading-normal text-text">
-                <x-bs-admin::icon name="ri-hard-drive-2" class="mt-px size-[min(1.5rem,calc(1.125rem+var(--user-text-boost)))] shrink-0 text-warning-text" />
+                 }">
+                <x-bs-admin::alert role="status" color="warning" icon="ri-hard-drive-2">
+                <div class="flex flex-wrap items-start gap-2.5">
                 <div class="flex min-w-0 flex-[1_1_16.25rem] flex-col gap-0.5 [overflow-wrap:anywhere]">
                     <b class="font-semibold text-text-strong" x-text="rec ? @js(__('entries.ed.kept_head')).replace(':time', at(rec)) : ''"></b>
                     <span>{{ __('entries.ed.kept_sub') }}</span>
@@ -125,6 +123,8 @@
                         <x-bs-admin::icon name="ri-close" :class="$glyph" /> {{ __('entries.ed.kept_drop') }}
                     </x-bs-admin::button>
                 </div>
+                </div>
+                </x-bs-admin::alert>
             </div>
         @endif
 
@@ -433,7 +433,7 @@
              form's text on this device first (the «Khôi phục» band), then takes the saved version;
              «Giữ bản của tôi» saves over it. Escape or the backdrop close it without saving. Below
              600px it is a sheet from the bottom. --}}
-        <div wire:key="entry-stale-{{ md5(json_encode($stale['print'])) }}"
+        <div wire:key="entry-stale-{{ md5(json_encode($stale['print'])) }}" data-entry-stale
              x-data="{
                 diff: false,
                 keepFailed: false,
@@ -450,36 +450,29 @@
 
                     return !!rec;
                 },
-             }"
-             x-on:keydown.escape.window="$wire.closeStale()"
-             class="fixed inset-0 z-90 flex items-end justify-center bg-gray-900/50 min-[600px]:items-center min-[600px]:p-6" data-entry-stale>
-            <div class="absolute inset-0" x-on:click="$wire.closeStale()"></div>
-            <div x-trap.noscroll="true" role="alertdialog" aria-modal="true" aria-labelledby="entry-stale-t" aria-describedby="entry-stale-d"
-                 class="relative flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-xl bg-surface text-text shadow-[0_22px_60px_-20px_rgba(0,0,0,.4)] min-[600px]:max-h-[min(47.5rem,100%)] min-[600px]:max-w-120 min-[600px]:rounded-lg">
-                <div class="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
-                    <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-warning-text)_12%,var(--color-surface))] text-warning-text" aria-hidden="true">
-                        <x-bs-admin::icon name="ri-user-shared" class="size-[min(1.5rem,calc(1.125rem+var(--user-text-boost)))]" />
+             }">
+            <x-bs-admin::modal state="true" close="$wire.closeStale()" size="narrow" compact alert :close-label="__('admin.dismiss')">
+                <x-slot:heading>
+                    <span class="flex items-center gap-2.5">
+                        <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-warning-text)_12%,var(--color-surface))] text-warning-text" aria-hidden="true">
+                            <x-bs-admin::icon name="ri-user-shared" class="size-[min(1.5rem,calc(1.125rem+var(--user-text-boost)))]" />
+                        </span>
+                        <span>{{ $stale['title'] }}</span>
                     </span>
-                    <h2 id="entry-stale-t" class="m-0 min-w-0 flex-1 text-[calc(1rem+var(--user-text-boost))] font-bold leading-[1.4] text-text-strong [overflow-wrap:anywhere]">{{ $stale['title'] }}</h2>
+                </x-slot:heading>
+                <div class="flex items-start gap-2">
+                    <x-bs-admin::icon name="ri-information" class="mt-[3px] size-[1.15em] shrink-0 text-text-muted" />
+                    <span>{{ $stale['line'] }}</span>
                 </div>
-                <div id="entry-stale-d" class="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto overflow-x-hidden px-4 py-3 text-[calc(0.875rem+var(--user-text-boost))] leading-[1.55] [overflow-wrap:anywhere]">
-                    <div class="flex items-start gap-2">
-                        <x-bs-admin::icon name="ri-information" class="mt-[3px] size-[1.15em] shrink-0 text-text-muted" />
-                        <span>{{ $stale['line'] }}</span>
+                <x-bs-admin::alert color="danger" icon="ri-error-warning" x-show="keepFailed" x-cloak>{{ __('entries.ed.stale_keep_failed') }}</x-bs-admin::alert>
+                @foreach ($stale['rows'] as $row)
+                    <div x-show="diff" x-cloak class="flex flex-col gap-[3px] rounded-sm border border-[color-mix(in_srgb,var(--color-warning-text)_40%,var(--color-surface))] bg-[color-mix(in_srgb,var(--color-warning-text)_8%,var(--color-surface))] px-2.5 py-2">
+                        <span class="text-[calc(0.78125rem+var(--user-text-boost))] font-semibold text-text-muted">{{ $row['label'] }}</span>
+                        <span class="text-text-strong">{{ __('entries.ed.stale_mine', ['value' => $row['mine']]) }}</span>
+                        <span class="text-[calc(0.78125rem+var(--user-text-boost))] text-text-muted">{{ __('entries.ed.stale_theirs', ['value' => $row['theirs']]) }}</span>
                     </div>
-                    <div x-show="keepFailed" x-cloak role="alert" class="flex items-start gap-2 rounded-sm border border-danger-text px-2.5 py-2 text-danger-text">
-                        <x-bs-admin::icon name="ri-error-warning" class="mt-[3px] size-[1.15em] shrink-0" />
-                        <span>{{ __('entries.ed.stale_keep_failed') }}</span>
-                    </div>
-                    @foreach ($stale['rows'] as $row)
-                        <div x-show="diff" x-cloak class="flex flex-col gap-[3px] rounded-sm border border-[color-mix(in_srgb,var(--color-warning-text)_40%,var(--color-surface))] bg-[color-mix(in_srgb,var(--color-warning-text)_8%,var(--color-surface))] px-2.5 py-2">
-                            <span class="text-[calc(0.78125rem+var(--user-text-boost))] font-semibold text-text-muted">{{ $row['label'] }}</span>
-                            <span class="text-text-strong">{{ __('entries.ed.stale_mine', ['value' => $row['mine']]) }}</span>
-                            <span class="text-[calc(0.78125rem+var(--user-text-boost))] text-text-muted">{{ __('entries.ed.stale_theirs', ['value' => $row['theirs']]) }}</span>
-                        </div>
-                    @endforeach
-                </div>
-                <div class="flex flex-wrap justify-end gap-2 border-t border-border px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] max-[600px]:*:flex-auto">
+                @endforeach
+                <x-slot:footer>
                     <x-bs-admin::button variant="outline" color="secondary" size="sm" x-on:click="diff = !diff" x-bind:aria-expanded="diff ? 'true' : 'false'">
                         <x-bs-admin::icon name="ri-git-commit" :class="$glyph" />
                         <span x-text="diff ? @js(__('entries.ed.stale_diff_hide')) : @js(__('entries.ed.stale_diff_show'))">{{ __('entries.ed.stale_diff_show') }}</span>
@@ -490,8 +483,8 @@
                     <x-bs-admin::button color="primary" size="sm" wire:click="keepMine" wire:loading.attr="disabled" wire:target="takeNewer,keepMine">
                         <x-bs-admin::icon name="ri-save-3" :class="$glyph" /> {{ __('entries.ed.stale_keep') }}
                     </x-bs-admin::button>
-                </div>
-            </div>
+                </x-slot:footer>
+            </x-bs-admin::modal>
         </div>
     @endif
 
