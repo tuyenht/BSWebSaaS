@@ -148,6 +148,43 @@ it('keeps folders to two levels: no sub-folder under a sub-folder, no parent for
     expect(app(Tenancy::class)->enter(1, fn () => MediaFolder::query()->whereKey($child->id)->value('parent_id')))->toBeNull();
 });
 
+/** One raw multi-row write as app_user inside site $site's context: Postgres checks the foreign key only at the end of it. */
+function rawFolderWrite(int $site, string $sql): void
+{
+    app(Tenancy::class)->enter($site, function () use ($sql): void {
+        expect(DB::scalar('select current_user'))->toBe('app_user');
+        DB::statement($sql);
+    });
+}
+
+it('refuses three levels written by one multi-row INSERT whose rows name parents that come later in it', function (): void {
+    // 10 → 11 → 12: when row 10 is written its parent 11 does not exist yet, so only an end-of-statement check sees the chain
+    expect(fn () => rawFolderWrite(1, "insert into media_folders (id, site_id, name, slug, parent_id, position) values
+        (910, 1, 'A', 'a', 911, 1), (911, 1, 'B', 'b', 912, 1), (912, 1, 'C', 'c', null, 1)"))
+        ->toThrow(QueryException::class, 'at most two levels');
+
+    expect(app(Tenancy::class)->enter(1, fn () => MediaFolder::query()->whereIn('id', [910, 911, 912])->count()))->toBe(0);
+});
+
+it('refuses a cycle written by one multi-row INSERT or one UPDATE of two folders', function (): void {
+    expect(fn () => rawFolderWrite(1, "insert into media_folders (id, site_id, name, slug, parent_id, position) values
+        (920, 1, 'A', 'a', 921, 1), (921, 1, 'B', 'b', 920, 1)"))
+        ->toThrow(QueryException::class, 'at most two levels');
+    expect(app(Tenancy::class)->enter(1, fn () => MediaFolder::query()->whereIn('id', [920, 921])->count()))->toBe(0);
+
+    // two top-level folders swapped under each other in one statement
+    $a = seedMediaFolder(1, ['name' => 'A', 'slug' => 'a']);
+    $b = seedMediaFolder(1, ['name' => 'B', 'slug' => 'b']);
+    expect(fn () => rawFolderWrite(1, "update media_folders set parent_id = case id when {$a->id} then {$b->id} else {$a->id} end where id in ({$a->id}, {$b->id})"))
+        ->toThrow(QueryException::class, 'at most two levels');
+    expect(app(Tenancy::class)->enter(1, fn () => MediaFolder::query()->whereNotNull('parent_id')->count()))->toBe(0);
+
+    // a two-level family in one INSERT is still fine, the child row first
+    rawFolderWrite(1, "insert into media_folders (id, site_id, name, slug, parent_id, position) values
+        (930, 1, 'Con', 'con', 931, 1), (931, 1, 'Cha', 'cha', null, 1)");
+    expect(app(Tenancy::class)->enter(1, fn () => MediaFolder::query()->whereKey(930)->value('parent_id')))->toBe(931);
+});
+
 it('deletes a folder\'s sub-folders with it; their files go back to no folder', function (): void {
     [$childId, $mediaId] = app(Tenancy::class)->enter(1, function (): array {
         $top = MediaFolder::query()->create(['name' => 'Cha', 'slug' => 'cha']);

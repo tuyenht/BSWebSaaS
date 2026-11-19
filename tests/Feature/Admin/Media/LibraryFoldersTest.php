@@ -572,7 +572,7 @@ it('empties a large folder in batches, each in its own site transaction, then de
 
     expect($done)->toBeTrue()
         ->and($updates)->toBe(['1', '1', '1']) // 5 files, 2 at a time
-        ->and($contexts)->toBe(5) // three batches, the empty read that ends them, the delete
+        ->and($contexts)->toBe(6) // the folder's family, three batches, the empty read that ends them, the delete
         ->and(fdLeft(1, $folder->id))->toBe(['filed' => 0, 'folder' => false])
         ->and(app(Tenancy::class)->enter(1, fn () => Media::withTrashed()->whereIn('id', array_map(fn (Media $f): int => $f->id, $files))->count()))->toBe(5)
         ->and(app(Tenancy::class)->enter(1, fn () => Media::query()->find($kept->id)?->folder_id))->toBe($other->id)

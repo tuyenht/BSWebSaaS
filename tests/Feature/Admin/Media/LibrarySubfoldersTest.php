@@ -3,11 +3,13 @@
 use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Admin\Livewire\Media\Library;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Jobs\DeleteLargeMediaFolder;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
@@ -325,6 +327,34 @@ it('asks before deleting a folder with sub-folders, then Hoàn tác brings back 
             ->and([$tree['anh-xuong']->position, $tree['may-cnc']->position, $tree['may-tien']->position])->toBe([1, 1, 2])
             ->and(Media::query()->find($own->id)?->folder_id)->toBe($tree['anh-xuong']->id)
             ->and(Media::query()->find($kidFile->id)?->folder_id)->toBe($tree['may-tien']->id);
+    });
+});
+
+it('counts the sub-folders\' files toward a folder delete left to the queued job, which empties and deletes them all', function (): void {
+    config(['media.folder_delete_inline_max_files' => 2, 'media.folder_delete_batch_files' => 1]);
+    Queue::fake();
+    $user = sfUser('admin');
+    $a = sfFolder(1, 'Ảnh xưởng', 'anh-xuong', 1);
+    $k1 = sfFolder(1, 'Máy CNC', 'may-cnc', 1, $a);
+    $k2 = sfFolder(1, 'Máy tiện', 'may-tien', 2, $a);
+    $other = sfFolder(1, 'Sản phẩm', 'san-pham', 2);
+    $files = [sfFile(1, 'own.png', $a), sfFile(1, 'cnc.png', $k1), sfFile(1, 'tien-1.png', $k2), sfFile(1, 'tien-2.png', $k2)];
+    $kept = sfFile(1, 'kept.png', $other);
+
+    // two files in the folder itself would go inside the request; with its sub-folders' it is four
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($user)->test(Library::class)
+        ->call('askDeleteFolder', 'anh-xuong')
+        ->assertSet('folderInBatches', true)
+        ->call('confirmDeleteFolder')
+        ->assertSet('undoFolder', ''));
+    Queue::assertPushed(DeleteLargeMediaFolder::class, fn (DeleteLargeMediaFolder $job): bool => $job->folderId === $a->id);
+    expect(sfTree(1))->toHaveCount(4);
+
+    expect((new DeleteLargeMediaFolder(1, $a->id))->handle(app(Tenancy::class)))->toBeTrue();
+    app(Tenancy::class)->enter(1, function () use ($files, $kept, $other): void {
+        expect(MediaFolder::query()->pluck('slug')->all())->toBe(['san-pham'])
+            ->and(Media::query()->whereKey(array_map(fn (Media $f): int => $f->id, $files))->whereNull('folder_id')->count())->toBe(4)
+            ->and(Media::query()->find($kept->id)?->folder_id)->toBe($other->id);
     });
 });
 

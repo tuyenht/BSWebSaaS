@@ -15,11 +15,15 @@ use Illuminate\Support\Facades\DB;
  *   - (site_id, parent_id, position) lists a folder's sub-folders in order and, led by the key's
  *     columns, serves the parent-delete lookup of the composite key.
  *   - A folder is never its own parent (CHECK), and the depth stays at two levels: a row trigger
- *     refuses a parent that has a parent itself, and refuses giving a parent to a folder that has
- *     sub-folders. Two people moving folders at once could each pass that check against the other's
- *     old state, so the trigger first takes the website's folder-tree lock (an advisory lock held to
- *     the end of the transaction, the same key the app takes before its own checks): the second
- *     writer waits, then checks against what the first committed.
+ *     refuses a parent that has a parent itself, and refuses a parent for a folder that has
+ *     sub-folders, on INSERT and UPDATE alike. It is an AFTER trigger, so Postgres runs it at the end
+ *     of the statement, when every row the statement wrote is there to be seen: one multi-row INSERT
+ *     or UPDATE cannot chain three levels, nor close a cycle (10 → 11 → 10: each row's parent then
+ *     has a parent), through rows that did not exist yet when an earlier row was checked. Two people
+ *     moving folders at once could each pass that check against the other's old state, so the
+ *     trigger first takes the website's folder-tree lock (an advisory lock held to the end of the
+ *     transaction, the same key the app takes before its own checks): the second writer waits, then
+ *     checks, with a fresh snapshot, against what the first committed.
  *
  * Expand-only, on a table with a few rows per site: the new column is nullable without a default
  * (no rewrite); the two indexes are built CONCURRENTLY; the foreign key and the CHECK are added
@@ -58,18 +62,18 @@ return new class extends Migration
                     RAISE EXCEPTION 'media folder %: its parent % is a sub-folder (folders have at most two levels)', NEW.id, NEW.parent_id
                         USING ERRCODE = '23514', CONSTRAINT = 'media_folders_two_levels';
                 END IF;
-                IF TG_OP = 'UPDATE' AND EXISTS (SELECT 1 FROM public.media_folders c
+                IF EXISTS (SELECT 1 FROM public.media_folders c
                            WHERE c.site_id = NEW.site_id AND c.parent_id = NEW.id) THEN
                     RAISE EXCEPTION 'media folder % has sub-folders, so it cannot go inside another folder (folders have at most two levels)', NEW.id
                         USING ERRCODE = '23514', CONSTRAINT = 'media_folders_two_levels';
                 END IF;
-                RETURN NEW;
+                RETURN NULL;
             END;
             $fn$;
 
             DROP TRIGGER IF EXISTS media_folders_two_levels ON public.media_folders;
             CREATE TRIGGER media_folders_two_levels
-                BEFORE INSERT OR UPDATE OF parent_id, site_id ON public.media_folders
+                AFTER INSERT OR UPDATE OF parent_id, site_id ON public.media_folders
                 FOR EACH ROW
                 WHEN (NEW.parent_id IS NOT NULL)
                 EXECUTE FUNCTION public.media_folders_two_levels();
