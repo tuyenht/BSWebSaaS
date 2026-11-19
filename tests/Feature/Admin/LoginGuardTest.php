@@ -182,3 +182,15 @@ it('says the password is missing and puts the cursor in the first empty field', 
         ->assertHasErrors(['email', 'password'])
         ->assertDispatched('auth-focus', field: 'email');
 });
+
+it('reads the bot-check token from the widget on every send, so an early press waits instead of failing', function (): void {
+    // The widget's answer reaches Livewire through an event that is lost when it fires before Livewire
+    // is ready, and a press before the check answers has nothing to send. The page therefore reads
+    // Cloudflare's own hidden field when the form is sent and holds the send until it is filled.
+    config(['services.turnstile.site_key' => 'test-site', 'services.turnstile.secret_key' => 'test-secret']);
+
+    Livewire::test(Login::class)
+        ->assertSeeHtml('input[name="cf-turnstile-response"]')
+        ->assertSeeHtml("document.addEventListener('submit', function (e) {")
+        ->assertSeeHtml('wire.turnstileToken = token;');
+});

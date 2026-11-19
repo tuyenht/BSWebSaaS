@@ -83,8 +83,11 @@ final class Login extends Component
         // CF blip can't lock out every admin — password + 2FA + the per-IP throttle still gate.
         $turnstile = app(TurnstileVerifier::class);
         if (LoginTurnstile::active() && ! $turnstile->verify($this->turnstileToken, $ip, failOpenOnTransportError: true)) {
+            // An empty token means the page sent before the check answered; a refused one, Cloudflare said
+            // no. Read it before refreshChallenge() clears it.
+            $token = $this->turnstileToken === '' ? 'missing' : 'refused';
             $this->refreshChallenge();
-            Audit::record('auth.login.captcha_failed', ['actor_label' => $this->email]);
+            Audit::record('auth.login.captcha_failed', ['actor_label' => $this->email, 'meta' => ['token' => $token]]);
             $this->addError('email', __('auth.captcha_failed'));
 
             return null;

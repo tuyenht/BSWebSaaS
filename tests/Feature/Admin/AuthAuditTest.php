@@ -9,6 +9,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Identity\TwoFactor\TwoFactorService;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 use PragmaRX\Google2FA\Google2FA;
@@ -109,3 +110,24 @@ it('records an OTP send throttle when the hourly cap is hit', function (): void 
 
     expect(AuditLog::query()->where('action', 'auth.otp.throttled')->exists())->toBeTrue();
 });
+
+it('records whether a refused bot check had no token or a token Cloudflare turned down', function (string $token, string $expected): void {
+    // An empty token means the page sent before the check answered (a page fault); a refused one is
+    // Cloudflare's own verdict. The two need different fixes, so the trail tells them apart.
+    config(['services.turnstile.site_key' => 'test-site', 'services.turnstile.secret_key' => 'test-secret']);
+    Http::fake(['*' => Http::response(['success' => false, 'error-codes' => ['invalid-input-response']])]);
+    $user = User::factory()->create();
+
+    Livewire::test(Login::class)
+        ->set('email', $user->email)
+        ->set('password', 'whatever')
+        ->set('turnstileToken', $token)
+        ->call('login')
+        ->assertHasErrors('email');
+
+    $row = AuditLog::query()->where('action', 'auth.login.captcha_failed')->sole();
+    expect($row->meta['token'] ?? null)->toBe($expected);
+})->with([
+    'no token' => ['', 'missing'],
+    'refused token' => ['bad-token', 'refused'],
+]);
