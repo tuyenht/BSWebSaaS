@@ -9,6 +9,7 @@ use App\Modules\Admin\Support\Entries\EntryListQuery;
 use App\Modules\Admin\Support\Entries\EntryRefusal;
 use App\Modules\Admin\Support\Entries\ListCursor;
 use App\Modules\Admin\Support\Entries\ListGroup;
+use App\Modules\Admin\Support\Entries\PageMoveWords;
 use App\Modules\Admin\Support\Entries\PostRoleNote;
 use App\Modules\Admin\Support\FirstHints;
 use App\Modules\Admin\Support\SeoFields;
@@ -1402,7 +1403,7 @@ final class Index extends Component
                 $here => null,
                 $home => Cast::string(__('entries.move_refused_home_locked')),
                 $height === null => Cast::string(__('entries.move_refused_branch_too_big')),
-                $c['lv'] + $height > PageRules::MAX_DEPTH => self::depthWhy($height),
+                $c['lv'] + $height > PageRules::MAX_DEPTH => PageMoveWords::depth($height),
                 $clash !== null => Cast::string(__('entries.move_path_taken_label', ['path' => $clash])),
                 default => null,
             };
@@ -1559,33 +1560,13 @@ final class Index extends Component
 
                 return null;
             }
-            $why = self::moveWhy($refused);
+            $why = PageMoveWords::why($refused);
             $this->refuse($how === 'drag' ? $why.' '.Cast::string(__('entries.move_tree_kept')) : $why);
         } catch (AuthorizationException) {
             $this->refuse($this->refusalFor($page, 'edit'));
         }
 
         return null;
-    }
-
-    /** Why the page tree refused a move, in the design's words. */
-    private static function moveWhy(PageMoveRejectedException $refused): string
-    {
-        return match ($refused->reason) {
-            'too_deep' => self::depthWhy($refused->height),
-            'path_taken' => Cast::string(__('entries.move_path_taken', ['path' => $refused->path])),
-            default => Cast::string(__('entries.move_refused_'.$refused->reason)),
-        };
-    }
-
-    /** The three-level rule, said for a branch of $height levels (1: a page without sub-pages). */
-    private static function depthWhy(int $height): string
-    {
-        return Cast::string(match (true) {
-            $height <= 1 => __('entries.move_depth_page'),
-            $height === 2 => __('entries.move_depth_branch_l1', ['n' => $height]),
-            default => __('entries.move_depth_branch_top', ['n' => $height]),
-        });
     }
 
     /** The toast's «Đóng» or its timer: clears only the message it was shown for. */
@@ -2887,6 +2868,14 @@ final class Index extends Component
         $deleteAny = $user->can('entries.delete.any');
         $deleteOwn = $user->can('entries.delete.own');
         $scopeRefusal = $limited ? $scopes->refusal($user) : null;
+        // A member limited to some categories may add no page (a page has no category): the add button
+        // stays, locked, with the reason; so does each row's «Thêm trang con», which is otherwise offered to
+        // whoever may add a page (`create` and `fileUnder('page')`, as the editor's first save asks again; no
+        // right on the parent is needed), never on the Home page or a page on the last level
+        $addLock = $type === 'page' && $canCreate && $scopes->isLimited($user)
+            ? EntryRefusal::scopeWhy('page', $scopeRefusal ?? $scopes->refusal($user)) : null;
+        $childLock = $addLock === null ? null : (preg_replace('/[.。]$/u', '', $addLock) ?? $addLock);
+        $levels = $read['levels'];
         $pageUlids = [];
         $rowCovered = [];
         $rowEditable = [];
@@ -2924,10 +2913,20 @@ final class Index extends Component
                 // a page this member may move in the tree (`update` on it; a member limited to some categories
                 // covers no page): its grip and «Chuyển lên / xuống / đến…»
                 'move' => $type === 'page' && $edit && $covered && ! $entry->trashed(),
+                // «Thêm trang con»: the editor's address with this page as the parent, or the reason it is locked
+                'child' => null,
+                'childWhy' => null,
                 // «Xem trước» of a row visitors cannot see yet (admin.entries.preview), for who may open it
                 'preview' => ! $entry->trashed() && $entry->status !== EntryStatus::Published->value && $user->can('preview', $entry)
                     ? route('admin.entries.preview', ['ulid' => $ulid]) : null,
             ];
+            if ($type === 'page' && $canCreate && ! $entry->trashed() && ! $rowCan[$ulid]['home'] && ($levels[$ulid] ?? 1) < PageRules::MAX_DEPTH) {
+                if ($childLock !== null) {
+                    $rowCan[$ulid]['childWhy'] = $childLock;
+                } else {
+                    $rowCan[$ulid]['child'] = route('admin.entries.create', array_filter(['section' => $this->section, 'parent' => $ulid]));
+                }
+            }
         }
         // The page tree in website order: each row's parent, by ulid, for the drag, and by title for the
         // «Thuộc: …» line (read from the rows; a parent drawn on another page of the list in one more
@@ -2969,11 +2968,6 @@ final class Index extends Component
                 $rowGuides[$rows->items()[$i]['entry']->ulid] = $guides;
             }
         }
-        // A member limited to some categories may add no page (a page has no category): the add button
-        // stays, locked, with the reason.
-        $addLock = $type === 'page' && $canCreate && $scopes->isLimited($user)
-            ? EntryRefusal::scopeWhy('page', $scopeRefusal ?? $scopes->refusal($user)) : null;
-
         // Each post row's main category, as a path from the top of the section's tree, and its cover in a
         // small rendition (both from what the rows already carry: no query per row).
         $rowCategory = [];
@@ -3308,7 +3302,7 @@ final class Index extends Component
      * the facets, the filters and the tree are made in memory, as the list always has.
      *
      * @param  list<string>  $locales
-     * @return array{rows: LengthAwarePaginator<int, array{entry: Entry, depth: int}>, pager: array<string, mixed>, parents: array<string, list<string>>, facets: array{lang: list<array<string, mixed>>, creator: list<array<string, mixed>>, template: list<array<string, mixed>>, trans: list<array<string, mixed>>}, total: int, limited: bool, counts: array<string, int>}
+     * @return array{rows: LengthAwarePaginator<int, array{entry: Entry, depth: int}>, pager: array<string, mixed>, parents: array<string, list<string>>, levels: array<string, int>, facets: array{lang: list<array<string, mixed>>, creator: list<array<string, mixed>>, template: list<array<string, mixed>>, trans: list<array<string, mixed>>}, total: int, limited: bool, counts: array<string, int>}
      */
     private function readInMemory(EntryListQuery $list, string $locale, array $locales, User $user, CategoryScopes $scopes): array
     {
@@ -3345,6 +3339,7 @@ final class Index extends Component
         $this->cursor = '';
 
         $parents = [];
+        $levels = [];
         if ($flat) {
             $onPage = array_map(static fn (array $item): Entry => $item['entry'], $rows->items());
             $parentIds = array_values(array_unique(array_filter(array_map(static fn (Entry $entry): ?int => $entry->parent_id, $onPage), 'is_int')));
@@ -3353,11 +3348,14 @@ final class Index extends Component
                 if ($entry->parent_id !== null && ($paths[$entry->parent_id] ?? []) !== []) {
                     $parents[$entry->ulid] = $paths[$entry->parent_id];
                 }
+                $levels[$entry->ulid] = count($entry->parent_id === null ? [] : ($paths[$entry->parent_id] ?? [])) + 1;
             }
+        } elseif ($this->entryType === 'page') {
+            $levels = self::treeLevels($list, array_values($rows->items()));
         }
 
         return ['rows' => $rows, 'pager' => $this->pager($rows->currentPage(), $rows->total(), count($rows->items()), null, null),
-            'parents' => $parents, 'facets' => $facets, 'total' => $filtered->count(), 'limited' => $limited, 'counts' => []];
+            'parents' => $parents, 'levels' => $levels, 'facets' => $facets, 'total' => $filtered->count(), 'limited' => $limited, 'counts' => []];
     }
 
     /**
@@ -3372,7 +3370,7 @@ final class Index extends Component
      * @param  bool  $tabs  read the group counts with the facets
      * @param  array<string, int>  $counts  the group counts already read
      * @param  list<string>  $locales
-     * @return array{rows: LengthAwarePaginator<int, array{entry: Entry, depth: int}>, pager: array<string, mixed>, parents: array<string, list<string>>, facets: array{lang: list<array<string, mixed>>, creator: list<array<string, mixed>>, template: list<array<string, mixed>>, trans: list<array<string, mixed>>}, total: int, limited: bool, counts: array<string, int>}
+     * @return array{rows: LengthAwarePaginator<int, array{entry: Entry, depth: int}>, pager: array<string, mixed>, parents: array<string, list<string>>, levels: array<string, int>, facets: array{lang: list<array<string, mixed>>, creator: list<array<string, mixed>>, template: list<array<string, mixed>>, trans: list<array<string, mixed>>}, total: int, limited: bool, counts: array<string, int>}
      */
     private function readInSql(EntryListQuery $list, bool $tabs, array $counts, string $locale, array $locales, bool $multilingual, User $user, CategoryScopes $scopes): array
     {
@@ -3419,6 +3417,7 @@ final class Index extends Component
 
         $items = [];
         $parents = [];
+        $levels = [];
         if ($tree) {
             $below = $list->descendants(array_values(array_map(Cast::int(...), $entries->modelKeys())), self::TREE_CHILDREN);
             $all = $entries->concat($below);
@@ -3426,6 +3425,7 @@ final class Index extends Component
             foreach ($this->hangBelow($entries, $below, $dir) as $item) {
                 $items[] = $item;
             }
+            $levels = self::treeLevels($list, $items);
         } else {
             $this->loadRows($entries, $people);
             $all = $entries;
@@ -3439,6 +3439,7 @@ final class Index extends Component
                     if ($entry->parent_id !== null && ($paths[$entry->parent_id] ?? []) !== []) {
                         $parents[$entry->ulid] = $paths[$entry->parent_id];
                     }
+                    $levels[$entry->ulid] = count($entry->parent_id === null ? [] : ($paths[$entry->parent_id] ?? [])) + 1;
                 }
             }
         }
@@ -3453,7 +3454,7 @@ final class Index extends Component
         $rows = new LengthAwarePaginator(collect($items), max($page['total'], $page['to']), $this->perPage, $page['current'],
             ['path' => LengthAwarePaginator::resolveCurrentPath(), 'pageName' => 'page']);
 
-        return ['rows' => $rows, 'pager' => $page['pager'], 'parents' => $parents, 'facets' => $facets, 'total' => $page['total'], 'limited' => $limited,
+        return ['rows' => $rows, 'pager' => $page['pager'], 'parents' => $parents, 'levels' => $levels, 'facets' => $facets, 'total' => $page['total'], 'limited' => $limited,
             'counts' => $counts];
     }
 
@@ -3493,6 +3494,40 @@ final class Index extends Component
             'trans' => $multilingual ? array_map(fn (string $state): array => ['value' => $state, 'label' => __('entries.trans_'.$state)]
                 + $count($tally['trans'][$state] ?? 0) + ['active' => in_array($state, $this->transF, true)], self::TRANS) : [],
         ];
+    }
+
+    /**
+     * Each row's level in the website's page tree (1: a top page), by ulid: its depth in the tree drawn,
+     * plus the levels above a top row that is itself under a page in the Trash (drawn at the top) or above
+     * a list page's first row when the page starts inside a branch — read in one go, only when there is
+     * such a row. «Thêm trang con» stops at the last level.
+     *
+     * @param  list<array{entry: Entry, depth: int}>  $items  in the order drawn
+     * @return array<string, int>
+     */
+    private static function treeLevels(EntryListQuery $list, array $items): array
+    {
+        // the rows whose level the tree drawn cannot tell: a top row under a page in the Trash, and the
+        // first row of a list page that starts inside a branch
+        $asks = [];
+        foreach ($items as $i => $item) {
+            $parentId = $item['entry']->parent_id;
+            if ($parentId !== null && ($item['depth'] === 0 || $i === 0)) {
+                $asks[] = $parentId;
+            }
+        }
+        $above = $asks === [] ? [] : $list->ancestorTitles(array_values(array_unique($asks)), '');
+        $levels = [];
+        $offset = 0;
+        foreach ($items as $i => $item) {
+            $parentId = $item['entry']->parent_id;
+            if ($item['depth'] === 0 || $i === 0) {
+                $offset = $parentId === null ? 0 : count($above[$parentId] ?? []) - $item['depth'];
+            }
+            $levels[$item['entry']->ulid] = $item['depth'] + 1 + $offset;
+        }
+
+        return $levels;
     }
 
     /**

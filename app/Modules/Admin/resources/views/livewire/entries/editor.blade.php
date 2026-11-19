@@ -364,6 +364,23 @@
                         @endif
                     </section>
                 @endcan
+
+                @if ($isPage && ! $pageHome)
+                    {{-- «Thuộc tính trang» (design 07): where the page sits in the website's page tree, shared by every language --}}
+                    <section class="{{ $card }}" aria-labelledby="entry-props-h" data-page-props>
+                        <div class="{{ $cardHead }}">
+                            <h2 id="entry-props-h" class="{{ $cardTitle }}">{{ __('entries.ed.card_page_props') }}</h2>
+                            @if ($sharedLock)
+                                <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-hover px-2 py-0.5 text-small font-semibold text-text-muted" title="{{ __('entries.ed.shared_tip') }}">
+                                    <x-bs-admin::icon name="ri-lock" class="size-[min(1.5rem,calc(0.75rem+var(--user-text-boost)))]" />{{ __('entries.ed.shared_chip') }}
+                                </span>
+                            @endif
+                        </div>
+                        <div class="p-4">
+                            @include('admin::livewire.entries.partials.parent-picker')
+                        </div>
+                    </section>
+                @endif
             </div>
         </div>
 

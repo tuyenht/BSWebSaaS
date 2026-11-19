@@ -6,17 +6,21 @@ use App\Modules\Admin\Livewire\Concerns\EditsButtonActions;
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\BlockKinds;
 use App\Modules\Admin\Support\Entries\EntryRefusal;
+use App\Modules\Admin\Support\Entries\PageMoveWords;
+use App\Modules\Admin\Support\Entries\PageParentChoices;
 use App\Modules\Admin\Support\EntryProseBody;
 use App\Modules\Admin\Support\Guide\EditorGuide;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Catalog\Components\ProductGridComponent;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
+use App\Modules\Cms\Actions\MovePage;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
 use App\Modules\Cms\Exceptions\HomePageLockedException;
+use App\Modules\Cms\Exceptions\PageMoveRejectedException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
@@ -60,6 +64,7 @@ use Carbon\CarbonInterface;
 use Closure;
 use DateTimeInterface;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -122,7 +127,7 @@ final class Editor extends Component
      * The fields the save state and the leave dialog count against the saved entry. The block list
      * is counted apart (blocksChanged): the browser cannot write it the way the server does.
      */
-    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryId', 'coverImageKey'];
+    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryId', 'coverImageKey', 'parentUlid'];
 
     /** Which entry is being edited — server-resolved (mount/persist); never client-set. */
     #[Locked]
@@ -296,6 +301,27 @@ final class Editor extends Component
     #[Locked]
     public bool $mayPreview = false;
 
+    /**
+     * «Trang cha» (pages, board 07): the parent page picked, by ulid (null: a top page). Client-set; every
+     * value is checked when it arrives (updatedParentUlid) and again by the save, under the page-tree lock.
+     */
+    public ?string $parentUlid = null;
+
+    /** The parent the form was loaded with (a new page: the one «Thêm trang con» preset): a save moves the page only when the pick differs. */
+    #[Locked]
+    public ?string $parentLoaded = null;
+
+    /** The picked parent's title, for the button (empty: «Không có (trang gốc)»). */
+    #[Locked]
+    public string $parentName = '';
+
+    /** This page is the website's Home page: it has no «Trang cha» (it keeps its place in the tree). */
+    #[Locked]
+    public bool $pageHome = false;
+
+    /** The parent picked before this round trip's change (updatingParentUlid), to put back a refused pick. */
+    protected ?string $parentBefore = null;
+
     /** The guide is printed with the first draw only (the browser keeps it; later round trips skip it). */
     private bool $guideDue = false;
 
@@ -345,7 +371,7 @@ final class Editor extends Component
 
     protected ?int $workflowMemoFor = null;
 
-    public function mount(?string $ulid = null, ?string $section = null, ?string $locale = null): void
+    public function mount(?string $ulid = null, ?string $section = null, ?string $locale = null, ?string $parent = null): void
     {
         $this->locale = $this->resolveLocale(app(SiteLocale::class), $locale ?? request()->query('locale'));
         $this->multiLocale = count(app(SiteLocale::class)->enabled()) > 1;
@@ -368,6 +394,10 @@ final class Editor extends Component
             $this->address = $this->previewAddress($draft);
             $this->placeInList($contentSection instanceof ContentSection && $this->type === 'post' ? $contentSection : null);
             $this->mayPublish = $this->user()->can('publish', $draft);
+            // «Thêm trang con»: the parent named by the list (?parent=<ulid>), when it may hold one more level
+            if ($this->type === 'page') {
+                $this->presetParent($parent ?? request()->query('parent'));
+            }
             $this->saved = $this->tracked();
             $this->guideDue = true;
 
@@ -406,6 +436,9 @@ final class Editor extends Component
         $this->mayPublish = $this->user()->can('publish', $entry);
         $this->frameRights($entry);
         $this->liveAddress = $this->routedAddress($entry->id);
+        if ($this->type === 'page') {
+            $this->loadParent($entry, $translation);
+        }
         $this->saved = $this->tracked();
         $this->guideDue = true;
 
@@ -1320,6 +1353,9 @@ final class Editor extends Component
             'kinds' => $this->blockKinds(),
             'prosePreview' => $this->prose ? EntryProseBody::preview($this->bodyHtml) : '',
             'localeLabel' => Locales::label($this->locale),
+            // «Trang cha» is one value for every language: it is changed in the website's default language only
+            'sharedLock' => $this->locale !== app(SiteLocale::class)->default(),
+            'sharedWhy' => Cast::string(__('entries.ed.shared_guard', ['lang' => Locales::label(app(SiteLocale::class)->default())])),
             // The writing area's hint: in another language it says that version is still empty.
             'bodyPlaceholder' => $this->locale === app(SiteLocale::class)->default()
                 ? __('entries.ed.body_placeholder', ['unit' => mb_strtolower($this->unit())])
@@ -1375,9 +1411,11 @@ final class Editor extends Component
         $this->resetErrorBag();
         $this->saveFailed = false;
         // A language with no saved version yet loads nothing back: start from an empty form.
+        $preset = $this->ulid === null ? $this->parentLoaded : null;
         $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
-            'transitionNote', 'assignTo', 'showMediaPicker', 'showBlockImagePicker', 'blockImagePickerPath', 'stale', 'overwrite');
-        $this->mount($this->ulid, $this->sectionKey, $this->locale);
+            'transitionNote', 'assignTo', 'showMediaPicker', 'showBlockImagePicker', 'blockImagePickerPath', 'stale', 'overwrite',
+            'parentUlid', 'parentLoaded', 'parentName', 'pageHome');
+        $this->mount($this->ulid, $this->sectionKey, $this->locale, $preset);
     }
 
     /**
@@ -1781,6 +1819,305 @@ final class Editor extends Component
     {
         $this->skipRender();
         $this->dispatch('bs-toast', text: Cast::string(__('admin.editor.gone')), stay: true, close: Cast::string(__('admin.close')));
+    }
+
+    /**
+     * «Trang cha» (board 07): what the picker offers, read when it opens (PageParentChoices). Null for a
+     * post and for the Home page, which have no parent to pick.
+     *
+     * @return array{more: bool, opts: list<array{k: string|null, name: string, lv: int, why: string|null}>}|null
+     */
+    public function parentChoices(): ?array
+    {
+        if ($this->ulid === null) {
+            $this->authorize('create', Entry::class);
+            $page = null;
+        } else {
+            $page = $this->resolveOrFail($this->ulid);
+            $this->authorize('update', $page);
+        }
+        if ($this->type !== 'page' || $this->pageHome) {
+            return null;
+        }
+
+        return app(PageParentChoices::class)->for($page);
+    }
+
+    /** Keeps the pick this change replaces, so a refused one can be put back (updatedParentUlid). */
+    public function updatingParentUlid(): void
+    {
+        $this->parentBefore = $this->parentUlid;
+    }
+
+    /**
+     * A pick in «Trang cha», checked as it arrives: a live page of this website (looked up by ulid
+     * through the website's scope, so another website's page is never found), not the Home page, not
+     * this page or a page under it, and room for this page and its sub-pages within three levels. A
+     * refused pick is put back and the reason stays under the field. The parent is shared by every
+     * language, so it is picked in the website's default language only. The save checks it all again.
+     */
+    public function updatedParentUlid(mixed $value): void
+    {
+        $before = $this->parentBefore;
+        $this->parentBefore = null;
+        $this->authorizeEditing();
+        $this->resetErrorBag('parentUlid');
+        if ($this->type !== 'page' || $this->pageHome) {
+            $this->parentUlid = $before;
+
+            return;
+        }
+        $default = app(SiteLocale::class)->default();
+        if ($this->locale !== $default) {
+            $this->parentUlid = $before;
+            $this->dispatch('bs-toast', text: Cast::string(__('entries.ed.shared_guard', ['lang' => Locales::label($default)])), stay: true, close: Cast::string(__('admin.close')));
+
+            return;
+        }
+
+        $parent = null;
+        if ($value !== null && $value !== '') {
+            $parent = is_string($value) ? $this->findPage($value) : null;
+            $why = $parent instanceof Entry ? $this->parentRefusal($parent) : Cast::string(__('entries.ed.par_gone'));
+            if ($why !== null) {
+                $this->parentUlid = $before;
+                $this->addError('parentUlid', $why);
+
+                return;
+            }
+        }
+        $this->parentUlid = $parent?->ulid;
+        $this->parentName = $parent instanceof Entry ? $this->pageTitle($parent) : '';
+        $this->address = $this->previewAddress($this->placedDraft($parent));
+    }
+
+    /**
+     * «Thêm trang con» from the Trang list: the parent it names, kept when it is a live page of this
+     * website that may hold one more level (not the Home page, not a third-level page). Anything else —
+     * a malformed key, a page of another website, a page in the Trash, a page that cannot take one more
+     * level — is not kept: the form starts as a top page, and says why under «Trang cha».
+     */
+    private function presetParent(mixed $value): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+        $parent = is_string($value) ? $this->findPage($value) : null;
+        if ($parent === null) {
+            $this->addError('parentUlid', Cast::string(__('entries.ed.par_gone')));
+
+            return;
+        }
+        $why = $this->parentRefusal($parent);
+        if ($why !== null) {
+            $this->addError('parentUlid', $why);
+
+            return;
+        }
+        $this->parentUlid = $parent->ulid;
+        $this->parentLoaded = $parent->ulid;
+        $this->parentName = $this->pageTitle($parent);
+        $this->address = $this->previewAddress($this->placedDraft($parent));
+    }
+
+    /**
+     * The page's place in the tree as the form opens: its parent (in the Trash too: it is still under it),
+     * and whether it is the Home page — known already when the frame asked (a member who may delete it),
+     * else read from the language being edited (its slug is the Home one), with no query: a page that is
+     * the Home page in another language only still has its move refused on save (MovePage).
+     */
+    private function loadParent(Entry $entry, ?EntryTranslation $translation): void
+    {
+        $this->pageHome = $this->mayTrash
+            ? $this->isHome
+            : $translation instanceof EntryTranslation && in_array($translation->slug, [PathBuilder::HOME_SLUG, ''], true);
+        $parent = $entry->parent_id === null ? null : Entry::withTrashed()->whereKey($entry->parent_id)->first(['id', 'site_id', 'ulid', 'type']);
+        $this->parentUlid = $parent?->ulid;
+        $this->parentLoaded = $parent?->ulid;
+        $this->parentName = $parent instanceof Entry ? $this->pageTitle($parent) : '';
+    }
+
+    /** A live page of this website by its ulid (the website's scope: another website's is never found). */
+    private function findPage(string $ulid): ?Entry
+    {
+        return Str::isUlid($ulid) ? Entry::query()->where('ulid', $ulid)->where('type', 'page')->first() : null;
+    }
+
+    /**
+     * Why $parent cannot be this page's parent, in the picker's words (board 07), or null: the Home page
+     * has no sub-pages; the page itself and the pages under it are refused; the parent's level plus the
+     * page's branch (sub-pages in the Trash included, PageRules::heightOf) may not pass three levels. The
+     * parent the page has now is always fine: keeping it moves nothing.
+     */
+    private function parentRefusal(Entry $parent): ?string
+    {
+        if (HomePages::is($parent)) {
+            return Cast::string(__('entries.move_refused_parent_home'));
+        }
+        $page = $this->ulid !== null ? $this->resolveOrFail($this->ulid) : null;
+        if ($page !== null && $parent->id === $page->parent_id) {
+            return null;
+        }
+        if ($page !== null && $parent->id === $page->id) {
+            return Cast::string(__('entries.ed.par_why_self'));
+        }
+        $ancestors = PageRules::ancestorsOf($parent);
+        if ($page !== null && in_array($page->id, $ancestors, true)) {
+            return Cast::string(__('entries.ed.par_why_sub'));
+        }
+        $height = $page === null ? 1 : PageRules::heightOf($page);
+        if ($height === null) {
+            return Cast::string(__('entries.move_refused_branch_too_big'));
+        }
+        $level = count($ancestors) + 1;
+        if ($level + $height > PageRules::MAX_DEPTH) {
+            return $height > 1
+                ? Cast::string(__('entries.ed.par_why_branch'))
+                : Cast::string(__('entries.ed.par_why_level', ['n' => $level + 1]));
+        }
+
+        return null;
+    }
+
+    /** Does this save change the page's parent? Only a page that is not the Home page, in the default language. */
+    private function reparenting(): bool
+    {
+        return $this->type === 'page' && $this->ulid !== null && ! $this->pageHome
+            && $this->parentUlid !== $this->parentLoaded
+            && $this->locale === app(SiteLocale::class)->default();
+    }
+
+    /**
+     * A new page's first save under the picked parent, in its own savepoint of the request's transaction
+     * (the page-tree lock is held to the end of the request, through the translation and a publish): the
+     * site's page-tree lock FIRST (PageRules::lock), then the parent read again and checked — a live page of this website, not
+     * the Home page, with room for one more level — and the page made the last of its sub-pages. A
+     * refusal writes nothing and keeps the form as typed (null). The address is checked when the page
+     * is published (RouteSync), as for every page.
+     *
+     * @param  array<string, mixed>  $fields
+     */
+    private function createUnderParent(array $fields): ?Entry
+    {
+        try {
+            $entry = DB::transaction(function () use ($fields): Entry {
+                PageRules::lock(app(CurrentSite::class)->id());
+                $parent = $this->findPage((string) $this->parentUlid) ?? throw new PageMoveRejectedException('parent_invalid');
+                if (HomePages::is($parent)) {
+                    throw new PageMoveRejectedException('parent_home');
+                }
+                if (PageRules::levelOf($parent) + 1 > PageRules::MAX_DEPTH) {
+                    throw new PageMoveRejectedException('too_deep');
+                }
+                $last = Entry::query()->where('type', 'page')->where('parent_id', $parent->id)->max('position');
+
+                return Entry::query()->create($fields + ['parent_id' => $parent->id, 'position' => $last === null ? 0 : Cast::int($last) + 1]);
+            });
+        } catch (PageMoveRejectedException $refused) {
+            $this->refuseParent($refused);
+
+            return null;
+        }
+        $this->parentLoaded = $this->parentUlid;
+
+        return $entry;
+    }
+
+    /**
+     * Move the page, with its sub-pages, to the end of the picked parent's sub-pages (null: the top
+     * level) through MovePage — the one definition of a move: the tree's rules, the addresses and their
+     * 301s, the audit. False, with the reason shown, when it refuses.
+     */
+    private function moveToParent(Entry $entry): bool
+    {
+        $parent = null;
+        if ($this->parentUlid !== null) {
+            $parent = $this->findPage($this->parentUlid);
+            if (! $parent instanceof Entry) {
+                $this->refuseParent(new PageMoveRejectedException('parent_invalid'));
+
+                return false;
+            }
+        }
+        try {
+            $moved = app(MovePage::class)->into($entry, $parent);
+            $entry->setRawAttributes(['parent_id' => $moved['parent'], 'position' => $moved['position']] + $entry->getAttributes(), true);
+            $entry->unsetRelation('parent');
+        } catch (PageMoveRejectedException $refused) {
+            if ($refused->reason !== 'here_already') {
+                $this->refuseParent($refused);
+
+                return false;
+            }
+        }
+        $this->parentLoaded = $this->parentUlid;
+        $this->liveAddress = $this->routedAddress($entry->id);
+
+        return true;
+    }
+
+    /**
+     * The rows MovePage locks, taken now, in id order as it takes them, before this save's own lock on the
+     * page's row: the page, the parent picked, and the live pages beside it now and beside it there. A
+     * writer that locks several pages in id order (the list's bulk actions) then never holds one of them
+     * while waiting for the page this save already holds. Its place is read again under the page-tree
+     * lock (a move may have committed while this save waited for it); each list is read as MovePage reads
+     * it, at most one past its limit, and a parent that is gone locks nothing (the move is refused).
+     */
+    private function lockMoveRows(Entry $entry): void
+    {
+        $parentId = $this->parentUlid === null ? null : $this->findPage($this->parentUlid)?->id;
+        if ($this->parentUlid !== null && $parentId === null) {
+            return;
+        }
+        $from = Entry::withTrashed()->whereKey($entry->id)->value('parent_id');
+        $from = $from === null ? null : Cast::int($from);
+        $beside = static fn (?int $id): array => Entry::query()->where('type', 'page')
+            ->when($id === null, fn (Builder $q) => $q->whereNull('parent_id'), fn (Builder $q) => $q->where('parent_id', $id))
+            ->orderBy('position')->orderBy('id')->limit(MovePage::SIBLINGS_MAX + 1)->pluck('id')
+            ->map(static fn (mixed $sibling): int => Cast::int($sibling))->all();
+        $old = $beside($from);
+        $new = $beside($parentId);
+        if (count($old) > MovePage::SIBLINGS_MAX || count($new) > MovePage::SIBLINGS_MAX) {
+            return;   // MovePage refuses the move before it locks a row
+        }
+        $ids = [$entry->id, ...($parentId === null ? [] : [$parentId]), ...$old, ...$new];
+        Entry::withTrashed()->whereKey(array_values(array_unique($ids)))->orderBy('id')->lockForUpdate()->pluck('id');
+    }
+
+    /** A refused «Trang cha» on save: the reason under the field and in a message that stays; nothing saved. */
+    private function refuseParent(PageMoveRejectedException $refused): void
+    {
+        if ($refused->reason === 'page_invalid') {
+            // the page itself went to the Trash meanwhile: said as for any save of a page that is gone
+            $this->saveFailed = true;
+            $this->staleRow();
+
+            return;
+        }
+        $why = $refused->reason === 'parent_invalid' ? Cast::string(__('entries.ed.par_gone')) : PageMoveWords::why($refused);
+        $this->saveFailed = true;
+        $this->addError('parentUlid', $why);
+        $this->dispatch('bs-toast', text: $why, stay: true, close: Cast::string(__('admin.close')));
+    }
+
+    /** The page's title in the website's default language (another language's when that one has none). */
+    private function pageTitle(Entry $page): string
+    {
+        $title = EntryTranslation::query()->where('entry_id', $page->id)->where('title', '!=', '')
+            ->orderByRaw('locale = ? desc', [app(SiteLocale::class)->default()])->orderBy('locale')->value('title');
+
+        return is_string($title) && $title !== '' ? $title : Cast::string(__('entries.untitled'));
+    }
+
+    /** This page as it would be under $parent, for the address preview. */
+    private function placedDraft(?Entry $parent): Entry
+    {
+        $entry = $this->ulid !== null ? $this->resolveOrFail($this->ulid) : new Entry(['type' => $this->type]);
+        $entry->setRawAttributes(['parent_id' => $parent?->id] + $entry->getAttributes());
+        $entry->setRelation('parent', $parent);
+
+        return $entry;
     }
 
     /** What the frame's «Xem trước» and ⋮ offer for a saved entry: the member's preview and delete rights, and whether it is the Home page. */
@@ -2259,17 +2596,34 @@ final class Editor extends Component
             // Opening the editor needs only `create`; what is saved must lie inside the member's
             // category limits (a page has no category, so a limited member writes no page).
             $this->authorize('fileUnder', [Entry::class, $this->type, $this->type === 'post' ? $this->categoryId : null]);
-            $entry = Entry::query()->create([
+            $fields = [
                 'type' => $this->type,
                 'status' => 'draft',
                 'author_id' => $this->user()->id,
                 'meta' => [], // a fresh instance's meta is null until set; [] keeps the merge below array-typed
-            ]);
+            ];
+            $entry = $this->type === 'page' && $this->parentUlid !== null
+                ? $this->createUnderParent($fields)
+                : Entry::query()->create($fields);
+            if (! $entry instanceof Entry) {
+                if ($filled) {
+                    $this->slug = '';
+                }
+
+                return null;
+            }
             $this->ulid = $entry->ulid;
             $this->status = $entry->status;
         } else {
             $entry = $this->resolveOrFail($this->ulid);
             $this->authorize('update', $entry);
+            // A new «Trang cha» moves the page in the site's page tree: that tree's lock comes before any
+            // row lock, as every writer of the tree takes it (MovePage), so the two can never wait on each other.
+            $reparent = $this->reparenting();
+            if ($reparent) {
+                PageRules::lock(app(CurrentSite::class)->id());
+                $this->lockMoveRows($entry);
+            }
             // The entry row first, as every entry action takes it, before the translation is
             // written: a save that changes no shared field writes nothing to the entry row, and a
             // check of the search words running meanwhile must wait for it.
@@ -2288,6 +2642,14 @@ final class Editor extends Component
                     $this->slug = '';
                 }
                 $this->askBeforeOverwrite($entry, $stored, $action, $transition);
+
+                return null;
+            }
+            // the move before anything is written: a refused one leaves the page as it was and the form as typed
+            if ($reparent && ! $this->moveToParent($entry)) {
+                if ($filled) {
+                    $this->slug = '';
+                }
 
                 return null;
             }
