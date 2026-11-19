@@ -4866,6 +4866,7 @@
     "catalog.ed.toast_published": "Published — visitors can see it now at :url.",
     "catalog.ed.toast_updated": "Updated — visitors see the changes now.",
     "catalog.ed.refused_trash": "Your role can't delete this product.",
+    "admin.editor.gone": "This item is no longer here — it may have just been moved to the Trash in another tab or by someone else. What you typed is still on this screen.",
     "catalog.ed.toast_status_elsewhere": "The product's status was just changed elsewhere (now: :status). The content is saved; the status was not changed.",
     "catalog.ed.toast_draft": "Draft saved at :time.",
     "catalog.ed.toast_saved": "Saved at :time.",

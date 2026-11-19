@@ -156,7 +156,7 @@ describe('posts and pages', function (): void {
             $this->travel(5)->minutes();
             $c->call('trash')
                 ->assertOk()
-                ->assertDispatched('bs-toast', text: 'Bài này vừa được người khác thay đổi — danh sách đã được tải lại.');
+                ->assertDispatched('bs-toast', text: 'Nội dung này không còn ở đây — có thể vừa được chuyển vào Thùng rác ở thẻ khác hoặc bởi người khác. Chữ bạn đang gõ vẫn còn trên màn này.');
 
             expect(Entry::onlyTrashed()->whereKey($post->id)->value('deleted_at'))->toEqual($trashedAt);
         });
@@ -369,7 +369,7 @@ describe('products', function (): void {
             $this->travel(5)->minutes();
             $c->call('trash')
                 ->assertOk()
-                ->assertDispatched('bs-toast', text: 'Sản phẩm này không còn trong danh sách — có thể đã bị xóa hoặc người khác vừa đổi nó. Hãy tải lại danh sách.');
+                ->assertDispatched('bs-toast', text: 'Nội dung này không còn ở đây — có thể vừa được chuyển vào Thùng rác ở thẻ khác hoặc bởi người khác. Chữ bạn đang gõ vẫn còn trên màn này.');
 
             expect(Product::onlyTrashed()->whereKey($product->id)->value('deleted_at'))->toEqual($trashedAt);
         });

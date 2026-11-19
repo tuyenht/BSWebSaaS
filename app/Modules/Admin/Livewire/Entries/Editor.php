@@ -1774,13 +1774,13 @@ final class Editor extends Component
     }
 
     /**
-     * The entry is no longer live (in the Trash, or gone): the list's own words for a row that changed.
+     * The entry is no longer live (in the Trash, or gone): in a message that stays until it is closed.
      * The screen stays as it is, so nothing typed is lost, and is not drawn again from a row that is gone.
      */
     private function staleRow(): void
     {
         $this->skipRender();
-        $this->dispatch('bs-toast', text: Cast::string(__('entries.row_stale')));
+        $this->dispatch('bs-toast', text: Cast::string(__('admin.editor.gone')), stay: true, close: Cast::string(__('admin.close')));
     }
 
     /** What the frame's «Xem trước» and ⋮ offer for a saved entry: the member's preview and delete rights, and whether it is the Home page. */

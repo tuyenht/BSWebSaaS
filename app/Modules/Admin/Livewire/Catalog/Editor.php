@@ -299,13 +299,13 @@ final class Editor extends Component
     }
 
     /**
-     * The product is no longer live (in the Trash, or gone): the list's words for it, in a message that
+     * The product is no longer live (in the Trash, or gone): the editor's words for it, in a message that
      * stays until it is closed. The screen stays as it is, so nothing typed is lost.
      */
     private function productGone(): void
     {
         $this->skipRender();
-        $this->dispatch('bs-toast', text: Cast::string(__('catalog.row_gone')), stay: true, close: Cast::string(__('admin.close')));
+        $this->dispatch('bs-toast', text: Cast::string(__('admin.editor.gone')), stay: true, close: Cast::string(__('admin.close')));
     }
 
     private function entitled(): bool

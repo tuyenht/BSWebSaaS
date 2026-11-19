@@ -4866,6 +4866,7 @@
     "catalog.ed.toast_published": "Đã đăng — khách thấy ngay ở :url.",
     "catalog.ed.toast_updated": "Đã cập nhật — khách thấy thay đổi ngay.",
     "catalog.ed.refused_trash": "Nhóm quyền của bạn không xóa được sản phẩm này.",
+    "admin.editor.gone": "Nội dung này không còn ở đây — có thể vừa được chuyển vào Thùng rác ở thẻ khác hoặc bởi người khác. Chữ bạn đang gõ vẫn còn trên màn này.",
     "catalog.ed.toast_status_elsewhere": "Trạng thái sản phẩm vừa được đổi ở nơi khác (hiện: :status). Đã lưu nội dung, chưa đổi trạng thái.",
     "catalog.ed.toast_draft": "Đã lưu nháp lúc :time.",
     "catalog.ed.toast_saved": "Đã lưu lúc :time.",
