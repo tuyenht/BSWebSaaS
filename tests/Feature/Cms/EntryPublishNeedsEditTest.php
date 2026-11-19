@@ -23,7 +23,7 @@ use Illuminate\Support\Str;
 use Livewire\Livewire;
 
 /*
- * Publishing and taking content offline (publish, draft, private, schedule, applying a pending
+ * Publishing and taking content offline (publish, draft, archived, schedule, applying a pending
  * change, the bulk bar) is open only on an entry the member may also edit: the publish right plus
  * edit.any, or edit.own on their own entry, inside their category limits. A post not saved yet is
  * the writer's own. The "waiting for review" notice reaches only publishers who could act on it.
@@ -118,7 +118,7 @@ it("refuses the list's status menu and schedule on someone else's entry, and all
         // A forged call on a colleague's row: the reason in a toast that stays, the row untouched.
         $refused = __('entries.refused_status');
         $as()->call('changeStatus', $theirsLive->ulid, 'draft')->assertOk()->assertDispatched('bs-toast', text: $refused, stay: true);
-        $as()->call('changeStatus', $theirsLive->ulid, 'private')->assertOk()->assertDispatched('bs-toast', text: $refused, stay: true);
+        $as()->call('changeStatus', $theirsLive->ulid, 'archived')->assertOk()->assertDispatched('bs-toast', text: $refused, stay: true);
         $as()->call('changeStatus', $theirsDraft->ulid, 'published')->assertOk()->assertDispatched('bs-toast', text: $refused, stay: true);
         $as()->call('scheduleEntry', $theirsDraft->ulid, now()->addDay()->format('Y-m-d\TH:i'))->assertOk()->assertDispatched('bs-toast', text: $refused, stay: true);
 

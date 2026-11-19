@@ -204,7 +204,7 @@ it('records nothing for the status menu, which only ever takes content off the s
         grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
         $page = revisionPage('an-bai', ['vi'], 'published');
 
-        app(TransitionEntryStatus::class)->handle($page, EntryStatus::Private, $editor->fresh());
+        app(TransitionEntryStatus::class)->handle($page, EntryStatus::Archived, $editor->fresh());
         app(TransitionEntryStatus::class)->handle($page->fresh(), EntryStatus::Scheduled, $editor->fresh(), now()->addDay());
 
         expect(revisionTally($page))->toBe([]);

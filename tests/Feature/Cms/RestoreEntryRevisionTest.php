@@ -184,7 +184,7 @@ it('brings back a language the entry lost, in a status a translation can hold', 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
         [$page, $v1] = restorablePage($editor->fresh());
-        $page->update(['status' => 'private']);
+        $page->update(['status' => 'scheduled', 'published_at' => now()->addDay()]);
         SiteRoute::query()->where('entry_id', $page->id)->delete();
         $page->translations()->where('locale', 'vi')->delete();
 
@@ -193,7 +193,7 @@ it('brings back a language the entry lost, in a status a translation can hold', 
         $translation = $page->fresh()->translationFor('vi');
         expect($translation?->title)->toBe('Bản đầu')
             ->and($translation?->status)->toBe('draft')
-            ->and($page->fresh()->status)->toBe('private');
+            ->and($page->fresh()->status)->toBe('scheduled');
     });
 });
 

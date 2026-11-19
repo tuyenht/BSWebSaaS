@@ -31,7 +31,7 @@ use Illuminate\Support\Facades\File;
  */
 
 // The roads that change an entry's public status. TransitionEntryStatus only ever takes content
-// off the site (draft / private / archived / scheduled — publishing goes through PublishEntry).
+// off the site (draft / archived / scheduled — publishing goes through PublishEntry).
 $statusRoads = [PublishEntry::class, PublishScheduledEntry::class, ApplyEntryWorkflowTransition::class, TransitionEntryStatus::class];
 $publishingRoads = [PublishEntry::class, PublishScheduledEntry::class, ApplyEntryWorkflowTransition::class];
 

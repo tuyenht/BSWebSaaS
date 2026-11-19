@@ -20,8 +20,9 @@ use InvalidArgumentException;
 
 /**
  * Workflow Tầng-1 lifecycle transitions the Pages admin drives from the row status menu:
- * draft (take offline), scheduled (auto-publish at published_at), private (finished but
- * deliberately non-public), archived (retired). Going straight to `published` is NOT here —
+ * draft (take offline), scheduled (auto-publish at published_at), archived («Gỡ khỏi website»:
+ * off the website, its content kept). `private` is retired and refused as a target; the rows
+ * still in it are moved to archived once by retirePrivate(). Going straight to `published` is NOT here —
  * that must run through PublishEntry so the canonical route + 301 stay in sync — and `pending`
  * is only ever the output of a submit. Every transition needs the `publish` ability (which
  * includes the right to edit this entry): changing a page's lifecycle (above all taking a live
@@ -33,7 +34,7 @@ use InvalidArgumentException;
  * otherwise "schedule it for a minute from now" would walk straight around the gate. The other
  * targets only ever take content off the public site, which no gate needs to approve.
  *
- * The live Home page never leaves `published` here (not to a draft, private, archived, nor a
+ * The live Home page never leaves `published` here (not to a draft, archived, nor a
  * schedule that hides it until its time): the website's «/» would answer 404 (RouteResolver serves
  * published entries only). A member picks another page as the Home page first.
  */
@@ -43,9 +44,11 @@ final readonly class TransitionEntryStatus
     private const array ALLOWED = [
         EntryStatus::Draft->value,
         EntryStatus::Scheduled->value,
-        EntryStatus::Private->value,
         EntryStatus::Archived->value,
     ];
+
+    /** The audit `via` of the one-off move of retired `private` rows (cms:retire-private-status). */
+    public const string VIA_RETIRE_PRIVATE = 'retire-private';
 
     public function __construct(private EntryWorkflowResolver $workflows) {}
 
@@ -86,6 +89,42 @@ final readonly class TransitionEntryStatus
             $governed = $this->workflows->forEntry($entry) !== null;
             $entry->update(['status' => EntryStatus::Draft->value, 'published_at' => null] + ($governed ? ['workflow_state' => null] : []));
             EntryStatusAudit::record($entry, EntryStatus::Scheduled->value, EntryStatus::Draft->value, 'status-menu', $actor, ['unscheduled' => true]);
+
+            return true;
+        });
+    }
+
+    /**
+     * The one-off move of a row still in the retired `private` state to `archived` («Gỡ khỏi
+     * website»), run by cms:retire-private-status inside the row's site context. The system makes
+     * it, not a member: there is no actor to authorize, and the audit row names the system. Both
+     * states keep the entry off the website, so visitors see no change. Under a workflow the stage
+     * is cleared, as every move off the website here clears it. The entry's translations keep their
+     * own statuses (only the entry's status decides what the website serves). No member edited it, so
+     * its edit time stays as it was, and its audit row is written in the same transaction or the move
+     * is rolled back (the one road whose audit line is not best-effort). A row no longer
+     * `private` when locked (moved meanwhile, or by an earlier run) is left as it is, so a re-run
+     * writes nothing.
+     *
+     * @return bool whether the entry was moved (false: it was no longer private, or is gone)
+     */
+    public function retirePrivate(Entry $entry): bool
+    {
+        return DB::transaction(function () use ($entry): bool {
+            $locked = Entry::withTrashed()->whereKey($entry->id)->lockForUpdate()->first();
+            if ($locked === null || $locked->status !== EntryStatus::Private->value) {
+                return false;
+            }
+            $entry->setRawAttributes($locked->getAttributes(), true);
+
+            $governed = $this->workflows->forEntry($entry) !== null;
+            $entry->timestamps = false;
+            try {
+                $entry->update(['status' => EntryStatus::Archived->value] + ($governed ? ['workflow_state' => null] : []));
+            } finally {
+                $entry->timestamps = true;
+            }
+            EntryStatusAudit::record($entry, EntryStatus::Private->value, EntryStatus::Archived->value, self::VIA_RETIRE_PRIVATE, null, actorLabel: 'system', strict: true);
 
             return true;
         });

@@ -12,7 +12,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Auth\Access\AuthorizationException;
 
 /*
- * P2 — row status-menu transitions (design §3a). draft/scheduled/private/archived move through
+ * Row status-menu transitions (design §3a). draft/scheduled/archived move through
  * TransitionEntryStatus (never a raw write); publishing stays PublishEntry's job. Every move
  * needs the publish ability, so a live page can't be taken offline by a submit-only author.
  */
@@ -88,7 +88,7 @@ it('never schedules the live Home page, which keeps answering at «/», but sche
     });
 });
 
-it('never takes the live Home page off the website — to a draft, private or archived — so «/» keeps answering, while another page still moves', function (): void {
+it('never takes the live Home page off the website — to a draft or archived — so «/» keeps answering, while another page still moves', function (): void {
     $editor = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
@@ -96,14 +96,14 @@ it('never takes the live Home page off the website — to a draft, private or ar
         $home = newlyPublishedPage($editor, 'home');
         $other = newlyPublishedPage($editor);
 
-        foreach ([EntryStatus::Draft, EntryStatus::Private, EntryStatus::Archived] as $target) {
+        foreach ([EntryStatus::Draft, EntryStatus::Archived] as $target) {
             expect(fn () => app(TransitionEntryStatus::class)->handle($home->fresh(), $target, $editor->fresh()))
                 ->toThrow(HomePageLockedException::class, __('entries.home_offline_why'));
             expect($home->fresh()->status)->toBe('published');
         }
 
-        app(TransitionEntryStatus::class)->handle($other, EntryStatus::Private, $editor->fresh());
-        expect($other->fresh()->status)->toBe('private');
+        app(TransitionEntryStatus::class)->handle($other, EntryStatus::Archived, $editor->fresh());
+        expect($other->fresh()->status)->toBe('archived');
     });
 
     $this->get('http://a.test/')->assertOk();
@@ -149,6 +149,19 @@ it('refuses to set published directly (that must go through PublishEntry)', func
     });
 });
 
+it('refuses a new move to the retired private, and leaves the entry as it was', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
+        $page = newlyPublishedPage($editor);
+
+        expect(fn () => app(TransitionEntryStatus::class)->handle($page, EntryStatus::Private, $editor->fresh()))
+            ->toThrow(InvalidArgumentException::class);
+        expect($page->fresh()->status)->toBe('published');
+    });
+});
+
 it('denies a submit-only author from taking a live page offline', function (): void {
     $editor = User::factory()->create();
     $author = User::factory()->create();
@@ -158,7 +171,7 @@ it('denies a submit-only author from taking a live page offline', function (): v
         grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
         $page = newlyPublishedPage($editor);
 
-        expect(fn () => app(TransitionEntryStatus::class)->handle($page, EntryStatus::Private, $author->fresh()))
+        expect(fn () => app(TransitionEntryStatus::class)->handle($page, EntryStatus::Archived, $author->fresh()))
             ->toThrow(AuthorizationException::class);
     });
 });

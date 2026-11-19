@@ -719,7 +719,7 @@ it('answers a live-row action on a page someone trashed meanwhile with a toast, 
 
         $component->call('trash', $page->ulid)->assertOk()->assertDispatched('bs-toast', text: __('entries.row_stale'));
         $component->call('duplicate', $page->ulid)->assertOk()->assertDispatched('bs-toast', text: __('entries.row_stale'));
-        $component->call('changeStatus', $page->ulid, 'private')->assertOk()->assertDispatched('bs-toast', text: __('entries.row_stale'));
+        $component->call('changeStatus', $page->ulid, 'draft')->assertOk()->assertDispatched('bs-toast', text: __('entries.row_stale'));
         $component->call('scheduleEntry', $page->ulid, now()->addDay()->format('Y-m-d\TH:i'))
             ->assertOk()
             ->assertDispatched('bs-toast', text: __('entries.row_stale'));

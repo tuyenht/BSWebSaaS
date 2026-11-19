@@ -8,9 +8,13 @@ namespace App\Modules\Cms\Enums;
  * Canonical lifecycle states of a content entry — the entries_status_check set
  * (design.md §8/§15.4 + Pages-admin design §3a). draft/pending/published/archived are the
  * Tầng-1 workflow states; `scheduled` (content ready, auto-published at published_at by
- * entries:publish-due) and `private` (finished but deliberately non-public) extend the pages
- * surface. Only Published is ever publicly resolvable — RouteResolver serves nothing else —
- * so scheduled/private are non-public without a separate visibility engine.
+ * entries:publish-due) extends the pages surface. Only Published is ever publicly resolvable —
+ * RouteResolver serves nothing else — so every other state is non-public without a separate
+ * visibility engine.
+ *
+ * `private` is retired: no screen or action sets it any more (it did nothing «Bản nháp» or «Gỡ khỏi
+ * website» did not), and cms:retire-private-status moves the rows still in it to `archived`. The
+ * case stays while the CHECK constraint still allows the value, so an old row keeps loading.
  */
 enum EntryStatus: string
 {

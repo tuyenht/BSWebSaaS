@@ -96,19 +96,26 @@ describe('header', function (): void {
 });
 
 describe('status groups', function (): void {
-    it('uses the one set of status words, in the design order, each count in its own ink', function (): void {
+    it('uses the one set of status words, in the design order, each count in its own ink, with no group for the retired private', function (): void {
         $user = User::factory()->create();
 
         app(Tenancy::class)->enter(1, function () use ($user): void {
             grantRole($user, 'editor', ['entries.view', 'entries.delete.any']);
-            foreach (['published', 'draft', 'scheduled', 'private', 'archived'] as $i => $status) {
+            foreach (['published', 'draft', 'scheduled', 'archived'] as $i => $status) {
                 lwEntry($user, 'Trang '.$i, 'page', ['status' => $status, 'position' => $i, 'published_at' => $status === 'scheduled' ? now()->addDay() : null]);
             }
+            // an old row still private (before cms:retire-private-status) is listed under «Tất cả», with its own pill
+            lwEntry($user, 'Trang cũ', 'page', ['status' => 'private', 'position' => 9]);
 
-            $html = Livewire::actingAs($user->fresh())->test(Index::class)->html();
+            $list = Livewire::actingAs($user->fresh())->test(Index::class);
+            $html = $list->html();
 
-            expect($html)->toMatch('/Tất cả.*Đã đăng.*Bản nháp.*Đã hẹn giờ.*Không công khai.*Đã gỡ khỏi website.*Thùng rác/s');
-            foreach (['all', 'published', 'draft', 'scheduled', 'private', 'archived', 'trash'] as $tone) {
+            expect($html)->toMatch('/Tất cả.*Đã đăng.*Bản nháp.*Đã hẹn giờ.*Đã gỡ khỏi website.*Thùng rác/s')
+                // no count bubble for private, while the old row keeps its pill
+                ->and($html)->not->toMatch('/<span data-s="private" class="inline-flex min-w-5/')
+                ->and($html)->toContain('Trang cũ')->toContain('data-s="private"')
+                ->and($list->viewData('counts')['all'] ?? null)->toBe(5);
+            foreach (['all', 'published', 'draft', 'scheduled', 'archived', 'trash'] as $tone) {
                 expect($html)->toMatch('/<span data-s="'.$tone.'" class="inline-flex min-w-5[^"]*bg-\[color-mix\(in_srgb,var\(--c\)_11%,var\(--color-surface\)\)\]/');
             }
             foreach (['Đã xuất bản', 'Đã lên lịch', 'Riêng tư', 'Lưu trữ'] as $old) {
@@ -200,13 +207,16 @@ describe('rows', function (): void {
             lwSection();
             lwEntry($user, 'Đang đăng', 'post', ['status' => 'published', 'published_at' => now()->subDay(), 'view_count' => 1240]);
             lwEntry($user, 'Đã gỡ', 'post', ['status' => 'archived', 'published_at' => now()->subDays(2), 'view_count' => 410]);
-            lwEntry($user, 'Kín', 'post', ['status' => 'private', 'published_at' => now()->subDays(3), 'view_count' => 35]);
+            lwEntry($user, 'Kín', 'post', ['status' => 'draft', 'published_at' => now()->subDays(3), 'view_count' => 35]);
+            // an old row still in the retired private
+            lwEntry($user, 'Cũ', 'post', ['status' => 'private', 'published_at' => now()->subDays(4), 'view_count' => 22]);
 
             $html = Livewire::actingAs($user->fresh())->test(Index::class, ['section' => 'tin-tuc'])->html();
 
             expect($html)->toContain('1.240 lượt xem')
                 ->and($html)->not->toContain('410 lượt xem')
                 ->and($html)->not->toContain('35 lượt xem')
+                ->and($html)->not->toContain('22 lượt xem')
                 ->and($html)->toContain('aria-label="'.e(__('entries.view_named', ['title' => 'Đang đăng'])).' (mở ở thẻ mới)"')
                 // a preview opens in a new tab too, and says so
                 ->and($html)->toContain('aria-label="'.e(__('entries.view_named', ['title' => 'Kín'])).' (mở ở thẻ mới)"')
