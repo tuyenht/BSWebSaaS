@@ -16,7 +16,7 @@
 @if (\App\Modules\Admin\Support\LoginTurnstile::active())
     <div wire:ignore class="auth-turnstile">
         <div class="cf-turnstile" data-sitekey="{{ \App\Modules\Shared\Support\Cast::string(config('services.turnstile.site_key')) }}"
-             data-size="flexible" data-callback="bsTurnstileOk" data-error-callback="bsTurnstileClear"
+             data-size="flexible" data-theme="light" data-callback="bsTurnstileOk" data-error-callback="bsTurnstileClear"
              data-expired-callback="bsTurnstileClear" data-timeout-callback="bsTurnstileClear"></div>
     </div>
     @once
@@ -28,17 +28,25 @@
             // external CSS can't shrink it — on a form narrower than 300px it overflows the field. Scale
             // the (styleable) .cf-turnstile wrapper to (host width / 300) so the widget fits the field
             // exactly. Measure the HOST, never the scaled element, to avoid a ResizeObserver feedback loop.
+            // The host draws the frame and .cf-turnstile overhangs its inside by 1px per side (auth.css),
+            // so the widget spans the host's inner width + 2. A transform leaves the layout height
+            // unscaled, so a negative bottom margin pulls the host up to the scaled widget, keeping
+            // Cloudflare's own (scaled) bottom border hidden under ours.
             window.bsFitTurnstile = function () {
-                document.querySelectorAll('.cf-turnstile').forEach(function (el) {
+                document.querySelectorAll('.auth-turnstile > .cf-turnstile').forEach(function (el) {
                     var host = el.parentElement;
-                    if (!host || !host.clientWidth) return;
-                    var scale = Math.min(1, host.clientWidth / 300);
+                    if (!host.clientWidth) return;
+                    var scale = Math.min(1, (host.clientWidth + 2) / 300);
                     el.style.transformOrigin = 'top left';
                     el.style.transform = scale < 1 ? 'scale(' + scale + ')' : 'none';
+                    el.style.marginBottom = scale < 1 ? -(el.offsetHeight * (1 - scale) + scale) + 'px' : '';
                 });
             };
             document.querySelectorAll('.auth-turnstile').forEach(function (host) {
-                new ResizeObserver(window.bsFitTurnstile).observe(host);
+                var fit = new ResizeObserver(window.bsFitTurnstile);
+                fit.observe(host);
+                // The widget's height arrives after the script draws it: refit then too.
+                fit.observe(host.querySelector('.cf-turnstile'));
             });
             window.addEventListener('resize', window.bsFitTurnstile);
             window.bsFitTurnstile();
