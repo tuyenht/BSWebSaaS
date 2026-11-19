@@ -638,18 +638,23 @@
                                 @elseif ($may['publish'] && ! $trashed)
                                     {{-- the status menu as board 05 draws it: «Đổi trạng thái» over the statuses in one order, Đã đăng ·
                                          Hẹn giờ đăng · Bản nháp · Gỡ khỏi website (a live row only, what it does on a small second line),
-                                         each with its colour dot; the row's own status is never listed. A scheduled row offers «Hủy hẹn giờ»
-                                         in the place of «Hẹn giờ đăng». The live Home page stays published: a draft or «Gỡ khỏi website»
-                                         would leave «/» answering 404 (TransitionEntryStatus refuses it too), so those two stay listed,
-                                         greyed, with the reason; it is never scheduled (it would be off the website until its time), so
-                                         «Hẹn giờ đăng» is not offered there --}}
+                                         each with its colour dot; the row's own status is not listed. The live Home page stays published:
+                                         a draft, «Gỡ khỏi website» or a schedule would take «/» off the website (TransitionEntryStatus
+                                         refuses them too), so those stay listed, greyed, each with its reason --}}
+                                    {{-- a scheduled row keeps «Hẹn giờ đăng» (to change the time) beside «Hủy hẹn giờ»: the list offered both before the board's order came, and dropping a control is the owner's call --}}
                                     @php
                                         $homeLive = $isHome && $status === 'published';
-                                        $stOpts = array_values(array_filter(['published', 'scheduled', 'draft', 'archived'], fn (string $opt): bool => match ($opt) {
-                                            'scheduled' => $isScheduled || ! $homeLive,
-                                            'archived' => $status === 'published',
-                                            default => $opt !== $status,
-                                        }));
+                                        $stOpts = [];
+                                        foreach (['published', 'scheduled', 'draft', 'archived'] as $opt) {
+                                            if ($opt === 'scheduled') {
+                                                $stOpts[] = 'sched';
+                                                if ($isScheduled) {
+                                                    $stOpts[] = 'unsched';
+                                                }
+                                            } elseif ($opt === 'archived' ? $status === 'published' : $opt !== $status) {
+                                                $stOpts[] = $opt;
+                                            }
+                                        }
                                     @endphp
                                     <div x-data="{ open: false, up: false, close(back) { this.open = false; if (back) { this.$refs.pill.focus() } } }" x-on:click.outside="open = false" x-on:keydown.escape="if (open) { $event.stopPropagation(); close(true) }" class="relative inline-block">
                                         <x-bs-admin::status-pill button x-ref="pill" :status="$status" aria-haspopup="menu" x-bind:aria-expanded="open.toString()" title="{{ __('entries.status_menu_label') }}"
@@ -658,12 +663,20 @@
                                             {{-- the menu's own name says the same, so a screen reader hears it once --}}
                                             <div class="list-lmh" aria-hidden="true">{{ __('entries.status_menu_label') }}</div>
                                             @foreach ($stOpts as $opt)
-                                                @if ($opt === 'scheduled' && $isScheduled)
+                                                @if ($opt === 'unsched')
                                                     {{-- «Hủy hẹn giờ», asked first: back to a draft, never published at that time --}}
                                                     <button type="button" role="menuitem" data-unsched x-on:click="$bsConfirm({ icon: 'warning', title: {{ $Js::from(__('entries.unsched_title')) }}, text: {{ $Js::from(__('entries.unsched_text', ['noun' => __('entries.noun_'.$entry->type), 'time' => $when?->format('H:i'), 'date' => $when?->format('d/m/Y'), 'step' => __('entries.status_draft')])) }}, confirm: {{ $Js::from(__('entries.unsched')) }}, cancel: {{ $Js::from(__('entries.unsched_keep')) }} }).then(ok => { window.bsListFocus?.expect({{ $Js::from($entry->ulid) }}, 'st', ! ok); ok && $wire.unschedule({{ $Js::from($entry->ulid) }}) })" class="list-mi rounded">
                                                         <x-bs-admin::status-pill dot status="scheduled" /><span class="min-w-0 [overflow-wrap:anywhere]">{{ __('entries.unsched') }}</span>
                                                     </button>
-                                                @elseif ($opt === 'scheduled')
+                                                @elseif ($opt === 'sched' && $homeLive)
+                                                    <button type="button" role="menuitem" aria-disabled="true" data-home-locked="scheduled" x-on:click="$bsToast({{ $lockToast(__('entries.home_sched_why')) }})" class="list-mi rounded">
+                                                        <x-bs-admin::status-pill dot status="scheduled" />
+                                                        <span class="flex min-w-0 flex-col items-start gap-0.5 [overflow-wrap:anywhere]">
+                                                            <span>{{ __('entries.sched_title') }}</span>
+                                                            <span class="text-caption text-text-muted">{{ __('entries.home_sched_why') }}</span>
+                                                        </span>
+                                                    </button>
+                                                @elseif ($opt === 'sched')
                                                     {{-- «Hẹn giờ đăng»: the dialog (one for the list) opens on tomorrow 08:00 of the website's clock --}}
                                                     <button type="button" role="menuitem" data-sched x-on:click="$dispatch('entries-sched', {{ $Js::from(['ulid' => $entry->ulid, 'for' => __('entries.sched_for', ['title' => $title]), 'hint' => __('entries.sched_hint', ['noun' => __('entries.noun_'.$entry->type)]), 'value' => $schedDefault]) }})" class="list-mi rounded">
                                                         <x-bs-admin::status-pill dot status="scheduled" /><span class="min-w-0 [overflow-wrap:anywhere]">{{ __('entries.sched_title') }}</span>

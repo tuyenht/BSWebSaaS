@@ -460,7 +460,7 @@ describe('scheduling', function (): void {
         });
     });
 
-    it('hides «Hẹn giờ đăng» on the live Home page, and refuses it there with the reason, kept until closed', function (): void {
+    it('greys «Hẹn giờ đăng» on the live Home page with its reason, and refuses it there with the reason, kept until closed', function (): void {
         Carbon::setTestNow('2026-11-18 03:00:00 UTC'); // 10:00 in Viet Nam
         $owner = rmMember('owner', PermissionRegistry::TENANT_PERMISSIONS, 90);
 
@@ -471,6 +471,8 @@ describe('scheduling', function (): void {
             $html = $list->html();
 
             expect(rmRowHtml($html, $home->ulid))->not->toContain('data-sched x-on:click')
+                ->toContain('data-home-locked="scheduled" x-on:click="$bsToast(')
+                ->toContain('<span class="text-caption text-text-muted">'.e(__('entries.home_sched_why')).'</span>')
                 ->and(rmRowHtml($html, $other->ulid))->toContain('data-sched x-on:click');
 
             // a call made anyway (a tab opened before the page became the Home page) is refused by the action
@@ -526,7 +528,7 @@ describe('scheduling', function (): void {
         $this->get('http://a.test/')->assertOk();
     });
 
-    it('lists the statuses as board 05 orders them, Đã đăng · Hẹn giờ đăng · Bản nháp · Gỡ khỏi website, never the row’s own, «Hủy hẹn giờ» in the place of «Hẹn giờ đăng» on a scheduled row', function (): void {
+    it('lists the statuses as board 05 orders them, Đã đăng · Hẹn giờ đăng · Bản nháp · Gỡ khỏi website, never the row’s own, a scheduled row keeping «Hẹn giờ đăng» (a new time) beside «Hủy hẹn giờ»', function (): void {
         $owner = rmMember('owner', PermissionRegistry::TENANT_PERMISSIONS, 90);
 
         app(Tenancy::class)->enter(1, function () use ($owner): void {
@@ -546,7 +548,7 @@ describe('scheduling', function (): void {
 
             expect($items($menu(rmRowHtml($html, $live->ulid)), $live))->toBe(['sched', 'draft', 'archived'])
                 ->and($items($menu(rmRowHtml($html, $draft->ulid)), $draft))->toBe(['published', 'sched'])
-                ->and($items($menu(rmRowHtml($html, $later->ulid)), $later))->toBe(['published', 'unsched', 'draft'])
+                ->and($items($menu(rmRowHtml($html, $later->ulid)), $later))->toBe(['published', 'sched', 'unsched', 'draft'])
                 // the menu is named, and says so over its items
                 ->and(rmRowHtml($html, $live->ulid))->toContain('<div class="list-lmh" aria-hidden="true">'.e(__('entries.status_menu_label')).'</div>');
         });
