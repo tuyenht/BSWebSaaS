@@ -18,6 +18,8 @@
     // all · excerpt · card: a screen whose board puts other cards between the short description
     // and the Google card draws the two parts apart (same `id`, each part keeps its own ids).
     'part' => 'all',
+    // the member may only read the form (a product editor's «Chỉ được xem»): the fields are locked
+    'readonly' => false,
 ])
 @php
     use App\Modules\Admin\Support\SeoFields;
@@ -61,7 +63,7 @@
                     <span x-text="excerptMeter.text"></span>
                 </span>
             </div>
-            <textarea id="{{ $id }}-excerpt" wire:model="{{ $excerpt }}" rows="3" maxlength="{{ SeoFields::hardCap('excerpt') }}" lang="{{ $locale }}"
+            <textarea id="{{ $id }}-excerpt" wire:model="{{ $excerpt }}" @readonly($readonly) rows="3" maxlength="{{ SeoFields::hardCap('excerpt') }}" lang="{{ $locale }}"
                       placeholder="{{ __($kind === 'post' ? 'admin.seo.excerpt_placeholder_post' : 'admin.seo.excerpt_placeholder_page') }}"
                       aria-describedby="{{ $id }}-excerpt-c {{ $id }}-excerpt-h @error($excerpt) {{ $id }}-excerpt-e @enderror" @error($excerpt) aria-invalid="true" @enderror
                       class="field {{ $field }} resize-y py-2.5"></textarea>
@@ -105,7 +107,7 @@
                         <span x-text="titleMeter.text"></span>
                     </span>
                 </div>
-                <input type="text" id="{{ $id }}-title" wire:model="{{ $titleModel }}" maxlength="{{ SeoFields::hardCap('seoTitle') }}" lang="{{ $locale }}"
+                <input type="text" id="{{ $id }}-title" wire:model="{{ $titleModel }}" @readonly($readonly) maxlength="{{ SeoFields::hardCap('seoTitle') }}" lang="{{ $locale }}"
                        placeholder="{{ __('admin.seo.title_placeholder') }}" aria-describedby="{{ $id }}-title-c @error($titleModel) {{ $id }}-title-e @enderror" @error($titleModel) aria-invalid="true" @enderror
                        class="field {{ $field }}">
                 <span class="seo-meter" :data-b="titleMeter.band" aria-hidden="true">
@@ -129,7 +131,7 @@
                 {{-- One line on Google: Enter adds no line break (a pasted one is removed on save). An
                      Enter that confirms a word being composed (Vietnamese, Japanese, Chinese input)
                      is left to the input method. --}}
-                <textarea id="{{ $id }}-description" wire:model="{{ $descriptionModel }}" rows="2" maxlength="{{ SeoFields::hardCap('seoDesc') }}" lang="{{ $locale }}"
+                <textarea id="{{ $id }}-description" wire:model="{{ $descriptionModel }}" @readonly($readonly) rows="2" maxlength="{{ SeoFields::hardCap('seoDesc') }}" lang="{{ $locale }}"
                           placeholder="{{ __('admin.seo.description_placeholder') }}" aria-describedby="{{ $id }}-description-c @error($descriptionModel) {{ $id }}-description-e @enderror" @error($descriptionModel) aria-invalid="true" @enderror
                           x-on:keydown.enter="if (! $event.isComposing && $event.keyCode !== 229) $event.preventDefault()" class="field {{ $field }} resize-y py-2.5"></textarea>
                 <span class="seo-meter" :data-b="descriptionMeter.band" aria-hidden="true">

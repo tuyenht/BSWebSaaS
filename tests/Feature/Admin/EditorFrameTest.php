@@ -333,7 +333,7 @@ describe('products', function (): void {
         });
     });
 
-    it('offers Xem trước (in the phone\'s ⋮) and the Trash item on a saved product; the move leaves for the list', function (): void {
+    it('offers Xem trước (in the phone\'s ⋮) and the Trash item on a saved product; the move shows the Trash card with «Hoàn tác»', function (): void {
         $member = frameMember(['catalog.view', 'catalog.manage']);
 
         app(Tenancy::class)->enter(1, function () use ($member): void {
@@ -345,8 +345,12 @@ describe('products', function (): void {
                 ->assertSeeHtml('href="'.route('admin.catalog.preview', ['ulid' => $product->ulid]).'"')
                 ->assertDontSeeHtml('ped-pv')
                 ->assertSeeHtml('wire:click="trash"')
+                ->assertSee('Có Hoàn tác 10 giây')
                 ->call('trash')
-                ->assertJs('window.bsLeaveTo('.Js::encode(route('admin.catalog.index')).', '.Js::encode(['text' => 'Đã chuyển “Đồ gá hàn” vào Thùng rác.']).')');
+                ->assertSet('screen', 'trash')
+                ->assertSee('Sản phẩm này đang ở Thùng rác')
+                ->assertSee('Đã chuyển “Đồ gá hàn” vào Thùng rác.')
+                ->assertSeeHtml('wire:click="undoLast"');
 
             expect(Product::query()->whereKey($product->id)->exists())->toBeFalse()
                 ->and(Product::onlyTrashed()->whereKey($product->id)->exists())->toBeTrue();

@@ -36,6 +36,7 @@ const PRODUCT_MARK_OLD_ISO = '2026-01-02T03:04:05+00:00';
 beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
+    enableCatalog();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
 });

@@ -218,6 +218,12 @@ final class CategoryTree
         }
     }
 
+    /** The id of a category by its key (null: not in the read). */
+    public function idOf(string $ulid): ?int
+    {
+        return $this->byUlid[$ulid] ?? null;
+    }
+
     /** The key of a category by its id (null: not in the read, or not given a key yet). */
     public function ulidOf(int $id): ?string
     {

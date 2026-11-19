@@ -299,8 +299,10 @@ Route::prefix(config('admin.prefix', 'admin'))
         Route::get('/content', EntriesIndex::class)->middleware('can:entries.view')->name('admin.entries.index');
         // no `can:` here: a member without catalog.view sees the screen's own no-permission card
         Route::get('/catalog', CatalogIndex::class)->name('admin.catalog.index');
-        Route::get('/catalog/create', CatalogEditor::class)->middleware('can:catalog.manage')->name('admin.catalog.create');
-        Route::get('/catalog/{ulid}/edit', CatalogEditor::class)->middleware('can:catalog.manage')->name('admin.catalog.edit');
+        // no `can:` either: the editor shows the plan and no-permission cards itself, a member who may
+        // only see products reads the product («Chỉ được xem»), and every write checks on the server
+        Route::get('/catalog/create', CatalogEditor::class)->name('admin.catalog.create');
+        Route::get('/catalog/{ulid}/edit', CatalogEditor::class)->name('admin.catalog.edit');
         // The real storefront page of a product of this site, whatever its status, for whoever may
         // manage products: never cached or indexed, its forms switched off (ProductPreviewController).
         Route::get('/catalog/{ulid}/preview', ProductPreviewController::class)->middleware('can:catalog.manage')->name('admin.catalog.preview');
