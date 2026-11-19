@@ -122,11 +122,24 @@
                 <button type="button" class="{{ $folderBtn }}" aria-current="{{ ! $trash && $folder === '' ? 'true' : 'false' }}" wire:click="setFolder('')">
                     <x-bs-admin::icon name="ri-stack" class="size-4 shrink-0" /><span class="min-w-0 flex-1 truncate">{{ __('media.lib.all') }}</span><span class="text-small text-text-muted">{{ $num($counts['all']) }}</span>
                 </button>
-                @foreach ($folders as $f)
+                @foreach ($folders as $i => $f)
                     @php $on = ! $trash && $current?->id === $f->id; @endphp
-                    <button type="button" wire:key="mf-{{ $f->slug }}" class="{{ $folderBtn }}" aria-current="{{ $on ? 'true' : 'false' }}" wire:click="setFolder({{ Js::from((string) $f->slug) }})">
-                        <x-bs-admin::icon :name="$on ? 'ri-folder-open' : 'ri-folder-3'" class="size-4 shrink-0" /><span class="min-w-0 flex-1 truncate" title="{{ $f->name }}">{{ $f->name }}</span><span class="text-small text-text-muted">{{ $num($counts['byFolder'][$f->id] ?? 0) }}</span>
-                    </button>
+                    @if ($canFolders && $renaming === (string) $f->slug)
+                        <div wire:key="mf-{{ $f->slug }}">@include('admin::livewire.media.library-rename-folder', ['fid' => 'media-ren', 'label' => __('media.lib.rename_label')])</div>
+                    @else
+                        <div wire:key="mf-{{ $f->slug }}" class="flex min-w-0 items-center gap-1">
+                            <button type="button" class="{{ $folderBtn }} min-w-0 flex-1" aria-current="{{ $on ? 'true' : 'false' }}" wire:click="setFolder({{ Js::from((string) $f->slug) }})">
+                                <x-bs-admin::icon :name="$on ? 'ri-folder-open' : 'ri-folder-3'" class="size-4 shrink-0" /><span class="min-w-0 flex-1 truncate" title="{{ $f->name }}">{{ $f->name }}</span><span class="text-small text-text-muted">{{ $num($counts['byFolder'][$f->id] ?? 0) }}</span>
+                            </button>
+                            @if ($canFolders && $on)
+                                <x-bs-admin::list.actions :name="$f->name">
+                                    <x-slot:menu>
+                                        @include('admin::livewire.media.library-folder-menu', ['f' => $f, 'first' => $i === 0, 'last' => $i === $folders->count() - 1])
+                                    </x-slot:menu>
+                                </x-bs-admin::list.actions>
+                            @endif
+                        </div>
+                    @endif
                 @endforeach
                 <button type="button" class="{{ $folderBtn }}" aria-current="{{ ! $trash && $folder === '-' ? 'true' : 'false' }}" wire:click="setFolder('-')">
                     <x-bs-admin::icon name="ri-inbox" class="size-4 shrink-0" /><span class="min-w-0 flex-1 truncate">{{ __('media.lib.unfiled') }}</span><span class="text-small text-text-muted">{{ $num($counts['unfiled']) }}</span>
@@ -165,6 +178,9 @@
                 </div>
                 @if ($newFolderOpen && $canFolders)
                     <div class="px-4 pt-3 min-[900px]:hidden">@include('admin::livewire.media.library-new-folder', ['fid' => 'media-newf-n'])</div>
+                @endif
+                @if ($renaming !== '' && $canFolders && $folders->contains(fn ($f) => (string) $f->slug === $renaming))
+                    <div class="px-4 pt-3 min-[900px]:hidden">@include('admin::livewire.media.library-rename-folder', ['fid' => 'media-ren-n', 'label' => __('media.lib.rename_label_narrow')])</div>
                 @endif
 
                 {{-- Tools row --}}
@@ -392,10 +408,18 @@
     @endif
 
     @if ($canFolders)
-        <x-bs-admin::modal model="folderSheetOpen" :title="$placeName" :close-label="__('media.lib.cancel')">
-            <button type="button" class="flex min-h-hit w-full items-center gap-3 rounded-md px-2 text-start text-body text-text hover:bg-surface-muted" wire:click="openNewFolder">
-                <x-bs-admin::icon name="ri-add" class="size-4" />{{ __('media.lib.new_folder') }}
-            </button>
+        @php $at = $current === null || $trash ? false : $folders->search(fn ($f) => $f->id === $current->id); @endphp
+        <x-bs-admin::modal model="folderSheetOpen" :title="$at === false ? __('media.lib.folders') : __('media.lib.folder_sheet_title', ['name' => $current->name])" :close-label="__('media.lib.cancel')">
+            {{-- the shared menu panel, always open here: arrow keys, Home and End move between the items --}}
+            <div x-data="{ open: true, up: false, sheet: false, close() {} }">
+                <x-bs-admin::list.menu class="flex flex-col" :label="$at === false ? __('media.lib.folders') : __('media.lib.folder_sheet_title', ['name' => $current->name])">
+                <x-bs-admin::list.menu-item icon="ri-add" wire:click="openNewFolder">{{ __('media.lib.new_folder') }}</x-bs-admin::list.menu-item>
+                @if ($at !== false)
+                    <x-bs-admin::list.menu-sep />
+                    @include('admin::livewire.media.library-folder-menu', ['f' => $current, 'first' => $at === 0, 'last' => $at === $folders->count() - 1])
+                @endif
+                </x-bs-admin::list.menu>
+            </div>
         </x-bs-admin::modal>
     @endif
 
