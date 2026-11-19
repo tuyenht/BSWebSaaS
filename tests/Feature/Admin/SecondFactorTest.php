@@ -237,8 +237,13 @@ it('shows "please wait" for a resend too soon as a refusal, not as good news', f
         Livewire::test(EmailOtpChallenge::class)
             ->call('resend')
             ->assertSeeHtml('auth-alert auth-alert--success')
+            ->set('code', '000000')
+            ->call('verify')
+            ->assertHasErrors('code')
             ->call('resend')
             ->assertSet('resent', 'wait')
+            ->assertHasNoErrors()
+            ->assertSet('code', '000000')
             ->assertSeeHtml('auth-alert auth-alert--error')
             ->assertDontSeeHtml('auth-alert auth-alert--success');
     });
