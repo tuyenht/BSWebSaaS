@@ -265,11 +265,17 @@ final class AdminErrorPages
         if ($query !== null && preg_match('#^[A-Za-z0-9/_\-.~%=&+,:;@!$\'()*\[\]?]*$#', $query) !== 1) {
             return null;
         }
-        $prefix = '/'.trim(Cast::string(config('admin.prefix', 'admin')), '/');
-        if (! AdminPlane::isPlatform() && $path !== $prefix && ! str_starts_with($path, $prefix.'/')) {
+        // The checks below read the path as the server will: percent-decoded, and with no "." or ".."
+        // segment (either could walk out of the admin, or into a sign-in page, after the checks).
+        $plain = rawurldecode($path);
+        if (preg_match('#(^|/)\.{1,2}(/|$)#', $plain) === 1 || str_contains($plain, '\\') || str_contains($plain, '//')) {
             return null;
         }
-        if (preg_match('#/(login|logout|session-expired|forgot-password|reset-password|two-factor|otp)(/|$)#', $path) === 1) {
+        $prefix = '/'.trim(Cast::string(config('admin.prefix', 'admin')), '/');
+        if (! AdminPlane::isPlatform() && $plain !== $prefix && ! str_starts_with($plain, $prefix.'/')) {
+            return null;
+        }
+        if (preg_match('#/(login|logout|session-expired|forgot-password|reset-password|two-factor|otp)(/|$)#', $plain) === 1) {
             return null;
         }
 

@@ -132,6 +132,8 @@ final class EmailOtpChallenge extends Component
             return;
         }
 
+        // One message at a time: the wait replaces the last wrong-code line (the code stays, selected).
+        $this->resetErrorBag();
         $this->resent = 'wait';
         $this->focusField('code');
     }
