@@ -10,14 +10,16 @@
     // it with the focus handed back through the host's `close(true)`. The host's x-data supplies
     // `open`, `up` (true: open upwards) and `close(back)`; this panel supplies nothing but the behaviour,
     // so every menu on a list reacts to the keys alike. `bind-label` is an Alpine expression for a name
-    // the browser draws; `sheet` marks the bottom sheet below 600px.
+    // the browser draws. `sheet` is the bottom sheet the menu turns into on a narrow screen (list.actions):
+    // 'title' below a 600 screen, 'row' below a 900 list; there Tab and Shift+Tab move round the items
+    // instead of closing it (the host's `sheet` is true while it is a sheet).
 @endphp
 <div x-ref="menu" x-show="open" x-cloak role="menu" aria-label="{{ $label }}"
-    @if ($bindLabel && ! $sheet) x-bind:aria-label="{{ $bindLabel }}" @endif
-    @if ($sheet) data-sheet @endif x-bind:data-up="up ? 'true' : null"
+    @if ($bindLabel && $sheet !== 'title') x-bind:aria-label="{{ $bindLabel }}" @endif
+    @if ($sheet) data-sheet="{{ $sheet }}" @endif x-bind:data-up="up ? 'true' : null"
     x-on:keydown.down.prevent="$focus.within($refs.menu).wrap().next()" x-on:keydown.up.prevent="$focus.within($refs.menu).wrap().prev()"
     x-on:keydown.home.prevent="$focus.within($refs.menu).first()" x-on:keydown.end.prevent="$focus.within($refs.menu).last()"
-    x-on:keydown.tab="open = false" x-on:click.capture="$event.target.closest('[role=menuitem]') && close(true)"
+    x-on:keydown.tab="$data.sheet ? ($event.preventDefault(), $event.shiftKey ? $focus.within($refs.menu).wrap().prev() : $focus.within($refs.menu).wrap().next()) : (open = false)" x-on:click.capture="$event.target.closest('[role=menuitem]') && close(true)"
     {{ $attributes }}>
     {{ $slot }}
 </div>

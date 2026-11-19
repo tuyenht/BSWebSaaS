@@ -269,7 +269,8 @@ it('leaves only the copy item in the ⋮ of another author\'s post for a member 
         $html = Livewire::actingAs($member->fresh())->test(Index::class, ['section' => 'tin-tuc'])->call('resetFilterGroup', 'creator')->set('xbtn', true)->html();
         $menu = Str::after($html, 'class="list-more"');
         // Xem and Nhân bản are covered by the row's own buttons; «Sao chép đường dẫn» has no row button, so the ⋮ stays
-        expect(substr_count($menu, 'role="menuitem"'))->toBe(3)
+        // (the fourth item is the phone sheet's «Đóng»)
+        expect(substr_count($menu, 'role="menuitem"'))->toBe(4)
             ->and($menu)->toContain('data-xm="xv"')->toContain('data-xm="xd"')->toContain('data-copy')->not->toContain('data-xm="xt"')
             ->and($html)->toContain('<span class="list-x" data-x="xd">')->not->toContain('<span class="list-x" data-x="xt">');
     });
