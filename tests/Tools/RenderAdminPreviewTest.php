@@ -23,6 +23,7 @@
 
 use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Admin\Livewire\Catalog\Index;
+use App\Modules\Admin\Livewire\Forms\FormList;
 use App\Modules\Admin\Livewire\Media\Library;
 use App\Modules\Admin\Livewire\NotificationBell;
 use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog;
@@ -263,6 +264,12 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.$path)->assertOk()->getContent();
         file_put_contents($dir.'/'.$name.'.html', $html);
     }
+    // «Xóa» on the quote form: the question with its leads and «Tắt biểu mẫu» instead.
+    $formsPage = (string) file_get_contents($dir.'/form-builder.html');
+    $ask = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(FormList::class)
+        ->call('askDelete', $quote->ulid)->assertSet('confirmOpen', true)->html());
+    expect($ask)->toContain('role="alertdialog"', __('form_builder.del_off'));
+    file_put_contents($dir.'/form-builder-delete.html', str_replace('</body>', $ask.'</body>', $formsPage));
 
     // The platform Audit log, as a support operator, with a member's row and a support sign-in row.
     DB::connection('pgsql_admin')->statement('truncate audit_logs restart identity cascade');
@@ -1028,5 +1035,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     file_put_contents($dir.'/media-folder-rename.html', $swap($html, $rename, $media));
     config(['media' => $mediaConfig]);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 78);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 79);
 });
