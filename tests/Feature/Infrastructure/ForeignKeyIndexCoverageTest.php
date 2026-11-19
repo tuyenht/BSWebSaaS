@@ -37,8 +37,6 @@ it('gives every foreign key an index that its parent-delete lookup can use', fun
         'tenants' => ['sites.tenant_id'],
         // Contact forms are synced by forms:sync-contact-fields, never deleted.
         'forms' => ['form_submissions.form_id'],
-        // Media folders have no delete action yet.
-        'media_folders' => ['media.folder_id'],
         // Reference catalogs: synced or imported, never deleted.
         'permissions' => ['model_has_permissions.permission_id'],
         'provinces' => ['site_profiles.province_id'],

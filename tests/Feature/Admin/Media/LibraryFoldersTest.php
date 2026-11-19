@@ -7,13 +7,15 @@ use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
 /*
- * The folder actions of the media library: rename (the slug stays) and move up / down. Each is the
- * website admin's right (media.folders), and a folder of another site never resolves.
+ * The folder actions of the media library: rename (the slug stays), move up / down and delete (the
+ * files go back to no folder, with Hoàn tác). Each is the website admin's right (media.folders),
+ * and a folder of another site never resolves.
  */
 
 beforeEach(function (): void {
@@ -144,15 +146,17 @@ it('keeps the folder actions to the website admin: author and editor see no ⋮ 
     app(Tenancy::class)->enter(1, function () use ($user): void {
         Livewire::actingAs($user)->test(Library::class)->call('setFolder', 'anh-xuong')
             ->assertDontSee('wire:click="openRename', false)
-            ->assertDontSee('wire:click="moveFolder', false);
+            ->assertDontSee('wire:click="moveFolder', false)
+            ->assertDontSee('wire:click="askDeleteFolder', false);
 
-        foreach ([['openRename', ['anh-xuong']], ['saveRename', []], ['moveFolder', ['anh-xuong', 1]]] as [$method, $args]) {
+        foreach ([['openRename', ['anh-xuong']], ['saveRename', []], ['moveFolder', ['anh-xuong', 1]], ['askDeleteFolder', ['anh-xuong']],
+            ['confirmDeleteFolder', []], ['undoFolderDelete', []]] as [$method, $args]) {
             Livewire::actingAs($user)->test(Library::class)->call($method, ...$args)->assertForbidden();
         }
     });
     expect(fdOrder(1))->toBe(['anh-xuong', 'san-pham'])
         ->and(app(Tenancy::class)->enter(1, fn () => MediaFolder::query()->where('slug', 'anh-xuong')->value('name')))->toBe('Ảnh xưởng');
-})->with(['author', 'editor']);
+})->with(['author', 'editor', 'contributor', 'viewer']);
 
 it('shows the website admin and the owner the ⋮ of the open folder only', function (string $role): void {
     $user = fdUser($role);
@@ -166,6 +170,7 @@ it('shows the website admin and the owner the ⋮ of the open folder only', func
             ->call('setFolder', 'anh-xuong')
             ->assertSee("openRename('anh-xuong')", false)
             ->assertSee("moveFolder('anh-xuong', 1)", false)
+            ->assertSee("askDeleteFolder('anh-xuong')", false)
             ->assertDontSee("openRename('san-pham')", false);
     });
 })->with(['admin', 'owner']);
@@ -205,5 +210,143 @@ it('never renames or moves a folder of another site', function (): void {
         expect(MediaFolder::query()->find($same->id)?->name)->toBe('Đổi ở B')
             ->and(MediaFolder::query()->orderBy('position')->pluck('slug')->map(fn ($s): string => (string) $s)->all())->toBe(['site-a-khac', 'cua-b'])
             ->and(MediaFolder::query()->find($mine->id)?->name)->toBe('Của B');
+    });
+});
+
+it('deletes an empty folder at once, with Hoàn tác', function (string $role): void {
+    $user = fdUser($role);
+    fdFolder(1, 'Trống', 'trong', 3);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $page = Livewire::actingAs($user)->test(Library::class)
+            ->call('setFolder', 'trong')
+            ->call('askDeleteFolder', 'trong')
+            ->assertSet('askFolderOpen', false)
+            ->assertSet('folder', '')
+            ->assertSet('toast', 'Đã xóa thư mục "Trống".')
+            ->assertSee('undoFolderDelete', false);
+        expect(MediaFolder::query()->count())->toBe(0);
+
+        $page->call('undoFolderDelete')->assertSet('folder', 'trong')->assertSet('undoFolder', '')
+            ->assertSet('toast', 'Đã khôi phục thư mục "Trống".');
+        expect(MediaFolder::query()->where('slug', 'trong')->value('position'))->toBe(3);
+    });
+})->with(['admin', 'owner']);
+
+it('asks before deleting a folder with files; the files go to Chưa phân loại and Hoàn tác puts them back', function (): void {
+    $user = fdUser('admin');
+    $folder = fdFolder(1, 'Ảnh xưởng', 'anh-xuong', 1);
+    $other = fdFolder(1, 'Khác', 'khac', 2);
+    $a = fdFile(1, 'a.png', $folder);
+    $b = fdFile(1, 'b.png', $folder);
+    $gone = fdFile(1, 'gone.png', $folder);
+    $elsewhere = fdFile(1, 'elsewhere.png', $other);
+    app(Tenancy::class)->enter(1, fn () => $gone->delete());
+
+    app(Tenancy::class)->enter(1, function () use ($user, $a, $b, $gone, $elsewhere, $other): void {
+        $page = Livewire::actingAs($user)->test(Library::class)
+            ->call('setFolder', 'anh-xuong')
+            ->call('askDeleteFolder', 'anh-xuong')
+            ->assertSet('askFolderOpen', true)
+            ->assertSee('Xóa thư mục "Ảnh xưởng"?')
+            ->assertSee('Thư mục có 2 tệp. Tệp không bị xóa — chúng về Tất cả ảnh, nằm ở mục Chưa phân loại.')
+            ->assertSee('Nơi đang dùng ảnh vẫn giữ nguyên.')
+            ->assertSee('Xóa thư mục và đưa 2 tệp về Tất cả ảnh');
+
+        $page->call('cancelDeleteFolder')->assertSet('askFolderOpen', false)->assertSet('folderToDelete', '');
+        expect(MediaFolder::query()->where('slug', 'anh-xuong')->exists())->toBeTrue();
+
+        $page->call('askDeleteFolder', 'anh-xuong')
+            ->call('confirmDeleteFolder')
+            ->assertSet('askFolderOpen', false)
+            ->assertSet('folder', '')
+            ->assertSet('toast', 'Đã xóa thư mục "Ảnh xưởng", 2 tệp về Tất cả ảnh (Chưa phân loại).');
+
+        expect(MediaFolder::query()->where('slug', 'anh-xuong')->exists())->toBeFalse()
+            ->and(Media::query()->whereKey([$a->id, $b->id])->whereNull('folder_id')->count())->toBe(2)
+            ->and(Media::onlyTrashed()->find($gone->id)?->folder_id)->toBeNull();
+
+        // one file is moved somewhere else before Hoàn tác: it stays where it was put
+        Media::query()->whereKey($b->id)->update(['folder_id' => $other->id]);
+
+        $page->call('undoFolderDelete')
+            ->assertSet('folder', 'anh-xuong')
+            ->assertSet('toast', 'Đã khôi phục thư mục "Ảnh xưởng".');
+        $back = MediaFolder::query()->where('slug', 'anh-xuong')->firstOrFail();
+        expect(Media::query()->find($a->id)?->folder_id)->toBe($back->id)
+            ->and(Media::query()->find($b->id)?->folder_id)->toBe($other->id)
+            ->and(Media::onlyTrashed()->find($gone->id)?->folder_id)->toBe($back->id)
+            ->and(Media::query()->find($elsewhere->id)?->folder_id)->toBe($other->id);
+    });
+});
+
+it('gives a folder delete its own Hoàn tác: a later toast takes it away', function (): void {
+    $user = fdUser('admin');
+    fdFolder(1, 'Trống', 'trong', 1);
+    fdFolder(1, 'Khác', 'khac', 2);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $page = Livewire::actingAs($user)->test(Library::class)->call('askDeleteFolder', 'trong');
+        expect($page->get('undoFolder'))->not->toBe('');
+        $page->call('openRename', 'khac')->set('renameName', 'Khác nữa')->call('saveRename')
+            ->assertSet('undoFolder', '')->assertDontSee('undoFolderDelete', false);
+        $page->call('undoFolderDelete')->assertSet('toastTone', 'error');
+        expect(MediaFolder::query()->where('slug', 'trong')->exists())->toBeFalse();
+    });
+});
+
+it('says plainly when Hoàn tác for a folder comes too late', function (): void {
+    $user = fdUser('admin');
+    fdFolder(1, 'Trống', 'trong', 1);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $page = Livewire::actingAs($user)->test(Library::class)->call('askDeleteFolder', 'trong');
+        Cache::flush();
+        $page->call('undoFolderDelete')->assertSet('toastTone', 'error')
+            ->assertSet('toast', 'Đã quá lâu nên không hoàn tác được nữa. Tạo lại thư mục rồi chuyển tệp vào nếu cần.');
+        expect(MediaFolder::query()->count())->toBe(0);
+    });
+});
+
+it('never deletes a folder of another site, nor brings one back there', function (): void {
+    $theirsUser = fdUser('admin', 1);
+    $user = fdUser('admin', 2);
+    $theirs = fdFolder(1, 'Ảnh xưởng', 'anh-xuong', 1);
+    fdFolder(1, 'Site A khác', 'site-a-khac', 2);
+    $theirFile = fdFile(1, 'a.png', $theirs);
+    $mine = fdFolder(2, 'Của B', 'cua-b', 1);
+    $myFile = fdFile(2, 'b.png', $mine);
+
+    // site A deletes a folder; its Hoàn tác key is of no use on site B
+    $tokenA = app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($theirsUser)->test(Library::class)
+        ->call('askDeleteFolder', 'site-a-khac')->get('undoFolder'));
+    expect($tokenA)->not->toBe('');
+
+    app(Tenancy::class)->enter(2, function () use ($user, $tokenA): void {
+        Livewire::actingAs($user)->test(Library::class)
+            ->call('askDeleteFolder', 'anh-xuong')
+            ->assertSet('askFolderOpen', false)
+            ->assertSet('folderToDelete', '')
+            ->call('confirmDeleteFolder');
+
+        // the folder asked about and the Hoàn tác key are server-owned: the page cannot point them elsewhere
+        $page = Livewire::actingAs($user)->test(Library::class);
+        expect(fn () => $page->set('folderToDelete', 'anh-xuong'))->toThrow(CannotUpdateLockedPropertyException::class)
+            ->and(fn () => $page->set('undoFolder', $tokenA))->toThrow(CannotUpdateLockedPropertyException::class);
+        $page->call('undoFolderDelete')->assertSet('toastTone', 'error');
+    });
+
+    // site B deleting its own folder never touches site A's files
+    app(Tenancy::class)->enter(2, fn () => Livewire::actingAs($user)->test(Library::class)
+        ->call('askDeleteFolder', 'cua-b')->call('confirmDeleteFolder'));
+
+    app(Tenancy::class)->enter(1, function () use ($theirs, $theirFile): void {
+        expect(MediaFolder::query()->find($theirs->id)?->name)->toBe('Ảnh xưởng')
+            ->and(Media::query()->find($theirFile->id)?->folder_id)->toBe($theirs->id)
+            ->and(MediaFolder::query()->where('slug', 'site-a-khac')->exists())->toBeFalse();
+    });
+    app(Tenancy::class)->enter(2, function () use ($mine, $myFile): void {
+        expect(MediaFolder::query()->find($mine->id))->toBeNull()
+            ->and(Media::query()->find($myFile->id)?->folder_id)->toBeNull();
     });
 });

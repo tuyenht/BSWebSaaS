@@ -10,9 +10,11 @@ use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -27,7 +29,7 @@ use Livewire\Component;
  * grid/list), the files page by page from a cursor, selection with move / Trash / restore / purge,
  * and the upload panel. Files and folders are addressed by ulid and slug only — never a bigint id.
  * Read is gated by media.view (re-checked in boot(): the livewire/update endpoint bypasses route
- * middleware); every action re-checks its own right: making, renaming or reordering a
+ * middleware); every action re-checks its own right: making, renaming, reordering or deleting a
  * folder needs media.folders and deleting for good needs media.purge (both the website admin's),
  * moving files into a folder stays with media.upload and the Trash with media.delete. The upload
  * panes and the detail panel are the shared picker's (WithMediaLibraryPicker in manage mode).
@@ -100,6 +102,16 @@ final class Library extends Component
 
     public string $renameName = '';
 
+    public bool $askFolderOpen = false;
+
+    /** The slug of the folder the delete question is about. */
+    #[Locked]
+    public string $folderToDelete = '';
+
+    /** The key of the last folder delete kept for Hoàn tác (the folder and its files, server side). */
+    #[Locked]
+    public string $undoFolder = '';
+
     public ?string $toast = null;
 
     public string $toastTone = 'success';
@@ -107,6 +119,12 @@ final class Library extends Component
     public int $toastSeq = 0;
 
     public const int FOLDER_NAME_MAX = 80;
+
+    /** How long a deleted folder can be brought back with Hoàn tác (the toast itself stays 10 seconds). */
+    public const int FOLDER_UNDO_MINUTES = 15;
+
+    /** Above this many files a folder delete keeps no Hoàn tác (the question before it is the guard). */
+    public const int FOLDER_UNDO_MAX_FILES = 100_000;
 
     /** Properties that change which files are listed: the page and the selection start again. */
     private const array LIST_PROPS = ['search', 'kinds', 'formats', 'uses', 'sort', 'per', 'status', 'folder'];
@@ -429,6 +447,74 @@ final class Library extends Component
         }
     }
 
+    /**
+     * "Xóa thư mục": a folder with no files goes at once (with Hoàn tác); with files it asks first.
+     * Files are never deleted with their folder — they go back to "Chưa phân loại".
+     */
+    public function askDeleteFolder(string $slug): void
+    {
+        abort_unless(Gate::allows('media.folders'), 403);
+
+        $this->folderSheetOpen = false;
+        $folder = self::folderBySlug($slug);
+        if ($folder === null) {
+            return;
+        }
+        if (! Media::query()->where('folder_id', $folder->id)->exists()) {
+            $this->deleteFolder($folder);
+
+            return;
+        }
+        $this->folderToDelete = (string) $folder->slug;
+        $this->askFolderOpen = true;
+    }
+
+    public function cancelDeleteFolder(): void
+    {
+        $this->askFolderOpen = false;
+        $this->folderToDelete = '';
+    }
+
+    public function confirmDeleteFolder(): void
+    {
+        abort_unless(Gate::allows('media.folders'), 403);
+
+        $folder = self::folderBySlug($this->folderToDelete);
+        $this->cancelDeleteFolder();
+        if ($folder !== null) {
+            $this->deleteFolder($folder);
+        }
+    }
+
+    /** "Hoàn tác" after a folder delete: the folder comes back with the files that were in it. */
+    public function undoFolderDelete(): void
+    {
+        abort_unless(Gate::allows('media.folders'), 403);
+
+        $kept = $this->undoFolder === '' ? null : Cache::pull(self::folderUndoKey($this->undoFolder));
+        $this->undoFolder = '';
+        if (! is_array($kept) || ! is_string($kept['name'] ?? null) || ! is_string($kept['slug'] ?? null) || ! is_string($kept['ids'] ?? null)) {
+            $this->say(__('media.lib.folder_undo_gone'), 'error');
+
+            return;
+        }
+
+        $folder = MediaFolder::query()->create([
+            'name' => $kept['name'],
+            'slug' => (new MediaFolder)->uniqueSlug($kept['slug'], $kept['name']),
+            'position' => Cast::int($kept['position'] ?? 0),
+        ]);
+        /** @var list<int> $ids */
+        $ids = $kept['ids'] === '' ? [] : array_values(unpack('q*', $kept['ids']) ?: []);
+        foreach (array_chunk($ids, 1000) as $chunk) {
+            // only files still in no folder: one moved elsewhere meanwhile stays where it was put
+            Media::withTrashed()->whereIn('id', $chunk)->whereNull('folder_id')->update(['folder_id' => $folder->id]);
+        }
+
+        $this->setFolder((string) $folder->slug);
+        $this->say(__('media.lib.folder_back', ['name' => $folder->name]));
+    }
+
     public function openMove(): void
     {
         abort_unless(Gate::allows('media.upload'), 403);
@@ -620,6 +706,7 @@ final class Library extends Component
         if ($seq === 0 || $seq === $this->toastSeq) {
             $this->toast = null;
             $this->undoTrash = [];
+            $this->undoFolder = '';
         }
     }
 
@@ -729,6 +816,49 @@ final class Library extends Component
         return $taken ? Cast::string(__('media.lib.folder_name_taken')) : null;
     }
 
+    /** The cache key of a folder delete kept for Hoàn tác: this site's, this member's, this delete's. */
+    private static function folderUndoKey(string $token): string
+    {
+        return 'media:folder-undo:'.app(CurrentSite::class)->id().':'.Cast::int(auth()->id()).':'.$token;
+    }
+
+    /**
+     * Deletes the folder: its files (live and in the Trash) go back to no folder through the foreign
+     * key. What Hoàn tác needs — the name, slug, place and the files' ids — is kept server side for a
+     * few minutes; the page holds only its random key.
+     */
+    private function deleteFolder(MediaFolder $folder): void
+    {
+        $live = Media::query()->where('folder_id', $folder->id)->count();
+        $ids = Media::withTrashed()->where('folder_id', $folder->id)->limit(self::FOLDER_UNDO_MAX_FILES + 1)->pluck('id')
+            ->map(fn (mixed $id): int => Cast::int($id))->all();
+
+        $token = '';
+        if (count($ids) <= self::FOLDER_UNDO_MAX_FILES) {
+            $token = Str::random(40);
+            Cache::put(self::folderUndoKey($token), [
+                'name' => $folder->name,
+                'slug' => (string) $folder->slug,
+                'position' => $folder->position,
+                'ids' => $ids === [] ? '' : pack('q*', ...$ids),
+            ], now()->addMinutes(self::FOLDER_UNDO_MINUTES));
+        }
+        $name = $folder->name;
+        $wasOpen = $this->folder === (string) $folder->slug;
+        $folder->delete();
+
+        if ($wasOpen) {
+            $this->setFolder('');
+        }
+        if ($this->renaming === (string) $folder->slug) {
+            $this->cancelRename();
+        }
+        $this->say($live > 0
+            ? __('media.lib.folder_deleted_n', ['name' => $name, 'n' => number_format($live, 0, ',', '.')])
+            : __('media.lib.folder_deleted', ['name' => $name]));
+        $this->undoFolder = $token; // after say(): this toast's Hoàn tác
+    }
+
     private function canPick(): bool
     {
         return $this->status === 'trash' ? Gate::allows('media.delete') : (Gate::allows('media.upload') || Gate::allows('media.delete'));
@@ -807,6 +937,7 @@ final class Library extends Component
     private function say(string $message, string $tone = 'success'): void
     {
         $this->undoTrash = [];
+        $this->undoFolder = '';
         $this->toast = $message;
         $this->toastTone = $tone;
         $this->toastSeq++;

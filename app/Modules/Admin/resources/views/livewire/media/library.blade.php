@@ -423,6 +423,16 @@
         </x-bs-admin::modal>
     @endif
 
+    @if ($canFolders)
+        @php $doomed = $folderToDelete === '' ? null : $folders->firstWhere('slug', $folderToDelete); @endphp
+        @php $doomedN = $doomed === null ? 0 : ($counts['byFolder'][$doomed->id] ?? 0); @endphp
+        <x-bs-admin::confirm-dialog model="askFolderOpen" :title="__('media.lib.folder_delete_title', ['name' => $doomed?->name ?? ''])" icon="ri-folder-reduce" danger ok-icon="ri-folder-reduce"
+            :ok="__('media.lib.folder_delete_ok', ['n' => $num($doomedN)])" confirm="confirmDeleteFolder" cancel="cancelDeleteFolder">
+            <x-bs-admin::confirm-line icon="ri-image-2">{{ __('media.lib.folder_delete_l1', ['n' => $num($doomedN)]) }}</x-bs-admin::confirm-line>
+            <x-bs-admin::confirm-line icon="ri-links">{{ __('media.lib.folder_delete_l2') }}</x-bs-admin::confirm-line>
+        </x-bs-admin::confirm-dialog>
+    @endif
+
     @if ($canDelete)
         <x-bs-admin::confirm-dialog model="askTrashOpen" :title="__('media.lib.ask_trash_title', ['n' => $num(count($picked))])" icon="ri-error-warning"
             :ok="__('media.lib.ask_trash_ok')" confirm="confirmTrash" cancel="cancelTrash">
@@ -439,5 +449,5 @@
         </x-bs-admin::confirm-dialog>
     @endif
 
-    <x-bs-admin::toast :message="$toast" :tone="$toastTone" dismiss="dismissToast" :undo="$undoTrash !== [] ? 'undo' : null" :seq="$toastSeq" />
+    <x-bs-admin::toast :message="$toast" :tone="$toastTone" dismiss="dismissToast" :undo="$undoTrash !== [] ? 'undo' : ($undoFolder !== '' ? 'undoFolderDelete' : null)" :seq="$toastSeq" />
 </div>
