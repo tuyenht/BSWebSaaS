@@ -1560,6 +1560,10 @@ final class Editor extends Component
         // Only accept a storage_key from THIS site's library (RLS-scoped) — never an arbitrary or
         // cross-site string injected via the wire payload.
         if (Media::query()->where('storage_key', $key)->exists()) {
+            if ($key !== $this->coverImageKey) {
+                // the words described the picture taken off: a new picture is described afresh
+                $this->coverAlt = '';
+            }
             $this->coverImageKey = $key;
         }
 
@@ -1869,8 +1873,9 @@ final class Editor extends Component
             'seo_title' => md5((string) $translation?->seo_title),
             'seo_description' => md5((string) $translation?->seo_description),
             'cover' => md5(is_string($cover) ? $cover : ''),
-            'cover_alt' => md5((string) $translation?->cover_alt),
             'category' => (string) ($categoryId ?? ''),
+            // last: a form opened before the field existed holds a print without it (see save())
+            'cover_alt' => md5((string) $translation?->cover_alt),
         ];
     }
 
@@ -3020,6 +3025,10 @@ final class Editor extends Component
             // stored values decide, never a timestamp: a status change, a category moved or
             // renamed, a cover's content mark or a view count changes none of them.
             $stored = $this->storedNow($entry);
+            if ($this->storedPrint !== []) {
+                // a form opened before «Mô tả ảnh» existed read it as empty
+                $this->storedPrint += ['cover_alt' => md5('')];
+            }
             if ($stored['print'] !== $this->storedPrint && $stored['print'] !== $this->overwrite) {
                 if ($filled) {
                     $this->slug = '';

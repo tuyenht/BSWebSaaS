@@ -812,6 +812,23 @@ it('carries a live post\'s byline through a pending change that leaves it out, a
     });
 });
 
+it('carries a live post\'s cover words through a pending change, and sets the ones the change names', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        [$author, $publisher] = changeCast();
+        $entry = changeLivePost($author, changeNewsCategory());
+        $entry->translationFor('vi')->update(['cover_alt' => 'Thợ đứng máy']);
+        $entry = $entry->fresh();
+
+        $change = app(SaveEntryDraft::class)->handle($entry, $author, 'vi', ['title' => 'Bản tin mới']);
+        expect($change->content['locales']['vi']['cover_alt'])->toBe('Thợ đứng máy');
+
+        $change = app(SaveEntryDraft::class)->handle($entry->fresh(), $author, 'vi', ['cover_alt' => 'Thợ đứng máy phay']);
+        expect($entry->fresh()->translationFor('vi')->cover_alt)->toBe('Thợ đứng máy');   // visitors keep the live words
+        app(ApplyEntryDraft::class)->handle($entry->fresh(), $publisher, $change->version());
+        expect($entry->fresh()->translationFor('vi'))->title->toBe('Bản tin mới')->cover_alt->toBe('Thợ đứng máy phay');
+    });
+});
+
 it('leaves the byline as it is when applying a change saved before bylines existed', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         [$author, $publisher] = changeCast();

@@ -103,6 +103,41 @@ describe('the editor', function (): void {
         });
     });
 
+    it('drops the words when another picture is picked, and keeps them when the same one is', function (): void {
+        $user = coverAltEditor();
+
+        app(Tenancy::class)->enter(1, function () use ($user): void {
+            $first = coverAltMedia();
+            $other = Media::query()->create([
+                'collection' => 'library', 'slug' => 'kho', 'hash' => str_repeat('d', 64),
+                'storage_key' => 'a/library/kho-dddddddddddd.png', 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1024,
+            ]);
+            $page = coverAltPage($first->storage_key, 'Thợ đứng máy');
+
+            Livewire::actingAs($user)->test(Editor::class, ['ulid' => $page->ulid])
+                ->call('selectCover', $first->storage_key)->assertSet('coverAlt', 'Thợ đứng máy')
+                ->call('selectCover', $other->storage_key)->assertSet('coverAlt', '')
+                ->call('save')->assertHasNoErrors();
+
+            expect(coverAltOf($page))->toBeNull();
+        });
+    });
+
+    it('puts back the words kept on this device', function (): void {
+        $user = coverAltEditor();
+
+        app(Tenancy::class)->enter(1, function () use ($user): void {
+            $page = coverAltPage(coverAltMedia()->storage_key, 'Cũ');
+
+            Livewire::actingAs($user)->test(Editor::class, ['ulid' => $page->ulid])
+                ->call('restoreKept', ['coverAlt' => 'Thợ đứng máy phay'])
+                ->assertSet('coverAlt', 'Thợ đứng máy phay')
+                ->call('save')->assertHasNoErrors();
+
+            expect(coverAltOf($page))->toBe('Thợ đứng máy phay');
+        });
+    });
+
     it('refuses words longer than the column or holding markup, and keeps the stored ones', function (string $words, string $message): void {
         $user = coverAltEditor();
 
@@ -189,14 +224,18 @@ describe('the website', function (): void {
         StorefrontCards::pinMediaConfig();
     });
 
-    /** The cover's alt on a news post whose picture has $library words in the library and $own words of its own. */
-    function coverAltOnSite(?string $library, ?string $own): string
+    /**
+     * The cover's alt on a news post whose picture has $library words in the library and $own words
+     * of its own; $link: the cover is a full address instead of a library picture.
+     */
+    function coverAltOnSite(?string $library, ?string $own, bool $link = false): string
     {
         $site = StorefrontCards::site();
-        app(Tenancy::class)->enter($site, function () use ($library, $own): void {
+        app(Tenancy::class)->enter($site, function () use ($library, $own, $link): void {
             $photo = StorefrontCards::media('ong-thep');
             $photo->update(['alt' => $library !== null ? ['vi' => $library] : []]);
-            $post = StorefrontCards::post(StorefrontCards::news(), 'Ống thép mới về', 'ong-thep-moi', CarbonImmutable::parse('2026-10-01 08:00', 'UTC'), ['image_url' => $photo->storage_key]);
+            $cover = $link ? 'https://images.example.test/ong-thep.jpg' : $photo->storage_key;
+            $post = StorefrontCards::post(StorefrontCards::news(), 'Ống thép mới về', 'ong-thep-moi', CarbonImmutable::parse('2026-10-01 08:00', 'UTC'), ['image_url' => $cover]);
             EntryTranslation::query()->where('entry_id', $post->id)->update(['cover_alt' => $own]);
         });
 
@@ -212,6 +251,13 @@ describe('the website', function (): void {
         'its own words' => ['Ống thép trong kho', 'Thợ xếp ống thép mới', 'Thợ xếp ống thép mới'],
         'the picture\'s words' => ['Ống thép trong kho', null, 'Ống thép trong kho'],
         'the title' => [null, null, 'Ống thép mới về'],
+    ]);
+
+    it('says the post\'s own words, else the title, for a cover at a full address', function (?string $own, string $alt): void {
+        expect(coverAltOnSite('Ống thép trong kho', $own, link: true))->toBe($alt);
+    })->with([
+        'its own words' => ['Thợ xếp ống thép mới', 'Thợ xếp ống thép mới'],
+        'the title' => [null, 'Ống thép mới về'],
     ]);
 });
 
