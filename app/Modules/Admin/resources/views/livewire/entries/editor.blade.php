@@ -359,9 +359,10 @@
             </div>
 
             {{-- A page's «Thuộc tính trang» waits behind «Thêm tùy chọn» (design 07), open or closed per browser as in the
-                 product editor (localStorage 'bs-editor'); a refused «Trang cha» opens it. --}}
+                 product editor (localStorage 'bs-editor'); a refused «Trang cha» opens it, and so does a page that has a
+                 parent (an existing one, or preset by «Thêm trang con»), so the chosen parent shows. --}}
             <div class="flex min-w-0 flex-[1_1_300px] flex-col gap-4"
-                 @if ($isPage) x-data="{ more: false, init() { try { this.more = JSON.parse(localStorage.getItem('bs-editor') || '{}').more === true } catch (e) {} }, setMore(on) { this.more = on; try { const o = JSON.parse(localStorage.getItem('bs-editor') || '{}') || {}; o.more = on; localStorage.setItem('bs-editor', JSON.stringify(o)) } catch (e) {} } }" @endif>
+                 @if ($isPage) @if ($parentUlid !== null) data-more-open @endif x-data="{ more: false, init() { if ('moreOpen' in this.$el.dataset) { this.more = true; return } try { this.more = JSON.parse(localStorage.getItem('bs-editor') || '{}').more === true } catch (e) {} }, setMore(on) { this.more = on; try { const o = JSON.parse(localStorage.getItem('bs-editor') || '{}') || {}; o.more = on; localStorage.setItem('bs-editor', JSON.stringify(o)) } catch (e) {} } }" @endif>
                 <section class="{{ $card }} overflow-hidden" aria-labelledby="entry-pub-h">
                     <div class="flex items-center justify-between gap-2.5 border-b border-border px-4 py-3">
                         <h2 id="entry-pub-h" class="{{ $cardTitle }}">{{ __('entries.ed.card_publish') }}</h2>

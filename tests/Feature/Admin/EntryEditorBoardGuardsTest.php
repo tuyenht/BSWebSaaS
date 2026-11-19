@@ -326,3 +326,23 @@ describe('the link', function (): void {
         });
     });
 });
+
+describe('«Thêm tùy chọn»', function (): void {
+    it('opens «Thuộc tính trang» when the page has a parent, existing or preset, so the chosen parent shows', function (): void {
+        $editor = egMember();
+
+        app(Tenancy::class)->enter(1, function () use ($editor): void {
+            $parent = egPage('dich-vu');
+            $child = egPage('thi-cong');
+            $child->update(['parent_id' => $parent->id]);
+
+            Livewire::actingAs($editor)->test(Editor::class, ['parent' => $parent->ulid])
+                ->assertSet('parentUlid', $parent->ulid)->assertSeeHtml('data-more-open');
+            Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $child->ulid])
+                ->assertSet('parentUlid', $parent->ulid)->assertSeeHtml('data-more-open');
+            // a top-level page keeps the member's own open or closed choice
+            Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $parent->ulid])
+                ->assertSet('parentUlid', null)->assertDontSeeHtml('data-more-open');
+        });
+    });
+});
