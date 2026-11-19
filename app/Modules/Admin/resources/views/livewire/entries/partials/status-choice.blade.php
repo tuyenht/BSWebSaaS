@@ -54,7 +54,7 @@
         </p>
     @endif
     <div class="relative">
-        <button type="button" id="entry-st-btn" x-ref="btn" data-status-btn aria-haspopup="listbox" x-bind:aria-expanded="open ? 'true' : 'false'" aria-labelledby="entry-st-l entry-st-btn"
+        <button type="button" id="entry-st-btn" x-ref="btn" data-status-btn aria-haspopup="listbox" aria-controls="entry-st-list" x-bind:aria-expanded="open ? 'true' : 'false'" aria-labelledby="entry-st-l entry-st-btn"
                 @error('statusTo') aria-invalid="true" aria-describedby="entry-st-e" @enderror
                 x-on:click="toggle()" x-on:keydown.arrow-down.prevent="open || toggle()" x-on:keydown.arrow-up.prevent="open || toggle()"
                 class="field flex w-full items-center gap-2 rounded-md border border-border-input bg-surface px-3 text-start font-semibold text-text-strong transition-colors hover:bg-surface-hover focus:border-primary-text aria-expanded:border-primary-text aria-invalid:border-danger-text">
@@ -63,7 +63,7 @@
             <x-bs-admin::icon name="ri-arrow-down-s" :class="$glyph.' text-text-muted transition-transform'" x-bind:class="open && 'rotate-180'" />
         </button>
         <div x-show="open" x-cloak class="fixed inset-0 z-[1000] bg-[rgb(15_23_41/0.45)] min-[600px]:hidden" aria-hidden="true" x-on:click="close(true)"></div>
-        <div x-show="open" x-cloak role="dialog" aria-modal="false" aria-labelledby="entry-st-h" x-on:keydown="key($event)"
+        <div x-show="open" x-cloak x-on:keydown="key($event)"
              class="absolute inset-x-0 top-[calc(100%+4px)] z-30 max-h-[min(60vh,420px)] overflow-auto rounded-md border border-border-input bg-surface p-1 shadow-card
                     max-[600px]:fixed max-[600px]:inset-x-0 max-[600px]:top-auto max-[600px]:bottom-0 max-[600px]:z-[1001] max-[600px]:max-h-[75vh] max-[600px]:rounded-none max-[600px]:rounded-t-xl max-[600px]:border-x-0 max-[600px]:border-b-0 max-[600px]:p-2 max-[600px]:pb-[calc(8px+env(safe-area-inset-bottom))]">
             <div class="hidden items-center justify-between gap-2 pb-1 ps-2 text-[calc(0.9375rem+var(--user-text-boost))] font-semibold text-text-strong max-[600px]:flex">
@@ -72,7 +72,7 @@
                     <x-bs-admin::icon name="ri-close" class="size-5" />
                 </button>
             </div>
-            <ul x-ref="list" role="listbox" aria-labelledby="entry-st-l" class="m-0 list-none p-0">
+            <ul x-ref="list" id="entry-st-list" role="listbox" aria-labelledby="entry-st-l" class="m-0 list-none p-0">
                 @foreach ($panel['options'] as $o)
                     @php $sel = $o['key'] === $panel['current']; @endphp
                     <li role="option" id="entry-st-o-{{ $o['key'] }}" tabindex="-1" wire:key="st-o-{{ $o['key'] }}" data-st="{{ $o['key'] }}"
@@ -102,7 +102,7 @@
         <x-bs-admin::field-error id="entry-st-e" class="mt-1.5">{{ $message }}</x-bs-admin::field-error>
     @enderror
     @if ($panel['pending'] !== null)
-        <p role="status" class="mt-2 mb-0 flex items-start gap-1.5 text-small leading-normal text-text">
+        <p class="mt-2 mb-0 flex items-start gap-1.5 text-small leading-normal text-text">
             <x-bs-admin::icon name="ri-information" class="mt-0.5 size-4 shrink-0" /><span class="min-w-0 [overflow-wrap:anywhere]">{{ $panel['pending'] }}</span>
         </p>
     @else
