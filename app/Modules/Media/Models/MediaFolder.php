@@ -6,6 +6,7 @@ use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 /**
  * A flat per-site folder organizing the media library (the picker's sidebar tree). Tenant table
@@ -32,6 +33,16 @@ final class MediaFolder extends Model
     public function media(): HasMany
     {
         return $this->hasMany(Media::class, 'folder_id');
+    }
+
+    /**
+     * Holds the website's folder-list lock to the end of the transaction. Every write that adds,
+     * reorders, deletes or brings back a folder takes it first, so they run one at a time per site:
+     * two at once never hand out the same place, nor lock the folder rows in different orders.
+     */
+    public static function lockTree(int $siteId): void
+    {
+        DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', ['media_folders:'.$siteId]);
     }
 
     /**

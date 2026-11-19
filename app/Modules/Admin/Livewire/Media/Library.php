@@ -336,9 +336,10 @@ final class Library extends Component
             return;
         }
 
-        // the list locked as a move or a Hoàn tác locks it, so the new last place is nobody else's
+        // under the site's folder-list lock, like every folder write: the new last place is nobody else's
         $folder = DB::transaction(function () use ($name): MediaFolder {
-            $maxPosition = MediaFolder::query()->orderBy('id')->lock('for no key update')->pluck('position')->max();
+            MediaFolder::lockTree(app(CurrentSite::class)->id());
+            $maxPosition = MediaFolder::query()->max('position');
 
             return MediaFolder::query()->create([
                 'name' => $name,
@@ -424,6 +425,7 @@ final class Library extends Component
         $step = $step < 0 ? -1 : 1;
         // the folders locked for the swap, so two people moving at once never leave equal positions
         $moved = DB::transaction(function () use ($slug, $step): bool {
+            MediaFolder::lockTree(app(CurrentSite::class)->id());
             /** @var list<MediaFolder> $order */
             $order = MediaFolder::query()->orderBy('position')->orderBy('name')->orderBy('id')
                 ->lockForUpdate()->get(['id', 'slug', 'name', 'position'])->all();
@@ -514,6 +516,7 @@ final class Library extends Component
 
         try {
             $folder = DB::transaction(function () use ($kept): MediaFolder {
+                MediaFolder::lockTree(app(CurrentSite::class)->id());
                 // the list locked like a move: the folders from its old place down step one place down
                 $position = max(1, Cast::int($kept['position'] ?? 1));
                 // FOR NO KEY UPDATE: a file moved into a folder meanwhile (its key check) is not blocked
@@ -887,6 +890,7 @@ final class Library extends Component
         // The folder row locked first: an upload into it (its foreign-key check) waits for this delete,
         // or committed before it and is counted; a second delete of the same folder finds it gone.
         $done = DB::transaction(function () use ($folder): ?array {
+            MediaFolder::lockTree(app(CurrentSite::class)->id());
             $row = MediaFolder::query()->whereKey($folder->id)->lockForUpdate()->first();
             if ($row === null) {
                 return null;
