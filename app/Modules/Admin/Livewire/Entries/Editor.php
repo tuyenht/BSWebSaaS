@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Livewire\Entries;
 
 use App\Modules\Admin\Livewire\Concerns\EditsButtonActions;
+use App\Modules\Admin\Livewire\Concerns\ShowsEntryRevisions;
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\BlockKinds;
 use App\Modules\Admin\Support\Entries\EntryRefusal;
@@ -112,6 +113,7 @@ final class Editor extends Component
 {
     use AuthorizesRequests;
     use EditsButtonActions;
+    use ShowsEntryRevisions;
     use WithMediaLibraryPicker;
 
     /** How many trail rows the block shows before "Xem thêm" (design: 3, +3 per load). */
@@ -1696,6 +1698,7 @@ final class Editor extends Component
             'schedule' => $this->schedulePanel($workflow),
             'statusPanel' => $this->statusPanel(),
             'scheduleBand' => $this->scheduleBand($workflow),
+            'revisions' => $this->revisionPanel(),
         ]);
     }
 
@@ -2060,8 +2063,9 @@ final class Editor extends Component
     /**
      * «Chuyển vào thùng rác» in the ⋮, for a saved entry — the same move the list's row makes, through
      * the same policy (EntryPolicy::delete): the entry goes to the Trash (kept EntryTrash::days() days)
-     * and the editor leaves for its list, which says so. The Home page never goes (another page becomes
-     * the Home page first), and a page with sub-pages goes from the Pages list, where its sub-pages go
+     * and the editor leaves for its list, which says so with its own «Hoàn tác». The Home page never
+     * goes (another page becomes the Home page first), and a page with sub-pages goes from the Pages
+     * list, where its sub-pages go
      * with it; both are refused here with the reason, nothing moved. A right taken away since the
      * screen opened is refused in words, as the list refuses it. An entry already in the Trash (another
      * tab, another member) is not moved again — that would restart its purge clock — and the member is
@@ -2117,13 +2121,20 @@ final class Editor extends Component
             return;
         }
 
-        $name = $entry->translationFor($this->locale)?->title;
-        $listUrl = route('admin.entries.index', $this->sectionKey !== null ? ['section' => $this->sectionKey] : []);
         // nothing is left to save: the page leaves without asking about unsaved changes, and is not drawn
         // again for an entry that is now in the Trash
         $this->saved = $this->tracked();
         $this->skipRender();
-        $this->js('window.bsLeaveTo('.Js::encode($listUrl).', '.Js::encode(['text' => Cast::string(__('entries.trashed_one', ['name' => $name ?? $this->unit()]))]).')');
+        if ($this->type === 'post' && $this->sectionKey === null) {
+            // a post of no section leaves for the Pages list, which does not list it: the move is said here
+            $name = $entry->translationFor($this->locale)?->title;
+            $this->js('window.bsLeaveTo('.Js::encode(route('admin.entries.index')).', '.Js::encode(['text' => Cast::string(__('entries.trashed_one', ['name' => $name ?? $this->unit()]))]).')');
+
+            return;
+        }
+        // the list says the move with its own message and «Hoàn tác» (Index::sayTrashedInEditor)
+        $listUrl = route('admin.entries.index', ($this->sectionKey !== null ? ['section' => $this->sectionKey] : []) + [Index::TRASHED_IN_EDITOR => $entry->ulid]);
+        $this->js('window.bsLeaveTo('.Js::encode($listUrl).')');
     }
 
     /** The refusal of a move to the Trash, in a message that stays until it is closed. */

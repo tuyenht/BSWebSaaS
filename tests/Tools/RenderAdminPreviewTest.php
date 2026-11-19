@@ -36,9 +36,13 @@ use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Support\ProductIndexLink;
 use App\Modules\Cms\Actions\Menus\SaveMenu;
+use App\Modules\Cms\Actions\PublishEntry;
+use App\Modules\Cms\Actions\RecordEntryRevision;
 use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
 use App\Modules\Cms\Data\TaxonomyData;
+use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
@@ -772,6 +776,28 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('Giá &amp; tồn kho');
     file_put_contents($dir.'/product-new-price.html', $html);
 
+    // The product editor with three categories (the first the main one) and a strip of three pictures, and a
+    // product opened from the Trash (the same product read only is drawn at the end: the plan's member limit).
+    [$filed, $binned] = app(Tenancy::class)->enter(1, function () use ($priced): array {
+        $priced->assignCategories(array_map(intval(...), Taxonomy::query()->where('vocabulary', 'product_cat')->orderBy('id')->limit(3)->pluck('id')->all()));
+        foreach (array_values(Media::query()->where('collection', 'library')->orderBy('id')->limit(3)->pluck('id')->all()) as $i => $id) {
+            $priced->images()->create(['media_id' => (int) $id, 'position' => $i]);
+        }
+        $binned = Product::query()->create(['status' => 'published', 'published_at' => now(), 'sku' => 'DG-CNC-005']);
+        $binned->translations()->create(['locale' => 'vi', 'name' => 'Bàn gá phay đa năng', 'slug' => 'ban-ga-phay-da-nang']);
+        $binned->delete();
+
+        return [$priced->ulid, $binned->ulid];
+    });
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog/'.$filed.'/edit')->assertOk()->getContent();
+    expect($html)->toContain('ped-strip', 'Mục chính', 'Đặt làm ảnh đại diện');
+    file_put_contents($dir.'/product-editor-full.html', $html);
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog/'.$binned.'/edit')->assertOk()->getContent();
+    expect($html)->toContain('data-state="trash"', 'wire:click="restore"');
+    file_put_contents($dir.'/product-editor-trash.html', $html);
+
     // The page editor's «Hẹn giờ đăng» on a scheduled page, then with a changed time that has passed (the
     // reason under the field); and the Home page, whose link is the website's root and locked.
     $planned = app(Tenancy::class)->enter(1, function () use ($owner): array {
@@ -794,6 +820,49 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$planned[1]->ulid.'/edit')->assertOk()->getContent();
     expect($html)->toContain(e(__('entries.ed.slug_home_hint')));
     file_put_contents($dir.'/editor-home.html', $html);
+
+    // «Lịch sử phiên bản» on a live page with a few versions (published, edited, restored, one older than
+    // history): the card's region, the full list, one version beside the form, the question before a
+    // restore with unsaved changes, and the question when the restore is refused.
+    [$livePage, $oldest] = app(Tenancy::class)->enter(1, function () use ($owner): array {
+        $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $owner->id]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Giới thiệu công ty', 'slug' => 'gioi-thieu-cong-ty', 'status' => 'draft', 'excerpt' => 'Về An Vinh',
+            'body' => ['blocks' => [['type' => 'hero', 'props' => ['heading' => 'Gia công cơ khí chính xác']]]]]);
+        app(PublishEntry::class)->handle($entry->fresh(), 'vi', $owner);
+        $oldest = EntryRevision::query()->where('entry_id', $entry->id)->sole();
+        $oldest->forceFill(['created_at' => now()->subDays(6)])->save();
+        EntryRevision::query()->create(['entry_id' => $entry->id, 'locale' => 'vi', 'kind' => RevisionKind::Baseline,
+            'snapshot' => $oldest->snapshot, 'created_at' => now()->subDays(9)]);
+        $translation = $entry->translationFor('vi');
+        $translation->update(['title' => 'Về An Vinh', 'excerpt' => 'Hơn 20 năm gia công cơ khí',
+            'body' => ['blocks' => [['type' => 'hero', 'props' => ['heading' => 'Chào mừng đến An Vinh']], ['type' => 'richtext', 'props' => ['heading' => 'Năng lực']]]]]);
+        app(RecordEntryRevision::class)->forLocale($entry->fresh(), $translation->fresh(), RevisionKind::Edit, $owner);
+
+        return [$entry->fresh(), $oldest];
+    });
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$livePage->ulid.'/edit')->assertOk()->getContent();
+    $history = fn () => Livewire::actingAs($owner)->test(App\Modules\Admin\Livewire\Entries\Editor::class, ['ulid' => $livePage->ulid])->call('loadRevisions');
+    foreach ([
+        'editor-revisions' => fn () => $history(),
+        'editor-revisions-all' => fn () => $history()->set('revAllOpen', true),
+        'editor-revisions-view' => fn () => $history()->call('viewRevision', $oldest->ulid),
+        'editor-revisions-ask' => fn () => $history()->set('excerpt', 'Đang gõ dở')->call('askRestore', $oldest->ulid),
+    ] as $name => $state) {
+        $part = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($state()));
+        file_put_contents($dir.'/'.$name.'.html', $swap($html, $part, 'admin\\.entries\\.editor'));
+    }
+    expect(file_get_contents($dir.'/editor-revisions-ask.html'))->toContain(e(__('entries.rev.ask_dirty')));
+    $refused = app(Tenancy::class)->enter(1, function () use ($history, $withSnapshot, $oldest, $livePage): string {
+        $test = $history()->call('askRestore', $oldest->ulid);
+        $livePage->delete();
+        $part = $withSnapshot($test->call('restoreRevision'));
+        $livePage->restore();
+
+        return $part;
+    });
+    expect($refused)->toContain(e(__('entries.revision_err_entry_trashed')));
+    file_put_contents($dir.'/editor-revisions-refused.html', $swap($html, $refused, 'admin\\.entries\\.editor'));
 
     // The members screen with a realistic team: several roles, one member in two of them, a very long name and
     // email, a member at the owner's level (no buttons, says why). Then the roles panel and the invite dialog open.
@@ -899,6 +968,12 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($viewer)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/general')->assertForbidden()->getContent();
     expect($html)->toContain('class="te-ok"');
     file_put_contents($dir.'/error-noperm-sent.html', $html);
+    // The product editor read only, for a member who may only see products (no new member: the plan's limit).
+    app(Tenancy::class)->enter(1, fn () => grantRole($viewer, 'cat-viewer', ['catalog.view']));
+    $this->flushSession();
+    $html = $this->actingAs($viewer)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog/'.$filed.'/edit')->assertOk()->getContent();
+    expect($html)->toContain('data-state="readonly"', 'ped-strip')->not->toContain('wire:click="publish"');
+    file_put_contents($dir.'/product-editor-readonly.html', $html);
     app('auth')->forgetGuards();
     $this->flushSession();
     $html = $this->get('http://'.ADMIN_PREVIEW_HOST.'/admin/session-expired')->assertOk()->getContent();
@@ -976,5 +1051,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     file_put_contents($dir.'/media-trash-own-ask.html', $swap($html, $ownAsk, $media));
     config(['media' => $mediaConfig]);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 73);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 81);
 });

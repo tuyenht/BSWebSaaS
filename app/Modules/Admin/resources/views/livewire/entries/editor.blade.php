@@ -389,7 +389,7 @@
                         <h2 id="entry-pub-h" class="{{ $cardTitle }}">{{ __('entries.ed.card_publish') }}</h2>
                         <x-bs-admin::status-pill :status="$pill['status']">{{ $pill['label'] }}</x-bs-admin::status-pill>
                     </div>
-                    @if ($statusPanel !== null || $schedule !== null || $workflow !== null)
+                    @if ($statusPanel !== null || $schedule !== null || $workflow !== null || $revisions !== null)
                         <div class="flex flex-col gap-3.5 p-4">
                             @if ($statusPanel !== null)
                                 @include('admin::livewire.entries.partials.status-choice', ['panel' => $statusPanel])
@@ -416,6 +416,12 @@
                             @if ($workflow !== null)
                                 {{-- An active workflow governs this post: its steps and moves replace "Đăng". --}}
                                 <div>@include('admin::livewire.entries.partials.workflow-status')</div>
+                            @endif
+                            @if ($revisions !== null)
+                                @if ($statusPanel !== null || $schedule !== null || $workflow !== null)
+                                    <div class="h-px bg-border" aria-hidden="true"></div>
+                                @endif
+                                @include('admin::livewire.entries.partials.revisions')
                             @endif
                         </div>
                     @endif
@@ -498,6 +504,10 @@
         </div>
 
     </x-bs-admin::editor-frame>
+
+    @if ($revisions !== null)
+        @include('admin::livewire.entries.partials.revision-dialogs')
+    @endif
 
     <x-bs-admin::unsaved-dialog :count="$changes" :label="$frame['title']" :save="$leave['method']" discard="discardChanges" :body="$leave['body']" :save-label="$leave['save']" :discard-label="$leave['discard']" />
 

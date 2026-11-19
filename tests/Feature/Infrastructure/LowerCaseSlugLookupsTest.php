@@ -31,6 +31,7 @@ use Livewire\Livewire;
 
 beforeEach(function (): void {
     seedTenancy();
+    enableCatalog();
 });
 
 /** Catalog roles and permissions as a fresh install has them. */
