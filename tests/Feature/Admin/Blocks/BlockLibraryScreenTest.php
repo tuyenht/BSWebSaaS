@@ -13,6 +13,7 @@ use App\Modules\Cms\Models\ContentBlockTranslation;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\MemberCategoryScope;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\SiteLocale as SiteLocaleContext;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -266,6 +267,29 @@ it('saves one language of a block in the block editor with the version it read, 
         $stale->call('removeBlock', 0)->call('save')->assertSet('toastTone', 'error');
         expect(ContentBlockTranslation::query()->where('content_block_id', $block->id)->value('body')['blocks'])->toHaveCount(1);
         expect(ContentBlockVersion::current($block->fresh()))->not->toBe($stale->get('version'));
+    });
+});
+
+it('picks a block picture in the block editor through the shared «Chọn ảnh» dialog', function (): void {
+    $editor = blockLibraryUser(1, 'editor');
+    $block = libraryBlock(1, 'dau-trang', 'Đầu trang');
+
+    app(Tenancy::class)->enter(1, function () use ($editor, $block): void {
+        $picture = Media::query()->create([
+            'collection' => 'library', 'slug' => 'anh', 'hash' => str_repeat('a', 64),
+            'storage_key' => 'a/library/anh-aaaaaaaaaaaa.png', 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1024,
+        ]);
+
+        Livewire::actingAs($editor)->test(BlockEditor::class, ['ulid' => $block->ulid])
+            ->set('blocks', [['type' => 'hero', 'props' => ['heading' => 'Chào', 'image_url' => null]]])
+            ->call('openBlockImagePicker', '0.props.image_url')
+            ->assertSet('showImagePicker', true)
+            ->assertSet('imagePickerMode', 'single')
+            ->assertSeeHtml("togglePickerItem({$picture->id})")
+            ->call('togglePickerItem', $picture->id)
+            ->call('insertPicked')
+            ->assertSet('showImagePicker', false)
+            ->assertSet('blocks.0.props.image_url', $picture->id);
     });
 });
 

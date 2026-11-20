@@ -47,7 +47,7 @@
         <p class="block-look__hint">{{ __('entries.look_scheme_note') }}</p>
     </fieldset>
     @unless ($photoBlock)
-        <fieldset class="block-look__group">
+        <fieldset class="block-look__group" data-picker-home>
             <legend>{{ __('entries.look_image') }}</legend>
             @if ($look['image'])
                 @if (is_int($props['bg_image'] ?? null) && ! empty($blockImageUrls[$props['bg_image']]))

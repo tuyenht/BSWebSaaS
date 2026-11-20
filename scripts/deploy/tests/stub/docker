@@ -28,7 +28,7 @@ artisan() {
         octane:reload) if [ -e "$FAKE/fail-reload-once" ]; then rm -f "$FAKE/fail-reload-once"; echo "reload failed"; exit 1; fi
             if [ -e "$FAKE/fail-reload-after-sync" ] && grep -q "artisan rbac:sync" "$FAKE/calls.log" 2>/dev/null; then rm -f "$FAKE/fail-reload-after-sync"; echo "reload failed"; exit 1; fi
             echo "ok $1" ;;
-        view:clear|optimize|rbac:sync|media:reconcile-content-usage|fake:oneoff|fake:pre) echo "ok $1" ;;
+        view:clear|view:cache|optimize|rbac:sync|media:reconcile-content-usage|fake:oneoff|fake:pre) echo "ok $1" ;;
         list) # a long list with the command near the top, like the real one: a reader that stops at the match cuts the writer off
             [ -e "$FAKE/no-purge-command" ] || echo "storefront:purge-edge   Drop the pages kept at the edge"
             seq -f 'fake:command-%g   A command' 1 20000 ;;

@@ -14,6 +14,7 @@ use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -294,11 +295,15 @@ it('records every language when an editor save on live content changes the share
     $editor = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
-        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any']);
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any', 'media.view']);
         $page = revisionPage('bia', ['vi', 'en'], 'published');
+        $cover = Media::query()->create([
+            'collection' => 'library', 'slug' => 'bia-moi', 'hash' => str_repeat('9', 64),
+            'storage_key' => 'a/library/bia-moi.png', 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1024,
+        ]);
 
         Livewire::actingAs($editor->fresh())->test(Editor::class, ['ulid' => $page->ulid])
-            ->set('coverImageKey', 'a/library/bia-moi.png')
+            ->call('openCoverPicker')->call('togglePickerItem', $cover->id)->call('insertPicked')
             ->call('save')
             ->assertHasNoErrors();
 

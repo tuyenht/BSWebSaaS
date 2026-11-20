@@ -7,6 +7,7 @@ namespace App\Modules\Admin\Livewire\Blocks;
 use App\Modules\Admin\Livewire\Blocks\Concerns\GatesBlockScreens;
 use App\Modules\Admin\Livewire\Concerns\EditsBlockList;
 use App\Modules\Admin\Livewire\Concerns\EditsButtonActions;
+use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Cms\Actions\ContentBlocks\SaveContentBlockBody;
 use App\Modules\Cms\ContentBlocks\ContentBlockVersion;
@@ -47,6 +48,7 @@ final class Editor extends Component
     use GatesBlockScreens {
         GatesBlockScreens::boot as private bootLibrary;
     }
+    use WithMediaLibraryPicker;
 
     #[Locked]
     public string $ulid = '';
@@ -253,10 +255,13 @@ final class Editor extends Component
             'goneProducts' => $this->goneProductKeys(),
             'looks' => $this->looks(),
             'schemeColours' => $this->schemeColours(),
-            'pickerMedia' => $this->showBlockImagePicker || $this->showButtonFilePicker
-                ? Media::query()->orderByDesc('created_at')->limit(60)->get()
-                : collect(),
         ])->title($title);
+    }
+
+    /** The block image field's picture, picked in the shared «Chọn ảnh» dialog. */
+    protected function pickedSingleImage(Media $media): void
+    {
+        $this->placeBlockImage($media);
     }
 
     private function authorizeEditing(): void

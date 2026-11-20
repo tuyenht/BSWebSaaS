@@ -1,30 +1,7 @@
 {{-- The pickers a block field opens in «Trình dựng» (inside the host's @can('media.view')): a library
-     picture for an image field (EditsBlockList), a library document for a button (EditsButtonActions).
-     The host gives $showBlockImagePicker, $pickerMedia, $urls and $buttonPanel. --}}
-@if ($showBlockImagePicker)
-    <div class="media-picker" role="dialog" aria-modal="true" aria-label="{{ __('entries.image_pick') }}">
-        <div class="media-picker__head">
-            <strong>{{ __('entries.image_pick') }}</strong>
-            <button type="button" wire:click="closeBlockImagePicker">{{ __('entries.close') }}</button>
-        </div>
-        @if ($pickerMedia->isEmpty())
-            <p>{{ __('entries.library_empty') }}</p>
-        @else
-            <div class="media-picker__grid">
-                @foreach ($pickerMedia as $m)
-                    @if (str_starts_with($m->mime, 'image/'))
-                        <button type="button" wire:key="blockpick-{{ $m->id }}"
-                                wire:click="selectBlockImage({{ $m->id }})"
-                                class="media-picker__item" title="{{ $m->original_filename }}">
-                            <img src="{{ $urls->url($m->storage_key, 320) }}" alt="{{ $m->original_filename }}" loading="lazy">
-                        </button>
-                    @endif
-                @endforeach
-            </div>
-        @endif
-    </div>
-@endif
-
+     picture for an image field goes through the shared «Chọn ảnh» dialog (EditsBlockList →
+     WithMediaLibraryPicker, the host includes partials/media-picker-modal); a library document for a
+     button is chosen here (EditsButtonActions). The host gives $buttonPanel. --}}
 {{-- "Tải tệp": a document of the library for a button to hand out. --}}
 <x-bs-admin::modal model="showButtonFilePicker" :title="__('entries.btn_file_dialog_title')" :subtitle="__('entries.btn_file_dialog_sub')" :close-label="__('entries.btn_file_dialog_close')">
     @if ($buttonPanel['documents'] === [])
