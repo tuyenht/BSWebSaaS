@@ -6,17 +6,19 @@ namespace App\Modules\Admin\Support\Leads;
 
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
+use App\Modules\Forms\Support\LeadSearchTerms;
 use App\Modules\Shared\Support\Cast;
-use App\Modules\Shared\Support\VietnameseFold;
+use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteTime;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 
 /**
- * The lead list of "Khách liên hệ" as statements: the search (name and email without diacritics,
- * the phone by its digits), the forms ticked, the time window (in the site's own day), the status
+ * The lead list of "Khách liên hệ" as statements: the search (each typed word starts a word of the
+ * name or the email, without diacritics, or a piece of the phone's digits: LeadSearchTerms), the forms ticked, the time window (in the site's own day), the status
  * group, and the counts beside each of them. Every count stops at CAP + 1, so a site with millions
  * of leads never walks them all to print one number. Rows come newest first with the code (ulid) as the
  * tie-break, read up to a cursor (the last row loaded), never by OFFSET. Leads of a form being
@@ -25,6 +27,9 @@ use Illuminate\Support\Facades\DB;
 final class LeadListQuery
 {
     public const int CAP = 10000;
+
+    /** Word rows of the rarest typed word up to which a search gathers its leads first (searchIn). */
+    public const int GATHER = 100000;
 
     /** The status groups: "all" is every lead but spam (spam has its own group). */
     public const array TABS = ['all', 'new', 'read', 'archived', 'spam'];
@@ -53,7 +58,11 @@ final class LeadListQuery
         private readonly SiteTime $time,
         private readonly bool $noForms = false,
         private readonly ?array $hiddenFormIds = null,
+        private readonly int $gather = self::GATHER,
     ) {}
+
+    /** @var array<string, array<string, int>> the word counts of each search read so far (termCounts()) */
+    private array $termCounts = [];
 
     /**
      * The site's leads a screen may show: none of a form being deleted, which reads as gone
@@ -229,23 +238,98 @@ final class LeadListQuery
         return [$m[1], $m[2]];
     }
 
-    /** @param  Builder<FormSubmission>  $query */
+    /**
+     * Each typed word starts one of the lead's words (LeadSearchTerms), in any order: accents and case
+     * are ignored, `%` and `_` are letters like any other. Every condition is a range of the word
+     * table's key (leakproof, so an index condition under RLS; LeadSearchTermsIndexesTest), as the
+     * products search does (ProductListQuery::whereWords).
+     *
+     * The rarest word decides the shape, by its word rows counted up to the gather limit + 1 (one
+     * statement for every word, read once per list):
+     * - none: nothing is found;
+     * - at most the gather limit: its leads are gathered first, each checked for the other words, and
+     *   the list reads them by id (`id = any(array(…))`), newest first;
+     * - more (every word is very common): the list walks newest first through its own indexes and
+     *   checks each row's words until the page or the bounded count is full (`offset 0` keeps each a
+     *   probe per row), fast because matches that common are dense.
+     *
+     * @param  Builder<FormSubmission>  $query
+     */
     private function searchIn(Builder $query): void
     {
         $words = trim($this->search);
         if ($words === '') {
             return;
         }
-        $needle = VietnameseFold::like(VietnameseFold::text($words));
-        $digits = preg_replace('/\D+/', '', $words) ?? '';
-        $query->where(function (Builder $q) use ($needle, $digits): void {
-            $q->whereRaw(VietnameseFold::sql("coalesce(name, '')").' like ?', [$needle])
-                ->orWhereRaw(VietnameseFold::sql("coalesce(email, '')").' like ?', [$needle]);
-            // a phone matches by its digits once three are typed: "0912 345" finds "0912345678"
-            if (strlen($digits) >= 3) {
-                $q->orWhereRaw("regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g') like ?", ['%'.$digits.'%']);
+        $needles = LeadSearchTerms::needles($words);
+        if ($needles === []) {
+            // nothing that can start a word ("%", only signs): nothing is found, never the whole list
+            $query->whereRaw('false');
+
+            return;
+        }
+        $siteId = app(CurrentSite::class)->id();
+        $counts = $this->termCounts($siteId, $needles);
+        asort($counts);
+        $rarest = (string) array_key_first($counts);
+        if (($counts[$rarest] ?? 0) === 0) {
+            $query->whereRaw('false');
+
+            return;
+        }
+
+        $others = array_slice(array_map(strval(...), array_keys($counts)), 1);
+        if ($counts[$rarest] <= $this->gather) {
+            [$range, $bindings] = LeadSearchTerms::range('t.term', $rarest);
+            $sql = 'select t.lead_id from lead_search_terms t where t.site_id = ? and '.$range;
+            $bindings = [$siteId, ...$bindings];
+            foreach ($others as $needle) {
+                [$also, $values] = LeadSearchTerms::range('o.term', $needle);
+                $sql .= ' and exists (select 1 from lead_search_terms o where o.site_id = ? and o.lead_id = t.lead_id and '.$also.')';
+                $bindings = [...$bindings, $siteId, ...$values];
             }
-        });
+            $query->whereRaw("form_submissions.id = any (array({$sql}))", $bindings);
+
+            return;
+        }
+
+        foreach ([$rarest, ...$others] as $needle) {
+            [$range, $bindings] = LeadSearchTerms::range('w.term', $needle);
+            $query->whereExists(fn (QueryBuilder $has) => $has->selectRaw('1')->from('lead_search_terms as w')
+                ->where('w.site_id', $siteId)
+                ->whereColumn('w.lead_id', 'form_submissions.id')
+                ->whereRaw($range, $bindings)
+                ->offset(0));
+        }
+    }
+
+    /**
+     * How many word rows of the site start with each needle, each counted up to the gather limit + 1, in one statement.
+     *
+     * @param  list<string>  $needles
+     * @return array<string, int>
+     */
+    private function termCounts(int $siteId, array $needles): array
+    {
+        $key = implode("\0", $needles);
+        if (isset($this->termCounts[$key])) {
+            return $this->termCounts[$key];
+        }
+
+        $select = [];
+        $bindings = [];
+        foreach ($needles as $i => $needle) {
+            [$range, $values] = LeadSearchTerms::range('term', $needle);
+            $select[] = "(select count(*) from (select 1 from lead_search_terms where site_id = ? and {$range} limit ?) as bounded) as c{$i}";
+            $bindings = [...$bindings, $siteId, ...$values, $this->gather + 1];
+        }
+        $row = (array) DB::selectOne('select '.implode(', ', $select), $bindings);
+        $counts = [];
+        foreach ($needles as $i => $needle) {
+            $counts[$needle] = Cast::int($row["c{$i}"] ?? 0);
+        }
+
+        return $this->termCounts[$key] = $counts;
     }
 
     /**
