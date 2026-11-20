@@ -91,7 +91,7 @@ final class DeleteForm
     {
         // select 1: an index-only walk of (site_id, form_id, created_at), no lead row read
         return FormSubmission::query()->where('form_id', $formId)->toBase()->selectRaw('1')
-            ->offset(max(0, Cast::int(config('forms.delete_inline_max_leads', 20000))))->exists();
+            ->offset(max(0, Cast::int(config('forms.delete_inline_max_leads', 5000))))->exists();
     }
 
     /**
