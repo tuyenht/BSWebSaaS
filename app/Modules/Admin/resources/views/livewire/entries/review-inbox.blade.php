@@ -55,8 +55,8 @@
                 @unless ($loadFailed)
                     <span @class([
                         'rounded-full px-1.5 text-[11px] font-bold',
-                        'bg-admin-primary text-white' => $tab === $key,
-                        'text-body-muted' => $tab !== $key,
+                        'bg-primary text-white' => $tab === $key,
+                        'text-text-muted' => $tab !== $key,
                     ])>{{ $count }}</span>
                 @endunless
             </button>
@@ -66,7 +66,7 @@
     {{-- «Đang tải»: the two panes as grey bars while the list is read again --}}
     <div wire:loading.delay.grid wire:target="{{ $reloads }}" class="hidden gap-4 lg:grid-cols-[352px_1fr]" data-inbox-loading>
         <x-bs-admin::card>
-            <x-slot:header><span class="text-sm font-semibold text-heading">{{ __('admin.inbox.tab_'.$tab) }}</span></x-slot:header>
+            <x-slot:header><span class="text-sm font-semibold text-text-strong">{{ __('admin.inbox.tab_'.$tab) }}</span></x-slot:header>
             <div class="-mx-4 divide-y divide-border-soft" aria-hidden="true">
                 @foreach (range(1, 4) as $skeleton)
                     <div class="flex flex-col gap-[7px] px-4 py-3.5">
@@ -83,14 +83,14 @@
                 <span class="h-3.5 w-[92%] animate-pulse rounded bg-surface-hover motion-reduce:animate-none" aria-hidden="true"></span>
                 <span class="h-3.5 w-[86%] animate-pulse rounded bg-surface-hover motion-reduce:animate-none" aria-hidden="true"></span>
                 <span class="h-3.5 w-[74%] animate-pulse rounded bg-surface-hover motion-reduce:animate-none" aria-hidden="true"></span>
-                <span class="text-[12px] text-body-muted">{{ __('admin.inbox.loading') }}</span>
+                <span class="text-[12px] text-text-muted">{{ __('admin.inbox.loading') }}</span>
             </div>
         </x-bs-admin::card>
     </div>
 
     @if ($loadFailed)
         {{-- «Lỗi tải» --}}
-        <x-bs-admin::card class="border-admin-danger/35" wire:loading.delay.remove wire:target="{{ $reloads }}" data-inbox-load-failed>
+        <x-bs-admin::card class="border-danger-base/35" wire:loading.delay.remove wire:target="{{ $reloads }}" data-inbox-load-failed>
             <div class="flex flex-col items-start gap-3 p-1">
                 <x-bs-admin::alert color="danger" icon="ri-error-warning" class="w-full">
                     <p class="font-semibold">{{ __('admin.inbox.err_load_title') }}</p>
@@ -169,7 +169,7 @@
                         @php $isPicked = in_array($row['ulid'], $picked, true); @endphp
                         <li wire:key="inbox-{{ $row['ulid'] }}" @class([
                             'flex items-start',
-                            'border-l-2 border-accent bg-admin-primary/5' => $row['current'],
+                            'border-l-2 border-primary-text bg-primary/5' => $row['current'],
                             'border-l-2 border-transparent' => ! $row['current'],
                         ])>
                             <x-bs-admin::list.check :checked="$isPicked" :label="__('admin.inbox.pick_label', ['title' => $row['title']])"
@@ -360,40 +360,40 @@
     <x-bs-admin::modal model="noteOpen" size="md" :close-label="__('admin.close')" data-inbox-note>
         <x-slot:heading>
             <span class="inline-flex items-center gap-2">
-                <x-bs-admin::icon :name="$noteDialog['icon'] ?? 'ri-arrow-go-back'" @class(['size-[calc(1.0625rem+var(--user-text-boost))] shrink-0', 'text-accent' => $noteDialog['live'] ?? false, 'text-admin-danger-text' => ! ($noteDialog['live'] ?? false)]) />
+                <x-bs-admin::icon :name="$noteDialog['icon'] ?? 'ri-arrow-go-back'" @class(['size-[calc(1.0625rem+var(--user-text-boost))] shrink-0', 'text-primary-text' => $noteDialog['live'] ?? false, 'text-danger-text' => ! ($noteDialog['live'] ?? false)]) />
                 <span>{{ $noteDialog['label'] ?? '' }}</span>
             </span>
         </x-slot:heading>
 
         @if ($noteDialog !== null)
             <div class="flex flex-col gap-3.5" x-data="{ bad: false }">
-                <p class="text-[calc(0.78125rem+var(--user-text-boost))] font-semibold leading-snug text-body-text [overflow-wrap:anywhere]">{{ $noteDialog['post'] }}</p>
-                <p class="flex items-start gap-2 rounded-r border-l-2 border-admin-warning bg-admin-warning/15 px-3 py-2.5 text-[12.5px] leading-relaxed text-admin-warning-text">
+                <p class="text-[calc(0.78125rem+var(--user-text-boost))] font-semibold leading-snug text-text [overflow-wrap:anywhere]">{{ $noteDialog['post'] }}</p>
+                <p class="flex items-start gap-2 rounded-r border-l-2 border-warning-base bg-warning-base/15 px-3 py-2.5 text-[12.5px] leading-relaxed text-warning-text">
                     <x-bs-admin::icon name="ri-alert" class="mt-0.5 size-4 shrink-0" />
                     <span>{{ $noteDialog['warning'] }}</span>
                 </p>
                 @error('inbox') <x-bs-admin::alert color="danger" icon="ri-error-warning">{{ $message }}</x-bs-admin::alert> @enderror
                 <div class="flex flex-col gap-1.5">
-                    <label for="inbox-note" class="text-xs font-semibold text-body-text">{{ __('admin.wfb.note_label') }} <span class="text-admin-danger-text" aria-hidden="true">*</span></label>
+                    <label for="inbox-note" class="text-xs font-semibold text-text">{{ __('admin.wfb.note_label') }} <span class="text-danger-text" aria-hidden="true">*</span></label>
                     <textarea id="inbox-note" x-ref="note" wire:model="note" x-on:input="bad = false" rows="4" maxlength="2000" required
                               aria-describedby="inbox-note-err"
                               x-bind:aria-invalid="(bad || {{ $errors->has('note') ? 'true' : 'false' }}).toString()"
-                              class="w-full rounded border px-3 py-2.5 text-[13px] text-body-text focus:border-accent"
-                              x-bind:class="bad ? 'border-admin-danger-text ring-[3px] ring-admin-danger/15' : 'border-border'"
+                              class="w-full rounded border px-3 py-2.5 text-[13px] text-text focus:border-primary-text"
+                              x-bind:class="bad ? 'border-danger-text ring-[3px] ring-danger-base/15' : 'border-border'"
                               placeholder="{{ __('admin.inbox.note_placeholder') }}"></textarea>
                     <div id="inbox-note-err">
-                        <p x-cloak x-show="bad" class="flex items-center gap-1.5 text-xs font-semibold text-admin-danger-text">
+                        <p x-cloak x-show="bad" class="flex items-center gap-1.5 text-xs font-semibold text-danger-text">
                             <x-bs-admin::icon name="ri-error-warning" class="size-3.5" />{{ __('admin.wfb.note_missing') }}
                         </p>
                         @error('note')
-                            <p x-show="! bad" class="flex items-center gap-1.5 text-xs font-semibold text-admin-danger-text">
+                            <p x-show="! bad" class="flex items-center gap-1.5 text-xs font-semibold text-danger-text">
                                 <x-bs-admin::icon name="ri-error-warning" class="size-3.5" />{{ $message }}
                             </p>
                         @enderror
                     </div>
                 </div>
                 <div class="flex flex-col gap-1.5">
-                    <label for="inbox-assign" class="text-xs font-semibold text-body-text">{{ __('admin.wfb.assign_label') }} <span class="font-normal text-body-muted">{{ __('admin.wfb.assign_optional') }}</span></label>
+                    <label for="inbox-assign" class="text-xs font-semibold text-text">{{ __('admin.wfb.assign_label') }} <span class="font-normal text-text-muted">{{ __('admin.wfb.assign_optional') }}</span></label>
                     <select id="inbox-assign" wire:model="assignTo" aria-describedby="inbox-assign-err" class="field w-full rounded border border-border bg-surface px-2.5 text-text focus:border-primary-text">
                         <option value="">{{ __('admin.wfb.assign_none') }}</option>
                         @foreach ($noteDialog['members'] as $member)
@@ -401,7 +401,7 @@
                         @endforeach
                     </select>
                     <div id="inbox-assign-err">
-                        @error('assignTo') <p class="text-xs font-semibold text-admin-danger-text">{{ $message }}</p> @enderror
+                        @error('assignTo') <p class="text-xs font-semibold text-danger-text">{{ $message }}</p> @enderror
                     </div>
                 </div>
                 <div class="flex flex-wrap justify-end gap-2 border-t border-border-soft pt-3 max-[599.98px]:*:flex-[1_1_100%]">
