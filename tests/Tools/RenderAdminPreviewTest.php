@@ -22,9 +22,9 @@
  */
 
 use App\Modules\Admin\Livewire\Catalog\Editor;
-use App\Modules\Admin\Livewire\LanguageSettings;
 use App\Modules\Admin\Livewire\Catalog\Index;
 use App\Modules\Admin\Livewire\Forms\FormList;
+use App\Modules\Admin\Livewire\LanguageSettings;
 use App\Modules\Admin\Livewire\Media\Library;
 use App\Modules\Admin\Livewire\NotificationBell;
 use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog;
