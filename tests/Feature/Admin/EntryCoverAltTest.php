@@ -54,6 +54,25 @@ function coverAltPage(string $key, ?string $alt = null): Entry
     return $page;
 }
 
+/** A second picture in the current site's library — the caller is inside Tenancy::enter. */
+function coverAltOtherMedia(): Media
+{
+    return Media::query()->firstOrCreate(['storage_key' => 'a/library/kho-dddddddddddd.png'], [
+        'collection' => 'library', 'slug' => 'kho', 'hash' => str_repeat('d', 64), 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1024,
+    ]);
+}
+
+/** Give $entry an English version holding $alt as its words for the picture. */
+function coverAltEnglish(Entry $entry, string $alt): void
+{
+    $entry->translations()->create(['locale' => 'en', 'title' => 'Workshop', 'slug' => 'workshop', 'status' => $entry->status === 'published' ? 'published' : 'draft', 'body' => ['blocks' => []], 'cover_alt' => $alt]);
+}
+
+function coverAltOfIn(Entry $entry, string $locale): ?string
+{
+    return EntryTranslation::query()->where('entry_id', $entry->id)->where('locale', $locale)->value('cover_alt');
+}
+
 function coverAltOf(Entry $entry): ?string
 {
     return EntryTranslation::query()->where('entry_id', $entry->id)->where('locale', 'vi')->value('cover_alt');
@@ -120,6 +139,33 @@ describe('the editor', function (): void {
                 ->call('save')->assertHasNoErrors();
 
             expect(coverAltOf($page))->toBeNull();
+        });
+    });
+
+    it('empties the other languages\' words when the picture shared by every language changes, and only then', function (): void {
+        $user = coverAltEditor();
+
+        app(Tenancy::class)->enter(1, function () use ($user): void {
+            $first = coverAltMedia();
+            $page = coverAltPage($first->storage_key, 'Thợ đứng máy');
+            coverAltEnglish($page, 'A machinist at work');
+
+            // the same picture: English keeps its words
+            Livewire::actingAs($user)->test(Editor::class, ['ulid' => $page->ulid])
+                ->set('title', 'Xưởng mới')->call('save')->assertHasNoErrors();
+            expect(coverAltOfIn($page, 'en'))->toBe('A machinist at work');
+
+            // another picture picked in Vietnamese: English's words described the old one
+            Livewire::actingAs($user)->test(Editor::class, ['ulid' => $page->ulid])
+                ->call('selectCover', coverAltOtherMedia()->storage_key)->set('coverAlt', 'Kho ống thép')
+                ->call('save')->assertHasNoErrors();
+            expect(coverAltOf($page))->toBe('Kho ống thép')->and(coverAltOfIn($page, 'en'))->toBeNull();
+
+            // the picture taken off: every language's words go
+            $page->translationFor('en')->update(['cover_alt' => 'Steel pipes']);
+            Livewire::actingAs($user)->test(Editor::class, ['ulid' => $page->ulid])
+                ->call('clearCover')->call('save')->assertHasNoErrors();
+            expect(coverAltOf($page))->toBeNull()->and(coverAltOfIn($page, 'en'))->toBeNull();
         });
     });
 
@@ -201,7 +247,8 @@ describe('versions', function (): void {
             app(RestoreEntryRevision::class)->handle($v2->fresh(), $user);
             expect(coverAltOf($page))->toBe('Thợ đứng máy');
 
-            // A version saved before the words existed has no such key: restoring it keeps them.
+            // A version saved before the words existed has no such key: restoring it keeps them while
+            // the picture stays the same…
             $old = $v1->snapshot;
             unset($old['cover_alt']);
             DB::table('entry_revisions')->where('id', $v1->id)->update(['snapshot' => json_encode($old)]);
@@ -210,10 +257,55 @@ describe('versions', function (): void {
             expect($page->fresh()->translationFor('vi')->title)->toBe('Bản một')
                 ->and(coverAltOf($page))->toBe('Thợ đứng máy');
 
+            // …and drops them when it brings back another picture: they described this one
+            $kept = $page->fresh()->meta;
+            $page->update(['meta' => ['image_url' => coverAltOtherMedia()->storage_key]]);
+            $page->translationFor('vi')->update(['cover_alt' => 'Kho ống thép']);
+            app(RestoreEntryRevision::class)->handle($v1->fresh(), $user);
+            expect($page->fresh()->meta['image_url'] ?? null)->toBe($kept['image_url'])
+                ->and(coverAltOf($page))->toBeNull();
+            $page->translationFor('vi')->update(['cover_alt' => 'Thợ đứng máy']);
+
             // A version holding words the column cannot take is refused whole.
             DB::table('entry_revisions')->where('id', $v1->id)->update(['snapshot' => json_encode(['cover_alt' => str_repeat('a', 251)] + $old)]);
             expect(fn () => app(RestoreEntryRevision::class)->handle($v1->fresh(), $user))->toThrow(RevisionRestoreRejectedException::class)
                 ->and(coverAltOf($page))->toBe('Thợ đứng máy');
+        });
+    });
+});
+
+describe('versions across languages', function (): void {
+    beforeEach(function (): void {
+        truncateRbac();
+        seedTenancy();
+        $this->artisan('rbac:sync')->assertSuccessful();
+        app(TeamContext::class)->forget();
+    });
+
+    it('empties the other languages\' words when a restored version brings back another picture, and keeps them when it does not', function (): void {
+        $user = coverAltEditor();
+
+        app(Tenancy::class)->enter(1, function () use ($user): void {
+            $first = coverAltMedia();
+            $page = coverAltPage($first->storage_key, 'Thợ đứng máy');
+            coverAltEnglish($page, 'A machinist at work');
+            app(RecordEntryRevision::class)->forLocale($page->fresh(), $page->translationFor('vi'), RevisionKind::Edit, $user);
+            $v1 = EntryRevision::query()->where('entry_id', $page->id)->orderByDesc('id')->firstOrFail();
+
+            // the same picture, another shared value changed: a restore leaves English alone
+            $page->translationFor('vi')->update(['title' => 'Bản hai']);
+            $page->update(['meta' => ['image_url' => $first->storage_key, 'subtitle' => 'Phụ đề']]);
+            app(RestoreEntryRevision::class)->handle($v1, $user);
+            expect($page->fresh()->meta)->not->toHaveKey('subtitle')
+                ->and(coverAltOfIn($page, 'en'))->toBe('A machinist at work');
+
+            // the page now shows another picture, English describing it; the version brings the first back
+            $page->update(['meta' => ['image_url' => coverAltOtherMedia()->storage_key]]);
+            $page->translationFor('en')->update(['cover_alt' => 'Steel pipes']);
+            app(RestoreEntryRevision::class)->handle($v1->fresh(), $user);
+            expect($page->fresh()->meta['image_url'] ?? null)->toBe($first->storage_key)
+                ->and(coverAltOf($page))->toBe('Thợ đứng máy')
+                ->and(coverAltOfIn($page, 'en'))->toBeNull();
         });
     });
 });
@@ -259,6 +351,20 @@ describe('the website', function (): void {
         'its own words' => ['Thợ xếp ống thép mới', 'Thợ xếp ống thép mới'],
         'the title' => [null, 'Ống thép mới về'],
     ]);
+
+    it('escapes the post\'s own words in the page', function (): void {
+        $site = StorefrontCards::site();
+        app(Tenancy::class)->enter($site, function (): void {
+            $photo = StorefrontCards::media('ong-thep');
+            $post = StorefrontCards::post(StorefrontCards::news(), 'Ống thép mới về', 'ong-thep-moi', CarbonImmutable::parse('2026-10-01 08:00', 'UTC'), ['image_url' => $photo->storage_key]);
+            EntryTranslation::query()->where('entry_id', $post->id)->update(['cover_alt' => 'Ống 9" & <thép> \'mới\'']);
+        });
+
+        $html = (string) test()->get('http://mau.platform.test/tin-tuc/ong-thep-moi')->assertOk()->getContent();
+
+        expect($html)->toContain('alt="Ống 9&quot; &amp; &lt;thép&gt; &#039;mới&#039;"')
+            ->not->toContain('<thép>')->not->toContain('9" &');
+    });
 });
 
 describe('the migration', function (): void {

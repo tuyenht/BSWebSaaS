@@ -3549,6 +3549,7 @@ final class Editor extends Component
         // storefront resolves it to an absolute og:image + card thumbnail). Merge so any other meta
         // key survives; an empty pick clears it.
         $meta = $entry->meta;
+        $coverBefore = $meta['image_url'] ?? null;
         if ($this->coverImageKey !== '') {
             $meta['image_url'] = $this->coverImageKey;
         } else {
@@ -3556,6 +3557,7 @@ final class Editor extends Component
         }
         $entry->meta = $meta;
         $sharedChanged = $entry->isDirty('meta');
+        $coverChanged = ($meta['image_url'] ?? null) !== $coverBefore;
         $entry->save();
 
         $translation = $current ?? $entry->translations()->firstOrNew(['locale' => $this->locale]);
@@ -3574,6 +3576,12 @@ final class Editor extends Component
             'cover_alt' => $this->coverImageKey !== '' && $this->coverAlt !== '' ? $this->coverAlt : null,
             'status' => $this->translationStatus($entry, $translation),
         ])->save();
+        if ($coverChanged) {
+            // the picture is every language's: the other languages' words described the one it replaced
+            // (their pages then say the picture's own words, else the title), in this save's transaction
+            EntryTranslation::query()->where('entry_id', $entry->id)->where('locale', '!=', $this->locale)
+                ->whereNotNull('cover_alt')->update(['cover_alt' => null]);
+        }
 
         // Materialize block image usage into mediables so it surfaces in "where is this media used".
         app(EntryBlockMediaReconciler::class)->reconcile($entry);
