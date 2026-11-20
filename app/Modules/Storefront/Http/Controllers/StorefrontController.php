@@ -284,7 +284,7 @@ final readonly class StorefrontController
      */
     private function looksLikeLocale(string $segment): bool
     {
-        return preg_match('/^[a-z]{2}(-[a-z0-9]{2,8})?$/', $segment) === 1;
+        return SiteLocale::looksLikeCode($segment);
     }
 
     /**

@@ -193,7 +193,8 @@ final class RedirectBook
 
                     return $row;
                 }
-                $row = $this->find($ulid, false);
+                // read locked: whether the row led to another website is decided on what is changed
+                $row = $this->find($ulid, false, lock: true);
                 if ($row === null) {
                     return null;
                 }
@@ -222,18 +223,20 @@ final class RedirectBook
      */
     public function trash(array $ulids): array
     {
-        $rows = $this->many($ulids, false);
-        if ($rows->isEmpty()) {
-            return [];
-        }
-        DB::transaction(function () use ($rows): void {
+        // the rows are read locked in the transaction, so the audit follows what is moved, not an
+        // earlier read that an edit in between has made stale
+        return DB::transaction(function () use ($ulids): array {
+            $rows = $this->many($ulids, false, lock: true);
+            if ($rows->isEmpty()) {
+                return [];
+            }
             Redirect::query()->whereKey($rows->modelKeys())->delete();
             foreach ($rows->filter(fn (Redirect $row): bool => RedirectRules::isExternal($row)) as $row) {
                 $this->audit(self::AUDIT_TRASHED, $row, null);
             }
-        });
 
-        return array_values(array_filter($rows->pluck('ulid')->all(), 'is_string'));
+            return array_values(array_filter($rows->pluck('ulid')->all(), 'is_string'));
+        });
     }
 
     /**
@@ -245,24 +248,32 @@ final class RedirectBook
      */
     public function restore(array $ulids): array
     {
-        $rows = $this->many($ulids, true);
         $restored = $blocked = 0;
-        foreach ($rows as $row) {
-            $taken = Redirect::query()->where('locale', $row->locale)->where('from_path', $row->from_path)->exists();
-            if ($taken) {
-                $blocked++;
-
-                continue;
-            }
+        foreach ($this->many($ulids, true) as $listed) {
             try {
-                DB::transaction(function () use ($row): void {
+                // read again locked in the transaction: a row restored or deleted for good meanwhile
+                // is left alone, and the audit follows the row as it is brought back
+                $done = DB::transaction(function () use ($listed): ?bool {
+                    $row = Redirect::onlyTrashed()->whereKey($listed->getKey())->lockForUpdate()->first();
+                    if ($row === null) {
+                        return null;
+                    }
+                    if (Redirect::query()->where('locale', $row->locale)->where('from_path', $row->from_path)->exists()) {
+                        return false;
+                    }
                     $row->restore();
                     if (RedirectRules::isExternal($row)) {
                         $this->audit(self::AUDIT_RESTORED, $row, null);
                     }
+
+                    return true;
                 });
-                $restored++;
             } catch (UniqueConstraintViolationException) {
+                $done = false;
+            }
+            if ($done === true) {
+                $restored++;
+            } elseif ($done === false) {
                 $blocked++;
             }
         }
@@ -273,12 +284,12 @@ final class RedirectBook
     /** Delete a row in the trash for good; false when there is no such row in the trash. */
     public function purge(string $ulid): bool
     {
-        $row = $this->find($ulid, true);
-        if ($row === null) {
-            return false;
-        }
-
-        return DB::transaction(function () use ($row): bool {
+        // read locked in the transaction: a row brought back from the trash meanwhile is never deleted
+        return DB::transaction(function () use ($ulid): bool {
+            $row = $this->find($ulid, true, lock: true);
+            if ($row === null) {
+                return false;
+            }
             $gone = (bool) $row->forceDelete();
             if ($gone && RedirectRules::isExternal($row)) {
                 $this->audit(self::AUDIT_PURGED, $row, null);
@@ -299,12 +310,13 @@ final class RedirectBook
         if (! in_array($code, Redirect::STATUS_CODES, true)) {
             return 0;
         }
-        $rows = $this->many($ulids, false)->where('status_code', '!=', $code);
-        if ($rows->isEmpty()) {
-            return 0;
-        }
 
-        return DB::transaction(function () use ($rows, $code): int {
+        // read locked in the transaction, like trash()
+        return DB::transaction(function () use ($ulids, $code): int {
+            $rows = $this->many($ulids, false, lock: true)->where('status_code', '!=', $code);
+            if ($rows->isEmpty()) {
+                return 0;
+            }
             $n = Redirect::query()->whereKey($rows->modelKeys())->update(['status_code' => $code]);
             foreach ($rows->filter(fn (Redirect $row): bool => RedirectRules::isExternal($row)) as $row) {
                 $was = $row->only(['locale', 'from_path', 'to_path', 'status_code']);
@@ -316,28 +328,30 @@ final class RedirectBook
         });
     }
 
-    /** The row with this key: in service ($trashed false) or in the trash ($trashed true). */
-    public function find(string $ulid, bool $trashed): ?Redirect
+    /** The row with this key: in service ($trashed false) or in the trash ($trashed true); $lock reads it FOR UPDATE. */
+    public function find(string $ulid, bool $trashed, bool $lock = false): ?Redirect
     {
         if (! Str::isUlid($ulid)) {
             return null;
         }
 
-        return ($trashed ? Redirect::onlyTrashed() : Redirect::query())->where('ulid', strtoupper($ulid))->first();
+        return ($trashed ? Redirect::onlyTrashed() : Redirect::query())->where('ulid', strtoupper($ulid))
+            ->when($lock, fn ($q) => $q->lockForUpdate())->first();
     }
 
     /**
      * @param  list<string>  $ulids
      * @return Collection<int, Redirect>
      */
-    public function many(array $ulids, bool $trashed): Collection
+    public function many(array $ulids, bool $trashed, bool $lock = false): Collection
     {
         $keys = array_values(array_unique(array_map('strtoupper', array_filter($ulids, fn (string $u): bool => Str::isUlid($u)))));
         if ($keys === []) {
             return new Collection;
         }
 
-        return ($trashed ? Redirect::onlyTrashed() : Redirect::query())->whereIn('ulid', $keys)->orderBy('id')->get();
+        return ($trashed ? Redirect::onlyTrashed() : Redirect::query())->whereIn('ulid', $keys)->orderBy('id')
+            ->when($lock, fn ($q) => $q->lockForUpdate())->get();
     }
 
     /**

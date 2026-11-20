@@ -42,6 +42,16 @@ final class SiteLocale
 
     public function __construct(private readonly CurrentSite $current) {}
 
+    /**
+     * Whether a lower-case path segment is shaped like a language code — `en`, `vi`, `pt-br` — the
+     * way the storefront reads a first segment as a language prefix. Shape only: isPublic() says
+     * whether visitors may open it. The two-letter base keeps ordinary slugs (`tin-tuc`) out.
+     */
+    public static function looksLikeCode(string $segment): bool
+    {
+        return preg_match('/^[a-z]{2}(-[a-z0-9]{2,8})?$/', $segment) === 1;
+    }
+
     public function default(): string
     {
         if (! $this->current->hasId()) {

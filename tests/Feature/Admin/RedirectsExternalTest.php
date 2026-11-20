@@ -242,7 +242,27 @@ it('refuses an old address the sign-in, admin or system routes use, read from th
     rxIn(fn () => rxAdd($admin, $from, '/moi')->assertHasErrors(['edFrom' => __('admin.rd.err_from_system')]));
 
     expect(rxTargets(1))->toBe([]);
-})->with(['/admin', '/admin/login', '/Admin/khong-co', '/login', '/admin/forgot-password', '/two-factor/setup', '/oauth/callback', '/livewire/update', '/storage/a.png']);
+})->with([
+    '/admin', '/admin/login', '/Admin/khong-co', '/login', '/admin/forgot-password', '/two-factor/setup', '/oauth/callback', '/livewire/update', '/storage/a.png',
+    // percent-encoded: compared decoded, then lower-cased; still encoded after one decoding = refused
+    '/%4Cogin', '/%41dmin/x', '/%254cogin', '/%4Cogin/', '/%4cOGIN', '/%2541dmin/x',
+    // an encoded slash: the router reads the decoded path
+    '/admin%2Flogin', '/login%2F', '/%2Fadmin', '/fr/admin%2Flogin', '/fr%2Flogin',
+    // behind a language-shaped segment that is not a public language: the storefront reads it as a path
+    '/fr/login', '/en/admin/login', '/vi/two-factor/setup', '/vi/admin/reset-password', '/pt-br/oauth/callback', '/%66r/login', '/fr/%4Cogin',
+]);
+
+it('still takes an old address behind a language-shaped segment when what follows is not a system address', function (string $from, string $stored): void {
+    $admin = blockLibraryUser(1, 'admin');
+
+    rxIn(fn () => rxAdd($admin, $from, '/moi')->assertHasNoErrors());
+    expect(DB::connection('pgsql_admin')->table('redirects')->where('site_id', 1)->pluck('from_path')->all())->toBe([$stored]);
+})->with([
+    'language then a page' => ['/fr/khuyen-mai', '/fr/khuyen-mai'],
+    'a language alone' => ['/fr', '/fr'],
+    'a page named like a system address' => ['/khuyen-mai/login', '/khuyen-mai/login'],
+    'an encoded page' => ['/%6Bhuyen-mai', '/%6bhuyen-mai'],
+]);
 
 it('takes the reserved addresses from the routes a website answers, not the platform console’s', function (): void {
     $segments = app(RedirectRules::class)->reservedSegments();
@@ -261,12 +281,81 @@ it('does not follow a stored row under a sign-in or admin address', function ():
     rxSwitch(1, true);
     rxStore(1, '/admin/khong-co', 'https://evil.example/login');
     rxStore(1, '/two-factor/khong-co', '/moi');
+    // rows an older check let through: an encoded sign-in address, one behind a language-shaped segment
+    rxStore(1, '/%4cogin', 'https://evil.example/login');
+    rxStore(1, '/fr/login', 'https://evil.example/login');
+    rxStore(1, '/en/admin/login', '/moi');
+    rxStore(1, '/admin%2fkhong-co', 'https://evil.example/login');
+    rxStore(1, '/fr/login%2f', 'https://evil.example/login');
 
     $response = $this->get('http://a.test/admin/khong-co');
     expect((string) $response->headers->get('Location'))->not->toContain('evil.example')
         ->and($response->status())->not->toBeIn([301, 302]);
     $this->get('http://a.test/two-factor/khong-co')->assertNotFound();
+    $this->get('http://a.test/%4Cogin')->assertNotFound();
+    $this->get('http://a.test/fr/login')->assertNotFound();
+    $this->get('http://a.test/en/admin/login')->assertNotFound();
+    foreach (['/admin%2Fkhong-co', '/fr/login%2F'] as $path) {
+        $response = $this->get('http://a.test'.$path);
+        expect((string) $response->headers->get('Location'))->not->toContain('evil.example')
+            ->and($response->status())->not->toBeIn([301, 302]);
+    }
 });
+
+it('never deletes for good a row brought back from the trash just before', function (): void {
+    rxStore(1, '/km', 'https://doitac.vn/a');
+    DB::connection('pgsql_admin')->table('redirects')->update(['deleted_at' => now()]);
+    $ulid = (string) DB::connection('pgsql_admin')->table('redirects')->where('site_id', 1)->value('ulid');
+    $this->actingAs(blockLibraryUser(1, 'admin'));
+
+    $gone = rxIn(function () use ($ulid): bool {
+        // another member restores it after the delete looked at the trash, just as the delete begins
+        $raced = false;
+        DB::connection()->beforeStartingTransaction(function () use ($ulid, &$raced): void {
+            if (! $raced) {
+                $raced = true;
+                DB::connection('pgsql_admin')->table('redirects')->where('ulid', $ulid)->update(['deleted_at' => null]);
+            }
+        });
+        $gone = app(RedirectBook::class)->purge($ulid);
+        expect($raced)->toBeTrue();
+
+        return $gone;
+    });
+
+    expect($gone)->toBeFalse()
+        ->and(DB::connection('pgsql_admin')->table('redirects')->where('ulid', $ulid)->whereNull('deleted_at')->count())->toBe(1)
+        ->and(rxAudit())->toBe([]);
+});
+
+it('audits a trash or a kind switch by the row as it is changed, when an edit just before led it to another website', function (string $action, string $code): void {
+    rxStore(1, '/km', '/moi');
+    $ulid = (string) DB::connection('pgsql_admin')->table('redirects')->where('site_id', 1)->value('ulid');
+    $admin = blockLibraryUser(1, 'admin');
+    $this->actingAs($admin);
+
+    rxIn(function () use ($ulid, $action): void {
+        // another member's edit lands after the action looked at the row, just as its change begins
+        $raced = false;
+        DB::connection()->beforeStartingTransaction(function () use ($ulid, &$raced): void {
+            if (! $raced) {
+                $raced = true;
+                DB::connection('pgsql_admin')->table('redirects')->where('ulid', $ulid)->update(['to_path' => 'https://doitac.vn/a']);
+            }
+        });
+        $book = app(RedirectBook::class);
+        $action === 'trash' ? $book->trash([$ulid]) : $book->setCode([$ulid], 302);
+        expect($raced)->toBeTrue();
+    });
+
+    $log = rxAudit();
+    expect(array_column($log, 'action'))->toBe([$code])
+        ->and($log[0]['actor'])->toBe($admin->id)
+        ->and($log[0]['meta'])->toMatchArray(['from' => '/km', 'to' => 'https://doitac.vn/a', 'status_code' => $action === 'trash' ? 301 : 302]);
+})->with([
+    'trash' => ['trash', RedirectBook::AUDIT_TRASHED],
+    'kind switch' => ['code', RedirectBook::AUDIT_CHANGED],
+]);
 
 it('audits every change to a row to another website: edit, kind, trash, restore and delete for good', function (): void {
     rxSwitch(1, true);

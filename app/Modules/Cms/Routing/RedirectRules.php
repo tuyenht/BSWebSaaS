@@ -6,6 +6,7 @@ namespace App\Modules\Cms\Routing;
 
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Shared\Support\SafeLink;
+use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use Illuminate\Routing\Router;
 
@@ -40,12 +41,29 @@ final class RedirectRules
         return app(Entitlement::class)->featureEnabled(self::EXTERNAL_FEATURE);
     }
 
-    /** Whether $path (as stored: "/…", lower-case, no language prefix) is under an address the application's routes own. */
+    /**
+     * Whether $path (as stored: "/…", lower-case, no language prefix) is under an address the
+     * application's routes own. The path is decoded once before it is split, as the router reads it
+     * (`/%4Cogin` is `/login`, `/admin%2Flogin` is `/admin/login`), then lower-cased; a segment that
+     * is checked and still holds a "%" after that one decoding is refused outright (`/%254cogin`).
+     * A first segment shaped like a language code that is not a public language reaches the
+     * storefront as a path of the default language, so the segment after it counts too
+     * (`/fr/login`, `/en/admin/…`).
+     */
     public function reservedFrom(string $path): bool
     {
-        $first = strtolower(explode('/', ltrim($path, '/'), 2)[0]);
+        $parts = explode('/', mb_strtolower(ltrim(rawurldecode($path), '/')), 3);
+        if ($this->reservedSegment($parts[0])) {
+            return true;
+        }
 
-        return $first !== '' && in_array(rawurldecode($first), $this->reservedSegments(), true);
+        return isset($parts[1]) && SiteLocale::looksLikeCode($parts[0]) && $this->reservedSegment($parts[1]);
+    }
+
+    /** Whether one decoded, lower-cased segment is a route's first part, or still encoded. */
+    private function reservedSegment(string $segment): bool
+    {
+        return str_contains($segment, '%') || ($segment !== '' && in_array($segment, $this->reservedSegments(), true));
     }
 
     /** Whether the storefront follows $row. */

@@ -67,22 +67,26 @@ class Redirect extends Model
      * holds that address. The row is read locked and written as read, so a member's save in between
      * is never overwritten; an insert that races a member's insert of the same address rolls back to
      * its savepoint and is decided again against the member's row (as updateOrCreate would).
+     * Returns false when a member's redirect to another website holds the address (nothing written).
      *
      * @param  array<string, mixed>  $values
      */
-    public static function writeSystemRow(string $locale, string $from, array $values): void
+    public static function writeSystemRow(string $locale, string $from, array $values): bool
     {
-        $write = static function () use ($locale, $from, $values): void {
+        $write = static function () use ($locale, $from, $values): bool {
             $held = self::query()->where('locale', $locale)->where('from_path', $from)->lockForUpdate()->first();
-            if (! self::leadsAway($held?->to_path)) {
-                ($held ?? new self(['locale' => $locale, 'from_path' => $from]))->fill($values)->save();
+            if (self::leadsAway($held?->to_path)) {
+                return false;
             }
+            ($held ?? new self(['locale' => $locale, 'from_path' => $from]))->fill($values)->save();
+
+            return true;
         };
 
         try {
-            DB::transaction($write);
+            return DB::transaction($write);
         } catch (UniqueConstraintViolationException) {
-            $write();
+            return $write();
         }
     }
 

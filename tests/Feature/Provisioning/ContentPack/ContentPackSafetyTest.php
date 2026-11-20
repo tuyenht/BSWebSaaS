@@ -31,6 +31,7 @@ use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\Fixtures\ContentPacks;
 use Tests\Fixtures\StorefrontCards;
@@ -354,6 +355,35 @@ it('leaves a member\'s redirect to another website to the member: a pack that wo
     [$exit, $output] = ContentPacks::run();
     expect($exit)->toBe(1)->and(ContentPacks::verdict($output, 'redirect:vi:/trang-cu'))->toBe('conflict')
         ->and(ContentPacks::in($this->siteId, fn (): mixed => Redirect::query()->where('from_path', '/trang-cu')->value('to_path')))->toBe('https://doitac.vn/a');
+});
+
+it('refuses the load when a member saves a redirect to another website at the pack\'s address after the plan, and keeps the member\'s row', function (): void {
+    [$exit, $dry] = ContentPacks::run();
+    expect($exit)->toBe(0, $dry)->and(ContentPacks::verdict($dry, 'redirect:vi:/trang-cu'))->toBe('create');
+
+    // the member's row lands just as the loader writes the pack's one
+    $siteId = $this->siteId;
+    $entries = fn (): int => DB::connection('pgsql_admin')->table('entries')->where('site_id', $siteId)->count();
+    $before = $entries();
+    $raced = false;
+    Redirect::creating(function (Redirect $row) use ($siteId, &$raced): void {
+        if ($raced || $row->from_path !== '/trang-cu') {
+            return;
+        }
+        $raced = true;
+        DB::connection('pgsql_admin')->table('redirects')->insert([
+            'site_id' => $siteId, 'locale' => 'vi', 'from_path' => '/trang-cu', 'to_path' => 'https://doitac.vn/a', 'status_code' => 302,
+            'source' => 'manual', 'ulid' => (string) Str::ulid(), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+    });
+
+    [$exit, $output] = ContentPacks::run('demo-co', ['--apply' => true, '--plan' => ContentPacks::fingerprint($dry)]);
+    expect($raced)->toBeTrue()
+        ->and($exit)->toBe(1)->and($output)->toContain('/trang-cu now leads to another website')
+        ->and(DB::connection('pgsql_admin')->table('redirects')->where('site_id', $siteId)->where('from_path', '/trang-cu')->get(['to_path', 'status_code'])->map(fn (object $r): array => (array) $r)->all())
+        ->toBe([['to_path' => 'https://doitac.vn/a', 'status_code' => 302]])
+        // the rest of the load rolled back with it
+        ->and($entries())->toBe($before);
 });
 
 it('lets a redirect take the address of a post the same load unpublishes, and keeps it on the next run', function (): void {
