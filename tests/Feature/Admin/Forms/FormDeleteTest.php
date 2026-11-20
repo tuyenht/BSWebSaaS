@@ -326,6 +326,7 @@ it('says so, and deletes nothing more, when the form went between the question a
 });
 
 it('deletes at once when "more than 10,000" was shown, however many came in since', function (): void {
+    config(['forms.delete_inline_max_leads' => 20000]); // a site that raised the inline limit above the list's cap
     $manager = blockLibraryUser(1, 'admin');
     $form = deletableForm(1, 'bao-gia', 'Yêu cầu báo giá');
     $over = FormList::LEAD_CAP + 1;   // what the list shows for any count above the cap
@@ -348,6 +349,7 @@ it('deletes at once when "more than 10,000" was shown, however many came in sinc
 });
 
 it('asks again with "more than 10,000" when leads came in past the cap after a smaller count', function (): void {
+    config(['forms.delete_inline_max_leads' => 20000]); // a site that raised the inline limit above the list's cap
     $manager = blockLibraryUser(1, 'admin');
     $form = deletableForm(1, 'bao-gia', 'Yêu cầu báo giá', leads: 1);
 
