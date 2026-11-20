@@ -9,6 +9,7 @@ use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
+use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Console\Scheduling\Schedule;
@@ -55,6 +56,12 @@ function deletableForm(int $site, string $key, string $name, int $leads = 0, int
 
         return $form;
     });
+}
+
+/** The form's claim as a run of its delete holds it: its updated_at as Postgres gives it back. */
+function formClaim(Form $form): string
+{
+    return (string) DB::connection('pgsql_admin')->table('forms')->where('id', $form->id)->value('updated_at');
 }
 
 /** Audit rows of form deletes. */
@@ -381,7 +388,8 @@ it('switches a form with more leads than one request deletes to deleting, hides 
     });
 
     // nothing was deleted inside the request: the job does it
-    Queue::assertPushed(DeleteLargeForm::class, fn (DeleteLargeForm $job): bool => $job->siteId === 1 && $job->formId === $form->id && $job->afterAt === null);
+    // the run holds the form by the mark queued with it
+    Queue::assertPushed(DeleteLargeForm::class, fn (DeleteLargeForm $job): bool => $job->siteId === 1 && $job->formId === $form->id && $job->afterAt === null && $job->claim === formClaim($form));
     Queue::assertPushed(DeleteLargeForm::class, 1);
     expect(formRowsLeft($form))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 3])
         ->and(DB::connection('pgsql_admin')->table('forms')->where('id', $form->id)->value('status'))->toBe(Form::DELETING)
@@ -462,11 +470,11 @@ it('deletes a large form\'s leads in batches, each in its own site transaction, 
             $deletes[] = DB::scalar("select current_setting('app.current_site_id', true)");
         }
     });
-    $done = (new DeleteLargeForm(1, $form->id))->handle(app(Tenancy::class));
+    $done = (new DeleteLargeForm(1, $form->id, formClaim($form)))->handle(app(Tenancy::class));
 
     expect($done)->toBeTrue()
         ->and($deletes)->toBe(['1', '1', '1']) // 5 leads, 2 at a time
-        ->and($contexts)->toBe(6) // the progress mark, three batches, the empty read that ends them, the row delete
+        ->and($contexts)->toBe(5) // three batches, the empty read that ends them, the row delete
         ->and(formRowsLeft($form))->toBe(['forms' => 0, 'fields' => 0, 'leads' => 0])
         ->and(formRowsLeft($kept))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 1])
         ->and(formRowsLeft($theirs))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 1])
@@ -478,16 +486,18 @@ it('never touches another site, or a form that is not being deleted, with a queu
     $live = deletableForm(1, 'tu-van', 'Đăng ký tư vấn', leads: 2);
 
     // a job naming site B with site A's form finds nothing under site B's context
-    expect((new DeleteLargeForm(2, $form->id))->handle(app(Tenancy::class)))->toBeTrue()
+    expect((new DeleteLargeForm(2, $form->id, formClaim($form)))->handle(app(Tenancy::class)))->toBeTrue()
         ->and(formRowsLeft($form))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 3])
         // a job naming a form that is on deletes none of its leads
-        ->and((new DeleteLargeForm(1, $live->id))->handle(app(Tenancy::class)))->toBeTrue()
+        ->and((new DeleteLargeForm(1, $live->id, formClaim($live)))->handle(app(Tenancy::class)))->toBeTrue()
         ->and(formRowsLeft($live))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 2]);
 });
 
 it('picks up a large form delete where it stopped after a failure, and a second run finds nothing to do', function (): void {
     config(['forms.delete_batch_leads' => 2]);
     $form = deletableForm(1, 'bao-gia', 'Yêu cầu báo giá', leads: 5, status: Form::DELETING);
+
+    $claim = formClaim($form); // a retry is the same job: it holds the same claim
 
     $seen = 0;
     $listening = true;
@@ -496,20 +506,20 @@ it('picks up a large form delete where it stopped after a failure, and a second 
             throw new RuntimeException('the worker died');
         }
     });
-    expect(fn () => (new DeleteLargeForm(1, $form->id))->handle(app(Tenancy::class)))->toThrow(RuntimeException::class);
+    expect(fn () => (new DeleteLargeForm(1, $form->id, $claim))->handle(app(Tenancy::class)))->toThrow(RuntimeException::class);
     $listening = false;
     // the first batch stayed done, the second rolled back; the form is still there, still hidden
     expect(formRowsLeft($form))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 3]);
 
-    expect((new DeleteLargeForm(1, $form->id))->handle(app(Tenancy::class)))->toBeTrue()
+    expect((new DeleteLargeForm(1, $form->id, $claim))->handle(app(Tenancy::class)))->toBeTrue()
         ->and(formRowsLeft($form))->toBe(['forms' => 0, 'fields' => 0, 'leads' => 0])
-        ->and((new DeleteLargeForm(1, $form->id))->handle(app(Tenancy::class)))->toBeTrue();
+        ->and((new DeleteLargeForm(1, $form->id, $claim))->handle(app(Tenancy::class)))->toBeTrue();
 });
 
 it('switches a form whose delete ran out of tries back to off, with the leads that are left', function (): void {
     $form = deletableForm(1, 'bao-gia', 'Yêu cầu báo giá', leads: 2, status: Form::DELETING);
 
-    (new DeleteLargeForm(1, $form->id))->failed(new RuntimeException('gave up'));
+    (new DeleteLargeForm(1, $form->id, formClaim($form)))->failed(new RuntimeException('gave up'));
 
     expect(DB::connection('pgsql_admin')->table('forms')->where('id', $form->id)->value('status'))->toBe('disabled')
         ->and(formRowsLeft($form))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 2])
@@ -535,7 +545,7 @@ it('starts a fresh run from the cursor it was handed, ties by id, and sweeps aga
             $deleted = [...$deleted, ...array_map('intval', array_slice($query->bindings, 1, -1))];
         }
     });
-    expect((new DeleteLargeForm(1, $form->id, $cursor, $ids[1]))->handle(app(Tenancy::class)))->toBeTrue()
+    expect((new DeleteLargeForm(1, $form->id, formClaim($form), $cursor, $ids[1]))->handle(app(Tenancy::class)))->toBeTrue()
         // after the cursor first (the third lead, same time, higher id, included); then more than one batch
         // is still there, below the cursor, so a second sweep from the start takes them
         ->and($deleted)->toBe([$ids[2], $ids[3], $ids[4], $ids[0], $ids[1]])
@@ -561,11 +571,11 @@ it('queues again only the deletes left without progress, with `forms:resume-dele
     $admin = DB::connection('pgsql_admin');
     $admin->table('forms')->whereIn('id', [$stuck->id, $stuckB->id, $off->id])->update(['updated_at' => now()->subHour()]);
 
-    $this->artisan('forms:resume-deletes')->expectsOutput('Asked again for 2 form delete(s).')->assertSuccessful();
+    $this->artisan('forms:resume-deletes')->expectsOutput('Queued again 2 form delete(s).')->assertSuccessful();
 
     Queue::assertPushed(DeleteLargeForm::class, 2);
-    Queue::assertPushed(DeleteLargeForm::class, fn (DeleteLargeForm $job): bool => $job->siteId === 1 && $job->formId === $stuck->id);
-    Queue::assertPushed(DeleteLargeForm::class, fn (DeleteLargeForm $job): bool => $job->siteId === 2 && $job->formId === $stuckB->id);
+    Queue::assertPushed(DeleteLargeForm::class, fn (DeleteLargeForm $job): bool => $job->siteId === 1 && $job->formId === $stuck->id && $job->claim === formClaim($stuck));
+    Queue::assertPushed(DeleteLargeForm::class, fn (DeleteLargeForm $job): bool => $job->siteId === 2 && $job->formId === $stuckB->id && $job->claim === formClaim($stuckB));
     unset($running);
 });
 
@@ -599,4 +609,71 @@ it('says the form is gone, with no «Hoàn tác», when a delete in batches land
     });
     expect($switched)->toBeTrue()
         ->and(DB::connection('pgsql_admin')->table('forms')->where('id', $form->id)->value('status'))->toBe(Form::DELETING);
+});
+
+it('queues the batches for the locked form\'s own site, whatever the site singleton says by then', function (): void {
+    Queue::fake();
+    config(['forms.delete_inline_max_leads' => 1]);
+    $form = deletableForm(1, 'bao-gia', 'Yêu cầu báo giá', leads: 2);
+    $shifted = false;
+    DB::listen(function ($query) use (&$shifted): void {
+        // the audit row is written; something later in the request moves the singleton
+        if (! $shifted && str_starts_with($query->sql, 'insert into "audit_logs"')) {
+            $shifted = true;
+            app(CurrentSite::class)->setId(2);
+        }
+    });
+
+    app(Tenancy::class)->enter(1, fn () => app(DeleteForm::class)->handle($form));
+
+    expect($shifted)->toBeTrue();
+    Queue::assertPushed(DeleteLargeForm::class, 1);
+    Queue::assertPushed(DeleteLargeForm::class, fn (DeleteLargeForm $job): bool => $job->siteId === 1 && $job->formId === $form->id);
+});
+
+it('hands a delete over only while the run still holds it, with a fresh claim and its cursor', function (): void {
+    Queue::fake();
+    $form = deletableForm(1, 'bao-gia', 'Yêu cầu báo giá', leads: 1, status: Form::DELETING);
+    $live = deletableForm(1, 'tu-van', 'Đăng ký tư vấn', leads: 1);
+    // claimed a while ago: updated_at keeps whole seconds, and a fresh claim must differ from it
+    DB::connection('pgsql_admin')->table('forms')->where('id', $form->id)->update(['updated_at' => now()->subMinute()]);
+    $claim = formClaim($form);
+
+    app(Tenancy::class)->enter(1, function () use ($form, $live, $claim): void {
+        expect(DeleteLargeForm::queueRun(1, $form->id, '2026-01-01 00:00:00+00'))->toBeFalse()   // taken over since
+            ->and(DeleteLargeForm::queueRun(2, $form->id, $claim))->toBeFalse()                     // another site's id
+            ->and(DeleteLargeForm::queueRun(1, $live->id))->toBeFalse()                             // not being deleted
+            ->and(DeleteLargeForm::queueRun(1, $form->id, $claim, null, '2026-11-01 08:00:00+00', 7))->toBeTrue()
+            ->and(DeleteLargeForm::queueRun(1, $form->id, $claim))->toBeFalse();                    // the claim moved on
+    });
+
+    Queue::assertPushed(DeleteLargeForm::class, 1);
+    Queue::assertPushed(DeleteLargeForm::class, fn (DeleteLargeForm $job): bool => $job->claim === formClaim($form)
+        && $job->claim !== $claim && $job->afterAt === '2026-11-01 08:00:00+00' && $job->afterId === 7);
+});
+
+it('leaves a delete taken over by forms:resume-deletes to the new run: the old one deletes nothing more, and its failure switches nothing back', function (): void {
+    Queue::fake();
+    $form = deletableForm(1, 'bao-gia', 'Yêu cầu báo giá', leads: 3, status: Form::DELETING);
+    // a run queued an hour ago, still waiting behind a long queue
+    DB::connection('pgsql_admin')->table('forms')->where('id', $form->id)->update(['updated_at' => now()->subHour()]);
+    $old = new DeleteLargeForm(1, $form->id, formClaim($form));
+
+    $this->artisan('forms:resume-deletes')->expectsOutput('Queued again 1 form delete(s).')->assertSuccessful();
+    // a second sweep finds the new claim fresh and queues nothing
+    $this->artisan('forms:resume-deletes')->expectsOutput('Queued again 0 form delete(s).')->assertSuccessful();
+    Queue::assertPushed(DeleteLargeForm::class, 1);
+    $new = Queue::pushed(DeleteLargeForm::class)->first();
+    expect($new)->toBeInstanceOf(DeleteLargeForm::class)->and($new->claim)->not->toBe($old->claim);
+
+    // the old run, when a worker finally starts it, does nothing; out of tries, it switches nothing back
+    expect($old->handle(app(Tenancy::class)))->toBeTrue()
+        ->and(formRowsLeft($form))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 3]);
+    $old->failed(new RuntimeException('gave up'));
+    expect(DB::connection('pgsql_admin')->table('forms')->where('id', $form->id)->value('status'))->toBe(Form::DELETING)
+        ->and(DB::connection('pgsql_admin')->table('audit_logs')->where('action', 'forms.form.delete_failed')->count())->toBe(0);
+
+    // the new one finishes the delete
+    expect($new->handle(app(Tenancy::class)))->toBeTrue()
+        ->and(formRowsLeft($form))->toBe(['forms' => 0, 'fields' => 0, 'leads' => 0]);
 });

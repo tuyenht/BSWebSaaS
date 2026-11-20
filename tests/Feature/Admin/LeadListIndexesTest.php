@@ -46,7 +46,8 @@ beforeEach(function (): void {
 
 function leadList(): LeadListQuery
 {
-    return new LeadListQuery('', [], '', '', '', app(SiteTime::class));
+    // as the inbox builds it when no form of the site is being deleted
+    return new LeadListQuery('', [], '', '', '', app(SiteTime::class), hiddenFormIds: []);
 }
 
 /**
@@ -68,30 +69,44 @@ function leadStatements(Closure $send): array
 }
 
 /**
- * The index scans Postgres plans for $sql, in the current tenancy context, when a full table read
- * is ruled out: [index name, index condition] each.
+ * The plan Postgres makes for $sql, in the current tenancy context, when a full table read is
+ * ruled out (EXPLAIN's JSON, the top node).
+ *
+ * @param  array<int, mixed>  $bindings
+ * @return array<string, mixed>
+ */
+function leadPlan(string $sql, array $bindings): array
+{
+    return DB::transaction(function () use ($sql, $bindings): array {
+        DB::statement('SET LOCAL enable_seqscan = off');
+
+        return json_decode((string) array_values((array) DB::selectOne('EXPLAIN (FORMAT JSON) '.$sql, $bindings))[0], true)[0]['Plan'];
+    });
+}
+
+/**
+ * The index scans in the plan for $sql: [index name, index condition] each. The statement's own
+ * scans by default; with $subPlans, those of its sub-plans instead (the forms being deleted,
+ * which no list shows the leads of).
  *
  * @param  array<int, mixed>  $bindings
  * @return list<array{0: string, 1: string}>
  */
-function leadPlannedScans(string $sql, array $bindings): array
+function leadPlannedScans(string $sql, array $bindings, bool $subPlans = false): array
 {
-    return DB::transaction(function () use ($sql, $bindings): array {
-        DB::statement('SET LOCAL enable_seqscan = off');
-        $plan = json_decode((string) array_values((array) DB::selectOne('EXPLAIN (FORMAT JSON) '.$sql, $bindings))[0], true);
-        $scans = [];
-        $walk = function (array $node) use (&$walk, &$scans): void {
-            if (isset($node['Index Name'])) {
-                $scans[] = [(string) $node['Index Name'], (string) ($node['Index Cond'] ?? '')];
-            }
-            foreach ($node['Plans'] ?? [] as $child) {
-                $walk($child);
-            }
-        };
-        $walk($plan[0]['Plan']);
+    $scans = [];
+    $walk = function (array $node, bool $inSub) use (&$walk, &$scans, $subPlans): void {
+        $inSub = $inSub || ($node['Parent Relationship'] ?? '') === 'SubPlan';
+        if (isset($node['Index Name']) && $inSub === $subPlans) {
+            $scans[] = [(string) $node['Index Name'], (string) ($node['Index Cond'] ?? '')];
+        }
+        foreach ($node['Plans'] ?? [] as $child) {
+            $walk($child, $inSub);
+        }
+    };
+    $walk(leadPlan($sql, $bindings), false);
 
-        return $scans;
-    });
+    return $scans;
 }
 
 it('defines each index of the leads list as measured, and drops the one they replace', function (string $index, ?string $definition): void {
@@ -163,5 +178,33 @@ it('counts each status on the status index, every count on an index led by the w
         foreach ($scans as [$index, $cond]) {
             expect($index)->toStartWith('form_submissions_')->and($cond)->toContain('site_id =');
         }
+    });
+});
+
+it('leaves a deleting form\'s leads out of the counts by a constant list, with no sub-plan', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $list = new LeadListQuery('', [], '', '', '', app(SiteTime::class), hiddenFormIds: [999_998, 999_999]);
+        $sent = leadStatements(fn () => $list->tabCounts());
+        $plan = json_encode(leadPlan($sent[0]['sql'], $sent[0]['bindings']), JSON_THROW_ON_ERROR);
+
+        expect($sent)->toHaveCount(1)
+            ->and($plan)->not->toContain('SubPlan')->toContain('form_id <> ALL')
+            ->and(leadPlannedScans($sent[0]['sql'], $sent[0]['bindings']))->toHaveCount(5);
+    });
+});
+
+it('reads the forms being deleted once per statement, as a hashed list, where it reads none first', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        // the dashboard's newest unread leads, one lead by its code: rows fetched anyway
+        $sent = leadStatements(fn () => LeadListQuery::leads()->where('status', 'read')->orderByDesc('created_at')->limit(26)->get(['id', 'form_id', 'name', 'created_at']));
+        $plan = json_encode(leadPlan($sent[0]['sql'], $sent[0]['bindings']), JSON_THROW_ON_ERROR);
+
+        $forms = leadPlannedScans($sent[0]['sql'], $sent[0]['bindings'], subPlans: true);
+
+        // a hashed sub-plan runs once and is probed per row; a plain one would run per lead
+        expect($plan)->toContain('hashed SubPlan')
+            ->and($forms)->toHaveCount(1)
+            ->and($forms[0][0])->toStartWith('forms_')
+            ->and($forms[0][1])->toContain('site_id =');
     });
 });

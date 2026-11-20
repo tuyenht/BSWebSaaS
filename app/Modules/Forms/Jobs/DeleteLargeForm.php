@@ -11,7 +11,6 @@ use App\Modules\Notifications\Models\SiteNotification;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\Tenancy;
 use Carbon\CarbonImmutable;
-use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Queue\Queueable;
@@ -37,23 +36,28 @@ use Throwable;
  *     had loaded the form just before it was switched off, below the cursor, is caught by the next
  *     sweep), under the form's row lock, which a new lead's foreign-key check waits for.
  *   - A run stops after a time budget and queues the next one, well inside the worker's timeout.
- *   - Idempotent: a retry, a second run or a form already gone only finds less (or nothing) to do.
+ *   - One owner at a time: whoever queues a run (DeleteForm, a run handing over, forms:resume-deletes)
+ *     first marks the form with the database clock (its updated_at, read back as Postgres wrote it)
+ *     and gives the run that mark, its claim. Every batch, the row delete, the handover and failed()
+ *     act only while the form still carries that claim. A run queued again by forms:resume-deletes
+ *     takes the form over: the run it replaces, still queued or mid-batch, then does nothing more,
+ *     and its failed() leaves the form to the new owner. A batch holds the form row FOR SHARE (which
+ *     a new lead's FOR KEY SHARE check does not wait for), so a takeover or a switch back to off
+ *     waits for it: no lead is deleted once the form has another owner or is off again.
+ *     forms.updated_at keeps whole seconds, so two claims are told apart only a second or more
+ *     apart: a handover comes RUN_SECONDS after its claim, a takeover --minutes after it, a new
+ *     «Xóa» after a switch back at least the retries' backoff after it.
+ *   - Idempotent: a retry (same claim) or a form already gone only finds less (or nothing) to do.
  *     Out of tries, the form is switched back to off, with the leads that are left (audited as
- *     forms.form.delete_failed), so it shows on the list again and «Xóa» can be asked again. A job
- *     lost altogether is queued again by forms:resume-deletes: every run marks the form's updated_at.
+ *     forms.form.delete_failed), so it shows on the list again and «Xóa» can be asked again. A run
+ *     lost altogether, or one waiting in the queue for longer than forms:resume-deletes allows, is
+ *     queued again by that command, which only takes a form whose claim is that old.
  */
-final class DeleteLargeForm implements ShouldBeUniqueUntilProcessing, ShouldQueue
+final class DeleteLargeForm implements ShouldQueue
 {
     use Queueable;
 
     public int $tries = 3;
-
-    /**
-     * Seconds the unique lock outlives a dispatch whose push never reached the queue (the lock is
-     * taken at dispatch, freed when a worker starts the job): below forms:resume-deletes' 30 minutes,
-     * so its next dispatch is never dropped by a lock left behind.
-     */
-    public int $uniqueFor = 900;
 
     /** @var list<int> */
     public array $backoff = [10, 60];
@@ -65,19 +69,47 @@ final class DeleteLargeForm implements ShouldBeUniqueUntilProcessing, ShouldQueu
     private const int NOTICE_WINDOW_MINUTES = 60;
 
     /**
+     * @param  string  $claim  the form's updated_at as queueRun() wrote it (Postgres text): this run's hold on the delete
      * @param  string|null  $afterAt  the created_at of the last lead done (as Postgres wrote it), null: from the start
      */
-    public function __construct(public int $siteId, public int $formId, public ?string $afterAt = null, public int $afterId = 0)
+    public function __construct(public int $siteId, public int $formId, public string $claim, public ?string $afterAt = null, public int $afterId = 0)
     {
         $this->afterCommit();
     }
 
-    public function uniqueId(): string
+    /**
+     * Queues a run of the delete of the site's form being deleted: the form is marked with the
+     * database clock, and the run, holding that mark, is pushed once the caller's transaction
+     * commits. With $held, only while the form still carries that claim (a run handing over); with
+     * $staleMinutes, only when it was last claimed longer ago than that, by the same database clock
+     * (forms:resume-deletes). Called inside the site's tenant transaction. False when nothing was queued.
+     */
+    public static function queueRun(int $siteId, int $formId, ?string $held = null, ?int $staleMinutes = null, ?string $afterAt = null, int $afterId = 0): bool
     {
-        return $this->siteId.':'.$this->formId;
+        // site_id kept explicit next to RLS, as the global scope would add it
+        $sql = 'update forms set updated_at = clock_timestamp() where site_id = ? and id = ? and status = ?';
+        $bindings = [$siteId, $formId, Form::DELETING];
+        if ($held !== null) {
+            $sql .= ' and updated_at = ?::timestamptz';
+            $bindings[] = $held;
+        }
+        if ($staleMinutes !== null) {
+            $sql .= ' and updated_at < clock_timestamp() - make_interval(mins => ?)';
+            $bindings[] = $staleMinutes;
+        }
+        $claim = Cast::string(((array) DB::selectOne($sql.' returning updated_at', $bindings, false))['updated_at'] ?? '');
+        if ($claim === '') {
+            return false;
+        }
+        self::dispatch($siteId, $formId, $claim, $afterAt, $afterId);
+
+        return true;
     }
 
-    /** Out of tries: the form is switched back to off with what is left of it, so it can be deleted again. */
+    /**
+     * Out of tries: the form is switched back to off with what is left of it, so it can be deleted
+     * again — unless a newer run has taken the delete over since (the claim moved on): it is left to it.
+     */
     public function failed(?Throwable $e): void
     {
         if ($e !== null) {
@@ -85,7 +117,7 @@ final class DeleteLargeForm implements ShouldBeUniqueUntilProcessing, ShouldQueu
         }
         try {
             app(Tenancy::class)->enter($this->siteId, function (): void {
-                if (self::deleting()->whereKey($this->formId)->update(['status' => 'disabled']) === 1) {
+                if ($this->held()->update(['status' => 'disabled']) === 1) {
                     // the trail says the delete did not finish, next to the row that asked for it
                     Audit::record('forms.form.delete_failed', ['auditable_type' => Form::class, 'auditable_id' => $this->formId]);
                 }
@@ -101,14 +133,13 @@ final class DeleteLargeForm implements ShouldBeUniqueUntilProcessing, ShouldQueu
         $batch = max(1, Cast::int(config('forms.delete_batch_leads', 2000)));
         $stopAt = microtime(true) + self::RUN_SECONDS;
         $after = $this->afterAt === null ? null : [$this->afterAt, $this->afterId];
-        // progress mark for forms:resume-deletes, which queues again a delete left without one
-        $tenancy->enter($this->siteId, fn (): int => self::deleting()->whereKey($this->formId)->update(['updated_at' => now()]));
 
         while (true) {
             while (($last = $this->deleteBatch($tenancy, $after, $batch)) !== null) {
                 $after = $last;
                 if (microtime(true) >= $stopAt) {
-                    self::dispatch($this->siteId, $this->formId, $after[0], $after[1]);
+                    // the next run gets a fresh claim; none is queued when this one was taken over
+                    $tenancy->enter($this->siteId, fn (): bool => self::queueRun($this->siteId, $this->formId, $this->claim, null, $last[0], $last[1]));
 
                     return false;
                 }
@@ -131,8 +162,19 @@ final class DeleteLargeForm implements ShouldBeUniqueUntilProcessing, ShouldQueu
     }
 
     /**
+     * The form while it is being deleted and this run still holds it.
+     *
+     * @return Builder<Form>
+     */
+    private function held(): Builder
+    {
+        return self::deleting()->whereKey($this->formId)->whereRaw('updated_at = ?::timestamptz', [$this->claim]);
+    }
+
+    /**
      * One batch of the form's leads after $after deleted, with their notices; the cursor of the last
-     * one, or null when none is left (or the form is not this site's form being deleted).
+     * one, or null when none is left (or the form is not this site's form being deleted, or this run
+     * no longer holds it).
      *
      * @param  array{0: string, 1: int}|null  $after
      * @return array{0: string, 1: int}|null
@@ -140,7 +182,8 @@ final class DeleteLargeForm implements ShouldBeUniqueUntilProcessing, ShouldQueu
     private function deleteBatch(Tenancy $tenancy, ?array $after, int $batch): ?array
     {
         return $tenancy->enter($this->siteId, function () use ($after, $batch): ?array {
-            if (! self::deleting()->whereKey($this->formId)->exists()) {
+            // held to the end of the batch: a takeover or failed() waits for it
+            if (! $this->held()->sharedLock()->exists()) {
                 return null;
             }
             $query = FormSubmission::query()->where('form_id', $this->formId);
@@ -168,11 +211,11 @@ final class DeleteLargeForm implements ShouldBeUniqueUntilProcessing, ShouldQueu
         });
     }
 
-    /** Deletes the form row once at most one batch of leads is left in it (or it is gone already). */
+    /** Deletes the form row once at most one batch of leads is left in it (or it is gone already, or taken over). */
     private function deleteRowIfSmall(Tenancy $tenancy, int $batch): bool
     {
         return $tenancy->enter($this->siteId, function () use ($batch): bool {
-            $row = self::deleting()->whereKey($this->formId)->lockForUpdate()->first(['id']);
+            $row = $this->held()->lockForUpdate()->first(['id']);
             if ($row === null) {
                 return true;
             }
