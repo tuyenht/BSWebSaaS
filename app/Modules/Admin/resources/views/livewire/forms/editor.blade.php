@@ -215,6 +215,23 @@
                     </div>
                 </div>
             </section>
+
+            {{-- Đặt biểu mẫu vào trang: how a form reaches the website, and where it is already --}}
+            <section id="bm-s4" class="{{ $card }} scroll-mt-4" aria-labelledby="bm-s4-h">
+                <div class="{{ $head }}"><h2 id="bm-s4-h" class="{{ $h2 }}">{{ __('form_builder.place_title') }}</h2></div>
+                <div class="flex min-w-0 flex-col items-start gap-3 p-4">
+                    <p class="m-0 text-body text-text [overflow-wrap:anywhere]">{{ __('form_builder.place_text', ['name' => trim($name) !== '' ? trim($name) : trim($saved['name'])]) }}</p>
+                    @if ($pagePath !== null)
+                        <p class="{{ $hint }} mt-0">{{ __('form_builder.place_on') }}
+                            <a href="{{ $pagePath }}" target="_blank" rel="noopener" class="font-semibold text-primary-text underline underline-offset-2">{{ $pagePath }}</a></p>
+                    @endif
+                    @if ($pagesHref !== null)
+                        <x-bs-admin::button variant="outline" color="secondary" :href="$pagesHref" wire:navigate>
+                            <x-bs-admin::icon name="ri-layout-masonry" class="size-4" /> {{ __('form_builder.place_open') }}
+                        </x-bs-admin::button>
+                    @endif
+                </div>
+            </section>
         </div>
 
         {{-- Xem trước — khách thấy: the draft as the visitor will see it; nothing in it can be pressed. --}}

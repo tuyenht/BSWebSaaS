@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Livewire\Forms;
 
 use App\Modules\Admin\Livewire\Forms\Concerns\GatesFormScreens;
+use App\Modules\Cms\Routing\FormPagePaths;
 use App\Modules\Forms\Actions\DeleteForm;
 use App\Modules\Forms\Actions\SetFormStatus;
 use App\Modules\Forms\Models\Form;
@@ -218,7 +219,10 @@ final class FormList extends Component
             // a savepoint inside the request's tenancy transaction: a failed read leaves it usable for the page
             $rows = DB::transaction(function () use ($locale): array {
                 $forms = Form::query()->select(['id', 'ulid', 'key', 'name', 'notify_emails', 'status'])->orderBy('id')->limit(FormDraft::MAX_FORMS)->get();
-                $counts = $this->leadCounts(array_values(array_map(fn (mixed $id): int => Cast::int($id), $forms->pluck('id')->all())));
+                $ids = array_values(array_map(fn (mixed $id): int => Cast::int($id), $forms->pluck('id')->all()));
+                $counts = $this->leadCounts($ids);
+                // one page a visitor sees each form on («Xem trang có biểu mẫu»), from form_placements
+                $pages = app(FormPagePaths::class)->of($ids, $locale);
 
                 return array_values($forms->map(fn (Form $form): array => [
                     'ulid' => $form->ulid,
@@ -227,6 +231,7 @@ final class FormList extends Component
                     'active' => $form->status === 'active',
                     'leads' => $counts[$form->id] ?? 0,
                     'emails' => Cast::strings($form->notify_emails),
+                    'page' => $pages[$form->id] ?? null,
                 ])->all());
             });
             $failed = false;

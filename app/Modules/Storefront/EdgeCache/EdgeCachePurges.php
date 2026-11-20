@@ -41,6 +41,8 @@ final class EdgeCachePurges
         'block_usages',
         // the contact-button click tally: written by visitors, read by the admin's statistics
         'contact_click_daily',
+        // which pages show which form: written with the page that shows it, read by the admin
+        'form_placements',
         // unpublished drafts and past versions: publishing one writes entries / entry_translations
         'entry_drafts', 'entry_revisions',
         // what visitors sent through a form: the admin's inbox

@@ -142,6 +142,12 @@
                                     <x-slot:menu>
                                         <p class="list-mh m-0" aria-hidden="true">{{ $row['name'] }}</p>
                                         <x-bs-admin::list.menu-item icon="ri-pencil" :href="$href" wire:navigate>{{ __('form_builder.edit') }}</x-bs-admin::list.menu-item>
+                                        {{-- where visitors see the form, else its editor, whose «Đặt biểu mẫu vào trang» card says how --}}
+                                        @if ($row['page'] !== null)
+                                            <x-bs-admin::list.menu-item icon="ri-external-link" :href="$row['page']" target="_blank" rel="noopener">{{ __('form_builder.view_page') }}</x-bs-admin::list.menu-item>
+                                        @else
+                                            <x-bs-admin::list.menu-item icon="ri-layout-masonry" :href="$href" wire:navigate>{{ __('form_builder.place_on_page') }}</x-bs-admin::list.menu-item>
+                                        @endif
                                         @unless ($row['system'])
                                             <x-bs-admin::list.menu-sep />
                                             <x-bs-admin::list.menu-item icon="ri-delete-bin-6" danger wire:click="askDelete({{ Js::from($row['ulid']) }})">{{ __('form_builder.delete') }}</x-bs-admin::list.menu-item>

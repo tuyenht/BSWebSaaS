@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Livewire\Forms;
 
 use App\Modules\Admin\Livewire\Forms\Concerns\GatesFormScreens;
+use App\Modules\Cms\Routing\FormPagePaths;
 use App\Modules\Forms\Actions\SaveForm;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Support\FormDraft;
@@ -54,6 +55,10 @@ final class FormEditor extends Component
 
     #[Locked]
     public string $consentLabel = '';
+
+    /** The public path of one page showing this form («Đang có trên trang»), read once when the editor opens. */
+    #[Locked]
+    public ?string $pagePath = null;
 
     public string $name = '';
 
@@ -113,6 +118,7 @@ final class FormEditor extends Component
             $draft = FormDraft::fromForm($form, $this->locale);
             $consent = $form->fields->firstWhere('key', Form::CONSENT_KEY);
             $this->consentLabel = $consent !== null ? FormDraft::text($consent->label, $this->locale) : '';
+            $this->pagePath = app(FormPagePaths::class)->of([$form->id], $this->locale)[$form->id] ?? null;
         } else {
             abort_unless(in_array($purpose, FormTemplates::PURPOSES, true), 404);
             $this->isNew = true;
@@ -395,6 +401,8 @@ final class FormEditor extends Component
             'privacyLabel' => __('forms.privacy_link', [], $this->locale),
             'thanksDefault' => __('form_builder.thanks_default', [], $this->locale),
             'leave' => trans_choice('form_builder.leave_body', $changes, ['n' => $changes]),
+            // «Mở Trình dựng trang» opens the pages list, for a member who may open it
+            'pagesHref' => Gate::allows('entries.view') ? route('admin.entries.index', ['section' => 'pages']) : null,
         ]), $title);
     }
 
