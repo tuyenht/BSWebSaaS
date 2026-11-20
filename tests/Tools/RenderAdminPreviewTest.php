@@ -23,6 +23,7 @@
 
 use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Admin\Livewire\Catalog\Index;
+use App\Modules\Admin\Livewire\Forms\FormList;
 use App\Modules\Admin\Livewire\Media\Library;
 use App\Modules\Admin\Livewire\NotificationBell;
 use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog;
@@ -263,6 +264,12 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.$path)->assertOk()->getContent();
         file_put_contents($dir.'/'.$name.'.html', $html);
     }
+    // «Xóa» on the quote form: the question with its leads and «Tắt biểu mẫu» instead.
+    $formsPage = (string) file_get_contents($dir.'/form-builder.html');
+    $ask = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(FormList::class)
+        ->call('askDelete', $quote->ulid)->assertSet('confirmOpen', true)->html());
+    expect($ask)->toContain('role="alertdialog"', __('form_builder.del_off'));
+    file_put_contents($dir.'/form-builder-delete.html', str_replace('</body>', $ask.'</body>', $formsPage));
     // The leads inbox while the website's contact form is switched off: the band with «Bật lại».
     $contact = app(Tenancy::class)->enter(1, fn (): Form => Form::query()->where('key', Form::SYSTEM_KEY)->firstOrFail());
     app(Tenancy::class)->enter(1, fn () => $contact->update(['status' => 'disabled']));
@@ -1004,8 +1011,8 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     file_put_contents($dir.'/error-suspended.html', $html);
 
     // The media library's folder column (design board 12): three folders, the open one with its ⋮ menu,
-    // and the same folder being renamed in place. The component is put in place of the page's own
-    // root, as for the product list.
+    // the same folder being renamed in place, and the question asked before deleting a folder that
+    // holds files. The component is put in place of the page's own root, as for the product list.
     $mediaConfig = config('media');
     config(['media.driver' => 'cloudflare', 'media.cloudflare.base' => 'http://'.ADMIN_PREVIEW_HOST]);
     app(Tenancy::class)->enter(1, function (): void {
@@ -1033,7 +1040,10 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $rename = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($library()->call('openRename', 'anh-xuong')));
     expect($rename)->toContain('wire:model="renameName"');
     file_put_contents($dir.'/media-folder-rename.html', $swap($html, $rename, $media));
+    $ask = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($library()->call('askDeleteFolder', 'anh-xuong')));
+    expect($ask)->toContain('4 tệp');
+    file_put_contents($dir.'/media-folder-delete.html', $swap($html, $ask, $media));
     config(['media' => $mediaConfig]);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 79);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 80);
 });

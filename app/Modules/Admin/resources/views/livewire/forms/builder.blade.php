@@ -148,6 +148,10 @@
                                         @else
                                             <x-bs-admin::list.menu-item icon="ri-layout-masonry" :href="$href" wire:navigate>{{ __('form_builder.place_on_page') }}</x-bs-admin::list.menu-item>
                                         @endif
+                                        @unless ($row['system'])
+                                            <x-bs-admin::list.menu-sep />
+                                            <x-bs-admin::list.menu-item icon="ri-delete-bin-6" danger wire:click="askDelete({{ Js::from($row['ulid']) }})">{{ __('form_builder.delete') }}</x-bs-admin::list.menu-item>
+                                        @endunless
                                     </x-slot:menu>
                                 </x-bs-admin::list.actions>
                             </x-bs-admin::list.cell>
@@ -194,6 +198,35 @@
             <x-bs-admin::button variant="outline" color="secondary" x-on:click="pick = false">{{ __('form_builder.cancel') }}</x-bs-admin::button>
         </x-slot:footer>
     </x-bs-admin::modal>
+
+    {{-- «Xóa»: no Trash, so the question names the leads that go too and offers «Tắt biểu mẫu» while the form is on and has leads --}}
+    @php
+        $del = $deleting;
+        $delLeads = $del === null ? 0 : $del['leads'];
+        $delPhrase = $delLeads > $cap ? __('form_builder.leads_over', ['n' => $num($cap)]) : trans_choice('form_builder.leads_n', $delLeads, ['n' => $num($delLeads)]);
+        $delName = $del['name'] ?? '';
+        $delAlt = $del !== null && $delLeads > 0 && $del['active'];
+    @endphp
+    <x-bs-admin::confirm-dialog model="confirmOpen" danger icon="ri-delete-bin-6" ok-icon="ri-delete-bin-6"
+        :title="$delLeads > 0 ? __('form_builder.del_title_leads', ['name' => $delName, 'leads' => $delPhrase]) : __('form_builder.del_title', ['name' => $delName])"
+        :ok="$delLeads > 0 ? __('form_builder.del_ok_leads', ['leads' => $delPhrase]) : __('form_builder.del_ok')"
+        confirm="confirmDelete" cancel="cancelDelete">
+        @if ($del !== null)
+            <p class="m-0 [overflow-wrap:anywhere]">{{ $delLeads > 0 ? __('form_builder.del_text_leads', ['leads' => $delPhrase]) : __('form_builder.del_text') }}</p>
+            @if ($delAlt)
+                <x-bs-admin::alert color="info" role="note" class="mt-1">
+                    <b class="font-semibold">{{ __('form_builder.del_suggest_q') }}</b> {{ __('form_builder.del_suggest', ['leads' => $delPhrase]) }}
+                </x-bs-admin::alert>
+            @endif
+        @endif
+        @if ($delAlt)
+            <x-slot:alt>
+                <x-bs-admin::button variant="outline" color="secondary" wire:click="switchOffInstead">
+                    <x-bs-admin::icon name="ri-pause-circle" class="size-[calc(1rem+var(--user-text-boost))]" /> {{ __('form_builder.del_off') }}
+                </x-bs-admin::button>
+            </x-slot:alt>
+        @endif
+    </x-bs-admin::confirm-dialog>
 
     <x-bs-admin::toast :message="$toastMsg" :tone="$toastTone" :seq="$toastSeq" dismiss="closeToast" :undo="$undoOp !== null ? 'undoLast' : null" />
 </div>
