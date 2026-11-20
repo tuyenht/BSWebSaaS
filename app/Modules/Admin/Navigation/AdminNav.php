@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Navigation;
 
+use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Support\Cast;
@@ -65,6 +66,7 @@ final class AdminNav
         'contacts' => 'tools',
         'forms' => 'tools',
         'menus' => 'tools',
+        'blocks' => 'tools',
         'users' => 'system',
         'settings' => 'system',
     ];
@@ -326,6 +328,8 @@ final class AdminNav
             ['contacts', 'admin.contacts', 'admin.forms.index', 'ri-mail', 'forms.view', 'contacts'],
             ['forms', 'form_builder.title', 'admin.form-builder.index', 'ri-survey', 'forms.manage', 'contacts'],
             ['menus', 'admin.menu_builder', 'admin.menus.index', 'ri-node-tree', 'menus.manage', 'menus'],
+            // the block library asks its policy: `blocks.manage`, for a member not limited to some categories
+            ['blocks', 'blocks.title', 'admin.blocks.index', 'ri-stack', ['create', ContentBlock::class], 'blocks'],
             ['users', 'admin.users', 'admin.users.index', 'ri-team', 'users.manage', 'users'],
         ];
 
@@ -333,7 +337,7 @@ final class AdminNav
             if (! in_array($entitlementKey, $entitled, true)) {
                 continue; // site not entitled to this module
             }
-            if (! $can($permission)) {
+            if (is_array($permission) ? ! $gate->allows(...$permission) : ! $can($permission)) {
                 continue; // user not permitted
             }
 
@@ -343,7 +347,7 @@ final class AdminNav
                 url: route($routeName),
                 icon: $icon,
                 active: $request->routeIs(str_replace('.index', '', $routeName).'*'),
-                permission: $permission,
+                permission: is_array($permission) ? $key.'.manage' : $permission,
             );
         }
 
