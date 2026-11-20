@@ -24,6 +24,7 @@
 use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Admin\Livewire\Catalog\Index;
 use App\Modules\Admin\Livewire\Forms\FormList;
+use App\Modules\Admin\Livewire\LanguageSettings;
 use App\Modules\Admin\Livewire\Media\Library;
 use App\Modules\Admin\Livewire\NotificationBell;
 use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog;
@@ -71,6 +72,7 @@ use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\Plan;
 use App\Modules\Tenancy\Models\SiteFeature;
+use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Theming\AiCrawlerCheck;
@@ -590,6 +592,18 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/appearance')->assertOk()->getContent();
     expect($html)->toContain('data-look-slot="logo"', 'data-look-stamp', 'data-look-share', 'Cập nhật lần cuối', 'Màu nhấn của menu', 'data-look-search', 'Có tìm kiếm');
     file_put_contents($dir.'/appearance.html', $html);
+
+    // "Ngôn ngữ website": Vietnamese the default, English public, Japanese written but hidden (its
+    // sub-line names the /ja/ address), the rest off; then the question before changing the default.
+    app(Tenancy::class)->enter(1, fn () => SiteLocale::query()->updateOrCreate(['locale' => 'ja'], ['enabled' => true, 'is_public' => false, 'is_default' => false]));
+    $this->flushSession();
+    $page = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/languages')->assertOk()->getContent();
+    expect($page)->toContain('data-lng-row="vi"', 'data-lng-row="ja"', 'role="switch"', 'Chỉ soạn nội bộ');
+    file_put_contents($dir.'/langs.html', $page);
+    $ask = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(LanguageSettings::class)
+        ->call('chooseDefault', 'en')->assertSet('asking', true)->html());
+    expect($ask)->toContain('role="alertdialog"', 'Đổi ngôn ngữ mặc định sang English?');
+    file_put_contents($dir.'/langs-ask.html', str_replace('</body>', $ask.'</body>', $page));
 
     // The post editor with its short description and Google title and description filled, long
     // enough that the meters show their bands and the Google preview shows where it cuts the text; a
@@ -1135,5 +1149,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     file_put_contents($dir.'/media-trash-own-ask.html', $swap($html, $ownAsk, $media));
     config(['media' => $mediaConfig]);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 90);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 92);
 });
