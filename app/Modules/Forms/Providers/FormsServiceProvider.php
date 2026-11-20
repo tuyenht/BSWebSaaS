@@ -3,6 +3,7 @@
 namespace App\Modules\Forms\Providers;
 
 use App\Modules\Forms\Components\FormComponent;
+use App\Modules\Forms\Console\ResumeFormDeletesCommand;
 use App\Modules\Forms\Console\SyncContactFieldsCommand;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Policies\FormPolicy;
@@ -23,7 +24,7 @@ final class FormsServiceProvider extends ServiceProvider
         Gate::policy(Form::class, FormPolicy::class);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([SyncContactFieldsCommand::class]);
+            $this->commands([SyncContactFieldsCommand::class, ResumeFormDeletesCommand::class]);
         }
     }
 }
