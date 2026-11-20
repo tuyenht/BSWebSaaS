@@ -9,6 +9,7 @@
 {{-- Manage mode (the /admin/media page, not the insert picker): clicking a tile opens its detail
      and the checkbox selects for bulk ops; in the picker a tile click IS the pick. Never in trash. --}}
 @php($manage = ($pickerManageMode ?? false) && ! $pickerTrash)
+@php($folderNames = $mp['folders']->pluck('name', 'id'))
 <div class="flex min-h-0 flex-1">
 
     {{-- Folder sidebar — a rail ≥640px, collapsed into the toolbar dropdown below on narrow screens. --}}
@@ -22,9 +23,9 @@
         </button>
         @foreach ($mp['folders'] as $folder)
             <button type="button" wire:key="mp-folder-{{ $folder->id }}" wire:click="setPickerFolder({{ $folder->id }})"
-                    class="flex w-full items-center gap-2 rounded-[7px] px-[9px] py-[7px] text-left text-[13px] {{ $pickerFolderId === $folder->id ? 'bg-admin-primary/8 font-semibold text-accent' : 'font-medium text-body-text hover:bg-surface-hover' }}">
+                    class="flex w-full items-center gap-2 rounded-[7px] {{ $folder->parent_id !== null ? 'ps-[25px]' : 'ps-[9px]' }} pe-[9px] py-[7px] text-left text-[13px] {{ $pickerFolderId === $folder->id ? 'bg-primary/8 font-semibold text-primary-text' : 'font-medium text-text hover:bg-surface-hover' }}">
                 <x-bs-admin::icon name="ri-folder-3" class="size-[15px] shrink-0" />
-                <span class="flex-1 truncate">{{ $folder->name }}</span>
+                <span class="flex-1 truncate">{{ $folder->name }}@if ($folder->parent_id !== null)<span class="sr-only">{{ __('media.lib.in_folder', ['name' => $folderNames[$folder->parent_id] ?? '']) }}</span>@endif</span>
                 <span class="text-[11px] {{ $pickerFolderId === $folder->id ? 'text-accent' : 'text-body-muted' }}">{{ $folder->media_count }}</span>
             </button>
         @endforeach
@@ -74,7 +75,7 @@
         @endcan
 
         {{-- System "folder": the Trash (onlyTrashed) — a virtual entry, not a media_folders row. --}}
-        @can('media.delete')
+        @canany(['media.delete.own', 'media.delete.any'])
             <div class="mt-2 border-t border-border pt-2">
                 <button type="button" wire:click="openPickerTrash"
                         class="flex w-full items-center gap-2 rounded-[7px] px-[9px] py-[7px] text-left text-[13px] {{ $pickerTrash ? 'bg-admin-danger/8 font-semibold text-admin-danger-text' : 'font-medium text-body-text hover:bg-surface-hover' }}">
@@ -83,7 +84,7 @@
                     <span class="text-[11px] {{ $pickerTrash ? 'text-admin-danger-text' : 'text-body-muted' }}">{{ $mp['trashTotal'] }}</span>
                 </button>
             </div>
-        @endcan
+        @endcanany
     </div>
 
     {{-- Main column --}}
@@ -97,7 +98,7 @@
                 <select wire:model.live="pickerFolderId" class="field cursor-pointer rounded-lg border border-border-strong bg-surface px-2.5 text-text min-[640px]:hidden" aria-label="{{ __('media.picker_folders') }}">
                     <option value="">{{ __('media.picker_all_images') }} ({{ $mp['total'] }})</option>
                     @foreach ($mp['folders'] as $folder)
-                        <option value="{{ $folder->id }}">{{ $folder->name }} ({{ $folder->media_count }})</option>
+                        <option value="{{ $folder->id }}">{{ $folder->parent_id !== null ? "\u{00A0}\u{00A0}\u{00A0}\u{00A0}" : '' }}{{ $folder->name }}{{ $folder->parent_id !== null ? __('media.lib.in_folder', ['name' => $folderNames[$folder->parent_id] ?? '']) : '' }} ({{ $folder->media_count }})</option>
                     @endforeach
                 </select>
             @endunless
@@ -158,12 +159,12 @@
                 <span class="text-[12.5px] font-semibold {{ $pickerTrash ? 'text-admin-danger-text' : 'text-accent' }}">{{ __('media.picker_selected_count', ['count' => count($pickerSelected)]) }}</span>
                 <div class="ml-auto flex gap-1.5">
                     @if ($pickerTrash)
-                        @can('media.delete')
+                        @canany(['media.delete.own', 'media.delete.any'])
                             <button type="button" wire:click="restorePickerSelection"
                                     class="inline-flex items-center gap-1.5 rounded-[7px] border border-admin-success/30 bg-surface px-[11px] py-1.5 text-xs font-medium text-admin-success-text">
                                 <x-bs-admin::icon name="ri-refresh" class="size-[13px]" />{{ __('media.picker_trash_restore') }}
                             </button>
-                        @endcan
+                        @endcanany
                         @can('media.purge')
                             <button type="button"
                                     x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('media.picker_trash_purge_confirm', ['count' => count($pickerSelected)])), confirm: @js(__('media.picker_trash_purge')), cancel: @js(__('media.picker_cancel')) }).then(ok => ok && $wire.purgePickerSelection())"
@@ -183,18 +184,18 @@
                                             class="block w-full px-3 py-1.5 text-left text-[12.5px] text-body-text hover:bg-surface-hover">{{ __('media.picker_move_root') }}</button>
                                     @foreach ($mp['folders'] as $folder)
                                         <button type="button" wire:key="mp-move-{{ $folder->id }}" wire:click="pickerBulkMove({{ $folder->id }})" x-on:click="open = false"
-                                                class="block w-full truncate px-3 py-1.5 text-left text-[12.5px] text-body-text hover:bg-surface-hover">{{ $folder->name }}</button>
+                                                class="block w-full truncate {{ $folder->parent_id !== null ? 'ps-7' : 'ps-3' }} pe-3 py-1.5 text-left text-[12.5px] text-text hover:bg-surface-hover">{{ $folder->name }}@if ($folder->parent_id !== null)<span class="sr-only">{{ __('media.lib.in_folder', ['name' => $folderNames[$folder->parent_id] ?? '']) }}</span>@endif</button>
                                     @endforeach
                                 </div>
                             </div>
                         @endcan
-                        @can('media.delete')
+                        @canany(['media.delete.own', 'media.delete.any'])
                             <button type="button"
                                     x-on:click="$bsConfirm({ icon: 'trash', text: @js(__('media.picker_delete_confirm', ['count' => count($pickerSelected)])), confirm: @js(__('media.picker_delete')), cancel: @js(__('media.picker_cancel')) }).then(ok => ok && $wire.pickerBulkDelete())"
                                     class="inline-flex items-center gap-1.5 rounded-[7px] border border-admin-danger/20 bg-surface px-[11px] py-1.5 text-xs text-admin-danger-text">
                                 <x-bs-admin::icon name="ri-delete-bin" class="size-[13px]" />{{ __('media.picker_delete') }}
                             </button>
-                        @endcan
+                        @endcanany
                     @endif
                     <button type="button" wire:click="clearPickerSelection"
                             class="rounded-[7px] border border-border-strong bg-surface px-[11px] py-1.5 text-xs text-body-muted">{{ __('media.picker_clear') }}</button>

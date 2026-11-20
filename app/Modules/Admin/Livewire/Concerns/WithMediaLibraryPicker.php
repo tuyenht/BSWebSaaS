@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire\Concerns;
 
+use App\Modules\Admin\Support\MediaDeleteRights;
 use App\Modules\Admin\Support\MediaUsageLocator;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Actions\RegisterMediaUpload;
@@ -11,6 +12,7 @@ use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Media\Services\ExternalImageFetcher;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Media\Support\MediaKey;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\VideoEmbed;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -20,6 +22,7 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
@@ -201,7 +204,7 @@ trait WithMediaLibraryPicker
 
     /**
      * Trash view (onlyTrashed) — a virtual "folder", not a media_folders row. Locked: only
-     * openPickerTrash() (gated to media.delete) may switch it on; a client write would list the
+     * openPickerTrash() (gated to media.delete.own or .any) may switch it on; a client write would list the
      * trashed files to someone who may only view the library.
      */
     #[Locked]
@@ -299,11 +302,12 @@ trait WithMediaLibraryPicker
 
     /**
      * The virtual "Thùng rác" sidebar entry — shows onlyTrashed, swaps the bulk actions. Gated to
-     * media.delete like every trash action (the sidebar entry is only rendered for that right).
+     * either delete right like every trash action (the sidebar entry is only rendered for those);
+     * with media.delete.own it lists only this person's own files.
      */
     public function openPickerTrash(): void
     {
-        abort_unless(Gate::allows('media.delete'), 403);
+        abort_unless(MediaDeleteRights::some(), 403);
 
         $this->pickerTrash = true;
         $this->pickerFolderId = null;
@@ -315,12 +319,12 @@ trait WithMediaLibraryPicker
     public function togglePickerItem(int $mediaId): void
     {
         abort_unless(Gate::allows('media.view'), 403);
-        abort_unless(! $this->pickerTrash || Gate::allows('media.delete'), 403);
+        abort_unless(! $this->pickerTrash || MediaDeleteRights::some(), 403);
 
-        // Live library resolves live rows; the trash view resolves trashed rows. Either way the id
-        // is re-checked against THIS site's scoped query — never trusted from the wire.
+        // Live library resolves live rows; the trash view resolves the trashed rows this person
+        // sees. Either way the id is re-checked against THIS site's scoped query — never trusted.
         $exists = $this->pickerTrash
-            ? Media::onlyTrashed()->whereKey($mediaId)->exists()
+            ? MediaDeleteRights::visibleTrash(Media::onlyTrashed())->whereKey($mediaId)->exists()
             : Media::query()->whereKey($mediaId)->exists();
         if (! $exists) {
             return;
@@ -555,7 +559,7 @@ trait WithMediaLibraryPicker
                 $media = app(RegisterMediaUpload::class)->handle(
                     $preview['tempKey'],
                     $preview['filename'],
-                    mayRestore: Gate::allows('media.delete'),
+                    mayRestore: Gate::allows('media.delete.any'),
                 );
             } catch (MediaRejectedException $e) {
                 // Register may already have deleted the staged bytes: drop the preview so a second
@@ -624,12 +628,15 @@ trait WithMediaLibraryPicker
         $this->pickerPage++; // clamped against the real last page in mediaPickerState()
     }
 
-    /** Soft-delete the selection (Thùng rác) — per-model so observers keep firing. */
+    /**
+     * Soft-delete the selection (Thùng rác) — per-model so observers keep firing. With
+     * media.delete.own only the chosen files this person uploaded and nobody uses go; the rest stay.
+     */
     public function pickerBulkDelete(): void
     {
-        abort_unless(Gate::allows('media.delete'), 403);
+        abort_unless(MediaDeleteRights::some(), 403);
 
-        Media::query()->whereIn('id', $this->pickerSelected)->get()->each->delete();
+        app(MediaDeleteRights::class)->trashable(Media::query()->whereIn('id', $this->pickerSelected))->get()->each->delete();
         $this->pickerSelected = [];
     }
 
@@ -637,7 +644,7 @@ trait WithMediaLibraryPicker
     |------------------------------------------------------------------------
     | Trash actions (onlyTrashed) — restore / permanent purge
     |------------------------------------------------------------------------
-    | Restore is gated to media.delete (same as sending to trash); deleting for
+    | Restore is gated to the delete rights (same as sending to trash); deleting for
     | good — a selection or the whole Trash — is the website admin's media.purge.
     | Purge is per-instance so MediaObserver fires (drops attachments + the R2
     | object); a mass forceDelete would bypass those events.
@@ -645,11 +652,12 @@ trait WithMediaLibraryPicker
 
     public function restorePickerSelection(): void
     {
-        abort_unless(Gate::allows('media.delete'), 403);
+        abort_unless(MediaDeleteRights::some(), 403);
 
         // restore() clears deleted_at → the row returns to its original folder (folder_id was
         // kept; if that folder was itself deleted the FK already SET NULL it to the root view).
-        Media::onlyTrashed()->whereIn('id', $this->pickerSelected)->get()->each->restore();
+        // With media.delete.own only what this person put in the Trash comes back out.
+        MediaDeleteRights::restorable(Media::onlyTrashed()->whereIn('id', $this->pickerSelected))->get()->each->restore();
         $this->pickerSelected = [];
         session()->flash('media-status', __('media.picker_trash_restored'));
     }
@@ -718,16 +726,21 @@ trait WithMediaLibraryPicker
 
         // Hand-edited slug wins (sanitized to ASCII); otherwise derive from the name. uniqueSlug
         // forces the [a-z0-9-] shape and appends -2/-3… on a same-site collision — never an error.
-        $folder = new MediaFolder;
+        // A top-level folder, at the end of the top level, under the site's folder-list lock like
+        // every folder write (the library's own form is where a sub-folder is made); the slug is
+        // picked inside the lock so two people adding the same name at once get -2, not an error.
         $candidate = $this->pickerNewFolderSlugEdited ? $this->pickerNewFolderSlug : $name;
-        $slug = $folder->uniqueSlug($candidate, $name);
+        $folder = DB::transaction(function () use ($name, $candidate): MediaFolder {
+            MediaFolder::lockTree(app(CurrentSite::class)->id());
+            $slug = (new MediaFolder)->uniqueSlug($candidate, $name);
+            $maxPosition = MediaFolder::query()->whereNull('parent_id')->max('position');
 
-        $maxPosition = MediaFolder::query()->max('position');
-        $folder = MediaFolder::query()->create([
-            'name' => $name,
-            'slug' => $slug,
-            'position' => (is_numeric($maxPosition) ? (int) $maxPosition : 0) + 1,
-        ]);
+            return MediaFolder::query()->create([
+                'name' => $name,
+                'slug' => $slug,
+                'position' => (is_numeric($maxPosition) ? (int) $maxPosition : 0) + 1,
+            ]);
+        });
 
         $this->reset('pickerNewFolderOpen', 'pickerNewFolderName', 'pickerNewFolderSlug',
             'pickerNewFolderSlugEdited', 'pickerNewFolderSlugFallback');
@@ -739,7 +752,7 @@ trait WithMediaLibraryPicker
      * Everything the picker modal renders, in one request-cached bundle (the Blade partial
      * reads $this->mediaPickerState). Empty shell while closed, so hidden modals cost nothing.
      *
-     * @return array{open: bool, page?: LengthAwarePaginator<int, Media>, folders?: EloquentCollection<int, MediaFolder>, total?: int, formats?: array<int, string>, selectedPreview?: EloquentCollection<int, Media>, urls?: MediaUrlResolver, detail?: Media|null, detailUsages?: list<array{kind: string, role: string, label: string, url: string|null}>, detailUploader?: string|null, contentLocale?: string, trashTotal?: int}
+     * @return array{open: bool, page?: LengthAwarePaginator<int, Media>, folders?: Collection<int, MediaFolder>, total?: int, formats?: array<int, string>, selectedPreview?: EloquentCollection<int, Media>, urls?: MediaUrlResolver, detail?: Media|null, detailUsages?: list<array{kind: string, role: string, label: string, url: string|null}>, detailUploader?: string|null, contentLocale?: string, trashTotal?: int}
      */
     #[Computed]
     public function mediaPickerState(): array
@@ -771,7 +784,7 @@ trait WithMediaLibraryPicker
         return [
             'open' => true,
             'page' => $page,
-            'folders' => MediaFolder::query()->withCount('media')->orderBy('position')->orderBy('name')->get(),
+            'folders' => self::pickerFolders(),
             'total' => Media::query()->count(),
             'formats' => $formats,
             'selectedPreview' => Media::query()->whereIn('id', array_slice($this->pickerSelected, 0, 3))->get(),
@@ -780,8 +793,32 @@ trait WithMediaLibraryPicker
             'detailUsages' => $detail === null ? [] : app(MediaUsageLocator::class)->usagesFor($detail, $this->pickerContentLocale()),
             'detailUploader' => $uploaderName,
             'contentLocale' => $this->pickerContentLocale(),
-            'trashTotal' => Gate::allows('media.delete') ? Media::onlyTrashed()->count() : 0,
+            'trashTotal' => MediaDeleteRights::some() ? MediaDeleteRights::visibleTrash(Media::onlyTrashed())->count() : 0,
         ];
+    }
+
+    /**
+     * The folders in tree order (each top-level folder, then its sub-folders), each with
+     * media_count = its files and, for a top-level folder, its sub-folders' files too.
+     *
+     * @return Collection<int, MediaFolder>
+     */
+    private static function pickerFolders(): Collection
+    {
+        $all = MediaFolder::query()->withCount('media')->orderBy('position')->orderBy('name')->orderBy('id')->get();
+        $kidsN = [];
+        foreach ($all as $f) {
+            if ($f->parent_id !== null) {
+                $kidsN[$f->parent_id] = ($kidsN[$f->parent_id] ?? 0) + Cast::int($f->getAttribute('media_count'));
+            }
+        }
+        foreach ($all as $f) {
+            if (isset($kidsN[$f->id])) {
+                $f->setAttribute('media_count', Cast::int($f->getAttribute('media_count')) + $kidsN[$f->id]);
+            }
+        }
+
+        return MediaFolder::inTreeOrder($all);
     }
 
     /**
@@ -793,10 +830,11 @@ trait WithMediaLibraryPicker
     {
         // Trash view: onlyTrashed, flat (no folder), newest-binned first — a distinct surface.
         if ($this->pickerTrash) {
-            // Defence in depth behind the locked property: the trash list is a media.delete surface.
-            abort_unless(Gate::allows('media.delete'), 403);
+            // Defence in depth behind the locked property: the trash list is a delete-right surface,
+            // and with media.delete.own it holds only this person's own files.
+            abort_unless(MediaDeleteRights::some(), 403);
 
-            $query = Media::onlyTrashed();
+            $query = MediaDeleteRights::visibleTrash(Media::onlyTrashed());
             $term = trim($this->pickerSearch);
             if ($term !== '') {
                 $query->where('original_filename', 'ilike', '%'.addcslashes($term, '%_\\').'%');
@@ -808,7 +846,10 @@ trait WithMediaLibraryPicker
         $query = Media::query();
 
         if ($this->pickerFolderId !== null) {
-            $query->where('folder_id', $this->pickerFolderId);
+            // a folder holds its sub-folders' files too, as in the library
+            // the ids first, then one IN list: an OR with a sub-select cannot use the folder index
+            $query->whereIn('folder_id', [$this->pickerFolderId,
+                ...MediaFolder::query()->where('parent_id', $this->pickerFolderId)->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->all()]);
         }
 
         match ($this->pickerType) {

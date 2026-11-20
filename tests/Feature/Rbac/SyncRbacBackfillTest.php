@@ -172,7 +172,7 @@ it('gives an existing site\'s owner and admin the folder and delete-for-good med
     app(Tenancy::class)->enter(1, function () use ($admin, $editor, $member): void {
         $admin->assignRole(Role::query()->where('site_id', 1)->where('name', 'admin')->firstOrFail());
         $editor->assignRole(Role::query()->where('site_id', 1)->where('name', 'editor')->firstOrFail());
-        grantRole($member, 'custom-media', ['media.view', 'media.upload', 'media.delete']); // is_system = false
+        grantRole($member, 'custom-media', ['media.view', 'media.upload', 'media.delete.any']); // is_system = false
     });
     $holds = fn (string $role, string $permission): bool => DB::table('role_has_permissions')
         ->join('roles', 'roles.id', '=', 'role_has_permissions.role_id')
