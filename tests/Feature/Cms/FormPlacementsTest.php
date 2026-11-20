@@ -179,6 +179,7 @@ it('gives a form made after pages name its key its rows at once, and heals a mis
         $entry = Entry::query()->create(['type' => 'page', 'status' => 'published', 'meta' => []]);
         $entry->translations()->create(['locale' => 'vi', 'title' => 'Hỗ trợ', 'slug' => 'ho-tro', 'status' => 'published', 'body' => ['blocks' => [
             ['type' => 'form', 'props' => ['form_key' => null]], ['type' => 'form', 'props' => ['form_key' => 7]],
+            ['type' => 'form', 'props' => ['form_key' => ['bao-gia']]], ['type' => ['form'], 'props' => ['form_key' => 'bao-gia']],
         ]]]);
 
         return $entry;
