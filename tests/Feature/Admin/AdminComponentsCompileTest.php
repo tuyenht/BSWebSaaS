@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\MessageBag;
 use Illuminate\Support\ViewErrorBag;
 
@@ -34,7 +35,22 @@ it('keeps bound props, merged classes and slots', function (): void {
 
     expect($html)->toContain('Lưu 3')
         ->and($html)->toContain('extra')
-        ->and($html)->toContain('disabled');
+        ->and($html)->toMatch('/<button[^>]* disabled[ >=]/');
+
+    $enabled = Blade::render('<x-bs-admin::button :disabled="$off">Lưu</x-bs-admin::button>', ['off' => false]);
+
+    expect($enabled)->not->toMatch('/<button[^>]* disabled[ >=]/');
+});
+
+it('hands a value down to a nested component through @aware, and only inside its parent', function (): void {
+    $inside = Blade::render(
+        '<x-bs-admin::tree label="Cây" move="mv"><x-bs-admin::tree.name>Gốc</x-bs-admin::tree.name></x-bs-admin::tree>',
+    );
+    $outside = Blade::render('<x-bs-admin::tree.name>Gốc</x-bs-admin::tree.name>');
+
+    expect($inside)->toContain('<button type="button" data-tree-name')
+        ->and($outside)->toContain('<span class="tree-nm">Gốc</span>')
+        ->and($outside)->not->toContain('data-tree-name');
 });
 
 it('shows the validation message of the current render only', function (): void {
@@ -49,13 +65,22 @@ it('shows the validation message of the current render only', function (): void 
         ->and($second)->not->toContain('Email chưa đúng.');
 });
 
-it('covers every admin component file', function (): void {
+it('compiles the body of every admin component into valid PHP', function (): void {
     $dir = base_path('app/Modules/Admin/resources/views/components');
     $files = collect(File::allFiles($dir))->filter(fn ($f): bool => str_ends_with($f->getFilename(), '.blade.php'));
+    $compiler = app('blade.compiler');
 
     expect($files)->not->toBeEmpty();
     foreach ($files as $file) {
         $name = str_replace(['/', '.blade.php'], ['.', ''], $file->getRelativePathname());
         expect(Blade::compileString('<x-bs-admin::'.$name.' />'))->toContain('$__blaze');
+
+        // The body is compiled on first use, the way a page would reach it: into one function.
+        $compiler->compile($file->getPathname());
+        $compiled = $compiler->getCompiledPath($file->getPathname());
+        $lint = Process::run([PHP_BINARY, '-l', $compiled]);
+
+        expect(File::get($compiled))->toMatch('/function _[0-9a-f]+\\(/', $name)
+            ->and($lint->successful())->toBeTrue($name.': '.$lint->output());
     }
 });

@@ -619,6 +619,11 @@ reload() { # reload [pre]: "pre" (step 7 only, never the rollback) runs ONEOFFS_
     date -u +%FT%TZ > "$STATE/t7"
     art view:clear
     art optimize
+    # optimize also compiled every view with the new code. The admin components compile (Blaze) into calls only the
+    # code that compiled them has, and a file compiled after its source counts as fresh to either version: the old
+    # workers would load the new files, and in a rollback the new workers' files would outlive them. So no compiled
+    # view crosses the reload: drop them here, and cache them again once only the new workers serve.
+    art view:clear
     # a fresh artisan exec here runs the new code with the new config cache while the old workers still serve:
     # data the new code needs from its first request; what it writes must be harmless to the old code
     if [ "${1:-}" = pre ]; then for k in "${ONEOFFS_PRE[@]}"; do oneoff "$k" pre; done; fi
@@ -626,6 +631,8 @@ reload() { # reload [pre]: "pre" (step 7 only, never the rollback) runs ONEOFFS_
     docker restart "${PREFIX}horizon" "${PREFIX}scheduler"
     if restart_needed; then pgb_drop; fi
     wait_up
+    art view:clear
+    art view:cache
     edge_purge
 }
 edge_purge() { # drop every site's pages kept at the Cloudflare edge: they were drawn by the code just replaced. The
@@ -775,7 +782,7 @@ mode_plan() { # git only, on the dev repo; prod is never touched (docker/gh/ssh/
         note "4 migrate từng tệp (code cũ vẫn phục vụ; tệp không khởi động lại PgBouncer không được đổi cột), rồi so cấu trúc bảng (bớt/đổi = đúng SCHEMA_REMOVED_OK), mọi trang của bước 0 như trước trên code cũ"
     else note "3–4 không có migration (chỉ kiểm không còn chờ)"; fi
     note "5 đổi code + composer install · 6 pnpm install + build ($(wc -w <<< "$VITE") input), rồi đặt lại cạnh bản mới tệp CSS/JS của mọi bản build đã phục vụ trong $ASSET_KEEP_DAYS ngày (trang lưu ở Cloudflare hay tab đang mở vẫn đủ giao diện); build lỗi thì trả lại tệp và manifest đang phục vụ rồi dừng"
-    note "7 view:clear, optimize,${ONEOFFS_PRE[*]:+ một lần trước khi nạp lại (code mới, worker cũ còn phục vụ): ${ONEOFFS_PRE[*]},} octane:reload, khởi động lại horizon + scheduler$(restart_needed_plan && echo ', PgBouncer'), xếp việc xoá trang lưu ở Cloudflare$(case " $CLASSES " in *" permission "*) echo ', rbac:sync rồi octane:reload lần nữa' ;; esac)$(case " $CLASSES " in *" sanitizer "*) echo ", resanitize ${RESANITIZE}" ;; esac)${ONEOFFS[*]:+, một lần: ${ONEOFFS[*]}}"
+    note "7 view:clear, optimize, view:clear,${ONEOFFS_PRE[*]:+ một lần trước khi nạp lại (code mới, worker cũ còn phục vụ): ${ONEOFFS_PRE[*]},} octane:reload, khởi động lại horizon + scheduler$(restart_needed_plan && echo ', PgBouncer'), view:clear + view:cache, xếp việc xoá trang lưu ở Cloudflare$(case " $CLASSES " in *" permission "*) echo ', rbac:sync rồi octane:reload lần nữa' ;; esac)$(case " $CLASSES " in *" sanitizer "*) echo ", resanitize ${RESANITIZE}" ;; esac)${ONEOFFS[*]:+, một lần: ${ONEOFFS[*]}}"
     note "8 kiểm sau: trang như trước, CSS mới, lịch chạy (+${SCHEDULE_ADDED[*]:-} −${SCHEDULE_REMOVED[*]:-}), mật khẩu superuser, cached plan"
     echo "Dòng anh chạy (giữ nguyên; muốn chạy tiếp từ một bước thì thêm số bước trước dấu ;):"
     local envp=; [ "$dev" = /opt/bswebsaas/dev ] || envp="DEPLOY_DEV_REPO=$dev "
