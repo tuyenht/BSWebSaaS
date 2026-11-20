@@ -75,10 +75,12 @@ final class DeleteLargeMediaFolder implements ShouldBeUniqueUntilProcessing, Sho
         return 'media:folder-deleting:'.$siteId.':'.$folderId;
     }
 
-    /** Out of tries: the folder stays, partly emptied, and a new delete of it starts again where this left off. */
+    /**
+     * Out of tries: the folder stays, partly emptied, and a new delete of it starts again where this
+     * left off. Its mark stays to its expiry: another run of the same folder may still be working.
+     */
     public function failed(?Throwable $e): void
     {
-        Cache::forget(self::pendingKey($this->siteId, $this->folderId));
         if ($e !== null) {
             report($e);
         }

@@ -1229,7 +1229,8 @@ final class Library extends Component
             $family = array_values(array_merge([$row->id], $kids->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->all()));
             if (self::tooManyInline($family)) {
                 // no count of a folder this big inside the request: the job says nothing per file either
-                DeleteLargeMediaFolder::markPending(app(CurrentSite::class)->id(), $row->id);
+                $siteId = app(CurrentSite::class)->id();
+                DB::afterCommit(fn () => DeleteLargeMediaFolder::markPending($siteId, $row->id)); // only once the delete is decided
                 DeleteLargeMediaFolder::dispatch(app(CurrentSite::class)->id(), $row->id); // once this commits
 
                 return ['live' => 0, 'files' => null, 'row' => $row, 'kids' => $kids, 'parent' => '', 'slot' => 0, 'later' => true];
