@@ -27,8 +27,10 @@ use Throwable;
  * here directly: ApproveEntryForLater::publishDue applies the stage's publishing move through the
  * workflow engine as its approver, rights judged again. One it cannot publish (the approver lost the
  * right, the flow changed) goes back to waiting and is counted as held back; its author and approver
- * are told. One whose approver's account is gone (scheduled_by went NULL) is, like any scheduled post
- * a workflow governs, skipped and counted.
+ * are told. So does one that stands at a stage of its flow with no approver on record (the approver's
+ * account was deleted and scheduled_by went NULL): nobody approved what would go live. One whose stage
+ * is itself a published one (stale, never an approval) is skipped and counted. With the flow switched
+ * off since, either goes live at its time like any scheduled post.
  *
  * At very large tenant counts the all-sites sweep becomes the cost centre; a sites-with-due-content
  * index would replace the full loop then (measure-first, ADR-18).
@@ -96,11 +98,13 @@ class PublishDueEntries extends Command
 
         foreach ($due as $entry) {
             try {
-                if ($entry->scheduled_by !== null) {
-                    // Approved for later under a workflow: only the engine puts it live, as its approver.
+                if ($entry->scheduled_by !== null || $entry->workflow_state !== null) {
+                    // Approved for later under a workflow (or at a stage of one, its approver gone): only the
+                    // engine puts it live, as its approver; with the flow switched off since, as any scheduled post.
                     match ($approved->publishDue($entry)) {
                         'published' => $published++,
                         'held' => $held++,
+                        'skipped' => $skipped++,
                         'not_due' => null,
                     };
 

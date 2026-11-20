@@ -94,15 +94,17 @@ final class EntryNotifier
 
     /**
      * «Hủy hẹn giờ» on a post approved for later: the author learns it is back at the stage $step (its
-     * label) to be edited and approved again, or, with $step null (the flow was switched off since), back
-     * to a draft.
+     * label) to be edited and approved again, or, with $step null, back to a draft (the flow was switched
+     * off since, or the status menu sent it there) — or off the website and archived, with $archived.
      */
-    public function unscheduled(Entry $entry, string $locale, User $actor, ?string $step): void
+    public function unscheduled(Entry $entry, string $locale, User $actor, ?string $step, bool $archived = false): void
     {
         $facts = $this->facts($entry, $locale, $actor, null);
-        Notify::user($entry->author_id, 'workflow.scheduled', $step !== null
-            ? [...$facts, 'sentence' => 'cancelled', 'step' => $step]
-            : [...$facts, 'sentence' => 'cancelled_draft'], $actor);
+        Notify::user($entry->author_id, 'workflow.scheduled', match (true) {
+            $step !== null => [...$facts, 'sentence' => 'cancelled', 'step' => $step],
+            $archived => [...$facts, 'sentence' => 'cancelled_archived'],
+            default => [...$facts, 'sentence' => 'cancelled_draft'],
+        }, $actor);
     }
 
     /** A post approved for later went live at its time: its author learns it (nobody made this move). */
@@ -113,7 +115,8 @@ final class EntryNotifier
 
     /**
      * The time came and an approved post could not go live ($why: `right` — the approver may no
-     * longer publish it; `flow` — the post's approval flow changed since): the author and the approver
+     * longer publish it; `flow` — the post's approval flow changed since; `approver` — no approver is on
+     * record any more, their account deleted): the author and the approver
      * both learn it is waiting for review again. Nobody made this move, so nobody is left out.
      */
     public function scheduleFailed(Entry $entry, string $locale, ?int $approverId, string $why): void

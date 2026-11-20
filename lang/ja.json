@@ -3244,6 +3244,8 @@
     "notifications.workflow.scheduled.published": "「:title」は予約した時刻に公開されました。",
     "notifications.workflow.scheduled.cancelled": ":actor さんが「:title」の公開予約を取り消しました — 「:step」の段階に戻りました。",
     "notifications.workflow.scheduled.cancelled_draft": ":actor さんが「:title」の公開予約を取り消しました — 下書きに戻りました。",
+    "notifications.workflow.scheduled.cancelled_archived": ":actor さんが「:title」の公開予約を取り消しました — サイトから外してアーカイブしました。",
+    "notifications.workflow.scheduled.failed_approver": "「:title」は予約した時刻に公開できませんでした：この予約を承認した人がいなくなりました（承認した人のアカウントが削除されたか、承認フローが止まっている間に予約されました）。記事を開いてもう一度確認してください。",
     "notifications.workflow.scheduled.failed_right": "「:title」は予約した時刻に公開できませんでした：承認した人にこの記事を公開する権限がなくなりました。記事を開いてもう一度確認してください。",
     "notifications.workflow.scheduled.failed_flow": "「:title」は予約した時刻に公開できませんでした：記事が承認された後にカテゴリーの承認フローが変わりました。記事を開いてもう一度確認してください。",
     "notifications.lead.new": ":name さんから新しいお問い合わせがあります。",

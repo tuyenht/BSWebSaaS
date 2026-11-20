@@ -3244,6 +3244,8 @@
     "notifications.workflow.scheduled.published": "Bài «:title» đã tự đăng theo giờ hẹn.",
     "notifications.workflow.scheduled.cancelled": ":actor đã hủy hẹn giờ của bài «:title» — bài quay lại bước «:step».",
     "notifications.workflow.scheduled.cancelled_draft": ":actor đã hủy hẹn giờ của bài «:title» — bài quay lại bản nháp.",
+    "notifications.workflow.scheduled.cancelled_archived": ":actor đã hủy hẹn giờ của bài «:title» — bài được gỡ khỏi website và lưu trữ.",
+    "notifications.workflow.scheduled.failed_approver": "Bài «:title» chưa đăng được theo giờ hẹn: không còn người duyệt nào đứng sau giờ hẹn này (tài khoản người duyệt đã bị xoá, hoặc bài được hẹn giờ khi quy trình duyệt đang tắt). Mở bài để duyệt lại.",
     "notifications.workflow.scheduled.failed_right": "Bài «:title» chưa đăng được theo giờ hẹn: người duyệt không còn quyền đăng bài này. Mở bài để duyệt lại.",
     "notifications.workflow.scheduled.failed_flow": "Bài «:title» chưa đăng được theo giờ hẹn: quy trình duyệt của chuyên mục đã đổi sau khi bài được duyệt. Mở bài để duyệt lại.",
     "notifications.lead.new": "Có khách liên hệ mới: :name.",

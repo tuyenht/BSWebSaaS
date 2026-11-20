@@ -8,6 +8,7 @@ use App\Modules\Cms\Actions\ApproveEntryForLater;
 use App\Modules\Cms\Actions\RecordEntryRevision;
 use App\Modules\Cms\Actions\RestoreEntryRevision;
 use App\Modules\Cms\Actions\TransitionEntryStatus;
+use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\RevisionRestoreRejectedException;
 use App\Modules\Cms\Models\Entry;
@@ -88,6 +89,12 @@ function laterNotices(int $site, User $user): array
     return app(Tenancy::class)->enter($site, fn (): array => SiteNotification::query()
         ->where('user_id', $user->id)->where('kind', 'workflow.scheduled')->orderBy('id')
         ->get()->map(fn (SiteNotification $n): string => (string) ($n->data['sentence'] ?? ''))->all());
+}
+
+/** The sweep's one summary line, as entries:publish-due prints it (no failures, no site left over). */
+function laterSweepSays(int $published, int $held, int $skipped = 0): string
+{
+    return "Published {$published} scheduled entr(y/ies), skipped {$skipped} governed by an approval workflow, 0 failed, 0 site(s) left for the next run after a lock conflict. {$held} approved entr(y/ies) held back and waiting for review again.";
 }
 
 /** People on site 1: a writer, and an approver (who may also review). */
@@ -249,7 +256,6 @@ it('keeps the post offline when the flow changes before the time', function (str
         match ($change) {
             'move removed' => $workflow->transitions()->where('key', 'approve')->delete(),
             'move asks a reason' => $workflow->transitions()->where('key', 'approve')->update(['requires_note' => true]),
-            'flow switched off' => $workflow->update(['is_active' => false]),
         };
 
         return $post;
@@ -264,7 +270,41 @@ it('keeps the post offline when the flow changes before the time', function (str
             ->and(SiteRoute::query()->where('entry_id', $post->id)->exists())->toBeFalse();
     });
     expect(laterNotices(1, $author))->toBe(['approved', 'failed_flow']);
-})->with(['move removed', 'move asks a reason', 'flow switched off']);
+})->with(['move removed', 'move asks a reason']);
+
+it('publishes at its time, like any scheduled post, a post approved for later whose flow was switched off since', function (bool $approverGone): void {
+    [$author, $approver] = laterPeople();
+    $categoryId = laterSection();
+    $at = now()->addHour();
+
+    $post = app(Tenancy::class)->enter(1, function () use ($author, $approver, $categoryId, $at): Entry {
+        $post = laterPost($categoryId, $author);
+        app(ApproveEntryForLater::class)->approve($post, 'vi', $approver, 'approve', $at);
+        Workflow::query()->firstOrFail()->update(['is_active' => false]);
+
+        return $post;
+    });
+    if ($approverGone) {
+        DB::connection('pgsql_admin')->table('users')->where('id', $approver->id)->delete();
+    }
+
+    $this->travel(2)->hours();
+    $this->artisan('entries:publish-due')
+        ->expectsOutput(laterSweepSays(published: 1, held: 0))
+        ->assertSuccessful();
+
+    app(Tenancy::class)->enter(1, function () use ($post, $at): void {
+        $fresh = $post->fresh();
+        expect($fresh->status)->toBe('published')
+            ->and($fresh->scheduled_by)->toBeNull()
+            ->and($fresh->workflow_state)->toBeNull()   // a flow switched back on reads it at its published stage
+            ->and($fresh->published_at?->timestamp)->toBe($at->timestamp)   // the approved time, as a scheduled post keeps its slot
+            ->and($fresh->translationFor('vi')?->status)->toBe('published')
+            ->and(SiteRoute::query()->where('entry_id', $post->id)->exists())->toBeTrue();
+    });
+    // the author was told the time, and now that it went live
+    expect(laterNotices(1, $author))->toBe(['approved', 'published']);
+})->with(['approver kept' => false, 'approver deleted' => true]);
 
 it('cancels an approval for later back to waiting, without a stage move, only for someone who could approve it', function (): void {
     [$author, $approver] = laterPeople();
@@ -292,7 +332,7 @@ it('cancels an approval for later back to waiting, without a stage move, only fo
     expect(laterNotices(1, $author))->toBe(['approved', 'cancelled']);
 });
 
-it('never publishes a post whose approver account is gone: the key goes NULL and the sweep skips and counts it', function (): void {
+it('holds back a post whose approver account is gone while the flow is on: back to waiting, its author told, counted', function (): void {
     [$author, $approver] = laterPeople();
     $categoryId = laterSection();
 
@@ -304,14 +344,34 @@ it('never publishes a post whose approver account is gone: the key goes NULL and
     });
     DB::connection('pgsql_admin')->table('users')->where('id', $approver->id)->delete();
 
+    // Before its time it already reads as waiting: back in the inbox of someone who may approve it, no «Hủy hẹn giờ».
+    app(Tenancy::class)->enter(1, function () use ($post): void {
+        expect($post->fresh()->scheduled_by)->toBeNull()
+            ->and($post->fresh()->approvedForLater())->toBeFalse();
+        $other = User::factory()->create();
+        grantRole($other, 'approver', ['entries.review', 'entries.approve']);
+        Livewire::actingAs($other->fresh())->test(ReviewInbox::class)->assertSee('Bản tin hẹn giờ');
+        expect(app(ApproveEntryForLater::class)->mayCancel($post->fresh(), $other->fresh()))->toBeFalse();
+    });
+
     $this->travel(2)->hours();
-    $this->artisan('entries:publish-due')->expectsOutputToContain('skipped 1 governed')->assertSuccessful();
+    $this->artisan('entries:publish-due')
+        ->expectsOutput(laterSweepSays(published: 0, held: 1))
+        ->assertSuccessful();
 
     app(Tenancy::class)->enter(1, function () use ($post): void {
-        expect($post->fresh()->status)->toBe('scheduled')
-            ->and($post->fresh()->scheduled_by)->toBeNull()
+        $fresh = $post->fresh();
+        expect($fresh->status)->toBe('pending')
+            ->and($fresh->workflow_state)->toBe('pending')
+            ->and($fresh->scheduled_by)->toBeNull()
+            ->and($fresh->published_at)->toBeNull()
             ->and(SiteRoute::query()->where('entry_id', $post->id)->exists())->toBeFalse();
     });
+    expect(laterNotices(1, $author))->toBe(['approved', 'failed_approver']);
+
+    // held once: the next minute's run finds nothing due
+    $this->artisan('entries:publish-due')->expectsOutput(laterSweepSays(published: 0, held: 0))->assertSuccessful();
+    expect(laterNotices(1, $author))->toBe(['approved', 'failed_approver']);
 });
 
 it('judges each site on its own: an approval, its rights and its sweep stay inside the post\'s website', function (): void {
@@ -479,4 +539,192 @@ it('keeps a post approved for later as it was approved: no older version restore
         $panel = Livewire::actingAs($editor->fresh())->test(Editor::class, ['ulid' => $post->ulid])->viewData('workflow');
         expect($panel['actions'] ?? null)->toBe([]);
     });
+});
+
+it('sweeps two websites in one run and judges the approver on each: live where they hold the right, held where they do not', function (int $rightsOn): void {
+    $approver = User::factory()->create(['name' => 'Người duyệt']);
+    $categories = [1 => laterSection(1), 2 => laterSection(2)];
+    $posts = [];
+    foreach ([1, 2] as $site) {
+        $writer = User::factory()->create();
+        $posts[$site] = app(Tenancy::class)->enter($site, function () use ($site, $writer, $approver, $categories, $rightsOn): Entry {
+            grantRole($writer, 'author', ['entries.create', 'entries.edit.own', 'entries.submit']);
+            $post = laterPost($categories[$site], $writer->fresh(), 'ban-tin-'.$site);
+            if ($site === $rightsOn) {
+                grantRole($approver, 'approver', ['entries.review', 'entries.approve']);
+                app(ApproveEntryForLater::class)->approve($post, 'vi', $approver->fresh(), 'approve', now()->addHour());
+            } else {
+                // planted as if approved here: the sweep must judge this website's rights, not the other's
+                Entry::query()->whereKey($post->id)->update(['status' => 'scheduled', 'published_at' => now()->addHour(), 'scheduled_by' => $approver->id]);
+            }
+
+            return $post;
+        });
+    }
+
+    $this->travel(2)->hours();
+    $this->artisan('entries:publish-due')
+        ->expectsOutput(laterSweepSays(published: 1, held: 1))
+        ->assertSuccessful();
+
+    $other = 3 - $rightsOn;
+    app(Tenancy::class)->enter($rightsOn, function () use ($posts, $rightsOn): void {
+        expect($posts[$rightsOn]->fresh()->status)->toBe('published')
+            ->and(SiteRoute::query()->where('entry_id', $posts[$rightsOn]->id)->exists())->toBeTrue();
+    });
+    app(Tenancy::class)->enter($other, function () use ($posts, $other): void {
+        expect($posts[$other]->fresh()->status)->toBe('pending')
+            ->and(SiteRoute::query()->where('entry_id', $posts[$other]->id)->exists())->toBeFalse();
+    });
+    expect(laterNotices($other, $approver))->toBe(['failed_right'])
+        ->and(laterNotices($rightsOn, $approver))->toBe([]);
+})->with(['rights on the first website' => 1, 'rights on the second' => 2]);
+
+it('lets a cancel and the sweep meet on one post, and two sweeps on another, without a late or double publication', function (): void {
+    [$author, $approver] = laterPeople();
+    $categoryId = laterSection();
+
+    [$cancelled, $swept] = app(Tenancy::class)->enter(1, function () use ($author, $approver, $categoryId): array {
+        $cancelled = laterPost($categoryId, $author, 'huy');
+        $swept = laterPost($categoryId, $author, 'quet');
+        app(ApproveEntryForLater::class)->approve($cancelled, 'vi', $approver, 'approve', now()->addHour());
+        app(ApproveEntryForLater::class)->approve($swept, 'vi', $approver, 'approve', now()->addHour());
+
+        return [$cancelled, $swept];
+    });
+    $this->travel(2)->hours();
+
+    app(Tenancy::class)->enter(1, function () use ($cancelled, $swept, $approver): void {
+        $later = app(ApproveEntryForLater::class);
+        // Both rows read as due, as the sweep reads them; then «Hủy hẹn giờ» lands on one before the sweep gets to it.
+        $staleCancelled = Entry::query()->findOrFail($cancelled->id);
+        $firstRead = Entry::query()->findOrFail($swept->id);
+        $secondRead = Entry::query()->findOrFail($swept->id);
+        expect(app(TransitionEntryStatus::class)->unschedule($cancelled->fresh(), $approver))->toBeTrue()
+            ->and($later->publishDue($staleCancelled))->toBe('not_due');
+        expect($cancelled->fresh()->status)->toBe('pending')
+            ->and(SiteRoute::query()->where('entry_id', $cancelled->id)->exists())->toBeFalse();
+
+        // Two sweeps that read the same due row: the first puts it live, the second writes nothing.
+        $logBefore = WorkflowLog::query()->where('entry_id', $swept->id)->count();
+        expect($later->publishDue($firstRead))->toBe('published')
+            ->and($later->publishDue($secondRead))->toBe('not_due')
+            ->and(WorkflowLog::query()->where('entry_id', $swept->id)->count())->toBe($logBefore + 1)
+            ->and(SiteRoute::query()->where('entry_id', $swept->id)->count())->toBe(1)
+            // and a cancel that comes after it went live leaves it live
+            ->and($later->cancel($swept->fresh(), $approver))->toBeFalse()
+            ->and($swept->fresh()->status)->toBe('published');
+    });
+
+    $this->artisan('entries:publish-due')
+        ->expectsOutput(laterSweepSays(published: 0, held: 0))
+        ->assertSuccessful();
+    expect(laterNotices(1, $author))->toBe(['approved', 'approved', 'cancelled', 'published']);
+});
+
+it('takes back an approval for later the «Hủy hẹn giờ» way when the status menu sends the post to a draft, its flow switched off since', function (): void {
+    [$author, $approver] = laterPeople();
+    $publisher = User::factory()->create(['name' => 'Biên tập']);
+    $categoryId = laterSection();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $approver, $publisher, $categoryId): void {
+        grantRole($publisher, 'publisher', ['entries.view', 'entries.edit.any', 'entries.publish']);
+        $one = laterPost($categoryId, $author, 'mot');
+        $two = laterPost($categoryId, $author, 'hai');
+        $three = laterPost($categoryId, $author, 'ba');
+        $four = laterPost($categoryId, $author, 'bon');
+        foreach ([$one, $two, $three, $four] as $post) {
+            app(ApproveEntryForLater::class)->approve($post, 'vi', $approver, 'approve', now()->addDay());
+        }
+        Workflow::query()->firstOrFail()->update(['is_active' => false]);
+        $publisher = $publisher->fresh();
+
+        // the writer may not take it back by this road either
+        expect(fn () => app(TransitionEntryStatus::class)->handle($one->fresh(), EntryStatus::Draft, $author->fresh()))
+            ->toThrow(AuthorizationException::class);
+        expect($one->fresh()->approvedForLater())->toBeTrue();
+
+        Livewire::actingAs($publisher)->test(Index::class, ['section' => 'posts'])
+            ->call('changeStatus', (string) $one->ulid, 'draft')
+            ->assertDispatched('bs-toast', fn (string $name, array $params): bool => $params['text'] === __('entries.status_changed'));
+        Livewire::actingAs($publisher)->test(Index::class, ['section' => 'posts'])
+            ->set('selected', [(string) $two->ulid])
+            ->call('bulkDraft');
+        foreach ([$one, $two] as $post) {
+            $fresh = $post->fresh();
+            expect($fresh->status)->toBe('draft')
+                ->and($fresh->scheduled_by)->toBeNull()
+                ->and($fresh->published_at)->toBeNull()
+                ->and($fresh->workflow_state)->toBeNull();
+        }
+
+        // a new time from the status menu is the publisher's own schedule: no approval stands behind it
+        app(TransitionEntryStatus::class)->handle($three->fresh(), EntryStatus::Scheduled, $publisher, now()->addDays(2));
+        expect($three->fresh()->status)->toBe('scheduled')
+            ->and($three->fresh()->scheduled_by)->toBeNull()
+            ->and($three->fresh()->workflow_state)->toBeNull();
+
+        // «Gỡ khỏi website» from the editor's status pick: cancelled first, then archived, and the notice says so
+        app(TransitionEntryStatus::class)->handle($four->fresh(), EntryStatus::Archived, $publisher);
+        expect($four->fresh()->status)->toBe('archived')
+            ->and($four->fresh()->scheduled_by)->toBeNull()
+            ->and($four->fresh()->published_at)->toBeNull();
+    });
+    expect(laterNotices(1, $author))->toBe(['approved', 'approved', 'approved', 'approved', 'cancelled_draft', 'cancelled_draft', 'cancelled_archived']);
+});
+
+it('asks the «Hủy hẹn giờ» right of a status-menu draft move on a post approved for later under its flow', function (): void {
+    [$author, $approver] = laterPeople();
+    $publisher = User::factory()->create(['name' => 'Xuất bản']);
+    $chief = User::factory()->create(['name' => 'Tổng biên tập']);
+    $categoryId = laterSection();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $approver, $publisher, $chief, $categoryId): void {
+        // may publish outside a flow, may not approve inside it
+        grantRole($publisher, 'publisher', ['entries.view', 'entries.edit.any', 'entries.publish']);
+        grantRole($chief, 'chief', ['entries.view', 'entries.edit.any', 'entries.publish', 'entries.review', 'entries.approve']);
+        $post = laterPost($categoryId, $author);
+        app(ApproveEntryForLater::class)->approve($post, 'vi', $approver, 'approve', now()->addDay());
+
+        expect(fn () => app(TransitionEntryStatus::class)->handle($post->fresh(), EntryStatus::Draft, $publisher->fresh()))
+            ->toThrow(AuthorizationException::class);
+        expect($post->fresh()->approvedForLater())->toBeTrue()
+            ->and($post->fresh()->published_at)->not->toBeNull();
+
+        app(TransitionEntryStatus::class)->handle($post->fresh(), EntryStatus::Draft, $chief->fresh());
+        $fresh = $post->fresh();
+        expect($fresh->status)->toBe('draft')
+            ->and($fresh->scheduled_by)->toBeNull()
+            ->and($fresh->published_at)->toBeNull()
+            ->and($fresh->workflow_state)->toBeNull();
+    });
+    // it ends as a draft, and the author is told that, not that it waits at «Chờ duyệt»
+    expect(laterNotices(1, $author))->toBe(['approved', 'cancelled_draft']);
+});
+
+it('holds a governed post scheduled with no approver back at its waiting stage, and leaves one whose stale stage is a published one', function (): void {
+    [$author] = laterPeople();
+    $categoryId = laterSection();
+
+    [$waiting, $stale] = app(Tenancy::class)->enter(1, function () use ($author, $categoryId): array {
+        $waiting = laterPost($categoryId, $author, 'cho');
+        $stale = laterPost($categoryId, $author, 'cu');
+        // as rows scheduled from the status menu while the flow was off, before that cleared the stage
+        Entry::query()->whereKey($waiting->id)->update(['status' => 'scheduled', 'published_at' => now()->addHour(), 'workflow_state' => 'pending']);
+        Entry::query()->whereKey($stale->id)->update(['status' => 'scheduled', 'published_at' => now()->addHour(), 'workflow_state' => 'published']);
+
+        return [$waiting, $stale];
+    });
+
+    $this->travel(2)->hours();
+    $this->artisan('entries:publish-due')->expectsOutput(laterSweepSays(published: 0, held: 1, skipped: 1))->assertSuccessful();
+
+    app(Tenancy::class)->enter(1, function () use ($waiting, $stale): void {
+        expect($waiting->fresh()->status)->toBe('pending')
+            ->and($waiting->fresh()->workflow_state)->toBe('pending')
+            ->and($stale->fresh()->status)->toBe('scheduled')
+            ->and($stale->fresh()->workflow_state)->toBe('published')
+            ->and(SiteRoute::query()->whereIn('entry_id', [$waiting->id, $stale->id])->exists())->toBeFalse();
+    });
+    expect(laterNotices(1, $author))->toBe(['failed_approver']);
 });

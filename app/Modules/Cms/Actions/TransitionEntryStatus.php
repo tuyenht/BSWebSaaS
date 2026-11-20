@@ -178,10 +178,21 @@ final readonly class TransitionEntryStatus
             }
 
             $from = $entry->status;
-            $entry->update(['status' => EntryStatus::Scheduled->value, 'published_at' => $publishAt]);
+            // a new time set here is this member's own schedule: an approval for later (its flow since
+            // switched off) no longer stands behind it, nor a stage of that flow
+            $entry->update(['status' => EntryStatus::Scheduled->value, 'published_at' => $publishAt, 'scheduled_by' => null, 'workflow_state' => null]);
             EntryStatusAudit::record($entry, $from, EntryStatus::Scheduled->value, 'status-menu', $actor, ['publish_at' => $publishAt->format(DATE_ATOM)]);
 
             return;
+        }
+
+        // A post approved for later is taken back the «Hủy hẹn giờ» way first, as unschedule() does: the same
+        // right, its author told (of the status it ends at), its time cleared. Then the move asked for.
+        if ($entry->scheduled_by !== null) {
+            $this->later->cancel($entry, $actor, $target);
+            if ($entry->status === $target->value) {
+                return;
+            }
         }
 
         $from = $entry->status;

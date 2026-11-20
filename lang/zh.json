@@ -3244,6 +3244,8 @@
     "notifications.workflow.scheduled.published": "《:title》已按定时发布。",
     "notifications.workflow.scheduled.cancelled": ":actor 取消了《:title》的定时发布 — 文章回到“:step”步骤。",
     "notifications.workflow.scheduled.cancelled_draft": ":actor 取消了《:title》的定时发布 — 文章回到草稿。",
+    "notifications.workflow.scheduled.cancelled_archived": ":actor 取消了《:title》的定时发布 — 文章已从网站撤下并归档。",
+    "notifications.workflow.scheduled.failed_approver": "《:title》未能按定时发布：这个定时已没有批准人（批准人的账号已被删除，或文章是在审核流程关闭期间定时的）。请打开文章重新审核。",
     "notifications.workflow.scheduled.failed_right": "《:title》未能按定时发布：批准人已没有发布这篇文章的权限。请打开文章重新审核。",
     "notifications.workflow.scheduled.failed_flow": "《:title》未能按定时发布：文章批准后，栏目的审核流程已更改。请打开文章重新审核。",
     "notifications.lead.new": "新的客户咨询：:name。",

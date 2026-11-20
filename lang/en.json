@@ -3244,6 +3244,8 @@
     "notifications.workflow.scheduled.published": "«:title» went live at its scheduled time.",
     "notifications.workflow.scheduled.cancelled": ":actor cancelled the schedule of «:title» — it is back at the «:step» step.",
     "notifications.workflow.scheduled.cancelled_draft": ":actor cancelled the schedule of «:title» — it is a draft again.",
+    "notifications.workflow.scheduled.cancelled_archived": ":actor cancelled the schedule of «:title» — it is off the website and archived.",
+    "notifications.workflow.scheduled.failed_approver": "«:title» could not go live at its scheduled time: no approver stands behind that time any more (the approver's account was deleted, or it was scheduled while the approval flow was off). Open the post to review it again.",
     "notifications.workflow.scheduled.failed_right": "«:title» could not go live at its scheduled time: the approver may no longer publish it. Open the post to review it again.",
     "notifications.workflow.scheduled.failed_flow": "«:title» could not go live at its scheduled time: the section's approval flow changed after the post was approved. Open the post to review it again.",
     "notifications.lead.new": "New enquiry from :name.",
