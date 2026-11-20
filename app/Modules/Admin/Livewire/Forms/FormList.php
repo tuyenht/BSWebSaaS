@@ -101,11 +101,11 @@ final class FormList extends Component
      */
     public function askDelete(string $ulid): void
     {
-        app(SupportSession::class)->forbid();
         $form = $this->writable($ulid, 'delete');
         if ($form === null) {
             return;
         }
+        app(SupportSession::class)->forbid();
         $this->deleting = [
             'ulid' => $form->ulid,
             'name' => $this->nameOf($form),
@@ -118,9 +118,9 @@ final class FormList extends Component
     /** The dialog's red button: the form, its fields and its leads go for good (no Trash, no undo). */
     public function confirmDelete(): void
     {
+        app(SupportSession::class)->forbid();
         $asked = $this->deleting;
         $this->cancelDelete();
-        app(SupportSession::class)->forbid();
         $form = $asked === null ? null : $this->writable($asked['ulid'], 'delete');
         if ($asked === null || $form === null) {
             return;
