@@ -121,14 +121,14 @@ it('turns a typed address into a plain Vietnamese one and says nothing changed w
     });
 });
 
-it('refuses an empty address, one with no letter or digit in it, and keeps the typed text', function (): void {
+it('refuses an address with no letter or digit in it and keeps the typed text', function (): void {
     $manager = qeManager();
 
     app(Tenancy::class)->enter(1, function () use ($manager): void {
         $product = qeProduct();
         $test = Livewire::actingAs($manager)->test(Index::class);
 
-        foreach (['', '   ', '---', '!!!'] as $typed) {
+        foreach (['---', '!!!'] as $typed) {
             $test->call('saveSlug', $product->ulid, $typed)
                 ->assertReturned(fn (array $r): bool => $r['ok'] === false && $r['keep'] === true && $r['error'] === __('catalog.slug_invalid'));
         }

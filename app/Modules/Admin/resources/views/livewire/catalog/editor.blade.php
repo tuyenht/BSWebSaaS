@@ -113,7 +113,7 @@
                             {{-- the address before the slug sits inside the field, as the board draws it; a long one wraps --}}
                             <div class="flex min-w-0 flex-wrap items-center rounded-md border border-border-input bg-surface-muted px-3 focus-within:border-primary-text has-aria-invalid:border-danger-text">
                                 <span class="min-w-0 max-w-full pe-0.5 font-mono text-small leading-snug text-text-muted [overflow-wrap:anywhere]" dir="ltr">{{ $address['base'] }}</span>
-                                <input type="text" id="catalog-slug" wire:model="slug" @readonly(! $canEdit) dir="ltr" spellcheck="false" autocomplete="off"
+                                <input type="text" id="catalog-slug" wire:model.live.blur="slug" @readonly(! $canEdit) dir="ltr" spellcheck="false" autocomplete="off"
                                        aria-describedby="catalog-slug-h @error('slug') catalog-slug-e @enderror" @error('slug') aria-invalid="true" @enderror
                                        class="field min-w-0 flex-1 border-0 bg-transparent px-1 font-mono text-text">
                             </div>

@@ -130,7 +130,7 @@ it('refuses a new product to a member who may only see products, and writes noth
 
         Livewire::actingAs($viewer->fresh())->test(Editor::class)
             ->assertSet('screen', 'noperm')
-            ->set('name', 'Lén')->set('slug', 'len')
+            ->set('name', 'Lén')
             ->call('save')->assertForbidden();
 
         expect(Product::query()->count())->toBe(0);
@@ -773,8 +773,8 @@ it('drops the address it made from the name when the save loses a SKU race', fun
 
         Livewire::actingAs($editor->fresh())
             ->test(Editor::class)
-            ->set('name', 'Đồ gá hàn khung')
             ->set('slug', '')
+            ->set('name', 'Đồ gá hàn khung')
             ->set('sku', 'RACE-2')
             ->call('save')
             ->assertHasErrors(['sku' => __('catalog.sku_taken')])

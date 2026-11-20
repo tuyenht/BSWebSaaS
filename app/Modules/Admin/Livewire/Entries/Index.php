@@ -36,6 +36,7 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Support\BlankEntrySlug;
 use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
@@ -972,6 +973,10 @@ final class Index extends Component
             return;
         }
 
+        // An emptied field is made again from the title of this language, as a new item gets its link.
+        if (trim($value) === '') {
+            $value = app(BlankEntrySlug::class)->make($entry, $locale, (string) $translation->title);
+        }
         $slug = Slugger::make($value, $locale, PHP_INT_MAX);
         if ($slug === '') {
             $this->fieldError(Cast::string(__('entries.slug_untranslatable')));

@@ -246,3 +246,10 @@
 - **Hậu kiểm:** dpkg còn 0/38 gói; `convert`/`compare`/`identify` biến mất; docker daemon + prod containers Up/healthy; `/`→200, `/lien-he`→200, `/admin`→302, `/admin/login`→200; app/horizon 0 lỗi.
 - **38 gói:** `fonts-droid-fallback`, `fonts-noto-mono`, `fonts-urw-base35`, `ghostscript`, `imagemagick`, `imagemagick-6-common`, `imagemagick-6.q16`, `libdjvulibre-text`, `libdjvulibre21`, `libfftw3-double3`, `libfontenc1`, `libgs-common`, `libgs10`, `libgs10-common`, `libidn12`, `libijs-0.35`, `libimath-3-1-29t64`, `libjbig2dec0`, `libjxr-tools`, `libjxr0t64`, `liblqr-1-0`, `libltdl7`, `libmagickcore-6.q16-7-extra`, `libmagickcore-6.q16-7t64`, `libmagickwand-6.q16-7t64`, `libnetpbm11t64`, `libopenexr-3-1-30`, `libopenjp2-7`, `libpaper-utils`, `libpaper1`, `libraw23t64`, `libwebpdemux2`, `libwebpmux3`, `libwmflite-0.2-7`, `netpbm`, `poppler-data`, `xfonts-encodings`, `xfonts-utils`.
 - **Rút ra → `CLAUDE.md` §7 (Host safety):** không cài/gỡ gói hệ thống trên host chung khi chưa được owner duyệt; công cụ đo phải nằm trong repo hoặc container.
+
+## 2026-11-20 23:0x (+07) — cài `ffmpeg` trên host (anh Tuyền duyệt)
+
+- **Lệnh:** `apt-get install -y ffmpeg` (bản 6.1.1-3ubuntu5, Ubuntu noble).
+- **Duyệt:** anh Tuyền nhắn 20/11 trong phiên: «nếu cần thiết thì cho phép máy chủ cài ffmpeg».
+- **Lý do:** trích khung hình từ video quay màn hình admin của anh (.mp4 H.264) để tìm lỗi chuyển trang chậm. Bản ffmpeg kèm Playwright là bản rút gọn, không mở được mp4.
+- **Gỡ:** `apt-get remove -y ffmpeg`, rồi xem `apt-get -s autoremove` trước khi dọn các thư viện đi kèm.

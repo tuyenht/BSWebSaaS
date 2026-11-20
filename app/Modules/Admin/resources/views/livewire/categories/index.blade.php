@@ -351,7 +351,7 @@
                     <div class="flex min-w-0 items-stretch overflow-hidden rounded border border-border-input bg-surface-muted focus-ring-within">
                         <span class="flex min-w-0 max-w-[50%] items-center border-r border-border-input px-2 font-mono text-caption text-text-muted [overflow-wrap:anywhere]" x-text="(@js($bases)[cur] || '')" x-bind:title="(@js($bases)[cur] || '')"></span>
                         <input id="cm-slug" type="text" dir="ltr" inputmode="url" autocapitalize="off" spellcheck="false" maxlength="{{ $screen['limits']['slug'] }}" placeholder="tin-cong-ty"
-                            x-model="fSlug" aria-describedby="cm-slug-m" x-bind:aria-invalid="pan && slugBad ? 'true' : null"
+                            x-model="fSlug" x-on:blur="slugBlur()" aria-describedby="cm-slug-m" x-bind:aria-invalid="pan && slugBad ? 'true' : null"
                             class="field min-w-0 flex-1 border-0 bg-transparent px-2 font-mono" />
                     </div>
                     <p id="cm-slug-m" x-show="pan && slugBad" role="alert" class="text-small text-danger-text">{{ __('categories.reason_slug_invalid') }}</p>

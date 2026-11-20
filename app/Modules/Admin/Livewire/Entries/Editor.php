@@ -997,6 +997,9 @@ final class Editor extends Component
         $this->resetErrorBag('slug');
         if ($this->fillBlankSlug()) {
             $this->dispatch('bs-toast', text: Cast::string(__('entries.ed.slug_auto', ['slug' => $this->slug])));
+        } elseif (trim($this->title) !== '') {
+            // the title itself cannot give a link: the person types one, and is told why it is blank
+            $this->addError('slug', __('entries.slug_untranslatable'));
         }
     }
 

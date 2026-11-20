@@ -5607,6 +5607,7 @@
     "catalog.ed.summary_old_html": "旧摘要带有格式（粗体、段落等）。此字段只显示文字。不修改此字段直接保存，旧摘要会原样保留；如修改，新摘要将为纯文字。",
     "catalog.ed.summary_too_long": "摘要最多 :max 个字符 — 请缩短。",
     "catalog.ed.slug_moves": "此商品已发布。保存后，旧地址 :old 会自动转到新地址 — 访客和 Google 都不会迷路。",
+    "catalog.ed.slug_auto": "已根据商品名称自动生成地址：:slug",
     "catalog.ed.card_desc": "描述",
     "catalog.ed.chip_published": "已发布",
     "catalog.ed.chip_draft": "草稿",
