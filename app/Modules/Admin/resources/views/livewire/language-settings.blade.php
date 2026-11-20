@@ -6,7 +6,7 @@
     @endphp
 
     {{-- What the three columns mean, with the plan's limit and today's counts. --}}
-    <div class="flex items-start gap-2.5 rounded-lg border border-admin-primary/20 bg-admin-primary/5 px-3.5 py-3 text-[calc(0.78125rem+var(--user-text-boost))] leading-[1.55] text-text" data-lng-legend>
+    <div class="flex items-start gap-2.5 rounded-lg border border-primary/20 bg-primary/5 px-3.5 py-3 text-[calc(0.78125rem+var(--user-text-boost))] leading-[1.55] text-text" data-lng-legend>
         <x-bs-admin::icon name="ri-information" class="mt-px shrink-0 text-primary-text {{ $glyph }}" />
         <span class="min-w-0"><b>{{ __('admin.lng.plan', ['max' => $max, 'on' => $enabledN, 'pub' => $publicN]) }}</b>
             <b>{{ __('admin.lng.col_on') }}</b> {{ __('admin.lng.legend_on') }} · <b>{{ __('admin.lng.col_pub') }}</b> {{ __('admin.lng.legend_pub') }} · <b>{{ __('admin.lng.col_def') }}</b> {{ __('admin.lng.legend_def') }}</span>
@@ -14,7 +14,7 @@
 
     {{-- Every language the plan allows is on: the ones left are locked, and this says where to get more. --}}
     @if ($limited)
-        <div data-lng-limit role="status" aria-live="polite" x-data @lng-limit.window="$nextTick(() => $el.querySelector('a, button')?.focus())" @class([
+        <div data-lng-limit x-data @lng-limit.window="$nextTick(() => $el.querySelector('a, button')?.focus())" @class([
             'flex flex-wrap items-center gap-x-3.5 gap-y-2.5 rounded-md border px-3.5 py-3',
             'border-warning-base/45 bg-warning-soft' => $upsell,
             'border-border bg-surface-muted' => ! $upsell,
@@ -39,7 +39,7 @@
     @endif
 
     <div class="@container overflow-hidden rounded-[9px] border border-border bg-surface">
-        <div class="grid grid-cols-[minmax(150px,1fr)_repeat(3,96px)] items-center gap-x-2 gap-y-2.5 border-b border-border bg-surface-hover px-3.5 py-[11px] text-[calc(0.75rem+var(--user-text-boost))] font-semibold text-text-muted @max-[520px]:hidden" aria-hidden="true">
+        <div class="grid grid-cols-[minmax(150px,1fr)_repeat(3,96px)] items-center gap-x-2 gap-y-2.5 border-b border-border bg-surface-hover px-3.5 py-[11px] text-[calc(0.75rem+var(--user-text-boost))] font-semibold text-text-muted @max-[32.5rem]:hidden" aria-hidden="true">
             <span class="min-w-0 truncate">{{ __('admin.lng.col_lang') }}</span>
             <span class="whitespace-nowrap text-center" title="{{ __('admin.lng.col_on_tip') }}">{{ __('admin.lng.col_on') }}</span>
             <span class="whitespace-nowrap text-center" title="{{ __('admin.lng.col_pub_tip') }}">{{ __('admin.lng.col_pub') }}</span>
@@ -62,13 +62,13 @@
                     $starTip = $r['def'] ? __('admin.lng.star_def') : __('admin.lng.star', ['name' => $r['name']]);
                 @endphp
                 <li wire:key="lng-{{ $r['code'] }}" data-lng-row="{{ $r['code'] }}" @class([
-                    'grid grid-cols-[minmax(150px,1fr)_repeat(3,96px)] items-center gap-x-2 gap-y-2.5 border-b border-border px-3.5 py-[13px] last:border-b-0 hover:bg-admin-primary/8 @max-[520px]:grid-cols-3!',
-                    'bg-admin-primary/4' => $r['def'],
+                    'grid grid-cols-[minmax(150px,1fr)_repeat(3,96px)] items-center gap-x-2 gap-y-2.5 border-b border-border px-3.5 py-[13px] last:border-b-0 hover:bg-primary/8 @max-[32.5rem]:grid-cols-3!',
+                    'bg-primary/4' => $r['def'],
                 ])>
-                    <div class="flex min-w-0 flex-col gap-0.5 @max-[520px]:col-span-3">
+                    <div class="flex min-w-0 flex-col gap-0.5 @max-[32.5rem]:col-span-3">
                         <span class="flex min-w-0 flex-wrap items-center gap-2">
-                            <span @class(['min-w-0 text-[calc(0.84375rem+var(--user-text-boost))] [overflow-wrap:anywhere]', 'font-semibold text-heading' => $r['on'], 'font-medium text-text-muted' => ! $r['on']])>{{ $r['name'] }}</span>
-                            <span @class(['inline-flex h-[19px] min-w-[26px] shrink-0 items-center justify-center rounded-[3px] px-[5px] text-[calc(0.75rem+var(--user-text-boost))] font-bold', 'bg-admin-primary/12 text-primary-text' => $r['on'], 'bg-surface-hover text-text-muted' => ! $r['on']])>{{ strtoupper($r['code']) }}</span>
+                            <span @class(['min-w-0 text-[calc(0.84375rem+var(--user-text-boost))] [overflow-wrap:anywhere]', 'font-semibold text-text-strong' => $r['on'], 'font-medium text-text-muted' => ! $r['on']])>{{ $r['name'] }}</span>
+                            <span @class(['inline-flex h-[19px] min-w-[26px] shrink-0 items-center justify-center rounded-[3px] px-[5px] text-[calc(0.75rem+var(--user-text-boost))] font-bold', 'bg-primary/12 text-primary-text' => $r['on'], 'bg-surface-hover text-text-muted' => ! $r['on']])>{{ strtoupper($r['code']) }}</span>
                             @if ($r['def'])
                                 <span title="{{ __('admin.lng.star_def') }}" class="inline-flex text-warning-text"><x-bs-admin::icon name="ri-star-fill" class="size-[min(1.5rem,calc(0.75rem+var(--user-text-boost)))]" /></span>
                             @endif
@@ -85,8 +85,8 @@
                     </div>
 
                     {{-- Đang soạn --}}
-                    <span class="flex items-center justify-center @max-[520px]:min-h-11 @max-[520px]:flex-col @max-[520px]:gap-1.5">
-                        <span class="hidden text-[calc(0.75rem+var(--user-text-boost))] font-semibold uppercase tracking-[0.02em] text-text-muted @max-[520px]:block" aria-hidden="true">{{ __('admin.lng.col_on') }}</span>
+                    <span class="flex items-center justify-center @max-[32.5rem]:min-h-11 @max-[32.5rem]:flex-col @max-[32.5rem]:gap-1.5">
+                        <span class="hidden text-[calc(0.75rem+var(--user-text-boost))] font-semibold uppercase tracking-[0.02em] text-text-muted @max-[32.5rem]:block" aria-hidden="true">{{ __('admin.lng.col_on') }}</span>
                         @if ($r['def'])
                             <span title="{{ $onTip }}" class="inline-flex items-center gap-1 whitespace-nowrap text-[calc(0.75rem+var(--user-text-boost))] font-semibold text-success-text"><x-bs-admin::icon name="ri-checkbox-circle" class="size-3.5" />{{ __('admin.lng.always_on') }}</span>
                         @elseif ($r['lock'])
@@ -101,8 +101,8 @@
                     </span>
 
                     {{-- Khách thấy --}}
-                    <span class="flex items-center justify-center @max-[520px]:min-h-11 @max-[520px]:flex-col @max-[520px]:gap-1.5">
-                        <span class="hidden text-[calc(0.75rem+var(--user-text-boost))] font-semibold uppercase tracking-[0.02em] text-text-muted @max-[520px]:block" aria-hidden="true">{{ __('admin.lng.col_pub') }}</span>
+                    <span class="flex items-center justify-center @max-[32.5rem]:min-h-11 @max-[32.5rem]:flex-col @max-[32.5rem]:gap-1.5">
+                        <span class="hidden text-[calc(0.75rem+var(--user-text-boost))] font-semibold uppercase tracking-[0.02em] text-text-muted @max-[32.5rem]:block" aria-hidden="true">{{ __('admin.lng.col_pub') }}</span>
                         @if ($r['def'])
                             <span title="{{ $pubTip }}" class="inline-flex items-center gap-1 whitespace-nowrap text-[calc(0.75rem+var(--user-text-boost))] font-semibold text-success-text"><x-bs-admin::icon name="ri-eye" class="size-3.5" />{{ __('admin.lng.always_pub') }}</span>
                         @elseif ($r['lock'])
@@ -114,8 +114,8 @@
                     </span>
 
                     {{-- Mặc định --}}
-                    <div class="flex flex-col items-center justify-center @max-[520px]:min-h-11 @max-[520px]:gap-1.5">
-                        <span class="hidden text-[calc(0.75rem+var(--user-text-boost))] font-semibold uppercase tracking-[0.02em] text-text-muted @max-[520px]:block" aria-hidden="true">{{ __('admin.lng.col_def') }}</span>
+                    <div class="flex flex-col items-center justify-center @max-[32.5rem]:min-h-11 @max-[32.5rem]:gap-1.5">
+                        <span class="hidden text-[calc(0.75rem+var(--user-text-boost))] font-semibold uppercase tracking-[0.02em] text-text-muted @max-[32.5rem]:block" aria-hidden="true">{{ __('admin.lng.col_def') }}</span>
                         <button type="button" wire:click="chooseDefault('{{ $r['code'] }}')" title="{{ $starTip }}" aria-label="{{ $starTip }}"
                                 @if ($r['def']) aria-disabled="true" @endif
                                 @class([
