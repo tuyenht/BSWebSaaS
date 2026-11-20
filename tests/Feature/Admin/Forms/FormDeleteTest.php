@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Livewire\Forms\FormList;
 use App\Modules\Forms\Actions\DeleteForm;
+use App\Modules\Forms\Actions\SetFormStatus;
 use App\Modules\Forms\Jobs\DeleteLargeForm;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
@@ -10,6 +11,7 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -388,7 +390,7 @@ it('switches a form with more leads than one request deletes to deleting, hides 
     // audited at once, with the count the member agreed to
     $audit = DB::connection('pgsql_admin')->table('audit_logs')->where('action', 'forms.form.deleted')->orderByDesc('id')->first();
     expect(formDeleteAudits())->toBe(1)
-        ->and(json_decode((string) $audit?->meta, true))->toEqual(['key' => 'bao-gia', 'leads' => 2, 'in_batches' => true]);
+        ->and(json_decode((string) $audit?->meta, true))->toEqual(['key' => 'bao-gia', 'leads' => 2, 'leads_over_cap' => false, 'in_batches' => true]);
 
     // exactly at the limit a form still goes inside the request
     $small = deletableForm(1, 'nho', 'Nhỏ', leads: 2);
@@ -464,7 +466,7 @@ it('deletes a large form\'s leads in batches, each in its own site transaction, 
 
     expect($done)->toBeTrue()
         ->and($deletes)->toBe(['1', '1', '1']) // 5 leads, 2 at a time
-        ->and($contexts)->toBe(5) // three batches, the empty read that ends them, the row delete
+        ->and($contexts)->toBe(6) // the progress mark, three batches, the empty read that ends them, the row delete
         ->and(formRowsLeft($form))->toBe(['forms' => 0, 'fields' => 0, 'leads' => 0])
         ->and(formRowsLeft($kept))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 1])
         ->and(formRowsLeft($theirs))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 1])
@@ -510,6 +512,67 @@ it('switches a form whose delete ran out of tries back to off, with the leads th
     (new DeleteLargeForm(1, $form->id))->failed(new RuntimeException('gave up'));
 
     expect(DB::connection('pgsql_admin')->table('forms')->where('id', $form->id)->value('status'))->toBe('disabled')
-        ->and(formRowsLeft($form))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 2]);
+        ->and(formRowsLeft($form))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 2])
+        ->and(DB::connection('pgsql_admin')->table('audit_logs')->where('action', 'forms.form.delete_failed')->where('auditable_id', $form->id)->count())->toBe(1);
     app(Tenancy::class)->enter(1, fn () => expect(Form::query()->whereKey($form->id)->exists())->toBeTrue());
+});
+
+it('starts a fresh run from the cursor it was handed, ties by id, and sweeps again for leads below it', function (): void {
+    config(['forms.delete_batch_leads' => 1]);
+    $form = deletableForm(1, 'bao-gia', 'Yêu cầu báo giá', leads: 5, status: Form::DELETING);
+    $admin = DB::connection('pgsql_admin');
+    $ids = $admin->table('form_submissions')->where('form_id', $form->id)->orderBy('id')->pluck('id')->map(fn ($id): int => (int) $id)->all();
+    // the second and third lead share a time: only the id tells them apart
+    foreach (['2026-11-01 08:00:00.100000+00', '2026-11-01 08:00:00.200000+00', '2026-11-01 08:00:00.200000+00', '2026-11-01 08:00:01+00', '2026-11-01 08:00:02+00'] as $i => $at) {
+        $admin->table('form_submissions')->where('id', $ids[$i])->update(['created_at' => $at]);
+    }
+    // the cursor as a run hands it over: the second lead's created_at as Postgres gives it back, and its id
+    $cursor = (string) $admin->table('form_submissions')->where('id', $ids[1])->value('created_at');
+
+    $deleted = [];
+    DB::listen(function ($query) use (&$deleted): void {
+        if (str_starts_with($query->sql, 'delete from "form_submissions"')) {
+            $deleted = [...$deleted, ...array_map('intval', array_slice($query->bindings, 1, -1))];
+        }
+    });
+    expect((new DeleteLargeForm(1, $form->id, $cursor, $ids[1]))->handle(app(Tenancy::class)))->toBeTrue()
+        // after the cursor first (the third lead, same time, higher id, included); then more than one batch
+        // is still there, below the cursor, so a second sweep from the start takes them
+        ->and($deleted)->toBe([$ids[2], $ids[3], $ids[4], $ids[0], $ids[1]])
+        ->and(formRowsLeft($form))->toBe(['forms' => 0, 'fields' => 0, 'leads' => 0]);
+});
+
+it('leaves a form being deleted as it is when a switch that loaded it before lands after', function (): void {
+    $form = deletableForm(1, 'bao-gia', 'Yêu cầu báo giá', leads: 2);
+    $stale = app(Tenancy::class)->enter(1, fn (): Form => Form::query()->findOrFail($form->id));   // read while it was on
+    DB::connection('pgsql_admin')->table('forms')->where('id', $form->id)->update(['status' => Form::DELETING]);
+
+    app(Tenancy::class)->enter(1, fn () => app(SetFormStatus::class)->handle($stale, false));
+
+    expect(DB::connection('pgsql_admin')->table('forms')->where('id', $form->id)->value('status'))->toBe(Form::DELETING)
+        ->and(DB::connection('pgsql_admin')->table('audit_logs')->where('action', 'forms.form.status')->count())->toBe(0);
+});
+
+it('queues again only the deletes left without progress, with `forms:resume-deletes`', function (): void {
+    Queue::fake();
+    $stuck = deletableForm(1, 'bao-gia', 'Yêu cầu báo giá', leads: 1, status: Form::DELETING);
+    $running = deletableForm(1, 'tu-van', 'Đăng ký tư vấn', leads: 1, status: Form::DELETING);
+    $off = deletableForm(2, 'bao-gia', 'Báo giá B', leads: 1, status: 'disabled');
+    $admin = DB::connection('pgsql_admin');
+    $admin->table('forms')->whereIn('id', [$stuck->id, $off->id])->update(['updated_at' => now()->subHour()]);
+
+    $this->artisan('forms:resume-deletes')->expectsOutput('Queued 1 form delete(s) again.')->assertSuccessful();
+
+    Queue::assertPushed(DeleteLargeForm::class, 1);
+    Queue::assertPushed(DeleteLargeForm::class, fn (DeleteLargeForm $job): bool => $job->siteId === 1 && $job->formId === $stuck->id);
+    unset($running);
+});
+
+it('runs `forms:resume-deletes` every hour, never two at once', function (): void {
+    $event = collect(app(Schedule::class)->events())
+        ->first(fn ($event): bool => str_contains((string) $event->command, 'forms:resume-deletes'));
+
+    expect($event)->not->toBeNull()
+        ->and($event->expression)->toBe('0 * * * *')
+        ->and($event->withoutOverlapping)->toBeTrue();
 });

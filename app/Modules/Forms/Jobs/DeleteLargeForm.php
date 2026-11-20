@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Forms\Jobs;
 
+use App\Modules\Audit\Facades\Audit;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Notifications\Models\SiteNotification;
@@ -37,8 +38,9 @@ use Throwable;
  *     sweep), under the form's row lock, which a new lead's foreign-key check waits for.
  *   - A run stops after a time budget and queues the next one, well inside the worker's timeout.
  *   - Idempotent: a retry, a second run or a form already gone only finds less (or nothing) to do.
- *     Out of tries, the form is switched back to off, with the leads that are left, so it shows on
- *     the list again and «Xóa» can be asked again.
+ *     Out of tries, the form is switched back to off, with the leads that are left (audited as
+ *     forms.form.delete_failed), so it shows on the list again and «Xóa» can be asked again. A job
+ *     lost altogether is queued again by forms:resume-deletes: every run marks the form's updated_at.
  */
 final class DeleteLargeForm implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
@@ -75,7 +77,12 @@ final class DeleteLargeForm implements ShouldBeUniqueUntilProcessing, ShouldQueu
             report($e);
         }
         try {
-            app(Tenancy::class)->enter($this->siteId, fn (): int => self::deleting()->whereKey($this->formId)->update(['status' => 'disabled']));
+            app(Tenancy::class)->enter($this->siteId, function (): void {
+                if (self::deleting()->whereKey($this->formId)->update(['status' => 'disabled']) === 1) {
+                    // the trail says the delete did not finish, next to the row that asked for it
+                    Audit::record('forms.form.delete_failed', ['auditable_type' => Form::class, 'auditable_id' => $this->formId]);
+                }
+            });
         } catch (Throwable $again) {
             report($again);
         }
@@ -87,6 +94,8 @@ final class DeleteLargeForm implements ShouldBeUniqueUntilProcessing, ShouldQueu
         $batch = max(1, Cast::int(config('forms.delete_batch_leads', 2000)));
         $stopAt = microtime(true) + self::RUN_SECONDS;
         $after = $this->afterAt === null ? null : [$this->afterAt, $this->afterId];
+        // progress mark for forms:resume-deletes, which queues again a delete left without one
+        $tenancy->enter($this->siteId, fn (): int => self::deleting()->whereKey($this->formId)->update(['updated_at' => now()]));
 
         while (true) {
             while (($last = $this->deleteBatch($tenancy, $after, $batch)) !== null) {
