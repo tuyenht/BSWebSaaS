@@ -137,11 +137,11 @@
             @else
                 @if (! $mp['page']->isEmpty() && auth()->user()?->can('media.purge'))
                     @if ($supportLocked)
-                        <span class="w-full text-[12.5px] text-body-muted min-[640px]:order-last" role="note">{{ __('admin.support.locked') }}</span>
+                        <span class="w-full text-[12.5px] text-text-muted" role="note">{{ __('admin.support.locked') }}</span>
                     @endif
                     <button type="button"
                             @if ($supportLocked) aria-disabled="true" title="{{ __('admin.support.locked') }}" @else x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('media.picker_trash_empty_confirm')), confirm: @js(__('media.picker_trash_empty')), cancel: @js(__('media.picker_cancel')) }).then(ok => ok && $wire.emptyPickerTrash())" @endif
-                            class="aria-disabled:opacity-60 inline-flex items-center gap-1.5 rounded-lg border border-admin-danger/20 bg-surface px-3 py-2 text-[12.5px] font-semibold text-admin-danger-text">
+                            class="aria-disabled:opacity-60 inline-flex items-center gap-1.5 rounded-lg border border-danger-base/25 bg-surface px-3 py-2 text-[12.5px] font-semibold text-danger-text">
                         <x-bs-admin::icon name="ri-delete-bin" class="size-3.5" />{{ __('media.picker_trash_empty') }}
                     </button>
                 @endif
@@ -173,7 +173,7 @@
                         @can('media.purge')
                             <button type="button"
                                     @if ($supportLocked) aria-disabled="true" title="{{ __('admin.support.locked') }}" @else x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('media.picker_trash_purge_confirm', ['count' => count($pickerSelected)])), confirm: @js(__('media.picker_trash_purge')), cancel: @js(__('media.picker_cancel')) }).then(ok => ok && $wire.purgePickerSelection())" @endif
-                                    class="aria-disabled:opacity-60 inline-flex items-center gap-1.5 rounded-[7px] border border-admin-danger/20 bg-surface px-[11px] py-1.5 text-xs text-admin-danger-text">
+                                    class="aria-disabled:opacity-60 inline-flex items-center gap-1.5 rounded-[7px] border border-danger-base/25 bg-surface px-[11px] py-1.5 text-xs text-danger-text">
                                 <x-bs-admin::icon name="ri-delete-bin" class="size-[13px]" />{{ __('media.picker_trash_purge') }}
                             </button>
                         @endcan
