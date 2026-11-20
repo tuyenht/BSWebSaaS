@@ -42,4 +42,15 @@ return [
     // it (row + R2 object). Manual "empty trash" / "delete permanently" purge immediately regardless.
     'trash_retention_days' => (int) env('MEDIA_TRASH_RETENTION_DAYS', 30),
 
+    // A folder delete keeps what Hoàn tác needs (the files' ids) for a few minutes; a folder with
+    // more files than this (Trash included) is deleted without Hoàn tác, and the question says so.
+    'folder_undo_max_files' => (int) env('MEDIA_FOLDER_UNDO_MAX_FILES', 100000),
+
+    // A folder with more files than this (Trash included) is not deleted inside the web request: a
+    // queued job moves its files back to no folder in batches of folder_delete_batch_files (one
+    // short tenant transaction each), then deletes it; such a delete has no Hoàn tác either (so the
+    // lower of this and folder_undo_max_files is where Hoàn tác stops).
+    'folder_delete_inline_max_files' => (int) env('MEDIA_FOLDER_DELETE_INLINE_MAX_FILES', 20000),
+    'folder_delete_batch_files' => (int) env('MEDIA_FOLDER_DELETE_BATCH_FILES', 2000),
+
 ];

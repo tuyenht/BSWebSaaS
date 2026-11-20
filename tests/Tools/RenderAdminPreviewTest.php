@@ -1031,8 +1031,8 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     file_put_contents($dir.'/error-suspended.html', $html);
 
     // The media library's folder column (design board 12): three folders, the open one with its ⋮ menu,
-    // and the same folder being renamed in place. The component is put in place of the page's own
-    // root, as for the product list.
+    // the same folder being renamed in place, and the question asked before deleting a folder that
+    // holds files. The component is put in place of the page's own root, as for the product list.
     $mediaConfig = config('media');
     config(['media.driver' => 'cloudflare', 'media.cloudflare.base' => 'http://'.ADMIN_PREVIEW_HOST]);
     app(Tenancy::class)->enter(1, function (): void {
@@ -1060,7 +1060,10 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $rename = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($library()->call('openRename', 'anh-xuong')));
     expect($rename)->toContain('wire:model="renameName"');
     file_put_contents($dir.'/media-folder-rename.html', $swap($html, $rename, $media));
+    $ask = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($library()->call('askDeleteFolder', 'anh-xuong')));
+    expect($ask)->toContain('4 tệp');
+    file_put_contents($dir.'/media-folder-delete.html', $swap($html, $ask, $media));
     config(['media' => $mediaConfig]);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 80);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 81);
 });
