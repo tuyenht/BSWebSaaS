@@ -168,11 +168,10 @@ final readonly class PromoteAnVinhProductPostsToCatalog
             ->update(['to_path' => $newPath]);
 
         // a member's redirect to another website is left as it is (see Redirect)
-        if (! Redirect::leadsAway(Redirect::query()->where('locale', $locale)->where('from_path', $oldPath)->value('to_path'))) {
-            Redirect::query()->updateOrCreate(
-                ['locale' => $locale, 'from_path' => $oldPath],
-                ['to_path' => $newPath, 'status_code' => 301, 'source' => Redirect::SOURCE_AUTO],
-            );
+        $held = Redirect::query()->where('locale', $locale)->where('from_path', $oldPath)->lockForUpdate()->first();
+        if (! Redirect::leadsAway($held?->to_path)) {
+            ($held ?? new Redirect(['locale' => $locale, 'from_path' => $oldPath]))
+                ->fill(['to_path' => $newPath, 'status_code' => 301, 'source' => Redirect::SOURCE_AUTO])->save();
         }
 
         Redirect::query()->withTrashed()->where('locale', $locale)->where('from_path', $newPath)

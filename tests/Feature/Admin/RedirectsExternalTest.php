@@ -310,6 +310,11 @@ it('audits every change to a row to another website: edit, kind, trash, restore 
 it('never lets the system change or remove a member\'s redirect to another website when content moves', function (): void {
     rxStore(1, '/gioi-thieu', 'https://doitac.vn/a');
     rxStore(1, '/moi', 'https://doitac.vn/b');
+    // a second one at /moi, in the Trash
+    DB::connection('pgsql_admin')->table('redirects')->insert([
+        'site_id' => 1, 'locale' => 'vi', 'from_path' => '/moi', 'to_path' => 'https://doitac.vn/c', 'status_code' => 301,
+        'source' => 'manual', 'ulid' => (string) Str::ulid(), 'created_at' => now(), 'updated_at' => now(), 'deleted_at' => now(),
+    ]);
 
     rxIn(function (): void {
         $entry = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
@@ -319,7 +324,7 @@ it('never lets the system change or remove a member\'s redirect to another websi
         app(RouteSync::class)->sync($entry, 'vi', 'moi');
     });
 
-    expect(rxTargets(1))->toBe(['https://doitac.vn/a', 'https://doitac.vn/b'])
+    expect(rxTargets(1))->toBe(['https://doitac.vn/a', 'https://doitac.vn/b', 'https://doitac.vn/c'])
         ->and(DB::connection('pgsql_admin')->table('redirects')->where('site_id', 1)->where('source', 'auto')->count())->toBe(0)
         ->and(rxAudit())->toBe([]);
 });

@@ -175,11 +175,11 @@ final readonly class RouteSync
             ->where('to_path', $from)
             ->update(['to_path' => $to, ...$target]);
 
-        if (! Redirect::leadsAway(Redirect::query()->where('locale', $locale)->where('from_path', $from)->value('to_path'))) {
-            Redirect::query()->updateOrCreate(
-                ['locale' => $locale, 'from_path' => $from],
-                ['to_path' => $to, 'status_code' => 301, 'source' => Redirect::SOURCE_AUTO, ...$target],
-            );
+        // the row is read locked and written as read: a member's save in between cannot be overwritten
+        $held = Redirect::query()->where('locale', $locale)->where('from_path', $from)->lockForUpdate()->first();
+        if (! Redirect::leadsAway($held?->to_path)) {
+            ($held ?? new Redirect(['locale' => $locale, 'from_path' => $from]))
+                ->fill(['to_path' => $to, 'status_code' => 301, 'source' => Redirect::SOURCE_AUTO, ...$target])->save();
         }
 
         Redirect::query()->withTrashed()->where('locale', $locale)->where('from_path', $to)
