@@ -118,6 +118,14 @@ Three new, empty website tables (`entry_search_words`, `product_site_words`, `ta
 
 Rollback: the old code ignores the tables; `down()` drops them and no source data is touched.
 
+### The deploy that carries migration 2086 (the lead inbox search words)
+
+One new, empty website table (`lead_search_terms`); no column changes, no PgBouncer restart. The new code searches the inbox («Khách liên hệ») only through it, so a lead with no words cannot be found until the fill:
+1. Deploy steps 1–2 as usual (migration 2086 runs with the others). Adding the foreign keys briefly locks `sites` and `form_submissions` against writes; the migration gives up after 5 s (`lock_timeout`) and is run again. From here every lead sent through a worker on the new code gets its words.
+2. After the reload, fill the table: `php artisan forms:search-terms` in the app container, the same way as `search:words` above. It must exit 0 and print `Checked N lead(s) on M site(s); corrected K.`, where N is the number of leads on prod; a re-run must print `corrected 0.` Leads sent through workers on the old code before the reload are among those it fills. Until it ends, the inbox search finds only the leads sent since the reload; the list without a search is not affected.
+
+Rollback: the old code ignores the table; `down()` drops it and no source data is touched. Rolling forward again after a rollback is this release once more: whether or not `down()` ran, the leads sent or edited on the old code have no words or stale ones, so step 2 (`php artisan forms:search-terms`) must run again after the reload.
+
 ## `.env` changes and the image
 
 - The containers get `.env` through `env_file` **when they are created**. Laravel never overrides a variable the process already has, so after an `.env` edit `optimize` re-caches the old value (26/09: the Cloudflare token replaced in `.env` is still the old one inside `bsweb_prod_app`). Only a recreate (`docker compose up -d app horizon scheduler` in `/opt/bswebsaas/prod`) applies it — a few seconds of downtime.

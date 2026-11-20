@@ -148,5 +148,6 @@ it('sends to a form with a thank-you page within its query budget', function ():
 
     $count = countQueries(fn () => tySend(['name' => 'Khách 2'])->assertStatus(303));
 
-    expect($count)->toBe(9);
+    // the lead's search words are one more statement (LeadSearchTerms::write)
+    expect($count)->toBe(10);
 });
