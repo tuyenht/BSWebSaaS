@@ -7,14 +7,17 @@ namespace App\Modules\Cms\Actions\Taxonomies\Concerns;
 use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Exceptions\TaxonomyChangeRejectedException;
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
+use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\Slugger;
 use App\Modules\Theme\Rendering\TemplateCatalog;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Auth;
@@ -109,11 +112,12 @@ trait EditsTaxonomyTree
      *
      * @param  array<string, TaxonomyTranslation>  $existing  locale → current translation
      * @param  list<string>  $enabled  the languages the site writes in
+     * @param  int|null  $ownId  the category being saved, whose own slug and route never count as taken
      * @return array<string, array{name: string, slug: string, description?: string|null, seo_title?: string|null, seo_description?: string|null, card_label?: string|null}>
      *
      * @throws TaxonomyChangeRejectedException
      */
-    private function translations(TaxonomyData $data, array $existing, array $enabled): array
+    private function translations(TaxonomyData $data, array $existing, array $enabled, ?int $ownId = null): array
     {
         $clean = [];
         $locales = array_unique([
@@ -137,7 +141,9 @@ trait EditsTaxonomyTree
             if ($current !== null && $kept) {
                 $slug = $current->slug;
             } else {
-                $slug = TaxonomyRules::slug($given !== '' ? $given : TaxonomyRules::slugFrom($name))
+                // A slug the person typed is kept as typed (a taken one is refused later as slug_taken);
+                // one the system makes from the name gets -2, -3… when it is taken.
+                $slug = TaxonomyRules::slug($given !== '' ? $given : $this->freeSlugFrom($name, $locale, $ownId))
                     ?? throw new TaxonomyChangeRejectedException('slug_invalid');
             }
 
@@ -162,6 +168,34 @@ trait EditsTaxonomyTree
         }
 
         return $clean;
+    }
+
+    /**
+     * A slug made from the name, made free for the language: no other category and no other route
+     * (an entry, a product, a reserved page) may hold `/{slug}`. '' when the name leaves nothing usable.
+     */
+    private function freeSlugFrom(string $name, string $locale, ?int $ownId): string
+    {
+        // Room for a "-NN" suffix inside the slug limit.
+        $base = Slugger::make($name, null, TaxonomyRules::SLUG_MAX - 5);
+        if ($base === '') {
+            return '';
+        }
+
+        return Slugger::free($base, fn (string $candidate): array => [
+            ...Slugger::takenAmong(
+                TaxonomyTranslation::query()->where('locale', $locale)->when($ownId !== null, fn ($query) => $query->where('taxonomy_id', '!=', $ownId)),
+                'slug',
+                $candidate,
+            ),
+            ...Slugger::takenAmong(
+                SiteRoute::query()->where('locale', $locale)->when($ownId !== null, fn ($query) => $query->where(fn ($own) => $own->whereNull('taxonomy_id')->orWhere('taxonomy_id', '!=', $ownId))),
+                'path',
+                $candidate,
+                '/',
+            ),
+            ...(PathBuilder::isReserved($candidate) ? [mb_strtolower($candidate)] : []),
+        ]);
     }
 
     /**
@@ -224,7 +258,7 @@ trait EditsTaxonomyTree
     /**
      * Save the names and slugs and give each language its category page at `/{slug}` — moved with a
      * 301 when the slug changed. Another category using the slug in that language, or anything else
-     * already at the path, is refused as slug_taken. Returns the languages whose slug changed.
+     * already at the path, is refused as slug_taken (a slug the system made from the name was already given a free suffix). Returns the languages whose slug changed.
      *
      * @param  array<string, array{name: string, slug: string, description?: string|null, seo_title?: string|null, seo_description?: string|null, card_label?: string|null}>  $translations
      * @return array<string, string> locale → new slug
