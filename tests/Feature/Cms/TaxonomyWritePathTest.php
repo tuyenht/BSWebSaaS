@@ -157,8 +157,8 @@ it('refuses a category that is badly named, outside the site languages, or at an
             ->and(twRefusal(fn () => $create(new TaxonomyData(names: ['vi' => 'Tin']), 'Post Cat')))->toBe('vocabulary_invalid')
             ->and(twRefusal(fn () => $create(new TaxonomyData(names: ['vi' => 'Tin'], listTemplate: 'no-such-layout'))))->toBe('template_invalid')
             ->and(twRefusal(fn () => $create(new TaxonomyData(names: ['vi' => 'Tin'], detailTemplate: '../page'))))->toBe('template_invalid')
-            ->and(twRefusal(fn () => twCreate('Liên hệ')))->toBe('slug_taken')
-            ->and(twRefusal(fn () => twCreate('Tin tức', vocabulary: 'product_cat')))->toBe('slug_taken')
+            ->and(twRefusal(fn () => twCreate('Liên hệ', slug: 'lien-he')))->toBe('slug_taken')
+            ->and(twRefusal(fn () => twCreate('Tin tức', vocabulary: 'product_cat', slug: 'tin-tuc')))->toBe('slug_taken')
             ->and(Taxonomy::query()->count())->toBe(1);
 
         // A second writing language is fine, but the default language's name is required.
@@ -214,7 +214,7 @@ it('refuses the site search address for a category, new or renamed, as its own r
     twSiteOne(function (): void {
         $news = twCreate('Tin tức');
 
-        expect(twRefusal(fn () => twCreate('Tìm kiếm')))->toBe('slug_reserved')
+        expect(twRefusal(fn () => twCreate('Tìm kiếm', slug: 'tim-kiem')))->toBe('slug_reserved')
             ->and(twRefusal(fn () => app(UpdateTaxonomy::class)->handle($news, new TaxonomyData(slugs: ['vi' => 'tim-kiem']))))->toBe('slug_reserved')
             ->and(__('categories.reason_slug_reserved', [], 'vi'))->toBe('Đường dẫn này dành cho trang tìm kiếm của website — thử thêm vài chữ vào cuối.')
             ->and(twPage($news))->toBe('/tin-tuc')
@@ -723,5 +723,45 @@ it('lets a product category take any theme layout as its detail layout', functio
 
         $news = twCreate('Tin tức');
         expect(twRefusal(fn () => app(UpdateTaxonomy::class)->handle($news, new TaxonomyData(names: ['vi' => 'Tin tức'], detailTemplate: 'product'))))->toBe('template_invalid');
+    });
+});
+
+it('gives a slug made from the name a numeric suffix when it is taken, and refuses a typed one', function (): void {
+    twSiteOne(function (): void {
+        $first = twCreate('Tin tức');
+        $second = twCreate('Tin tức');
+        $third = twCreate('Tin tức');
+
+        // An emptied slug is made again from the name, and the name's slug is already another category's.
+        $other = twCreate('Sự kiện');
+        $saved = app(UpdateTaxonomy::class)->handle($other, new TaxonomyData(slugs: ['vi' => '']));
+
+        expect($first->translationFor('vi')?->slug)->toBe('tin-tuc')
+            ->and($second->translationFor('vi')?->slug)->toBe('tin-tuc-2')
+            ->and($third->translationFor('vi')?->slug)->toBe('tin-tuc-3')
+            ->and($saved->translationFor('vi')?->slug)->toBe('su-kien')
+            ->and(twPage($second))->toBe('/tin-tuc-2');
+
+        $renamed = app(UpdateTaxonomy::class)->handle($other, new TaxonomyData(names: ['vi' => 'Tin tức'], slugs: ['vi' => '']));
+        expect($renamed->translationFor('vi')?->slug)->toBe('tin-tuc-4');
+
+        // What the person typed is never renamed.
+        expect(twRefusal(fn () => twCreate('Khác', slug: 'tin-tuc')))->toBe('slug_taken')
+            ->and(twRefusal(fn () => app(UpdateTaxonomy::class)->handle($other, new TaxonomyData(slugs: ['vi' => 'tin-tuc-2']))))->toBe('slug_taken');
+    });
+});
+
+it('suffixes an emptied slug when an entry page holds the address, and leaves another site out of it', function (): void {
+    twSiteOne(function (): void {
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
+        SiteRoute::query()->create(['locale' => 'vi', 'path' => '/lien-he', 'entry_id' => $page->id]);
+
+        expect(twCreate('Liên hệ')->translationFor('vi')?->slug)->toBe('lien-he-2')
+            ->and(twCreate('Tìm kiếm')->translationFor('vi')?->slug)->toBe('tim-kiem-2');
+    });
+
+    app(Tenancy::class)->enter(2, function (): void {
+        expect(twCreate('Liên hệ')->translationFor('vi')?->slug)->toBe('lien-he')
+            ->and(twCreate('Tin tức')->translationFor('vi')?->slug)->toBe('tin-tuc');
     });
 });
