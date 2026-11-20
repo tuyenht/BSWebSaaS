@@ -21,6 +21,7 @@ use App\Modules\Cms\Support\EntryDraftApplier;
 use App\Modules\Cms\Support\EntryDraftAudit;
 use App\Modules\Cms\Support\EntryDraftFolder;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Models\Media;
 use App\Modules\Notifications\Models\SiteNotification;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -809,6 +810,82 @@ it('carries a live post\'s byline through a pending change that leaves it out, a
         $change = app(SaveEntryDraft::class)->handle($entry->fresh(), $author, 'vi', ['author_name' => 'Nhóm Biên tập']);
         app(ApplyEntryDraft::class)->handle($entry->fresh(), $publisher, $change->version());
         expect($entry->fresh()->translationFor('vi')->author_name)->toBe('Nhóm Biên tập');
+    });
+});
+
+it('carries a live post\'s cover words through a pending change, and sets the ones the change names', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        [$author, $publisher] = changeCast();
+        $entry = changeLivePost($author, changeNewsCategory());
+        $entry->translationFor('vi')->update(['cover_alt' => 'Thợ đứng máy']);
+        $entry = $entry->fresh();
+
+        $change = app(SaveEntryDraft::class)->handle($entry, $author, 'vi', ['title' => 'Bản tin mới']);
+        expect($change->content['locales']['vi']['cover_alt'])->toBe('Thợ đứng máy');
+
+        $change = app(SaveEntryDraft::class)->handle($entry->fresh(), $author, 'vi', ['cover_alt' => 'Thợ đứng máy phay']);
+        expect($entry->fresh()->translationFor('vi')->cover_alt)->toBe('Thợ đứng máy');   // visitors keep the live words
+        app(ApplyEntryDraft::class)->handle($entry->fresh(), $publisher, $change->version());
+        expect($entry->fresh()->translationFor('vi'))->title->toBe('Bản tin mới')->cover_alt->toBe('Thợ đứng máy phay');
+
+        // another picture held with no words for it: the old picture's words are not carried over
+        $change = app(SaveEntryDraft::class)->handle($entry->fresh(), $author, 'vi', ['title' => 'Ảnh mới'], ['meta' => ['image_url' => 'a/library/kho-dddddddddddd.png']]);
+        expect($change->content['locales']['vi']['cover_alt'])->toBeNull();
+        app(ApplyEntryDraft::class)->handle($entry->fresh(), $publisher, $change->version());
+        expect($entry->fresh()->translationFor('vi')->cover_alt)->toBeNull();
+    });
+});
+
+it('empties every language\'s cover words in a pending change that swaps the picture, and on the live post when it is applied', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        [$author, $publisher] = changeCast();
+        $picture = fn (string $slug, string $hash): Media => Media::query()->create([
+            'collection' => 'library', 'slug' => $slug, 'hash' => str_repeat($hash, 64),
+            'storage_key' => "a/library/{$slug}-".str_repeat($hash, 12).'.png', 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1024,
+        ]);
+        $old = $picture('xuong', 'c');
+        $new = $picture('kho', 'd');
+        $entry = changeLivePost($author, changeNewsCategory(), ['vi', 'en']);
+        $live = function () use ($entry, $old): Entry {
+            // written straight to the rows: the model in hand may still hold the values set before
+            Entry::query()->whereKey($entry->id)->update(['meta' => json_encode(['image_url' => $old->storage_key])]);
+            DB::table('entry_translations')->where('entry_id', $entry->id)->where('locale', 'vi')->update(['cover_alt' => 'Thợ đứng máy']);
+            DB::table('entry_translations')->where('entry_id', $entry->id)->where('locale', 'en')->update(['cover_alt' => 'A machinist at work']);
+
+            return $entry->fresh();
+        };
+
+        // English text held first, then the picture swapped from Vietnamese: both languages' words go
+        $entry = $live();
+        $change = app(SaveEntryDraft::class)->handle($entry, $author, 'en', ['title' => 'New title']);
+        expect($change->content['locales']['en']['cover_alt'])->toBe('A machinist at work');
+        $change = app(SaveEntryDraft::class)->handle($entry->fresh(), $author, 'vi', [], ['meta' => ['image_url' => $new->storage_key]]);
+        expect($change->content['locales']['vi']['cover_alt'])->toBeNull()
+            ->and($change->content['locales']['en']['cover_alt'])->toBeNull()
+            ->and($entry->fresh()->translationFor('en')->cover_alt)->toBe('A machinist at work');   // visitors keep the live words
+        app(ApplyEntryDraft::class)->handle($entry->fresh(), $publisher, $change->version());
+        expect($entry->fresh()->translationFor('vi')->cover_alt)->toBeNull()
+            ->and($entry->fresh()->translationFor('en')->cover_alt)->toBeNull();
+
+        // the picture swapped first, English text held after: its live words are not carried into the change
+        $entry = $live();
+        expect(changeOf($entry))->toBeNull();
+        app(SaveEntryDraft::class)->handle($entry, $author, 'vi', [], ['meta' => ['image_url' => $new->storage_key]]);
+        $change = app(SaveEntryDraft::class)->handle($entry->fresh(), $author, 'en', ['title' => 'New title']);
+        expect($change->content['locales']['en']['cover_alt'])->toBeNull();
+        app(ApplyEntryDraft::class)->handle($entry->fresh(), $publisher, $change->version());
+        expect($entry->fresh()->translationFor('en'))->title->toBe('New title')->cover_alt->toBeNull();
+
+        // a change that swaps the picture and then puts the live one back: the live words come back with it
+        $entry = $live();
+        app(SaveEntryDraft::class)->handle($entry, $author, 'en', ['title' => 'Newer title']);
+        app(SaveEntryDraft::class)->handle($entry->fresh(), $author, 'vi', [], ['meta' => ['image_url' => $new->storage_key]]);
+        $change = app(SaveEntryDraft::class)->handle($entry->fresh(), $author, 'vi', [], ['meta' => ['image_url' => $old->storage_key]]);
+        expect($change->content['locales']['vi']['cover_alt'])->toBe('Thợ đứng máy')
+            ->and($change->content['locales']['en']['cover_alt'])->toBe('A machinist at work');
+        app(ApplyEntryDraft::class)->handle($entry->fresh(), $publisher, $change->version());
+        expect($entry->fresh()->translationFor('en'))->title->toBe('Newer title')->cover_alt->toBe('A machinist at work')
+            ->and($entry->fresh()->translationFor('vi')->cover_alt)->toBe('Thợ đứng máy');
     });
 });
 

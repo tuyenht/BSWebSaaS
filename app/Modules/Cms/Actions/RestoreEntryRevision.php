@@ -84,7 +84,8 @@ final readonly class RestoreEntryRevision
 
                 // The shared fields (template, cover, meta) belong to every language's page: when the
                 // restore changed them, each language's current state is recorded so its own history
-                // still shows what it looked like. Other languages' text is never touched.
+                // still shows what it looked like. Other languages' text is never touched (their words for a
+                // changed picture aside: EntryContentWriter::write empties them).
                 if ($written['shared_changed']) {
                     $this->revisions->forAllLocales($entry, RevisionKind::Restore, $actor);
                 } else {

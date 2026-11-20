@@ -22,8 +22,9 @@
  */
 
 use App\Modules\Admin\Livewire\Catalog\Editor;
-use App\Modules\Admin\Livewire\Catalog\Index;
 use App\Modules\Admin\Livewire\LanguageSettings;
+use App\Modules\Admin\Livewire\Catalog\Index;
+use App\Modules\Admin\Livewire\Forms\FormList;
 use App\Modules\Admin\Livewire\Media\Library;
 use App\Modules\Admin\Livewire\NotificationBell;
 use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog;
@@ -265,6 +266,12 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.$path)->assertOk()->getContent();
         file_put_contents($dir.'/'.$name.'.html', $html);
     }
+    // «Xóa» on the quote form: the question with its leads and «Tắt biểu mẫu» instead.
+    $formsPage = (string) file_get_contents($dir.'/form-builder.html');
+    $ask = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(FormList::class)
+        ->call('askDelete', $quote->ulid)->assertSet('confirmOpen', true)->html());
+    expect($ask)->toContain('role="alertdialog"', __('form_builder.del_off'));
+    file_put_contents($dir.'/form-builder-delete.html', str_replace('</body>', $ask.'</body>', $formsPage));
     // The leads inbox while the website's contact form is switched off: the band with «Bật lại».
     $contact = app(Tenancy::class)->enter(1, fn (): Form => Form::query()->where('key', Form::SYSTEM_KEY)->firstOrFail());
     app(Tenancy::class)->enter(1, fn () => $contact->update(['status' => 'disabled']));
@@ -571,19 +578,21 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     file_put_contents($dir.'/langs-ask.html', str_replace('</body>', $ask.'</body>', $page));
 
     // The post editor with its short description and Google title and description filled, long
-    // enough that the meters show their bands and the Google preview shows where it cuts the text.
-    $post = app(Tenancy::class)->enter(1, function () use ($owner): Entry {
-        $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $owner->id]);
+    // enough that the meters show their bands and the Google preview shows where it cuts the text; a
+    // featured image with its «Mô tả ảnh» under it.
+    $post = app(Tenancy::class)->enter(1, function () use ($owner, $logo): Entry {
+        $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $owner->id, 'meta' => ['image_url' => $logo->storage_key]]);
         $entry->translations()->create(['locale' => 'vi', 'title' => 'Khánh thành nhà xưởng gia công cơ khí chính xác mới tại Khu công nghiệp Phú Nghĩa', 'slug' => 'khanh-thanh-nha-xuong', 'status' => 'draft',
             'excerpt' => 'Nhà xưởng mới rộng 5.000 m² với dây chuyền CNC 5 trục giúp rút ngắn thời gian giao hàng còn một nửa cho khách hàng trong nước và xuất khẩu.',
             'seo_title' => 'Khánh thành nhà xưởng cơ khí chính xác mới tại Phú Nghĩa, Hà Nội năm 2026',
             'seo_description' => 'Nhà xưởng mới rộng 5.000 m² với dây chuyền CNC 5 trục, rút ngắn thời gian giao hàng còn một nửa cho khách hàng trong nước và xuất khẩu sang Nhật Bản, Hàn Quốc.',
+            'cover_alt' => 'Thợ đứng máy phay CNC 5 trục trong nhà xưởng mới',
             'body' => ['blocks' => []]]);
 
         return $entry;
     });
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$post->ulid.'/edit')->assertOk()->getContent();
-    expect($html)->toContain('data-seo-fields', 'wire:model="excerpt"');
+    expect($html)->toContain('data-seo-fields', 'wire:model="excerpt"', 'id="entry-cover-alt"');
     file_put_contents($dir.'/post-editor.html', $html);
     // A new post: the frame's header says «Thêm mới», Xem trước waits for the first save, no Trash.
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/create?section=posts')->assertOk()->getContent();
@@ -1112,5 +1121,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     file_put_contents($dir.'/media-trash-own-ask.html', $swap($html, $ownAsk, $media));
     config(['media' => $mediaConfig]);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 88);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 89);
 });

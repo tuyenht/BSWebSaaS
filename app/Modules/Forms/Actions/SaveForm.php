@@ -188,7 +188,8 @@ final readonly class SaveForm
     {
         $base = Str::limit(Str::slug($name), 60, '') ?: 'bieu-mau';
         $base = rtrim($base, '-') ?: 'bieu-mau';
-        $taken = array_flip([...Cast::strings(Form::query()->where('key', 'like', $base.'%')->limit(500)->pluck('key')->all()), Form::SYSTEM_KEY]);
+        // a form still being deleted (hidden by its scope) keeps its key until its row goes
+        $taken = array_flip([...Cast::strings(Form::query()->withoutGlobalScope(Form::NOT_DELETING)->where('key', 'like', $base.'%')->limit(500)->pluck('key')->all()), Form::SYSTEM_KEY]);
         $key = $base;
         for ($n = 2; isset($taken[$key]); $n++) {
             $key = $base.'-'.$n;

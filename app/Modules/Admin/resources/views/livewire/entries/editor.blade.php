@@ -18,6 +18,8 @@
     $bandIcons = ['empty' => 'ri-edit', 'short' => 'ri-arrow-up', 'near' => 'ri-arrow-right-up', 'good' => 'ri-check', 'long' => 'ri-error-warning', 'over' => 'ri-close-circle'];
     // The heading's meter is the shared part's (bsSeoFields), read from the `title` field with the design's title limits.
     $headingConfig = SeoFields::clientConfig(['heading' => 'title', 'title' => null, 'description' => null], $address);
+    // «Mô tả ảnh» under the featured image: the same meter, read from `coverAlt` with the design's alt limits.
+    $altConfig = SeoFields::clientConfig(['alt' => 'coverAlt', 'title' => null, 'description' => null], $address);
     $dirty = __('catalog.ed.sv_dirty');
     // Where this member's copy of unsaved text on this device lives (admin-kept.js): per member,
     // entry and language, never the numeric id.
@@ -592,6 +594,39 @@
                                 <x-bs-admin::button variant="outline" color="secondary" size="sm" wire:click="openCoverPicker">
                                     <x-bs-admin::icon name="ri-image-edit" :class="$glyph" /> {{ __('entries.ed.cover_change') }}
                                 </x-bs-admin::button>
+                            </div>
+                            {{-- «Mô tả ảnh»: this language's words for the picture on the website (Editor::$coverAlt). --}}
+                            <div class="entry-alt" x-data="bsSeoFields({{ Js::from($altConfig) }})">
+                                <div class="relative mb-1.5 flex items-center gap-1" x-data="{ q: false }" x-on:keydown.escape="q = false" x-on:click.outside="q = false">
+                                    <label for="entry-cover-alt" class="{{ $label }}">
+                                        <span>{{ __('entries.ed.cover_alt_label') }}</span>
+                                        @if ($chip)
+                                            <span class="rounded-sm bg-primary-soft px-1.5 text-caption font-bold text-primary-text" title="{{ __('admin.seo.locale_chip_title') }}">{{ $chip }}</span>
+                                        @endif
+                                    </label>
+                                    <button type="button" class="entry-alt__q" x-on:click="q = ! q" x-bind:aria-expanded="q ? 'true' : 'false'" aria-expanded="false" aria-controls="entry-cover-alt-q"
+                                            title="{{ __('entries.ed.cover_alt_q_title') }}" aria-label="{{ __('entries.ed.cover_alt_q') }}">
+                                        <x-bs-admin::icon name="ri-question" class="size-[min(24px,calc(1rem+var(--user-text-boost)))]" />
+                                    </button>
+                                    <p id="entry-cover-alt-q" role="note" class="entry-alt__pop" x-show="q" x-cloak>{{ __('entries.ed.cover_alt_help', ['unit' => mb_strtolower($unit)]) }}</p>
+                                </div>
+                                <input type="text" id="entry-cover-alt" wire:model="coverAlt" lang="{{ $locale }}" maxlength="{{ SeoFields::hardCap('alt') }}" placeholder="{{ __('entries.ed.cover_alt_ph') }}"
+                                       aria-describedby="entry-cover-alt-c entry-cover-alt-h @error('coverAlt') entry-cover-alt-e @enderror" @error('coverAlt') aria-invalid="true" @enderror class="field {{ $fieldLook }}">
+                                <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                                    <span class="seo-meter min-w-24 flex-1" :data-b="altMeter.band" aria-hidden="true">
+                                        <span class="seo-meter__zone" :style="{ left: altMeter.lo + '%', width: altMeter.zw + '%' }"></span>
+                                        <span class="seo-meter__fill" :style="{ width: altMeter.pct + '%' }"></span>
+                                        <span class="seo-meter__tick" :style="{ left: altMeter.tick + '%' }"></span>
+                                    </span>
+                                    <span id="entry-cover-alt-c" class="seo-count" :data-b="altMeter.band" data-b="empty">
+                                        @foreach ($bandIcons as $band => $icon)
+                                            <x-bs-admin::icon :name="$icon" x-show="altMeter.band === '{{ $band }}'" x-cloak />
+                                        @endforeach
+                                        <span x-text="altMeter.text"></span>
+                                    </span>
+                                </div>
+                                <p id="entry-cover-alt-h" class="mt-1.5 mb-0 text-caption text-text-muted">{{ __('entries.ed.cover_alt_hint') }}</p>
+                                @error('coverAlt') <p id="entry-cover-alt-e" class="{{ $error }}">{{ $message }}</p> @enderror
                             </div>
                         @endif
                     </section>

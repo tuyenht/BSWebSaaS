@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Livewire\Forms;
 
 use App\Modules\Admin\Livewire\Forms\Concerns\GatesFormScreens;
+use App\Modules\Cms\Routing\FormPagePaths;
+use App\Modules\Forms\Actions\DeleteForm;
 use App\Modules\Forms\Actions\SetFormStatus;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Support\FormDraft;
@@ -15,6 +17,7 @@ use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Number;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
@@ -65,6 +68,13 @@ final class FormList extends Component
     #[Locked]
     public ?array $undoOp = null;
 
+    /** The «Xóa» question is open (entangled with the dialog). */
+    public bool $confirmOpen = false;
+
+    /** @var array{ulid: string, name: string, leads: int, active: bool}|null the form «Xóa» asks about, read when it opened */
+    #[Locked]
+    public ?array $deleting = null;
+
     /** The row's switch: on takes leads at once, off refuses new ones; «Hoàn tác» puts it back. */
     public function setActive(string $ulid, bool $active): void
     {
@@ -73,9 +83,87 @@ final class FormList extends Component
             return;
         }
         $before = $form->status === 'active';
-        app(SetFormStatus::class)->handle($form, $active);
+        if (! app(SetFormStatus::class)->handle($form, $active)) {
+            $this->toast(__('form_builder.toast_gone'), 'error');
+
+            return;
+        }
         $name = $this->nameOf($form);
         $this->toast(__($active ? 'form_builder.toast_on' : 'form_builder.toast_off', ['name' => $name]), undo: $before !== $active ? ['ulid' => $form->ulid, 'active' => $before] : null);
+    }
+
+    /**
+     * «Xóa» in the row's ⋮: the question names the form and how many leads go with it, and offers
+     * «Tắt biểu mẫu» instead while the form is on and has leads. The system form has no «Xóa».
+     */
+    public function askDelete(string $ulid): void
+    {
+        $form = $this->writable($ulid, 'delete');
+        if ($form === null) {
+            return;
+        }
+        $this->deleting = [
+            'ulid' => $form->ulid,
+            'name' => $this->nameOf($form),
+            'leads' => $this->leadCounts([$form->id])[$form->id] ?? 0,
+            'active' => $form->status === 'active',
+        ];
+        $this->confirmOpen = true;
+    }
+
+    /** The dialog's red button: the form, its fields and its leads go for good (no Trash, no undo). */
+    public function confirmDelete(): void
+    {
+        $asked = $this->deleting;
+        $this->cancelDelete();
+        $form = $asked === null ? null : $this->writable($asked['ulid'], 'delete');
+        if ($asked === null || $form === null) {
+            return;
+        }
+        // "hơn 10.000" was shown: any number above it is what the member agreed to
+        $shown = $asked['leads'] > self::LEAD_CAP ? null : $asked['leads'];
+        $done = app(DeleteForm::class)->handle($form, $shown);
+        if ($done === null) {
+            $this->toast(__('form_builder.toast_gone'), 'error');
+
+            return;
+        }
+        if (! $done['deleted']) {
+            // leads came in after the question: ask again with the count as it is now
+            $this->deleting = [...$asked, 'leads' => min($done['leads'], self::LEAD_CAP + 1)];
+            $this->confirmOpen = true;
+            $this->toast(__('form_builder.toast_more_leads'), 'info');
+
+            return;
+        }
+        if ($done['later']) {
+            // a form with this many leads is emptied in batches off the request: it is off and hidden at once
+            $this->toast(__('form_builder.toast_deleting', ['leads' => $asked['leads'] > self::LEAD_CAP
+                ? __('form_builder.leads_over', ['n' => $this->num(self::LEAD_CAP)])
+                : trans_choice('form_builder.leads_n', $asked['leads'], ['n' => $this->num($asked['leads'])])]));
+
+            return;
+        }
+        $leads = $done['leads'];
+        $this->toast($leads > 0
+            ? __('form_builder.toast_deleted_leads', ['leads' => trans_choice('form_builder.leads_n', $leads, ['n' => $this->num($leads)])])
+            : __('form_builder.toast_deleted'));
+    }
+
+    public function cancelDelete(): void
+    {
+        $this->confirmOpen = false;
+        $this->deleting = null;
+    }
+
+    /** The dialog's «Tắt biểu mẫu»: the form stops taking leads and keeps those it has, with «Hoàn tác». */
+    public function switchOffInstead(): void
+    {
+        $ulid = $this->deleting['ulid'] ?? null;
+        $this->cancelDelete();
+        if ($ulid !== null) {
+            $this->setActive($ulid, false);
+        }
     }
 
     public function undoLast(): void
@@ -87,8 +175,8 @@ final class FormList extends Component
             return;
         }
         $form = $this->writable($op['ulid']);
-        if ($form !== null) {
-            app(SetFormStatus::class)->handle($form, $op['active']);
+        if ($form !== null && ! app(SetFormStatus::class)->handle($form, $op['active'])) {
+            $this->toast(__('form_builder.toast_gone'), 'error');
         }
     }
 
@@ -131,7 +219,10 @@ final class FormList extends Component
             // a savepoint inside the request's tenancy transaction: a failed read leaves it usable for the page
             $rows = DB::transaction(function () use ($locale): array {
                 $forms = Form::query()->select(['id', 'ulid', 'key', 'name', 'notify_emails', 'status'])->orderBy('id')->limit(FormDraft::MAX_FORMS)->get();
-                $counts = $this->leadCounts(array_values(array_map(fn (mixed $id): int => Cast::int($id), $forms->pluck('id')->all())));
+                $ids = array_values(array_map(fn (mixed $id): int => Cast::int($id), $forms->pluck('id')->all()));
+                $counts = $this->leadCounts($ids);
+                // one page a visitor sees each form on («Xem trang có biểu mẫu»), from form_placements
+                $pages = app(FormPagePaths::class)->of($ids, $locale);
 
                 return array_values($forms->map(fn (Form $form): array => [
                     'ulid' => $form->ulid,
@@ -140,6 +231,7 @@ final class FormList extends Component
                     'active' => $form->status === 'active',
                     'leads' => $counts[$form->id] ?? 0,
                     'emails' => Cast::strings($form->notify_emails),
+                    'page' => $pages[$form->id] ?? null,
                 ])->all());
             });
             $failed = false;
@@ -258,17 +350,29 @@ final class FormList extends Component
         $this->has = array_values(array_intersect(self::HAS, array_map('strval', $this->has)));
     }
 
-    /** The form behind $ulid when the member may change it; else a toast says why, and null. */
-    private function writable(string $ulid): ?Form
+    /** The form behind $ulid when the member may do $ability to it; else a toast says why, and null. */
+    private function writable(string $ulid, string $ability = 'update'): ?Form
     {
         $form = Form::query()->where('ulid', $ulid)->first();
-        if ($form === null || ! $this->entitled() || Gate::denies('update', $form)) {
+        if ($form === null) {
+            // gone meanwhile (or never this site's: another site's form reads as gone, never as "not allowed")
+            $this->toast(__('form_builder.toast_gone'), 'error');
+
+            return null;
+        }
+        // the system contact form is never deleted, also by a platform operator, who passes every policy
+        if (! $this->entitled() || Gate::denies($ability, $form) || ($ability === 'delete' && $form->key === Form::SYSTEM_KEY)) {
             $this->toast(__('form_builder.toast_cannot'), 'error');
 
             return null;
         }
 
         return $form;
+    }
+
+    private function num(int $n): string
+    {
+        return (string) Number::format($n, locale: app()->getLocale());
     }
 
     private function nameOf(Form $form): string
