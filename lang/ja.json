@@ -5130,6 +5130,8 @@
     "categories.ui_f_cover": "代表画像",
     "categories.ui_pick_cover": "画像を選ぶ",
     "categories.ui_drop_cover": "画像を外す",
+    "categories.ui_drop_cover_title": "カテゴリから画像を外す",
+    "categories.ui_pick_other_title": "別の画像を選んで置き換える",
     "categories.ui_save_net": "接続が切れたため保存できませんでした。入力内容は残っています — 「再試行」を押してください。",
     "categories.ui_save": "保存",
     "categories.ui_save_new": "保存して別の項目を追加",

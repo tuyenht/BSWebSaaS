@@ -5130,6 +5130,8 @@
     "categories.ui_f_cover": "Ảnh đại diện",
     "categories.ui_pick_cover": "Chọn ảnh",
     "categories.ui_drop_cover": "Bỏ ảnh",
+    "categories.ui_drop_cover_title": "Bỏ ảnh khỏi chuyên mục",
+    "categories.ui_pick_other_title": "Chọn ảnh khác thay ảnh này",
     "categories.ui_save_net": "Chưa lưu được vì mất kết nối. Chữ bạn nhập vẫn còn — bấm Thử lại.",
     "categories.ui_save": "Lưu",
     "categories.ui_save_new": "Lưu và thêm mục khác",
