@@ -18,7 +18,6 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\On;
 use Livewire\Component;
 
 /**
@@ -43,14 +42,8 @@ final class Login extends Component
 
     public string $password = '';
 
-    /** Cloudflare Turnstile token, pushed in from the widget's solve callback (see turnstile-field). */
+    /** Cloudflare Turnstile token, sent with the login call through a hidden wire:model field (see turnstile-field). */
     public string $turnstileToken = '';
-
-    #[On('turnstile-token')]
-    public function setTurnstileToken(string $token): void
-    {
-        $this->turnstileToken = $token;
-    }
 
     /**
      * Cloudflare Turnstile tokens are single-use: a successful verify consumes the token, and a
@@ -83,8 +76,11 @@ final class Login extends Component
         // CF blip can't lock out every admin — password + 2FA + the per-IP throttle still gate.
         $turnstile = app(TurnstileVerifier::class);
         if (LoginTurnstile::active() && ! $turnstile->verify($this->turnstileToken, $ip, failOpenOnTransportError: true)) {
+            // An empty token means the page sent before the check answered; a refused one, Cloudflare said
+            // no. Read it before refreshChallenge() clears it.
+            $token = $this->turnstileToken === '' ? 'missing' : 'refused';
             $this->refreshChallenge();
-            Audit::record('auth.login.captcha_failed', ['actor_label' => $this->email]);
+            Audit::record('auth.login.captcha_failed', ['actor_label' => $this->email, 'meta' => ['token' => $token]]);
             $this->addError('email', __('auth.captcha_failed'));
 
             return null;

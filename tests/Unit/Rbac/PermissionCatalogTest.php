@@ -89,7 +89,7 @@ it('gives the folder and delete-for-good media rights to the owner and the websi
     expect($holders('media.folders'))->toBe(['owner', 'admin'])
         ->and($holders('media.purge'))->toBe(['owner', 'admin'])
         ->and(PermissionRegistry::withImplied(['media.folders']))->toEqualCanonicalizing(['media.folders', 'media.view'])
-        ->and(PermissionRegistry::withImplied(['media.purge']))->toEqualCanonicalizing(['media.purge', 'media.delete', 'media.view']);
+        ->and(PermissionRegistry::withImplied(['media.purge']))->toEqualCanonicalizing(['media.purge', 'media.delete.any', 'media.view']);
 });
 
 it('keeps every implication list closed, so one level of withImplied is enough', function (): void {

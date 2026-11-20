@@ -9,7 +9,10 @@
     $num = fn (int $n): string => number_format($n, 0, ',', '.');
     $canPick = $trash ? $canDelete : ($canUpload || $canDelete);
     $placeName = $trash ? __('media.lib.trash') : ($folder === '-' ? __('media.lib.unfiled') : ($current?->name ?? __('media.lib.all')));
-    $baseN = $trash ? $counts['trash'] : ($folder === '-' ? $counts['unfiled'] : ($current !== null ? ($counts['byFolder'][$current->id] ?? 0) : $counts['all']));
+    $baseN = $trash ? $counts['trash'] : ($folder === '-' ? $counts['unfiled'] : ($current !== null ? ($treeN[$current->id] ?? 0) : $counts['all']));
+    // the folders of one parent in their order, and the top-level ones (a folder goes in one of those)
+    $siblings = fn ($f) => $folders->where('parent_id', $f->parent_id)->values();
+    $tops = $folders->whereNull('parent_id')->values();
     $conditions = count($kinds) + count($formats) + ($trash ? 0 : count($uses));
     $searching = trim($search) !== '';
     $filtering = $conditions > 0 || $searching;
@@ -117,24 +120,45 @@
     @else
         <div class="flex min-w-0 items-start gap-4">
             {{-- Folder column (from 900px) --}}
-            <nav class="sticky top-4 hidden w-60 shrink-0 flex-col gap-0.5 rounded-md border border-border bg-surface p-2 shadow-card min-[900px]:flex" aria-label="{{ __('media.lib.folders') }}">
+            {{-- shut: the top-level folders whose sub-folders are folded away (opening a folder unfolds it) --}}
+            <nav class="sticky top-4 hidden w-60 shrink-0 flex-col gap-0.5 rounded-md border border-border bg-surface p-2 shadow-card min-[900px]:flex" aria-label="{{ __('media.lib.folders') }}"
+                 x-data="{ shut: {} }" x-on:media-folder-open.window="shut[$event.detail.slug] = false">
                 <div class="flex items-center gap-2 px-2.5 pt-1 pb-2 text-small font-semibold text-text-muted"><x-bs-admin::icon name="ri-folder-3" class="size-4" /><span>{{ __('media.lib.folders') }}</span></div>
                 <button type="button" class="{{ $folderBtn }}" aria-current="{{ ! $trash && $folder === '' ? 'true' : 'false' }}" wire:click="setFolder('')">
                     <x-bs-admin::icon name="ri-stack" class="size-4 shrink-0" /><span class="min-w-0 flex-1 truncate">{{ __('media.lib.all') }}</span><span class="text-small text-text-muted">{{ $num($counts['all']) }}</span>
                 </button>
-                @foreach ($folders as $i => $f)
-                    @php $on = ! $trash && $current?->id === $f->id; @endphp
+                @foreach ($folders as $f)
+                    @php
+                        $byId ??= $folders->keyBy('id');
+                        $on = ! $trash && $current?->id === $f->id;
+                        $sub = $f->parent_id !== null;
+                        $kids = $kidsOf[$f->id] ?? 0;
+                        $fs = Js::from((string) $f->slug);
+                        $ps = $sub ? Js::from((string) $byId->get($f->parent_id)?->slug) : null;
+                    @endphp
                     @if ($canFolders && $renaming === (string) $f->slug)
-                        <div wire:key="mf-{{ $f->slug }}">@include('admin::livewire.media.library-rename-folder', ['fid' => 'media-ren', 'label' => __('media.lib.rename_label')])</div>
+                        <div wire:key="mf-{{ $f->slug }}" @class(['ml-4' => $sub])>@include('admin::livewire.media.library-rename-folder', ['fid' => 'media-ren', 'label' => __('media.lib.rename_label')])</div>
                     @else
-                        <div wire:key="mf-{{ $f->slug }}" class="flex min-w-0 items-center gap-1">
-                            <button type="button" class="{{ $folderBtn }} min-w-0 flex-1" aria-current="{{ $on ? 'true' : 'false' }}" wire:click="setFolder({{ Js::from((string) $f->slug) }})">
-                                <x-bs-admin::icon :name="$on ? 'ri-folder-open' : 'ri-folder-3'" class="size-4 shrink-0" /><span class="min-w-0 flex-1 truncate" title="{{ $f->name }}">{{ $f->name }}</span><span class="text-small text-text-muted">{{ $num($counts['byFolder'][$f->id] ?? 0) }}</span>
+                        <div wire:key="mf-{{ $f->slug }}" @class(['flex min-w-0 items-center gap-1', 'ml-4' => $sub]) @if ($sub) x-show="!shut[{{ $ps }}]" @endif>
+                            <button type="button" class="{{ $folderBtn }} min-w-0 flex-1" aria-current="{{ $on ? 'true' : 'false' }}" wire:click="setFolder({{ $fs }})" @if ($kids > 0) x-on:click="shut[{{ $fs }}] = false" @endif>
+                                <x-bs-admin::icon :name="$on ? 'ri-folder-open' : 'ri-folder-3'" class="size-4 shrink-0" /><span class="min-w-0 flex-1 truncate" title="{{ $f->name }}">{{ $f->name }}@if ($sub)<span class="sr-only">{{ __('media.lib.in_folder', ['name' => $byId->get($f->parent_id)?->name ?? '']) }}</span>@endif</span><span class="text-small text-text-muted">{{ $num($treeN[$f->id] ?? 0) }}</span>
                             </button>
+                            @if ($kids > 0 && ! ($canFolders && $on))
+                                <x-bs-admin::button size="sm" variant="ghost" color="secondary" icon
+                                    x-bind:aria-expanded="shut[{{ $fs }}] ? 'false' : 'true'"
+                                    x-bind:aria-label="shut[{{ $fs }}] ? {{ Js::from(__('media.lib.kids_open', ['name' => $f->name])) }} : {{ Js::from(__('media.lib.kids_close', ['name' => $f->name])) }}"
+                                    x-bind:title="shut[{{ $fs }}] ? {{ Js::from(__('media.lib.kids_open', ['name' => $f->name])) }} : {{ Js::from(__('media.lib.kids_close', ['name' => $f->name])) }}"
+                                    aria-label="{{ __('media.lib.kids_close', ['name' => $f->name]) }}" aria-expanded="true"
+                                    x-on:click="shut[{{ $fs }}] = !shut[{{ $fs }}]">
+                                    <span x-show="!shut[{{ $fs }}]"><x-bs-admin::icon name="ri-arrow-down-s" class="size-4" /></span>
+                                    <span x-show="shut[{{ $fs }}]" x-cloak><x-bs-admin::icon name="ri-arrow-right-s" class="size-4" /></span>
+                                </x-bs-admin::button>
+                            @endif
                             @if ($canFolders && $on)
+                                @php $sib = $siblings($f); @endphp
                                 <x-bs-admin::list.actions :name="$f->name">
                                     <x-slot:menu>
-                                        @include('admin::livewire.media.library-folder-menu', ['f' => $f, 'first' => $i === 0, 'last' => $i === $folders->count() - 1])
+                                        @include('admin::livewire.media.library-folder-menu', ['f' => $f, 'first' => $sib->first()?->id === $f->id, 'last' => $sib->last()?->id === $f->id, 'kids' => $kids, 'tops' => $tops->count()])
                                     </x-slot:menu>
                                 </x-bs-admin::list.actions>
                             @endif
@@ -164,7 +188,7 @@
                         <select id="media-fsel" class="field w-full rounded-md border border-border-strong bg-surface px-3 text-text" wire:change="setFolder($event.target.value)">
                             <option value="" @selected(! $trash && $folder === '')>{{ __('media.lib.all') }} ({{ $num($counts['all']) }})</option>
                             @foreach ($folders as $f)
-                                <option value="{{ $f->slug }}" @selected(! $trash && $current?->id === $f->id)>{{ $f->name }} ({{ $num($counts['byFolder'][$f->id] ?? 0) }})</option>
+                                <option value="{{ $f->slug }}" @selected(! $trash && $current?->id === $f->id)>{{ $f->parent_id !== null ? "\u{00A0}\u{00A0}\u{00A0}\u{00A0}" : '' }}{{ $f->name }} ({{ $num($treeN[$f->id] ?? 0) }})</option>
                             @endforeach
                             <option value="-" @selected(! $trash && $folder === '-')>{{ __('media.lib.unfiled') }} ({{ $num($counts['unfiled']) }})</option>
                             @if ($canDelete)
@@ -213,9 +237,19 @@
                 @endif
 
                 @if ($picked !== [] && $canPick)
-                    <x-bs-admin::list.bulk :label="__('media.lib.bulk_region')" :status="__('media.lib.picked', ['n' => $num(count($picked))])" clear="clearPicked" :clear-label="__('media.lib.unpick')">
+                    @php
+                        // «own» (board 12): the Trash button and Khôi phục act only on this person's files;
+                        // one line under them says why the rest stay
+                        $skipN = $mineN === null ? 0 : ($chosenN ?? count($picked)) - $mineN;
+                        $skipWhy = $skipN <= 0 ? null : ($trash
+                            ? __('media.lib.restore_skip', ['n' => $num($skipN)])
+                            : ($mineN > 0 ? __('media.lib.trash_skip_rest', ['n' => $num($skipN)]) : __('media.lib.trash_skip_all')));
+                    @endphp
+                    <x-bs-admin::list.bulk :label="__('media.lib.bulk_region')" :status="__('media.lib.picked', ['n' => $num(count($picked))])" clear="clearPicked" :clear-label="__('media.lib.unpick')" :skip="$canDelete ? $skipWhy : null">
                         @if ($trash)
-                            <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="restorePicked"><x-bs-admin::icon name="ri-arrow-go-back" class="size-4" />{{ __('media.lib.restore_n', ['n' => $num(count($picked))]) }}</x-bs-admin::button>
+                            @if ($mineN === null || $mineN > 0)
+                                <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="restorePicked"><x-bs-admin::icon name="ri-arrow-go-back" class="size-4" />{{ __('media.lib.restore_n', ['n' => $num($mineN ?? count($picked))]) }}</x-bs-admin::button>
+                            @endif
                             @if ($canPurge)
                                 <x-bs-admin::button size="sm" variant="soft" color="danger" wire:click="askPurge(false)"><x-bs-admin::icon name="ri-delete-bin-2" class="size-4" />{{ __('media.lib.purge_n', ['n' => $num(count($picked))]) }}</x-bs-admin::button>
                             @endif
@@ -223,8 +257,8 @@
                             @if ($canUpload)
                                 <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="openMove"><x-bs-admin::icon name="ri-folder-transfer" class="size-4" />{{ __('media.lib.move_n', ['n' => $num(count($picked))]) }}</x-bs-admin::button>
                             @endif
-                            @if ($canDelete)
-                                <x-bs-admin::button size="sm" variant="soft" color="danger" wire:click="trashPicked"><x-bs-admin::icon name="ri-delete-bin" class="size-4" />{{ __('media.lib.trash_n', ['n' => $num(count($picked))]) }}</x-bs-admin::button>
+                            @if ($canDelete && ($mineN === null || $mineN > 0))
+                                <x-bs-admin::button size="sm" variant="soft" color="danger" wire:click="trashPicked"><x-bs-admin::icon name="ri-delete-bin" class="size-4" />{{ $mineN === null ? __('media.lib.trash_n', ['n' => $num(count($picked))]) : __('media.lib.trash_mine_n', ['n' => $num($mineN)]) }}</x-bs-admin::button>
                             @endif
                         @endif
                     </x-bs-admin::list.bulk>
@@ -387,9 +421,10 @@
             <fieldset class="m-0 flex flex-col gap-1 border-0 p-0">
                 <legend class="sr-only">{{ __('media.lib.move_title', ['n' => $num(count($picked))]) }}</legend>
                 @foreach ($folders as $f)
-                    <label wire:key="mv-{{ $f->slug }}" class="flex min-h-hit cursor-pointer items-center gap-3 rounded-md px-2 text-body text-text hover:bg-surface-muted">
+                    <label wire:key="mv-{{ $f->slug }}" @class(['flex min-h-hit cursor-pointer items-center gap-3 rounded-md px-2 text-body text-text hover:bg-surface-muted', 'ml-7' => $f->parent_id !== null])>
                         <input type="radio" name="media-move" value="{{ $f->slug }}" wire:model.live="moveTo" class="size-5 accent-primary">
-                        <x-bs-admin::icon name="ri-folder-3" class="size-4 text-text-muted" /><span class="min-w-0 [overflow-wrap:anywhere]">{{ $f->name }}</span>
+                        <x-bs-admin::icon name="ri-folder-3" class="size-4 text-text-muted" />
+                        <span class="flex min-w-0 flex-col"><span class="[overflow-wrap:anywhere]">{{ $f->name }}</span><span class="text-small text-text-muted">{{ __('media.lib.folder_files', ['n' => $num($treeN[$f->id] ?? 0)]) }}</span></span>
                     </label>
                 @endforeach
                 <label class="flex min-h-hit cursor-pointer items-center gap-3 rounded-md px-2 text-body text-text hover:bg-surface-muted">
@@ -416,7 +451,8 @@
                 <x-bs-admin::list.menu-item icon="ri-add" wire:click="openNewFolder">{{ __('media.lib.new_folder') }}</x-bs-admin::list.menu-item>
                 @if ($at !== false)
                     <x-bs-admin::list.menu-sep />
-                    @include('admin::livewire.media.library-folder-menu', ['f' => $current, 'first' => $at === 0, 'last' => $at === $folders->count() - 1])
+                    @php $sib = $siblings($current); @endphp
+                    @include('admin::livewire.media.library-folder-menu', ['f' => $current, 'first' => $sib->first()?->id === $current->id, 'last' => $sib->last()?->id === $current->id, 'kids' => $kidsOf[$current->id] ?? 0, 'tops' => $tops->count()])
                 @endif
                 </x-bs-admin::list.menu>
             </div>
@@ -424,12 +460,27 @@
     @endif
 
     @if ($canFolders)
-        @php $doomed = $folderToDelete === '' ? null : $folders->firstWhere('slug', $folderToDelete); @endphp
-        @php $doomedN = $doomed === null ? 0 : ($counts['byFolder'][$doomed->id] ?? 0); @endphp
-        <x-bs-admin::confirm-dialog model="askFolderOpen" :title="__('media.lib.folder_delete_title', ['name' => $doomed?->name ?? ''])" icon="ri-folder-reduce" danger ok-icon="ri-folder-reduce"
-            :ok="__('media.lib.folder_delete_ok', ['n' => $num($doomedN)])" confirm="confirmDeleteFolder" cancel="cancelDeleteFolder">
-            <x-bs-admin::confirm-line icon="ri-image-2">{{ __('media.lib.folder_delete_l1', ['n' => $num($doomedN)]) }}</x-bs-admin::confirm-line>
-            <x-bs-admin::confirm-line icon="ri-links">{{ __('media.lib.folder_delete_l2') }}</x-bs-admin::confirm-line>
+        @php
+            $doomed = $folderToDelete === '' ? null : $folders->firstWhere('slug', $folderToDelete);
+            $doomedN = $doomed === null ? 0 : ($treeN[$doomed->id] ?? 0);
+            $doomedK = $doomed === null ? 0 : ($kidsOf[$doomed->id] ?? 0);
+            $doomedTitle = $doomedK > 0
+                ? __('media.lib.folder_delete_title_kids', ['name' => $doomed?->name ?? '', 'k' => $num($doomedK)])
+                : __('media.lib.folder_delete_title', ['name' => $doomed?->name ?? '']);
+            $doomedOk = match (true) {
+                $doomedK > 0 && $doomedN > 0 => __('media.lib.folder_delete_ok_kids_n', ['k' => $num($doomedK + 1), 'n' => $num($doomedN)]),
+                $doomedK > 0 => __('media.lib.folder_delete_ok_kids', ['k' => $num($doomedK + 1)]),
+                default => __('media.lib.folder_delete_ok', ['n' => $num($doomedN)]),
+            };
+        @endphp
+        <x-bs-admin::confirm-dialog model="askFolderOpen" :title="$doomedTitle" icon="ri-folder-reduce" danger ok-icon="ri-folder-reduce"
+            :ok="$doomedOk" confirm="confirmDeleteFolder" cancel="cancelDeleteFolder">
+            @if ($doomedN > 0 || $doomedK === 0)
+                <x-bs-admin::confirm-line icon="ri-image-2">{{ __($doomedK > 0 ? 'media.lib.folder_delete_l1_kids' : 'media.lib.folder_delete_l1', ['n' => $num($doomedN)]) }}</x-bs-admin::confirm-line>
+                <x-bs-admin::confirm-line icon="ri-links">{{ __('media.lib.folder_delete_l2') }}</x-bs-admin::confirm-line>
+            @else
+                <x-bs-admin::confirm-line icon="ri-image-2">{{ __('media.lib.folder_delete_empty_kids') }}</x-bs-admin::confirm-line>
+            @endif
             @if ($folderNoUndo)
                 <x-bs-admin::confirm-line icon="ri-error-warning">{{ __('media.lib.folder_delete_l3') }}</x-bs-admin::confirm-line>
             @endif
@@ -439,7 +490,51 @@
         </x-bs-admin::confirm-dialog>
     @endif
 
-    @if ($canDelete)
+    @if ($canFolders)
+        @php
+            $moving = $reparentFolder === '' ? null : $folders->firstWhere('slug', $reparentFolder);
+            $intoName = $reparentTo === '' || $reparentTo === '-' ? null : $tops->firstWhere('slug', $reparentTo)?->name;
+        @endphp
+        <x-bs-admin::modal model="reparentOpen" :title="__('media.lib.reparent_title', ['name' => $moving?->name ?? ''])" :close-label="__('media.lib.cancel')">
+            <fieldset class="m-0 flex flex-col gap-1 border-0 p-0">
+                <legend class="sr-only">{{ __('media.lib.reparent_title', ['name' => $moving?->name ?? '']) }}</legend>
+                @if ($moving?->parent_id !== null)
+                    <label class="flex min-h-hit cursor-pointer items-center gap-3 rounded-md px-2 text-body text-text hover:bg-surface-muted">
+                        <input type="radio" name="media-reparent" value="-" wire:model.live="reparentTo" class="size-5 accent-primary">
+                        <x-bs-admin::icon name="ri-folder-3" class="size-4 text-text-muted" />
+                        <span class="flex min-w-0 flex-col"><span>{{ __('media.lib.reparent_top') }}</span><span class="text-small text-text-muted">{{ __('media.lib.reparent_top_sub') }}</span></span>
+                    </label>
+                @endif
+                @foreach ($tops as $t)
+                    @continue($t->id === $moving?->id || $t->id === $moving?->parent_id)
+                    @php $tk = $kidsOf[$t->id] ?? 0; @endphp
+                    <label wire:key="rp-{{ $t->slug }}" class="flex min-h-hit cursor-pointer items-center gap-3 rounded-md px-2 text-body text-text hover:bg-surface-muted">
+                        <input type="radio" name="media-reparent" value="{{ $t->slug }}" wire:model.live="reparentTo" class="size-5 accent-primary">
+                        <x-bs-admin::icon name="ri-folder-3" class="size-4 text-text-muted" />
+                        <span class="flex min-w-0 flex-col"><span class="[overflow-wrap:anywhere]">{{ $t->name }}</span><span class="text-small text-text-muted">{{ $tk > 0 ? __('media.lib.folder_files_kids', ['n' => $num($treeN[$t->id] ?? 0), 'k' => $num($tk)]) : __('media.lib.folder_files', ['n' => $num($treeN[$t->id] ?? 0)]) }}</span></span>
+                    </label>
+                @endforeach
+            </fieldset>
+            <x-slot:footer>
+                <x-bs-admin::button variant="outline" color="secondary" wire:click="cancelReparent">{{ __('media.lib.cancel') }}</x-bs-admin::button>
+                <x-bs-admin::button color="primary" aria-disabled="{{ $reparentTo === '' ? 'true' : 'false' }}" class="aria-disabled:opacity-60" wire:click="confirmReparent">
+                    <x-bs-admin::icon name="ri-folder-transfer" class="size-4" />{{ $reparentTo === '' ? __('media.lib.reparent_pick') : ($reparentTo === '-' ? __('media.lib.reparent_ok_top') : __('media.lib.reparent_ok', ['folder' => $intoName ?? ''])) }}
+                </x-bs-admin::button>
+            </x-slot:footer>
+        </x-bs-admin::modal>
+    @endif
+
+    @if ($canDelete && $trashKept > 0)
+        {{-- «own»: some chosen files stay (someone else's, or in use); the rest go --}}
+        @php
+            $goN = $trashGo;
+        @endphp
+        <x-bs-admin::confirm-dialog model="askTrashOpen" :title="__('media.lib.ask_trash_mine_title', ['n' => $num($goN)])" icon="ri-error-warning"
+            :ok="__('media.lib.ask_trash_mine_ok', ['n' => $num($goN)])" confirm="confirmTrash" cancel="cancelTrash">
+            <x-bs-admin::confirm-line icon="ri-user-3">{{ __('media.lib.ask_trash_kept', ['n' => $num($trashKept)]) }}</x-bs-admin::confirm-line>
+            <x-bs-admin::confirm-line icon="ri-arrow-go-back">{{ __('media.lib.ask_trash_l2', ['days' => $retention]) }}</x-bs-admin::confirm-line>
+        </x-bs-admin::confirm-dialog>
+    @elseif ($canDelete)
         <x-bs-admin::confirm-dialog model="askTrashOpen" :title="__('media.lib.ask_trash_title', ['n' => $num(count($picked))])" icon="ri-error-warning"
             :ok="__('media.lib.ask_trash_ok')" confirm="confirmTrash" cancel="cancelTrash">
             <x-bs-admin::confirm-line icon="ri-links">{{ __('media.lib.ask_trash_l1') }}</x-bs-admin::confirm-line>
@@ -455,5 +550,5 @@
         </x-bs-admin::confirm-dialog>
     @endif
 
-    <x-bs-admin::toast :message="$toast" :tone="$toastTone" dismiss="dismissToast" :undo="$undoTrash !== [] ? 'undo' : ($undoFolder !== '' ? 'undoFolderDelete' : null)" :seq="$toastSeq" />
+    <x-bs-admin::toast :message="$toast" :tone="$toastTone" dismiss="dismissToast" :undo="$undoTrash !== [] ? 'undo' : ($undoFolder !== '' ? 'undoFolderDelete' : ($undoReparent !== '' ? 'undoReparent' : null))" :seq="$toastSeq" />
 </div>

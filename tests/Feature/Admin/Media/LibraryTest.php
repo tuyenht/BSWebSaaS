@@ -70,12 +70,12 @@ it('isolates media per site (RLS) — site A library never shows site B assets',
         ->assertDontSee('site-b-asset.png');
 });
 
-it('bulk soft-deletes a selected master with media.delete (sends it to the Thùng rác)', function (): void {
+it('bulk soft-deletes a selected master with media.delete.any (sends it to the Thùng rác)', function (): void {
     $manager = User::factory()->create();
     $asset = seedMediaAsset(1);
 
     app(Tenancy::class)->enter(1, function () use ($manager, $asset): void {
-        grantRole($manager, 'admin', ['media.view', 'media.delete']);
+        grantRole($manager, 'admin', ['media.view', 'media.delete.any']);
 
         Livewire::actingAs($manager->fresh())
             ->test(Library::class)
@@ -88,7 +88,7 @@ it('bulk soft-deletes a selected master with media.delete (sends it to the Thùn
     });
 });
 
-it('forbids bulk delete without media.delete', function (): void {
+it('forbids bulk delete without a delete right', function (): void {
     $viewer = User::factory()->create();
     $asset = seedMediaAsset(1);
 

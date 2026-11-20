@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Livewire\Media;
 
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
+use App\Modules\Admin\Support\MediaDeleteRights;
 use App\Modules\Admin\Support\MediaLibraryDirectory;
 use App\Modules\Admin\Support\MediaUsageLocator;
 use App\Modules\Identity\Models\User;
@@ -24,6 +25,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use LogicException;
 use Throwable;
 
 /**
@@ -33,7 +35,8 @@ use Throwable;
  * Read is gated by media.view (re-checked in boot(): the livewire/update endpoint bypasses route
  * middleware); every action re-checks its own right: making, renaming, reordering or deleting a
  * folder needs media.folders and deleting for good needs media.purge (both the website admin's),
- * moving files into a folder stays with media.upload and the Trash with media.delete. The upload
+ * moving files into a folder stays with media.upload and the Trash with media.delete.own / .any
+ * (MediaDeleteRights: «own» = only this person's own uploads that nobody uses). The upload
  * panes and the detail panel are the shared picker's (WithMediaLibraryPicker in manage mode).
  */
 #[Layout('admin::layouts.app')]
@@ -44,7 +47,7 @@ final class Library extends Component
     /** '' = all files, '-' = files in no folder, else a folder slug. */
     public string $folder = '';
 
-    /** 'live' or 'trash' (the Trash needs media.delete, checked wherever it is read). */
+    /** 'live' or 'trash' (the Trash needs a delete right, checked wherever it is read). */
     public string $status = 'live';
 
     public string $search = '';
@@ -80,6 +83,9 @@ final class Library extends Component
 
     public string $newFolderName = '';
 
+    /** Where the new folder goes: '' = a top-level folder, else the slug of the top-level folder it goes in. */
+    public string $newFolderParent = '';
+
     public bool $folderSheetOpen = false;
 
     public bool $moveOpen = false;
@@ -88,6 +94,14 @@ final class Library extends Component
     public string $moveTo = '';
 
     public bool $askTrashOpen = false;
+
+    /** How many chosen files stay out of that Trash move (someone else's, or in use): the question's wording. */
+    #[Locked]
+    public int $trashKept = 0;
+
+    /** With media.delete.own: how many of the chosen files the asked question sends (its title and OK). */
+    #[Locked]
+    public int $trashGo = 0;
 
     public bool $askPurgeOpen = false;
 
@@ -117,6 +131,22 @@ final class Library extends Component
     /** The folder asked about holds more files than one request moves (config media.folder_delete_inline_max_files). */
     #[Locked]
     public bool $folderInBatches = false;
+
+    public bool $reparentOpen = false;
+
+    /** The slug of the folder «Chuyển thư mục…» is about. */
+    #[Locked]
+    public string $reparentFolder = '';
+
+    /** Where it goes: '' = not chosen yet, '-' = up to the top level, else the slug of a top-level folder. */
+    public string $reparentTo = '';
+
+    /**
+     * The key of the last «Chuyển thư mục…» kept for Hoàn tác (the folder, its parent before and its
+     * place, server side: the page holds no folder id).
+     */
+    #[Locked]
+    public string $undoReparent = '';
 
     /** The key of the last folder delete kept for Hoàn tác (the folder and its files, server side). */
     #[Locked]
@@ -164,7 +194,7 @@ final class Library extends Component
 
     public function setFolder(string $key): void
     {
-        $toTrash = $key === '~trash' && Gate::allows('media.delete');
+        $toTrash = $key === '~trash' && MediaDeleteRights::some();
         $this->folder = $toTrash ? '' : $key;
         $this->status = $toTrash ? 'trash' : 'live';
         $this->clean();
@@ -311,21 +341,25 @@ final class Library extends Component
         $this->restart();
     }
 
-    public function openNewFolder(): void
+    public function openNewFolder(string $parent = ''): void
     {
         abort_unless(Gate::allows('media.folders'), 403);
 
+        // «Thư mục con mới» names a top-level folder; anything else starts a top-level folder
+        $top = $parent === '' ? null : self::folderBySlug($parent);
+        $this->newFolderParent = $top !== null && $top->parent_id === null ? (string) $top->slug : '';
         $this->newFolderOpen = true;
         $this->newFolderName = '';
         $this->folderSheetOpen = false;
-        $this->resetErrorBag('newFolderName');
+        $this->resetErrorBag(['newFolderName', 'newFolderParent']);
     }
 
     public function cancelNewFolder(): void
     {
         $this->newFolderOpen = false;
         $this->newFolderName = '';
-        $this->resetErrorBag('newFolderName');
+        $this->newFolderParent = '';
+        $this->resetErrorBag(['newFolderName', 'newFolderParent']);
     }
 
     public function createFolder(): void
@@ -333,29 +367,45 @@ final class Library extends Component
         abort_unless(Gate::allows('media.folders'), 403);
 
         $name = trim($this->newFolderName);
-        $this->resetErrorBag('newFolderName');
-        $error = self::folderNameError($name);
-        if ($error !== null) {
-            $this->addError('newFolderName', $error);
+        $this->resetErrorBag(['newFolderName', 'newFolderParent']);
+        $parentSlug = $this->newFolderParent;
 
-            return;
-        }
-
-        // under the site's folder-list lock, like every folder write: the new last place is nobody else's
-        $folder = DB::transaction(function () use ($name): MediaFolder {
+        // under the site's folder-list lock, like every folder write: the checks see what others committed
+        $made = DB::transaction(function () use ($name, $parentSlug): MediaFolder|array|string {
             MediaFolder::lockTree(app(CurrentSite::class)->id());
-            $maxPosition = MediaFolder::query()->max('position');
+            $parent = $parentSlug === '' ? null : self::folderBySlug($parentSlug);
+            if ($parentSlug !== '' && ($parent === null || $parent->parent_id !== null || self::deleting($parent))) {
+                return ['newFolderParent', Cast::string(__('media.lib.folder_parent_gone'))]; // deleted or made a sub-folder meanwhile
+            }
+            $error = self::folderNameError($name, null, $parent?->id);
+            if ($error !== null) {
+                return $error;
+            }
+            $maxPosition = MediaFolder::query()->where('parent_id', $parent?->id)->max('position');
 
             return MediaFolder::query()->create([
                 'name' => $name,
                 'slug' => (new MediaFolder)->uniqueSlug($name, $name),
+                'parent_id' => $parent?->id,
                 'position' => (is_numeric($maxPosition) ? (int) $maxPosition : 0) + 1,
             ]);
         });
+        if (! $made instanceof MediaFolder) {
+            [$field, $error] = is_array($made) ? $made : ['newFolderName', $made];
+            $this->addError($field, $error);
+
+            return;
+        }
 
         $this->cancelNewFolder();
-        $this->setFolder((string) $folder->slug);
-        $this->say(__('media.lib.folder_created', ['name' => $name]));
+        $this->setFolder((string) $made->slug);
+        $parent = $made->parent_id === null ? null : MediaFolder::query()->whereKey($made->parent_id)->first(['slug', 'name']);
+        if ($parent !== null) {
+            $this->dispatch('media-folder-open', slug: (string) $parent->slug);
+        }
+        $this->say($parent === null
+            ? __('media.lib.folder_created', ['name' => $name])
+            : __('media.lib.subfolder_created', ['name' => $name, 'parent' => $parent->name]));
     }
 
     public function openFolderSheet(): void
@@ -397,46 +447,58 @@ final class Library extends Component
     {
         abort_unless(Gate::allows('media.folders'), 403);
 
-        $folder = self::folderBySlug($this->renaming);
-        if ($folder === null) {
-            $this->cancelRename(); // gone meanwhile, or never this site's
-
-            return;
-        }
+        $slug = $this->renaming;
         $name = trim($this->renameName);
         $this->resetErrorBag('renameName');
-        $error = self::folderNameError($name, $folder->id);
-        if ($error !== null) {
-            $this->addError('renameName', $error);
+        // under the site's folder-list lock: the name check sees a folder created or moved in meanwhile
+        $done = DB::transaction(function () use ($slug, $name): array|string|null {
+            MediaFolder::lockTree(app(CurrentSite::class)->id());
+            $folder = self::folderBySlug($slug);
+            if ($folder === null) {
+                return null; // gone meanwhile, or never this site's
+            }
+            $error = self::folderNameError($name, $folder->id, $folder->parent_id);
+            if ($error !== null) {
+                return $error;
+            }
+            $old = $folder->name;
+            if ($old !== $name) {
+                $folder->update(['name' => $name]);
+            }
+
+            return ['old' => $old];
+        });
+        if (is_string($done)) {
+            $this->addError('renameName', $done);
 
             return;
         }
-
-        $old = $folder->name;
         $this->cancelRename();
-        if ($old === $name) {
-            return;
+        if ($done !== null && $done['old'] !== $name) {
+            $this->say(__('media.lib.folder_renamed', ['old' => $done['old'], 'name' => $name]));
         }
-        $folder->update(['name' => $name]);
-        $this->say(__('media.lib.folder_renamed', ['old' => $old, 'name' => $name]));
     }
 
-    /** "Chuyển lên" (-1) / "Chuyển xuống" (+1): swaps the folder with its neighbour in the list. */
+    /** "Chuyển lên" (-1) / "Chuyển xuống" (+1): swaps the folder with its neighbour among the folders of its parent. */
     public function moveFolder(string $slug, int $step): void
     {
         abort_unless(Gate::allows('media.folders'), 403);
 
         $this->folderSheetOpen = false;
         $step = $step < 0 ? -1 : 1;
-        // the folders locked for the swap, so two people moving at once never leave equal positions
+        // under the site's folder-list lock, so two people moving at once never leave equal positions
         $moved = DB::transaction(function () use ($slug, $step): bool {
             MediaFolder::lockTree(app(CurrentSite::class)->id());
+            $me = self::folderBySlug($slug);
+            if ($me === null) {
+                return false;
+            }
             /** @var list<MediaFolder> $order */
-            $order = MediaFolder::query()->orderBy('position')->orderBy('name')->orderBy('id')
-                ->lockForUpdate()->get(['id', 'slug', 'name', 'position'])->all();
+            $order = MediaFolder::query()->where('parent_id', $me->parent_id)->orderBy('position')->orderBy('name')->orderBy('id')
+                ->get(['id', 'slug', 'name', 'position'])->all();
             $at = null;
             foreach ($order as $i => $folder) {
-                if ((string) $folder->slug === $slug) {
+                if ($folder->id === $me->id) {
                     $at = $i;
                 }
             }
@@ -460,8 +522,151 @@ final class Library extends Component
     }
 
     /**
-     * "Xóa thư mục": a folder with no files goes at once (with Hoàn tác); with files it asks first.
-     * Files are never deleted with their folder — they go back to "Chưa phân loại".
+     * «Chuyển thư mục…»: a folder goes inside a top-level folder, or a sub-folder goes up to the top
+     * level. Not for a top-level folder that holds sub-folders (that would make three levels), nor
+     * when there is no other top-level folder to go in — the menu says why.
+     */
+    public function openReparent(string $slug): void
+    {
+        abort_unless(Gate::allows('media.folders'), 403);
+
+        $this->folderSheetOpen = false;
+        $folder = self::folderBySlug($slug);
+        if ($folder === null || self::reparentBlocked($folder) !== null) {
+            return;
+        }
+        $this->reparentFolder = (string) $folder->slug;
+        $this->reparentTo = '';
+        $this->reparentOpen = true;
+    }
+
+    public function cancelReparent(): void
+    {
+        $this->reparentOpen = false;
+        $this->reparentFolder = '';
+        $this->reparentTo = '';
+    }
+
+    public function confirmReparent(): void
+    {
+        abort_unless(Gate::allows('media.folders'), 403);
+
+        $slug = $this->reparentFolder;
+        $to = $this->reparentTo;
+        if ($slug === '' || $to === '') {
+            return;
+        }
+        $this->cancelReparent();
+
+        $done = DB::transaction(function () use ($slug, $to): array|string|null {
+            MediaFolder::lockTree(app(CurrentSite::class)->id());
+            $folder = self::folderBySlug($slug);
+            $target = $to === '-' ? null : self::folderBySlug($to);
+            if ($folder === null || ($to !== '-' && ($target === null || $target->parent_id !== null || $target->id === $folder->id || self::deleting($target)))) {
+                return null; // gone, another site's, or a sub-folder: nothing changes
+            }
+            if ($target?->id === $folder->parent_id
+                || ($target !== null && MediaFolder::query()->where('parent_id', $folder->id)->exists())) {
+                return null; // already there, or it holds sub-folders (a third level)
+            }
+            if (self::folderNameError($folder->name, $folder->id, $target?->id) !== null) {
+                return 'taken';
+            }
+            $before = [
+                'folder' => (string) $folder->slug,
+                'folderId' => $folder->id,
+                'parent' => $folder->parent_id === null ? '' : Cast::string(MediaFolder::query()->whereKey($folder->parent_id)->value('slug')),
+                'parentId' => $folder->parent_id ?? 0,
+                'position' => self::slotOf($folder),
+            ];
+            $from = $folder->parent_id;
+            $folder->update(['parent_id' => $target?->id]);
+            self::placeAmongSiblings($target?->id, $folder->id);
+            self::placeAmongSiblings($from);
+
+            return ['before' => $before, 'name' => $folder->name, 'target' => $target];
+        });
+
+        if ($done === 'taken') {
+            $this->say(__('media.lib.reparent_name_taken'), 'error');
+
+            return;
+        }
+        if (! is_array($done)) {
+            $this->say(__('media.lib.reparent_gone'), 'error');
+
+            return;
+        }
+        $target = $done['target'];
+        if ($target instanceof MediaFolder) {
+            $this->dispatch('media-folder-open', slug: (string) $target->slug);
+        }
+        $this->say($target instanceof MediaFolder
+            ? __('media.lib.reparented', ['name' => $done['name'], 'parent' => $target->name])
+            : __('media.lib.reparented_top', ['name' => $done['name']]));
+        $token = Str::random(40);
+        Cache::put(self::folderUndoKey('move-'.$token), $done['before'], now()->addMinutes(self::FOLDER_UNDO_MINUTES));
+        $this->undoReparent = $token; // after say(): this toast's Hoàn tác
+    }
+
+    /** "Hoàn tác" after «Chuyển thư mục…»: the folder goes back where it was, at its old place. */
+    public function undoReparent(): void
+    {
+        abort_unless(Gate::allows('media.folders'), 403);
+
+        $key = self::folderUndoKey('move-'.$this->undoReparent);
+        $raw = $this->undoReparent === '' ? null : Cache::pull($key);
+        $kept = $raw;
+        $this->undoReparent = '';
+        if (! is_array($kept) || ! is_string($kept['folder'] ?? null) || ! is_string($kept['parent'] ?? null)) {
+            $this->say(__('media.lib.reparent_undo_gone'), 'error');
+
+            return;
+        }
+        $kept = ['folder' => $kept['folder'], 'folderId' => Cast::int($kept['folderId'] ?? 0), 'parent' => $kept['parent'],
+            'parentId' => Cast::int($kept['parentId'] ?? 0), 'position' => Cast::int($kept['position'] ?? 1)];
+
+        try {
+            $name = $this->undoReparentNow($kept);
+        } catch (Throwable $e) {
+            Cache::put($key, $raw, now()->addMinutes(self::FOLDER_UNDO_MINUTES)); // the next try still has it
+            throw $e;
+        }
+
+        $name === null
+            ? $this->say(__('media.lib.reparent_undo_gone'), 'error')
+            : $this->say(__('media.lib.reparent_back', ['name' => $name]));
+    }
+
+    /**
+     * Puts the moved folder back, under the folder-list lock; null when it or its old place changed.
+     *
+     * @param  array{folder: string, folderId: int, parent: string, parentId: int, position: int}  $kept
+     */
+    private function undoReparentNow(array $kept): ?string
+    {
+        return DB::transaction(function () use ($kept): ?string {
+            MediaFolder::lockTree(app(CurrentSite::class)->id());
+            $folder = MediaFolder::query()->whereKey($kept['folderId'])->where('slug', $kept['folder'])->first();
+            $parent = $kept['parent'] === '' ? null : self::folderBySlug($kept['parent']);
+            if ($folder === null || ($kept['parent'] !== '' && ($parent === null || $parent->id !== $kept['parentId'] || $parent->parent_id !== null || self::deleting($parent)))
+                || ($parent !== null && MediaFolder::query()->where('parent_id', $folder->id)->exists())
+                || self::folderNameError($folder->name, $folder->id, $parent?->id) !== null) {
+                return null; // the folder or its old parent changed since: it stays where it is
+            }
+            $from = $folder->parent_id;
+            $folder->update(['parent_id' => $parent?->id]);
+            self::placeAmongSiblings($parent?->id, $folder->id, $kept['position']);
+            self::placeAmongSiblings($from);
+
+            return $folder->name;
+        });
+    }
+
+    /**
+     * "Xóa thư mục": an empty folder without sub-folders goes at once (with Hoàn tác); one with
+     * files or sub-folders asks first. Sub-folders go with it; files are never deleted with their
+     * folder — they go back to "Chưa phân loại".
      */
     public function askDeleteFolder(string $slug): void
     {
@@ -472,9 +677,10 @@ final class Library extends Component
         if ($folder === null) {
             return;
         }
-        $inBatches = self::tooManyInline($folder->id);
-        $noUndo = $inBatches || self::tooManyForUndo($folder->id);
-        if (! $noUndo && ! Media::query()->where('folder_id', $folder->id)->exists()) {
+        $family = self::familyIds($folder->id);
+        $inBatches = self::tooManyInline($family);
+        $noUndo = $inBatches || self::tooManyForUndo($family);
+        if (! $noUndo && count($family) === 1 && ! Media::query()->where('folder_id', $folder->id)->exists()) {
             $this->deleteFolder($folder);
 
             return;
@@ -505,9 +711,10 @@ final class Library extends Component
     }
 
     /**
-     * "Hoàn tác" after a folder delete: the folder comes back at its place in the list with the files
-     * that were in it. A folder of the same name made meanwhile keeps its name; the one coming back
-     * takes the first free "Tên (2)", "Tên (3)"…, so no file is left out of its folder.
+     * "Hoàn tác" after a folder delete: the folder comes back at its place in the list, in the folder
+     * it was in (at the top level if that one went meanwhile), with its sub-folders and the files that
+     * were in them. A folder of the same name made meanwhile keeps its name; the one coming back takes
+     * the first free "Tên (2)", "Tên (3)"…, so no file is left out of its folder.
      */
     public function undoFolderDelete(): void
     {
@@ -516,7 +723,7 @@ final class Library extends Component
         $key = self::folderUndoKey($this->undoFolder);
         $kept = $this->undoFolder === '' ? null : Cache::pull($key);
         $this->undoFolder = '';
-        if (! is_array($kept) || ! is_string($kept['name'] ?? null) || ! is_string($kept['slug'] ?? null) || ! is_string($kept['ids'] ?? null)) {
+        if (! is_array($kept) || self::keptFolder($kept) === null) {
             $this->say(__('media.lib.folder_undo_gone'), 'error');
 
             return;
@@ -525,29 +732,25 @@ final class Library extends Component
         try {
             $folder = DB::transaction(function () use ($kept): MediaFolder {
                 MediaFolder::lockTree(app(CurrentSite::class)->id());
-                // the list locked like a move: the folders from its old place down step one place down
-                $position = max(1, Cast::int($kept['position'] ?? 1));
-                // FOR NO KEY UPDATE: a file moved into a folder meanwhile (its key check) is not blocked
-                $order = MediaFolder::query()->orderBy('position')->orderBy('name')->orderBy('id')
-                    ->lock('for no key update')->get(['id', 'position']);
-                $position = min($position, $order->count() + 1);
-                foreach ($order->values() as $i => $other) {
-                    $want = $i + 1 < $position ? $i + 1 : $i + 2;
-                    if ($other->position !== $want) {
-                        MediaFolder::query()->whereKey($other->id)->update(['position' => $want]);
-                    }
+                $one = self::keptFolder($kept) ?? throw new LogicException('checked above');
+                // the folder it was in, when that one is still there (the same row, not a new one that took its slug)
+                $parent = is_numeric($kept['parentId'] ?? null) && is_string($kept['parent'] ?? null)
+                    ? MediaFolder::query()->whereKey(Cast::int($kept['parentId']))->where('slug', $kept['parent'])->whereNull('parent_id')->first()
+                    : null;
+                if ($parent !== null && self::deleting($parent)) {
+                    $parent = null; // its parent is being deleted: it comes back at the top level, as when the parent is gone
                 }
 
-                $folder = MediaFolder::query()->create([
-                    'name' => self::freeFolderName($kept['name']),
-                    'slug' => (new MediaFolder)->uniqueSlug($kept['slug'], $kept['name']),
-                    'position' => $position,
-                ]);
-                /** @var list<int> $ids */
-                $ids = $kept['ids'] === '' ? [] : array_values(unpack('q*', $kept['ids']) ?: []);
-                foreach (array_chunk($ids, 1000) as $chunk) {
-                    // only files still in no folder: one moved elsewhere meanwhile stays where it was put
-                    Media::withTrashed()->whereIn('id', $chunk)->whereNull('folder_id')->update(['folder_id' => $folder->id]);
+                $folder = self::bringBack($one, $parent?->id);
+                self::placeAmongSiblings($parent?->id, $folder->id, max(1, $one['position']));
+                $kids = is_array($kept['kids'] ?? null) ? $kept['kids'] : [];
+                $at = 0;
+                foreach ($kids as $kid) {
+                    $k = is_array($kid) ? self::keptFolder($kid) : null;
+                    if ($k !== null && $parent === null) { // a sub-folder never holds sub-folders
+                        $k['position'] = ++$at;
+                        self::bringBack($k, $folder->id);
+                    }
                 }
 
                 return $folder;
@@ -558,6 +761,9 @@ final class Library extends Component
             throw $e;
         }
 
+        if ($folder->parent_id !== null) {
+            $this->dispatch('media-folder-open', slug: Cast::string(MediaFolder::query()->whereKey($folder->parent_id)->value('slug')));
+        }
         $this->setFolder((string) $folder->slug);
         $this->say(__('media.lib.folder_back', ['name' => $folder->name]));
     }
@@ -599,14 +805,31 @@ final class Library extends Component
         $this->say(__('media.lib.moved', ['n' => $n, 'folder' => $target !== null ? $target->name : __('media.lib.unfiled')]));
     }
 
-    /** "Chuyển vào Thùng rác": asks first only when a chosen file is used somewhere. */
+    /**
+     * "Chuyển vào Thùng rác": asks first when a chosen file is used somewhere, or (with
+     * media.delete.own) when some chosen files stay because they are someone else's or in use.
+     */
     public function trashPicked(): void
     {
-        abort_unless(Gate::allows('media.delete'), 403);
+        abort_unless(MediaDeleteRights::some(), 403);
 
-        $query = Media::query()->whereIn('ulid', $this->picked);
-        app(MediaUsageLocator::class)->constrain($query, true);
-        if ($query->exists()) {
+        $chosen = Media::query()->whereIn('ulid', $this->picked)->count();
+        $mine = app(MediaDeleteRights::class)->trashable(Media::query()->whereIn('ulid', $this->picked))->count();
+        if ($mine === 0) {
+            if ($chosen === 0 || MediaDeleteRights::any()) {
+                $this->picked = []; // the chosen files are gone meanwhile: nothing left to send
+
+                return;
+            }
+            $this->say(__('media.lib.trash_none_mine'), 'error');
+
+            return;
+        }
+        $this->trashKept = $chosen - $mine;
+        $this->trashGo = $mine;
+        $used = Media::query()->whereIn('ulid', $this->picked);
+        app(MediaUsageLocator::class)->constrain($used, true);
+        if ($this->trashKept > 0 || $used->exists()) {
             $this->askTrashOpen = true;
 
             return;
@@ -616,12 +839,15 @@ final class Library extends Component
 
     public function confirmTrash(): void
     {
-        abort_unless(Gate::allows('media.delete'), 403);
+        abort_unless(MediaDeleteRights::some(), 403);
 
-        $rows = Media::query()->whereIn('ulid', $this->picked)->get();
+        // only what this person may send: someone else's file (or one in use, for «own») stays
+        $rows = app(MediaDeleteRights::class)->trashable(Media::query()->whereIn('ulid', $this->picked))->get();
         $rows->each->delete(); // one by one, so the observers fire
         $this->picked = [];
         $this->askTrashOpen = false;
+        $this->trashKept = 0;
+        $this->trashGo = 0;
         $this->say(__('media.lib.trashed', ['n' => $rows->count()]));
         $this->undoTrash = Cast::strings($rows->pluck('ulid')->all()); // after say(): this toast's Hoàn tác
     }
@@ -629,28 +855,31 @@ final class Library extends Component
     public function cancelTrash(): void
     {
         $this->askTrashOpen = false;
+        $this->trashKept = 0;
+        $this->trashGo = 0;
     }
 
     /** "Hoàn tác" on the toast after a move to Trash. */
     public function undo(): void
     {
-        abort_unless(Gate::allows('media.delete'), 403);
+        abort_unless(MediaDeleteRights::some(), 403);
 
-        $n = Media::onlyTrashed()->whereIn('ulid', $this->undoTrash)->get()->each->restore()->count();
+        $n = MediaDeleteRights::restorable(Media::onlyTrashed()->whereIn('ulid', $this->undoTrash))->get()->each->restore()->count();
         $this->undoTrash = [];
         $this->say(__('media.lib.restored', ['n' => $n]));
     }
 
     public function restorePicked(): void
     {
-        abort_unless(Gate::allows('media.delete'), 403);
+        abort_unless(MediaDeleteRights::some(), 403);
 
-        $n = Media::onlyTrashed()->whereIn('ulid', $this->picked)->get()->each->restore()->count();
+        // with media.delete.own only what this person put in the Trash comes back out
+        $n = MediaDeleteRights::restorable(Media::onlyTrashed()->whereIn('ulid', $this->picked))->get()->each->restore()->count();
         $this->picked = [];
         $this->say(__('media.lib.restored', ['n' => $n]));
     }
 
-    /** Deleting for good is the website admin's right (media.purge); restore stays with media.delete. */
+    /** Deleting for good is the website admin's right (media.purge); restore stays with the delete rights. */
     public function askPurge(bool $all = false): void
     {
         abort_unless(Gate::allows('media.purge'), 403);
@@ -754,13 +983,15 @@ final class Library extends Component
             $this->toast = null;
             $this->undoTrash = [];
             $this->undoFolder = '';
+            $this->undoReparent = '';
         }
     }
 
     public function render(): View
     {
         $this->clean();
-        $canDelete = Gate::allows('media.delete');
+        $canDelete = MediaDeleteRights::some();
+        $canDeleteAny = MediaDeleteRights::any();
         $canPurge = Gate::allows('media.purge');
         $trash = $this->status === 'trash' && $canDelete;
         $directory = app(MediaLibraryDirectory::class);
@@ -771,15 +1002,33 @@ final class Library extends Component
         $page = ['rows' => new Collection, 'older' => null, 'newer' => null, 'lost' => false];
         $totals = ['n' => 0, 'bytes' => 0];
         $current = null;
+        $mineN = null;
+        $chosenN = null;
         try {
             // a savepoint inside the request's tenancy transaction: a failed read leaves it usable
-            DB::transaction(function () use ($directory, $canDelete, $trash, &$folders, &$counts, &$page, &$totals, &$current): void {
-                $folders = MediaFolder::query()->orderBy('position')->orderBy('name')->get(['id', 'name', 'slug']);
+            DB::transaction(function () use ($directory, $canDelete, $canDeleteAny, $trash, &$folders, &$counts, &$page, &$totals, &$current, &$mineN, &$chosenN): void {
+                $folders = MediaFolder::inTreeOrder(MediaFolder::query()->orderBy('position')->orderBy('name')->orderBy('id')
+                    ->get(['id', 'name', 'slug', 'parent_id', 'position']));
                 $current = $this->currentFolder($folders);
                 $counts = $directory->counts($canDelete);
-                $query = $directory->filtered($this->filters($current, $trash));
+                if ($canDelete && ! $canDeleteAny) {
+                    // «own»: the Trash holds only this person's own files
+                    $counts['trash'] = MediaDeleteRights::visibleTrash(Media::onlyTrashed())->count();
+                }
+                $query = $directory->filtered($this->filters($current, $folders, $trash));
+                if ($trash) {
+                    MediaDeleteRights::visibleTrash($query);
+                }
                 $page = $directory->page($query, $this->sort, $this->per, $this->after, $this->before);
                 $totals = $directory->totals($query);
+                if ($canDelete && ! $canDeleteAny && $this->picked !== []) {
+                    // «own», with files chosen: how many of them the Trash button / Khôi phục acts on
+                    $mineN = $trash
+                        ? MediaDeleteRights::restorable(Media::onlyTrashed()->whereIn('ulid', $this->picked))->count()
+                        : app(MediaDeleteRights::class)->trashable(Media::query()->whereIn('ulid', $this->picked))->count();
+                    // the chosen files still there (one deleted meanwhile neither goes nor stays)
+                    $chosenN = ($trash ? Media::onlyTrashed() : Media::query())->whereIn('ulid', $this->picked)->count();
+                }
             });
         } catch (QueryException $e) {
             report($e);
@@ -803,9 +1052,21 @@ final class Library extends Component
             $uploader = is_string($name) ? $name : null;
         }
 
+        // a folder's count holds its sub-folders' files, as its list does
+        $treeN = [];
+        foreach ($folders as $f) {
+            $own = $counts['byFolder'][$f->id] ?? 0;
+            $treeN[$f->id] = ($treeN[$f->id] ?? 0) + $own;
+            if ($f->parent_id !== null) {
+                $treeN[$f->parent_id] = ($treeN[$f->parent_id] ?? 0) + $own;
+            }
+        }
+
         $view = view('admin::livewire.media.library', [
             'failed' => $failed,
             'folders' => $folders,
+            'treeN' => $treeN,
+            'kidsOf' => $folders->whereNotNull('parent_id')->countBy('parent_id')->all(),
             'current' => $current,
             'counts' => $counts,
             'rows' => $page['rows'],
@@ -815,6 +1076,10 @@ final class Library extends Component
             'trash' => $trash,
             'canUpload' => Gate::allows('media.upload'),
             'canDelete' => $canDelete,
+            'canDeleteAny' => $canDeleteAny,
+            // «own», with files chosen: how many of them the Trash button / Khôi phục acts on
+            'mineN' => $mineN,
+            'chosenN' => $chosenN,
             'canFolders' => Gate::allows('media.folders'),
             'canPurge' => $canPurge,
             'urls' => app(MediaUrlResolver::class),
@@ -848,8 +1113,8 @@ final class Library extends Component
         return $slug === '' ? null : MediaFolder::query()->where('slug', $slug)->first();
     }
 
-    /** Why a folder name cannot be used (empty, too long, already in use here), or null when it can. */
-    private static function folderNameError(string $name, ?int $except = null): ?string
+    /** Why a folder name cannot be used (empty, too long, already in use among the folders of that parent), or null when it can. */
+    private static function folderNameError(string $name, ?int $except = null, ?int $parentId = null): ?string
     {
         if ($name === '') {
             return Cast::string(__('media.lib.folder_name_required'));
@@ -857,17 +1122,17 @@ final class Library extends Component
         if (mb_strlen($name) > self::FOLDER_NAME_MAX) {
             return Cast::string(__('media.lib.folder_name_long', ['max' => self::FOLDER_NAME_MAX]));
         }
-        $taken = MediaFolder::query()->whereRaw('lower(name) = lower(?)', [$name])
+        $taken = MediaFolder::query()->where('parent_id', $parentId)->whereRaw('lower(name) = lower(?)', [$name])
             ->when($except !== null, fn (Builder $q) => $q->whereKeyNot($except))->exists();
 
         return $taken ? Cast::string(__('media.lib.folder_name_taken')) : null;
     }
 
-    /** The name itself when no folder here uses it, else the first free "Tên (2)", "Tên (3)"… within the length limit. */
-    private static function freeFolderName(string $name): string
+    /** The name itself when no folder of that parent uses it, else the first free "Tên (2)", "Tên (3)"… within the length limit. */
+    private static function freeFolderName(string $name, ?int $parentId = null): string
     {
         $candidate = $name;
-        for ($n = 2; self::folderNameError($candidate) !== null && $n < 1000; $n++) {
+        for ($n = 2; self::folderNameError($candidate, null, $parentId) !== null && $n < 1000; $n++) {
             $suffix = ' ('.$n.')';
             $candidate = mb_substr($name, 0, self::FOLDER_NAME_MAX - mb_strlen($suffix)).$suffix;
         }
@@ -875,20 +1140,119 @@ final class Library extends Component
         return $candidate;
     }
 
-    /** More files (Trash included) than Hoàn tác keeps — answered without counting past the limit. */
-    private static function tooManyForUndo(int $folderId): bool
+    /** More files in these folders (Trash included) than Hoàn tác keeps — answered without counting past the limit. */
+    /** @param  list<int>  $folderIds */
+    private static function tooManyForUndo(array $folderIds): bool
     {
-        return Media::withTrashed()->where('folder_id', $folderId)
+        return Media::withTrashed()->whereIn('folder_id', $folderIds)
             ->offset(Cast::int(config('media.folder_undo_max_files', 100000)))->exists();
     }
 
-    /**
-     * More files (Trash included) than one web request moves back to no folder — such a folder is
-     * emptied in batches off the request (DeleteLargeMediaFolder), without Hoàn tác.
-     */
-    private static function tooManyInline(int $folderId): bool
+    /** Whether a queued job is deleting this folder: nothing new goes under it. */
+    private static function deleting(MediaFolder $folder): bool
     {
-        return Media::withTrashed()->where('folder_id', $folderId)
+        return DeleteLargeMediaFolder::pending(app(CurrentSite::class)->id(), $folder->id);
+    }
+
+    /** @return list<int> the folder and its sub-folders */
+    private static function familyIds(int $folderId): array
+    {
+        return array_values(array_merge([$folderId], MediaFolder::query()->where('parent_id', $folderId)
+            ->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->all()));
+    }
+
+    /**
+     * Gives the folders of one parent the places 1..n in their order; $folderId (when given) goes at
+     * place $at (clamped). Runs under the folder-list lock.
+     */
+    private static function placeAmongSiblings(?int $parentId, ?int $folderId = null, int $at = PHP_INT_MAX): void
+    {
+        $order = MediaFolder::query()->where('parent_id', $parentId)
+            ->when($folderId !== null, fn (Builder $q) => $q->whereKeyNot($folderId))
+            ->orderBy('position')->orderBy('name')->orderBy('id')->get(['id', 'position']);
+        $ids = $order->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->all();
+        $had = $order->pluck('position', 'id')->all();
+        if ($folderId !== null) {
+            array_splice($ids, max(0, min($at - 1, count($ids))), 0, [$folderId]);
+        }
+        foreach ($ids as $i => $id) {
+            if (($had[$id] ?? null) !== $i + 1) {
+                MediaFolder::query()->whereKey($id)->update(['position' => $i + 1]);
+            }
+        }
+    }
+
+    /** The folder's place (1..n) among the folders of its parent, as the folder column shows them — not its position number, which may have gaps. */
+    private static function slotOf(MediaFolder $folder): int
+    {
+        return MediaFolder::query()->where('parent_id', $folder->parent_id)
+            ->where(fn (Builder $q) => $q->where('position', '<', $folder->position)
+                ->orWhere(fn (Builder $q) => $q->where('position', $folder->position)->where('name', '<', $folder->name))
+                ->orWhere(fn (Builder $q) => $q->where('position', $folder->position)->where('name', $folder->name)->where('id', '<', $folder->id)))
+            ->count() + 1;
+    }
+
+    /**
+     * One folder kept for Hoàn tác, checked, or null when the entry is not one.
+     *
+     * @param  array<mixed>  $kept
+     * @return array{name: string, slug: string, position: int, ids: string}|null
+     */
+    private static function keptFolder(array $kept): ?array
+    {
+        if (! is_string($kept['name'] ?? null) || ! is_string($kept['slug'] ?? null) || ! is_string($kept['ids'] ?? null)) {
+            return null;
+        }
+
+        return ['name' => $kept['name'], 'slug' => $kept['slug'], 'position' => Cast::int($kept['position'] ?? 1), 'ids' => $kept['ids']];
+    }
+
+    /**
+     * Makes a kept folder again under $parentId and puts back the files that are still in no folder
+     * (one moved elsewhere meanwhile stays where it was put).
+     *
+     * @param  array{name: string, slug: string, position: int, ids: string}  $kept
+     */
+    private static function bringBack(array $kept, ?int $parentId): MediaFolder
+    {
+        $folder = MediaFolder::query()->create([
+            'name' => self::freeFolderName($kept['name'], $parentId),
+            'slug' => (new MediaFolder)->uniqueSlug($kept['slug'], $kept['name']),
+            'parent_id' => $parentId,
+            'position' => $kept['position'],
+        ]);
+        /** @var list<int> $ids */
+        $ids = $kept['ids'] === '' ? [] : array_values(unpack('q*', $kept['ids']) ?: []);
+        foreach (array_chunk($ids, 1000) as $chunk) {
+            Media::withTrashed()->whereIn('id', $chunk)->whereNull('folder_id')->update(['folder_id' => $folder->id]);
+        }
+
+        return $folder;
+    }
+
+    /** Why «Chuyển thư mục…» cannot be used on this folder (shown under the menu item), or null. */
+    private static function reparentBlocked(MediaFolder $folder): ?string
+    {
+        if ($folder->parent_id !== null) {
+            return null; // a sub-folder can always go up to the top level
+        }
+        if (MediaFolder::query()->where('parent_id', $folder->id)->exists()) {
+            return Cast::string(__('media.lib.reparent_why_kids'));
+        }
+
+        return MediaFolder::query()->whereNull('parent_id')->whereKeyNot($folder->id)->exists()
+            ? null : Cast::string(__('media.lib.reparent_why_none'));
+    }
+
+    /**
+     * More files (Trash included) in these folders than one web request moves back to no folder —
+     * such a folder is emptied in batches off the request (DeleteLargeMediaFolder), without Hoàn tác.
+     *
+     * @param  list<int>  $folderIds
+     */
+    private static function tooManyInline(array $folderIds): bool
+    {
+        return Media::withTrashed()->whereIn('folder_id', $folderIds)
             ->offset(Cast::int(config('media.folder_delete_inline_max_files', 20000)))->exists();
     }
 
@@ -899,61 +1263,78 @@ final class Library extends Component
     }
 
     /**
-     * Deletes the folder: its files (live and in the Trash) go back to no folder through the foreign
-     * key. What Hoàn tác needs — the name, slug, place and the files' ids — is kept server side for a
-     * few minutes; the page holds only its random key. A folder with more files than one request
-     * moves is left in place and emptied in batches by a queued job, which then deletes it.
+     * Deletes the folder and its sub-folders (the parent key's CASCADE): their files (live and in the
+     * Trash) go back to no folder through media's foreign key. What Hoàn tác needs — each folder's
+     * name, slug, place, parent and files' ids — is kept server side for a few minutes; the page holds
+     * only its random key. A folder with more files than one request moves is left in place and
+     * emptied in batches by a queued job, which then deletes it with its sub-folders.
      */
     private function deleteFolder(MediaFolder $folder): void
     {
-        // The folder row locked first: an upload into it (its foreign-key check) waits for this delete,
-        // or committed before it and is counted; a second delete of the same folder finds it gone.
+        // The folder rows locked first: an upload into one (its foreign-key check) waits for this
+        // delete, or committed before it and is counted; a second delete of the same folder finds it gone.
         $done = DB::transaction(function () use ($folder): ?array {
             MediaFolder::lockTree(app(CurrentSite::class)->id());
             $row = MediaFolder::query()->whereKey($folder->id)->lockForUpdate()->first();
             if ($row === null) {
                 return null;
             }
-            if (self::tooManyInline($row->id)) {
+            $kids = MediaFolder::query()->where('parent_id', $row->id)->orderBy('position')->orderBy('name')->orderBy('id')
+                ->lockForUpdate()->get(['id', 'name', 'slug', 'position']);
+            $family = array_values(array_merge([$row->id], $kids->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->all()));
+            if (self::tooManyInline($family)) {
                 // no count of a folder this big inside the request: the job says nothing per file either
+                $siteId = app(CurrentSite::class)->id();
+                DB::afterCommit(fn () => DeleteLargeMediaFolder::markPending($siteId, $row->id)); // only once the delete is decided
                 DeleteLargeMediaFolder::dispatch(app(CurrentSite::class)->id(), $row->id); // once this commits
 
-                return ['live' => 0, 'ids' => null, 'row' => $row, 'later' => true];
+                return ['live' => 0, 'files' => null, 'row' => $row, 'kids' => $kids, 'parent' => '', 'slot' => 0, 'later' => true];
             }
-            $live = Media::query()->where('folder_id', $row->id)->count();
-            $ids = self::tooManyForUndo($row->id) ? null : Media::withTrashed()->where('folder_id', $row->id)->pluck('id')
-                ->map(fn (mixed $id): int => Cast::int($id))->all();
+            $live = Media::query()->whereIn('folder_id', $family)->count();
+            $files = null;
+            if (! self::tooManyForUndo($family)) {
+                $files = [];
+                foreach (Media::withTrashed()->whereIn('folder_id', $family)->toBase()->get(['id', 'folder_id']) as $file) {
+                    $files[Cast::int($file->folder_id)][] = Cast::int($file->id);
+                }
+            }
+            $parent = $row->parent_id === null ? '' : Cast::string(MediaFolder::query()->whereKey($row->parent_id)->value('slug'));
+            $slot = self::slotOf($row);
             $row->delete();
 
-            return ['live' => $live, 'ids' => $ids, 'row' => $row, 'later' => false];
+            return ['live' => $live, 'files' => $files, 'row' => $row, 'kids' => $kids, 'parent' => $parent, 'slot' => $slot, 'later' => false];
         });
         if ($done === null) {
             return;
         }
-        ['live' => $live, 'ids' => $ids, 'row' => $folder, 'later' => $later] = $done;
+        ['live' => $live, 'files' => $files, 'row' => $folder, 'kids' => $kids, 'parent' => $parent, 'slot' => $slot, 'later' => $later] = $done;
 
+        $pack = fn (int $id): string => ($files[$id] ?? []) === [] ? '' : pack('q*', ...$files[$id]);
         $token = '';
-        if ($ids !== null) {
+        if ($files !== null) {
             $token = Str::random(40);
             Cache::put(self::folderUndoKey($token), [
                 'name' => $folder->name,
                 'slug' => (string) $folder->slug,
-                'position' => $folder->position,
-                'ids' => $ids === [] ? '' : pack('q*', ...$ids),
+                'position' => $slot,
+                'parent' => $parent,
+                'parentId' => $folder->parent_id,
+                'ids' => $pack($folder->id),
+                'kids' => $kids->map(fn (MediaFolder $k): array => ['name' => $k->name, 'slug' => (string) $k->slug, 'position' => 0, 'ids' => $pack($k->id)])->all(),
             ], now()->addMinutes(self::FOLDER_UNDO_MINUTES));
         }
         $name = $folder->name;
-        $wasOpen = $this->folder === (string) $folder->slug;
+        $slugs = array_merge([(string) $folder->slug], $kids->map(fn (MediaFolder $k): string => (string) $k->slug)->all());
 
-        if ($wasOpen) {
+        if (in_array($this->folder, $slugs, true)) {
             $this->setFolder('');
         }
-        if ($this->renaming === (string) $folder->slug) {
+        if (in_array($this->renaming, $slugs, true)) {
             $this->cancelRename();
         }
         $this->say(match (true) {
             $later => __('media.lib.folder_deleting', ['name' => $name]),
-            $ids === null => __('media.lib.folder_deleted_no_undo', ['name' => $name, 'n' => number_format($live, 0, ',', '.')]),
+            $files === null => __('media.lib.folder_deleted_no_undo', ['name' => $name, 'n' => number_format($live, 0, ',', '.')]),
             $live > 0 => __('media.lib.folder_deleted_n', ['name' => $name, 'n' => number_format($live, 0, ',', '.')]),
             default => __('media.lib.folder_deleted', ['name' => $name]),
         });
@@ -962,15 +1343,15 @@ final class Library extends Component
 
     private function canPick(): bool
     {
-        return $this->status === 'trash' ? Gate::allows('media.delete') : (Gate::allows('media.upload') || Gate::allows('media.delete'));
+        return $this->status === 'trash' ? MediaDeleteRights::some() : (Gate::allows('media.upload') || MediaDeleteRights::some());
     }
 
     /** @return Builder<Media> the files of the place in view, without conditions */
     private function placeQuery(): Builder
     {
-        $trash = $this->status === 'trash' && Gate::allows('media.delete');
+        $trash = $this->status === 'trash' && MediaDeleteRights::some();
 
-        return $trash ? Media::onlyTrashed() : Media::query();
+        return $trash ? MediaDeleteRights::visibleTrash(Media::onlyTrashed()) : Media::query();
     }
 
     /** @param  Collection<int, MediaFolder>  $folders */
@@ -989,11 +1370,15 @@ final class Library extends Component
         return $found;
     }
 
-    /** @return array{folder: int|null, unfiled: bool, trash: bool, search: string, kinds: list<string>, formats: list<string>, uses: list<string>} */
-    private function filters(?MediaFolder $current, bool $trash): array
+    /**
+     * @param  Collection<int, MediaFolder>  $folders
+     * @return array{folders: list<int>|null, unfiled: bool, trash: bool, search: string, kinds: list<string>, formats: list<string>, uses: list<string>}
+     */
+    private function filters(?MediaFolder $current, Collection $folders, bool $trash): array
     {
         return [
-            'folder' => $current?->id,
+            // a folder shows its sub-folders' files too
+            'folders' => $current === null ? null : array_values(array_merge([$current->id], $folders->where('parent_id', $current->id)->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->all())),
             'unfiled' => $this->folder === '-',
             'trash' => $trash,
             'search' => $this->search,
@@ -1016,7 +1401,7 @@ final class Library extends Component
         if (! in_array($this->per, MediaLibraryDirectory::PER_PAGE, true)) {
             $this->per = 24;
         }
-        if ($this->status !== 'trash' || ! Gate::allows('media.delete')) {
+        if ($this->status !== 'trash' || ! MediaDeleteRights::some()) {
             $this->status = 'live';
         }
         if (mb_strlen($this->search) > MediaLibraryDirectory::SEARCH_MAX) {
@@ -1039,6 +1424,7 @@ final class Library extends Component
     {
         $this->undoTrash = [];
         $this->undoFolder = '';
+        $this->undoReparent = '';
         $this->toast = $message;
         $this->toastTone = $tone;
         $this->toastSeq++;

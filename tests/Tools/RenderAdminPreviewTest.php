@@ -1032,9 +1032,9 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-te-page="suspended"');
     file_put_contents($dir.'/error-suspended.html', $html);
 
-    // The media library's folder column (design board 12): three folders, the open one with its ⋮ menu,
-    // the same folder being renamed in place, and the question asked before deleting a folder that
-    // holds files. The component is put in place of the page's own root, as for the product list.
+    // The media library's folder column (design board 12): three folders and a sub-folder, the open one
+    // with its ⋮ menu, the same folder being renamed in place, the question asked before deleting a
+    // folder that holds files and one that holds a sub-folder, «Thư mục con mới» and «Chuyển thư mục…». The component is put in place of the page's own root, as for the product list.
     $mediaConfig = config('media');
     config(['media.driver' => 'cloudflare', 'media.cloudflare.base' => 'http://'.ADMIN_PREVIEW_HOST]);
     app(Tenancy::class)->enter(1, function (): void {
@@ -1048,6 +1048,12 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
                     'mime' => 'image/jpeg', 'size' => 98_000, 'width' => 1200, 'height' => 800]);
             }
         }
+        $kid = MediaFolder::query()->create(['name' => 'Bao bì', 'slug' => 'bao-bi', 'position' => 1,
+            'parent_id' => MediaFolder::query()->where('slug', 'san-pham')->value('id')]);
+        $hash = hash('sha256', 'bao-bi1');
+        Media::query()->create(['collection' => 'library', 'slug' => 'bao-bi-1', 'hash' => $hash, 'folder_id' => $kid->id,
+            'original_filename' => 'bao-bi-1.jpg', 'storage_key' => 's/library/bao-bi-1-'.substr($hash, 0, 12).'.jpg',
+            'mime' => 'image/jpeg', 'size' => 98_000, 'width' => 1200, 'height' => 800]);
     });
     $this->flushSession();
     app('livewire')->flushState();
@@ -1065,7 +1071,34 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $ask = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($library()->call('askDeleteFolder', 'anh-xuong')));
     expect($ask)->toContain('4 tệp');
     file_put_contents($dir.'/media-folder-delete.html', $swap($html, $ask, $media));
+    $askKids = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($library()->call('askDeleteFolder', 'san-pham')));
+    expect($askKids)->toContain('1 thư mục con');
+    file_put_contents($dir.'/media-subfolder-delete.html', $swap($html, $askKids, $media));
+    $newKid = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($library()->call('openNewFolder', 'anh-xuong')));
+    expect($newKid)->toContain('wire:model="newFolderParent"');
+    file_put_contents($dir.'/media-subfolder-new.html', $swap($html, $newKid, $media));
+    $reparent = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($library()->call('openReparent', 'anh-xuong')));
+    expect($reparent)->toContain('wire:model.live="reparentTo"');
+    file_put_contents($dir.'/media-folder-reparent.html', $swap($html, $reparent, $media));
+    // someone who may delete only the files they uploaded, with one of theirs and someone else's
+    // chosen: the Trash button names theirs, a line says why the other stays, and the question
+    $author = User::factory()->create(['name' => 'Ngọc Anh']);
+    $authorRights = PermissionRegistry::tenantRoleTemplates('corporate')['author']['permissions'];
+    [$mineUlid, $theirsUlid] = app(Tenancy::class)->enter(1, function () use ($author, $authorRights): array {
+        grantRole($author, 'author', $authorRights === '*' ? PermissionRegistry::TENANT_PERMISSIONS : $authorRights);
+        Media::query()->where('slug', 'anh-xuong-1')->update(['created_by' => $author->id]);
+
+        return [(string) Media::query()->where('slug', 'anh-xuong-1')->value('ulid'), (string) Media::query()->where('slug', 'anh-xuong-2')->value('ulid')];
+    });
+    $author = $author->fresh() ?? $author;
+    $own = fn () => Livewire::actingAs($author)->test(Library::class)->call('setFolder', 'anh-xuong')->call('togglePick', $mineUlid)->call('togglePick', $theirsUlid);
+    $ownBulk = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($own()));
+    expect($ownBulk)->toContain('Chuyển 1 tệp của bạn vào Thùng rác');
+    file_put_contents($dir.'/media-trash-own.html', $swap($html, $ownBulk, $media));
+    $ownAsk = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($own()->call('trashPicked')));
+    expect($ownAsk)->toContain('giữ nguyên');
+    file_put_contents($dir.'/media-trash-own-ask.html', $swap($html, $ownAsk, $media));
     config(['media' => $mediaConfig]);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 81);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 86);
 });
