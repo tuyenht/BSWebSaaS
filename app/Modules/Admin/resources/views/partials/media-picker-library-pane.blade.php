@@ -287,7 +287,7 @@
                         @php($viewing = ($pickerDetailUlid ?? null) === $m->ulid)
                         {{-- As the tile: the row's name part is the button; the manage-mode check and ⓘ sit beside it. --}}
                         <div wire:key="mp-row-{{ $m->id }}"
-                                @class(['flex items-center gap-3 rounded-[9px] px-2.5 py-2 text-left', 'bg-admin-primary/10 shadow-[inset_3px_0_0_var(--color-admin-primary)]' => $selected, 'bg-admin-primary/5 shadow-[inset_2px_0_0_var(--color-admin-primary)]' => $viewing && ! $selected, 'hover:bg-surface-hover' => ! $selected && ! $viewing, 'pointer-events-none opacity-60' => $picked])>
+                                @class(['flex items-center gap-3 rounded-[9px] px-2.5 py-2 text-left', 'bg-primary/10 shadow-[inset_3px_0_0_var(--color-primary)]' => $selected, 'bg-primary/5 shadow-[inset_2px_0_0_var(--color-primary)]' => $viewing && ! $selected, 'hover:bg-surface-hover' => ! $selected && ! $viewing, 'pointer-events-none opacity-60' => $picked])>
                             @php($rowCheckClass = 'flex size-[22px] shrink-0 items-center justify-center rounded-md border-[1.5px] '.($selected || $picked ? 'border-admin-primary bg-admin-primary text-white' : 'border-placeholder bg-surface text-transparent'))
                             @if ($manage)
                                 <button type="button" wire:click.stop="togglePickerItem({{ $m->id }})" class="{{ $rowCheckClass }}">

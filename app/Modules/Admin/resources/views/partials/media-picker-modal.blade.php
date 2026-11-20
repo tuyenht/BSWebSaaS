@@ -19,7 +19,7 @@
         {{-- Responsive envelope (handoff Fidelity): caps at 1040×660 but shrinks to the viewport
              (minus a 16px gutter each side) on any smaller screen — 360, 768, 1280, 1920 all fit
              with no horizontal overflow. Inner panes carry their own breakpoints. --}}
-        <div x-trap="true" class="flex h-[min(660px,calc(100dvh-2rem))] w-[min(1040px,calc(100vw-2rem))] flex-col overflow-hidden rounded-[14px] border border-border-strong bg-surface text-sm text-body-text shadow-[0_24px_60px_-22px_rgba(56,65,74,0.4)]">
+        <div x-trap="true" class="flex h-[min(660px,calc(100dvh-2rem))] w-[min(1040px,calc(100vw-2rem))] flex-col overflow-hidden rounded-[14px] border border-border-strong bg-surface text-sm text-text shadow-[0_24px_60px_-22px_rgba(56,65,74,0.4)]">
 
             {{-- Header --}}
             <div class="flex shrink-0 items-center justify-between gap-4 px-5 pb-[9px] pt-[15px]">
@@ -29,7 +29,7 @@
                     </div>
                     <div class="flex flex-col gap-px">
                         <span class="text-[15.5px] font-semibold leading-tight text-heading">{{ __('media.picker_title') }}</span>
-                        <span class="text-xs text-body-muted">{{ $canUpload ? __('media.picker_subtitle') : __('media.picker_subtitle_library') }}</span>
+                        <span class="text-xs text-text-muted">{{ $canUpload ? __('media.picker_subtitle') : __('media.picker_subtitle_library') }}</span>
                     </div>
                 </div>
                 <button type="button" wire:click="closeImagePicker" title="{{ __('admin.dismiss') }}"
@@ -107,7 +107,7 @@
                         <span class="text-[12.5px] text-body-muted">{{ __('media.picker_footer_selected', ['count' => count($pickerSelected)]) }}</span>
                     </div>
                 @else
-                    <span class="min-w-0 flex-1 text-[12.5px] text-body-muted">{{ $words['note'] ?? __('media.picker_footer_hint') }}</span>
+                    <span class="min-w-0 flex-1 text-[12.5px] text-text-muted">{{ $words['note'] ?? __('media.picker_footer_hint') }}</span>
                 @endif
                 <button type="button" wire:click="closeImagePicker"
                         class="shrink-0 rounded-lg border border-border-strong bg-surface px-4 py-[9px] text-[13px] font-medium text-body-text">{{ __('media.picker_cancel') }}</button>

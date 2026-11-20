@@ -492,8 +492,8 @@
                             @endif
                         @elseif ($mayPick)
                             <button type="button" wire:click="openCoverPicker" class="absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-3 text-center text-[calc(0.8125rem+var(--user-text-boost))] leading-normal text-text transition-colors hover:bg-surface-hover">
-                                <x-bs-admin::icon name="ri-image-add" class="size-6 text-accent" />
-                                <span class="font-semibold text-accent">{{ __('entries.ed.cover_choose') }}</span>
+                                <x-bs-admin::icon name="ri-image-add" class="size-6 text-primary-text" />
+                                <span class="font-semibold text-primary-text">{{ __('entries.ed.cover_choose') }}</span>
                             </button>
                         @else
                             <span class="flex size-full flex-col items-center justify-center gap-1.5 px-3 text-center text-[calc(0.8125rem+var(--user-text-boost))] leading-normal text-text-muted">
@@ -519,7 +519,7 @@
                                 </p>
                             @endif
                             <button type="button" x-on:click="where = ! where" x-bind:aria-expanded="where ? 'true' : 'false'" aria-expanded="false" aria-controls="entry-cover-where"
-                                    class="flex min-h-hit w-full items-center gap-1.5 text-start text-[calc(0.875rem+var(--user-text-boost))] font-medium text-accent">
+                                    class="flex min-h-hit w-full items-center gap-1.5 text-start text-[calc(0.875rem+var(--user-text-boost))] font-medium text-primary-text">
                                 <x-bs-admin::icon name="ri-image" :class="$glyph" />
                                 <span class="min-w-0 flex-1 [overflow-wrap:anywhere]">{{ __('entries.ed.cover_where') }}</span>
                                 <x-bs-admin::icon name="ri-arrow-down-s" class="size-[min(24px,calc(1.125rem+var(--user-text-boost)))] shrink-0" x-show="! where" />
