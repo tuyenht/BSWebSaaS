@@ -11,6 +11,7 @@ use App\Modules\Admin\Notifications\MemberInvitationNotification;
 use App\Modules\Admin\Support\FirstHints;
 use App\Modules\Admin\Support\Members\InvitationDirectory;
 use App\Modules\Admin\Support\Members\MemberDirectory;
+use App\Modules\Admin\Support\Members\RoleAbilities;
 use App\Modules\Cms\Actions\InviteMemberWithCategories;
 use App\Modules\Cms\Actions\SetMemberCategoryScopes;
 use App\Modules\Cms\Exceptions\CategoryScopeRejectedException;
@@ -67,6 +68,8 @@ use Livewire\Component;
  *
  * `users` is global identity (D6, no RLS): a member is always addressed by ulid and resolved among
  * this site's members only (siteMember()), never by a bigint from the browser.
+ *
+ * @phpstan-import-type AxisView from DrawsCategoryScopes
  */
 #[Layout('admin::layouts.app')]
 final class Index extends Component
@@ -131,6 +134,14 @@ final class Index extends Component
     public string $toastTone = 'success';
 
     public int $toastSeq = 0;
+
+    /** The toast offers «Tải lại»: what it says has gone out of date (a member who left, an invitation answered meanwhile). */
+    public bool $toastReload = false;
+
+    /** «Nhóm này làm được gì?»: the role it explains, by name — resolved again among this website's roles on every render. */
+    public string $explainRole = '';
+
+    public bool $explainOpen = false;
 
     /** @var array<string, mixed>|null the roles a member had before the last change ({ulid, roles}); it comes back from the browser, so it is read with care */
     public ?array $undoRoles = null;
@@ -223,7 +234,7 @@ final class Index extends Component
         }
         $target = $this->siteMember($memberUlid);
         if (! $target instanceof User) {
-            $this->say(__('admin.member_not_found'), 'error');
+            $this->say(__('admin.member_not_found'), 'error', reload: true);
 
             return;
         }
@@ -277,7 +288,7 @@ final class Index extends Component
         $target = $this->siteMember($this->panelFor);
         if (! $target instanceof User) {
             $this->closePanel();
-            $this->say(__('admin.member_not_found'), 'error');
+            $this->say(__('admin.member_not_found'), 'error', reload: true);
 
             return;
         }
@@ -321,6 +332,7 @@ final class Index extends Component
         $before = Cast::strings($target->roles()->pluck('name')->all());
         $after = Cast::strings($roles->pluck('name')->all());
         $rolesChanged = array_diff($before, $after) !== [] || array_diff($after, $before) !== [];
+        // a refusal because they left the website meanwhile is closed by render() with «Tải lại»
         $refused = $this->applyRolesAndScopes($target, $roles, $changes);
         if ($refused !== null) {
             $this->panelError = $refused;
@@ -381,7 +393,7 @@ final class Index extends Component
         }
         $target = $this->siteMember($memberUlid);
         if (! $target instanceof User) {
-            $this->say(__('admin.member_not_found'), 'error');
+            $this->say(__('admin.member_not_found'), 'error', reload: true);
 
             return;
         }
@@ -419,7 +431,7 @@ final class Index extends Component
         $actor = $this->actor();
         $target = $this->siteMember($ulid);
         if (! $target instanceof User) {
-            $this->say(__('admin.member_not_found'), 'error');
+            $this->say(__('admin.member_not_found'), 'error', reload: true);
 
             return;
         }
@@ -583,7 +595,71 @@ final class Index extends Component
         if ($seq === 0 || $seq === $this->toastSeq) {
             $this->toast = null;
             $this->undoRoles = null;
+            $this->toastReload = false;
         }
+    }
+
+    /**
+     * «Tải lại» on a message about something that changed meanwhile: the list read afresh, the
+     * ticks and any open panel let go (they were drawn from the list as it was).
+     */
+    public function reloadList(): void
+    {
+        $this->ensureOpen();
+        $this->picked = [];
+        $this->closePanel();
+        $this->closeExplain();
+        $this->dismissToast();
+    }
+
+    /**
+     * «Nhóm này làm được gì?» (a member's or an invitation's row menu, «Xem chi tiết» beside a role):
+     * what the role lets its holder do. Only this website's roles: any other name says it is gone.
+     */
+    public function openExplain(string $role): void
+    {
+        $this->ensureOpen();
+        $found = mb_strlen($role) <= 125 ? $this->siteRoles([$role])->first() : null;
+        if (! $found instanceof Role) {
+            $this->closeExplain();
+            $this->say(__('admin.members.x_gone'), 'error', reload: true);
+
+            return;
+        }
+        $this->explainRole = $found->name;
+        $this->explainOpen = true;
+    }
+
+    public function closeExplain(): void
+    {
+        $this->explainOpen = false;
+        $this->explainRole = '';
+    }
+
+    /**
+     * «Lưu và rời đi» of the unsaved-changes dialog: the roles panel is saved as by «Lưu nhóm» (a
+     * refusal keeps it open with its message, so the page stays). An invitation being written is
+     * never sent from here: it stays, typed, for «Gửi lời mời».
+     */
+    public function saveForLeave(): void
+    {
+        $this->ensureOpen();
+        if ($this->panelFor !== '' || $this->panelBulk) {
+            $this->saveRoles();
+        }
+    }
+
+    /** «Bỏ thay đổi và rời đi»: the roles panel and the invitation being written are dropped. */
+    public function discardDraft(): void
+    {
+        $this->ensureOpen();
+        $this->closePanel();
+        $this->inviteOpen = false;
+        $this->inviteEmail = '';
+        $this->inviteMessage = '';
+        $this->inviteRoles = [];
+        $this->inviteTried = false;
+        $this->inviteResults = [];
     }
 
     public function render(): View
@@ -681,7 +757,9 @@ final class Index extends Component
 
         $panelMember = $this->panelFor !== '' ? $this->siteMember($this->panelFor) : null;
         if ($this->panelFor !== '' && ! $panelMember instanceof User) {
+            // they left the website while the panel was open (another admin, another tab): said, not just gone
             $this->closePanel();
+            $this->say(__('admin.member_not_found'), 'error', reload: true);
         }
         if ($this->panelBulk && $pickedOk->isEmpty()) {
             $this->closePanel();
@@ -691,13 +769,17 @@ final class Index extends Component
         $revoking = $this->revokeOpen && $this->revokeFor !== '' ? $this->siteInvitation($this->revokeFor) : null;
         // "Phạm vi làm việc" of the invite dialog, read only while its form is open
         $invScope = null;
+        $ivRoles = new Collection;
         if ($canInvite && $this->inviteOpen && $this->inviteResults === []) {
-            $invScope = $this->inviteScopeState($actor, $this->siteRoles($this->inviteRoles), true);
+            $ivRoles = $this->siteRoles($this->inviteRoles);
+            $invScope = $this->inviteScopeState($actor, $ivRoles, true);
         }
         // ... and of one member's panel, read only while it is open
         $pnScope = null;
+        $pnRoles = new Collection;
         if ($panelMember instanceof User && ! $this->panelBulk && $this->panelRoles !== []) {
-            $pnScope = $this->panelScopeState($actor, $panelMember, $this->siteRoles($this->panelRoles), true);
+            $pnRoles = $this->siteRoles($this->panelRoles);
+            $pnScope = $this->panelScopeState($actor, $panelMember, $pnRoles, true);
         }
         // the ticked members whose limits a role that is never limited would drop (bulk panel)
         $bulkDrop = 0;
@@ -707,6 +789,26 @@ final class Index extends Component
                 $limitedIds += $byUser;
             }
             $bulkDrop = count($limitedIds);
+        }
+
+        $catalogOn = $this->catalogOn();
+        // the sentence of what the person can do: one member's panel, and the invite form
+        $pnSum = '';
+        if ($pnScope !== null && $panelMember instanceof User) {
+            $first = Str::afterLast(trim($panelMember->name), ' ');
+            $pnSum = RoleAbilities::sentence($first !== '' ? $first : $panelMember->name, $pnRoles->loadMissing('permissions'), $this->sentenceScopes($pnScope['axes'], true), $catalogOn);
+        }
+        $ivSum = '';
+        if ($invScope !== null && $ivRoles->isNotEmpty()) {
+            $ivSum = RoleAbilities::sentence(__('admin.members.sm_invitee'), $ivRoles->loadMissing('permissions'), $this->sentenceScopes($invScope['axes'], false), $catalogOn);
+        }
+        // «Nhóm này làm được gì?», read only while it is open
+        $explain = null;
+        if ($this->explainOpen) {
+            $explain = $this->explainView($siteRoles, $failed ? null : $counts['roles'], $catalogOn);
+            if ($explain === null) {
+                $this->closeExplain();
+            }
         }
 
         return $this->page('admin::livewire.users.index', $title, [
@@ -746,7 +848,107 @@ final class Index extends Component
             'invScope' => $invScope,
             'pnScope' => $pnScope,
             'bulkDrop' => $bulkDrop,
+            'pnSum' => $pnSum,
+            'ivSum' => $ivSum,
+            'explain' => $explain,
+            'dirty' => $this->draftCount(Cast::strings($panelBefore->pluck('name')->all()), $pnScope),
         ]);
+    }
+
+    /**
+     * The unsaved-changes count (design 22): an invitation being written (addresses or a message
+     * typed, not sent yet), or a roles panel whose roles or working scope differ from what is saved.
+     *
+     * @param  list<string>  $before  the names of the member's roles as saved
+     * @param  array{axes: array<string, AxisView>, init: array<string, list<int>>}|null  $scope
+     */
+    private function draftCount(array $before, ?array $scope): int
+    {
+        if ($this->inviteOpen && $this->inviteResults === [] && (trim($this->inviteEmail) !== '' || trim($this->inviteMessage) !== '')) {
+            return 1;
+        }
+        if ($this->panelBulk) {
+            return $this->panelRoles !== [] ? 1 : 0;
+        }
+        if ($this->panelFor === '') {
+            return 0;
+        }
+        $now = $before;
+        $ticked = array_values(array_unique($this->panelRoles));
+        sort($now);
+        sort($ticked);
+        if ($now !== $ticked) {
+            return 1;
+        }
+        foreach ($scope['axes'] ?? [] as $axis => $view) {
+            $saved = $scope['init'][$axis] ?? [];
+            $next = $view['ids'];
+            sort($saved);
+            sort($next);
+            // an editor held to categories always sees "only" (they never hand out every category): only the picks count then
+            $modeChanged = ! $view['limited'] && $view['mode'] !== ($saved === [] ? 'all' : 'only');
+            if (! $view['ro'] && ($modeChanged || $saved !== $next)) {
+                return 1;
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * The categories the sentence names on each axis shown: their names, [] for "only" with none
+     * picked yet, null for every category.
+     *
+     * @param  array<string, AxisView>  $axes
+     * @return array<string, list<string>|null>
+     */
+    private function sentenceScopes(array $axes, bool $panel): array
+    {
+        $out = [];
+        foreach ($axes as $axis => $view) {
+            if ($view['tree'] && $view['ids'] === []) {
+                $out[$axis] = [];
+            } elseif ($view['ids'] !== [] && ($panel || $view['mode'] === 'only')) {
+                $out[$axis] = $this->axisNames($axis, $view['ids']);
+            } else {
+                $out[$axis] = null;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * The dialog «Nhóm này làm được gì?» for the role open in it, or null when it is not one of this
+     * website's roles any more.
+     *
+     * @param  Collection<int, Role>  $siteRoles
+     * @param  array<string, int>|null  $members  members per role name; null when the list could not be read (no count is said then)
+     * @return array{name: string, meta: string, areas: list<array{key: string, name: string, off: string, items: list<array{ok: bool, text: string}>}>}|null
+     */
+    private function explainView(Collection $siteRoles, ?array $members, bool $catalogOn): ?array
+    {
+        $role = $this->explainRole !== '' ? $this->siteRoles([$this->explainRole])->load('permissions')->first() : null;
+        if (! $role instanceof Role) {
+            return null;
+        }
+        $invites = $members === null ? 0 : (app(InvitationDirectory::class)->roleCounts('pending')[$role->name] ?? 0);
+        $meta = [
+            $role->is_system ? __('admin.members.x_sys') : __('admin.members.x_custom'),
+            RoleAbilities::position($role, $siteRoles),
+        ];
+        if ($members !== null) {
+            $meta[] = trans_choice('admin.members.x_members', $members[$role->name] ?? 0, ['n' => $members[$role->name] ?? 0]);
+        }
+        if ($invites > 0) {
+            $meta[] = trans_choice('admin.members.x_invites', $invites, ['n' => $invites]);
+        }
+
+        return [
+            'name' => RoleLabel::for($role),
+            'meta' => implode(' · ', $meta),
+            'areas' => RoleAbilities::explain(Cast::strings($role->permissions->pluck('name')->all()), $catalogOn),
+        ];
     }
 
     /**
@@ -1055,11 +1257,12 @@ final class Index extends Component
      *
      * @param  array{ulid: string, roles: list<string>}|null  $undo
      */
-    private function say(string $message, string $tone = 'success', ?array $undo = null): void
+    private function say(string $message, string $tone = 'success', ?array $undo = null, bool $reload = false): void
     {
         $this->toast = $message;
         $this->toastTone = $tone;
         $this->undoRoles = $undo;
+        $this->toastReload = $reload;
         $this->toastSeq++;
     }
 

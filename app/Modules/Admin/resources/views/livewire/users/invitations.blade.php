@@ -162,6 +162,10 @@
                                     </x-bs-admin::button>
                                 @endif
                                 <x-slot:menu>
+                                    @if ($inv->roles->isNotEmpty())
+                                        <x-bs-admin::list.menu-item icon="ri-file-list-3" wire:click="openExplain({{ Js::from($inv->roles->sortByDesc('level')->first()->name) }})">{{ __('admin.members.x_invite_item') }}</x-bs-admin::list.menu-item>
+                                        <x-bs-admin::list.menu-sep />
+                                    @endif
                                     @if ($canInvite && $live)
                                         <x-bs-admin::list.menu-item icon="ri-mail-send" :why="$why" wire:click="resendInvitation({{ Js::from($inv->ulid) }})">{{ __('admin.members.inv_resend') }}</x-bs-admin::list.menu-item>
                                         <x-bs-admin::list.menu-sep />

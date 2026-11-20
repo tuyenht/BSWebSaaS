@@ -1034,6 +1034,14 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     file_put_contents($dir.'/members-panel.html', $swap($html, $panel, 'admin\\.users\\.index'));
     $invite = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($members()->call('openInvite')));
     file_put_contents($dir.'/members-invite.html', $swap($html, $invite, 'admin\\.users\\.index'));
+    // «Nhóm này làm được gì?» over the roles panel (opened from «Xem chi tiết»), and a message about a role gone
+    // meanwhile with its «Tải lại».
+    $explain = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($members()->call('openPanel', $people['Trần Thị Thu Hà'])->call('openExplain', 'editor')));
+    expect($explain)->toContain(e(__('admin.members.x_title', ['role' => __('rbac.role.editor')])));
+    file_put_contents($dir.'/members-explain.html', $swap($html, $explain, 'admin\\.users\\.index'));
+    $gone = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($members()->call('openExplain', 'nhom-da-xoa')));
+    expect($gone)->toContain(__('admin.members.x_gone'), __('admin.members.reload'));
+    file_put_contents($dir.'/members-stale.html', $swap($html, $gone, 'admin\\.users\\.index'));
     // The ticked members with the bulk bar, then the bulk roles panel for the ones the owner may change.
     $bulk = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($members()
         ->call('togglePick', [$people['Trần Thị Thu Hà'], $people['Phạm Minh Tâm'], $people['Võ Quốc Việt']])->call('openBulkPanel')->set('panelRoles', ['author'])));
@@ -1235,5 +1243,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($failed)->toContain(e(__('admin.inbox.err_load_title')));
     file_put_contents($dir.'/review-inbox-error.html', $swap($inboxPage, $failed, $reviewInbox));
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 101);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 103);
 });

@@ -20,6 +20,8 @@
     // old element does not), or to the page heading when that element is not on the page (opened from a link). $close is printed into JS: a fixed method name, never input.
     // $busy (optional, a fixed method name too): while the host's call to it runs, the panel is aria-busy, ✕ is aria-disabled
     // and nothing closes the panel (an irreversible step must not be left half-seen).
+    // The panel counts as an open [data-bs-modal] (it is on the page only while open), so a dialog closed over it
+    // leaves the page behind locked.
     //
     // A screen that keeps its state in the browser passes `state` (an Alpine expression: the panel is
     // drawn while it is set) and `close` as the Alpine call that asks to close it (the screen may
@@ -37,7 +39,8 @@
 @if ($alpine)
 <template x-if="{{ $state }}">
 @endif
-<div x-data="{
+<div data-bs-modal x-data="{
+         open: true,
          back: @js($returnTo),
          opener: null,
          init() { {!! $opener !!} document.body.style.overflow = 'hidden'; this.$nextTick(() => this.$refs.x.focus()); },
