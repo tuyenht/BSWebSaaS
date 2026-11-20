@@ -64,7 +64,7 @@ final readonly class UpdateTaxonomy
 
             /** @var array<string, TaxonomyTranslation> $existing */
             $existing = $taxonomy->translations()->get()->keyBy('locale')->all();
-            $translations = $this->translations($data, $existing, $this->siteLocales->enabled());
+            $translations = $this->translations($data, $existing, $this->siteLocales->enabled(), $taxonomy->id);
 
             $changed = $this->saveTranslations($taxonomy, $translations, $this->routes);
             $taxonomy->forceFill([

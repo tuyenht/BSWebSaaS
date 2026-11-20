@@ -611,6 +611,7 @@ it('hands a returned post only to a member of this website who can take the next
             ->call('askNote', 'reject')
             ->assertSet('noteOpen', true)
             ->assertSee(__('admin.inbox.note_return', ['label' => 'Bản nháp']))
+            ->assertSeeHtml('id="inbox-assign"')
             ->assertSee('An Người viết')
             ->assertDontSee('Bình Chỉ xem')
             ->assertDontSee('Chi Site khác');
@@ -850,6 +851,7 @@ it('asks the reason in the dialog for a publishing move that requires one', func
             ->call('askNote', 'approve')
             ->assertSet('noteOpen', true)
             ->assertSee(__('entries.wf_ap_text'))
+            ->assertDontSeeHtml('id="inbox-assign"')   // a live post waits in nobody's queue: no «Giao cho»
             ->set('note', 'Đã kiểm tra số liệu')
             ->set('assignTo', $author->id)              // nobody's queue holds a live post
             ->call('apply', 'approve')

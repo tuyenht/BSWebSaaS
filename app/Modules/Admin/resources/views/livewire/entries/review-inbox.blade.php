@@ -398,6 +398,7 @@
                         @enderror
                     </div>
                 </div>
+                @if (! ($noteDialog['live'] ?? false) && ($noteDialog['members'] ?? []) !== [])
                 <div class="flex flex-col gap-1.5">
                     <label for="inbox-assign" class="text-xs font-semibold text-text">{{ __('admin.wfb.assign_label') }} <span class="font-normal text-text-muted">{{ __('admin.wfb.assign_optional') }}</span></label>
                     <select id="inbox-assign" wire:model="assignTo" aria-describedby="inbox-assign-err" class="field w-full rounded border border-border bg-surface px-2.5 text-text focus:border-primary-text">
@@ -410,6 +411,7 @@
                         @error('assignTo') <p class="text-xs font-semibold text-danger-text">{{ $message }}</p> @enderror
                     </div>
                 </div>
+                @endif
                 <div class="flex flex-wrap justify-end gap-2 border-t border-border-soft pt-3 max-[599.98px]:*:flex-[1_1_100%]">
                     <x-bs-admin::button color="light" autofocus wire:click="closeNote">{{ __('admin.cancel') }}</x-bs-admin::button>
                     <x-bs-admin::button :color="$noteDialog['live'] ? 'primary' : 'danger'" :variant="$noteDialog['live'] ? 'solid' : 'outline'" wire:loading.attr="disabled" wire:target="apply" data-inbox-note-ok
