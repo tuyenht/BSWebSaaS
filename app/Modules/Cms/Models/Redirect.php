@@ -8,7 +8,9 @@ use App\Modules\Shared\Concerns\HasUlidColumn;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * A 301/302 history row: an old path → its current target within a (site, locale).
@@ -59,6 +61,30 @@ class Redirect extends Model
 
     /** Audit code of a redirect to another website deleted for good from the trash. */
     public const string AUDIT_EXTERNAL_PURGED = 'cms.redirect.external_purged';
+
+    /**
+     * Write the system's row at $from (a slug move), unless a member's redirect to another website
+     * holds that address. The row is read locked and written as read, so a member's save in between
+     * is never overwritten; an insert that races a member's insert of the same address rolls back to
+     * its savepoint and is decided again against the member's row (as updateOrCreate would).
+     *
+     * @param  array<string, mixed>  $values
+     */
+    public static function writeSystemRow(string $locale, string $from, array $values): void
+    {
+        $write = static function () use ($locale, $from, $values): void {
+            $held = self::query()->where('locale', $locale)->where('from_path', $from)->lockForUpdate()->first();
+            if (! self::leadsAway($held?->to_path)) {
+                ($held ?? new self(['locale' => $locale, 'from_path' => $from]))->fill($values)->save();
+            }
+        };
+
+        try {
+            DB::transaction($write);
+        } catch (UniqueConstraintViolationException) {
+            $write();
+        }
+    }
 
     /** Whether a stored destination leads to another website (any `https://` value, valid or not). */
     public static function leadsAway(mixed $to): bool
