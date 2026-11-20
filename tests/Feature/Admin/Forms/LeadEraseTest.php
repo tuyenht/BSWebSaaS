@@ -8,6 +8,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -283,6 +284,8 @@ it('never lets support staff signed in for a member erase a visitor\'s lead', fu
             ->assertDontSee('askErase(', false)
             ->call('askErase', $lead->ulid)->assertForbidden();
         Livewire::actingAs($manager)->test(Inbox::class)->call('confirmErase')->assertForbidden();
+        // the action refuses it on its own, whoever calls it
+        expect(fn () => app(EraseLead::class)->handle($lead->ulid))->toThrow(AuthorizationException::class, __('admin.support.locked'));
     });
 
     expect(eraseExists($lead))->toBeTrue()

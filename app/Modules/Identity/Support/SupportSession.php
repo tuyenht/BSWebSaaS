@@ -18,7 +18,8 @@ use Illuminate\Support\Facades\Auth;
  * no support session.
  *
  * Audit reads it to name the staff member behind every row; the account, membership and
- * sign-in changes a staff member must never make on someone's behalf call forbid().
+ * sign-in changes a staff member must never make on someone's behalf, and every permanent delete
+ * of visitors' personal data (a lead erased, a form deleted with its leads), call forbid().
  */
 final class SupportSession
 {

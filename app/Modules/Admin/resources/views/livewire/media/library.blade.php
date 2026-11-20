@@ -250,7 +250,10 @@
                             @if ($mineN === null || $mineN > 0)
                                 <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="restorePicked"><x-bs-admin::icon name="ri-arrow-go-back" class="size-4" />{{ __('media.lib.restore_n', ['n' => $num($mineN ?? count($picked))]) }}</x-bs-admin::button>
                             @endif
-                            @if ($canPurge)
+                            @if ($canPurge && $support)
+                                {{-- support staff never delete a member's files for good: the button stays, greyed, and the Trash note says why --}}
+                                <x-bs-admin::button size="sm" variant="soft" color="danger" aria-disabled="true" class="opacity-60" :title="__('admin.support.locked')"><x-bs-admin::icon name="ri-delete-bin-2" class="size-4" />{{ __('media.lib.purge_n', ['n' => $num(count($picked))]) }}</x-bs-admin::button>
+                            @elseif ($canPurge)
                                 <x-bs-admin::button size="sm" variant="soft" color="danger" wire:click="askPurge(false)"><x-bs-admin::icon name="ri-delete-bin-2" class="size-4" />{{ __('media.lib.purge_n', ['n' => $num(count($picked))]) }}</x-bs-admin::button>
                             @endif
                         @else
@@ -267,8 +270,10 @@
                 @if ($trash)
                     <p class="mx-4 mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-body text-text">
                         <x-bs-admin::icon name="ri-time" class="size-5 shrink-0 text-warning-text" />
-                        <span class="min-w-0 flex-[1_1_16rem]">{{ __('media.lib.trash_note', ['days' => $retention]) }}</span>
-                        @if ($counts['trash'] > 0 && $canPurge)
+                        <span class="min-w-0 flex-[1_1_16rem]">{{ __('media.lib.trash_note', ['days' => $retention]) }}@if ($canPurge && $support) {{ __('admin.support.locked') }}@endif</span>
+                        @if ($counts['trash'] > 0 && $canPurge && $support)
+                            <x-bs-admin::button size="sm" variant="outline" color="danger" aria-disabled="true" class="opacity-60" :title="__('admin.support.locked')"><x-bs-admin::icon name="ri-delete-bin-2" class="size-4" />{{ __('media.lib.purge_all') }}</x-bs-admin::button>
+                        @elseif ($counts['trash'] > 0 && $canPurge)
                             <x-bs-admin::button size="sm" variant="outline" color="danger" wire:click="askPurge(true)"><x-bs-admin::icon name="ri-delete-bin-2" class="size-4" />{{ __('media.lib.purge_all') }}</x-bs-admin::button>
                         @endif
                     </p>

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Media\Observers;
 
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
 use Illuminate\Support\Facades\Storage;
@@ -16,11 +17,15 @@ use Illuminate\Support\Facades\Storage;
  * Per-instance only: a MASS forceDelete (Media::query()->forceDelete()) bypasses model events, so
  * this never runs — the FK SET NULL keeps mediables valid, and the content-hash R2 orphans are
  * swept by the deferred D3 job. Purge masters one instance at a time (as the Trash UI does).
+ *
+ * Support staff signed in for a member never delete the website's files for good: forceDeleting
+ * refuses it before anything goes, whoever asks (a queued job or the console has no session).
  */
 final class MediaObserver
 {
     public function forceDeleting(Media $media): void
     {
+        app(SupportSession::class)->forbid();
         Mediable::query()->where('media_id', $media->id)->delete();
     }
 

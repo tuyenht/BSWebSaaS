@@ -8,6 +8,7 @@ use App\Modules\Audit\Facades\Audit;
 use App\Modules\Forms\Jobs\DeleteLargeForm;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Notifications\Models\SiteNotification;
 use App\Modules\Shared\Support\Cast;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -19,7 +20,8 @@ use Illuminate\Support\Facades\DB;
  * leads, which carry the visitor's name or phone. Forms have no Trash, and leads are personal data,
  * so nothing of them is kept here (mails already sent stay in the inboxes they went to); the dialog
  * says so with the count first and offers «Tắt biểu mẫu» instead. The caller has asked FormPolicy;
- * the system contact form is refused here too, since a platform operator passes every policy.
+ * the system contact form is refused here too, since a platform operator passes every policy, and
+ * so is a support session: staff signed in for a member never delete visitors' leads on their behalf.
  *
  * One transaction: the form row is locked first, so a lead sent at the same moment either lands
  * before (and is counted and deleted) or fails on the missing form. When more leads are there than
@@ -41,10 +43,12 @@ final class DeleteForm
      *                                                            shows; for a delete in batches, the count the member was shown);
      *                                                            later: its leads are being deleted in batches off the request
      *
-     * @throws AuthorizationException for the system contact form
+     * @throws AuthorizationException for the system contact form, or during a support session
      */
     public function handle(Form $form, ?int $atMost = null): ?array
     {
+        app(SupportSession::class)->forbid();
+
         return DB::transaction(function () use ($form, $atMost): ?array {
             $locked = Form::query()->whereKey($form->getKey())->lockForUpdate()->first(['id', 'site_id', 'key']);
             if ($locked === null) {
@@ -91,7 +95,7 @@ final class DeleteForm
     {
         // select 1: an index-only walk of (site_id, form_id, created_at), no lead row read
         return FormSubmission::query()->where('form_id', $formId)->toBase()->selectRaw('1')
-            ->offset(max(0, Cast::int(config('forms.delete_inline_max_leads', 20000))))->exists();
+            ->offset(max(0, Cast::int(config('forms.delete_inline_max_leads', 5000))))->exists();
     }
 
     /**

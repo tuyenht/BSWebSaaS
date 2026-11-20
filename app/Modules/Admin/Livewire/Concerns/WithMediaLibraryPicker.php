@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Livewire\Concerns;
 use App\Modules\Admin\Support\MediaDeleteRights;
 use App\Modules\Admin\Support\MediaUsageLocator;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Media\Actions\RegisterMediaUpload;
 use App\Modules\Media\Exceptions\MediaRejectedException;
 use App\Modules\Media\Models\Media;
@@ -665,6 +666,7 @@ trait WithMediaLibraryPicker
     public function purgePickerSelection(): void
     {
         abort_unless(Gate::allows('media.purge'), 403);
+        app(SupportSession::class)->forbid();   // support staff never delete a member's files for good
 
         Media::onlyTrashed()->whereIn('id', $this->pickerSelected)->get()->each->forceDelete();
         $this->pickerSelected = [];
@@ -674,6 +676,7 @@ trait WithMediaLibraryPicker
     public function emptyPickerTrash(): void
     {
         abort_unless(Gate::allows('media.purge'), 403);
+        app(SupportSession::class)->forbid();   // support staff never delete a member's files for good
 
         Media::onlyTrashed()->get()->each->forceDelete();
         $this->pickerSelected = [];
