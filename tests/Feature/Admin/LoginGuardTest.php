@@ -182,3 +182,15 @@ it('says the password is missing and puts the cursor in the first empty field', 
         ->assertHasErrors(['email', 'password'])
         ->assertDispatched('auth-focus', field: 'email');
 });
+
+it('renders the hidden field and the send hook that hand the bot-check token to Livewire', function (): void {
+    // Only the markup is checkable here (no browser in Pest): the hidden wire:model field outside
+    // wire:ignore, and the capture-phase send hook that fills it from Cloudflare's own field. The waiting
+    // behaviour itself was checked in Chromium, Firefox and WebKit (see the pull request).
+    config(['services.turnstile.site_key' => 'test-site', 'services.turnstile.secret_key' => 'test-secret']);
+
+    Livewire::test(Login::class)
+        ->assertSeeHtml('<input type="hidden" wire:model="turnstileToken" data-bs-turnstile-token>')
+        ->assertSeeHtml('input[name="cf-turnstile-response"]')
+        ->assertSeeHtml("document.addEventListener('submit', function (e) {");
+});

@@ -515,6 +515,16 @@
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* Waiting for the Cloudflare check before sending (turnstile-field): the same look as sending. Livewire
+   hides its loading parts with an inline style, hence !important. */
+.auth-submit[aria-busy="true"] [wire\:loading] {
+  display: inline-block !important;
+}
+
+.auth-submit[aria-busy="true"] [wire\:loading\.remove] {
+  display: none !important;
+}
+
 .auth-submit svg {
   width: 16px;
   height: 16px;
