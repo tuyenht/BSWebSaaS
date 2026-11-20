@@ -1051,7 +1051,25 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $reparent = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($library()->call('openReparent', 'anh-xuong')));
     expect($reparent)->toContain('wire:model.live="reparentTo"');
     file_put_contents($dir.'/media-folder-reparent.html', $swap($html, $reparent, $media));
+    // someone who may delete only the files they uploaded, with one of theirs and someone else's
+    // chosen: the Trash button names theirs, a line says why the other stays, and the question
+    $author = User::factory()->create(['name' => 'Ngọc Anh']);
+    $authorRights = PermissionRegistry::tenantRoleTemplates('corporate')['author']['permissions'];
+    [$mineUlid, $theirsUlid] = app(Tenancy::class)->enter(1, function () use ($author, $authorRights): array {
+        grantRole($author, 'author', $authorRights === '*' ? PermissionRegistry::TENANT_PERMISSIONS : $authorRights);
+        Media::query()->where('slug', 'anh-xuong-1')->update(['created_by' => $author->id]);
+
+        return [(string) Media::query()->where('slug', 'anh-xuong-1')->value('ulid'), (string) Media::query()->where('slug', 'anh-xuong-2')->value('ulid')];
+    });
+    $author = $author->fresh() ?? $author;
+    $own = fn () => Livewire::actingAs($author)->test(Library::class)->call('setFolder', 'anh-xuong')->call('togglePick', $mineUlid)->call('togglePick', $theirsUlid);
+    $ownBulk = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($own()));
+    expect($ownBulk)->toContain('Chuyển 1 tệp của bạn vào Thùng rác');
+    file_put_contents($dir.'/media-trash-own.html', $swap($html, $ownBulk, $media));
+    $ownAsk = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($own()->call('trashPicked')));
+    expect($ownAsk)->toContain('giữ nguyên');
+    file_put_contents($dir.'/media-trash-own-ask.html', $swap($html, $ownAsk, $media));
     config(['media' => $mediaConfig]);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 83);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 85);
 });

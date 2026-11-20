@@ -75,7 +75,7 @@
         @endcan
 
         {{-- System "folder": the Trash (onlyTrashed) — a virtual entry, not a media_folders row. --}}
-        @can('media.delete')
+        @canany(['media.delete.own', 'media.delete.any'])
             <div class="mt-2 border-t border-border pt-2">
                 <button type="button" wire:click="openPickerTrash"
                         class="flex w-full items-center gap-2 rounded-[7px] px-[9px] py-[7px] text-left text-[13px] {{ $pickerTrash ? 'bg-admin-danger/8 font-semibold text-admin-danger-text' : 'font-medium text-body-text hover:bg-surface-hover' }}">
@@ -84,7 +84,7 @@
                     <span class="text-[11px] {{ $pickerTrash ? 'text-admin-danger-text' : 'text-body-muted' }}">{{ $mp['trashTotal'] }}</span>
                 </button>
             </div>
-        @endcan
+        @endcanany
     </div>
 
     {{-- Main column --}}
@@ -159,12 +159,12 @@
                 <span class="text-[12.5px] font-semibold {{ $pickerTrash ? 'text-admin-danger-text' : 'text-accent' }}">{{ __('media.picker_selected_count', ['count' => count($pickerSelected)]) }}</span>
                 <div class="ml-auto flex gap-1.5">
                     @if ($pickerTrash)
-                        @can('media.delete')
+                        @canany(['media.delete.own', 'media.delete.any'])
                             <button type="button" wire:click="restorePickerSelection"
                                     class="inline-flex items-center gap-1.5 rounded-[7px] border border-admin-success/30 bg-surface px-[11px] py-1.5 text-xs font-medium text-admin-success-text">
                                 <x-bs-admin::icon name="ri-refresh" class="size-[13px]" />{{ __('media.picker_trash_restore') }}
                             </button>
-                        @endcan
+                        @endcanany
                         @can('media.purge')
                             <button type="button"
                                     x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('media.picker_trash_purge_confirm', ['count' => count($pickerSelected)])), confirm: @js(__('media.picker_trash_purge')), cancel: @js(__('media.picker_cancel')) }).then(ok => ok && $wire.purgePickerSelection())"
@@ -189,13 +189,13 @@
                                 </div>
                             </div>
                         @endcan
-                        @can('media.delete')
+                        @canany(['media.delete.own', 'media.delete.any'])
                             <button type="button"
                                     x-on:click="$bsConfirm({ icon: 'trash', text: @js(__('media.picker_delete_confirm', ['count' => count($pickerSelected)])), confirm: @js(__('media.picker_delete')), cancel: @js(__('media.picker_cancel')) }).then(ok => ok && $wire.pickerBulkDelete())"
                                     class="inline-flex items-center gap-1.5 rounded-[7px] border border-admin-danger/20 bg-surface px-[11px] py-1.5 text-xs text-admin-danger-text">
                                 <x-bs-admin::icon name="ri-delete-bin" class="size-[13px]" />{{ __('media.picker_delete') }}
                             </button>
-                        @endcan
+                        @endcanany
                     @endif
                     <button type="button" wire:click="clearPickerSelection"
                             class="rounded-[7px] border border-border-strong bg-surface px-[11px] py-1.5 text-xs text-body-muted">{{ __('media.picker_clear') }}</button>

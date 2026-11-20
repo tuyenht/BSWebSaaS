@@ -196,7 +196,7 @@ it('changes ticked members at a fixed cost per member for an actor limited to so
     app(Tenancy::class)->enter(1, function () use ($lead): void {
         $role = Role::findOrCreate('lead', PermissionRegistry::GUARD);
         $role->forceFill(['level' => 60, 'is_system' => true])->save();
-        $role->syncPermissions(['users.invite', 'users.manage', 'entries.view', 'entries.create', 'entries.edit.own', 'entries.delete.own', 'entries.submit', 'media.view', 'media.upload', 'forms.view', 'domains.view']);
+        $role->syncPermissions(['users.invite', 'users.manage', 'entries.view', 'entries.create', 'entries.edit.own', 'entries.delete.own', 'entries.submit', 'media.view', 'media.upload', 'media.delete.own', 'forms.view', 'domains.view']);
         $lead->assignRole($role);
     });
     $limit($lead);

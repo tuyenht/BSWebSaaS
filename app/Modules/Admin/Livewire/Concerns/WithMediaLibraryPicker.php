@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire\Concerns;
 
+use App\Modules\Admin\Support\MediaDeleteRights;
 use App\Modules\Admin\Support\MediaUsageLocator;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Actions\RegisterMediaUpload;
@@ -203,7 +204,7 @@ trait WithMediaLibraryPicker
 
     /**
      * Trash view (onlyTrashed) — a virtual "folder", not a media_folders row. Locked: only
-     * openPickerTrash() (gated to media.delete) may switch it on; a client write would list the
+     * openPickerTrash() (gated to media.delete.own or .any) may switch it on; a client write would list the
      * trashed files to someone who may only view the library.
      */
     #[Locked]
@@ -301,11 +302,12 @@ trait WithMediaLibraryPicker
 
     /**
      * The virtual "Thùng rác" sidebar entry — shows onlyTrashed, swaps the bulk actions. Gated to
-     * media.delete like every trash action (the sidebar entry is only rendered for that right).
+     * either delete right like every trash action (the sidebar entry is only rendered for those);
+     * with media.delete.own it lists only this person's own files.
      */
     public function openPickerTrash(): void
     {
-        abort_unless(Gate::allows('media.delete'), 403);
+        abort_unless(MediaDeleteRights::some(), 403);
 
         $this->pickerTrash = true;
         $this->pickerFolderId = null;
@@ -317,12 +319,12 @@ trait WithMediaLibraryPicker
     public function togglePickerItem(int $mediaId): void
     {
         abort_unless(Gate::allows('media.view'), 403);
-        abort_unless(! $this->pickerTrash || Gate::allows('media.delete'), 403);
+        abort_unless(! $this->pickerTrash || MediaDeleteRights::some(), 403);
 
-        // Live library resolves live rows; the trash view resolves trashed rows. Either way the id
-        // is re-checked against THIS site's scoped query — never trusted from the wire.
+        // Live library resolves live rows; the trash view resolves the trashed rows this person
+        // sees. Either way the id is re-checked against THIS site's scoped query — never trusted.
         $exists = $this->pickerTrash
-            ? Media::onlyTrashed()->whereKey($mediaId)->exists()
+            ? MediaDeleteRights::visibleTrash(Media::onlyTrashed())->whereKey($mediaId)->exists()
             : Media::query()->whereKey($mediaId)->exists();
         if (! $exists) {
             return;
@@ -557,7 +559,7 @@ trait WithMediaLibraryPicker
                 $media = app(RegisterMediaUpload::class)->handle(
                     $preview['tempKey'],
                     $preview['filename'],
-                    mayRestore: Gate::allows('media.delete'),
+                    mayRestore: Gate::allows('media.delete.any'),
                 );
             } catch (MediaRejectedException $e) {
                 // Register may already have deleted the staged bytes: drop the preview so a second
@@ -626,12 +628,15 @@ trait WithMediaLibraryPicker
         $this->pickerPage++; // clamped against the real last page in mediaPickerState()
     }
 
-    /** Soft-delete the selection (Thùng rác) — per-model so observers keep firing. */
+    /**
+     * Soft-delete the selection (Thùng rác) — per-model so observers keep firing. With
+     * media.delete.own only the chosen files this person uploaded and nobody uses go; the rest stay.
+     */
     public function pickerBulkDelete(): void
     {
-        abort_unless(Gate::allows('media.delete'), 403);
+        abort_unless(MediaDeleteRights::some(), 403);
 
-        Media::query()->whereIn('id', $this->pickerSelected)->get()->each->delete();
+        app(MediaDeleteRights::class)->trashable(Media::query()->whereIn('id', $this->pickerSelected))->get()->each->delete();
         $this->pickerSelected = [];
     }
 
@@ -639,7 +644,7 @@ trait WithMediaLibraryPicker
     |------------------------------------------------------------------------
     | Trash actions (onlyTrashed) — restore / permanent purge
     |------------------------------------------------------------------------
-    | Restore is gated to media.delete (same as sending to trash); deleting for
+    | Restore is gated to the delete rights (same as sending to trash); deleting for
     | good — a selection or the whole Trash — is the website admin's media.purge.
     | Purge is per-instance so MediaObserver fires (drops attachments + the R2
     | object); a mass forceDelete would bypass those events.
@@ -647,11 +652,12 @@ trait WithMediaLibraryPicker
 
     public function restorePickerSelection(): void
     {
-        abort_unless(Gate::allows('media.delete'), 403);
+        abort_unless(MediaDeleteRights::some(), 403);
 
         // restore() clears deleted_at → the row returns to its original folder (folder_id was
         // kept; if that folder was itself deleted the FK already SET NULL it to the root view).
-        Media::onlyTrashed()->whereIn('id', $this->pickerSelected)->get()->each->restore();
+        // With media.delete.own only what this person put in the Trash comes back out.
+        MediaDeleteRights::restorable(Media::onlyTrashed()->whereIn('id', $this->pickerSelected))->get()->each->restore();
         $this->pickerSelected = [];
         session()->flash('media-status', __('media.picker_trash_restored'));
     }
@@ -787,7 +793,7 @@ trait WithMediaLibraryPicker
             'detailUsages' => $detail === null ? [] : app(MediaUsageLocator::class)->usagesFor($detail, $this->pickerContentLocale()),
             'detailUploader' => $uploaderName,
             'contentLocale' => $this->pickerContentLocale(),
-            'trashTotal' => Gate::allows('media.delete') ? Media::onlyTrashed()->count() : 0,
+            'trashTotal' => MediaDeleteRights::some() ? MediaDeleteRights::visibleTrash(Media::onlyTrashed())->count() : 0,
         ];
     }
 
@@ -824,10 +830,11 @@ trait WithMediaLibraryPicker
     {
         // Trash view: onlyTrashed, flat (no folder), newest-binned first — a distinct surface.
         if ($this->pickerTrash) {
-            // Defence in depth behind the locked property: the trash list is a media.delete surface.
-            abort_unless(Gate::allows('media.delete'), 403);
+            // Defence in depth behind the locked property: the trash list is a delete-right surface,
+            // and with media.delete.own it holds only this person's own files.
+            abort_unless(MediaDeleteRights::some(), 403);
 
-            $query = Media::onlyTrashed();
+            $query = MediaDeleteRights::visibleTrash(Media::onlyTrashed());
             $term = trim($this->pickerSearch);
             if ($term !== '') {
                 $query->where('original_filename', 'ilike', '%'.addcslashes($term, '%_\\').'%');
