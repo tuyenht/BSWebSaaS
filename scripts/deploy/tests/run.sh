@@ -294,7 +294,7 @@ ok '[ ! -s "$FAKE/calls.log" ]' "plan called no docker, gh or pnpm"
 ok 'grep -q "2100_01_01_000000_add_col: \[table\] PgBouncer: restart" "$PLAN"' "add_col flagged table only (down() and comments ignored), restart"
 ok 'grep -q "add_idx: \[raw nonadd table concurrent\] PgBouncer: no-restart (PGB_SKIP: index only)" "$PLAN"' "add_idx raw + concurrent, restart narrowed"
 ok 'grep -qF "launch $ECOMMIT $EBLOB $REL $(sha256sum "$REL" | cut -d" " -f1)" "$PLAN"' "the owner line carries commit, engine blob and release sha256"
-ok 'grep -q "một lần trước khi nạp lại.*: early" "$PLAN" && grep -q "optimize, một lần trước khi nạp lại (code mới, worker cũ còn phục vụ): early, octane:reload" "$PLAN"' "the plan names the pre-reload one-off between optimize and octane:reload"
+ok 'grep -q "một lần trước khi nạp lại.*: early" "$PLAN" && grep -q "optimize (trừ view), một lần trước khi nạp lại (code mới, worker cũ còn phục vụ): early, octane:reload, view:clear" "$PLAN"' "the plan names the pre-reload one-off between optimize and octane:reload"
 release 'unset "MIG_OK[2100_01_01_000100_add_idx]"'
 ( export PATH="$STUB:$PATH" FAKE; bash "$SRC/scripts/deploy/deploy.sh" plan "$REL" ) > "$PLAN" 2>&1; RC=$?
 ok '[ "$RC" = 1 ] && grep -q "MIG_OK" "$PLAN"' "raw SQL migration without a reviewed reason stops"
@@ -374,6 +374,8 @@ ok '[ -e "$FAKE/verified" ]' "one-off: apply got the preview count, verify ran"
 O=$(line_of "artisan optimize"); P=$(line_of "artisan fake:pre"); L=$(line_of "artisan octane:reload"); Q1=$(line_of "artisan fake:oneoff")
 ok '[ -n "$O" ] && [ -n "$P" ] && [ -n "$L" ] && [ "$O" -lt "$P" ] && [ "$P" -lt "$L" ] && [ "$L" -lt "$Q1" ]' "pre-reload one-off ran after optimize, before octane:reload; the other one-off after it ($O < $P < $L < $Q1)"
 ok '[ "$(cat "$FAKE/pre-count")" = 0 ] && [ -e "$FAKE/pre-verified" ] && says "OK   early xem lại sau khi chạy (còn đổi) = 0" && [ -s "$RUNS/${OLD:0:7}-${FULL:0:8}/oneoff-pre-early" ]' "pre-reload one-off: preview 2 → apply 2 → re-preview 0 → verify, its own mark"
+O=$(line_of "artisan optimize --except=views"); L=$(line_of "artisan octane:reload"); V2=$(line_of "artisan view:clear" 2); V3=$(line_of "artisan view:clear" 3); C=$(line_of "artisan view:cache")
+ok '[ -n "$O" ] && [ -n "$V2" ] && [ -n "$V3" ] && [ -n "$C" ] && [ "$(calls "artisan optimize$")" = 0 ] && [ "$L" -lt "$V2" ] && [ "$V2" -lt "$V3" ] && [ "$V3" -lt "$C" ]' "no compiled view crosses the reload: optimize skips views, view:clear right after octane:reload, view:clear + view:cache at the end ($O; $L < $V2 < $V3 < $C)"
 L=$(line_of "artisan octane:reload"); E=$(line_of "artisan storefront:purge-edge --all")
 ok '[ -n "$E" ] && [ "$L" -lt "$E" ] && [ "$(calls "artisan storefront:purge-edge --all")" = 1 ]' "the edge purge is queued once, after the reload ($L < $E)"
 ok '! says "Bỏ qua xoá trang lưu ở Cloudflare"' "a long command list (the writer cut off by an early reader) does not make the purge look missing"
@@ -535,7 +537,7 @@ ok '[ "$RC" = 0 ] && says "Bỏ qua rbac:sync: đã chạy" && [ "$(calls "artis
 launch rollback
 ok '[ "$RC" = 0 ] && head_is "$OLD" && [ "$(calls "artisan rbac:sync")" = 2 ] && [ "$(calls "artisan octane:reload")" = 6 ]' "a rollback after a permission sync syncs back to the old list and reloads again"
 ( export PATH="$STUB:$PATH" FAKE; bash "$SRC/scripts/deploy/deploy.sh" plan "$REL" ) > "$PLAN" 2>&1; RC=$?
-ok '[ "$RC" = 0 ] && grep -q "octane:reload, khởi động lại horizon + scheduler, xếp việc xoá trang lưu ở Cloudflare, rbac:sync rồi octane:reload lần nữa" "$PLAN"' "the plan names the sync after the reload and the second reload"
+ok '[ "$RC" = 0 ] && grep -q "octane:reload, view:clear, khởi động lại horizon + scheduler, view:clear + view:cache, xếp việc xoá trang lưu ở Cloudflare, rbac:sync rồi octane:reload lần nữa" "$PLAN"' "the plan names the sync after the reload and the second reload"
 fresh "$ENVK"; launch
 ok '[ "$RC" = 1 ] && says "thiếu khóa mới: NEW_KEY"' "a new env key missing on prod stops"
 fresh "$ENVK"; release 'ENV_DEFAULT_OK=(NEW_KEY)'; launch

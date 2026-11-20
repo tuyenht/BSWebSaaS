@@ -65,8 +65,9 @@ runbook stays the reference for what each step does and why.
    - Skip this step and new screens ship with stale CSS — silently.
 4. Caches: prod caches config, routes, views and events.
    - Blade changed → `docker exec bsweb_prod_app php artisan view:clear`.
-   - Routes/middleware/config/events changed → `docker exec bsweb_prod_app php artisan optimize`.
+   - Routes/middleware/config/events changed → `docker exec bsweb_prod_app php artisan optimize --except=views`.
    - `octane:reload` alone does NOT pick up a cached route or middleware change.
+   - Compiled views never cross a reload: Blaze compiles the admin components into calls that only the code that compiled them has. Cache everything except views (`optimize --except=views`), run `view:clear` right after `octane:reload`, then `view:clear` + `view:cache` once the new workers serve (`deploy.sh` `reload()` does this, the rollback too). To turn Blaze off: set `BLAZE_ENABLED=false` in `.env`, recreate the containers, `optimize --except=views` (the flag lives in the config cache), `octane:reload`, `view:clear`, `docker restart bsweb_prod_horizon bsweb_prod_scheduler` (they read the config at start), then `view:cache`.
 5. `docker exec bsweb_prod_app php artisan octane:reload`, then `docker restart bsweb_prod_horizon` (mail and jobs run on the queue).
    - From the merge until this reload, the old workers serve old PHP against the new files on disk (Blade compiles on demand; a class moved in the delta is gone). Run steps 2–5 back to back.
    - Then `docker exec bsweb_prod_app php artisan storefront:purge-edge --all`: the pages kept at the Cloudflare edge were drawn by the old code, and they may be kept for up to a day. The engine runs it after every reload. The engine's build (step 6, and the rollback) puts the CSS and JS of every build that served in the last 2 days back beside the new ones, from a shared archive (`plans/reports/deploy-runs/build-archive/`), so a page still kept or open in a tab links files that exist; a failed build puts the serving files and manifest back before it stops (`scripts/deploy/README.md`, "Kept build files").
@@ -99,7 +100,7 @@ From this deploy on, the admin products list searches the word table `product_se
    - Laravel records the file under its name, so Deploy step 2 after the merge finds it done.
    - From here a product saved by a worker on the new code (after the merge below) gets its words; one saved by a worker on the old code does not (step 4 heals it).
 2. Switch the code: Deploy step 1 (merge, `composer install`), step 2 (any other migration; 2054 is done), step 3 (front-end build). The image stays `bsweb/app:prod` and is not rebuilt.
-3. Fill the table at once, after `optimize` and BEFORE `octane:reload`: Deploy step 4 (`view:clear`, `optimize`), then `docker exec bsweb_prod_app php artisan catalog:search-words`. A fresh `artisan` process loads the new code and the new cached config from disk; the running workers keep serving while it runs. Its writes are harmless to the old code, which ignores the table.
+3. Fill the table at once, after `optimize` and BEFORE `octane:reload`: Deploy step 4 (`view:clear`, `optimize --except=views`), then `docker exec bsweb_prod_app php artisan catalog:search-words`. A fresh `artisan` process loads the new code and the new cached config from disk; the running workers keep serving while it runs. Its writes are harmless to the old code, which ignores the table.
    - It works site by site, as the app user under each site's tenant context, and checks every product (the Trash too).
    - It must exit 0 and print `Checked N product(s) on M site(s); corrected K.`, where N is the number of products on prod and K the number of those with a name or a SKU. A site that fails is named, and the command exits 1; stop and look at it before the reload.
    - Measured: 2.4 ms a product (200,000 products in 485 s). A re-run must print `corrected 0.`
@@ -158,11 +159,11 @@ Until this is done, `.env` holds `DB_ADMIN_PASSWORD` and the app containers can 
    The password never appears in a process list, on screen or in the Postgres log (the two `SET` lines keep this one statement out of it). Nothing running uses the superuser over the network, so the site is unaffected; the backup scripts sign in over the container's local socket.
 2. Run Deploy steps 1–3 only (merge, migrations through the `migrate` service, front-end build); steps 4–5 wait for step 4 here. Then remove the line from `.env` (`sed -i '/^DB_ADMIN_PASSWORD=/d' /opt/bswebsaas/prod/.env`) and drop the config cache built with it: `docker exec bsweb_prod_app php artisan config:clear`. Without that, the containers recreated in step 3 boot from a cache that still holds the old password.
 3. `docker compose up -d` in `/opt/bswebsaas/prod`: recreates `postgres` (it now reads the secret file) and app, horizon and scheduler (they now start without the password). A few seconds without database connections.
-4. Only now: `docker exec bsweb_prod_app php artisan optimize`, `docker exec bsweb_prod_app php artisan octane:reload`, `docker restart bsweb_prod_horizon bsweb_prod_scheduler`. Running `optimize` before step 3 would copy the password back into the config cache: the old containers still carry it in their environment. Then Deploy steps 6–7 if the delta calls for them.
+4. Only now: `docker exec bsweb_prod_app php artisan optimize --except=views`, `docker exec bsweb_prod_app php artisan octane:reload`, `docker exec bsweb_prod_app php artisan view:clear`, `docker restart bsweb_prod_horizon bsweb_prod_scheduler`. Running `optimize` before step 3 would copy the password back into the config cache: the old containers still carry it in their environment. Then Deploy steps 6–7 if the delta calls for them.
 5. Prove the superuser still works where it should: `docker compose --profile ops run --rm --no-deps migrate php artisan migrate:status --database=pgsql_admin`.
 6. Run the check under "After", then a restore drill (`prod-db-backup-restore.md`) to confirm the backups still sign in. Record the new secret file in `docs/ops-log.md`.
 
-Rollback (any step): `sed -i '/^DB_ADMIN_PASSWORD=/d' /opt/bswebsaas/prod/.env && printf '\n' >> /opt/bswebsaas/prod/.env && grep '^DB_ADMIN_PASSWORD=' /opt/bswebsaas/secrets/db-admin.env >> /opt/bswebsaas/prod/.env`, check out the previous commit, `docker compose up -d`, then `optimize` → `octane:reload` → `docker restart bsweb_prod_horizon bsweb_prod_scheduler` (the cache from step 4 has no password, so the old in-container migrate command would fail to sign in). Use the NEW password: the old one no longer works.
+Rollback (any step): `sed -i '/^DB_ADMIN_PASSWORD=/d' /opt/bswebsaas/prod/.env && printf '\n' >> /opt/bswebsaas/prod/.env && grep '^DB_ADMIN_PASSWORD=' /opt/bswebsaas/secrets/db-admin.env >> /opt/bswebsaas/prod/.env`, check out the previous commit, `docker compose up -d`, then `optimize --except=views` → `octane:reload` → `view:clear` → `docker restart bsweb_prod_horizon bsweb_prod_scheduler` (the cache from step 4 has no password, so the old in-container migrate command would fail to sign in). Use the NEW password: the old one no longer works.
 
 ## After
 
@@ -178,7 +179,7 @@ Rollback (any step): `sed -i '/^DB_ADMIN_PASSWORD=/d' /opt/bswebsaas/prod/.env &
   ```
 - Rollback:
   1. `git -C /opt/bswebsaas/prod reset --hard <previous-sha>`.
-  2. `pnpm run build` → `optimize` → `octane:reload` → restart horizon.
+  2. `pnpm run build` → `optimize --except=views` → `octane:reload` → `view:clear` → restart horizon.
   3. Remove data the old code cannot render (whatever the deploy's post-reload commands added).
   4. If a migration broke data, restore the pre-deploy dump.
 
