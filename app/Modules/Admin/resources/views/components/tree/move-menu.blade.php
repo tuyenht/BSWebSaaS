@@ -3,8 +3,12 @@
 ])
 @props([
     'row',
+    'reason' => null,
 ])
 @php
+    // `reason`: why none of the moves can be used now although the record itself is not locked
+    // (a support session only looks): it greys all four and says why once, as a locked record does.
+    $locked ??= $reason;
     // The moves of one tree record as ⋮ menu items — the touch path, the same on every screen
     // (the keyboard has Alt+arrows, the mouse has dragging): put it in the `menu` slot of the row's
     // <x-bs-admin::list.actions>. An item that cannot be used where the record stands (first in its

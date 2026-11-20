@@ -465,5 +465,13 @@
     @endif
     @endif
 
+    {{-- «Xóa theo yêu cầu của khách»: the lead goes at once, never to a Trash, and cannot be undone. --}}
+    @if ($canManage)
+        <x-bs-admin::confirm-dialog model="eraseOpen" :title="__('leads.erase_title', ['name' => $erasing['name'] ?? ''])" icon="ri-delete-bin-6" ok-icon="ri-delete-bin-6" danger
+            :ok="__('leads.erase_ok')" confirm="confirmErase" cancel="cancelErase">
+            <p class="m-0 [text-wrap:pretty]">{{ __('leads.erase_text_1') }}<strong>{{ __('leads.erase_text_2') }}</strong>{{ __('leads.erase_text_3') }}</p>
+        </x-bs-admin::confirm-dialog>
+    @endif
+
     <x-bs-admin::toast :message="$toastMsg" :tone="$toastTone" :seq="$toastSeq" dismiss="closeToast" :undo="$undoOp !== null ? 'undoLast' : null" :raised="$pickedN > 0 && $bulk !== []" />
 </div>

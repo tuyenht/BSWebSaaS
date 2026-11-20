@@ -259,6 +259,15 @@ window.Alpine.data('bsCategories', (cfg) => {
         lost(retry) {
             this.say(t.netFail, 'error', { act: t.retry, run: retry });
         },
+        // support staff signed in for a member only look: a change says why and does nothing
+        // (the server refuses it as well)
+        supportOnly() {
+            if (cfg.support) {
+                this.say(cfg.supportWhy, 'error');
+                return true;
+            }
+            return false;
+        },
         refused(r) {
             if (r.reason === 'taxonomy_invalid' || r.reason === 'move_stale') {
                 this.say(r.message, 'error', { act: t.reload, run: () => this.reload() });
@@ -278,6 +287,9 @@ window.Alpine.data('bsCategories', (cfg) => {
 
         // ---- moves: the tree hands each one here (host mode) ------------------------------------
         async treeMove(k, parent, pos) {
+            if (this.supportOnly()) {
+                return false;
+            }
             if (this.filtering) {
                 this.say(t.filtered, 'info');
                 return false;
@@ -286,7 +298,7 @@ window.Alpine.data('bsCategories', (cfg) => {
         },
         async doMove(k, parent, pos, confirm) {
             const n = this.node(k);
-            if (!n) {
+            if (!n || this.supportOnly()) {
                 return false;
             }
             const from = n.parent || null;
@@ -341,7 +353,7 @@ window.Alpine.data('bsCategories', (cfg) => {
         // ---- "Chuyển đến…" ----------------------------------------------------------------------
         async openMv(k) {
             const n = this.node(k);
-            if (!n) {
+            if (!n || this.supportOnly()) {
                 return;
             }
             this.mv = { k, name: n.name, q: '', groups: null, items: 0, to: undefined, err: '' };
@@ -449,7 +461,7 @@ window.Alpine.data('bsCategories', (cfg) => {
         // ---- delete and merge -------------------------------------------------------------------
         async openDel(k, merge = false) {
             const n = this.node(k);
-            if (!n) {
+            if (!n || this.supportOnly()) {
                 return;
             }
             this.del = { k, name: n.name, merge, children: 'lift', items: 'reassign', target: n.parent && !this.node(n.parent)?.locked ? n.parent : '', p: null, err: '', busy: false, parentName: n.parent ? this.node(n.parent)?.name || '' : '' };
@@ -631,7 +643,7 @@ window.Alpine.data('bsCategories', (cfg) => {
 
         // ---- the editor drawer ------------------------------------------------------------------
         openAdd(parent, child = false) {
-            if (!cfg.canManage) {
+            if (this.supportOnly() || !cfg.canManage) {
                 return;
             }
             const p = parent ? this.node(parent) : null;
@@ -891,7 +903,7 @@ window.Alpine.data('bsCategories', (cfg) => {
         },
         async save(again = false) {
             const P = this.pan;
-            if (!P || P.saving) {
+            if (!P || P.saving || this.supportOnly()) {
                 return;
             }
             this.pullSeo();
@@ -1001,6 +1013,9 @@ window.Alpine.data('bsCategories', (cfg) => {
             return n ? this.missing(n)[0] || null : null;
         },
         async addExample(name) {
+            if (this.supportOnly()) {
+                return;
+            }
             const r = await this.$wire.save(cfg.section, null, null, { names: { [cfg.main]: name }, slugs: {}, descriptions: {}, seoTitles: {}, seoDescriptions: {} }).catch(() => null);
             if (!r) {
                 this.lost(() => this.addExample(name));
