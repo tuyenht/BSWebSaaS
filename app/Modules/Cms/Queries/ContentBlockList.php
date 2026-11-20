@@ -7,16 +7,20 @@ namespace App\Modules\Cms\Queries;
 use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\ContentBlockTranslation;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\VietnameseFold;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
  * The block library's list reads, within the current site (BelongsToSite + RLS):
  *  - page(): newest change first, in keyset pages on (site_id, updated_at DESC, id DESC), filtered
- *    by status and region. The cursor names the last row of a page by its time as stored and its
+ *    by status and region, and by a search over the name (Vietnamese marks ignored) and the
+ *    reference code. The cursor names the last row of a page by its time as stored and its
  *    ulid, never its bigint id, so it may go to the browser; the next page looks the anchor's id up
  *    by ulid (one indexed read on this website) and keeps the tie-break on id. An anchor deleted
  *    between pages is treated as the highest id at its time: a block changed at that same instant
  *    may show again, none is skipped.
+ *  - count(): how many blocks the same filters and search find, in one count.
  *  - counts(): how many blocks each status × region holds, for the status tabs and region chips, in
  *    one GROUP BY (a website keeps at most `cms.blocks.max_per_site` blocks).
  *  - locales(): the languages each listed block has content in, in one whereIn read.
@@ -27,10 +31,14 @@ final readonly class ContentBlockList
     public const int PAGE_SIZE = 50;
 
     /**
+     * A website keeps at most `cms.blocks.max_per_site` blocks, so the search reads that bounded set
+     * without an index of its own.
+     *
      * @param  array{at: string, ulid: string}|null  $after  the cursor of the previous page
+     * @param  string  $search  words of the name ("chan trang" finds "Chân trang") or of the code
      * @return array{rows: list<ContentBlock>, next: array{at: string, ulid: string}|null}
      */
-    public function page(?string $status = null, ?string $region = null, ?array $after = null, int $limit = self::PAGE_SIZE): array
+    public function page(?string $status = null, ?string $region = null, ?array $after = null, int $limit = self::PAGE_SIZE, string $search = ''): array
     {
         $limit = max(1, $limit);
         if ($after !== null && ! self::isCursor($after)) {
@@ -41,11 +49,9 @@ final readonly class ContentBlockList
             $found = ContentBlock::query()->where('ulid', $after['ulid'])->value('id');
             $anchorId = $found === null ? PHP_INT_MAX : Cast::int($found);
         }
-        $rows = ContentBlock::query()
+        $rows = $this->matching($status, $region, $search)
             ->select(['id', 'ulid', 'key', 'name', 'region', 'status', 'updated_at'])
             ->selectRaw('updated_at::text as list_at')
-            ->when($status !== null, fn ($query) => $query->where('status', $status))
-            ->when($region !== null, fn ($query) => $query->where('region', $region))
             ->when($after !== null, fn ($query) => $query->whereRaw('(updated_at, id) < (?::timestamptz, ?)', [$after['at'] ?? '', $anchorId]))
             ->orderByDesc('updated_at')
             ->orderByDesc('id')
@@ -62,6 +68,25 @@ final readonly class ContentBlockList
         }
 
         return ['rows' => array_values($rows->all()), 'next' => $next];
+    }
+
+    /** How many blocks page() would list across every page, for "Xem N khối" and the filter line. */
+    public function count(?string $status = null, ?string $region = null, string $search = ''): int
+    {
+        return $this->matching($status, $region, $search)->count();
+    }
+
+    /** @return Builder<ContentBlock> */
+    private function matching(?string $status, ?string $region, string $search): Builder
+    {
+        $needle = VietnameseFold::text(trim($search));
+
+        return ContentBlock::query()
+            ->when($status !== null, fn (Builder $query) => $query->where('status', $status))
+            ->when($region !== null, fn (Builder $query) => $query->where('region', $region))
+            ->when($needle !== '', fn (Builder $query) => $query->where(fn (Builder $match) => $match
+                ->whereRaw(VietnameseFold::sql('name').' like ?', [VietnameseFold::like($needle)])
+                ->orWhereRaw('lower(key) like ?', [VietnameseFold::like($needle)])));
     }
 
     /**
