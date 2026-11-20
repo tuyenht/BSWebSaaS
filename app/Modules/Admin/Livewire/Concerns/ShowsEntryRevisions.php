@@ -11,6 +11,7 @@ use App\Modules\Cms\Actions\RestoreEntryRevision;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\RevisionRestoreRejectedException;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Queries\EntryRevisions;
 use App\Modules\Cms\Support\EntryContentWriter;
 use App\Modules\Shared\Support\Cast;
@@ -207,6 +208,8 @@ trait ShowsEntryRevisions
         $at = $this->revisionTime($revision->created_at);
         $shared = (bool) ($this->revAsk['shared'] ?? false);
         $live = $entry->status === 'published';
+        // on live content whose edits are held back, the version went into the pending change (visitors keep theirs)
+        $held = $live && EntryDraft::query()->where('entry_id', $entry->id)->exists();
         $droppedLine = $dropped > 0 ? ' '.Cast::string(__('entries.rev.done_dropped', ['count' => $dropped])) : '';
 
         $this->revAskOpen = false;
@@ -224,7 +227,11 @@ trait ShowsEntryRevisions
         if ($fresh !== null) {
             $this->firstRevisionPage($fresh);
         }
-        $this->dispatch('bs-toast', text: Cast::string(__($live ? 'entries.rev.done_live' : 'entries.rev.done_kept', ['at' => $at])).$droppedLine);
+        $this->dispatch('bs-toast', text: Cast::string(__(match (true) {
+            $held => 'entries.rev.done_change',
+            $live => 'entries.rev.done_live',
+            default => 'entries.rev.done_kept',
+        }, ['at' => $at])).$droppedLine);
 
         return true;
     }

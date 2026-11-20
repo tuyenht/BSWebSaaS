@@ -21,12 +21,15 @@ use DomainException;
  *  - locale_disabled: the change's language is switched off on the site.
  *  - slug_taken: the change's address belongs to other content now.
  *  - workflow_governed: an approval workflow governs the entry; the change must be approved.
+ *  - change_open: a live entry with a pending change cannot be scheduled (it would leave the website
+ *    and go back on at the time with content nobody who may publish has put there); the change is
+ *    applied or thrown away first.
  */
 final class EntryDraftRejectedException extends DomainException
 {
     public const array REASONS = [
         'change_locked', 'change_pending', 'change_stale', 'not_live', 'content_invalid',
-        'category_governed', 'locale_disabled', 'slug_taken', 'workflow_governed',
+        'category_governed', 'locale_disabled', 'slug_taken', 'workflow_governed', 'change_open',
     ];
 
     public function __construct(public readonly string $reason)

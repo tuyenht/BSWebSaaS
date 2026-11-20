@@ -85,6 +85,24 @@ final class PageRules
     }
 
     /**
+     * The ids of the pages under this one, not those in the Trash, in subPages() order (WALK_SIZE cap).
+     * Empty for a branch too big to read: a move refuses that branch anyway (branch_too_big).
+     *
+     * @return list<int>
+     */
+    public static function subPageIds(Entry $page): array
+    {
+        $ids = [];
+        foreach (self::subPages($page, self::WALK_SIZE) ?? [] as $level) {
+            foreach ($level as $sub) {
+                $ids[] = $sub->id;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
      * The pages under this one, level by level (index 0: its sub-pages, 1: theirs, …), each level in
      * id order, with a cap on depth and size against a looped or huge tree. A branch past the cap — more
      * than $cap pages in all, or deeper than WALK_DEPTH levels — is null: the whole branch is too big to

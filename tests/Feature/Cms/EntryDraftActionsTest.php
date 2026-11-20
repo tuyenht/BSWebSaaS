@@ -754,11 +754,13 @@ it('lets a post be saved and published again after a restore left an open change
         app(SaveEntryDraft::class)->handle($entry, $author, 'vi', ['title' => 'Bản nháp']);
         expect(changeOf($entry)->content['shared']['template_override'])->toBe('grid-news');
 
-        // The restore writes the old content back, which has no layout: the live one becomes none.
+        // The restore goes into the open change, as any edit of a post with one does: the old content
+        // has no layout, so the change's becomes none while visitors keep the live one.
         app(RestoreEntryRevision::class)->handle($revision, $publisher);
         $entry = $entry->fresh();
-        expect($entry->template_override)->toBeNull()
-            ->and(array_keys(siteWordsOf('entry_search_words', 1, $entry->id)['vi'] ?? []))->toBe(['ban', 'tin', 'vi']);
+        expect($entry->template_override)->toBe('grid-news')
+            ->and(changeOf($entry)->content['shared']['template_override'])->toBeNull()
+            ->and(changeOf($entry)->content['locales']['vi']['title'])->toBe('Bản tin vi');
 
         $change = app(SaveEntryDraft::class)->handle($entry, $author, 'vi', ['title' => 'Bản nháp hai']);
         expect($change->content['shared']['template_override'])->toBeNull();

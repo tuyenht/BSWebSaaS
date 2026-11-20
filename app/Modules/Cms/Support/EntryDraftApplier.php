@@ -13,6 +13,7 @@ use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Auth\Access\AuthorizationException;
 
@@ -120,6 +121,8 @@ final readonly class EntryDraftApplier
             if ($entry->status === 'published' && $result['translation']->status !== 'published') {
                 $result['translation']->update(['status' => 'published']);
                 $this->routes->sync($entry, $locale, $result['translation']->slug);
+                // a language going live here: the page's sub-pages follow its address in it
+                $this->routes->syncSubPagesOf($entry, $locale);
             }
 
             $dropped += $droppedHere;
@@ -166,7 +169,8 @@ final readonly class EntryDraftApplier
 
     /**
      * File the post under the change's primary category when it differs; returns whether it did.
-     * Categories are replaced as the editor replaces them (the primary one only).
+     * A change holds the main category only: the post's other categories stay, after the new main
+     * one, and a promoted secondary keeps the old main among them (EntryDraft::filingUnder).
      *
      * @throws EntryDraftRejectedException see assertCategory()
      * @throws AuthorizationException the category lies outside the actor's limits
@@ -182,7 +186,12 @@ final readonly class EntryDraftApplier
         }
 
         $this->assertCategory($entry, $categoryId);
-        $this->categories->assign($entry, [$categoryId], $actor);
+        $stored = $entry->taxonomies()
+            ->wherePivot('position', '<', Entry::FACET_POSITION_BASE)
+            ->orderByPivot('position')->pluck('taxonomies.id')
+            ->map(static fn (mixed $id): int => Cast::int($id))
+            ->all();
+        $this->categories->assign($entry, EntryDraft::filingUnder(array_values($stored), $categoryId), $actor);
 
         return true;
     }

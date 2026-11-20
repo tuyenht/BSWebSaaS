@@ -3,10 +3,13 @@
 namespace App\Modules\Cms\Actions;
 
 use App\Modules\Cms\Enums\EntryStatus;
+use App\Modules\Cms\Exceptions\EntryDraftRejectedException;
 use App\Modules\Cms\Exceptions\HomePageLockedException;
 use App\Modules\Cms\Exceptions\SchedulePastException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryDraft;
+use App\Modules\Cms\Support\EntryDraftFolder;
 use App\Modules\Cms\Support\EntryStatusAudit;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Cms\Support\HomePages;
@@ -37,6 +40,11 @@ use InvalidArgumentException;
  * The live Home page never leaves `published` here (not to a draft, archived, nor a
  * schedule that hides it until its time): the website's «/» would answer 404 (RouteResolver serves
  * published entries only). A member picks another page as the Home page first.
+ *
+ * A live entry's pending change (EntryDraft) is folded into it when it leaves the website for a
+ * draft or the archive (EntryDraftFolder: nobody's work is lost, and nothing unapproved is shown,
+ * the entry being offline). A schedule is refused while the change is open (change_open): the
+ * entry would come back at its time carrying content no one who may publish has put on the website.
  */
 final readonly class TransitionEntryStatus
 {
@@ -53,12 +61,14 @@ final readonly class TransitionEntryStatus
     public function __construct(
         private EntryWorkflowResolver $workflows,
         private ApproveEntryForLater $later,
+        private EntryDraftFolder $folder,
     ) {}
 
     /**
      * @throws SchedulePastException a publish time that is missing or not after now
      * @throws HomePageLockedException any move of the live Home page (it would leave the website, «/» with it)
      * @throws WorkflowGovernedException scheduling content an active workflow governs
+     * @throws EntryDraftRejectedException change_open: scheduling a live entry that has a pending change
      * @throws ModelNotFoundException the entry left the list meanwhile (sent to the Trash or purged)
      */
     public function handle(Entry $entry, EntryStatus $target, User $actor, ?DateTimeInterface $publishAt = null): void
@@ -177,6 +187,10 @@ final readonly class TransitionEntryStatus
                 throw new WorkflowGovernedException;
             }
 
+            if (EntryDraft::query()->where('entry_id', $entry->id)->exists()) {
+                throw new EntryDraftRejectedException('change_open');
+            }
+
             $from = $entry->status;
             // a new time set here is this member's own schedule: an approval for later (its flow since
             // switched off) no longer stands behind it, nor a stage of that flow
@@ -200,6 +214,9 @@ final readonly class TransitionEntryStatus
         // behind: the stage is re-derived from the new status (the start), so the only road back
         // to live is approval — and the stepper never claims "Đã đăng" over a hidden post.
         $entry->update(['status' => $target->value, 'scheduled_by' => null] + ($governed ? ['workflow_state' => null] : []));
+        if ($from === EntryStatus::Published->value) {
+            $this->folder->fold($entry, $actor);
+        }
         EntryStatusAudit::record($entry, $from, $target->value, 'status-menu', $actor);
     }
 }

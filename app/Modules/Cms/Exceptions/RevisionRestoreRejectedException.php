@@ -17,10 +17,12 @@ use DomainException;
  *    that is no longer offered) — writing it would put a broken layout online.
  *  - entry_trashed: the entry is in the Trash; restore the entry first.
  *  - approved_later: the post is approved to go live later as it was approved; «Hủy hẹn giờ» first.
+ *  - change_pending: the live entry's pending change, which the restore would go into, was sent
+ *    for review; it is the reviewer's to return first.
  */
 final class RevisionRestoreRejectedException extends DomainException
 {
-    public const array REASONS = ['slug_taken', 'locale_disabled', 'snapshot_incompatible', 'entry_trashed', 'approved_later'];
+    public const array REASONS = ['slug_taken', 'locale_disabled', 'snapshot_incompatible', 'entry_trashed', 'approved_later', 'change_pending'];
 
     public function __construct(public readonly string $reason)
     {

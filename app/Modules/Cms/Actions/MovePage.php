@@ -60,6 +60,7 @@ final readonly class MovePage
         private PathBuilder $paths,
         private PermalinkConfig $permalinks,
         private CurrentSite $site,
+        private SaveEntryDraft $changes,
     ) {}
 
     /**
@@ -204,8 +205,11 @@ final readonly class MovePage
             $oldSiblings = $this->siblings($oldParent);
             $siblings = $reparented ? $this->siblings($newParent) : array_values(array_diff($oldSiblings, [$page->id]));
 
+            // a new parent moves the pages under the page too (their nested address, the trail above them)
+            $branch = $reparented ? PageRules::subPageIds($page) : [];
+
             // the rows the move writes or rests on, locked in id order; a page or parent gone meanwhile is refused
-            $locked = $this->lockRows([$page->id, ...($newParent === null ? [] : [$newParent]), ...$oldSiblings, ...$siblings]);
+            $locked = $this->lockRows([$page->id, ...($newParent === null ? [] : [$newParent]), ...$oldSiblings, ...$siblings, ...$branch]);
             if (! $locked->has($page->id)) {
                 throw new PageMoveRejectedException('page_invalid');
             }
@@ -214,6 +218,8 @@ final readonly class MovePage
             }
             if ($reparented) {
                 $this->checkReparent($page, $parent);
+                // read again now the rows are locked: the locked copies carry the tree columns only
+                $this->refuseHeldBack(Entry::query()->whereKey($page->id)->firstOrFail(), $branch);
             }
 
             $fromPosition = Cast::int(array_search($page->id, $oldSiblings, true));
@@ -258,6 +264,35 @@ final readonly class MovePage
     {
         return $parent === null ? null : (Entry::query()->whereKey($parent->id)->where('type', 'page')->first()
             ?? throw new PageMoveRejectedException('parent_invalid'));
+    }
+
+    /**
+     * A live page whose edits this member makes into its pending change keeps its parent, as their save
+     * in the editor does: a new parent moves the page (and its sub-pages) for visitors at once. So does a
+     * page with a live sub-page whose edits this member makes into a change, whatever the page's own
+     * status: the move gives that sub-page a new address and a new trail just as well.
+     *
+     * @param  list<int>  $branch  the pages under it (PageRules::subPageIds()), their rows locked
+     *
+     * @throws PageMoveRejectedException
+     */
+    private function refuseHeldBack(Entry $page, array $branch): void
+    {
+        $user = Auth::user();
+        if (! $user instanceof User) {
+            return;
+        }
+        if ($this->changes->holdsBack($page, $user)) {
+            throw new PageMoveRejectedException('change_held');
+        }
+        if ($branch === []) {
+            return;
+        }
+        foreach (Entry::query()->whereKey($branch)->where('status', 'published')->orderBy('id')->get() as $sub) {
+            if ($this->changes->holdsBack($sub, $user)) {
+                throw new PageMoveRejectedException('subpage_held');
+            }
+        }
     }
 
     /**

@@ -184,6 +184,24 @@ final readonly class EntryWorkflowResolver
     }
 
     /**
+     * The moves $actor may make on $entry's pending change from the stage the change stands at
+     * (changeOriginFor()): the engine's rule and mayApply(), in the workflow's order, as movesFor().
+     * The change's own category is authorizeChangeTarget()'s business, at the move.
+     *
+     * @return list<WorkflowTransition>
+     */
+    public function changeMovesFor(Workflow $workflow, Entry $entry, EntryDraft $change, User $actor): array
+    {
+        $from = $this->changeOriginFor($workflow, $change);
+
+        return array_values($workflow->transitions()->orderBy('id')->get()
+            ->filter(fn (WorkflowTransition $t): bool => $t->from_state === $from
+                && $actor->can($t->required_permission)
+                && $this->mayApply($t, $entry, $actor))
+            ->all());
+    }
+
+    /**
      * Refuse moving on a pending change that would file its post under a category outside the
      * actor's limits — the entry's own category is mayApply()'s business. Call it inside the row
      * lock, next to authorizeMove().
