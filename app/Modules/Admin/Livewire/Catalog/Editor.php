@@ -13,7 +13,6 @@ use App\Modules\Catalog\Actions\RenameProduct;
 use App\Modules\Catalog\Exceptions\ProductEditRefused;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
-use App\Modules\Catalog\Support\AppRoutePaths;
 use App\Modules\Catalog\Support\CatalogMode;
 use App\Modules\Catalog\Support\ProductGallery;
 use App\Modules\Catalog\Support\ProductPrice;
@@ -21,7 +20,6 @@ use App\Modules\Catalog\Support\ProductSearchWords;
 use App\Modules\Catalog\Support\SkuCode;
 use App\Modules\Catalog\Support\UniqueViolation;
 use App\Modules\Cms\Exceptions\RouteConflictException;
-use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Support\CategoryScopes;
@@ -32,7 +30,6 @@ use App\Modules\Rbac\Support\RoleLabel;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\PlainText;
 use App\Modules\Shared\Support\RichTextSanitizer;
-use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
@@ -707,6 +704,25 @@ final class Editor extends Component
         $this->authorizeEdit();
         $this->saleEndsAt ??= '';
         $this->recheck('saleEndsAt');
+    }
+
+    /**
+     * The address, as the field is left: an emptied one is made again from the name, and said; a name
+     * with nothing usable leaves it blank with the reason under the field. A typed one is kept.
+     */
+    public function updatedSlug(): void
+    {
+        $this->authorizeEdit();
+        $this->slug = PlainText::line($this->slug);
+        $this->resetErrorBag('slug');
+        if (trim($this->slug) !== '') {
+            return;
+        }
+        if ($this->fillBlankSlug()) {
+            $this->dispatch('bs-toast', text: Cast::string(__('catalog.ed.slug_auto', ['slug' => $this->slug])));
+        } elseif (trim($this->name) !== '') {
+            $this->addError('slug', __('catalog.slug_invalid'));
+        }
     }
 
     /** Leaving the SKU: a code another product holds is said at once (the board's check on leaving the field). */
@@ -1591,53 +1607,9 @@ final class Editor extends Component
             return false;
         }
 
-        $prefix = $this->publicPathPrefix($this->pickedCategory());
-
-        $this->slug = Slugger::fromTitle(
-            $this->name,
-            $this->locale,
-            fn (string $base): array => [
-                ...Slugger::takenAmong(
-                    ProductTranslation::query()
-                        ->where('locale', $this->locale)
-                        ->when($this->productId !== null, fn ($q) => $q->where('product_id', '!=', $this->productId)),
-                    'slug',
-                    $base,
-                ),
-                ...Slugger::takenAmong(
-                    SiteRoute::query()
-                        ->where('locale', $this->locale)
-                        ->when($this->productId !== null, fn ($q) => $q->where(
-                            fn ($own) => $own->whereNull('product_id')->orWhere('product_id', '!=', $this->productId),
-                        )),
-                    'path',
-                    $base,
-                    $prefix,
-                ),
-                // a flat address is one path segment: the application's own paths (login, admin…) answer first
-                ...($prefix === '/' ? $this->appOwned($base) : []),
-            ],
-        );
+        $this->slug = app(ChangeProductSlug::class)->fromName($this->name, $this->locale, $this->productId, $this->pickedCategory());
 
         return $this->slug !== '';
-    }
-
-    /**
-     * Of `$base` and its numbered copies, those the application itself answers on.
-     *
-     * @return list<string>
-     */
-    private function appOwned(string $base): array
-    {
-        $paths = app(AppRoutePaths::class);
-        $owned = [];
-        foreach ([$base, ...array_map(fn (int $n): string => $base.'-'.$n, range(2, Slugger::PROBE))] as $candidate) {
-            if ($paths->owns($candidate)) {
-                $owned[] = $candidate;
-            }
-        }
-
-        return $owned;
     }
 
     /** The picked primary category with its slugs, or null when none is picked. */
