@@ -5,6 +5,7 @@ use App\Modules\Admin\Livewire\Entries\Index;
 use App\Modules\Cms\Actions\ApplyEntryDraft;
 use App\Modules\Cms\Actions\ApplyEntryDraftTransition;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
+use App\Modules\Cms\Actions\ApproveEntryForLater;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\PublishScheduledEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
@@ -32,7 +33,9 @@ use Illuminate\Support\Facades\File;
 
 // The roads that change an entry's public status. TransitionEntryStatus only ever takes content
 // off the site (draft / archived / scheduled — publishing goes through PublishEntry).
-$statusRoads = [PublishEntry::class, PublishScheduledEntry::class, ApplyEntryWorkflowTransition::class, TransitionEntryStatus::class];
+// ApproveEntryForLater never puts content live itself: it sets a waiting post to `scheduled` and back,
+// and at the time hands the publishing move to ApplyEntryWorkflowTransition.
+$statusRoads = [PublishEntry::class, PublishScheduledEntry::class, ApplyEntryWorkflowTransition::class, TransitionEntryStatus::class, ApproveEntryForLater::class];
 $publishingRoads = [PublishEntry::class, PublishScheduledEntry::class, ApplyEntryWorkflowTransition::class];
 
 arch('entry status changes happen only on the known roads')

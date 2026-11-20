@@ -19,7 +19,7 @@ use DomainException;
  */
 final class RevisionRestoreRejectedException extends DomainException
 {
-    public const array REASONS = ['slug_taken', 'locale_disabled', 'snapshot_incompatible', 'entry_trashed'];
+    public const array REASONS = ['slug_taken', 'locale_disabled', 'snapshot_incompatible', 'entry_trashed', 'approved_later'];
 
     public function __construct(public readonly string $reason)
     {

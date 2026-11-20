@@ -619,6 +619,12 @@
                                                         <x-bs-admin::icon :name="$move['icon']" class="size-4 shrink-0" /><span class="min-w-0 [overflow-wrap:anywhere]">{{ $move['label'] }}</span>
                                                     </button>
                                                 @endforeach
+                                                @isset ($rowLater[$entry->ulid])
+                                                    {{-- approved for later: «Hủy hẹn giờ», asked first — back to waiting at its stage, never published at that time --}}
+                                                    <button type="button" data-unsched data-row="{{ $entry->ulid }}" x-on:click="open = false; $bsConfirm({ icon: 'warning', title: {{ $Js::from(__('entries.unsched_title')) }}, text: {{ $Js::from(__('entries.unsched_text', ['noun' => __('entries.noun_'.$entry->type), 'time' => $when?->format('H:i'), 'date' => $when?->format('d/m/Y'), 'step' => $rowLater[$entry->ulid]])) }}, confirm: {{ $Js::from(__('entries.unsched')) }}, cancel: {{ $Js::from(__('entries.unsched_keep')) }} }).then(ok => ok && $wire.unschedule({{ $Js::from($entry->ulid) }}))" class="list-mi rounded">
+                                                        <x-bs-admin::status-pill dot status="scheduled" /><span class="min-w-0 [overflow-wrap:anywhere]">{{ __('entries.unsched') }}</span>
+                                                    </button>
+                                                @endisset
                                             </div>
                                         </div>
                                     @else

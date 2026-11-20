@@ -326,6 +326,12 @@
                                                      wire:click="askNote({{ $Js::from($action['key']) }})" wire:loading.attr="disabled">
                                         <x-bs-admin::icon :name="$action['icon']" class="size-4" />{{ $action['label'] }}
                                     </x-bs-admin::button>
+                                @elseif ($action['first'])
+                                    {{-- The first publication asks «Khi nào đăng?» first (board 17): now, or approved for a later time --}}
+                                    <x-bs-admin::button color="primary" wire:key="act-{{ $action['key'] }}" wire:loading.attr="disabled" data-inbox-act="{{ $action['key'] }}"
+                                                     x-on:click="$dispatch('inbox-ap', {{ $Js::from(['key' => $action['key']]) }})">
+                                        <x-bs-admin::icon name="ri-check-double" class="size-4" />{{ $action['label'] }}
+                                    </x-bs-admin::button>
                                 @elseif ($action['to_published'])
                                     {{-- Going live is asked first (board 17 «Duyệt đăng “…”?», the same question as the posts list) --}}
                                     <x-bs-admin::button color="primary" wire:key="act-{{ $action['key'] }}" wire:loading.attr="disabled" data-inbox-act="{{ $action['key'] }}"
@@ -412,4 +418,61 @@
             </div>
         @endif
     </x-bs-admin::modal>
+
+    {{-- «Duyệt đăng “…”?» of a first publication (board 17 «Khi nào đăng?»): «Đăng ngay» or «Hẹn giờ đăng» with
+         «Đăng lúc» (first value tomorrow 08:00, the website's clock). A missing or past time is the field's error,
+         checked when the field is left and on «Duyệt và hẹn giờ đăng», kept until it is put right (a change
+         checks it again); the server judges the time again and answers with the same error. Focus starts on
+         «Để tôi đọc lại đã» and goes back to the button that opened it. --}}
+    @if ($reader !== null && in_array(true, array_column($reader['actions'], 'first'), true))
+        @php($sched = $reader['schedule'])
+        <div x-data="{ ap: null, mode: 'now', value: '', err: '', busy: false,
+                days: {{ $Js::from(explode('|', __('admin.inbox.ap_days'))) }},
+                open(d) { this.ap = d; this.mode = 'now'; this.value = {{ $Js::from($sched['at']) }}; this.err = ''; this.busy = false; },
+                siteNow() { return new Date(Date.now() + {{ $Js::from($sched['offset']) }} * 1000).toISOString().slice(0, 16); },
+                check() { if (this.mode !== 'sched') { return '' } if (! this.value.trim() || ! /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(this.value)) { return {{ $Js::from(__('entries.sched_err_empty')) }} } return this.value.slice(0, 16) <= this.siteNow() ? {{ $Js::from(__('entries.sched_err_past')) }} : '' },
+                pick(mode) { this.mode = mode; if (this.err) { this.err = this.check(); } },
+                words(v) { const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(v || ''); if (! m) { return '' } const day = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).getUTCDay(); return m[4] + ':' + m[5] + ' ' + (this.days[day] || '') + ', ' + m[3] + '/' + m[2] + '/' + m[1]; },
+                conseq() { if (this.mode !== 'sched') { return {{ $Js::from(__('entries.wf_ap_text')) }} } return this.check() ? '' : {{ $Js::from(__('admin.inbox.ap_conseq')) }}.replace(':when', this.words(this.value)); },
+                submit() {
+                    if (this.busy || ! this.ap) { return }
+                    this.err = this.check();
+                    if (this.err) { document.getElementById('inbox-ap-at')?.focus(); return }
+                    const key = this.ap.key;
+                    if (this.mode !== 'sched') { this.ap = null; $wire.apply(key); return }
+                    this.busy = true;
+                    $wire.approveLater(key, this.value).then((e) => { this.busy = false; if (e) { this.err = e; document.getElementById('inbox-ap-at')?.focus(); return } this.ap = null; }, () => { this.busy = false; });
+                } }"
+             x-on:inbox-ap.window="open($event.detail)" data-inbox-ap>
+            <x-bs-admin::modal state="ap" close="ap = null" size="narrow" alert :close-label="__('admin.close')"
+                               :title="__('entries.wf_ap_title', ['title' => \Illuminate\Support\Str::limit($reader['title'], 42, '…')])">
+                <div class="flex flex-col gap-2" role="radiogroup" aria-labelledby="inbox-ap-g">
+                    <span id="inbox-ap-g" class="text-small font-semibold text-text-strong">{{ __('admin.inbox.ap_group') }}</span>
+                    <label class="flex min-h-hit cursor-pointer items-center gap-2.5 rounded-md border border-border-input px-3 has-checked:border-primary-text has-checked:bg-primary-text/6">
+                        <input type="radio" name="inbox-ap" value="now" x-bind:checked="mode === 'now'" x-on:change="pick('now')" aria-describedby="inbox-ap-c" class="size-4.5 shrink-0 accent-primary">
+                        <span class="min-w-0 text-text [overflow-wrap:anywhere]">{{ __('admin.inbox.ap_now') }}</span>
+                    </label>
+                    <label class="flex min-h-hit cursor-pointer items-center gap-2.5 rounded-md border border-border-input px-3 has-checked:border-primary-text has-checked:bg-primary-text/6">
+                        <input type="radio" name="inbox-ap" value="sched" x-bind:checked="mode === 'sched'" x-on:change="pick('sched')" aria-describedby="inbox-ap-c" class="size-4.5 shrink-0 accent-primary" data-inbox-ap-sched>
+                        <span class="min-w-0 text-text [overflow-wrap:anywhere]">{{ __('entries.sched_title') }}</span>
+                    </label>
+                </div>
+                <div x-show="mode === 'sched'" x-cloak class="flex flex-col gap-1.5">
+                    <label for="inbox-ap-at" class="text-small font-semibold text-text">{{ __('entries.sched_label') }}</label>
+                    <input id="inbox-ap-at" type="datetime-local" x-model="value" x-on:blur="err = check()" x-on:input="err && (err = check())" x-on:keydown.enter.prevent="submit()"
+                           aria-describedby="inbox-ap-hint inbox-ap-err" x-bind:aria-invalid="(err !== '').toString()"
+                           class="field w-full rounded border bg-surface px-3 text-text" x-bind:class="err ? 'border-danger-text' : 'border-border-input'">
+                    <p id="inbox-ap-hint" class="m-0 text-caption text-text-muted">{{ __('admin.inbox.ap_hint', ['zone' => $sched['zone']]) }}</p>
+                    <x-bs-admin::field-error id="inbox-ap-err" x-cloak x-show="err" role="alert"><span x-text="err"></span></x-bs-admin::field-error>
+                </div>
+                <p id="inbox-ap-c" class="m-0 text-small text-text-muted [overflow-wrap:anywhere]" x-show="conseq() !== ''" x-text="conseq()"></p>
+                <x-slot:footer>
+                    <x-bs-admin::button color="light" autofocus x-on:click="ap = null">{{ __('entries.wf_ap_cancel') }}</x-bs-admin::button>
+                    <x-bs-admin::button color="primary" data-inbox-ap-ok x-on:click="submit()" x-bind:disabled="busy">
+                        <x-bs-admin::icon name="ri-check-double" class="size-4" /><span x-text="mode === 'sched' ? {{ $Js::from(__('admin.inbox.ap_ok_sched')) }} : {{ $Js::from(__('entries.wf_ap_ok')) }}">{{ __('entries.wf_ap_ok') }}</span>
+                    </x-bs-admin::button>
+                </x-slot:footer>
+            </x-bs-admin::modal>
+        </div>
+    @endif
 </div>

@@ -79,6 +79,10 @@ final readonly class RestoreEntryRevision
                 if ($locked->trashed()) {
                     throw new RevisionRestoreRejectedException('entry_trashed');
                 }
+                // approved for later: it goes live as it was approved, so nothing is written until «Hủy hẹn giờ»
+                if ($locked->approvedForLater()) {
+                    throw new RevisionRestoreRejectedException('approved_later');
+                }
                 $entry->setRawAttributes($locked->getAttributes(), true);
                 $written = $this->writer->write($entry, $revision->locale, $content);
 

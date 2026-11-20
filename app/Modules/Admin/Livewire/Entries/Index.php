@@ -16,6 +16,7 @@ use App\Modules\Admin\Support\FirstHints;
 use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Admin\Support\TreeRows;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
+use App\Modules\Cms\Actions\ApproveEntryForLater;
 use App\Modules\Cms\Actions\DuplicateEntry;
 use App\Modules\Cms\Actions\MovePage;
 use App\Modules\Cms\Actions\PublishEntry;
@@ -868,7 +869,7 @@ final class Index extends Component
             return;
         }
 
-        $this->toast(__('entries.unsched_done', ['noun' => __('entries.noun_'.$entry->type), 'step' => __('entries.status_draft')]));
+        $this->toast(__('entries.unsched_done', ['noun' => __('entries.noun_'.$entry->type), 'step' => app(ApproveEntryForLater::class)->stepAfterCancel($entry->refresh())]));
     }
 
     /**
@@ -897,6 +898,11 @@ final class Index extends Component
             return;
         }
         $entry->setRawAttributes($locked->getAttributes(), true);
+        if ($entry->approvedForLater()) {
+            $this->refuse(Cast::string(__('entries.err_approved_later')));
+
+            return;
+        }
 
         $value = trim($value);
         $translation = $entry->translationFor(app(SiteLocale::class)->default());
@@ -948,6 +954,11 @@ final class Index extends Component
             return;
         }
         $entry->setRawAttributes($locked->getAttributes(), true);
+        if ($entry->approvedForLater()) {
+            $this->refuse(Cast::string(__('entries.err_approved_later')));
+
+            return;
+        }
 
         $locale = app(SiteLocale::class)->default();
         $translation = $entry->translationFor($locale);
@@ -2390,6 +2401,29 @@ final class Index extends Component
         return $out;
     }
 
+    /**
+     * The rows approved for later that this member may «Hủy hẹn giờ» (one whose moves include putting it
+     * live, the rule ApproveEntryForLater::cancel() applies), each with the stage it goes back to waiting at.
+     *
+     * @param  array<int|string, array{entry: Entry, depth: int}>  $items
+     * @param  array<string, list<array{key: string, label: string, note: bool, first: bool, off: bool, icon: string}>>  $rowMoves
+     * @return array<string, string>
+     */
+    private static function rowLater(Workflow $workflow, array $items, array $rowMoves): array
+    {
+        $later = app(ApproveEntryForLater::class);
+        $out = [];
+        foreach ($items as $item) {
+            $entry = $item['entry'];
+            $moves = $rowMoves[$entry->ulid] ?? [];
+            if ($entry->approvedForLater() && in_array(true, array_column($moves, 'first'), true)) {
+                $out[$entry->ulid] = $later->stepAfterCancel($entry, $workflow);
+            }
+        }
+
+        return $out;
+    }
+
     /** A row that is not in the Trash — anything else is null, like an unknown ulid. */
     private function findLiveEntry(string $ulid): ?Entry
     {
@@ -3035,6 +3069,7 @@ final class Index extends Component
         $flow = $this->governed ? $workflow->loadMissing(self::flowParts()) : null;
         $rowStep = $workflow !== null && $stepOn ? self::rowSteps($workflow, $rows->items()) : [];
         $rowMoves = $flow !== null ? self::rowMoves($flow, $rows->items(), $user) : [];
+        $rowLater = $flow !== null ? self::rowLater($flow, $rows->items(), $rowMoves) : [];
         $roleNote = $roleShows ? PostRoleNote::with($user, $workflow, $postSection->localizedLabel(), $scoped) : null;
 
         $canDelete = $deleteAny || $deleteOwn;
@@ -3118,6 +3153,7 @@ final class Index extends Component
             'governed' => $this->governed,
             'rowStep' => $rowStep,
             'rowMoves' => $rowMoves,
+            'rowLater' => $rowLater,
             'roleNote' => $roleNote,
             'filterCount' => $this->filterCount(),
             'filterCountNarrow' => $this->filterCount() + ($this->tab !== 'all' ? 1 : 0),

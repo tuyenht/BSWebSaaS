@@ -111,6 +111,8 @@ final readonly class PublishEntry
                 $entry->update([
                     'status' => 'published',
                     'published_at' => $entry->published_at ?? now(),
+                    // a post approved for later under a flow since switched off: it is live now
+                    'scheduled_by' => null,
                 ]);
                 $translation->update(['status' => 'published']);
 

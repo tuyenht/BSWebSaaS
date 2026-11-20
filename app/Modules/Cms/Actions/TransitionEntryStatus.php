@@ -50,7 +50,10 @@ final readonly class TransitionEntryStatus
     /** The audit `via` of the one-off move of retired `private` rows (cms:retire-private-status). */
     public const string VIA_RETIRE_PRIVATE = 'retire-private';
 
-    public function __construct(private EntryWorkflowResolver $workflows) {}
+    public function __construct(
+        private EntryWorkflowResolver $workflows,
+        private ApproveEntryForLater $later,
+    ) {}
 
     /**
      * @throws SchedulePastException a publish time that is missing or not after now
@@ -72,6 +75,8 @@ final readonly class TransitionEntryStatus
      * draft to be worked on, under the same lock and guard as every other move here. A row that is
      * no longer scheduled (entries:publish-due published it, or a colleague moved it meanwhile) is
      * left as it is — never taken off the website by this. The publish time goes with the schedule.
+     * A post approved for later under an approval workflow is cancelled the workflow's way instead
+     * (ApproveEntryForLater::cancel): back to waiting at its stage, asked of someone who could approve it.
      *
      * @return bool whether the entry was moved back to a draft (false: it was no longer scheduled)
      *
@@ -81,13 +86,18 @@ final readonly class TransitionEntryStatus
     public function unschedule(Entry $entry, User $actor): bool
     {
         return DB::transaction(function () use ($entry, $actor): bool {
+            $approved = Entry::query()->whereKey($entry->id)->lockForUpdate()->value('scheduled_by');
+            if ($approved !== null) {
+                return $this->later->cancel($entry, $actor);
+            }
+
             $this->lockAndAuthorize($entry, $actor);
             if ($entry->status !== EntryStatus::Scheduled->value) {
                 return false;
             }
 
             $governed = $this->workflows->forEntry($entry) !== null;
-            $entry->update(['status' => EntryStatus::Draft->value, 'published_at' => null] + ($governed ? ['workflow_state' => null] : []));
+            $entry->update(['status' => EntryStatus::Draft->value, 'published_at' => null, 'scheduled_by' => null] + ($governed ? ['workflow_state' => null] : []));
             EntryStatusAudit::record($entry, EntryStatus::Scheduled->value, EntryStatus::Draft->value, 'status-menu', $actor, ['unscheduled' => true]);
 
             return true;
@@ -178,7 +188,7 @@ final readonly class TransitionEntryStatus
         // Under a workflow, leaving the public site from this menu also leaves the flow's stage
         // behind: the stage is re-derived from the new status (the start), so the only road back
         // to live is approval — and the stepper never claims "Đã đăng" over a hidden post.
-        $entry->update(['status' => $target->value] + ($governed ? ['workflow_state' => null] : []));
+        $entry->update(['status' => $target->value, 'scheduled_by' => null] + ($governed ? ['workflow_state' => null] : []));
         EntryStatusAudit::record($entry, $from, $target->value, 'status-menu', $actor);
     }
 }

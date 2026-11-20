@@ -85,6 +85,11 @@ final class NotificationRows
             'workflow.assigned' => ['ri-user-received-2', 'brand'],
             'workflow.returned' => ['ri-arrow-go-back', 'warn'],
             'workflow.published' => ['ri-global', 'ok'],
+            'workflow.scheduled' => match ($sentence) {
+                'published' => ['ri-global', 'ok'],
+                'failed_right', 'failed_flow' => ['ri-time', 'warn'],
+                default => ['ri-time', 'brand'],
+            },
             'lead.new' => ['ri-mail', 'ok'],
             'security.new_device_login' => ['ri-device', 'danger'],
             'security.two_factor_disabled' => $sentence === 'enabled' ? ['ri-shield-check', 'warn'] : ['ri-shield-cross', 'danger'],

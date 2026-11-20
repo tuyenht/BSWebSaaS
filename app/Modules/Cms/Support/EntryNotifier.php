@@ -83,6 +83,56 @@ final class EntryNotifier
         Notify::user($assigneeId, 'workflow.assigned', $this->facts($entry, $locale, $actor, $change), $actor);
     }
 
+    /**
+     * Approved for a later time («Hẹn giờ đăng» in the review inbox): the author learns when it goes
+     * live. $time is already written in the website's clock ("12/10/2026 · 08:00").
+     */
+    public function scheduled(Entry $entry, string $locale, User $actor, string $time): void
+    {
+        Notify::user($entry->author_id, 'workflow.scheduled', [...$this->facts($entry, $locale, $actor, null), 'sentence' => 'approved', 'time' => $time], $actor);
+    }
+
+    /**
+     * «Hủy hẹn giờ» on a post approved for later: the author learns it is back at the stage $step (its
+     * label) to be edited and approved again, or, with $step null (the flow was switched off since), back
+     * to a draft.
+     */
+    public function unscheduled(Entry $entry, string $locale, User $actor, ?string $step): void
+    {
+        $facts = $this->facts($entry, $locale, $actor, null);
+        Notify::user($entry->author_id, 'workflow.scheduled', $step !== null
+            ? [...$facts, 'sentence' => 'cancelled', 'step' => $step]
+            : [...$facts, 'sentence' => 'cancelled_draft'], $actor);
+    }
+
+    /** A post approved for later went live at its time: its author learns it (nobody made this move). */
+    public function publishedOnTime(Entry $entry, string $locale): void
+    {
+        Notify::user($entry->author_id, 'workflow.scheduled', [...$this->plainFacts($entry, $locale), 'sentence' => 'published']);
+    }
+
+    /**
+     * The time came and an approved post could not go live ($why: `right` — the approver may no
+     * longer publish it; `flow` — the post's approval flow changed since): the author and the approver
+     * both learn it is waiting for review again. Nobody made this move, so nobody is left out.
+     */
+    public function scheduleFailed(Entry $entry, string $locale, ?int $approverId, string $why): void
+    {
+        $data = [...$this->plainFacts($entry, $locale), 'sentence' => 'failed_'.$why];
+
+        foreach (array_unique(array_filter([$entry->author_id, $approverId], is_int(...))) as $userId) {
+            Notify::user($userId, 'workflow.scheduled', $data);
+        }
+    }
+
+    /** @return array{entry: string, locale: string, title: string} */
+    private function plainFacts(Entry $entry, string $locale): array
+    {
+        $translation = $entry->translationFor($locale);
+
+        return ['entry' => (string) $entry->ulid, 'locale' => $locale, 'title' => $translation !== null ? $translation->title : ''];
+    }
+
     private function author(Entry $entry, ?EntryDraft $change): ?int
     {
         if ($change === null) {

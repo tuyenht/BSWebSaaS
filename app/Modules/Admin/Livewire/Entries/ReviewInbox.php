@@ -3,9 +3,12 @@
 namespace App\Modules\Admin\Livewire\Entries;
 
 use App\Modules\Admin\Support\Entries\ReviewWaiting;
+use App\Modules\Admin\Support\Entries\ScheduleInput;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
+use App\Modules\Cms\Actions\ApproveEntryForLater;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
+use App\Modules\Cms\Exceptions\SchedulePastException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Routing\SectionResolver;
@@ -15,6 +18,7 @@ use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Rbac\Support\RoleLabel;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteLocale;
+use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Workflow\Exceptions\InvalidTransitionException;
 use App\Modules\Workflow\Models\Workflow;
@@ -427,6 +431,80 @@ final class ReviewInbox extends Component
         // waiting. (Taking the head of the re-sorted list would throw the reviewer back to the
         // top after every decision.)
         $this->current = $this->nextAfter($queueBefore, (string) $this->current);
+    }
+
+    /**
+     * «Duyệt và hẹn giờ đăng» (board 17, «Khi nào đăng?» → «Hẹn giờ đăng» in the first-approval dialog): the
+     * open post is approved now, through the publishing move $key, to go live at $publishAt (a datetime-local
+     * value in the website's clock). A missing or past time is the field's error: it is returned, and the
+     * dialog keeps it on the field until it is put right. Anything else (done, refused, the post moved on)
+     * is the page's message, and the dialog closes. The move must be one this person may make from where
+     * the post stands, going live, asking no reason, on a post not yet live — the same set the dialog is
+     * shown for; ApproveEntryForLater judges it all again on the locked row.
+     *
+     * @return string|null the field's error, or null once the dialog may close
+     */
+    public function approveLater(string $key, string $publishAt): ?string
+    {
+        $this->resetErrorBag();
+
+        $when = ScheduleInput::parse($publishAt);
+        $refused = ScheduleInput::error($publishAt);
+        if ($when === null || $refused !== null) {
+            return $refused ?? Cast::string(__('entries.sched_err_empty'));
+        }
+
+        $entry = $this->currentEntry();
+        if (! $entry instanceof Entry) {
+            $this->addError('inbox', __('admin.inbox.err_gone'));
+
+            return null;
+        }
+
+        $transition = $this->moveOf($entry, $key);
+        $workflow = $this->workflowFor($entry);
+        $destination = $transition instanceof WorkflowTransition && $workflow instanceof Workflow ? $workflow->states->firstWhere('key', $transition->to_state) : null;
+        if (! $transition instanceof WorkflowTransition || $transition->requires_note || ! $destination instanceof WorkflowState || ! $destination->is_published || $entry->status === 'published') {
+            $this->addError('inbox', __('admin.inbox.err_stale'));
+
+            return null;
+        }
+
+        $locale = $this->actionableLocale($entry);
+        if ($locale === null) {
+            $this->addError('inbox', __('admin.inbox.err_no_translation'));
+
+            return null;
+        }
+
+        /** @var list<string> $queueBefore */
+        $queueBefore = $this->visible()->map(fn (Entry $entry): string => (string) $entry->ulid)->values()->all();
+
+        try {
+            app(ApproveEntryForLater::class)->approve($entry, $locale, $this->actor(), $key, $when);
+        } catch (SchedulePastException) {
+            return Cast::string(__('entries.sched_err_past'));   // the time passed while the row was locked
+        } catch (InvalidTransitionException) {
+            $this->addError('inbox', __('admin.inbox.err_stale'));
+
+            return null;
+        } catch (AuthorizationException) {
+            $this->addError('inbox', __('admin.wfb.err_forbidden'));
+
+            return null;
+        } catch (EntryNotGovernedException) {
+            $this->addError('inbox', __('admin.wfb.err_not_governed'));
+
+            return null;
+        }
+
+        $this->picked = array_values(array_filter($this->picked, fn (string $ulid): bool => $ulid !== $this->current));
+        $this->waitingMemo = null;   // decided: the post left the queue
+        $at = app(SiteTime::class)->forDisplay($when);
+        $this->dispatch('bs-toast', text: __('admin.inbox.ap_done', ['when' => $at !== null ? $at->format('d/m/Y · H:i') : '']));
+        $this->current = $this->nextAfter($queueBefore, (string) $this->current);
+
+        return null;
     }
 
     /**
@@ -849,7 +927,8 @@ final class ReviewInbox extends Component
      *     seo_title: string|null, seo_description: string|null, path: string|null,
      *     steps: list<array{key: string, label: string, is_published: bool, state: string}>,
      *     step_no: int, step_count: int, step_label: string, workflow: string,
-     *     actions: list<array{key: string, label: string, to_label: string, to_published: bool, note: bool, icon: string}>,
+     *     actions: list<array{key: string, label: string, to_label: string, to_published: bool, first: bool, note: bool, icon: string}>,
+     *     schedule: array{at: string, offset: int, zone: string},
      *     trail: list<array{id: int, at: string, actor: string|null, transition: string, from: string, to: string, note: string|null}>,
      * }|null
      */
@@ -890,6 +969,8 @@ final class ReviewInbox extends Component
                 'label' => $transition->label,
                 'to_label' => $destination instanceof WorkflowState ? $destination->label : $transition->to_state,
                 'to_published' => $destination instanceof WorkflowState && $destination->is_published,
+                // the first publication offers «Khi nào đăng?» (board 17): now, or approved for a later time
+                'first' => $live && ! $transition->requires_note && $entry->status !== 'published',
                 'note' => $transition->requires_note,
                 // The same icon as its reason dialog: going live, taking a live post down, or a return.
                 'icon' => $live ? 'ri-check-double' : ($states->firstWhere('key', $fromState)?->is_published === true ? 'ri-eye-off' : 'ri-arrow-go-back'),
@@ -916,6 +997,7 @@ final class ReviewInbox extends Component
             'step_label' => $states->get($currentIndex) instanceof WorkflowState ? $states->get($currentIndex)->label : $fromState,
             'workflow' => $workflow->name,
             'actions' => $actions,
+            'schedule' => $this->scheduleField(),
             'trail' => array_map(static fn (array $row): array => [
                 'id' => $row['id'],
                 'at' => $row['at']->locale(app()->getLocale())->diffForHumans(),
@@ -926,6 +1008,22 @@ final class ReviewInbox extends Component
                 'note' => $row['note'],
             ], $trail['rows']),
         ];
+    }
+
+    /**
+     * «Đăng lúc» of the first-approval dialog: its first value (tomorrow 08:00), the website's offset from
+     * UTC in seconds (the dialog's own check of a past time reads the website's clock from it; the server
+     * judges it again) and that offset as the hint names it («GMT+7»).
+     *
+     * @return array{at: string, offset: int, zone: string}
+     */
+    private function scheduleField(): array
+    {
+        $now = app(SiteTime::class)->now();
+        $offset = $now->getOffset();
+        $zone = 'GMT'.($offset < 0 ? '−' : '+').intdiv(abs($offset), 3600).(abs($offset) % 3600 !== 0 ? ':'.sprintf('%02d', intdiv(abs($offset) % 3600, 60)) : '');
+
+        return ['at' => ScheduleInput::tomorrowEight(), 'offset' => $offset, 'zone' => $zone];
     }
 
     private function coverUrl(Entry $entry): ?string

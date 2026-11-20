@@ -452,7 +452,8 @@ final class AdminNav
 
                 return $stages === []
                     ? ['has' => false, 'count' => 0]
-                    : ['has' => true, 'count' => Entry::query()->whereIn('workflow_state', $stages)->count()];
+                    // a post approved for later stays at its stage but waits for nobody (ReviewWaiting)
+                    : ['has' => true, 'count' => Entry::query()->whereIn('workflow_state', $stages)->whereNull('scheduled_by')->count()];
             },
         );
 

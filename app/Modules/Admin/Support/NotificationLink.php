@@ -28,7 +28,7 @@ final class NotificationLink
             'workflow.pending_review' => ($data['change'] ?? false) === true
                 ? self::to(route('admin.entries.review', absolute: false), 'review')
                 : ($entry !== null ? self::to(route('admin.entries.edit', ['ulid' => $entry], false), 'open_entry') : null),
-            'workflow.assigned', 'workflow.published' => $entry !== null
+            'workflow.assigned', 'workflow.published', 'workflow.scheduled' => $entry !== null
                 ? self::to(route('admin.entries.edit', ['ulid' => $entry], false), 'open_entry') : null,
             'workflow.returned' => $entry !== null
                 ? self::to(route('admin.entries.edit', ['ulid' => $entry], false), 'edit_entry') : null,

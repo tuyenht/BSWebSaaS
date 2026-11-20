@@ -17,6 +17,7 @@ use App\Modules\Admin\Support\Guide\EditorGuide;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
+use App\Modules\Cms\Actions\ApproveEntryForLater;
 use App\Modules\Cms\Actions\MovePage;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
@@ -1071,7 +1072,7 @@ final class Editor extends Component
 
             return;
         }
-        $this->dispatch('bs-toast', text: Cast::string(__('entries.unsched_done', ['noun' => $this->unit(), 'step' => __('entries.status_draft')])));
+        $this->dispatch('bs-toast', text: Cast::string(__('entries.unsched_done', ['noun' => $this->unit(), 'step' => app(ApproveEntryForLater::class)->stepAfterCancel($entry)])));
         // the band and its button are gone: the cursor goes to the title, which can be edited
         $this->js("document.getElementById('entry-title')?.focus()");
     }
@@ -1607,7 +1608,9 @@ final class Editor extends Component
         $resolver = app(EntryWorkflowResolver::class);
 
         $actions = [];
-        foreach (app(WorkflowEngine::class)->allowedTransitions($workflow, $fromState, $user) as $transition) {
+        // a post approved for later offers no move here: it is locked until «Hủy hẹn giờ» (the band above)
+        $moves = $entry?->approvedForLater() === true ? [] : app(WorkflowEngine::class)->allowedTransitions($workflow, $fromState, $user);
+        foreach ($moves as $transition) {
             if (! $resolver->mayApply($transition, $subject, $user)) {
                 continue;
             }
@@ -1752,6 +1755,8 @@ final class Editor extends Component
         $urls = app(MediaUrlResolver::class);
         $schemas = $this->schemas();
         $workflow = $this->governingWorkflow();
+        // the saved row, read once for the workflow panel and the schedule band (a governed entry only)
+        $row = $workflow !== null && $this->ulid !== null ? $this->resolveOrFail($this->ulid) : null;
         $buttonPanel = $this->buttonPanel($schemas);
 
         $this->blocksChanged = $this->blocksHash() !== ($this->saved['blocks'] ?? '') ? 1 : 0;
@@ -1816,12 +1821,10 @@ final class Editor extends Component
             'pickerMedia' => $this->showMediaPicker || $this->showBlockImagePicker
                 ? Media::query()->orderByDesc('created_at')->limit(60)->get()
                 : collect(),
-            'workflow' => $workflow !== null
-                ? $this->workflowPanel($workflow, $this->ulid !== null ? $this->resolveOrFail($this->ulid) : null)
-                : null,
+            'workflow' => $workflow !== null ? $this->workflowPanel($workflow, $row) : null,
             'schedule' => $this->schedulePanel($workflow),
             'statusPanel' => $this->statusPanel(),
-            'scheduleBand' => $this->scheduleBand($workflow),
+            'scheduleBand' => $this->scheduleBand($workflow, $row),
             'revisions' => $this->revisionPanel(),
         ]);
     }
@@ -3052,6 +3055,16 @@ final class Editor extends Component
             $locked = Entry::withTrashed()->whereKey($entry->id)->lockForUpdate()->firstOrFail();
             $entry->setRawAttributes($locked->getAttributes(), true);
 
+            // A post approved for later goes live as it was approved: nothing is written to it until «Hủy hẹn giờ».
+            if ($entry->approvedForLater()) {
+                if ($filled) {
+                    $this->slug = '';
+                }
+                $this->addError('workflow', __('entries.err_approved_later'));
+
+                return null;
+            }
+
             // Ask before writing over someone else's save. Every writer of these values takes the
             // entry's row first, so what is read now stays as it is until this save commits. The
             // stored values decide, never a timestamp: a status change, a category moved or
@@ -3543,14 +3556,27 @@ final class Editor extends Component
 
     /**
      * The band of a scheduled entry (board 07): when it goes live, and «Hủy hẹn giờ» with the question the list
-     * asks first. Only for a member who may publish it, where no approval workflow governs it.
+     * asks first. Only for a member who may publish it, where no approval workflow governs it; under one, for
+     * a post approved for later, to a member who could approve it again (it goes back to waiting at its stage).
      *
      * @return array{head: string, sub: string, ask: array{title: string, text: string, confirm: string, cancel: string}}|null
      */
-    private function scheduleBand(?Workflow $workflow): ?array
+    private function scheduleBand(?Workflow $workflow, ?Entry $entry): ?array
     {
-        if ($this->ulid === null || $this->status !== EntryStatus::Scheduled->value || ! $this->mayPublish || $workflow !== null) {
+        if ($this->ulid === null || $this->status !== EntryStatus::Scheduled->value) {
             return null;
+        }
+        if ($workflow === null) {
+            if (! $this->mayPublish) {
+                return null;
+            }
+            $step = Cast::string(__('entries.status_draft'));
+        } else {
+            $later = app(ApproveEntryForLater::class);
+            if (! $entry instanceof Entry || ! $later->mayCancel($entry, $this->user(), $workflow)) {
+                return null;
+            }
+            $step = $later->stepAfterCancel($entry, $workflow);
         }
         $at = preg_match('/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/', $this->scheduleLoaded, $m) === 1 ? $m : null;
         $time = $at !== null ? $at[4].':'.$at[5] : '';
@@ -3559,10 +3585,10 @@ final class Editor extends Component
 
         return [
             'head' => Cast::string(__('entries.ed.sched_band', ['unit' => Str::ucfirst($unit), 'time' => $at !== null ? $time.' '.$date : __('entries.ed.sched_when_set')])),
-            'sub' => Cast::string(__('entries.ed.sched_band_sub', ['unit' => $unit, 'step' => __('entries.status_draft')])),
+            'sub' => Cast::string(__('entries.ed.sched_band_sub', ['unit' => $unit, 'step' => $step])),
             'ask' => [
                 'title' => Cast::string(__('entries.unsched_title')),
-                'text' => Cast::string(__('entries.unsched_text', ['noun' => $unit, 'time' => $time, 'date' => $date, 'step' => __('entries.status_draft')])),
+                'text' => Cast::string(__('entries.unsched_text', ['noun' => $unit, 'time' => $time, 'date' => $date, 'step' => $step])),
                 'confirm' => Cast::string(__('entries.unsched')),
                 'cancel' => Cast::string(__('entries.unsched_keep')),
             ],

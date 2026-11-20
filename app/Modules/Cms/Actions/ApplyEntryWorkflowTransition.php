@@ -11,6 +11,7 @@ use App\Modules\Cms\Support\EntryNotifier;
 use App\Modules\Cms\Support\EntryStatusAudit;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
+use App\Modules\Workflow\Exceptions\InvalidTransitionException;
 use App\Modules\Workflow\Services\WorkflowEngine;
 use DateTimeInterface;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -46,6 +47,7 @@ final readonly class ApplyEntryWorkflowTransition
      * Move an entry along its workflow; returns the destination state key.
      *
      * @throws EntryNotGovernedException no workflow governs this entry (the caller should use tier-1)
+     * @throws InvalidTransitionException not a move of this flow from where the entry stands, or a missing required note
      * @throws AuthorizationException the actor lacks the move's permission, or sends an entry they may not edit
      */
     public function handle(
@@ -66,7 +68,8 @@ final readonly class ApplyEntryWorkflowTransition
 
         // The categories' public totals follow the entry and its translation as one change
         // (CategoryPublicCounts), inside the transition's transaction.
-        $destinationKey = DB::transaction(fn (): string => $this->publicCounts->track('entry_taxonomies', [$entry->id], function () use ($entry, $translation, $locale, $actor, $workflow, $transitionKey, $note, $assignTo): string {
+        // $onTime: the sweep putting live a post approved for later, as its approver (ApproveEntryForLater).
+        [$destinationKey, $onTime] = DB::transaction(fn (): array => $this->publicCounts->track('entry_taxonomies', [$entry->id], function () use ($entry, $translation, $locale, $actor, $workflow, $transitionKey, $note, $assignTo): array {
             // Take the row lock FIRST, then read. A shared review inbox makes two people acting
             // on the same post routine; if the stage were read before the lock, both would read
             // the same value, then queue on the lock and both pass the engine's origin guard —
@@ -75,6 +78,8 @@ final readonly class ApplyEntryWorkflowTransition
             // caller see the first one's result and be refused, which is the point.
             Entry::withTrashed()->whereKey($entry->id)->lockForUpdate()->firstOrFail();
             $entry->refresh();
+            $onTime = $entry->status === 'scheduled' && $entry->scheduled_by === $actor->id
+                && $entry->published_at instanceof DateTimeInterface && $entry->published_at <= now();
 
             // Trashed content stays off the website until it is restored, whichever tier moves it.
             if ($entry->trashed()) {
@@ -113,8 +118,15 @@ final readonly class ApplyEntryWorkflowTransition
                 // future — an entry that was scheduled before the flow was switched on — becomes
                 // now: the decision to publish is being taken today, and post lists order by
                 // this column, so a future date would park it at the top of the news page.
-                'published_at' => $destination->is_published ? $this->publicationDate($entry) : $entry->published_at,
+                // A post approved for later that a move takes elsewhere drops the time it was approved for.
+                'published_at' => match (true) {
+                    $destination->is_published => $this->publicationDate($entry),
+                    $entry->scheduled_by !== null => null,
+                    default => $entry->published_at,
+                },
                 'assigned_to' => $assignTo ?? $entry->assigned_to,
+                // Any move ends an approval for later (ApproveEntryForLater): the post now stands wherever this move put it.
+                'scheduled_by' => null,
             ]);
             $translation->update(['status' => $status]);
 
@@ -123,14 +135,18 @@ final readonly class ApplyEntryWorkflowTransition
                 $this->revisions->forAllLocales($entry, RevisionKind::Publish, $actor);
             }
 
-            return $destination->key;
+            return [$destination->key, $onTime];
         }));
 
         // The workflow_log row is the transition's own record; this line is what lets ONE
         // query answer "who changed this entry's status, by any road" across tier-1 and tier-2.
         EntryStatusAudit::record($entry, $fromStatus, $entry->status, 'workflow', $actor, ['transition' => $transitionKey]);
 
-        $this->notify($entry, $locale, $actor, $note, $assignTo);
+        if ($onTime && $entry->status === 'published') {
+            $this->notifier->publishedOnTime($entry, $locale);   // «… đã tự đăng theo giờ hẹn», not "… đã đăng"
+        } else {
+            $this->notify($entry, $locale, $actor, $note, $assignTo);
+        }
 
         return $destinationKey;
     }
