@@ -90,7 +90,8 @@ final class DeleteForm
     /** More leads (spam included) than one request deletes. */
     private static function tooManyInline(int $formId): bool
     {
-        return FormSubmission::query()->where('form_id', $formId)
+        // select 1: an index-only walk of (site_id, form_id, created_at), no lead row read
+        return FormSubmission::query()->where('form_id', $formId)->toBase()->selectRaw('1')
             ->offset(max(0, Cast::int(config('forms.delete_inline_max_leads', 20000))))->exists();
     }
 
@@ -118,7 +119,8 @@ final class DeleteForm
         Audit::recordOrFail('forms.form.deleted', [
             'auditable_type' => Form::class,
             'auditable_id' => $locked->id,
-            'meta' => ['key' => $locked->key, 'leads' => $atMost, 'in_batches' => true],
+            // the count the member agreed to: exact, or past the list's cap («hơn 10.000») when null
+            'meta' => ['key' => $locked->key, 'leads' => $atMost, 'leads_over_cap' => $atMost === null, 'in_batches' => true],
         ]);
 
         DeleteLargeForm::dispatch(app(CurrentSite::class)->id(), $locked->id);
