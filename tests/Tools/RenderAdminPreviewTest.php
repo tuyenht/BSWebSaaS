@@ -24,6 +24,7 @@
 use App\Modules\Admin\Livewire\Blocks\Library as BlockLibrary;
 use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Admin\Livewire\Catalog\Index;
+use App\Modules\Admin\Livewire\Entries\ReviewInbox;
 use App\Modules\Admin\Livewire\Forms\FormList;
 use App\Modules\Admin\Livewire\Forms\Inbox;
 use App\Modules\Admin\Livewire\LanguageSettings;
@@ -40,6 +41,7 @@ use App\Modules\Admin\Support\Settings\SetBrandImages;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Support\ProductIndexLink;
+use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\Menus\SaveMenu;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
@@ -79,6 +81,7 @@ use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Theming\AiCrawlerCheck;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Support\Facades\DB;
@@ -1188,5 +1191,49 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     file_put_contents($dir.'/media-trash-own-ask.html', $swap($html, $ownAsk, $media));
     config(['media' => $mediaConfig]);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 97);
+    // Hộp duyệt (design board 17): three posts of «Dự án» waiting, two of them ticked with the bar
+    // «Đã chọn 2 bài · Duyệt đăng 2 bài · Bỏ chọn», the reason dialog of «Trả lại» with «Giao cho»,
+    // and «Chưa tải được hộp duyệt» when the queue cannot be read.
+    $writer = User::factory()->create(['name' => 'Lê Văn Hùng']);
+    $waiting = app(Tenancy::class)->enter(1, function () use ($writer): array {
+        grantRole($writer, 'writer', ['entries.create', 'entries.edit.own', 'entries.submit']);
+        $categoryId = (int) ContentSection::query()->where('key', 'pv-news')->value('taxonomy_id');
+        $ulids = [];
+        foreach ([['Lắp đặt dây chuyền CNC cho nhà máy Bình Dương', 'lap-dat-cnc'], ['Bảo trì hệ thống khí nén', 'bao-tri-khi-nen'], ['Gia công khuôn ép nhựa', 'gia-cong-khuon']] as [$title, $slug]) {
+            $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $writer->id]);
+            $entry->translations()->create(['locale' => 'vi', 'title' => $title, 'slug' => $slug, 'status' => 'draft',
+                'body' => ['blocks' => [['type' => 'richtext', 'props' => ['body' => 'Dự án hoàn thành đúng tiến độ, bàn giao cho khách trong tháng 10.']]]]]);
+            $entry->assignCategories([$categoryId]);
+            app(ApplyEntryWorkflowTransition::class)->handle($entry->fresh(), 'vi', $writer->fresh(), 'submit');
+            $ulids[] = (string) $entry->ulid;
+        }
+
+        return $ulids;
+    });
+    $this->flushSession();
+    app('livewire')->flushState();
+    $inboxPage = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/review')->assertOk()->getContent();
+    expect($inboxPage)->toContain('Bảo trì hệ thống khí nén', 'data-inbox-pick');
+    file_put_contents($dir.'/review-inbox.html', $inboxPage);
+    $reviewInbox = 'review-inbox';
+    $picked = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($owner)->test(ReviewInbox::class)
+        ->call('togglePick', $waiting[0])->call('togglePick', $waiting[1])));
+    expect($picked)->toContain(e(__('admin.inbox.picked', ['count' => 2])), e(__('admin.inbox.bulk_ok', ['count' => 2])));
+    file_put_contents($dir.'/review-inbox-bulk.html', $swap($inboxPage, $picked, $reviewInbox));
+    $note = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($owner)->test(ReviewInbox::class)
+        ->call('open', $waiting[1])->call('askNote', 'reject')->assertSet('noteOpen', true)));
+    expect($note)->toContain('id="inbox-note"', 'Lê Văn Hùng');
+    file_put_contents($dir.'/review-inbox-note.html', $swap($inboxPage, $note, $reviewInbox));
+    $failRead = true;
+    DB::connection()->beforeExecuting(function (string $query, array $bindings) use (&$failRead): void {
+        if ($failRead && str_contains($query, '"workflow_state" in')) {
+            throw new QueryException('pgsql', $query, $bindings, new PDOException('server closed the connection'));
+        }
+    });
+    $failed = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($owner)->test(ReviewInbox::class)));
+    $failRead = false;
+    expect($failed)->toContain(e(__('admin.inbox.err_load_title')));
+    file_put_contents($dir.'/review-inbox-error.html', $swap($inboxPage, $failed, $reviewInbox));
+
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 101);
 });

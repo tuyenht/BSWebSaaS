@@ -12,11 +12,14 @@ use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Rbac\Support\RoleLabel;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Workflow\Exceptions\InvalidTransitionException;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowState;
+use App\Modules\Workflow\Models\WorkflowTransition;
 use App\Modules\Workflow\Services\ReviewQueue;
 use App\Modules\Workflow\Services\WorkflowEngine;
 use App\Modules\Workflow\Services\WorkflowTrail;
@@ -26,11 +29,13 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use PDOException;
 
 /**
  * "Hộp duyệt" — the review inbox (design_handoff_workflow screen 3): a list of what is waiting
@@ -59,6 +64,15 @@ final class ReviewInbox extends Component
     /** Hard ceiling on how much of the queue is hydrated in one request (see waiting()). */
     private const int MAX_QUEUE = 500;
 
+    /** Longest reason a move may carry (the same limit as the posts list's reason dialog). */
+    private const int NOTE_MAX = 2000;
+
+    /** At most this many people in the «Giao cho» picker (filtered in SQL first, so nobody eligible hides behind others). */
+    private const int ASSIGNEE_LIMIT = 50;
+
+    /** At most this many posts in one «Duyệt đăng N bài»: each is its own locked engine move inside the request. */
+    private const int PICK_MAX = 50;
+
     #[Url(as: 'tab', except: 'queue')]
     public string $tab = 'queue';
 
@@ -75,6 +89,35 @@ final class ReviewInbox extends Component
 
     /** Reason for a transition that demands one. */
     public string $note = '';
+
+    /**
+     * Posts ticked for «Duyệt đăng N bài» (ulids). Only togglePick() changes it, and only with a post
+     * of the list on screen, so a crafted payload cannot tick another website's post or one this
+     * person may not act on; a tab or filter change clears it (never act on rows out of sight).
+     *
+     * @var list<string>
+     */
+    #[Locked]
+    public array $picked = [];
+
+    /** The reason dialog of a move that demands one (board 17 «Trả lại»): open flag, entangled with the dialog. */
+    public bool $noteOpen = false;
+
+    /** Which move the reason dialog is for; set only by askNote(). */
+    #[Locked]
+    public ?string $noteKey = null;
+
+    /** «Giao cho» in the reason dialog: a member of this website who can act at the destination, or nobody. */
+    public ?int $assignTo = null;
+
+    /**
+     * The posts the last «Duyệt đăng N bài» could not move, each with why: shown until dismissed,
+     * so a partial failure is never hidden behind the success toast.
+     *
+     * @var list<array{title: string, why: string}>
+     */
+    #[Locked]
+    public array $bulkFailed = [];
 
     /** How many rows the list shows; grows by PAGE (see listQuery for why not a keyset cursor). */
     #[Locked]
@@ -99,6 +142,12 @@ final class ReviewInbox extends Component
      * @var EloquentCollection<int, Entry>|null
      */
     protected ?EloquentCollection $waitingMemo = null;
+
+    /** The queue could not be read this request (board 17 «Lỗi tải»): the screen offers «Thử lại». */
+    protected bool $loadFailed = false;
+
+    /** @var array<string, array<int, array{id: int, name: string, role: string|null}>> */
+    protected array $memberMemo = [];
 
     public function boot(): void
     {
@@ -155,6 +204,7 @@ final class ReviewInbox extends Component
     {
         $this->current = $this->visible()->firstWhere('ulid', $ulid)?->ulid;
         $this->note = '';
+        $this->closeNote();
         $this->resetErrorBag();
     }
 
@@ -162,11 +212,144 @@ final class ReviewInbox extends Component
     {
         $this->current = null;
         $this->note = '';
+        $this->closeNote();
     }
 
     public function loadMore(): void
     {
         $this->shown += self::PAGE;
+    }
+
+    /** «Thử lại» on the «Chưa tải được hộp duyệt» card: the queue is read again on this render. */
+    public function reloadInbox(): void
+    {
+        $this->waitingMemo = null;
+        $this->loadFailed = false;
+    }
+
+    /**
+     * Tick or untick a post for «Duyệt đăng N bài» (board 17 .sp-pick). Only a post of the list on
+     * screen can be ticked; anything else is ignored.
+     */
+    public function togglePick(string $ulid): void
+    {
+        if (in_array($ulid, $this->picked, true)) {
+            $this->picked = array_values(array_filter($this->picked, static fn (string $picked): bool => $picked !== $ulid));
+
+            return;
+        }
+
+        if (count($this->picked) >= self::PICK_MAX) {
+            $this->addError('inbox', __('admin.inbox.bulk_max', ['max' => self::PICK_MAX]));
+
+            return;
+        }
+
+        if ($this->visible()->contains('ulid', $ulid)) {
+            $this->picked[] = $ulid;
+        }
+    }
+
+    /** «Bỏ chọn» on the selection bar. */
+    public function clearPicked(): void
+    {
+        $this->picked = [];
+    }
+
+    /** The ✕ on the list of posts the last «Duyệt đăng N bài» could not move. */
+    public function dismissBulk(): void
+    {
+        $this->bulkFailed = [];
+    }
+
+    /**
+     * «Duyệt đăng N bài» (asked first in the browser): each ticked post this person may publish from
+     * where it stands goes through ITS OWN engine transition — authorized, locked and logged on its
+     * own — so one post refused or moved on meanwhile never takes the others down, and never goes
+     * unreported: every post that did not move is listed with why, until dismissed. A ticked post
+     * that is not at a step this person publishes from stays as it is (the bar said so before).
+     */
+    public function approvePicked(): void
+    {
+        $this->resetErrorBag();
+        $this->bulkFailed = [];
+
+        $targets = $this->publishable();
+        if ($this->loadFailed) {
+            return;   // the queue could not be read: the ticks stay, the «Thử lại» card shows
+        }
+        $failed = $this->pickedGone();
+        if ($targets === []) {
+            $this->picked = [];
+            $this->bulkFailed = $failed;
+            $this->waitingMemo = null;
+            if ($failed === []) {
+                $this->addError('inbox', __('admin.inbox.bulk_why_none'));
+            }
+
+            return;
+        }
+
+        $done = [];
+        foreach ($targets as ['entry' => $entry, 'transition' => $transition]) {
+            $why = $this->move($entry, $transition->key, null, null);
+            if ($why === null) {
+                $done[] = (string) $entry->ulid;
+            } else {
+                $failed[] = ['title' => $this->titleOf($entry), 'why' => $why];
+            }
+        }
+
+        $this->picked = [];
+        $this->bulkFailed = $failed;
+        $this->waitingMemo = null;   // the approved posts left their stage
+        if (in_array($this->current, $done, true)) {
+            $this->current = null;
+        }
+
+        if ($done !== []) {
+            $this->dispatch('bs-toast', text: __('admin.inbox.bulk_done', ['count' => count($done)]));
+        }
+    }
+
+    /**
+     * Open the reason dialog for a move that demands one («Trả lại», «Gỡ khỏi website»…): only a
+     * move this person may make on the open post. The reason and the hand-off start empty.
+     */
+    public function askNote(string $key): void
+    {
+        $this->resetErrorBag();
+        $this->note = '';
+        $this->assignTo = null;
+
+        $entry = $this->currentEntry();
+        $transition = $entry instanceof Entry ? $this->moveOf($entry, $key) : null;
+        if (! $transition instanceof WorkflowTransition || ! $transition->requires_note) {
+            $this->addError('inbox', __($entry instanceof Entry ? 'admin.inbox.err_stale' : 'admin.inbox.err_gone'));
+
+            return;
+        }
+
+        $this->noteKey = $key;
+        $this->noteOpen = true;
+    }
+
+    /** Esc, ✕ or the backdrop close the dialog in the browser (noteOpen is entangled): forget it here too. */
+    public function updatedNoteOpen(bool $open): void
+    {
+        if (! $open) {
+            $this->closeNote();
+        }
+    }
+
+    /** «Hủy», ✕, Esc or the backdrop of the reason dialog. */
+    public function closeNote(): void
+    {
+        $this->noteOpen = false;
+        $this->note = '';
+        $this->noteKey = null;
+        $this->assignTo = null;
+        $this->resetErrorBag(['note', 'assignTo']);
     }
 
     /**
@@ -186,26 +369,36 @@ final class ReviewInbox extends Component
 
         $workflow = app(EntryWorkflowResolver::class)->forEntry($entry);
         $transition = $workflow?->transitions()->where('key', $key)->first();
-        if ($workflow === null || $transition === null) {
+        if (! $workflow instanceof Workflow || ! $transition instanceof WorkflowTransition) {
             $this->addError('inbox', __('admin.inbox.err_stale'));
 
             return;
         }
 
-        $note = trim($this->note);
+        // Like the hand-off below: a reason typed in a dialog that was then closed never rides
+        // along on a move that asks none.
+        $note = $transition->requires_note ? trim($this->note) : '';
         if ($transition->requires_note && $note === '') {
             $this->addError('note', __('admin.wfb.note_missing'));
+            $this->js("document.getElementById('inbox-note')?.focus()");
+
+            return;
+        }
+        if (mb_strlen($note) > self::NOTE_MAX) {
+            $this->addError('note', __('entries.wf_note_too_long', ['max' => self::NOTE_MAX]));
 
             return;
         }
 
-        // Move the translation that EXISTS. Publishing is per-locale, and a post written only in
-        // a non-default language would otherwise take the action down with a missing-translation
-        // error — or, worse on a multilingual site, publish the default-language copy while the
-        // one that was actually submitted stays hidden.
-        $locale = $this->actionableLocale($entry);
-        if ($locale === null) {
-            $this->addError('inbox', __('admin.inbox.err_no_translation'));
+        // A hand-off only exists in the reason dialog (board 17); a value left from a closed dialog
+        // never rides along on another move. And it may only name someone of THIS website who can
+        // act where the post is going — never an arbitrary users.id from the wire payload.
+        // Nor on a move that goes live: a live post waits in nobody's queue.
+        $assignTo = $this->assignTo !== null && $transition->requires_note
+            && ! $workflow->states()->where('key', $transition->to_state)->where('is_published', true)->exists() ? $this->assignTo : null;
+        $assignee = $assignTo !== null ? $this->assigneeName($workflow, $transition->to_state, $entry, $assignTo) : null;
+        if ($assignTo !== null && $assignee === null) {
+            $this->addError('assignTo', __('admin.wfb.assignee_invalid'));
 
             return;
         }
@@ -215,36 +408,174 @@ final class ReviewInbox extends Component
         /** @var list<string> $queueBefore */
         $queueBefore = $this->visible()->map(fn (Entry $entry): string => (string) $entry->ulid)->values()->all();
 
-        try {
-            app(ApplyEntryWorkflowTransition::class)->handle(
-                $entry, $locale, $this->actor(), $key, $note !== '' ? $note : null,
-            );
-        } catch (InvalidTransitionException) {
-            $this->addError('inbox', __('admin.inbox.err_stale'));
-
-            return;
-        } catch (AuthorizationException) {
-            $this->addError('inbox', __('admin.wfb.err_forbidden'));
-
-            return;
-        } catch (RouteConflictException) {
-            $this->addError('inbox', __('admin.inbox.err_slug'));
-
-            return;
-        } catch (EntryNotGovernedException) {
-            $this->addError('inbox', __('admin.wfb.err_not_governed'));
+        $why = $this->move($entry, $key, $note !== '' ? $note : null, $assignTo);
+        if ($why !== null) {
+            $this->addError('inbox', $why);
 
             return;
         }
 
         $this->note = '';
+        $this->closeNote();
+        $this->picked = array_values(array_filter($this->picked, fn (string $ulid): bool => $ulid !== $this->current));
         $this->waitingMemo = null;   // the entry just left its stage; the queue changed
-        $this->dispatch('bs-toast', text: __('admin.inbox.moved', ['action' => $transition->label]));
+        $this->dispatch('bs-toast', text: $assignTo !== null
+            ? __('admin.inbox.moved_to', ['action' => $transition->label, 'name' => $assignee])
+            : __('admin.inbox.moved', ['action' => $transition->label]));
 
         // Handled — carry on DOWN the list: the first post that came after this one and is still
         // waiting. (Taking the head of the re-sorted list would throw the reviewer back to the
         // top after every decision.)
         $this->current = $this->nextAfter($queueBefore, (string) $this->current);
+    }
+
+    /**
+     * One engine transition on one post, through ApplyEntryWorkflowTransition (which locks the row,
+     * authorizes the move on it and logs it). Returns why it did not go through, or null when it did.
+     */
+    private function move(Entry $entry, string $key, ?string $note, ?int $assignTo): ?string
+    {
+        // Move the translation that EXISTS. Publishing is per-locale, and a post written only in
+        // a non-default language would otherwise take the action down with a missing-translation
+        // error — or, worse on a multilingual site, publish the default-language copy while the
+        // one that was actually submitted stays hidden.
+        $locale = $this->actionableLocale($entry);
+        if ($locale === null) {
+            return Cast::string(__('admin.inbox.err_no_translation'));
+        }
+
+        try {
+            app(ApplyEntryWorkflowTransition::class)->handle($entry, $locale, $this->actor(), $key, $note, $assignTo);
+        } catch (InvalidTransitionException) {
+            return Cast::string(__('admin.inbox.err_stale'));
+        } catch (AuthorizationException) {
+            return Cast::string(__('admin.wfb.err_forbidden'));
+        } catch (RouteConflictException) {
+            return Cast::string(__('admin.inbox.err_slug'));
+        } catch (EntryNotGovernedException) {
+            return Cast::string(__('admin.wfb.err_not_governed'));
+        }
+
+        return null;
+    }
+
+    /**
+     * The ticked posts this person may publish from where each stands, with that publishing move:
+     * the engine's moves for the post (its permission, and the post within this person's limits)
+     * that end at a live step and ask no reason. Read from the pre-loaded workflows, so the bar
+     * costs no query per ticked post.
+     *
+     * @return list<array{entry: Entry, transition: WorkflowTransition}>
+     */
+    private function publishable(): array
+    {
+        if ($this->picked === []) {
+            return [];
+        }
+
+        $resolver = app(EntryWorkflowResolver::class);
+        $actor = $this->actor();
+        $targets = [];
+        foreach ($this->visible()->whereIn('ulid', $this->picked) as $entry) {
+            $workflow = $this->workflowFor($entry);
+            if (! $workflow instanceof Workflow) {
+                continue;
+            }
+            foreach ($resolver->movesFor($workflow, $entry, $actor) as $transition) {
+                $destination = $workflow->states->firstWhere('key', $transition->to_state);
+                if (! $transition->requires_note && $destination instanceof WorkflowState && $destination->is_published) {
+                    $targets[] = ['entry' => $entry, 'transition' => $transition];
+
+                    break;
+                }
+            }
+        }
+
+        return $targets;
+    }
+
+    /**
+     * Ticked posts that are no longer waiting for this person (someone else moved, published or
+     * deleted them after the bar was drawn): they are reported, never silently left out.
+     *
+     * @return list<array{title: string, why: string}>
+     */
+    private function pickedGone(): array
+    {
+        $gone = array_values(array_diff($this->picked, $this->visible()->pluck('ulid')->map(fn (mixed $ulid): string => Cast::string($ulid))->all()));
+        if ($gone === []) {
+            return [];
+        }
+
+        $titles = Entry::query()->whereIn('ulid', $gone)->with('translations')->get(['id', 'ulid'])
+            ->mapWithKeys(fn (Entry $entry): array => [(string) $entry->ulid => $this->titleOf($entry)]);
+        $why = Cast::string(__('admin.inbox.err_gone'));
+
+        return array_map(fn (string $ulid): array => ['title' => Cast::string($titles->get($ulid, __('entries.unnamed'))), 'why' => $why], $gone);
+    }
+
+    /** A move this person may make on $entry from where it stands, by key (null when it is not one). */
+    private function moveOf(Entry $entry, string $key): ?WorkflowTransition
+    {
+        $workflow = $this->workflowFor($entry);
+        if (! $workflow instanceof Workflow) {
+            return null;
+        }
+
+        foreach (app(EntryWorkflowResolver::class)->movesFor($workflow, $entry, $this->actor()) as $transition) {
+            if ($transition->key === $key) {
+                return $transition;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The name of member $id when they may be handed $entry at $stateKey (the same rule as the
+     * picker, without its display limit), or null when they may not — the server-side check of
+     * «Giao cho», whatever id the payload carries.
+     */
+    private function assigneeName(Workflow $workflow, string $stateKey, Entry $entry, int $id): ?string
+    {
+        $query = app(EntryWorkflowResolver::class)->membersWhoMayApply($workflow->transitions()->where('from_state', $stateKey)->get(), $entry);
+        $name = $query?->whereKey($id)->value('users.name');
+
+        return is_string($name) ? $name : null;
+    }
+
+    /**
+     * Members of THIS website who could move $entry on from $stateKey — the people a post can be
+     * handed to in the reason dialog (board 17: only those holding what the next step needs).
+     * EntryWorkflowResolver::membersWhoMayApply is the SQL form of the engine's own rule (the
+     * step's permission, the category limits, and for a send the right to edit this post), scoped
+     * to this website's team. Keyed by users.id for the validity check.
+     *
+     * @return array<int, array{id: int, name: string, role: string|null}>
+     */
+    private function assignableMembers(Workflow $workflow, string $stateKey, Entry $entry): array
+    {
+        // On the instance (one per request), never a static: under Octane a static would outlive
+        // the request and hand one website's members to the next.
+        $memoKey = $workflow->id.':'.$stateKey.':'.$entry->id;
+        if (isset($this->memberMemo[$memoKey])) {
+            return $this->memberMemo[$memoKey];
+        }
+
+        $transitions = $workflow->relationLoaded('transitions')
+            ? $workflow->transitions->where('from_state', $stateKey)
+            : $workflow->transitions()->where('from_state', $stateKey)->get();
+        $query = app(EntryWorkflowResolver::class)->membersWhoMayApply($transitions, $entry);
+        if ($query === null) {
+            return $this->memberMemo[$memoKey] = [];
+        }
+
+        $members = [];
+        foreach ($query->with('roles')->orderBy('name')->limit(self::ASSIGNEE_LIMIT)->get(['users.id', 'users.name']) as $member) {
+            $members[(int) $member->id] = ['id' => (int) $member->id, 'name' => (string) $member->name, 'role' => RoleLabel::topOf($member)];
+        }
+
+        return $this->memberMemo[$memoKey] = $members;
     }
 
     /**
@@ -288,18 +619,94 @@ final class ReviewInbox extends Component
     {
         $visible = $this->visible();
         $entry = $this->currentEntry();
+        $noteDialog = $entry instanceof Entry && $this->noteKey !== null ? $this->noteDialog($entry, $this->noteKey) : null;
+        if ($this->noteOpen && $noteDialog === null) {
+            // The post left the queue or the move is gone while the dialog was open: close it, so
+            // the reason shows in the page's message instead of inside an empty dialog.
+            $this->closeNote();
+        }
 
         $view = view('admin::livewire.entries.review-inbox', [
             'rows' => $this->rows($visible->take($this->shown)),
             'total' => $visible->count(),
             'queueCount' => $this->waiting()->count(),
             'mineCount' => $this->mineCount(),
-            'sections' => $this->sectionOptions(),
+            'sections' => $this->loadFailed ? [] : $this->sectionOptions(),
             'reader' => $entry instanceof Entry ? $this->reader($entry) : null,
+            'loadFailed' => $this->loadFailed,
+            'bulk' => $this->bulkBar(),
+            'noteDialog' => $noteDialog,
         ]);
         $view->title(__('admin.inbox.title'));
 
         return $view;
+    }
+
+    /**
+     * The selection bar (board 17 .sp-bulk): how many are ticked, how many of them this person can
+     * publish, and the line saying what happens to the rest. Null when nothing is ticked.
+     *
+     * @return array{picked: int, ready: int, why: string}|null
+     */
+    private function bulkBar(): ?array
+    {
+        if ($this->picked === []) {
+            return null;
+        }
+
+        $picked = count($this->picked);
+        $ready = count($this->publishable());
+
+        return [
+            'picked' => $picked,
+            'ready' => $ready,
+            'why' => Cast::string(match (true) {
+                $ready === 0 => __('admin.inbox.bulk_why_none'),
+                $ready < $picked => __('admin.inbox.bulk_why_some', ['ready' => $ready, 'picked' => $picked]),
+                default => __('admin.inbox.bulk_why_all'),
+            }),
+        ];
+    }
+
+    /**
+     * The reason dialog (board 17 .sp-modal) for the move $key on the open post: its title, the
+     * warning of what the move does, and who it may be handed to («Tên — Vai trò»).
+     *
+     * @return array{key: string, label: string, icon: string, live: bool, post: string, warning: string, members: list<array{id: int, label: string}>}|null
+     */
+    private function noteDialog(Entry $entry, string $key): ?array
+    {
+        $transition = $this->moveOf($entry, $key);
+        $workflow = $this->workflowFor($entry);
+        if (! $transition instanceof WorkflowTransition || ! $workflow instanceof Workflow) {
+            return null;
+        }
+
+        $destination = $workflow->states->firstWhere('key', $transition->to_state);
+        $origin = $workflow->states->firstWhere('key', $transition->from_state);
+        $retract = $origin instanceof WorkflowState && $origin->is_published;
+        $label = $destination instanceof WorkflowState ? $destination->label : $transition->to_state;
+        $live = $destination instanceof WorkflowState && $destination->is_published;
+
+        return [
+            'key' => $transition->key,
+            'label' => $transition->label,
+            'icon' => $live ? 'ri-check-double' : ($retract ? 'ri-eye-off' : 'ri-arrow-go-back'),
+            'live' => $live,
+            'post' => $this->titleOf($entry),
+            // Retracting a live post, sending it back to the writer's first step, or another move.
+            'warning' => Cast::string(match (true) {
+                $live => __('entries.wf_ap_text'),
+                $retract => __('admin.inbox.note_retract'),
+                $destination instanceof WorkflowState && $destination->is_initial => __('admin.inbox.note_return', ['label' => $label]),
+                default => __('admin.inbox.note_move', ['label' => $label]),
+            }),
+            // A live post waits in nobody's queue: nothing to hand over when the move goes live.
+            'members' => $live ? [] : array_values(array_map(static fn (array $member): array => [
+                'id' => $member['id'],
+                'label' => $member['role'] !== null ? Cast::string(__('admin.inbox.member_line', ['name' => $member['name'], 'role' => $member['role']])) : $member['name'],
+            ], $this->assignableMembers($workflow, $transition->to_state, $entry))),
+        ];
     }
 
     /**
@@ -325,7 +732,27 @@ final class ReviewInbox extends Component
         // into an OOM; crossing it is the signal to move search + type filtering into SQL and
         // page this properly (ADR-18). Which posts wait (stage per type, category limits) is
         // ReviewWaiting's answer, shared with the "Duyệt bài" card of Tổng quan.
-        $entries = app(ReviewWaiting::class)->read($this->actor(), self::MAX_QUEUE)['entries'];
+        // Read inside its own savepoint: a failed read (a timeout, a lost connection) would otherwise
+        // abort the request's tenant transaction and end in a bare 500. Caught, it becomes board
+        // 17's «Chưa tải được hộp duyệt» with «Thử lại»; nothing is written here, so nothing is lost.
+        // A failure that also took the request's own transaction down (the connection itself is
+        // lost, so the savepoint could not be rolled back) is not caught: without that transaction
+        // there is no tenant context left to render under.
+        $level = DB::transactionLevel();
+        try {
+            $entries = DB::transaction(fn (): EloquentCollection => app(ReviewWaiting::class)->read($this->actor(), self::MAX_QUEUE)['entries']);
+        } catch (PDOException $failed) {   // QueryException and DeadlockException are PDOExceptions
+            if (DB::transactionLevel() < $level) {
+                throw $failed;
+            }
+            report($failed);
+            $this->loadFailed = true;
+
+            /** @var EloquentCollection<int, Entry> $none */
+            $none = new EloquentCollection;
+
+            return $this->waitingMemo = $none;
+        }
 
         $term = trim(mb_strtolower($this->search));
         $locale = app(SiteLocale::class)->default();
@@ -422,7 +849,7 @@ final class ReviewInbox extends Component
      *     seo_title: string|null, seo_description: string|null, path: string|null,
      *     steps: list<array{key: string, label: string, is_published: bool, state: string}>,
      *     step_no: int, step_count: int, step_label: string, workflow: string,
-     *     actions: list<array{key: string, label: string, to_label: string, to_published: bool, note: bool}>,
+     *     actions: list<array{key: string, label: string, to_label: string, to_published: bool, note: bool, icon: string}>,
      *     trail: list<array{id: int, at: string, actor: string|null, transition: string, from: string, to: string, note: string|null}>,
      * }|null
      */
@@ -457,12 +884,15 @@ final class ReviewInbox extends Component
                 continue;   // a move the action would refuse is never offered
             }
             $destination = $states->firstWhere('key', $transition->to_state);
+            $live = $destination instanceof WorkflowState && $destination->is_published;
             $actions[] = [
                 'key' => $transition->key,
                 'label' => $transition->label,
                 'to_label' => $destination instanceof WorkflowState ? $destination->label : $transition->to_state,
                 'to_published' => $destination instanceof WorkflowState && $destination->is_published,
                 'note' => $transition->requires_note,
+                // The same icon as its reason dialog: going live, taking a live post down, or a return.
+                'icon' => $live ? 'ri-check-double' : ($states->firstWhere('key', $fromState)?->is_published === true ? 'ri-eye-off' : 'ri-arrow-go-back'),
             ];
         }
 
@@ -516,7 +946,7 @@ final class ReviewInbox extends Component
         /** @var EloquentCollection<string, Workflow> $byType */
         $byType = $this->workflowsByType ??= Workflow::query()
             ->where('is_active', true)
-            ->with('states')
+            ->with(['states', 'transitions'])
             ->get()
             ->keyBy('applies_to_type');
 
@@ -637,7 +1067,16 @@ final class ReviewInbox extends Component
     {
         $this->shown = self::PAGE;
         $this->current = null;
+        $this->picked = [];
         $this->waitingMemo = null;
+    }
+
+    /** The post's title as the list shows it. */
+    private function titleOf(Entry $entry): string
+    {
+        $translation = $entry->translationFor(app(SiteLocale::class)->default());
+
+        return $translation instanceof EntryTranslation && $translation->title !== '' ? $translation->title : Cast::string(__('entries.unnamed'));
     }
 
     private function actor(): User
