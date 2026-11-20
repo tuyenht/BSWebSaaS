@@ -106,7 +106,7 @@ it('opens the block picture dialog only for an image field of a block that exist
 
         $test = Livewire::actingAs($editor->fresh())->test(Editor::class)
             ->set('blocks', [['type' => 'hero', 'props' => ['heading' => 'Hi', 'image_url' => null]]]);
-        foreach (['0.type', '9.props.image_url', '0.props', 'props.image_url', '0.props.image_url.x'] as $path) {
+        foreach (['0.type', '9.props.image_url', '0.props', 'props.image_url', '0.props.image_url.x', "0.props.image_url\n", '00.props.image_url', '0.props.logos.3.image_url'] as $path) {
             $test->call('openBlockImagePicker', $path)
                 ->assertSet('showImagePicker', false)
                 ->assertSet('blockImagePickerPath', '');
@@ -115,6 +115,11 @@ it('opens the block picture dialog only for an image field of a block that exist
 
         $test->call('openImagePicker', 'single')->call('togglePickerItem', $mine->id)->call('insertPicked')
             ->assertSet('blocks.0.type', 'hero');
+
+        // «Bỏ ảnh» of a block picture takes the same paths only
+        $test->call('clearBlockImage', '0.type')->assertSet('blocks.0.type', 'hero')
+            ->call('clearBlockImage', '5.props.image_url');
+        expect($test->get('blocks'))->toHaveCount(1);
     });
 });
 

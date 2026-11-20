@@ -36,7 +36,7 @@ trait EditsBlockList
     /** Block image picker: the target prop path inside $blocks (e.g. "0.props.image_url" or
      *  "0.props.logos.1.image_url"), held while the shared «Chọn ảnh» dialog is open for a block
      *  image field (the host uses WithMediaLibraryPicker; its single pick lands in placeBlockImage).
-     *  Set only by openBlockImagePicker, which checks its shape and that the block exists. */
+     *  Set only by openBlockImagePicker, which checks the path's shape and that its block (and row) exist. */
     #[Locked]
     public string $blockImagePickerPath = '';
 
@@ -263,9 +263,7 @@ trait EditsBlockList
         $this->authorizeEditing();
         abort_unless(Gate::allows('media.view'), 403);
 
-        // An image field's path only: a prop of an existing block, or a prop of a repeater row in it.
-        if (preg_match('/^(\d+)\.props\.[a-z][a-z0-9_]*(?:\.\d+\.[a-z][a-z0-9_]*)?$/', $path, $match) !== 1
-            || ! isset($this->blocks[(int) $match[1]])) {
+        if (! $this->isBlockFieldPath($path)) {
             return;
         }
         $this->openImagePicker('single');
@@ -296,7 +294,29 @@ trait EditsBlockList
     public function clearBlockImage(string $path): void
     {
         $this->authorizeEditing();
+        if (! $this->isBlockFieldPath($path)) {
+            return;
+        }
         $this->setBlockProp($path, null);
+    }
+
+    /**
+     * A field path the block forms send for a picture: "{block}.props.{prop}" of a block on the list,
+     * or "{block}.props.{prop}.{row}.{field}" of an existing repeater row in it — never "0.type", a
+     * new block or row, a leading zero or a trailing newline. (Which prop is a picture is the form's
+     * business: $blocks itself is the form's state.)
+     */
+    private function isBlockFieldPath(string $path): bool
+    {
+        if (preg_match('/^(0|[1-9]\d*)\.props\.([a-z][a-z0-9_]*)(?:\.(0|[1-9]\d*)\.[a-z][a-z0-9_]*)?\z/', $path, $m) !== 1) {
+            return false;
+        }
+        $props = $this->blocks[(int) $m[1]]['props'] ?? null;
+        if (! is_array($props)) {
+            return false;
+        }
+
+        return ! isset($m[3]) || (is_array($props[$m[2]] ?? null) && isset($props[$m[2]][(int) $m[3]]));
     }
 
     /** Set a dotted prop path inside $blocks (e.g. "0.props.logos.1.image_url"), keeping the list type. */
