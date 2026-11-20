@@ -28,9 +28,11 @@ use Throwable;
  * workflow engine as its approver, rights judged again. One it cannot publish (the approver lost the
  * right, the flow changed) goes back to waiting and is counted as held back; its author and approver
  * are told. So does one that stands at a stage of its flow with no approver on record (the approver's
- * account was deleted and scheduled_by went NULL): nobody approved what would go live. One whose stage
- * is itself a published one (stale, never an approval) is skipped and counted. With the flow switched
- * off since, either goes live at its time like any scheduled post.
+ * account was deleted and scheduled_by went NULL): nobody approved what would go live. So does a plain
+ * scheduled post whose section went under an approval flow after it was scheduled: back at the flow's
+ * initial stage as a draft, its author told, counted once. One whose stage is itself a published one
+ * (stale, never an approval) is skipped and counted. With the flow switched off since, either goes live
+ * at its time like any scheduled post.
  *
  * At very large tenant counts the all-sites sweep becomes the cost centre; a sites-with-due-content
  * index would replace the full loop then (measure-first, ADR-18).
@@ -98,28 +100,29 @@ class PublishDueEntries extends Command
 
         foreach ($due as $entry) {
             try {
-                if ($entry->scheduled_by !== null || $entry->workflow_state !== null) {
-                    // Approved for later under a workflow (or at a stage of one, its approver gone): only the
-                    // engine puts it live, as its approver; with the flow switched off since, as any scheduled post.
-                    match ($approved->publishDue($entry)) {
-                        'published' => $published++,
-                        'held' => $held++,
-                        'skipped' => $skipped++,
-                        'not_due' => null,
-                    };
+                if ($entry->scheduled_by === null && $entry->workflow_state === null) {
+                    try {
+                        // False: an editor trashed, unscheduled or rescheduled it after the read above.
+                        if ($publisher->handle($entry)) {
+                            $published++;
+                        }
 
-                    continue;
+                        continue;
+                    } catch (WorkflowGovernedException) {
+                        // Scheduled before its section went under an approval flow: nobody approved it,
+                        // so it is held back below as an approval with no approver is, never put live.
+                    }
                 }
 
-                // False: an editor trashed, unscheduled or rescheduled it after the read above.
-                if ($publisher->handle($entry)) {
-                    $published++;
-                }
-            } catch (WorkflowGovernedException) {
-                // Scheduled before its section went under an approval flow: only a
-                // transition may publish it now, so it stays put (visible in the editor
-                // at the flow's first stage) instead of going live unreviewed.
-                $skipped++;
+                // Approved for later under a workflow (or at a stage of one, its approver gone), or governed
+                // since it was scheduled: only the engine puts it live, as its approver; with the flow
+                // switched off since, as any scheduled post.
+                match ($approved->publishDue($entry)) {
+                    'published' => $published++,
+                    'held' => $held++,
+                    'skipped' => $skipped++,
+                    'not_due' => null,
+                };
             } catch (Throwable $e) {
                 // Postgres has aborted the site's transaction: rethrow so it rolls back as one
                 // (caught per site in handle()) instead of running more rows in it.

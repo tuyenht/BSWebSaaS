@@ -116,7 +116,8 @@ final class EntryNotifier
     /**
      * The time came and an approved post could not go live ($why: `right` — the approver may no
      * longer publish it; `flow` — the post's approval flow changed since; `approver` — no approver is on
-     * record any more, their account deleted): the author and the approver
+     * record any more, their account deleted; `draft` — any of these where it went back to the flow's
+     * initial stage, a draft to be sent for review): the author and the approver
      * both learn it is waiting for review again. Nobody made this move, so nobody is left out.
      */
     public function scheduleFailed(Entry $entry, string $locale, ?int $approverId, string $why): void

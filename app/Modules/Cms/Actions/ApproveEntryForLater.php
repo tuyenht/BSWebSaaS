@@ -35,8 +35,10 @@ use Illuminate\Support\Facades\Gate;
  * approver's rights and category limits judged again at that moment. If the approver may no longer
  * publish it, their account is gone, or the flow changed so that no such move exists from where it
  * stands, the post is not published: it goes back to waiting at its stage (status `pending`, back in the
- * review inbox), and its author and approver are told why. «Hủy hẹn giờ» (cancel) does the same on
- * request, without moving the stage either. A post whose flow was switched off since is no longer
+ * review inbox), and its author and approver are told why. At the flow's initial stage it goes back to a
+ * draft instead (`draft`): nobody reviews a post there, the review inbox leaves that stage out, and only
+ * its author's «Gửi duyệt» moves it on. A post scheduled while the flow was off and governed since takes
+ * the same road at its time. «Hủy hẹn giờ» (cancel) does the same on request, without moving the stage either. A post whose flow was switched off since is no longer
  * governed: it goes live at its time as any scheduled post does, whoever approved it.
  *
  * Every write takes the entry row lock first and judges the row as it is then, like every other entry
@@ -49,6 +51,9 @@ final readonly class ApproveEntryForLater
     public const string HELD_FLOW = 'flow';
 
     public const string HELD_APPROVER = 'approver';
+
+    /** The notice sentence of any hold that ends at the flow's initial stage: a draft again, to be sent for review. */
+    private const string HELD_TO_DRAFT = 'draft';
 
     public function __construct(
         private EntryWorkflowResolver $workflows,
@@ -84,10 +89,11 @@ final readonly class ApproveEntryForLater
 
             $workflow = $this->workflows->forEntry($entry) ?? throw EntryNotGovernedException::for($entry->id);
             // Only a first publication is scheduled (board 17: a live post, or one already approved for later, is not).
-            // Assumed: the stage a post is approved from is one where it waits for review. A custom flow whose
-            // initial stage has a publishing move lets a draft be approved for later from that stage, and a
-            // hold or «Hủy hẹn giờ» then leaves it at status `pending` on the initial stage.
-            if (in_array($entry->status, [EntryStatus::Published->value, EntryStatus::Scheduled->value], true)) {
+            // A scheduled post with no approver on record (their account was deleted before its time) is back in
+            // the review inbox, waiting: another approver may approve it for later again.
+            // A custom flow whose initial stage has a publishing move lets a draft be approved for later from that
+            // stage; a hold or «Hủy hẹn giờ» then takes it back to a draft there (see hold()).
+            if ($entry->status === EntryStatus::Published->value || $entry->approvedForLater()) {
                 throw InvalidTransitionException::wrongOrigin($transitionKey, $entry->status);
             }
 
@@ -132,7 +138,8 @@ final readonly class ApproveEntryForLater
 
     /**
      * «Hủy hẹn giờ» on a post approved for later: it goes back to waiting for review at the stage it was
-     * approved from (no stage move, nothing published), with its time and approver cleared. Asked of
+     * approved from (no stage move, nothing published; at the flow's initial stage, a draft again), with its
+     * time and approver cleared. Asked of
      * someone who could approve it again from there; with the flow switched off since, of someone who may
      * publish it (the tier-1 rule), and it goes back to a draft. A row that is not (or no longer) approved
      * for later is left as it is. $then: the status the caller moves it to straight after, in the same
@@ -157,10 +164,15 @@ final readonly class ApproveEntryForLater
                 if ($this->publishingMove($workflow, $entry, $actor) === null) {
                     throw new AuthorizationException(__('workflow.err_transition_forbidden'));
                 }
-                $entry->update(['status' => EntryStatus::Pending->value, 'published_at' => null, 'scheduled_by' => null]);
                 $origin = EntryWorkflowResolver::originIn($workflow, $entry);
                 $state = $workflow->states->firstWhere('key', $origin);
-                $step = $state instanceof WorkflowState ? $state->label : $origin;
+                // at the flow's initial stage it is a draft again (nobody reviews a post there): the notice says so
+                $atStart = $state instanceof WorkflowState && $state->is_initial;
+                $entry->update(['status' => ($atStart ? EntryStatus::Draft : EntryStatus::Pending)->value, 'published_at' => null, 'scheduled_by' => null]);
+                if ($atStart) {
+                    $this->translationsToDraft($entry);
+                }
+                $step = $atStart ? null : ($state instanceof WorkflowState ? $state->label : $origin);
             } else {
                 if (! Gate::forUser($actor)->allows('publish', $entry)) {
                     throw new AuthorizationException(__('entries.err_status_forbidden'));
@@ -218,11 +230,12 @@ final readonly class ApproveEntryForLater
     }
 
     /**
-     * entries:publish-due for a post approved for later whose time has come, or one that stands at a stage
-     * of a flow with no approver on record (scheduled_by went NULL when the approver's account was deleted):
+     * entries:publish-due for a post approved for later whose time has come, one that stands at a stage
+     * of a flow with no approver on record (scheduled_by went NULL when the approver's account was deleted),
+     * or a plain scheduled post whose section went under an approval flow after it was scheduled:
      * the publishing move, through the engine, as its approver. Returns 'published'; 'held' when it was not
      * published and went back to waiting (the approver lost the right, the flow changed, or the approver's
-     * account is gone); 'skipped' for a row with no approver on record whose stage is itself a published
+     * account is gone; at the flow's initial stage, a draft again); 'skipped' for a row with no approver on record whose stage is itself a published
      * one (a stale stage, never an approval: left as any scheduled post a workflow governs); or 'not_due'
      * when the row was no longer due (trashed, cancelled, rescheduled or gone) and nothing was written.
      * With the flow switched off since, the post is no longer governed: the approver and the stage are
@@ -244,7 +257,6 @@ final readonly class ApproveEntryForLater
 
             $due = $entry->status === EntryStatus::Scheduled->value
                 && ! $entry->trashed()
-                && ($entry->scheduled_by !== null || $entry->workflow_state !== null)
                 && $entry->published_at !== null
                 && $entry->published_at <= now();
             if (! $due) {
@@ -258,22 +270,27 @@ final readonly class ApproveEntryForLater
                 // The flow was switched off since: nothing asks for an approval now, so the approver is no
                 // longer a condition — it goes live at its time like any scheduled post. The stage goes
                 // too, so a flow switched back on reads a live post at its published stage, not a waiting one.
+                // Only a post that was approved (or stood at a stage) hears it went live on time: a plain
+                // scheduled post the sweep handed over just before its flow was switched off is told nothing,
+                // as PublishScheduledEntry tells nobody.
+                $approved = $approverId !== null || $entry->workflow_state !== null;
                 $entry->update(['scheduled_by' => null, 'workflow_state' => null]);
                 if (! $this->scheduled->handle($entry)) {
                     return 'not_due';
                 }
-                if ($locale !== null) {
+                if ($approved && $locale !== null) {
                     $this->notifier->publishedOnTime($entry, $locale);
                 }
 
                 return 'published';
             }
             if ($locale === null) {
-                return $this->hold($entry, $locale, $approverId, self::HELD_FLOW);
+                return $this->hold($entry, $workflow, $locale, $approverId, self::HELD_FLOW);
             }
             // Governed, and no approver on record: their account was deleted (the key went NULL), or it was
             // scheduled while the flow was off — nobody approved what would go live now, so it waits for
-            // review again. A stage that is itself a published one is stale, not an approval: left as it is.
+            // review again (a plain scheduled post: at the flow's initial stage, a draft again). A stage that
+            // is itself a published one is stale, not an approval: left as it is.
             $approver = $approverId !== null ? User::query()->find($approverId) : null;
             if (! $approver instanceof User) {
                 $workflow->loadMissing('states');
@@ -282,12 +299,12 @@ final readonly class ApproveEntryForLater
                     return 'skipped';
                 }
 
-                return $this->hold($entry, $locale, null, self::HELD_APPROVER);
+                return $this->hold($entry, $workflow, $locale, null, self::HELD_APPROVER);
             }
 
             $move = $this->publishingMove($workflow, $entry, $approver);
             if ($move === null) {
-                return $this->hold($entry, $locale, $approverId, $this->anyPublishingMove($workflow, $entry) ? self::HELD_RIGHT : self::HELD_FLOW);
+                return $this->hold($entry, $workflow, $locale, $approverId, $this->anyPublishingMove($workflow, $entry) ? self::HELD_RIGHT : self::HELD_FLOW);
             }
 
             try {
@@ -295,11 +312,11 @@ final readonly class ApproveEntryForLater
             } catch (AuthorizationException) {
                 $entry->refresh();
 
-                return $this->hold($entry, $locale, $approverId, self::HELD_RIGHT);
+                return $this->hold($entry, $workflow, $locale, $approverId, self::HELD_RIGHT);
             } catch (InvalidTransitionException|EntryNotGovernedException) {
                 $entry->refresh();
 
-                return $this->hold($entry, $locale, $approverId, self::HELD_FLOW);
+                return $this->hold($entry, $workflow, $locale, $approverId, self::HELD_FLOW);
             }
 
             return 'published';
@@ -308,16 +325,39 @@ final readonly class ApproveEntryForLater
         return $result;
     }
 
-    /** Back to waiting at its stage, time and approver cleared, and the author and approver told why. */
-    private function hold(Entry $entry, ?string $locale, ?int $approverId, string $why): string
+    /**
+     * Back to waiting at its stage, time and approver cleared, and the author and approver told why. At the
+     * flow's initial stage it is a draft again instead: nobody reviews a post there (the review inbox leaves
+     * that stage out), so `pending` would leave it waiting for nobody; the notice says it is a draft to be
+     * sent for review.
+     */
+    private function hold(Entry $entry, Workflow $workflow, ?string $locale, ?int $approverId, string $why): string
     {
-        $entry->update(['status' => EntryStatus::Pending->value, 'published_at' => null, 'scheduled_by' => null]);
-        EntryStatusAudit::record($entry, EntryStatus::Scheduled->value, EntryStatus::Pending->value, 'scheduler', null, ['held' => $why], actorLabel: 'system');
+        $workflow->loadMissing('states');
+        $stage = $workflow->states->firstWhere('key', EntryWorkflowResolver::originIn($workflow, $entry));
+        $atStart = $stage instanceof WorkflowState && $stage->is_initial;
+        $status = $atStart ? EntryStatus::Draft->value : EntryStatus::Pending->value;
+
+        $entry->update(['status' => $status, 'published_at' => null, 'scheduled_by' => null]);
+        if ($atStart) {
+            $this->translationsToDraft($entry);
+        }
+        EntryStatusAudit::record($entry, EntryStatus::Scheduled->value, $status, 'scheduler', null, ['held' => $why], actorLabel: 'system');
         if ($locale !== null) {
-            $this->notifier->scheduleFailed($entry, $locale, $approverId, $why);
+            $this->notifier->scheduleFailed($entry, $locale, $approverId, $atStart ? self::HELD_TO_DRAFT : $why);
         }
 
         return 'held';
+    }
+
+    /**
+     * A post back to a draft at the flow's start: a language still marked as sent for review follows it,
+     * as the engine's move back to the initial stage sets the translation's status with the entry's.
+     */
+    private function translationsToDraft(Entry $entry): void
+    {
+        $entry->translations()->where('status', EntryStatus::Pending->value)->update(['status' => EntryStatus::Draft->value]);
+        $entry->unsetRelation('translations');
     }
 
     /**

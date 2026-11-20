@@ -87,7 +87,7 @@ final class NotificationRows
             'workflow.published' => ['ri-global', 'ok'],
             'workflow.scheduled' => match ($sentence) {
                 'published' => ['ri-global', 'ok'],
-                'failed_right', 'failed_flow', 'failed_approver' => ['ri-time', 'warn'],
+                'failed_right', 'failed_flow', 'failed_approver', 'failed_draft' => ['ri-time', 'warn'],
                 default => ['ri-time', 'brand'],
             },
             'lead.new' => ['ri-mail', 'ok'],
