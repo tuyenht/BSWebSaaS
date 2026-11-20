@@ -10,6 +10,8 @@
      and the checkbox selects for bulk ops; in the picker a tile click IS the pick. Never in trash. --}}
 @php($manage = ($pickerManageMode ?? false) && ! $pickerTrash)
 @php($folderNames = $mp['folders']->pluck('name', 'id'))
+{{-- Support staff signed in for a member never delete files for good: the Trash's buttons stay, greyed, with why (the server refuses it too). --}}
+@php($supportLocked = $pickerTrash && app(\App\Modules\Identity\Support\SupportSession::class)->active())
 <div class="flex min-h-0 flex-1">
 
     {{-- Folder sidebar — a rail ≥640px, collapsed into the toolbar dropdown below on narrow screens. --}}
@@ -134,9 +136,12 @@
                 </select>
             @else
                 @if (! $mp['page']->isEmpty() && auth()->user()?->can('media.purge'))
+                    @if ($supportLocked)
+                        <span class="w-full text-[12.5px] text-body-muted min-[640px]:order-last" role="note">{{ __('admin.support.locked') }}</span>
+                    @endif
                     <button type="button"
-                            x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('media.picker_trash_empty_confirm')), confirm: @js(__('media.picker_trash_empty')), cancel: @js(__('media.picker_cancel')) }).then(ok => ok && $wire.emptyPickerTrash())"
-                            class="inline-flex items-center gap-1.5 rounded-lg border border-admin-danger/20 bg-surface px-3 py-2 text-[12.5px] font-semibold text-admin-danger-text">
+                            @if ($supportLocked) aria-disabled="true" title="{{ __('admin.support.locked') }}" @else x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('media.picker_trash_empty_confirm')), confirm: @js(__('media.picker_trash_empty')), cancel: @js(__('media.picker_cancel')) }).then(ok => ok && $wire.emptyPickerTrash())" @endif
+                            class="aria-disabled:opacity-60 inline-flex items-center gap-1.5 rounded-lg border border-admin-danger/20 bg-surface px-3 py-2 text-[12.5px] font-semibold text-admin-danger-text">
                         <x-bs-admin::icon name="ri-delete-bin" class="size-3.5" />{{ __('media.picker_trash_empty') }}
                     </button>
                 @endif
@@ -167,8 +172,8 @@
                         @endcanany
                         @can('media.purge')
                             <button type="button"
-                                    x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('media.picker_trash_purge_confirm', ['count' => count($pickerSelected)])), confirm: @js(__('media.picker_trash_purge')), cancel: @js(__('media.picker_cancel')) }).then(ok => ok && $wire.purgePickerSelection())"
-                                    class="inline-flex items-center gap-1.5 rounded-[7px] border border-admin-danger/20 bg-surface px-[11px] py-1.5 text-xs text-admin-danger-text">
+                                    @if ($supportLocked) aria-disabled="true" title="{{ __('admin.support.locked') }}" @else x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('media.picker_trash_purge_confirm', ['count' => count($pickerSelected)])), confirm: @js(__('media.picker_trash_purge')), cancel: @js(__('media.picker_cancel')) }).then(ok => ok && $wire.purgePickerSelection())" @endif
+                                    class="aria-disabled:opacity-60 inline-flex items-center gap-1.5 rounded-[7px] border border-admin-danger/20 bg-surface px-[11px] py-1.5 text-xs text-admin-danger-text">
                                 <x-bs-admin::icon name="ri-delete-bin" class="size-[13px]" />{{ __('media.picker_trash_purge') }}
                             </button>
                         @endcan
