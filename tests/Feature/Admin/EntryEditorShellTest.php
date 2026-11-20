@@ -398,8 +398,7 @@ it('forgets an open picker, a typed note and a picked member on discard', functi
             ->set('transitionNote', 'Cần sửa ảnh')
             ->set('assignTo', $editor->id)
             ->call('resetChanges')
-            ->assertSet('showMediaPicker', false)
-            ->assertSet('showBlockImagePicker', false)
+            ->assertSet('showImagePicker', false)
             ->assertSet('blockImagePickerPath', '')
             ->assertSet('transitionNote', '')
             ->assertSet('assignTo', null);

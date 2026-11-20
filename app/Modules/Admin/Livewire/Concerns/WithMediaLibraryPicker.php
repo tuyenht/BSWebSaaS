@@ -34,10 +34,12 @@ use Livewire\Attributes\On;
 use RuntimeException;
 
 /**
- * The shared media-library picker for admin Livewire components (rich editors, galleries).
- * Two pick modes: `editor` resolves the media to a CDN url and dispatches
+ * The shared media-library picker for admin Livewire components (rich editors, galleries, image slots).
+ * Three pick modes: `editor` resolves the media to a CDN url and dispatches
  * `admin-editor-insert-image` back to the rich-editor island (which inserts it at the caret);
- * `gallery` hands the id to the component's own addGalleryImage() hook when it defines one.
+ * `gallery` hands the id to the component's own addGalleryImage() hook when it defines one;
+ * `single` (one picture for one slot: a cover, a block image) opens on pictures, keeps one picked
+ * and hands that live picture to the host's pickedSingleImage() hook, then closes.
  * Every path re-gates media.view (the livewire/update endpoint bypasses route middleware) and
  * only LIVE media of THIS site resolve (the model's global scope filters site + trashed).
  * Render the modal with @include('admin::partials.media-picker-modal').
@@ -47,7 +49,7 @@ trait WithMediaLibraryPicker
     /** Whether the library picker is open (its media grid is only queried while true). */
     public bool $showImagePicker = false;
 
-    /** Where a picked image goes: `gallery` (component hook) or `editor` (insert at caret). */
+    /** Where a picked image goes: `gallery` (component hook), `single` (one picture, host hook) or `editor` (insert at caret). */
     public string $imagePickerMode = 'gallery';
 
     /**
@@ -61,7 +63,7 @@ trait WithMediaLibraryPicker
     {
         abort_unless(Gate::allows('media.view'), 403);
 
-        $this->imagePickerMode = $mode === 'editor' ? 'editor' : 'gallery';
+        $this->imagePickerMode = in_array($mode, ['editor', 'single'], true) ? $mode : 'gallery';
         // Fresh modal per open — stale filters/selection from a previous pick would surprise;
         // the view/sort preference survives within the component's lifetime.
         $this->reset('pickerTab', 'pickerType', 'pickerFormat', 'pickerSearch', 'pickerFolderId',
@@ -69,6 +71,9 @@ trait WithMediaLibraryPicker
             'pickerNewFolderSlug', 'pickerNewFolderSlugEdited', 'pickerNewFolderSlugFallback',
             'pickerSource', 'pickerUrlInput', 'pickerUrlPreview', 'pickerUrlSaveCopy',
             'pickerDetailUlid', 'pickerDetailAlt');
+        if ($this->imagePickerMode === 'single') {
+            $this->pickerType = 'image';   // a slot takes a picture, nothing else
+        }
         $this->showImagePicker = true;
     }
 
@@ -100,6 +105,12 @@ trait WithMediaLibraryPicker
         if ($this->imagePickerMode === 'editor') {
             $this->dispatch('admin-editor-insert-image', url: $this->editorImageUrl($media));
             $this->showImagePicker = false;
+
+            return;
+        }
+        if ($this->imagePickerMode === 'single') {
+            $this->showImagePicker = false;
+            $this->pickedSingleImage($media);
 
             return;
         }
@@ -146,6 +157,24 @@ trait WithMediaLibraryPicker
     /** Gallery-mode hook — components that carry a gallery override this; default: no-op. */
     protected function addGalleryImage(int $mediaId): void {}
 
+    /**
+     * Single-mode hook: the one live picture of THIS site that was picked (re-resolved through the
+     * site's scope, never the wire's word). The host checks its own rights and the file's type; the
+     * picker is already closed. Default: no-op.
+     */
+    protected function pickedSingleImage(Media $media): void {}
+
+    /**
+     * The footer words of a single pick, as the host's slot names them (design 13: «Dùng ảnh này»,
+     * «Chọn một ảnh làm ảnh đại diện»); null keeps the picker's own words.
+     *
+     * @return array{insert: string, note: string}|null
+     */
+    protected function singlePickWords(): ?array
+    {
+        return null;
+    }
+
     /** The address a picked library picture is inserted at in the rich editor (a host may need one it can read back). */
     protected function editorImageUrl(Media $media): string
     {
@@ -160,23 +189,6 @@ trait WithMediaLibraryPicker
     protected function editorHotlinks(): bool
     {
         return true;
-    }
-
-    /**
-     * The picker grid (images only, newest first) — call from render() while the modal is open.
-     * Superseded by mediaPickerState() (picker v2); kept so host render() signatures survive
-     * until the Phase-6 cleanup.
-     *
-     * @return Collection<int, Media>
-     */
-    protected function pickerMedia(): Collection
-    {
-        if (! $this->showImagePicker) {
-            /** @var Collection<int, Media> */
-            return collect();
-        }
-
-        return Media::query()->where('mime', 'like', 'image/%')->orderByDesc('created_at')->limit(60)->get();
     }
 
     /*
@@ -276,7 +288,8 @@ trait WithMediaLibraryPicker
     {
         abort_unless(Gate::allows('media.view'), 403);
 
-        $this->pickerTab = $tab === 'upload' ? 'upload' : 'library';
+        // the upload tab is for those who may add files (design 13: tabs="library" otherwise)
+        $this->pickerTab = $tab === 'upload' && Gate::allows('media.upload') ? 'upload' : 'library';
         $this->pickerSource = null;   // tab switch always lands on the source grid (handoff behavior)
         $this->pickerTrash = false;   // …and out of the trash view
         $this->closePickerDetail();   // …and closes the detail panel
@@ -337,8 +350,8 @@ trait WithMediaLibraryPicker
             return;
         }
 
-        // Editor mode inserts ONE image — selecting replaces. Gallery + trash (restore/purge) stack.
-        $this->pickerSelected = ($this->imagePickerMode === 'editor' && ! $this->pickerTrash)
+        // Editor and single modes insert ONE image — selecting replaces. Gallery + trash (restore/purge) stack.
+        $this->pickerSelected = ($this->imagePickerMode !== 'gallery' && ! $this->pickerTrash)
             ? [$mediaId]
             : [...$this->pickerSelected, $mediaId];
     }
@@ -550,8 +563,8 @@ trait WithMediaLibraryPicker
             return;
         }
 
-        // A gallery row must reference a library master — hotlinking is an editor-only choice.
-        $saveCopy = $this->imagePickerMode === 'gallery' || ! $this->editorHotlinks() || $this->pickerUrlSaveCopy;
+        // A gallery row or a slot must reference a library master — hotlinking is an editor-only choice.
+        $saveCopy = $this->imagePickerMode !== 'editor' || ! $this->editorHotlinks() || $this->pickerUrlSaveCopy;
 
         if ($saveCopy) {
             abort_unless(Gate::allows('media.upload'), 403);
@@ -577,9 +590,15 @@ trait WithMediaLibraryPicker
                 return;
             }
 
-            $this->imagePickerMode === 'editor'
-                ? $this->dispatch('admin-editor-insert-image', url: $this->editorImageUrl($media))
-                : $this->addGalleryImage($media->id);
+            $this->reset('pickerUrlInput', 'pickerUrlPreview', 'pickerUrlSaveCopy');
+            $this->showImagePicker = false;
+            match ($this->imagePickerMode) {
+                'editor' => $this->dispatch('admin-editor-insert-image', url: $this->editorImageUrl($media)),
+                'single' => $this->pickedSingleImage($media),
+                default => $this->addGalleryImage($media->id),
+            };
+
+            return;
         } else {
             $this->dispatch('admin-editor-insert-image', url: $preview['url']);
             Storage::disk(MediaKey::disk())->delete($preview['tempKey']); // fetched only to validate
@@ -607,6 +626,12 @@ trait WithMediaLibraryPicker
             return;
         }
 
+        if ($this->imagePickerMode === 'single') {
+            $this->showImagePicker = false;
+            $this->pickedSingleImage($items->firstOrFail());
+
+            return;
+        }
         if ($this->imagePickerMode === 'editor') {
             $first = $items->firstOrFail();
             $this->dispatch('admin-editor-insert-image', url: $this->editorImageUrl($first));
@@ -755,7 +780,7 @@ trait WithMediaLibraryPicker
      * Everything the picker modal renders, in one request-cached bundle (the Blade partial
      * reads $this->mediaPickerState). Empty shell while closed, so hidden modals cost nothing.
      *
-     * @return array{open: bool, page?: LengthAwarePaginator<int, Media>, folders?: Collection<int, MediaFolder>, total?: int, formats?: array<int, string>, selectedPreview?: EloquentCollection<int, Media>, urls?: MediaUrlResolver, detail?: Media|null, detailUsages?: list<array{kind: string, role: string, label: string, url: string|null}>, detailUploader?: string|null, contentLocale?: string, trashTotal?: int}
+     * @return array{open: bool, page?: LengthAwarePaginator<int, Media>, folders?: Collection<int, MediaFolder>, total?: int, formats?: array<int, string>, selectedPreview?: EloquentCollection<int, Media>, urls?: MediaUrlResolver, detail?: Media|null, detailUsages?: list<array{kind: string, role: string, label: string, url: string|null}>, detailUploader?: string|null, contentLocale?: string, trashTotal?: int, words?: array{insert: string, note: string}|null}
      */
     #[Computed]
     public function mediaPickerState(): array
@@ -797,6 +822,7 @@ trait WithMediaLibraryPicker
             'detailUploader' => $uploaderName,
             'contentLocale' => $this->pickerContentLocale(),
             'trashTotal' => MediaDeleteRights::some() ? MediaDeleteRights::visibleTrash(Media::onlyTrashed())->count() : 0,
+            'words' => $this->imagePickerMode === 'single' ? $this->singlePickWords() : null,
         ];
     }
 

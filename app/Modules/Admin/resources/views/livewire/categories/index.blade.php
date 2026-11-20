@@ -414,12 +414,18 @@
                             class="field w-full rounded border border-border-input bg-surface-muted px-3"></textarea>
                         <p class="text-small text-text-muted">{{ $u('f_desc_hint') }}</p>
                     </div>
-                    <div class="flex flex-col gap-1.5">
+                    {{-- «Ảnh đại diện» (board 10 .cm-img): empty, a 120px dashed box with «Chọn ảnh» in its middle; the
+                         board draws no filled state, so a picked cover shows as before (picture, «Chọn ảnh», «Bỏ ảnh»).
+                         One picture: the shared «Chọn ảnh» in its single mode. --}}
+                    <div class="flex flex-col gap-1.5" data-picker-home>
                         <span class="text-small font-semibold text-text-strong">{{ $u('f_cover') }}</span>
-                        <div class="flex flex-wrap items-center gap-3">
+                        <div x-show="! (pan && pan.d.cover)" class="flex h-30 items-center justify-center rounded-md border border-dashed border-border-input bg-surface-muted px-3">
+                            <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="pickCover()"><x-bs-admin::icon name="ri-image-add" class="size-4" /> {{ $u('pick_cover') }}</x-bs-admin::button>
+                        </div>
+                        <div x-show="pan && pan.d.cover" x-cloak class="flex flex-wrap items-center gap-3">
                             <template x-if="pan && pan.d.cover"><img x-bind:src="pan.d.cover.url" alt="" class="size-16 rounded border border-border object-cover" /></template>
                             <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="pickCover()"><x-bs-admin::icon name="ri-image-add" class="size-4" /> {{ $u('pick_cover') }}</x-bs-admin::button>
-                            <span x-show="pan && pan.d.cover"><x-bs-admin::button size="sm" variant="ghost" color="danger" x-on:click="dropCover()"><x-bs-admin::icon name="ri-close" class="size-4" /> {{ $u('drop_cover') }}</x-bs-admin::button></span>
+                            <x-bs-admin::button size="sm" variant="ghost" color="danger" x-on:click="dropCover()"><x-bs-admin::icon name="ri-close" class="size-4" /> {{ $u('drop_cover') }}</x-bs-admin::button>
                         </div>
                     </div>
                     <x-bs-admin::seo-fields title-model="seoTitle" description-model="seoDescription" page-title-model="seoName" slug-model="seoSlug"

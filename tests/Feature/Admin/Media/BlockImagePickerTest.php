@@ -10,9 +10,9 @@ use Livewire\Livewire;
 
 /*
  * Slice 1 contract — a block image prop holds a media_id chosen via a picker (no free-text URL). The
- * editor's block image picker sets blocks.<i>.props.<path> to a media_id from THIS site's library
- * (RLS-scoped), works through a repeater path (partners.logos[].image_url), and rejects a cross-site
- * id injected via the wire payload.
+ * editor's block image field opens the shared «Chọn ảnh» dialog in its single mode, which sets
+ * blocks.<i>.props.<path> to a media_id from THIS site's library (RLS-scoped), works through a
+ * repeater path (partners.logos[].image_url), and rejects a cross-site id injected via the wire payload.
  */
 
 beforeEach(function (): void {
@@ -38,11 +38,13 @@ it('opens the block image picker for a target prop path', function (): void {
         $mine = blockPickerMedia('a/library/x-aaaaaaaaaaaa.png', 'a');
 
         Livewire::actingAs($editor->fresh())->test(Editor::class)
-            ->assertSet('showBlockImagePicker', false)
+            ->assertSet('showImagePicker', false)
             ->call('openBlockImagePicker', '0.props.image_url')
-            ->assertSet('showBlockImagePicker', true)
+            ->assertSet('showImagePicker', true)
+            ->assertSet('imagePickerMode', 'single')
             ->assertSet('blockImagePickerPath', '0.props.image_url')
-            ->assertSeeHtml("selectBlockImage({$mine->id})");   // the picker modal grid renders, wired by id
+            ->assertSeeHtml("togglePickerItem({$mine->id})")   // the shared picker's grid renders, wired by id
+            ->assertDontSeeHtml('class="media-picker"');        // the old unstyled picker is gone
     });
 });
 
@@ -57,11 +59,14 @@ it('sets a block image prop to a media_id from this site, rejecting a cross-site
         Livewire::actingAs($editor->fresh())->test(Editor::class)
             ->set('blocks', [['type' => 'hero', 'props' => ['heading' => 'Hi', 'image_url' => null]]])
             ->call('openBlockImagePicker', '0.props.image_url')
-            ->call('selectBlockImage', $mine->id)
+            ->call('togglePickerItem', $mine->id)
+            ->call('insertPicked')
             ->assertSet('blocks.0.props.image_url', $mine->id)
-            ->assertSet('showBlockImagePicker', false)
+            ->assertSet('showImagePicker', false)
             ->call('openBlockImagePicker', '0.props.image_url')
-            ->call('selectBlockImage', $foreign->id)
+            ->call('togglePickerItem', $foreign->id)
+            ->assertSet('pickerSelected', [])                     // not this site's: never selected
+            ->call('pickImage', $foreign->id)
             ->assertSet('blocks.0.props.image_url', $mine->id);   // cross-site id rejected → unchanged
     });
 });
@@ -100,7 +105,8 @@ it('sets an image inside a repeater row (partners.logos[].image_url)', function 
         Livewire::actingAs($editor->fresh())->test(Editor::class)
             ->set('blocks', [['type' => 'partners', 'props' => ['logos' => [['image_url' => null, 'name' => 'A']]]]])
             ->call('openBlockImagePicker', '0.props.logos.0.image_url')
-            ->call('selectBlockImage', $mine->id)
+            ->call('togglePickerItem', $mine->id)
+            ->call('insertPicked')
             ->assertSet('blocks.0.props.logos.0.image_url', $mine->id);
     });
 });

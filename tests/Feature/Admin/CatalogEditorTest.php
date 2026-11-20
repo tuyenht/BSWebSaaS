@@ -389,6 +389,30 @@ it('attaches gallery images in picked order with site-stamped rows (duplicates i
     });
 });
 
+it('says how many pictures «Chọn ảnh» added, and that the first is the cover when the strip was empty', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage', 'media.view']);
+        $first = seedCatalogMedia('a');
+        $second = seedCatalogMedia('b');
+        $third = seedCatalogMedia('c');
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->call('openImagePicker')
+            ->call('togglePickerItem', $first)
+            ->call('togglePickerItem', $second)
+            ->call('insertPicked')
+            ->assertSet('imageMediaIds', [$first, $second])
+            ->assertSet('toastMsg', __('catalog.ed.toast_img_added_first', ['count' => 2]))
+            ->call('openImagePicker')
+            ->call('togglePickerItem', $third)
+            ->call('insertPicked')
+            ->assertSet('toastMsg', __('catalog.ed.toast_img_added', ['count' => 1]));
+    });
+});
+
 it('reorders and removes gallery images across saves without tripping the unique index', function (): void {
     $editor = User::factory()->create();
 

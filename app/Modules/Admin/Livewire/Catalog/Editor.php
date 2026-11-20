@@ -89,7 +89,9 @@ use Livewire\Component;
 final class Editor extends Component
 {
     use AuthorizesRequests;
-    use WithMediaLibraryPicker;
+    use WithMediaLibraryPicker {
+        insertPicked as private insertLibraryPicked;
+    }
 
     /** The summary's length for new text; an older, longer one is kept until it is changed. */
     public const int SUMMARY_MAX = 255;
@@ -910,6 +912,20 @@ final class Editor extends Component
     }
 
     /**
+     * «Chèn N ảnh» in the shared picker: the pictures join the strip, then the message says how many
+     * (design 09: «Đã thêm N ảnh.», and on an empty strip that the first one is the main picture).
+     */
+    public function insertPicked(): void
+    {
+        $before = count($this->imageMediaIds);
+        $this->insertLibraryPicked();
+        $added = count($this->imageMediaIds) - $before;
+        if ($added > 0) {
+            $this->say(Cast::string(__($before === 0 ? 'catalog.ed.toast_img_added_first' : 'catalog.ed.toast_img_added', ['count' => $added])), null);
+        }
+    }
+
+    /**
      * Gallery hook for the shared picker (gallery mode): append once — duplicates are the
      * UNIQUE(product_id, media_id) guard, app-side. The picker stays open for multi-pick.
      */
@@ -1015,7 +1031,6 @@ final class Editor extends Component
             'mayOpenSettings' => $user instanceof User && $user->can('settings.manage'),
             'mayManageCategories' => $user instanceof User && $user->can('taxonomies.manage'),
             'galleryImages' => $this->galleryImages($urls),
-            'pickerMedia' => $this->pickerMedia(),
             'urls' => $urls,
             'actions' => $actions,
             'note' => $this->saveNote(),

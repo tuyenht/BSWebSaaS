@@ -201,7 +201,12 @@ final class Editor extends Component
     #[Locked]
     public string $addressHost = '';
 
-    /** Featured/OG image — the picked media's storage_key, persisted to entry.meta['image_url']. */
+    /**
+     * Featured/OG image — the picked media's storage_key, persisted to entry.meta['image_url']. Locked:
+     * only a pick from this site's library (pickedSingleImage), «Bỏ ảnh», its «Hoàn tác» and the
+     * server's own loads write it, so a key typed into the wire never reaches the save.
+     */
+    #[Locked]
     public string $coverImageKey = '';
 
     /**
@@ -210,8 +215,23 @@ final class Editor extends Component
      */
     public string $coverAlt = '';
 
-    /** Whether the library picker is open (its media grid is only queried while true). */
-    public bool $showMediaPicker = false;
+    /**
+     * The message under the form after a cover pick or «Bỏ ảnh» (components/toast): its words and its
+     * counter (a new number for every message, so a timer only closes its own).
+     */
+    #[Locked]
+    public string $coverToast = '';
+
+    #[Locked]
+    public int $coverToastSeq = 0;
+
+    /**
+     * What «Hoàn tác» on «Đã gỡ ảnh đại diện» puts back: the picture and this language's words for it.
+     *
+     * @var array{key: string, alt: string}|null
+     */
+    #[Locked]
+    public ?array $coverUndo = null;
 
     /** @var list<array<string, mixed>> */
     public array $blocks = [];
@@ -1703,39 +1723,163 @@ final class Editor extends Component
         return $missing;
     }
 
+    /**
+     * «Chọn ảnh» / «Đổi ảnh» on the cover card: the shared «Chọn ảnh» dialog, one picture. The cover is
+     * every language's, so it is changed in the website's default language only (design 07 sharedGuard):
+     * another language says where to change it and opens nothing.
+     */
     public function openCoverPicker(): void
     {
+        $this->authorizeEditing();
         abort_unless(Gate::allows('media.view'), 403);
-        $this->showMediaPicker = true;
-    }
-
-    public function closeCoverPicker(): void
-    {
-        $this->showMediaPicker = false;
-    }
-
-    public function selectCover(string $key): void
-    {
-        abort_unless(Gate::allows('media.view'), 403);
-
-        // Only accept a storage_key from THIS site's library (RLS-scoped) — never an arbitrary or
-        // cross-site string injected via the wire payload.
-        if (Media::query()->where('storage_key', $key)->exists()) {
-            if ($key !== $this->coverImageKey) {
-                // the words described the picture taken off: a new picture is described afresh
-                $this->coverAlt = '';
-            }
-            $this->coverImageKey = $key;
+        if ($this->coverRefused()) {
+            return;
         }
-
-        $this->showMediaPicker = false;
+        $this->blockImagePickerPath = '';   // the pick is the cover's, not a block's
+        $this->openImagePicker('single');
     }
 
+    /**
+     * «Bỏ ảnh»: the cover leaves the form (saved with «Lưu»), with «Hoàn tác» that puts the picture
+     * and this language's words back as they were.
+     */
     public function clearCover(): void
     {
+        $this->authorizeEditing();
+        abort_unless(Gate::allows('media.view'), 403);
+        if ($this->coverRefused() || $this->coverImageKey === '') {
+            return;
+        }
+        $undo = ['key' => $this->coverImageKey, 'alt' => $this->coverAlt];
         $this->coverImageKey = '';
         // the words described the picture taken off: a new picture is described afresh
         $this->coverAlt = '';
+        $this->sayCover(Cast::string(__('entries.ed.cover_removed')), $undo);
+    }
+
+    /** «Hoàn tác» on «Đã gỡ ảnh đại diện»: the picture comes back if it is still in this site's library. */
+    public function undoCoverRemoval(): void
+    {
+        $this->authorizeEditing();
+        abort_unless(Gate::allows('media.view'), 403);
+        $undo = $this->coverUndo;
+        $this->coverToast = '';
+        $this->coverUndo = null;
+        if ($undo === null || $this->coverRefused() || ! Media::query()->where('storage_key', $undo['key'])->exists()) {
+            return;
+        }
+        $this->coverImageKey = $undo['key'];
+        $this->coverAlt = $undo['alt'];
+    }
+
+    /** Close the cover message the member (or its timer) names; a newer message stays. */
+    public function closeCoverToast(int $seq): void
+    {
+        $this->authorizeEditing();
+        if ($seq === $this->coverToastSeq) {
+            $this->coverToast = '';
+            $this->coverUndo = null;
+        }
+    }
+
+    /**
+     * The picker's one picture: a block image field's when one opened it, else the cover. The picture
+     * comes from this site's live library (the picker re-resolves it); a file that is not a picture is
+     * not taken.
+     */
+    protected function pickedSingleImage(Media $media): void
+    {
+        if ($this->blockImagePickerPath !== '') {
+            $this->placeBlockImage($media);
+
+            return;
+        }
+        $this->authorizeEditing();
+        abort_unless(Gate::allows('media.view'), 403);
+        if ($this->coverRefused() || ! str_starts_with($media->mime, 'image/')) {
+            return;
+        }
+        if ($media->storage_key !== $this->coverImageKey) {
+            // the words described the picture taken off: a new picture is described afresh
+            $this->coverAlt = '';
+        }
+        $this->coverImageKey = $media->storage_key;
+        $this->sayCover(Cast::string(__('entries.ed.cover_picked')), null);
+    }
+
+    /**
+     * The cover's footer words in «Chọn ảnh» (design 07: «Dùng ảnh này»); a block image keeps the picker's.
+     *
+     * @return array{insert: string, note: string}|null
+     */
+    protected function singlePickWords(): ?array
+    {
+        return $this->blockImagePickerPath !== '' ? null : [
+            'insert' => Cast::string(__('media.picker_insert_one')),
+            'note' => Cast::string(__('media.picker_note_cover')),
+        ];
+    }
+
+    /** In another language than the website's default the shared cover is not changed: say where it is. */
+    private function coverRefused(): bool
+    {
+        $default = app(SiteLocale::class)->default();
+        if ($this->locale === $default) {
+            return false;
+        }
+        $this->dispatch('bs-toast', text: Cast::string(__('entries.ed.shared_guard', ['lang' => Locales::label($default)])), stay: true, close: Cast::string(__('admin.close')));
+
+        return true;
+    }
+
+    /**
+     * @param  array{key: string, alt: string}|null  $undo
+     */
+    private function sayCover(string $message, ?array $undo): void
+    {
+        $this->coverToast = $message;
+        $this->coverToastSeq++;
+        $this->coverUndo = $undo;
+    }
+
+    /**
+     * The cover as the card shows it: its address, its file name (for the picture's name), and how its
+     * shape suits the places it is shown (design 07: «Ngang 16:9, hợp mọi chỗ» or the warning), from
+     * the library's width and height; null when there is no cover.
+     *
+     * @return array{url: string, name: string, ratio: 'ok'|'warn'|null}|null
+     */
+    private function coverCard(MediaUrlResolver $urls): ?array
+    {
+        if ($this->coverImageKey === '') {
+            return null;
+        }
+        $media = Media::query()->where('storage_key', $this->coverImageKey)->first(['id', 'original_filename', 'width', 'height']);
+        $w = $media?->width;
+        $h = $media?->height;
+        $ratio = is_int($w) && is_int($h) && $w > 0 && $h > 0
+            ? (abs($w / $h - 16 / 9) <= 16 / 9 * 0.02 ? 'ok' : 'warn')
+            : null;
+
+        return [
+            'url' => $urls->url($this->coverImageKey, 640),
+            'name' => is_string($media?->original_filename) && $media->original_filename !== '' ? $media->original_filename : '',
+            'ratio' => $ratio,
+        ];
+    }
+
+    /**
+     * The cover kept on this device put back: in the website's default language only (it is every
+     * language's) and only a picture still in this site's library — the kept copy is the browser's word.
+     */
+    private function restoreKeptCover(mixed $key): void
+    {
+        if (! is_string($key) || $key === $this->coverImageKey || $this->locale !== app(SiteLocale::class)->default()) {
+            return;
+        }
+        if ($key === '' || Media::query()->where('storage_key', $key)->where('mime', 'like', 'image/%')->exists()) {
+            $this->coverImageKey = $key;
+        }
     }
 
     /** The rich editor shows a library picture at an address the save can read back to the picture. */
@@ -1813,14 +1957,11 @@ final class Editor extends Component
             'schemas' => $schemas,
             'categoryCard' => $this->categoryCard(),
             'urls' => $urls,
-            'coverUrl' => $this->coverImageKey !== '' ? $urls->url($this->coverImageKey, 640) : null,
+            'cover' => $this->coverCard($urls),
             'blockImageUrls' => $this->resolveBlockImageUrls($schemas),
             'goneProducts' => $this->goneProductKeys(),
             'looks' => $this->looks(),
             'schemeColours' => $this->schemeColours(),
-            'pickerMedia' => $this->showMediaPicker || $this->showBlockImagePicker
-                ? Media::query()->orderByDesc('created_at')->limit(60)->get()
-                : collect(),
             'workflow' => $workflow !== null ? $this->workflowPanel($workflow, $row) : null,
             'schedule' => $this->schedulePanel($workflow),
             'statusPanel' => $this->statusPanel(),
@@ -1847,7 +1988,7 @@ final class Editor extends Component
         // A language with no saved version yet loads nothing back: start from an empty form.
         $preset = $this->ulid === null ? $this->parentLoaded : null;
         $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'coverAlt', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
-            'transitionNote', 'assignTo', 'showMediaPicker', 'showBlockImagePicker', 'blockImagePickerPath', 'stale', 'overwrite',
+            'transitionNote', 'assignTo', 'showImagePicker', 'blockImagePickerPath', 'coverToast', 'coverUndo', 'stale', 'overwrite',
             'parentUlid', 'parentLoaded', 'parentName', 'pageHome', 'scheduleAt', 'scheduleLoaded', 'statusTo', 'autoSaved', 'slugFresh', 'slugTouched');
         $this->mount($this->ulid, $this->sectionKey, $this->locale, $preset);
     }
@@ -1911,11 +2052,12 @@ final class Editor extends Component
     public function restoreKept(array $kept): void
     {
         $this->authorizeEditing();
-        foreach (['title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'coverAlt'] as $field) {
+        foreach (['title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverAlt'] as $field) {
             if (is_string($kept[$field] ?? null)) {
                 $this->{$field} = $kept[$field];
             }
         }
+        $this->restoreKeptCover($kept['coverImageKey'] ?? null);
         if ($this->type === 'post' && is_array($kept['categoryIds'] ?? null)) {
             $this->restoreCategories($kept['categoryIds']);
         } elseif ($this->type === 'post' && array_key_exists('categoryId', $kept)) {

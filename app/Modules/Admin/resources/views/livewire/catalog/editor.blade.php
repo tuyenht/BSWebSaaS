@@ -182,7 +182,7 @@
                         'coverIs' => __('catalog.ed.img_cover_is'), 'cover' => __('catalog.ed.img_cover_why'),
                     ];
                 @endphp
-                <section class="rounded-md border border-border bg-surface shadow-card" aria-labelledby="ped-h-img"
+                <section class="rounded-md border border-border bg-surface shadow-card" aria-labelledby="ped-h-img" data-picker-home
                          x-data="{
                              sel: null, from: null, over: null, canL: false, canR: false,
                              get n() { return this.$refs.strip ? this.$refs.strip.querySelectorAll('[data-img-i]').length : 0; },

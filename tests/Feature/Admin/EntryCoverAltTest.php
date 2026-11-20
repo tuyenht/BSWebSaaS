@@ -134,8 +134,8 @@ describe('the editor', function (): void {
             $page = coverAltPage($first->storage_key, 'Thợ đứng máy');
 
             Livewire::actingAs($user)->test(Editor::class, ['ulid' => $page->ulid])
-                ->call('selectCover', $first->storage_key)->assertSet('coverAlt', 'Thợ đứng máy')
-                ->call('selectCover', $other->storage_key)->assertSet('coverAlt', '')
+                ->call('openCoverPicker')->call('togglePickerItem', $first->id)->call('insertPicked')->assertSet('coverAlt', 'Thợ đứng máy')
+                ->call('openCoverPicker')->call('togglePickerItem', $other->id)->call('insertPicked')->assertSet('coverAlt', '')
                 ->call('save')->assertHasNoErrors();
 
             expect(coverAltOf($page))->toBeNull();
@@ -157,7 +157,7 @@ describe('the editor', function (): void {
 
             // another picture picked in Vietnamese: English's words described the old one
             Livewire::actingAs($user)->test(Editor::class, ['ulid' => $page->ulid])
-                ->call('selectCover', coverAltOtherMedia()->storage_key)->set('coverAlt', 'Kho ống thép')
+                ->call('openCoverPicker')->call('togglePickerItem', coverAltOtherMedia()->id)->call('insertPicked')->set('coverAlt', 'Kho ống thép')
                 ->call('save')->assertHasNoErrors();
             expect(coverAltOf($page))->toBe('Kho ống thép')->and(coverAltOfIn($page, 'en'))->toBeNull();
 

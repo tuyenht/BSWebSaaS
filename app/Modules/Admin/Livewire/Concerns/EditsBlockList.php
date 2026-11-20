@@ -33,9 +33,8 @@ use Illuminate\Validation\ValidationException;
 trait EditsBlockList
 {
     /** Block image picker: the target prop path inside $blocks (e.g. "0.props.image_url" or
-     *  "0.props.logos.1.image_url"), held while the picker is open for a block image field. */
-    public bool $showBlockImagePicker = false;
-
+     *  "0.props.logos.1.image_url"), held while the shared «Chọn ảnh» dialog is open for a block
+     *  image field (the host uses WithMediaLibraryPicker; its single pick lands in placeBlockImage). */
     public string $blockImagePickerPath = '';
 
     /** The block whose content form is open under its row in «Trình dựng» (one at a time). */
@@ -261,35 +260,29 @@ trait EditsBlockList
         $this->authorizeEditing();
         abort_unless(Gate::allows('media.view'), 403);
 
+        $this->openImagePicker('single');
         $this->blockImagePickerPath = $path;
-        $this->showBlockImagePicker = true;
-    }
-
-    public function closeBlockImagePicker(): void
-    {
-        $this->authorizeEditing();
-        $this->showBlockImagePicker = false;
-        $this->blockImagePickerPath = '';
     }
 
     /**
-     * Set a block image prop to a media_id from THIS site's library (RLS-scoped) — never an
-     * arbitrary id from the wire payload. Content references media by id (ADR-17), not a URL.
+     * Set a block image prop to the picture picked in the shared dialog — a live media of THIS site
+     * (the picker re-resolves the id through the site's scope, never the wire's word); a file that is
+     * not a picture is not taken. Content references media by id (ADR-17), not a URL.
      */
-    public function selectBlockImage(int $mediaId): void
+    protected function placeBlockImage(Media $media): void
     {
         $this->authorizeEditing();
         abort_unless(Gate::allows('media.view'), 403);
 
-        if ($this->blockImagePickerPath !== '' && Media::query()->whereKey($mediaId)->exists()) {
-            $this->setBlockProp($this->blockImagePickerPath, $mediaId);
-            if (preg_match('/^(\d+)\.props\.bg_image$/', $this->blockImagePickerPath, $match) === 1 && $this->takesLookPhoto((int) $match[1])) {
-                $this->setBlockProp("{$match[1]}.props.bg", 'image');
-            }
-        }
-
-        $this->showBlockImagePicker = false;
+        $path = $this->blockImagePickerPath;
         $this->blockImagePickerPath = '';
+        if ($path === '' || ! str_starts_with($media->mime, 'image/')) {
+            return;
+        }
+        $this->setBlockProp($path, $media->id);
+        if (preg_match('/^(\d+)\.props\.bg_image$/', $path, $match) === 1 && $this->takesLookPhoto((int) $match[1])) {
+            $this->setBlockProp("{$match[1]}.props.bg", 'image');
+        }
     }
 
     public function clearBlockImage(string $path): void
