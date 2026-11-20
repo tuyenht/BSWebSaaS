@@ -30,7 +30,10 @@ final class PermissionRegistry
         'entries.publish',
         'media.view',
         'media.upload',
-        'media.delete',
+        // Sending files to the Trash and taking them back out: «own» = only files this person
+        // uploaded, not used anywhere, and back out only what they put in; «any» = every file.
+        'media.delete.own',
+        'media.delete.any',
         // Creating (and later renaming, moving or removing) media folders: only whoever runs the
         // website — moving files into a folder that exists stays with media.upload.
         'media.folders',
@@ -90,11 +93,12 @@ final class PermissionRegistry
         'entries.approve' => ['entries.view'],
         'entries.publish' => ['entries.view'],
         'media.upload' => ['media.view'],
-        'media.delete' => ['media.view'],
+        'media.delete.own' => ['media.view'],
+        'media.delete.any' => ['media.view'],
         'media.folders' => ['media.view'],
         // Purging acts on the Trash, and only those who may send files there see it. Implied
         // lists stay flat (withImplied() goes one level), so media.view is named here too.
-        'media.purge' => ['media.delete', 'media.view'],
+        'media.purge' => ['media.delete.any', 'media.view'],
         'forms.manage' => ['forms.view'],
         'catalog.manage' => ['catalog.view'],
         'domains.manage' => ['domains.view'],
@@ -208,13 +212,13 @@ final class PermissionRegistry
             'editor' => ['level' => 50, 'permissions' => [
                 'entries.view', 'entries.create', 'entries.edit.any', 'entries.delete.any',
                 'entries.submit', 'entries.review', 'entries.approve', 'entries.publish',
-                'media.view', 'media.upload', 'media.delete',
+                'media.view', 'media.upload', 'media.delete.any',
                 'taxonomies.manage', 'menus.manage', 'blocks.manage', 'forms.view', 'forms.manage',
                 'catalog.view', 'catalog.manage', 'domains.view',
             ]],
             'author' => ['level' => 30, 'permissions' => [
                 'entries.view', 'entries.create', 'entries.edit.own', 'entries.delete.own',
-                'entries.submit', 'media.view', 'media.upload',
+                'entries.submit', 'media.view', 'media.upload', 'media.delete.own',
             ]],
             'contributor' => ['level' => 20, 'permissions' => [
                 'entries.view', 'entries.create', 'entries.edit.own', 'entries.submit', 'media.view',

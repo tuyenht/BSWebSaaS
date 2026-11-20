@@ -34,7 +34,7 @@ final readonly class RegisterMediaUpload
 
     /**
      * @param  bool  $mayRestore  whether the uploader may take a file back out of the Trash (the
-     *                            media.delete right, resolved by the caller). The action holds no user
+     *                            media.delete.any right, resolved by the caller). The action holds no user
      *                            of its own, so the caller decides; false refuses with `in_trash`.
      */
     public function handle(string $tempKey, string $filename, ?int $createdBy = null, ?int $width = null, ?int $height = null, string $collection = 'library', bool $mayRestore = false): Media

@@ -6,9 +6,11 @@ use App\Modules\Admin\Livewire\Concerns\EditsButtonActions;
 use App\Modules\Admin\Livewire\Concerns\ShowsEntryRevisions;
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\BlockKinds;
+use App\Modules\Admin\Support\Categories\CategorySections;
 use App\Modules\Admin\Support\Entries\EntryRefusal;
 use App\Modules\Admin\Support\Entries\PageMoveWords;
 use App\Modules\Admin\Support\Entries\PageParentChoices;
+use App\Modules\Admin\Support\Entries\PostCategoryChoices;
 use App\Modules\Admin\Support\Entries\ScheduleInput;
 use App\Modules\Admin\Support\EntryProseBody;
 use App\Modules\Admin\Support\Guide\EditorGuide;
@@ -19,7 +21,9 @@ use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\MovePage;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
+use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
 use App\Modules\Cms\Actions\TransitionEntryStatus;
+use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
@@ -27,6 +31,7 @@ use App\Modules\Cms\Exceptions\HomePageLockedException;
 use App\Modules\Cms\Exceptions\PageMoveRejectedException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Exceptions\SchedulePastException;
+use App\Modules\Cms\Exceptions\TaxonomyChangeRejectedException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
@@ -37,11 +42,13 @@ use App\Modules\Cms\Queries\EntryRevisions;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Support\CategoryItemCounts;
+use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Support\EntryCategoryWriter;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Cms\Support\HomePages;
 use App\Modules\Cms\Support\PageRules;
+use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
@@ -134,7 +141,7 @@ final class Editor extends Component
      * The fields the save state and the leave dialog count against the saved entry. The block list
      * is counted apart (blocksChanged): the browser cannot write it the way the server does.
      */
-    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryId', 'coverImageKey', 'parentUlid', 'scheduleAt', 'statusTo'];
+    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryIds', 'coverImageKey', 'parentUlid', 'scheduleAt', 'statusTo'];
 
     /** Which entry is being edited — server-resolved (mount/persist); never client-set. */
     #[Locked]
@@ -165,8 +172,24 @@ final class Editor extends Component
     #[Locked]
     public bool $multiLocale = false;
 
-    /** Primary category id (posts only; index 0 of entry_taxonomies drives the URL). */
+    /**
+     * Primary category id (posts only; index 0 of entry_taxonomies drives the URL): the first of
+     * categoryIds, kept in step with it. Set on its own (the earlier one-category picker), it files
+     * the post under that one category alone.
+     */
     public ?int $categoryId = null;
+
+    /**
+     * Every category the post is filed under, its main one («Chuyên mục chính») first — the pivot's
+     * positions 0..n-1. Changed only by the card's boxes, its «Chuyên mục chính» choice and its
+     * «Thêm chuyên mục mới» (toggleCategory, setMainCategory, addCategory), never by the browser.
+     * A section's own category at the front means no category is ticked: the post shows only on
+     * the section's page.
+     *
+     * @var list<int>
+     */
+    #[Locked]
+    public array $categoryIds = [];
 
     /**
      * The Google preview's address around the slug (SeoFields::address): built on mount and again
@@ -412,6 +435,15 @@ final class Editor extends Component
 
     protected ?int $workflowMemoFor = null;
 
+    /** Per-request memo of the post categories the «Chuyên mục» card offers (protected = not Livewire state). */
+    protected ?PostCategoryChoices $choicesMemo = null;
+
+    /** Per-request memo: whether an approval workflow governs the post's section (null = not asked yet). */
+    protected ?bool $homeGovernedMemo = null;
+
+    /** The main category and section the memo above was answered for (a change inside the request asks again). */
+    protected ?string $homeGovernedFor = null;
+
     public function mount(?string $ulid = null, ?string $section = null, ?string $locale = null, ?string $parent = null): void
     {
         $this->locale = $this->resolveLocale(app(SiteLocale::class), $locale ?? request()->query('locale'));
@@ -425,8 +457,9 @@ final class Editor extends Component
             $contentSection = $this->resolveSection($section ?? request()->query('section'));
             $this->type = $contentSection instanceof ContentSection ? ($contentSection->entry_type ?? 'page') : 'page';
             $this->categoryId = $this->type === 'post' && $contentSection instanceof ContentSection && $contentSection->taxonomy_id !== null
-                ? (int) $contentSection->taxonomy_id
+                ? $this->defaultCategory($contentSection)
                 : null;
+            $this->categoryIds = $this->categoryId !== null ? [$this->categoryId] : [];
             // Not saved yet: it will be this user's own once the first save persists it, so the
             // publish rule below (which needs the right to edit it) judges it as theirs. The
             // preview files a post under the pre-filled category, so that rule also reads the
@@ -466,14 +499,24 @@ final class Editor extends Component
         $cover = data_get($entry->meta, 'image_url');
         $this->coverImageKey = is_string($cover) ? $cover : '';
 
-        $category = $this->type === 'post' ? $entry->primaryCategory() : null;
+        // one read for the post's categories in order, the main one (position 0) among them
+        $filed = $this->type === 'post'
+            ? $entry->taxonomies()->wherePivot('position', '<', Entry::FACET_POSITION_BASE)->orderByPivot('position')->orderBy('taxonomies.id')->get()
+            : null;
+        $category = $filed?->first(static function (Taxonomy $taxonomy): bool {
+            $pivot = $taxonomy->relationLoaded('pivot') ? $taxonomy->getRelation('pivot') : null;
+            $position = $pivot instanceof Pivot ? $pivot->getAttribute('position') : null;
+
+            return is_numeric($position) && (int) $position === 0;
+        });
+        $this->categoryIds = $filed !== null ? array_values($filed->map(static fn (Taxonomy $taxonomy): int => $taxonomy->id)->all()) : [];
         $this->categoryId = $category?->id;
         $this->address = $this->previewAddress($entry, $category);
         $this->placeInList($this->type === 'post' ? $this->sectionOf($category) : null);
         // A save that changes no shared field leaves the entry row alone: this language's own row
         // carries when it was last saved.
         $this->savedAt = self::iso($translation?->updated_at);
-        $this->storedPrint = self::printOf($translation, $entry->meta, $category?->id);
+        $this->storedPrint = self::printOf($translation, $entry->meta, $this->categoryIds);
         $this->loadedAt = self::iso(CarbonImmutable::now());
         $this->mayPublish = $this->user()->can('publish', $entry);
         $this->frameRights($entry);
@@ -500,12 +543,415 @@ final class Editor extends Component
         }
     }
 
-    /** A post's category is part of its address: the preview follows the pick (posts only). */
+    /**
+     * The main category set on its own (the earlier one-category picker): the post is filed under it
+     * alone, as that picker did; the save judges it (exists, governed section, the member's limits).
+     * A post's category is part of its address: the preview follows the pick (posts only).
+     */
     public function updatedCategoryId(): void
     {
         if ($this->type === 'post') {
+            $this->categoryIds = $this->categoryId !== null ? [$this->categoryId] : [];
             $this->address = $this->previewAddress();
         }
+    }
+
+    /**
+     * A box in the «Chuyên mục» card: file the post under the category too, or take it out. The first
+     * category ticked becomes the main one (a section's own category at the front — no category ticked
+     * — gives way to it); when the main one is unticked the next one takes its place, and with none
+     * left the post goes back to its section's own category. A member limited to some categories adds
+     * or takes out only categories inside them, and a category of another section stays as it is while
+     * an approval workflow governs this one (the card locks both rows and says why; asked anyway, one
+     * outside the limits is a 403, the other's words come back in a toast and nothing changes).
+     * Nothing is saved until the post is.
+     */
+    public function toggleCategory(string $ulid): void
+    {
+        $this->authorizeEditing();
+        abort_unless($this->type === 'post', 404);
+        $choices = $this->choices();
+        $id = $choices->idOf($ulid);
+        abort_unless($id !== null && ! $choices->isSectionRoot($id), 404);
+        if ($this->refuseFiling($choices, $id)) {
+            return;
+        }
+        $ids = $this->categoryIds;
+        if (in_array($id, $ids, true)) {
+            $ids = array_values(array_filter($ids, static fn (int $at): bool => $at !== $id));
+        } elseif ($ids !== [] && $choices->isSectionRoot($ids[0])) {
+            $ids = [$id, ...array_slice($ids, 1)];
+        } else {
+            $ids[] = $id;
+        }
+        $this->categoriesChanged($choices, $ids);
+    }
+
+    /** «Chuyên mục chính»: a ticked category moves to the front — the main one now, its address the post's. */
+    public function setMainCategory(string $ulid): void
+    {
+        $this->authorizeEditing();
+        abort_unless($this->type === 'post', 404);
+        $choices = $this->choices();
+        $id = $choices->idOf($ulid);
+        abort_unless($id !== null && in_array($id, $this->categoryIds, true), 404);
+        if ($id === $this->categoryId || $this->refuseFiling($choices, $id)) {
+            return;
+        }
+        $this->categoriesChanged($choices, [$id, ...array_values(array_filter($this->categoryIds, static fn (int $at): bool => $at !== $id))]);
+        $this->dispatch('bs-toast', text: Cast::string(__('entries.ed.cat_main_set')));
+    }
+
+    /**
+     * «Thêm chuyên mục mới» (who may manage categories): a category named $name, made at once through
+     * the category screen's own write (CreateTaxonomy: the name rules, the depth limit, the member's
+     * limits) and ticked for this post. It goes at the top of the post's section, or — for a member
+     * limited to some categories — under the main category, which must lie inside their limits.
+     * Returns whether it was made; a refusal is said on the name field.
+     */
+    public function addCategory(mixed $name): bool
+    {
+        $this->authorizeEditing();
+        abort_unless($this->type === 'post', 404);
+        Gate::authorize('create', Taxonomy::class);
+        $this->resetErrorBag('catNew');
+        $name = is_string($name) ? PlainText::line(trim($name)) : '';
+        if ($name === '' || mb_strlen($name) > TaxonomyRules::NAME_MAX) {
+            $this->addError('catNew', Cast::string(__('categories.reason_name_invalid')));
+
+            return false;
+        }
+        $choices = $this->choices();
+        $plan = $this->addPlan($choices);
+        if ($plan['lock'] !== null || $plan['parent'] === null) {
+            $this->addError('catNew', $plan['lock'] ?? Cast::string(__('categories.reason_parent_invalid')));
+
+            return false;
+        }
+        try {
+            $made = app(CreateTaxonomy::class)->handle('post_cat', Taxonomy::query()->find($plan['parent']),
+                new TaxonomyData(names: [app(SiteLocale::class)->default() => $name]));
+        } catch (TaxonomyChangeRejectedException $e) {
+            $this->addError('catNew', Cast::string(__('categories.reason_'.$e->reason, ['depth' => TaxonomyRules::MAX_DEPTH])));
+
+            return false;
+        }
+        $ids = $this->categoryIds;
+        $ids = $ids !== [] && $choices->isSectionRoot($ids[0]) ? [$made->id, ...array_slice($ids, 1)] : [...$ids, $made->id];
+        $this->choicesMemo = null;
+        $this->categoriesChanged($this->choices(), $ids);
+        $this->dispatch('bs-toast', text: Cast::string(__($plan['in'] !== null ? 'entries.ed.cat_added_in' : 'entries.ed.cat_added',
+            ['name' => $name, 'in' => $plan['in'] ?? '', 'unit' => $this->unit()])));
+
+        return true;
+    }
+
+    /**
+     * Whether filing under $id (ticking, unticking or making it the main one) is refused. A category
+     * outside the member's limits is never theirs to change (the card shows only the ticked ones,
+     * locked): 403. One of another section while an approval workflow governs this one is refused
+     * in a toast that stays, in the words under its locked row.
+     */
+    private function refuseFiling(PostCategoryChoices $choices, int $id): bool
+    {
+        abort_unless(app(CategoryScopes::class)->coversId($this->user(), $id), 403);
+        if (! $this->homeGoverned() || $choices->sectionOf($id) === $this->sectionKey) {
+            return false;
+        }
+        $this->dispatch('bs-toast', text: Cast::string(__('entries.ed.cat_why_workflow', ['section' => $choices->sectionLabel($this->sectionKey) ?? $this->listLabel, 'unit' => $this->unit()])),
+            stay: true, close: Cast::string(__('admin.close')));
+
+        return true;
+    }
+
+    /**
+     * Take $ids as the post's categories: with none left, its section's own category (when the member
+     * may write there); a main category outside a limited member's limits gives way to the first one
+     * inside them. The address follows the main category.
+     *
+     * @param  list<int>  $ids
+     */
+    private function categoriesChanged(PostCategoryChoices $choices, array $ids): void
+    {
+        // a section's own category means «no category»: only ever the main one, whatever path the list came by
+        $ids = array_values(array_filter(array_values(array_unique($ids)), static fn (int $id, int $at): bool => $at === 0 || ! $choices->isSectionRoot($id), ARRAY_FILTER_USE_BOTH));
+        $user = $this->user();
+        $scopes = app(CategoryScopes::class);
+        $root = $choices->rootOf($this->sectionKey);
+        if ($ids === [] && $root !== null && $scopes->coversId($user, $root)) {
+            $ids = [$root];
+        } elseif ($ids === [] && $root !== null && $this->categoryIds !== []) {
+            // the last category taken out and the section's own one outside the member's limits:
+            // the change is refused, the list stays as it was
+            $this->addError('categoryIds', $scopes->refusal($user));
+
+            return;
+        }
+        $previous = $this->categoryId;
+        // a category the member may lead with: inside their limits and, while an approval workflow
+        // governs this section, in this section (the save refuses any other as the main one)
+        $free = fn (int $id): bool => $scopes->coversId($user, $id) && (! $this->homeGoverned() || $choices->sectionOf($id) === $this->sectionKey);
+        if ($ids !== [] && ! $scopes->coversId($user, $ids[0]) || $ids !== [] && $ids[0] !== $previous && ! $free($ids[0])) {
+            $lead = null;
+            foreach ($ids as $at => $id) {
+                if ($free($id)) {
+                    $lead = $at;
+                    break;
+                }
+            }
+            if ($lead !== null) {
+                $id = $ids[$lead];
+                array_splice($ids, $lead, 1);
+                array_unshift($ids, $id);
+            } elseif ($root !== null && $free($root)) {
+                // none left to lead: the post goes back to its section's own category, the rest kept
+                array_unshift($ids, $root);
+            } else {
+                // nothing the member may lead with: the change is refused, the list stays as it was
+                $this->addError('categoryIds', $scopes->coversId($user, $ids[0])
+                    ? Cast::string(__('entries.ed.cat_why_workflow', ['section' => $choices->sectionLabel($this->sectionKey) ?? $this->listLabel, 'unit' => $this->unit()]))
+                    : $scopes->refusal($user));
+
+                return;
+            }
+        }
+        $this->categoryIds = $ids;
+        $this->categoryId = $ids[0] ?? null;
+        $this->resetErrorBag(['categoryId', 'categoryIds', 'categoryIds.*']);
+        if ($previous !== $this->categoryId) {
+            $this->address = $this->previewAddress();
+        }
+    }
+
+    /**
+     * The categories kept on this device put back: those that are still post categories of this
+     * website; for a limited member only those inside their limits or the post already has.
+     *
+     * @param  array<array-key, mixed>  $kept
+     */
+    private function restoreCategories(array $kept): void
+    {
+        $choices = $this->choices();
+        $user = $this->user();
+        $scopes = app(CategoryScopes::class);
+        $governed = $this->homeGoverned();
+        $home = $choices->rootOf($this->sectionKey);
+        $ids = [];
+        foreach ($kept as $value) {
+            $id = self::idOrNull($value);
+            $mine = $id !== null && in_array($id, $this->categoryIds, true);
+            if ($id === null || ! $choices->has($id)
+                // a section's own category is no row: only this section's, as «no category ticked»
+                || ($choices->isSectionRoot($id) && $id !== $home)
+                || ! ($scopes->coversId($user, $id) || $mine)
+                // another section's category stays as it is while a workflow governs this one
+                || ($governed && $choices->sectionOf($id) !== $this->sectionKey && ! $mine)) {
+                continue;
+            }
+            $ids[] = $id;
+        }
+        if ($governed) {
+            // and one the post is under is not dropped either
+            foreach ($this->categoryIds as $id) {
+                if ($choices->sectionOf($id) !== $this->sectionKey && ! in_array($id, $ids, true)) {
+                    $ids[] = $id;
+                }
+            }
+        }
+        if ($ids !== []) {
+            $this->categoriesChanged($choices, $ids);
+        }
+    }
+
+    /**
+     * A new post's category: its section's own one, or — for a member limited to some categories who
+     * may not write there — the first category of the section inside their limits (none: the
+     * section's own one, which the save then refuses in words).
+     */
+    private function defaultCategory(ContentSection $section): int
+    {
+        $root = (int) $section->taxonomy_id;
+        $user = $this->user();
+        $scopes = app(CategoryScopes::class);
+        if ($scopes->coversId($user, $root)) {
+            return $root;
+        }
+
+        return $this->choices()->firstIn($section->key, static fn (int $id): bool => $scopes->coversId($user, $id)) ?? $root;
+    }
+
+    /**
+     * A post's categories as stored, the main one first (facet terms left out).
+     *
+     * @return list<int>
+     */
+    private function storedCategories(Entry $entry): array
+    {
+        $relation = $entry->taxonomies();
+
+        return array_values(array_map(Cast::int(...), $relation->newPivotQuery()
+            ->where('position', '<', Entry::FACET_POSITION_BASE)
+            ->orderBy('position')
+            ->pluck($relation->getRelatedPivotKeyName())
+            ->all()));
+    }
+
+    /**
+     * The categories to store, decided under the post's row lock before anything is written. A member
+     * not limited stores the card's list as it is. For a limited member the list is held against what
+     * the post is stored under now (a change made elsewhere since the form opened counts): a category
+     * outside their limits is kept only while the post is still under it — one taken out elsewhere is
+     * not filed again — and EntryCategoryWriter keeps every stored one outside the limits (they never
+     * take out one they cannot see). The main category is never dropped that way (it would move the
+     * post's address): the save is refused on its field instead.
+     *
+     * @return list<int>
+     *
+     * @throws ValidationException
+     */
+    private function filedUnder(Entry $entry): array
+    {
+        $ids = array_values(array_unique($this->categoryIds));
+        if ($entry->type !== 'post') {
+            return $ids;
+        }
+        $choices = $this->choices();
+        // a section's own category means «no category»: only ever the main one
+        $ids = array_values(array_filter($ids, static fn (int $id, int $at): bool => $at === 0 || ! $choices->isSectionRoot($id), ARRAY_FILTER_USE_BOTH));
+        $stored = null;
+        if ($this->homeGoverned()) {
+            // while an approval workflow governs the post's section, its categories in other
+            // sections stay exactly as stored (read now, under the save), whatever path the list
+            // came by: one the form adds is dropped, one it lost is kept (the main one is held by
+            // the rules on categoryId)
+            $stored = $this->storedCategories($entry);
+            $held = [];
+            foreach ($ids as $id) {
+                if ($choices->sectionOf($id) === $this->sectionKey || in_array($id, $stored, true)) {
+                    $held[] = $id;
+                }
+            }
+            foreach ($stored as $id) {
+                if ($choices->sectionOf($id) !== $this->sectionKey && ! in_array($id, $held, true)) {
+                    $held[] = $id;
+                }
+            }
+            $ids = $held;
+        }
+        $user = $this->user();
+        $scopes = app(CategoryScopes::class);
+        if (! $scopes->isLimited($user)) {
+            return $ids;
+        }
+        $stored ??= $this->storedCategories($entry);
+        $form = array_values(array_filter($ids, static fn (int $id): bool => $scopes->coversId($user, $id) || in_array($id, $stored, true)));
+        if ($ids !== [] && ($form[0] ?? null) !== $ids[0]) {
+            throw ValidationException::withMessages(['categoryId' => $scopes->refusal($user)]);
+        }
+
+        return $form;
+    }
+
+    /** The post categories of this website, read once per request. */
+    private function choices(): PostCategoryChoices
+    {
+        return $this->choicesMemo ??= PostCategoryChoices::read(app(CurrentSite::class)->id(), $this->locale, app(SiteLocale::class)->default(), app(CategorySections::class));
+    }
+
+    /** Whether an approval workflow is switched on for the post's section (the card then locks the other sections' categories). */
+    private function homeGoverned(): bool
+    {
+        $for = ($this->categoryId ?? '').'|'.($this->sectionKey ?? '');
+        if ($this->homeGovernedMemo !== null && $this->homeGovernedFor === $for) {
+            return $this->homeGovernedMemo;
+        }
+        $this->homeGovernedFor = $for;
+        if ($this->sectionKey === null) {
+            return $this->homeGovernedMemo = false;
+        }
+        // the main category still in the post's section: the workflow the page already read for it
+        if ($this->categoryId !== null && $this->choices()->sectionOf($this->categoryId) === $this->sectionKey) {
+            return $this->homeGovernedMemo = $this->governingWorkflow() !== null;
+        }
+
+        // Otherwise the stored post decides, never the section the post is listed under: a post whose
+        // main category no section is built on is listed under the site's first post section
+        // (sectionOf), but no workflow of that section governs it. A main category emptied or moved out
+        // of a governed section by the form (an older copy kept on the device, the one-category field)
+        // leaves the post governed until a save, which keepsGovernedSection refuses.
+        return $this->homeGovernedMemo = $this->ulid !== null
+            && app(EntryWorkflowResolver::class)->forEntry($this->resolveOrFail($this->ulid)) !== null;
+    }
+
+    /**
+     * Where «Thêm chuyên mục mới» makes the category: at the top of the post's section, or for a
+     * limited member under the main category (which must be in this section and inside their limits,
+     * and leave room for one more level). `lock` says why it cannot, `in` names the parent when it is
+     * not the section's own category.
+     *
+     * @return array{parent: int|null, lock: string|null, in: string|null}
+     */
+    private function addPlan(PostCategoryChoices $choices): array
+    {
+        $root = $choices->rootOf($this->sectionKey);
+        $user = $this->user();
+        $scopes = app(CategoryScopes::class);
+        if (! $scopes->isLimited($user)) {
+            return ['parent' => $root, 'lock' => null, 'in' => null];
+        }
+        $main = $this->categoryId;
+        if ($main === null || $choices->sectionOf($main) !== $this->sectionKey || ! $scopes->coversId($user, $main)) {
+            return ['parent' => null, 'lock' => Cast::string(__('entries.ed.cat_add_lock_scope')), 'in' => null];
+        }
+        if ($choices->level($main) + 1 > TaxonomyRules::MAX_DEPTH) {
+            return ['parent' => null, 'lock' => Cast::string(__('entries.ed.cat_add_lock_depth', ['depth' => TaxonomyRules::MAX_DEPTH])), 'in' => null];
+        }
+
+        return ['parent' => $main, 'lock' => null, 'in' => $main === $root ? null : $choices->name($main)];
+    }
+
+    /**
+     * What the «Chuyên mục» card draws (posts only): its rows, the limits note, the «Chuyên mục chính»
+     * choices (two or more ticked), «Thêm chuyên mục mới» (who may manage categories) with where it
+     * makes the category or why it cannot, and the line naming the main category and the address.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function categoryCard(): ?array
+    {
+        if ($this->type !== 'post') {
+            return null;
+        }
+        $choices = $this->choices();
+        $user = $this->user();
+        $scopes = app(CategoryScopes::class);
+        $limited = $scopes->isLimited($user);
+        // the same answer the save gives (CategoryScopes::coversId), category by category
+        $inside = $limited ? static fn (int $id): bool => $scopes->coversId($user, $id) : null;
+        $rows = $choices->rows($this->sectionKey, $this->categoryIds, $inside, $this->homeGoverned(), $this->unit());
+        // «Chuyên mục chính» offers the ticked rows in the post's order, the main one first
+        $byUlid = array_column($rows, null, 'ulid');
+        $primary = [];
+        foreach ($this->categoryIds as $id) {
+            $row = $byUlid[$choices->ulidOf($id) ?? ''] ?? null;
+            if ($row !== null && $row['on']) {
+                $primary[] = ['ulid' => $row['ulid'], 'label' => $row['label'].($row['section'] !== null ? ' ('.$row['section'].')' : ''),
+                    'main' => $row['main'], 'locked' => $row['locked'] && ! $row['main']];
+            }
+        }
+        $main = $this->categoryId;
+        $mainName = $main !== null && ! $choices->isSectionRoot($main) ? $choices->name($main) : null;
+        $link = preg_replace('#^https?://#', '', $this->address['base'].$this->slug) ?? '';
+
+        return [
+            'rows' => $rows,
+            'scopeNote' => $limited ? $scopes->refusal($user) : null,
+            'primary' => count($primary) >= 2 ? $primary : [],
+            'add' => $user->can('create', Taxonomy::class) ? $this->addPlan($choices) : null,
+            'note' => $mainName !== null
+                ? Cast::string(__('entries.ed.cat_note_main', ['name' => $mainName, 'link' => $link]))
+                : Cast::string(__('entries.ed.cat_note_none', ['unit' => Str::ucfirst($this->unit()), 'section' => $choices->sectionLabel($this->sectionKey) ?? $this->listLabel])),
+        ];
     }
 
     /**
@@ -1682,7 +2128,7 @@ final class Editor extends Component
                 ? __('entries.ed.body_placeholder', ['unit' => mb_strtolower($this->unit())])
                 : __('entries.ed.body_placeholder_tr', ['lang' => Locales::label($this->locale)]),
             'schemas' => $schemas,
-            'categories' => $this->type === 'post' ? $this->availableCategories() : [],
+            'categoryCard' => $this->categoryCard(),
             'urls' => $urls,
             'coverUrl' => $this->coverImageKey !== '' ? $urls->url($this->coverImageKey, 640) : null,
             'blockImageUrls' => $this->resolveBlockImageUrls($schemas),
@@ -1807,7 +2253,9 @@ final class Editor extends Component
                 $this->{$field} = $kept[$field];
             }
         }
-        if ($this->type === 'post' && array_key_exists('categoryId', $kept)) {
+        if ($this->type === 'post' && is_array($kept['categoryIds'] ?? null)) {
+            $this->restoreCategories($kept['categoryIds']);
+        } elseif ($this->type === 'post' && array_key_exists('categoryId', $kept)) {
             $this->categoryId = self::idOrNull($kept['categoryId']);
             $this->updatedCategoryId();
         }
@@ -1823,7 +2271,8 @@ final class Editor extends Component
 
     /**
      * The fingerprint of what is stored now, read inside the save's transaction after the entry's
-     * row lock: this language's row and, for a post, its main category. The cover comes from the
+     * row lock: this language's row and, for a post, its categories in order (the main one first:
+     * another save that ticked or unticked one is a change too). The cover comes from the
      * locked entry row.
      *
      * @return array{print: array<string, string>, translation: EntryTranslation|null}
@@ -1833,22 +2282,17 @@ final class Editor extends Component
         // The whole row: the save writes through this same model, so the check costs no extra read.
         $translation = $entry->translations()->where('locale', $this->locale)->first();
 
-        return ['print' => self::printOf($translation, $entry->meta, $this->storedCategory($entry)), 'translation' => $translation];
-    }
-
-    /** A post's main category as stored now (a page has none). */
-    private function storedCategory(Entry $entry): ?int
-    {
-        return $this->type === 'post' ? self::idOrNull($entry->taxonomies()->wherePivot('position', 0)->value('taxonomies.id')) : null;
+        return ['print' => self::printOf($translation, $entry->meta, $this->type === 'post' ? $this->storedCategories($entry) : []), 'translation' => $translation];
     }
 
     /**
      * One fingerprint per value a save writes. The body is compared with its keys in a fixed order, so
      * the database's own key order never reads as a change.
      *
+     * @param  list<int>  $categoryIds  a post's categories, the main one first (none for a page)
      * @return array<string, string>
      */
-    private static function printOf(?EntryTranslation $translation, mixed $meta, ?int $categoryId): array
+    private static function printOf(?EntryTranslation $translation, mixed $meta, array $categoryIds): array
     {
         $cover = is_array($meta) ? ($meta['image_url'] ?? null) : null;
 
@@ -1860,7 +2304,7 @@ final class Editor extends Component
             'seo_title' => md5((string) $translation?->seo_title),
             'seo_description' => md5((string) $translation?->seo_description),
             'cover' => md5(is_string($cover) ? $cover : ''),
-            'category' => (string) ($categoryId ?? ''),
+            'category' => implode(',', $categoryIds),
         ];
     }
 
@@ -1934,16 +2378,20 @@ final class Editor extends Component
         $storedBody = $prose->read($storedBlocks);
         $cover = data_get($entry->meta, 'image_url');
         $categories = [];
+        $theirIds = array_values(array_filter(array_map(self::idOrNull(...), explode(',', $print['category'] ?? ''))));
         if (($print['category'] ?? '') !== ($this->storedPrint['category'] ?? '')) {
             $categories = TaxonomyTranslation::query()
-                ->whereIn('taxonomy_id', array_filter([$this->categoryId, self::idOrNull($print['category'])]))
+                ->whereIn('taxonomy_id', array_values(array_unique([...$this->categoryIds, ...$theirIds])))
                 ->where('locale', $this->locale)
                 ->pluck('name', 'taxonomy_id')->all();
         }
-        $categoryName = static function (?int $id) use ($categories): string {
-            $name = $id !== null ? ($categories[$id] ?? null) : '';
+        // a post's categories as the card lists them, the main one first
+        $categoryNames = static function (array $ids) use ($categories): string {
+            return implode(', ', array_map(static function (mixed $id) use ($categories): string {
+                $name = $categories[Cast::int($id)] ?? null;
 
-            return is_string($name) ? $name : (string) __('entries.unnamed');
+                return is_string($name) ? $name : (string) __('entries.unnamed');
+            }, $ids));
         };
 
         $fields = [
@@ -1956,7 +2404,7 @@ final class Editor extends Component
             'seo_title' => [__('admin.seo.title_label'), $this->seoTitle, (string) $translation?->seo_title],
             'seo_description' => [__('admin.seo.description_label'), $this->seoDescription, (string) $translation?->seo_description],
             'cover' => [__('entries.ed.card_cover'), $this->coverName($this->coverImageKey), $this->coverName(is_string($cover) ? $cover : '')],
-            'category' => [__('entries.ed.card_category'), $categoryName($this->categoryId), $categoryName(self::idOrNull($print['category']))],
+            'category' => [__('entries.ed.card_category'), $categoryNames($this->categoryIds), $categoryNames($theirIds)],
         ];
 
         $rows = [];
@@ -2001,7 +2449,11 @@ final class Editor extends Component
         $values = [];
         foreach (self::TRACKED as $field) {
             $value = $this->{$field};
-            $values[$field] = is_scalar($value) ? (string) $value : '';
+            $values[$field] = match (true) {
+                is_array($value) => (string) json_encode($value),
+                is_scalar($value) => (string) $value,
+                default => '',
+            };
         }
         $values['blocks'] = $this->blocksHash();
 
@@ -2751,6 +3203,10 @@ final class Editor extends Component
                 $this->keepsGovernedSection(...),
                 $this->staysInCategoryLimits(...),
             ];
+            // the other categories: each one a post category of this website, at most what the pivot
+            // keeps below the facet terms
+            $rules['categoryIds'] = ['array', 'max:'.(Entry::FACET_POSITION_BASE - 1), $this->arePostCategories(...)];
+            $rules['categoryIds.*'] = ['integer', 'distinct'];
         }
 
         return $rules;
@@ -2786,6 +3242,29 @@ final class Editor extends Component
     }
 
     /**
+     * Every id in the list a post category of this website: one count, scoped to the site, however
+     * many there are (`integer` / `max` report a bad list).
+     */
+    private function arePostCategories(string $attribute, mixed $value, Closure $fail): void
+    {
+        if (! is_array($value) || $value === [] || count($value) >= Entry::FACET_POSITION_BASE) {
+            return;
+        }
+        $ids = [];
+        foreach ($value as $id) {
+            if (! is_int($id)) {
+                return;
+            }
+            $ids[$id] = true;
+        }
+        // BelongsToSite's scope keeps the explicit site_id = ? on the count
+        $found = Taxonomy::query()->where('vocabulary', 'post_cat')->whereIn('id', array_keys($ids))->count();
+        if ($found !== count($ids)) {
+            $fail(__('entries.category_invalid'));
+        }
+    }
+
+    /**
      * A member limited to some categories files a post only inside them (EntryPolicy::fileUnder):
      * said on the field here; EntryCategoryWriter refuses the write itself whatever the form sends.
      */
@@ -2810,6 +3289,7 @@ final class Editor extends Component
             ...self::onFormFields(app(EntryContentRules::class)->messages()),
             'categoryId.required' => __('entries.category_required'),
             'categoryId.exists' => __('entries.category_invalid'),
+            'categoryIds.*' => __('entries.category_invalid'),
         ];
     }
 
@@ -2950,6 +3430,7 @@ final class Editor extends Component
         }
         $wasNew = $this->ulid === null;
         $current = null;
+        $filing = $this->categoryIds;
 
         if ($this->ulid === null) {
             $this->authorize('create', Entry::class);
@@ -3013,6 +3494,17 @@ final class Editor extends Component
 
                 return null;
             }
+            // where the post is filed, held against its stored categories under the row lock
+            try {
+                $filing = $this->filedUnder($entry);
+            } catch (ValidationException $e) {
+                if ($filled) {
+                    $this->slug = '';
+                }
+                $this->saveFailed = true;
+
+                throw $e;
+            }
             $current = $stored['translation'] ?? $entry->translations()->make(['locale' => $this->locale]);
         }
         $this->overwrite = null;
@@ -3051,7 +3543,16 @@ final class Editor extends Component
         app(EntryBlockMediaReconciler::class)->reconcile($entry);
 
         if ($this->type === 'post') {
-            app(EntryCategoryWriter::class)->assign($entry, $this->categoryId !== null ? [$this->categoryId] : [], $this->user());
+            $before = $this->saved['categoryIds'] ?? '';
+            // the card shows what was stored: a category dropped above leaves it, one kept outside the
+            // member's limits stays in it
+            $this->categoryIds = app(EntryCategoryWriter::class)->assign($entry, $filing, $this->user());
+            $this->categoryId = $this->categoryIds[0] ?? null;
+            if ($before !== json_encode($this->categoryIds)) {
+                $this->choicesMemo = null;
+                // a main category in another section moves the post there: its list and crumb follow
+                $this->placeInList($this->sectionOf($this->categoryId !== null ? Taxonomy::query()->find($this->categoryId) : null));
+            }
         }
 
         // A save on live content is what visitors now see: keep that version (skipped when unchanged).
@@ -3075,7 +3576,7 @@ final class Editor extends Component
         $this->loadedAt = $this->savedAt;
         // What this save stored is what the next one compares against (the written model holds it).
         // The main category just written is the form's own value, so it needs no second read.
-        $this->storedPrint = self::printOf($translation, $entry->meta, $this->type === 'post' ? $this->categoryId : null);
+        $this->storedPrint = self::printOf($translation, $entry->meta, $this->type === 'post' ? $this->categoryIds : []);
         $this->mayPublish = $this->user()->can('publish', $entry);
         if ($wasNew) {
             $this->frameRights($entry);
@@ -3480,30 +3981,6 @@ final class Editor extends Component
         }
 
         return ContentSection::query()->where('key', $key)->first();
-    }
-
-    /**
-     * Post categories (post_cat) for the picker, mapped to id + localized name.
-     *
-     * @return list<array{id: int, name: string}>
-     */
-    private function availableCategories(): array
-    {
-        $categories = Taxonomy::query()
-            ->where('vocabulary', 'post_cat')
-            ->with('translations:id,taxonomy_id,locale,name,slug')
-            ->get()
-            ->map(function (Taxonomy $taxonomy): array {
-                $translation = $taxonomy->translationFor($this->locale);
-
-                return [
-                    'id' => $taxonomy->id,
-                    'name' => $translation instanceof TaxonomyTranslation ? $translation->name : __('entries.unnamed'),
-                ];
-            })
-            ->all();
-
-        return array_values($categories);
     }
 
     /**

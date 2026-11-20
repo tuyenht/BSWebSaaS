@@ -29,15 +29,20 @@ final class EntryCategoryWriter
 {
     /**
      * File $entry under $categoryIds (index 0 = primary) on behalf of $actor (null: no person acts).
+     * Returns the categories written, in order (those outside the actor's limits it kept included).
      *
      * @param  list<int>  $categoryIds
+     * @return list<int>
      *
      * @throws AuthorizationException the primary category, or an added or removed one, lies outside the actor's limits
      */
-    public function assign(Entry $entry, array $categoryIds, ?User $actor): void
+    public function assign(Entry $entry, array $categoryIds, ?User $actor): array
     {
-        $entry->assignCategories($this->resolve($entry, $categoryIds, $actor));
+        $written = $this->resolve($entry, $categoryIds, $actor);
+        $entry->assignCategories($written);
         $entry->unsetRelation('taxonomies');
+
+        return $written;
     }
 
     /**
