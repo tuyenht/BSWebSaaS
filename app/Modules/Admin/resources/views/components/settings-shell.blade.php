@@ -62,6 +62,9 @@
             if (Route::has('admin.settings.floating-contact')) {
                 $workspace[] = ['key' => 'floating', 'route' => 'admin.settings.floating-contact', 'label' => __('admin.fc.title')];
             }
+            if (Route::has('admin.settings.redirects')) {
+                $workspace[] = ['key' => 'redirects', 'route' => 'admin.settings.redirects', 'label' => __('admin.rd.title')];
+            }
             if (Route::has('admin.settings.integrations')) {
                 $workspace[] = ['key' => 'integrations', 'route' => 'admin.settings.integrations', 'label' => __('admin.int.title')];
             }

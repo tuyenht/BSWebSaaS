@@ -11,6 +11,7 @@ use App\Modules\Cms\Console\PruneEntryRevisions;
 use App\Modules\Cms\Console\PublishDueEntries;
 use App\Modules\Cms\Console\PurgeTrashedEntries;
 use App\Modules\Cms\Console\PurgeTrashedMenuItems;
+use App\Modules\Cms\Console\PurgeTrashedRedirects;
 use App\Modules\Cms\Console\RebuildTaxonomyPaths;
 use App\Modules\Cms\Console\ReconcileCategoryCounts;
 use App\Modules\Cms\Console\ReconcileCategoryPublicCounts;
@@ -156,6 +157,7 @@ final class CmsServiceProvider extends ServiceProvider
                 FillMissingUlids::class,
                 PurgeTrashedMenuItems::class,
                 PurgeTrashedEntries::class,
+                PurgeTrashedRedirects::class,
                 CountWrongTemplates::class,
                 ReconcileCategoryCounts::class,
                 ReconcileCategoryPublicCounts::class,

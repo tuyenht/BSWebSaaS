@@ -24,6 +24,9 @@ Schedule::command('products:purge-trash')->daily()->withoutOverlapping();
 // cms.trash_retention_days, EntryTrash).
 Schedule::command('entries:purge-trash')->daily()->withoutOverlapping();
 
+// Empty each site's redirect Trash of redirects removed more than 30 days ago (Redirect::TRASH_DAYS).
+Schedule::command('redirects:purge-trash')->daily()->withoutOverlapping();
+
 // Re-count every category's posts and products and correct a drifted total (logged per drift).
 // 20:15 UTC is 03:15 in Vietnam: the sites are quiet, and the purges (00:00 UTC) and the audit
 // month check (03:00 UTC) run hours apart from it.

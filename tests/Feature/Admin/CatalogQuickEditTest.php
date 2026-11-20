@@ -414,7 +414,7 @@ function qeViolation(string $index): UniqueConstraintViolationException
 
 it('maps a unique violation by the index that was violated and rethrows any other', function (): void {
     $route = UniqueViolation::refusal(qeViolation('routes_site_id_locale_path_unique'));
-    $redirect = UniqueViolation::refusal(qeViolation('redirects_site_id_locale_from_path_unique'));
+    $redirect = UniqueViolation::refusal(qeViolation('redirects_site_id_locale_from_path_live_unique'));
     $sku = UniqueViolation::refusal(qeViolation('products_site_sku_unique'));
 
     expect($route->getMessage())->toBe(__('catalog.slug_conflict'))->and($route->field)->toBe('slug')

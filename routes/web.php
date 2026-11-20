@@ -47,6 +47,7 @@ use App\Modules\Admin\Livewire\Platform\Tenants\Index;
 use App\Modules\Admin\Livewire\ResetPassword;
 use App\Modules\Admin\Livewire\SeoSettings;
 use App\Modules\Admin\Livewire\Settings\Domains as DomainSettings;
+use App\Modules\Admin\Livewire\Settings\Redirects as RedirectSettings;
 use App\Modules\Admin\Livewire\SocialSettings;
 use App\Modules\Admin\Livewire\TwoFactorChallenge;
 use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
@@ -270,6 +271,9 @@ Route::prefix(config('admin.prefix', 'admin'))
         Route::get('/settings/catalog', CatalogSettings::class)->middleware('can:settings.manage')->name('admin.settings.catalog');
         Route::get('/settings/integrations', IntegrationsSettings::class)->middleware('can:settings.manage')->name('admin.settings.integrations');
         Route::get('/settings/floating-contact', FloatingContactSettings::class)->middleware('can:settings.manage')->name('admin.settings.floating-contact');
+        // The site's redirects (old address → new one). settings.manage, checked by the component
+        // itself (no route gate: a member without it gets the board's no-permission card).
+        Route::get('/settings/redirects', RedirectSettings::class)->name('admin.settings.redirects');
         // The site's domain names: whoever holds domains.view may look, domains.manage may change.
         // The component checks both itself (no route gate: a viewer gets the no-permission card).
         Route::get('/settings/domains', DomainSettings::class)->name('admin.settings.domains');
