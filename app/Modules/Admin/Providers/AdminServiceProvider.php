@@ -11,6 +11,8 @@ use App\Modules\Admin\Listeners\SetTenantReplyTo;
 use App\Modules\Admin\Listeners\TellSiteAboutDomain;
 use App\Modules\Admin\Livewire\Account;
 use App\Modules\Admin\Livewire\AdminUiSettings;
+use App\Modules\Admin\Livewire\Blocks\Editor as BlockEditor;
+use App\Modules\Admin\Livewire\Blocks\Library as BlockLibrary;
 use App\Modules\Admin\Livewire\Catalog\Editor as CatalogEditor;
 use App\Modules\Admin\Livewire\Catalog\Index as CatalogIndex;
 use App\Modules\Admin\Livewire\CatalogSettings;
@@ -137,6 +139,8 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.entries.editor', Editor::class);
         Livewire::component('admin.users.index', UsersIndex::class);
         Livewire::component('admin.menus.index', MenusIndex::class);
+        Livewire::component('admin.blocks.library', BlockLibrary::class);
+        Livewire::component('admin.blocks.editor', BlockEditor::class);
         Livewire::component('admin.categories.index', CategoriesIndex::class);
         Livewire::component('admin.platform.tenants.index', PlatformTenantsIndex::class);
         Livewire::component('admin.platform.tenants.detail', PlatformTenantsDetail::class);

@@ -12,6 +12,8 @@ use App\Modules\Admin\Http\Middleware\TrackSignedInDevice;
 use App\Modules\Admin\Livewire\AcceptInvitation;
 use App\Modules\Admin\Livewire\Account;
 use App\Modules\Admin\Livewire\AdminUiSettings;
+use App\Modules\Admin\Livewire\Blocks\Editor as BlockEditor;
+use App\Modules\Admin\Livewire\Blocks\Library as BlockLibrary;
 use App\Modules\Admin\Livewire\Catalog\Editor as CatalogEditor;
 use App\Modules\Admin\Livewire\Catalog\Index as CatalogIndex;
 use App\Modules\Admin\Livewire\CatalogSettings;
@@ -55,6 +57,7 @@ use App\Modules\Admin\Livewire\WebsiteAppearanceSettings;
 use App\Modules\Admin\Livewire\WorkflowSettings;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Audit\Facades\Audit;
+use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
@@ -323,6 +326,9 @@ Route::prefix(config('admin.prefix', 'admin'))
         Route::get('/taxonomies', CategoriesIndex::class)->middleware('can:taxonomies.manage')->name('admin.taxonomies.index');
         // Trình đơn: the component re-checks menus.manage on every request (boot) and per method.
         Route::get('/menus', MenusIndex::class)->middleware('can:menus.manage')->name('admin.menus.index');
+        // Thư viện khối: both screens re-check the plan's module and ContentBlockPolicy on every request (boot).
+        Route::get('/blocks', BlockLibrary::class)->middleware('can:create,'.ContentBlock::class)->name('admin.blocks.index');
+        Route::get('/blocks/{ulid}/edit', BlockEditor::class)->middleware('can:create,'.ContentBlock::class)->name('admin.blocks.edit');
 
         // Khách liên hệ (contacts module): the list and the lead being read on one screen; the old
         // detail address opens that lead. No `can:` here: a member without forms.view sees the

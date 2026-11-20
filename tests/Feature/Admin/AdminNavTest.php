@@ -191,7 +191,7 @@ it('cuts the menu into the untitled top, then the content, tools and system grou
         ->and($byKey['content']->label)->toBe(__('admin.nav_group.content'))
         ->and(array_map(fn (NavItem $i): string => $i->key, $byKey['content']->items))->toContain('pages', 'posts')
         ->and($byKey['tools']->label)->toBe(__('admin.nav_group.tools'))
-        ->and(array_map(fn (NavItem $i): string => $i->key, $byKey['tools']->items))->toBe(['media', 'contacts', 'forms', 'menus'])
+        ->and(array_map(fn (NavItem $i): string => $i->key, $byKey['tools']->items))->toBe(['media', 'contacts', 'forms', 'menus', 'blocks'])
         ->and($byKey['system']->label)->toBe(__('admin.nav_group.system'))
         ->and(array_map(fn (NavItem $i): string => $i->key, $byKey['system']->items))->toBe(['users', 'settings']);
 });

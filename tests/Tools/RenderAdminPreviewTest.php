@@ -21,6 +21,7 @@
  * render with the real compiled CSS/JS, so build the front end first (pnpm run build).
  */
 
+use App\Modules\Admin\Livewire\Blocks\Library as BlockLibrary;
 use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Admin\Livewire\Catalog\Index;
 use App\Modules\Admin\Livewire\Forms\FormList;
@@ -44,6 +45,7 @@ use App\Modules\Cms\Actions\RecordEntryRevision;
 use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
 use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Enums\RevisionKind;
+use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Cms\Models\Menu;
@@ -286,6 +288,23 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-state="form-off"');
     file_put_contents($dir.'/leads-form-off.html', $html);
     app(Tenancy::class)->enter(1, fn () => $contact->update(['status' => 'active']));
+
+    // Thư viện khối tái dùng: three blocks in three regions, the block editor of the footer, and «Xóa» asked on it.
+    $footerBlock = app(Tenancy::class)->enter(1, function (): ContentBlock {
+        ContentBlock::query()->create(['key' => 'cta-khuyen-mai', 'name' => 'CTA khuyến mãi tháng 12', 'region' => 'inline']);
+        ContentBlock::query()->create(['key' => 'bang-lon-san-pham', 'name' => 'Bảng lớn sản phẩm', 'region' => 'menu']);
+
+        return ContentBlock::query()->create(['key' => 'chan-trang', 'name' => 'Chân trang chung', 'region' => 'footer', 'status' => 'published']);
+    });
+    foreach (['blocks' => '/admin/blocks', 'blocks-edit' => '/admin/blocks/'.$footerBlock->ulid.'/edit'] as $name => $path) {
+        $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.$path)->assertOk()->getContent();
+        file_put_contents($dir.'/'.$name.'.html', $html);
+    }
+    $blocksPage = (string) file_get_contents($dir.'/blocks.html');
+    $askBlock = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(BlockLibrary::class)
+        ->call('askDelete', $footerBlock->ulid)->assertSet('confirmOpen', true)->html());
+    expect($askBlock)->toContain('role="alertdialog"', __('blocks.del_title'));
+    file_put_contents($dir.'/blocks-delete.html', str_replace('</body>', $askBlock.'</body>', $blocksPage));
 
     // The platform Audit log, as a support operator, with a member's row and a support sign-in row.
     DB::connection('pgsql_admin')->statement('truncate audit_logs restart identity cascade');
@@ -1139,5 +1158,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     file_put_contents($dir.'/media-trash-own-ask.html', $swap($html, $ownAsk, $media));
     config(['media' => $mediaConfig]);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 91);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 94);
 });
