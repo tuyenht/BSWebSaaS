@@ -179,6 +179,16 @@ it('refuses a cycle written by one multi-row INSERT or one UPDATE of two folders
         ->toThrow(QueryException::class, 'at most two levels');
     expect(app(Tenancy::class)->enter(1, fn () => MediaFolder::query()->whereNotNull('parent_id')->count()))->toBe(0);
 
+    // a folder that takes the id its sub-folder points at, while it sits under another folder: refused
+    // by the primary key when Postgres meets the rows in one order, by the trigger (it watches id) in the other
+    $p = seedMediaFolder(1, ['name' => 'P', 'slug' => 'p']);
+    $k = seedMediaFolder(1, ['name' => 'K', 'slug' => 'k', 'parent_id' => $p->id]);
+    $r = seedMediaFolder(1, ['name' => 'R', 'slug' => 'r']);
+    $q = seedMediaFolder(1, ['name' => 'Q', 'slug' => 'q', 'parent_id' => $r->id]);
+    expect(fn () => rawFolderWrite(1, "update media_folders set id = case id when {$p->id} then 99999 else {$p->id} end where id in ({$p->id}, {$q->id})"))
+        ->toThrow(QueryException::class);
+    expect(app(Tenancy::class)->enter(1, fn () => MediaFolder::query()->whereIn('slug', ['p', 'q'])->orderBy('slug')->pluck('id')->all()))->toBe([$p->id, $q->id]);
+
     // a two-level family in one INSERT is still fine, the child row first
     rawFolderWrite(1, "insert into media_folders (id, site_id, name, slug, parent_id, position) values
         (930, 1, 'Con', 'con', 931, 1), (931, 1, 'Cha', 'cha', null, 1)");

@@ -5939,7 +5939,7 @@
     "media.lib.kids_open": "Open the subfolders of “:name”",
     "media.lib.kids_close": "Collapse the subfolders of “:name”",
     "media.lib.in_folder": " (in “:name”)",
-    "media.lib.folder_deleting": "Moving :n files of folder \":name\" back to All images (Unsorted)… The folder disappears once they are moved; there is no Undo.",
+    "media.lib.folder_deleting": "Moving the files of folder \":name\" back to All images (Unsorted)… The folder disappears once they are moved; there is no Undo. If the folder is still there after a few minutes, delete it again.",
     "media.lib.folder_back": "Folder \":name\" restored.",
     "media.lib.folder_undo_gone": "It is too late to undo this. Create the folder again and move the files into it if you need to.",
     "media.lib.folder_sheet_title": "Folder \":name\"",

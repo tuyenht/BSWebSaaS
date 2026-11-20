@@ -19,7 +19,8 @@ use Illuminate\Support\Facades\DB;
  *     sub-folders, on INSERT and UPDATE alike. It is an AFTER trigger, so Postgres runs it at the end
  *     of the statement, when every row the statement wrote is there to be seen: one multi-row INSERT
  *     or UPDATE cannot chain three levels, nor close a cycle (10 → 11 → 10: each row's parent then
- *     has a parent), through rows that did not exist yet when an earlier row was checked. Two people
+ *     has a parent), through rows that did not exist yet when an earlier row was checked. A change
+ *     of id fires it too (a folder taking the id that sub-folders point at). Two people
  *     moving folders at once could each pass that check against the other's old state, so the
  *     trigger first takes the website's folder-tree lock (an advisory lock held to the end of the
  *     transaction, the same key the app takes before its own checks): the second writer waits, then
@@ -73,7 +74,7 @@ return new class extends Migration
 
             DROP TRIGGER IF EXISTS media_folders_two_levels ON public.media_folders;
             CREATE TRIGGER media_folders_two_levels
-                AFTER INSERT OR UPDATE OF parent_id, site_id ON public.media_folders
+                AFTER INSERT OR UPDATE OF parent_id, site_id, id ON public.media_folders
                 FOR EACH ROW
                 WHEN (NEW.parent_id IS NOT NULL)
                 EXECUTE FUNCTION public.media_folders_two_levels();

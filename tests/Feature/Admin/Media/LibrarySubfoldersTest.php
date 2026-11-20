@@ -9,6 +9,7 @@ use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
@@ -350,12 +351,79 @@ it('counts the sub-folders\' files toward a folder delete left to the queued job
     Queue::assertPushed(DeleteLargeMediaFolder::class, fn (DeleteLargeMediaFolder $job): bool => $job->folderId === $a->id);
     expect(sfTree(1))->toHaveCount(4);
 
-    expect((new DeleteLargeMediaFolder(1, $a->id))->handle(app(Tenancy::class)))->toBeTrue();
+    $unfiled = 0; // the job's own batches (folder_id set to null), one file each here
+    DB::listen(function ($query) use (&$unfiled): void {
+        if (str_starts_with($query->sql, 'update "media" set "folder_id" = ?') && array_key_exists(0, $query->bindings) && $query->bindings[0] === null) {
+            $unfiled++;
+        }
+    });
+    expect((new DeleteLargeMediaFolder(1, $a->id))->handle(app(Tenancy::class)))->toBeTrue()
+        ->and($unfiled)->toBe(4) // every file of the family by the job, none left to the row delete
+        ->and(DeleteLargeMediaFolder::pending(1, $a->id))->toBeFalse();
     app(Tenancy::class)->enter(1, function () use ($files, $kept, $other): void {
         expect(MediaFolder::query()->pluck('slug')->all())->toBe(['san-pham'])
             ->and(Media::query()->whereKey(array_map(fn (Media $f): int => $f->id, $files))->whereNull('folder_id')->count())->toBe(4)
             ->and(Media::query()->find($kept->id)?->folder_id)->toBe($other->id);
     });
+});
+
+it('keeps the files of a sub-folder moved out while the queued job is emptying its old parent', function (): void {
+    config(['media.folder_delete_batch_files' => 1]);
+    $a = sfFolder(1, 'Ảnh xưởng', 'anh-xuong', 1);
+    $k1 = sfFolder(1, 'Máy CNC', 'may-cnc', 1, $a);
+    $k2 = sfFolder(1, 'Máy tiện', 'may-tien', 2, $a);
+    sfFile(1, 'cnc.png', $k1);
+    $stays = [sfFile(1, 'tien-1.png', $k2), sfFile(1, 'tien-2.png', $k2)];
+
+    // after the job's first batch, someone moves «Máy tiện» up to the top level
+    $moved = false;
+    DB::listen(function ($query) use (&$moved, $k2): void {
+        if (! $moved && str_starts_with($query->sql, 'update "media" set "folder_id" = ?')) {
+            $moved = true;
+            DB::table('media_folders')->where('id', $k2->id)->update(['parent_id' => null]);
+        }
+    });
+    expect((new DeleteLargeMediaFolder(1, $a->id))->handle(app(Tenancy::class)))->toBeTrue()->and($moved)->toBeTrue();
+
+    expect(sfTree(1))->toBe(['may-tien' => ['parent' => null, 'position' => 2]])
+        ->and(app(Tenancy::class)->enter(1, fn () => Media::query()->whereKey([$stays[0]->id, $stays[1]->id])->where('folder_id', $k2->id)->count()))->toBe(2);
+});
+
+it('puts nothing new under a folder while the queued job deletes it', function (): void {
+    config(['media.folder_delete_inline_max_files' => 1]);
+    Queue::fake();
+    $user = sfUser('admin');
+    $a = sfFolder(1, 'Ảnh xưởng', 'anh-xuong', 1);
+    $kid = sfFolder(1, 'Máy CNC', 'may-cnc', 1, $a);
+    sfFolder(1, 'Sản phẩm', 'san-pham', 2);
+    sfFile(1, 'a.png', $a);
+    sfFile(1, 'b.png', $a);
+
+    app(Tenancy::class)->enter(1, function () use ($user, $a): void {
+        // a sub-folder deleted first, with Hoàn tác
+        $undo = Livewire::actingAs($user)->test(Library::class)->call('askDeleteFolder', 'may-cnc');
+        expect($undo->get('undoFolder'))->not->toBe('');
+        Livewire::actingAs($user)->test(Library::class)->call('askDeleteFolder', 'anh-xuong')->call('confirmDeleteFolder');
+        expect(DeleteLargeMediaFolder::pending(1, $a->id))->toBeTrue();
+
+        // no new sub-folder, no move into it
+        Livewire::actingAs($user)->test(Library::class)
+            ->call('openNewFolder', 'anh-xuong')->set('newFolderName', 'Mới')->call('createFolder')
+            ->assertHasErrors('newFolderParent');
+        Livewire::actingAs($user)->test(Library::class)
+            ->call('openReparent', 'san-pham')->set('reparentTo', 'anh-xuong')->call('confirmReparent');
+        // Hoàn tác of the sub-folder brings it back at the top level, not into the folder being deleted
+        $undo->call('undoFolderDelete');
+    });
+    expect(sfTree(1))->toBe([
+        'anh-xuong' => ['parent' => null, 'position' => 2],
+        'may-cnc' => ['parent' => null, 'position' => 1], // its old place, first, but at the top level
+        'san-pham' => ['parent' => null, 'position' => 3],
+    ]);
+
+    // a job out of tries leaves the folder usable again
+    (new DeleteLargeMediaFolder(1, $a->id))->failed(null);
+    expect(DeleteLargeMediaFolder::pending(1, $a->id))->toBeFalse();
 });
 
 it('asks before deleting empty sub-folders too, saying no file is affected', function (): void {
