@@ -25,8 +25,8 @@ use Illuminate\Support\Facades\DB;
  * Trash and due goes live; anything else is left exactly as the editor put it.
  *
  * The scheduler is not an approver: an entry scheduled while tier-1 was in force whose section
- * has SINCE been put under a workflow stays where it is (the editor shows it at the flow's first
- * stage), rather than being pushed live behind the gate's back.
+ * has SINCE been put under a workflow is refused here (WorkflowGovernedException), never pushed live
+ * behind the gate's back; entries:publish-due then holds it back through ApproveEntryForLater.
  */
 final readonly class PublishScheduledEntry
 {

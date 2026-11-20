@@ -3315,6 +3315,7 @@
     "notifications.workflow.scheduled.failed_approver": "「:title」は予約した時刻に公開できませんでした：この予約を承認した人がいなくなりました（承認した人のアカウントが削除されたか、承認フローが止まっている間に予約されました）。記事を開いてもう一度確認してください。",
     "notifications.workflow.scheduled.failed_right": "「:title」は予約した時刻に公開できませんでした：承認した人にこの記事を公開する権限がなくなりました。記事を開いてもう一度確認してください。",
     "notifications.workflow.scheduled.failed_flow": "「:title」は予約した時刻に公開できませんでした：記事が承認された後にカテゴリーの承認フローが変わりました。記事を開いてもう一度確認してください。",
+    "notifications.workflow.scheduled.failed_draft": "「:title」は予約した時刻に公開できませんでした：カテゴリーの現在の承認フローでは、この予約は承認されていません。記事は下書きに戻りました — 準備ができたら記事を開いて承認を依頼してください。",
     "notifications.lead.new": ":name さんから新しいお問い合わせがあります。",
     "notifications.security.new_device_login": "あなたのアカウントが新しい端末からログインしました。",
     "notifications.security.two_factor_disabled": ":at にアカウントの2段階認証がオフになりました。",

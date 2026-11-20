@@ -3315,6 +3315,7 @@
     "notifications.workflow.scheduled.failed_approver": "Bài «:title» chưa đăng được theo giờ hẹn: không còn người duyệt nào đứng sau giờ hẹn này (tài khoản người duyệt đã bị xoá, hoặc bài được hẹn giờ khi quy trình duyệt đang tắt). Mở bài để duyệt lại.",
     "notifications.workflow.scheduled.failed_right": "Bài «:title» chưa đăng được theo giờ hẹn: người duyệt không còn quyền đăng bài này. Mở bài để duyệt lại.",
     "notifications.workflow.scheduled.failed_flow": "Bài «:title» chưa đăng được theo giờ hẹn: quy trình duyệt của chuyên mục đã đổi sau khi bài được duyệt. Mở bài để duyệt lại.",
+    "notifications.workflow.scheduled.failed_draft": "Bài «:title» chưa đăng được theo giờ hẹn: giờ hẹn này không còn được duyệt theo quy trình duyệt hiện tại của chuyên mục. Bài đã về bản nháp — mở bài và gửi duyệt khi sẵn sàng.",
     "notifications.lead.new": "Có khách liên hệ mới: :name.",
     "notifications.security.new_device_login": "Tài khoản của bạn vừa đăng nhập từ một thiết bị mới.",
     "notifications.security.two_factor_disabled": "Xác thực 2 lớp của tài khoản đã được tắt lúc :at.",

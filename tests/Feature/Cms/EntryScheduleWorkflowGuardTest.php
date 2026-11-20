@@ -8,6 +8,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
+use App\Modules\Notifications\Models\SiteNotification;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -149,15 +150,17 @@ it('sends a governed post back to the flow start when the status menu takes it o
     });
 });
 
-it('leaves a pre-workflow scheduled post alone once its section is governed, while still publishing the rest', function (): void {
+it('holds back a pre-workflow scheduled post once its section is governed: a draft again at the flow start, its author told, once, while still publishing the rest', function (): void {
     $editor = User::factory()->create();
+    $author = User::factory()->create();
 
-    app(Tenancy::class)->enter(1, function () use ($editor): void {
+    $postUlid = app(Tenancy::class)->enter(1, function () use ($editor, $author): string {
         grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
 
         // Scheduled while tier-1 was in force…
         $post = schedulableNewsPost();
-        app(TransitionEntryStatus::class)->handle($post, EntryStatus::Scheduled, $editor->fresh(), now()->addMinute());
+        $post->update(['author_id' => $author->id]);
+        app(TransitionEntryStatus::class)->handle($post->fresh(), EntryStatus::Scheduled, $editor->fresh(), now()->addMinute());
 
         // …and a page due at the same time, which no workflow can ever govern.
         $page = Entry::query()->create(['type' => 'page', 'status' => 'draft']);
@@ -166,17 +169,26 @@ it('leaves a pre-workflow scheduled post alone once its section is governed, whi
 
         // Then the operator switches the approval flow on for tin-tuc.
         app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: true);
+
+        return (string) $post->ulid;
     });
 
     $this->travel(2)->minutes();
     $this->artisan('entries:publish-due')
-        ->expectsOutputToContain('Published 1 scheduled entr(y/ies), skipped 1')
+        ->expectsOutput('Published 1 scheduled entr(y/ies), skipped 0 governed by an approval workflow, 0 failed, 0 site(s) left for the next run after a lock conflict. 1 approved entr(y/ies) held back and waiting for review again.')
         ->assertSuccessful();
 
+    $notices = fn (): array => app(Tenancy::class)->enter(1, fn (): array => SiteNotification::query()
+        ->where('user_id', $author->id)->where('kind', 'workflow.scheduled')->where('data->entry', $postUlid)
+        ->pluck('data')->map(fn (array $data): string => (string) ($data['sentence'] ?? ''))->all());
+
     app(Tenancy::class)->enter(1, function (): void {
-        // The governed post never went live behind the gate's back…
+        // The governed post never went live behind the gate's back: nobody approved it, so it is a draft
+        // again at the flow's first stage, for its author to send for review…
         $post = Entry::query()->where('type', 'post')->first();
-        expect($post->status)->toBe('scheduled');
+        expect($post->status)->toBe('draft')
+            ->and($post->published_at)->toBeNull()
+            ->and($post->scheduled_by)->toBeNull();
         expect(SiteRoute::query()->where('entry_id', $post->id)->exists())->toBeFalse();
 
         // …and the page published on time as always.
@@ -184,4 +196,11 @@ it('leaves a pre-workflow scheduled post alone once its section is governed, whi
         expect($page->status)->toBe('published');
         expect(SiteRoute::query()->where('entry_id', $page->id)->exists())->toBeTrue();
     });
+    expect($notices())->toBe(['failed_draft']);
+
+    // held once: the next minute's run finds nothing due, and tells nobody again
+    $this->artisan('entries:publish-due')
+        ->expectsOutput('Published 0 scheduled entr(y/ies), skipped 0 governed by an approval workflow, 0 failed, 0 site(s) left for the next run after a lock conflict. 0 approved entr(y/ies) held back and waiting for review again.')
+        ->assertSuccessful();
+    expect($notices())->toBe(['failed_draft']);
 });
