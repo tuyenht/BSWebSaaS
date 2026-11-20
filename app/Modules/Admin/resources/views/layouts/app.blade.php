@@ -103,8 +103,13 @@
         <nav class="flex-1 overflow-y-auto px-3 py-3"
              x-data="{ openGroup: @js($activeGroup), t: null }"
              data-active-group="{{ $activeGroup }}"
-             x-init="document.addEventListener('livewire:navigated', () => { openGroup = $el.dataset.activeGroup })"
+             x-init="$el.scrollTop = Number(sessionStorage.getItem('bs-admin-nav-top')) || 0"
+             x-on:livewire:navigated.document="openGroup = $el.dataset.activeGroup"
+             x-on:livewire:navigating.document="sessionStorage.setItem('bs-admin-nav-top', String($el.scrollTop))"
              @scroll="$el.classList.add('is-scrolling'); clearTimeout(t); t = setTimeout(() => $el.classList.remove('is-scrolling'), 1200)">
+            {{-- wire:navigate draws a new sidebar on every page: it starts where the reader left the
+                 old one (the scroll position is kept for the tab), not back at the top. The listeners
+                 sit on the element, so they leave with it instead of piling up on the document. --}}
             {{-- Fully dynamic nested tree (AdminNav: entitlement ∩ RBAC, active resolved there), cut
                  into headed groups (Nội dung · Công cụ · Hệ thống). A node with children renders as an
                  expandable group (open by default when active); leaves are links. On the collapsed rail
@@ -129,6 +134,7 @@
                                      the accordion has another group open (.collapsed.active::after stays at 90°). --}}
                                 <button type="button" aria-label="{{ $item->label }}"
                                         @click="openGroup = (openGroup === '{{ $item->key }}' ? '' : '{{ $item->key }}')"
+                                        aria-expanded="{{ $item->key === $activeGroup ? 'true' : 'false' }}"
                                         :aria-expanded="openGroup === '{{ $item->key }}'"
                                         :class="openGroup === '{{ $item->key }}' && 'text-sidebar-fg-active'"
                                         @class([
@@ -142,9 +148,11 @@
                                     {{-- 12px frame: the reference's font glyph fills only ~half its 1.05rem em-box,
                                          so an SVG at the same frame size reads ~1.5× bigger — measured against the
                                          reference screenshot, 12px lands the same visual arrow size. --}}
-                                    <x-bs-admin::icon name="arrow-right-s" class="sidebar-label size-3 shrink-0 transition-transform" ::class="(openGroup === '{{ $item->key }}' || {{ $item->active ? 'true' : 'false' }}) && 'rotate-90'" />
+                                    {{-- The server draws the open group as Alpine will (arrow down, links shown), so the
+                                         first paint already has its final shape: nothing below it moves when Alpine starts. --}}
+                                    <x-bs-admin::icon name="arrow-right-s" :class="'sidebar-label size-3 shrink-0 transition-transform'.($item->active ? ' rotate-90' : '')" ::class="(openGroup === '{{ $item->key }}' || {{ $item->active ? 'true' : 'false' }}) && 'rotate-90'" />
                                 </button>
-                                <ul x-show="openGroup === '{{ $item->key }}'" x-cloak class="mt-1 space-y-0.5 ps-4">
+                                <ul x-show="openGroup === '{{ $item->key }}'" @if ($item->key !== $activeGroup) x-cloak @endif class="mt-1 space-y-0.5 ps-4">
                                     @foreach ($item->children as $child)
                                         <li>
                                             <a href="{{ $child->url }}" wire:navigate @if ($child->active) aria-current="page" @endif

@@ -306,3 +306,32 @@ it('names a page outside the menu by its title, and the account by its own title
         expect(trim((string) $trail?->querySelector('[aria-current="page"]')?->textContent))->toBe($title);
     }
 });
+
+it('draws the open group on the server as Alpine will, so the sidebar does not move when Alpine starts', function (): void {
+    $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
+
+    $html = (string) $this->actingAs($owner)->withSession(['locale' => 'vi'])->get('http://anvinh.platform.test/admin/content?section=posts')->assertOk()->getContent();
+    $dom = HTMLDocument::createFromString($html, LIBXML_NOERROR);
+    $nav = $dom->querySelector('#admin-sidebar nav');
+    $groups = iterator_to_array($dom->querySelectorAll('#admin-sidebar nav button[aria-expanded]'));
+    $open = array_values(array_filter($groups, fn (Element $b): bool => $b->getAttribute('aria-expanded') === 'true'));
+
+    // Exactly one group is open: the current page's, named by the nav's data-active-group.
+    expect($nav?->getAttribute('data-active-group'))->not->toBe('')
+        ->and($open)->toHaveCount(1)
+        ->and(count($groups))->toBeGreaterThan(1);
+
+    foreach ($groups as $button) {
+        $isOpen = $button === $open[0];
+        $list = $button->nextElementSibling;
+        $arrow = $button->querySelector('svg:last-of-type');
+
+        expect($list?->tagName)->toBe('UL')
+            ->and($list?->hasAttribute('x-cloak'))->toBe(! $isOpen)
+            ->and(str_contains((string) $arrow?->getAttribute('class'), 'rotate-90'))->toBe($isOpen);
+    }
+
+    // The navigation listeners live on the element (Alpine drops them with it), not on the document.
+    expect((string) $nav?->getAttribute('x-init'))->not->toContain('addEventListener')
+        ->and($nav?->hasAttribute('x-on:livewire:navigated.document'))->toBeTrue();
+});
