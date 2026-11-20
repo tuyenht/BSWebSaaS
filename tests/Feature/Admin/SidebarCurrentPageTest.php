@@ -67,7 +67,7 @@ it('marks only the child row while its group is open, and the group row once the
         ->and($group[0])->not->toMatch('/\sclass="[^"]*bg-sidebar-active[^"]*"/')
         // …which takes them back only when another group is opened (Alpine), and on the collapsed rail (.is-trail).
         ->and($group[0])->toContain(':class="(openGroup === ')
-        ->and($group[0])->toContain("? 'text-sidebar-fg-active' : '".$mark."')")
+        ->and($group[0])->toContain("? 'text-sidebar-fg-active' : 'text-sidebar-fg-active ".$mark."')")
         // The bar and fill sit on the current page's own link.
         ->and($child[0] ?? '')->toContain($mark)
         ->and((string) file_get_contents(resource_path('css/admin-chrome.css')))->toContain('.admin-sidebar .is-trail {');
