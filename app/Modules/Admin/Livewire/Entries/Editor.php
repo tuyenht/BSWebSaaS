@@ -441,6 +441,9 @@ final class Editor extends Component
     /** Per-request memo: whether an approval workflow governs the post's section (null = not asked yet). */
     protected ?bool $homeGovernedMemo = null;
 
+    /** The main category and section the memo above was answered for (a change inside the request asks again). */
+    protected ?string $homeGovernedFor = null;
+
     public function mount(?string $ulid = null, ?string $section = null, ?string $locale = null, ?string $parent = null): void
     {
         $this->locale = $this->resolveLocale(app(SiteLocale::class), $locale ?? request()->query('locale'));
@@ -858,18 +861,26 @@ final class Editor extends Component
     /** Whether an approval workflow is switched on for the post's section (the card then locks the other sections' categories). */
     private function homeGoverned(): bool
     {
-        if ($this->homeGovernedMemo !== null) {
+        $for = ($this->categoryId ?? '').'|'.($this->sectionKey ?? '');
+        if ($this->homeGovernedMemo !== null && $this->homeGovernedFor === $for) {
             return $this->homeGovernedMemo;
         }
+        $this->homeGovernedFor = $for;
         if ($this->sectionKey === null) {
             return $this->homeGovernedMemo = false;
         }
         // the main category still in the post's section: the workflow the page already read for it
-        $same = $this->categoryId !== null && $this->choices()->sectionOf($this->categoryId) === $this->sectionKey;
+        if ($this->categoryId !== null && $this->choices()->sectionOf($this->categoryId) === $this->sectionKey) {
+            return $this->homeGovernedMemo = $this->governingWorkflow() !== null;
+        }
 
-        return $this->homeGovernedMemo = $same
-            ? $this->governingWorkflow() !== null
-            : app(WorkflowEngine::class)->activeFor($this->sectionKey) !== null;
+        // Otherwise the stored post decides, never the section the post is listed under: a post whose
+        // main category no section is built on is listed under the site's first post section
+        // (sectionOf), but no workflow of that section governs it. A main category emptied or moved out
+        // of a governed section by the form (an older copy kept on the device, the one-category field)
+        // leaves the post governed until a save, which keepsGovernedSection refuses.
+        return $this->homeGovernedMemo = $this->ulid !== null
+            && app(EntryWorkflowResolver::class)->forEntry($this->resolveOrFail($this->ulid)) !== null;
     }
 
     /**
@@ -3192,10 +3203,10 @@ final class Editor extends Component
                 $this->keepsGovernedSection(...),
                 $this->staysInCategoryLimits(...),
             ];
-            // the other categories: each one a post category of this website (RLS), at most what the
-            // pivot keeps below the facet terms
-            $rules['categoryIds'] = ['array', 'max:'.(Entry::FACET_POSITION_BASE - 1)];
-            $rules['categoryIds.*'] = ['integer', 'distinct', Rule::exists('taxonomies', 'id')->where('vocabulary', 'post_cat')];
+            // the other categories: each one a post category of this website, at most what the pivot
+            // keeps below the facet terms
+            $rules['categoryIds'] = ['array', 'max:'.(Entry::FACET_POSITION_BASE - 1), $this->arePostCategories(...)];
+            $rules['categoryIds.*'] = ['integer', 'distinct'];
         }
 
         return $rules;
@@ -3227,6 +3238,29 @@ final class Editor extends Component
 
         if ($destination?->id !== $current->id) {
             $fail(__('entries.category_governed', ['workflow' => $current->name]));
+        }
+    }
+
+    /**
+     * Every id in the list a post category of this website: one count, scoped to the site, however
+     * many there are (`integer` / `max` report a bad list).
+     */
+    private function arePostCategories(string $attribute, mixed $value, Closure $fail): void
+    {
+        if (! is_array($value) || $value === [] || count($value) >= Entry::FACET_POSITION_BASE) {
+            return;
+        }
+        $ids = [];
+        foreach ($value as $id) {
+            if (! is_int($id)) {
+                return;
+            }
+            $ids[$id] = true;
+        }
+        // BelongsToSite's scope keeps the explicit site_id = ? on the count
+        $found = Taxonomy::query()->where('vocabulary', 'post_cat')->whereIn('id', array_keys($ids))->count();
+        if ($found !== count($ids)) {
+            $fail(__('entries.category_invalid'));
         }
     }
 

@@ -470,3 +470,157 @@ it('reads the categories once whatever their number', function (bool $limited): 
 
     expect($many)->toBe($few);
 })->with(['every category' => [false], 'limited to some' => [true]]);
+
+it('puts back from the device only the categories a limited member may file under, and the save keeps to them', function (): void {
+    $root = eccSection('tin-tuc', 'Tin tức');
+    $events = eccCategory('Sự kiện', $root);
+    $fairs = eccCategory('Hội chợ', $events);
+    $notices = eccCategory('Thông báo', $root);
+    $hidden = eccCategory('Nội bộ', $root);
+    $lan = eccMember('editor');
+    eccLimit($lan, $events);
+    $post = eccPost($lan, $events);
+
+    app(Tenancy::class)->enter(1, function () use ($lan, $post, $events, $fairs, $notices, $hidden): void {
+        // the device's copy names categories outside the limits the post is not under: they are dropped
+        Livewire::actingAs($lan)->test(Editor::class, ['ulid' => $post->ulid])
+            ->call('restoreKept', ['categoryIds' => [$notices->id, $events->id, $hidden->id, $fairs->id]])
+            ->assertSet('categoryIds', [$events->id, $fairs->id])->assertSet('categoryId', $events->id)
+            ->call('save')->assertHasNoErrors();
+        expect(eccCategoriesOf($post))->toBe([$events->id, $fairs->id]);
+
+        // only outside ones: nothing changes
+        Livewire::actingAs($lan)->test(Editor::class, ['ulid' => $post->ulid])
+            ->call('restoreKept', ['categoryIds' => [$notices->id, $hidden->id]])
+            ->assertSet('categoryIds', [$events->id, $fairs->id]);
+    });
+});
+
+it('refuses a limited member\'s save after the main category field is set outside the limits', function (): void {
+    $root = eccSection('tin-tuc', 'Tin tức');
+    $events = eccCategory('Sự kiện', $root);
+    $notices = eccCategory('Thông báo', $root);
+    $lan = eccMember('editor');
+    eccLimit($lan, $events);
+    $post = eccPost($lan, $events);
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($lan)->test(Editor::class, ['ulid' => $post->ulid])
+        ->set('categoryId', $notices->id)->set('title', 'Bài đã sửa')
+        ->call('save')->assertHasErrors(['categoryId']));
+
+    expect(eccCategoriesOf($post))->toBe([$events->id])
+        ->and(app(Tenancy::class)->enter(1, fn () => $post->translations()->where('locale', 'vi')->value('title')))->not->toBe('Bài đã sửa');
+});
+
+it('does not lock the rows of a post whose main category no section is built on, whatever workflow the first section has', function (): void {
+    $news = eccSection('tin-tuc', 'Tin tức');
+    $events = eccCategory('Sự kiện', $news);
+    $jobs = eccSection('tuyen-dung', 'Tuyển dụng', 2);
+    $it = eccCategory('Kỹ thuật', $jobs);
+    $loose = eccCategory('Chưa xếp mục');   // at the top, no section built on it or above it
+    $editor = eccMember('editor');
+    $post = eccPost($editor, $loose);
+    app(Tenancy::class)->enter(1, fn () => app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: true));
+    app()->forgetScopedInstances();
+
+    app(Tenancy::class)->enter(1, function () use ($editor, $post, $loose, $events, $it): void {
+        // listed under the site's first post section, but that section's workflow does not govern it
+        $form = Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid])->assertSet('sectionKey', 'tin-tuc');
+        $rows = eccRows($form);
+        expect($rows[$it->ulid]['locked'])->toBeFalse()
+            ->and($rows[$events->ulid]['locked'])->toBeFalse()
+            ->and($rows[$loose->ulid]['locked'])->toBeFalse();
+        $form->call('toggleCategory', $it->ulid)->assertNotDispatched('bs-toast')
+            ->assertSet('categoryIds', [$loose->id, $it->id])
+            ->call('save')->assertHasNoErrors();
+    });
+
+    expect(eccCategoriesOf($post))->toBe([$loose->id, $it->id]);
+});
+
+it('refuses «Thêm chuyên mục mới» to a limited member whose main category is in another section, nothing made', function (): void {
+    $news = eccSection('tin-tuc', 'Tin tức');
+    $events = eccCategory('Sự kiện', $news);
+    $jobs = eccSection('tuyen-dung', 'Tuyển dụng', 2);
+    $it = eccCategory('Kỹ thuật', $jobs);
+    $lan = eccMember('editor');
+    eccLimit($lan, $events, $it);
+
+    app(Tenancy::class)->enter(1, function () use ($lan, $events, $it): void {
+        $form = Livewire::actingAs($lan)->test(Editor::class, ['section' => 'tin-tuc'])
+            ->call('toggleCategory', $it->ulid)->call('setMainCategory', $it->ulid)
+            ->assertSet('categoryId', $it->id)
+            ->assertSee(__('entries.ed.cat_add_lock_scope'));
+        $count = Taxonomy::query()->count();
+        expect($form->call('addCategory', 'Bảo trì')->errors()->first('catNew'))->toBe(__('entries.ed.cat_add_lock_scope'))
+            ->and(Taxonomy::query()->count())->toBe($count);
+        $form->assertSet('categoryIds', [$it->id, $events->id]);
+    });
+});
+
+it('never shows another website\'s categories among the rows', function (): void {
+    $root = eccSection('tin-tuc', 'Tin tức');
+    $events = eccCategory('Sự kiện', $root);
+    $foreign = eccCategory('Tin site B', null, 2);
+    $foreignChild = eccCategory('Con site B', $foreign, 2);
+    $editor = eccMember('editor');
+
+    app(Tenancy::class)->enter(1, function () use ($editor, $events, $foreign, $foreignChild): void {
+        $form = Livewire::actingAs($editor)->test(Editor::class, ['section' => 'tin-tuc']);
+        $rows = eccRows($form);
+        expect($rows)->toHaveKey($events->ulid)
+            ->not->toHaveKey($foreign->ulid)->not->toHaveKey($foreignChild->ulid)
+            ->and(array_column($rows, 'label'))->not->toContain('Tin site B')->not->toContain('Con site B');
+        $form->assertDontSee('Tin site B');
+    });
+});
+
+it('checks the post\'s categories in one count of this website\'s, however many are ticked', function (): void {
+    $root = eccSection('tin-tuc', 'Tin tức');
+    $many = array_map(fn (int $n): Taxonomy => eccCategory('Mục '.$n, $root), range(1, 6));
+    $editor = eccMember('editor');
+
+    app(Tenancy::class)->enter(1, function () use ($editor, $many): void {
+        $form = Livewire::actingAs($editor)->test(Editor::class, ['section' => 'tin-tuc'])->set('title', 'Hội thảo')->set('slug', 'hoi-thao');
+        foreach ($many as $category) {
+            $form->call('toggleCategory', $category->ulid);
+        }
+        $checks = [];
+        DB::listen(function ($query) use (&$checks): void {
+            if (str_contains($query->sql, 'as "aggregate" from "taxonomies"')) {
+                $checks[] = $query->sql;
+            }
+        });
+        $form->call('save')->assertHasNoErrors();
+
+        // the main category's own check and one for the whole list, never one per category
+        expect($checks)->toHaveCount(2)
+            ->and(array_values(array_filter($checks, fn (string $sql): bool => str_contains($sql, '"id" in ('))))->toHaveCount(1)
+            ->and(collect($checks)->first(fn (string $sql): bool => str_contains($sql, '"id" in (')))->toContain('"taxonomies"."site_id" = ?');
+    });
+
+    expect(eccCategoriesOf(app(Tenancy::class)->enter(1, fn () => Entry::query()->sole())))->toBe(array_map(fn (Taxonomy $c): int => $c->id, $many));
+});
+
+it('keeps a governed post\'s lock when the main category field is emptied', function (): void {
+    $news = eccSection('tin-tuc', 'Tin tức');
+    $events = eccCategory('Sự kiện', $news);
+    $jobs = eccSection('tuyen-dung', 'Tuyển dụng', 2);
+    $it = eccCategory('Kỹ thuật', $jobs);
+    $editor = eccMember('editor');
+    $post = eccPost($editor, $events);
+    app(Tenancy::class)->enter(1, fn () => app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: true));
+    app()->forgetScopedInstances();
+
+    app(Tenancy::class)->enter(1, function () use ($editor, $post, $events, $it): void {
+        // the one-category field emptied: the stored post is still governed, another section's category refused
+        $form = Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid])
+            ->set('categoryId', null)->assertSet('categoryIds', []);
+        expect(eccRows($form)[$it->ulid]['locked'])->toBeTrue();
+        $form->call('toggleCategory', $it->ulid)->assertDispatched('bs-toast')->assertSet('categoryIds', [])
+            ->call('toggleCategory', $events->ulid)->assertSet('categoryIds', [$events->id])
+            ->call('save')->assertHasNoErrors();
+    });
+
+    expect(eccCategoriesOf($post))->toBe([$events->id]);
+});
