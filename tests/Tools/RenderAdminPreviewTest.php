@@ -687,7 +687,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     });
     $this->flushSession();
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/taxonomies?section=posts')->assertOk()->getContent();
-    expect($html)->toContain('data-bs-lazy="bsCategories"', 'Gia công CNC');
+    expect($html)->toContain('data-bs-lazy="bsCategories"', 'Gia công CNC', 'data-cover-filled', e(__('categories.ui_drop_cover_title')));
     file_put_contents($dir.'/categories.html', $html);
     // The same tree while support staff are signed in for the owner: it only looks.
     $staff = User::factory()->create(['name' => 'Lê Hoàng Phúc']);

@@ -5200,6 +5200,8 @@
     "categories.ui_f_cover": "Cover picture",
     "categories.ui_pick_cover": "Choose a picture",
     "categories.ui_drop_cover": "Remove picture",
+    "categories.ui_drop_cover_title": "Remove the picture from the category",
+    "categories.ui_pick_other_title": "Choose another picture to replace this one",
     "categories.ui_save_net": "Not saved because the connection dropped. What you typed is still here — press Try again.",
     "categories.ui_save": "Save",
     "categories.ui_save_new": "Save and add another",

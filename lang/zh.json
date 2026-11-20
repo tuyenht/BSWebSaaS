@@ -5200,6 +5200,8 @@
     "categories.ui_f_cover": "封面图",
     "categories.ui_pick_cover": "选择图片",
     "categories.ui_drop_cover": "移除图片",
+    "categories.ui_drop_cover_title": "从分类中移除图片",
+    "categories.ui_pick_other_title": "选择另一张图片替换此图片",
     "categories.ui_save_net": "因网络中断未能保存。您输入的内容仍在 — 请点击\"重试\"。",
     "categories.ui_save": "保存",
     "categories.ui_save_new": "保存并添加下一项",

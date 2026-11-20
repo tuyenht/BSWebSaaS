@@ -414,18 +414,20 @@
                             class="field w-full rounded border border-border-input bg-surface-muted px-3"></textarea>
                         <p class="text-small text-text-muted">{{ $u('f_desc_hint') }}</p>
                     </div>
-                    {{-- «Ảnh đại diện» (board 10 .cm-img): empty, a 120px dashed box with «Chọn ảnh» in its middle; the
-                         board draws no filled state, so a picked cover shows as before (picture, «Chọn ảnh», «Bỏ ảnh»).
-                         One picture: the shared «Chọn ảnh» in its single mode. --}}
+                    {{-- «Ảnh đại diện» (board 10 .cm-img): empty, a 120px dashed box with «Chọn ảnh» in its middle; filled,
+                         the picture fills the box with «Bỏ ảnh» in its corner and «Chọn ảnh» below to change it (board 07's
+                         cover card). One picture: the shared «Chọn ảnh» in its single mode. --}}
                     <div class="flex flex-col gap-1.5" data-picker-home>
                         <span class="text-small font-semibold text-text-strong">{{ $u('f_cover') }}</span>
                         <div x-show="! (pan && pan.d.cover)" class="flex h-30 items-center justify-center rounded-md border border-dashed border-border-input bg-surface-muted px-3">
-                            <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="pickCover()"><x-bs-admin::icon name="ri-image-add" class="size-4" /> {{ $u('pick_cover') }}</x-bs-admin::button>
+                            <x-bs-admin::button size="sm" variant="outline" color="secondary" id="cm-cover-pick" x-on:click="pickCover()"><x-bs-admin::icon name="ri-image-add" class="size-4" /> {{ $u('pick_cover') }}</x-bs-admin::button>
                         </div>
-                        <div x-show="pan && pan.d.cover" x-cloak class="flex flex-wrap items-center gap-3">
-                            <template x-if="pan && pan.d.cover"><img x-bind:src="pan.d.cover.url" alt="" class="size-16 rounded border border-border object-cover" /></template>
-                            <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="pickCover()" data-picker-focus><x-bs-admin::icon name="ri-image-add" class="size-4" /> {{ $u('pick_cover') }}</x-bs-admin::button>
-                            <x-bs-admin::button size="sm" variant="ghost" color="danger" x-on:click="dropCover()"><x-bs-admin::icon name="ri-close" class="size-4" /> {{ $u('drop_cover') }}</x-bs-admin::button>
+                        <div x-show="pan && pan.d.cover" x-cloak class="flex flex-col gap-2" data-cover-filled>
+                            <div class="relative h-30 w-full overflow-hidden rounded-md border border-border bg-surface-muted">
+                                <template x-if="pan && pan.d.cover"><img x-bind:src="pan.d.cover.url" alt="" class="size-full object-cover" /></template>
+                                <x-bs-admin::cover-remove x-on:click="dropCover()" :title="$u('drop_cover_title')">{{ $u('drop_cover') }}</x-bs-admin::cover-remove>
+                            </div>
+                            <x-bs-admin::button size="sm" variant="outline" color="secondary" class="w-full" x-on:click="pickCover()" data-picker-focus :title="$u('pick_other_title')"><x-bs-admin::icon name="ri-image-add" class="size-4" /> {{ $u('pick_cover') }}</x-bs-admin::button>
                         </div>
                     </div>
                     <x-bs-admin::seo-fields title-model="seoTitle" description-model="seoDescription" page-title-model="seoName" slug-model="seoSlug"

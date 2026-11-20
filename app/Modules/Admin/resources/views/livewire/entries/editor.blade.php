@@ -516,15 +516,10 @@
                         @if ($cover)
                             <img src="{{ $cover['url'] }}" alt="{{ $cover['name'] !== '' ? __('entries.ed.cover_img', ['name' => $cover['name']]) : __('entries.cover_alt') }}" class="entry-cover__preview size-full object-cover">
                             @if ($mayPick)
-                                <button type="button" wire:click="clearCover" class="absolute end-1.5 top-1.5 inline-flex min-h-hit items-center"
-                                        title="{{ __('entries.ed.cover_remove_title', ['unit' => $unit]) }}" aria-label="{{ __('entries.ed.cover_remove_title', ['unit' => $unit]) }}">
-                                    <span class="inline-flex min-h-8 items-center gap-1 rounded-full border border-white px-3 text-[calc(0.875rem+var(--user-text-boost))] font-semibold leading-tight text-white" style="background: rgba(15, 23, 41, .72)">
-                                        <x-bs-admin::icon name="ri-close" class="size-4 shrink-0" />{{ __('entries.cover_remove') }}
-                                    </span>
-                                </button>
+                                <x-bs-admin::cover-remove wire:click="clearCover" :title="__('entries.ed.cover_remove_title', ['unit' => $unit])">{{ __('entries.cover_remove') }}</x-bs-admin::cover-remove>
                             @endif
                         @elseif ($mayPick)
-                            <button type="button" wire:click="openCoverPicker" class="absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-3 text-center text-[calc(0.8125rem+var(--user-text-boost))] leading-normal text-text transition-colors hover:bg-surface-hover">
+                            <button type="button" data-cover-pick wire:click="openCoverPicker" class="absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-3 text-center text-[calc(0.8125rem+var(--user-text-boost))] leading-normal text-text transition-colors hover:bg-surface-hover">
                                 <x-bs-admin::icon name="ri-image-add" class="size-6 text-primary-text" />
                                 <span class="font-semibold text-primary-text">{{ __('entries.ed.cover_choose') }}</span>
                             </button>

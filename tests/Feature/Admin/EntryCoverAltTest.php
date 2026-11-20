@@ -114,6 +114,7 @@ describe('the editor', function (): void {
             Livewire::actingAs($user)->test(Editor::class, ['ulid' => $page->ulid])
                 ->call('clearCover')
                 ->assertSet('coverAlt', '')
+                ->assertSee('data-cover-pick', false) // the empty card's «Chọn ảnh», where focus moves on
                 ->assertDontSee('id="entry-cover-alt"', false)
                 ->call('save')
                 ->assertHasNoErrors();
