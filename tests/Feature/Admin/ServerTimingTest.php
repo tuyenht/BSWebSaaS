@@ -28,7 +28,8 @@ it('tells a signed-in admin the server and SQL time of the page', function (): v
     expect($timing)->toMatch('/^app;dur=\d+\.\d;desc="server", db;dur=\d+\.\d;desc="sql"$/');
 
     preg_match_all('/dur=(\d+\.\d)/', $timing, $m);
-    expect((float) $m[1][1])->toBeLessThanOrEqual((float) $m[1][0]);   // SQL is part of the page time
+    expect((float) $m[1][1])->toBeGreaterThan(0.0)                     // the page's own SQL is counted
+        ->toBeLessThanOrEqual((float) $m[1][0]);                       // and is part of the page time
 });
 
 it('gives a guest no timings', function (): void {
