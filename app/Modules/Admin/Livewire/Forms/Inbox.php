@@ -182,7 +182,11 @@ final class Inbox extends Component
 
             return;
         }
-        app(SetFormStatus::class)->handle($form, true);
+        if (! app(SetFormStatus::class)->handle($form, true)) {
+            $this->say(__('form_builder.toast_gone'), 'error');
+
+            return;
+        }
         $names = Cast::arr($form->name);
         $name = Cast::string($names[app()->getLocale()] ?? $names['vi'] ?? (array_values($names)[0] ?? ''));
         $this->say(__('leads.form_on_toast', ['name' => $name !== '' ? $name : __('leads.form_untitled')]));

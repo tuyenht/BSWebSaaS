@@ -48,6 +48,13 @@ final class DeleteLargeForm implements ShouldBeUniqueUntilProcessing, ShouldQueu
 
     public int $tries = 3;
 
+    /**
+     * Seconds the unique lock outlives a dispatch whose push never reached the queue (the lock is
+     * taken at dispatch, freed when a worker starts the job): below forms:resume-deletes' 30 minutes,
+     * so its next dispatch is never dropped by a lock left behind.
+     */
+    public int $uniqueFor = 900;
+
     /** @var list<int> */
     public array $backoff = [10, 60];
 
