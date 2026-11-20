@@ -429,18 +429,145 @@
                     @endif
                 </section>
 
-                @if ($type === 'post')
-                    <section class="{{ $card }}" aria-labelledby="entry-cat-h">
-                        <div class="{{ $cardHead }}"><h2 id="entry-cat-h" class="{{ $cardTitle }}"><label for="entry-category">{{ __('entries.ed.card_category') }}</label></h2></div>
-                        <div class="p-4">
-                            <select id="entry-category" wire:model.live="categoryId" @error('categoryId') aria-invalid="true" aria-describedby="entry-category-e" @enderror
-                                    class="field block w-full rounded-md border border-border-input bg-surface px-3 text-text transition-colors focus:border-primary-text aria-invalid:border-danger-text">
-                                <option value="">{{ __('entries.category_placeholder') }}</option>
-                                @foreach ($categories as $category)
-                                    <option value="{{ $category['id'] }}">{{ $category['name'] }}</option>
-                                @endforeach
-                            </select>
-                            @error('categoryId') <p id="entry-category-e" class="{{ $error }}">{{ $message }}</p> @enderror
+                @if ($categoryCard !== null)
+                    {{-- «Chuyên mục» (board 07): a box per category — the post's section first, then the other sections' with
+                         their name beside them — in menu order and indented; the search ignores diacritics and case and shows
+                         the names above each result. Two or more ticked: «Chuyên mục chính» picks the one the address and the
+                         «Chuyên mục» line of the post follow. A row outside the member's limits, or of another section while an
+                         approval workflow governs this one, is locked with the reason under it. «Thêm chuyên mục mới» (who may
+                         manage categories) makes one at once and ticks it: inline on a wide screen, a sheet from the bottom on a
+                         phone. Boxes and choices are requests by key (Editor::toggleCategory, setMainCategory, addCategory);
+                         nothing is saved until the post is. --}}
+                    <section class="{{ $card }}" aria-labelledby="entry-cat-h"
+                             x-data="{ q: '', below: 0, adding: false, name: '', ask: false,
+                                       fold(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').trim(); },
+                                       hit(t) { const w = this.fold(this.q); return w === '' || this.fold(t).includes(w); },
+                                       get searching() { return this.fold(this.q) !== ''; },
+                                       measure() { const el = this.$refs.list; if (! el) { return; } const end = el.getBoundingClientRect().bottom; let n = 0;
+                                           el.querySelectorAll('.ped-cr').forEach((r) => { const b = r.getBoundingClientRect(); if (b.height >= 1 && b.bottom > end + 1) { n++; } }); this.below = n; },
+                                       phone() { return window.matchMedia('(max-width: 599.98px), (max-height: 500px)').matches; },
+                                       open() { this.adding = true; this.ask = false; this.$nextTick(() => (this.phone() ? this.$refs.casX : this.$refs.casIn)?.focus()); },
+                                       close() { if (this.name.trim() !== '') { this.ask = true; this.$nextTick(() => this.$refs.casStay?.focus()); return; } this.end(); },
+                                       end() { this.adding = false; this.name = ''; this.ask = false; this.$nextTick(() => this.$refs.casOpen?.focus()); },
+                                       async add() { if (this.name.trim() === '') { this.$refs.casIn?.focus(); return; } if (await $wire.addCategory(this.name)) { this.end(); } else { this.$nextTick(() => this.$refs.casIn?.focus()); } } }"
+                             x-init="$nextTick(() => measure()); new MutationObserver(() => measure()).observe($refs.list, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] })"
+                             x-effect="q; $nextTick(() => measure())" x-on:resize.window.debounce.150ms="measure()">
+                        <div class="{{ $cardHead }}"><h2 id="entry-cat-h" class="{{ $cardTitle }}">{{ __('entries.ed.card_category') }}</h2></div>
+                        <div class="flex flex-col gap-2.5 p-4">
+                            @if ($categoryCard['scopeNote'] !== null)
+                                <p class="m-0 flex items-start gap-1.5 text-caption text-text-muted [overflow-wrap:anywhere]">
+                                    <x-bs-admin::icon name="ri-focus-3" class="mt-0.5 size-3.5 shrink-0" /><span>{{ $categoryCard['scopeNote'] }}</span>
+                                </p>
+                            @endif
+                            <x-bs-admin::search :label="__('entries.ed.cat_search')" x-model="q" />
+                            <div class="relative">
+                                <div id="entry-category" x-ref="list" x-on:scroll.passive="measure()" tabindex="-1"
+                                     class="ped-cl entry-cat-list overflow-y-auto overflow-x-hidden rounded border border-border [scrollbar-gutter:stable]"
+                                     role="group" aria-label="{{ __('entries.ed.cat_group') }}" @if ($errors->has('categoryId') || $errors->has('categoryIds') || $errors->has('categoryIds.*')) aria-invalid="true" aria-describedby="{{ trim(($errors->has('categoryId') ? 'entry-category-e ' : '').($errors->has('categoryIds') ? 'entry-categories-e ' : '').($errors->has('categoryIds.*') ? 'entry-categories-ie' : '')) }}" @endif>
+                                    @foreach ($categoryCard['rows'] as $i => $category)
+                                        <div wire:key="ecat-{{ $category['ulid'] }}" class="ped-cr" data-d="{{ $category['depth'] }}" x-bind:data-d="searching ? 0 : {{ $category['depth'] }}"
+                                             data-lock="{{ $category['locked'] ? '1' : '0' }}" x-show="hit(@js($category['path'].$category['label']))">
+                                            <label for="entry-cat-{{ $i }}">
+                                                <input id="entry-cat-{{ $i }}" type="checkbox" @checked($category['on']) @disabled($category['locked'])
+                                                       @if ($category['locked']) aria-describedby="entry-cat-why-{{ $i }}" @endif
+                                                       wire:click="toggleCategory('{{ $category['ulid'] }}')" wire:loading.attr="disabled" wire:target="toggleCategory,setMainCategory,addCategory">
+                                                @if ($category['locked'])
+                                                    <x-bs-admin::icon name="ri-lock" class="size-3.5 shrink-0 text-text-muted" />
+                                                @endif
+                                                <span title="{{ $category['path'].$category['label'] }}"><span class="text-text-muted" x-show="searching" x-cloak>{{ $category['path'] }}</span>{{ $category['label'] }}</span>
+                                            </label>
+                                            @if ($category['section'] !== null)
+                                                <x-bs-admin::badge color="secondary" soft pill class="relative z-[1]">{{ $category['section'] }}</x-bs-admin::badge>
+                                            @endif
+                                            @if ($category['locked'])
+                                                <span class="entry-cat-why" id="entry-cat-why-{{ $i }}">{{ $category['why'] }}</span>
+                                            @elseif ($category['moves'])
+                                                <span class="entry-cat-why">{{ __('entries.ed.cat_moves', ['section' => $category['section']]) }}</span>
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                    @if ($categoryCard['rows'] === [])
+                                        <p class="m-0 px-3 py-2.5 text-body text-text-muted">{{ __('entries.ed.cat_empty') }}</p>
+                                    @else
+                                        <p class="m-0 px-3 py-2.5 text-body text-text-muted" x-show="@js(array_map(static fn (array $c): string => $c['path'].$c['label'], $categoryCard['rows'])).every((t) => ! hit(t))" x-cloak
+                                           x-text="{{ Js::from(__('entries.ed.cat_nomatch')) }}.replace(':q', q.trim())"></p>
+                                    @endif
+                                </div>
+                                <div class="entry-cat-fade" aria-hidden="true" x-show="below > 0" x-cloak></div>
+                            </div>
+                            <p class="m-0 flex items-start gap-1.5 text-caption text-text-muted" x-show="below > 0" x-cloak>
+                                <x-bs-admin::icon name="ri-arrow-down" class="mt-0.5 size-3.5 shrink-0" />
+                                <span class="min-w-0 [overflow-wrap:anywhere]" x-text="{{ Js::from(__('entries.ed.cat_more')) }}.replace(':n', below)"></span>
+                            </p>
+                            @error('categoryId') <p id="entry-category-e" class="{{ $error }} mt-0">{{ $message }}</p> @enderror
+                            @error('categoryIds') <p id="entry-categories-e" class="{{ $error }} mt-0">{{ $message }}</p> @enderror
+                            @error('categoryIds.*') <p id="entry-categories-ie" class="{{ $error }} mt-0">{{ $message }}</p> @enderror
+                            @if ($categoryCard['primary'] !== [])
+                                <div class="flex flex-col gap-1.5">
+                                    <label for="entry-cat-main" class="{{ $label }}">{{ __('entries.ed.cat_main') }}</label>
+                                    <select id="entry-cat-main" aria-describedby="entry-cat-main-h" wire:change="setMainCategory($event.target.value)" wire:loading.attr="disabled" wire:target="toggleCategory,setMainCategory,addCategory"
+                                            class="field block w-full rounded-md border border-border-input bg-surface px-3 text-text transition-colors focus:border-primary-text">
+                                        @foreach ($categoryCard['primary'] as $option)
+                                            <option value="{{ $option['ulid'] }}" @selected($option['main']) @disabled($option['locked'])>{{ $option['label'] }}</option>
+                                        @endforeach
+                                    </select>
+                                    <p id="entry-cat-main-h" class="m-0 text-caption text-text-muted [overflow-wrap:anywhere]">{{ __('entries.ed.cat_main_hint') }}</p>
+                                </div>
+                            @endif
+                            @if ($categoryCard['add'] !== null)
+                                <div class="flex flex-col gap-1.5" x-show="! adding">
+                                    @if ($categoryCard['add']['lock'] !== null)
+                                        <button type="button" class="ped-star self-start" x-ref="casOpen" aria-disabled="true" aria-describedby="entry-cat-add-why"
+                                                x-on:click="$dispatch('bs-toast', { text: {{ Js::from($categoryCard['add']['lock']) }} })">
+                                            <x-bs-admin::icon name="ri-lock" class="size-3.5" />{{ __('entries.ed.cat_add') }}
+                                        </button>
+                                        <span class="entry-cat-why ps-0" id="entry-cat-add-why">{{ $categoryCard['add']['lock'] }}</span>
+                                    @else
+                                        <button type="button" class="ped-star self-start" x-ref="casOpen" x-on:click="open()">
+                                            <x-bs-admin::icon name="ri-add" class="size-3.5" />{{ __('entries.ed.cat_add') }}
+                                        </button>
+                                        @if ($categoryCard['add']['in'] !== null)
+                                            <span class="entry-cat-why ps-0">{{ __('entries.ed.cat_add_in', ['name' => $categoryCard['add']['in']]) }}</span>
+                                        @endif
+                                    @endif
+                                </div>
+                                @if ($categoryCard['add']['lock'] === null)
+                                    <div class="entry-cas-w" x-show="adding" x-cloak x-on:click.self="phone() && close()">
+                                        <div class="entry-cas" role="group" aria-labelledby="entry-cas-t" x-trap.inert.noscroll="adding && phone()"
+                                             x-on:keydown.escape.stop.prevent="ask ? (ask = false) : (phone() ? close() : end())">
+                                            <div class="entry-cas-h">
+                                                <h2 id="entry-cas-t">{{ __('entries.ed.cat_add') }}</h2>
+                                                <button type="button" class="entry-cas-x" x-ref="casX" aria-label="{{ __('admin.close') }}" title="{{ __('admin.close') }}" x-on:click="close()">
+                                                    <x-bs-admin::icon name="ri-close" class="size-5" />
+                                                </button>
+                                            </div>
+                                            @if ($categoryCard['add']['in'] !== null)
+                                                <span class="entry-cat-why ps-0">{{ __('entries.ed.cat_add_in', ['name' => $categoryCard['add']['in']]) }}</span>
+                                            @endif
+                                            <div class="entry-cas-row">
+                                                <input type="text" x-ref="casIn" x-model="name" x-on:keydown.enter.prevent="add()" maxlength="{{ \App\Modules\Cms\Taxonomy\TaxonomyRules::NAME_MAX }}"
+                                                       aria-label="{{ __('entries.ed.cat_new_label') }}" placeholder="{{ __('entries.ed.cat_new_ph') }}" autocomplete="off"
+                                                       @error('catNew') aria-invalid="true" aria-describedby="entry-cas-e" @enderror
+                                                       class="field min-w-0 flex-[1_1_10rem] rounded-md border border-border-input bg-surface px-3 text-text placeholder:text-placeholder focus:border-primary-text aria-invalid:border-danger-text">
+                                                <x-bs-admin::button size="sm" x-on:click="add()" x-bind:aria-disabled="name.trim() === '' ? 'true' : 'false'" wire:loading.attr="disabled" wire:target="addCategory">
+                                                    <x-bs-admin::icon name="ri-check" :class="$glyph" /> {{ __('entries.ed.cat_add_do') }}
+                                                </x-bs-admin::button>
+                                                <x-bs-admin::button variant="outline" color="secondary" size="sm" x-on:click="end()">{{ __('entries.ed.cat_add_cancel') }}</x-bs-admin::button>
+                                            </div>
+                                            @error('catNew') <p id="entry-cas-e" class="{{ $error }} mt-0">{{ $message }}</p> @enderror
+                                            <div class="entry-cas-ask" role="group" aria-labelledby="entry-cas-qt" aria-describedby="entry-cas-qd" x-show="ask" x-cloak>
+                                                <p id="entry-cas-qt" class="font-semibold text-text-strong">{{ __('entries.ed.cat_drop_title') }}</p>
+                                                <p id="entry-cas-qd" x-text="{{ Js::from(__('entries.ed.cat_drop_text')) }}.replace(':name', name.trim())"></p>
+                                                <div class="entry-cas-qb">
+                                                    <x-bs-admin::button variant="outline" color="secondary" size="sm" x-ref="casStay" x-on:click="ask = false; $nextTick(() => $refs.casX?.focus())">{{ __('entries.ed.cat_drop_stay') }}</x-bs-admin::button>
+                                                    <x-bs-admin::button variant="outline" color="secondary" size="sm" x-on:click="end()">{{ __('entries.ed.cat_drop_do') }}</x-bs-admin::button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                            @endif
+                            <p class="m-0 text-caption text-text-muted [overflow-wrap:anywhere]">{{ $categoryCard['note'] }}</p>
                         </div>
                     </section>
                 @endif

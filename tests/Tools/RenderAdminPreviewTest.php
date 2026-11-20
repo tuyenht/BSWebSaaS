@@ -596,6 +596,33 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('data-bs-lazy="bsCategories"', 'Gia công CNC');
     file_put_contents($dir.'/categories.html', $html);
 
+    // The post editor's «Chuyên mục» card (board 07): a post filed under two categories of its section and
+    // one of another (that section's name beside it), «Chuyên mục chính» under the list, «Thêm chuyên mục
+    // mới» for the owner. The post and the category made for it are taken away again: the screens
+    // below count their own.
+    $tech = null;
+    $filed = app(Tenancy::class)->enter(1, function () use ($owner, &$tech): Entry {
+        $jobs = Taxonomy::query()->whereKey(ContentSection::query()->where('key', 'pv-jobs')->value('taxonomy_id'))->firstOrFail();
+        $tech = app(CreateTaxonomy::class)->handle('post_cat', $jobs, new TaxonomyData(names: ['vi' => 'Kỹ thuật viên']));
+        $id = fn (string $name): int => (int) Taxonomy::query()->where('vocabulary', 'post_cat')
+            ->whereHas('translations', fn ($q) => $q->where('name', $name))->value('id');
+        $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $owner->id]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Tuyển kỹ thuật viên vận hành máy CNC', 'slug' => 'tuyen-ky-thuat-vien-cnc',
+            'status' => 'draft', 'body' => ['blocks' => []]]);
+        $entry->assignCategories([$id('Tin công ty'), $id('Gia công CNC'), $tech->id]);
+
+        return $entry;
+    });
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$filed->ulid.'/edit')->assertOk()->getContent();
+    expect($html)->toContain('id="entry-cat-main"', 'Kỹ thuật viên', 'Tuyển dụng', __('entries.ed.cat_add'));
+    file_put_contents($dir.'/post-editor-categories.html', $html);
+    app(Tenancy::class)->enter(1, function () use ($filed, $tech): void {
+        $filed->forceDelete();
+        $tech?->translations()->delete();
+        $tech?->delete();
+    });
+
     // The news list (Tin tức): posts in the categories above, with cover pictures, several statuses
     // and two authors, as the posts variant of the list board shows them. A cover is the picture's
     // key in the post's meta; here it names an image the preview server has, and one post in three
@@ -1037,5 +1064,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     file_put_contents($dir.'/media-folder-rename.html', $swap($html, $rename, $media));
     config(['media' => $mediaConfig]);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 79);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 80);
 });
