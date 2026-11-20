@@ -299,6 +299,13 @@ describe('versions across languages', function (): void {
             expect($page->fresh()->meta)->not->toHaveKey('subtitle')
                 ->and(coverAltOfIn($page, 'en'))->toBe('A machinist at work');
 
+            // only the cover's library id differs, the picture the pages show is the same: English stays
+            $page->forceFill(['cover_media_id' => coverAltOtherMedia()->id])->save();
+            app(RestoreEntryRevision::class)->handle($v1->fresh(), $user);
+            expect($page->fresh()->cover_media_id)->toBeNull()
+                ->and(coverAltOf($page))->toBe('Thợ đứng máy')
+                ->and(coverAltOfIn($page, 'en'))->toBe('A machinist at work');
+
             // the page now shows another picture, English describing it; the version brings the first back
             $page->update(['meta' => ['image_url' => coverAltOtherMedia()->storage_key]]);
             $page->translationFor('en')->update(['cover_alt' => 'Steel pipes']);
