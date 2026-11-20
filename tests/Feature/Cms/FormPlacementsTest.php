@@ -348,7 +348,7 @@ it('names no page in a language visitors cannot open yet', function (): void {
     expect($paths())->toBe([$quote->id => '/ja/bao-gia-ja']);
 });
 
-it('saves the page when its form is deleted at the same moment, writing no row for it', function (): void {
+it('saves the page when its form is deleted just before its rows are written, writing no row for it', function (): void {
     $contact = placedForm(1, Form::SYSTEM_KEY, 'Liên hệ');
     $quote = placedForm(1, 'bao-gia', 'Yêu cầu báo giá');
     $page = pageWithForms(1, 'lien-he', [null]);
@@ -434,13 +434,19 @@ it('checks the placements every night, never two at once', function (): void {
 
     expect($event)->not->toBeNull()
         ->and($event->expression)->toBe('15 21 * * *')
+        ->and($event->timezone)->toBe('UTC')
         ->and($event->withoutOverlapping)->toBeTrue();
 });
 
-it('drops the table on the way down, safely twice, and creates it again with RLS FORCE on the way up', function (): void {
+it('drops the table and the forms key it aims at on the way down, safely twice, and makes both again on the way up', function (): void {
     /** @var Migration $migration */
     $migration = require database_path('migrations/2082_01_01_000000_create_form_placements_table.php');
-    $exists = fn (): bool => DB::connection('pgsql_admin')->selectOne("select to_regclass('public.form_placements') is not null as e")->e;
+    /** @var Migration $formsKey */
+    $formsKey = require database_path('migrations/2081_01_01_000200_add_site_id_id_unique_to_forms.php');
+    $admin = DB::connection('pgsql_admin');
+    $exists = fn (): bool => $admin->selectOne("select to_regclass('public.form_placements') is not null as e")->e;
+    $keyed = fn (): bool => $admin->selectOne("select count(*) = 1 as k from pg_constraint where conrelid = 'forms'::regclass and conname = 'forms_site_id_id_unique' and contype = 'u'")->k
+        && $admin->selectOne("select to_regclass('public.forms_site_id_id_unique') is not null as i")->i;
 
     $original = DB::getDefaultConnection();
     DB::setDefaultConnection('pgsql_admin');
@@ -448,14 +454,53 @@ it('drops the table on the way down, safely twice, and creates it again with RLS
         $migration->down();
         $migration->down();
         $dropped = ! $exists();
+        $formsKey->down();
+        $formsKey->down();
+        $unkeyed = ! $keyed() && $admin->selectOne("select to_regclass('public.forms_site_id_id_unique') is null as n")->n;
+        $formsKey->up();
+        $formsKey->up();   // a second run finds both and adds nothing
+        $rekeyed = $keyed();
         DB::transaction(fn () => $migration->up());
         $forced = DB::selectOne("select relrowsecurity and relforcerowsecurity as f from pg_class where relname = 'form_placements'")->f;
     } finally {
+        if (! $keyed()) {
+            $formsKey->up();
+        }
         if (! $exists()) {
             DB::transaction(fn () => $migration->up());
         }
         DB::setDefaultConnection($original);
     }
 
-    expect($dropped)->toBeTrue()->and($forced)->toBeTrue()->and($exists())->toBeTrue();
+    expect($dropped)->toBeTrue()->and($unkeyed)->toBeTrue()->and($rekeyed)->toBeTrue()
+        ->and($forced)->toBeTrue()->and($exists())->toBeTrue()->and($keyed())->toBeTrue();
 })->skip(getenv('CI') !== 'true', 'drops and creates a table: runs on CI\'s own database only');
+
+it('gives a form being deleted in batches no row anywhere: the save, the nightly check and a new form\'s job drop or skip it', function (): void {
+    $quote = placedForm(1, 'bao-gia', 'Yêu cầu báo giá');
+    $page = pageWithForms(1, 'bao-gia', ['bao-gia']);
+    expect(placements())->toBe(["{$page->id}:vi:bao-gia"]);
+    $admin = DB::connection('pgsql_admin');
+    $admin->table('forms')->where('id', $quote->id)->update(['status' => Form::DELETING]);
+    $stray = fn () => $admin->table('form_placements')->insert(['site_id' => 1, 'form_id' => $quote->id, 'entry_id' => $page->id, 'locale' => 'vi', 'created_at' => now(), 'updated_at' => now()]);
+
+    // the list names no page for it while its row is still there
+    expect(app(Tenancy::class)->enter(1, fn (): array => app(FormPagePaths::class)->of([$quote->id], 'vi')))->toBe([]);
+
+    // the next save of the page drops its row
+    app(Tenancy::class)->enter(1, function () use ($page): void {
+        EntryTranslation::query()->where('entry_id', $page->id)->firstOrFail()->update(['body' => formBlocks(['bao-gia', 'bao-gia'])]);
+    });
+    expect(placements())->toBe([]);
+
+    // the nightly check drops one written past the app
+    $stray();
+    $this->artisan('forms:placements')->assertSuccessful();
+    expect(placements())->toBe([]);
+
+    // a new form's job, and the write handed its id, add none
+    PlaceNewForm::dispatchSync(1, $quote->id);
+    expect(placements())->toBe([])
+        ->and(app(Tenancy::class)->enter(1, fn (): bool => EntryFormPlacements::write(1, $page->id, 'vi', [$quote->id], [])))->toBeFalse()
+        ->and(placements())->toBe([]);
+});

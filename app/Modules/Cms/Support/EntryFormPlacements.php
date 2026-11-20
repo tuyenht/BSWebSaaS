@@ -90,13 +90,15 @@ final class EntryFormPlacements
             // The rows come from the site's forms as they are now, each row-locked (FOR KEY SHARE, the
             // lock the foreign-key check takes): a form deleted at the same moment is skipped, or waits
             // for this save and then takes its rows with it — never a foreign-key error that aborts the
-            // page save. A row already there is left as it is.
+            // page save. A form being deleted in batches (it reads as gone everywhere) gets no row
+            // either, even when it was switched so after this save read its id. A row already there is
+            // left as it is.
             $now = now();
             $added = DB::affectingStatement(
                 'insert into form_placements (site_id, form_id, entry_id, locale, created_at, updated_at)
-                 select f.site_id, f.id, ?, ?, ?, ? from forms f where f.site_id = ? and f.id = any(?::bigint[]) for key share
+                 select f.site_id, f.id, ?, ?, ?, ? from forms f where f.site_id = ? and f.id = any(?::bigint[]) and f.status <> ? for key share
                  on conflict do nothing',
-                [$entryId, $locale, $now, $now, $siteId, '{'.implode(',', $new).'}'],
+                [$entryId, $locale, $now, $now, $siteId, '{'.implode(',', $new).'}', Form::DELETING],
             );
         }
 

@@ -47,6 +47,10 @@ return new class extends Migration
             $table->id();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
             $table->unsignedBigInteger('form_id');
+            // plain, not (site_id, entry_id): entries has no (site_id, id) key, and retrofitting one onto
+            // that big table is planned work at its partition trigger, never ad hoc (CLAUDE.md §3.1).
+            // The row's page stays its own site's through the writer (under RLS + BelongsToSite) and
+            // the policy below; tested in FormPlacementsTest.
             $table->foreignId('entry_id')->constrained('entries')->cascadeOnDelete();
             $table->string('locale', 12);
             $table->timestampsTz();
