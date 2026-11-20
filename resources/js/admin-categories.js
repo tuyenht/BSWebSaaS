@@ -766,11 +766,9 @@ window.Alpine.data('bsCategories', (cfg) => {
         slugBlur() {
             const c = this.cur;
             if (this.fSlug.trim() !== '' || !this.fName.trim()) {
-                this.pan.noSlug = false;
                 return;
             }
             const made = slugify(this.fName, cfg.limits.slug);
-            this.pan.noSlug = made === '';
             if (made !== '') {
                 this.pan.d.slugs[c] = made;
                 this.pan.d.auto[c] = true;
@@ -782,10 +780,7 @@ window.Alpine.data('bsCategories', (cfg) => {
         },
         get slugBad() {
             const s = this.fSlug;
-            if (s === '') {
-                return !!this.pan.noSlug;
-            }
-            return !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(s);
+            return s !== '' && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(s);
         },
         get slugChanged() {
             const P = this.pan;

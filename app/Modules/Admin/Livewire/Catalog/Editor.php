@@ -714,10 +714,10 @@ final class Editor extends Component
     {
         $this->authorizeEdit();
         $this->slug = PlainText::line($this->slug);
+        $this->resetErrorBag('slug');
         if (trim($this->slug) !== '') {
             return;
         }
-        $this->resetErrorBag('slug');
         if ($this->fillBlankSlug()) {
             $this->dispatch('bs-toast', text: Cast::string(__('catalog.ed.slug_auto', ['slug' => $this->slug])));
         } elseif (trim($this->name) !== '') {
