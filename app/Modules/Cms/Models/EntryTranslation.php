@@ -71,9 +71,9 @@ class EntryTranslation extends Model
      * (EntrySearchWords): from the values just saved when the model holds both, else from the saved
      * row read back; a moved row first takes its words off where it was. Other saves write nothing.
      *
-     * The same way, a body whose «Biểu mẫu» blocks name other forms than before, a language added
-     * with form blocks or removed, or a moved row rewrites this language's rows of `form_placements`
-     * (EntryFormPlacements), so «Xem trang có biểu mẫu» never scans page bodies.
+     * The same way, a body saved, a language added with form blocks or removed, or a moved row brings
+     * this language's rows of `form_placements` in line with its «Biểu mẫu» blocks (EntryFormPlacements,
+     * which writes only what differs), so «Xem trang có biểu mẫu» never scans page bodies.
      */
     #[\Override]
     protected static function booted(): void
@@ -115,12 +115,8 @@ class EntryTranslation extends Model
                 $sync($row);
             }
             if ($row->wasChanged('body')) {
-                $keys = EntryFormPlacements::keysIn($row->body);
-                // a body the model was loaded without may have shown forms: then the rows are written whatever it shows now
-                $known = array_key_exists('body', $row->getRawOriginal());
-                if (! $known || EntryFormPlacements::keysIn($row->getOriginal('body')) !== $keys) {
-                    EntryFormPlacements::put($row->site_id, $row->entry_id, $row->locale, $keys);
-                }
+                // whatever the body showed before: put() writes only what differs, so a row missed earlier heals here
+                EntryFormPlacements::put($row->site_id, $row->entry_id, $row->locale, EntryFormPlacements::keysIn($row->body));
             }
         });
         static::deleted(static function (self $row): void {

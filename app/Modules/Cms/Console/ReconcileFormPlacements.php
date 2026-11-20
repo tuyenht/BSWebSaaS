@@ -95,7 +95,7 @@ final class ReconcileFormPlacements extends Command
         // the site's forms by key (a handful: FormDraft::MAX_FORMS)
         $formIds = [];
         foreach (Form::query()->get(['id', 'key']) as $form) {
-            $formIds[$form->key] = $form->id;
+            $formIds[$form->key] = Cast::int($form->id);
         }
 
         $fixed = 0;
@@ -103,10 +103,8 @@ final class ReconcileFormPlacements extends Command
             $keys = EntryFormPlacements::keysIn($row->body);
             $want = array_values(array_filter(array_map(fn (string $key): ?int => $formIds[$key] ?? null, $keys), fn (?int $id): bool => $id !== null));
             sort($want);
-            if ($want === ($have[$row->entry_id.'|'.$row->locale] ?? [])) {
-                continue;
-            }
-            if (EntryFormPlacements::put($siteId, $row->entry_id, $row->locale, $keys)) {
+            $rowsNow = $have[$row->entry_id.'|'.$row->locale] ?? [];
+            if ($want !== $rowsNow && EntryFormPlacements::write($siteId, $row->entry_id, $row->locale, $want, $rowsNow)) {
                 $fixed++;
             }
         }

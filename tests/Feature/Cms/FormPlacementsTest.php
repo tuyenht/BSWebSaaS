@@ -151,6 +151,53 @@ it('names a page only a visitor can open, and never another site\'s', function (
     expect($inB)->toBe([$contactB->id => '/lien-he-b']);
 });
 
+it('names no page for a switched-off form, nor a page whose language is still a draft', function (): void {
+    $contact = placedForm(1, Form::SYSTEM_KEY, 'Liên hệ');
+    $quote = placedForm(1, 'bao-gia', 'Yêu cầu báo giá');
+    pageWithForms(1, 'lien-he', [null, 'bao-gia']);
+    $draftLanguage = pageWithForms(1, 'contact-us', [null], locale: 'en');
+    app(Tenancy::class)->enter(1, fn () => EntryTranslation::query()->where('entry_id', $draftLanguage->id)->firstOrFail()->update(['status' => 'draft']));
+    $paths = fn (): array => app(Tenancy::class)->enter(1, fn (): array => app(FormPagePaths::class)->of([$contact->id, $quote->id], 'en'));
+
+    // the entry is published but its English language is a draft: the Vietnamese page is named
+    expect($paths())->toBe([$contact->id => '/lien-he', $quote->id => '/lien-he']);
+
+    // a switched-off form shows nothing on its page (FormComponent renders active forms only)
+    app(Tenancy::class)->enter(1, fn () => $quote->update(['status' => 'disabled']));
+    expect($paths())->toBe([$contact->id => '/lien-he']);
+});
+
+it('gives a form made after pages name its key its rows at once, and heals a missed row with the next save', function (): void {
+    $contactPage = pageWithForms(1, 'lien-he', [null]);
+    $quotePage = pageWithForms(1, 'bao-gia', ['bao-gia']);
+    pageWithForms(2, 'lien-he-b', [null]);
+    expect(placements())->toBe([]);   // no form of those keys yet
+
+    // the contact form made after the pages: site A's page gets its row, site B's page none
+    placedForm(1, Form::SYSTEM_KEY, 'Liên hệ');
+    expect(placements())->toBe(["{$contactPage->id}:vi:contact"]);
+
+    // a form deleted for good and made again under the same key
+    $quote = placedForm(1, 'bao-gia', 'Yêu cầu báo giá');
+    DB::connection('pgsql_admin')->table('forms')->where('id', $quote->id)->delete();
+    expect(placements())->toBe(["{$contactPage->id}:vi:contact"]);
+    placedForm(1, 'bao-gia', 'Báo giá');
+    expect(placements())->toBe(["{$contactPage->id}:vi:contact", "{$quotePage->id}:vi:bao-gia"]);
+
+    // a row lost: the next save of the body heals it even when its forms did not change, and also
+    // from a model loaded without the body
+    DB::connection('pgsql_admin')->table('form_placements')->delete();
+    app(Tenancy::class)->enter(1, function () use ($contactPage, $quotePage): void {
+        $vi = EntryTranslation::query()->where('entry_id', $quotePage->id)->firstOrFail();
+        $body = formBlocks(['bao-gia']);
+        $body['blocks'][0]['props']['title'] = 'Báo giá trong ngày';
+        $vi->update(['body' => $body]);
+        EntryTranslation::query()->where('entry_id', $contactPage->id)->firstOrFail(['id', 'site_id', 'entry_id', 'locale'])
+            ->update(['body' => formBlocks([null])]);
+    });
+    expect(placements())->toBe(["{$contactPage->id}:vi:contact", "{$quotePage->id}:vi:bao-gia"]);
+});
+
 it('offers «Xem trang có biểu mẫu» where a page shows the form, «Đặt vào trang» elsewhere, on a flat query budget', function (): void {
     $owner = blockLibraryUser(1, 'owner');
     $contact = placedForm(1, Form::SYSTEM_KEY, 'Liên hệ');

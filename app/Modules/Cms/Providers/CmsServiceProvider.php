@@ -41,8 +41,10 @@ use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Cms\Support\CategoryPublicCounts;
 use App\Modules\Cms\Support\CategoryScopes;
+use App\Modules\Cms\Support\EntryFormPlacements;
 use App\Modules\Cms\Support\EntryReviewReach;
 use App\Modules\Cms\Support\LayoutSlotBlocks;
+use App\Modules\Forms\Models\Form;
 use App\Modules\Rbac\Events\CustomRolePermissionsAdding;
 use App\Modules\Rbac\Events\InvitationAccepted;
 use App\Modules\Rbac\Events\SiteMembershipChanged;
@@ -115,6 +117,9 @@ final class CmsServiceProvider extends ServiceProvider
         $registry = $this->app->make(ComponentRegistry::class);
         $registry->register('latest_posts', new LatestPostsComponent);
         $registry->register('entry_grid', $this->app->make(EntryGridComponent::class), headed: true);
+
+        // pages that already name a new form's key get their form_placements rows (Forms never names Cms)
+        Form::created(static fn (Form $form) => EntryFormPlacements::formCreated($form));
 
         Gate::policy(Entry::class, EntryPolicy::class);
         Gate::policy(Menu::class, MenuPolicy::class);

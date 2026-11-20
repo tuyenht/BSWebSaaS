@@ -68,8 +68,21 @@ final class EntryFormPlacements
             FormPlacement::query()->where('entry_id', $entryId)->where('locale', $locale)->pluck('form_id')->all(),
         );
 
+        return self::write($siteId, $entryId, $locale, array_values($want), array_values($have));
+    }
+
+    /**
+     * Write the rows of one page language from the form ids it shows ($want) and has rows for ($have),
+     * both already read (the reconcile reads them for a whole chunk at once).
+     *
+     * @param  list<int>  $want
+     * @param  list<int>  $have
+     * @return bool whether a row was added or removed
+     */
+    public static function write(int $siteId, int $entryId, string $locale, array $want, array $have): bool
+    {
         $gone = array_values(array_diff($have, $want));
-        $new = array_values(array_diff($want, $have));
+        $new = array_values(array_unique(array_diff($want, $have)));
         if ($gone !== []) {
             FormPlacement::query()->where('entry_id', $entryId)->where('locale', $locale)->whereIn('form_id', $gone)->delete();
         }
@@ -82,6 +95,31 @@ final class EntryFormPlacements
         }
 
         return $gone !== [] || $new !== [];
+    }
+
+    /**
+     * A form just created (in its save's transaction): the page languages of its site whose blocks
+     * already name its key — a form deleted and made again under the same key, or the contact form
+     * made after pages that show it — get their rows now, as no page save would write them. Reads the
+     * site's page bodies once, with the database filtering them; forms are made rarely (a handful per
+     * site), so this read is not on any page view.
+     */
+    public static function formCreated(Form $form): void
+    {
+        $match = $form->key === Form::SYSTEM_KEY
+            ? '$.blocks[*] ? (@.type == "form" && (!exists(@.props.form_key) || @.props.form_key == "" || @.props.form_key == $key))'
+            : '$.blocks[*] ? (@.type == "form" && @.props.form_key == $key)';
+        $now = now();
+        $rows = EntryTranslation::query()->where('site_id', $form->site_id)
+            ->whereRaw('jsonb_path_exists(body, ?::jsonpath, jsonb_build_object(\'key\', ?::text))', [$match, $form->key])
+            ->get(['entry_id', 'locale'])
+            ->map(fn (EntryTranslation $row): array => [
+                'site_id' => $form->site_id, 'form_id' => $form->id, 'entry_id' => $row->entry_id, 'locale' => $row->locale,
+                'created_at' => $now, 'updated_at' => $now,
+            ])->all();
+        if ($rows !== []) {
+            FormPlacement::query()->insertOrIgnore($rows);
+        }
     }
 
     /** One page language gone (deleted, or moved to another language or page): its rows go. */
