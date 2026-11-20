@@ -11,6 +11,7 @@ use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormField;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Rbac\Support\RoleLabel;
@@ -227,11 +228,13 @@ final class Inbox extends Component
 
     /**
      * «Xóa theo yêu cầu của khách» in the lead's ⋮: the question names the visitor and says the lead
-     * goes for good, with no undo, and what the log keeps. LeadPolicy decides who may.
+     * goes for good, with no undo, and what the log keeps. LeadPolicy decides who may; support staff
+     * signed in for a member never erase a visitor's data on their behalf (the member does it).
      */
     public function askErase(string $ulid): void
     {
         $this->guardWrite();
+        app(SupportSession::class)->forbid();
         $lead = LeadListQuery::leads()->where('ulid', $ulid)->select(['id', 'ulid', 'name', 'email', 'phone'])->first();
         if ($lead === null) {
             $this->say(__('leads.gone'), 'error');
@@ -249,6 +252,7 @@ final class Inbox extends Component
         $asked = $this->erasing;
         $this->cancelErase();
         $this->guardWrite();
+        app(SupportSession::class)->forbid();
         if ($asked === null) {
             return;
         }
@@ -422,6 +426,7 @@ final class Inbox extends Component
             'empty' => ! $read['any'],
             'failed' => $read['failed'] ?? false,
             'canManage' => $canManage,
+            'support' => app(SupportSession::class)->active(),
             'offForms' => $this->offForms($read['forms']),
             'filterCount' => count($this->formF) + ($this->when !== '' ? 1 : 0),
             'siteTime' => $siteTime,

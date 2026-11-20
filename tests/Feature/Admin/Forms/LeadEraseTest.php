@@ -5,8 +5,10 @@ use App\Modules\Forms\Actions\EraseLead;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
@@ -17,7 +19,8 @@ use Livewire\Livewire;
  * one lead for good after a question that names the visitor and says it cannot be undone. With it
  * go the bell's «new lead» notices of it (their data and search text carry the visitor's name);
  * one audit row says a lead was erased, never who the visitor was. A member who only reads leads
- * never erases one, and another website's lead is never reached.
+ * never erases one, support staff signed in for a member never do, and another website's lead is
+ * never reached.
  */
 
 beforeEach(function (): void {
@@ -256,5 +259,32 @@ it('leaves a lead whose form is being deleted to that delete', function (): void
 
     expect(app(Tenancy::class)->enter(1, fn (): bool => app(EraseLead::class)->handle($lead->ulid)))->toBeFalse()
         ->and(eraseExists($lead))->toBeTrue()
+        ->and(DB::connection('pgsql_admin')->table('audit_logs')->where('action', 'forms.lead.erased')->count())->toBe(0);
+});
+
+it('never lets support staff signed in for a member erase a visitor\'s lead', function (): void {
+    $manager = eraseMember(['forms.view', 'forms.manage']);
+    $lead = eraseLead(1, 'Kiều Oanh');
+    $session = app('session')->driver();
+    request()->setLaravelSession($session);
+    auth()->login($manager);
+    app(SupportSession::class)->start($manager, $manager, 1, 'Kiểm tra', now()->addMinutes(30));
+    // Livewire's test requests skip the middleware: hand each one this session, as StartSession does
+    app()->rebinding('request', function ($app, Request $request) use ($session): void {
+        if (! $request->hasSession()) {
+            $request->setLaravelSession($session);
+        }
+    });
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $lead): void {
+        Livewire::actingAs($manager)->test(Inbox::class, ['ulid' => $lead->ulid])
+            ->assertSee(__('leads.erase'))
+            ->assertSee(__('admin.support.locked'))
+            ->assertDontSee('askErase(', false)
+            ->call('askErase', $lead->ulid)->assertForbidden();
+        Livewire::actingAs($manager)->test(Inbox::class)->call('confirmErase')->assertForbidden();
+    });
+
+    expect(eraseExists($lead))->toBeTrue()
         ->and(DB::connection('pgsql_admin')->table('audit_logs')->where('action', 'forms.lead.erased')->count())->toBe(0);
 });
