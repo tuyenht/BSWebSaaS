@@ -43,7 +43,7 @@
     @endif
 
     {{-- Tabs --}}
-    <div class="flex flex-wrap gap-2">
+    <div class="flex flex-wrap gap-2" data-inbox-tabs>
         @foreach ([['queue', 'ri-inbox-archive', $queueCount], ['mine', 'ri-user-follow', $mineCount]] as [$key, $icon, $count])
             <button type="button" wire:click="setTab('{{ $key }}')" @class([
                 'inline-flex items-center gap-2 rounded border px-3.5 py-2 text-sm font-medium transition-colors',
@@ -101,7 +101,13 @@
                 </x-bs-admin::button>
             </div>
         </x-bs-admin::card>
-    @else
+    @endif
+
+    {{-- «Thay đổi của bài đang đăng» (board 17, under the load error, above the list): its own component, so
+         neither a tab, a filter nor a failed queue read narrows or hides it --}}
+    <livewire:admin.entries.review-changes wire:key="inbox-changes" />
+
+    @unless ($loadFailed)
     <div class="grid gap-4 @container lg:grid-cols-[352px_1fr]" wire:loading.delay.remove wire:target="{{ $reloads }}">
         {{-- LEFT: the queue --}}
         <x-bs-admin::card class="{{ $reader !== null ? 'hidden lg:block' : '' }}">
@@ -358,7 +364,7 @@
             </x-bs-admin::card>
         @endif
     </div>
-    @endif
+    @endunless
 
     {{-- The reason dialog (board 17 .sp-modal): the post, what the move does, «Lý do *», «Giao cho».
          Focus starts on «Hủy» and goes back to the button that opened it; Esc and the backdrop close it.

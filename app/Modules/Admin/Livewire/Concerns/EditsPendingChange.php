@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire\Concerns;
 
+use App\Modules\Admin\Support\Entries\PendingChangeDiff;
 use App\Modules\Admin\Support\EntryProseBody;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Cms\Actions\ApplyEntryDraft;
@@ -26,6 +27,7 @@ use App\Modules\Workflow\Models\WorkflowTransition;
 use App\Modules\Workflow\Services\WorkflowEngine;
 use App\Modules\Workflow\Services\WorkflowTrail;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Locked;
 
@@ -730,72 +732,20 @@ trait EditsPendingChange
     }
 
     /**
-     * What differs between the change and what visitors see: per language the six text fields of
-     * board 07 (the body as plain text), then the picture and the main category, shared by every
-     * language. Also the languages the change would put live for the first time (still a draft).
+     * What differs between the change and what visitors see (PendingChangeDiff), read against the
+     * entry's translations and main category as stored now.
      *
      * @return array{rows: list<array{code: string|null, label: string, now: string, seen: string}>, drafts: list<string>}
      */
     private function changeDiff(Entry $entry, EntryDraft $change): array
     {
         $locales = array_map('strval', array_keys($change->content['locales']));
+        /** @var Collection<string, EntryTranslation> $live */
         $live = EntryTranslation::query()->where('entry_id', $entry->id)->whereIn('locale', $locales)->get()->keyBy('locale');
-        $empty = Cast::string(__('entries.chg.diff_empty'));
-        $clip = static fn (?string $text): string => $text === null || trim($text) === '' ? $empty : Str::limit($text, 160);
-        $rows = [];
-        $drafts = [];
-        $order = app(SiteLocale::class)->enabled();
-        usort($locales, static fn (string $a, string $b): int => (array_search($a, $order, true) ?: 0) <=> (array_search($b, $order, true) ?: 0));
-        foreach ($locales as $code) {
-            $text = $change->content['locales'][$code];
-            $seen = $live->get($code);
-            if (! $seen instanceof EntryTranslation || $seen->status !== 'published') {
-                $drafts[] = $code;
-            }
-            foreach (['title', 'slug', 'excerpt', 'seo_title', 'seo_description'] as $field) {
-                $now = Cast::stringOrNull($text[$field] ?? null);
-                $was = $seen instanceof EntryTranslation ? Cast::stringOrNull($seen->getAttribute($field)) : null;
-                if ((string) $now !== (string) $was) {
-                    $rows[] = ['code' => $code, 'label' => Cast::string(__('entries.chg.f_'.$field)), 'now' => $clip($now), 'seen' => $clip($was)];
-                }
-            }
-            $body = $text['body'] ?? null;
-            $nowBlocks = is_array($body) && is_array($body['blocks'] ?? null) ? $body['blocks'] : [];
-            $wasBlocks = $seen instanceof EntryTranslation ? ($seen->body['blocks'] ?? []) : [];
-            if (self::keysSorted($nowBlocks) !== self::keysSorted($wasBlocks)) {
-                $rows[] = ['code' => $code, 'label' => Cast::string(__('entries.chg.f_body')),
-                    'now' => $clip($this->plainBody($nowBlocks)), 'seen' => $clip($this->plainBody(is_array($wasBlocks) ? $wasBlocks : []))];
-            }
-        }
-
-        $shared = $change->content['shared'] ?? [];
-        $cover = array_key_exists('meta', $shared) ? data_get($shared['meta'], 'image_url') : data_get($entry->meta, 'image_url');
-        $liveCover = data_get($entry->meta, 'image_url');
-        if ($cover !== $liveCover) {
-            $rows[] = ['code' => null, 'label' => Cast::string(__('entries.chg.f_cover')),
-                'now' => is_string($cover) ? Cast::string(__('entries.chg.cover_other')) : $empty, 'seen' => is_string($liveCover) ? Cast::string(__('entries.chg.cover_other')) : $empty];
-        }
-        $primary = $shared['primary_category_id'] ?? null;
         $livePrimary = $this->type === 'post' ? ($this->storedCategories($entry)[0] ?? null) : null;
-        if ($this->type === 'post' && is_int($primary) && $primary !== $livePrimary) {
-            $names = TaxonomyTranslation::query()->whereIn('taxonomy_id', array_filter([$primary, $livePrimary]))
-                ->where('locale', app(SiteLocale::class)->default())->pluck('name', 'taxonomy_id');
-            $rows[] = ['code' => null, 'label' => Cast::string(__('entries.chg.f_category')),
-                'now' => $clip(Cast::stringOrNull($names->get($primary))), 'seen' => $clip($livePrimary !== null ? Cast::stringOrNull($names->get($livePrimary)) : null)];
-        }
+        $names = static fn (array $ids): array => array_map(Cast::string(...), TaxonomyTranslation::query()->whereIn('taxonomy_id', $ids)
+            ->where('locale', app(SiteLocale::class)->default())->pluck('name', 'taxonomy_id')->all());
 
-        return ['rows' => $rows, 'drafts' => $drafts];
-    }
-
-    /**
-     * A stored body as one line of plain text.
-     *
-     * @param  array<mixed>  $blocks
-     */
-    private function plainBody(array $blocks): string
-    {
-        $lines = $this->revisionLines($this->normalizeBlocks($blocks));
-
-        return implode(' ', array_column($lines, 't'));
+        return app(PendingChangeDiff::class)->between($entry, $change, $live, $livePrimary, $names, app(SiteLocale::class)->enabled());
     }
 }

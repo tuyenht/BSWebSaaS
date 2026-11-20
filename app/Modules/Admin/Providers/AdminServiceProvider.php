@@ -24,6 +24,7 @@ use App\Modules\Admin\Livewire\EmailOtpChallenge;
 use App\Modules\Admin\Livewire\EmailSettings;
 use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
+use App\Modules\Admin\Livewire\Entries\ReviewChanges;
 use App\Modules\Admin\Livewire\ForgotPassword;
 use App\Modules\Admin\Livewire\Login;
 use App\Modules\Admin\Livewire\LoginSecuritySettings;
@@ -145,6 +146,7 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.catalog-settings', CatalogSettings::class);
         Livewire::component('admin.entries.index', EntriesIndex::class);
         Livewire::component('admin.entries.editor', Editor::class);
+        Livewire::component('admin.entries.review-changes', ReviewChanges::class);
         Livewire::component('admin.users.index', UsersIndex::class);
         Livewire::component('admin.menus.index', MenusIndex::class);
         Livewire::component('admin.blocks.library', BlockLibrary::class);
