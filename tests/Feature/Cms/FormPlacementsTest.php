@@ -173,16 +173,33 @@ it('gives a form made after pages name its key its rows at once, and heals a mis
     pageWithForms(2, 'lien-he-b', [null]);
     expect(placements())->toBe([]);   // no form of those keys yet
 
-    // the contact form made after the pages: site A's page gets its row, site B's page none
+    // blocks whose key is null or not a string also show the contact form (keysIn, as an empty one); a page
+    // naming the same form twice gets one row
+    $oddKeys = app(Tenancy::class)->enter(1, function (): Entry {
+        $entry = Entry::query()->create(['type' => 'page', 'status' => 'published', 'meta' => []]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Hỗ trợ', 'slug' => 'ho-tro', 'status' => 'published', 'body' => ['blocks' => [
+            ['type' => 'form', 'props' => ['form_key' => null]], ['type' => 'form', 'props' => ['form_key' => 7]],
+        ]]]);
+
+        return $entry;
+    });
+    $quoted = pageWithForms(1, 'bao-gia-dac-biet', ["bao-gia \"đặc biệt\" 'x'"]);
+
+    // the contact form made after the pages: site A's pages get their rows, site B's page none
     placedForm(1, Form::SYSTEM_KEY, 'Liên hệ');
-    expect(placements())->toBe(["{$contactPage->id}:vi:contact"]);
+    expect(placements())->toBe(["{$contactPage->id}:vi:contact", "{$oddKeys->id}:vi:contact"]);
+    $special = placedForm(1, "bao-gia \"đặc biệt\" 'x'", 'Báo giá đặc biệt');
+    expect(placements())->toContain("{$quoted->id}:vi:{$special->key}");
+    DB::connection('pgsql_admin')->table('forms')->where('id', $special->id)->delete();
 
     // a form deleted for good and made again under the same key
     $quote = placedForm(1, 'bao-gia', 'Yêu cầu báo giá');
     DB::connection('pgsql_admin')->table('forms')->where('id', $quote->id)->delete();
-    expect(placements())->toBe(["{$contactPage->id}:vi:contact"]);
+    expect(placements())->toBe(["{$contactPage->id}:vi:contact", "{$oddKeys->id}:vi:contact"]);
     placedForm(1, 'bao-gia', 'Báo giá');
-    expect(placements())->toBe(["{$contactPage->id}:vi:contact", "{$quotePage->id}:vi:bao-gia"]);
+    expect(placements())->toBe(["{$contactPage->id}:vi:contact", "{$quotePage->id}:vi:bao-gia", "{$oddKeys->id}:vi:contact"]);
+
+    app(Tenancy::class)->enter(1, fn () => $oddKeys->translations()->firstOrFail()->delete());
 
     // a row lost: the next save of the body heals it even when its forms did not change, and also
     // from a model loaded without the body

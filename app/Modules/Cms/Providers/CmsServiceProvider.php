@@ -19,6 +19,7 @@ use App\Modules\Cms\Console\ResanitizePageBodies;
 use App\Modules\Cms\Console\RetirePrivateEntryStatus;
 use App\Modules\Cms\Console\SnapshotPublishedEntries;
 use App\Modules\Cms\Events\EntryPublished;
+use App\Modules\Cms\Jobs\PlaceNewForm;
 use App\Modules\Cms\Listeners\AddPublishedPageToMenu;
 use App\Modules\Cms\Listeners\CopyInvitationCategoryScopes;
 use App\Modules\Cms\Listeners\ForgetMemberCategoryScopes;
@@ -41,7 +42,6 @@ use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Cms\Support\CategoryPublicCounts;
 use App\Modules\Cms\Support\CategoryScopes;
-use App\Modules\Cms\Support\EntryFormPlacements;
 use App\Modules\Cms\Support\EntryReviewReach;
 use App\Modules\Cms\Support\LayoutSlotBlocks;
 use App\Modules\Forms\Models\Form;
@@ -118,8 +118,11 @@ final class CmsServiceProvider extends ServiceProvider
         $registry->register('latest_posts', new LatestPostsComponent);
         $registry->register('entry_grid', $this->app->make(EntryGridComponent::class), headed: true);
 
-        // pages that already name a new form's key get their form_placements rows (Forms never names Cms)
-        Form::created(static fn (Form $form) => EntryFormPlacements::formCreated($form));
+        // pages that already name a new form's key get their form_placements rows, off the form's save
+        // (Forms never names Cms)
+        Form::created(static function (Form $form): void {
+            PlaceNewForm::dispatch($form->site_id, $form->id);
+        });
 
         Gate::policy(Entry::class, EntryPolicy::class);
         Gate::policy(Menu::class, MenuPolicy::class);

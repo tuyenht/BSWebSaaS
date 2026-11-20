@@ -98,16 +98,16 @@ final class EntryFormPlacements
     }
 
     /**
-     * A form just created (in its save's transaction): the page languages of its site whose blocks
-     * already name its key — a form deleted and made again under the same key, or the contact form
-     * made after pages that show it — get their rows now, as no page save would write them. Reads the
-     * site's page bodies once, with the database filtering them; forms are made rarely (a handful per
-     * site), so this read is not on any page view.
+     * A form just made (PlaceNewForm, queued after its save): the page languages of its site whose
+     * blocks already name its key — a form deleted and made again under the same key, or the contact
+     * form made after pages that show it — get their rows now, as no page save would write them. The
+     * match is keysIn()'s: a key that is not a non-empty string is the contact form. Reads the site's
+     * bodies once, filtered by the database; forms are made rarely (a handful per site).
      */
     public static function formCreated(Form $form): void
     {
         $match = $form->key === Form::SYSTEM_KEY
-            ? '$.blocks[*] ? (@.type == "form" && (!exists(@.props.form_key) || @.props.form_key == "" || @.props.form_key == $key))'
+            ? '$.blocks[*] ? (@.type == "form" && (!exists(@.props.form_key ? (@.type() == "string" && @ != "")) || @.props.form_key == $key))'
             : '$.blocks[*] ? (@.type == "form" && @.props.form_key == $key)';
         $now = now();
         $rows = EntryTranslation::query()->where('site_id', $form->site_id)
