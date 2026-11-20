@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire\Concerns;
 
+use App\Modules\Admin\Support\EntryProseBody;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Cms\Actions\ApplyEntryDraft;
 use App\Modules\Cms\Actions\ApplyEntryDraftTransition;
@@ -16,6 +17,7 @@ use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\PlainText;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Workflow\Exceptions\InvalidTransitionException;
@@ -190,7 +192,7 @@ trait EditsPendingChange
         if ($live === null) {
             return false;
         }
-        $before = ['blocks' => $live->body['blocks'] ?? []];
+        $before = ['blocks' => $this->liveBodyAsSaved($live)];
         foreach (['title', 'slug', 'excerpt', 'seo_title', 'seo_description', 'cover_alt'] as $field) {
             if (Cast::string($live->getAttribute($field)) !== Cast::string($text[$field] ?? null)) {
                 return false;
@@ -200,6 +202,27 @@ trait EditsPendingChange
         return self::keysSorted($before) === self::keysSorted($text['body'])
             && data_get($entry->meta, 'image_url') === ($meta['image_url'] ?? null)
             && ($this->type !== 'post' || $primary === ($this->storedCategories($entry)[0] ?? null));
+    }
+
+    /**
+     * The live body as this form would store it unchanged: a body shown in the rich editor goes through
+     * the same reading and writing as the form's (older plain-text blocks come back as one formatted-text
+     * block), so opening it and saving changes nothing visible and writes no change. A layout is compared
+     * as it is stored.
+     *
+     * @return list<mixed>
+     */
+    private function liveBodyAsSaved(EntryTranslation $live): array
+    {
+        $blocks = array_values(Cast::arr($live->body['blocks'] ?? []));
+        if (! $this->prose) {
+            return $blocks;
+        }
+        $prose = app(EntryProseBody::class);
+        /** @var list<array{type: string, props: array<string, mixed>}> $blocks */
+        $shown = $prose->read($blocks);
+
+        return $shown === null ? $blocks : $prose->write(PlainText::lines($shown['html'], trim: false), $shown['look'])['blocks'];
     }
 
     /**

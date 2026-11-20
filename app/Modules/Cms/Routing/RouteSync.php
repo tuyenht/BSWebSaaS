@@ -116,6 +116,34 @@ final readonly class RouteSync
     }
 
     /**
+     * A page going live (again): its published sub-pages follow the address it stands at in each
+     * language, each move with its 301. While the page was offline its own address may have moved (a
+     * pending change folded into it as it left the website, EntryDraftFolder) and the sub-pages kept
+     * theirs. A language whose page address is not where its slug puts it yet is left: its sub-pages
+     * move when that language goes live. Called by every road that publishes, after the page's own
+     * route sync, under the page's row lock; a sub-page's address another item holds throws, so the
+     * publication rolls back as for the page's own address.
+     *
+     * @throws RouteConflictException
+     */
+    public function syncSubPagesOf(Entry $page): void
+    {
+        if ($page->type !== 'page' || ! Entry::query()->where('parent_id', $page->id)->exists()) {
+            return;
+        }
+        $routed = SiteRoute::query()->where('entry_id', $page->id)->pluck('path', 'locale')->all();
+        if ($routed === []) {
+            return;
+        }
+        foreach ($page->translations()->whereIn('locale', array_keys($routed))->orderBy('locale')->get(['id', 'entry_id', 'locale', 'slug']) as $translation) {
+            $locale = $translation->locale;
+            if ($routed[$locale] === $this->paths->forEntry($page, $locale, (string) $translation->slug)) {
+                $this->syncDescendants($page, $locale);
+            }
+        }
+    }
+
+    /**
      * Upsert the route for a taxonomy+locale at its flat path (/slug); returns that path. Mirrors
      * sync(): on a slug change it moves the route and records a 301 from the old path. It guards
      * against another target already owning the path (A2) and stays idempotent for re-provisioning.

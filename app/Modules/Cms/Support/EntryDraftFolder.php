@@ -31,6 +31,10 @@ use LogicException;
  * entry had is moved here, with its 301, once the content is in: the next publication finds each
  * language where its content says. An address another page took meanwhile is left as it is (the
  * publication then refuses it as taken, as any taken address).
+ *
+ * A page's live sub-pages keep their addresses (owner decision): the new slug was never approved, and
+ * a sub-page's nested address built from it would put it on the website. They move, each with its
+ * 301, when the page goes live again (RouteSync::syncSubPagesOf, on every road that publishes).
  */
 final readonly class EntryDraftFolder
 {
@@ -69,25 +73,17 @@ final readonly class EntryDraftFolder
         return true;
     }
 
-    /** Move each address the entry has to where its content now puts it (see the class doc). */
+    /** Move each address the entry has to where its content now puts it; its sub-pages stay (see the class doc). */
     private function followAddresses(Entry $entry): void
     {
-        /** @var array<string, string> $routed */
-        $routed = SiteRoute::query()->where('entry_id', $entry->id)->pluck('path', 'locale')->all();
+        $routed = SiteRoute::query()->where('entry_id', $entry->id)->pluck('locale')->all();
         if ($routed === []) {
             return;
         }
-        foreach ($entry->translations()->whereIn('locale', array_keys($routed))->orderBy('locale')->get() as $translation) {
-            $locale = $translation->locale;
+        foreach ($entry->translations()->whereIn('locale', $routed)->orderBy('locale')->get() as $translation) {
             try {
-                // one language's page and its sub-pages move together, or none of them does
-                DB::transaction(function () use ($entry, $translation, $locale, $routed): void {
-                    $path = $this->routes->sync($entry, $locale, $translation->slug);
-                    if ($entry->type === 'page' && $path !== $routed[$locale]) {
-                        // a sub-page's nested address is built from this page's slug
-                        $this->routes->syncDescendants($entry, $locale);
-                    }
-                });
+                // its own savepoint: a refused address leaves the transaction usable for the next language
+                DB::transaction(fn (): string => $this->routes->sync($entry, $translation->locale, $translation->slug));
             } catch (RouteConflictException) {
                 // taken by other content meanwhile: left where it was
             }

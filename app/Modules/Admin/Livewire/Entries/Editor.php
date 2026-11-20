@@ -2564,7 +2564,8 @@ final class Editor extends Component
 
     /**
      * The rows MovePage locks, taken now, in id order as it takes them, before this save's own lock on the
-     * page's row: the page, the parent picked, and the live pages beside it now and beside it there. A
+     * page's row: the page, the parent picked, the live pages beside it now and beside it there, and the
+     * live pages under it (they move with it). A
      * writer that locks several pages in id order (the list's bulk actions) then never holds one of them
      * while waiting for the page this save already holds. Its place is read again under the page-tree
      * lock (a move may have committed while this save waited for it); each list is read as MovePage reads
@@ -2587,7 +2588,7 @@ final class Editor extends Component
         if (count($old) > MovePage::SIBLINGS_MAX || count($new) > MovePage::SIBLINGS_MAX) {
             return;   // MovePage refuses the move before it locks a row
         }
-        $ids = [$entry->id, ...($parentId === null ? [] : [$parentId]), ...$old, ...$new];
+        $ids = [$entry->id, ...($parentId === null ? [] : [$parentId]), ...$old, ...$new, ...PageRules::subPageIds($entry)];
         Entry::withTrashed()->whereKey(array_values(array_unique($ids)))->orderBy('id')->lockForUpdate()->pluck('id');
     }
 

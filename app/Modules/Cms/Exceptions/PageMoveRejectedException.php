@@ -18,7 +18,8 @@ use Throwable;
  * at once) · path_taken ($path: an address the move would give is another item's) · anchor_gone (the
  * neighbour a drop was placed beside left the list) · at_top / at_bottom (a step past the edge of
  * the list) · here_already (a move into the parent the page already has) · change_held (a live page
- * whose edits this member makes into its pending change keeps its parent).
+ * whose edits this member makes into its pending change keeps its parent) · subpage_held (so does a
+ * page with such a live page under it).
  */
 final class PageMoveRejectedException extends DomainException
 {

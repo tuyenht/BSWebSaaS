@@ -2748,6 +2748,7 @@
     "entries.move_refused_parent_home": "ホームページには子ページを置けません。",
     "entries.move_refused_cycle": "ページをそれ自身やその子ページの中へは移動できません。",
     "entries.move_refused_change_held": "このページは公開中で、保留中の変更に編集が残っているため、親ページはまだ変更できません。変更がサイトに反映されたら、ページを移動できます。",
+    "entries.move_refused_subpage_held": "このページの下に公開中のページがあり、あなたの編集はすぐにはサイトに反映されないため、まだ親ページを変更できません。移動すると、そのページのアドレスが承認なしですぐに変わります。",
     "entries.move_refused_branch_too_big": "このページには一度に移動するには多すぎる子ページがあります。",
     "entries.move_depth_page": "ページは最大3階層までです。このページは第1階層または第2階層のページの下にのみ置けます。",
     "entries.move_depth_branch_l1": "ページは最大3階層までです。この枝は :n 階層あるため、第1階層のページの下にのみ置けます。",

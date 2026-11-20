@@ -141,6 +141,8 @@ final readonly class ApplyEntryWorkflowTransition
 
             if ($destination->is_published) {
                 $this->routes->sync($entry, $locale, $translation->slug);
+                // a page's sub-pages follow the address it went live at (left behind while it was offline)
+                $this->routes->syncSubPagesOf($entry);
                 $this->revisions->forAllLocales($entry, RevisionKind::Publish, $actor);
             }
 

@@ -120,6 +120,8 @@ final readonly class PublishEntry
                 $translation->update(['status' => 'published']);
 
                 $this->routes->sync($entry, $locale, $translation->slug);
+                // a page's sub-pages follow the address it went live at (left behind while it was offline)
+                $this->routes->syncSubPagesOf($entry);
 
                 // What just went public is kept, in the same transaction as the flip.
                 $this->revisions->forAllLocales($entry, RevisionKind::Publish, $actor);
