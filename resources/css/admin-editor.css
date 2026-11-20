@@ -292,6 +292,155 @@
     background: var(--color-surface-hover);
 }
 
+/* The post's categories (board 07 «Chuyên mục»): the product list's rows (.ped-cr) six high, a fade over the
+   bottom edge while rows are hidden below it, the reason under a locked row, and «Thêm chuyên mục mới» — inline
+   on a wide screen, a sheet from the bottom on a phone (or a short landscape screen), asked before a typed
+   name is lost. */
+.entry-cat-list {
+    max-height: 16.5rem;
+}
+
+.entry-cat-fade {
+    position: absolute;
+    inset: auto 1px 1px;
+    height: 2rem;
+    border-radius: 0 0 0.25rem 0.25rem;
+    background: linear-gradient(to bottom, transparent, var(--color-surface));
+    pointer-events: none;
+}
+
+.ped-cr[data-lock='1'] > label {
+    color: var(--color-text-muted);
+    cursor: not-allowed;
+}
+
+.entry-cat-why {
+    flex: 1 0 100%;
+    padding-inline-start: 1.625rem;
+    font-size: var(--text-caption);
+    line-height: 1.4;
+    color: var(--color-text-muted);
+    overflow-wrap: anywhere;
+}
+
+.ped-star[aria-disabled='true'] {
+    color: var(--color-text-muted);
+    cursor: not-allowed;
+}
+
+.entry-cas-w,
+.entry-cas {
+    display: contents;
+}
+
+.entry-cas-h,
+.entry-cas-ask {
+    display: none;
+}
+
+.entry-cas-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.entry-cas-row input {
+    min-height: var(--spacing-control);
+}
+
+@media (max-width: 599.98px), (max-height: 500px) {
+    .entry-cas-w {
+        position: fixed;
+        inset: 0;
+        z-index: 1150;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        background: rgb(15 23 41 / 0.45);
+    }
+
+    .entry-cas {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        width: min(30rem, 100%);
+        max-height: 100%;
+        overflow: auto;
+        box-sizing: border-box;
+        padding: 0.75rem max(1rem, env(safe-area-inset-right)) calc(1rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+        border-radius: 0.75rem 0.75rem 0 0;
+        background: var(--color-surface);
+        box-shadow: 0 -6px 24px rgb(30 32 37 / 0.22);
+    }
+
+    .entry-cas-h {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .entry-cas-h h2 {
+        flex: 1 1 auto;
+        min-width: 0;
+        margin: 0;
+        font-size: calc(1rem + var(--user-text-boost) * 0.67);
+        font-weight: 600;
+        line-height: 1.4;
+        color: var(--color-text-strong);
+        overflow-wrap: anywhere;
+    }
+
+    .entry-cas-x {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        width: 2.75rem;
+        height: 2.75rem;
+        padding: 0;
+        border: 1px solid var(--color-border-input);
+        border-radius: 0.25rem;
+        background: var(--color-surface);
+        color: var(--color-text-strong);
+        cursor: pointer;
+    }
+
+    .entry-cas-row {
+        gap: 0.75rem;
+    }
+
+    .entry-cas-row input,
+    .entry-cas .btn,
+    .entry-cas button {
+        min-height: 2.75rem;
+    }
+
+    .entry-cas-ask {
+        display: block;
+        padding: 0.75rem;
+        border: 1px solid var(--color-warning-text);
+        border-radius: 0.375rem;
+        background: color-mix(in srgb, var(--color-warning-base) 12%, var(--color-surface));
+    }
+
+    .entry-cas-ask p {
+        margin: 0 0 0.5rem;
+        overflow-wrap: anywhere;
+    }
+
+    .entry-cas-qb {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+
+    .entry-cas-qb > * {
+        flex: 1 1 7.5rem;
+        justify-content: center;
+    }
+}
+
 /* The product's pictures (board 09 «Ảnh sản phẩm»): one strip that scrolls sideways, ‹ › at its ends when it overflows. */
 .ped-strip {
     display: flex;
@@ -469,4 +618,42 @@
 
 .ped-main {
     white-space: nowrap;
+}
+
+/* «Mô tả ảnh» under the featured image: the (?) beside its label opens a short note (board 07). */
+.entry-alt__q {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    margin: -12px -10px -6px -6px;
+    padding: 0;
+    border: 0;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+}
+
+.entry-alt__q:hover {
+    color: var(--color-primary-text);
+}
+
+.entry-alt__pop {
+    position: absolute;
+    inset-inline: 0;
+    top: calc(100% + 0.25rem);
+    z-index: 20;
+    margin: 0;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    background: var(--color-surface);
+    box-shadow: 0 8px 24px rgb(15 18 30 / 0.16);
+    font-size: calc(0.8125rem + var(--user-text-boost));
+    line-height: 1.45;
+    color: var(--color-text);
+    overflow-wrap: anywhere;
 }

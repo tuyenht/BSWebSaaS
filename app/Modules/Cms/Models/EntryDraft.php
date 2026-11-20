@@ -43,7 +43,7 @@ class EntryDraft extends Model
     use BelongsToSite;
 
     /** The fields one language of a change holds (the revision snapshot's per-locale fields). */
-    public const array LOCALE_FIELDS = ['title', 'slug', 'body', 'excerpt', 'seo_title', 'seo_description', 'og_image_id', 'author_name'];
+    public const array LOCALE_FIELDS = ['title', 'slug', 'body', 'excerpt', 'seo_title', 'seo_description', 'og_image_id', 'author_name', 'cover_alt'];
 
     /** The fields every language of a change shares (the snapshot's entry fields + the primary category). */
     public const array SHARED_FIELDS = ['template_override', 'cover_media_id', 'meta', 'primary_category_id'];

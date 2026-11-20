@@ -104,14 +104,33 @@ final readonly class SaveEntryDraft
             }
 
             $content = $change !== null ? $change->content : ['v' => RecordEntryRevision::FORMAT, 'locales' => []];
-            $sharedNow = array_replace(
-                $content['shared'] ?? $this->liveShared($entry),
-                array_intersect_key($shared, array_flip(EntryDraft::SHARED_FIELDS)),
-            );
+            $sharedBefore = $content['shared'] ?? $this->liveShared($entry);
+            $sharedNow = array_replace($sharedBefore, array_intersect_key($shared, array_flip(EntryDraft::SHARED_FIELDS)));
+            $held = $content['locales'][$locale] ?? null;
             $textNow = array_replace(
-                $content['locales'][$locale] ?? $this->liveText($entry, $locale),
+                is_array($held) ? $held : $this->liveText($entry, $locale),
                 array_intersect_key($text, array_flip(EntryDraft::LOCALE_FIELDS)),
             );
+            // The featured picture (meta.image_url, what every language's page shows) is every
+            // language's: words written for another picture are not carried over to the one this
+            // change shows (as the editor's direct save does). This language's — from the change, or
+            // live words when the change holds none of its text yet — unless words were sent with it;
+            // and every other language's the change holds. A change brought back to the live picture
+            // takes the live words back: they describe it.
+            $picture = static fn (mixed $meta): mixed => is_array($meta) ? ($meta['image_url'] ?? null) : null;
+            $live = $picture($entry->getAttribute('meta'));
+            $now = $picture($sharedNow['meta'] ?? null);
+            $wordsFor = static fn (string $in): mixed => $now === $live ? $entry->translationFor($in)?->cover_alt : null;
+            if (! array_key_exists('cover_alt', $text) && (is_array($held) ? $picture($sharedBefore['meta'] ?? null) : $live) !== $now) {
+                $textNow['cover_alt'] = $wordsFor($locale);
+            }
+            if ($picture($sharedBefore['meta'] ?? null) !== $now) {
+                foreach (array_keys($content['locales']) as $other) {
+                    if ((string) $other !== $locale) {
+                        $content['locales'][$other]['cover_alt'] = $wordsFor((string) $other);
+                    }
+                }
+            }
 
             $sharedNow['primary_category_id'] = $this->category($entry, $actor, $sharedNow['primary_category_id'] ?? null);
             // A layout of the wrong role is refused only when this request sent it. One carried over from

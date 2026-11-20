@@ -29,7 +29,7 @@ use Illuminate\Support\Facades\Validator;
  * decision, made from what write() returns. write() runs in the caller's transaction and takes no
  * lock of its own.
  *
- * @phpstan-type EntryContent array{title: string, slug: string, blocks: list<array{type: string, props: array<array-key, mixed>}>, excerpt: string|null, seo_title: string|null, seo_description: string|null, og_image_id: int|null, author_name?: string|null, template_override: string|null, cover_media_id: int|null, meta: array<array-key, mixed>}
+ * @phpstan-type EntryContent array{title: string, slug: string, blocks: list<array{type: string, props: array<array-key, mixed>}>, excerpt: string|null, seo_title: string|null, seo_description: string|null, og_image_id: int|null, author_name?: string|null, cover_alt?: string|null, template_override: string|null, cover_media_id: int|null, meta: array<array-key, mixed>}
  */
 final readonly class EntryContentWriter
 {
@@ -107,6 +107,18 @@ final readonly class EntryContentWriter
             $author['author_name'] = $value;
         }
 
+        // The featured image's words, the same way: a snapshot written before they existed leaves
+        // this language's words as they are (EntryContentRules::coverAlt).
+        $alt = [];
+        if (array_key_exists('cover_alt', $snapshot)) {
+            $value = $snapshot['cover_alt'];
+            $value = is_string($value) ? EntryContentRules::coverAlt($value) : ($value === null ? null : false);
+            if ($value === false) {
+                return null;
+            }
+            $alt['cover_alt'] = $value;
+        }
+
         if (($snapshot['v'] ?? null) !== RecordEntryRevision::FORMAT
             || ! is_string($title) || ! is_string($slug) || ! is_array($blocks) || ! is_array($meta)
             || $this->rules->metaErrors($meta) !== []
@@ -136,7 +148,15 @@ final readonly class EntryContentWriter
             'template_override' => $strings['template_override'],
             'cover_media_id' => $ids['cover_media_id'],
             'meta' => $meta,
-        ] + $author;
+        ] + $author + $alt;
+    }
+
+    /** The featured picture every language's page shows: its key in meta (as Entry::saved reads a cover change). */
+    private static function coverOf(Entry $entry): mixed
+    {
+        $meta = $entry->getAttribute('meta');
+
+        return is_array($meta) ? ($meta['image_url'] ?? null) : null;
     }
 
     /**
@@ -232,8 +252,9 @@ final readonly class EntryContentWriter
     /**
      * Store the content: the shared fields (template, cover, meta) on the entry, the rest on the
      * locale's translation — created when the entry has lost that language since. Other languages'
-     * text is never touched. Returns the saved translation and whether the shared fields changed
-     * (they belong to every language's page, so the caller then records every language).
+     * text is never touched, except their words for the picture, emptied when the picture changes.
+     * Returns the saved translation and whether the shared fields changed (they belong to every
+     * language's page, so the caller then records every language).
      *
      * @param  EntryContent  $content
      * @return array{translation: EntryTranslation, shared_changed: bool}
@@ -242,12 +263,14 @@ final readonly class EntryContentWriter
      */
     public function write(Entry $entry, string $locale, array $content): array
     {
+        $coverBefore = self::coverOf($entry);
         $entry->fill([
             'template_override' => $content['template_override'],
             'cover_media_id' => $content['cover_media_id'],
             'meta' => $content['meta'],
         ]);
         $sharedChanged = $entry->isDirty();
+        $coverChanged = self::coverOf($entry) !== $coverBefore;
         $entry->save();
 
         $translation = $entry->translations()->firstOrNew(['locale' => $locale]);
@@ -261,13 +284,22 @@ final readonly class EntryContentWriter
             'seo_title' => $content['seo_title'],
             'seo_description' => $content['seo_description'],
             'og_image_id' => $content['og_image_id'],
-        ] + (array_key_exists('author_name', $content) ? ['author_name' => $content['author_name']] : []));
+        ] + (array_key_exists('author_name', $content) ? ['author_name' => $content['author_name']] : [])
+            // words for the picture: the content's own; a version saved before they existed keeps this
+            // language's while the picture stays, and drops them with a picture it changes
+            + (array_key_exists('cover_alt', $content) ? ['cover_alt' => $content['cover_alt']] : ($coverChanged ? ['cover_alt' => null] : [])));
         if (! $translation->exists) {
             // A language the entry lost since: it comes back in the entry's status, as an editor save
             // creates it — within the states a translation can hold (no scheduled/private there).
             $translation->status = in_array($entry->status, self::TRANSLATION_STATES, true) ? $entry->status : 'draft';
         }
         $translation->save();
+        if ($coverChanged) {
+            // the picture is every language's: the other languages' words described the one it replaced
+            // (the website then says the picture's own words, else the title)
+            EntryTranslation::query()->where('entry_id', $entry->id)->where('locale', '!=', $locale)
+                ->whereNotNull('cover_alt')->update(['cover_alt' => null]);
+        }
 
         // Live content at a new address: move the route and leave a 301, children included. Not
         // live = no route to move; the next publish checks the path.
