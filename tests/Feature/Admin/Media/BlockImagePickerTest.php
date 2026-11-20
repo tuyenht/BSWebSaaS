@@ -135,7 +135,11 @@ it('sets an image inside a repeater row (partners.logos[].image_url)', function 
             ->call('openBlockImagePicker', '0.props.logos.0.image_url')
             ->call('togglePickerItem', $mine->id)
             ->call('insertPicked')
-            ->assertSet('blocks.0.props.logos.0.image_url', $mine->id);
+            ->assertSet('blocks.0.props.logos.0.image_url', $mine->id)
+            ->call('openBlockImagePicker', '0.props.logos.3.image_url')   // the list has one row
+            ->assertSet('showImagePicker', false)
+            ->call('clearBlockImage', '0.props.logos.0.image_url')         // «Bỏ ảnh» of a real field works
+            ->assertSet('blocks.0.props.logos.0.image_url', null);
     });
 });
 
