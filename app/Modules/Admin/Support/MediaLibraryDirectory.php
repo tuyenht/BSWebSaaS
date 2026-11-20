@@ -45,9 +45,10 @@ final class MediaLibraryDirectory
     public function __construct(private MediaUsageLocator $usage) {}
 
     /**
-     * The files of one place (all, unfiled, one folder, or the Trash) matching the conditions.
+     * The files of one place (all, unfiled, one folder with its sub-folders, or the Trash) matching
+     * the conditions. `folders` lists the folder and its sub-folders; null is every file.
      *
-     * @param  array{folder: int|null, unfiled: bool, trash: bool, search: string, kinds: list<string>, formats: list<string>, uses: list<string>}  $f
+     * @param  array{folders: list<int>|null, unfiled: bool, trash: bool, search: string, kinds: list<string>, formats: list<string>, uses: list<string>}  $f
      * @return Builder<Media>
      */
     public function filtered(array $f): Builder
@@ -57,8 +58,8 @@ final class MediaLibraryDirectory
         if (! $f['trash']) {
             if ($f['unfiled']) {
                 $query->whereNull('folder_id');
-            } elseif ($f['folder'] !== null) {
-                $query->where('folder_id', $f['folder']);
+            } elseif ($f['folders'] !== null) {
+                $query->whereIn('folder_id', $f['folders']);
             }
         }
 

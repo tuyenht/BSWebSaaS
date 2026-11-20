@@ -113,3 +113,100 @@ it('makes a folder path from a name in any script, numbered when taken, and keep
             ->and($folder->uniqueSlug('!!!', 'Ảnh'))->toBe('anh');                         // nothing usable typed → from the name
     });
 });
+
+it('keeps a sub-folder under a folder of its own site: another site\'s folder is refused as parent', function (): void {
+    $theirs = seedMediaFolder(1);
+
+    // the composite key (site_id, parent_id) → (site_id, id) checks the parent on site 2, where it is not
+    expect(fn () => seedMediaFolder(2, ['name' => 'Con', 'slug' => 'con', 'parent_id' => $theirs->id]))
+        ->toThrow(QueryException::class, 'media_folders_parent_fk');
+    // nor can a folder of site 2 be moved under it later
+    $mine = seedMediaFolder(2, ['name' => 'Của B', 'slug' => 'cua-b']);
+    expect(fn () => app(Tenancy::class)->enter(2, fn () => MediaFolder::query()->whereKey($mine->id)->update(['parent_id' => $theirs->id])))
+        ->toThrow(QueryException::class, 'media_folders_parent_fk');
+
+    expect(app(Tenancy::class)->enter(2, fn () => MediaFolder::query()->whereNotNull('parent_id')->count()))->toBe(0);
+});
+
+it('keeps folders to two levels: no sub-folder under a sub-folder, no parent for a folder with sub-folders', function (): void {
+    $top = seedMediaFolder(1);
+    $child = seedMediaFolder(1, ['name' => 'Con', 'slug' => 'con', 'parent_id' => $top->id]);
+    $other = seedMediaFolder(1, ['name' => 'Khác', 'slug' => 'khac']);
+
+    expect(fn () => seedMediaFolder(1, ['name' => 'Cháu', 'slug' => 'chau', 'parent_id' => $child->id]))
+        ->toThrow(QueryException::class, 'at most two levels');
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => MediaFolder::query()->whereKey($top->id)->update(['parent_id' => $other->id])))
+        ->toThrow(QueryException::class, 'has sub-folders');
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => MediaFolder::query()->whereKey($other->id)->update(['parent_id' => $other->id])))
+        ->toThrow(QueryException::class);
+
+    // a sub-folder moves to another top-level folder, and back to the top
+    app(Tenancy::class)->enter(1, function () use ($child, $other): void {
+        MediaFolder::query()->whereKey($child->id)->update(['parent_id' => $other->id]);
+        MediaFolder::query()->whereKey($child->id)->update(['parent_id' => null]);
+    });
+    expect(app(Tenancy::class)->enter(1, fn () => MediaFolder::query()->whereKey($child->id)->value('parent_id')))->toBeNull();
+});
+
+/** One raw multi-row write as app_user inside site $site's context: Postgres checks the foreign key only at the end of it. */
+function rawFolderWrite(int $site, string $sql): void
+{
+    app(Tenancy::class)->enter($site, function () use ($sql): void {
+        expect(DB::scalar('select current_user'))->toBe('app_user');
+        DB::statement($sql);
+    });
+}
+
+it('refuses three levels written by one multi-row INSERT whose rows name parents that come later in it', function (): void {
+    // 10 → 11 → 12: when row 10 is written its parent 11 does not exist yet, so only an end-of-statement check sees the chain
+    expect(fn () => rawFolderWrite(1, "insert into media_folders (id, site_id, name, slug, parent_id, position) values
+        (910, 1, 'A', 'a', 911, 1), (911, 1, 'B', 'b', 912, 1), (912, 1, 'C', 'c', null, 1)"))
+        ->toThrow(QueryException::class, 'at most two levels');
+
+    expect(app(Tenancy::class)->enter(1, fn () => MediaFolder::query()->whereIn('id', [910, 911, 912])->count()))->toBe(0);
+});
+
+it('refuses a cycle written by one multi-row INSERT or one UPDATE of two folders', function (): void {
+    expect(fn () => rawFolderWrite(1, "insert into media_folders (id, site_id, name, slug, parent_id, position) values
+        (920, 1, 'A', 'a', 921, 1), (921, 1, 'B', 'b', 920, 1)"))
+        ->toThrow(QueryException::class, 'at most two levels');
+    expect(app(Tenancy::class)->enter(1, fn () => MediaFolder::query()->whereIn('id', [920, 921])->count()))->toBe(0);
+
+    // two top-level folders swapped under each other in one statement
+    $a = seedMediaFolder(1, ['name' => 'A', 'slug' => 'a']);
+    $b = seedMediaFolder(1, ['name' => 'B', 'slug' => 'b']);
+    expect(fn () => rawFolderWrite(1, "update media_folders set parent_id = case id when {$a->id} then {$b->id} else {$a->id} end where id in ({$a->id}, {$b->id})"))
+        ->toThrow(QueryException::class, 'at most two levels');
+    expect(app(Tenancy::class)->enter(1, fn () => MediaFolder::query()->whereNotNull('parent_id')->count()))->toBe(0);
+
+    // a folder that takes the id its sub-folder points at, while it sits under another folder: refused
+    // by the primary key when Postgres meets the rows in one order, by the trigger (it watches id) in the other
+    $p = seedMediaFolder(1, ['name' => 'P', 'slug' => 'p']);
+    $k = seedMediaFolder(1, ['name' => 'K', 'slug' => 'k', 'parent_id' => $p->id]);
+    $r = seedMediaFolder(1, ['name' => 'R', 'slug' => 'r']);
+    $q = seedMediaFolder(1, ['name' => 'Q', 'slug' => 'q', 'parent_id' => $r->id]);
+    expect(fn () => rawFolderWrite(1, "update media_folders set id = case id when {$p->id} then 99999 else {$p->id} end where id in ({$p->id}, {$q->id})"))
+        ->toThrow(QueryException::class);
+    expect(app(Tenancy::class)->enter(1, fn () => MediaFolder::query()->whereIn('slug', ['p', 'q'])->orderBy('slug')->pluck('id')->all()))->toBe([$p->id, $q->id]);
+
+    // a two-level family in one INSERT is still fine, the child row first
+    rawFolderWrite(1, "insert into media_folders (id, site_id, name, slug, parent_id, position) values
+        (930, 1, 'Con', 'con', 931, 1), (931, 1, 'Cha', 'cha', null, 1)");
+    expect(app(Tenancy::class)->enter(1, fn () => MediaFolder::query()->whereKey(930)->value('parent_id')))->toBe(931);
+});
+
+it('deletes a folder\'s sub-folders with it; their files go back to no folder', function (): void {
+    [$childId, $mediaId] = app(Tenancy::class)->enter(1, function (): array {
+        $top = MediaFolder::query()->create(['name' => 'Cha', 'slug' => 'cha']);
+        $child = MediaFolder::query()->create(['name' => 'Con', 'slug' => 'con', 'parent_id' => $top->id]);
+        $media = seedMediaInFolder(['folder_id' => $child->id]);
+        $top->delete();
+
+        return [$child->id, $media->id];
+    });
+
+    app(Tenancy::class)->enter(1, function () use ($childId, $mediaId): void {
+        expect(MediaFolder::query()->find($childId))->toBeNull()
+            ->and(Media::query()->find($mediaId)?->folder_id)->toBeNull();
+    });
+});
