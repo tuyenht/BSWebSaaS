@@ -2,6 +2,7 @@
 
 namespace App\Modules\Cms\Console;
 
+use App\Modules\Cms\Actions\ApproveEntryForLater;
 use App\Modules\Cms\Actions\PublishScheduledEntry;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
@@ -22,6 +23,15 @@ use Throwable;
  * one and its entries stay due, so the next minute's run publishes them; the sites after it are
  * swept as usual.
  *
+ * A post approved for later under an approval workflow (entries.scheduled_by set) is not published
+ * here directly: ApproveEntryForLater::publishDue applies the stage's publishing move through the
+ * workflow engine as its approver, rights judged again. One it cannot publish (the approver lost the
+ * right, the flow changed) goes back to waiting and is counted as held back; its author and approver
+ * are told. So does one that stands at a stage of its flow with no approver on record (the approver's
+ * account was deleted and scheduled_by went NULL): nobody approved what would go live. One whose stage
+ * is itself a published one (stale, never an approval) is skipped and counted. With the flow switched
+ * off since, either goes live at its time like any scheduled post.
+ *
  * At very large tenant counts the all-sites sweep becomes the cost centre; a sites-with-due-content
  * index would replace the full loop then (measure-first, ADR-18).
  */
@@ -33,18 +43,19 @@ class PublishDueEntries extends Command
     #[\Override]
     protected $description = 'Publish scheduled entries whose publish time has arrived';
 
-    public function handle(Tenancy $tenancy, PublishScheduledEntry $publisher): int
+    public function handle(Tenancy $tenancy, PublishScheduledEntry $publisher, ApproveEntryForLater $approved): int
     {
         $published = 0;
         $skipped = 0;
         $failed = 0;
+        $held = 0;
         $deferred = 0;
 
         foreach ($tenancy->siteIds() as $siteId) {
             try {
                 // Counted per site and added only once the site commits: a site rolled back by a
                 // lock conflict published nothing.
-                [$sitePublished, $siteSkipped, $siteFailed] = $tenancy->enter($siteId, fn (): array => $this->sweepSite($publisher));
+                [$sitePublished, $siteSkipped, $siteFailed, $siteHeld] = $tenancy->enter($siteId, fn (): array => $this->sweepSite($publisher, $approved));
             } catch (Throwable $e) {
                 if (! ConcurrencyError::is($e)) {
                     throw $e;
@@ -59,9 +70,10 @@ class PublishDueEntries extends Command
             $published += $sitePublished;
             $skipped += $siteSkipped;
             $failed += $siteFailed;
+            $held += $siteHeld;
         }
 
-        $this->info("Published {$published} scheduled entr(y/ies), skipped {$skipped} governed by an approval workflow, {$failed} failed, {$deferred} site(s) left for the next run after a lock conflict.");
+        $this->info("Published {$published} scheduled entr(y/ies), skipped {$skipped} governed by an approval workflow, {$failed} failed, {$deferred} site(s) left for the next run after a lock conflict. {$held} approved entr(y/ies) held back and waiting for review again.");
 
         return self::SUCCESS;
     }
@@ -69,13 +81,14 @@ class PublishDueEntries extends Command
     /**
      * One site's due entries, inside its tenant transaction.
      *
-     * @return array{int, int, int} published, skipped, failed
+     * @return array{int, int, int, int} published, skipped, failed, held back
      */
-    private function sweepSite(PublishScheduledEntry $publisher): array
+    private function sweepSite(PublishScheduledEntry $publisher, ApproveEntryForLater $approved): array
     {
         $published = 0;
         $skipped = 0;
         $failed = 0;
+        $held = 0;
 
         $due = Entry::query()
             ->where('status', 'scheduled')
@@ -85,6 +98,19 @@ class PublishDueEntries extends Command
 
         foreach ($due as $entry) {
             try {
+                if ($entry->scheduled_by !== null || $entry->workflow_state !== null) {
+                    // Approved for later under a workflow (or at a stage of one, its approver gone): only the
+                    // engine puts it live, as its approver; with the flow switched off since, as any scheduled post.
+                    match ($approved->publishDue($entry)) {
+                        'published' => $published++,
+                        'held' => $held++,
+                        'skipped' => $skipped++,
+                        'not_due' => null,
+                    };
+
+                    continue;
+                }
+
                 // False: an editor trashed, unscheduled or rescheduled it after the read above.
                 if ($publisher->handle($entry)) {
                     $published++;
@@ -112,6 +138,6 @@ class PublishDueEntries extends Command
             }
         }
 
-        return [$published, $skipped, $failed];
+        return [$published, $skipped, $failed, $held];
     }
 }

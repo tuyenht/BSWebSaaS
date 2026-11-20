@@ -55,7 +55,9 @@ final readonly class ReviewWaiting
         }
 
         $sections = app(SectionResolver::class);
-        $query = Entry::query()->whereIn('workflow_state', $keys);
+        // A post approved for later stays at its stage until its time comes (ApproveEntryForLater): it
+        // is decided, so it waits for nobody.
+        $query = Entry::query()->whereIn('workflow_state', $keys)->whereNull('scheduled_by');
         $sections->whereOnSectionStage($query, $stages);
         app(CategoryScopes::class)->whereCovered($query, $actor);
         if ($assignedTo !== null) {

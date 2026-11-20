@@ -95,6 +95,7 @@ final class Account extends Component
         'workflow.assigned' => ['entries.review', 'entries.approve'],
         'workflow.returned' => ['entries.submit'],
         'workflow.published' => ['entries.submit'],
+        'workflow.scheduled' => ['entries.submit', 'entries.approve'],
         'lead.new' => ['forms.view'],
         'security.two_factor_disabled' => null,
         'security.support_sign_in' => 'owner',

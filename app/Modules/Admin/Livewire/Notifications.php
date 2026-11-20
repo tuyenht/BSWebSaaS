@@ -72,6 +72,7 @@ final class Notifications extends Component
         'workflow.assigned' => ['entries.review', 'entries.approve'],
         'workflow.returned' => ['entries.edit.own', 'entries.edit.any'],
         'workflow.published' => ['entries.view'],
+        'workflow.scheduled' => ['entries.view'],
         'system.domain_problem' => ['domains.manage'],
         'security.domain_taken_over' => ['domains.manage'],
         'system.storage_near_limit' => ['media.view'],

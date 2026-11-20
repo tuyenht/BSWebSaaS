@@ -32,7 +32,8 @@ final class EntryReviewReach
 
     public function waitsFor(User $actor, Entry $entry): bool
     {
-        if ($entry->trashed() || ! $this->onSomeStage($actor, $entry)) {
+        // approved for later (status `scheduled`, still at its stage): decided, it waits for nobody (ReviewWaiting)
+        if ($entry->trashed() || $entry->scheduled_by !== null || ! $this->onSomeStage($actor, $entry)) {
             return false;
         }
 

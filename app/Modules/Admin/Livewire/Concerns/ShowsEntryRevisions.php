@@ -27,7 +27,7 @@ use Livewire\Attributes\Locked;
  * edited, opened from the «Đăng» card — its newest rows in the card, every row in a dialog paged by
  * keyset (EntryRevisions, never OFFSET), one version shown beside the form's current content, and a
  * restore asked first and done by RestoreEntryRevision, which checks the right to edit (EntryPolicy
- * update, own/any) and refuses for one of its four reasons, said in words in the question.
+ * update, own/any) and refuses for one of its reasons, said in words in the question.
  *
  * Every call reads the entry again by its ulid and authorizes `update` (livewire/update skips the
  * route middleware); a revision is taken only by its ulid, within the current site (global scope +

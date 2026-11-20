@@ -32,6 +32,7 @@ use Illuminate\Support\Carbon;
  * @property int $view_count
  * @property string|null $workflow_state the stage of the section's approval workflow, null until it joins one
  * @property int|null $assigned_to
+ * @property int|null $scheduled_by who approved it, under an approval workflow, for its scheduled time (set only while status is `scheduled`)
  * @property array<string, mixed> $meta
  */
 class Entry extends Model
@@ -167,6 +168,15 @@ class Entry extends Model
             ->orderByPivot('position');
     }
 
+    /**
+     * Approved under an approval workflow to go live at published_at (ApproveEntryForLater): it goes live
+     * as it was approved, so nothing writes to it until «Hủy hẹn giờ» puts it back to waiting.
+     */
+    public function approvedForLater(): bool
+    {
+        return $this->status === 'scheduled' && $this->scheduled_by !== null;
+    }
+
     public function translationFor(string $locale): ?EntryTranslation
     {
         // Use the eager-loaded relation when present (avoids an N+1 in any caller that
@@ -188,6 +198,7 @@ class Entry extends Model
             'published_at' => 'datetime',
             'position' => 'integer',
             'author_id' => 'integer',
+            'scheduled_by' => 'integer',
             'view_count' => 'integer',
             'meta' => 'array',
         ];

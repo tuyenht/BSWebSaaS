@@ -173,7 +173,7 @@ it('adds the member access kinds, and refuses to roll back while notices of them
 function latestNotificationKinds(): void
 {
     /** @var Migration $latest */
-    $latest = require database_path('migrations/2075_01_01_000000_add_member_access_notification_kinds.php');
+    $latest = require database_path('migrations/2087_01_01_000100_add_workflow_scheduled_notification_kind.php');
     $latest->up();
 }
 
