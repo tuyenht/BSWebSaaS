@@ -249,7 +249,7 @@ it('refuses an old address the sign-in, admin or system routes use, read from th
     // an encoded slash: the router reads the decoded path
     '/admin%2Flogin', '/login%2F', '/%2Fadmin', '/fr/admin%2Flogin', '/fr%2Flogin',
     // behind a language-shaped segment that is not a public language: the storefront reads it as a path
-    '/fr/login', '/en/admin/login', '/vi/two-factor/setup', '/vi/admin/reset-password', '/pt-br/oauth/callback', '/%66r/login', '/fr/%4Cogin',
+    '/fr/login', '/en/admin/login', '/vi/two-factor/setup', '/vi/admin/reset-password', '/pt-br/oauth/callback', '/%66r/login', '/fr/%4Cogin', '/fr//login', '/fr//admin/login', '/fr///%4Cogin',
 ]);
 
 it('still takes an old address behind a language-shaped segment when what follows is not a system address', function (string $from, string $stored): void {

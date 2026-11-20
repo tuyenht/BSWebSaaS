@@ -48,16 +48,17 @@ final class RedirectRules
      * is checked and still holds a "%" after that one decoding is refused outright (`/%254cogin`).
      * A first segment shaped like a language code that is not a public language reaches the
      * storefront as a path of the default language, so the segment after it counts too
-     * (`/fr/login`, `/en/admin/…`).
+     * (`/fr/login`, `/en/admin/…`). Empty segments are skipped (`/fr//login` counts as `/fr/login`).
      */
     public function reservedFrom(string $path): bool
     {
-        $parts = explode('/', mb_strtolower(ltrim(rawurldecode($path), '/')), 3);
-        if ($this->reservedSegment($parts[0])) {
+        $parts = preg_split('~/+~', mb_strtolower(rawurldecode($path)), 3, PREG_SPLIT_NO_EMPTY) ?: [];
+        $first = $parts[0] ?? '';
+        if ($this->reservedSegment($first)) {
             return true;
         }
 
-        return isset($parts[1]) && SiteLocale::looksLikeCode($parts[0]) && $this->reservedSegment($parts[1]);
+        return isset($parts[1]) && SiteLocale::looksLikeCode($first) && $this->reservedSegment($parts[1]);
     }
 
     /** Whether one decoded, lower-cased segment is a route's first part, or still encoded. */
