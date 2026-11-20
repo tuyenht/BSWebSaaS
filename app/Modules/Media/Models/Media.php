@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 /**
@@ -28,6 +29,8 @@ use Illuminate\Support\Str;
  * @property int|null $height
  * @property string|null $original_filename
  * @property int|null $folder_id
+ * @property int|null $created_by
+ * @property int|null $deleted_by
  * @property int $position
  * @property array<string, string> $alt
  * @property array<string, string> $title
@@ -77,6 +80,40 @@ final class Media extends Model
             'title' => 'array',
             'meta' => 'array',
         ];
+    }
+
+    /**
+     * Sends the file to the Trash and records who did, in the same UPDATE as deleted_at (the
+     * framework's soft delete writes only its timestamps): someone allowed to delete only their
+     * own uploads takes back out only what they put in. No signed-in user (a queued job, the
+     * console) records no one.
+     */
+    protected function runSoftDelete(): void
+    {
+        $query = $this->setKeysForSaveQuery($this->newModelQuery());
+        $time = $this->freshTimestamp();
+        $by = Auth::id();
+        $deletedAt = (string) $this->getDeletedAtColumn();
+        $columns = [$deletedAt => $this->fromDateTime($time), 'deleted_by' => $by];
+        $this->{$deletedAt} = $time;
+        $this->deleted_by = is_int($by) ? $by : null;
+        $updatedAt = $this->getUpdatedAtColumn();
+        if ($this->usesTimestamps() && $updatedAt !== null) {
+            $this->{$updatedAt} = $time;
+            $columns[$updatedAt] = $this->fromDateTime($time);
+        }
+        $query->update($columns);
+        $this->syncOriginalAttributes(array_keys($columns));
+        $this->fireModelEvent('trashed', false);
+    }
+
+    #[\Override]
+    protected static function booted(): void
+    {
+        // back out of the Trash: no one deleted it any more
+        self::restoring(function (Media $media): void {
+            $media->deleted_by = null;
+        });
     }
 
     /**

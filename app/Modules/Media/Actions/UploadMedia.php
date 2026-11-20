@@ -34,7 +34,7 @@ final class UploadMedia
 
     /**
      * @param  bool  $mayRestore  whether the uploader may take a file back out of the Trash (the
-     *                            media.delete right, resolved by the caller). The action holds no user
+     *                            media.delete.any right, resolved by the caller). The action holds no user
      *                            of its own, so the caller decides; false refuses with `in_trash`.
      */
     public function handle(UploadedFile $file, string $siteName, string $collection = 'library', ?int $createdBy = null, bool $mayRestore = false): Media

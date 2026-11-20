@@ -83,7 +83,11 @@ final class FormList extends Component
             return;
         }
         $before = $form->status === 'active';
-        app(SetFormStatus::class)->handle($form, $active);
+        if (! app(SetFormStatus::class)->handle($form, $active)) {
+            $this->toast(__('form_builder.toast_gone'), 'error');
+
+            return;
+        }
         $name = $this->nameOf($form);
         $this->toast(__($active ? 'form_builder.toast_on' : 'form_builder.toast_off', ['name' => $name]), undo: $before !== $active ? ['ulid' => $form->ulid, 'active' => $before] : null);
     }
@@ -171,8 +175,8 @@ final class FormList extends Component
             return;
         }
         $form = $this->writable($op['ulid']);
-        if ($form !== null) {
-            app(SetFormStatus::class)->handle($form, $op['active']);
+        if ($form !== null && ! app(SetFormStatus::class)->handle($form, $op['active'])) {
+            $this->toast(__('form_builder.toast_gone'), 'error');
         }
     }
 

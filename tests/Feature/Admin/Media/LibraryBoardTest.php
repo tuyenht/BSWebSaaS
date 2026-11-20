@@ -67,7 +67,7 @@ function libTemplateUser(string $role): User
 }
 
 it('shows the board: title, folders, files, and no bigint id in the page', function (): void {
-    $user = libUser(['media.view', 'media.upload', 'media.delete']);
+    $user = libUser(['media.view', 'media.upload', 'media.delete.any']);
     libFolder(1, 'Ảnh xưởng', 'anh-xuong');
     $file = libFile(1, 'may-phay.png');
 
@@ -126,7 +126,7 @@ it('lets media.view only look: every change is refused', function (string $metho
     'undo' => ['undo', []],
 ]);
 
-it('keeps the Trash closed to someone without media.delete', function (): void {
+it('keeps the Trash closed to someone without a delete right', function (): void {
     $user = libUser(['media.view', 'media.upload']);
     $gone = libFile(1, 'da-xoa.png');
     app(Tenancy::class)->enter(1, fn () => $gone->delete());
@@ -173,7 +173,7 @@ it('creates a folder, moves files into it and lists folder and unfiled files apa
 });
 
 it('sends to the Trash with undo, restores and purges for good', function (): void {
-    $user = libUser(['media.view', 'media.delete', 'media.purge']);
+    $user = libUser(['media.view', 'media.delete.any', 'media.purge']);
     $a = libFile(1, 'a.png');
     $b = libFile(1, 'b.png');
 
@@ -252,7 +252,7 @@ it('reads page by page from a ulid cursor, forward and back', function (): void 
 });
 
 it('reads the library on a flat number of queries', function (): void {
-    $user = libUser(['media.view', 'media.upload', 'media.delete']);
+    $user = libUser(['media.view', 'media.upload', 'media.delete.any']);
     libFolder(1, 'Một', 'mot');
     libFile(1, 'dau.png');
     $this->actingAs($user)->get('http://a.test/admin/media')->assertOk(); // warm the per-process caches first
@@ -302,7 +302,7 @@ it('opens the detail by ulid and keeps the bigint id out of the wire data', func
 });
 
 it('closes the shared picker\'s bigint-id endpoints on this page', function (string $method, array $args): void {
-    $user = libUser(['media.view', 'media.upload', 'media.delete']);
+    $user = libUser(['media.view', 'media.upload', 'media.delete.any']);
     $file = libFile(1, 'giu.png');
 
     app(Tenancy::class)->enter(1, function () use ($user, $method, $args, $file): void {
@@ -320,7 +320,7 @@ it('closes the shared picker\'s bigint-id endpoints on this page', function (str
 ]);
 
 it('starts again at page 1 when the cursor file is gone or forged', function (): void {
-    $user = libUser(['media.view', 'media.delete']);
+    $user = libUser(['media.view', 'media.delete.any']);
     foreach (range(1, 30) as $i) {
         libFile(1, sprintf('tep-%02d.png', $i), ['created_at' => now()->subMinutes(100 - $i)]);
     }
@@ -379,7 +379,7 @@ it('pages forward and back without a repeat or a gap', function (string $sort, C
 ]);
 
 it('never restores or purges another site\'s file from the Trash', function (): void {
-    $user = libUser(['media.view', 'media.delete', 'media.purge']);
+    $user = libUser(['media.view', 'media.delete.any', 'media.purge']);
     $mine = libFile(1, 'cua-toi.png');
     $theirs = libFile(2, 'cua-site-b.png');
     app(Tenancy::class)->enter(1, fn () => $mine->delete());
@@ -504,31 +504,30 @@ it('lets the website admin and the owner delete for good, a selection and the wh
     });
 })->with(['admin', 'owner']);
 
-it('keeps the Trash closed to the author: no trash or restore control, and both are refused', function (): void {
+it('lets the author touch only their own files: someone else\'s stays put and out of their Trash', function (): void {
     $user = libTemplateUser('author');
     $live = libFile(1, 'con-song.png');
     $gone = libFile(1, 'da-xoa.png');
     app(Tenancy::class)->enter(1, fn () => $gone->delete());
 
     $this->actingAs($user)->get('http://a.test/admin/media')->assertOk()
-        ->assertDontSee('value="~trash"', false)
+        ->assertSee('value="~trash"', false)
         ->assertDontSee('da-xoa');
 
     app(Tenancy::class)->enter(1, function () use ($user, $live, $gone): void {
-        // The author picks to move (media.upload): the bar shows Move but no Trash button.
+        // Only someone else's file picked: Move stays, the Trash button is gone, a line says why.
         $page = Livewire::actingAs($user)->test(Library::class)
             ->call('togglePick', $live->ulid)
             ->assertSeeHtml('wire:click="openMove"')
             ->assertDontSeeHtml('wire:click="trashPicked"')
-            ->assertDontSeeHtml('wire:click="restorePicked"');
-        $page->call('trashPicked')->assertForbidden();
-        Livewire::actingAs($user)->test(Library::class)->set('picked', [$live->ulid])->call('confirmTrash')->assertForbidden();
+            ->assertSee(__('media.lib.trash_skip_all'));
+        $page->call('trashPicked')->assertSet('toastTone', 'error')->assertSet('askTrashOpen', false);
+        Livewire::actingAs($user)->test(Library::class)->set('picked', [$live->ulid])->call('confirmTrash');
 
-        // The Trash never opens, and a forged selection of a trashed file cannot restore it.
-        Livewire::actingAs($user)->test(Library::class)->call('setFolder', '~trash')->assertSet('status', 'live')
-            ->assertDontSeeHtml('wire:click="restorePicked"');
-        Livewire::actingAs($user)->test(Library::class)->set('picked', [$gone->ulid])->call('restorePicked')->assertForbidden();
-        Livewire::actingAs($user)->test(Library::class)->call('undo')->assertForbidden();
+        // Their Trash lists only their own; a forged pick of someone else's trashed file restores nothing.
+        Livewire::actingAs($user)->test(Library::class)->call('setFolder', '~trash')->assertSet('status', 'trash')
+            ->assertDontSee('da-xoa');
+        Livewire::actingAs($user)->test(Library::class)->set('picked', [$gone->ulid])->call('restorePicked');
 
         expect(Media::query()->whereKey($live->id)->exists())->toBeTrue()
             ->and(Media::onlyTrashed()->whereKey($gone->id)->exists())->toBeTrue();

@@ -29,18 +29,19 @@ final class ResumeFormDeletesCommand extends Command
     public function handle(Tenancy $tenancy): int
     {
         $before = now()->subMinutes(max(1, Cast::int($this->option('minutes'), 30)));
-        $queued = 0;
+        $asked = 0;
 
-        $tenancy->eachSite(function (int $siteId) use ($before, &$queued): void {
+        $tenancy->eachSite(function (int $siteId) use ($before, &$asked): void {
             $ids = Form::query()->withoutGlobalScope(Form::NOT_DELETING)
                 ->where('status', Form::DELETING)->where('updated_at', '<', $before)->pluck('id');
             foreach ($ids as $id) {
                 DeleteLargeForm::dispatch($siteId, Cast::int($id));
-                $queued++;
+                $asked++;
             }
         });
 
-        $this->info("Queued {$queued} form delete(s) again.");
+        // a dispatch the unique lock drops (a run still holds it) is counted too: "asked", not "queued"
+        $this->info("Asked again for {$asked} form delete(s).");
 
         return self::SUCCESS;
     }

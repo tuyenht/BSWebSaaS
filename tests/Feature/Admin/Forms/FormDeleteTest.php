@@ -414,7 +414,7 @@ it('asks again, switching nothing, when leads came in past the shown count of a 
         expect(Form::query()->find($form->id)?->status)->toBe('active');
     });
 
-    Queue::assertNothingPushed();
+    Queue::assertNotPushed(DeleteLargeForm::class);
     expect(formDeleteAudits())->toBe(0);
 });
 
@@ -547,9 +547,8 @@ it('leaves a form being deleted as it is when a switch that loaded it before lan
     $stale = app(Tenancy::class)->enter(1, fn (): Form => Form::query()->findOrFail($form->id));   // read while it was on
     DB::connection('pgsql_admin')->table('forms')->where('id', $form->id)->update(['status' => Form::DELETING]);
 
-    app(Tenancy::class)->enter(1, fn () => app(SetFormStatus::class)->handle($stale, false));
-
-    expect(DB::connection('pgsql_admin')->table('forms')->where('id', $form->id)->value('status'))->toBe(Form::DELETING)
+    expect(app(Tenancy::class)->enter(1, fn (): bool => app(SetFormStatus::class)->handle($stale, false)))->toBeFalse()
+        ->and(DB::connection('pgsql_admin')->table('forms')->where('id', $form->id)->value('status'))->toBe(Form::DELETING)
         ->and(DB::connection('pgsql_admin')->table('audit_logs')->where('action', 'forms.form.status')->count())->toBe(0);
 });
 
@@ -557,14 +556,16 @@ it('queues again only the deletes left without progress, with `forms:resume-dele
     Queue::fake();
     $stuck = deletableForm(1, 'bao-gia', 'Yêu cầu báo giá', leads: 1, status: Form::DELETING);
     $running = deletableForm(1, 'tu-van', 'Đăng ký tư vấn', leads: 1, status: Form::DELETING);
+    $stuckB = deletableForm(2, 'tu-van', 'Tư vấn B', leads: 1, status: Form::DELETING);
     $off = deletableForm(2, 'bao-gia', 'Báo giá B', leads: 1, status: 'disabled');
     $admin = DB::connection('pgsql_admin');
-    $admin->table('forms')->whereIn('id', [$stuck->id, $off->id])->update(['updated_at' => now()->subHour()]);
+    $admin->table('forms')->whereIn('id', [$stuck->id, $stuckB->id, $off->id])->update(['updated_at' => now()->subHour()]);
 
-    $this->artisan('forms:resume-deletes')->expectsOutput('Queued 1 form delete(s) again.')->assertSuccessful();
+    $this->artisan('forms:resume-deletes')->expectsOutput('Asked again for 2 form delete(s).')->assertSuccessful();
 
-    Queue::assertPushed(DeleteLargeForm::class, 1);
+    Queue::assertPushed(DeleteLargeForm::class, 2);
     Queue::assertPushed(DeleteLargeForm::class, fn (DeleteLargeForm $job): bool => $job->siteId === 1 && $job->formId === $stuck->id);
+    Queue::assertPushed(DeleteLargeForm::class, fn (DeleteLargeForm $job): bool => $job->siteId === 2 && $job->formId === $stuckB->id);
     unset($running);
 });
 
@@ -575,4 +576,27 @@ it('runs `forms:resume-deletes` every hour, never two at once', function (): voi
     expect($event)->not->toBeNull()
         ->and($event->expression)->toBe('0 * * * *')
         ->and($event->withoutOverlapping)->toBeTrue();
+});
+
+it('says the form is gone, with no «Hoàn tác», when a delete in batches lands while the switch was sent', function (): void {
+    $manager = blockLibraryUser(1, 'admin');
+    $form = deletableForm(1, 'bao-gia', 'Yêu cầu báo giá', leads: 1);
+    $switched = false;
+    DB::listen(function ($query) use ($form, &$switched): void {
+        // the screen has read the form; the delete commits before its switch is written
+        if (! $switched && str_starts_with($query->sql, 'select * from "forms" where "ulid"')) {
+            $switched = true;
+            DB::connection('pgsql_admin')->table('forms')->where('id', $form->id)->update(['status' => Form::DELETING]);
+        }
+    });
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $form): void {
+        Livewire::actingAs($manager)->test(FormList::class)
+            ->call('setActive', $form->ulid, false)
+            ->assertSet('toastMsg', __('form_builder.toast_gone'))
+            ->assertSet('toastTone', 'error')
+            ->assertSet('undoOp', null);
+    });
+    expect($switched)->toBeTrue()
+        ->and(DB::connection('pgsql_admin')->table('forms')->where('id', $form->id)->value('status'))->toBe(Form::DELETING);
 });

@@ -118,10 +118,14 @@ final class MediaUploadController
         return response()->json(['message' => __('media.err_unexpected')], 500);
     }
 
-    /** Re-uploading a file that sits in the Trash takes it back out: a media.delete right, like Restore. */
+    /**
+     * Re-uploading a file that sits in the Trash takes it back out, whoever uploaded or trashed it:
+     * the media.delete.any right (media.delete.own may restore only what it trashed itself, which a
+     * re-upload of the same bytes cannot tell).
+     */
     private function mayRestore(): bool
     {
-        return Gate::allows('media.delete');
+        return Gate::allows('media.delete.any');
     }
 
     private function actorId(): ?int
