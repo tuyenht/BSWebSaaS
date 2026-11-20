@@ -23,7 +23,7 @@
         </button>
         @foreach ($mp['folders'] as $folder)
             <button type="button" wire:key="mp-folder-{{ $folder->id }}" wire:click="setPickerFolder({{ $folder->id }})"
-                    class="flex w-full items-center gap-2 rounded-[7px] {{ $folder->parent_id !== null ? 'ps-[25px]' : 'ps-[9px]' }} pe-[9px] py-[7px] text-left text-[13px] {{ $pickerFolderId === $folder->id ? 'bg-admin-primary/8 font-semibold text-accent' : 'font-medium text-body-text hover:bg-surface-hover' }}">
+                    class="flex w-full items-center gap-2 rounded-[7px] {{ $folder->parent_id !== null ? 'ps-[25px]' : 'ps-[9px]' }} pe-[9px] py-[7px] text-left text-[13px] {{ $pickerFolderId === $folder->id ? 'bg-primary/8 font-semibold text-primary-text' : 'font-medium text-text hover:bg-surface-hover' }}">
                 <x-bs-admin::icon name="ri-folder-3" class="size-[15px] shrink-0" />
                 <span class="flex-1 truncate">{{ $folder->name }}@if ($folder->parent_id !== null)<span class="sr-only">{{ __('media.lib.in_folder', ['name' => $folderNames[$folder->parent_id] ?? '']) }}</span>@endif</span>
                 <span class="text-[11px] {{ $pickerFolderId === $folder->id ? 'text-accent' : 'text-body-muted' }}">{{ $folder->media_count }}</span>
@@ -184,7 +184,7 @@
                                             class="block w-full px-3 py-1.5 text-left text-[12.5px] text-body-text hover:bg-surface-hover">{{ __('media.picker_move_root') }}</button>
                                     @foreach ($mp['folders'] as $folder)
                                         <button type="button" wire:key="mp-move-{{ $folder->id }}" wire:click="pickerBulkMove({{ $folder->id }})" x-on:click="open = false"
-                                                class="block w-full truncate {{ $folder->parent_id !== null ? 'ps-7' : 'ps-3' }} pe-3 py-1.5 text-left text-[12.5px] text-body-text hover:bg-surface-hover">{{ $folder->name }}@if ($folder->parent_id !== null)<span class="sr-only">{{ __('media.lib.in_folder', ['name' => $folderNames[$folder->parent_id] ?? '']) }}</span>@endif</button>
+                                                class="block w-full truncate {{ $folder->parent_id !== null ? 'ps-7' : 'ps-3' }} pe-3 py-1.5 text-left text-[12.5px] text-text hover:bg-surface-hover">{{ $folder->name }}@if ($folder->parent_id !== null)<span class="sr-only">{{ __('media.lib.in_folder', ['name' => $folderNames[$folder->parent_id] ?? '']) }}</span>@endif</button>
                                     @endforeach
                                 </div>
                             </div>
