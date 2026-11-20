@@ -150,7 +150,12 @@
                                         @endif
                                         @unless ($row['system'])
                                             <x-bs-admin::list.menu-sep />
-                                            <x-bs-admin::list.menu-item icon="ri-delete-bin-6" danger wire:click="askDelete({{ Js::from($row['ulid']) }})">{{ __('form_builder.delete') }}</x-bs-admin::list.menu-item>
+                                            @if ($support)
+                                                {{-- support staff never delete a form, and the visitors' leads with it, on a member's behalf: the item stays, with why --}}
+                                                <x-bs-admin::list.menu-item icon="ri-delete-bin-6" danger :why="__('admin.support.locked')">{{ __('form_builder.delete') }}</x-bs-admin::list.menu-item>
+                                            @else
+                                                <x-bs-admin::list.menu-item icon="ri-delete-bin-6" danger wire:click="askDelete({{ Js::from($row['ulid']) }})">{{ __('form_builder.delete') }}</x-bs-admin::list.menu-item>
+                                            @endif
                                         @endunless
                                     </x-slot:menu>
                                 </x-bs-admin::list.actions>

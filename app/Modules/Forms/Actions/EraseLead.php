@@ -7,6 +7,7 @@ namespace App\Modules\Forms\Actions;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Notifications\Models\SiteNotification;
 use App\Modules\Shared\Support\Cast;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +17,8 @@ use Illuminate\Support\Facades\DB;
  * — no Trash, no undo. With it go the bell's «new lead» notices of it, which carry the visitor's
  * name or phone in their data and in their search text (site_notifications.search_text is a column
  * of the notice row, so deleting the notice deletes it). Mails already sent stay in the inboxes
- * they went to. The caller has asked LeadPolicy::delete.
+ * they went to. The caller has asked LeadPolicy::delete; a support session is refused here too
+ * (staff signed in for a member never erase a visitor's data on their behalf).
  *
  * One transaction: the lead row is locked first, so two clicks (or two colleagues) erase it once
  * and write one audit row; the second finds nothing and is told the lead is gone. A lead of a form
@@ -37,6 +39,8 @@ final class EraseLead
     /** @return bool false: the lead is not (or no longer) there */
     public function handle(string $ulid): bool
     {
+        app(SupportSession::class)->forbid();
+
         return DB::transaction(function () use ($ulid): bool {
             $formId = FormSubmission::query()->where('ulid', $ulid)->value('form_id');
             if ($formId === null) {
