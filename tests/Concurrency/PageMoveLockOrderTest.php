@@ -244,7 +244,11 @@ it('locks the rows of a «Trang cha» save from the editor as the move does, the
         $statements = plStatements(fn () => $editor->call('save'));
         $rows = plFirst($statements, fn (string $sql): bool => str_contains($sql, 'from "entries"') && str_contains($sql, MovePage::ROW_LOCK));
 
-        expect($page->fresh()?->parent_id)->toBe($new->id)->and($rows)->toBeInt()
+        // the editor's own pre-lock, not the move's: it comes before the editor takes the page row for update
+        $rowLock = plFirst($statements, fn (string $sql): bool => str_contains($sql, 'from "entries"') && str_contains($sql, 'for update'));
+
+        expect($page->fresh()?->parent_id)->toBe($new->id)->and($rows)->toBeInt()->and($rowLock)->toBeInt()
+            ->and($rows)->toBeLessThan($rowLock)
             ->and(plFirst($statements, plPageLock(...)))->toBeLessThan($rows);
         // the rows are locked in the order the statement returns them
         expect(plNamed($statements[$rows][0]))->toContain($top->id, $old->id, $new->id, $page->id)
