@@ -6,6 +6,8 @@
 # worker pool, asserting every response carries ONLY its own site's content.
 # A second leg does the same for support sign-in: platform staff signed in as each
 # site's owner from two browsers, interleaved, must each see only their own member.
+# A third leg takes a permission away from another process once every worker has loaded the
+# permissions: no worker may still let it through (STALE).
 #
 # Run on-demand inside the app container (NOT part of the default CI suite, which
 # runs against Postgres directly in one process):
@@ -92,10 +94,12 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Models\Domain;
 use App\Modules\Tenancy\Models\Site;
-$staff = new User;
-$staff->forceFill(["name" => "Hammer Staff", "email" => "staff@platform.test", "password" => "x", "email_verified_at" => now()])->save();
-app(PlatformAccess::class)->onPlatform(fn () => $staff->assignRole("support"));
+// One staff member per site: a staff member has one open support session at a time, and entering
+// a second one ends the first.
 foreach (["anvinh.platform.test" => "o@anvinh.test", "other.platform.test" => "o@other.test"] as $host => $owner) {
+    $staff = new User;
+    $staff->forceFill(["name" => "Hammer Staff ".$host, "email" => "staff@".$host, "password" => "x", "email_verified_at" => now()])->save();
+    app(PlatformAccess::class)->onPlatform(fn () => $staff->assignRole("support"));
     $site = Site::query()->findOrFail(Domain::query()->where("hostname", $host)->value("site_id"));
     $member = User::query()->where("email", $owner)->firstOrFail();
     echo "LINK ".$host." ".app(SupportSignIn::class)->issue($staff, $site, $member, "hammer", 15, "octane-hammer").PHP_EOL;
@@ -121,6 +125,44 @@ seq 1 "${REQUESTS}" | xargs -P "${CONCURRENCY}" -I{} bash -c '
     else                       probe {} other.platform.test  /admin Owner-Beta Owner-Alpha "${JAR_B}"; fi
 '
 
+echo "▶ permission change: every worker loads the permissions, another process takes one away…"
+# Each Octane worker keeps the loaded permissions in its own memory. A permission taken from a role
+# by another process (here artisan, like rbac:sync or a second worker saving a group) must stop
+# working on EVERY worker at its next request, not when the worker recycles. Same browser as the
+# owner of anvinh above.
+STALE="$(mktemp)"
+export STALE
+content_probe() {
+    local n=$1 want=$2 code
+    code=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -b "${JAR_A}" -A octane-hammer -H "Host: anvinh.platform.test" "${BASE}/admin/content")
+    if [[ "${want}" == allowed && "${code}" != "200 " ]]; then
+        echo "FAIL host=anvinh.platform.test path=/admin/content n=${n} got=${code} (before the change)" >> "${FAILS}"
+    elif [[ "${want}" == denied && "${code}" == "200 " ]]; then
+        echo "STALE n=${n}: the content list still opened after entries.view was taken away" >> "${STALE}"
+    elif [[ "${want}" == denied && "${code}" != "403 " ]]; then
+        echo "FAIL host=anvinh.platform.test path=/admin/content n=${n} got=${code} (after the change)" >> "${FAILS}"
+    fi
+}
+export -f content_probe
+
+seq 1 "${REQUESTS}" | xargs -P "${CONCURRENCY}" -I{} bash -c 'content_probe {} allowed'
+
+quietly php artisan tinker --execute '
+use App\Modules\Rbac\Models\Role;
+use App\Modules\Rbac\Registry\PermissionRegistry;
+use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\Domain;
+$site = (int) Domain::query()->where("hostname", "anvinh.platform.test")->value("site_id");
+app(Tenancy::class)->enter($site, fn () => Role::findByName("owner", PermissionRegistry::GUARD)->revokePermissionTo("entries.view"));
+'
+
+seq 1 "${REQUESTS}" | xargs -P "${CONCURRENCY}" -I{} bash -c 'content_probe {} denied'
+
+if [[ -s "${STALE}" ]]; then
+    echo "❌ STALE PERMISSION: $(wc -l <"${STALE}") of ${REQUESTS} requests still passed a permission another process had taken away:"
+    head -5 "${STALE}"
+fi
+
 if [[ -s "${FAILS}" ]]; then
     echo "❌ $(wc -l <"${FAILS}") request(s) FAILED (server errors, not isolation) — see /tmp/octane-hammer.log and storage/logs:"
     head -20 "${FAILS}"
@@ -129,8 +171,9 @@ if [[ -s "${LEAKS}" ]]; then
     echo "❌ TENANT LEAK DETECTED across interleaved requests:"
     cat "${LEAKS}"
 fi
-if [[ -s "${FAILS}" || -s "${LEAKS}" ]]; then
+if [[ -s "${FAILS}" || -s "${LEAKS}" || -s "${STALE}" ]]; then
     exit 1
 fi
 
 echo "✅ No tenant leak across ${REQUESTS} storefront + ${REQUESTS} support-session admin requests, interleaved on a real Octane worker pool."
+echo "✅ A permission taken away by another process was refused on all ${REQUESTS} following requests, on every worker."

@@ -19,7 +19,8 @@ paths:
 - CI's `ContextIsolationTest` only interleaves sites over one pooled connection. When changing tenancy middleware, Octane listeners or site resolution, also run the real worker-pool hammer: `docker compose run --rm --no-deps app bash tests/Concurrency/octane-hammer.sh`.
   - ⚠ It runs `migrate:fresh` on the shared dev/test DB and takes no Pest lock.
   - Run it only when no Pest run or other session is using the DB, and with the owner's OK.
-  - It covers the storefront and support sign-in (staff signed in as each site's owner, two cookie jars). It reports FAIL (server error) apart from LEAK (wrong site's content).
+  - It covers the storefront, support sign-in (one staff member per site, signed in as its owner, two cookie jars) and a permission taken away by another process (every worker must refuse it at its next request). It reports FAIL (server error) apart from LEAK (wrong site's content) and STALE (a removed permission still worked).
+  - Run it too when changing the permission cache (`VersionedPermissionRegistrar`, `SyncPermissionCache`).
   - It needs `public/build/manifest.json`: in a worktree, copy the dev tree's built assets in first. Afterwards run `docker compose restart pgbouncer`, because `migrate:fresh` leaves stale prepared plans.
   - Restart PgBouncer BEFORE it too when Pest or a migration ran since the last restart: twice on 02–03/10 the hammer stopped right after its `migrate:fresh` (no sites, no permissions) and passed on the next run after a restart. A failing setup step now prints its error.
   - Also run it when changing support sign-in (`SupportSession`, `EnforceSupportSession`).
