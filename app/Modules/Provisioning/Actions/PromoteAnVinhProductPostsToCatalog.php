@@ -167,12 +167,16 @@ final readonly class PromoteAnVinhProductPostsToCatalog
             ->where('to_path', $oldPath)
             ->update(['to_path' => $newPath]);
 
-        Redirect::query()->updateOrCreate(
-            ['locale' => $locale, 'from_path' => $oldPath],
-            ['to_path' => $newPath, 'status_code' => 301, 'source' => Redirect::SOURCE_AUTO],
-        );
+        // a member's redirect to another website is left as it is (see Redirect)
+        if (! Redirect::leadsAway(Redirect::query()->where('locale', $locale)->where('from_path', $oldPath)->value('to_path'))) {
+            Redirect::query()->updateOrCreate(
+                ['locale' => $locale, 'from_path' => $oldPath],
+                ['to_path' => $newPath, 'status_code' => 301, 'source' => Redirect::SOURCE_AUTO],
+            );
+        }
 
-        Redirect::query()->withTrashed()->where('locale', $locale)->where('from_path', $newPath)->forceDelete();
+        Redirect::query()->withTrashed()->where('locale', $locale)->where('from_path', $newPath)
+            ->whereNot('to_path', 'like', Redirect::EXTERNAL_PREFIX.'%')->forceDelete();
     }
 
     /** The san-pham taxonomy id, resolved via the `products` ContentSection (not a slug guess). */

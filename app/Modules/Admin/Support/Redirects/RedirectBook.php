@@ -53,7 +53,7 @@ final class RedirectBook
 
     public const string AUDIT_RESTORED = 'cms.redirect.external_restored';
 
-    public const string AUDIT_PURGED = 'cms.redirect.external_purged';
+    public const string AUDIT_PURGED = Redirect::AUDIT_EXTERNAL_PURGED;
 
     public function __construct(
         private readonly SiteLocale $locales,
@@ -199,7 +199,10 @@ final class RedirectBook
                 }
                 $was = $row->only(['locale', 'from_path', 'to_path', 'status_code']);
                 $wasExternal = RedirectRules::isExternal($row);
-                $row->update(['locale' => $locale, 'from_path' => $from, 'to_path' => $to, 'status_code' => $code]);
+                $row->update(['locale' => $locale, 'from_path' => $from, 'to_path' => $to, 'status_code' => $code]
+                    // a new destination no longer leads to the content the system wrote the row for (the
+                    // row stays one the system made: source says how it began)
+                    + ($to !== $row->to_path ? ['entry_id' => null, 'product_id' => null, 'taxonomy_id' => null] : []));
                 if ($wasExternal || RedirectRules::isExternal($row)) {
                     $this->audit(self::AUDIT_CHANGED, $row, $was);
                 }

@@ -162,7 +162,9 @@ final readonly class RouteSync
      * renames stay one hop, not a chain; rows in the trash too, so a restore lands on the live
      * address), $from → $to is upserted as a system row (idempotent on the live from_path), and any
      * redirect FROM $to is removed for good — $to is live content now, and an A→B→A rename must not
-     * loop, nor come back from the trash.
+     * loop, nor come back from the trash. A member's redirect to another website is left as it is on
+     * both ends (Redirect::leadsAway): only the member changes one, with an audit row; it never points
+     * at $from, so the first step cannot reach it either.
      *
      * @param  array{entry_id: int|null, product_id: int|null, taxonomy_id: int|null}|array{}  $target  what it leads to (leadsTo()), when known
      */
@@ -173,12 +175,15 @@ final readonly class RouteSync
             ->where('to_path', $from)
             ->update(['to_path' => $to, ...$target]);
 
-        Redirect::query()->updateOrCreate(
-            ['locale' => $locale, 'from_path' => $from],
-            ['to_path' => $to, 'status_code' => 301, 'source' => Redirect::SOURCE_AUTO, ...$target],
-        );
+        if (! Redirect::leadsAway(Redirect::query()->where('locale', $locale)->where('from_path', $from)->value('to_path'))) {
+            Redirect::query()->updateOrCreate(
+                ['locale' => $locale, 'from_path' => $from],
+                ['to_path' => $to, 'status_code' => 301, 'source' => Redirect::SOURCE_AUTO, ...$target],
+            );
+        }
 
-        Redirect::query()->withTrashed()->where('locale', $locale)->where('from_path', $to)->forceDelete();
+        Redirect::query()->withTrashed()->where('locale', $locale)->where('from_path', $to)
+            ->whereNot('to_path', 'like', Redirect::EXTERNAL_PREFIX.'%')->forceDelete();
     }
 
     /**

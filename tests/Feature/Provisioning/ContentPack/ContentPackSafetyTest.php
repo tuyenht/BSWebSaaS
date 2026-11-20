@@ -346,6 +346,16 @@ it('reports a redirect over a live path as a conflict', function (): void {
     expect($exit)->toBe(1)->and(ContentPacks::verdict($output, 'redirect:vi:/gioi-thieu'))->toBe('conflict');
 });
 
+it('leaves a member\'s redirect to another website to the member: a pack that would change it is a conflict', function (): void {
+    ContentPacks::load();
+    ContentPacks::in($this->siteId, fn () => Redirect::query()->where('from_path', '/trang-cu')->update(['to_path' => 'https://doitac.vn/a', 'source' => 'manual']));
+
+    // the pack still says /gioi-thieu: changing the member's row back would be the pack's doing
+    [$exit, $output] = ContentPacks::run();
+    expect($exit)->toBe(1)->and(ContentPacks::verdict($output, 'redirect:vi:/trang-cu'))->toBe('conflict')
+        ->and(ContentPacks::in($this->siteId, fn (): mixed => Redirect::query()->where('from_path', '/trang-cu')->value('to_path')))->toBe('https://doitac.vn/a');
+});
+
 it('lets a redirect take the address of a post the same load unpublishes, and keeps it on the next run', function (): void {
     ContentPacks::load();
     $path = ContentPacks::in($this->siteId, fn (): string => (string) SiteRoute::query()

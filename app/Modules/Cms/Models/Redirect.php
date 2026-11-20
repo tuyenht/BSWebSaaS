@@ -20,6 +20,10 @@ use Illuminate\Support\Carbon;
  * entry_id / product_id / taxonomy_id name the content the row leads to when RouteSync wrote it
  * (at most one is set); they fall to NULL when that content is deleted.
  *
+ * A row that leads to another website (`https://…`, only ever written by a member on the screen) is
+ * never changed or removed by the system's own writes (slug moves, packs): every change to one is a
+ * member's, and audited — except the trash purge, which audits each one it deletes.
+ *
  * @property int $id
  * @property string|null $ulid
  * @property int $site_id
@@ -49,6 +53,18 @@ class Redirect extends Model
 
     /** Days a removed redirect waits in the trash before `redirects:purge-trash` deletes it for good. */
     public const int TRASH_DAYS = 30;
+
+    /** How every redirect to another website starts (stored lower-case: SafeLink::externalHttps). */
+    public const string EXTERNAL_PREFIX = 'https://';
+
+    /** Audit code of a redirect to another website deleted for good from the trash. */
+    public const string AUDIT_EXTERNAL_PURGED = 'cms.redirect.external_purged';
+
+    /** Whether a stored destination leads to another website (any `https://` value, valid or not). */
+    public static function leadsAway(mixed $to): bool
+    {
+        return is_string($to) && str_starts_with($to, self::EXTERNAL_PREFIX);
+    }
 
     #[\Override]
     protected $guarded = [];

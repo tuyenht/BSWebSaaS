@@ -22,14 +22,17 @@ use Illuminate\Routing\Router;
  *    `redirects.external` switch is on — to another website's address in the one form
  *    SafeLink::externalHttps() gives. A row that is neither is never followed.
  */
-final readonly class RedirectRules
+final class RedirectRules
 {
+    /** @var list<string>|null the route list, read once per instance (routes are fixed after boot) */
+    private ?array $segments = null;
+
     /** The website switch a super_admin turns on to let redirects lead to another website. */
     public const string EXTERNAL_FEATURE = 'redirects.external';
 
     // Only the router (one per worker) is held: the entitlement is request-scoped, so it is asked
     // for each time — a storefront controller holding this class outlives a request under Octane.
-    public function __construct(private Router $router) {}
+    public function __construct(private readonly Router $router) {}
 
     /** Whether the current website may send visitors to another website. */
     public function externalOn(): bool
@@ -74,6 +77,9 @@ final readonly class RedirectRules
      */
     public function reservedSegments(): array
     {
+        if ($this->segments !== null) {
+            return $this->segments;
+        }
         $segments = [];
         foreach ($this->router->getRoutes()->getRoutes() as $route) {
             if ($route->isFallback || $route->getDomain() !== null) {
@@ -85,6 +91,6 @@ final readonly class RedirectRules
             }
         }
 
-        return array_keys($segments);
+        return $this->segments = array_keys($segments);
     }
 }

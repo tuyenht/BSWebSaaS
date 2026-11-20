@@ -181,7 +181,11 @@ it('edits a row, says which content an automatic one came from, and lets its own
         ->set('edTo', '/tin-tuc/khai-truong')->call('setEdCode', '302')
         ->call('save')->assertHasNoErrors()->assertSet('toast', __('admin.rd.toast_saved', ['from' => '/tin-cu'])));
 
-    expect(rdStored(1, '/tin-cu'))->toMatchArray(['to' => '/tin-tuc/khai-truong', 'code' => 302, 'source' => 'auto']);
+    // made by the system still, but the new destination is not known to be that post any more
+    expect(rdStored(1, '/tin-cu'))->toMatchArray(['to' => '/tin-tuc/khai-truong', 'code' => 302, 'source' => 'auto'])
+        ->and(DB::connection('pgsql_admin')->table('redirects')->where('ulid', $row->ulid)->value('entry_id'))->toBeNull();
+    rdIn(fn () => rdScreen($admin)->assertSee(__('admin.rd.src_auto'))
+        ->assertDontSee(__('admin.rd.auto_for_post', ['name' => 'Khai trương xưởng'])));
 });
 
 it('moves a row to the Trash with an undo, and a row in the Trash no longer redirects', function (): void {

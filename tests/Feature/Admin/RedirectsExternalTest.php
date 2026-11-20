@@ -3,8 +3,10 @@
 use App\Modules\Admin\Livewire\Settings\Redirects;
 use App\Modules\Admin\Support\Redirects\RedirectBook;
 use App\Modules\Admin\Support\SiteFeatures;
+use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Routing\RedirectRules;
+use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
@@ -303,6 +305,63 @@ it('audits every change to a row to another website: edit, kind, trash, restore 
     });
     expect(collect(rxAudit())->last())->toMatchArray(['action' => RedirectBook::AUDIT_CHANGED])
         ->and(collect(rxAudit())->last()['meta'])->toMatchArray(['was' => 'https://doitac.vn/c', 'value' => '/lien-he']);
+});
+
+it('never lets the system change or remove a member\'s redirect to another website when content moves', function (): void {
+    rxStore(1, '/gioi-thieu', 'https://doitac.vn/a');
+    rxStore(1, '/moi', 'https://doitac.vn/b');
+
+    rxIn(function (): void {
+        $entry = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Giới thiệu', 'slug' => 'gioi-thieu', 'status' => 'published', 'body' => ['blocks' => []]]);
+        // the page held /gioi-thieu over the member's row; it now moves to /moi, which another member's row holds
+        app(RouteSync::class)->sync($entry, 'vi', 'gioi-thieu');
+        app(RouteSync::class)->sync($entry, 'vi', 'moi');
+    });
+
+    expect(rxTargets(1))->toBe(['https://doitac.vn/a', 'https://doitac.vn/b'])
+        ->and(DB::connection('pgsql_admin')->table('redirects')->where('site_id', 1)->where('source', 'auto')->count())->toBe(0)
+        ->and(rxAudit())->toBe([]);
+});
+
+it('forgets the content a system row led to once its destination is edited, not on a kind switch', function (): void {
+    rxSwitch(1, true);
+    $admin = blockLibraryUser(1, 'admin');
+
+    $ulid = rxIn(function (): string {
+        $entry = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Liên hệ', 'slug' => 'lien-he', 'status' => 'published', 'body' => ['blocks' => []]]);
+        app(RouteSync::class)->sync($entry, 'vi', 'lien-he');
+        app(RouteSync::class)->sync($entry, 'vi', 'lien-he-ngay');
+
+        return (string) Redirect::query()->where('from_path', '/lien-he')->value('ulid');
+    });
+    $row = fn (): object => DB::connection('pgsql_admin')->table('redirects')->where('ulid', $ulid)->first(['to_path', 'source', 'entry_id', 'status_code']);
+    expect($row()->source)->toBe('auto')->and($row()->entry_id)->not->toBeNull();
+
+    rxIn(fn () => Livewire::actingAs($admin)->test(Redirects::class)->call('switchCode', $ulid)->assertHasNoErrors());
+    expect($row()->source)->toBe('auto')->and($row()->entry_id)->not->toBeNull()->and((int) $row()->status_code)->toBe(302);
+
+    rxIn(fn () => Livewire::actingAs($admin)->test(Redirects::class)->call('openEdit', $ulid)->set('edTo', 'https://doitac.vn/lien-he')->call('save')->assertHasNoErrors());
+    expect($row())->toMatchArray(['to_path' => 'https://doitac.vn/lien-he', 'source' => 'auto', 'entry_id' => null]);
+});
+
+it('audits each redirect to another website the nightly purge deletes for good, as the system', function (): void {
+    rxStore(1, '/km', 'https://doitac.vn/a');
+    rxStore(1, '/cu', '/moi');
+    rxStore(2, '/km', 'https://doitac.vn/b');
+    DB::connection('pgsql_admin')->table('redirects')->update(['deleted_at' => now()->subDays(Redirect::TRASH_DAYS + 1)]);
+
+    $this->artisan('redirects:purge-trash')->expectsOutputToContain('Purged 3 redirect(s)')->assertSuccessful();
+
+    $log = collect(rxAudit())->sortBy('site')->values()->all();
+    expect(array_column($log, 'action'))->toBe([Redirect::AUDIT_EXTERNAL_PURGED, Redirect::AUDIT_EXTERNAL_PURGED])
+        ->and(array_column($log, 'site'))->toBe([1, 2])
+        ->and(array_column($log, 'actor'))->toBe([null, null])
+        ->and($log[0]['meta'])->toMatchArray(['from' => '/km', 'was' => 'https://doitac.vn/a'])
+        ->and($log[1]['meta'])->toMatchArray(['from' => '/km', 'was' => 'https://doitac.vn/b'])
+        ->and(DB::connection('pgsql_admin')->table('audit_logs')->where('action', Redirect::AUDIT_EXTERNAL_PURGED)->pluck('actor_label')->unique()->all())->toBe(['system'])
+        ->and(DB::connection('pgsql_admin')->table('redirects')->count())->toBe(0);
 });
 
 it('keeps each website to its own switch and its own rows', function (): void {
