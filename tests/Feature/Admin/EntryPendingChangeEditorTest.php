@@ -135,10 +135,16 @@ it('holds an author’s save of a governed live post in its pending change, then
         // Approving a sent change leaves out what the reviewer typed since, and the question says so.
         Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid])
             ->call('askApplyChange')
+            ->assertHasNoErrors()
+            ->assertSet('changeApplyAsk', true)
             ->assertDontSee(__('entries.chg.ask_unsaved'))
+            ->set('changeApplyAsk', false)
             ->set('title', 'Gõ thêm chưa lưu')
             ->call('askApplyChange')
+            ->assertHasNoErrors()
+            ->assertSet('changeApplyAsk', true)
             ->assertSee(__('entries.chg.ask_unsaved'));
+        expect(pcChange($post)->content['locales']['vi']['title'])->toBe('Bản sửa chờ duyệt');
 
         // The reviewer opens it: the band offers approve and return, discard locked with its reason.
         Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid])

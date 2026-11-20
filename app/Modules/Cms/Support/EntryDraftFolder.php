@@ -10,6 +10,7 @@ use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Identity\Models\User;
+use Illuminate\Support\Facades\DB;
 use LogicException;
 
 /**
@@ -71,14 +72,22 @@ final readonly class EntryDraftFolder
     /** Move each address the entry has to where its content now puts it (see the class doc). */
     private function followAddresses(Entry $entry): void
     {
-        $routed = SiteRoute::query()->where('entry_id', $entry->id)->select('locale');
-        foreach ($entry->translations()->whereIn('locale', $routed)->orderBy('locale')->get() as $translation) {
+        /** @var array<string, string> $routed */
+        $routed = SiteRoute::query()->where('entry_id', $entry->id)->pluck('path', 'locale')->all();
+        if ($routed === []) {
+            return;
+        }
+        foreach ($entry->translations()->whereIn('locale', array_keys($routed))->orderBy('locale')->get() as $translation) {
+            $locale = $translation->locale;
             try {
-                $this->routes->sync($entry, $translation->locale, $translation->slug);
-                if ($entry->type === 'page') {
-                    // a sub-page's nested address is built from this page's slug
-                    $this->routes->syncDescendants($entry, $translation->locale);
-                }
+                // one language's page and its sub-pages move together, or none of them does
+                DB::transaction(function () use ($entry, $translation, $locale, $routed): void {
+                    $path = $this->routes->sync($entry, $locale, $translation->slug);
+                    if ($entry->type === 'page' && $path !== $routed[$locale]) {
+                        // a sub-page's nested address is built from this page's slug
+                        $this->routes->syncDescendants($entry, $locale);
+                    }
+                });
             } catch (RouteConflictException) {
                 // taken by other content meanwhile: left where it was
             }
