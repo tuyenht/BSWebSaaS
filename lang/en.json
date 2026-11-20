@@ -6324,6 +6324,7 @@
     "form_builder.del_ok_leads": "Delete the form and :leads",
     "form_builder.toast_deleted": "Form deleted",
     "form_builder.toast_deleted_leads": "Form and :leads deleted",
+    "form_builder.toast_deleting": "Deleting the form and :leads… The form no longer takes contacts; the contacts are deleted over the next few minutes.",
     "form_builder.toast_gone": "This form is no longer there — someone may have just deleted it. The list has been reloaded.",
     "form_builder.toast_more_leads": "New contacts have just come in. Check how many will be deleted, then confirm again.",
     "leads.form_off_band": "The form \":name\" is off — visitors cannot send new requests. Contacts already received are all kept.",

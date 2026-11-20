@@ -6324,6 +6324,7 @@
     "form_builder.del_ok_leads": "删除表单及 :leads",
     "form_builder.toast_deleted": "已删除表单",
     "form_builder.toast_deleted_leads": "已删除表单及 :leads",
+    "form_builder.toast_deleting": "正在删除表单及 :leads… 表单已停止接收；联系记录将在几分钟内陆续删除。",
     "form_builder.toast_gone": "此表单已不存在——可能刚被他人删除。列表已重新加载。",
     "form_builder.toast_more_leads": "刚收到新的联系。请核对将被删除的数量，再确认一次。",
     "leads.form_off_band": "表单“:name”已关闭 — 访客无法提交新的请求。已收到的联系全部保留。",

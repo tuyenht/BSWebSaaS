@@ -5,6 +5,7 @@ namespace App\Modules\Forms\Models;
 use App\Modules\Shared\Concerns\HasUlidColumn;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -27,6 +28,24 @@ final class Form extends Model
 
     /** The key of the consent box every form ends with: the platform's sentence, never changed on the screen. */
     public const string CONSENT_KEY = 'consent';
+
+    /**
+     * The status of a form whose leads are being deleted in batches off the request
+     * (DeleteLargeForm). Such a form takes no lead (the storefront reads only active forms) and
+     * reads as gone everywhere: the global scope below hides it from every query but that job's.
+     */
+    public const string DELETING = 'deleting';
+
+    /** The global scope that hides a form being deleted. */
+    public const string NOT_DELETING = 'not_deleting';
+
+    #[\Override]
+    protected static function booted(): void
+    {
+        self::addGlobalScope(self::NOT_DELETING, static function (Builder $builder): void {
+            $builder->where($builder->getModel()->getTable().'.status', '<>', self::DELETING);
+        });
+    }
 
     #[\Override]
     protected $guarded = [];

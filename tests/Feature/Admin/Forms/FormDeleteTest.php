@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Livewire\Forms\FormList;
 use App\Modules\Forms\Actions\DeleteForm;
+use App\Modules\Forms\Jobs\DeleteLargeForm;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Identity\Models\User;
@@ -9,8 +10,11 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Number;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
@@ -349,4 +353,163 @@ it('asks again with "more than 10,000" when leads came in past the cap after a s
     });
 
     expect(formRowsLeft($form)['forms'])->toBe(1);
+});
+
+it('switches a form with more leads than one request deletes to deleting, hides it, and queues its batches', function (): void {
+    Queue::fake();
+    config(['forms.delete_inline_max_leads' => 2]);
+    $manager = blockLibraryUser(1, 'admin');
+    $form = deletableForm(1, 'bao-gia', 'Yêu cầu báo giá', leads: 2, spam: 1); // spam counts too: 3 leads > 2
+    $kept = deletableForm(1, 'tu-van', 'Đăng ký tư vấn', leads: 1);
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $form): void {
+        Livewire::actingAs($manager)->test(FormList::class)
+            ->call('askDelete', $form->ulid)
+            ->assertSet('deleting.leads', 2)
+            ->call('confirmDelete')
+            ->assertSet('confirmOpen', false)
+            ->assertSet('toastTone', 'success')
+            ->assertSet('toastMsg', __('form_builder.toast_deleting', ['leads' => trans_choice('form_builder.leads_n', 2, ['n' => 2])]))
+            ->assertDontSee('Yêu cầu báo giá')
+            ->assertSee('Đăng ký tư vấn');
+
+        // it reads as gone everywhere: the list, the editor, a second «Xóa»
+        expect(Form::query()->whereKey($form->id)->exists())->toBeFalse()
+            ->and(app(DeleteForm::class)->handle($form))->toBeNull();
+    });
+
+    // nothing was deleted inside the request: the job does it
+    Queue::assertPushed(DeleteLargeForm::class, fn (DeleteLargeForm $job): bool => $job->siteId === 1 && $job->formId === $form->id && $job->afterAt === null);
+    Queue::assertPushed(DeleteLargeForm::class, 1);
+    expect(formRowsLeft($form))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 3])
+        ->and(DB::connection('pgsql_admin')->table('forms')->where('id', $form->id)->value('status'))->toBe(Form::DELETING)
+        ->and(formRowsLeft($kept))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 1]);
+
+    // audited at once, with the count the member agreed to
+    $audit = DB::connection('pgsql_admin')->table('audit_logs')->where('action', 'forms.form.deleted')->orderByDesc('id')->first();
+    expect(formDeleteAudits())->toBe(1)
+        ->and(json_decode((string) $audit?->meta, true))->toEqual(['key' => 'bao-gia', 'leads' => 2, 'in_batches' => true]);
+
+    // exactly at the limit a form still goes inside the request
+    $small = deletableForm(1, 'nho', 'Nhỏ', leads: 2);
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($manager)->test(FormList::class)
+        ->call('askDelete', $small->ulid)->call('confirmDelete')
+        ->assertSet('toastMsg', __('form_builder.toast_deleted_leads', ['leads' => trans_choice('form_builder.leads_n', 2, ['n' => 2])])));
+    expect(formRowsLeft($small))->toBe(['forms' => 0, 'fields' => 0, 'leads' => 0]);
+    Queue::assertPushed(DeleteLargeForm::class, 1);
+});
+
+it('asks again, switching nothing, when leads came in past the shown count of a form deleted in batches', function (): void {
+    Queue::fake();
+    config(['forms.delete_inline_max_leads' => 1]);
+    $manager = blockLibraryUser(1, 'admin');
+    $form = deletableForm(1, 'bao-gia', 'Yêu cầu báo giá', leads: 2);
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $form): void {
+        $page = Livewire::actingAs($manager)->test(FormList::class)->call('askDelete', $form->ulid)->assertSet('deleting.leads', 2);
+        FormSubmission::query()->create(['form_id' => $form->id, 'data' => [], 'name' => 'Khách mới', 'status' => 'new', 'is_spam' => false]);
+        $page->call('confirmDelete')->assertSet('confirmOpen', true)->assertSet('deleting.leads', 3);
+        expect(Form::query()->find($form->id)?->status)->toBe('active');
+    });
+
+    Queue::assertNothingPushed();
+    expect(formDeleteAudits())->toBe(0);
+});
+
+it('refuses a visitor\'s lead while the form is being deleted', function (): void {
+    Queue::fake();
+    Notification::fake();
+    Cache::flush(); // the per-IP rate limiter
+    config(['forms.delete_inline_max_leads' => 1, 'services.turnstile.secret_key' => '', 'services.turnstile.site_key' => '']);
+    $manager = blockLibraryUser(1, 'admin');
+    $form = deletableForm(1, 'bao-gia', 'Yêu cầu báo giá', leads: 2);
+    $lead = ['name' => 'Khách lạ', 'consent' => '1'];
+
+    // while it is on, the same lead goes through
+    $this->post('http://a.test/forms/bao-gia', $lead)->assertRedirect();
+    expect(formRowsLeft($form)['leads'])->toBe(3);
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($manager)->test(FormList::class)
+        ->call('askDelete', $form->ulid)->call('confirmDelete'));
+
+    $this->post('http://a.test/forms/bao-gia', $lead)->assertNotFound();
+    expect(formRowsLeft($form)['leads'])->toBe(3);
+});
+
+it('deletes a large form\'s leads in batches, each in its own site transaction, with their notices, then the form', function (): void {
+    config(['forms.delete_batch_leads' => 2]);
+    $manager = blockLibraryUser(1, 'admin');
+    $form = deletableForm(1, 'bao-gia', 'Yêu cầu báo giá', leads: 4, spam: 1, status: Form::DELETING);
+    $kept = deletableForm(1, 'tu-van', 'Đăng ký tư vấn', leads: 1);
+    $theirs = deletableForm(2, 'bao-gia', 'Báo giá B', leads: 1);
+    $leadsOf = fn (Form $f) => FormSubmission::on('pgsql_admin')->withoutGlobalScopes()->where('form_id', $f->id)->orderBy('id')->get();
+    foreach ($leadsOf($form) as $lead) {
+        leadNotice(1, $manager, $lead);
+    }
+    leadNotice(1, $manager, $leadsOf($kept)->firstOrFail());
+    leadNotice(2, blockLibraryUser(2, 'admin'), $leadsOf($theirs)->firstOrFail());
+
+    $contexts = 0;
+    $deletes = [];
+    DB::listen(function ($query) use (&$contexts, &$deletes): void {
+        if (str_contains($query->sql, 'set_config')) {
+            $contexts++;
+        }
+        if (str_starts_with($query->sql, 'delete from "form_submissions"')) {
+            // every batch runs with this site's context set for its own transaction
+            $deletes[] = DB::scalar("select current_setting('app.current_site_id', true)");
+        }
+    });
+    $done = (new DeleteLargeForm(1, $form->id))->handle(app(Tenancy::class));
+
+    expect($done)->toBeTrue()
+        ->and($deletes)->toBe(['1', '1', '1']) // 5 leads, 2 at a time
+        ->and($contexts)->toBe(5) // three batches, the empty read that ends them, the row delete
+        ->and(formRowsLeft($form))->toBe(['forms' => 0, 'fields' => 0, 'leads' => 0])
+        ->and(formRowsLeft($kept))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 1])
+        ->and(formRowsLeft($theirs))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 1])
+        ->and(noticedLeads())->toBe([$leadsOf($kept)->firstOrFail()->ulid, $leadsOf($theirs)->firstOrFail()->ulid]);
+});
+
+it('never touches another site, or a form that is not being deleted, with a queued form delete', function (): void {
+    $form = deletableForm(1, 'bao-gia', 'Yêu cầu báo giá', leads: 3, status: Form::DELETING);
+    $live = deletableForm(1, 'tu-van', 'Đăng ký tư vấn', leads: 2);
+
+    // a job naming site B with site A's form finds nothing under site B's context
+    expect((new DeleteLargeForm(2, $form->id))->handle(app(Tenancy::class)))->toBeTrue()
+        ->and(formRowsLeft($form))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 3])
+        // a job naming a form that is on deletes none of its leads
+        ->and((new DeleteLargeForm(1, $live->id))->handle(app(Tenancy::class)))->toBeTrue()
+        ->and(formRowsLeft($live))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 2]);
+});
+
+it('picks up a large form delete where it stopped after a failure, and a second run finds nothing to do', function (): void {
+    config(['forms.delete_batch_leads' => 2]);
+    $form = deletableForm(1, 'bao-gia', 'Yêu cầu báo giá', leads: 5, status: Form::DELETING);
+
+    $seen = 0;
+    $listening = true;
+    DB::listen(function ($query) use (&$seen, &$listening): void {
+        if ($listening && str_starts_with($query->sql, 'delete from "form_submissions"') && ++$seen === 2) {
+            throw new RuntimeException('the worker died');
+        }
+    });
+    expect(fn () => (new DeleteLargeForm(1, $form->id))->handle(app(Tenancy::class)))->toThrow(RuntimeException::class);
+    $listening = false;
+    // the first batch stayed done, the second rolled back; the form is still there, still hidden
+    expect(formRowsLeft($form))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 3]);
+
+    expect((new DeleteLargeForm(1, $form->id))->handle(app(Tenancy::class)))->toBeTrue()
+        ->and(formRowsLeft($form))->toBe(['forms' => 0, 'fields' => 0, 'leads' => 0])
+        ->and((new DeleteLargeForm(1, $form->id))->handle(app(Tenancy::class)))->toBeTrue();
+});
+
+it('switches a form whose delete ran out of tries back to off, with the leads that are left', function (): void {
+    $form = deletableForm(1, 'bao-gia', 'Yêu cầu báo giá', leads: 2, status: Form::DELETING);
+
+    (new DeleteLargeForm(1, $form->id))->failed(new RuntimeException('gave up'));
+
+    expect(DB::connection('pgsql_admin')->table('forms')->where('id', $form->id)->value('status'))->toBe('disabled')
+        ->and(formRowsLeft($form))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 2]);
+    app(Tenancy::class)->enter(1, fn () => expect(Form::query()->whereKey($form->id)->exists())->toBeTrue());
 });

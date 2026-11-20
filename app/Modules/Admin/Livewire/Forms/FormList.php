@@ -131,6 +131,14 @@ final class FormList extends Component
 
             return;
         }
+        if ($done['later']) {
+            // a form with this many leads is emptied in batches off the request: it is off and hidden at once
+            $this->toast(__('form_builder.toast_deleting', ['leads' => $asked['leads'] > self::LEAD_CAP
+                ? __('form_builder.leads_over', ['n' => $this->num(self::LEAD_CAP)])
+                : trans_choice('form_builder.leads_n', $asked['leads'], ['n' => $this->num($asked['leads'])])]));
+
+            return;
+        }
         $leads = $done['leads'];
         $this->toast($leads > 0
             ? __('form_builder.toast_deleted_leads', ['leads' => trans_choice('form_builder.leads_n', $leads, ['n' => $this->num($leads)])])
