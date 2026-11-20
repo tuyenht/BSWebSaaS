@@ -385,11 +385,11 @@
                 @endif
                 <div class="flex flex-col gap-2 rounded-md bg-surface-muted px-3.5 py-3 text-small">
                     {{-- always in the page, so screen readers hear the sentence appear on the first tick --}}
-                    <div aria-live="polite">
-                        @if ($pnSum !== '')
-                            <p class="m-0 text-text-strong">{{ $pnSum }}</p>
-                        @endif
-                    </div>
+                    @if ($pnSum !== '')
+                        <p class="m-0 text-text-strong">{{ $pnSum }}</p>
+                    @endif
+                    {{-- always in the page, so a screen reader hears the sentence change as boxes are ticked --}}
+                    <x-bs-admin::sr-live>{{ $pnSum }}</x-bs-admin::sr-live>
                     <b class="text-text-strong">{{ __('admin.members.pv_title', ['name' => $first($panelMember->name)]) }}</b>
                     @if ($added === [] && $removed === [])
                         <span class="text-text-muted">{{ __('admin.members.pv_none') }}</span>
@@ -544,7 +544,8 @@
                     @endif
                     @if ($invScope !== null)
                         {{-- what the invited person will be able to do, in a sentence (design 22) --}}
-                        <div class="flex flex-col gap-2 rounded-md bg-surface-muted px-3.5 py-3 text-small" aria-live="polite">
+                        <div class="flex flex-col gap-2 rounded-md bg-surface-muted px-3.5 py-3 text-small">
+                            <x-bs-admin::sr-live>{{ $ivSum !== '' ? $ivSum : __('admin.members.sm_inv_none') }}</x-bs-admin::sr-live>
                             @if ($ivSum !== '')
                                 <p class="m-0 text-text-strong">{{ $ivSum }}</p>
                             @else
