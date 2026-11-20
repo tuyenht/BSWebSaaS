@@ -35,7 +35,7 @@ beforeEach(function (): void {
     ]);
 });
 
-function esPage(User $author, string $title, string $slug, string $status = 'draft'): Entry
+function blankSlugPage(User $author, string $title, string $slug, string $status = 'draft'): Entry
 {
     $entry = Entry::query()->create(['type' => 'page', 'status' => $status, 'author_id' => $author->id]);
     $entry->translations()->create(['locale' => 'vi', 'title' => $title, 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);
@@ -43,7 +43,7 @@ function esPage(User $author, string $title, string $slug, string $status = 'dra
     return $entry;
 }
 
-function esProduct(string $name, string $slug): Product
+function blankSlugProduct(string $name, string $slug): Product
 {
     $product = Product::query()->create(['status' => 'draft']);
     $product->translations()->create(['locale' => 'vi', 'name' => $name, 'slug' => $slug]);
@@ -51,7 +51,7 @@ function esProduct(string $name, string $slug): Product
     return $product;
 }
 
-function esEditor(): User
+function blankSlugEditor(): User
 {
     $user = User::factory()->create();
     app(Tenancy::class)->enter(1, function () use ($user): void {
@@ -62,11 +62,11 @@ function esEditor(): User
 }
 
 it('rebuilds an emptied list slug from the title, in a free form, and keeps a live page redirecting', function (): void {
-    $editor = esEditor();
+    $editor = blankSlugEditor();
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
-        $page = esPage($editor, 'Hôm nay có gì vui không?', 'cu', 'draft');
-        $live = esPage($editor, 'Giới thiệu', 'khac', 'draft');
+        $page = blankSlugPage($editor, 'Hôm nay có gì vui không?', 'cu', 'draft');
+        $live = blankSlugPage($editor, 'Giới thiệu', 'khac', 'draft');
         app(PublishEntry::class)->handle($live->fresh(), 'vi', $editor);
 
         $component = Livewire::actingAs($editor)->test(Index::class)->call('saveSlug', $page->ulid, '   ');
@@ -80,27 +80,27 @@ it('rebuilds an emptied list slug from the title, in a free form, and keeps a li
 });
 
 it('puts the suffix on a rebuilt list slug another page holds, but not for a page of another website', function (): void {
-    $editor = esEditor();
+    $editor = blankSlugEditor();
     app(Tenancy::class)->enter(2, function () use ($editor): void {
-        esPage($editor, 'Liên hệ', 'lien-he'); // site B: must not count
+        blankSlugPage($editor, 'Liên hệ', 'lien-he'); // site B: must not count
     });
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
-        $mine = esPage($editor, 'Liên hệ', 'cu');
+        $mine = blankSlugPage($editor, 'Liên hệ', 'cu');
         $first = Livewire::actingAs($editor)->test(Index::class)->call('saveSlug', $mine->ulid, '');
         expect($mine->translationFor('vi')->fresh()->slug)->toBe('lien-he');
 
-        $other = esPage($editor, 'Liên hệ', 'cu-2');
+        $other = blankSlugPage($editor, 'Liên hệ', 'cu-2');
         $first->call('saveSlug', $other->ulid, '');
         expect($other->translationFor('vi')->fresh()->slug)->toBe('lien-he-2');
     });
 });
 
 it('refuses an emptied list slug when the title cannot give one, and saves nothing', function (): void {
-    $editor = esEditor();
+    $editor = blankSlugEditor();
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
-        $page = esPage($editor, 'រូបភាពផលិតផល', 'trang');
+        $page = blankSlugPage($editor, 'រូបភាពផលិតផល', 'trang');
         Livewire::actingAs($editor)->test(Index::class)->call('saveSlug', $page->ulid, '')
             ->assertDispatched('bs-toast', text: __('entries.slug_untranslatable'));
 
@@ -109,23 +109,23 @@ it('refuses an emptied list slug when the title cannot give one, and saves nothi
 });
 
 it('rebuilds an emptied product list address from the name, with the suffix, and refuses an unusable name', function (): void {
-    $editor = esEditor();
+    $editor = blankSlugEditor();
 
     app(Tenancy::class)->enter(2, function (): void {
-        esProduct('Dao phay', 'dao-phay'); // site B: must not count
+        blankSlugProduct('Dao phay', 'dao-phay'); // site B: must not count
     });
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
-        $product = esProduct('Dao phay', 'cu');
+        $product = blankSlugProduct('Dao phay', 'cu');
         $test = Livewire::actingAs($editor)->test(ProductIndex::class)
             ->call('saveSlug', $product->ulid, ' ')
             ->assertReturned(fn (array $r): bool => $r['ok'] === true && $r['slug'] === 'dao-phay');
 
-        $second = esProduct('Dao phay', 'cu-2');
+        $second = blankSlugProduct('Dao phay', 'cu-2');
         $test->call('saveSlug', $second->ulid, '')
             ->assertReturned(fn (array $r): bool => $r['ok'] === true && $r['slug'] === 'dao-phay-2');
 
-        $odd = esProduct('!!!', 'giu-nguyen');
+        $odd = blankSlugProduct('!!!', 'giu-nguyen');
         $test->call('saveSlug', $odd->ulid, '')
             ->assertReturned(fn (array $r): bool => $r['ok'] === false && $r['error'] === __('catalog.slug_invalid'));
         expect($odd->translations()->value('slug'))->toBe('giu-nguyen');
@@ -133,10 +133,10 @@ it('rebuilds an emptied product list address from the name, with the suffix, and
 });
 
 it('rebuilds the slug of the product form when the field is left empty, and says why when it cannot', function (): void {
-    $editor = esEditor();
+    $editor = blankSlugEditor();
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
-        $product = esProduct('Đĩa phay mặt', 'cu');
+        $product = blankSlugProduct('Đĩa phay mặt', 'cu');
         Livewire::actingAs($editor)->test(ProductEditor::class, ['ulid' => $product->ulid])
             ->set('slug', '')
             ->assertSet('slug', 'dia-phay-mat')
@@ -148,7 +148,7 @@ it('rebuilds the slug of the product form when the field is left empty, and says
 });
 
 it('tells the entry form why an emptied slug stays blank when the title cannot give one', function (): void {
-    $editor = esEditor();
+    $editor = blankSlugEditor();
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
         Livewire::actingAs($editor)->test(EntryEditor::class)
