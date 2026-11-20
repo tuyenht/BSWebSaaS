@@ -89,13 +89,14 @@ final readonly class WorkflowTrail
     }
 
     /**
-     * The newest move of each listed entry itself (not of a pending change to it), keyed by entry id —
-     * one row per entry at most, so a caller can tell which of a short list was just sent back.
+     * The newest move of each listed entry itself (or, with $target = TARGET_CHANGE, of its pending
+     * change), keyed by entry id — one row per entry at most, so a caller can tell which of a short
+     * list was just sent back.
      *
      * @param  list<int>  $entryIds
      * @return array<int, array{actor_id: int|null, from: string, to: string, note: string|null, at: CarbonInterface|null}>
      */
-    public function lastMoves(array $entryIds): array
+    public function lastMoves(array $entryIds, string $target = WorkflowEngine::TARGET_ENTRY): array
     {
         if ($entryIds === []) {
             return [];
@@ -104,7 +105,7 @@ final readonly class WorkflowTrail
         $logs = WorkflowLog::query()
             ->selectRaw('distinct on (entry_id) entry_id, actor_id, from_state, to_state, note, created_at')
             ->whereIn('entry_id', $entryIds)
-            ->where('target', WorkflowEngine::TARGET_ENTRY)
+            ->where('target', $target)
             ->orderBy('entry_id')->orderByDesc('created_at')->orderByDesc('id')
             ->get();
 

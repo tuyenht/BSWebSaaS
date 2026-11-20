@@ -6,6 +6,7 @@ namespace App\Modules\Cms\Actions;
 
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Cms\Enums\RevisionKind;
+use App\Modules\Cms\Exceptions\EntryDraftRejectedException;
 use App\Modules\Cms\Exceptions\RevisionRestoreRejectedException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
@@ -23,10 +24,13 @@ use Illuminate\Support\Facades\Gate;
  * EntryContentWriter: the same title/slug/block rules, the route moved with a 301 when a live
  * entry's slug changes, and the block image usage index rebuilt.
  *
- * The status is never touched: restoring content is not publishing. On live content the change is
- * visible at once, exactly like an editor save — an approval workflow governs the decision to
- * publish, not each edit (design.md §15.4) — so the audit line records the status and workflow
- * stage the restore landed on.
+ * The status is never touched: restoring content is not publishing. On live content it lands
+ * where an editor save of the same member lands (SaveEntryDraft::holdsBack, judged under the row
+ * lock): straight on the website for a member who may publish an entry no approval workflow
+ * governs, otherwise in the entry's pending change — visitors keep the live version until the
+ * change is approved or applied, and no revision is recorded (nothing reached them). A change
+ * already sent for review is the reviewer's to return first (change_pending). The audit line
+ * records the status and workflow stage the restore landed on, and whether it went into the change.
  *
  * Media that has left the library since the revision was taken is dropped rather than refused: a
  * missing cover / OG image becomes none, and a block image prop is cleared (the block and its text
@@ -41,6 +45,7 @@ final readonly class RestoreEntryRevision
         private EntryContentWriter $writer,
         private RecordEntryRevision $revisions,
         private SiteLocale $locales,
+        private SaveEntryDraft $changes,
     ) {}
 
     /**
@@ -71,7 +76,8 @@ final readonly class RestoreEntryRevision
         [$content, $dropped] = $this->writer->withoutMissingMedia($content);
 
         try {
-            DB::transaction(function () use ($entry, $revision, $content, $actor): void {
+            /** @var bool $held */
+            $held = DB::transaction(function () use ($entry, $revision, $content, $actor): bool {
                 // The entry row first, as every entry action takes it, before its translation is
                 // written back (a check of the search words running meanwhile waits for it).
                 // A trash committed while this waited still refuses the restore.
@@ -84,6 +90,14 @@ final readonly class RestoreEntryRevision
                     throw new RevisionRestoreRejectedException('approved_later');
                 }
                 $entry->setRawAttributes($locked->getAttributes(), true);
+
+                // Live content this member's save would hold back goes into the pending change, as their save does.
+                if ($this->changes->holdsBack($entry, $actor)) {
+                    $this->intoChange($entry, $revision->locale, $content, $actor);
+
+                    return true;
+                }
+
                 $written = $this->writer->write($entry, $revision->locale, $content);
 
                 // The shared fields (template, cover, meta) belong to every language's page: when the
@@ -95,6 +109,8 @@ final readonly class RestoreEntryRevision
                 } else {
                     $this->revisions->forLocale($entry, $written['translation'], RevisionKind::Restore, $actor);
                 }
+
+                return false;
             });
         } catch (RouteConflictException) {
             throw new RevisionRestoreRejectedException('slug_taken');
@@ -112,9 +128,37 @@ final readonly class RestoreEntryRevision
                 'status' => $entry->status,
                 'workflow_state' => $entry->workflow_state,
                 'dropped_media' => $dropped,
+                'into_change' => $held,
             ],
         ]);
 
         return $dropped;
+    }
+
+    /**
+     * The version, as read, saved into the entry's pending change: this language's text and the
+     * shared fields the version carries (template, cover, picture); the main category stays as the
+     * change or the website has it.
+     *
+     * @param  array<string, mixed>  $content  EntryContentWriter::read(), media already checked
+     *
+     * @throws RevisionRestoreRejectedException change_pending · snapshot_incompatible · locale_disabled · entry_trashed
+     */
+    private function intoChange(Entry $entry, string $locale, array $content, User $actor): void
+    {
+        $text = ['body' => ['blocks' => $content['blocks'] ?? []]]
+            + array_intersect_key($content, array_flip(['title', 'slug', 'excerpt', 'seo_title', 'seo_description', 'og_image_id', 'author_name', 'cover_alt']));
+        $shared = array_intersect_key($content, array_flip(['template_override', 'cover_media_id', 'meta']));
+
+        try {
+            $this->changes->handle($entry, $actor, $locale, $text, $shared);
+        } catch (EntryDraftRejectedException $refused) {
+            throw new RevisionRestoreRejectedException(match ($refused->reason) {
+                'change_locked' => 'change_pending',
+                'locale_disabled' => 'locale_disabled',
+                'not_live' => 'entry_trashed',
+                default => 'snapshot_incompatible',
+            });
+        }
     }
 }

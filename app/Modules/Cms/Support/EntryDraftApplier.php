@@ -13,6 +13,7 @@ use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Auth\Access\AuthorizationException;
 
@@ -166,7 +167,8 @@ final readonly class EntryDraftApplier
 
     /**
      * File the post under the change's primary category when it differs; returns whether it did.
-     * Categories are replaced as the editor replaces them (the primary one only).
+     * A change holds the main category only, so the post's other categories stay as they are, after
+     * the new main one (one that becomes the main category is filed once).
      *
      * @throws EntryDraftRejectedException see assertCategory()
      * @throws AuthorizationException the category lies outside the actor's limits
@@ -182,7 +184,13 @@ final readonly class EntryDraftApplier
         }
 
         $this->assertCategory($entry, $categoryId);
-        $this->categories->assign($entry, [$categoryId], $actor);
+        $others = $entry->taxonomies()
+            ->wherePivot('position', '>', 0)->wherePivot('position', '<', Entry::FACET_POSITION_BASE)
+            ->orderByPivot('position')->pluck('taxonomies.id')
+            ->map(static fn (mixed $id): int => Cast::int($id))
+            ->reject(static fn (int $id): bool => $id === $categoryId)
+            ->values()->all();
+        $this->categories->assign($entry, [$categoryId, ...$others], $actor);
 
         return true;
     }

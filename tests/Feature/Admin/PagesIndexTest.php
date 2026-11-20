@@ -506,7 +506,8 @@ it('inline-renames a page title', function (): void {
     $editor = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
-        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any']);
+        // may publish: a live page's edits by someone who may not wait in its pending change instead
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any', 'entries.publish']);
         $page = makePageEntry($editor, 'Tên cũ', 'ten-cu');
 
         Livewire::actingAs($editor->fresh())->test(Index::class)

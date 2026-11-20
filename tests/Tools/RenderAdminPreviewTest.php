@@ -41,15 +41,18 @@ use App\Modules\Admin\Support\Settings\SetBrandImages;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Support\ProductIndexLink;
+use App\Modules\Cms\Actions\ApplyEntryDraftTransition;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\Menus\SaveMenu;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
+use App\Modules\Cms\Actions\SaveEntryDraft;
 use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
 use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
@@ -1243,5 +1246,48 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($failed)->toContain(e(__('admin.inbox.err_load_title')));
     file_put_contents($dir.'/review-inbox-error.html', $swap($inboxPage, $failed, $reviewInbox));
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 103);
+    // «Trình sửa bài/trang» (design board 07) on a live post of «Dự án», whose edits wait in a pending
+    // change: the writer's band before sending (with «Gửi duyệt thay đổi»), the question before
+    // «Bỏ thay đổi»; then, once sent, the reviewer's band (approve / return, discard locked with its
+    // reason), «So sánh», the question before «Duyệt đăng thay đổi» and the note of «Trả lại».
+    $livePost = app(Tenancy::class)->enter(1, function () use ($owner, $writer, $waiting): Entry {
+        $entry = Entry::query()->where('ulid', $waiting[2])->firstOrFail();
+        app(ApplyEntryWorkflowTransition::class)->handle($entry, 'vi', $owner, 'approve');
+        app(SaveEntryDraft::class)->handle($entry->fresh(), $writer->fresh(), 'vi', [
+            'title' => 'Gia công khuôn ép nhựa cho ngành ô tô',
+            'excerpt' => 'Khuôn 2 tầng, bàn giao tháng 11.',
+            'body' => ['blocks' => [['type' => 'richtext', 'props' => ['body' => 'Dự án hoàn thành sớm một tuần, khách nhận khuôn trong tháng 11.']]]],
+        ]);
+
+        return $entry->fresh();
+    });
+    $this->flushSession();
+    $html = $this->actingAs($writer->fresh())->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$livePost->ulid.'/edit')->assertOk()->getContent();
+    expect($html)->toContain('data-change-band', 'wire:click="submitChange"');
+    file_put_contents($dir.'/editor-change-draft.html', $html);
+    $discardAsk = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($writer->fresh())
+        ->test(App\Modules\Admin\Livewire\Entries\Editor::class, ['ulid' => $livePost->ulid])->call('askDiscardChange')));
+    expect($discardAsk)->toContain(e(__('entries.chg.discard_title')));
+    file_put_contents($dir.'/editor-change-discard.html', $swap($html, $discardAsk, 'admin\\.entries\\.editor'));
+    app(Tenancy::class)->enter(1, function () use ($livePost, $writer): void {
+        $change = EntryDraft::query()->where('entry_id', $livePost->id)->sole();
+        app(ApplyEntryDraftTransition::class)->handle($livePost->fresh(), 'vi', $writer->fresh(), 'submit', $change->version());
+    });
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$livePost->ulid.'/edit')->assertOk()->getContent();
+    expect($html)->toContain('data-change-band', e(__('entries.change_err_change_pending')));
+    file_put_contents($dir.'/editor-change-sent.html', $html);
+    $review = fn () => Livewire::actingAs($owner)->test(App\Modules\Admin\Livewire\Entries\Editor::class, ['ulid' => $livePost->ulid]);
+    foreach ([
+        'editor-change-diff' => fn () => $review()->call('openChangeDiff'),
+        'editor-change-apply' => fn () => $review()->call('askApplyChange'),
+        'editor-change-return' => fn () => $review()->call('openChangeReturn')->call('returnChange'),
+    ] as $name => $state) {
+        $part = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($state()));
+        file_put_contents($dir.'/'.$name.'.html', $swap($html, $part, 'admin\\.entries\\.editor'));
+    }
+    expect(file_get_contents($dir.'/editor-change-diff.html'))->toContain('data-change-diff')
+        ->and(file_get_contents($dir.'/editor-change-return.html'))->toContain(e(__('entries.chg.return_err')));
+
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 109);
 });

@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Modules\Cms\Support;
 
+use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryDraft;
+use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Identity\Models\User;
 use LogicException;
 
@@ -20,10 +23,17 @@ use LogicException;
  * longer passes the editor's checks (a language whose layout uses a retired block, a category that
  * would leave the approval workflow) is skipped and named in the audit line rather than blocking
  * the entry from going offline. No revision is recorded: nothing new reached visitors.
+ *
+ * A post's address is composed from its slug under its main category, and a fold may change
+ * either in any language. The applier moves no route of offline content, and putting the post back
+ * on the website moves the route of the language it is published from only, so every address the
+ * post had is moved here, with its 301, once the content is in: the next publication finds each
+ * language where its content says. An address another page took meanwhile is left as it is (the
+ * publication then refuses it as taken, as any taken address).
  */
 final readonly class EntryDraftFolder
 {
-    public function __construct(private EntryDraftApplier $applier) {}
+    public function __construct(private EntryDraftApplier $applier, private RouteSync $routes) {}
 
     /**
      * Fold the entry's pending change into it; false when it has none.
@@ -47,6 +57,9 @@ final readonly class EntryDraftFolder
 
         $applied = $this->applier->apply($entry, $change, lenient: true, actor: $actor);
         $change->delete();
+        if ($entry->type === 'post') {
+            $this->followAddresses($entry);
+        }
 
         EntryDraftAudit::record(EntryDraftAudit::FOLDED, $entry, $actor, $applied['locales'], $change->workflow_state, [
             'skipped_locales' => $applied['skipped'],
@@ -55,5 +68,18 @@ final readonly class EntryDraftFolder
         ]);
 
         return true;
+    }
+
+    /** Move each address the post has to where its content now puts it (see the class doc). */
+    private function followAddresses(Entry $entry): void
+    {
+        $routed = SiteRoute::query()->where('entry_id', $entry->id)->select('locale');
+        foreach ($entry->translations()->whereIn('locale', $routed)->orderBy('locale')->get() as $translation) {
+            try {
+                $this->routes->sync($entry, $translation->locale, $translation->slug);
+            } catch (RouteConflictException) {
+                // taken by other content meanwhile: left where it was
+            }
+        }
     }
 }

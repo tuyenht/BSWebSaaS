@@ -7,6 +7,7 @@ use App\Modules\Cms\Exceptions\EntryNotGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Support\CategoryPublicCounts;
+use App\Modules\Cms\Support\EntryDraftFolder;
 use App\Modules\Cms\Support\EntryNotifier;
 use App\Modules\Cms\Support\EntryStatusAudit;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
@@ -30,7 +31,8 @@ use RuntimeException;
  *
  * Visibility is decided by the STATE FLAG, never by a state's name: only `is_published` puts
  * content live, so a site may call its final stage anything. Rejecting live content back down
- * therefore takes it offline again, which is the point of an approval gate.
+ * therefore takes it offline again, which is the point of an approval gate. A pending change to
+ * the live entry is folded into it then (EntryDraftFolder), in the same transaction.
  */
 final readonly class ApplyEntryWorkflowTransition
 {
@@ -41,6 +43,7 @@ final readonly class ApplyEntryWorkflowTransition
         private EntryNotifier $notifier,
         private RecordEntryRevision $revisions,
         private CategoryPublicCounts $publicCounts,
+        private EntryDraftFolder $folder,
     ) {}
 
     /**
@@ -78,6 +81,7 @@ final readonly class ApplyEntryWorkflowTransition
             // caller see the first one's result and be refused, which is the point.
             Entry::withTrashed()->whereKey($entry->id)->lockForUpdate()->firstOrFail();
             $entry->refresh();
+            $wasLive = $entry->status === 'published';
             $onTime = $entry->status === 'scheduled' && $entry->scheduled_by === $actor->id
                 && $entry->published_at instanceof DateTimeInterface && $entry->published_at <= now();
 
@@ -129,6 +133,11 @@ final readonly class ApplyEntryWorkflowTransition
                 'scheduled_by' => null,
             ]);
             $translation->update(['status' => $status]);
+
+            // Leaving the website: a pending change of the live entry goes into it, nobody's work lost.
+            if ($wasLive && $status !== 'published') {
+                $this->folder->fold($entry, $actor);
+            }
 
             if ($destination->is_published) {
                 $this->routes->sync($entry, $locale, $translation->slug);
