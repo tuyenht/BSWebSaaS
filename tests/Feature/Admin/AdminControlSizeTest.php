@@ -242,8 +242,9 @@ it('draws every on/off switch of the admin with the one shared switch', function
     // plans list 2 (the upgrade invitation, one per plan row in a loop), the plan editor 1 (on sale),
     // my account 1 (one per notification kind and channel, in a loop), the website look 1 (Có tìm kiếm),
     // the product editor 1 (one per label, in a loop: Nổi bật, Bán chạy), the forms list 1 (one per
-    // form, in a loop), the form editor 1 (Đang bật)
-    expect($found)->toBe(25);
+    // form, in a loop), the form editor 1 (Đang bật), the site languages page 2 (Bật and Khách thấy,
+    // one per language row in a loop)
+    expect($found)->toBe(27);
 });
 
 it('sizes the image picker and theme panel buttons by the shared control tokens', function (string $view, string $marker, string $size): void {
