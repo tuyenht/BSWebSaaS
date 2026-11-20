@@ -30,6 +30,7 @@ use App\Modules\Admin\Livewire\Forms\FormList;
 use App\Modules\Admin\Livewire\Forms\Inbox as FormsInbox;
 use App\Modules\Admin\Livewire\GeneralSettings;
 use App\Modules\Admin\Livewire\IntegrationsSettings;
+use App\Modules\Admin\Livewire\LanguageSettings;
 use App\Modules\Admin\Livewire\Login;
 use App\Modules\Admin\Livewire\LoginSecuritySettings;
 use App\Modules\Admin\Livewire\Media\Library as MediaLibrary;
@@ -267,6 +268,7 @@ Route::prefix(config('admin.prefix', 'admin'))
         Route::get('/settings/social', SocialSettings::class)->middleware('can:settings.manage')->name('admin.settings.social');
         Route::get('/settings/appearance', WebsiteAppearanceSettings::class)->middleware('can:settings.manage')->name('admin.settings.appearance');
         Route::get('/settings/admin-ui', AdminUiSettings::class)->middleware('can:settings.manage')->name('admin.settings.admin-ui');
+        Route::get('/settings/languages', LanguageSettings::class)->middleware('can:settings.manage')->name('admin.settings.languages');
         Route::get('/settings/catalog', CatalogSettings::class)->middleware('can:settings.manage')->name('admin.settings.catalog');
         Route::get('/settings/integrations', IntegrationsSettings::class)->middleware('can:settings.manage')->name('admin.settings.integrations');
         Route::get('/settings/floating-contact', FloatingContactSettings::class)->middleware('can:settings.manage')->name('admin.settings.floating-contact');

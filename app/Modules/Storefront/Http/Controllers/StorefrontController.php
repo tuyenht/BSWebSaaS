@@ -105,9 +105,14 @@ final readonly class StorefrontController
 
         if ($dotted) {
             $redirect = $this->resolver->redirect($locale, $path);
-            abort_unless($redirect instanceof Redirect && SafeLink::isSitePath($redirect->to_path), 404);
+            if ($redirect instanceof Redirect && SafeLink::isSitePath($redirect->to_path)) {
+                return redirect()->to($this->paths->publicUrl($redirect->to_path, $locale), $redirect->status_code);
+            }
 
-            return redirect()->to($redirect->to_path, $redirect->status_code);
+            $moved = $locale === $default ? $this->resolver->heldElsewhere($this->formerLocales($default), $path, routes: false) : null;
+            abort_if($moved === null, 404);
+
+            return redirect()->to($this->paths->publicUrl($path, $moved), 301);
         }
 
         $resolved = $this->resolver->resolve($locale, $path);
@@ -115,9 +120,17 @@ final readonly class StorefrontController
         if ($resolved === null) {
             $redirect = $this->resolver->redirect($locale, $path);
             // A stored target that is not a path on this site (`//host`, `/\host`, a full link) is
-            // never followed: a redirect row must not become a way off the site.
+            // never followed: a redirect row must not become a way off the site. Rows keep the
+            // unprefixed path of their language, like routes, so the prefix is laid over here.
             if ($redirect instanceof Redirect && SafeLink::isSitePath($redirect->to_path)) {
-                return redirect()->to($redirect->to_path, $redirect->status_code);
+                return redirect()->to($this->paths->publicUrl($redirect->to_path, $locale), $redirect->status_code);
+            }
+
+            // A clean path the default language does not hold may be an address of a language that
+            // was the default before (a change of default moves its addresses under /{locale}).
+            $moved = $locale === $default ? $this->resolver->heldElsewhere($this->formerLocales($default), $path, productVisible: fn (ResolvedProduct $product, string $in): bool => $this->productPage->published($product->productId, $in)?->translationFor($in) !== null) : null;
+            if ($moved !== null) {
+                return redirect()->to($this->paths->publicUrl($path, $moved), 301);
             }
 
             return $this->notFound($this->chrome($locale, $default, $requestPath, null, $path));
@@ -231,6 +244,18 @@ final readonly class StorefrontController
         }
 
         return [$default, $path, null];   // langcode-shaped but not public → 404 via route miss
+    }
+
+    /**
+     * The public languages that were the default before, the most recent first: where a clean path
+     * that missed in the default language may still live (a change of default moved it under
+     * /{locale}). Never any other language — a clean path is not a way into every translation.
+     *
+     * @return list<string>
+     */
+    private function formerLocales(string $default): array
+    {
+        return array_values(array_filter($this->locale->formerDefaults(), static fn (string $code): bool => $code !== $default));
     }
 
     /**

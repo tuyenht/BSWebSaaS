@@ -7,6 +7,7 @@ use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
+use Closure;
 
 /**
  * Resolves a request (locale, path) to a publishable target within the CURRENT site
@@ -55,6 +56,46 @@ final class RouteResolver
             ->where('locale', $locale)
             ->where('from_path', $path)
             ->first();
+    }
+
+    /**
+     * The first of $locales (in the order given) whose language holds $path: as a live address
+     * (one resolve() can open) or, failing that, as a stored redirect. For a clean path the
+     * default language missed, so a site whose default changed still sends the former default's
+     * addresses on. One query per kind of row, and only on a miss. A product address counts only
+     * when $productVisible says the product is published in that language (Cms never loads Catalog),
+     * so a draft's address is never revealed by a redirect.
+     *
+     * @param  list<string>  $locales
+     * @param  (Closure(ResolvedProduct, string): bool)|null  $productVisible
+     */
+    public function heldElsewhere(array $locales, string $path, bool $routes = true, ?Closure $productVisible = null): ?string
+    {
+        if ($locales === []) {
+            return null;
+        }
+
+        if ($routes) {
+            $held = SiteRoute::query()->whereIn('locale', $locales)->where('path', $path)->pluck('locale')->all();
+            foreach ($locales as $locale) {
+                if (! in_array($locale, $held, true)) {
+                    continue;
+                }
+                $target = $this->resolve($locale, $path);
+                if ($target instanceof ResolvedProduct ? ($productVisible !== null && $productVisible($target, $locale)) : $target !== null) {
+                    return $locale;
+                }
+            }
+        }
+
+        $held = Redirect::query()->whereIn('locale', $locales)->where('from_path', $path)->pluck('locale')->all();
+        foreach ($locales as $locale) {
+            if (in_array($locale, $held, true)) {
+                return $locale;
+            }
+        }
+
+        return null;
     }
 
     private function resolveEntry(int $entryId, string $locale): ?ResolvedContent
