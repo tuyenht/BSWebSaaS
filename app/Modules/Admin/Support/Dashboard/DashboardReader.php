@@ -6,6 +6,7 @@ namespace App\Modules\Admin\Support\Dashboard;
 
 use App\Modules\Admin\Support\Entries\ReviewWaiting;
 use App\Modules\Admin\Support\Entries\SectionBranch;
+use App\Modules\Admin\Support\Leads\LeadListQuery;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\SiteRoute;
@@ -96,7 +97,8 @@ final class DashboardReader
      */
     public function unreadLeads(): array
     {
-        $rows = FormSubmission::query()->where('status', 'new')
+        // not those of a form being deleted: the inbox no longer lists them
+        $rows = LeadListQuery::leads()->where('status', 'new')
             ->orderByDesc('created_at')->orderByDesc('ulid')
             ->limit(self::CAP + 1)
             ->get(['id', 'form_id', 'name', 'created_at']);

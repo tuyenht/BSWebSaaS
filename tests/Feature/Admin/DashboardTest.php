@@ -232,6 +232,25 @@ it('lists the unread leads for a member who may read them, never another website
         ->assertDontSee('Khách đã đọc');
 });
 
+it('counts no unread lead of a form being deleted', function (): void {
+    $manager = dashMember(['forms.view', 'forms.manage']);
+    $going = app(Tenancy::class)->enter(1, function (): Form {
+        dashLead('Nguyễn Văn An');
+        $going = Form::query()->create(['key' => 'bao-gia', 'name' => ['vi' => 'Báo giá'], 'status' => 'active']);
+        // the newest unread lead, so the card would name it
+        FormSubmission::query()->create(['form_id' => $going->id, 'data' => ['message' => 'x'], 'name' => 'Khách sắp xóa', 'status' => 'new', 'created_at' => now()->addMinute()]);
+
+        return $going;
+    });
+    DB::connection('pgsql_admin')->table('forms')->where('id', $going->id)->update(['status' => Form::DELETING]);
+
+    $this->actingAs($manager)->get('http://a.test/admin')
+        ->assertOk()
+        ->assertSee(__('dash.todo_leads', ['n' => 1]))
+        ->assertSee('Nguyễn Văn An')
+        ->assertDontSee('Khách sắp xóa');
+});
+
 it('keeps the leads out for a member without forms.view or without the contacts module', function (): void {
     $member = dashMember(['entries.view']);
     $manager = dashMember(['forms.view']);

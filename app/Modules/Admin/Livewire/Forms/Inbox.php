@@ -138,7 +138,8 @@ final class Inbox extends Component
     public function loadMore(): void
     {
         $this->guardRead();
-        $this->until = $this->listQuery($this->knownForms())->nextCursor($this->tab, $this->until, self::PAGE, self::PAGE);
+        [$forms, $hidden] = $this->knownForms();
+        $this->until = $this->listQuery($forms, $hidden)->nextCursor($this->tab, $this->until, self::PAGE, self::PAGE);
     }
 
     public function removeForm(string $ulid): void
@@ -197,7 +198,7 @@ final class Inbox extends Component
     {
         $this->guardWrite();
         abort_unless(in_array($status, LeadListQuery::STATUSES, true), 422);
-        $lead = FormSubmission::query()->where('ulid', $ulid)->select(['id', 'ulid', 'status'])->first();
+        $lead = LeadListQuery::leads()->where('ulid', $ulid)->select(['id', 'ulid', 'status'])->first();
         if ($lead === null) {
             $this->say(__('leads.gone'), 'error');
 
@@ -277,7 +278,7 @@ final class Inbox extends Component
         foreach ($byStatus as $status => $ulids) {
             $asked += count($ulids);
             // only a lead still in the status the action gave it: one a colleague changed since stays
-            $back += FormSubmission::query()->whereIn('ulid', $ulids)->where('status', $op['set'])
+            $back += LeadListQuery::leads()->whereIn('ulid', $ulids)->where('status', $op['set'])
                 ->update(['status' => $status, 'updated_at' => now()]);
         }
         if ($asked === 0) {
@@ -319,11 +320,11 @@ final class Inbox extends Component
         try {
             // a savepoint inside the request's tenancy transaction: a failed read leaves it usable for the page
             $read = DB::transaction(function () use ($canManage): array {
-                $forms = $this->knownForms();
-                $list = $this->listQuery($forms);
+                [$forms, $hidden] = $this->knownForms();
+                $list = $this->listQuery($forms, $hidden);
                 $counts = $list->tabCounts();
                 $rows = $list->rows($this->tab, $this->until, self::PAGE, self::MAX_ROWS);
-                $open = $this->lead !== '' ? ($rows->firstWhere('ulid', $this->lead) ?? $this->findLead($this->lead)) : $rows->first();
+                $open = $this->lead !== '' ? ($rows->firstWhere('ulid', $this->lead) ?? $this->findLead($this->lead, $hidden)) : $rows->first();
                 $formIds = array_values($forms->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->all());
 
                 return [
@@ -336,7 +337,7 @@ final class Inbox extends Component
                     'total' => $this->filtering() ? $list->total($this->tab) : null,
                     // the ticked leads still in what is shown, with their status (the bar's counts)
                     'picked' => $canManage && $this->selected !== [] ? $this->pickedStatuses($list) : [],
-                    'any' => $counts['all'] + $counts['spam'] > 0 || $this->filtering() || $this->leadsExist(),
+                    'any' => $counts['all'] + $counts['spam'] > 0 || $this->filtering() || $this->leadsExist($hidden),
                 ];
             });
         } catch (QueryException $e) {
@@ -376,7 +377,7 @@ final class Inbox extends Component
     private function bulk(string $to, array $from, string $doneKey): void
     {
         $this->guardWrite();
-        $targets = FormSubmission::query()->whereIn('ulid', array_slice($this->selected, 0, self::MAX_ROWS))
+        $targets = LeadListQuery::leads()->whereIn('ulid', array_slice($this->selected, 0, self::MAX_ROWS))
             ->whereIn('status', $from)->select(['id', 'ulid', 'status'])->orderBy('id')->lockForUpdate()->get();
         if ($targets->isEmpty()) {
             return;
@@ -396,40 +397,49 @@ final class Inbox extends Component
         if (! Gate::allows('forms.manage')) {
             return;
         }
-        FormSubmission::query()->where('ulid', $ulid)->where('status', 'new')->update(['status' => 'read', 'updated_at' => now()]);
+        LeadListQuery::leads()->where('ulid', $ulid)->where('status', 'new')->update(['status' => 'read', 'updated_at' => now()]);
     }
 
-    private function findLead(string $ulid): ?FormSubmission
+    /** @param  list<int>  $hidden  the site's forms being deleted */
+    private function findLead(string $ulid, array $hidden): ?FormSubmission
     {
-        return FormSubmission::query()->where('ulid', $ulid)
+        return LeadListQuery::leads($hidden)->where('ulid', $ulid)
             ->select(['id', 'ulid', 'form_id', 'name', 'email', 'phone', 'source_url', 'ip_address', 'user_agent', 'status', 'is_spam', 'data', 'created_at'])
             ->first();
     }
 
     /**
-     * The site's forms (disabled ones too: their leads stay), each with its fields for the answers.
+     * The site's forms (disabled ones too: their leads stay), each with its fields for the answers,
+     * and the ids of those being deleted, whose leads no list shows, read in the same statement
+     * (first, so the 200 never crowd them out).
      *
-     * @return Collection<int, Form>
+     * @return array{0: Collection<int, Form>, 1: list<int>}
      */
-    private function knownForms(): Collection
+    private function knownForms(): array
     {
-        $forms = Form::query()->select(['id', 'ulid', 'key', 'name', 'status'])->orderBy('id')->limit(200)->get();
+        $read = Form::query()->withoutGlobalScope(Form::NOT_DELETING)->select(['id', 'ulid', 'key', 'name', 'status'])
+            ->orderByRaw('status = ? desc', [Form::DELETING])->orderBy('id')->limit(200)->get();
+        $forms = $read->filter(fn (Form $form): bool => $form->status !== Form::DELETING)->values();
+        $hidden = array_values($read->filter(fn (Form $form): bool => $form->status === Form::DELETING)->map(fn (Form $form): int => $form->id)->all());
         $fields = FormField::query()->whereIn('form_id', $forms->pluck('id')->all())
             ->select(['id', 'form_id', 'key', 'type', 'label', 'options', 'sort_order'])->orderBy('sort_order')->orderBy('id')->get()->groupBy('form_id');
         foreach ($forms as $form) {
             $form->setRelation('fields', $fields->get($form->id) ?? new Collection);
         }
 
-        return $forms;
+        return [$forms, $hidden];
     }
 
-    /** @param  Collection<int, Form>  $forms */
-    private function listQuery(Collection $forms): LeadListQuery
+    /**
+     * @param  Collection<int, Form>  $forms
+     * @param  list<int>  $hidden  the site's forms being deleted
+     */
+    private function listQuery(Collection $forms, array $hidden): LeadListQuery
     {
         $ids = array_values($forms->whereIn('ulid', $this->formF)->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->all());
 
         // forms ticked but none of them this site's (gone, another website's, past the forms read): no rows, never the whole list
-        return new LeadListQuery(trim($this->search), $ids, $this->when, self::dateOr($this->from), self::dateOr($this->to), app(SiteTime::class), $this->formF !== [] && $ids === []);
+        return new LeadListQuery(trim($this->search), $ids, $this->when, self::dateOr($this->from), self::dateOr($this->to), app(SiteTime::class), $this->formF !== [] && $ids === [], $hidden);
     }
 
     /**
@@ -454,10 +464,14 @@ final class Inbox extends Component
         return trim($this->search) !== '' || $this->formF !== [] || $this->when !== '';
     }
 
-    /** Whether the site has any lead at all (asked only when the groups under the filters are all empty). */
-    private function leadsExist(): bool
+    /**
+     * Whether the site has any lead at all (asked only when the groups under the filters are all empty).
+     *
+     * @param  list<int>  $hidden  the site's forms being deleted
+     */
+    private function leadsExist(array $hidden): bool
     {
-        return FormSubmission::query()->toBase()->limit(1)->exists();
+        return LeadListQuery::leads($hidden)->toBase()->limit(1)->exists();
     }
 
     /**

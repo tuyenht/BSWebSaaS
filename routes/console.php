@@ -53,7 +53,8 @@ Schedule::command('search:words --rolling=10000')->dailyAt('21:00')->timezone('U
 // key, a missed save). 21:15 UTC is 04:15 in Vietnam, after the storefront search words.
 Schedule::command('forms:placements')->dailyAt('21:15')->timezone('UTC')->withoutOverlapping();
 
-// Queue again the delete of a form left in `deleting` without progress for 30 minutes (a lost job):
+// Queue again the delete of a form left in `deleting` with no run queued for 30 minutes (a lost job,
+// or one stuck behind a long queue, which the new run takes over):
 // it is hidden on every screen, so nobody could ask again, and its leads are personal data.
 Schedule::command('forms:resume-deletes')->hourly()->withoutOverlapping();
 

@@ -32,7 +32,8 @@ final class Form extends Model
     /**
      * The status of a form whose leads are being deleted in batches off the request
      * (DeleteLargeForm). Such a form takes no lead (the storefront reads only active forms) and
-     * reads as gone everywhere: the global scope below hides it from every query but that job's.
+     * reads as gone everywhere: the global scope below hides it from every query but those that ask
+     * for it by name (that job, forms:resume-deletes, the lead lists that leave its leads out).
      */
     public const string DELETING = 'deleting';
 

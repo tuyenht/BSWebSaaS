@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Support\Leads;
 
+use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\VietnameseFold;
@@ -18,7 +19,8 @@ use Illuminate\Support\Facades\DB;
  * the phone by its digits), the forms ticked, the time window (in the site's own day), the status
  * group, and the counts beside each of them. Every count stops at CAP + 1, so a site with millions
  * of leads never walks them all to print one number. Rows come newest first with the code (ulid) as the
- * tie-break, read up to a cursor (the last row loaded), never by OFFSET.
+ * tie-break, read up to a cursor (the last row loaded), never by OFFSET. Leads of a form being
+ * deleted are never listed or counted (leads()).
  */
 final class LeadListQuery
 {
@@ -40,6 +42,7 @@ final class LeadListQuery
     /**
      * @param  list<int>  $formIds  the forms ticked (ids of this site's forms, already checked)
      * @param  bool  $noForms  forms were ticked but none is a form of this site: nothing matches
+     * @param  list<int>|null  $hiddenFormIds  the site's forms being deleted, when the caller has read them (see leads())
      */
     public function __construct(
         private readonly string $search,
@@ -49,7 +52,32 @@ final class LeadListQuery
         private readonly string $to,
         private readonly SiteTime $time,
         private readonly bool $noForms = false,
+        private readonly ?array $hiddenFormIds = null,
     ) {}
+
+    /**
+     * The site's leads a screen may show: none of a form being deleted, which reads as gone
+     * everywhere while DeleteLargeForm deletes its leads in batches.
+     *
+     * Given the ids of those forms (read with the site's forms, almost always none), the filter is
+     * that constant list, or nothing at all, so a count stays an index-only walk of a list index,
+     * which holds no form_id. Without them, one uncorrelated subquery on the site's forms (a few
+     * dozen rows), hashed once per statement: for reads that fetch the lead rows anyway (one lead,
+     * the dashboard's newest ones). No query per row either way.
+     *
+     * @param  list<int>|null  $hiddenFormIds
+     * @return Builder<FormSubmission>
+     */
+    public static function leads(?array $hiddenFormIds = null): Builder
+    {
+        $query = FormSubmission::query();
+        if ($hiddenFormIds === null) {
+            return $query->whereNotIn('form_submissions.form_id', Form::query()
+                ->withoutGlobalScope(Form::NOT_DELETING)->where('forms.status', Form::DELETING)->select('forms.id'));
+        }
+
+        return $hiddenFormIds === [] ? $query : $query->whereNotIn('form_submissions.form_id', $hiddenFormIds);
+    }
 
     /**
      * The leads that match the search and the conditions, before the status group.
@@ -58,7 +86,7 @@ final class LeadListQuery
      */
     public function base(bool $forms = true, bool $dates = true): Builder
     {
-        $query = FormSubmission::query();
+        $query = self::leads($this->hiddenFormIds);
         $this->searchIn($query);
         if ($forms && $this->noForms) {
             $query->whereRaw('false');
@@ -99,7 +127,7 @@ final class LeadListQuery
     /** The group's count with no search and no condition ("Tìm thấy N trong M liên hệ"). */
     public function total(string $tab): int
     {
-        return $this->bounded(['total' => self::inTab(FormSubmission::query(), $tab)])['total'];
+        return $this->bounded(['total' => self::inTab(self::leads($this->hiddenFormIds), $tab)])['total'];
     }
 
     /**
