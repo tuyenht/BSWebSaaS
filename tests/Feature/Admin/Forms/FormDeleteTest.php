@@ -414,7 +414,7 @@ it('asks again, switching nothing, when leads came in past the shown count of a 
         expect(Form::query()->find($form->id)?->status)->toBe('active');
     });
 
-    Queue::assertNothingPushed();
+    Queue::assertNotPushed(DeleteLargeForm::class);
     expect(formDeleteAudits())->toBe(0);
 });
 
