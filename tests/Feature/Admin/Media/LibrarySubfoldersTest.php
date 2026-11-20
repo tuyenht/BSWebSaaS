@@ -389,6 +389,27 @@ it('keeps the files of a sub-folder moved out while the queued job is emptying i
         ->and(app(Tenancy::class)->enter(1, fn () => Media::query()->whereKey([$stays[0]->id, $stays[1]->id])->where('folder_id', $k2->id)->count()))->toBe(2);
 });
 
+it('starts a handed-over run at the first sub-folder from the start when the one it was in is gone', function (): void {
+    config(['media.folder_delete_batch_files' => 1]);
+    $a = sfFolder(1, 'Ảnh xưởng', 'anh-xuong', 1);
+    $k1 = sfFolder(1, 'Máy CNC', 'may-cnc', 1, $a);
+    sfFile(1, 'cnc-1.png', $k1);
+    sfFile(1, 'cnc-2.png', $k1);
+    sfFile(1, 'own.png', $a);
+
+    $contexts = 0;
+    DB::listen(function ($query) use (&$contexts): void {
+        if (str_contains($query->sql, 'set_config')) {
+            $contexts++;
+        }
+    });
+    // the last run was in a sub-folder deleted since, far along its ids
+    expect((new DeleteLargeMediaFolder(1, $a->id, after: PHP_INT_MAX - 1, sweeping: 999999))->handle(app(Tenancy::class)))->toBeTrue();
+
+    // one pass: the family, 2 + 1 empty batches in «Máy CNC», 1 + 1 in the folder, the delete — no second sweep
+    expect($contexts)->toBe(7)->and(sfTree(1))->toBe([]);
+});
+
 it('puts nothing new under a folder while the queued job deletes it', function (): void {
     config(['media.folder_delete_inline_max_files' => 1]);
     Queue::fake();
@@ -399,13 +420,18 @@ it('puts nothing new under a folder while the queued job deletes it', function (
     sfFile(1, 'a.png', $a);
     sfFile(1, 'b.png', $a);
 
-    app(Tenancy::class)->enter(1, function () use ($user, $a): void {
+    $undo = app(Tenancy::class)->enter(1, function () use ($user, $a) {
         // a sub-folder deleted first, with Hoàn tác
         $undo = Livewire::actingAs($user)->test(Library::class)->call('askDeleteFolder', 'may-cnc');
         expect($undo->get('undoFolder'))->not->toBe('');
         Livewire::actingAs($user)->test(Library::class)->call('askDeleteFolder', 'anh-xuong')->call('confirmDeleteFolder');
-        expect(DeleteLargeMediaFolder::pending(1, $a->id))->toBeTrue();
+        expect(DeleteLargeMediaFolder::pending(1, $a->id))->toBeFalse(); // marked only once the request commits
 
+        return $undo;
+    });
+    expect(DeleteLargeMediaFolder::pending(1, $a->id))->toBeTrue();
+
+    app(Tenancy::class)->enter(1, function () use ($user, $undo): void {
         // no new sub-folder, no move into it
         Livewire::actingAs($user)->test(Library::class)
             ->call('openNewFolder', 'anh-xuong')->set('newFolderName', 'Mới')->call('createFolder')
@@ -421,9 +447,9 @@ it('puts nothing new under a folder while the queued job deletes it', function (
         'san-pham' => ['parent' => null, 'position' => 3],
     ]);
 
-    // a job out of tries leaves the folder usable again
+    // a job out of tries keeps the mark: another run of the folder may still be working
     (new DeleteLargeMediaFolder(1, $a->id))->failed(null);
-    expect(DeleteLargeMediaFolder::pending(1, $a->id))->toBeFalse();
+    expect(DeleteLargeMediaFolder::pending(1, $a->id))->toBeTrue();
 });
 
 it('asks before deleting empty sub-folders too, saying no file is affected', function (): void {
