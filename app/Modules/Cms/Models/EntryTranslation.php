@@ -7,6 +7,7 @@ namespace App\Modules\Cms\Models;
 use App\Modules\Cms\Casts\SanitizedPageBody;
 use App\Modules\Cms\Concerns\CountsInCategoryPublicTotals;
 use App\Modules\Cms\Concerns\TracksContentChange;
+use App\Modules\Cms\Support\EntryFormPlacements;
 use App\Modules\Cms\Support\EntrySearchWords;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
@@ -69,6 +70,10 @@ class EntryTranslation extends Model
      * entry rewrites this language's storefront search words in the same transaction
      * (EntrySearchWords): from the values just saved when the model holds both, else from the saved
      * row read back; a moved row first takes its words off where it was. Other saves write nothing.
+     *
+     * The same way, a body whose «Biểu mẫu» blocks name other forms than before, a language added
+     * with form blocks or removed, or a moved row rewrites this language's rows of `form_placements`
+     * (EntryFormPlacements), so «Xem trang có biểu mẫu» never scans page bodies.
      */
     #[\Override]
     protected static function booted(): void
@@ -81,17 +86,46 @@ class EntryTranslation extends Model
                 EntrySearchWords::putSaved($row->site_id, $row->id);
             }
         };
-        static::created($sync);
-        static::updated(static function (self $row) use ($sync): void {
+        // the forms this row's body shows: from the value just saved when the model holds it, else read back
+        $forms = static function (self $row): array {
+            $body = array_key_exists('body', $row->getAttributes())
+                ? $row->body
+                : self::query()->whereKey($row->id)->first(['id', 'body'])?->body;
+
+            return EntryFormPlacements::keysIn($body);
+        };
+        static::created(static function (self $row) use ($sync, $forms): void {
+            $sync($row);
+            if (($keys = $forms($row)) !== []) {
+                EntryFormPlacements::put($row->site_id, $row->entry_id, $row->locale, $keys);
+            }
+        });
+        static::updated(static function (self $row) use ($sync, $forms): void {
             if ($row->wasChanged(['locale', 'entry_id'])) {
                 EntrySearchWords::put($row->site_id, Cast::int($row->getOriginal('entry_id')), Cast::string($row->getOriginal('locale')), null, null);
                 $sync($row);
-            } elseif ($row->wasChanged(['title', 'excerpt'])) {
+                EntryFormPlacements::forget(Cast::int($row->getOriginal('entry_id')), Cast::string($row->getOriginal('locale')));
+                if (($keys = $forms($row)) !== []) {
+                    EntryFormPlacements::put($row->site_id, $row->entry_id, $row->locale, $keys);
+                }
+
+                return;
+            }
+            if ($row->wasChanged(['title', 'excerpt'])) {
                 $sync($row);
+            }
+            if ($row->wasChanged('body')) {
+                $keys = EntryFormPlacements::keysIn($row->body);
+                // a body the model was loaded without may have shown forms: then the rows are written whatever it shows now
+                $known = array_key_exists('body', $row->getRawOriginal());
+                if (! $known || EntryFormPlacements::keysIn($row->getOriginal('body')) !== $keys) {
+                    EntryFormPlacements::put($row->site_id, $row->entry_id, $row->locale, $keys);
+                }
             }
         });
         static::deleted(static function (self $row): void {
             EntrySearchWords::put($row->site_id, $row->entry_id, $row->locale, null, null);
+            EntryFormPlacements::forget($row->entry_id, $row->locale);
         });
     }
 

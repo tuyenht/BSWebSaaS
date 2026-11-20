@@ -14,6 +14,7 @@ use App\Modules\Cms\Console\PurgeTrashedMenuItems;
 use App\Modules\Cms\Console\RebuildTaxonomyPaths;
 use App\Modules\Cms\Console\ReconcileCategoryCounts;
 use App\Modules\Cms\Console\ReconcileCategoryPublicCounts;
+use App\Modules\Cms\Console\ReconcileFormPlacements;
 use App\Modules\Cms\Console\ResanitizePageBodies;
 use App\Modules\Cms\Console\RetirePrivateEntryStatus;
 use App\Modules\Cms\Console\SnapshotPublishedEntries;
@@ -151,6 +152,7 @@ final class CmsServiceProvider extends ServiceProvider
                 ReconcileCategoryCounts::class,
                 ReconcileCategoryPublicCounts::class,
                 RetirePrivateEntryStatus::class,
+                ReconcileFormPlacements::class,
             ]);
         }
     }
