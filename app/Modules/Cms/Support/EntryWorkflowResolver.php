@@ -10,6 +10,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Workflow\Models\Workflow;
+use App\Modules\Workflow\Models\WorkflowState;
 use App\Modules\Workflow\Models\WorkflowTransition;
 use App\Modules\Workflow\Services\WorkflowEngine;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -110,14 +111,17 @@ final readonly class EntryWorkflowResolver
 
     /**
      * The stage a pending change to a live entry stands at: its stored stage while the workflow
-     * still defines it, otherwise the initial one (a change never sits at the published stage —
-     * reaching it applies the change and deletes it).
+     * still defines it, as a stage some move leads on from, otherwise the initial one (a change never
+     * sits at the published stage — reaching it applies the change and deletes it). An end stage, or
+     * one with no move out (a site's own flow may park content in one), would leave the change locked for good,
+     * with nobody able to approve, return or throw it away: it counts as the first stage instead, so
+     * the change is back with its writers.
      *
      * @throws RuntimeException the workflow defines no initial state
      */
     public function changeOriginFor(Workflow $workflow, EntryDraft $change): string
     {
-        if ($change->workflow_state !== null && $workflow->definesState($change->workflow_state)) {
+        if ($change->workflow_state !== null && $this->changeStageHolds($workflow, $change->workflow_state)) {
             return $change->workflow_state;
         }
 
@@ -139,12 +143,28 @@ final readonly class EntryWorkflowResolver
             return true;
         }
 
-        // A stage the workflow no longer defines counts as the initial one, as in changeOriginFor().
+        // A stage the workflow no longer defines, an end stage, or one no move leads on from,
+        // counts as the initial one, as in changeOriginFor().
         $initial = $workflow->initialState();
 
         return $initial === null
             || $change->workflow_state === $initial->key
-            || ! $workflow->definesState($change->workflow_state);
+            || ! $this->changeStageHolds($workflow, $change->workflow_state);
+    }
+
+    /** Whether a change may stand at $stage: the workflow defines it, not as an end stage, and some move leads on from it. */
+    private function changeStageHolds(Workflow $workflow, string $stage): bool
+    {
+        $state = $workflow->relationLoaded('states')
+            ? $workflow->states->firstWhere('key', $stage)
+            : $workflow->states()->where('key', $stage)->first();
+        if (! $state instanceof WorkflowState || $state->is_terminal) {
+            return false;
+        }
+
+        return $workflow->relationLoaded('transitions')
+            ? $workflow->transitions->contains('from_state', $stage)
+            : $workflow->transitions()->where('from_state', $stage)->exists();
     }
 
     /**
@@ -185,20 +205,39 @@ final readonly class EntryWorkflowResolver
 
     /**
      * The moves $actor may make on $entry's pending change from the stage the change stands at
-     * (changeOriginFor()): the engine's rule and mayApply(), in the workflow's order, as movesFor().
-     * The change's own category is authorizeChangeTarget()'s business, at the move.
+     * (changeOriginFor()): the engine's rule, mayApply() and mayMoveChangeFrom(), in the workflow's
+     * order, as movesFor(). The change's own category is authorizeChangeTarget()'s business, at the
+     * move. Read from the workflow's loaded `states` and `transitions` when they are loaded, so a list
+     * of changes asks it for every row at no query per row.
      *
      * @return list<WorkflowTransition>
      */
     public function changeMovesFor(Workflow $workflow, Entry $entry, EntryDraft $change, User $actor): array
     {
         $from = $this->changeOriginFor($workflow, $change);
+        if (! $this->mayMoveChangeFrom($workflow, $from, $entry, $actor)) {
+            return [];
+        }
+        $transitions = $workflow->relationLoaded('transitions')
+            ? $workflow->transitions->sortBy('id')
+            : $workflow->transitions()->orderBy('id')->get();
 
-        return array_values($workflow->transitions()->orderBy('id')->get()
+        return array_values($transitions
             ->filter(fn (WorkflowTransition $t): bool => $t->from_state === $from
                 && $actor->can($t->required_permission)
                 && $this->mayApply($t, $entry, $actor))
             ->all());
+    }
+
+    /**
+     * Whether $actor may move a pending change on from the stage $from at all. At the workflow's
+     * first stage the change is still its writers' work, unsent: whatever permission a site's own
+     * flow puts on a move from there, only someone who may edit the entry takes it on (the bundled
+     * send already asks that, through EntryPolicy::submit). Later stages are the reviewers'.
+     */
+    public function mayMoveChangeFrom(Workflow $workflow, string $from, Entry $entry, User $actor): bool
+    {
+        return $workflow->initialState()?->key !== $from || Gate::forUser($actor)->allows('update', $entry);
     }
 
     /**

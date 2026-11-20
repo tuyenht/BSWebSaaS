@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Livewire\Concerns;
 
-use App\Modules\Admin\Support\BlockKinds;
-use App\Modules\Admin\Support\EntryProseBody;
+use App\Modules\Admin\Support\Entries\EntryBodyLines;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Cms\Actions\RestoreEntryRevision;
 use App\Modules\Cms\Enums\RevisionKind;
@@ -17,10 +16,7 @@ use App\Modules\Cms\Support\EntryContentWriter;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteTime;
 use DateTimeInterface;
-use Dom\Element;
-use Dom\HTMLDocument;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Support\Str;
 use Livewire\Attributes\Locked;
 
 /**
@@ -470,33 +466,14 @@ trait ShowsEntryRevisions
     }
 
     /**
-     * A stored body as lines of text: a written body paragraph by paragraph (each list item its own
-     * line), a laid-out body block by block, named by its kind.
+     * A stored body as lines of text (EntryBodyLines).
      *
      * @param  list<array{type: string, props: array<string, mixed>}>  $blocks
      * @return list<array{k: string, t: string}>
      */
     private function revisionLines(array $blocks): array
     {
-        $prose = app(EntryProseBody::class)->read($blocks);
-        if ($prose !== null) {
-            return $this->revisionHtmlLines($prose['html']);
-        }
-
-        $lines = [];
-        foreach ($blocks as $block) {
-            $words = '';
-            foreach ($block['props'] as $value) {
-                if (is_string($value) && ($text = trim(html_entity_decode(strip_tags($value)))) !== '' && ! str_starts_with($text, 'http')) {
-                    $words = Str::limit(preg_replace('/\s+/u', ' ', $text) ?? $text, 160);
-                    break;
-                }
-            }
-            $label = Cast::string(BlockKinds::of($block['type'])['label']);
-            $lines[] = ['k' => 'b', 't' => $words !== '' ? $label.': '.$words : $label];
-        }
-
-        return $lines;
+        return app(EntryBodyLines::class)->lines($blocks);
     }
 
     /**
@@ -504,38 +481,6 @@ trait ShowsEntryRevisions
      */
     private function revisionHtmlLines(string $html): array
     {
-        if (trim($html) === '') {
-            return [];
-        }
-        $body = HTMLDocument::createFromString('<!DOCTYPE html><html><body>'.$html.'</body></html>', LIBXML_NOERROR)->body;
-        if ($body === null) {
-            return [];
-        }
-
-        $lines = [];
-        $text = static fn (Element $el): string => trim(preg_replace('/\s+/u', ' ', $el->textContent ?? '') ?? '');
-        foreach ($body->children as $el) {
-            $tag = strtolower($el->localName);
-            if ($tag === 'ul' || $tag === 'ol') {
-                foreach ($el->children as $item) {
-                    if (($t = $text($item)) !== '') {
-                        $lines[] = ['k' => 'li', 't' => $t];
-                    }
-                }
-
-                continue;
-            }
-            $t = $text($el);
-            if ($t !== '') {
-                $lines[] = ['k' => preg_match('/^h[1-6]$/', $tag) === 1 ? 'h' : 'p', 't' => $t];
-            } elseif (($img = $tag === 'img' ? $el : $el->querySelector('img')) !== null) {
-                $lines[] = ['k' => 'p', 't' => Cast::string(__('entries.rev.image_line', ['alt' => $img->getAttribute('alt') ?? '']))];
-            }
-        }
-        if ($lines === [] && ($t = trim($body->textContent ?? '')) !== '') {
-            $lines[] = ['k' => 'p', 't' => $t];
-        }
-
-        return $lines;
+        return app(EntryBodyLines::class)->htmlLines($html);
     }
 }
