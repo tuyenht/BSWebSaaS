@@ -1,17 +1,46 @@
 {{--
-    "Hộp duyệt" — design_handoff_workflow screen 3, ported onto the admin tokens: a list of what
-    is waiting on the left, the picked post on the right, and one set of approval buttons at the
-    foot of the reader. Below 940px only one pane shows at a time.
+    "Hộp duyệt" — board 17, ported onto the admin tokens: a list of what is waiting on the left,
+    the picked post on the right, and one set of approval buttons at the foot of the reader. Below
+    940px only one pane shows at a time.
 
     Content is rendered as TEXT, never as the stored HTML: a reviewer needs to read the post, and
     running a tenant's markup inside the admin shell would hand them the page.
+
+    States (board 17 loadState): the list arrives already drawn with the page; while a tab, a search,
+    a type filter or «Thử lại» reloads it, the skeleton stands in («Đang tải»); a queue that could
+    not be read is «Chưa tải được hộp duyệt» with «Thử lại» («Lỗi tải»).
 --}}
+@php
+    $reloads = 'setTab,search,sectionFilter,clearFilters,reloadInbox';
+    $Js = \Illuminate\Support\Js::class;
+@endphp
 <div class="space-y-4">
     <x-bs-admin::page-header :title="__('admin.inbox.title')" :subtitle="__('admin.inbox.subtitle')" />
 
     @error('inbox')
-        <x-bs-admin::alert color="danger" icon="ri-error-warning">{{ $message }}</x-bs-admin::alert>
+        @unless ($noteOpen)
+            <x-bs-admin::alert color="danger" icon="ri-error-warning">{{ $message }}</x-bs-admin::alert>
+        @endunless
     @enderror
+
+    {{-- What the last «Duyệt đăng N bài» could not move, post by post: stays until closed. --}}
+    @if ($bulkFailed !== [])
+        <x-bs-admin::alert color="danger" icon="ri-error-warning" data-inbox-bulk-failed>
+            <div class="flex items-start gap-2">
+                <div class="min-w-0 flex-1 space-y-1.5">
+                    <p class="font-semibold">{{ __('admin.inbox.bulk_failed', ['count' => count($bulkFailed)]) }}</p>
+                    <ul class="list-disc space-y-1 ps-5">
+                        @foreach ($bulkFailed as $failed)
+                            <li class="[overflow-wrap:anywhere]"><span class="font-semibold">{{ $failed['title'] }}</span> — {{ $failed['why'] }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+                <x-bs-admin::button variant="ghost" color="danger" icon wire:click="dismissBulk" :title="__('admin.close')" :aria-label="__('admin.close')" class="shrink-0">
+                    <x-bs-admin::icon name="ri-close" class="size-5" />
+                </x-bs-admin::button>
+            </div>
+        </x-bs-admin::alert>
+    @endif
 
     {{-- Tabs --}}
     <div class="flex flex-wrap gap-2">
@@ -23,16 +52,57 @@
             ])>
                 <x-bs-admin::icon :name="$icon" class="size-4" />
                 {{ __('admin.inbox.tab_'.$key) }}
-                <span @class([
-                    'rounded-full px-1.5 text-[11px] font-bold',
-                    'bg-admin-primary text-white' => $tab === $key,
-                    'text-body-muted' => $tab !== $key,
-                ])>{{ $count }}</span>
+                @unless ($loadFailed)
+                    <span @class([
+                        'rounded-full px-1.5 text-[11px] font-bold',
+                        'bg-primary text-white' => $tab === $key,
+                        'text-text-muted' => $tab !== $key,
+                    ])>{{ $count }}</span>
+                @endunless
             </button>
         @endforeach
     </div>
 
-    <div class="grid gap-4 @container lg:grid-cols-[352px_1fr]">
+    {{-- «Đang tải»: the two panes as grey bars while the list is read again --}}
+    <div wire:loading.delay.grid wire:target="{{ $reloads }}" class="hidden gap-4 lg:grid-cols-[352px_1fr]" data-inbox-loading>
+        <x-bs-admin::card>
+            <x-slot:header><span class="text-sm font-semibold text-text-strong">{{ __('admin.inbox.tab_'.$tab) }}</span></x-slot:header>
+            <div class="-mx-4 divide-y divide-border-soft" aria-hidden="true">
+                @foreach (range(1, 4) as $skeleton)
+                    <div class="flex flex-col gap-[7px] px-4 py-3.5">
+                        <span class="h-3.5 w-[82%] animate-pulse rounded bg-surface-hover motion-reduce:animate-none"></span>
+                        <span class="h-2.5 w-[54%] animate-pulse rounded bg-surface-hover motion-reduce:animate-none"></span>
+                        <span class="h-2.5 w-[64%] animate-pulse rounded bg-surface-hover motion-reduce:animate-none"></span>
+                    </div>
+                @endforeach
+            </div>
+        </x-bs-admin::card>
+        <x-bs-admin::card class="hidden lg:block">
+            <div class="flex flex-col gap-3">
+                <span class="h-7 w-[30%] animate-pulse rounded-full bg-surface-hover motion-reduce:animate-none" aria-hidden="true"></span>
+                <span class="h-3.5 w-[92%] animate-pulse rounded bg-surface-hover motion-reduce:animate-none" aria-hidden="true"></span>
+                <span class="h-3.5 w-[86%] animate-pulse rounded bg-surface-hover motion-reduce:animate-none" aria-hidden="true"></span>
+                <span class="h-3.5 w-[74%] animate-pulse rounded bg-surface-hover motion-reduce:animate-none" aria-hidden="true"></span>
+                <span class="text-[12px] text-text-muted">{{ __('admin.inbox.loading') }}</span>
+            </div>
+        </x-bs-admin::card>
+    </div>
+
+    @if ($loadFailed)
+        {{-- «Lỗi tải» --}}
+        <x-bs-admin::card class="border-danger-base/35" wire:loading.delay.remove wire:target="{{ $reloads }}" data-inbox-load-failed>
+            <div class="flex flex-col items-start gap-3 p-1">
+                <x-bs-admin::alert color="danger" icon="ri-error-warning" class="w-full">
+                    <p class="font-semibold">{{ __('admin.inbox.err_load_title') }}</p>
+                    <p class="mt-1 max-w-[560px] leading-relaxed">{{ __('admin.inbox.err_load_body') }}</p>
+                </x-bs-admin::alert>
+                <x-bs-admin::button color="primary" wire:click="reloadInbox" wire:loading.attr="disabled" wire:target="reloadInbox">
+                    <x-bs-admin::icon name="ri-refresh" class="size-4" />{{ __('admin.inbox.retry') }}
+                </x-bs-admin::button>
+            </div>
+        </x-bs-admin::card>
+    @else
+    <div class="grid gap-4 @container lg:grid-cols-[352px_1fr]" wire:loading.delay.remove wire:target="{{ $reloads }}">
         {{-- LEFT: the queue --}}
         <x-bs-admin::card class="{{ $reader !== null ? 'hidden lg:block' : '' }}">
             <x-slot:header>
@@ -42,6 +112,30 @@
                 </div>
             </x-slot:header>
 
+            {{-- Ticked posts: «Đã chọn N bài» · «Duyệt đăng M bài» (asked first) · «Bỏ chọn», and what happens to the rest --}}
+            @if ($bulk !== null)
+                <x-bs-admin::list.bulk :label="__('admin.inbox.bulk_region')" :status="__('admin.inbox.picked', ['count' => $bulk['picked']])"
+                                       clear="clearPicked" :clear-label="__('admin.inbox.bulk_clear')" :skip="$bulk['why']" class="min-[600px]:mx-0!" data-inbox-bulk>
+                    @if ($bulk['ready'] > 0)
+                        <x-bs-admin::button size="sm" color="primary" :title="$bulk['why']" wire:loading.attr="disabled" wire:target="approvePicked"
+                                            x-on:click="$bsConfirm({
+                                                icon: 'question',
+                                                danger: false,
+                                                title: {{ $Js::from(__('admin.inbox.bulk_title', ['count' => $bulk['ready']])) }},
+                                                text: {{ $Js::from(__('admin.inbox.bulk_text', ['count' => $bulk['ready']])) }},
+                                                confirm: {{ $Js::from(__('admin.inbox.bulk_ok', ['count' => $bulk['ready']])) }},
+                                                cancel: {{ $Js::from(__('entries.wf_ap_cancel')) }},
+                                            }).then(ok => ok && $wire.approvePicked())">
+                            <x-bs-admin::icon name="ri-check-double" class="size-4" />{{ __('admin.inbox.bulk_ok', ['count' => $bulk['ready']]) }}
+                        </x-bs-admin::button>
+                    @else
+                        <x-bs-admin::button size="sm" color="primary" disabled :title="$bulk['why']">
+                            <x-bs-admin::icon name="ri-check-double" class="size-4" />{{ __('admin.inbox.bulk_none_btn') }}
+                        </x-bs-admin::button>
+                    @endif
+                </x-bs-admin::list.bulk>
+            @endif
+
             {{-- Search + type filter --}}
             <div class="mb-3 flex flex-col gap-2">
                 <label class="field flex items-center gap-2 rounded border border-border px-2.5 focus-within:border-primary-text focus-within:ring-[3px] focus-within:ring-primary/20">
@@ -50,7 +144,7 @@
                            placeholder="{{ __('admin.inbox.search_placeholder') }}" aria-label="{{ __('admin.inbox.search_placeholder') }}">
                 </label>
                 @if (count($sections) > 1)
-                    <select wire:model.live="sectionFilter" class="field w-full rounded border border-border bg-surface px-2.5 text-text focus:border-primary-text">
+                    <select wire:model.live="sectionFilter" class="field w-full rounded border border-border bg-surface px-2.5 text-text focus:border-primary-text" aria-label="{{ __('admin.inbox.all_types') }}">
                         <option value="">{{ __('admin.inbox.all_types') }}</option>
                         @foreach ($sections as $key => $label)
                             <option value="{{ $key }}">{{ $label }}</option>
@@ -72,12 +166,16 @@
             @else
                 <ul class="-mx-4 divide-y divide-border-soft">
                     @foreach ($rows as $row)
-                        <li wire:key="inbox-{{ $row['ulid'] }}">
-                            <button type="button" wire:click="open(@js($row['ulid']))" @class([
-                                'flex w-full gap-2.5 px-4 py-3 text-left transition-colors hover:bg-surface-hover',
-                                'border-l-2 border-accent bg-admin-primary/5' => $row['current'],
-                                'border-l-2 border-transparent' => ! $row['current'],
-                            ])>
+                        @php $isPicked = in_array($row['ulid'], $picked, true); @endphp
+                        <li wire:key="inbox-{{ $row['ulid'] }}" @class([
+                            'flex items-start',
+                            'border-l-2 border-primary-text bg-primary/5' => $row['current'],
+                            'border-l-2 border-transparent' => ! $row['current'],
+                        ])>
+                            <x-bs-admin::list.check :checked="$isPicked" :label="__('admin.inbox.pick_label', ['title' => $row['title']])"
+                                                    :title="$isPicked ? __('admin.inbox.pick_off') : __('admin.inbox.pick_on')"
+                                                    wire:click="togglePick({{ $Js::from($row['ulid']) }})" class="mt-1.5 ms-1" data-inbox-pick="{{ $row['ulid'] }}" />
+                            <button type="button" wire:click="open(@js($row['ulid']))" class="flex min-w-0 flex-1 gap-2.5 py-3 pe-4 ps-1 text-left transition-colors hover:bg-surface-hover">
                                 <span class="flex min-w-0 flex-1 flex-col gap-1">
                                     <span class="truncate text-[13px] font-semibold text-heading">{{ $row['title'] }}</span>
                                     <span class="flex flex-wrap items-center gap-1.5 text-[11.5px] text-body-muted">
@@ -220,45 +318,98 @@
                     @if ($reader['actions'] === [])
                         <p class="text-[12.5px] text-body-muted">{{ __('admin.inbox.no_actions') }}</p>
                     @else
-                        <div class="space-y-2.5">
-                            @if (collect($reader['actions'])->contains('note', true))
-                                <label class="block">
-                                    <span class="mb-1 block text-xs font-semibold text-body-text">{{ __('admin.wfb.note_label') }}</span>
-                                    <textarea wire:model="note" rows="2"
-                                              class="w-full rounded border border-border px-3 py-2 text-[13px] text-body-text focus:border-accent"
-                                              placeholder="{{ __('admin.wfb.note_placeholder') }}"></textarea>
-                                    @error('note') <span class="mt-1 block text-xs font-semibold text-[#c0432c]">{{ $message }}</span> @enderror
-                                </label>
-                            @endif
-                            <div class="flex flex-wrap gap-2">
-                                @foreach ($reader['actions'] as $action)
-                                    @if ($action['to_published'])
-                                        <x-bs-admin::button color="primary" wire:key="act-{{ $action['key'] }}" wire:loading.attr="disabled"
-                                                         x-on:click="$bsConfirm({
-                                                             icon: 'question',
-                                                             text: {{ \Illuminate\Support\Js::from(__('admin.inbox.confirm_publish', ['title' => $reader['title']])) }},
-                                                             confirm: {{ \Illuminate\Support\Js::from($action['label']) }},
-                                                             cancel: {{ \Illuminate\Support\Js::from(__('admin.cancel')) }},
-                                                         }).then(ok => ok && $wire.apply({{ \Illuminate\Support\Js::from($action['key']) }}))">
-                                            <x-bs-admin::icon name="ri-check-double" class="size-4" />{{ $action['label'] }}
-                                        </x-bs-admin::button>
-                                    @elseif ($action['note'])
-                                        <x-bs-admin::button color="danger" variant="outline" wire:key="act-{{ $action['key'] }}"
-                                                         wire:click="apply({{ \Illuminate\Support\Js::from($action['key']) }})" wire:loading.attr="disabled">
-                                            <x-bs-admin::icon name="ri-arrow-go-back" class="size-4" />{{ $action['label'] }}
-                                        </x-bs-admin::button>
-                                    @else
-                                        <x-bs-admin::button color="light" wire:key="act-{{ $action['key'] }}"
-                                                         wire:click="apply({{ \Illuminate\Support\Js::from($action['key']) }})" wire:loading.attr="disabled">
-                                            <x-bs-admin::icon name="ri-send-plane" class="size-4" />{{ $action['label'] }}
-                                        </x-bs-admin::button>
-                                    @endif
-                                @endforeach
-                            </div>
+                        <div class="flex flex-wrap gap-2">
+                            @foreach ($reader['actions'] as $action)
+                                @if ($action['note'])
+                                    {{-- A move that demands a reason opens the reason dialog (with «Giao cho») --}}
+                                    <x-bs-admin::button :color="$action['to_published'] ? 'primary' : 'danger'" :variant="$action['to_published'] ? 'solid' : 'outline'" wire:key="act-{{ $action['key'] }}" data-inbox-act="{{ $action['key'] }}"
+                                                     wire:click="askNote({{ $Js::from($action['key']) }})" wire:loading.attr="disabled">
+                                        <x-bs-admin::icon :name="$action['icon']" class="size-4" />{{ $action['label'] }}
+                                    </x-bs-admin::button>
+                                @elseif ($action['to_published'])
+                                    {{-- Going live is asked first (board 17 «Duyệt đăng “…”?», the same question as the posts list) --}}
+                                    <x-bs-admin::button color="primary" wire:key="act-{{ $action['key'] }}" wire:loading.attr="disabled" data-inbox-act="{{ $action['key'] }}"
+                                                     x-on:click="$bsConfirm({
+                                                         icon: 'question',
+                                                         danger: false,
+                                                         title: {{ $Js::from(__('entries.wf_ap_title', ['title' => \Illuminate\Support\Str::limit($reader['title'], 42, '…')])) }},
+                                                         text: {{ $Js::from(__('entries.wf_ap_text')) }},
+                                                         confirm: {{ $Js::from(__('entries.wf_ap_ok')) }},
+                                                         cancel: {{ $Js::from(__('entries.wf_ap_cancel')) }},
+                                                     }).then(ok => ok && $wire.apply({{ $Js::from($action['key']) }}))">
+                                        <x-bs-admin::icon name="ri-check-double" class="size-4" />{{ $action['label'] }}
+                                    </x-bs-admin::button>
+                                @else
+                                    <x-bs-admin::button color="light" wire:key="act-{{ $action['key'] }}" data-inbox-act="{{ $action['key'] }}"
+                                                     wire:click="apply({{ $Js::from($action['key']) }})" wire:loading.attr="disabled">
+                                        <x-bs-admin::icon name="ri-send-plane" class="size-4" />{{ $action['label'] }}
+                                    </x-bs-admin::button>
+                                @endif
+                            @endforeach
                         </div>
                     @endif
                 </x-slot:footer>
             </x-bs-admin::card>
         @endif
     </div>
+    @endif
+
+    {{-- The reason dialog (board 17 .sp-modal): the post, what the move does, «Lý do *», «Giao cho».
+         Focus starts on «Hủy» and goes back to the button that opened it; Esc and the backdrop close it.
+         An empty reason is caught here first and again by the server. --}}
+    <x-bs-admin::modal model="noteOpen" size="md" :close-label="__('admin.close')" data-inbox-note>
+        <x-slot:heading>
+            <span class="inline-flex items-center gap-2">
+                <x-bs-admin::icon :name="$noteDialog['icon'] ?? 'ri-arrow-go-back'" @class(['size-[calc(1.0625rem+var(--user-text-boost))] shrink-0', 'text-primary-text' => $noteDialog['live'] ?? false, 'text-danger-text' => ! ($noteDialog['live'] ?? false)]) />
+                <span>{{ $noteDialog['label'] ?? '' }}</span>
+            </span>
+        </x-slot:heading>
+
+        @if ($noteDialog !== null)
+            <div class="flex flex-col gap-3.5" x-data="{ bad: false }">
+                <p class="text-[calc(0.78125rem+var(--user-text-boost))] font-semibold leading-snug text-text [overflow-wrap:anywhere]">{{ $noteDialog['post'] }}</p>
+                <p class="flex items-start gap-2 rounded-r border-l-2 border-warning-base bg-warning-base/15 px-3 py-2.5 text-[12.5px] leading-relaxed text-warning-text">
+                    <x-bs-admin::icon name="ri-alert" class="mt-0.5 size-4 shrink-0" />
+                    <span>{{ $noteDialog['warning'] }}</span>
+                </p>
+                @error('inbox') <x-bs-admin::alert color="danger" icon="ri-error-warning">{{ $message }}</x-bs-admin::alert> @enderror
+                <div class="flex flex-col gap-1.5">
+                    <label for="inbox-note" class="text-xs font-semibold text-text">{{ __('admin.wfb.note_label') }} <span class="text-danger-text" aria-hidden="true">*</span></label>
+                    <textarea id="inbox-note" x-ref="note" wire:model="note" x-on:input="bad = false" rows="4" maxlength="2000" required
+                              aria-describedby="inbox-note-err"
+                              x-bind:aria-invalid="(bad || {{ $errors->has('note') ? 'true' : 'false' }}).toString()"
+                              class="w-full rounded border px-3 py-2.5 text-[13px] text-text focus:border-primary-text"
+                              x-bind:class="bad ? 'border-danger-text ring-[3px] ring-danger-base/15' : 'border-border'"
+                              placeholder="{{ __('admin.inbox.note_placeholder') }}"></textarea>
+                    <div id="inbox-note-err">
+                        <p x-cloak x-show="bad" class="flex items-center gap-1.5 text-xs font-semibold text-danger-text">
+                            <x-bs-admin::icon name="ri-error-warning" class="size-3.5" />{{ __('admin.wfb.note_missing') }}
+                        </p>
+                        @error('note')
+                            <p x-show="! bad" class="flex items-center gap-1.5 text-xs font-semibold text-danger-text">
+                                <x-bs-admin::icon name="ri-error-warning" class="size-3.5" />{{ $message }}
+                            </p>
+                        @enderror
+                    </div>
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label for="inbox-assign" class="text-xs font-semibold text-text">{{ __('admin.wfb.assign_label') }} <span class="font-normal text-text-muted">{{ __('admin.wfb.assign_optional') }}</span></label>
+                    <select id="inbox-assign" wire:model="assignTo" aria-describedby="inbox-assign-err" class="field w-full rounded border border-border bg-surface px-2.5 text-text focus:border-primary-text">
+                        <option value="">{{ __('admin.wfb.assign_none') }}</option>
+                        @foreach ($noteDialog['members'] as $member)
+                            <option value="{{ $member['id'] }}">{{ $member['label'] }}</option>
+                        @endforeach
+                    </select>
+                    <div id="inbox-assign-err">
+                        @error('assignTo') <p class="text-xs font-semibold text-danger-text">{{ $message }}</p> @enderror
+                    </div>
+                </div>
+                <div class="flex flex-wrap justify-end gap-2 border-t border-border-soft pt-3 max-[599.98px]:*:flex-[1_1_100%]">
+                    <x-bs-admin::button color="light" autofocus wire:click="closeNote">{{ __('admin.cancel') }}</x-bs-admin::button>
+                    <x-bs-admin::button :color="$noteDialog['live'] ? 'primary' : 'danger'" :variant="$noteDialog['live'] ? 'solid' : 'outline'" wire:loading.attr="disabled" wire:target="apply" data-inbox-note-ok
+                                        x-on:click="if (! String($wire.note ?? '').trim()) { bad = true; $refs.note.focus(); return; } $wire.apply({{ $Js::from($noteDialog['key']) }})">{{ $noteDialog['label'] }}</x-bs-admin::button>
+                </div>
+            </div>
+        @endif
+    </x-bs-admin::modal>
 </div>
