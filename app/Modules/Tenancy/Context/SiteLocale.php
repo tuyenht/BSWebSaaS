@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Tenancy\Context;
 
 use App\Modules\Tenancy\Models\SiteLocale as SiteLocaleModel;
+use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\Log;
  *                (per-site, MUTABLE — design.md §10/ADR-11).
  *  - enabled():  the locales editors write in (the admin's language column + per-locale editor).
  *  - public():   the enabled locales visitors can open — storefront prefix, hreflang, sitemap.
+ *  - formerDefaults(): the public locales that were the default before (most recent first), whose
+ *                old clean addresses the storefront sends on under their prefix.
  *
  * One query loads all three (a site has a handful of locale rows), memoized per site for the
  * request. Registered scoped (TenancyServiceProvider) so the memo is flushed between Octane
@@ -26,8 +29,16 @@ final class SiteLocale
 {
     private const string FALLBACK = 'vi';
 
+    /** Where a change of default records the language that stepped down (site_settings group/key). */
+    public const string FORMER_GROUP = 'locales';
+
+    public const string FORMER_KEY = 'former_defaults';
+
     /** @var array<int, array{default: string, enabled: list<string>, public: list<string>}> per site id (request-scoped) */
     private array $memo = [];
+
+    /** @var array<int, list<string>> per site id (request-scoped) */
+    private array $former = [];
 
     public function __construct(private readonly CurrentSite $current) {}
 
@@ -85,12 +96,44 @@ final class SiteLocale
         return in_array($locale, $this->public(), true);
     }
 
+    /**
+     * The public languages other than the default that were the site's default before, the most
+     * recent first: a clean path the default misses may be one of their old addresses. Read only
+     * when the site has a second public language (a one-language site never pays the query), and
+     * only on the miss that asks. Empty with no site context.
+     *
+     * @return list<string>
+     */
+    public function formerDefaults(): array
+    {
+        if (! $this->current->hasId() || count($this->public()) < 2) {
+            return [];
+        }
+
+        return $this->former[$this->current->id()] ??= $this->loadFormer();
+    }
+
     /** Drop the current site's memo — for a writer that changed its locales within this request. */
     public function forget(): void
     {
         if ($this->current->hasId()) {
-            unset($this->memo[$this->current->id()]);
+            unset($this->memo[$this->current->id()], $this->former[$this->current->id()]);
         }
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function loadFormer(): array
+    {
+        $value = SiteSetting::query()->where('group_name', self::FORMER_GROUP)->where('key', self::FORMER_KEY)->value('value');
+        $codes = is_array($value) && is_array($value['codes'] ?? null) ? $value['codes'] : [];
+        $default = $this->default();
+
+        return array_values(array_filter(
+            array_unique(array_filter($codes, 'is_string')),
+            fn (string $code): bool => $code !== $default && $this->isPublic($code),
+        ));
     }
 
     /**

@@ -365,6 +365,7 @@ final class AdminNav
                     ['settings.general', 'admin.gs.title', 'admin.settings.general'],
                     ['settings.appearance', 'admin.website_look', 'admin.settings.appearance'],
                     ['settings.admin-ui', 'admin.admin_ui', 'admin.settings.admin-ui'],
+                    ['settings.langs', 'admin.lng.title', 'admin.settings.languages'],
                     ['settings.email', 'admin.email_settings', 'admin.settings.email'],
                     ['settings.social', 'admin.social_login', 'admin.settings.social'],
                     ['settings.catalog', 'admin.catalog_settings', 'admin.settings.catalog'],

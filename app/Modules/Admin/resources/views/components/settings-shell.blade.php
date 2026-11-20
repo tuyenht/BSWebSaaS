@@ -47,6 +47,9 @@
             if (Route::has('admin.settings.admin-ui')) {
                 $workspace[] = ['key' => 'admin-ui', 'route' => 'admin.settings.admin-ui', 'label' => __('admin.admin_ui')];
             }
+            if (Route::has('admin.settings.languages')) {
+                $workspace[] = ['key' => 'langs', 'route' => 'admin.settings.languages', 'label' => __('admin.lng.title')];
+            }
             if (Route::has('admin.settings.seo')) {
                 $workspace[] = ['key' => 'seo', 'route' => 'admin.settings.seo', 'label' => __('admin.seoset.title')];
             }

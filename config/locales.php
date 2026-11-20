@@ -26,4 +26,8 @@ return [
     // Preferred order in the switcher. Discovered codes not listed here are appended
     // alphabetically afterwards.
     'order' => ['en', 'vi', 'ja', 'zh', 'es', 'fr', 'pt', 'ru', 'ar', 'hi', 'bn'],
+
+    // The languages a website may write its content in, in the order Settings › Ngôn ngữ website
+    // lists them (labels above). A language a site already has outside this list still shows there.
+    'content' => ['vi', 'en', 'zh', 'ja', 'ko', 'fr', 'de', 'th'],
 ];
