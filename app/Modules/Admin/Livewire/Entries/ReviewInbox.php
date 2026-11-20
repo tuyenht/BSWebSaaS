@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire\Entries;
 
+use App\Modules\Admin\Support\Entries\ReviewInboxGuide;
 use App\Modules\Admin\Support\Entries\ReviewWaiting;
 use App\Modules\Admin\Support\Entries\ScheduleInput;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
@@ -17,6 +18,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Rbac\Support\RoleLabel;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -77,8 +79,9 @@ final class ReviewInbox extends Component
     /** At most this many posts in one «Duyệt đăng N bài»: each is its own locked engine move inside the request. */
     private const int PICK_MAX = 50;
 
-    #[Url(as: 'tab', except: 'queue')]
-    public string $tab = 'queue';
+    /** «Giao cho tôi» opens first (board 17); «Hàng chờ duyệt» is the other tab. */
+    #[Url(as: 'tab', except: 'mine')]
+    public string $tab = 'mine';
 
     #[Url(as: 'q', except: '')]
     public string $search = '';
@@ -147,6 +150,9 @@ final class ReviewInbox extends Component
      */
     protected ?EloquentCollection $waitingMemo = null;
 
+    /** The guide («Hướng dẫn») is printed on the screen's first draw only (a redraw keeps it, wire:ignore). */
+    private bool $guideDue = false;
+
     /** The queue could not be read this request (board 17 «Lỗi tải»): the screen offers «Thử lại». */
     protected bool $loadFailed = false;
 
@@ -168,9 +174,16 @@ final class ReviewInbox extends Component
      */
     public function mount(): void
     {
+        $this->guideDue = true;
         $ulid = request()->query('bai');
         if (! is_string($ulid) || $ulid === '') {
             return;
+        }
+
+        // A post that is not handed to this person is found in the shared queue.
+        $mine = $this->waiting()->contains(fn (Entry $entry): bool => $entry->ulid === $ulid && $entry->assigned_to === $this->actor()->id);
+        if (! $mine) {
+            $this->tab = 'queue';
         }
 
         $this->open($ulid);
@@ -182,7 +195,7 @@ final class ReviewInbox extends Component
 
     public function setTab(string $tab): void
     {
-        $this->tab = in_array($tab, ['queue', 'mine'], true) ? $tab : 'queue';
+        $this->tab = in_array($tab, ['queue', 'mine'], true) ? $tab : 'mine';
         $this->resetList();
     }
 
@@ -210,6 +223,25 @@ final class ReviewInbox extends Component
         $this->note = '';
         $this->closeNote();
         $this->resetErrorBag();
+    }
+
+    /**
+     * «Bài trước» / «Bài sau» in the reader's bar: the neighbour of the open post in the list on screen.
+     * Only a post of this person's list opens (open() checks it again).
+     */
+    public function step(int $by): void
+    {
+        $ulids = $this->visible()->map(fn (Entry $entry): string => (string) $entry->ulid)->values();
+        $at = $this->current === null ? false : $ulids->search($this->current);
+        if ($at === false) {
+            return;
+        }
+
+        $target = $ulids->get($at + ($by < 0 ? -1 : 1));
+        if (is_string($target)) {
+            $this->open($target);
+            $this->shown = max($this->shown, $ulids->search($target) + 1);
+        }
     }
 
     public function closeReader(): void
@@ -704,7 +736,16 @@ final class ReviewInbox extends Component
             $this->closeNote();
         }
 
+        $guide = null;
+        if ($this->guideDue) {
+            $user = $this->actor();
+            $guide = ReviewInboxGuide::for($user)->toArray($user, app(CurrentSite::class)->id());
+        }
+
+        $position = $this->current === null ? false : $visible->search(fn (Entry $e): bool => $e->ulid === $this->current);
         $view = view('admin::livewire.entries.review-inbox', [
+            'guide' => $guide,
+            'nav' => $position === false ? null : ['at' => $position + 1, 'of' => $visible->count()],
             'rows' => $this->rows($visible->take($this->shown)),
             'total' => $visible->count(),
             'queueCount' => $this->waiting()->count(),
@@ -924,7 +965,7 @@ final class ReviewInbox extends Component
      * @return array{
      *     ulid: string, title: string, section: string, author: string, sent_at: DateTimeInterface|null,
      *     cover: string|null, blocks: list<array<array-key, mixed>>, excerpt: string|null,
-     *     seo_title: string|null, seo_description: string|null, path: string|null,
+     *     seo_title: string|null, seo_description: string|null, path: string|null, edit_url: string|null,
      *     steps: list<array{key: string, label: string, is_published: bool, state: string}>,
      *     step_no: int, step_count: int, step_label: string, workflow: string,
      *     actions: list<array{key: string, label: string, to_label: string, to_published: bool, first: bool, note: bool, icon: string}>,
@@ -991,6 +1032,8 @@ final class ReviewInbox extends Component
             'seo_title' => $translation?->seo_title,
             'seo_description' => $translation?->seo_description,
             'path' => $this->publicPath($entry, $locale),
+            // «Mở bài viết đầy đủ để sửa»: only for someone the edit policy lets in (an approve-only role has none)
+            'edit_url' => $actor->can('update', $entry) ? route('admin.entries.edit', ['ulid' => $entry->ulid]) : null,
             'steps' => $steps,
             'step_no' => $currentIndex + 1,
             'step_count' => $states->count(),

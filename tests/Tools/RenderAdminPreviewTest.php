@@ -1233,12 +1233,17 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
 
         return $ulids;
     });
+    // the inbox opens on «Giao cho tôi»: hand the three posts to the owner so that tab holds them
+    app(Tenancy::class)->enter(1, fn () => Entry::query()->whereIn('ulid', $waiting)->update(['assigned_to' => $owner->id]));
     $this->flushSession();
     app('livewire')->flushState();
     $inboxPage = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/review')->assertOk()->getContent();
     expect($inboxPage)->toContain('Bảo trì hệ thống khí nén', 'data-inbox-pick');
     file_put_contents($dir.'/review-inbox.html', $inboxPage);
     $reviewInbox = 'review-inbox';
+    $reading = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($owner)->test(ReviewInbox::class)->call('open', $waiting[0])));
+    expect($reading)->toContain('data-inbox-track', 'data-inbox-progress');
+    file_put_contents($dir.'/review-inbox-reading.html', $swap($inboxPage, $reading, $reviewInbox));
     $picked = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($owner)->test(ReviewInbox::class)
         ->call('togglePick', $waiting[0])->call('togglePick', $waiting[1])));
     expect($picked)->toContain(e(__('admin.inbox.picked', ['count' => 2])), e(__('admin.inbox.bulk_ok', ['count' => 2])));
@@ -1322,5 +1327,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         ->and(file_get_contents($dir.'/review-inbox-changes-approve.html'))->toContain(e(__('entries.chg.ask_now')))
         ->and(file_get_contents($dir.'/review-inbox-changes-return.html'))->toContain(e(__('entries.chg.return_err')));
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 115);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 116);
 });

@@ -425,7 +425,7 @@ it('refuses a limited approver every move on a post outside their limits, and le
         return $resolver->membersWhoMayApply($workflow->transitions->where('key', 'to_review'), $entry)?->pluck('id')->all() ?? [];
     });
     $inbox = fn (User $who): array => app(Tenancy::class)->enter(1, fn (): array => collect(
-        Livewire::actingAs($who)->test(ReviewInbox::class)->viewData('rows'),
+        Livewire::actingAs($who)->test(ReviewInbox::class)->set('tab', 'queue')->viewData('rows'),
     )->pluck('ulid')->sort()->values()->all());
 
     $newsMove = fn (string $key) => cwRefusal(fn () => app(ApplyEntryWorkflowTransition::class)->handle(
