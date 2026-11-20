@@ -102,6 +102,11 @@ document.addEventListener('alpine:init', () => {
             return this.meter('seoDesc', this.value('description'));
         },
 
+        // The featured image's words («Mô tả ảnh»), by the design's alt limits (25-125, read out to 125).
+        get altMeter() {
+            return this.meter('alt', this.value('alt'));
+        },
+
         // What Google would show, split where it cuts the line: [shown, cut off].
         split(field, text) {
             const all = chars(text);

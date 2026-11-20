@@ -18,7 +18,8 @@ use Illuminate\Support\Carbon;
  * formatted post body is a single `html` block, sanitized on every write. slug is
  * localized; the full resolved path lives in routes. author_name is who a post is by as readers see
  * it (a team or department, free text linked to no staff account; empty = the site's business). It
- * is not main content, so changing it alone never moves the content mark.
+ * is not main content, so changing it alone never moves the content mark. cover_alt is this
+ * language's words for the entry's featured image (null: the picture's own words, then the title).
  *
  * @property int $site_id
  * @property int $entry_id
@@ -32,6 +33,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $og_image_id
  * @property string $status
  * @property string|null $author_name
+ * @property string|null $cover_alt
  * @property Carbon|null $content_changed_at when the page's main content last changed (TracksContentChange)
  */
 class EntryTranslation extends Model
