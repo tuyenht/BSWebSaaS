@@ -46,6 +46,7 @@ import './admin-session.js';
 
 // The topbar search box: the placeholder that fits, the phone-width magnifier (Alpine.data 'bsTopSearch').
 import './admin-top-search.js';
+import './admin-nav.js';
 
 // A screen's «Hướng dẫn» (x-bs-admin::guide): its drawer and cards download on the first press.
 document.addEventListener('click', (e) => {
