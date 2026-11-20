@@ -273,12 +273,11 @@
                 </x-bs-admin::list>
 
                 @if ($rows !== [])
-                    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 min-[600px]:px-1">
-                        <x-bs-admin::list.pager :older="$older" :newer="$newer" :sizes="Redirects::PER_PAGE" model="per"
-                            :label="__('admin.rd.pager_label')" :per-label="__('admin.rd.per_page')"
-                            :prev="__('admin.rd.prev')" :next="__('admin.rd.next')" />
-                        <span class="px-3 pb-3 text-small text-text-muted min-[600px]:px-4">{{ __('admin.rd.range', ['from' => $num($start), 'to' => $num($start + count($rows) - 1), 'n' => $num($matched)]) }}</span>
-                    </div>
+                    <x-bs-admin::list.pager :older="$older" :newer="$newer" :sizes="Redirects::PER_PAGE" model="per"
+                        :label="__('admin.rd.pager_label')" :per-label="__('admin.rd.per_page')"
+                        :prev="__('admin.rd.prev')" :next="__('admin.rd.next')">
+                        <span class="text-small text-text-muted">{{ __('admin.rd.range', ['from' => $num($start), 'to' => $num($start + count($rows) - 1), 'n' => $num($matched)]) }}</span>
+                    </x-bs-admin::list.pager>
                 @endif
             </div>
           </div>

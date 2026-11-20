@@ -236,7 +236,6 @@ final class RedirectDirectory
         return hash('xxh128', json_encode([$tab, $filters, self::searchText($search), $sort, $per], JSON_THROW_ON_ERROR));
     }
 
-    /** The search as compared: trimmed and lower-cased (paths are stored lower-case). */
     /**
      * One row as the screen draws it (the edit dialog's note names what an automatic row came from).
      *
@@ -247,6 +246,7 @@ final class RedirectDirectory
         return $this->present([$row])[0];
     }
 
+    /** The search as compared: trimmed and lower-cased (paths are stored lower-case). */
     public static function searchText(string $search): string
     {
         return mb_strtolower(trim(mb_substr($search, 0, self::SEARCH_MAX)));

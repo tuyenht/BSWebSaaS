@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -75,7 +76,7 @@ it('adds the trash, the source and the links, and one live row per old address',
         'created_at' => now(), 'updated_at' => now(),
     ]);
     $insert('auto');
-    expect(fn () => $insert('robot'))->toThrow(Illuminate\Database\QueryException::class);
+    expect(fn () => $insert('robot'))->toThrow(QueryException::class);
 });
 
 it('rolls back to the old shape, dropping only the rows in the Trash, and migrates again', function (): void {

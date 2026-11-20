@@ -439,12 +439,18 @@ final class Redirects extends Component
             'counts' => ['tabs' => [], 'locales' => [], 'sources' => [], 'codes' => []], 'matched' => 0, 'picks' => []];
         try {
             // a savepoint inside the request's tenancy transaction: a failed read leaves it usable
-            $data = DB::transaction(fn (): array => [
-                ...$directory->page($this->tab, $filters, $this->search, $this->sort, $this->cursor, $this->per),
-                'counts' => $directory->counts($this->tab),
-                'matched' => $directory->matchCount($this->tab, $filters, $this->search),
-                'picks' => $this->picksNow(),
-            ]);
+            $data = DB::transaction(function () use ($directory, $filters): array {
+                $counts = $directory->counts($this->tab);
+                // with no filter and no search the group's own count is the match count
+                $narrowed = $this->search !== '' || $filters['locales'] !== [] || $filters['sources'] !== [] || $filters['codes'] !== [];
+
+                return [
+                    ...$directory->page($this->tab, $filters, $this->search, $this->sort, $this->cursor, $this->per),
+                    'counts' => $counts,
+                    'matched' => $narrowed ? $directory->matchCount($this->tab, $filters, $this->search) : ($counts['tabs'][$this->tab] ?? 0),
+                    'picks' => $this->picksNow(),
+                ];
+            });
         } catch (QueryException $e) {
             report($e);
             $failed = true;

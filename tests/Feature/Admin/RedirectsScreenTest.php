@@ -122,9 +122,9 @@ it('never shows nor touches another website’s redirects', function (): void {
 it('adds a redirect from what was typed or pasted, kept as the storefront looks it up', function (): void {
     $admin = blockLibraryUser(1, 'admin');
 
-    rdIn(fn () => rdScreen($admin)->call('openAdd')->assertSet('edOpen', true)
-        ->set('edFrom', 'https://localhost/Trang Cu/?utm=1#top')
-        ->set('edTo', 'localhost/gioi-thieu')
+    rdIn(fn () => ($page = rdScreen($admin))->call('openAdd')->assertSet('edOpen', true)
+        ->set('edFrom', 'https://'.$page->get('host').'/Trang Cu/?utm=1#top')
+        ->set('edTo', 'WWW.'.$page->get('host').'/gioi-thieu')
         ->call('setEdCode', '302')
         ->call('save')->assertHasNoErrors()->assertSet('edOpen', false)
         ->assertSet('toast', __('admin.rd.toast_added', ['from' => '/trang-cu', 'to' => '/gioi-thieu'])));
@@ -280,30 +280,30 @@ it('pages with Trước/Sau through rows of the same time, each once, by the id 
     DB::connection('pgsql_admin')->table('redirects')->where('site_id', 1)->update(['created_at' => '2026-11-01 08:00:00+00']);
 
     rdIn(function () use ($admin): void {
-    $page = rdScreen($admin)->set('per', 10);
-    $seen = [];
-    $pages = [];
-    do {
-        $paths = array_column($page->viewData('rows'), 'from');
-        $pages[] = $paths;
-        $seen = [...$seen, ...$paths];
-        $older = $page->viewData('older');
-        if ($older !== null) {
-            $page->call('older', $older);
-        }
-    } while ($older !== null && count($pages) < 5);
+        $page = rdScreen($admin)->set('per', 10);
+        $seen = [];
+        $pages = [];
+        do {
+            $paths = array_column($page->viewData('rows'), 'from');
+            $pages[] = $paths;
+            $seen = [...$seen, ...$paths];
+            $older = $page->viewData('older');
+            if ($older !== null) {
+                $page->call('older', $older);
+            }
+        } while ($older !== null && count($pages) < 5);
 
-    $expected = array_map(fn (int $i): string => sprintf('/cu-%02d', $i), range(25, 1));
-    expect($seen)->toBe($expected)
-        ->and(array_map('count', $pages))->toBe([10, 10, 5])
-        ->and($page->viewData('page'))->toBe(3);
+        $expected = array_map(fn (int $i): string => sprintf('/cu-%02d', $i), range(25, 1));
+        expect($seen)->toBe($expected)
+            ->and(array_map('count', $pages))->toBe([10, 10, 5])
+            ->and($page->viewData('page'))->toBe(3);
 
-    $page->call('newer', $page->viewData('newer'));
-    expect(array_column($page->viewData('rows'), 'from'))->toBe($pages[1]);
+        $page->call('newer', $page->viewData('newer'));
+        expect(array_column($page->viewData('rows'), 'from'))->toBe($pages[1]);
 
-    // a cursor of another list (or made up) starts again from the first page
-    $page->set('cursor', 'nonsense');
-    expect(array_column($page->viewData('rows'), 'from'))->toBe($pages[0]);
+        // a cursor of another list (or made up) starts again from the first page
+        $page->set('cursor', 'nonsense');
+        expect(array_column($page->viewData('rows'), 'from'))->toBe($pages[0]);
     });
 });
 
@@ -325,9 +325,10 @@ it('lists a page of redirects on a flat query budget, whatever they lead to', fu
     $render = fn (): int => rdIn(fn (): int => countQueries(fn () => rdScreen($admin)->assertOk()));
 
     $seed(1, 2);
+    $render(); // the permissions, languages and settings the process keeps after its first request
     $few = $render();
     $seed(3, 8);
     $many = $render();
 
-    expect($many)->toBe($few)->and($many)->toBeLessThanOrEqual(20);
+    expect($many)->toBe($few)->and($many)->toBeLessThanOrEqual(9);
 });
