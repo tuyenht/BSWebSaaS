@@ -96,7 +96,7 @@ trait EditsPendingChange
         if ($this->type !== 'post' || ! is_int($primary)) {
             return null;
         }
-        $this->categoryIds = [$primary, ...array_values(array_filter(array_slice($this->categoryIds, 1), static fn (int $id): bool => $id !== $primary))];
+        $this->categoryIds = EntryDraft::filingUnder($this->categoryIds, $primary);
         $this->categoryId = $primary;
 
         return $primary;
@@ -127,7 +127,8 @@ trait EditsPendingChange
     {
         $change = $this->pendingChange($entry);
         if ($this->type === 'post') {
-            $others = array_slice($this->storedCategories($entry), 1);
+            // the other categories must be the ones the change's main category brings with it
+            $others = array_slice(EntryDraft::filingUnder($this->storedCategories($entry), $filing[0] ?? 0), 1);
             $kept = array_slice($filing, 1);
             sort($others);
             sort($kept);
@@ -632,6 +633,9 @@ trait EditsPendingChange
                     Cast::string(__('entries.chg.ask_langs', ['langs' => $changeLangs])),
                     Cast::string(__('entries.chg.ask_now')),
                     $draftLangs !== '' ? Cast::string(__('entries.chg.ask_draft', ['langs' => $draftLangs])) : '',
+                    // a sent change takes no more edits: what was typed into the form since is left out, said so
+                    $workflow !== null && $this->changeCount() > 0 && ! $resolver->changeIsOpen($workflow, $change)
+                        ? Cast::string(__('entries.chg.ask_unsaved')) : '',
                 ])),
             ],
             'discard' => [

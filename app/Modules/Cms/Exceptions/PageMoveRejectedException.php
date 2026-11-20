@@ -17,7 +17,8 @@ use Throwable;
  * (too many pages under it to move at once) · siblings_too_many (a sibling list too long to renumber
  * at once) · path_taken ($path: an address the move would give is another item's) · anchor_gone (the
  * neighbour a drop was placed beside left the list) · at_top / at_bottom (a step past the edge of
- * the list) · here_already (a move into the parent the page already has).
+ * the list) · here_already (a move into the parent the page already has) · change_held (a live page
+ * whose edits this member makes into its pending change keeps its parent).
  */
 final class PageMoveRejectedException extends DomainException
 {

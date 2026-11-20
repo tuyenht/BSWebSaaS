@@ -440,6 +440,22 @@ it('moves the address only when a change with a new link is approved', function 
     $this->get('http://a.test/tin-tuc/bai-1')->assertRedirect();
 });
 
+it('puts the title’s link into the change when the link field is left empty, the address untouched', function (): void {
+    [$author, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
+        $post = pcLivePost(pcCollection(), $author, $editor);
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+        Livewire::actingAs($author)->test(Editor::class, ['ulid' => $post->ulid])
+            ->set('title', 'Bài mới tinh')->set('slug', '')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertSet('slug', 'bai-moi-tinh');
+        expect(pcChange($post)->content['locales']['vi']['slug'])->toBe('bai-moi-tinh')
+            ->and($post->fresh()->translationFor('vi')->slug)->toBe('bai-1')
+            ->and(SiteRoute::query()->where('entry_id', $post->id)->pluck('path')->all())->toBe(['/tin-tuc/bai-1']);
+    });
+});
+
 it('folds the change into a post that leaves the website, and refuses to schedule one that has a change', function (): void {
     [$author, $editor] = pcCast();
     app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
@@ -491,19 +507,69 @@ it('moves every language’s address when a folded change files the post elsewhe
     });
 });
 
-it('refuses the editor’s schedule of a live post with a change in plain words', function (): void {
+it('refuses the list’s schedule of a live post with a change in plain words', function (): void {
     [$author, $editor] = pcCast();
     app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
         $post = pcLivePost(pcCollection(), $author, $editor);
         app(SaveEntryDraft::class)->handle($post->fresh(), $author, 'vi', ['title' => 'Chữ chưa đăng']);
 
-        $refused = null;
-        try {
-            app(TransitionEntryStatus::class)->handle($post->fresh(), EntryStatus::Scheduled, $editor, now()->addDay()->toImmutable());
-        } catch (EntryDraftRejectedException $e) {
-            $refused = $e->userMessage();
-        }
-        expect($refused)->toBe(__('entries.change_err_change_open'));
+        Livewire::actingAs($editor)->test(Index::class, ['section' => 'posts'])
+            ->call('scheduleEntry', $post->ulid, now()->addDay()->format('Y-m-d\\TH:i'))
+            ->assertDispatched('bs-toast', text: __('entries.change_err_change_open'));
+        expect($post->fresh()->status)->toBe('published')
+            ->and(pcChange($post))->not->toBeNull();
+    });
+});
+
+it('lets a held save make one of the post’s other categories the main one, keeping the old main beside it', function (): void {
+    [$author, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
+        $root = pcCollection();
+        [$news, $events] = array_map(function (array $c) use ($root): Taxonomy {
+            $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => $c[0], 'parent_id' => $root->id]);
+            $category->translations()->create(['locale' => 'vi', 'name' => $c[1], 'slug' => $c[2]]);
+
+            return $category;
+        }, [[0, 'Bản tin', 'ban-tin'], [1, 'Sự kiện', 'su-kien']]);
+        $post = pcLivePost($root, $author, $editor);
+        $post->assignCategories([$news->id, $events->id]);
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+
+        Livewire::actingAs($author)->test(Editor::class, ['ulid' => $post->ulid])
+            ->call('setMainCategory', $events->ulid)
+            ->call('submitChange')
+            ->assertHasNoErrors();
+        expect(pcChange($post)->content['shared']['primary_category_id'])->toBe($events->id)
+            ->and($post->fresh()->primaryCategory()?->id)->toBe($news->id);
+
+        // opened again, the form shows the change's filing and saves it unchanged
+        Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid])
+            ->assertSet('categoryIds', [$events->id, $news->id])
+            ->call('askApplyChange')->call('applyChange')->assertHasNoErrors();
+        $fresh = $post->fresh();
+        expect($fresh->primaryCategory()?->id)->toBe($events->id)
+            ->and($fresh->taxonomies()->wherePivot('position', '<', Entry::FACET_POSITION_BASE)->orderByPivot('position')->pluck('taxonomies.id')->all())
+            ->toBe([$events->id, $news->id]);
+    });
+});
+
+it('keeps a live page under its parent when the member’s edits are held back', function (): void {
+    $writer = User::factory()->create();
+    app(Tenancy::class)->enter(1, function () use ($writer): void {
+        grantRole($writer, 'writer', ['entries.view', 'entries.edit.any']);
+        $live = function (string $slug): Entry {
+            $page = Entry::query()->create(['type' => 'page', 'status' => 'published', 'author_id' => null]);
+            $page->translations()->create(['locale' => 'vi', 'title' => 'Trang '.$slug, 'slug' => $slug, 'status' => 'published', 'body' => ['blocks' => []]]);
+
+            return $page;
+        };
+        $about = $live('gioi-thieu');
+        $team = $live('doi-ngu');
+
+        Livewire::actingAs($writer->fresh())->test(Index::class)
+            ->call('movePageTo', $team->ulid, $about->ulid)
+            ->assertDispatched('bs-toast', text: __('entries.move_refused_change_held'));
+        expect($team->fresh()->parent_id)->toBeNull();
     });
 });
 

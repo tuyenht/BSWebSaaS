@@ -60,6 +60,7 @@ final readonly class MovePage
         private PathBuilder $paths,
         private PermalinkConfig $permalinks,
         private CurrentSite $site,
+        private SaveEntryDraft $changes,
     ) {}
 
     /**
@@ -214,6 +215,8 @@ final readonly class MovePage
             }
             if ($reparented) {
                 $this->checkReparent($page, $parent);
+                // read again now its row is locked: the locked copy carries the tree columns only
+                $this->refuseHeldBack(Entry::query()->whereKey($page->id)->firstOrFail());
             }
 
             $fromPosition = Cast::int(array_search($page->id, $oldSiblings, true));
@@ -258,6 +261,20 @@ final readonly class MovePage
     {
         return $parent === null ? null : (Entry::query()->whereKey($parent->id)->where('type', 'page')->first()
             ?? throw new PageMoveRejectedException('parent_invalid'));
+    }
+
+    /**
+     * A live page whose edits this member makes into its pending change keeps its parent, as their save
+     * in the editor does: a new parent moves the page (and its sub-pages) for visitors at once.
+     *
+     * @throws PageMoveRejectedException
+     */
+    private function refuseHeldBack(Entry $page): void
+    {
+        $user = Auth::user();
+        if ($user instanceof User && $this->changes->holdsBack($page, $user)) {
+            throw new PageMoveRejectedException('change_held');
+        }
     }
 
     /**

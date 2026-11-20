@@ -3143,6 +3143,8 @@ final class Editor extends Component
             if ($held) {
                 return $this->persistHeld($entry, $stored['translation'], $proseBody ?? $layoutBody ?? $this->blocks, $reparent, $filled);
             }
+            // not held back: no change is open (one put on the website in another tab is gone from the bar too)
+            $this->changeSeen = null;
             // the move before anything is written: a refused one leaves the page as it was and the form as typed
             if ($reparent && ! $this->moveToParent($entry)) {
                 if ($filled) {

@@ -184,13 +184,12 @@ final readonly class EntryDraftApplier
         }
 
         $this->assertCategory($entry, $categoryId);
-        $others = $entry->taxonomies()
-            ->wherePivot('position', '>', 0)->wherePivot('position', '<', Entry::FACET_POSITION_BASE)
+        $stored = $entry->taxonomies()
+            ->wherePivot('position', '<', Entry::FACET_POSITION_BASE)
             ->orderByPivot('position')->pluck('taxonomies.id')
             ->map(static fn (mixed $id): int => Cast::int($id))
-            ->reject(static fn (int $id): bool => $id === $categoryId)
-            ->values()->all();
-        $this->categories->assign($entry, [$categoryId, ...$others], $actor);
+            ->all();
+        $this->categories->assign($entry, EntryDraft::filingUnder(array_values($stored), $categoryId), $actor);
 
         return true;
     }
