@@ -254,11 +254,12 @@ final readonly class RouteSync
      */
     private function assertPathAvailable(string $locale, string $path, string $ownColumn, int $ownId): void
     {
+        $entryId = $ownColumn === 'entry_id' ? $ownId : null;
         if (PathBuilder::isReserved($path) && ! $this->standsAt($locale, $path, $ownColumn, $ownId)) {
-            throw new RouteConflictException($path);
+            throw new RouteConflictException($path, $entryId);
         }
         if ($this->foreignRoute($locale, $path, $ownColumn, $ownId) !== null) {
-            throw new RouteConflictException($path);
+            throw new RouteConflictException($path, $entryId);
         }
     }
 

@@ -12,13 +12,21 @@ use RuntimeException;
  * (routes UNIQUE(site_id, locale, path)). Callers translate it into a friendly
  * "slug taken" validation error instead of a raw DB 500. A path the platform keeps for a page of
  * its own (the site search) is refused the same way; reserved() tells the two apart, so the
- * screen can say which it is.
+ * screen can say which it is. $entryId names the entry whose address was being written (null for a
+ * product or a category), so a screen can tell a page's own address from one of its sub-pages' that
+ * a publication moves along with it (subPageOf()).
  */
 final class RouteConflictException extends RuntimeException
 {
-    public function __construct(public readonly string $path)
+    public function __construct(public readonly string $path, public readonly ?int $entryId = null)
     {
         parent::__construct("The path '{$path}' is already used by another entry.");
+    }
+
+    /** The taken address is not $entryId's own but another entry's that moved with it (a sub-page's). */
+    public function subPageOf(int $entryId): bool
+    {
+        return $this->entryId !== null && $this->entryId !== $entryId;
     }
 
     /** The path is one the platform keeps for a page of its own (PathBuilder::RESERVED_PATHS), not another item's. */

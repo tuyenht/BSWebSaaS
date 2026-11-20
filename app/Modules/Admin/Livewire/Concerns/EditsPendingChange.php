@@ -300,7 +300,7 @@ trait EditsPendingChange
             try {
                 app(ApplyEntryDraft::class)->handle($entry, $this->user(), $this->changeSeen);
             } catch (EntryDraftRejectedException $refused) {
-                $this->changeRefused($refused->reason);
+                $this->changeRefused($refused->reason, $refused->path);
 
                 return;
             } catch (AuthorizationException) {
@@ -349,7 +349,7 @@ trait EditsPendingChange
         try {
             app(DiscardEntryDraft::class)->handle($entry, $this->user(), (string) $this->changeSeen);
         } catch (EntryDraftRejectedException $refused) {
-            $this->changeRefused($refused->reason);
+            $this->changeRefused($refused->reason, $refused->path);
 
             return;
         } catch (AuthorizationException) {
@@ -434,7 +434,7 @@ trait EditsPendingChange
         try {
             $to = app(ApplyEntryDraftTransition::class)->handle($entry, $this->locale, $this->user(), $key, (string) $this->changeSeen, $note);
         } catch (EntryDraftRejectedException $refused) {
-            $this->changeRefused($refused->reason);
+            $this->changeRefused($refused->reason, $refused->path);
 
             return false;
         } catch (InvalidTransitionException) {
@@ -471,9 +471,10 @@ trait EditsPendingChange
         $this->dispatch('bs-toast', text: $toast);
     }
 
-    private function changeRefused(string $reason): void
+    /** The refusal in plain words: a taken address of the change's own under the link field, anything else (a sub-page's address included) above the form. */
+    private function changeRefused(string $reason, string $path = ''): void
     {
-        $this->addError($reason === 'slug_taken' ? 'slug' : 'workflow', Cast::string(__('entries.change_err_'.$reason)));
+        $this->addError($reason === 'slug_taken' ? 'slug' : 'workflow', Cast::string(__('entries.change_err_'.$reason, ['path' => $path])));
     }
 
     /** The saved entry, re-read and authorized for every call (livewire/update skips the route middleware). */

@@ -1441,12 +1441,27 @@ final class Editor extends Component
                 default => __('entries.ed.toast_kept', ['status' => $this->statusPill()['label']]),
             });
         } catch (RouteConflictException $e) {
-            $this->addError('slug', __($e->reserved() ? 'entries.slug_reserved' : 'entries.slug_conflict'));
+            $this->addressTaken($e, $entry);
         } catch (WorkflowGovernedException) {
             // A tab that still shows the tier-1 button after the flow was switched on: the
             // draft is saved, and the next render swaps in the approval block.
             $this->addError('workflow', __('entries.workflow_governed'));
         }
+    }
+
+    /**
+     * A publication refused because an address it would write is taken: the page's own (under its link
+     * field), or one of its sub-pages' that it moves along (the page's link is free, so the sentence
+     * names the sub-page's address instead, above the form).
+     */
+    private function addressTaken(RouteConflictException $e, Entry $entry): void
+    {
+        if ($e->subPageOf($entry->id)) {
+            $this->addError('workflow', __('entries.subpage_path_taken', ['path' => $e->path]));
+
+            return;
+        }
+        $this->addError('slug', __($e->reserved() ? 'entries.slug_reserved' : 'entries.slug_conflict'));
     }
 
     /**
@@ -1501,7 +1516,7 @@ final class Editor extends Component
                 $entry, $this->locale, $this->user(), $key, $note !== '' ? $note : null, $assignTo,
             );
         } catch (RouteConflictException $e) {
-            $this->addError('slug', __($e->reserved() ? 'entries.slug_reserved' : 'entries.slug_conflict'));
+            $this->addressTaken($e, $entry);
 
             return;
         } catch (InvalidTransitionException) {
@@ -2708,8 +2723,8 @@ final class Editor extends Component
 
     /**
      * The rows MovePage locks, taken now, in id order as it takes them, before this save's own lock on the
-     * page's row: the page, the parent picked, the live pages beside it now and beside it there, and the
-     * live pages under it (they move with it). A
+     * page's row: the page, the parent picked, the parent it has now, the pages above both, the live pages
+     * beside it now and beside it there, and the live pages under it (they move with it). A
      * writer that locks several pages in id order (the list's bulk actions) then never holds one of them
      * while waiting for the page this save already holds. Its place is read again under the page-tree
      * lock (a move may have committed while this save waited for it); each list is read as MovePage reads
@@ -2717,7 +2732,8 @@ final class Editor extends Component
      */
     private function lockMoveRows(Entry $entry): void
     {
-        $parentId = $this->parentUlid === null ? null : $this->findPage($this->parentUlid)?->id;
+        $parent = $this->parentUlid === null ? null : $this->findPage($this->parentUlid);
+        $parentId = $parent?->id;
         if ($this->parentUlid !== null && $parentId === null) {
             return;
         }
@@ -2732,8 +2748,9 @@ final class Editor extends Component
         if (count($old) > MovePage::SIBLINGS_MAX || count($new) > MovePage::SIBLINGS_MAX) {
             return;   // MovePage refuses the move before it locks a row
         }
-        $ids = [$entry->id, ...($parentId === null ? [] : [$parentId]), ...$old, ...$new, ...PageRules::subPageIds($entry)];
-        Entry::withTrashed()->whereKey(array_values(array_unique($ids)))->orderBy('id')->lockForUpdate()->pluck('id');
+        $above = $from === $parentId ? [] : [...PageRules::above($entry->id, $from), ...($parent === null ? [] : PageRules::ancestorsOf($parent))];
+        $ids = [$entry->id, ...($parentId === null ? [] : [$parentId]), ...($from === null ? [] : [$from]), ...$above, ...$old, ...$new, ...PageRules::subPageIds($entry)];
+        Entry::withTrashed()->whereKey(array_values(array_unique($ids)))->orderBy('id')->lock(MovePage::ROW_LOCK)->pluck('id');
     }
 
     /** A refused «Trang cha» on save: the reason under the field and in a message that stays; nothing saved. */

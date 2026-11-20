@@ -45,7 +45,7 @@ final readonly class ApplyEntryDraft
      * @return list<string> the languages written, in order
      *
      * @throws AuthorizationException the actor may not publish, or the change files the post outside their category limits
-     * @throws EntryDraftRejectedException workflow_governed · not_live · change_stale · content_invalid · category_governed · slug_taken
+     * @throws EntryDraftRejectedException workflow_governed · not_live · change_stale · content_invalid · category_governed · slug_taken · subpage_path_taken
      */
     public function handle(Entry $entry, User $actor, string $seenVersion): array
     {
@@ -98,8 +98,8 @@ final readonly class ApplyEntryDraft
 
                 return [$change, $applied['locales']];
             });
-        } catch (RouteConflictException) {
-            throw new EntryDraftRejectedException('slug_taken');
+        } catch (RouteConflictException $e) {
+            throw $e->subPageOf($entry->id) ? new EntryDraftRejectedException('subpage_path_taken', $e->path) : new EntryDraftRejectedException('slug_taken');
         }
 
         [$change, $locales] = $done;

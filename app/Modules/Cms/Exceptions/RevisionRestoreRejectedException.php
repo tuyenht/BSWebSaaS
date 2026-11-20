@@ -12,6 +12,8 @@ use DomainException;
  * failure's text reaches the screen. The message IS the reason key, one of REASONS:
  *
  *  - slug_taken: the old address now belongs to other content.
+ *  - subpage_path_taken: the old address is free, but a sub-page of the page would move to $path,
+ *    which other content holds.
  *  - locale_disabled: the revision's language is switched off on the site.
  *  - snapshot_incompatible: the old content no longer passes today's checks (e.g. a block type
  *    that is no longer offered) — writing it would put a broken layout online.
@@ -22,9 +24,9 @@ use DomainException;
  */
 final class RevisionRestoreRejectedException extends DomainException
 {
-    public const array REASONS = ['slug_taken', 'locale_disabled', 'snapshot_incompatible', 'entry_trashed', 'approved_later', 'change_pending'];
+    public const array REASONS = ['slug_taken', 'subpage_path_taken', 'locale_disabled', 'snapshot_incompatible', 'entry_trashed', 'approved_later', 'change_pending'];
 
-    public function __construct(public readonly string $reason)
+    public function __construct(public readonly string $reason, public readonly string $path = '')
     {
         parent::__construct($reason);
     }
@@ -32,6 +34,6 @@ final class RevisionRestoreRejectedException extends DomainException
     /** The sentence to show, in the current locale. */
     public function userMessage(): string
     {
-        return __('entries.revision_err_'.$this->reason);
+        return __('entries.revision_err_'.$this->reason, ['path' => $this->path]);
     }
 }
