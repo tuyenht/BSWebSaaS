@@ -427,16 +427,19 @@ it('refuses every write once the plan loses the contacts module', function (): v
 it('reads the search text literally: a percent sign or an underscore is no wildcard', function (): void {
     $manager = leadManager();
     listLead('contact', ['name' => 'Giảm 50% hôm nay']);
-    listLead('contact', ['name' => 'Giảm 505 hôm nay']);
+    listLead('contact', ['name' => 'Giảm 70 hôm nay']);
     listLead('contact', ['name' => 'Mã a_b']);
-    listLead('contact', ['name' => 'Mã axb']);
+    listLead('contact', ['name' => 'Mã xyz']);
 
+    // a sign separates words like a space: "50%" asks for a word starting "50", "a_b" for words starting "a" and "b"
     app(Tenancy::class)->enter(1, function () use ($manager): void {
         Livewire::actingAs($manager)->test(Inbox::class)
             ->set('search', '50%')
-            ->assertSee('Giảm 50% hôm nay')->assertDontSee('Giảm 505 hôm nay')
+            ->assertSee('Giảm 50% hôm nay')->assertDontSee('Giảm 70 hôm nay')
             ->set('search', 'a_b')
-            ->assertSee('Mã a_b')->assertDontSee('Mã axb');
+            ->assertSee('Mã a_b')->assertDontSee('Mã xyz')
+            ->set('search', '%')
+            ->assertSee(__('leads.no_match'))->assertDontSee('Mã a_b');
     });
 });
 

@@ -6,6 +6,7 @@ namespace App\Modules\Catalog\Support;
 
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\VietnameseFold;
+use App\Modules\Shared\Support\WordRange;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -97,17 +98,7 @@ final class ProductSearchWords
      */
     public static function upperBound(string $prefix): ?string
     {
-        $chars = mb_str_split($prefix);
-        while ($chars !== []) {
-            $last = mb_ord((string) array_pop($chars));
-            if ($last < 0x10FFFF) {
-                $next = $last + 1 === 0xD800 ? 0xE000 : $last + 1;
-
-                return implode('', $chars).mb_chr($next);
-            }
-        }
-
-        return null;
+        return WordRange::upperBound($prefix);
     }
 
     /**
@@ -118,11 +109,7 @@ final class ProductSearchWords
      */
     public static function range(string $column, string $needle): array
     {
-        $upper = self::upperBound($needle);
-
-        return $upper === null
-            ? ["{$column} >= ?", [$needle]]
-            : ["{$column} >= ? and {$column} < ?", [$needle, $upper]];
+        return WordRange::of($column, $needle);
     }
 
     /**
