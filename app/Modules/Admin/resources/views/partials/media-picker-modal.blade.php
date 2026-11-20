@@ -5,15 +5,15 @@
      $pickedIds (optional, from the host view) still marks already-attached gallery items.
      Focus (design 13, as board 07 opens it): the first control takes it on open, Tab stays inside,
      Esc closes, and on close it goes back to the button that opened the picker — or, when that button
-     is gone (an empty slot that now shows its picture), to the first button of the opener's
-     [data-picker-home] area. Without media.upload there is no upload tab (design 13 tabs="library"). --}}
+     is gone or hidden (an empty slot that now shows its picture), to the opener's [data-picker-home]
+     area: its visible [data-picker-focus] button («Đổi ảnh»), else its first visible button. Without media.upload there is no upload tab (design 13 tabs="library"). --}}
 @php($mp = $this->mediaPickerState())
 @if ($showImagePicker && ($mp['open'] ?? false))
     @php($canUpload = auth()->user()?->can('media.upload') ?? false)
     @php($words = $mp['words'] ?? null)
     <div class="fixed inset-0 z-90 flex items-center justify-center bg-black/50 p-4"
          role="dialog" aria-modal="true" aria-label="{{ __('media.picker_title') }}"
-         x-data="{ back: null, home: null, init() { const a = document.activeElement; this.back = a; this.home = a && a.closest ? a.closest('[data-picker-home]') : null; }, destroy() { const b = this.back, h = this.home; setTimeout(() => { if (b && b.isConnected) { b.focus(); return; } const f = h && h.isConnected ? h.querySelector('button:not([disabled])') : null; if (f) { f.focus(); } }, 0); } }"
+         x-data="{ back: null, home: null, init() { const a = document.activeElement; this.back = a; this.home = a && a.closest ? a.closest('[data-picker-home]') : null; }, destroy() { const b = this.back, h = this.home, seen = (e) => e && e.isConnected && e.getClientRects().length > 0; setTimeout(() => { if (seen(b)) { b.focus(); return; } if (! h || ! h.isConnected) { return; } const f = [...h.querySelectorAll('[data-picker-focus]')].find(seen) || [...h.querySelectorAll('button:not([disabled])')].find(seen); if (f) { f.focus(); } }, 0); } }"
          x-on:keydown.escape.window="$wire.closeImagePicker()"
          wire:click.self="closeImagePicker">
         {{-- Responsive envelope (handoff Fidelity): caps at 1040×660 but shrinks to the viewport

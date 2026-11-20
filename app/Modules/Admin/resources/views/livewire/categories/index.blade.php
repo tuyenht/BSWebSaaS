@@ -424,7 +424,7 @@
                         </div>
                         <div x-show="pan && pan.d.cover" x-cloak class="flex flex-wrap items-center gap-3">
                             <template x-if="pan && pan.d.cover"><img x-bind:src="pan.d.cover.url" alt="" class="size-16 rounded border border-border object-cover" /></template>
-                            <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="pickCover()"><x-bs-admin::icon name="ri-image-add" class="size-4" /> {{ $u('pick_cover') }}</x-bs-admin::button>
+                            <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="pickCover()" data-picker-focus><x-bs-admin::icon name="ri-image-add" class="size-4" /> {{ $u('pick_cover') }}</x-bs-admin::button>
                             <x-bs-admin::button size="sm" variant="ghost" color="danger" x-on:click="dropCover()"><x-bs-admin::icon name="ri-close" class="size-4" /> {{ $u('drop_cover') }}</x-bs-admin::button>
                         </div>
                     </div>

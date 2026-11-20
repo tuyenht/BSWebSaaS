@@ -148,6 +148,48 @@ it('removes the cover with «Hoàn tác» that puts the picture and its words ba
     });
 });
 
+it('does not put back a cover that left the library before «Hoàn tác», and an old message cannot close the new one', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.create', 'entries.edit.any', 'media.view']);
+        $media = seedPickableMedia();
+        $test = Livewire::actingAs($editor->fresh())
+            ->test(Editor::class, ['ulid' => coverPickerPage($media->storage_key)->ulid])
+            ->call('clearCover');
+        $seq = $test->get('coverToastSeq');
+
+        $media->delete();   // taken out of the library meanwhile
+        $test->call('undoCoverRemoval')->assertSet('coverImageKey', '')->assertSet('coverUndo', null);
+
+        $test->call('openCoverPicker')->call('togglePickerItem', seedPickableMedia([
+            'slug' => 'moi', 'hash' => str_repeat('e', 64), 'storage_key' => 'a/library/moi-eeeeeeeeeeee.png',
+        ])->id)->call('insertPicked')
+            ->call('closeCoverToast', $seq)                       // the earlier message's number
+            ->assertSet('coverToast', __('entries.ed.cover_picked'));
+    });
+});
+
+it('lands the pick on the cover after a block picture\'s dialog was closed without one', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.create', 'entries.edit.any', 'media.view']);
+        $media = seedPickableMedia();
+
+        Livewire::actingAs($editor->fresh())->test(Editor::class)
+            ->set('blocks', [['type' => 'hero', 'props' => ['heading' => 'Chào', 'image_url' => null]]])
+            ->call('openBlockImagePicker', '0.props.image_url')
+            ->call('closeImagePicker')
+            ->call('openCoverPicker')
+            ->assertSee(__('media.picker_insert_one'))
+            ->call('togglePickerItem', $media->id)
+            ->call('insertPicked')
+            ->assertSet('coverImageKey', $media->storage_key)
+            ->assertSet('blocks.0.props.image_url', null);
+    });
+});
+
 it('refuses a cover change in a language other than the website\'s default', function (): void {
     $editor = User::factory()->create();
     DB::connection('pgsql_admin')->table('site_locales')->insert([

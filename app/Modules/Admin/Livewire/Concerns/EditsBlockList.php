@@ -17,6 +17,7 @@ use App\Modules\Theme\Theming\ThemeResolver;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Locked;
 
 /**
  * The block list of «Trình dựng», shared by every screen that lays content out in blocks (a page or
@@ -34,7 +35,9 @@ trait EditsBlockList
 {
     /** Block image picker: the target prop path inside $blocks (e.g. "0.props.image_url" or
      *  "0.props.logos.1.image_url"), held while the shared «Chọn ảnh» dialog is open for a block
-     *  image field (the host uses WithMediaLibraryPicker; its single pick lands in placeBlockImage). */
+     *  image field (the host uses WithMediaLibraryPicker; its single pick lands in placeBlockImage).
+     *  Set only by openBlockImagePicker, which checks its shape and that the block exists. */
+    #[Locked]
     public string $blockImagePickerPath = '';
 
     /** The block whose content form is open under its row in «Trình dựng» (one at a time). */
@@ -260,6 +263,11 @@ trait EditsBlockList
         $this->authorizeEditing();
         abort_unless(Gate::allows('media.view'), 403);
 
+        // An image field's path only: a prop of an existing block, or a prop of a repeater row in it.
+        if (preg_match('/^(\d+)\.props\.[a-z][a-z0-9_]*(?:\.\d+\.[a-z][a-z0-9_]*)?$/', $path, $match) !== 1
+            || ! isset($this->blocks[(int) $match[1]])) {
+            return;
+        }
         $this->openImagePicker('single');
         $this->blockImagePickerPath = $path;
     }

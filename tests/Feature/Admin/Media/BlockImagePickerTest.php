@@ -6,6 +6,7 @@ use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\DB;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
 /*
@@ -38,6 +39,7 @@ it('opens the block image picker for a target prop path', function (): void {
         $mine = blockPickerMedia('a/library/x-aaaaaaaaaaaa.png', 'a');
 
         Livewire::actingAs($editor->fresh())->test(Editor::class)
+            ->set('blocks', [['type' => 'hero', 'props' => ['heading' => 'Hi', 'image_url' => null]]])
             ->assertSet('showImagePicker', false)
             ->call('openBlockImagePicker', '0.props.image_url')
             ->assertSet('showImagePicker', true)
@@ -93,6 +95,27 @@ it('saves a page whose wire payload carries another site\'s or an unknown image 
     });
 
     expect(DB::connection('pgsql_admin')->table('mediables')->whereIn('media_id', [$foreignId, $unknownId])->count())->toBe(0);
+});
+
+it('opens the block picture dialog only for an image field of a block that exists, and never takes a path from the wire', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.create', 'entries.edit.any', 'media.view']);
+        $mine = blockPickerMedia('a/library/x-aaaaaaaaaaaa.png', 'a');
+
+        $test = Livewire::actingAs($editor->fresh())->test(Editor::class)
+            ->set('blocks', [['type' => 'hero', 'props' => ['heading' => 'Hi', 'image_url' => null]]]);
+        foreach (['0.type', '9.props.image_url', '0.props', 'props.image_url', '0.props.image_url.x'] as $path) {
+            $test->call('openBlockImagePicker', $path)
+                ->assertSet('showImagePicker', false)
+                ->assertSet('blockImagePickerPath', '');
+        }
+        expect(fn () => $test->set('blockImagePickerPath', '0.type'))->toThrow(CannotUpdateLockedPropertyException::class);
+
+        $test->call('openImagePicker', 'single')->call('togglePickerItem', $mine->id)->call('insertPicked')
+            ->assertSet('blocks.0.type', 'hero');
+    });
 });
 
 it('sets an image inside a repeater row (partners.logos[].image_url)', function (): void {

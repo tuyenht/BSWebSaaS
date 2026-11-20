@@ -503,7 +503,7 @@
                     </div>
                     @if ($cover)
                         @if ($mayPick)
-                            <x-bs-admin::button variant="outline" color="neutral" size="sm" class="w-full" wire:click="openCoverPicker">
+                            <x-bs-admin::button variant="outline" color="neutral" size="sm" class="w-full" wire:click="openCoverPicker" data-picker-focus>
                                 <x-bs-admin::icon name="ri-image-add" :class="$glyph" /> {{ __('entries.ed.cover_change') }}
                             </x-bs-admin::button>
                         @endif
