@@ -50,8 +50,25 @@ it('marks a page inside a group on its own link, and the group row by shape only
 
     expect(substr_count($sidebar, 'aria-current="page"'))->toBe(1)
         ->and($sidebar)->toMatch('/<a href="[^"]*\/admin\/account\?tab=security"\s+wire:navigate\s+aria-current="page"/')
-        // The group row is a disclosure button, not a page: it shows the current-row look (so the
-        // collapsed rail still shows where you are) without claiming aria-current.
-        ->and($sidebar)->not->toMatch('/<button[^>]*aria-current/')
-        ->and(substr_count($sidebar, 'bg-sidebar-active shadow-[inset_3px_0_0_var(--color-sidebar-fg-active)]'))->toBe(2);
+        // The group row is a disclosure button, not a page: it never claims aria-current.
+        ->and($sidebar)->not->toMatch('/<button[^>]*aria-current/');
+});
+
+it('marks only the child row while its group is open, and the group row once the group closes', function (): void {
+    $sidebar = sidebarOf((string) $this->actingAs(sidebarOwner())->get('http://demo.platform.test/admin/account')->assertOk()->getContent());
+    $mark = 'bg-sidebar-active shadow-[inset_3px_0_0_var(--color-sidebar-fg-active)]';
+
+    preg_match('/<button\b[^>]*\bis-trail\b[^>]*>/s', $sidebar, $group);
+    preg_match('/<a href="[^"]*\/admin\/account\?tab=security"[^>]*>/s', $sidebar, $child);
+
+    expect($group)->not->toBeEmpty()
+        // First paint = the group open: the group row is bold and bright, without the bar and fill…
+        ->and($group[0])->toMatch('/\sclass="[^"]*\bfont-semibold\b[^"]*\btext-sidebar-fg-active\b[^"]*"/')
+        ->and($group[0])->not->toMatch('/\sclass="[^"]*bg-sidebar-active[^"]*"/')
+        // …which takes them back only when another group is opened (Alpine), and on the collapsed rail (.is-trail).
+        ->and($group[0])->toContain(':class="(openGroup === ')
+        ->and($group[0])->toContain("? 'text-sidebar-fg-active' : '".$mark."')")
+        // The bar and fill sit on the current page's own link.
+        ->and($child[0] ?? '')->toContain($mark)
+        ->and((string) file_get_contents(resource_path('css/admin-chrome.css')))->toContain('.admin-sidebar .is-trail {');
 });
