@@ -136,3 +136,19 @@ test('typed text is put into a sentence as typed', () => {
     const { c } = screen([[R, 1]]);
     assert.equal(c.fill('Không có chuyên mục nào khớp ":q"', { q: "$& và $'" }), 'Không có chuyên mục nào khớp "$& và $\'"');
 });
+
+test('an emptied slug is made again from the name when the field is left; a name with no usable letters says why', () => {
+    const { c } = screen([[R, 1], [A, 2]]);
+    c.openEdit('01A');
+    c.fSlug = '';
+    c.slugBlur();
+    assert.equal(c.fSlug, 'tin-cong-ty');
+    assert.equal(c.slugBad, false);
+    c.fSlug = '';
+    c.fName = '!!!';
+    c.fSlug = '';
+    c.slugBlur();
+    assert.equal(c.fSlug, '');
+    assert.equal(c.slugBad, true);
+    c.destroy();
+});

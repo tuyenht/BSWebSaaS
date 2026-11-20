@@ -761,12 +761,31 @@ window.Alpine.data('bsCategories', (cfg) => {
             this.pan.d.auto[this.cur] = false;
             this.$wire.seoSlug = v;
         },
+        // The slug field as it is left: an emptied one is made again from this language's name, as a new
+        // category gets its own; a name with nothing usable stays blank and says why (slugBad).
+        slugBlur() {
+            const c = this.cur;
+            if (this.fSlug.trim() !== '' || !this.fName.trim()) {
+                this.pan.noSlug = false;
+                return;
+            }
+            const made = slugify(this.fName, cfg.limits.slug);
+            this.pan.noSlug = made === '';
+            if (made !== '') {
+                this.pan.d.slugs[c] = made;
+                this.pan.d.auto[c] = true;
+                this.$wire.seoSlug = made;
+            }
+        },
         get nameBad() {
             return this.pan.touched && this.cur === cfg.main && !this.fName.trim();
         },
         get slugBad() {
             const s = this.fSlug;
-            return s !== '' && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(s);
+            if (s === '') {
+                return !!this.pan.noSlug;
+            }
+            return !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(s);
         },
         get slugChanged() {
             const P = this.pan;
@@ -927,7 +946,7 @@ window.Alpine.data('bsCategories', (cfg) => {
             const langs = cfg.locales.filter((c) => (d.names[c] || '').trim());
             const pick = (map) => Object.fromEntries(langs.map((c) => [c, String(map[c] || '').trim()]));
             const data = {
-                names: pick(d.names), slugs: Object.fromEntries(langs.filter((c) => d.slugs[c]).map((c) => [c, d.slugs[c]])),
+                names: pick(d.names), slugs: Object.fromEntries(langs.filter((c) => d.slugs[c] || P.mode === 'edit').map((c) => [c, d.slugs[c] || ''])),
                 descriptions: pick(d.descriptions), seoTitles: pick(d.seoTitles), seoDescriptions: pick(d.seoDescriptions),
                 listTemplate: d.listTemplate || null, detailTemplate: d.detailTemplate || null,
                 cover: d.coverChanged ? (d.cover ? d.cover.key : '') : null,
