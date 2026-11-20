@@ -101,15 +101,15 @@
             $currentRow = 'text-sidebar-fg-active bg-sidebar-active shadow-[inset_3px_0_0_var(--color-sidebar-fg-active)]';
         @endphp
         <nav class="flex-1 overflow-y-auto px-3 py-3"
-             x-data="{ openGroup: @js($activeGroup), t: null }"
+             x-data="bsAdminNav(@js($activeGroup))"
              data-active-group="{{ $activeGroup }}"
-             x-init="$el.scrollTop = Number(sessionStorage.getItem('bs-admin-nav-top')) || 0"
              x-on:livewire:navigated.document="openGroup = $el.dataset.activeGroup"
-             x-on:livewire:navigating.document="sessionStorage.setItem('bs-admin-nav-top', String($el.scrollTop))"
-             @scroll="$el.classList.add('is-scrolling'); clearTimeout(t); t = setTimeout(() => $el.classList.remove('is-scrolling'), 1200)">
+             x-on:livewire:navigating.document="leaving()"
+             x-on:pagehide.window="leaving()"
+             @scroll="scrolled()">
             {{-- wire:navigate draws a new sidebar on every page: it starts where the reader left the
-                 old one (the scroll position is kept for the tab), not back at the top. The listeners
-                 sit on the element, so they leave with it instead of piling up on the document. --}}
+                 old one, with the current page's link in view (resources/js/admin-nav.js). The
+                 listeners sit on the element, so they leave with it instead of piling up on the document. --}}
             {{-- Fully dynamic nested tree (AdminNav: entitlement ∩ RBAC, active resolved there), cut
                  into headed groups (Nội dung · Công cụ · Hệ thống). A node with children renders as an
                  expandable group (open by default when active); leaves are links. On the collapsed rail

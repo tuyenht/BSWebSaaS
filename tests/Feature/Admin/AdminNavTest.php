@@ -333,5 +333,8 @@ it('draws the open group on the server as Alpine will, so the sidebar does not m
 
     // The navigation listeners live on the element (Alpine drops them with it), not on the document.
     expect((string) $nav?->getAttribute('x-init'))->not->toContain('addEventListener')
-        ->and($nav?->hasAttribute('x-on:livewire:navigated.document'))->toBeTrue();
+        ->and((string) $nav?->getAttribute('x-data'))->toStartWith('bsAdminNav(')
+        ->and($nav?->hasAttribute('x-on:livewire:navigated.document'))->toBeTrue()
+        ->and($nav?->getAttribute('x-on:livewire:navigating.document'))->toBe('leaving()')
+        ->and($nav?->getAttribute('x-on:pagehide.window'))->toBe('leaving()');
 });
