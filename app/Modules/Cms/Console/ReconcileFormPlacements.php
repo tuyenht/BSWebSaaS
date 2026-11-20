@@ -44,7 +44,7 @@ final class ReconcileFormPlacements extends Command
         $siteIds = $tenancy->siteIds();
         if ($only !== null) {
             // a typo must never read as "checked, nothing to correct"
-            $raw = is_scalar($only) ? (string) $only : '';
+            $raw = (string) $only;   // an int when called from code (Artisan::call)
             $id = ctype_digit($raw) ? (int) $raw : 0;
             if ($id === 0 || ! DB::table('sites')->where('id', $id)->exists()) {
                 $this->error("No site with the id {$raw}.");
