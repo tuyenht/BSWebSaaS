@@ -5938,7 +5938,7 @@
     "media.lib.kids_open": "Mở thư mục con của “:name”",
     "media.lib.kids_close": "Gập thư mục con của “:name”",
     "media.lib.in_folder": " (trong “:name”)",
-    "media.lib.folder_deleting": "Đang chuyển :n tệp của thư mục \":name\" về Tất cả ảnh (Chưa phân loại)… Thư mục biến mất khi chuyển xong, không có Hoàn tác.",
+    "media.lib.folder_deleting": "Đang chuyển các tệp của thư mục \":name\" về Tất cả ảnh (Chưa phân loại)… Thư mục biến mất khi chuyển xong, không có Hoàn tác. Nếu vài phút sau thư mục vẫn còn, hãy xóa lại.",
     "media.lib.folder_back": "Đã khôi phục thư mục \":name\".",
     "media.lib.folder_undo_gone": "Đã quá lâu nên không hoàn tác được nữa. Tạo lại thư mục rồi chuyển tệp vào nếu cần.",
     "media.lib.folder_sheet_title": "Thư mục \":name\"",

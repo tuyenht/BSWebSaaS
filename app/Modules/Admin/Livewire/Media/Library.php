@@ -364,7 +364,7 @@ final class Library extends Component
         $made = DB::transaction(function () use ($name, $parentSlug): MediaFolder|array|string {
             MediaFolder::lockTree(app(CurrentSite::class)->id());
             $parent = $parentSlug === '' ? null : self::folderBySlug($parentSlug);
-            if ($parentSlug !== '' && ($parent === null || $parent->parent_id !== null)) {
+            if ($parentSlug !== '' && ($parent === null || $parent->parent_id !== null || self::deleting($parent))) {
                 return ['newFolderParent', Cast::string(__('media.lib.folder_parent_gone'))]; // deleted or made a sub-folder meanwhile
             }
             $error = self::folderNameError($name, null, $parent?->id);
@@ -552,7 +552,7 @@ final class Library extends Component
             MediaFolder::lockTree(app(CurrentSite::class)->id());
             $folder = self::folderBySlug($slug);
             $target = $to === '-' ? null : self::folderBySlug($to);
-            if ($folder === null || ($to !== '-' && ($target === null || $target->parent_id !== null || $target->id === $folder->id))) {
+            if ($folder === null || ($to !== '-' && ($target === null || $target->parent_id !== null || $target->id === $folder->id || self::deleting($target)))) {
                 return null; // gone, another site's, or a sub-folder: nothing changes
             }
             if ($target?->id === $folder->parent_id
@@ -639,7 +639,7 @@ final class Library extends Component
             MediaFolder::lockTree(app(CurrentSite::class)->id());
             $folder = MediaFolder::query()->whereKey($kept['folderId'])->where('slug', $kept['folder'])->first();
             $parent = $kept['parent'] === '' ? null : self::folderBySlug($kept['parent']);
-            if ($folder === null || ($kept['parent'] !== '' && ($parent === null || $parent->id !== $kept['parentId'] || $parent->parent_id !== null))
+            if ($folder === null || ($kept['parent'] !== '' && ($parent === null || $parent->id !== $kept['parentId'] || $parent->parent_id !== null || self::deleting($parent)))
                 || ($parent !== null && MediaFolder::query()->where('parent_id', $folder->id)->exists())
                 || self::folderNameError($folder->name, $folder->id, $parent?->id) !== null) {
                 return null; // the folder or its old parent changed since: it stays where it is
@@ -727,6 +727,9 @@ final class Library extends Component
                 $parent = is_numeric($kept['parentId'] ?? null) && is_string($kept['parent'] ?? null)
                     ? MediaFolder::query()->whereKey(Cast::int($kept['parentId']))->where('slug', $kept['parent'])->whereNull('parent_id')->first()
                     : null;
+                if ($parent !== null && self::deleting($parent)) {
+                    $parent = null; // its parent is being deleted: it comes back at the top level, as when the parent is gone
+                }
 
                 $folder = self::bringBack($one, $parent?->id);
                 self::placeAmongSiblings($parent?->id, $folder->id, max(1, $one['position']));
@@ -1090,6 +1093,12 @@ final class Library extends Component
             ->offset(Cast::int(config('media.folder_undo_max_files', 100000)))->exists();
     }
 
+    /** Whether a queued job is deleting this folder: nothing new goes under it. */
+    private static function deleting(MediaFolder $folder): bool
+    {
+        return DeleteLargeMediaFolder::pending(app(CurrentSite::class)->id(), $folder->id);
+    }
+
     /** @return list<int> the folder and its sub-folders */
     private static function familyIds(int $folderId): array
     {
@@ -1218,12 +1227,14 @@ final class Library extends Component
             $kids = MediaFolder::query()->where('parent_id', $row->id)->orderBy('position')->orderBy('name')->orderBy('id')
                 ->lockForUpdate()->get(['id', 'name', 'slug', 'position']);
             $family = array_values(array_merge([$row->id], $kids->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->all()));
-            $live = Media::query()->whereIn('folder_id', $family)->count();
             if (self::tooManyInline($family)) {
+                // no count of a folder this big inside the request: the job says nothing per file either
+                DeleteLargeMediaFolder::markPending(app(CurrentSite::class)->id(), $row->id);
                 DeleteLargeMediaFolder::dispatch(app(CurrentSite::class)->id(), $row->id); // once this commits
 
-                return ['live' => $live, 'files' => null, 'row' => $row, 'kids' => $kids, 'parent' => '', 'slot' => 0, 'later' => true];
+                return ['live' => 0, 'files' => null, 'row' => $row, 'kids' => $kids, 'parent' => '', 'slot' => 0, 'later' => true];
             }
+            $live = Media::query()->whereIn('folder_id', $family)->count();
             $files = null;
             if (! self::tooManyForUndo($family)) {
                 $files = [];
@@ -1266,7 +1277,7 @@ final class Library extends Component
             $this->cancelRename();
         }
         $this->say(match (true) {
-            $later => __('media.lib.folder_deleting', ['name' => $name, 'n' => number_format($live, 0, ',', '.')]),
+            $later => __('media.lib.folder_deleting', ['name' => $name]),
             $files === null => __('media.lib.folder_deleted_no_undo', ['name' => $name, 'n' => number_format($live, 0, ',', '.')]),
             $live > 0 => __('media.lib.folder_deleted_n', ['name' => $name, 'n' => number_format($live, 0, ',', '.')]),
             default => __('media.lib.folder_deleted', ['name' => $name]),

@@ -5938,7 +5938,7 @@
     "media.lib.kids_open": "展开“:name”的子文件夹",
     "media.lib.kids_close": "收起“:name”的子文件夹",
     "media.lib.in_folder": "（位于“:name”中）",
-    "media.lib.folder_deleting": "正在将文件夹“:name”的 :n 个文件移回“全部图片”（未分类）… 移完后文件夹会消失，无法撤销。",
+    "media.lib.folder_deleting": "正在将文件夹“:name”的文件移回“全部图片”（未分类）… 移完后文件夹会消失，无法撤销。如果几分钟后文件夹仍在，请再删除一次。",
     "media.lib.folder_back": "已恢复文件夹“:name”。",
     "media.lib.folder_undo_gone": "时间太久，已无法撤销。如有需要，请重新创建文件夹并把文件移进去。",
     "media.lib.folder_sheet_title": "文件夹“:name”",
