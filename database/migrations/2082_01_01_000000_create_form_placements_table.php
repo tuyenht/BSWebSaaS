@@ -15,13 +15,16 @@ use Illuminate\Support\Facades\Schema;
  *  - site_id CASCADE (D4); form_id and entry_id CASCADE: a form deleted for good, or a page purged
  *    from the Trash, takes its rows with it. A page in the Trash or a draft keeps its rows; what is
  *    live is decided when reading (the entry's and the translation's status, the Trash, the route).
- *  - Plain foreign keys, not (site_id, x) composite ones: forms and entries have no (site_id, id) key
- *    to aim at (as for entry_search_words). The writer resolves the form and the page under the
- *    site's RLS, and the policy below refuses a row of another site.
+ *  - The form is the row's own site's, enforced by the database: (site_id, form_id) → forms
+ *    (site_id, id), the key 2081_01_01_000200 adds. entry_id is a plain foreign key: entries has no
+ *    (site_id, id) key to aim at (as for entry_search_words), and adding one to that big table is a
+ *    decision of its own. The writer resolves the page under the site's RLS, and the policy below
+ *    refuses a row of another site.
  *  - UNIQUE (site_id, entry_id, locale, form_id): one row per form per page language; serves the
  *    save's read and rewrite of one page language, and the site_id foreign key.
  *  - (form_id, entry_id): "the pages of this form" (a form belongs to one site, so form_id narrows
- *    as much as site_id would) and the lookup Postgres runs when a form is deleted for good.
+ *    as much as site_id would) and the lookup Postgres runs when a form is deleted for good
+ *    (`WHERE site_id = $1 AND form_id = $2`, served by an index led by form_id).
  *    (entry_id): the lookup when a page is purged. Both carry no site_id and bypass RLS, so only an
  *    index led by the foreign-key column serves them (.claude/rules/migrations.md).
  *  - locale: varchar(12), as in the translation tables. RLS + FORCE, fail closed, like every
@@ -43,10 +46,12 @@ return new class extends Migration
         Schema::create('form_placements', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
-            $table->foreignId('form_id')->constrained('forms')->cascadeOnDelete();
+            $table->unsignedBigInteger('form_id');
             $table->foreignId('entry_id')->constrained('entries')->cascadeOnDelete();
             $table->string('locale', 12);
             $table->timestampsTz();
+
+            $table->foreign(['site_id', 'form_id'])->references(['site_id', 'id'])->on('forms')->cascadeOnDelete();
 
             $table->unique(['site_id', 'entry_id', 'locale', 'form_id']);
             $table->index(['form_id', 'entry_id']);

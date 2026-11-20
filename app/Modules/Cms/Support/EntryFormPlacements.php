@@ -8,6 +8,7 @@ use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormPlacement;
 use App\Modules\Shared\Support\Cast;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Keeps `form_placements` (which pages show which form) equal to the «Biểu mẫu» blocks of each page
@@ -83,18 +84,23 @@ final class EntryFormPlacements
     {
         $gone = array_values(array_diff($have, $want));
         $new = array_values(array_unique(array_diff($want, $have)));
-        if ($gone !== []) {
-            FormPlacement::query()->where('entry_id', $entryId)->where('locale', $locale)->whereIn('form_id', $gone)->delete();
-        }
+        $removed = $gone === [] ? 0 : Cast::int(FormPlacement::query()->where('entry_id', $entryId)->where('locale', $locale)->whereIn('form_id', $gone)->delete());
+        $added = 0;
         if ($new !== []) {
+            // The rows come from the site's forms as they are now, each row-locked (FOR KEY SHARE, the
+            // lock the foreign-key check takes): a form deleted at the same moment is skipped, or waits
+            // for this save and then takes its rows with it — never a foreign-key error that aborts the
+            // page save. A row already there is left as it is.
             $now = now();
-            FormPlacement::query()->insertOrIgnore(array_map(fn (int $formId): array => [
-                'site_id' => $siteId, 'form_id' => $formId, 'entry_id' => $entryId, 'locale' => $locale,
-                'created_at' => $now, 'updated_at' => $now,
-            ], $new));
+            $added = DB::affectingStatement(
+                'insert into form_placements (site_id, form_id, entry_id, locale, created_at, updated_at)
+                 select f.site_id, f.id, ?, ?, ?, ? from forms f where f.site_id = ? and f.id = any(?::bigint[]) for key share
+                 on conflict do nothing',
+                [$entryId, $locale, $now, $now, $siteId, '{'.implode(',', $new).'}'],
+            );
         }
 
-        return $gone !== [] || $new !== [];
+        return $removed > 0 || $added > 0;
     }
 
     /**

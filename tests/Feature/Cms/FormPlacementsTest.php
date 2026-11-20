@@ -2,14 +2,18 @@
 
 use App\Modules\Admin\Livewire\Forms\FormEditor;
 use App\Modules\Admin\Livewire\Forms\FormList;
+use App\Modules\Cms\Jobs\PlaceNewForm;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Routing\FormPagePaths;
+use App\Modules\Cms\Support\EntryFormPlacements;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormPlacement;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -303,6 +307,134 @@ it('reconciles every page language with `forms:placements`, and a second run cor
     $this->artisan('forms:placements')->expectsOutput('Checked 4 page language(s) on 2 site(s); corrected 0.')->assertSuccessful();
     $this->artisan('forms:placements', ['--site' => 2, '--chunk' => 1])->expectsOutput('Checked 1 page language(s) on 1 site(s); corrected 0.')->assertSuccessful();
     unset($pageB);
+});
+
+it('refuses a row that pairs a site with another site\'s form, even past the app', function (): void {
+    $formA = placedForm(1, 'bao-gia', 'Yêu cầu báo giá');
+    $formB = placedForm(2, 'bao-gia', 'Báo giá B');
+    $pageB = pageWithForms(2, 'trang-b', []);
+    $row = fn (int $formId): array => ['site_id' => 2, 'form_id' => $formId, 'entry_id' => $pageB->id, 'locale' => 'vi', 'created_at' => now(), 'updated_at' => now()];
+
+    // in site B's context, with site B's page: site A's form is refused by the foreign key itself
+    app(Tenancy::class)->enter(2, function () use ($row, $formA, $formB): void {
+        expect(fn () => DB::transaction(fn () => DB::table('form_placements')->insert($row($formA->id))))->toThrow(QueryException::class, 'form_placements_site_id_form_id_foreign');
+        DB::table('form_placements')->insert($row($formB->id));   // its own form goes in
+    });
+    // and so is a superuser's write, which RLS does not stop
+    expect(fn () => DB::connection('pgsql_admin')->transaction(fn () => DB::connection('pgsql_admin')->table('form_placements')->insert($row($formA->id))))
+        ->toThrow(QueryException::class, 'form_placements_site_id_form_id_foreign');
+
+    expect(placements())->toBe(["{$pageB->id}:vi:bao-gia"])
+        ->and((int) DB::connection('pgsql_admin')->table('form_placements')->value('form_id'))->toBe($formB->id);
+});
+
+it('names no page in a language visitors cannot open yet', function (): void {
+    $quote = placedForm(1, 'bao-gia', 'Yêu cầu báo giá');
+    DB::connection('pgsql_admin')->table('site_locales')->insert(
+        ['site_id' => 1, 'locale' => 'ja', 'is_default' => false, 'enabled' => true, 'is_public' => false, 'created_at' => now(), 'updated_at' => now()],
+    );
+    pageWithForms(1, 'bao-gia-ja', ['bao-gia'], locale: 'ja');   // published, its route there, but ja is not public
+    $paths = function () use ($quote): array {
+        app()->forgetInstance(SiteLocale::class);
+        app()->forgetScopedInstances();
+
+        return app(Tenancy::class)->enter(1, fn (): array => app(FormPagePaths::class)->of([$quote->id], 'ja'));
+    };
+
+    expect(placements())->toHaveCount(1)->and($paths())->toBe([]);
+
+    // once ja is public the page is named, with its language prefix
+    DB::connection('pgsql_admin')->table('site_locales')->where('site_id', 1)->where('locale', 'ja')->update(['is_public' => true]);
+    expect($paths())->toBe([$quote->id => '/ja/bao-gia-ja']);
+});
+
+it('saves the page when its form is deleted at the same moment, writing no row for it', function (): void {
+    $contact = placedForm(1, Form::SYSTEM_KEY, 'Liên hệ');
+    $quote = placedForm(1, 'bao-gia', 'Yêu cầu báo giá');
+    $page = pageWithForms(1, 'lien-he', [null]);
+
+    // the quote form is deleted for good right after the save has read which forms its blocks name
+    $armed = true;
+    DB::listen(function ($query) use (&$armed, $quote): void {
+        if ($armed && str_starts_with($query->sql, 'select "id" from "forms"')) {
+            $armed = false;
+            DB::connection('pgsql_admin')->table('forms')->where('id', $quote->id)->delete();
+        }
+    });
+    app(Tenancy::class)->enter(1, function () use ($page): void {
+        EntryTranslation::query()->where('entry_id', $page->id)->firstOrFail()->update(['body' => formBlocks([null, 'bao-gia'])]);
+    });
+
+    expect($armed)->toBeFalse()
+        ->and(placements())->toBe(["{$page->id}:vi:contact"])
+        ->and(app(Tenancy::class)->enter(1, fn () => EntryTranslation::query()->where('entry_id', $page->id)->value('body')))->toBe(formBlocks([null, 'bao-gia']));
+
+    // the write itself, handed a form that is gone: no row, and it says nothing changed
+    expect(app(Tenancy::class)->enter(1, fn (): bool => EntryFormPlacements::write(1, $page->id, 'vi', [$contact->id, $quote->id], [$contact->id])))->toBeFalse();
+});
+
+it('places a new form once however often its job runs, and never for a site that is not the form\'s', function (): void {
+    $page = pageWithForms(1, 'bao-gia', ['bao-gia']);
+    $pageB = pageWithForms(2, 'bao-gia-b', ['bao-gia']);
+    $quote = placedForm(1, 'bao-gia', 'Yêu cầu báo giá');   // its job ran once already (sync queue)
+    expect(placements())->toBe(["{$page->id}:vi:bao-gia"]);
+
+    PlaceNewForm::dispatchSync(1, $quote->id);
+    PlaceNewForm::dispatchSync(1, $quote->id);
+    expect(placements())->toBe(["{$page->id}:vi:bao-gia"]);
+
+    // a job naming site B with site A's form finds no form under site B's context: site B's page gets no row
+    PlaceNewForm::dispatchSync(2, $quote->id);
+    expect(placements())->toBe(["{$page->id}:vi:bao-gia"]);
+    unset($pageB);
+});
+
+it('brings a page\'s link back when it is restored from the Trash', function (): void {
+    $quote = placedForm(1, 'bao-gia', 'Yêu cầu báo giá');
+    $page = pageWithForms(1, 'bao-gia', ['bao-gia']);
+    $paths = fn (): array => app(Tenancy::class)->enter(1, fn (): array => app(FormPagePaths::class)->of([$quote->id], 'vi'));
+    expect($paths())->toBe([$quote->id => '/bao-gia']);
+
+    app(Tenancy::class)->enter(1, fn () => Entry::query()->whereKey($page->id)->firstOrFail()->delete());
+    expect($paths())->toBe([])->and(placements())->toBe(["{$page->id}:vi:bao-gia"]);   // the row stays in the Trash
+
+    app(Tenancy::class)->enter(1, fn () => Entry::withTrashed()->whereKey($page->id)->firstOrFail()->restore());
+    expect($paths())->toBe([$quote->id => '/bao-gia']);
+});
+
+it('exits non-zero when a site fails, still checking the others, and refuses a --site that is no site', function (): void {
+    placedForm(1, Form::SYSTEM_KEY, 'Liên hệ');
+    placedForm(2, Form::SYSTEM_KEY, 'Liên hệ B');
+    pageWithForms(1, 'lien-he', [null]);
+    pageWithForms(2, 'lien-he-b', [null]);
+    DB::connection('pgsql_admin')->table('form_placements')->delete();
+
+    // site 1's page languages cannot be read
+    DB::listen(function ($query): void {
+        if (str_starts_with($query->sql, 'select "id", "site_id", "entry_id", "locale", "body" from "entry_translations"')
+            && DB::scalar("select current_setting('app.current_site_id', true)") === '1') {
+            throw new RuntimeException('site 1 is broken');
+        }
+    });
+    $this->artisan('forms:placements')
+        ->expectsOutput('Site 1: site 1 is broken')
+        ->expectsOutput('Checked 1 page language(s) on 2 site(s); corrected 1.')
+        ->expectsOutput('Failed on 1 site(s); see the log.')
+        ->assertFailed();
+    expect(placements())->toHaveCount(1);   // site 2 was still checked
+
+    foreach (['abc', '0', '-1', '999999', '1x'] as $bad) {
+        $this->artisan('forms:placements', ['--site' => $bad])->expectsOutput("No site with the id {$bad}.")->assertExitCode(2);
+    }
+});
+
+it('checks the placements every night, never two at once', function (): void {
+    $event = collect(app(Schedule::class)->events())
+        ->first(fn ($event): bool => str_contains((string) $event->command, 'forms:placements'));
+
+    expect($event)->not->toBeNull()
+        ->and($event->expression)->toBe('15 21 * * *')
+        ->and($event->withoutOverlapping)->toBeTrue();
 });
 
 it('drops the table on the way down, safely twice, and creates it again with RLS FORCE on the way up', function (): void {

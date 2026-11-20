@@ -11,6 +11,7 @@ use App\Modules\Forms\Models\FormPlacement;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -40,7 +41,18 @@ final class ReconcileFormPlacements extends Command
     {
         $chunk = max(1, Cast::int($this->option('chunk'), 500));
         $only = $this->option('site');
-        $siteIds = $only !== null ? [Cast::int($only)] : $tenancy->siteIds();
+        $siteIds = $tenancy->siteIds();
+        if ($only !== null) {
+            // a typo must never read as "checked, nothing to correct"
+            $raw = is_scalar($only) ? (string) $only : '';
+            $id = ctype_digit($raw) ? (int) $raw : 0;
+            if ($id === 0 || ! DB::table('sites')->where('id', $id)->exists()) {
+                $this->error("No site with the id {$raw}.");
+
+                return self::INVALID;
+            }
+            $siteIds = [$id];
+        }
         $sites = $checked = $corrected = $failed = 0;
 
         foreach ($siteIds as $siteId) {

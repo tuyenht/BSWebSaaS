@@ -6,20 +6,22 @@ namespace App\Modules\Cms\Routing;
 
 use App\Modules\Forms\Models\FormPlacement;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Database\Query\JoinClause;
 
 /**
  * Where a visitor sees each form: for «Xem trang có biểu mẫu» on the «Biểu mẫu» list and «Đang có
  * trên trang» in the form's editor. Reads `form_placements` (kept by the page save), never page
  * bodies, in one query for the whole list. Only a switched-on form, and only a page a visitor can open, counts — published, its
- * translation in that language published, not in the Trash, with its route — the same test as
+ * translation in that language published, not in the Trash, with its route, in a language visitors
+ * can open (public) — the same test as
  * EntryPageLinks; the locale prefix comes from PathBuilder. Every table is site-scoped (the
  * placement's global scope, the joins on site_id, RLS behind them), so another site's page is never
  * named.
  */
 final readonly class FormPagePaths
 {
-    public function __construct(private PathBuilder $paths) {}
+    public function __construct(private PathBuilder $paths, private SiteLocale $locales) {}
 
     /**
      * Form id => the public path of one page showing it: a page in $preferredLocale first, then the
@@ -48,6 +50,8 @@ final readonly class FormPagePaths
                 ->whereColumn('routes.locale', 'form_placements.locale')
                 ->whereColumn('routes.site_id', 'form_placements.site_id'))
             ->whereIn('form_placements.form_id', $formIds)
+            // a language visitors cannot open yet (enabled, not public) has no page to link to
+            ->whereIn('form_placements.locale', $this->locales->public())
             ->where('entries.status', 'published')
             ->whereNull('entries.deleted_at')
             ->where('entry_translations.status', 'published')
