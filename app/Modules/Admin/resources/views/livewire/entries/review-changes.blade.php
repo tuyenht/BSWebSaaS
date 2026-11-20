@@ -22,21 +22,21 @@
     @if ($rows !== [])
         <section class="mb-4 rounded-md border border-border bg-surface shadow-card" aria-labelledby="chg-title" data-chg-card>
             <div class="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
-                <h2 id="chg-title" class="m-0 text-body font-semibold text-heading">{{ __('admin.inbox.chg_title') }}</h2>
-                <span class="inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-admin-primary px-1.5 text-caption font-bold text-white" data-chg-count>{{ $total > $countMax ? $countMax.'+' : $total }}</span>
+                <h2 id="chg-title" class="m-0 text-body font-semibold text-text-strong">{{ __('admin.inbox.chg_title') }}</h2>
+                <span class="inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-caption font-bold text-white" data-chg-count>{{ $total > $countMax ? $countMax.'+' : $total }}</span>
             </div>
-            <p class="m-0 px-4 pt-3 pb-3 text-small leading-relaxed text-body-muted">{{ __('admin.inbox.chg_desc') }}</p>
+            <p class="m-0 px-4 pt-3 pb-3 text-small leading-relaxed text-text-muted">{{ __('admin.inbox.chg_desc') }}</p>
 
             <ul class="m-0 list-none p-0">
                 @foreach ($rows as $row)
                     <li wire:key="chg-{{ $row['ulid'] }}" data-chg="{{ $row['ulid'] }}"
                         class="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border px-4 py-3">
                         <div class="flex min-w-0 flex-[1_1_280px] flex-col gap-1">
-                            <span class="inline-flex max-w-full items-center gap-1 self-start rounded-full bg-[color-mix(in_srgb,var(--color-admin-secondary-text)_10%,var(--color-surface))] px-2 py-0.5 text-caption font-semibold text-secondary-text [overflow-wrap:anywhere]">
+                            <span class="inline-flex max-w-full items-center gap-1 self-start rounded-full bg-[color-mix(in_srgb,var(--color-secondary-text)_10%,var(--color-surface))] px-2 py-0.5 text-caption font-semibold text-secondary-text [overflow-wrap:anywhere]">
                                 <x-bs-admin::icon name="ri-git-pull-request" class="size-[calc(0.875rem+var(--user-text-boost))]" />{{ __('admin.inbox.chg_title') }}
                             </span>
-                            <b class="text-body font-semibold text-heading [overflow-wrap:anywhere]">{{ $row['title'] }}</b>
-                            <span class="text-small leading-normal text-body-muted [overflow-wrap:anywhere]">{{ $row['meta'] }}</span>
+                            <b class="text-body font-semibold text-text-strong [overflow-wrap:anywhere]">{{ $row['title'] }}</b>
+                            <span class="text-small leading-normal text-text-muted [overflow-wrap:anywhere]">{{ $row['meta'] }}</span>
                         </div>
                         <div class="flex max-w-full flex-[0_1_auto] flex-wrap gap-2 max-[600px]:flex-[1_1_100%] max-[600px]:*:flex-auto">
                             <x-bs-admin::button variant="outline" color="neutral" :aria-label="__('admin.inbox.chg_compare_name', ['title' => $row['title']])"
@@ -58,7 +58,7 @@
                             @endforeach
                         </div>
                         @if ($row['why'] !== null)
-                            <span class="flex flex-[1_1_100%] items-start gap-1.5 text-small text-body-muted" data-chg-why>
+                            <span class="flex flex-[1_1_100%] items-start gap-1.5 text-small text-text-muted" data-chg-why>
                                 <x-bs-admin::icon name="ri-lock" class="mt-[3px] size-[calc(0.875rem+var(--user-text-boost))] shrink-0" />{{ $row['why'] }}
                             </span>
                         @endif
@@ -79,22 +79,22 @@
     @if ($dialog !== null && $dialog['mode'] === 'view')
         <x-bs-admin::modal model="compareOpen" size="wide" :title="$dialog['title']" :close-label="__('admin.close')" wire:key="chg-view-{{ $dialog['ulid'] }}">
             <div class="flex items-start gap-2 text-body leading-relaxed">
-                <x-bs-admin::icon name="ri-information" class="mt-[3px] size-4 shrink-0 text-body-muted" /><span>{{ $dialog['line'] }}</span>
+                <x-bs-admin::icon name="ri-information" class="mt-[3px] size-4 shrink-0 text-text-muted" /><span>{{ $dialog['line'] }}</span>
             </div>
             @if ($dialog['diff'] === [])
                 <p class="m-0 text-text-muted">{{ __('entries.chg.diff_none') }}</p>
             @else
                 <ul class="m-0 flex list-none flex-col gap-2.5 p-0" data-change-diff>
                     @foreach ($dialog['diff'] as $field)
-                        <li class="flex min-w-0 flex-col gap-[3px] rounded border border-[color-mix(in_srgb,var(--color-admin-warning-text)_40%,var(--color-surface))] bg-[color-mix(in_srgb,var(--color-admin-warning-text)_8%,var(--color-surface))] px-2.5 py-2">
-                            <span class="flex flex-wrap items-center gap-1.5 text-[calc(0.78125rem+var(--user-text-boost))] font-semibold text-body-muted">
+                        <li class="flex min-w-0 flex-col gap-[3px] rounded border border-[color-mix(in_srgb,var(--color-warning-text)_40%,var(--color-surface))] bg-[color-mix(in_srgb,var(--color-warning-text)_8%,var(--color-surface))] px-2.5 py-2">
+                            <span class="flex flex-wrap items-center gap-1.5 text-[calc(0.78125rem+var(--user-text-boost))] font-semibold text-text-muted">
                                 @if ($field['lang'] !== null)
-                                    <span class="inline-flex rounded-full bg-surface-hover px-2 py-px text-caption font-semibold text-body-text">{{ $field['lang'] }}</span>
+                                    <span class="inline-flex rounded-full bg-surface-hover px-2 py-px text-caption font-semibold text-text">{{ $field['lang'] }}</span>
                                 @endif
                                 {{ $field['label'] }}
                             </span>
-                            <span class="text-heading [overflow-wrap:anywhere]">{{ $field['now'] }}</span>
-                            <span class="text-small text-body-muted [overflow-wrap:anywhere]">{{ __('entries.chg.diff_seen', ['text' => $field['seen']]) }}</span>
+                            <span class="text-text-strong [overflow-wrap:anywhere]">{{ $field['now'] }}</span>
+                            <span class="text-small text-text-muted [overflow-wrap:anywhere]">{{ __('entries.chg.diff_seen', ['text' => $field['seen']]) }}</span>
                         </li>
                     @endforeach
                 </ul>
@@ -130,14 +130,14 @@
     @if ($dialog !== null && $dialog['mode'] === 'return')
         <x-bs-admin::modal model="returnOpen" size="narrow" :title="$dialog['title']" :close-label="__('admin.close')" alert wire:key="chg-return-{{ $dialog['ulid'] }}">
             <div class="flex items-start gap-2 text-body leading-relaxed">
-                <x-bs-admin::icon name="ri-information" class="mt-[3px] size-4 shrink-0 text-body-muted" /><span>{{ $dialog['line'] }}</span>
+                <x-bs-admin::icon name="ri-information" class="mt-[3px] size-4 shrink-0 text-text-muted" /><span>{{ $dialog['line'] }}</span>
             </div>
             <div class="flex flex-col gap-1.5">
-                <label for="chg-note" class="text-small font-semibold text-heading">{{ __('entries.chg.return_label', ['by' => $dialog['by']]) }} <span class="text-danger-text" aria-hidden="true">*</span></label>
+                <label for="chg-note" class="text-small font-semibold text-text-strong">{{ __('entries.chg.return_label', ['by' => $dialog['by']]) }} <span class="text-danger-text" aria-hidden="true">*</span></label>
                 <textarea id="chg-note" wire:model="note" rows="3" maxlength="2000" required autofocus aria-describedby="chg-note-err"
                           placeholder="{{ __('admin.inbox.chg_note_placeholder') }}"
                           aria-invalid="{{ $errors->has('note') ? 'true' : 'false' }}"
-                          class="w-full resize-y rounded border bg-surface px-3 py-2 text-body leading-normal text-body-text focus:border-primary-text {{ $errors->has('note') ? 'border-danger-text' : 'border-border-input' }}"></textarea>
+                          class="w-full resize-y rounded border bg-surface px-3 py-2 text-body leading-normal text-text focus:border-primary-text {{ $errors->has('note') ? 'border-danger-text' : 'border-border-input' }}"></textarea>
                 <div id="chg-note-err">
                     @error('note') <x-bs-admin::field-error role="alert">{{ $message }}</x-bs-admin::field-error> @enderror
                 </div>
