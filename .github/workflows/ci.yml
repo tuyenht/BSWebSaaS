@@ -212,7 +212,7 @@ jobs:
       # One red shard must not hide the others.
       fail-fast: false
       matrix:
-        shard: ['1/5', '2/5', '3/5', '4/5', '5/5', arch]
+        shard: ['1/6', '2/6', '3/6', '4/6', '5/6', '6/6', arch]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
@@ -292,8 +292,12 @@ jobs:
       - name: Migrate (PostgreSQL + extensions + restricted app role)
         run: php artisan migrate --database=pgsql_admin --force
 
-      # The suite is split by test count into five shards that run side by side, each on its own
-      # database, and the Arch suite runs as a sixth job of its own. One process used to run every
+      # The suite is split into six shards that run side by side, each on its own database, and the
+      # Arch suite runs as a job of its own. Pest splits the test classes by the times recorded in
+      # tests/.pest/shards.json (rebuilt from green CI runs by scripts/ci-shard-timings.py); split
+      # by count, one shard ran 13 of its 20 minutes and timed out on slow runners (20/11/2026:
+      # 1180 s against 720 s for the same tests). Measured: about 9 minutes a shard, 14 on a slow
+      # runner. Classes newer than the file are dealt out in turn (Pest prints a WARN). One process used to run every
       # suite and reached the job's 30-minute limit. Most of the memory is the Arch suite's: its
       # rules parse the whole code base and keep it (measured 15/11/2026: 861M peak for its 210
       # tests alone, ModuleBoundariesTest about 450M of it, ArchTest about 250M), and it always
