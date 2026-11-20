@@ -191,13 +191,21 @@ it('never deletes another site\'s form', function (): void {
             ->assertSet('toastMsg', __('form_builder.toast_gone'));
     });
 
-    // a manager of site B, on site A's screen, reaches none of site B's forms either
+    // and from the other side: site B's manager, on site B's screen, never reaches a form of site A
+    $mine = deletableForm(1, 'tu-van', 'Đăng ký tư vấn', leads: 1);
     $managerB = blockLibraryUser(2, 'admin');
-    app(Tenancy::class)->enter(1, function () use ($managerB, $other): void {
-        Livewire::actingAs($managerB)->test(FormList::class)->call('askDelete', $other->ulid)->assertSet('deleting', null);
+    app(Tenancy::class)->enter(2, function () use ($managerB, $mine): void {
+        Livewire::actingAs($managerB)->test(FormList::class)
+            ->call('askDelete', $mine->ulid)
+            ->assertSet('deleting', null)
+            ->assertSet('toastMsg', __('form_builder.toast_gone'))
+            ->set('confirmOpen', true)   // a client that opens the dialog itself has nothing to confirm
+            ->call('confirmDelete')
+            ->assertSet('confirmOpen', false);
     });
 
     expect(formRowsLeft($other))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 2])
+        ->and(formRowsLeft($mine))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 1])
         ->and(formDeleteAudits())->toBe(0);
 });
 
