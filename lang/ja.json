@@ -5659,6 +5659,7 @@
     "catalog.ed.summary_old_html": "以前の概要には書式（太字、段落など）があります。この欄には文字だけが表示されます。この欄を編集せずに保存すると以前の概要はそのまま残ります。編集すると新しい概要は書式なしの文字になります。",
     "catalog.ed.summary_too_long": "概要は :max 文字以内です — 短くしてください。",
     "catalog.ed.slug_moves": "この商品は公開中です。保存すると、以前のアドレス :old は新しいアドレスに転送されます — 訪問者も Google も迷いません。",
+    "catalog.ed.slug_auto": "商品名からアドレスを自動作成しました: :slug",
     "catalog.ed.card_desc": "説明",
     "catalog.ed.chip_published": "公開済み",
     "catalog.ed.chip_draft": "下書き",

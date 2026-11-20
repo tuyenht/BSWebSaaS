@@ -5659,6 +5659,7 @@
     "catalog.ed.summary_old_html": "Tóm tắt cũ có định dạng (chữ đậm, đoạn văn…). Ô này chỉ hiện phần chữ. Lưu mà không sửa ô này thì tóm tắt cũ được giữ nguyên; nếu sửa, tóm tắt mới sẽ là chữ thường.",
     "catalog.ed.summary_too_long": "Tóm tắt dài tối đa :max ký tự — hãy rút gọn bớt.",
     "catalog.ed.slug_moves": "Sản phẩm đang đăng. Khi lưu, địa chỉ cũ :old tự chuyển sang địa chỉ mới — khách và Google không bị lạc.",
+    "catalog.ed.slug_auto": "Địa chỉ tự tạo từ tên sản phẩm: :slug",
     "catalog.ed.card_desc": "Mô tả",
     "catalog.ed.chip_published": "Đã đăng",
     "catalog.ed.chip_draft": "Bản nháp",

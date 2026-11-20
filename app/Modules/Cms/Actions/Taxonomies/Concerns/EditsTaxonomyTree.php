@@ -100,7 +100,7 @@ trait EditsTaxonomyTree
 
     /**
      * The per-language name and slug to save: each language one the site writes in, each name
-     * valid, each slug valid — a slug not given keeps the current one, or is made from the name for
+     * valid, each slug valid — a slug not given keeps the current one, an emptied one is made again from the name, and one is made from the name for
      * a language the category is not written in yet. A current slug is kept as it is even when older
      * than today's slug rules, so renaming a category never forces its address to change. A
      * description, Google title/description or card label given for a language is cleaned and checked
@@ -132,7 +132,9 @@ trait EditsTaxonomyTree
                 ?? throw new TaxonomyChangeRejectedException('name_invalid');
 
             $given = trim($data->slugs[$locale] ?? '');
-            if ($current !== null && ($given === '' || $given === $current->slug)) {
+            // A slug left out keeps the current one; one given EMPTY (the person emptied the field) is made again from the name.
+            $kept = $given === '' ? ! array_key_exists($locale, $data->slugs) : $given === $current?->slug;
+            if ($current !== null && $kept) {
                 $slug = $current->slug;
             } else {
                 $slug = TaxonomyRules::slug($given !== '' ? $given : TaxonomyRules::slugFrom($name))

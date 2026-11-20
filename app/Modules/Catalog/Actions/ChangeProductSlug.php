@@ -58,6 +58,61 @@ final class ChangeProductSlug
     }
 
     /**
+     * The address a blank field gets: made from the name (any writing system) and made free in this
+     * language: no other product's address and no other route may hold the public path it would
+     * get, and a flat address is never one the application itself answers on. '' when the name
+     * leaves nothing usable. $ownId is the product being edited (null: a new one).
+     */
+    public function fromName(string $name, string $locale, ?int $ownId, ?Taxonomy $category): string
+    {
+        $path = app(PathBuilder::class)->forProduct($category, 'x', $locale);
+        $prefix = str_ends_with($path, 'x') ? substr($path, 0, -1) : '/';
+
+        return Slugger::fromTitle(
+            $name,
+            $locale,
+            fn (string $base): array => [
+                ...Slugger::takenAmong(
+                    ProductTranslation::query()
+                        ->where('locale', $locale)
+                        ->when($ownId !== null, fn ($q) => $q->where('product_id', '!=', $ownId)),
+                    'slug',
+                    $base,
+                ),
+                ...Slugger::takenAmong(
+                    SiteRoute::query()
+                        ->where('locale', $locale)
+                        ->when($ownId !== null, fn ($q) => $q->where(
+                            fn ($own) => $own->whereNull('product_id')->orWhere('product_id', '!=', $ownId),
+                        )),
+                    'path',
+                    $base,
+                    $prefix,
+                ),
+                ...($prefix === '/' ? $this->appOwned($base) : []),
+            ],
+        );
+    }
+
+    /**
+     * Of `$base` and its numbered copies, those the application itself answers on.
+     *
+     * @return list<string>
+     */
+    private function appOwned(string $base): array
+    {
+        $paths = app(AppRoutePaths::class);
+        $owned = [];
+        foreach ([$base, ...array_map(fn (int $n): string => $base.'-'.$n, range(2, Slugger::PROBE))] as $candidate) {
+            if ($paths->owns($candidate)) {
+                $owned[] = $candidate;
+            }
+        }
+
+        return $owned;
+    }
+
+    /**
      * Another product of this language that holds $slug (a product in the Trash included, any
      * letter case), or null. $ownId is the product being edited (null: a new one).
      */
@@ -128,11 +183,19 @@ final class ChangeProductSlug
     public function handle(Product $product, string $input, string $locale): array
     {
         $this->authorizeCatalog('update', $product);
-        $slug = $this->clean($input, $locale);
 
         $translation = $product->translations()->where('locale', $locale)->first();
         if (! $translation instanceof ProductTranslation) {
             throw new ProductEditRefused(__('catalog.row_gone'));
+        }
+        // An emptied address is made again from the product's name, as a new product gets its own.
+        if (PlainText::line($input) === '') {
+            $slug = $this->fromName($translation->name, $locale, $product->id, $product->primaryCategory());
+            if ($slug === '') {
+                throw new ProductEditRefused(__('catalog.slug_invalid'));
+            }
+        } else {
+            $slug = $this->clean($input, $locale);
         }
         $old = $translation->slug;
         if ($old === $slug) {

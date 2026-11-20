@@ -25,6 +25,7 @@ const CATALOG_ACTION_READ_ONLY = [
     'ChangeProductMainCategory::categoryIds',
     'ChangeProductMainCategory::routePaths',
     'ChangeProductSlug::clean',
+    'ChangeProductSlug::fromName',
     'ChangeProductSlug::otherProduct',
     'ChangeProductSlug::refusal',
     'ChangeProductSlug::lock',

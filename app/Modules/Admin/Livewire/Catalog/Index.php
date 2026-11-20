@@ -666,6 +666,9 @@ final class Index extends Component
                 $this->guardWrite('update');
                 $product = $this->live($ulid, quiet: true);
                 try {
+                    if ($product !== null && Cast::string($op['slug'] ?? '') === '') {
+                        throw new ProductEditRefused(__('catalog.undo_slug_taken'));
+                    }
                     if ($product !== null) {
                         app(ChangeProductSlug::class)->handle($product, Cast::string($op['slug'] ?? ''), app(SiteLocale::class)->default());
                     }

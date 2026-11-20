@@ -191,7 +191,7 @@
                         @else
                             {{-- Left empty, the link is made from the title as the field is left (Editor::updatedSlug) --}}
                             <label for="entry-slug" class="{{ $label }} mb-1.5">{{ __('entries.ed.slug') }}</label>
-                            <input type="text" id="entry-slug" wire:model.blur="slug" dir="ltr" autocomplete="off" spellcheck="false"
+                            <input type="text" id="entry-slug" wire:model.live.blur="slug" dir="ltr" autocomplete="off" spellcheck="false"
                                    aria-describedby="entry-slug-h @error('slug') entry-slug-e @enderror" @error('slug') aria-invalid="true" @enderror class="field {{ $fieldLook }}">
                             @error('slug') <p id="entry-slug-e" class="{{ $error }}">{{ $message }}</p> @enderror
                             <p id="entry-slug-h" class="mt-1.5 mb-0 flex items-start gap-1.5 text-caption text-text-muted">

@@ -5659,6 +5659,7 @@
     "catalog.ed.summary_old_html": "The old summary has formatting (bold, paragraphs…). This field shows only its text. Save without editing this field and the old summary is kept as it is; if you edit it, the new summary will be plain text.",
     "catalog.ed.summary_too_long": "The summary can be at most :max characters — please shorten it.",
     "catalog.ed.slug_moves": "This product is published. When you save, the old address :old forwards to the new one — visitors and Google will not get lost.",
+    "catalog.ed.slug_auto": "Address made from the product name: :slug",
     "catalog.ed.card_desc": "Description",
     "catalog.ed.chip_published": "Published",
     "catalog.ed.chip_draft": "Draft",
