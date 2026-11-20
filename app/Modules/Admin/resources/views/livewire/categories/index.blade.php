@@ -7,6 +7,7 @@
 --}}
 @php
     $u = fn (string $key, array $r = []): string => __('categories.ui_'.$key, $r);
+    $supWhy = __('categories.reason_support_session');
     $j = fn (string $text): string => \Illuminate\Support\Js::from($text)->toHtml();
     $noun = $products ? $u('noun_products') : $u('noun_posts');
     $layoutName = fn (?string $name): string => $name === null ? $u('tpl_default') : (\Illuminate\Support\Facades\Lang::has('categories.ui_layout_'.$name) ? $u('layout_'.$name) : $name);
@@ -62,13 +63,16 @@
         $config = [
             'section' => $screen['section']['key'], 'label' => $label, 'main' => $main, 'locales' => $locales, 'langNames' => $langNames,
             'bases' => $bases, 'layouts' => $layouts, 'detailLayouts' => $detailLayouts, 'products' => $products, 'canManage' => $canManage, 'limits' => $screen['limits'], 'texts' => $texts,
+            'support' => $support, 'supportWhy' => $supWhy,
         ];
         // a few names to start from, for the standard sections (a section of the website's own has none)
         $exampleSet = ['posts' => 'n', 'services' => 's', 'projects' => 'j', 'catalog' => 'p'][$screen['section']['key']] ?? null;
         $examples = $exampleSet === null ? [] : array_map(fn (int $i): string => 'ex_'.$exampleSet.$i, [1, 2, 3]);
         $namePh = $u($examples[0] ?? ($products ? 'ex_p1' : 'ex_n1'));
-        $roleText = $limitNames !== null ? $u('role_text_limited', ['list' => implode(', ', $limitNames)]) : $u('role_text');
-        $off = $canManage ? null : 'true';
+        $roleText = $support ? $u('role_text_support') : ($limitNames !== null ? $u('role_text_limited', ['list' => implode(', ', $limitNames)]) : $u('role_text'));
+        // support staff signed in for a member: every change greys out and says why (the server refuses it too)
+        $offWhy = $support ? $supWhy : ($canManage ? null : $u('no_manage'));
+        $off = $offWhy === null ? null : 'true';
         $col = 'shrink-0 text-small text-text-muted';
         $tplCol = $col.' w-[calc(11.25rem+var(--user-text-boost)*10)] @max-[63.99rem]:hidden';
         $cntCol = $col.' flex w-[calc(6rem+var(--user-text-boost)*4)] justify-end @max-[47.99rem]:hidden';
@@ -77,7 +81,7 @@
         class="mx-auto flex w-full max-w-[1400px] flex-col gap-4">
         <header class="flex flex-col gap-1">
             <x-bs-admin::title-row :title="__('categories.title', ['section' => $label])">
-                <x-bs-admin::button class="shrink-0" x-on:click="openAdd(null)" aria-disabled="{{ $off }}" :title="$canManage ? null : $u('no_manage')"
+                <x-bs-admin::button class="shrink-0" x-on:click="openAdd(null)" aria-disabled="{{ $off }}" :title="$offWhy"
                     :label="$u('add')" :short="__('admin.list.add_short')">
                     <x-bs-admin::icon name="ri-add" class="size-4" />
                 </x-bs-admin::button>
@@ -124,6 +128,9 @@
         @endif
 
         <div x-cloak @class(['flex flex-col gap-3', 'hidden' => $total === 0 && count($rows) <= 1])>
+            @if ($support)
+                <x-bs-admin::alert color="warning" icon="ri-user-shared" role="note">{{ $u('support_banner') }}</x-bs-admin::alert>
+            @endif
             @if ($role)
                 <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-small text-text-muted @max-[56.24rem]:order-last" role="note">
                     <x-bs-admin::icon name="ri-shield-user" class="size-4 shrink-0" />
@@ -202,9 +209,11 @@
                                 $tpl = $layoutName($n['listTemplate']);
                                 $lockWhy = ! $isRoot && ! $n['movable'] ? __('categories.reason_outside_category_limits') : null;
                                 $data = collect($n)->only(['key', 'parent', 'name', 'names', 'slugs', 'descriptions', 'seoTitles', 'seoDescriptions', 'trail', 'listTemplate', 'detailTemplate', 'cover', 'items', 'locked', 'editable', 'movable'])->all();
-                                $canChild = $canManage && $r['level'] < $depth;
+                                $canChild = $canManage && ! $support && $r['level'] < $depth;
+                                $changeOff = $lockWhy !== null || ! $canManage || $support;
+                                $changeWhy = $lockWhy ?? ($support ? $supWhy : null);
                             @endphp
-                            <x-bs-admin::tree.row :row="$r" :name="$n['name']" :locked="$lockWhy" :drag-off="$isRoot ? $u('root_tip', ['section' => $label, 'slug' => $slug]) : null"
+                            <x-bs-admin::tree.row :row="$r" :name="$n['name']" :locked="$lockWhy" :drag-off="$isRoot ? $u('root_tip', ['section' => $label, 'slug' => $slug]) : ($support ? $supWhy : null)"
                                 wire:key="cm-{{ $n['key'] }}" data-node="{{ json_encode($data, JSON_UNESCAPED_UNICODE) }}">
                                 <span class="flex min-w-0 flex-1 flex-col">
                                     @if ($n['of'] !== null)
@@ -246,7 +255,7 @@
                                     </x-bs-admin::button>
                                     @if ($r['level'] < $depth)
                                         <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="openAdd({{ $j($n['key']) }}, true)" aria-disabled="{{ $off }}"
-                                            aria-label="{{ $u('add_child_of', ['name' => $n['name']]) }}" :title="$canManage ? $u('add_child_of', ['name' => $n['name']]) : $u('no_manage')" class="@max-[37.49rem]:hidden">
+                                            aria-label="{{ $u('add_child_of', ['name' => $n['name']]) }}" :title="$offWhy ?? $u('add_child_of', ['name' => $n['name']])" class="@max-[37.49rem]:hidden">
                                             <x-bs-admin::icon name="ri-add" class="size-4" /> {{ $u('child') }}
                                         </x-bs-admin::button>
                                     @else
@@ -257,11 +266,13 @@
                                             <x-bs-admin::list.menu-item icon="ri-pencil" x-on:click="openEdit({{ $j($n['key']) }})">{{ $u('edit') }}</x-bs-admin::list.menu-item>
                                             @if ($canChild)
                                                 <x-bs-admin::list.menu-item icon="ri-add" x-on:click="openAdd({{ $j($n['key']) }}, true)">{{ $u('add_child') }}</x-bs-admin::list.menu-item>
+                                            @elseif ($support && $r['level'] < $depth)
+                                                <x-bs-admin::list.menu-item icon="ri-add" off :why="$supWhy">{{ $u('add_child') }}</x-bs-admin::list.menu-item>
                                             @elseif (! $isRoot)
                                                 <x-bs-admin::list.menu-item icon="ri-add" off :why="$canManage ? $u('too_deep_child', ['n' => $depth]) : $u('no_manage')">{{ $u('add_child') }}</x-bs-admin::list.menu-item>
                                             @endif
                                             @if ($missing !== [])
-                                                <x-bs-admin::list.menu-item icon="ri-translate-2" x-on:click="openEdit({{ $j($n['key']) }}, '{{ $missing[0] }}')">{{ $u('add_tr') }}</x-bs-admin::list.menu-item>
+                                                <x-bs-admin::list.menu-item icon="ri-translate-2" x-on:click="openEdit({{ $j($n['key']) }}, '{{ $missing[0] }}')" :off="$support" :why="$support ? $supWhy : null">{{ $u('add_tr') }}</x-bs-admin::list.menu-item>
                                             @endif
                                             @if ($n['items'] > 0)
                                                 <x-bs-admin::list.menu-item icon="ri-file-list-3" :href="$listUrl">{{ $u('see_items', ['n' => $n['items'], 'noun' => $noun]) }}</x-bs-admin::list.menu-item>
@@ -273,12 +284,12 @@
                                             @if ($isRoot)
                                                 <span class="list-mwhy flex gap-2"><x-bs-admin::icon name="ri-information" class="size-4 shrink-0" /><span>{{ $u('root_note', ['section' => $label]) }}</span></span>
                                             @else
-                                                <x-bs-admin::tree.move-menu :row="$r" />
-                                                <x-bs-admin::list.menu-item icon="ri-drag-move-2" x-on:click="openMv({{ $j($n['key']) }})" :off="$lockWhy !== null || ! $canManage" :why="$lockWhy">{{ $u('move_to') }}</x-bs-admin::list.menu-item>
+                                                <x-bs-admin::tree.move-menu :row="$r" :reason="$support ? $supWhy : null" />
+                                                <x-bs-admin::list.menu-item icon="ri-drag-move-2" x-on:click="openMv({{ $j($n['key']) }})" :off="$changeOff" :why="$changeWhy">{{ $u('move_to') }}</x-bs-admin::list.menu-item>
                                                 <x-bs-admin::list.menu-sep />
-                                                <x-bs-admin::list.menu-item icon="ri-git-merge" x-on:click="openDel({{ $j($n['key']) }}, true)" :off="$lockWhy !== null || ! $canManage" :why="$lockWhy">{{ $u('merge') }}</x-bs-admin::list.menu-item>
+                                                <x-bs-admin::list.menu-item icon="ri-git-merge" x-on:click="openDel({{ $j($n['key']) }}, true)" :off="$changeOff" :why="$changeWhy">{{ $u('merge') }}</x-bs-admin::list.menu-item>
                                                 <x-bs-admin::list.menu-sep />
-                                                <x-bs-admin::list.menu-item icon="ri-delete-bin" danger x-on:click="openDel({{ $j($n['key']) }})" :off="$lockWhy !== null || ! $canManage" :why="$lockWhy">{{ $u('delete') }}</x-bs-admin::list.menu-item>
+                                                <x-bs-admin::list.menu-item icon="ri-delete-bin" danger x-on:click="openDel({{ $j($n['key']) }})" :off="$changeOff" :why="$changeWhy">{{ $u('delete') }}</x-bs-admin::list.menu-item>
                                             @endif
                                         </x-slot:menu>
                                     </x-bs-admin::list.actions>
@@ -299,6 +310,9 @@
         <x-bs-admin::drawer state="pan" close="panClose()" :title="$u('edit_title')">
             <x-slot:heading><span x-text="panTitle"></span></x-slot:heading>
             <div class="flex flex-col gap-4">
+                @if ($support)
+                    <x-bs-admin::alert color="warning" role="note">{{ $u('support_pan') }}</x-bs-admin::alert>
+                @endif
                 <template x-if="pan && pan.err">
                     <x-bs-admin::alert color="danger" icon="ri-error-warning">
                         <span role="alert" x-text="pan.err === 'network' ? {{ $j($u('save_net')) }} : pan.errText"></span>
@@ -415,7 +429,7 @@
             <x-slot:footer>
                 <x-bs-admin::button variant="outline" color="secondary" x-on:click="panClose()">{{ __('admin.cancel') }}</x-bs-admin::button>
                 <span x-show="pan && pan.mode === 'add'"><x-bs-admin::button variant="outline" color="secondary" x-on:click="save(true)" x-bind:aria-disabled="pan && pan.saving ? 'true' : null"><x-bs-admin::icon name="ri-add" class="size-4" /> {{ $u('save_new') }}</x-bs-admin::button></span>
-                <x-bs-admin::button x-on:click="save()" x-bind:aria-disabled="pan && pan.saving ? 'true' : null">
+                <x-bs-admin::button x-on:click="save()" x-bind:aria-disabled="(pan && pan.saving) || {{ $support ? 'true' : 'false' }} ? 'true' : null" :title="$support ? $supWhy : null">
                     <x-bs-admin::icon name="ri-save-3" class="size-4" /> <span x-text="pan && pan.saving ? {{ $j($u('saving')) }} : (pan ? saveText : {{ $j($u('save')) }})">{{ $u('save') }}</span>
                 </x-bs-admin::button>
             </x-slot:footer>
