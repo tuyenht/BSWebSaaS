@@ -11,6 +11,7 @@ use App\Modules\Forms\Actions\SetFormStatus;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Support\FormDraft;
 use App\Modules\Forms\Support\FormTemplates;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -32,7 +33,8 @@ use Livewire\Component;
  * the search (which ignores Vietnamese marks) and the leads filter work on that list.
  *
  * Gated like the leads inbox: the plan (the `contacts` module) first, then `forms.manage`; every
- * write asks FormPolicy again, as the livewire/update endpoint skips the route.
+ * write asks FormPolicy again, as the livewire/update endpoint skips the route. Support staff signed
+ * in for a member never delete a form: its leads are visitors' personal data and go with it.
  */
 #[Layout('admin::layouts.app')]
 final class FormList extends Component
@@ -95,6 +97,7 @@ final class FormList extends Component
     /**
      * «Xóa» in the row's ⋮: the question names the form and how many leads go with it, and offers
      * «Tắt biểu mẫu» instead while the form is on and has leads. The system form has no «Xóa».
+     * Support staff signed in for a member never delete one on their behalf (the member does it).
      */
     public function askDelete(string $ulid): void
     {
@@ -102,6 +105,7 @@ final class FormList extends Component
         if ($form === null) {
             return;
         }
+        app(SupportSession::class)->forbid();
         $this->deleting = [
             'ulid' => $form->ulid,
             'name' => $this->nameOf($form),
@@ -114,6 +118,7 @@ final class FormList extends Component
     /** The dialog's red button: the form, its fields and its leads go for good (no Trash, no undo). */
     public function confirmDelete(): void
     {
+        app(SupportSession::class)->forbid();
         $asked = $this->deleting;
         $this->cancelDelete();
         $form = $asked === null ? null : $this->writable($asked['ulid'], 'delete');
@@ -267,6 +272,8 @@ final class FormList extends Component
             'hasCounts' => $hasCounts,
             'purposes' => $this->purposes($locale),
             'cap' => self::LEAD_CAP,
+            // support staff signed in for a member: «Xóa» stays in the ⋮, with why it cannot be used
+            'support' => app(SupportSession::class)->active(),
         ]));
     }
 

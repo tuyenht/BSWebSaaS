@@ -7,12 +7,14 @@ use App\Modules\Forms\Jobs\DeleteLargeForm;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -27,7 +29,7 @@ use Livewire\Livewire;
  * Trash), after a question that names the leads and offers «Tắt biểu mẫu» instead. FormPolicy
  * decides who may (forms.manage, never the system form, also not for a platform operator); one audit
  * row names the form and the count, never what a lead said; the bell's notices of those leads go
- * too; another site's form is never reached.
+ * too; another site's form is never reached; support staff signed in for a member never delete one.
  */
 
 beforeEach(function (): void {
@@ -446,6 +448,55 @@ it('refuses a visitor\'s lead while the form is being deleted', function (): voi
 
     $this->post('http://a.test/forms/bao-gia', $lead)->assertNotFound();
     expect(formRowsLeft($form)['leads'])->toBe(3);
+});
+
+it('never lets support staff signed in for a member delete a form and its leads, small or in batches', function (): void {
+    Queue::fake();
+    config(['forms.delete_inline_max_leads' => 2]);
+    $manager = blockLibraryUser(1, 'admin');
+    $small = deletableForm(1, 'bao-gia', 'Yêu cầu báo giá', leads: 2);
+    $large = deletableForm(1, 'tu-van', 'Đăng ký tư vấn', leads: 3); // past the inline limit: would go in batches
+    $session = app('session')->driver();
+    request()->setLaravelSession($session);
+    auth()->login($manager);
+    // Livewire's test requests skip the middleware: hand each one this session, as StartSession does
+    app()->rebinding('request', function ($app, Request $request) use ($session): void {
+        if (! $request->hasSession()) {
+            $request->setLaravelSession($session);
+        }
+    });
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $small, $large): void {
+        // the question was opened before support staff signed in (or a payload replays it): the answer is refused too
+        $opened = Livewire::actingAs($manager)->test(FormList::class)->call('askDelete', $large->ulid)->assertSet('confirmOpen', true);
+        app(SupportSession::class)->start($manager, $manager, 1, 'Kiểm tra', now()->addMinutes(30));
+
+        Livewire::actingAs($manager)->test(FormList::class)
+            ->assertSee(__('form_builder.delete'))
+            ->assertSee(__('admin.support.locked'))
+            ->assertDontSee('askDelete(', false)
+            ->call('askDelete', $small->ulid)->assertForbidden();
+        $opened->call('confirmDelete')->assertForbidden();
+        Livewire::actingAs($manager)->test(FormList::class)->call('confirmDelete')->assertForbidden();
+        // the action refuses it on its own, whoever calls it
+        expect(fn () => app(DeleteForm::class)->handle($small))->toThrow(AuthorizationException::class, __('admin.support.locked'))
+            ->and(fn () => app(DeleteForm::class)->handle($large, 3))->toThrow(AuthorizationException::class, __('admin.support.locked'));
+    });
+
+    Queue::assertNotPushed(DeleteLargeForm::class);
+    expect(formRowsLeft($small))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 2])
+        ->and(formRowsLeft($large))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 3])
+        ->and(DB::connection('pgsql_admin')->table('forms')->where('id', $large->id)->value('status'))->toBe('active')
+        ->and(formDeleteAudits())->toBe(0);
+
+    // once the support session ends, the member deletes the form as usual
+    app(SupportSession::class)->end();
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($manager)->test(FormList::class)
+        ->assertSee('askDelete(', false)
+        ->call('askDelete', $small->ulid)->call('confirmDelete')
+        ->assertSet('toastMsg', __('form_builder.toast_deleted_leads', ['leads' => trans_choice('form_builder.leads_n', 2, ['n' => 2])])));
+    expect(formRowsLeft($small))->toBe(['forms' => 0, 'fields' => 0, 'leads' => 0])
+        ->and(formDeleteAudits())->toBe(1);
 });
 
 it('deletes a large form\'s leads in batches, each in its own site transaction, with their notices, then the form', function (): void {

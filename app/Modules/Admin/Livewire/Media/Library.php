@@ -7,6 +7,7 @@ use App\Modules\Admin\Support\MediaDeleteRights;
 use App\Modules\Admin\Support\MediaLibraryDirectory;
 use App\Modules\Admin\Support\MediaUsageLocator;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Media\Jobs\DeleteLargeMediaFolder;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\MediaFolder;
@@ -879,10 +880,14 @@ final class Library extends Component
         $this->say(__('media.lib.restored', ['n' => $n]));
     }
 
-    /** Deleting for good is the website admin's right (media.purge); restore stays with the delete rights. */
+    /**
+     * Deleting for good is the website admin's right (media.purge); restore stays with the delete rights.
+     * Support staff signed in for a member never delete the website's files for good (the member does it).
+     */
     public function askPurge(bool $all = false): void
     {
         abort_unless(Gate::allows('media.purge'), 403);
+        app(SupportSession::class)->forbid();
 
         $this->purgeAll = $all;
         $this->askPurgeOpen = $all || $this->picked !== [];
@@ -897,6 +902,7 @@ final class Library extends Component
     public function confirmPurge(): void
     {
         abort_unless(Gate::allows('media.purge'), 403);
+        app(SupportSession::class)->forbid();
 
         $query = $this->purgeAll ? Media::onlyTrashed() : Media::onlyTrashed()->whereIn('ulid', $this->picked);
         $rows = $query->get();
@@ -1082,6 +1088,8 @@ final class Library extends Component
             'chosenN' => $chosenN,
             'canFolders' => Gate::allows('media.folders'),
             'canPurge' => $canPurge,
+            // support staff signed in for a member: «Xóa vĩnh viễn» stays, greyed, with why (the server refuses it too)
+            'support' => app(SupportSession::class)->active(),
             'urls' => app(MediaUrlResolver::class),
             'purge' => $purge,
             'retention' => Cast::int(config('media.trash_retention_days', 30), 30),
