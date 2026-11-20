@@ -4,6 +4,7 @@ namespace App\Modules\Admin\Providers;
 
 use App\Modules\Admin\Console\ReconcileContentUsage;
 use App\Modules\Admin\Console\RecoverSiteOwnerCommand;
+use App\Modules\Admin\Http\Middleware\AddServerTiming;
 use App\Modules\Admin\Http\Middleware\EnforceSupportSession;
 use App\Modules\Admin\Http\Middleware\ResolveLivewireContext;
 use App\Modules\Admin\Http\Middleware\TrackSignedInDevice;
@@ -234,6 +235,6 @@ final class AdminServiceProvider extends ServiceProvider
         // level: the guest login and the authed admin share this single route. auth.session (a no-op
         // for a guest) signs out a session whose password changed elsewhere, as on the admin pages.
         Livewire::setUpdateRoute(fn (array $handle) => Route::post('/livewire/update', $handle)
-            ->middleware(['web', ResolveLivewireContext::class, EnforceSupportSession::class, 'auth.session', TrackSignedInDevice::class]));
+            ->middleware([AddServerTiming::class, 'web', ResolveLivewireContext::class, EnforceSupportSession::class, 'auth.session', TrackSignedInDevice::class]));
     }
 }
