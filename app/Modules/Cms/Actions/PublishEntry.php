@@ -111,8 +111,11 @@ final readonly class PublishEntry
                 $entry->update([
                     'status' => 'published',
                     'published_at' => $entry->published_at ?? now(),
-                    // a post approved for later under a flow since switched off: it is live now
+                    // a post approved for later under a flow since switched off: it is live now, and the
+                    // stage it was approved at goes too, so a flow switched back on reads it at its
+                    // published stage, not as waiting for review
                     'scheduled_by' => null,
+                    'workflow_state' => null,
                 ]);
                 $translation->update(['status' => 'published']);
 

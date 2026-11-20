@@ -3248,6 +3248,7 @@
     "notifications.workflow.scheduled.failed_approver": "《:title》未能按定时发布：这个定时已没有批准人（批准人的账号已被删除，或文章是在审核流程关闭期间定时的）。请打开文章重新审核。",
     "notifications.workflow.scheduled.failed_right": "《:title》未能按定时发布：批准人已没有发布这篇文章的权限。请打开文章重新审核。",
     "notifications.workflow.scheduled.failed_flow": "《:title》未能按定时发布：文章批准后，栏目的审核流程已更改。请打开文章重新审核。",
+    "notifications.workflow.scheduled.failed_draft": "《:title》未能按定时发布：按栏目当前的审核流程，这个定时没有有效的批准。文章已回到草稿 — 准备好后请打开文章并提交审核。",
     "notifications.lead.new": "新的客户咨询：:name。",
     "notifications.security.new_device_login": "您的账号刚刚在新设备上登录。",
     "notifications.security.two_factor_disabled": "您的账号已于 :at 关闭两步验证。",

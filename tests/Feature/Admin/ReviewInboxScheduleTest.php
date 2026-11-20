@@ -5,6 +5,7 @@ use App\Modules\Admin\Livewire\Entries\Index;
 use App\Modules\Admin\Livewire\Entries\ReviewInbox;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\ApproveEntryForLater;
+use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
 use App\Modules\Cms\Actions\RestoreEntryRevision;
 use App\Modules\Cms\Actions\TransitionEntryStatus;
@@ -15,6 +16,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Notifications\Models\SiteNotification;
 use App\Modules\Rbac\Context\TeamContext;
@@ -727,4 +729,148 @@ it('holds a governed post scheduled with no approver back at its waiting stage, 
             ->and(SiteRoute::query()->whereIn('entry_id', [$waiting->id, $stale->id])->exists())->toBeFalse();
     });
     expect(laterNotices(1, $author))->toBe(['failed_approver']);
+});
+
+it('takes a post approved for later from the flow\'s initial stage back to a draft when it is held or cancelled, and says so', function (): void {
+    [$author, $approver] = laterPeople();
+    $categoryId = laterSection();
+
+    [$held, $cancelled] = app(Tenancy::class)->enter(1, function () use ($author, $approver, $categoryId): array {
+        // a custom flow that lets an approver publish straight from the draft stage
+        Workflow::query()->firstOrFail()->transitions()->create([
+            'key' => 'quick', 'label' => 'Đăng thẳng', 'from_state' => 'draft', 'to_state' => 'published', 'required_permission' => 'entries.approve',
+        ]);
+        grantRole($approver, 'approver', ['entries.review', 'entries.approve', 'entries.edit.any']);
+        $posts = [];
+        foreach (['giu', 'huy'] as $slug) {
+            $post = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $author->id]);
+            $post->translations()->create(['locale' => 'vi', 'title' => 'Bản nháp hẹn giờ', 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);
+            $post->assignCategories([$categoryId]);
+            app(ApproveEntryForLater::class)->approve($post->fresh(), 'vi', $approver->fresh(), 'quick', now()->addHour());
+            expect($post->fresh()->workflow_state)->toBe('draft');
+            $posts[] = $post->fresh();
+        }
+
+        // «Hủy hẹn giờ»: a draft again, not `pending` at a stage nobody reviews
+        expect(app(ApproveEntryForLater::class)->cancel($posts[1], $approver->fresh()))->toBeTrue();
+        expect($posts[1]->fresh()->status)->toBe('draft')
+            ->and($posts[1]->fresh()->workflow_state)->toBe('draft');
+
+        // the approver loses the right before the time
+        $approver->syncRoles([]);
+        grantRole($approver, 'reviewer-only', ['entries.review']);
+
+        return $posts;
+    });
+
+    $this->travel(2)->hours();
+    $this->artisan('entries:publish-due')->expectsOutput(laterSweepSays(published: 0, held: 1))->assertSuccessful();
+
+    app(Tenancy::class)->enter(1, function () use ($held): void {
+        $fresh = $held->fresh();
+        expect($fresh->status)->toBe('draft')
+            ->and($fresh->workflow_state)->toBe('draft')
+            ->and($fresh->scheduled_by)->toBeNull()
+            ->and($fresh->published_at)->toBeNull()
+            ->and(SiteRoute::query()->where('entry_id', $held->id)->exists())->toBeFalse();
+    });
+    // the notices name the outcome: a draft to be sent for review, not «duyệt lại»
+    expect(laterNotices(1, $author))->toBe(['approved', 'approved', 'cancelled_draft', 'failed_draft'])
+        ->and(laterNotices(1, $approver))->toBe(['failed_draft'])
+        ->and(__('notifications.workflow.scheduled.failed_draft', ['title' => 'x'], 'vi'))->toContain('bản nháp');
+});
+
+it('lets another approver approve for later again a post whose approver account was deleted before its time', function (): void {
+    [$author, $approver] = laterPeople();
+    $categoryId = laterSection();
+    $other = User::factory()->create(['name' => 'Người duyệt mới']);
+
+    $post = app(Tenancy::class)->enter(1, function () use ($author, $approver, $other, $categoryId): Entry {
+        grantRole($other, 'approver', ['entries.review', 'entries.approve']);
+        $post = laterPost($categoryId, $author);
+        app(ApproveEntryForLater::class)->approve($post, 'vi', $approver, 'approve', now()->addHour());
+
+        return $post;
+    });
+    DB::connection('pgsql_admin')->table('users')->where('id', $approver->id)->delete();
+
+    app(Tenancy::class)->enter(1, function () use ($post, $other): void {
+        expect($post->fresh()->status)->toBe('scheduled')
+            ->and($post->fresh()->scheduled_by)->toBeNull();
+        $at = laterAt(10);
+        Livewire::actingAs($other->fresh())->test(ReviewInbox::class)
+            ->call('open', $post->ulid)
+            ->call('approveLater', 'approve', $at)
+            ->assertReturned(null)
+            ->assertHasNoErrors();
+        $fresh = $post->fresh();
+        expect($fresh->status)->toBe('scheduled')
+            ->and($fresh->scheduled_by)->toBe($other->id)
+            ->and($fresh->workflow_state)->toBe('pending')
+            ->and(app(SiteTime::class)->forDisplay($fresh->published_at)?->format('Y-m-d\TH:i'))->toBe($at);
+
+        // still once only: approved for later again, it is not approved a second time
+        expect(fn () => app(ApproveEntryForLater::class)->approve($post->fresh(), 'vi', $other->fresh(), 'approve', now()->addDays(3)))
+            ->toThrow(InvalidTransitionException::class);
+    });
+
+    $this->travel(2)->days();
+    $this->artisan('entries:publish-due')->expectsOutput(laterSweepSays(published: 1, held: 0))->assertSuccessful();
+    app(Tenancy::class)->enter(1, function () use ($post, $other): void {
+        expect($post->fresh()->status)->toBe('published')
+            ->and(WorkflowLog::query()->where('entry_id', $post->id)->orderByDesc('id')->value('actor_id'))->toBe($other->id);
+    });
+});
+
+it('clears the approved stage when a post approved for later is published at once with its flow off, so a flow switched back on reads it as live', function (): void {
+    [$author, $approver] = laterPeople();
+    $publisher = User::factory()->create(['name' => 'Biên tập']);
+    $categoryId = laterSection();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $approver, $publisher, $categoryId): void {
+        grantRole($publisher, 'publisher', ['entries.view', 'entries.edit.any', 'entries.publish']);
+        $post = laterPost($categoryId, $author);
+        app(ApproveEntryForLater::class)->approve($post, 'vi', $approver, 'approve', now()->addDay());
+        $workflow = Workflow::query()->firstOrFail();
+        $workflow->update(['is_active' => false]);
+
+        app(PublishEntry::class)->handle($post->fresh(), 'vi', $publisher->fresh());
+        $fresh = $post->fresh();
+        expect($fresh->status)->toBe('published')
+            ->and($fresh->scheduled_by)->toBeNull()
+            ->and($fresh->workflow_state)->toBeNull();
+
+        // the flow back on: the live post stands at its published stage, waiting for nobody
+        $workflow->update(['is_active' => true]);
+        expect(EntryWorkflowResolver::originIn($workflow->fresh(), $post->fresh()))->toBe('published');
+        Livewire::actingAs($approver)->test(ReviewInbox::class)->assertDontSee('Bản tin hẹn giờ');
+    });
+});
+
+it('takes a post whose approved stage left its flow back to a draft, its languages with it', function (): void {
+    [$author, $approver] = laterPeople();
+    $categoryId = laterSection();
+
+    $post = app(Tenancy::class)->enter(1, function () use ($author, $approver, $categoryId): Entry {
+        $post = laterPost($categoryId, $author);
+        expect($post->translationFor('vi')?->status)->toBe('pending');
+        app(ApproveEntryForLater::class)->approve($post, 'vi', $approver, 'approve', now()->addHour());
+        // the stage it was approved at is no longer one its flow defines: it reads at the flow's start
+        Entry::query()->whereKey($post->id)->update(['workflow_state' => 'gone']);
+
+        return $post;
+    });
+
+    $this->travel(2)->hours();
+    $this->artisan('entries:publish-due')->expectsOutput(laterSweepSays(published: 0, held: 1))->assertSuccessful();
+
+    app(Tenancy::class)->enter(1, function () use ($post): void {
+        $fresh = $post->fresh();
+        expect($fresh->status)->toBe('draft')
+            ->and($fresh->translationFor('vi')?->status)->toBe('draft')
+            ->and($fresh->scheduled_by)->toBeNull()
+            ->and(SiteRoute::query()->where('entry_id', $post->id)->exists())->toBeFalse();
+    });
+    expect(laterNotices(1, $author))->toBe(['approved', 'failed_draft'])
+        ->and(laterNotices(1, $approver))->toBe(['failed_draft']);
 });
