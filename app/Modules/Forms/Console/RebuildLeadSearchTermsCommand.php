@@ -10,6 +10,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use PDOException;
 use Throwable;
 
 /**
@@ -24,8 +25,9 @@ use Throwable;
  * without locks; each lead that looks wrong is then read again FOR SHARE (an edit of it waits for the
  * short rewrite, and its own save then writes its words again; a visitor's new lead never waits) and
  * its words written from what it holds now. Each site with differences logs one warning (how many, up
- * to ten lead ulids, never a name or a phone). A site that fails is logged and skipped; the command
- * then exits non-zero.
+ * to ten lead ulids, never a name or a phone). A site that fails is logged and skipped (the error's
+ * class and SQLSTATE only: a database error's message carries the bound words); the command then
+ * exits non-zero.
  */
 final class RebuildLeadSearchTermsCommand extends Command
 {
@@ -63,8 +65,13 @@ final class RebuildLeadSearchTermsCommand extends Command
                 }
             } catch (Throwable $e) {
                 $failed++;
-                Log::error('Lead search words check failed for a site', ['site_id' => $siteId, 'exception' => $e]);
-                $this->error("Site {$siteId}: {$e->getMessage()}");
+                // never the exception itself or its message: a database error carries the bound words
+                $sqlState = self::sqlState($e);
+                Log::error('Lead search words check failed for a site', [
+                    'site_id' => $siteId, 'exception_class' => $e::class, 'sql_state' => $sqlState,
+                    'at' => $e->getFile().':'.$e->getLine(),
+                ]);
+                $this->error("Site {$siteId}: ".$e::class.($sqlState !== null ? " (SQLSTATE {$sqlState})" : ''));
             }
             if ($drifted > 0) {
                 $corrected += $drifted;
@@ -125,6 +132,20 @@ final class RebuildLeadSearchTermsCommand extends Command
         $last = $leads->last();
 
         return [$leads->count(), [Cast::stringOrNull($last->created_at), Cast::string($last->ulid)], $wrong];
+    }
+
+    /** The SQLSTATE of a database error in $e's chain, never its message, SQL or bindings. */
+    private static function sqlState(Throwable $e): ?string
+    {
+        for ($cause = $e; $cause !== null; $cause = $cause->getPrevious()) {
+            if ($cause instanceof PDOException) {
+                $state = $cause->errorInfo[0] ?? $cause->getCode();
+
+                return is_string($state) && preg_match('/\A[0-9A-Z]{5}\z/', $state) === 1 ? $state : null;
+            }
+        }
+
+        return null;
     }
 
     /**
