@@ -24,6 +24,7 @@
 use App\Modules\Admin\Livewire\Blocks\Library as BlockLibrary;
 use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Admin\Livewire\Catalog\Index;
+use App\Modules\Admin\Livewire\Entries\ReviewChanges;
 use App\Modules\Admin\Livewire\Entries\ReviewInbox;
 use App\Modules\Admin\Livewire\Forms\FormList;
 use App\Modules\Admin\Livewire\Forms\Inbox;
@@ -884,8 +885,8 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         return (string) preg_replace('/^<div wire:id="([^"]+)"/', '<div wire:snapshot="'.e(is_string($snapshot) ? $snapshot : json_encode($snapshot)).'" wire:effects="[]" wire:id="$1"', $test->html(), 1);
     };
     $swap = function (string $page, string $component, string $name = 'admin\\.catalog\\.index'): string {
-        // the list's own root: the div that carries its snapshot, up to the div that closes it
-        expect(preg_match('/<div wire:snapshot="[^"]*'.$name.'/', $page, $m, PREG_OFFSET_CAPTURE))->toBe(1);
+        // the list's own root: the div that carries its snapshot (after its key, when it is a child), up to the div that closes it
+        expect(preg_match('/<div (?:wire:key="[^"]*" )?wire:snapshot="[^"]*'.$name.'/', $page, $m, PREG_OFFSET_CAPTURE))->toBe(1);
         $from = $m[0][1];
         preg_match_all('#<div\b|</div>#', $page, $tags, PREG_OFFSET_CAPTURE, $from);
         $depth = 0;
@@ -1300,5 +1301,26 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/editor-change-diff.html'))->toContain('data-change-diff')
         ->and(file_get_contents($dir.'/editor-change-return.html'))->toContain(e(__('entries.chg.return_err')));
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 111);
+    // Hộp duyệt (design board 17) once that change is sent: «Thay đổi của bài đang đăng» above the
+    // posts waiting, with «So sánh», the question before «Duyệt đăng thay đổi» and the note of «Trả lại»
+    // left empty.
+    $this->flushSession();
+    app('livewire')->flushState();
+    $inboxPage = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/review')->assertOk()->getContent();
+    expect($inboxPage)->toContain('data-chg-card', 'Gia công khuôn ép nhựa cho ngành ô tô', 'data-inbox-pick');
+    file_put_contents($dir.'/review-inbox-changes.html', $inboxPage);
+    $changes = fn () => Livewire::actingAs($owner)->test(ReviewChanges::class);
+    foreach ([
+        'review-inbox-changes-diff' => fn () => $changes()->call('openChange', $livePost->ulid, 'view'),
+        'review-inbox-changes-approve' => fn () => $changes()->call('openChange', $livePost->ulid, 'approve'),
+        'review-inbox-changes-return' => fn () => $changes()->call('openChange', $livePost->ulid, 'return')->call('confirmChange'),
+    ] as $name => $state) {
+        $part = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($state()));
+        file_put_contents($dir.'/'.$name.'.html', $swap($inboxPage, $part, 'admin\\.entries\\.review-changes'));
+    }
+    expect(file_get_contents($dir.'/review-inbox-changes-diff.html'))->toContain('data-change-diff')
+        ->and(file_get_contents($dir.'/review-inbox-changes-approve.html'))->toContain(e(__('entries.chg.ask_now')))
+        ->and(file_get_contents($dir.'/review-inbox-changes-return.html'))->toContain(e(__('entries.chg.return_err')));
+
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 115);
 });

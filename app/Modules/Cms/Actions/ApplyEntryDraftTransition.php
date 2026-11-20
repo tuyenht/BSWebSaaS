@@ -16,6 +16,7 @@ use App\Modules\Cms\Support\EntryNotifier;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Workflow\Exceptions\InvalidTransitionException;
+use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowState;
 use App\Modules\Workflow\Services\WorkflowEngine;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -56,7 +57,7 @@ final readonly class ApplyEntryDraftTransition
      * @throws EntryNotGovernedException no workflow governs this entry (apply with ApplyEntryDraft)
      * @throws EntryDraftRejectedException not_live · change_stale · content_invalid · category_governed · slug_taken
      * @throws InvalidTransitionException unknown move, wrong origin, or a missing required note
-     * @throws AuthorizationException the actor lacks the move's permission, sends a change to an entry they may not edit, or the entry or the change's category lies outside their category limits
+     * @throws AuthorizationException the actor lacks the move's permission, sends a change to an entry they may not edit (or moves an unsent one on without that right), the entry or the change's category lies outside their category limits, or $assignTo cannot take the change on
      */
     public function handle(
         Entry $entry,
@@ -92,9 +93,15 @@ final readonly class ApplyEntryDraftTransition
                 $this->workflows->authorizeMove($workflow, $transitionKey, $entry, $actor);
                 // A change may re-file the post: whoever moves it on must be able to write there too.
                 $this->workflows->authorizeChangeTarget($change, $entry, $actor);
+                $origin = $this->workflows->changeOriginFor($workflow, $change);
+                // An unsent change is its writers' work, whatever move a site's own flow offers from there.
+                if (! $this->workflows->mayMoveChangeFrom($workflow, $origin, $entry, $actor)) {
+                    throw new AuthorizationException(__('workflow.err_transition_forbidden'));
+                }
+                $this->authorizeAssignee($workflow, $transitionKey, $entry, $change, $assignTo);
 
                 $destination = $this->engine->apply(
-                    $workflow, $transitionKey, $this->workflows->changeOriginFor($workflow, $change), $actor,
+                    $workflow, $transitionKey, $origin, $actor,
                     $entry->id, $locale, $note, $assignTo, WorkflowEngine::TARGET_CHANGE,
                 );
 
@@ -117,6 +124,27 @@ final readonly class ApplyEntryDraftTransition
         $this->notify($entry, $locale, $actor, $destination, $change, $note, $assignTo);
 
         return $destination->key;
+    }
+
+    /**
+     * A change is handed only to a member of this website who can move it on from where it is going
+     * (the inbox's own rule for «Giao cho»), never to any users.id the caller passes. A move the
+     * workflow does not define passes through, for the engine to report.
+     *
+     * @throws AuthorizationException
+     */
+    private function authorizeAssignee(Workflow $workflow, string $transitionKey, Entry $entry, EntryDraft $change, ?int $assignTo): void
+    {
+        $transition = $assignTo !== null ? $workflow->transitions()->where('key', $transitionKey)->first() : null;
+        if ($transition === null) {
+            return;
+        }
+
+        $next = $workflow->transitions()->where('from_state', $transition->to_state)->get();
+        $member = $this->workflows->membersWhoMayApply($next, $entry, $change)?->whereKey($assignTo)->exists() === true;
+        if (! $member) {
+            throw new AuthorizationException(__('workflow.err_transition_forbidden'));
+        }
     }
 
     /** Write the change onto the website, keep what went live, and close the change. */
