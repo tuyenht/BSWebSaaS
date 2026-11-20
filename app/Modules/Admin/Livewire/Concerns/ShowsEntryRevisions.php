@@ -47,6 +47,7 @@ use Livewire\Attributes\Locked;
  * @property string $seoTitle
  * @property string $seoDescription
  * @property string $coverImageKey
+ * @property string $coverAlt
  */
 trait ShowsEntryRevisions
 {
@@ -369,15 +370,17 @@ trait ShowsEntryRevisions
         $coverThen = is_string($cover) && $cover !== '' ? $this->revisionCoverName($cover) : $noCover;
 
         $fields = [];
-        foreach ([
+        foreach (array_filter([
             ['entries.rev.f_title', $str($snap['title'] ?? null), $this->title, false],
             ['entries.rev.f_slug', $str($snap['slug'] ?? null), $this->slug, false],
             ['entries.rev.f_excerpt', $str($snap['excerpt'] ?? null), $this->excerpt, false],
             ['entries.rev.f_seo_title', $str($snap['seo_title'] ?? null), $this->seoTitle, false],
             ['entries.rev.f_seo_desc', $str($snap['seo_description'] ?? null), $this->seoDescription, false],
             ['entries.rev.f_cover', $coverThen, $coverNow, true],
+            // the picture's words, when the version holds them (one saved before they existed leaves them as they are)
+            array_key_exists('cover_alt', $snap) ? ['entries.ed.cover_alt_label', $str($snap['cover_alt']), $this->coverAlt, false] : null,
             ['entries.rev.f_tpl', $this->revisionTemplate($snap['template_override'] ?? null), $this->revisionTemplate($entry->template_override), true],
-        ] as [$label, $then, $now, $shared]) {
+        ]) as [$label, $then, $now, $shared]) {
             $fields[] = ['label' => Cast::string(__($label)), 'value' => $then, 'now' => $now, 'differs' => $then !== $now, 'shared' => $shared];
         }
 

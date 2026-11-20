@@ -624,3 +624,33 @@ it('keeps a governed post\'s lock when the main category field is emptied', func
 
     expect(eccCategoriesOf($post))->toBe([$events->id]);
 });
+
+it('holds the categories in order and the cover words last in what it compares, so a fresh form has nothing unsaved', function (): void {
+    $root = eccSection('tin-tuc', 'Tin tức');
+    $events = eccCategory('Sự kiện', $root);
+    $notices = eccCategory('Thông báo', $root);
+    $editor = eccMember('editor');
+    $post = eccPost($editor, $notices, $events);
+    app(Tenancy::class)->enter(1, function () use ($post): void {
+        $post->update(['meta' => ['image_url' => 'a/library/xuong-cccccccccccc.png']]);
+        $post->translationFor('vi')->update(['cover_alt' => 'Thợ đứng máy']);
+    });
+
+    app(Tenancy::class)->enter(1, function () use ($editor, $post, $events, $notices): void {
+        $form = Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid])
+            ->assertSet('coverAlt', 'Thợ đứng máy')->assertSet('categoryIds', [$notices->id, $events->id]);
+        $print = $form->get('storedPrint');
+        expect(array_slice(array_keys($print), -2))->toBe(['category', 'cover_alt'])
+            ->and($print['category'])->toBe($notices->id.','.$events->id);
+        expect($form->viewData('changes'))->toBe(0);
+
+        // saved as it is, then again from a fresh form: no question about someone else's save
+        $form->set('title', 'Bài đã sửa')->call('save')->assertHasNoErrors();
+        expect($form->get('stale'))->toBeNull();
+        $again = Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid]);
+        expect($again->get('storedPrint'))->toBe($form->get('storedPrint'))
+            ->and($again->viewData('changes'))->toBe(0);
+        $again->set('excerpt', 'Tóm tắt')->call('save')->assertHasNoErrors();
+        expect($again->get('stale'))->toBeNull();
+    });
+});
