@@ -2,7 +2,9 @@
 
 use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\Index;
+use App\Modules\Cms\Actions\ApplyEntryDraft;
 use App\Modules\Cms\Actions\ApplyEntryDraftTransition;
+use App\Modules\Cms\Actions\MovePage;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\PublishScheduledEntry;
 use App\Modules\Cms\Actions\RestoreEntryRevision;
@@ -10,6 +12,7 @@ use App\Modules\Cms\Actions\SaveEntryDraft;
 use App\Modules\Cms\Actions\TransitionEntryStatus;
 use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Exceptions\EntryDraftRejectedException;
+use App\Modules\Cms\Exceptions\PageMoveRejectedException;
 use App\Modules\Cms\Exceptions\RevisionRestoreRejectedException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
@@ -19,6 +22,7 @@ use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\BlankEntrySlug;
+use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
@@ -739,12 +743,14 @@ it('keeps an offline page under its parent when a live sub-page’s edits are he
     $writer = User::factory()->create();
     app(Tenancy::class)->enter(1, function () use ($writer, $editor, $case): void {
         grantRole($writer, 'writer', ['entries.view', 'entries.edit.any']);
-        if ($case === 'a workflow on') {
+        if ($case === 'a workflow on posts, which governs no page') {
             pcCollection();
             app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
         }
         $about = pcLivePage($editor, 'gioi-thieu', null);
         $team = pcLivePage($editor, 'doi-ngu', $about);
+        // a page files under no category, so no approval flow can govern one: the right to publish decides
+        expect(app(EntryWorkflowResolver::class)->forEntry($team))->toBeNull();
         $services = pcLivePage($editor, 'dich-vu', null);
         app(TransitionEntryStatus::class)->handle($about->fresh(), EntryStatus::Draft, $editor);
         $mover = $writer;
@@ -773,7 +779,7 @@ it('keeps an offline page under its parent when a live sub-page’s edits are he
         }
     });
     $this->get('http://a.test/gioi-thieu/doi-ngu')->assertStatus($case === 'no workflow' ? 301 : 200);
-})->with(['no workflow', 'a workflow on', 'a pending change on the sub-page']);
+})->with(['no workflow', 'a workflow on posts, which governs no page', 'a pending change on the sub-page']);
 
 it('holds an editor save in a second language in the same change, the live languages untouched', function (): void {
     [$author, $editor] = pcCast();
@@ -924,3 +930,262 @@ it('authorizes every change method on its own', function (string $method, array 
     'submitChange' => ['submitChange', []],
     'moveChange' => ['moveChange', ['submit']],
 ]);
+
+it('keeps an offline page under its parent through the editor’s «Trang cha» and a drag, when a live sub-page’s edits are held back', function (string $road): void {
+    [, $editor] = pcCast();
+    $writer = User::factory()->create();
+    app(Tenancy::class)->enter(1, function () use ($writer, $editor, $road): void {
+        grantRole($writer, 'writer', ['entries.view', 'entries.edit.any']);
+        $about = pcLivePage($editor, 'gioi-thieu', null);
+        pcLivePage($editor, 'doi-ngu', $about);
+        $services = pcLivePage($editor, 'dich-vu', null);
+        app(TransitionEntryStatus::class)->handle($about->fresh(), EntryStatus::Draft, $editor);
+        $routes = SiteRoute::query()->orderBy('id')->get(['entry_id', 'locale', 'path'])->toArray();
+        $why = __('entries.move_refused_subpage_held');
+
+        if ($road === 'editor') {
+            Livewire::actingAs($writer->fresh())->test(Editor::class, ['ulid' => $about->ulid])
+                ->set('parentUlid', $services->ulid)
+                ->call('save')
+                ->assertHasErrors('parentUlid')
+                ->assertDispatched('bs-toast', text: $why);
+        } else {
+            Livewire::actingAs($writer->fresh())->test(Index::class)
+                ->call('movePage', $about->ulid, $services->ulid, 'child', null)
+                ->assertDispatched('bs-toast', text: $why.' '.__('entries.move_tree_kept'));
+        }
+        expect($about->fresh()->parent_id)->toBeNull()
+            ->and(SiteRoute::query()->orderBy('id')->get(['entry_id', 'locale', 'path'])->toArray())->toBe($routes);
+    });
+})->with(['editor', 'drag']);
+
+it('judges a moved branch’s live sub-pages in the same number of queries however many there are', function (): void {
+    [, $editor] = pcCast();
+    $this->actingAs($editor);
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        // flat page addresses (the default): the move rewrites no route, so only the checks are counted
+        $page = fn (?Entry $parent = null, ?int $author = null): Entry => Entry::query()->create(['type' => 'page', 'status' => 'published', 'author_id' => $author, 'parent_id' => $parent?->id]);
+        // the same move each time: a page, alone under its parent, to a parent with no sub-pages yet
+        $move = function (int $subPages) use ($page, $editor): int {
+            $top = $page($page());
+            $target = $page();
+            for ($i = 0; $i < $subPages; $i++) {
+                $page($top, $i % 2 === 0 ? null : $editor->id);   // two authors among them
+            }
+            $queries = countQueries(fn () => app(MovePage::class)->into($top, $target));
+            expect($top->fresh()->parent_id)->toBe($target->id);
+
+            return $queries;
+        };
+        $move(2);   // the member's rights are read once, before counting
+
+        expect($move(12))->toBe($move(2));
+    });
+});
+
+it('asks the right to publish of each author among the sub-pages, for a member who edits only their own', function (string $case): void {
+    $writer = User::factory()->create();
+    $other = User::factory()->create();
+    $this->actingAs($writer);
+    app(Tenancy::class)->enter(1, function () use ($writer, $other, $case): void {
+        grantRole($writer, 'own-publisher', ['entries.view', 'entries.edit.own', 'entries.publish']);
+        $about = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $writer->id]);
+        $target = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $writer->id]);
+        Entry::query()->create(['type' => 'page', 'status' => 'published', 'author_id' => $writer->id, 'parent_id' => $about->id]);
+        Entry::query()->create(['type' => 'page', 'status' => 'published', 'author_id' => $case === 'all theirs' ? $writer->id : $other->id, 'parent_id' => $about->id]);
+
+        if ($case === 'all theirs') {
+            app(MovePage::class)->into($about, $target);
+            expect($about->fresh()->parent_id)->toBe($target->id);
+
+            return;
+        }
+        expect(fn () => app(MovePage::class)->into($about, $target))
+            ->toThrow(fn (PageMoveRejectedException $e) => expect($e->reason)->toBe('subpage_held'));
+        expect($about->fresh()->parent_id)->toBeNull();
+    });
+})->with(['all theirs', 'one by someone else']);
+
+/** «Giới thiệu» with «Đội ngũ» under it, both live in Vietnamese and English, then English taken off the page with a new link. */
+function pcPagesWithEnglishOff(User $editor): array
+{
+    DB::connection('pgsql_admin')->table('site_locales')->insert([
+        'site_id' => 1, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'created_at' => now(), 'updated_at' => now(),
+    ]);
+    $about = pcLivePage($editor, 'gioi-thieu', null);
+    $team = pcLivePage($editor, 'doi-ngu', $about);
+    foreach ([[$about, 'about'], [$team, 'team']] as [$page, $slug]) {
+        $page->translations()->create(['locale' => 'en', 'title' => ucfirst($slug), 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);
+        app(PublishEntry::class)->handle($page->fresh(), 'en', $editor);
+    }
+    // English leaves the page (the page stays live in Vietnamese); its link changes while it is off
+    $about->fresh()->translationFor('en')->update(['status' => 'draft', 'slug' => 'about-us']);
+
+    return [$about->fresh(), $team->fresh()];
+}
+
+it('moves a live page’s sub-pages in a language that goes live again on its own', function (string $road): void {
+    [, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($editor, $road): void {
+        [$about, $team] = pcPagesWithEnglishOff($editor);
+        $teamVi = SiteRoute::query()->where('entry_id', $team->id)->where('locale', 'vi')->value('path');
+        $before = SiteRoute::query()->where('entry_id', $team->id)->where('locale', 'en')->value('path');
+        expect($before)->toEndWith('/about/team');
+
+        if ($road === 'publish') {
+            app(PublishEntry::class)->handle($about, 'en', $editor);
+        } else {
+            // a change in English applied by a publisher: the page's English goes live with it
+            app(SaveEntryDraft::class)->handle($about, $editor, 'en', ['title' => 'About us']);
+            app(ApplyEntryDraft::class)->handle($about->fresh(), $editor, pcChange($about)->version());
+        }
+
+        $after = SiteRoute::query()->where('entry_id', $team->id)->where('locale', 'en')->value('path');
+        expect($about->fresh()->translationFor('en')->status)->toBe('published')
+            ->and($after)->toEndWith('/about-us/team')
+            ->and(Redirect::query()->where('locale', 'en')->where('from_path', $before)->where('to_path', $after)->exists())->toBeTrue()
+            ->and(SiteRoute::query()->where('entry_id', $team->id)->where('locale', 'vi')->value('path'))->toBe($teamVi);
+    });
+})->with(['publish', 'apply']);
+
+it('saves a body-only edit of a held post into its change, from an older or a formatted body', function (string $body): void {
+    [$author, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($author, $editor, $body): void {
+        $post = pcLivePost(pcCollection(), $author, $editor);
+        $post->translationFor('vi')->update(['body' => ['blocks' => [['type' => 'richtext', 'props' => ['heading' => 'Mở đầu', 'paragraphs' => ['Đoạn một.']]]]]]);
+        if ($body === 'formatted') {
+            // opened and saved once in the rich editor by someone who may publish: stored as it writes it
+            Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid])->call('save')->assertHasNoErrors();
+        }
+        $live = $post->fresh()->translationFor('vi')->body;
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+
+        $page = Livewire::actingAs($author)->test(Editor::class, ['ulid' => $post->ulid])
+            ->assertSet('converted', $body === 'older');
+        $html = (string) $page->get('bodyHtml');
+        expect($html)->toContain('Đoạn một.');
+        $page->set('bodyHtml', str_replace('Đoạn một.', 'Đoạn một đã sửa.', $html))
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertDispatched('bs-toast', text: __('entries.chg.t_saved_wf'));
+
+        expect(json_encode(pcChange($post)?->content['locales']['vi']['body'] ?? null, JSON_UNESCAPED_UNICODE))->toContain('Đoạn một đã sửa.')
+            ->and($post->fresh()->translationFor('vi')->body)->toBe($live);
+    });
+})->with(['older', 'formatted']);
+
+it('rolls a scheduled page back when its sub-page’s new address is taken, nothing moved', function (): void {
+    [, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        $about = pcLivePage($editor, 'gioi-thieu', null);
+        $team = pcLivePage($editor, 'doi-ngu', $about);
+        app(SaveEntryDraft::class)->handle($about, $editor, 'vi', ['slug' => 've-chung-toi']);
+        app(TransitionEntryStatus::class)->handle($about->fresh(), EntryStatus::Draft, $editor);
+        $other = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
+        SiteRoute::query()->create(['locale' => 'vi', 'path' => '/ve-chung-toi/doi-ngu', 'entry_id' => $other->id]);
+        $about->fresh()->update(['status' => 'scheduled', 'published_at' => now()->subMinute()]);
+        $redirects = Redirect::query()->count();
+
+        expect(fn () => app(PublishScheduledEntry::class)->handle($about->fresh()))
+            ->toThrow(fn (RouteConflictException $e) => expect($e->path)->toBe('/ve-chung-toi/doi-ngu')->and($e->subPageOf($about->id))->toBeTrue());
+        expect($about->fresh()->status)->toBe('scheduled')
+            ->and(SiteRoute::query()->where('entry_id', $team->id)->pluck('path')->all())->toBe(['/gioi-thieu/doi-ngu'])
+            ->and(Redirect::query()->count())->toBe($redirects);
+    });
+});
+
+it('refuses to apply a page’s change whose new link moves a sub-page to a taken address, saying which, nothing moved', function (): void {
+    [, $editor] = pcCast();
+    $writer = User::factory()->create();
+    app(Tenancy::class)->enter(1, function () use ($writer, $editor): void {
+        grantRole($writer, 'writer', ['entries.view', 'entries.edit.any']);
+        $about = pcLivePage($editor, 'gioi-thieu', null);
+        $team = pcLivePage($editor, 'doi-ngu', $about);
+        Livewire::actingAs($writer->fresh())->test(Editor::class, ['ulid' => $about->ulid])
+            ->set('slug', 've-chung-toi')->call('save')
+            ->assertHasNoErrors()
+            ->assertDispatched('bs-toast', text: __('entries.chg.t_saved'));
+        $other = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
+        SiteRoute::query()->create(['locale' => 'vi', 'path' => '/ve-chung-toi/doi-ngu', 'entry_id' => $other->id]);
+        $redirects = Redirect::query()->count();
+
+        $form = Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $about->ulid])
+            ->call('askApplyChange')
+            ->call('applyChange')
+            ->assertHasNoErrors('slug')
+            ->assertHasErrors('workflow');
+        expect($form->errors()->first('workflow'))->toBe(__('entries.change_err_subpage_path_taken', ['path' => '/ve-chung-toi/doi-ngu']));
+
+        expect(pcChange($about))->not->toBeNull()
+            ->and($about->fresh()->translationFor('vi')->slug)->toBe('gioi-thieu')
+            ->and(SiteRoute::query()->where('entry_id', $about->id)->pluck('path')->all())->toBe(['/gioi-thieu'])
+            ->and(SiteRoute::query()->where('entry_id', $team->id)->pluck('path')->all())->toBe(['/gioi-thieu/doi-ngu'])
+            ->and(Redirect::query()->count())->toBe($redirects);
+    });
+});
+
+it('says which sub-page address is taken when a page cannot go live again, never blaming its own free link', function (string $road): void {
+    [, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($editor, $road): void {
+        $about = pcLivePage($editor, 'gioi-thieu', null);
+        $team = pcLivePage($editor, 'doi-ngu', $about);
+        app(SaveEntryDraft::class)->handle($about, $editor, 'vi', ['slug' => 've-chung-toi']);
+        app(TransitionEntryStatus::class)->handle($about->fresh(), EntryStatus::Draft, $editor);
+        $other = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
+        SiteRoute::query()->create(['locale' => 'vi', 'path' => '/ve-chung-toi/doi-ngu', 'entry_id' => $other->id]);
+        $said = __('entries.subpage_path_taken', ['path' => '/ve-chung-toi/doi-ngu']);
+
+        match ($road) {
+            'editor' => expect(Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $about->ulid])
+                ->call('publish')
+                ->assertHasNoErrors('slug')
+                ->assertHasErrors('workflow')
+                ->errors()->first('workflow'))->toBe($said),
+            'row menu' => Livewire::actingAs($editor)->test(Index::class)
+                ->call('changeStatus', $about->ulid, 'published')
+                ->assertDispatched('bs-toast', text: $said),
+            'bulk' => Livewire::actingAs($editor)->test(Index::class)
+                ->set('selected', [$about->ulid])
+                ->call('bulkPublish')
+                ->assertDispatched('bs-toast', text: __('entries.bulk_published', ['count' => 0]).' '.__('entries.bulk_path_taken', ['count' => 1])),
+        };
+
+        expect($about->fresh()->status)->toBe('draft')
+            ->and(SiteRoute::query()->where('entry_id', $team->id)->pluck('path')->all())->toBe(['/gioi-thieu/doi-ngu']);
+    });
+})->with(['editor', 'row menu', 'bulk']);
+
+it('says which sub-page address is taken when a live page’s link is changed in the list or an older version is restored, nothing moved', function (string $road): void {
+    [, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($editor, $road): void {
+        $about = pcLivePage($editor, 'gioi-thieu', null);
+        $team = pcLivePage($editor, 'doi-ngu', $about);
+        $other = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
+
+        if ($road === 'list link') {
+            SiteRoute::query()->create(['locale' => 'vi', 'path' => '/ve-chung-toi/doi-ngu', 'entry_id' => $other->id]);
+            Livewire::actingAs($editor)->test(Index::class)
+                ->call('saveSlug', $about->ulid, 've-chung-toi')
+                ->assertDispatched('bs-toast', text: __('entries.subpage_path_taken', ['path' => '/ve-chung-toi/doi-ngu']));
+            $kept = ['gioi-thieu', '/gioi-thieu', '/gioi-thieu/doi-ngu'];
+        } else {
+            // the page went to a new link, its sub-page with it; the sub-page's old address is taken since
+            $first = EntryRevision::query()->where('entry_id', $about->id)->where('locale', 'vi')->orderBy('id')->firstOrFail();
+            Livewire::actingAs($editor)->test(Index::class)->call('saveSlug', $about->ulid, 've-chung-toi');
+            Redirect::query()->where('from_path', '/gioi-thieu/doi-ngu')->delete();
+            SiteRoute::query()->create(['locale' => 'vi', 'path' => '/gioi-thieu/doi-ngu', 'entry_id' => $other->id]);
+            $refused = null;
+            try {
+                app(RestoreEntryRevision::class)->handle($first, $editor);
+            } catch (RevisionRestoreRejectedException $e) {
+                $refused = $e;
+            }
+            expect($refused?->userMessage())->toBe(__('entries.revision_err_subpage_path_taken', ['path' => '/gioi-thieu/doi-ngu']));
+            $kept = ['ve-chung-toi', '/ve-chung-toi', '/ve-chung-toi/doi-ngu'];
+        }
+
+        expect($about->fresh()->translationFor('vi')->slug)->toBe($kept[0])
+            ->and(SiteRoute::query()->where('entry_id', $about->id)->pluck('path')->all())->toBe([$kept[1]])
+            ->and(SiteRoute::query()->where('entry_id', $team->id)->pluck('path')->all())->toBe([$kept[2]]);
+    });
+})->with(['list link', 'older version']);

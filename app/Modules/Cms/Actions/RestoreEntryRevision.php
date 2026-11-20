@@ -112,8 +112,10 @@ final readonly class RestoreEntryRevision
 
                 return false;
             });
-        } catch (RouteConflictException) {
-            throw new RevisionRestoreRejectedException('slug_taken');
+        } catch (RouteConflictException $e) {
+            throw $e->subPageOf($entry->id)
+                ? new RevisionRestoreRejectedException('subpage_path_taken', $e->path)
+                : new RevisionRestoreRejectedException('slug_taken');
         }
 
         Audit::record(self::AUDIT_ACTION, [

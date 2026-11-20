@@ -51,9 +51,20 @@ final class PageRules
      */
     public static function ancestorsOf(Entry $page): array
     {
+        return self::above($page->id, $page->parent_id);
+    }
+
+    /**
+     * The ids of the pages from $parentId up, nearest first, for page $pageId placed under it (the same
+     * walk as ancestorsOf, for a parent read again since the page was loaded).
+     *
+     * @return list<int>
+     */
+    public static function above(int $pageId, ?int $parentId): array
+    {
         $ancestors = [];
-        $seen = [$page->id => true];
-        $parent = $page->parent_id;
+        $seen = [$pageId => true];
+        $parent = $parentId;
 
         while ($parent !== null && ! isset($seen[$parent]) && count($ancestors) < self::CHAIN_LIMIT) {
             $ancestors[] = $parent;

@@ -10,6 +10,7 @@ use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
@@ -103,6 +104,39 @@ function plPageLock(string $sql, array $bindings): bool
     return str_contains($sql, 'pg_advisory_xact_lock') && ($bindings[0] ?? null) === 'pages:1';
 }
 
+/**
+ * The ids a row lock names (whereKey inlines integer keys into the statement).
+ *
+ * @return list<int>
+ */
+function plNamed(string $sql): array
+{
+    preg_match('/"id" in \(([\d, ]+)\)/', $sql, $m);
+
+    return array_values(array_map(intval(...), array_filter(explode(',', str_replace(' ', '', $m[1] ?? '')))));
+}
+
+/** Whether a second session gets this lock at once (it waits at most 300ms), rolled back either way. */
+function plOtherSessionCan(string $sql, int $id): bool
+{
+    $other = DB::connection('pgsql_admin');
+    $other->beginTransaction();
+    try {
+        $other->statement("set local lock_timeout = '300ms'");
+        $other->select($sql, [$id]);
+
+        return true;
+    } catch (QueryException $e) {
+        if (($e->errorInfo[0] ?? null) === '55P03') {
+            return false;
+        }
+
+        throw $e;
+    } finally {
+        $other->rollBack();
+    }
+}
+
 it('locks the page rows a move writes in id order, after the page-tree lock', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         $b = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'position' => 1]);
@@ -117,7 +151,7 @@ it('locks the page rows a move writes in id order, after the page-tree lock', fu
 
             return array_map('intval', array_filter(explode(',', str_replace(' ', '', $m[1] ?? ''))));
         };
-        $rows = plFirst($statements, fn (string $sql): bool => str_contains($sql, 'from "entries"') && str_contains($sql, 'for update')
+        $rows = plFirst($statements, fn (string $sql): bool => str_contains($sql, 'from "entries"') && str_contains($sql, MovePage::ROW_LOCK)
             && in_array($page->id, $named($sql), true) && in_array($b->id, $named($sql), true));
 
         expect($lock)->toBeInt()->and($rows)->toBeInt()->and($lock)->toBeLessThan($rows)
@@ -126,6 +160,99 @@ it('locks the page rows a move writes in id order, after the page-tree lock', fu
         $sorted = $ids;
         sort($sorted);
         expect($ids)->toBe($sorted)->and($ids)->toContain($a->id, $b->id, $page->id);
+    });
+});
+
+/*
+ * A page that goes live again re-syncs the addresses of the pages under it while it holds its own row
+ * (RouteSync::syncSubPagesOf). A move of one of those pages to another parent therefore locks that old
+ * parent's row too, in the same id-ordered statement: whichever of the two takes the row first, the other
+ * reads the tree after it commits, so the publication never writes the moved page's address back under
+ * its old parent. Asserted by the statement, as above, not by a two-connection race.
+ */
+it('locks the pages above a moved page, where it was and where it goes, with the other rows of the move, in id order', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $top = Entry::query()->create(['type' => 'page', 'status' => 'draft']);
+        $old = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'parent_id' => $top->id]);
+        $newTop = Entry::query()->create(['type' => 'page', 'status' => 'draft']);
+        $new = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'parent_id' => $newTop->id]);
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'parent_id' => $old->id]);
+
+        $statements = plStatements(fn () => app(MovePage::class)->handle($page, $new, 0));
+        $rows = plFirst($statements, fn (string $sql): bool => str_contains($sql, 'from "entries"') && str_contains($sql, MovePage::ROW_LOCK)
+            && in_array($page->id, plNamed($sql), true) && in_array($new->id, plNamed($sql), true));
+
+        expect($rows)->toBeInt()->and($page->fresh()?->parent_id)->toBe($new->id);
+        $ids = plNamed($statements[$rows][0]);
+        $sorted = $ids;
+        sort($sorted);
+        expect($ids)->toContain($top->id, $old->id, $newTop->id, $new->id, $page->id)->and($ids)->toBe($sorted);
+    });
+});
+
+/*
+ * Putting a page live again re-syncs the pages under it while it holds its own row, and records each
+ * moved address against the page under it: the foreign key takes a key share on that row. A move locks
+ * the pages above the moved one too, in id order, so a moved page made before its parent is locked
+ * first; with a full update lock the two would wait on each other until Postgres aborted one. The
+ * move's lock leaves key shares free and still holds every writer's row lock: probed from a second
+ * session while the move holds its rows.
+ */
+it('holds the rows it moves against every writer but lets a row that points at them be written', function (): void {
+    // committed first, so the second session sees the rows
+    [$page, $old, $new] = app(Tenancy::class)->enter(1, function (): array {
+        // made first, then put under a newer page: its id is lower than its parent's
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'draft']);
+        $old = Entry::query()->create(['type' => 'page', 'status' => 'draft']);
+        $page->forceFill(['parent_id' => $old->id])->save();
+
+        return [$page, $old, Entry::query()->create(['type' => 'page', 'status' => 'draft'])];
+    });
+
+    app(Tenancy::class)->enter(1, function () use ($page, $old, $new): void {
+        $probe = [];
+        DB::listen(function (QueryExecuted $query) use ($page, $old, &$probe): void {
+            if ($probe === [] && str_contains(strtolower($query->sql), MovePage::ROW_LOCK)) {
+                $probe = [
+                    'key share on the page' => plOtherSessionCan('select id from entries where id = ? for key share', $page->id),
+                    'row lock on the page' => plOtherSessionCan('select id from entries where id = ? for update', $page->id),
+                    'row lock on the parent it leaves' => plOtherSessionCan('select id from entries where id = ? for update', $old->id),
+                ];
+            }
+        });
+        app(MovePage::class)->handle($page, $new, 0);
+
+        expect($probe)->toBe(['key share on the page' => true, 'row lock on the page' => false, 'row lock on the parent it leaves' => false])
+            ->and($page->fresh()?->parent_id)->toBe($new->id);
+    });
+});
+
+it('locks the rows of a «Trang cha» save from the editor as the move does, the pages above it included', function (): void {
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'owner', PermissionRegistry::TENANT_PERMISSIONS));
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $top = Entry::query()->create(['type' => 'page', 'status' => 'draft']);
+        $old = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'parent_id' => $top->id]);
+        $new = Entry::query()->create(['type' => 'page', 'status' => 'draft']);
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'parent_id' => $old->id]);
+        foreach ([[$top, 'tren'], [$old, 'cu'], [$new, 'moi'], [$page, 'trang']] as [$row, $slug]) {
+            $row->translations()->create(['locale' => 'vi', 'title' => 'T '.$slug, 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);
+        }
+        $editor = Livewire::actingAs($user->fresh() ?? $user)->test(Editor::class, ['ulid' => $page->ulid])->set('parentUlid', $new->ulid);
+
+        $statements = plStatements(fn () => $editor->call('save'));
+        $rows = plFirst($statements, fn (string $sql): bool => str_contains($sql, 'from "entries"') && str_contains($sql, MovePage::ROW_LOCK));
+
+        // the editor's own pre-lock, not the move's: it comes before the editor takes the page row for update
+        $rowLock = plFirst($statements, fn (string $sql): bool => str_contains($sql, 'from "entries"') && str_contains($sql, 'for update'));
+
+        expect($page->fresh()?->parent_id)->toBe($new->id)->and($rows)->toBeInt()->and($rowLock)->toBeInt()
+            ->and($rows)->toBeLessThan($rowLock)
+            ->and(plFirst($statements, plPageLock(...)))->toBeLessThan($rows);
+        // the rows are locked in the order the statement returns them
+        expect(plNamed($statements[$rows][0]))->toContain($top->id, $old->id, $new->id, $page->id)
+            ->and($statements[$rows][0])->toContain('order by "id" asc');
     });
 });
 

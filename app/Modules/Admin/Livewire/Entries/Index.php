@@ -680,6 +680,12 @@ final class Index extends Component
             $this->toast(__('entries.workflow_governed'));
 
             return;
+        } catch (RouteConflictException $e) {
+            // its address, or a sub-page's it would move along, is another item's: nothing changed
+            $this->toast(Cast::string(__($e->subPageOf($entry->id) ? 'entries.subpage_path_taken'
+                : ($e->reserved() ? 'entries.slug_reserved' : 'entries.slug_conflict'), ['path' => $e->path])));
+
+            return;
         } catch (ModelNotFoundException) {
             $this->toastStaleRow(); // sent to the Trash or purged since the list loaded it
 
@@ -1018,7 +1024,9 @@ final class Index extends Component
                 $this->recordLiveEdit($entry, $translation);
             });
         } catch (RouteConflictException $e) {
-            $this->fieldError(Cast::string(__($e->reserved() ? 'entries.slug_reserved' : 'entries.slug_conflict')));
+            // the new address, or a sub-page's it moves along, is another item's: nothing changed
+            $this->fieldError(Cast::string(__($e->subPageOf($entry->id) ? 'entries.subpage_path_taken'
+                : ($e->reserved() ? 'entries.slug_reserved' : 'entries.slug_conflict'), ['path' => $e->path])));
 
             return;
         }
@@ -2013,7 +2021,7 @@ final class Index extends Component
             return null;
         }
 
-        $tally = [$doneKey => 0, $skippedKey => 0, 'entries.bulk_governed' => 0, 'entries.bulk_failed' => 0];
+        $tally = [$doneKey => 0, $skippedKey => 0, 'entries.bulk_governed' => 0, 'entries.bulk_path_taken' => 0, 'entries.bulk_failed' => 0];
         $done = [];
         $counts = app(CategoryItemCounts::class);
 
@@ -2065,7 +2073,7 @@ final class Index extends Component
     {
         $tally = $run['tally'];
         $parts = [Cast::string(__($doneKey, ['count' => $tally[$doneKey]] + $replace))];
-        foreach ([$skippedKey, 'entries.bulk_governed', 'entries.bulk_failed'] as $key) {
+        foreach ([$skippedKey, 'entries.bulk_governed', 'entries.bulk_path_taken', 'entries.bulk_failed'] as $key) {
             if ($tally[$key] > 0) {
                 $parts[] = Cast::string(__($key, ['count' => $tally[$key]]));
             }
@@ -2253,12 +2261,14 @@ final class Index extends Component
             return 'entries.bulk_governed';   // left as is: only the editor's approval block may move it
         } catch (AuthorizationException) {
             return $skippedKey;               // not theirs to change: an expected answer, not a fault
+        } catch (RouteConflictException) {
+            return 'entries.bulk_path_taken'; // its address, or a sub-page's it moves along, is another item's: rolled back
         } catch (Throwable $e) {
             if (ConcurrencyError::is($e)) {
                 throw $e;                     // the transaction is aborted: runBulk() abandons the run
             }
-            // A slug clash or a database failure: its savepoint is rolled back, so report it and
-            // carry on — the toast says how many rows failed.
+            // A database failure: its savepoint is rolled back, so report it and carry on — the
+            // toast says how many rows failed.
             report($e);
 
             return 'entries.bulk_failed';

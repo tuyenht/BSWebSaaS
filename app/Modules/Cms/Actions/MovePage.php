@@ -8,6 +8,7 @@ use App\Modules\Audit\Facades\Audit;
 use App\Modules\Cms\Exceptions\PageMoveRejectedException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Support\PageRules;
@@ -54,6 +55,12 @@ final readonly class MovePage
 {
     /** The most pages one sibling list may hold for a move to renumber it (one statement). */
     public const int SIBLINGS_MAX = PageRules::WALK_SIZE;
+
+    /**
+     * The row lock a move takes (and the editor's «Trang cha» save before it): the strength of an update
+     * that changes no key, so a row that only points at a locked page is still written meanwhile.
+     */
+    public const string ROW_LOCK = 'for no key update';
 
     public function __construct(
         private RouteSync $routes,
@@ -207,9 +214,19 @@ final readonly class MovePage
 
             // a new parent moves the pages under the page too (their nested address, the trail above them)
             $branch = $reparented ? PageRules::subPageIds($page) : [];
+            // and its address hangs on every page above it, there and here (see the lock below)
+            $above = $reparented ? [...PageRules::above($page->id, $oldParent), ...($parent === null ? [] : PageRules::ancestorsOf($parent))] : [];
 
-            // the rows the move writes or rests on, locked in id order; a page or parent gone meanwhile is refused
-            $locked = $this->lockRows([$page->id, ...($newParent === null ? [] : [$newParent]), ...$oldSiblings, ...$siblings, ...$branch]);
+            // the rows the move writes or rests on, locked in id order; a page or parent gone meanwhile is refused.
+            // The pages above it, there and here, too: putting one live again re-syncs the pages under it
+            // under its own row lock (RouteSync::syncSubPagesOf), so one that waited here reads the page in
+            // its new place, and one that came first has written its routes (the new parent's address
+            // among them) before this move gives the page its new address. That re-sync records a moved
+            // address against a page under it (a key share on its row) while it holds its own row: the
+            // move's lock leaves key shares free (lockRows), so a page locked here before the page above
+            // it never waits in a circle with that re-sync.
+            $locked = $this->lockRows([$page->id, ...($newParent === null ? [] : [$newParent]), ...($oldParent === null ? [] : [$oldParent]),
+                ...$above, ...$oldSiblings, ...$siblings, ...$branch]);
             if (! $locked->has($page->id)) {
                 throw new PageMoveRejectedException('page_invalid');
             }
@@ -272,6 +289,12 @@ final readonly class MovePage
      * page with a live sub-page whose edits this member makes into a change, whatever the page's own
      * status: the move gives that sub-page a new address and a new trail just as well.
      *
+     * The sub-pages are judged as SaveEntryDraft::holdsBack() judges one page, in a fixed number of
+     * queries however many there are (up to PageRules::WALK_SIZE, under the site's tree lock): a page
+     * files under no category, so no approval workflow governs it (EntryWorkflowResolver); one pending
+     * change on any of them holds the move back; and the right to publish is asked once per author
+     * among them, the only thing about a page that right turns on (`entries.edit.own`).
+     *
      * @param  list<int>  $branch  the pages under it (PageRules::subPageIds()), their rows locked
      *
      * @throws PageMoveRejectedException
@@ -288,8 +311,19 @@ final readonly class MovePage
         if ($branch === []) {
             return;
         }
-        foreach (Entry::query()->whereKey($branch)->where('status', 'published')->orderBy('id')->get() as $sub) {
-            if ($this->changes->holdsBack($sub, $user)) {
+        $live = Entry::query()->whereKey($branch)->where('type', 'page')->where('status', 'published')->orderBy('id')->get();
+        if ($live->isEmpty()) {
+            return;
+        }
+        if (EntryDraft::query()->whereIn('entry_id', $live->modelKeys())->exists()) {
+            throw new PageMoveRejectedException('subpage_held');
+        }
+        $gate = Gate::forUser($user);
+        $mayPublish = [];
+        foreach ($live as $sub) {
+            $author = $sub->author_id ?? 0;
+            $mayPublish[$author] ??= $gate->allows('publish', $sub);
+            if (! $mayPublish[$author]) {
                 throw new PageMoveRejectedException('subpage_held');
             }
         }
@@ -345,7 +379,7 @@ final readonly class MovePage
         $ids = array_values(array_unique($ids));
         sort($ids);
 
-        return Entry::query()->whereKey($ids)->orderBy('id')->lockForUpdate()
+        return Entry::query()->whereKey($ids)->orderBy('id')->lock(self::ROW_LOCK)
             ->get(['id', 'site_id', 'parent_id', 'position'])->keyBy('id');
     }
 
