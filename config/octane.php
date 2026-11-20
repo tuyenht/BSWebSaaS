@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Rbac\Listeners\FlushRbacTeamContext;
+use App\Modules\Rbac\Listeners\SyncPermissionCache;
 use App\Modules\Tenancy\Listeners\FlushTenancyContext;
 use Laravel\Octane\Contracts\OperationTerminated;
 use Laravel\Octane\Events\RequestHandled;
@@ -75,7 +76,7 @@ return [
         RequestReceived::class => [
             ...Octane::prepareApplicationForNextOperation(),
             ...Octane::prepareApplicationForNextRequest(),
-            //
+            SyncPermissionCache::class,
         ],
 
         RequestHandled::class => [
@@ -90,7 +91,7 @@ return [
 
         TaskReceived::class => [
             ...Octane::prepareApplicationForNextOperation(),
-            //
+            SyncPermissionCache::class,
         ],
 
         TaskTerminated::class => [
@@ -100,7 +101,7 @@ return [
 
         TickReceived::class => [
             ...Octane::prepareApplicationForNextOperation(),
-            //
+            SyncPermissionCache::class,
         ],
 
         TickTerminated::class => [
