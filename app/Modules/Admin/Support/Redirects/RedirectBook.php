@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Support\Redirects;
 
+use App\Modules\Audit\Facades\Audit;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Cms\Routing\RedirectRules;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\SafeLink;
 use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Database\Eloquent\Collection;
@@ -25,8 +28,14 @@ use Illuminate\Support\Str;
  * without the language prefix (the storefront strips it before the lookup and lays it over the new
  * address). The old address is lower-cased, without a trailing "/", a query or an anchor (the
  * storefront looks up the lower-cased path alone); non-ASCII letters are percent-encoded as browsers
- * send them. Only an address on this website is accepted as the new one (SafeLink::isSitePath): a
- * redirect to another website is not offered.
+ * send them.
+ *
+ * The new address is a path on this website (SafeLink::isSitePath) — or, only when the caller says
+ * the website may ($external: the member holds the right and the website's switch is on), another
+ * website's address, stored exactly as SafeLink::externalHttps() gives it. An old address under a
+ * path the application's own routes use (sign-in, /admin…: RedirectRules::reservedFrom) is refused.
+ * Every change that makes, alters or removes a redirect to another website leaves an audit row
+ * (who, from, to) in the same transaction: the change does not happen unaudited.
  */
 final class RedirectBook
 {
@@ -36,7 +45,20 @@ final class RedirectBook
     /** The columns' width. */
     public const int PATH_MAX = 255;
 
-    public function __construct(private readonly SiteLocale $locales) {}
+    public const string AUDIT_ADDED = 'cms.redirect.external_added';
+
+    public const string AUDIT_CHANGED = 'cms.redirect.external_changed';
+
+    public const string AUDIT_TRASHED = 'cms.redirect.external_trashed';
+
+    public const string AUDIT_RESTORED = 'cms.redirect.external_restored';
+
+    public const string AUDIT_PURGED = 'cms.redirect.external_purged';
+
+    public function __construct(
+        private readonly SiteLocale $locales,
+        private readonly RedirectRules $rules,
+    ) {}
 
     /**
      * The old address as the storefront looks it up; null when it is not an address of this site.
@@ -66,26 +88,51 @@ final class RedirectBook
     }
 
     /**
+     * The new address as it is stored: a path of this site, or with $external another website's
+     * address; null when it is neither (or too long for the column).
+     *
+     * @param  list<string>  $hosts
+     */
+    public function target(string $raw, string $locale, array $hosts, bool $external): ?string
+    {
+        $path = $this->newPath($raw, $locale, $hosts);
+        if ($path !== null && SafeLink::isSitePath($path) && strlen($path) <= self::PATH_MAX) {
+            return $path;
+        }
+        $url = $external && $path === null ? SafeLink::externalHttps($raw) : null;
+
+        return $url !== null && strlen($url) <= self::PATH_MAX ? $url : null;
+    }
+
+    /**
      * What is wrong with a redirect as entered, field by field (empty when it can be saved).
      *
      * @param  list<string>  $hosts
+     * @param  bool  $external  whether another website's address may be the new one
      * @return array<'from'|'to', string>
      */
-    public function problems(?string $ulid, string $locale, string $fromRaw, string $toRaw, array $hosts): array
+    public function problems(?string $ulid, string $locale, string $fromRaw, string $toRaw, array $hosts, bool $external = false): array
     {
         $errors = [];
         $from = $this->oldPath($fromRaw, $locale, $hosts);
-        $to = $this->newPath($toRaw, $locale, $hosts);
+        $to = $this->target($toRaw, $locale, $hosts, $external);
 
         if (trim($fromRaw) === '') {
             $errors['from'] = __('admin.rd.err_from_empty');
         } elseif ($from === null || ! SafeLink::isSitePath($from) || strlen($from) > self::PATH_MAX) {
             $errors['from'] = __('admin.rd.err_from_site');
+        } elseif ($this->rules->reservedFrom($from)) {
+            $errors['from'] = __('admin.rd.err_from_system');
         }
         if (trim($toRaw) === '') {
             $errors['to'] = __('admin.rd.err_to_empty');
-        } elseif ($to === null || ! SafeLink::isSitePath($to) || strlen($to) > self::PATH_MAX) {
-            $errors['to'] = __('admin.rd.err_to_site');
+        } elseif ($to === null) {
+            $errors['to'] = match (true) {
+                strlen(trim($toRaw)) > self::PATH_MAX => __('admin.rd.err_to_long', ['max' => self::PATH_MAX]),
+                $external && $this->newPath($toRaw, $locale, $hosts) === null => __('admin.rd.err_to_external'),
+                $external => __('admin.rd.err_to_either'),
+                default => __('admin.rd.err_to_site'),
+            };
         }
         if ($errors !== [] || $from === null || $to === null) {
             return $errors;
@@ -120,27 +167,42 @@ final class RedirectBook
      * Add a redirect (ulid null) or change one in service. Returns the saved row, or null when the
      * row is gone or its old address was taken meanwhile.
      *
+     * The caller checks problems() first, with the same $external.
+     *
      * @param  list<string>  $hosts
      */
-    public function save(?string $ulid, string $locale, string $fromRaw, string $toRaw, int $code, array $hosts): ?Redirect
+    public function save(?string $ulid, string $locale, string $fromRaw, string $toRaw, int $code, array $hosts, bool $external = false): ?Redirect
     {
-        $from = (string) $this->oldPath($fromRaw, $locale, $hosts);
-        $to = (string) $this->newPath($toRaw, $locale, $hosts);
+        $from = $this->oldPath($fromRaw, $locale, $hosts);
+        $to = $this->target($toRaw, $locale, $hosts, $external);
         $code = in_array($code, Redirect::STATUS_CODES, true) ? $code : 301;
+        if ($from === null || $to === null || $this->rules->reservedFrom($from)) {
+            return null;
+        }
 
         try {
             return DB::transaction(function () use ($ulid, $locale, $from, $to, $code): ?Redirect {
                 if ($ulid === null) {
-                    return Redirect::query()->create([
+                    $row = Redirect::query()->create([
                         'locale' => $locale, 'from_path' => $from, 'to_path' => $to,
                         'status_code' => $code, 'source' => Redirect::SOURCE_MANUAL,
                     ]);
+                    if (RedirectRules::isExternal($row)) {
+                        $this->audit(self::AUDIT_ADDED, $row, null);
+                    }
+
+                    return $row;
                 }
                 $row = $this->find($ulid, false);
                 if ($row === null) {
                     return null;
                 }
+                $was = $row->only(['locale', 'from_path', 'to_path', 'status_code']);
+                $wasExternal = RedirectRules::isExternal($row);
                 $row->update(['locale' => $locale, 'from_path' => $from, 'to_path' => $to, 'status_code' => $code]);
+                if ($wasExternal || RedirectRules::isExternal($row)) {
+                    $this->audit(self::AUDIT_CHANGED, $row, $was);
+                }
 
                 return $row;
             });
@@ -161,7 +223,12 @@ final class RedirectBook
         if ($rows->isEmpty()) {
             return [];
         }
-        Redirect::query()->whereKey($rows->modelKeys())->delete();
+        DB::transaction(function () use ($rows): void {
+            Redirect::query()->whereKey($rows->modelKeys())->delete();
+            foreach ($rows->filter(fn (Redirect $row): bool => RedirectRules::isExternal($row)) as $row) {
+                $this->audit(self::AUDIT_TRASHED, $row, null);
+            }
+        });
 
         return array_values(array_filter($rows->pluck('ulid')->all(), 'is_string'));
     }
@@ -185,7 +252,12 @@ final class RedirectBook
                 continue;
             }
             try {
-                DB::transaction(fn () => $row->restore());
+                DB::transaction(function () use ($row): void {
+                    $row->restore();
+                    if (RedirectRules::isExternal($row)) {
+                        $this->audit(self::AUDIT_RESTORED, $row, null);
+                    }
+                });
                 $restored++;
             } catch (UniqueConstraintViolationException) {
                 $blocked++;
@@ -203,7 +275,14 @@ final class RedirectBook
             return false;
         }
 
-        return (bool) $row->forceDelete();
+        return DB::transaction(function () use ($row): bool {
+            $gone = (bool) $row->forceDelete();
+            if ($gone && RedirectRules::isExternal($row)) {
+                $this->audit(self::AUDIT_PURGED, $row, null);
+            }
+
+            return $gone;
+        });
     }
 
     /**
@@ -217,9 +296,21 @@ final class RedirectBook
         if (! in_array($code, Redirect::STATUS_CODES, true)) {
             return 0;
         }
-        $ids = $this->many($ulids, false)->where('status_code', '!=', $code)->modelKeys();
+        $rows = $this->many($ulids, false)->where('status_code', '!=', $code);
+        if ($rows->isEmpty()) {
+            return 0;
+        }
 
-        return $ids === [] ? 0 : Redirect::query()->whereKey($ids)->update(['status_code' => $code]);
+        return DB::transaction(function () use ($rows, $code): int {
+            $n = Redirect::query()->whereKey($rows->modelKeys())->update(['status_code' => $code]);
+            foreach ($rows->filter(fn (Redirect $row): bool => RedirectRules::isExternal($row)) as $row) {
+                $was = $row->only(['locale', 'from_path', 'to_path', 'status_code']);
+                $row->status_code = $code;
+                $this->audit(self::AUDIT_CHANGED, $row, $was);
+            }
+
+            return $n;
+        });
     }
 
     /** The row with this key: in service ($trashed false) or in the trash ($trashed true). */
@@ -244,6 +335,34 @@ final class RedirectBook
         }
 
         return ($trashed ? Redirect::onlyTrashed() : Redirect::query())->whereIn('ulid', $keys)->orderBy('id')->get();
+    }
+
+    /**
+     * The audit row of a change to a redirect to another website (or from one, on an edit): who (the
+     * signed-in member, filled in by the audit service), from and to. Written in the change's own
+     * transaction and never swallowed: if it cannot be written, the change rolls back.
+     *
+     * @param  self::AUDIT_*  $action
+     * @param  array<string, mixed>|null  $was  the row's values before an edit
+     */
+    private function audit(string $action, Redirect $row, ?array $was): void
+    {
+        $removed = in_array($action, [self::AUDIT_TRASHED, self::AUDIT_PURGED], true);
+        Audit::recordOrFail($action, [
+            'auditable_type' => Redirect::class,
+            'auditable_id' => $row->getKey(),
+            'meta' => array_filter([
+                'name' => $row->from_path,
+                'was' => $removed ? $row->to_path : ($was === null ? null : Cast::string($was['to_path'] ?? null)),
+                'value' => $removed ? null : $row->to_path,
+                'ulid' => $row->ulid,
+                'locale' => $row->locale,
+                'from' => $row->from_path,
+                'to' => $row->to_path,
+                'status_code' => $row->status_code,
+                'before' => $was,
+            ], fn (mixed $v): bool => $v !== null),
+        ]);
     }
 
     /**

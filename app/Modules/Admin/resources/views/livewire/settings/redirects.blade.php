@@ -39,7 +39,8 @@
             <p class="m-0 text-text-muted">{{ __('admin.rd.noperm_body', ['role' => $role !== '' ? $role : __('admin.domains_noperm_role_none')]) }}</p>
         </div>
     @elseif ($failed)
-        <div role="alert" class="flex flex-col items-start gap-2 rounded-md border border-border bg-surface p-5 shadow-card" wire:loading.remove wire:target="$refresh">
+        {{-- the page itself in this state (its heading says it), not a message that arrives later: no live region --}}
+        <div class="flex flex-col items-start gap-2 rounded-md border border-border bg-surface p-5 shadow-card" wire:loading.remove wire:target="$refresh">
             <x-bs-admin::icon name="ri-wifi-off" class="size-6 text-danger-text" />
             <h2 class="m-0 text-[calc(1rem+var(--user-text-boost))] font-semibold text-text-strong">{{ __('admin.rd.error_title') }}</h2>
             <p class="m-0 text-text-muted">{{ __('admin.rd.error_body') }}</p>
@@ -197,6 +198,15 @@
                                         <span class="sr-only">{{ __('admin.rd.to_sr') }}</span>
                                         <span class="min-w-0 font-mono text-small text-primary-text [overflow-wrap:anywhere]" dir="ltr">{{ $r['to'] }}</span>
                                     </span>
+                                    @if ($r['external_host'] !== null)
+                                        <span class="flex min-w-0 items-start gap-1 text-small text-text-muted">
+                                            <x-bs-admin::icon name="ri-external-link" class="mt-0.5 size-4 shrink-0" />
+                                            <span class="min-w-0 [overflow-wrap:anywhere]">{{ __('admin.rd.to_external', ['host' => $r['external_host']]) }}</span>
+                                        </span>
+                                        @if (! $externalOn && ! $trashed)
+                                            <span class="self-start"><x-bs-admin::badge color="warning" soft pill class="whitespace-normal leading-snug"><x-bs-admin::icon name="ri-error-warning" class="size-3.5 shrink-0" />{{ __('admin.rd.chip_external_off') }}</x-bs-admin::badge></span>
+                                        @endif
+                                    @endif
                                     @if ($r['loop'])
                                         <span class="self-start"><x-bs-admin::badge color="danger" soft pill class="whitespace-normal leading-snug"><x-bs-admin::icon name="ri-loop-left" class="size-3.5 shrink-0" />{{ __('admin.rd.chip_loop', ['chain' => $r['from'].' → '.$r['to'].' → '.$r['from']]) }}</x-bs-admin::badge></span>
                                     @elseif ($r['page'])
@@ -333,7 +343,7 @@
                         @if ($toErr !== '')
                             <x-bs-admin::field-error id="rd-to-d">{{ $toErr }}</x-bs-admin::field-error>
                         @else
-                            <p id="rd-to-d" class="m-0 text-small text-text-muted">{{ __('admin.rd.ed_to_hint') }}</p>
+                            <p id="rd-to-d" class="m-0 text-small text-text-muted">{{ $external ? __('admin.rd.ed_to_hint_ext') : __('admin.rd.ed_to_hint') }}</p>
                         @endif
                     </div>
                     <div class="flex flex-col gap-2">

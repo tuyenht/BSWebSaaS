@@ -33,7 +33,8 @@ final readonly class SetPlanFeatures
     public function handle(Plan $plan, array $features): void
     {
         foreach ($features as $key => $value) {
-            $refusal = FeatureRegistry::refusal($key, $value);
+            // a switch no plan carries is not a feature of a plan
+            $refusal = FeatureRegistry::siteOnly($key) ? 'unknown_feature' : FeatureRegistry::refusal($key, $value);
 
             if ($refusal !== null) {
                 throw new FeatureChangeRejectedException($refusal);

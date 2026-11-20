@@ -119,7 +119,7 @@ final class PlanCatalog
     public static function effective(array $grants): array
     {
         $out = [];
-        foreach (FeatureRegistry::all() as $key => $feature) {
+        foreach (FeatureRegistry::onPlans() as $key => $feature) {
             $out[$key] = $grants[$key] ?? $feature['default'];
         }
 

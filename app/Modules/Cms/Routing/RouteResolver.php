@@ -88,7 +88,11 @@ final class RouteResolver
             }
         }
 
-        $held = Redirect::query()->whereIn('locale', $locales)->where('from_path', $path)->pluck('locale')->all();
+        // only a row the storefront would follow there counts: one it ignores must not send the
+        // visitor to a language where the address then fails
+        $rules = app(RedirectRules::class);
+        $held = Redirect::query()->whereIn('locale', $locales)->where('from_path', $path)->get(['locale', 'from_path', 'to_path'])
+            ->filter(fn (Redirect $row): bool => $rules->follows($row))->pluck('locale')->all();
         foreach ($locales as $locale) {
             if (in_array($locale, $held, true)) {
                 return $locale;

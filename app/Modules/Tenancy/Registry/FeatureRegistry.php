@@ -20,9 +20,10 @@ final class FeatureRegistry
     /**
      * `scope` says whose the feature is: `site` — one website holds it, so a single website can be
      * given its own value; `tenant` — it belongs to the customer across all their websites, so only
-     * the plan sets it.
+     * the plan sets it. `plans` false marks a switch no plan carries: it is off until a super_admin
+     * turns it on for one website (SiteFeatures), and a plan grant for it is never stored or read.
      *
-     * @return array<string, array{name: string, kind: 'boolean'|'limit', default: bool|int, scope: 'site'|'tenant'}>
+     * @return array<string, array{name: string, kind: 'boolean'|'limit', default: bool|int, scope: 'site'|'tenant', plans?: false}>
      */
     public static function all(): array
     {
@@ -50,7 +51,27 @@ final class FeatureRegistry
             // still waiting for an answer (SiteHeadcount). Checked when someone is invited and when an
             // invitation is accepted, so a website already above its limit keeps everyone it has.
             'users.max' => ['name' => 'Số người dùng tối đa / website', 'kind' => 'limit', 'default' => 10, 'scope' => 'site'],
+            // Whether the website's «Chuyển hướng» may send a visitor to another website (an https
+            // address). Off: the screen does not offer it and the storefront ignores such rows.
+            'redirects.external' => ['name' => 'Chuyển hướng sang website khác', 'kind' => 'boolean', 'default' => false, 'scope' => 'site', 'plans' => false],
         ];
+    }
+
+    /**
+     * The features a plan may carry: every one but the switches only a super_admin turns on for one
+     * website. What the plan screens list, edit and compare.
+     *
+     * @return array<string, array{name: string, kind: 'boolean'|'limit', default: bool|int, scope: 'site'|'tenant', plans?: false}>
+     */
+    public static function onPlans(): array
+    {
+        return array_filter(self::all(), static fn (array $feature): bool => ($feature['plans'] ?? true) !== false);
+    }
+
+    /** Whether $key is a switch no plan carries: only a website's own value (set by a super_admin) turns it on. */
+    public static function siteOnly(string $key): bool
+    {
+        return self::has($key) && ! array_key_exists($key, self::onPlans());
     }
 
     public static function has(string $key): bool

@@ -12,6 +12,7 @@ use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Cms\Routing\RedirectRules;
 use App\Modules\Cms\Routing\ResolvedCategory;
 use App\Modules\Cms\Routing\ResolvedContent;
 use App\Modules\Cms\Routing\ResolvedProduct;
@@ -74,6 +75,7 @@ final readonly class StorefrontController
         private ThankYouPages $thankYou,
         private TitleDisambiguator $titles,
         private NotFoundPage $notFoundPage,
+        private RedirectRules $redirectRules,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -104,9 +106,9 @@ final readonly class StorefrontController
         app()->setLocale($locale);
 
         if ($dotted) {
-            $redirect = $this->resolver->redirect($locale, $path);
-            if ($redirect instanceof Redirect && SafeLink::isSitePath($redirect->to_path)) {
-                return redirect()->to($this->paths->publicUrl($redirect->to_path, $locale), $redirect->status_code);
+            $followed = $this->follow($this->resolver->redirect($locale, $path), $locale);
+            if ($followed !== null) {
+                return $followed;
             }
 
             $moved = $locale === $default ? $this->resolver->heldElsewhere($this->formerLocales($default), $path, routes: false) : null;
@@ -118,12 +120,9 @@ final readonly class StorefrontController
         $resolved = $this->resolver->resolve($locale, $path);
 
         if ($resolved === null) {
-            $redirect = $this->resolver->redirect($locale, $path);
-            // A stored target that is not a path on this site (`//host`, `/\host`, a full link) is
-            // never followed: a redirect row must not become a way off the site. Rows keep the
-            // unprefixed path of their language, like routes, so the prefix is laid over here.
-            if ($redirect instanceof Redirect && SafeLink::isSitePath($redirect->to_path)) {
-                return redirect()->to($this->paths->publicUrl($redirect->to_path, $locale), $redirect->status_code);
+            $followed = $this->follow($this->resolver->redirect($locale, $path), $locale);
+            if ($followed !== null) {
+                return $followed;
             }
 
             // A clean path the default language does not hold may be an address of a language that
@@ -244,6 +243,26 @@ final readonly class StorefrontController
         }
 
         return [$default, $path, null];   // langcode-shaped but not public → 404 via route miss
+    }
+
+    /**
+     * The response for a stored redirect, or null when there is none or it is not followed. A path
+     * on this site gets the language prefix laid over it (rows keep the unprefixed path of their
+     * language, like routes). Another website's address is followed only while the website's switch
+     * is on, and only as stored — exactly the form SafeLink::externalHttps() gives. Anything else
+     * (`//host`, `/\\host`, a row under a sign-in or /admin address, an outside address with the
+     * switch off) is ignored: the request goes on as if there were no row.
+     */
+    private function follow(?Redirect $redirect, string $locale): ?Response
+    {
+        if (! $redirect instanceof Redirect || ! $this->redirectRules->follows($redirect)) {
+            return null;
+        }
+        if (SafeLink::isSitePath($redirect->to_path)) {
+            return redirect()->to($this->paths->publicUrl($redirect->to_path, $locale), $redirect->status_code);
+        }
+
+        return redirect()->away($redirect->to_path, $redirect->status_code);
     }
 
     /**

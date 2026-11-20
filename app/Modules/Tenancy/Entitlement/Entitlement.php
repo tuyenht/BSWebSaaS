@@ -105,6 +105,11 @@ final class Entitlement
             }
         }
 
+        // A switch no plan carries is the website's own value alone: a stray plan row never turns it on.
+        if (FeatureRegistry::siteOnly($key)) {
+            return FeatureRegistry::default($key);
+        }
+
         // Else the tenant's plan grant. sites/tenants are global (D6) so this join is context-free.
         $planId = Site::query()
             ->whereKey($current->id())
@@ -152,6 +157,10 @@ final class Entitlement
 
         if ((FeatureRegistry::all()[$key]['scope'] ?? 'site') !== 'site') {
             return ["({$plan})", [$key, $siteId]];
+        }
+
+        if (FeatureRegistry::siteOnly($key)) {
+            return ['(select sf.value from site_features sf where sf.site_id = ? and sf.feature_key = ?)', [$siteId, $key]];
         }
 
         return [

@@ -330,5 +330,6 @@ it('lists a page of redirects on a flat query budget, whatever they lead to', fu
     $seed(3, 8);
     $many = $render();
 
-    expect($many)->toBe($few)->and($many)->toBeLessThanOrEqual(9);
+    // 10: the page, its counts and its names, plus the website's switch for redirects to another website
+    expect($many)->toBe($few)->and($many)->toBeLessThanOrEqual(10);
 });

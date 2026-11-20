@@ -12,6 +12,7 @@ use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\SafeLink;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 
@@ -284,6 +285,8 @@ final class RedirectDirectory
                 'locale' => $row->locale,
                 'from' => $row->from_path,
                 'to' => $row->to_path,
+                // another website's address: its host, for «Đi tới website khác: …»
+                'external_host' => SafeLink::isExternalHttps($row->to_path) ? parse_url($row->to_path, PHP_URL_HOST) : null,
                 'code' => $row->status_code,
                 'source' => $row->source,
                 'target_kind' => $kind,

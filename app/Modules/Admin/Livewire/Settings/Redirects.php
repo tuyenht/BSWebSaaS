@@ -9,6 +9,7 @@ use App\Modules\Admin\Support\Redirects\RedirectDirectory;
 use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Cms\Routing\RedirectRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\UserPreferences;
 use App\Modules\Rbac\Support\RoleLabel;
@@ -41,8 +42,12 @@ use Livewire\Component;
  * Rows are named by their key (ulid) in the page and in every call, never by the row id; the page
  * cursor is an encrypted note (RedirectDirectory). Group, filters, search, sort and the cursor live
  * in the URL; the page size is the member's own (users.preferences.lists."settings.redirects").
- * Only an address on this website is accepted as the new address: a redirect to another website is
- * not offered.
+ * The new address is a page of this website; another website's address (https only, strictly
+ * checked) is offered only while the website's `redirects.external` switch is on — a super_admin
+ * turns it on — and only to a member the RedirectPolicy lets (settings.manage). The switch is checked
+ * on its own as well (external()): super_admin passes every policy, never the switch. Rows to another
+ * website that already exist stay listed while it is off, marked as not running (the storefront
+ * ignores them). An old address under a sign-in or /admin path is refused (RedirectRules).
  */
 #[Layout('admin::layouts.app')]
 final class Redirects extends Component
@@ -288,7 +293,7 @@ final class Redirects extends Component
         }
 
         $adding = $this->edUlid === null;
-        $row = $this->book()->save($this->edUlid, $this->edLocale, $this->edFrom, $this->edTo, $this->edCode, $this->hosts());
+        $row = $this->book()->save($this->edUlid, $this->edLocale, $this->edFrom, $this->edTo, $this->edCode, $this->hosts(), $this->external());
         if ($row === null) {
             // gone meanwhile, or its old address was taken meanwhile: say which
             if (! $this->checkFields(['from', 'to'])) {
@@ -457,6 +462,7 @@ final class Redirects extends Component
         }
 
         $siteLocale = app(SiteLocale::class);
+        $externalOn = app(RedirectRules::class)->externalOn();
         $view = view('admin::livewire.settings.redirects', $data + [
             'allowed' => true,
             'failed' => $failed,
@@ -466,6 +472,10 @@ final class Redirects extends Component
             'siteTime' => app(SiteTime::class),
             'paths' => app(PathBuilder::class),
             'pageWarn' => $this->edOpen && $this->pageWarning(),
+            // the switch read once for the page (the same answer external() gives: the policy is
+            // settings.manage, already checked, and this switch)
+            'external' => $externalOn,
+            'externalOn' => $externalOn,
         ]);
         $view->title($title);
 
@@ -489,7 +499,7 @@ final class Redirects extends Component
      */
     private function checkFields(array $fields): bool
     {
-        $problems = $this->book()->problems($this->edUlid, $this->edLocale, $this->edFrom, $this->edTo, $this->hosts());
+        $problems = $this->book()->problems($this->edUlid, $this->edLocale, $this->edFrom, $this->edTo, $this->hosts(), $this->external());
         foreach (['from' => 'edFrom', 'to' => 'edTo'] as $field => $key) {
             if (! in_array($field, $fields, true)) {
                 continue;
@@ -613,7 +623,16 @@ final class Redirects extends Component
 
     private function allowed(): bool
     {
-        return Gate::allows('settings.manage');
+        return Gate::allows('manage', Redirect::class);
+    }
+
+    /**
+     * Whether this member may make a redirect to another website here: the policy (settings.manage
+     * and the switch) and the switch itself, which super_admin's pass through every policy skips.
+     */
+    private function external(): bool
+    {
+        return Gate::allows('external', Redirect::class) && app(RedirectRules::class)->externalOn();
     }
 
     private function authorized(): void

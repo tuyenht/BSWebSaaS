@@ -488,6 +488,8 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
             ['/khuyen-mai-tet', '/bang-gia', 302, 'manual', null],
             ['/vong-a', '/vong-b', 301, 'manual', null],
             ['/vong-b', '/vong-a', 301, 'manual', null],
+            // another website's address, with the website's switch off: listed with its host, marked not running
+            ['/doi-tac', 'https://doitac.example/gioi-thieu', 302, 'manual', null],
         ] as [$from, $to, $code, $source, $entryId]) {
             Redirect::query()->create(['locale' => 'vi', 'from_path' => $from, 'to_path' => $to, 'status_code' => $code, 'source' => $source, 'entry_id' => $entryId]);
         }
@@ -495,7 +497,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     });
     $this->flushSession();
     $page = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/redirects')->assertOk()->getContent();
-    expect($page)->toContain('/khuyen-mai-tet', 'Chuyển tạm');
+    expect($page)->toContain('/khuyen-mai-tet', 'Chuyển tạm', 'Đi tới website khác: doitac.example');
     file_put_contents($dir.'/redirects.html', $page);
     $open = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(RedirectSettings::class)
         ->call('openAdd')->set('edFrom', '/gioi-thieu-cu')->set('edTo', 'https://trang-khac.example/x')->assertHasErrors(['edTo'])->html());

@@ -50,7 +50,7 @@ final readonly class PlanChangePreview
         foreach ($planIds as $planId) {
             $own = $planId === null ? [] : Cast::arr($grants->get($planId)?->pluck('value', 'feature_key')->all());
             $values = [];
-            foreach (FeatureRegistry::all() as $key => $feature) {
+            foreach (FeatureRegistry::onPlans() as $key => $feature) {
                 $values[$key] = array_key_exists($key, $own) ? self::coerce($own[$key], $feature['kind']) : $feature['default'];
             }
             $out[$planId ?? ''] = $values;
@@ -69,7 +69,7 @@ final readonly class PlanChangePreview
     public function diff(array $from, array $to): array
     {
         $rows = [];
-        foreach (FeatureRegistry::all() as $key => $feature) {
+        foreach (FeatureRegistry::onPlans() as $key => $feature) {
             $a = $from[$key] ?? $feature['default'];
             $b = $to[$key] ?? $feature['default'];
             $change = match (true) {

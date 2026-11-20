@@ -64,7 +64,8 @@ final class AuditCatalog
         ],
         'new_site' => ['provisioning.site.provisioned'],
         'support' => ['support.session.issued', 'support.session.entered', 'support.session.ended', 'support.session.notice_failed'],
-        'settings' => ['settings.support_access.changed', 'settings.locales.changed', 'settings.locales.default_changed', 'platform.security.turnstile_login', 'audit.month_deleted', 'audit.months_pruned'],
+        'settings' => ['settings.support_access.changed', 'settings.locales.changed', 'settings.locales.default_changed', 'platform.security.turnstile_login', 'audit.month_deleted', 'audit.months_pruned',
+            'cms.redirect.external_added', 'cms.redirect.external_changed', 'cms.redirect.external_trashed', 'cms.redirect.external_restored', 'cms.redirect.external_purged'],
     ];
 
     /** @var array<string, string>|null code => group key */
