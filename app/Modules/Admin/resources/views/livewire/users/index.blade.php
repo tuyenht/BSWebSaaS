@@ -208,6 +208,7 @@
                             $can = ! $you && $top < $ceiling;
                             $why = $you ? __('admin.members.why_you') : __('admin.members.why_level');
                             $roleNames = $member->roles->sortByDesc('level')->map(fn ($r): string => RoleLabel::for($r))->values()->all();
+                            $topRole = $member->roles->sortByDesc('level')->first();
                             $limits = $scopes[$member->id] ?? [];
                             $statusLabel = __('admin.members.status_active');
                         @endphp
@@ -263,6 +264,9 @@
                                         </x-bs-admin::button>
                                         <x-slot:menu>
                                             <x-bs-admin::list.menu-item icon="ri-shield-user" :why="$locked ? $lockedWhy : null" wire:click="openPanel({{ Js::from($member->ulid) }})">{{ __('admin.members.edit') }}</x-bs-admin::list.menu-item>
+                                            @if ($topRole !== null)
+                                                <x-bs-admin::list.menu-item icon="ri-file-list-3" wire:click="openExplain({{ Js::from($topRole->name) }})">{{ __('admin.members.x_member_item') }}</x-bs-admin::list.menu-item>
+                                            @endif
                                             <x-bs-admin::list.menu-sep />
                                             <x-bs-admin::list.menu-item icon="ri-user-unfollow" danger :why="$locked ? $lockedWhy : null" wire:click="askRemove({{ Js::from($member->ulid) }})">{{ __('admin.members.remove') }}</x-bs-admin::list.menu-item>
                                         </x-slot:menu>
@@ -337,14 +341,18 @@
                 <fieldset class="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
                     <legend class="sr-only">{{ __('admin.members.col_roles') }}</legend>
                     @foreach ($choices as $role)
-                        @php $fixed = ! in_array($role->name, $grantable, true); @endphp
-                        <label class="flex min-h-hit cursor-pointer items-start gap-3 rounded-md border border-border px-3 py-2.5 has-checked:border-primary has-checked:bg-primary/5 has-disabled:cursor-not-allowed">
-                            <input type="checkbox" value="{{ $role->name }}" wire:model.live="panelRoles" @disabled($fixed) class="mt-1 size-4.5 shrink-0 accent-primary-text">
-                            <span class="flex min-w-0 flex-col">
-                                <span class="text-body font-medium text-text-strong [overflow-wrap:anywhere]">{{ RoleLabel::for($role) }}</span>
-                                <span class="text-small text-text-muted">{{ $fixed ? __('admin.members.role_fixed') : $describe($role) }}</span>
+                        @php $fixed = ! in_array($role->name, $grantable, true); $rid = 'members-pn-role-'.substr(md5($role->name), 0, 10); @endphp
+                        <div class="flex min-h-hit items-start gap-3 rounded-md border border-border px-3 py-2.5 has-checked:border-primary has-checked:bg-primary/5">
+                            <input id="{{ $rid }}" type="checkbox" value="{{ $role->name }}" wire:model.live="panelRoles" @disabled($fixed) class="mt-1 size-4.5 shrink-0 accent-primary-text">
+                            <span class="flex min-w-0 flex-col items-start">
+                                <label for="{{ $rid }}" @class(['flex flex-col', 'cursor-pointer' => ! $fixed, 'cursor-not-allowed' => $fixed])>
+                                    <span class="text-body font-medium text-text-strong [overflow-wrap:anywhere]">{{ RoleLabel::for($role) }}</span>
+                                    <span class="text-small text-text-muted">{{ $fixed ? __('admin.members.role_fixed') : $describe($role) }}</span>
+                                </label>
+                                <button type="button" class="inline-flex min-h-control-row items-center text-sm font-medium text-primary-text transition-colors hover:underline any-pointer-coarse:min-h-hit" aria-label="{{ __('admin.members.x_more_aria', ['role' => RoleLabel::for($role)]) }}"
+                                    wire:click="openExplain({{ Js::from($role->name) }})">{{ __('admin.members.x_more') }}</button>
                             </span>
-                        </label>
+                        </div>
                     @endforeach
                 </fieldset>
                 @if ($panelError !== '')
@@ -376,6 +384,12 @@
                     </section>
                 @endif
                 <div class="flex flex-col gap-2 rounded-md bg-surface-muted px-3.5 py-3 text-small">
+                    {{-- always in the page, so screen readers hear the sentence appear on the first tick --}}
+                    @if ($pnSum !== '')
+                        <p class="m-0 text-text-strong">{{ $pnSum }}</p>
+                    @endif
+                    {{-- always in the page, so a screen reader hears the sentence change as boxes are ticked --}}
+                    <x-bs-admin::sr-live>{{ $pnSum }}</x-bs-admin::sr-live>
                     <b class="text-text-strong">{{ __('admin.members.pv_title', ['name' => $first($panelMember->name)]) }}</b>
                     @if ($added === [] && $removed === [])
                         <span class="text-text-muted">{{ __('admin.members.pv_none') }}</span>
@@ -494,13 +508,18 @@
                         <legend class="mb-1 text-body font-medium text-text-strong">{{ __('admin.members.col_roles') }} <span class="text-danger-text" aria-hidden="true">*</span><span class="sr-only">{{ __('admin.members.required') }}</span></legend>
                         <p id="members-inv-roles-h" class="m-0 text-small text-text-muted">{{ __('admin.members.inv_roles_hint', ['role' => $myRole]) }}</p>
                         @foreach ($assignable as $role)
-                            <label class="flex min-h-hit cursor-pointer items-start gap-3 rounded-md border border-border px-3 py-2.5 has-checked:border-primary has-checked:bg-primary/5">
-                                <input type="checkbox" value="{{ $role->name }}" wire:model.live="inviteRoles" class="mt-1 size-4.5 shrink-0 accent-primary-text">
-                                <span class="flex min-w-0 flex-col">
-                                    <span class="text-body font-medium text-text-strong [overflow-wrap:anywhere]">{{ RoleLabel::for($role) }}</span>
-                                    <span class="text-small text-text-muted">{{ $describe($role) }}</span>
+                            @php $rid = 'members-inv-role-'.substr(md5($role->name), 0, 10); @endphp
+                            <div class="flex min-h-hit items-start gap-3 rounded-md border border-border px-3 py-2.5 has-checked:border-primary has-checked:bg-primary/5">
+                                <input id="{{ $rid }}" type="checkbox" value="{{ $role->name }}" wire:model.live="inviteRoles" class="mt-1 size-4.5 shrink-0 accent-primary-text">
+                                <span class="flex min-w-0 flex-col items-start">
+                                    <label for="{{ $rid }}" class="flex cursor-pointer flex-col">
+                                        <span class="text-body font-medium text-text-strong [overflow-wrap:anywhere]">{{ RoleLabel::for($role) }}</span>
+                                        <span class="text-small text-text-muted">{{ $describe($role) }}</span>
+                                    </label>
+                                    <button type="button" class="inline-flex min-h-control-row items-center text-sm font-medium text-primary-text transition-colors hover:underline any-pointer-coarse:min-h-hit" aria-label="{{ __('admin.members.x_more_aria', ['role' => RoleLabel::for($role)]) }}"
+                                        wire:click="openExplain({{ Js::from($role->name) }})">{{ __('admin.members.x_more') }}</button>
                                 </span>
-                            </label>
+                            </div>
                         @endforeach
                         @error('inviteRoles')<x-bs-admin::field-error>{{ $message }}</x-bs-admin::field-error>@enderror
                     </fieldset>
@@ -522,6 +541,17 @@
                             @endif
                             <p class="m-0 flex items-start gap-1.5 text-small text-text-muted"><x-bs-admin::icon name="ri-information" class="mt-0.5 size-4 shrink-0" /><span>{{ __('admin.members.inv_sc_note') }}</span></p>
                         </section>
+                    @endif
+                    @if ($invScope !== null)
+                        {{-- what the invited person will be able to do, in a sentence (design 22) --}}
+                        <div class="flex flex-col gap-2 rounded-md bg-surface-muted px-3.5 py-3 text-small">
+                            <x-bs-admin::sr-live>{{ $ivSum !== '' ? $ivSum : __('admin.members.sm_inv_none') }}</x-bs-admin::sr-live>
+                            @if ($ivSum !== '')
+                                <p class="m-0 text-text-strong">{{ $ivSum }}</p>
+                            @else
+                                <span class="text-text-muted">{{ __('admin.members.sm_inv_none') }}</span>
+                            @endif
+                        </div>
                     @endif
                     <div class="flex flex-col gap-1.5" x-data="{ n: {{ mb_strlen($inviteMessage) }} }">
                         <label for="members-inv-msg" class="flex flex-wrap items-baseline gap-x-2 text-body font-medium text-text-strong">{{ __('admin.members.inv_msg') }} <span class="font-normal text-text-muted">{{ __('admin.members.optional') }}</span><span class="ms-auto text-small font-normal text-text-muted" aria-hidden="true"><span x-text="n">{{ mb_strlen($inviteMessage) }}</span>/500</span></label>
@@ -559,5 +589,38 @@
         </x-bs-admin::modal>
     @endif
 
-    <x-bs-admin::toast :message="$toast" :tone="$toastTone" dismiss="dismissToast" :undo="$undoRoles !== null ? 'undo' : null" :seq="$toastSeq" />
+    {{-- «Nhóm này làm được gì?» (design 22, «Nhóm quyền»): after the panels and the invite dialog, so it stands over
+         them (Escape closes it first, focus goes back to the button that opened it). --}}
+    <x-bs-admin::modal model="explainOpen" size="lg" :title="$explain !== null ? __('admin.members.x_title', ['role' => $explain['name']]) : ''"
+        :subtitle="$explain['meta'] ?? null" :close-label="__('admin.members.x_close')">
+        @if ($explain !== null)
+            @foreach ($explain['areas'] as $area)
+                <section class="flex min-w-0 flex-col gap-1.5" aria-labelledby="members-x-{{ $area['key'] }}">
+                    <h3 id="members-x-{{ $area['key'] }}" class="m-0 text-[calc(0.875rem+var(--user-text-boost))] font-semibold text-text-strong">{{ $area['name'] }}</h3>
+                    @if ($area['off'] !== '')
+                        <p class="m-0 flex items-start gap-1.5 text-small text-text-muted"><x-bs-admin::icon name="ri-lock-2" class="mt-0.5 size-4 shrink-0" /><span>{{ $area['off'] }}</span></p>
+                    @endif
+                    <ul class="m-0 flex list-none flex-col gap-1 p-0">
+                        @foreach ($area['items'] as $item)
+                            <li @class(['flex items-start gap-2 text-body', 'text-text' => $item['ok'], 'text-text-muted' => ! $item['ok']])>
+                                <x-bs-admin::icon :name="$item['ok'] ? 'ri-checkbox-circle' : 'ri-close-circle'" @class(['mt-0.5 size-4.5 shrink-0', 'text-success-text' => $item['ok'], 'text-text-muted' => ! $item['ok']]) />
+                                <span class="min-w-0 [overflow-wrap:anywhere]">{{ $item['text'] }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                </section>
+            @endforeach
+        @endif
+        <x-slot:footer>
+            <x-bs-admin::button color="primary" wire:click="closeExplain">{{ __('admin.close') }}</x-bs-admin::button>
+        </x-slot:footer>
+    </x-bs-admin::modal>
+
+    {{-- Leaving with the roles panel changed, or an invitation half written: the shared "Bạn có thay đổi chưa lưu" --}}
+    <x-bs-admin::unsaved-dialog :count="$dirty" :label="__('admin.members.title')" save="saveForLeave" discard="discardDraft"
+        :body="$inviteOpen && $inviteResults === [] ? __('admin.members.ud_invite') : ($panelBulk ? __('admin.members.ud_panel_many') : ($panelMember !== null ? __('admin.members.ud_panel', ['name' => $panelMember->name]) : __('admin.members.ud_panel_many')))"
+        :save-label="$inviteOpen && $inviteResults === [] ? __('admin.members.ud_invite_save') : __('admin.unsaved.save_leave')" />
+
+    <x-bs-admin::toast :message="$toast" :tone="$toastTone" dismiss="dismissToast" :undo="$undoRoles !== null ? 'undo' : null" :seq="$toastSeq"
+        :action="$toastReload ? 'reloadList' : null" :action-label="$toastReload ? __('admin.members.reload') : null" />
 </div>

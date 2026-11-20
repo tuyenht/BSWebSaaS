@@ -7,6 +7,7 @@
     'state' => null,
     'raised' => false,
     'action' => null,
+    'actionLabel' => null,
 ])
 @php
     // A short message at the bottom of the screen (design 03 .kh-toast, 21 .tm-tst), read out
@@ -27,8 +28,10 @@
     // settings save bar while that bar shows (the bar sets --sb-h), so it never covers "Lưu".
     // `action` (state only) names the Alpine method behind one more button, shown when the message
     // carries its label as `act` ("Thử lại", "Tải lại", "Mở …"); a message with one stays 10 seconds.
+    // Without `state`, `action` names the host's public method and `actionLabel` its words, shown when set.
+    $serverAct = $state === null && $action !== null && $actionLabel !== null && $actionLabel !== '';
     $icon = ['error' => 'ri-error-warning', 'info' => 'ri-information'][$tone] ?? 'ri-check';
-    $wait = $undo ? 10000 : 6000;
+    $wait = $undo || $serverAct ? 10000 : 6000;
     $call = $dismiss.'('.($seq !== null ? (int) $seq : '').')';
     $bottom = $raised ? 'bottom-[max(5.5rem,calc(var(--bulk-bar-h,0px)+0.5rem),env(safe-area-inset-bottom))]' : 'bottom-[max(1rem,calc(var(--sb-h,0px)+0.5rem),env(safe-area-inset-bottom))]';
     $box = 'pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md bg-text-strong px-4 py-3 text-body text-surface shadow-lg';
@@ -55,7 +58,7 @@
             </div>
         </template>
     @elseif ($message !== '')
-        <div wire:key="toast-{{ md5($tone.$message.($undo ?? '').'|'.($seq ?? '')) }}"
+        <div wire:key="toast-{{ md5($tone.$message.($undo ?? '').'|'.($serverAct ? $action : '').'|'.($seq ?? '')) }}"
              @if ($tone !== 'error')
                  x-data="{ timer: null, end: 0, left: {{ $wait }}, arm(ms) { this.end = Date.now() + ms; this.timer = setTimeout(() => this.$wire.{{ $call }}, ms) }, hold() { if (this.timer === null) { return } clearTimeout(this.timer); this.timer = null; this.left = Math.max(0, this.end - Date.now()) }, release() { if (this.timer === null) { this.arm(Math.max(this.left, 3000)) } }, init() { this.arm({{ $wait }}) }, destroy() { clearTimeout(this.timer) } }"
                  x-on:mouseenter="hold()" x-on:mouseleave="release()" x-on:focusin="hold()" x-on:focusout="release()"
@@ -64,6 +67,9 @@
              class="{{ $box }}">
             <x-bs-admin::icon :name="$icon" class="size-5 shrink-0" />
             <span class="min-w-0 flex-[1_1_13.75rem] [overflow-wrap:anywhere]">{{ $message }}</span>
+            @if ($serverAct)
+                <button type="button" wire:click="{{ $action }}" class="{{ $btn }}">{{ $actionLabel }}</button>
+            @endif
             @if ($undo)
                 <button type="button" data-toast-undo wire:click="{{ $undo }}"
                         class="{{ $btn }}">{{ __('admin.undo') }}</button>
