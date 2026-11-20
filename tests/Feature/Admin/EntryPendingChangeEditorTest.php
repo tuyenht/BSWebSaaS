@@ -15,6 +15,7 @@ use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Support\BlankEntrySlug;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -468,6 +469,33 @@ it('puts the title’s link into the change when the link field is left empty, t
             ->and($post->fresh()->translationFor('vi')->slug)->toBe('bai-1')
             ->and(SiteRoute::query()->where('entry_id', $post->id)->pluck('path')->all())->toBe(['/tin-tuc/bai-1']);
     });
+});
+
+it('never puts an emptied link live on a governed post: the list refuses, the editor holds the title’s link in the change', function (): void {
+    [$author, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
+        $post = pcLivePost(pcCollection(), $author, $editor);
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+
+        Livewire::actingAs($editor)->test(Index::class, ['section' => 'posts'])
+            ->call('saveSlug', $post->ulid, '')
+            ->assertDispatched('bs-toast', text: __('entries.err_edit_in_change', ['noun' => __('entries.noun_post')]));
+        expect($post->fresh()->translationFor('vi')->slug)->toBe('bai-1')
+            ->and(pcChange($post))->toBeNull();
+
+        $titleLink = app(BlankEntrySlug::class)->make($post->fresh(), 'vi', 'Bản đang đăng');
+        Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid])
+            ->set('slug', '')
+            ->assertSet('slug', $titleLink)
+            ->call('save')
+            ->assertHasNoErrors();
+        expect($titleLink)->toBe('ban-dang-dang')
+            ->and(pcChange($post)->content['locales']['vi']['slug'])->toBe($titleLink)
+            ->and($post->fresh()->translationFor('vi')->slug)->toBe('bai-1')
+            ->and(SiteRoute::query()->where('entry_id', $post->id)->pluck('path')->all())->toBe(['/tin-tuc/bai-1']);
+    });
+    $this->get('http://a.test/tin-tuc/bai-1')->assertOk();
+    $this->get('http://a.test/tin-tuc/ban-dang-dang')->assertNotFound();
 });
 
 it('folds the change into a post that leaves the website, and refuses to schedule one that has a change', function (): void {
