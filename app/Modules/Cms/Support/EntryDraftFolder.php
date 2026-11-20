@@ -75,6 +75,10 @@ final readonly class EntryDraftFolder
         foreach ($entry->translations()->whereIn('locale', $routed)->orderBy('locale')->get() as $translation) {
             try {
                 $this->routes->sync($entry, $translation->locale, $translation->slug);
+                if ($entry->type === 'page') {
+                    // a sub-page's nested address is built from this page's slug
+                    $this->routes->syncDescendants($entry, $translation->locale);
+                }
             } catch (RouteConflictException) {
                 // taken by other content meanwhile: left where it was
             }

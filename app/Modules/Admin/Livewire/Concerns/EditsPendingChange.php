@@ -70,8 +70,8 @@ trait EditsPendingChange
 
     /**
      * Opening a live entry with a pending change: the form takes the change's values — its text in
-     * this language when it holds some, its picture and its main category (the other categories stay
-     * as stored: a change holds the main one only). Returns the change's main category.
+     * this language when it holds some, its picture and its main category, filed with the stored
+     * others as the applier will file it (EntryDraft::filingUnder). Returns the change's main category.
      */
     private function openPendingChange(EntryDraft $change): ?int
     {

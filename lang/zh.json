@@ -2747,7 +2747,7 @@
     "entries.move_refused_home_locked": "首页在页面树中的位置保持不变。",
     "entries.move_refused_parent_home": "首页没有子页面。",
     "entries.move_refused_cycle": "不能将页面移入其自身或其子页面。",
-    "entries.move_refused_change_held": "此页面正在展示，你的修改保存在待审更改中，因此暂时不能更改其父页面。请有发布权限的人移动它。",
+    "entries.move_refused_change_held": "此页面正在展示，且有修改保存在待处理修改中，因此暂时不能更改其上级页。修改发布到网站后，即可移动此页面。",
     "entries.move_refused_branch_too_big": "此页面下的子页面太多，无法一次移动。",
     "entries.move_depth_page": "页面最多三级。此页面只能放在第 1 级或第 2 级页面之下。",
     "entries.move_depth_branch_l1": "页面最多三级。此分支有 :n 级，只能放在第 1 级页面之下。",

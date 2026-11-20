@@ -2747,7 +2747,7 @@
     "entries.move_refused_home_locked": "The Home page keeps its place in the page tree.",
     "entries.move_refused_parent_home": "The Home page has no sub-pages.",
     "entries.move_refused_cycle": "A page cannot be moved into itself or one of its sub-pages.",
-    "entries.move_refused_change_held": "This page is live and your edits wait in its pending change, so its parent page cannot change yet. Ask someone who may publish to move it.",
+    "entries.move_refused_change_held": "This page is live and has edits waiting in its pending change, so its parent page cannot change yet. Once the change is on the website, the page can be moved.",
     "entries.move_refused_branch_too_big": "This page has too many sub-pages to move at once.",
     "entries.move_depth_page": "Pages go at most three levels deep. This page can only go under a level 1 or level 2 page.",
     "entries.move_depth_branch_l1": "Pages go at most three levels deep. This branch has :n levels, so it can only go under a level 1 page.",

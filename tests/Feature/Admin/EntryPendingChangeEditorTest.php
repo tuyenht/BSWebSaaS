@@ -132,6 +132,14 @@ it('holds an author’s save of a governed live post in its pending change, then
             ->assertHasErrors('workflow');
         expect(pcChange($post)->content['locales']['vi']['title'])->toBe('Bản sửa chờ duyệt');
 
+        // Approving a sent change leaves out what the reviewer typed since, and the question says so.
+        Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid])
+            ->call('askApplyChange')
+            ->assertDontSee(__('entries.chg.ask_unsaved'))
+            ->set('title', 'Gõ thêm chưa lưu')
+            ->call('askApplyChange')
+            ->assertSee(__('entries.chg.ask_unsaved'));
+
         // The reviewer opens it: the band offers approve and return, discard locked with its reason.
         Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid])
             ->assertSee(__('entries.chg.sub_locked'))
@@ -570,6 +578,56 @@ it('keeps a live page under its parent when the member’s edits are held back',
             ->call('movePageTo', $team->ulid, $about->ulid)
             ->assertDispatched('bs-toast', text: __('entries.move_refused_change_held'));
         expect($team->fresh()->parent_id)->toBeNull();
+    });
+});
+
+it('still reorders a held member’s live page among its siblings, and lets a publisher give it a parent', function (): void {
+    $writer = User::factory()->create();
+    app(Tenancy::class)->enter(1, function () use ($writer): void {
+        grantRole($writer, 'writer', ['entries.view', 'entries.edit.any']);
+        $live = function (string $slug, int $position): Entry {
+            $page = Entry::query()->create(['type' => 'page', 'status' => 'published', 'author_id' => null, 'position' => $position]);
+            $page->translations()->create(['locale' => 'vi', 'title' => 'Trang '.$slug, 'slug' => $slug, 'status' => 'published', 'body' => ['blocks' => []]]);
+
+            return $page;
+        };
+        $about = $live('gioi-thieu', 0);
+        $team = $live('doi-ngu', 1);
+
+        Livewire::actingAs($writer->fresh())->test(Index::class)
+            ->call('movePageStep', $about->ulid, 'down')
+            ->assertNotDispatched('bs-toast', text: __('entries.move_refused_change_held'));
+        expect($about->fresh()->position)->toBeGreaterThan($team->fresh()->position)
+            ->and($about->fresh()->parent_id)->toBeNull();
+
+        $writer->givePermissionTo('entries.publish');
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        Livewire::actingAs($writer->fresh())->test(Index::class)
+            ->call('movePageTo', $team->ulid, $about->ulid);
+        expect($team->fresh()->parent_id)->toBe($about->id);
+    });
+});
+
+it('moves a folded page’s sub-pages to the address its change gave it', function (): void {
+    [, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        SiteSetting::query()->updateOrCreate(['group_name' => 'permalinks', 'key' => 'pages'], ['value' => ['pattern' => 'nested']]);
+        $page = function (string $slug, ?Entry $parent) use ($editor): Entry {
+            $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id, 'parent_id' => $parent?->id]);
+            $entry->translations()->create(['locale' => 'vi', 'title' => 'Trang '.$slug, 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);
+            app(PublishEntry::class)->handle($entry->fresh(), 'vi', $editor);
+
+            return $entry->fresh();
+        };
+        $about = $page('gioi-thieu', null);
+        $team = $page('doi-ngu', $about);
+        expect(SiteRoute::query()->where('entry_id', $team->id)->value('path'))->toBe('/gioi-thieu/doi-ngu');
+
+        app(SaveEntryDraft::class)->handle($about, $editor, 'vi', ['slug' => 've-chung-toi']);
+        app(TransitionEntryStatus::class)->handle($about->fresh(), EntryStatus::Draft, $editor);
+
+        expect(SiteRoute::query()->where('entry_id', $about->id)->value('path'))->toBe('/ve-chung-toi')
+            ->and(SiteRoute::query()->where('entry_id', $team->id)->value('path'))->toBe('/ve-chung-toi/doi-ngu');
     });
 });
 

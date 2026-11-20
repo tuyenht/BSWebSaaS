@@ -167,8 +167,8 @@ final readonly class EntryDraftApplier
 
     /**
      * File the post under the change's primary category when it differs; returns whether it did.
-     * A change holds the main category only, so the post's other categories stay as they are, after
-     * the new main one (one that becomes the main category is filed once).
+     * A change holds the main category only: the post's other categories stay, after the new main
+     * one, and a promoted secondary keeps the old main among them (EntryDraft::filingUnder).
      *
      * @throws EntryDraftRejectedException see assertCategory()
      * @throws AuthorizationException the category lies outside the actor's limits
