@@ -77,7 +77,7 @@ final class Edit extends Component
 
     public function mount(?string $key = null): void
     {
-        $this->features = array_fill_keys(array_map(self::field(...), array_keys(FeatureRegistry::all())), '');
+        $this->features = array_fill_keys(array_map(self::field(...), array_keys(FeatureRegistry::onPlans())), '');
         if ($key !== null && app(PlanAccess::class)->plans(auth()->user())) {
             $plan = strlen($key) <= 64 ? Plan::query()->where('key', $key)->first() : null;
             abort_if($plan === null, 404);
@@ -102,7 +102,7 @@ final class Edit extends Component
     public function pick(string $feature, string $value): void
     {
         $this->operator();
-        if (FeatureRegistry::has($feature) && ! PlanFeatureText::isLimit($feature) && in_array($value, ['', 'on', 'off'], true)) {
+        if (array_key_exists($feature, FeatureRegistry::onPlans()) && ! PlanFeatureText::isLimit($feature) && in_array($value, ['', 'on', 'off'], true)) {
             $this->features[self::field($feature)] = $value;
         }
     }
@@ -332,7 +332,7 @@ final class Edit extends Component
     {
         $this->name = mb_substr($this->name, 0, self::NAME_MAX);
         $features = [];
-        foreach (array_keys(FeatureRegistry::all()) as $key) {
+        foreach (array_keys(FeatureRegistry::onPlans()) as $key) {
             $value = Cast::string($this->features[self::field($key)] ?? '');
             $features[self::field($key)] = PlanFeatureText::isLimit($key)
                 ? substr((string) preg_replace('/\D/', '', $value), 0, 9)
@@ -354,7 +354,7 @@ final class Edit extends Component
     private static function fieldsFrom(array $grants): array
     {
         $fields = [];
-        foreach (array_keys(FeatureRegistry::all()) as $key) {
+        foreach (array_keys(FeatureRegistry::onPlans()) as $key) {
             $value = $grants[$key] ?? null;
             $fields[self::field($key)] = is_bool($value) ? ($value ? 'on' : 'off') : (is_int($value) ? (string) $value : '');
         }
@@ -372,7 +372,7 @@ final class Edit extends Component
     private function draft(): array
     {
         $draft = [];
-        foreach (array_keys(FeatureRegistry::all()) as $key) {
+        foreach (array_keys(FeatureRegistry::onPlans()) as $key) {
             $draft[$key] = $this->features[self::field($key)] ?? '';
         }
 

@@ -189,7 +189,7 @@ it('fills the missing row keys site by site, trashed items included, and reports
     });
 
     $this->artisan('cms:fill-ulids')
-        ->expectsOutputToContain('Checked 2 site(s); filled 2 category key(s) and 4 menu item key(s).')
+        ->expectsOutputToContain('Checked 2 site(s); filled 2 category key(s), 4 menu item key(s) and 0 redirect key(s).')
         ->assertSuccessful();
 
     // Each UPDATE names one site (its last binding) and only that site's rows.
@@ -213,7 +213,7 @@ it('fills the missing row keys site by site, trashed items included, and reports
     }
 
     $this->artisan('cms:fill-ulids')
-        ->expectsOutputToContain('filled 0 category key(s) and 0 menu item key(s).')
+        ->expectsOutputToContain('filled 0 category key(s), 0 menu item key(s) and 0 redirect key(s).')
         ->assertSuccessful();
 });
 

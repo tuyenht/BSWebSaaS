@@ -1967,7 +1967,12 @@ final class Planner
         $live = $route !== null && $this->stillServed($route, $locale, $entries);
 
         return $this->decide($context, $item, $current, $desired, $current === null ? null : $from, null,
-            conflict: $live ? "{$from} is a live address; a redirect would hide it" : null);
+            conflict: match (true) {
+                $live => "{$from} is a live address; a redirect would hide it",
+                // a member's redirect to another website is changed only by a member (see Redirect)
+                $current !== null && $current !== $desired && Redirect::leadsAway($current['to']) => "{$from} leads to another website; only a member changes it, on the redirects screen",
+                default => null,
+            });
     }
 
     /**

@@ -605,12 +605,18 @@ final class Applier
         return [$type, $id];
     }
 
+    /**
+     * A member's redirect to another website is never overwritten (Redirect::writeSystemRow): one
+     * saved at this address after the plan was made refuses the load, as a conflict the dry run
+     * would now show.
+     */
     private function redirect(PlanItem $planned): void
     {
         [$locale, $from] = explode(':', $planned->item->anchor(), 2);
-        Redirect::query()->updateOrCreate(
-            ['locale' => $locale, 'from_path' => $from],
-            ['to_path' => Cast::string($planned->desired['to'] ?? null), 'status_code' => Cast::int($planned->desired['status'] ?? 301, 301)],
-        );
+        $written = Redirect::writeSystemRow($locale, $from,
+            ['to_path' => Cast::string($planned->desired['to'] ?? null), 'status_code' => Cast::int($planned->desired['status'] ?? 301, 301)]);
+        if (! $written) {
+            throw new PackRejected("Refused: plan changed, run the dry run again ({$from} now leads to another website; only a member changes it, on the redirects screen; nothing was changed).");
+        }
     }
 }

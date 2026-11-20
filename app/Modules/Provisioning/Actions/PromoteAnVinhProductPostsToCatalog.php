@@ -153,8 +153,7 @@ final readonly class PromoteAnVinhProductPostsToCatalog
     /**
      * Bridge a retired post path to the product's new path with a 301 — mirrors the redirect
      * bookkeeping RouteSync does on a slug change (collapse chains onto the new path, record
-     * old → new idempotently, and never leave a redirect FROM the live path). Product redirects
-     * carry no target attribution, same as RouteSync::syncProduct. No-op when the handover
+     * old → new idempotently, and never leave a redirect FROM the live path). No-op when the handover
      * landed on the identical path (the normal An Vinh case).
      */
     private function bridgeRetiredPath(string $locale, string $oldPath, string $newPath): void
@@ -163,17 +162,16 @@ final readonly class PromoteAnVinhProductPostsToCatalog
             return;
         }
 
-        Redirect::query()
+        Redirect::query()->withTrashed()
             ->where('locale', $locale)
             ->where('to_path', $oldPath)
             ->update(['to_path' => $newPath]);
 
-        Redirect::query()->updateOrCreate(
-            ['locale' => $locale, 'from_path' => $oldPath],
-            ['to_path' => $newPath, 'status_code' => 301],
-        );
+        // a member's redirect to another website is left as it is (see Redirect)
+        Redirect::writeSystemRow($locale, $oldPath, ['to_path' => $newPath, 'status_code' => 301, 'source' => Redirect::SOURCE_AUTO]);
 
-        Redirect::query()->where('locale', $locale)->where('from_path', $newPath)->delete();
+        Redirect::query()->withTrashed()->where('locale', $locale)->where('from_path', $newPath)
+            ->whereNot('to_path', 'like', Redirect::EXTERNAL_PREFIX.'%')->forceDelete();
     }
 
     /** The san-pham taxonomy id, resolved via the `products` ContentSection (not a slug guess). */

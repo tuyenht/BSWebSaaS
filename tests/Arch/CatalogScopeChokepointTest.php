@@ -59,6 +59,7 @@ it('touches products in the admin only in the known places', function (): void {
         'app/Modules/Admin/Support/MediaUsageLocator.php',         // reads names only
         'app/Modules/Admin/Support/Menus/MenuSourceSearch.php',    // reads names to pick a menu target, writes nothing
         'app/Modules/Admin/Support/Menus/MenuSources.php',         // reads menu targets only
+        'app/Modules/Admin/Support/Redirects/RedirectDirectory.php', // reads names only: what a redirect leads to
     ]);
 });
 

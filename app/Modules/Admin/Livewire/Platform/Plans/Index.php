@@ -311,7 +311,7 @@ final class Index extends Component
             'pages' => $pages,
             'order' => array_column($all, 'key'),
             'filtering' => trim($this->search) !== '' || $this->filter !== 'all',
-            'features' => array_keys(FeatureRegistry::all()),
+            'features' => array_keys(FeatureRegistry::onPlans()),
             'types' => $types,
         ]);
         $view->title(__('admin.platform_plans'));

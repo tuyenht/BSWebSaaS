@@ -124,7 +124,7 @@
                         <x-bs-admin::alert color="warning" icon="ri-error-warning">{{ __('admin.customers_plan_legacy_note', ['plan' => $plan->name]) }}</x-bs-admin::alert>
                     @endif
                     <div>
-                        @foreach (FeatureRegistry::all() as $key => $feature)
+                        @foreach (FeatureRegistry::onPlans() as $key => $feature)
                             <div class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border py-1.5 text-body last:border-b-0">
                                 <span class="min-w-0 flex-[1_1_12.5rem] text-text-strong">{{ $feature['name'] }}</span>
                                 <span class="shrink-0 whitespace-nowrap text-text">{{ PlanChangePreview::format($key, $values[$key] ?? $feature['default']) }}</span>

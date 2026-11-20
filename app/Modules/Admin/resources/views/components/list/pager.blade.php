@@ -12,7 +12,8 @@
     // The footer of a list read page by page from a cursor (newest first): "Dòng/trang" and
     // [‹ Trước] [Sau ›]. $older / $newer are the ulids the host's older() / newer() take, null when
     // there is no page that way (the button is then disabled). $model is the host's page-size
-    // property. The row wraps; the buttons use the shared small control size.
+    // property. The row wraps; the buttons use the shared small control size. An optional slot sits
+    // between the two (a list's "1–20 / 57" line).
 @endphp
 <div {{ $attributes->merge(['class' => 'flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border px-4 py-2.5']) }}>
     <label class="flex items-center gap-2 text-small text-text">
@@ -23,6 +24,9 @@
             @endforeach
         </select>
     </label>
+    @if ($slot->isNotEmpty())
+        {{ $slot }}
+    @endif
     <nav class="flex gap-2" aria-label="{{ $label }}">
         <x-bs-admin::button size="sm" variant="outline" color="secondary" :disabled="$newer === null" wire:click="newer({{ \Illuminate\Support\Js::from((string) $newer) }})">
             <x-bs-admin::icon name="chevron-left" class="size-4" />{{ $prev }}
