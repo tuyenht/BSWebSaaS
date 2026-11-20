@@ -91,7 +91,9 @@ final class EntryFormPlacements
             // lock the foreign-key check takes): a form deleted at the same moment is skipped, or waits
             // for this save and then takes its rows with it — never a foreign-key error that aborts the
             // page save. A form being deleted in batches (it reads as gone everywhere) gets no row
-            // either, even when it was switched so after this save read its id. A row already there is
+            // either, when its switch to `deleting` committed before this statement — even after this
+            // save read its id; a switch committing later is undone by the job's final delete
+            // (cascade), and the list never names a form that is not active. A row already there is
             // left as it is.
             $now = now();
             $added = DB::affectingStatement(
@@ -118,17 +120,28 @@ final class EntryFormPlacements
         $match = $form->key === Form::SYSTEM_KEY
             ? '$.blocks[*] ? (@.type.type() == "string" && @.type == "form" && !(@.props.type() == "object" && @.props.form_key.type() == "string" && @.props.form_key != "" && @.props.form_key != $key))'
             : '$.blocks[*] ? (@.type.type() == "string" && @.type == "form" && @.props.type() == "object" && @.props.form_key.type() == "string" && @.props.form_key == $key)';
-        $now = now();
         $rows = EntryTranslation::query()->where('site_id', $form->site_id)
             ->whereRaw('jsonb_path_exists(body, ?::jsonpath, jsonb_build_object(\'key\', ?::text))', [$match, $form->key])
-            ->get(['entry_id', 'locale'])
-            ->map(fn (EntryTranslation $row): array => [
-                'site_id' => $form->site_id, 'form_id' => $form->id, 'entry_id' => $row->entry_id, 'locale' => $row->locale,
-                'created_at' => $now, 'updated_at' => $now,
-            ])->all();
-        if ($rows !== []) {
-            FormPlacement::query()->insertOrIgnore($rows);
+            ->get(['entry_id', 'locale']);
+        if ($rows->isEmpty()) {
+            return;
         }
+        // as write(): the form as it is now, row-locked — one deleted or switched to `deleting` since
+        // the job read it gets no row, and never a foreign-key error
+        $now = now();
+        DB::affectingStatement(
+            'insert into form_placements (site_id, form_id, entry_id, locale, created_at, updated_at)
+             select f.site_id, f.id, t.entry_id, t.locale, ?, ?
+             from forms f cross join unnest(?::bigint[], ?::text[]) as t(entry_id, locale)
+             where f.site_id = ? and f.id = ? and f.status <> ? for key share of f
+             on conflict do nothing',
+            [
+                $now, $now,
+                '{'.implode(',', $rows->map(fn (EntryTranslation $row): int => $row->entry_id)->all()).'}',
+                '{'.implode(',', $rows->map(fn (EntryTranslation $row): string => '"'.addcslashes($row->locale, '"\\').'"')->all()).'}',
+                $form->site_id, $form->id, Form::DELETING,
+            ],
+        );
     }
 
     /** One page language gone (deleted, or moved to another language or page): its rows go. */

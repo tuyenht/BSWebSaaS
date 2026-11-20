@@ -498,9 +498,31 @@ it('gives a form being deleted in batches no row anywhere: the save, the nightly
     $this->artisan('forms:placements')->assertSuccessful();
     expect(placements())->toBe([]);
 
-    // a new form's job, and the write handed its id, add none
+    // a new form's job, and the write handed its id, add none (the write is the one past the scope:
+    // its INSERT … SELECT reads forms itself)
     PlaceNewForm::dispatchSync(1, $quote->id);
     expect(placements())->toBe([])
         ->and(app(Tenancy::class)->enter(1, fn (): bool => EntryFormPlacements::write(1, $page->id, 'vi', [$quote->id], [])))->toBeFalse()
         ->and(placements())->toBe([]);
+});
+
+it('gives a new form\'s job no rows when the form is switched to deleting after the job read it', function (): void {
+    $page = pageWithForms(1, 'bao-gia', ['bao-gia']);
+    $pageEn = pageWithForms(1, 'quote', ['bao-gia'], locale: 'en');
+    $quote = placedForm(1, 'bao-gia', 'Yêu cầu báo giá');
+    expect(placements())->toBe(["{$page->id}:vi:bao-gia", "{$pageEn->id}:en:bao-gia"]);   // both languages, through the array binding
+    $admin = DB::connection('pgsql_admin');
+    $admin->table('form_placements')->delete();
+
+    $armed = true;
+    DB::listen(function ($query) use (&$armed, $admin, $quote): void {
+        // the job has read the form and the pages naming it; the delete in batches commits now
+        if ($armed && str_starts_with($query->sql, 'select "entry_id", "locale" from "entry_translations"')) {
+            $armed = false;
+            $admin->table('forms')->where('id', $quote->id)->update(['status' => Form::DELETING]);
+        }
+    });
+    PlaceNewForm::dispatchSync(1, $quote->id);
+
+    expect($armed)->toBeFalse()->and(placements())->toBe([]);
 });
