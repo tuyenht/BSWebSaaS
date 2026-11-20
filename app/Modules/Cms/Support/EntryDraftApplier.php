@@ -121,10 +121,8 @@ final readonly class EntryDraftApplier
             if ($entry->status === 'published' && $result['translation']->status !== 'published') {
                 $result['translation']->update(['status' => 'published']);
                 $this->routes->sync($entry, $locale, $result['translation']->slug);
-                if ($entry->type === 'page') {
-                    // a language going live here: the page's sub-pages follow its address in it
-                    $this->routes->syncDescendants($entry, $locale);
-                }
+                // a language going live here: the page's sub-pages follow its address in it
+                $this->routes->syncSubPagesOf($entry, $locale);
             }
 
             $dropped += $droppedHere;

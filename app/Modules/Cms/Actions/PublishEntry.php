@@ -107,7 +107,8 @@ final readonly class PublishEntry
             // the caller can catch that and carry on (the bulk bar does).
             // The categories' public totals follow the flip of the entry and its translation, as one
             // change (CategoryPublicCounts), in the same savepoint.
-            DB::transaction(fn () => $this->publicCounts->track('entry_taxonomies', [$entry->id], function () use ($entry, $translation, $locale, $actor): void {
+            DB::transaction(fn () => $this->publicCounts->track('entry_taxonomies', [$entry->id], function () use ($entry, $translation, $locale, $actor, $from): void {
+                $languageWasLive = $translation->status === 'published';
                 $entry->update([
                     'status' => 'published',
                     'published_at' => $entry->published_at ?? now(),
@@ -120,8 +121,13 @@ final readonly class PublishEntry
                 $translation->update(['status' => 'published']);
 
                 $this->routes->sync($entry, $locale, $translation->slug);
-                // a page's sub-pages follow the address it went live at (left behind while it was offline)
-                $this->routes->syncSubPagesOf($entry);
+                // a page's sub-pages follow the address it went live at (left behind while it was offline);
+                // a page already live: only a language going live now
+                if ($from !== 'published') {
+                    $this->routes->syncSubPagesOf($entry);
+                } elseif (! $languageWasLive) {
+                    $this->routes->syncSubPagesOf($entry, $locale);
+                }
 
                 // What just went public is kept, in the same transaction as the flip.
                 $this->revisions->forAllLocales($entry, RevisionKind::Publish, $actor);

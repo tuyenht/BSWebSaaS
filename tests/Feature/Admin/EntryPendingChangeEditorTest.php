@@ -11,6 +11,7 @@ use App\Modules\Cms\Actions\TransitionEntryStatus;
 use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Exceptions\EntryDraftRejectedException;
 use App\Modules\Cms\Exceptions\RevisionRestoreRejectedException;
+use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryRevision;
@@ -689,6 +690,48 @@ it('keeps a folded page’s live sub-pages at their address until the page is li
     $this->get('http://a.test/gioi-thieu/doi-ngu')->assertRedirect('http://a.test/ve-chung-toi/doi-ngu');
     $this->get('http://a.test/ve-chung-toi/doi-ngu')->assertOk();
 })->with(['publish', 'scheduled']);
+
+it('refuses to put a folded page live again while its sub-page’s new address is taken, nothing moved', function (): void {
+    [, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        $about = pcLivePage($editor, 'gioi-thieu', null);
+        $team = pcLivePage($editor, 'doi-ngu', $about);
+        app(SaveEntryDraft::class)->handle($about, $editor, 'vi', ['slug' => 've-chung-toi']);
+        app(TransitionEntryStatus::class)->handle($about->fresh(), EntryStatus::Draft, $editor);
+        $other = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
+        SiteRoute::query()->create(['locale' => 'vi', 'path' => '/ve-chung-toi/doi-ngu', 'entry_id' => $other->id]);
+
+        expect(fn () => app(PublishEntry::class)->handle($about->fresh(), 'vi', $editor))->toThrow(RouteConflictException::class);
+        expect($about->fresh()->status)->toBe('draft')
+            ->and(SiteRoute::query()->where('entry_id', $team->id)->pluck('path')->all())->toBe(['/gioi-thieu/doi-ngu']);
+    });
+});
+
+it('moves a republished page’s sub-pages only in the languages that are live again', function (): void {
+    [, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        DB::connection('pgsql_admin')->table('site_locales')->insert([
+            'site_id' => 1, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $about = pcLivePage($editor, 'gioi-thieu', null);
+        $team = pcLivePage($editor, 'doi-ngu', $about);
+        foreach ([[$about, 'about'], [$team, 'team']] as [$page, $slug]) {
+            $page->translations()->create(['locale' => 'en', 'title' => ucfirst($slug), 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);
+            app(PublishEntry::class)->handle($page->fresh(), 'en', $editor);
+        }
+        $teamEn = SiteRoute::query()->where('entry_id', $team->id)->where('locale', 'en')->value('path');
+        app(SaveEntryDraft::class)->handle($about->fresh(), $editor, 'vi', ['slug' => 've-chung-toi']);
+        app(SaveEntryDraft::class)->handle($about->fresh(), $editor, 'en', ['slug' => 'about-us']);
+        app(TransitionEntryStatus::class)->handle($about->fresh(), EntryStatus::Draft, $editor);
+        // English is no longer live on the page: its folded link was never put on the website
+        $about->translationFor('en')->update(['status' => 'draft']);
+
+        app(PublishEntry::class)->handle($about->fresh(), 'vi', $editor);
+
+        expect(SiteRoute::query()->where('entry_id', $team->id)->where('locale', 'vi')->value('path'))->toBe('/ve-chung-toi/doi-ngu')
+            ->and(SiteRoute::query()->where('entry_id', $team->id)->where('locale', 'en')->value('path'))->toBe($teamEn);
+    });
+});
 
 it('keeps an offline page under its parent when a live sub-page’s edits are held back for the member', function (string $case): void {
     [, $editor] = pcCast();

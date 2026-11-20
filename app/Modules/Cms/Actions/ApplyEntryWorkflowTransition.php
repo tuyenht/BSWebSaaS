@@ -132,6 +132,8 @@ final readonly class ApplyEntryWorkflowTransition
                 // Any move ends an approval for later (ApproveEntryForLater): the post now stands wherever this move put it.
                 'scheduled_by' => null,
             ]);
+            // read under the lock (the translation in hand was read before it); asked only where it matters
+            $languageWasLive = $wasLive && $destination->is_published && $entry->translationFor($locale)?->status === 'published';
             $translation->update(['status' => $status]);
 
             // Leaving the website: a pending change of the live entry goes into it, nobody's work lost.
@@ -141,8 +143,13 @@ final readonly class ApplyEntryWorkflowTransition
 
             if ($destination->is_published) {
                 $this->routes->sync($entry, $locale, $translation->slug);
-                // a page's sub-pages follow the address it went live at (left behind while it was offline)
-                $this->routes->syncSubPagesOf($entry);
+                // a page's sub-pages follow the address it went live at (left behind while it was offline);
+                // a page already live: only a language going live now
+                if (! $wasLive) {
+                    $this->routes->syncSubPagesOf($entry);
+                } elseif (! $languageWasLive) {
+                    $this->routes->syncSubPagesOf($entry, $locale);
+                }
                 $this->revisions->forAllLocales($entry, RevisionKind::Publish, $actor);
             }
 
