@@ -486,7 +486,7 @@
                                 <x-bs-admin::cover-remove wire:click="clearCover" :title="__('entries.ed.cover_remove_title', ['unit' => $unit])">{{ __('entries.cover_remove') }}</x-bs-admin::cover-remove>
                             @endif
                         @elseif ($mayPick)
-                            <button type="button" wire:click="openCoverPicker" class="absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-3 text-center text-[calc(0.8125rem+var(--user-text-boost))] leading-normal text-text transition-colors hover:bg-surface-hover">
+                            <button type="button" data-cover-pick wire:click="openCoverPicker" class="absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-3 text-center text-[calc(0.8125rem+var(--user-text-boost))] leading-normal text-text transition-colors hover:bg-surface-hover">
                                 <x-bs-admin::icon name="ri-image-add" class="size-6 text-primary-text" />
                                 <span class="font-semibold text-primary-text">{{ __('entries.ed.cover_choose') }}</span>
                             </button>

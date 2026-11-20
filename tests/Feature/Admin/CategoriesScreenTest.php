@@ -801,7 +801,7 @@ it('changes categories as before when no support session is open', function (): 
 it('draws the chosen-picture state of the drawer like the post editor\'s cover card: picture in a 120px box, «Bỏ ảnh» in its corner, «Chọn ảnh» below', function (): void {
     $html = $this->actingAs($this->editor->fresh())->get('http://a.test/admin/taxonomies?section=tin-tuc')->assertOk()->getContent();
 
-    expect($html)->toContain('data-cover-filled', 'x-on:click="dropCover()"', 'h-30 w-full overflow-hidden', 'size-full object-cover',
+    expect($html)->toContain('data-cover-filled', 'x-on:click="dropCover()"', 'h-30 w-full overflow-hidden', 'size-full object-cover', 'id="cm-cover-pick"',
         'aria-label="'.e(__('categories.ui_drop_cover_title')).'"', 'title="'.e(__('categories.ui_pick_other_title')).'"')
         ->not->toContain('size-16');
 });

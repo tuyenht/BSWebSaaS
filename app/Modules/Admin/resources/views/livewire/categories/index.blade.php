@@ -420,7 +420,7 @@
                     <div class="flex flex-col gap-1.5" data-picker-home>
                         <span class="text-small font-semibold text-text-strong">{{ $u('f_cover') }}</span>
                         <div x-show="! (pan && pan.d.cover)" class="flex h-30 items-center justify-center rounded-md border border-dashed border-border-input bg-surface-muted px-3">
-                            <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="pickCover()"><x-bs-admin::icon name="ri-image-add" class="size-4" /> {{ $u('pick_cover') }}</x-bs-admin::button>
+                            <x-bs-admin::button size="sm" variant="outline" color="secondary" id="cm-cover-pick" x-on:click="pickCover()"><x-bs-admin::icon name="ri-image-add" class="size-4" /> {{ $u('pick_cover') }}</x-bs-admin::button>
                         </div>
                         <div x-show="pan && pan.d.cover" x-cloak class="flex flex-col gap-2" data-cover-filled>
                             <div class="relative h-30 w-full overflow-hidden rounded-md border border-border bg-surface-muted">

@@ -1758,6 +1758,8 @@ final class Editor extends Component
         // the words described the picture taken off: a new picture is described afresh
         $this->coverAlt = '';
         $this->sayCover(Cast::string(__('entries.ed.cover_removed')), $undo);
+        // the button that held focus is gone: focus moves on to the empty card's «Chọn ảnh»
+        $this->js("document.querySelector('[data-cover-pick]')?.focus()");
     }
 
     /** «Hoàn tác» on «Đã gỡ ảnh đại diện»: the picture comes back if it is still in this site's library. */
