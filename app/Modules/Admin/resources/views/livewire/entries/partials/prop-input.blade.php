@@ -26,7 +26,7 @@
             @break
         @case('image')
             @php $imagePath = \Illuminate\Support\Str::after($model, 'blocks.'); @endphp
-            <span class="image-prop">
+            <span class="image-prop" data-picker-home>
                 @if (is_int($value ?? null) && ! empty(($imageUrls ?? [])[$value]))
                     <img src="{{ $imageUrls[$value] }}" alt="" class="image-prop__preview" style="max-width:160px;height:auto;display:block">
                 @endif

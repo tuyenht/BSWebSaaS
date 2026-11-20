@@ -64,6 +64,7 @@
 
     @can('media.view')
         @include('admin::livewire.entries.partials.block-pickers')
+        @include('admin::partials.media-picker-modal', ['pickedIds' => []])
     @endcan
 
     <x-bs-admin::unsaved-dialog :count="$changes" :label="$title" save="save" discard="resetChanges"

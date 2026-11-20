@@ -365,7 +365,7 @@ it('honours a hand-edited slug over the derived one', function (): void {
 });
 
 it('renders the modal with the library tab, folder sidebar and picker strings', function (): void {
-    $user = pickerManager();
+    $user = pickerManager(['media.upload']); // the upload tab is drawn only for who may add files (design 13)
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
         MediaFolder::query()->create(['name' => 'Bài viết', 'slug' => 'bai-viet']);

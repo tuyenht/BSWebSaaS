@@ -121,7 +121,7 @@ it('turns the photo band on when a background photo is picked and back to the se
         ]);
 
         $test->call('openBlockImagePicker', '0.props.bg_image')
-            ->call('selectBlockImage', $photo->id)
+            ->call('togglePickerItem', $photo->id)->call('insertPicked')
             ->assertSet('blocks.0.props.bg', 'image')
             ->assertSet('blocks.0.props.bg_image', $photo->id)
             ->assertSee(__('entries.look_image_on_note'))
@@ -211,7 +211,7 @@ it('never turns the panel photo band on for a block with a photo of its own', fu
 
         // A crafted call: the panel shows no photo button on this block.
         $test->call('openBlockImagePicker', '0.props.bg_image')
-            ->call('selectBlockImage', $photo->id)
+            ->call('togglePickerItem', $photo->id)->call('insertPicked')
             ->assertSet('blocks.0.props.bg', null)
             ->assertSet('blocks.0.props.overlay', 60);
     }, ['entries.view', 'entries.create', 'entries.edit.any', 'media.view']);

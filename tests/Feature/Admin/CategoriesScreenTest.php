@@ -670,7 +670,7 @@ it('names the member\'s role in plain words on the no-permission notice', functi
         ->assertSee(__('categories.ui_noperm_text', ['role' => 'Kế toán bếp']));
 });
 
-it('hands a picture picked for the cover to the drawer by its key, and ignores a file that is not a picture', function (): void {
+it('hands the one picture picked for the cover to the drawer by its key, and ignores a file that is not a picture', function (): void {
     $editor = cxUser(['taxonomies.manage', 'entries.view', 'media.view']);
     cxIn(1, function () use ($editor): void {
         $picture = cxPicture('s/library/anh-bia-dep.jpg');
@@ -680,13 +680,16 @@ it('hands a picture picked for the cover to the drawer by its key, and ignores a
         ]);
 
         Livewire::actingAs($editor->fresh())->withQueryParams(['section' => 'tin-tuc'])->test(CategoriesIndex::class)
-            ->call('openImagePicker', 'gallery')
-            ->call('pickImage', $picture->id)
+            ->call('openImagePicker', 'single')
+            ->assertSet('imagePickerMode', 'single')
+            ->assertSee(__('media.picker_insert_one'))
+            ->call('togglePickerItem', $picture->id)
+            ->call('insertPicked')
             ->assertSet('showImagePicker', false)
             ->assertDispatched('category-cover-picked', fn (string $name, array $params): bool => $params['key'] === $picture->storage_key && is_string($params['url']) && $params['url'] !== '');
 
         Livewire::actingAs($editor->fresh())->withQueryParams(['section' => 'tin-tuc'])->test(CategoriesIndex::class)
-            ->call('openImagePicker', 'gallery')
+            ->call('openImagePicker', 'single')
             ->call('pickImage', $paper->id)
             ->assertNotDispatched('category-cover-picked');
     });
