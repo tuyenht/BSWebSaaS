@@ -16,6 +16,7 @@ use DomainException;
  *  - snapshot_incompatible: the old content no longer passes today's checks (e.g. a block type
  *    that is no longer offered) — writing it would put a broken layout online.
  *  - entry_trashed: the entry is in the Trash; restore the entry first.
+ *  - approved_later: the post is approved to go live later as it was approved; «Hủy hẹn giờ» first.
  */
 final class RevisionRestoreRejectedException extends DomainException
 {
