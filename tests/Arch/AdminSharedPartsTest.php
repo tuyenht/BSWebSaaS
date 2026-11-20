@@ -31,9 +31,6 @@ const ADMIN_HAND_BUILT_PARTS = [
     'categories/index.blade.php' => [0, 5, 0],
     // a dashboard card's error line above its "Thử lại"
     'dashboard/card-error.blade.php' => [0, 1, 0],
-    'entries/editor.blade.php' => [1, 0, 0],
-    // the block image picker, moved out of the content editor so the reusable block editor draws it too
-    'entries/partials/block-pickers.blade.php' => [1, 0, 0],
     // error lines under the button editor's fields
     'entries/partials/button-action.blade.php' => [0, 9, 0],
     'entries/partials/workflow-status.blade.php' => [1, 0, 0],

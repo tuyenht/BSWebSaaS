@@ -4,6 +4,7 @@ namespace App\Modules\Admin\Providers;
 
 use App\Modules\Admin\Console\ReconcileContentUsage;
 use App\Modules\Admin\Console\RecoverSiteOwnerCommand;
+use App\Modules\Admin\Http\Middleware\AddServerTiming;
 use App\Modules\Admin\Http\Middleware\EnforceSupportSession;
 use App\Modules\Admin\Http\Middleware\ResolveLivewireContext;
 use App\Modules\Admin\Http\Middleware\TrackSignedInDevice;
@@ -72,6 +73,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Blaze\Blaze;
 use Livewire\Livewire;
 use Symfony\Component\Mailer\Transport\Smtp\Auth\XOAuth2Authenticator;
 use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport;
@@ -116,7 +118,13 @@ final class AdminServiceProvider extends ServiceProvider
         });
 
         // Admin UI primitives as anonymous Blade components: <x-bs-admin::icon />, etc.
-        Blade::anonymousComponentPath($this->app->basePath('app/Modules/Admin/resources/views/components'), 'bs-admin');
+        // Blaze compiles each of them into a plain PHP function call instead of Blade's component
+        // pipeline: a list page draws hundreds of them (icons, row menus, status pills), and the
+        // pipeline cost dominated the render (the Pages list: 775 components, ~0.4 s of PHP).
+        // Same HTML out; it resets its state on every Octane request itself.
+        $components = $this->app->basePath('app/Modules/Admin/resources/views/components');
+        Blade::anonymousComponentPath($components, 'bs-admin');
+        Blaze::optimize()->in($components);
 
         Livewire::component('admin.login', Login::class);
         Livewire::component('admin.forgot-password', ForgotPassword::class);
@@ -234,6 +242,6 @@ final class AdminServiceProvider extends ServiceProvider
         // level: the guest login and the authed admin share this single route. auth.session (a no-op
         // for a guest) signs out a session whose password changed elsewhere, as on the admin pages.
         Livewire::setUpdateRoute(fn (array $handle) => Route::post('/livewire/update', $handle)
-            ->middleware(['web', ResolveLivewireContext::class, EnforceSupportSession::class, 'auth.session', TrackSignedInDevice::class]));
+            ->middleware([AddServerTiming::class, 'web', ResolveLivewireContext::class, EnforceSupportSession::class, 'auth.session', TrackSignedInDevice::class]));
     }
 }

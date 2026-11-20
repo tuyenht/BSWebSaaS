@@ -903,7 +903,7 @@ window.Alpine.data('bsCategories', (cfg) => {
             }, () => this.save());
         },
         pickCover() {
-            this.$wire.openImagePicker('gallery');
+            this.$wire.openImagePicker('single');
         },
         coverPicked(detail) {
             if (this.pan && detail && detail.key) {

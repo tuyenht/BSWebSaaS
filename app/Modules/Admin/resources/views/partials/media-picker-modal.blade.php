@@ -1,18 +1,25 @@
 {{-- Media picker v2 (docs/design_handoff_media_picker — screens 0/1/8). Included by every host
      component that `use`s WithMediaLibraryPicker; all state/actions live on that trait, so the
      host's own render() needs nothing. Contract kept from v1: openImagePicker(mode) opens it,
-     insert dispatches `admin-editor-insert-image` (editor) / addGalleryImage() (gallery).
-     $pickedIds (optional, from the host view) still marks already-attached gallery items. --}}
+     insert dispatches `admin-editor-insert-image` (editor) / addGalleryImage() (gallery) / pickedSingleImage() (single).
+     $pickedIds (optional, from the host view) still marks already-attached gallery items.
+     Focus (design 13, as board 07 opens it): the first control takes it on open, Tab stays inside,
+     Esc closes, and on close it goes back to the button that opened the picker — or, when that button
+     is gone or hidden (an empty slot that now shows its picture), to the opener's [data-picker-home]
+     area: its visible [data-picker-focus] button («Đổi ảnh»), else its first visible button. Without media.upload there is no upload tab (design 13 tabs="library"). --}}
 @php($mp = $this->mediaPickerState())
 @if ($showImagePicker && ($mp['open'] ?? false))
+    @php($canUpload = auth()->user()?->can('media.upload') ?? false)
+    @php($words = $mp['words'] ?? null)
     <div class="fixed inset-0 z-90 flex items-center justify-center bg-black/50 p-4"
          role="dialog" aria-modal="true" aria-label="{{ __('media.picker_title') }}"
-         x-data x-on:keydown.escape.window="$wire.closeImagePicker()"
+         x-data="{ back: null, home: null, init() { const a = document.activeElement; this.back = a; this.home = a && a.closest ? a.closest('[data-picker-home]') : null; }, destroy() { const b = this.back, h = this.home, seen = (e) => e && e.isConnected && e.getClientRects().length > 0; setTimeout(() => { if (seen(b)) { b.focus(); return; } if (! h || ! h.isConnected) { return; } const f = [...h.querySelectorAll('[data-picker-focus]')].find(seen) || [...h.querySelectorAll('button:not([disabled])')].find(seen); if (f) { f.focus(); } }, 0); } }"
+         x-on:keydown.escape.window="$wire.closeImagePicker()"
          wire:click.self="closeImagePicker">
         {{-- Responsive envelope (handoff Fidelity): caps at 1040×660 but shrinks to the viewport
              (minus a 16px gutter each side) on any smaller screen — 360, 768, 1280, 1920 all fit
              with no horizontal overflow. Inner panes carry their own breakpoints. --}}
-        <div class="flex h-[min(660px,calc(100dvh-2rem))] w-[min(1040px,calc(100vw-2rem))] flex-col overflow-hidden rounded-[14px] border border-border-strong bg-surface text-sm text-body-text shadow-[0_24px_60px_-22px_rgba(56,65,74,0.4)]">
+        <div x-trap="true" class="flex h-[min(660px,calc(100dvh-2rem))] w-[min(1040px,calc(100vw-2rem))] flex-col overflow-hidden rounded-[14px] border border-border-strong bg-surface text-sm text-text shadow-[0_24px_60px_-22px_rgba(56,65,74,0.4)]">
 
             {{-- Header --}}
             <div class="flex shrink-0 items-center justify-between gap-4 px-5 pb-[9px] pt-[15px]">
@@ -22,7 +29,7 @@
                     </div>
                     <div class="flex flex-col gap-px">
                         <span class="text-[15.5px] font-semibold leading-tight text-heading">{{ __('media.picker_title') }}</span>
-                        <span class="text-xs text-body-muted">{{ __('media.picker_subtitle') }}</span>
+                        <span class="text-xs text-text-muted">{{ $canUpload ? __('media.picker_subtitle') : __('media.picker_subtitle_library') }}</span>
                     </div>
                 </div>
                 <button type="button" wire:click="closeImagePicker" title="{{ __('admin.dismiss') }}"
@@ -31,7 +38,8 @@
                 </button>
             </div>
 
-            {{-- Tab bar (underline style) --}}
+            {{-- Tab bar (underline style): only with a second tab to switch to --}}
+            @if ($canUpload)
             <div class="flex shrink-0 gap-6 overflow-x-auto border-b border-border-strong bg-surface px-5">
                 <button type="button" wire:click="setPickerTab('upload')"
                         class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap px-1 py-3 text-[13.5px] {{ $pickerTab === 'upload' ? 'font-semibold text-accent shadow-[inset_0_-2.5px_0_var(--color-admin-primary)]' : 'font-medium text-body-muted' }}">
@@ -45,6 +53,7 @@
                     <span class="rounded-[10px] px-[7px] py-px text-[10.5px] font-semibold {{ $pickerTab === 'library' ? 'bg-admin-primary/8 text-accent' : 'bg-surface-hover text-body-muted' }}">{{ $mp['total'] }}</span>
                 </button>
             </div>
+            @endif
 
             {{-- Body --}}
             <div class="relative flex min-h-0 min-w-0 flex-1">
@@ -98,7 +107,7 @@
                         <span class="text-[12.5px] text-body-muted">{{ __('media.picker_footer_selected', ['count' => count($pickerSelected)]) }}</span>
                     </div>
                 @else
-                    <span class="min-w-0 flex-1 text-[12.5px] text-body-muted">{{ __('media.picker_footer_hint') }}</span>
+                    <span class="min-w-0 flex-1 text-[12.5px] text-text-muted">{{ $words['note'] ?? __('media.picker_footer_hint') }}</span>
                 @endif
                 <button type="button" wire:click="closeImagePicker"
                         class="shrink-0 rounded-lg border border-border-strong bg-surface px-4 py-[9px] text-[13px] font-medium text-body-text">{{ __('media.picker_cancel') }}</button>
@@ -107,7 +116,7 @@
                     <x-bs-admin::icon name="ri-check" class="size-[15px]" />
                     {{ $imagePickerMode === 'gallery' && $pickCount > 1
                         ? __('media.picker_insert_count', ['count' => $pickCount])
-                        : __('media.picker_insert') }}
+                        : ($words['insert'] ?? __('media.picker_insert')) }}
                 </button>
             </div>
             @endif

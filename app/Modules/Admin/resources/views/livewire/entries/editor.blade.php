@@ -499,29 +499,80 @@
                     </section>
                 @endif
 
-                @can('media.view')
-                    <section class="{{ $card }} flex flex-col gap-3 px-4 py-4" aria-labelledby="entry-cover-h">
+                {{-- «Ảnh đại diện» (design 07 :987-1030): the card is always drawn; a member without media.view sees
+                     the picture (or «Chưa có ảnh») and no buttons. The cover is every language's: another
+                     language shows the «Chung» chip and its buttons say where to change it (Editor::coverRefused). --}}
+                @php($mayPick = auth()->user()?->can('media.view') ?? false)
+                <section class="{{ $card }} flex flex-col gap-3 px-4 py-4" aria-labelledby="entry-cover-h" data-picker-home>
+                    <div class="flex flex-wrap items-center gap-2">
                         <h2 id="entry-cover-h" class="{{ $cardTitle }}">{{ __('entries.ed.card_cover') }}</h2>
-                        <div class="relative aspect-video w-full overflow-hidden rounded-md border border-border bg-surface-muted">
-                            @if ($coverUrl)
-                                <img src="{{ $coverUrl }}" alt="{{ __('entries.cover_alt') }}" class="entry-cover__preview size-full object-cover">
-                                <button type="button" wire:click="clearCover" class="hit-area absolute end-2 top-2 inline-flex min-h-(--spacing-control) items-center gap-1 rounded-md bg-surface px-2.5 text-small font-medium text-danger-text shadow-card transition-colors hover:bg-surface-hover"
+                        @if ($sharedLock)
+                            <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-hover px-2 py-0.5 text-small font-semibold text-text-muted" title="{{ __('entries.ed.shared_tip') }}">
+                                <x-bs-admin::icon name="ri-lock" class="size-[min(1.5rem,calc(0.75rem+var(--user-text-boost)))]" />{{ __('entries.ed.shared_chip') }}
+                            </span>
+                        @endif
+                    </div>
+                    <div class="relative aspect-video w-full overflow-hidden rounded-md border bg-surface-muted {{ $cover ? 'border-border' : 'border-dashed border-border-input' }}">
+                        @if ($cover)
+                            <img src="{{ $cover['url'] }}" alt="{{ $cover['name'] !== '' ? __('entries.ed.cover_img', ['name' => $cover['name']]) : __('entries.cover_alt') }}" class="entry-cover__preview size-full object-cover">
+                            @if ($mayPick)
+                                <button type="button" wire:click="clearCover" class="absolute end-1.5 top-1.5 inline-flex min-h-hit items-center"
                                         title="{{ __('entries.ed.cover_remove_title', ['unit' => $unit]) }}" aria-label="{{ __('entries.ed.cover_remove_title', ['unit' => $unit]) }}">
-                                    <x-bs-admin::icon name="ri-delete-bin" :class="$glyph" />{{ __('entries.cover_remove') }}
-                                </button>
-                            @else
-                                <button type="button" wire:click="openCoverPicker" class="absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-text-muted transition-colors hover:bg-surface-hover hover:text-primary-text">
-                                    <x-bs-admin::icon name="ri-image-add" class="size-7" />
-                                    <span class="text-small font-semibold">{{ __('entries.ed.cover_choose') }}</span>
+                                    <span class="inline-flex min-h-8 items-center gap-1 rounded-full border border-white px-3 text-[calc(0.875rem+var(--user-text-boost))] font-semibold leading-tight text-white" style="background: rgba(15, 23, 41, .72)">
+                                        <x-bs-admin::icon name="ri-close" class="size-4 shrink-0" />{{ __('entries.cover_remove') }}
+                                    </span>
                                 </button>
                             @endif
-                        </div>
-                        @if ($coverUrl)
-                            <div>
-                                <x-bs-admin::button variant="outline" color="secondary" size="sm" wire:click="openCoverPicker">
-                                    <x-bs-admin::icon name="ri-image-edit" :class="$glyph" /> {{ __('entries.ed.cover_change') }}
-                                </x-bs-admin::button>
+                        @elseif ($mayPick)
+                            <button type="button" wire:click="openCoverPicker" class="absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-3 text-center text-[calc(0.8125rem+var(--user-text-boost))] leading-normal text-text transition-colors hover:bg-surface-hover">
+                                <x-bs-admin::icon name="ri-image-add" class="size-6 text-primary-text" />
+                                <span class="font-semibold text-primary-text">{{ __('entries.ed.cover_choose') }}</span>
+                            </button>
+                        @else
+                            <span class="flex size-full flex-col items-center justify-center gap-1.5 px-3 text-center text-[calc(0.8125rem+var(--user-text-boost))] leading-normal text-text-muted">
+                                <x-bs-admin::icon name="ri-image" class="size-6" />{{ __('entries.ed.cover_none') }}
+                            </span>
+                        @endif
+                    </div>
+                    @if ($cover)
+                        @if ($mayPick)
+                            <x-bs-admin::button variant="outline" color="neutral" size="sm" class="w-full" wire:click="openCoverPicker" data-picker-focus>
+                                <x-bs-admin::icon name="ri-image-add" :class="$glyph" /> {{ __('entries.ed.cover_change') }}
+                            </x-bs-admin::button>
+                        @endif
+                        {{-- one line on the picture's shape, then where the website shows it (folded by default) --}}
+                        <div class="flex flex-col gap-1" x-data="{ where: false }">
+                            @if ($cover['ratio'] === 'ok')
+                                <p class="m-0 flex items-start gap-1.5 text-[calc(0.8125rem+var(--user-text-boost))] font-semibold leading-normal text-success-text">
+                                    <x-bs-admin::icon name="ri-checkbox-circle" :class="'mt-0.5 '.$glyph" /><span class="min-w-0 [overflow-wrap:anywhere]">{{ __('entries.ed.cover_ratio_ok') }}</span>
+                                </p>
+                            @elseif ($cover['ratio'] === 'warn')
+                                <p class="m-0 flex items-start gap-1.5 text-[calc(0.8125rem+var(--user-text-boost))] leading-normal text-warning-text">
+                                    <x-bs-admin::icon name="ri-error-warning" :class="'mt-0.5 '.$glyph" /><span class="min-w-0 [overflow-wrap:anywhere]">{{ __('entries.ed.cover_ratio_warn') }}</span>
+                                </p>
+                            @endif
+                            <button type="button" x-on:click="where = ! where" x-bind:aria-expanded="where ? 'true' : 'false'" aria-expanded="false" aria-controls="entry-cover-where"
+                                    class="flex min-h-hit w-full items-center gap-1.5 text-start text-[calc(0.875rem+var(--user-text-boost))] font-medium text-primary-text">
+                                <x-bs-admin::icon name="ri-image" :class="$glyph" />
+                                <span class="min-w-0 flex-1 [overflow-wrap:anywhere]">{{ __('entries.ed.cover_where') }}</span>
+                                <x-bs-admin::icon name="ri-arrow-down-s" class="size-[min(24px,calc(1.125rem+var(--user-text-boost)))] shrink-0" x-show="! where" />
+                                <x-bs-admin::icon name="ri-arrow-up-s" class="size-[min(24px,calc(1.125rem+var(--user-text-boost)))] shrink-0" x-show="where" x-cloak />
+                            </button>
+                            <div id="entry-cover-where" class="flex flex-col gap-2" x-show="where" x-cloak>
+                                <p class="m-0 text-[calc(0.8125rem+var(--user-text-boost))] leading-normal text-text [overflow-wrap:anywhere]">{{ __('entries.ed.cover_where_auto') }}</p>
+                                <div class="flex flex-nowrap items-start gap-2">
+                                    {{-- each crop 48px high at its own shape (16:9, square, 1.91:1 share card); a width given
+                                         inline, as the three are only drawn here --}}
+                                    @foreach (['list' => 'calc(48px * 16 / 9)', 'square' => '48px', 'share' => 'calc(48px * 1.91)'] as $place => $width)
+                                        <div class="flex flex-none flex-col items-start gap-1" style="width: {{ $width }}">
+                                            <img src="{{ $cover['url'] }}" alt="" class="h-12 w-full rounded object-cover" loading="lazy">
+                                            <span class="text-[calc(0.75rem+var(--user-text-boost))] leading-snug text-text [overflow-wrap:anywhere]">{{ __('entries.ed.cover_where_'.$place) }}</span>
+                                        </div>
+                                    @endforeach
+                                </div>
+                                <p class="m-0 text-[calc(0.75rem+var(--user-text-boost))] leading-normal text-text-muted [overflow-wrap:anywhere]">{{ __('entries.ed.cover_where_social') }}</p>
                             </div>
+                        </div>
                             {{-- «Mô tả ảnh»: this language's words for the picture on the website (Editor::$coverAlt). --}}
                             <div class="entry-alt" x-data="bsSeoFields({{ Js::from($altConfig) }})">
                                 <div class="relative mb-1.5 flex items-center gap-1" x-data="{ q: false }" x-on:keydown.escape="q = false" x-on:click.outside="q = false">
@@ -555,9 +606,8 @@
                                 <p id="entry-cover-alt-h" class="mt-1.5 mb-0 text-caption text-text-muted">{{ __('entries.ed.cover_alt_hint') }}</p>
                                 @error('coverAlt') <p id="entry-cover-alt-e" class="{{ $error }}">{{ $message }}</p> @enderror
                             </div>
-                        @endif
-                    </section>
-                @endcan
+                    @endif
+                </section>
 
                 @if ($isPage && ! $pageHome)
                     <button type="button" x-on:click="setMore(! more)" x-bind:aria-expanded="more ? 'true' : 'false'" aria-expanded="false" aria-controls="entry-props"
@@ -724,34 +774,13 @@
     @endif
 
     @can('media.view')
-        @if ($showMediaPicker)
-            <div class="media-picker" role="dialog" aria-modal="true" aria-label="{{ __('entries.cover_pick') }}">
-                <div class="media-picker__head">
-                    <strong>{{ __('entries.cover_pick') }}</strong>
-                    <button type="button" wire:click="closeCoverPicker">{{ __('entries.close') }}</button>
-                </div>
-                @if ($pickerMedia->isEmpty())
-                    <p>{{ __('entries.library_empty') }}</p>
-                @else
-                    <div class="media-picker__grid">
-                        @foreach ($pickerMedia as $m)
-                            @if (str_starts_with($m->mime, 'image/'))
-                                <button type="button" wire:key="pick-{{ $m->id }}"
-                                        wire:click="selectCover('{{ $m->storage_key }}')"
-                                        class="media-picker__item" title="{{ $m->original_filename }}">
-                                    <img src="{{ $urls->url($m->storage_key, 320) }}" alt="{{ $m->original_filename }}" loading="lazy">
-                                </button>
-                            @endif
-                        @endforeach
-                    </div>
-                @endif
-            </div>
-        @endif
-
         @include('admin::livewire.entries.partials.block-pickers')
-        {{-- The body's «Chèn ảnh» (WithMediaLibraryPicker): library pictures only; a picture taken
-             from a link is always saved into the library, so the body never points elsewhere. --}}
+        {{-- The shared «Chọn ảnh» (WithMediaLibraryPicker): the body's «Chèn ảnh», the cover and a block's
+             picture (one each). Library pictures only: a picture taken from a link is always saved into
+             the library, so the body never points elsewhere. --}}
         @include('admin::partials.media-picker-modal', ['pickedIds' => [], 'editorLibraryOnly' => true])
     @endcan
+    {{-- After a cover pick or «Bỏ ảnh» (design 07 notify): «Đã gỡ ảnh đại diện» carries «Hoàn tác». --}}
+    <x-bs-admin::toast :message="$coverToast" :seq="$coverToastSeq" dismiss="closeCoverToast" :undo="$coverUndo !== null ? 'undoCoverRemoval' : null" :raised="true" />
     @include('admin::partials.video-embed-modal')
 </div>

@@ -374,15 +374,26 @@ final class Index extends Component
         ]);
     }
 
-    /** The picked cover goes back to the drawer: its key for save() and a small picture. */
-    protected function addGalleryImage(int $mediaId): void
+    /**
+     * The one picture picked for the cover (single mode of the shared «Chọn ảnh») goes back to the
+     * drawer: its key for save() and a small picture. A file that is not a picture is not taken.
+     */
+    protected function pickedSingleImage(Media $media): void
     {
-        $media = Media::query()->whereKey($mediaId)->first(['id', 'storage_key', 'mime']);
-        $this->showImagePicker = false;
-        if ($media === null || ! str_starts_with((string) $media->mime, 'image/')) {
+        if (! str_starts_with($media->mime, 'image/')) {
             return;
         }
         $this->dispatch('category-cover-picked', key: $media->storage_key, url: app(MediaUrlResolver::class)->url($media->storage_key, 400));
+    }
+
+    /**
+     * The cover's footer words in «Chọn ảnh», as the editors' cover says them.
+     *
+     * @return array{insert: string, note: string}
+     */
+    protected function singlePickWords(): array
+    {
+        return ['insert' => Cast::string(__('media.picker_insert_one')), 'note' => Cast::string(__('media.picker_note_cover'))];
     }
 
     /**

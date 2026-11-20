@@ -656,6 +656,17 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$post->ulid.'/edit')->assertOk()->getContent();
     expect($html)->toContain('data-seo-fields', 'wire:model="excerpt"', 'id="entry-cover-alt"');
     file_put_contents($dir.'/post-editor.html', $html);
+    // «Ảnh đại diện» (board 07): «Đổi ảnh» opens the shared «Chọn ảnh» dialog for one picture, and
+    // «Bỏ ảnh» says «Đã gỡ ảnh đại diện» with «Hoàn tác».
+    expect($html)->toContain('aria-controls="entry-cover-where"', e(__('entries.ed.cover_change')));
+    $coverPick = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(App\Modules\Admin\Livewire\Entries\Editor::class, ['ulid' => $post->ulid])
+        ->call('openCoverPicker')->assertSet('imagePickerMode', 'single')->html());
+    expect($coverPick)->toContain('role="dialog"', e(__('media.picker_note_cover')));
+    file_put_contents($dir.'/post-editor-cover-picker.html', str_replace('</body>', $coverPick.'</body>', $html));
+    $coverGone = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(App\Modules\Admin\Livewire\Entries\Editor::class, ['ulid' => $post->ulid])
+        ->call('clearCover')->html());
+    expect($coverGone)->toContain(e(__('entries.ed.cover_removed')), 'wire:click="undoCoverRemoval"', 'border-dashed');
+    file_put_contents($dir.'/post-editor-cover-removed.html', str_replace('</body>', $coverGone.'</body>', $html));
     // A new post: the frame's header says «Thêm mới», Xem trước waits for the first save, no Trash.
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/create?section=posts')->assertOk()->getContent();
     expect($html)->toContain('data-child-screen', 'data-guide="preview"')->not->toContain('wire:click="trash"');
@@ -1289,5 +1300,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/editor-change-diff.html'))->toContain('data-change-diff')
         ->and(file_get_contents($dir.'/editor-change-return.html'))->toContain(e(__('entries.chg.return_err')));
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 109);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 111);
 });

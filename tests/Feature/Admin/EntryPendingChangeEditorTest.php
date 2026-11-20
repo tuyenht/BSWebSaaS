@@ -20,6 +20,7 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\BlankEntrySlug;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -857,6 +858,31 @@ it('folds a change whose address in one language another item took meanwhile: th
             ->and(SiteRoute::query()->where('entry_id', $post->id)->where('locale', 'en')->value('path'))->toBe($before)
             ->and(SiteRoute::query()->where('entry_id', $other->id)->where('locale', 'en')->value('path'))->toBe($taken)
             ->and(SiteRoute::query()->where('entry_id', $post->id)->where('locale', 'vi')->value('path'))->toBe('/tin-tuc/bai-moi');
+    });
+});
+
+it('puts a cover picked in the shared «Chọn ảnh» dialog into the change of a held post, the live cover untouched', function (): void {
+    [$author, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
+        $author->givePermissionTo('media.view');
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $post = pcLivePost(pcCollection(), $author, $editor);
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+        $cover = Media::query()->create([
+            'collection' => 'library', 'slug' => 'bia-cho-duyet', 'hash' => str_repeat('8', 64),
+            'storage_key' => 'a/library/bia-cho-duyet.png', 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1024,
+        ]);
+        $liveMeta = $post->fresh()->meta;
+
+        Livewire::actingAs($author->fresh())->test(Editor::class, ['ulid' => $post->ulid])
+            ->call('openCoverPicker')->call('togglePickerItem', $cover->id)->call('insertPicked')
+            ->assertSet('coverImageKey', 'a/library/bia-cho-duyet.png')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertDispatched('bs-toast', text: __('entries.chg.t_saved_wf'));
+
+        expect(data_get(pcChange($post)?->content, 'shared.meta.image_url'))->toBe('a/library/bia-cho-duyet.png')
+            ->and($post->fresh()->meta)->toBe($liveMeta);
     });
 });
 
