@@ -321,7 +321,7 @@
                             <span class="flex max-w-[45%] items-center truncate border-e border-border bg-surface-muted px-2 font-mono text-small text-text-muted" dir="ltr" title="{{ $host }}">{{ $host }}{{ $multi && $edLocale !== $defaultLocale ? '/'.$edLocale : '' }}</span>
                             <input id="rd-from" type="text" wire:model.blur="edFrom" placeholder="/gioi-thieu-cu" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false" dir="ltr" autofocus
                                 aria-describedby="rd-from-d" @if ($fromErr !== '') aria-invalid="true" @endif
-                                class="field min-w-0 flex-1 border-0 bg-transparent px-2.5 font-mono text-text-strong focus:outline-none">
+                                class="field min-w-0 flex-1 border-0 bg-transparent px-2.5 font-mono text-text-strong -outline-offset-2">
                         </div>
                         @if ($fromErr !== '')
                             <x-bs-admin::field-error id="rd-from-d">{{ $fromErr }}</x-bs-admin::field-error>
