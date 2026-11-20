@@ -1,4 +1,4 @@
-{{-- The ⋮ of the lead being read: move it into or out of spam. --}}
+{{-- The ⋮ of the lead being read: move it into or out of spam, or erase it at the visitor's request. --}}
 <x-bs-admin::list.actions :name="$name" :title="__('leads.menu_title', ['name' => $name])">
     <x-slot:menu>
         @if ($status === 'spam')
@@ -6,5 +6,7 @@
         @else
             <x-bs-admin::list.menu-item icon="ri-spam-2" wire:click="setStatus({{ \Illuminate\Support\Js::from($ulid) }}, 'spam')">{{ __('leads.mark_spam') }}</x-bs-admin::list.menu-item>
         @endif
+        <x-bs-admin::list.menu-sep />
+        <x-bs-admin::list.menu-item icon="ri-delete-bin-6" danger wire:click="askErase({{ \Illuminate\Support\Js::from($ulid) }})">{{ __('leads.erase') }}</x-bs-admin::list.menu-item>
     </x-slot:menu>
 </x-bs-admin::list.actions>

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Livewire\Forms;
 
 use App\Modules\Admin\Support\Leads\LeadListQuery;
+use App\Modules\Forms\Actions\EraseLead;
 use App\Modules\Forms\Actions\SetFormStatus;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormField;
@@ -87,6 +88,13 @@ final class Inbox extends Component
     /** @var array{items: array<string, string>, set: string}|null what "Hoàn tác" puts back: ulid => the status before; `set` is the status the action gave them */
     #[Locked]
     public ?array $undoOp = null;
+
+    /** The «Xóa theo yêu cầu của khách» question is open (entangled with the dialog). */
+    public bool $eraseOpen = false;
+
+    /** @var array{ulid: string, name: string}|null the lead the question names, read when it opened */
+    #[Locked]
+    public ?array $erasing = null;
 
     public function boot(): void
     {
@@ -215,6 +223,56 @@ final class Inbox extends Component
             default => __('leads.toast_status', ['status' => __('leads.st_'.$status)]),
         };
         $this->say($message, 'success', ['items' => [$ulid => $before], 'set' => $status]);
+    }
+
+    /**
+     * «Xóa theo yêu cầu của khách» in the lead's ⋮: the question names the visitor and says the lead
+     * goes for good, with no undo, and what the log keeps. LeadPolicy decides who may.
+     */
+    public function askErase(string $ulid): void
+    {
+        $this->guardWrite();
+        $lead = LeadListQuery::leads()->where('ulid', $ulid)->select(['id', 'ulid', 'name', 'email', 'phone'])->first();
+        if ($lead === null) {
+            $this->say(__('leads.gone'), 'error');
+
+            return;
+        }
+        Gate::authorize('delete', $lead);
+        $this->erasing = ['ulid' => $lead->ulid, 'name' => self::who($lead)];
+        $this->eraseOpen = true;
+    }
+
+    /** The dialog's red button: the lead, and the bell's notices of it, go for good; one audit row says so. */
+    public function confirmErase(): void
+    {
+        $asked = $this->erasing;
+        $this->cancelErase();
+        $this->guardWrite();
+        if ($asked === null) {
+            return;
+        }
+        $lead = LeadListQuery::leads()->where('ulid', $asked['ulid'])->select(['id', 'ulid'])->first();
+        if ($lead !== null) {
+            Gate::authorize('delete', $lead);
+        }
+        if ($lead === null || ! app(EraseLead::class)->handle($lead->ulid)) {
+            $this->say(__('leads.gone'), 'error');
+
+            return;
+        }
+        $this->selected = array_values(array_diff($this->selected, [$asked['ulid']]));
+        if ($this->lead === $asked['ulid']) {
+            $this->lead = '';
+        }
+        $this->say(__('leads.toast_erased'));
+    }
+
+    public function cancelErase(): void
+    {
+        $this->guardRead();
+        $this->eraseOpen = false;
+        $this->erasing = null;
     }
 
     /**
@@ -508,6 +566,18 @@ final class Inbox extends Component
             $this->lead = '';
         }
         $this->selected = array_slice(array_values(array_filter($this->selected, 'is_string')), 0, self::MAX_ROWS);
+    }
+
+    /** How a lead is named to the member: the visitor's name, else the phone, else the email they left. */
+    private static function who(FormSubmission $lead): string
+    {
+        foreach ([$lead->name, $lead->phone, $lead->email] as $value) {
+            if (Cast::string($value) !== '') {
+                return Cast::string($value);
+            }
+        }
+
+        return __('leads.no_name');
     }
 
     private static function dateOr(string $value): string

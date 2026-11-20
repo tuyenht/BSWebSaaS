@@ -27,6 +27,7 @@ use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Rbac\Support\RoleLabel;
@@ -58,7 +59,8 @@ use Livewire\Component;
  * Every method is an endpoint: boot() re-checks taxonomies.manage on each request, each method
  * authorizes through TaxonomyPolicy and validates every argument. A member limited to some
  * categories is refused outside them with outside_category_limits (the policy's per-category
- * abilities, and CategoryLimitGuard inside the write path).
+ * abilities, and CategoryLimitGuard inside the write path). While support staff are signed in for a
+ * member, every change is refused with support_session: the screen reads, searches and filters only.
  *
  * A section is only open to someone who may see its content (`{prefix}.view`, as the admin menu
  * shows it), else section_invalid; a parent, a target or the place an undo goes back to must lie in
@@ -367,6 +369,8 @@ final class Index extends Component
             // "Liên hệ hỗ trợ" on the locked state: the platform's support mailbox
             'supportMail' => $state === 'locked' ? (Cast::string(config('support.mailbox')) ?: Cast::string(config('mail.from.address'))) : '',
             'canManage' => Gate::allows('manage', Taxonomy::class),
+            // support staff signed in for a member: everything reads, nothing changes (inSection refuses it too)
+            'support' => app(SupportSession::class)->active(),
         ]);
     }
 
@@ -443,6 +447,10 @@ final class Index extends Component
         try {
             if (! $write) {
                 return $run($found);
+            }
+            // a support session only looks: search, filters and the editor's fields, never a change
+            if (app(SupportSession::class)->active()) {
+                return $this->refused('support_session');
             }
 
             return DB::transaction(function () use ($run, $found): array {

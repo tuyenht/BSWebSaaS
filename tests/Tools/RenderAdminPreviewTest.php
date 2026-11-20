@@ -24,6 +24,7 @@
 use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Admin\Livewire\Catalog\Index;
 use App\Modules\Admin\Livewire\Forms\FormList;
+use App\Modules\Admin\Livewire\Forms\Inbox;
 use App\Modules\Admin\Livewire\LanguageSettings;
 use App\Modules\Admin\Livewire\Media\Library;
 use App\Modules\Admin\Livewire\NotificationBell;
@@ -253,6 +254,12 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.$path)->assertOk()->getContent();
         file_put_contents($dir.'/'.$name.'.html', $html);
     }
+    // «Xóa theo yêu cầu của khách» on the lead being read: the question naming the visitor.
+    $leadPage = (string) file_get_contents($dir.'/lead-detail.html');
+    $erase = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(Inbox::class, ['ulid' => $lead->ulid])
+        ->call('askErase', $lead->ulid)->assertSet('eraseOpen', true)->html());
+    expect($erase)->toContain('role="alertdialog"', e(__('leads.erase_title', ['name' => 'Phạm Thị Lan'])));
+    file_put_contents($dir.'/lead-erase.html', str_replace('</body>', $erase.'</body>', $leadPage));
 
     // Biểu mẫu: the list (the quote form above, with its leads and one recipient), its editor and a
     // new form from the «Đăng ký tư vấn» starting point.
@@ -616,6 +623,17 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/taxonomies?section=posts')->assertOk()->getContent();
     expect($html)->toContain('data-bs-lazy="bsCategories"', 'Gia công CNC');
     file_put_contents($dir.'/categories.html', $html);
+    // The same tree while support staff are signed in for the owner: it only looks.
+    $staff = User::factory()->create(['name' => 'Lê Hoàng Phúc']);
+    app(PlatformAccess::class)->onPlatform(fn () => $staff->assignRole('support'));
+    app(PlatformAccess::class)->forgetMemo();
+    $html = $this->withSession(['support_session' => [
+        'staff_id' => $staff->id, 'staff_label' => 'Lê Hoàng Phúc', 'member_id' => $owner->id, 'reason' => 'Khách nhờ xếp lại chuyên mục',
+        'site_id' => 1, 'expires_at' => now()->addMinutes(30)->getTimestamp(), 'session_ulid' => null,
+    ]])->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/taxonomies?section=posts')->assertOk()->getContent();
+    expect($html)->toContain(e(__('categories.ui_support_banner')));
+    file_put_contents($dir.'/categories-support.html', $html);
+    $this->flushSession();
 
     // The post editor's «Chuyên mục» card (board 07): a post filed under two categories of its section and
     // one of another (that section's name beside it), «Chuyên mục chính» under the list, «Thêm chuyên mục
@@ -1121,5 +1139,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     file_put_contents($dir.'/media-trash-own-ask.html', $swap($html, $ownAsk, $media));
     config(['media' => $mediaConfig]);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 89);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 91);
 });

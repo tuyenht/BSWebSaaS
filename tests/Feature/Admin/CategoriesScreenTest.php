@@ -16,6 +16,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Models\Role;
@@ -24,6 +25,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteModule;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
@@ -746,4 +748,49 @@ it('offers a product section every layout as the detail layout', function (): vo
     $detail = json_decode($found[1] ?? '[]', true);
 
     expect($detail)->toContain('product')->toContain('category')->toContain('post');
+});
+
+it('only lets support staff look: every change is refused during a support session, and the screen says so', function (): void {
+    [$jobs, $events] = cxIn(1, fn (): array => [cxCreate('Tuyển dụng', $this->root), cxCreate('Sự kiện', $this->root)]);
+    $editor = $this->editor->fresh();
+    $session = app('session')->driver();
+    request()->setLaravelSession($session);
+    auth()->login($editor);
+    app(SupportSession::class)->start($editor, $editor, 1, 'Kiểm tra', now()->addMinutes(30));
+    // Livewire's test requests skip the middleware, so nothing starts the session on them;
+    // hand each one this session, as StartSession does on a real request.
+    app()->rebinding('request', function ($app, Request $request) use ($session): void {
+        if (! $request->hasSession()) {
+            $request->setLaravelSession($session);
+        }
+    });
+    $version = TaxonomyTree::version('post_cat');
+    $refused = ['ok' => false, 'reason' => 'support_session', 'message' => __('categories.reason_support_session')];
+
+    expect(cxCall($editor, 'save', 'tin-tuc', null, null, ['names' => ['vi' => 'Mục mới']]))->toBe($refused)
+        ->and(cxCall($editor, 'save', 'tin-tuc', $jobs->ulid, null, ['names' => ['vi' => 'Đổi tên']]))->toBe($refused)
+        ->and(cxCall($editor, 'move', 'tin-tuc', $jobs->ulid, $events->ulid, 0))->toBe($refused)
+        ->and(cxCall($editor, 'undoMove', 'tin-tuc', ['key' => $jobs->ulid, 'parent' => $this->root->ulid, 'position' => 0, 'version' => $version]))->toBe($refused)
+        ->and(cxCall($editor, 'delete', 'tin-tuc', $jobs->ulid))->toBe($refused)
+        ->and(cxCall($editor, 'merge', 'tin-tuc', $jobs->ulid, $events->ulid))->toBe($refused)
+        // looking still works
+        ->and(cxCall($editor, 'load', 'tin-tuc')['ok'])->toBeTrue()
+        ->and(cxCall($editor, 'search', 'tin-tuc', 'tuyen')['ok'])->toBeTrue()
+        ->and(cxCall($editor, 'deletePreview', 'tin-tuc', $jobs->ulid)['ok'])->toBeTrue();
+
+    expect(TaxonomyTree::version('post_cat'))->toBe($version)
+        ->and(cxIn(1, fn (): int => Taxonomy::query()->where('vocabulary', 'post_cat')->count()))->toBe(3);
+
+    cxIn(1, fn () => Livewire::withQueryParams(['section' => 'tin-tuc'])->actingAs($editor)->test(CategoriesIndex::class)
+        ->assertSee(__('categories.ui_support_banner'))
+        ->assertSee(__('categories.ui_role_text_support'))
+        ->assertSee(__('categories.ui_support_pan'))
+        ->assertDontSee(__('categories.ui_role_text')));
+});
+
+it('changes categories as before when no support session is open', function (): void {
+    expect(cxCall($this->editor, 'save', 'tin-tuc', null, null, ['names' => ['vi' => 'Mục mới']])['ok'])->toBeTrue();
+    cxIn(1, fn () => Livewire::withQueryParams(['section' => 'tin-tuc'])->actingAs($this->editor->fresh())->test(CategoriesIndex::class)
+        ->assertDontSee(__('categories.ui_support_banner'))
+        ->assertDontSee(__('categories.ui_support_pan')));
 });
