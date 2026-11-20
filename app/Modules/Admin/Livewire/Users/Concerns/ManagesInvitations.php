@@ -63,7 +63,7 @@ trait ManagesInvitations
         $roles = $invitation->roles()->get()->all();
         if ($roles === []) {
             // every role it carried was deleted since: nothing is left to invite to
-            $this->say(__('admin.members.inv_gone'), 'error');
+            $this->say(__('admin.members.inv_gone'), 'error', reload: true);
 
             return;
         }
@@ -78,7 +78,7 @@ trait ManagesInvitations
             return;
         } catch (InvitationRejectedException $e) {
             // withdrawn or accepted by now: said as when it is gone from the list
-            $this->say($e->reason === 'invalid' ? __('admin.members.inv_gone') : __('rbac.invitation.error_'.$e->reason), 'error');
+            $this->say($e->reason === 'invalid' ? __('admin.members.inv_gone') : __('rbac.invitation.error_'.$e->reason), 'error', reload: $e->reason === 'invalid');
 
             return;
         } catch (CategoryScopeRejectedException $e) {
@@ -128,7 +128,7 @@ trait ManagesInvitations
 
             return;
         } catch (InvitationRejectedException) {
-            $this->say(__('admin.members.inv_gone'), 'error');
+            $this->say(__('admin.members.inv_gone'), 'error', reload: true);
 
             return;
         }
@@ -144,7 +144,7 @@ trait ManagesInvitations
         }
         $invitation = $this->siteInvitation($ulid);
         if (! $invitation instanceof Invitation || InvitationDirectory::stateOf($invitation) !== 'revoked') {
-            $this->say(__('admin.members.inv_gone'), 'error');
+            $this->say(__('admin.members.inv_gone'), 'error', reload: true);
 
             return;
         }
@@ -217,7 +217,7 @@ trait ManagesInvitations
     {
         $invitation = $this->siteInvitation($ulid);
         if (! $invitation instanceof Invitation || ! in_array(InvitationDirectory::stateOf($invitation), ['pending', 'expired'], true)) {
-            $this->say(__('admin.members.inv_gone'), 'error');
+            $this->say(__('admin.members.inv_gone'), 'error', reload: true);
 
             return null;
         }
