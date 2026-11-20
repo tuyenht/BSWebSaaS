@@ -465,3 +465,57 @@ it('prints no per-form numbers when the site is past the cap, even with a form t
         expect($query->formCounts('all', [$lead->form_id], 1))->toBeNull();
     });
 });
+
+it('never lists, counts or opens the leads of a form being deleted', function (): void {
+    $manager = leadManager();
+    $kept = listLead('contact', ['name' => 'Lê Hoàng Bảo']);
+    listLead('contact', ['name' => 'Võ Thành Đông', 'status' => 'spam', 'is_spam' => true]);
+    $going = listLead('quote', ['name' => 'Phạm Minh Đạt']);
+    listLead('quote', ['name' => 'Phạm Văn Đạt', 'status' => 'spam', 'is_spam' => true]);
+    // «Xóa» on a form past the inline limit: its leads stay until their batches run
+    DB::connection('pgsql_admin')->table('forms')->where('id', $going->form_id)->update(['status' => Form::DELETING]);
+
+    $contactForm = app(Tenancy::class)->enter(1, fn () => Form::query()->whereKey($kept->form_id)->value('ulid'));
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $contactForm): void {
+        Livewire::actingAs($manager)->test(Inbox::class)
+            ->assertSee('Lê Hoàng Bảo')->assertDontSee('Phạm Minh Đạt')
+            ->assertViewHas('counts', fn (array $counts): bool => $counts['all'] === 1 && $counts['new'] === 1 && $counts['spam'] === 1)
+            ->assertViewHas('whenCounts', fn (array $counts): bool => $counts[''] === 1)
+            ->set('tab', 'spam')
+            ->assertSee('Võ Thành Đông')->assertDontSee('Phạm Văn Đạt')
+            ->set('tab', 'all')
+            // "N of M": the whole list (M) holds none of the form's leads either
+            ->set('formF', [$contactForm])
+            ->assertSee(__('leads.match_of', ['n' => 1, 'm' => 1]));
+    });
+
+    // nor by its code
+    $this->actingAs($manager)->get('http://a.test/admin/forms/'.$going->ulid)
+        ->assertOk()->assertSee('Lê Hoàng Bảo')->assertDontSee('Phạm Minh Đạt');
+});
+
+it('says the site has no lead yet when the only ones left are a deleting form\'s', function (): void {
+    $manager = leadManager();
+    $going = listLead('quote', ['name' => 'Phạm Minh Đạt']);
+    DB::connection('pgsql_admin')->table('forms')->where('id', $going->form_id)->update(['status' => Form::DELETING]);
+
+    $this->actingAs($manager)->get('http://a.test/admin/forms')
+        ->assertOk()
+        ->assertSee('data-state="empty"', false)
+        ->assertDontSee('Phạm Minh Đạt');
+});
+
+it('says a lead is gone, changing nothing, when its form went to deleting while it was open or ticked', function (): void {
+    $manager = leadManager();
+    $lead = listLead('quote', ['name' => 'Phạm Minh Đạt']);
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $lead): void {
+        $page = Livewire::actingAs($manager)->test(Inbox::class)->call('openLead', $lead->ulid)->call('toggleSelect', [$lead->ulid]);
+        DB::connection('pgsql_admin')->table('forms')->where('id', $lead->form_id)->update(['status' => Form::DELETING]);
+
+        $page->call('setStatus', $lead->ulid, 'archived')->assertSet('toastMsg', __('leads.gone'))->assertSet('toastTone', 'error')
+            ->call('bulkDone');
+        expect(leadStatus($lead))->toBe('read');
+    });
+});

@@ -10,7 +10,6 @@ use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Notifications\Models\SiteNotification;
 use App\Modules\Shared\Support\Cast;
-use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 
@@ -114,7 +113,7 @@ final class DeleteForm
             }
         }
 
-        Form::query()->whereKey($locked->id)->toBase()->update(['status' => Form::DELETING, 'updated_at' => now()]);
+        Form::query()->whereKey($locked->id)->toBase()->update(['status' => Form::DELETING]);
 
         Audit::recordOrFail('forms.form.deleted', [
             'auditable_type' => Form::class,
@@ -123,7 +122,8 @@ final class DeleteForm
             'meta' => ['key' => $locked->key, 'leads' => $atMost, 'leads_over_cap' => $atMost === null, 'in_batches' => true],
         ]);
 
-        DeleteLargeForm::dispatch(app(CurrentSite::class)->id(), $locked->id);
+        // the form's own site, as locked here; queueRun() also gives the run its claim on the delete
+        DeleteLargeForm::queueRun($locked->site_id, $locked->id);
 
         return ['deleted' => true, 'leads' => $atMost ?? 0, 'later' => true];
     }
