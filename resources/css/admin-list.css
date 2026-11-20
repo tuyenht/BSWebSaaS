@@ -1896,6 +1896,120 @@
         }
     }
 
+    /* data-cols="redirects" (the redirects list, board c-chuyen-huong): the board's table starts at 900,
+       not 768. Below 900 a row is a card: [☐] [old → new, its warning chips, then "language · source"]
+       [kind] at the top right and [Sửa / Khôi phục] [⋮] at the bottom right, the row buttons kept at
+       every width. From 900 the columns: language (a short code), kind, source (wraps), actions.
+       Placed after the select-box rules above, which it overrides at the same specificity. */
+    @container list (width < 56.25rem) {
+        .list-rows[data-kind='facts'][data-cols='redirects'] .list-hd {
+            display: none;
+        }
+
+        .list-rows[data-kind='facts'][data-cols='redirects'] .list-r:not(.list-hd) {
+            display: grid;
+            grid-template-columns: var(--spacing-hit) minmax(0, 1fr) auto;
+            column-gap: 0.5rem;
+            row-gap: 0.375rem;
+            align-items: start;
+            padding: 0.625rem 0.75rem;
+        }
+
+        .list-rows[data-kind='facts'][data-cols='redirects'] .list-r:not(.list-hd) > .list-c-chk {
+            grid-column: 1;
+            grid-row: 1 / span 2;
+            align-self: start;
+        }
+
+        .list-rows[data-kind='facts'][data-cols='redirects'] .list-r:not(.list-hd) > .list-c-main {
+            grid-column: 2;
+            grid-row: 1 / span 2;
+        }
+
+        .list-rows[data-kind='facts'][data-cols='redirects'] .list-r:not(.list-hd) > .list-c-f2 {
+            display: block;
+            grid-column: 3;
+            grid-row: 1;
+            justify-self: end;
+            margin: 0;
+        }
+
+        .list-rows[data-kind='facts'][data-cols='redirects'] .list-r:not(.list-hd) > .list-c-act {
+            grid-column: 3;
+            grid-row: 2;
+            align-self: end;
+            justify-self: end;
+        }
+
+        .list-rows[data-kind='facts'][data-cols='redirects'] .list-r:not(.list-hd) > .list-c-full {
+            grid-column: 1 / -1;
+            grid-row: auto;
+        }
+
+        .list-rows[data-kind='facts'][data-cols='redirects'] :is(.list-c-f1, .list-c-f3) {
+            display: none;
+        }
+
+        .list-rows[data-kind='facts'][data-cols='redirects'] .list-c-f + .list-c-f::before {
+            content: none;
+        }
+
+        /* !important: the facts rules hide the row buttons below 768 the same way. */
+        .list-rows[data-kind='facts'][data-cols='redirects'] .list-c-act [data-row-btn] {
+            display: inline-flex !important;
+        }
+
+        .list-rows[data-kind='facts'][data-cols='redirects'] .list-line {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0 0.25rem;
+            margin-top: 0.125rem;
+            font-size: var(--text-small);
+            line-height: 1.4;
+            color: var(--color-text-muted);
+            overflow-wrap: anywhere;
+        }
+
+        .list-rows[data-kind='facts'][data-cols='redirects'] .list-line > * + *::before {
+            content: '·';
+            margin-inline-end: 0.25rem;
+        }
+    }
+
+    @container list (width >= 56.25rem) {
+        .list-rows[data-kind='facts'][data-cols='redirects'] .list-c-main {
+            min-width: 12rem;
+        }
+
+        .list-rows[data-kind='facts'][data-cols='redirects'] .list-c-f1 {
+            flex: 0 0 calc(4rem + 2 * var(--user-text-boost));
+        }
+
+        .list-rows[data-kind='facts'][data-cols='redirects'] .list-c-f2 {
+            flex: 0 0 calc(7.5rem + 6 * var(--user-text-boost));
+        }
+
+        .list-rows[data-kind='facts'][data-cols='redirects'] .list-c-f3 {
+            flex: 0.7 1 0;
+            min-width: 8rem;
+            white-space: normal;
+            font-size: var(--text-small);
+            color: var(--color-text-muted);
+            overflow-wrap: anywhere;
+        }
+
+        .list-rows[data-kind='facts'][data-cols='redirects'] .list-hd > .list-c-f3 {
+            font-size: inherit;
+            color: inherit;
+        }
+
+        /* Sửa / Khôi phục + ⋮ on one line at every text size */
+        .list-rows[data-kind='facts'][data-cols='redirects'] .list-c-act {
+            flex: 0 0 max(9.5rem, calc(9 * var(--text-body)));
+        }
+    }
+
     /* A ⋮ menu's heading ("Thao tác cho …") and the reason under an item that is locked. */
     .list-mh {
         padding: 0.375rem 0.875rem 0.25rem;

@@ -59,6 +59,51 @@ final class SafeLink
             && preg_match('/\A\/(?![\/\\\\])[^\s\p{C}\p{Z}\\\\]*\z/u', $path) === 1;
     }
 
+    /**
+     * An address on another website that a visitor may be sent to, in the one form it is stored and
+     * followed in; null when it is not one. Strict on purpose — a redirect row must never become a
+     * way to dress up a link:
+     *  - `https://` and a host name, nothing before it: no `user@`, no `//host`, no other scheme;
+     *  - the host is plain ASCII letters, digits and hyphens in dot-separated labels with a letter
+     *    TLD: no IP address, no port, no single-label name (`localhost`), no punycode label
+     *    (`xn--…`) and no non-ASCII letter, so a look-alike domain cannot be entered;
+     *  - after the host only `/`, `?` or `#` and visible ASCII: no space, control character or
+     *    backslash anywhere.
+     * Only the scheme and the host are lower-cased (and outer spaces trimmed); the rest is kept.
+     */
+    public static function externalHttps(mixed $url): ?string
+    {
+        if (! is_string($url)) {
+            return null;
+        }
+        $url = trim($url);
+        if (strlen($url) > self::MAX_LENGTH || preg_match('~\A(https)://([^/?#]+)((?:[/?#].*)?)\z~is', $url, $m) !== 1) {
+            return null;
+        }
+        $host = strtolower($m[2]);
+        $rest = $m[3];
+        if (strlen($host) > 253 || preg_match('~\A(?:(?!xn--)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?!xn--)[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?\z~', $host) !== 1) {
+            return null;
+        }
+        if ($rest !== '' && preg_match('~\A[\x21-\x5B\x5D-\x7E]*\z~', $rest) !== 1) {
+            return null;
+        }
+        $clean = 'https://'.$host.$rest;
+        $parts = parse_url($clean);
+        if (! is_array($parts) || ($parts['scheme'] ?? '') !== 'https' || ($parts['host'] ?? '') !== $host
+            || isset($parts['user']) || isset($parts['pass']) || isset($parts['port'])) {
+            return null;
+        }
+
+        return $clean;
+    }
+
+    /** Whether $url is, exactly, an address externalHttps() gives: the check before one is followed. */
+    public static function isExternalHttps(mixed $url): bool
+    {
+        return is_string($url) && $url !== '' && self::externalHttps($url) === $url;
+    }
+
     /** A tel: link from the digits (and a leading +) of a phone number; null when none are left. */
     public static function tel(mixed $phone): ?string
     {

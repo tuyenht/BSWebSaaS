@@ -45,7 +45,7 @@ final readonly class RouteSync
         }
 
         if ($route->path !== $path) {
-            $this->recordMove($locale, $route->path, $path, ['entry_id' => $entry->id]);
+            $this->recordMove($locale, $route->path, $path, self::leadsTo(entry: $entry->id));
             $route->update(['path' => $path]);
         }
 
@@ -56,8 +56,8 @@ final readonly class RouteSync
      * Upsert the route for a product+locale at its composed path; returns that path. Mirrors sync():
      * on a slug/category change it moves the route and records a 301 from the old path. The path is
      * composed from PRIMITIVES (the product's primary category + slug) — Cms routing never references
-     * the Catalog Product model, so the module graph stays acyclic. Product redirects carry no target
-     * attribution (the redirects table has no product_id column yet); they still serve from → to.
+     * the Catalog Product model, so the module graph stays acyclic. Its redirects name the product
+     * (product_id), so the «Chuyển hướng» screen can say what they came from.
      */
     public function syncProduct(int $productId, ?Taxonomy $primaryCategory, string $locale, string $slug): string
     {
@@ -77,7 +77,7 @@ final readonly class RouteSync
         }
 
         if ($route->path !== $path) {
-            $this->recordMove($locale, $route->path, $path);
+            $this->recordMove($locale, $route->path, $path, self::leadsTo(product: $productId));
             $route->update(['path' => $path]);
         }
 
@@ -119,7 +119,7 @@ final readonly class RouteSync
      * Upsert the route for a taxonomy+locale at its flat path (/slug); returns that path. Mirrors
      * sync(): on a slug change it moves the route and records a 301 from the old path. It guards
      * against another target already owning the path (A2) and stays idempotent for re-provisioning.
-     * Category redirects carry no target attribution (no taxonomy column on redirects), like products.
+     * Its redirects name the category (taxonomy_id), like products name theirs.
      */
     public function syncTaxonomy(Taxonomy $taxonomy, string $locale, string $slug): string
     {
@@ -139,7 +139,7 @@ final readonly class RouteSync
         }
 
         if ($route->path !== $path) {
-            $this->recordMove($locale, $route->path, $path);
+            $this->recordMove($locale, $route->path, $path, self::leadsTo(taxonomy: $taxonomy->id));
             $route->update(['path' => $path]);
         }
 
@@ -159,24 +159,37 @@ final readonly class RouteSync
 
     /**
      * Record that $from now lives at $to: anything that pointed AT $from is repointed (repeated
-     * renames stay one hop, not a chain), $from → $to is upserted (idempotent on from_path), and a
-     * redirect FROM $to is dropped — $to is live content now, and an A→B→A rename must not loop.
+     * renames stay one hop, not a chain; rows in the trash too, so a restore lands on the live
+     * address), $from → $to is upserted as a system row (idempotent on the live from_path), and any
+     * redirect FROM $to is removed for good — $to is live content now, and an A→B→A rename must not
+     * loop, nor come back from the trash. A member's redirect to another website is left as it is on
+     * both ends (Redirect::leadsAway): only the member changes one, with an audit row; it never points
+     * at $from, so the first step cannot reach it either.
      *
-     * @param  array{entry_id?: int}  $attribution  the entry a redirect leads to, when it is one
+     * @param  array{entry_id: int|null, product_id: int|null, taxonomy_id: int|null}|array{}  $target  what it leads to (leadsTo()), when known
      */
-    private function recordMove(string $locale, string $from, string $to, array $attribution = []): void
+    private function recordMove(string $locale, string $from, string $to, array $target = []): void
     {
-        Redirect::query()
+        Redirect::query()->withTrashed()
             ->where('locale', $locale)
             ->where('to_path', $from)
-            ->update(['to_path' => $to, ...$attribution]);
+            ->update(['to_path' => $to, ...$target]);
 
-        Redirect::query()->updateOrCreate(
-            ['locale' => $locale, 'from_path' => $from],
-            ['to_path' => $to, 'status_code' => 301, ...$attribution],
-        );
+        Redirect::writeSystemRow($locale, $from, ['to_path' => $to, 'status_code' => 301, 'source' => Redirect::SOURCE_AUTO, ...$target]);
 
-        Redirect::query()->where('locale', $locale)->where('from_path', $to)->delete();
+        Redirect::query()->withTrashed()->where('locale', $locale)->where('from_path', $to)
+            ->whereNot('to_path', 'like', Redirect::EXTERNAL_PREFIX.'%')->forceDelete();
+    }
+
+    /**
+     * The content a redirect leads to: one of the three set, the other two cleared, so a row that
+     * changes hands never names two targets.
+     *
+     * @return array{entry_id: int|null, product_id: int|null, taxonomy_id: int|null}
+     */
+    private static function leadsTo(?int $entry = null, ?int $product = null, ?int $taxonomy = null): array
+    {
+        return ['entry_id' => $entry, 'product_id' => $product, 'taxonomy_id' => $taxonomy];
     }
 
     /**

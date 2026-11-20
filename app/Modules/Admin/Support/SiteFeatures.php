@@ -13,6 +13,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Exceptions\FeatureChangeRejectedException;
 use App\Modules\Tenancy\Models\Site;
+use App\Modules\Tenancy\Registry\FeatureRegistry;
 use Illuminate\Auth\Access\AuthorizationException;
 
 /**
@@ -55,6 +56,10 @@ final readonly class SiteFeatures
     private function change(User $actor, Site $site, string $key, bool|int|null $value, string $action): void
     {
         if (! $this->platform->isSuperAdmin($actor) && ! $this->platform->can($actor, 'platform.entitlements.manage')) {
+            throw new AuthorizationException;
+        }
+        // a switch no plan carries (a redirect to another website…) is a super_admin's call alone
+        if (FeatureRegistry::siteOnly($key) && ! $this->platform->isSuperAdmin($actor)) {
             throw new AuthorizationException;
         }
 

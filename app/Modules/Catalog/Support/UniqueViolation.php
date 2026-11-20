@@ -23,7 +23,7 @@ final class UniqueViolation
         // carry what the member typed: only that name is read, never the rest of the text.
         $index = preg_match('/unique constraint "([^"]+)"/', $e->getPrevious()?->getMessage() ?? $e->getMessage(), $m) === 1 ? $m[1] : null;
 
-        if (in_array($index, ['routes_site_id_locale_path_unique', 'redirects_site_id_locale_from_path_unique'], true)) {
+        if (in_array($index, ['routes_site_id_locale_path_unique', 'redirects_site_id_locale_from_path_live_unique'], true)) {
             return new ProductEditRefused(__('catalog.slug_conflict'), 'slug');
         }
         if ($index === 'products_site_sku_unique') {

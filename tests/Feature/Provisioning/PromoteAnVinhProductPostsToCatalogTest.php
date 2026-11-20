@@ -325,6 +325,27 @@ it('records a 301 when a source post lived at a different path than the product'
     $this->get("http://anvinh-promo-g.platform.test/san-pham/{$slug}")->assertOk();
 });
 
+it('leaves a member\'s redirect to another website on either address as it is', function (): void {
+    ['site' => $site, 'slugs' => $slugs] = seedAnVinhProductPosts('anvinh-promo-h.platform.test', 1);
+    $slug = $slugs[0];
+
+    app(Tenancy::class)->enter($site->id, function () use ($slug): void {
+        SiteRoute::query()->where('path', "/san-pham/{$slug}")->update(['path' => "/{$slug}"]);
+        Redirect::query()->create(['locale' => 'vi', 'from_path' => "/{$slug}", 'to_path' => 'https://doitac.vn/a', 'status_code' => 302, 'source' => 'manual']);
+        tap(Redirect::query()->create(['locale' => 'vi', 'from_path' => "/san-pham/{$slug}", 'to_path' => 'https://doitac.vn/b', 'status_code' => 302, 'source' => 'manual']))->delete();
+    });
+    app()->forgetScopedInstances();
+
+    app(Tenancy::class)->enter($site->id, fn (): array => app(PromoteAnVinhProductPostsToCatalog::class)->handle());
+
+    app(Tenancy::class)->enter($site->id, function () use ($slug): void {
+        expect(Redirect::query()->withTrashed()->orderBy('id')->get(['from_path', 'to_path', 'source'])->map->only(['from_path', 'to_path', 'source'])->all())->toBe([
+            ['from_path' => "/{$slug}", 'to_path' => 'https://doitac.vn/a', 'source' => 'manual'],
+            ['from_path' => "/san-pham/{$slug}", 'to_path' => 'https://doitac.vn/b', 'source' => 'manual'],
+        ]);
+    });
+});
+
 it('rolls the whole run back at a lock conflict instead of reporting it as one failed post', function (): void {
     // A lock conflict in a post's savepoint leaves the caller's transaction aborted (Laravel
     // rethrows it without rolling the savepoint back): the next posts could not run, and COMMIT

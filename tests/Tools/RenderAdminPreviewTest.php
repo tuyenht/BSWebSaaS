@@ -32,6 +32,7 @@ use App\Modules\Admin\Livewire\NotificationBell;
 use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog;
 use App\Modules\Admin\Livewire\SeoSettings;
 use App\Modules\Admin\Livewire\Settings\Domains as DomainSettings;
+use App\Modules\Admin\Livewire\Settings\Redirects as RedirectSettings;
 use App\Modules\Admin\Livewire\Users\Index as MembersIndex;
 use App\Modules\Admin\Livewire\WorkflowSettings;
 use App\Modules\Admin\Support\PlatformPlans;
@@ -502,6 +503,35 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/integrations')->assertOk()->getContent();
     expect($html)->toContain('Xác minh &amp; Công cụ', 'wire:model.live.blur="tokens.google"');
     file_put_contents($dir.'/integrations.html', $html);
+
+    // "Chuyển hướng": rows the system made and rows added by hand, a temporary one, a loop pair and a
+    // long address; the add dialog open with a field error; and the Trash with one row.
+    app(Tenancy::class)->enter(1, function (): void {
+        $page = Entry::query()->where('type', 'page')->firstOrFail();
+        foreach ([
+            ['/san-pham/do-ga-phay-cnc-5-truc-cho-chi-tiet-hang-khong-va-y-te', '/san-pham/do-ga-cnc-5-truc', 301, 'manual', null],
+            ['/tin-tuc/khai-truong-xuong-moi', '/tin-tuc/xuong-moi-tai-phu-nghia', 301, 'auto', $page->id],
+            ['/khuyen-mai-tet', '/bang-gia', 302, 'manual', null],
+            ['/vong-a', '/vong-b', 301, 'manual', null],
+            ['/vong-b', '/vong-a', 301, 'manual', null],
+            // another website's address, with the website's switch off: listed with its host, marked not running
+            ['/doi-tac', 'https://doitac.example/gioi-thieu', 302, 'manual', null],
+        ] as [$from, $to, $code, $source, $entryId]) {
+            Redirect::query()->create(['locale' => 'vi', 'from_path' => $from, 'to_path' => $to, 'status_code' => $code, 'source' => $source, 'entry_id' => $entryId]);
+        }
+        Redirect::query()->create(['locale' => 'vi', 'from_path' => '/trang-cu-da-xoa', 'to_path' => '/lien-he', 'status_code' => 301, 'source' => 'manual'])->delete();
+    });
+    $this->flushSession();
+    $page = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/redirects')->assertOk()->getContent();
+    expect($page)->toContain('/khuyen-mai-tet', 'Chuyển tạm', 'Đi tới website khác: doitac.example');
+    file_put_contents($dir.'/redirects.html', $page);
+    $open = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(RedirectSettings::class)
+        ->call('openAdd')->set('edFrom', '/gioi-thieu-cu')->set('edTo', 'https://trang-khac.example/x')->assertHasErrors(['edTo'])->html());
+    file_put_contents($dir.'/redirects-add.html', str_replace('</body>', $open.'</body>', $page));
+    $this->flushSession();
+    $trash = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/redirects?tab=trash')->assertOk()->getContent();
+    expect($trash)->toContain('/trang-cu-da-xoa');
+    file_put_contents($dir.'/redirects-trash.html', $trash);
 
     // "Thông tin chung" filled from the older brand setting, as a site has it before its first save
     // (long names, so a clipped label or a sideways scroll shows up).
@@ -1158,5 +1188,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     file_put_contents($dir.'/media-trash-own-ask.html', $swap($html, $ownAsk, $media));
     config(['media' => $mediaConfig]);
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 94);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 97);
 });

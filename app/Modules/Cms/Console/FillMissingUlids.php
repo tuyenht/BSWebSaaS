@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Cms\Console;
 
 use App\Modules\Cms\Models\MenuItem;
+use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
- * Give every category and menu item made before they had a ulid its key (D2: the key screens put
+ * Give every category, menu item and redirect made before they had a ulid its key (D2: the key screens put
  * into the page instead of the bigint id). The models fill it on every new row, so once this has
  * run on a database no NULL is left, and a later deploy can make the column NOT NULL and unique.
  *
@@ -22,20 +23,21 @@ use Illuminate\Support\Str;
  * rows). Each chunk of rows is its own short transaction, walked by id, so a large site never holds
  * its rows locked for long. Only rows whose ulid is still NULL are written (checked again in the
  * UPDATE), so running it again, or while the site is being edited, is harmless and reports 0. A key
- * fill is not an edit: updated_at is left as it was. Trashed menu items get their key too.
+ * fill is not an edit: updated_at is left as it was. Trashed menu items and redirects get
+ * their key too.
  */
 final class FillMissingUlids extends Command
 {
     private const int CHUNK = 500;
 
     /** @var list<string> the tables filled, in this order */
-    private const array TABLES = ['taxonomies', 'menu_items'];
+    private const array TABLES = ['taxonomies', 'menu_items', 'redirects'];
 
     #[\Override]
     protected $signature = 'cms:fill-ulids';
 
     #[\Override]
-    protected $description = 'Give every category and menu item made before row keys existed its ulid (safe to re-run)';
+    protected $description = 'Give every category, menu item and redirect made before row keys existed its ulid (safe to re-run)';
 
     public function handle(Tenancy $tenancy): int
     {
@@ -56,7 +58,7 @@ final class FillMissingUlids extends Command
             }
         }
 
-        $this->info("Checked {$sites} site(s); filled {$filled['taxonomies']} category key(s) and {$filled['menu_items']} menu item key(s).");
+        $this->info("Checked {$sites} site(s); filled {$filled['taxonomies']} category key(s), {$filled['menu_items']} menu item key(s) and {$filled['redirects']} redirect key(s).");
 
         return self::SUCCESS;
     }
@@ -98,9 +100,13 @@ final class FillMissingUlids extends Command
         return [count($ids), $written, (int) end($ids)];
     }
 
-    /** @return Builder<Taxonomy>|Builder<MenuItem> */
+    /** @return Builder<Taxonomy>|Builder<MenuItem>|Builder<Redirect> */
     private function query(string $table): Builder
     {
-        return $table === 'taxonomies' ? Taxonomy::query() : MenuItem::query()->withTrashed();
+        return match ($table) {
+            'taxonomies' => Taxonomy::query(),
+            'menu_items' => MenuItem::query()->withTrashed(),
+            default => Redirect::query()->withTrashed(),
+        };
     }
 }
