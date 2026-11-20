@@ -295,7 +295,8 @@ it('records every language when an editor save on live content changes the share
     $editor = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
-        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any', 'media.view']);
+        // may publish: the save of someone who may not waits in the page's pending change instead
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any', 'entries.publish', 'media.view']);
         $page = revisionPage('bia', ['vi', 'en'], 'published');
         $cover = Media::query()->create([
             'collection' => 'library', 'slug' => 'bia-moi', 'hash' => str_repeat('9', 64),
@@ -313,11 +314,11 @@ it('records every language when an editor save on live content changes the share
     });
 });
 
-it('adds at most two queries to an editor save of live content', function (): void {
+it('adds at most four queries to an editor save of live content', function (): void {
     $editor = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
-        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any']);
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any', 'entries.publish']);
         $draft = revisionPage('ngan-sach-nhap');
         $live = revisionPage('ngan-sach-song', ['vi'], 'published');
 
@@ -333,8 +334,10 @@ it('adds at most two queries to an editor save of live content', function (): vo
         $onDraft = $measure($draft);
         $onLive = $measure($live);
 
+        // two for the version; two to judge, under the row lock, whether the save waits in a pending
+        // change instead (the workflow of the stored category, the change itself)
         expect(revisionTally($live))->toBe(['vi:edit' => 2])
             ->and($onLive - $onDraft)->toBeGreaterThan(0)
-            ->and($onLive - $onDraft)->toBeLessThanOrEqual(2);
+            ->and($onLive - $onDraft)->toBeLessThanOrEqual(4);
     });
 });

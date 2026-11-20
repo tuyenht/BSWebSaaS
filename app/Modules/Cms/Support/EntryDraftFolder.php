@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Modules\Cms\Support;
 
+use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryDraft;
+use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Identity\Models\User;
+use Illuminate\Support\Facades\DB;
 use LogicException;
 
 /**
@@ -20,10 +24,21 @@ use LogicException;
  * longer passes the editor's checks (a language whose layout uses a retired block, a category that
  * would leave the approval workflow) is skipped and named in the audit line rather than blocking
  * the entry from going offline. No revision is recorded: nothing new reached visitors.
+ *
+ * An address is composed from the slug (a post's under its main category), and a fold may change
+ * either in any language. The applier moves no route of offline content, and putting the entry back
+ * on the website moves the route of the language it is published from only, so every address the
+ * entry had is moved here, with its 301, once the content is in: the next publication finds each
+ * language where its content says. An address another page took meanwhile is left as it is (the
+ * publication then refuses it as taken, as any taken address).
+ *
+ * A page's live sub-pages keep their addresses (owner decision): the new slug was never approved, and
+ * a sub-page's nested address built from it would put it on the website. They move, each with its
+ * 301, when the page goes live again (RouteSync::syncSubPagesOf, on every road that publishes).
  */
 final readonly class EntryDraftFolder
 {
-    public function __construct(private EntryDraftApplier $applier) {}
+    public function __construct(private EntryDraftApplier $applier, private RouteSync $routes) {}
 
     /**
      * Fold the entry's pending change into it; false when it has none.
@@ -47,6 +62,7 @@ final readonly class EntryDraftFolder
 
         $applied = $this->applier->apply($entry, $change, lenient: true, actor: $actor);
         $change->delete();
+        $this->followAddresses($entry);
 
         EntryDraftAudit::record(EntryDraftAudit::FOLDED, $entry, $actor, $applied['locales'], $change->workflow_state, [
             'skipped_locales' => $applied['skipped'],
@@ -55,5 +71,22 @@ final readonly class EntryDraftFolder
         ]);
 
         return true;
+    }
+
+    /** Move each address the entry has to where its content now puts it; its sub-pages stay (see the class doc). */
+    private function followAddresses(Entry $entry): void
+    {
+        $routed = SiteRoute::query()->where('entry_id', $entry->id)->pluck('locale')->all();
+        if ($routed === []) {
+            return;
+        }
+        foreach ($entry->translations()->whereIn('locale', $routed)->orderBy('locale')->get() as $translation) {
+            try {
+                // its own savepoint: a refused address leaves the transaction usable for the next language
+                DB::transaction(fn (): string => $this->routes->sync($entry, $translation->locale, $translation->slug));
+            } catch (RouteConflictException) {
+                // taken by other content meanwhile: left where it was
+            }
+        }
     }
 }

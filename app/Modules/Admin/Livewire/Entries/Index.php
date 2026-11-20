@@ -21,9 +21,11 @@ use App\Modules\Cms\Actions\DuplicateEntry;
 use App\Modules\Cms\Actions\MovePage;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
+use App\Modules\Cms\Actions\SaveEntryDraft;
 use App\Modules\Cms\Actions\TransitionEntryStatus;
 use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Enums\RevisionKind;
+use App\Modules\Cms\Exceptions\EntryDraftRejectedException;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
 use App\Modules\Cms\Exceptions\HomePageLockedException;
 use App\Modules\Cms\Exceptions\PageMoveRejectedException;
@@ -820,6 +822,10 @@ final class Index extends Component
             $this->toast(__('entries.workflow_governed'));
 
             return null;
+        } catch (EntryDraftRejectedException $refused) {
+            $this->refuse($refused->userMessage());   // a live post with a pending change: applied or thrown away first
+
+            return null;
         } catch (ModelNotFoundException) {
             $this->toastStaleRow(); // sent to the Trash or purged since the list loaded it
 
@@ -875,7 +881,9 @@ final class Index extends Component
 
     /**
      * Inline rename — updates the default-locale translation title, under the editor's own title
-     * rule. Only live rows: the Trash offers no inline editing.
+     * rule. Only live rows: the Trash offers no inline editing. A live entry whose edits this member
+     * makes into its pending change (SaveEntryDraft::holdsBack, judged under the row lock) is refused
+     * here, as in saveSlug(): the change is made and sent from the editor.
      */
     public function saveTitle(string $ulid, string $value): void
     {
@@ -901,6 +909,12 @@ final class Index extends Component
         $entry->setRawAttributes($locked->getAttributes(), true);
         if ($entry->approvedForLater()) {
             $this->refuse(Cast::string(__('entries.err_approved_later')));
+
+            return;
+        }
+        if (app(SaveEntryDraft::class)->holdsBack($entry, $this->actingUser())) {
+            // visitors keep the live version: this edit belongs in the pending change, made in the editor
+            $this->refuse(Cast::string(__('entries.err_edit_in_change', ['noun' => __('entries.noun_'.$entry->type)])));
 
             return;
         }
@@ -957,6 +971,12 @@ final class Index extends Component
         $entry->setRawAttributes($locked->getAttributes(), true);
         if ($entry->approvedForLater()) {
             $this->refuse(Cast::string(__('entries.err_approved_later')));
+
+            return;
+        }
+        if (app(SaveEntryDraft::class)->holdsBack($entry, $this->actingUser())) {
+            // visitors keep the live version: this edit belongs in the pending change, made in the editor
+            $this->refuse(Cast::string(__('entries.err_edit_in_change', ['noun' => __('entries.noun_'.$entry->type)])));
 
             return;
         }

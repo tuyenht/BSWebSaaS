@@ -4,6 +4,7 @@ namespace App\Modules\Admin\Livewire\Entries;
 
 use App\Modules\Admin\Livewire\Concerns\EditsBlockList;
 use App\Modules\Admin\Livewire\Concerns\EditsButtonActions;
+use App\Modules\Admin\Livewire\Concerns\EditsPendingChange;
 use App\Modules\Admin\Livewire\Concerns\ShowsEntryRevisions;
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\Categories\CategorySections;
@@ -21,11 +22,13 @@ use App\Modules\Cms\Actions\ApproveEntryForLater;
 use App\Modules\Cms\Actions\MovePage;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
+use App\Modules\Cms\Actions\SaveEntryDraft;
 use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
 use App\Modules\Cms\Actions\TransitionEntryStatus;
 use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Enums\RevisionKind;
+use App\Modules\Cms\Exceptions\EntryDraftRejectedException;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
 use App\Modules\Cms\Exceptions\HomePageLockedException;
 use App\Modules\Cms\Exceptions\PageMoveRejectedException;
@@ -117,6 +120,7 @@ final class Editor extends Component
     use AuthorizesRequests;
     use EditsBlockList;
     use EditsButtonActions;
+    use EditsPendingChange;
     use ShowsEntryRevisions;
     use WithMediaLibraryPicker;
 
@@ -518,12 +522,21 @@ final class Editor extends Component
         });
         $this->categoryIds = $filed !== null ? array_values($filed->map(static fn (Taxonomy $taxonomy): int => $taxonomy->id)->all()) : [];
         $this->categoryId = $category?->id;
+        // a live entry with a pending change: the form edits the change (visitors keep the live version)
+        $this->changeMemo = false;
+        $change = $this->pendingChange($entry);
+        $this->changeSeen = null;
+        $liveCategories = $this->categoryIds;
+        if ($change !== null && ($primary = $this->openPendingChange($change)) !== null && $primary !== $category?->id) {
+            $category = $filed?->firstWhere('id', $primary) ?? Taxonomy::query()->find($primary);
+        }
         $this->address = $this->previewAddress($entry, $category);
         $this->placeInList($this->type === 'post' ? $this->sectionOf($category) : null);
         // A save that changes no shared field leaves the entry row alone: this language's own row
         // carries when it was last saved.
         $this->savedAt = self::iso($translation?->updated_at);
-        $this->storedPrint = self::printOf($translation, $entry->meta, $this->categoryIds);
+        // what visitors see, also while the form edits a pending change: the overwrite check compares the website
+        $this->storedPrint = self::printOf($translation, $entry->meta, $liveCategories);
         $this->loadedAt = self::iso(CarbonImmutable::now());
         $this->mayPublish = $this->user()->can('publish', $entry);
         $this->frameRights($entry);
@@ -531,8 +544,10 @@ final class Editor extends Component
         if ($this->type === 'page') {
             $this->loadParent($entry, $translation);
         }
-        // a language not written yet takes its link from its title, as a new entry does (never the Home page)
-        if ($this->pageHome && ! $translation instanceof EntryTranslation) {
+        // a language not written yet takes its link from its title, as a new entry does (never the Home page);
+        // one the pending change holds text for is written
+        $written = $translation instanceof EntryTranslation || ($change !== null && is_array($change->content['locales'][$this->locale] ?? null));
+        if ($this->pageHome && ! $written) {
             // the Home page's new language is the root too, never a link made from its title — unless another
             // page already holds the root in this language: then this page is an ordinary page here
             $this->pageHome = ! EntryTranslation::query()->where('locale', $this->locale)->where('entry_id', '!=', $entry->id)
@@ -540,7 +555,7 @@ final class Editor extends Component
                 ->whereIn('slug', [PathBuilder::HOME_SLUG, ''])->exists();
             $this->slug = $this->pageHome ? PathBuilder::HOME_SLUG : '';
         }
-        $this->slugFresh = ! $translation instanceof EntryTranslation && ! $this->pageHome;
+        $this->slugFresh = ! $written && ! $this->pageHome;
         $this->loadSchedule($entry);
         $this->saved = $this->tracked();
         $this->guideDue = true;
@@ -1369,13 +1384,21 @@ final class Editor extends Component
             return;
         }
         $this->autoSaved = false;
+        if ($this->heldSave !== null && $to === null) {
+            // into the pending change: visitors keep the live version
+            $this->dispatch('bs-toast', text: $this->heldToast($this->governingWorkflow()));
+
+            return;
+        }
         if ($to !== null) {
             if ($this->moveStatus($entry, $to)) {
                 $at = $to === EntryStatus::Scheduled->value ? ScheduleInput::parse($this->scheduleLoaded) : null;
                 $at = $at !== null ? app(SiteTime::class)->forDisplay($at) : null;
-                $this->dispatch('bs-toast', text: $at !== null
-                    ? __('entries.scheduled_set_at', ['date' => $at->format('d/m/Y'), 'time' => $at->format('H:i')])
-                    : __('entries.ed.toast_kept', ['status' => $this->statusPill()['label']]));
+                $this->dispatch('bs-toast', text: match (true) {
+                    $at !== null => __('entries.scheduled_set_at', ['date' => $at->format('d/m/Y'), 'time' => $at->format('H:i')]),
+                    $this->folded => __('entries.chg.t_folded', ['noun' => $this->changeNoun()]),
+                    default => __('entries.ed.toast_kept', ['status' => $this->statusPill()['label']]),
+                });
             }
 
             return;
@@ -1395,6 +1418,12 @@ final class Editor extends Component
     {
         $entry = $this->persist('publish');
         if (! $entry instanceof Entry) {
+            return;
+        }
+        if ($this->heldSave !== null) {
+            // into the pending change: visitors keep the live version
+            $this->dispatch('bs-toast', text: $this->heldToast($this->governingWorkflow()));
+
             return;
         }
         $was = $this->status;
@@ -1498,14 +1527,15 @@ final class Editor extends Component
         $this->transitionNote = '';
         $this->assignTo = null;
         $this->loadTrail($entry->id);
+        $folded = $this->changeFolded($entry);
 
         $stepLabel = $workflow->states()->where('key', $destination)->value('label');
 
         $this->dispatch('workflow-moved');   // closes the note modal only on success
-        $this->dispatch('bs-toast', text: __('admin.wfb.moved', [
+        $this->dispatch('bs-toast', text: Cast::string(__('admin.wfb.moved', [
             'action' => $transition->label,
             'step' => is_string($stepLabel) ? $stepLabel : $destination,
-        ]));
+        ])).($folded ? ' '.Cast::string(__('entries.chg.t_folded', ['noun' => $this->changeNoun()])) : ''));
     }
 
     /** "Xem thêm": the next keyset page of the trail, appended below what is already shown. */
@@ -1906,10 +1936,15 @@ final class Editor extends Component
         $workflow = $this->governingWorkflow();
         // the saved row, read once for the workflow panel and the schedule band (a governed entry only)
         $row = $workflow !== null && $this->ulid !== null ? $this->resolveOrFail($this->ulid) : null;
+        // the same row for the pending change's band and buttons; none once it went to the Trash in another tab.
+        // A member who may publish a post no workflow governs, with no change open when the form was read,
+        // writes live: nothing to read (a change opened since in another tab refuses the save as stale).
+        $heldBack = $workflow !== null || ! $this->mayPublish || $this->changeSeen !== null;
+        $liveRow = $this->ulid !== null && $this->status === 'published' && $heldBack ? ($row ?? Entry::query()->where('ulid', $this->ulid)->first()) : null;
         $buttonPanel = $this->buttonPanel($schemas);
 
         $this->blocksChanged = $this->blocksHash() !== ($this->saved['blocks'] ?? '') ? 1 : 0;
-        $actions = $this->actions($workflow);
+        $actions = $this->actions($workflow, $liveRow);
         $unit = $this->unit();
         $title = Cast::string(__($this->ulid === null ? 'entries.ed.h1_new' : 'entries.ed.h1_edit', ['unit' => $unit]));
         $listUrl = route('admin.entries.index', $this->sectionKey !== null ? ['section' => $this->sectionKey] : []);
@@ -1971,6 +2006,7 @@ final class Editor extends Component
             'schedule' => $this->schedulePanel($workflow),
             'statusPanel' => $this->statusPanel(),
             'scheduleBand' => $this->scheduleBand($workflow, $row),
+            'changeBand' => $this->changeBand($workflow, $liveRow),
             'revisions' => $this->revisionPanel(),
         ]);
     }
@@ -2672,7 +2708,8 @@ final class Editor extends Component
 
     /**
      * The rows MovePage locks, taken now, in id order as it takes them, before this save's own lock on the
-     * page's row: the page, the parent picked, and the live pages beside it now and beside it there. A
+     * page's row: the page, the parent picked, the live pages beside it now and beside it there, and the
+     * live pages under it (they move with it). A
      * writer that locks several pages in id order (the list's bulk actions) then never holds one of them
      * while waiting for the page this save already holds. Its place is read again under the page-tree
      * lock (a move may have committed while this save waited for it); each list is read as MovePage reads
@@ -2695,7 +2732,7 @@ final class Editor extends Component
         if (count($old) > MovePage::SIBLINGS_MAX || count($new) > MovePage::SIBLINGS_MAX) {
             return;   // MovePage refuses the move before it locks a row
         }
-        $ids = [$entry->id, ...($parentId === null ? [] : [$parentId]), ...$old, ...$new];
+        $ids = [$entry->id, ...($parentId === null ? [] : [$parentId]), ...$old, ...$new, ...PageRules::subPageIds($entry)];
         Entry::withTrashed()->whereKey(array_values(array_unique($ids)))->orderBy('id')->lockForUpdate()->pluck('id');
     }
 
@@ -2816,12 +2853,17 @@ final class Editor extends Component
      *
      * @return array{secondary: string|null, primary: string|null, primaryAction: string, primaryIcon: string}
      */
-    private function actions(?Workflow $workflow): array
+    private function actions(?Workflow $workflow, ?Entry $liveRow): array
     {
         // the status picked in «Khi lưu, bài sẽ là» decides the buttons, as it decides the save (board 07)
         $saved = $this->status ?? 'draft';
         $status = $this->effectiveStatus();
         $draftWord = (string) __($status === 'draft' ? 'entries.save_draft' : 'entries.ed.save_plain');
+        // live content whose edits go into its pending change (EditsPendingChange)
+        $held = $this->changeButtons($workflow, $liveRow);
+        if ($held !== null) {
+            return $held;
+        }
         if ($workflow !== null) {
             return ['secondary' => $draftWord, 'primary' => null, 'primaryAction' => 'save', 'primaryIcon' => 'ri-save-3'];
         }
@@ -3212,6 +3254,20 @@ final class Editor extends Component
                 return null;
             }
 
+            // Live content whose edits this member makes into its pending change, judged now, under the lock
+            // (SaveEntryDraft::holdsBack). The change this form read must still be the change: another
+            // save, a move or its application came first otherwise, and nothing is written.
+            $this->changeMemo = false;
+            $held = app(SaveEntryDraft::class)->holdsBack($entry, $this->user());
+            if ($held && $this->pendingChange($entry)?->version() !== $this->changeSeen) {
+                if ($filled) {
+                    $this->slug = '';
+                }
+                $this->addError('workflow', __('entries.change_err_change_stale'));
+
+                return null;
+            }
+
             // Ask before writing over someone else's save. Every writer of these values takes the
             // entry's row first, so what is read now stays as it is until this save commits. The
             // stored values decide, never a timestamp: a status change, a category moved or
@@ -3232,6 +3288,11 @@ final class Editor extends Component
 
                 return null;
             }
+            if ($held) {
+                return $this->persistHeld($entry, $stored['translation'], $proseBody ?? $layoutBody ?? $this->blocks, $reparent, $filled);
+            }
+            // not held back: no change is open (one put on the website in another tab is gone from the bar too)
+            $this->changeSeen = null;
             // the move before anything is written: a refused one leaves the page as it was and the form as typed
             if ($reparent && ! $this->moveToParent($entry)) {
                 if ($filled) {
@@ -3348,6 +3409,59 @@ final class Editor extends Component
             // form stays as it is: no new page, the focus and the scroll where they were.
             $this->js('history.replaceState(history.state, "", '.json_encode($this->editUrl($entry)).')');
         }
+
+        return $entry;
+    }
+
+    /**
+     * The save of a live entry whose edits are held back (see persist()): into its pending change,
+     * nothing written to what visitors see. A new «Trang cha» is not something a change holds: it is
+     * refused, as is a change of the other categories (a change holds the main one only).
+     *
+     * @param  list<array<string, mixed>>  $blocks  the body as it is stored
+     *
+     * @throws ValidationException
+     */
+    private function persistHeld(Entry $entry, ?EntryTranslation $live, array $blocks, bool $reparent, bool $filled): ?Entry
+    {
+        $refused = function () use ($filled): null {
+            if ($filled) {
+                $this->slug = '';
+            }
+
+            return null;
+        };
+        if ($reparent) {
+            $this->addError('parentUlid', Cast::string(__('entries.ed.change_parent')));
+
+            return $refused();
+        }
+        try {
+            $filing = $this->filedUnder($entry);
+        } catch (ValidationException $e) {
+            $refused();
+            $this->saveFailed = true;
+
+            throw $e;
+        }
+        if (! $this->saveIntoChange($entry, $live, $blocks, $filing)) {
+            $this->saveFailed = true;
+
+            return $refused();
+        }
+
+        $this->overwrite = null;
+        $this->stale = null;
+        $this->saveFailed = false;
+        $this->converted = false;
+        $this->slugFresh = false;
+        if ($this->heldSave === 'saved') {
+            // the change holds the text now: the copy this device kept of it goes
+            $this->dispatch('admin-editor-saved');
+            $this->savedAt = self::iso(CarbonImmutable::now());
+            $this->loadedAt = $this->savedAt;
+        }
+        $this->resetSave();
 
         return $entry;
     }
@@ -3604,6 +3718,8 @@ final class Editor extends Component
             $why = Cast::string(__('entries.workflow_governed'));
         } catch (HomePageLockedException $refused) {
             $why = $refused->getMessage();
+        } catch (EntryDraftRejectedException $refused) {
+            $why = $refused->userMessage();   // a schedule while a pending change is open
         } catch (AuthorizationException) {
             $why = EntryRefusal::for($this->user(), $entry, 'status');
         }
@@ -3619,6 +3735,7 @@ final class Editor extends Component
         }
         $entry->refresh();
         $this->takeStatus($entry);
+        $this->folded = $this->changeFolded($entry);
 
         return true;
     }
