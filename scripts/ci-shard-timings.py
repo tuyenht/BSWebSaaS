@@ -24,7 +24,9 @@ from pathlib import Path
 REPO = 'tuyenht/BSWebSaaS'
 OUT = Path(__file__).resolve().parent.parent / 'tests' / '.pest' / 'shards.json'
 ANSI = re.compile(r'\x1b\[[0-9;]*m')
-CLASS = re.compile(r'^\s+(?:PASS|FAIL|WARN)\s+(Tests\\\S+)')
+# Collision heads each class with one of these labels (State::getTestCaseTitle).
+CLASS = re.compile(r'^\s+(?:PASS|FAIL|WARN|NOTI|DEPR|TODO)\s+(Tests\\\S+)')
+OTHER_HEADER = re.compile(r'^\s+[A-Z]{4}\s+\S')
 TEST = re.compile(r' [✓⨯!-] .* ([0-9]+\.[0-9]+)s\s*$')
 STAMP = re.compile(r'^\d{4}-\d{2}-\d{2}T\S+Z ')
 
@@ -48,6 +50,8 @@ def run_timings(run_id: str) -> dict[str, float]:
             if m := CLASS.match(line):
                 current = m.group(1)
                 timings.setdefault(current, 0.0)
+            elif OTHER_HEADER.match(line):
+                current = None  # never add a class's times to the class before it
             elif current and (m := TEST.search(line)):
                 timings[current] += float(m.group(1))
     return timings
@@ -59,6 +63,13 @@ def main() -> None:
     runs = [run_timings(r) for r in sys.argv[1:]]
     classes = sorted(set().union(*runs))
     timings = {c: round(statistics.mean(r[c] for r in runs if c in r), 2) for c in classes}
+    # A log with no durations (a format change, COLLISION_IGNORE_DURATION) would give every class 0 s:
+    # Pest would then put every class in shard 1 and run the whole suite in each of the others.
+    tests = OUT.parent.parent  # the suites CI shards: Arch runs as its own job, Tools outside CI
+    test_files = sum(len(list((tests / d).glob('**/*Test.php'))) for d in ('Unit', 'Feature', 'Concurrency'))
+    total = sum(timings.values())
+    if len(classes) < 0.9 * test_files or total < 60:
+        sys.exit(f'refusing to write: {len(classes)} classes for {test_files} test files, {total:.0f} s in all')
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps({
         'timings': timings,

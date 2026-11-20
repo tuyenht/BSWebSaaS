@@ -79,9 +79,9 @@ jobs:
                 code=true
                 pages=true
                 ;;
-              # Code no page is rendered from: the four Pest suites (`cwv` runs tests/Tools only)
-              # and the host-side Python and shell tools.
-              tests/Unit/*|tests/Feature/*|tests/Arch/*|tests/Concurrency/*|scripts/*.py|scripts/*.sh)
+              # Code no page is rendered from: the four Pest suites (`cwv` runs tests/Tools only),
+              # the shard times they are split by, and the host-side Python and shell tools.
+              tests/Unit/*|tests/Feature/*|tests/Arch/*|tests/Concurrency/*|tests/.pest/*|scripts/*.py|scripts/*.sh)
                 code=true
                 ;;
               *)
@@ -297,8 +297,8 @@ jobs:
       # tests/.pest/shards.json (rebuilt from green CI runs by scripts/ci-shard-timings.py); split
       # by count, one shard ran 13 of its 20 minutes and timed out on slow runners (20/11/2026:
       # 1180 s against 720 s for the same tests). Measured: about 9 minutes a shard, 14 on a slow
-      # runner. Classes newer than the file are dealt out in turn (Pest prints a WARN). One process used to run every
-      # suite and reached the job's 30-minute limit. Most of the memory is the Arch suite's: its
+      # runner. Classes newer than the file are dealt out in turn (Pest prints a WARN). One
+      # process used to run every suite and reached the job's 30-minute limit. Most of the memory is the Arch suite's: its
       # rules parse the whole code base and keep it (measured 15/11/2026: 861M peak for its 210
       # tests alone, ModuleBoundariesTest about 450M of it, ArchTest about 250M), and it always
       # landed in the last shard, which then ran out of 1G however many shards there were. On its
