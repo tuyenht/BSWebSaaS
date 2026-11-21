@@ -329,6 +329,13 @@
         justify-content: center;
     }
 
+    /* …and the current page's group row (open or not) carries the current-row bar and fill, since
+       its child link is hidden: the rail still shows where the reader is. */
+    :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) :where(.admin-shell-wrapper) .admin-sidebar .is-trail {
+        background-color: var(--color-sidebar-active);
+        box-shadow: inset 3px 0 0 var(--color-sidebar-fg-active);
+    }
+
     /* Collapsed rail = icons only → nested submenus stay hidden inline… */
     :root:is([data-sidebar-size='sm'], [data-sidebar-fold]) :where(.admin-shell-wrapper) .admin-sidebar nav ul ul {
         display: none;
