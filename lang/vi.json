@@ -7433,7 +7433,7 @@
     "admin.adv.cd.warn_break_b": "Mã sai có thể làm hỏng website:",
     "admin.adv.cd.warn_break": "vỡ giao diện hoặc trang không mở được. Khi đó tắt công tắc này, website trở lại như cũ.",
     "admin.adv.cd.warn_trust": "Nền tảng không đọc hay kiểm tra mã bạn dán. Chỉ dán mã từ nơi bạn tin cậy.",
-    "admin.adv.cd.signed_in": "Mã không chạy khi bạn đang đăng nhập trang quản trị, để giữ an toàn cho tài khoản. Muốn xem mã chạy: mở website trong cửa sổ ẩn danh.",
+    "admin.adv.cd.signed_in": "Trang bạn mở khi đã đăng nhập không chạy mã này. Mã vẫn chạy cùng địa chỉ với trang quản trị, nên chỉ dán mã từ nơi bạn tin cậy. Muốn xem mã chạy: mở website trong cửa sổ ẩn danh.",
     "admin.adv.cd.kept": "Mã đã lưu được giữ lại nhưng không chạy trên website khi công tắc tắt.",
     "admin.adv.cd.head": "Đầu trang",
     "admin.adv.cd.body_top": "Đầu nội dung",

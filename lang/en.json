@@ -7433,7 +7433,7 @@
     "admin.adv.cd.warn_break_b": "Wrong code can break the website:",
     "admin.adv.cd.warn_break": "a broken layout or pages that will not open. If that happens, turn this switch off and the website is back as it was.",
     "admin.adv.cd.warn_trust": "The platform does not read or check the code you paste. Only paste code from a source you trust.",
-    "admin.adv.cd.signed_in": "The code does not run while you are signed in to the admin, to keep your account safe. To see it run, open the website in a private window.",
+    "admin.adv.cd.signed_in": "Pages you open while signed in do not run this code. It still runs on the same address as your admin, so only paste code from sources you trust. To see it run, open the website in a private window.",
     "admin.adv.cd.kept": "The saved code is kept, but it does not run on the website while the switch is off.",
     "admin.adv.cd.head": "Page head",
     "admin.adv.cd.body_top": "Start of content",

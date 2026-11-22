@@ -7433,7 +7433,7 @@
     "admin.adv.cd.warn_break_b": "错误的代码可能损坏网站：",
     "admin.adv.cd.warn_break": "界面错乱或页面无法打开。出现这种情况时关闭此开关，网站即恢复原样。",
     "admin.adv.cd.warn_trust": "平台不会阅读或检查您粘贴的代码。请只粘贴来自可信来源的代码。",
-    "admin.adv.cd.signed_in": "为保护您的账户，您登录管理后台时代码不会运行。想看代码运行效果：请在无痕窗口中打开网站。",
+    "admin.adv.cd.signed_in": "登录后打开的页面不会运行此代码。但代码与管理后台在同一地址运行，请只粘贴来自可信来源的代码。要查看代码运行效果，请在无痕窗口中打开网站。",
     "admin.adv.cd.kept": "已保存的代码会保留，但开关关闭时不会在网站上运行。",
     "admin.adv.cd.head": "页面头部",
     "admin.adv.cd.body_top": "内容开头",
