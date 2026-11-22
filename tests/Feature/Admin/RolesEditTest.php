@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Livewire\Roles\Index;
 use App\Modules\Identity\Models\User;
+use App\Modules\Rbac\Actions\DeleteCustomRole;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
@@ -410,6 +411,83 @@ it('offers only what the member may do: a role at their level is read-only, a ro
         $page->call('copyRole', 'Dưới')->assertSet('mode', '')
             ->call('openRole', 'Ngang')->assertSet('mode', 'xem')->assertSee(__('admin.roles.ro_level'));
     });
+});
+
+it('refuses a direct call on a role the member may not change: a system role, one at their level, one raised above them', function (): void {
+    reePlan();
+    reeCustom('Trưởng nhóm', 60, ['roles.manage', 'entries.view', 'media.view']);
+    reeCustom('Ngang', 60, ['entries.view']);
+    reeCustom('Dưới', 30, ['entries.view']);
+    $lead = reeMember('Trưởng nhóm');
+
+    reePage($lead, function (Testable $page): void {
+        // a role at the member's level: nothing moves, the words say it changed
+        $page->call('askDelete', 'Ngang')->assertSet('toast', __('rbac.role_change.changed_elsewhere'))->assertSet('toastUndo', false);
+        // the editor never opens on it, and a save from the read-only view writes nothing
+        $page->call('openRole', 'Ngang')->assertSet('mode', 'xem')->call('toggle', 'media.view')->call('save')->assertSet('mode', 'xem');
+        $page->set('mode', 'sua')->assertSet('mode', '')->call('save');
+
+        // raised above the member while their editor was open: the save is refused in plain words
+        $page->call('openRole', 'Dưới')->assertSet('mode', 'sua')->call('toggle', 'media.view');
+        Role::query()->where('site_id', 1)->where('name', 'Dưới')->update(['level' => 70]);
+        $page->call('save')->assertSet('mode', 'sua')->assertSet('toast', __('rbac.role_change.changed_elsewhere'))->assertSet('toastReload', true);
+        $page->call('askDelete', 'Dưới')->assertSet('toast', __('rbac.role_change.changed_elsewhere'));
+    });
+    reePage($lead, fn (Testable $page) => $page->call('askDelete', 'editor')->assertForbidden());
+
+    expect(reeRole('Ngang')->trashed())->toBeFalse()->and(reePerms('Ngang'))->toBe(['entries.view'])
+        ->and(reeRole('Dưới')->trashed())->toBeFalse()->and(reePerms('Dưới'))->toBe(['entries.view'])
+        ->and(reeRole('editor')->trashed())->toBeFalse();
+});
+
+it('keeps the draft and says so when someone else renames the role being edited', function (): void {
+    reePlan();
+    reeCustom('Duyệt tin', 40, ['entries.view']);
+    $owner = reeMember('owner');
+
+    reePage($owner, function (Testable $page): void {
+        $page->call('openRole', 'Duyệt tin')->call('toggle', 'forms.view');
+        Role::query()->where('site_id', 1)->where('name', 'Duyệt tin')->update(['name' => 'Duyệt tin mới']);
+
+        $page->call('toggle', 'media.view')->assertSet('mode', 'sua')->assertSet('toast', __('rbac.role_change.changed_elsewhere'))->assertSet('toastReload', true)
+            ->assertSet('sel', fn (array $sel): bool => collect($sel)->sort()->values()->all() === ['entries.view', 'forms.view', 'media.view']);
+        // «Đóng» closes the message for good; a save says it again
+        $page->call('dismissToast')->assertSet('toast', null)->call('toggle', 'forms.view')->assertSet('toast', null);
+        $page->call('save')->assertSet('mode', 'sua')->assertSet('toast', __('rbac.role_change.changed_elsewhere'));
+        // «Tải lại»: the role no longer goes by that name, so the list comes back
+        $page->call('reloadList')->assertSet('mode', '');
+    });
+
+    expect(reePerms('Duyệt tin mới'))->toBe(['entries.view']);
+});
+
+it('brings back with «Hoàn tác» exactly the row this member deleted, not another of the same name', function (): void {
+    reePlan();
+    $first = reeCustom('Duyệt tin', 40, ['entries.view', 'entries.approve']);
+    $owner = reeMember('owner');
+
+    reePage($owner, function (Testable $page): void {
+        $page->call('askDelete', 'Duyệt tin')->assertSet('toastUndo', true);
+        // meanwhile another role of the same name is made and deleted
+        $other = Role::findOrCreate('Duyệt tin', PermissionRegistry::GUARD);
+        $other->forceFill(['level' => 20, 'is_system' => false])->save();
+        $other->syncPermissions(['media.view']);
+        $other->delete();
+
+        $page->call('undoDelete')->assertSet('toast', __('admin.roles.restored'));
+    });
+
+    expect(Role::query()->where('site_id', 1)->where('name', 'Duyệt tin')->pluck('id')->all())->toBe([$first->getKey()])
+        ->and(reePerms('Duyệt tin'))->toBe(['entries.approve', 'entries.view']);
+});
+
+it('says whether a delete moved the role, so the screen offers «Hoàn tác» only for its own', function (): void {
+    reePlan();
+    $role = reeCustom('Duyệt tin', 40, ['entries.view']);
+    $owner = reeMember('owner');
+
+    reeIn(1, fn () => expect(app(DeleteCustomRole::class)->handle($owner->fresh(), $role->fresh()))->toBeTrue()
+        ->and(app(DeleteCustomRole::class)->handle($owner->fresh(), $role->fresh()))->toBeFalse());
 });
 
 it('locks every write for platform staff who opened the website directly, with the reason', function (): void {

@@ -589,7 +589,7 @@ it('keeps at most 100 custom roles per website, the trash counted, and still let
     expect($create('Nhóm thừa')->exists)->toBeTrue();
 });
 
-it('purges the trash a chunk at a time, every chunk bounded, and reaches every role and site', function (): void {
+it('purges the trash a chunk at a time, every chunk bounded, and reaches every role and site', function (int $chunk): void {
     $now = now()->subDays(Role::TRASH_DAYS + 1);
     $rows = [];
     foreach ([1, 2] as $site) {
@@ -611,11 +611,15 @@ it('purges the trash a chunk at a time, every chunk bounded, and reaches every r
         }
     });
 
-    expect(app(PurgeTrashedRoles::class)->handle(chunk: 3))->toBe(['purged' => 13, 'held' => 1])
+    expect(app(PurgeTrashedRoles::class)->handle(chunk: $chunk))->toBe(['purged' => 13, 'held' => 1])
         ->and(Role::withTrashed()->whereIn('site_id', [1, 2])->where('is_system', false)->pluck('id')->all())->toBe([$heldId])
         ->and(DB::connection('pgsql_admin')->table('audit_logs')->where('action', 'rbac.role.purged')->count())->toBe(13)
         ->and($reads)->not->toBeEmpty();
     foreach ($reads as $sql) {
-        expect($sql)->toContain('limit 3');
+        expect($sql)->toContain('limit '.$chunk);
     }
-});
+})->with([
+    'a chunk of 3 (rows over several chunks, sites in one)' => [3],
+    'a chunk of 1 (the sites over two pages too)' => [1],
+    'a chunk of 7 (each site an exact multiple: the last read finds nothing)' => [7],
+]);

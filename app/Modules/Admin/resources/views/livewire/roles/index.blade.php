@@ -118,7 +118,7 @@
                         @foreach ($editor['levels'] as $opt)
                             <label wire:key="lv-{{ $opt['level'] }}" class="flex min-h-control cursor-pointer items-center gap-2.5 rounded border border-border-strong px-3 py-1 has-checked:border-primary-text has-checked:bg-primary-soft any-pointer-coarse:min-h-hit">
                                 <input type="radio" name="roles-level" value="{{ $opt['level'] }}" @checked($opt['level'] === $level) wire:click="pickLevel({{ $opt['level'] }})"
-                                    class="m-0 size-4.5 shrink-0 accent-admin-primary">
+                                    class="m-0 size-4.5 shrink-0 accent-primary">
                                 <span class="min-w-0 [overflow-wrap:anywhere]">{{ $opt['label'] }}</span>
                             </label>
                         @endforeach

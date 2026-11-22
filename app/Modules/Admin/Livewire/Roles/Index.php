@@ -24,9 +24,12 @@ use App\Modules\Rbac\Support\RoleLabel;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Entitlement\Entitlement;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -179,6 +182,14 @@ final class Index extends Component
     #[Locked]
     public string $undoName = '';
 
+    /** The editor's role went by another name or away meanwhile, and the member was told once. */
+    #[Locked]
+    public bool $staleTold = false;
+
+    /** That exact row, sealed (encrypted, never a readable id): «Hoàn tác» brings back only it. */
+    #[Locked]
+    public string $undoKey = '';
+
     /** The guide was printed with the list header now on the page (wire:ignore keeps it until the header goes). */
     #[Locked]
     public bool $guidePrinted = false;
@@ -196,7 +207,7 @@ final class Index extends Component
     /**
      * {@see who()}: read again on every request (never sent to the browser).
      *
-     * @var array{ceiling: int, lock: string|null, assignable: array<string, true>}|null
+     * @var array{ceiling: int, support: bool, member_lock: string|null, lock: string|null, assignable: array<string, true>}|null
      */
     private ?array $who = null;
 
@@ -432,6 +443,13 @@ final class Index extends Component
 
             return;
         }
+        abort_if($found->is_system, 403);   // the screen never offers it
+        if (! $this->manageable($found)) {
+            // moved to the member's level or above a moment ago
+            $this->say($this->reasonText('changed_elsewhere'), 'error', reload: true);
+
+            return;
+        }
         $lock = $this->writeLock();
         if ($lock !== null) {
             $this->say($lock, 'error');
@@ -486,15 +504,20 @@ final class Index extends Component
     public function undoDelete(): void
     {
         $this->ensureOpen();
-        $name = $this->undoName;
+        $key = $this->undoKey;
         $this->undoName = '';
+        $this->undoKey = '';
         $this->toastUndo = false;
-        if ($name === '') {
+        if ($key === '') {
             return;
         }
-        // the newest of this website's trashed roles by that name is the one just deleted
-        $trashed = Role::onlyTrashed()->where('site_id', app(CurrentSite::class)->id())->where('is_system', false)
-            ->where('name', $name)->orderByDesc('deleted_at')->orderByDesc('id')->first();
+        try {
+            $id = (int) Crypt::decryptString($key);
+        } catch (DecryptException) {
+            return;
+        }
+        // the row this member just moved, still in this website's trash
+        $trashed = Role::onlyTrashed()->where('site_id', app(CurrentSite::class)->id())->where('is_system', false)->whereKey($id)->first();
         if (! $trashed instanceof Role) {
             $this->say(__('rbac.role_change.gone'), 'error');
 
@@ -505,6 +528,8 @@ final class Index extends Component
             $this->say(__('admin.roles.restored'));
         } catch (RoleChangeRejectedException $e) {
             $this->say($this->reasonText($e->reason), 'error');
+        } catch (AuthorizationException) {
+            $this->say($this->reasonText('changed_elsewhere'), 'error', reload: true);
         }
     }
 
@@ -550,6 +575,7 @@ final class Index extends Component
             $this->toastReload = false;
             $this->toastUndo = false;
             $this->undoName = '';
+            $this->undoKey = '';
         }
     }
 
@@ -598,8 +624,8 @@ final class Index extends Component
         // highest first; a system role before a role of the site's own at the same level
         $roles = $roles->sort(fn (Role $a, Role $b): int => [$b->level, $b->is_system ? 1 : 0, RoleLabel::for($a)] <=> [$a->level, $a->is_system ? 1 : 0, RoleLabel::for($b)])->values();
         $siteCeiling = app(RoleCeiling::class)->forSite();
-        $support = app(SupportSession::class)->active();
-        $lockedWhy = app(MembershipLock::class)->reason($actor, $siteId);
+        $support = $this->who()['support'];
+        $lockedWhy = $this->who()['member_lock'];
         $planOn = app(Entitlement::class)->featureEnabled('rbac.custom_roles');
         $upsell = app(UpgradeInvitation::class)->isOn();
         $writeLock = $this->writeLock();
@@ -612,7 +638,14 @@ final class Index extends Component
             && ($needle === '' || str_contains(self::fold($r['name']), $needle))));
 
         $opened = $this->mode !== '' && $this->mode !== 'moi' ? $roles->firstWhere('name', $this->mode === 'sua' ? $this->origName : $this->role) : null;
-        if (! $failed && $this->mode !== '' && $this->mode !== 'moi' && ! $opened instanceof Role) {
+        if (! $failed && $this->mode === 'sua' && ! $opened instanceof Role) {
+            // renamed or deleted by someone else while this member edits: the draft stays, they are told
+            // once and choose «Tải lại» (which opens the role again only if it still goes by that name)
+            if (! $this->staleTold) {
+                $this->staleTold = true;
+                $this->say($this->reasonText('changed_elsewhere'), 'error', reload: true);
+            }
+        } elseif (! $failed && $this->mode === 'xem' && ! $opened instanceof Role) {
             // a role gone meanwhile, or a name the browser made up: the list
             $this->closeEditor();
         }
@@ -685,7 +718,7 @@ final class Index extends Component
             } else {
                 $found = $this->siteRole($this->origName);
                 if (! $found instanceof Role) {
-                    throw new RoleChangeRejectedException('gone');
+                    throw new RoleChangeRejectedException('changed_elsewhere');
                 }
                 $saved = app(UpdateCustomRole::class)->handle($actor, $found, $this->name, $this->level, $requested, $this->openedAs);
                 [$members] = $this->holders($saved->name);
@@ -698,6 +731,11 @@ final class Index extends Component
             } else {
                 $this->say($this->reasonText($e->reason), 'error', reload: in_array($e->reason, ['changed_elsewhere', 'gone'], true));
             }
+
+            return false;
+        } catch (AuthorizationException) {
+            // the role (or the role copied from) was moved above the member or deleted a moment ago
+            $this->say($this->reasonText('changed_elsewhere'), 'error', reload: true);
 
             return false;
         } catch (QueryException $e) {
@@ -774,6 +812,7 @@ final class Index extends Component
         $this->noteArea = '';
         $this->permSearch = '';
         $this->explainDraft = false;
+        $this->staleTold = false;
     }
 
     /** Back to the list, the draft let go. */
@@ -788,7 +827,7 @@ final class Index extends Component
     private function delete(Role $role, bool $undo): void
     {
         try {
-            app(DeleteCustomRole::class)->handle($this->actor(), $role);
+            $moved = app(DeleteCustomRole::class)->handle($this->actor(), $role);
         } catch (RoleChangeRejectedException $e) {
             if ($e->reason === 'in_use') {
                 $this->ask('inuse', $role->name);   // someone got the role meanwhile
@@ -798,11 +837,23 @@ final class Index extends Component
             $this->say($this->reasonText($e->reason), 'error');
 
             return;
+        } catch (AuthorizationException) {
+            $this->say($this->reasonText('changed_elsewhere'), 'error', reload: true);
+
+            return;
+        }
+        if (! $moved) {
+            // someone else deleted it a moment earlier: nothing of this member's to undo
+            $this->say(__('admin.members.x_gone'), 'error', reload: true);
+
+            return;
         }
         $this->explainRole = $this->explainRole === $role->name ? '' : $this->explainRole;
         $this->say(__($undo ? 'admin.roles.deleted' : 'admin.roles.deleted_off', ['role' => $role->name]));
         if ($undo) {
+            // the exact row this member moved, never another of the same name deleted meanwhile
             $this->undoName = $role->name;
+            $this->undoKey = Crypt::encryptString((string) Cast::int($role->getKey()));
             $this->toastUndo = true;
         }
     }
@@ -1135,7 +1186,7 @@ final class Index extends Component
      * What this request knows of the member, read once however many rows ask: their level ceiling,
      * why they may change nothing now, and the roles they may give (by name).
      *
-     * @return array{ceiling: int, lock: string|null, assignable: array<string, true>}
+     * @return array{ceiling: int, support: bool, member_lock: string|null, lock: string|null, assignable: array<string, true>}
      */
     private function who(): array
     {
@@ -1149,10 +1200,15 @@ final class Index extends Component
                     $assignable[$role->name] = true;
                 }
             }
-            $lock = app(SupportSession::class)->active()
-                ? Cast::string(__('admin.support.locked'))
-                : app(MembershipLock::class)->reason($actor, app(CurrentSite::class)->id());
-            $this->who = ['ceiling' => $ceiling, 'lock' => $lock, 'assignable' => $assignable];
+            $support = app(SupportSession::class)->active();
+            $memberLock = app(MembershipLock::class)->reason($actor, app(CurrentSite::class)->id());
+            $this->who = [
+                'ceiling' => $ceiling,
+                'support' => $support,
+                'member_lock' => $memberLock,
+                'lock' => $support ? Cast::string(__('admin.support.locked')) : $memberLock,
+                'assignable' => $assignable,
+            ];
         }
 
         return $this->who;
@@ -1350,6 +1406,7 @@ final class Index extends Component
         $this->toastReload = $reload;
         $this->toastUndo = false;
         $this->undoName = '';
+        $this->undoKey = '';
         $this->toastSeq++;
     }
 
