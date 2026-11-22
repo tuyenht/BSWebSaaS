@@ -34,6 +34,10 @@ const ADMIN_HAND_BUILT_PARTS = [
     // error lines under the button editor's fields
     'entries/partials/button-action.blade.php' => [0, 9, 0],
     'entries/partials/workflow-status.blade.php' => [1, 0, 0],
+    // the review inbox's reader: a pane beside the list on a wide screen that turns modal only while it
+    // covers the whole screen below the two-pane width (design 17 .sp-detail), which neither the modal
+    // (a dimmed, centred dialog) nor the drawer (a side panel) draws
+    'entries/review-inbox.blade.php' => [1, 0, 0],
     // The floating contact screen is being redesigned; its channel error box moves to the shared alert with that work.
     'floating-contact-settings.blade.php' => [0, 1, 0],
     'login.blade.php' => [0, 1, 0],

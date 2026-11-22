@@ -36,6 +36,8 @@
         'draft' => ['[--c:var(--color-text)]', 'ri-draft'],
         'scheduled' => ['[--c:color-mix(in_oklab,var(--color-secondary-text)_80%,var(--color-text-strong))]', 'ri-calendar-schedule'],
         'pending' => ['[--c:var(--color-warning-text)]', 'ri-inbox-unarchive'],
+        // a review step of a content workflow («Đang phản biện», and a step a website named itself)
+        'reviewing' => ['[--c:var(--color-info-text)]', 'ri-chat-check'],
         'private' => ['[--c:var(--color-primary-text)]', 'ri-lock-2'],
         'archived' => ['[--c:var(--color-text-muted)]', 'ri-archive'],
         // the two groups of a record list that are not a status (only ever a count bubble)

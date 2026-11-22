@@ -1225,7 +1225,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         foreach ([['Lắp đặt dây chuyền CNC cho nhà máy Bình Dương', 'lap-dat-cnc'], ['Bảo trì hệ thống khí nén', 'bao-tri-khi-nen'], ['Gia công khuôn ép nhựa', 'gia-cong-khuon']] as [$title, $slug]) {
             $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $writer->id]);
             $entry->translations()->create(['locale' => 'vi', 'title' => $title, 'slug' => $slug, 'status' => 'draft',
-                'body' => ['blocks' => [['type' => 'richtext', 'props' => ['body' => 'Dự án hoàn thành đúng tiến độ, bàn giao cho khách trong tháng 10.']]]]]);
+                'body' => ['blocks' => [['type' => 'richtext', 'props' => ['paragraphs' => ['Dự án hoàn thành đúng tiến độ, bàn giao cho khách trong tháng 10.']]]]]]);
             $entry->assignCategories([$categoryId]);
             app(ApplyEntryWorkflowTransition::class)->handle($entry->fresh(), 'vi', $writer->fresh(), 'submit');
             $ulids[] = (string) $entry->ulid;
@@ -1273,7 +1273,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         app(SaveEntryDraft::class)->handle($entry->fresh(), $writer->fresh(), 'vi', [
             'title' => 'Gia công khuôn ép nhựa cho ngành ô tô',
             'excerpt' => 'Khuôn 2 tầng, bàn giao tháng 11.',
-            'body' => ['blocks' => [['type' => 'richtext', 'props' => ['body' => 'Dự án hoàn thành sớm một tuần, khách nhận khuôn trong tháng 11.']]]],
+            'body' => ['blocks' => [['type' => 'richtext', 'props' => ['paragraphs' => ['Dự án hoàn thành sớm một tuần, khách nhận khuôn trong tháng 11.']]]]],
         ]);
 
         return $entry->fresh();
