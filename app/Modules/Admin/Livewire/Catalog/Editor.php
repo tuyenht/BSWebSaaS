@@ -438,6 +438,10 @@ final class Editor extends Component
     {
         // only from the Trash card: the error card holds a key nothing has checked yet
         abort_unless($this->screen === 'trash', 404);
+        // it comes back as a draft: the status is the product's, moved in the default language only
+        if ($this->sharedRefused()) {
+            return;
+        }
         $this->bringBack(asDraft: true);
     }
 
@@ -495,10 +499,12 @@ final class Editor extends Component
         $this->screen = 'form';
         $this->status = $back->status;
         $this->publishedAt = self::iso($back->published_at);
-        $this->liveUrl = $this->status === 'published' ? $this->address['base'].$this->slug : null;
+        // a language with no version yet has no page on the website
+        $this->liveUrl = $this->status === 'published' && $this->slug !== '' ? $this->address['base'].$this->slug : null;
         $this->checked = null;
         $this->canEdit = Gate::allows('update', $back);
         $this->mayTrash = $this->canEdit && $this->mayDelete($back);
+        $this->readLangBar();
         if ($asDraft) {
             $this->dispatch('bs-toast', text: Cast::string(__('catalog.ed.toast_restored')));
         }
@@ -2002,10 +2008,14 @@ final class Editor extends Component
             $this->ulid = $product->ulid;
             $this->productId = $product->id;
             $wasPublished = false;
+            $mainBefore = null;
         } else {
             $product = $stored;
             $wasPublished = $product->status === self::PRODUCT_LIVE;
             $this->authorize('update', $product);
+            // the main category as stored under the row lock (another tab may have moved it): a published
+            // product moved elsewhere gives every language's address the new category
+            $mainBefore = $wasPublished ? $product->primaryCategory()?->id : null;
             // the product row before its translation, like every other write of a name or a SKU
             ProductSearchWords::lock($product->site_id, $product->id);
             // the labels through the list's own write, saved in the same statement as the other fields
@@ -2050,17 +2060,37 @@ final class Editor extends Component
             // only published ones, so their route rows are harmless and keep old links stable. A product
             // going live, or moving to another main category, gives every language it is written in its
             // address (the other versions' paths carry the category too); otherwise this language's.
-            $before = json_decode($this->saved['categoryIds'] ?? '[]', true);
-            $everyLanguage = ! $wasPublished
-                || (is_array($before) ? ($before[0] ?? null) : null) !== ($filing[0] ?? null);
-            $everyLanguage
-                ? app(ChangeProductStatus::class)->publishEffects($product)
-                : app(ChangeProductStatus::class)->publishEffects($product, $this->locale, $this->slug);
+            // This language first, so a link taken in it is said on its own field.
+            app(ChangeProductStatus::class)->publishEffects($product, $this->locale, $this->slug);
+            if (! $wasPublished || $mainBefore !== ($filing[0] ?? null)) {
+                $this->syncOtherLanguages($product);
+            }
         }
         // the list shows what was stored (as on opening): a category dropped above leaves it
         $this->categoryIds = $filing;
 
         return $product;
+    }
+
+    /**
+     * Every other language's address of a published product, after it went live or moved to another
+     * main category (their paths carry the category too). A version whose address another page holds
+     * stops the save with the language named, since its link is not on this form.
+     *
+     * @throws ValidationException
+     */
+    private function syncOtherLanguages(Product $product): void
+    {
+        $sync = app(RouteSync::class);
+        $category = $product->primaryCategory();
+        $others = $product->translations()->where('locale', '!=', $this->locale)->orderBy('locale')->get(['locale', 'slug']);
+        foreach ($others as $translation) {
+            try {
+                $sync->syncProduct($product->id, $category, $translation->locale, $translation->slug);
+            } catch (RouteConflictException) {
+                throw ValidationException::withMessages(['slug' => (string) __('catalog.ed.slug_taken_in', ['lang' => LangBar::name($translation->locale)])]);
+            }
+        }
     }
 
     /**

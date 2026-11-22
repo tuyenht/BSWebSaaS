@@ -10,9 +10,11 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\SiteLocale as SiteLanguages;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
+use App\Modules\Tenancy\Models\SiteSetting;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -157,22 +159,35 @@ it('never writes the product\'s own fields from another language, whatever the r
     app(Tenancy::class)->enter(1, function () use ($editor): void {
         plbLanguages('en');
         $product = plbProduct();
+        $second = Media::query()->create(['collection' => 'library', 'slug' => 'anh-hai', 'hash' => hash('sha256', 'anh-hai'), 'storage_key' => 's/library/anh-hai.png',
+            'disk' => 'r2', 'mime' => 'image/png', 'size' => 1024]);
+        $product->images()->create(['media_id' => $second->id, 'position' => 1]);
         $other = plbCategory('khac', 'Khác');
         $before = plbShared($product);
         DB::table('products')->where('id', $product->id)->update(['updated_at' => CarbonImmutable::now()->subHour()]);
         $before['row']['updated_at'] = DB::table('products')->where('id', $product->id)->value('updated_at');
+        $why = __('entries.ed.shared_guard', ['lang' => __('entries.language_vi')]);
 
         $c = Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $product->ulid, 'locale' => 'en'])
             ->set('name', 'Drill bit')->set('slug', 'drill-bit')
             // each shared field sent anyway is put back, with the words that say where it is changed
-            ->set('price', '9.000')->assertSet('price', '1.250.000')->assertDispatched('bs-toast')
+            ->set('price', '9.000')->assertSet('price', '1.250.000')->assertDispatched('bs-toast', text: $why)
             ->set('stock', '0')->assertSet('stock', '12')
             ->set('salePrice', '1.000')->assertSet('salePrice', null)
+            ->set('saleStartsAt', '2026-12-01T08:00')->assertSet('saleStartsAt', '')
+            ->set('saleEndsAt', '2026-12-31T08:00')->assertSet('saleEndsAt', '')
             ->set('sku', 'HACK')->assertSet('sku', 'AV-MUI-KHOAN')
             ->set('featured', false)->assertSet('featured', true)
+            ->set('bestseller', true)->assertSet('bestseller', false)
             ->set('imageMediaIds', [])->assertSet('imageMediaIds', $before['images'])
             ->set('categoryId', $other->id)->assertSet('categoryId', $before['categories'][0])
-            ->call('toggleCategory', $other->ulid)->call('removeImage', 0)->call('moveImage', 0, 0)
+            // each shared action is refused before it moves anything
+            ->call('toggleCategory', $other->ulid)->assertSet('categoryIds', $before['categories'])
+            ->call('setMainCategory', $other->ulid)->assertSet('categoryIds', $before['categories'])
+            ->call('removeImage', 0)->assertSet('imageMediaIds', $before['images'])->assertSet('undo', null)
+            ->call('moveImage', 1, 0)->assertSet('imageMediaIds', $before['images'])
+            ->call('moveImageDown', 0)->assertSet('imageMediaIds', $before['images'])
+            ->call('setCover', 1)->assertSet('imageMediaIds', $before['images'])
             ->call('openImagePicker')->assertSet('showImagePicker', false)
             // the status is the product's too: the status moves are refused here
             ->call('publish')->assertSet('status', 'draft');
@@ -209,6 +224,26 @@ it('locks the product\'s own cards in another language with «Chung», and saves
 
         $vi = Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $product->ulid])->html();
         expect($vi)->not->toContain('data-shared-chip')->toContain('wire:click="publish"')->toContain('wire:click="unpublish"');
+
+        // a status move sent anyway is refused: the product stays published
+        $en->call('unpublish')->assertSet('status', 'published')->call('toDraft')->assertSet('status', 'published');
+        expect($product->fresh()?->status)->toBe('published');
+    });
+});
+
+it('brings a binned product back from the default language only, its status being the product\'s', function (): void {
+    $editor = plbMember();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        plbLanguages('en');
+        $product = plbProduct('published');
+        $product->delete();
+
+        Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $product->ulid, 'locale' => 'en'])
+            ->assertSet('screen', 'trash')->call('restore')->assertSet('screen', 'trash')->assertDispatched('bs-toast');
+        expect(Product::onlyTrashed()->whereKey($product->id)->exists())->toBeTrue();
+
+        Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $product->ulid])->call('restore')->assertSet('screen', 'form')->assertSet('status', 'draft');
     });
 });
 
@@ -223,11 +258,8 @@ it('keeps each language\'s link unique in that language only, with the friendly 
 
         // another product holds this link in English
         Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $product->ulid, 'locale' => 'en'])
-            ->set('name', 'Tap')->set('slug', 'DRILL-bit')->call('save')
-            ->assertHasErrors(['slug']);
-        expect(ProductTranslation::query()->where('product_id', $product->id)->where('locale', 'en')->exists())->toBeFalse();
-        Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $product->ulid, 'locale' => 'en'])
             ->set('name', 'Tap')->set('slug', 'drill-bit')->call('save')->assertHasErrors(['slug' => __('catalog.slug_taken')]);
+        expect(ProductTranslation::query()->where('product_id', $product->id)->where('locale', 'en')->exists())->toBeFalse();
 
         // the same link in another language is free: a Vietnamese one may read like an English one
         Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $product->ulid, 'locale' => 'en'])
@@ -272,6 +304,50 @@ it('writes every language\'s address when the product goes live from the default
         Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $product->ulid])->call('publish')->assertHasNoErrors();
         expect(SiteRoute::query()->where('product_id', $product->id)->orderBy('locale')->pluck('path', 'locale')->all())
             ->toBe(['en' => '/drill-bit', 'vi' => '/mui-khoan']);
+    });
+});
+
+it('moves every language\'s address with the main category stored, even when another tab moved it', function (): void {
+    $editor = plbMember();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        plbLanguages('en');
+        SiteSetting::query()->create(['group_name' => 'permalinks', 'key' => 'products', 'value' => ['pattern' => 'category']]);
+        app(PermalinkConfig::class)->flush();
+        $product = plbProduct('published');
+        $product->translations()->create(['locale' => 'en'] + plbFull('Drill bit', 'drill-bit'));
+        app(ChangeProductStatus::class)->publishEffects($product);
+        $path = fn (): ?string => SiteRoute::query()->where('product_id', $product->id)->where('locale', 'en')->value('path');
+        $first = $path();
+        expect($first)->toEndWith('/drill-bit');
+        $moved = plbCategory('khac', 'Khác');
+
+        // this tab opens under the first category; another moves the product and saves
+        $tab = Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $product->ulid]);
+        Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $product->ulid])
+            ->call('toggleCategory', $moved->ulid)->call('setMainCategory', $moved->ulid)->call('save')->assertHasNoErrors();
+        expect($path())->not->toBe($first)->toEndWith('/drill-bit');
+
+        // the first tab saves its own filing: the English address follows it back
+        $tab->set('name', 'Mũi khoan thép')->call('save')->assertHasNoErrors();
+        expect($path())->toBe($first);
+    });
+});
+
+it('names the language whose address another page holds when a product goes live', function (): void {
+    $editor = plbMember();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        plbLanguages('en');
+        $product = plbProduct();
+        $product->translations()->create(['locale' => 'en'] + plbFull('Drill bit', 'drill-bit'));
+        $other = plbProduct('published', 'mui-taro');
+        SiteRoute::query()->create(['locale' => 'en', 'path' => '/drill-bit', 'product_id' => $other->id]);
+
+        Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $product->ulid])->call('publish')
+            ->assertHasErrors(['slug' => __('catalog.ed.slug_taken_in', ['lang' => __('entries.language_en')])]);
+        expect($product->fresh()?->status)->toBe('draft')
+            ->and(SiteRoute::query()->where('product_id', $product->id)->exists())->toBeFalse();
     });
 });
 
