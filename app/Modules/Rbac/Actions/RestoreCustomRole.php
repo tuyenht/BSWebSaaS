@@ -82,7 +82,8 @@ final readonly class RestoreCustomRole
             $this->rules->assertRoomForAnother();
 
             $row->restore();
-            if (array_diff($held, $kept) !== []) {
+            // stored exactly as audited: dropped ones go, and the implied ones the rules add come with them
+            if (array_diff($held, $kept) !== [] || array_diff($kept, $held) !== []) {
                 $row->syncPermissions($kept);
             }
 

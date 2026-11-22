@@ -50,7 +50,7 @@ final readonly class DeleteCustomRole
         Gate::forUser($actor)->authorize('delete', $role);
         $this->rules->assertManageable($actor, $role);
 
-        DB::transaction(function () use ($role): void {
+        DB::transaction(function () use ($actor, $role): void {
             // Lock the role row first: a grant or an invitation running now either committed before
             // this lock (and the checks below see it), or reads the row again under a share lock
             // after this transaction (RoleHierarchyGuard::lockLive) and finds it in the trash.
@@ -58,6 +58,8 @@ final readonly class DeleteCustomRole
             if (! $live instanceof Role) {
                 return;
             }
+            // the role as it is now: a manager above the actor may have raised its level meanwhile
+            $this->rules->assertManageable($actor, $live);
 
             $held = DB::table('model_has_roles')->where('role_id', $live->getKey())->exists();
             $promised = Invitation::query()->pending()

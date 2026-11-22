@@ -491,3 +491,30 @@ it('refuses a purge window that is not a whole number of days', function (string
 
     expect(trashRow($role)?->trashed())->toBeTrue();
 })->with(['abc', '', '-1', '1.5']);
+
+it('checks the role as it is when the delete takes it, not as the actor first read it', function (): void {
+    $lead = User::factory()->create();
+    $leadRole = trashRole(1, 'Trưởng nhóm', 60, ['roles.manage', 'entries.view']);
+    trashIn(1, fn () => $lead->assignRole($leadRole));
+    $role = trashRole(1, 'Kế toán', 40, ['entries.view']);
+
+    // read at level 40; a manager above the lead raises it to 70 before the delete takes the row
+    trashIn(1, fn () => Role::query()->whereKey($role->getKey())->update(['level' => 70]));
+
+    expect(fn () => trashDelete($lead, $role))->toThrow(AuthorizationException::class)
+        ->and(trashRow($role)?->trashed())->toBeFalse();
+});
+
+it('stores on restore exactly the permissions it records in the audit', function (): void {
+    // held without the permission its one grant implies (stored before that rule existed)
+    $role = trashRole(1, 'Kế toán', 40, ['entries.create']);
+    $owner = trashMember(1, 'owner');
+    trashDelete($owner, $role);
+
+    $back = trashRestore($owner, $role);
+    $audited = trashAudit(1, 'rbac.role.restored')?->meta['permissions'] ?? null;
+
+    expect($audited)->toBeArray()->toContain('entries.view')
+        ->and(collect($back->fresh()?->permissions->pluck('name'))->sort()->values()->all())
+        ->toBe(collect($audited)->sort()->values()->all());
+});
