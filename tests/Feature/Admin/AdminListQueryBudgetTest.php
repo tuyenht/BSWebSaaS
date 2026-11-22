@@ -15,6 +15,7 @@ use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Tenancy\Models\SiteFeature;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteSetting;
@@ -442,18 +443,31 @@ it('lists the roles on a flat query budget, whatever the number of roles and mem
         });
     };
     app(Tenancy::class)->enter(1, fn () => grantRole($owner, 'owner', PermissionRegistry::TENANT_PERMISSIONS));
+    app(Tenancy::class)->enter(1, function (): void {
+        // the owner role as the site's seeder makes it (top level), so every role below may be edited
+        Role::query()->where('site_id', 1)->where('name', 'owner')->update(['level' => 90, 'is_system' => true]);
+        SiteFeature::query()->create(['feature_key' => 'rbac.custom_roles', 'value' => true]);
+    });
     $seed(1, 2);
+    // the editor of a role, and a new role started from one
+    $edit = 'http://a.test/admin/roles?nhom=Nh%C3%B3m%201&che=sua';
+    $new = 'http://a.test/admin/roles?nhom=Nh%C3%B3m%201&che=moi';
 
     $this->actingAs($owner)->get('http://a.test/admin/roles')->assertOk(); // the permission and settings caches fill on the first request
     $few = countQueries(fn () => $this->actingAs($owner)->get('http://a.test/admin/roles')->assertOk());
     $fewView = countQueries(fn () => $this->actingAs($owner)->get('http://a.test/admin/roles?nhom=Nh%C3%B3m%201&che=xem')->assertOk());
+    $fewEdit = countQueries(fn () => $this->actingAs($owner)->get($edit)->assertOk()->assertSee(e(__('admin.roles.save'))));
+    $fewNew = countQueries(fn () => $this->actingAs($owner)->get($new)->assertOk()->assertSee(e(__('admin.roles.save_new'))));
 
     $seed(3, 14);
     $this->actingAs($owner)->get('http://a.test/admin/roles')->assertOk();
     $many = countQueries(fn () => $this->actingAs($owner)->get('http://a.test/admin/roles')->assertOk());
     $manyView = countQueries(fn () => $this->actingAs($owner)->get('http://a.test/admin/roles?nhom=Nh%C3%B3m%201&che=xem')->assertOk());
+    $manyEdit = countQueries(fn () => $this->actingAs($owner)->get($edit)->assertOk());
+    $manyNew = countQueries(fn () => $this->actingAs($owner)->get($new)->assertOk());
 
-    expect($many)->toBe($few)->and($manyView)->toBe($fewView)->and($few)->toBeLessThanOrEqual(24);
+    expect($many)->toBe($few)->and($manyView)->toBe($fewView)->and($few)->toBeLessThanOrEqual(24)
+        ->and($manyEdit)->toBe($fewEdit)->and($manyNew)->toBe($fewNew);
 });
 
 it('keeps the members list flat with a search, a role filter and a second page, whatever the number of members', function (): void {

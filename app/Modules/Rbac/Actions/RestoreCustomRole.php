@@ -50,6 +50,16 @@ final readonly class RestoreCustomRole
     }
 
     /**
+     * Whether $actor may give every permission $role holds, the rule handle() applies when it brings
+     * the role back. A role the owner gave a permission the actor lacks would go to the trash with an
+     * «Hoàn tác» that is then refused, so the screen asks before such a delete instead.
+     */
+    public function permitsBack(User $actor, Role $role): bool
+    {
+        return $this->rules->allowsBack($actor, self::heldNames($role));
+    }
+
+    /**
      * @throws AuthorizationException
      * @throws RoleChangeRejectedException custom_roles_disabled · restore_name_taken · restore_in_use · too_many · gone
      */
@@ -81,8 +91,7 @@ final readonly class RestoreCustomRole
                 throw new RoleChangeRejectedException('restore_in_use');
             }
 
-            /** @var list<string> $held */
-            $held = $row->permissions->pluck('name')->filter(fn (mixed $permission): bool => is_string($permission))->values()->all();
+            $held = self::heldNames($row);
             $kept = $this->rules->restorable($actor, $held);
             $name = Cast::string($row->getAttribute('name'));
             $this->rules->assertNameFree($name, except: $row, reason: 'restore_name_taken');
@@ -111,5 +120,12 @@ final readonly class RestoreCustomRole
         $this->registrar->forgetCachedPermissions();
 
         return $restored;
+    }
+
+    /** @return list<string> every permission the role holds, by name */
+    private static function heldNames(Role $role): array
+    {
+        /** @var list<string> */
+        return $role->permissions->pluck('name')->filter(fn (mixed $permission): bool => is_string($permission))->values()->all();
     }
 }

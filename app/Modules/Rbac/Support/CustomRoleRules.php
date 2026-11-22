@@ -33,6 +33,16 @@ final readonly class CustomRoleRules
      */
     public const int MAX_CUSTOM_ROLES = 50;
 
+    /**
+     * The most custom roles one website keeps at all: the live ones and those in the trash
+     * together. A role in the trash keeps its row and its permission rows until the purge, so
+     * without this, deleting and creating again would grow a website's rows without bound within
+     * the Role::TRASH_DAYS window (and the purge's share of work with them). Twice the live cap
+     * lets a website replace every one of its roles once inside that window; deleting is never
+     * refused for it (a delete moves a role, it adds none), only a new role is.
+     */
+    public const int MAX_KEPT_CUSTOM_ROLES = 2 * self::MAX_CUSTOM_ROLES;
+
     public function __construct(
         private CurrentSite $currentSite,
         private RoleHierarchyGuard $guard,
@@ -125,6 +135,18 @@ final readonly class CustomRoleRules
     }
 
     /**
+     * One more custom role, live or in the trash, still fits under MAX_KEPT_CUSTOM_ROLES on this
+     * site. Only a new role adds one; a restore moves a role back out of the trash and adds none.
+     */
+    public function assertRoomToKeepAnother(): void
+    {
+        $count = Role::withTrashed()->where('site_id', $this->siteId())->where('is_system', false)->count();
+        if ($count >= self::MAX_KEPT_CUSTOM_ROLES) {
+            throw new RoleChangeRejectedException('trash_full');
+        }
+    }
+
+    /**
      * What an editor loaded: name, level and permissions. A save that carries the fingerprint it was
      * opened with is refused when the role changed since (two managers editing one role).
      */
@@ -183,6 +205,22 @@ final readonly class CustomRoleRules
     public function restorable(User $actor, array $held): array
     {
         return $this->permissions($actor, array_values(array_intersect($held, $this->ceiling->forSite())));
+    }
+
+    /**
+     * Whether {@see restorable()} would accept $held for $actor, asked before the role goes to the trash.
+     *
+     * @param  list<string>  $held
+     */
+    public function allowsBack(User $actor, array $held): bool
+    {
+        try {
+            $this->restorable($actor, $held);
+
+            return true;
+        } catch (AuthorizationException) {
+            return false;
+        }
     }
 
     /**

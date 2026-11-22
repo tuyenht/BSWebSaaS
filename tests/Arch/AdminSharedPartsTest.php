@@ -61,6 +61,9 @@ const ADMIN_HAND_BUILT_PARTS = [
     'platform/support/index.blade.php' => [0, 1, 0],
     // + the list's error state
     'platform/tenants/index.blade.php' => [0, 3, 0],
+    // the role editor's three live lines its board draws inline: the note under a permission row, the
+    // «Xem trước khi lưu» summary and the save bar's change count (each re-read as the draft changes)
+    'roles/index.blade.php' => [0, 3, 0],
     // + the screen's error state
     'settings/domains.blade.php' => [0, 3, 0],
     // the list's error state (its error lines are the shared field-error)

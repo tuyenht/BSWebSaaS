@@ -20,7 +20,7 @@ final class RoleChangeRejectedException extends DomainException
     public const array CUSTOM_ROLE_REASONS = [
         'custom_roles_disabled', 'name_invalid', 'name_reserved', 'name_taken', 'level_invalid',
         'in_use', 'outside_category_scope', 'too_many', 'changed_elsewhere', 'gone', 'restore_name_taken',
-        'restore_in_use',
+        'restore_in_use', 'trash_full',
     ];
 
     public function __construct(public readonly string $reason)

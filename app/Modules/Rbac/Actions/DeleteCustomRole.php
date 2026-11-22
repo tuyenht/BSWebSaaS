@@ -29,7 +29,8 @@ use Spatie\Permission\PermissionRegistrar;
  * up; on such a site RestoreCustomRole refuses, so the screen asks first and offers no undo
  * ({@see RestoreCustomRole::availableOnThisSite()}).
  *
- * A role already in the trash (a second click) is left as it is. The permission catalog of every
+ * A role already in the trash (a second click, or another manager a moment earlier) is left as it
+ * is, and handle() says so by returning false. The permission catalog of every
  * worker drops the role at its next request (the registrar publishes a new catalog version when the
  * transaction commits).
  */
@@ -41,22 +42,24 @@ final readonly class DeleteCustomRole
     ) {}
 
     /**
+     * @return bool true when this call moved the role to the trash, false when it was already there
+     *
      * @throws AuthorizationException
      * @throws RoleChangeRejectedException
      */
-    public function handle(User $actor, Role $role): void
+    public function handle(User $actor, Role $role): bool
     {
         app(MembershipLock::class)->authorize($actor, Cast::int($role->site_id), 'roles.manage');   // never on someone's behalf, from outside the site, or without roles.manage there
         Gate::forUser($actor)->authorize('delete', $role);
         $this->rules->assertManageable($actor, $role);
 
-        DB::transaction(function () use ($actor, $role): void {
+        $moved = DB::transaction(function () use ($actor, $role): bool {
             // Lock the role row first: a grant or an invitation running now either committed before
             // this lock (and the checks below see it), or reads the row again under a share lock
             // after this transaction (RoleHierarchyGuard::lockLive) and finds it in the trash.
             $live = Role::query()->whereKey($role->getKey())->lockForUpdate()->first();
             if (! $live instanceof Role) {
-                return;
+                return false;
             }
             // the role as it is now: a manager above the actor may have raised its level meanwhile
             $this->rules->assertManageable($actor, $live);
@@ -83,8 +86,12 @@ final readonly class DeleteCustomRole
                 'auditable_id' => $live->getKey(),
                 'meta' => $snapshot,
             ]);
+
+            return true;
         });
 
         $this->registrar->forgetCachedPermissions();
+
+        return $moved;
     }
 }
