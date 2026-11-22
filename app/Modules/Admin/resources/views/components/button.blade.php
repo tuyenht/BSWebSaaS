@@ -26,7 +26,10 @@
     // page on the public website in a new tab).
     // `label` draws the words after the slot (the icon); with `short` too, below 768px the button shows only
     // the short word ("+ Thêm") while its name stays the full label (in a span read by screen readers only),
-    // and the short word contains in every language a word of that name (label in name).
+    // and the short word contains in every language a word of that name (label in name). When the label does
+    // not hold the short word (the board names the button «Tạo nhóm», phones show «+ Thêm»), the short word is
+    // read too, before the label, so the name on a phone still holds what is seen.
+    // The `end` slot draws after the words (the ▾ of a button that opens a menu).
     // A toggle (aria-pressed) shows its on state: the accent edge and ink on a soft accent fill, bold.
     // `variant="outline" color="neutral"` is the quiet button beside a main one (design 01's "Bỏ thay
     // đổi"; the dashboard's and notifications' row buttons): the field edge (>= 3:1 on the card), the
@@ -90,12 +93,15 @@
 @php
     // the words after the icon: the full label, or (with `short`) the full label for screen readers below 768
     // beside the short word drawn instead
-    $words = $label === null ? '' : ($short === null
-        ? '<span>'.e($label).'</span>'
-        : '<span class="max-md:sr-only">'.e($label).'</span><span class="md:hidden" aria-hidden="true">'.e($short).'</span>');
+    $words = match (true) {
+        $label === null => '',
+        $short === null => '<span>'.e($label).'</span>',
+        mb_stripos($label, $short) !== false => '<span class="max-md:sr-only">'.e($label).'</span><span class="md:hidden" aria-hidden="true">'.e($short).'</span>',
+        default => '<span class="md:hidden">'.e($short).'</span><span class="max-md:sr-only">'.e($label).'</span>',
+    };
 @endphp
 @if ($href)
-    <a href="{{ $href }}" @if ($navigate) wire:navigate @endif {{ $attributes->merge(['class' => $classes]) }}>{{ $slot }}{!! $words !!}</a>
+    <a href="{{ $href }}" @if ($navigate) wire:navigate @endif {{ $attributes->merge(['class' => $classes]) }}>{{ $slot }}{!! $words !!}{{ $end ?? '' }}</a>
 @else
-    <button type="{{ $type }}" {{ $attributes->merge(['class' => $classes]) }}>{{ $slot }}{!! $words !!}</button>
+    <button type="{{ $type }}" {{ $attributes->merge(['class' => $classes]) }}>{{ $slot }}{!! $words !!}{{ $end ?? '' }}</button>
 @endif

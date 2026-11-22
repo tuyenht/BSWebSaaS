@@ -944,7 +944,6 @@
     "admin.roles.mod_off_up": ":area is not in the current plan — the tasks below are locked as \"Not in plan\".",
     "admin.roles.mod_off": ":area is not turned on for this website — the tasks below are locked as \"Not in plan\".",
     "admin.roles.create": "Create role",
-    "admin.roles.create_short": "Create",
     "admin.roles.create_tip": "Create a new role",
     "admin.roles.create_blank": "Blank role",
     "admin.roles.create_from_head": "From an existing role",

@@ -490,6 +490,18 @@ it('says whether a delete moved the role, so the screen offers «Hoàn tác» on
         ->and(app(DeleteCustomRole::class)->handle($owner->fresh(), $role->fresh()))->toBeFalse());
 });
 
+it('shows «+ Thêm ▾» on phones with «Hướng dẫn» right before it, the full label kept in its name', function (): void {
+    reePlan();
+    $owner = reeMember('owner');
+    $words = '<span class="md:hidden">'.e(__('admin.list.add_short')).'</span><span class="max-md:sr-only">'.e(__('admin.roles.create')).'</span>';
+
+    reePage($owner, fn (Testable $page) => $page
+        ->assertSeeInOrder(['data-title-help', 'data-guide-open', 'data-guide="add"', 'aria-haspopup="menu"', $words], false));
+    // locked while the plan has no custom roles: the same words, the reason in the title
+    reeIn(1, fn () => SiteFeature::query()->where('feature_key', 'rbac.custom_roles')->delete());
+    reePage($owner, fn (Testable $page) => $page->assertSeeInOrder(['data-guide="add"', 'aria-disabled="true"', $words], false));
+});
+
 it('locks every write for platform staff who opened the website directly, with the reason', function (): void {
     reePlan();
     reeCustom('Duyệt tin', 40, ['entries.view']);

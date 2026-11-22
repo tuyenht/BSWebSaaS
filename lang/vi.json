@@ -944,7 +944,6 @@
     "admin.roles.mod_off_up": ":area chưa có trong gói hiện tại — các việc dưới đây khóa \"Ngoài gói\".",
     "admin.roles.mod_off": ":area chưa bật cho website này — các việc dưới đây khóa \"Ngoài gói\".",
     "admin.roles.create": "Tạo nhóm",
-    "admin.roles.create_short": "Tạo",
     "admin.roles.create_tip": "Tạo nhóm quyền mới",
     "admin.roles.create_blank": "Nhóm trống",
     "admin.roles.create_from_head": "Từ nhóm có sẵn",

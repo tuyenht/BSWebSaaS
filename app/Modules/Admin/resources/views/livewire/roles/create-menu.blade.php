@@ -7,9 +7,10 @@
     x-on:click.outside="open = false" x-on:keydown.escape.prevent.stop="close(true)">
     <x-bs-admin::button color="primary" x-ref="add" data-guide="add" title="{{ __('admin.roles.create_tip') }}"
         aria-haspopup="menu" aria-expanded="false" ::aria-expanded="open.toString()"
-        x-on:click="up = window.innerHeight - $el.getBoundingClientRect().bottom < 300; open = ! open; open && $nextTick(() => window.bsMenu.move($refs.menu, 'first'))">
-        <x-bs-admin::icon name="ri-add" class="size-4" /><span class="max-md:sr-only">{{ __('admin.roles.create') }}</span><span class="md:hidden" aria-hidden="true">{{ __('admin.roles.create_short') }}</span>
-        <x-bs-admin::icon name="ri-arrow-down-s" class="size-4" />
+        x-on:click="up = window.innerHeight - $el.getBoundingClientRect().bottom < 300; open = ! open; open && $nextTick(() => window.bsMenu.move($refs.menu, 'first'))"
+        :label="__('admin.roles.create')" :short="__('admin.list.add_short')">
+        <x-bs-admin::icon name="ri-add" class="size-4" />
+        <x-slot:end><x-bs-admin::icon name="ri-arrow-down-s" class="size-4" /></x-slot:end>
     </x-bs-admin::button>
     <x-bs-admin::list.menu class="list-menu" :label="__('admin.roles.create')">
         <div class="list-lmh" aria-hidden="true">{{ __('admin.roles.create') }}</div>

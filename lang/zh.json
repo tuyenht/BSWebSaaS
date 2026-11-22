@@ -944,7 +944,6 @@
     "admin.roles.mod_off_up": ":area 不在当前套餐中——以下工作已锁定为“套餐外”。",
     "admin.roles.mod_off": "此网站未开启 :area——以下工作已锁定为“套餐外”。",
     "admin.roles.create": "创建权限组",
-    "admin.roles.create_short": "创建",
     "admin.roles.create_tip": "创建新的权限组",
     "admin.roles.create_blank": "空白权限组",
     "admin.roles.create_from_head": "从现有权限组",

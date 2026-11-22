@@ -30,9 +30,10 @@
                 </x-slot:help>
                 @if (! $failed)
                     @if ($createWhy !== null)
+                        {{-- named by its words (on phones «Thêm» and the full label), the reason in its title --}}
                         <x-bs-admin::button color="primary" class="shrink-0 aria-disabled:cursor-not-allowed aria-disabled:opacity-60" data-guide="add" aria-disabled="true" :title="$createWhy"
-                            :aria-label="__('admin.roles.create').' — '.$createWhy" x-on:click="$bsToast({{ $lockToast($createWhy) }})"
-                            :label="__('admin.roles.create')" :short="__('admin.roles.create_short')">
+                            x-on:click="$bsToast({{ $lockToast($createWhy) }})"
+                            :label="__('admin.roles.create')" :short="__('admin.list.add_short')">
                             <x-bs-admin::icon name="ri-lock" class="size-4" />
                         </x-bs-admin::button>
                     @else

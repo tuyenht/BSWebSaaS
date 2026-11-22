@@ -944,7 +944,6 @@
     "admin.roles.mod_off_up": ":areaは現在のプランに含まれていません。以下の作業は「プラン外」としてロックされています。",
     "admin.roles.mod_off": "このウェブサイトでは:areaが有効になっていません。以下の作業は「プラン外」としてロックされています。",
     "admin.roles.create": "グループを作成",
-    "admin.roles.create_short": "作成",
     "admin.roles.create_tip": "新しい権限グループを作成",
     "admin.roles.create_blank": "空のグループ",
     "admin.roles.create_from_head": "既存のグループから",
