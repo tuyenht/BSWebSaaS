@@ -13,6 +13,7 @@ use App\Modules\Admin\Http\Middleware\TrackSignedInDevice;
 use App\Modules\Admin\Livewire\AcceptInvitation;
 use App\Modules\Admin\Livewire\Account;
 use App\Modules\Admin\Livewire\AdminUiSettings;
+use App\Modules\Admin\Livewire\AdvancedSettings;
 use App\Modules\Admin\Livewire\Blocks\Editor as BlockEditor;
 use App\Modules\Admin\Livewire\Blocks\Library as BlockLibrary;
 use App\Modules\Admin\Livewire\Catalog\Editor as CatalogEditor;
@@ -66,6 +67,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Media\Http\Controllers\MediaUploadController;
 use App\Modules\Storefront\Http\Controllers\FormSubmissionController;
+use App\Modules\Storefront\Http\Controllers\MaintenancePreviewController;
 use App\Modules\Storefront\Http\Controllers\ProductPreviewController;
 use App\Modules\Storefront\Http\Controllers\RecordContactClick;
 use App\Modules\Storefront\Http\Controllers\RecordEntryView;
@@ -278,6 +280,11 @@ Route::prefix(config('admin.prefix', 'admin'))
         Route::get('/settings/catalog', CatalogSettings::class)->middleware('can:settings.manage')->name('admin.settings.catalog');
         Route::get('/settings/integrations', IntegrationsSettings::class)->middleware('can:settings.manage')->name('admin.settings.integrations');
         Route::get('/settings/floating-contact', FloatingContactSettings::class)->middleware('can:settings.manage')->name('admin.settings.floating-contact');
+        // Maintenance mode and the other owner-only switches: every holder of settings.manage may open
+        // it, only the website's owner may change it (the component checks that on every action).
+        Route::get('/settings/advanced', AdvancedSettings::class)->middleware('can:settings.manage')->name('admin.settings.advanced');
+        // What visitors see while the website is under maintenance (a signed-in member sees the site).
+        Route::get('/settings/advanced/preview', MaintenancePreviewController::class)->middleware('can:settings.manage')->name('admin.settings.advanced.preview');
         // The site's redirects (old address → new one). settings.manage, checked by the component
         // itself (no route gate: a member without it gets the board's no-permission card).
         Route::get('/settings/redirects', RedirectSettings::class)->name('admin.settings.redirects');

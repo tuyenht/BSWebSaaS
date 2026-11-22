@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Navigation;
 
+use App\Modules\Admin\Support\SiteOwner;
 use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Identity\Models\User;
@@ -384,6 +385,17 @@ final class AdminNav
                         label: __($sLabelKey),
                         url: route($sRoute),
                         active: $request->routeIs($sRoute),
+                        permission: 'settings.manage',
+                    );
+                }
+                // Only the owner changes maintenance and the other site-wide switches, so only the
+                // owner (or an operator) finds them in the menu; anyone else with the address reads them.
+                if (SiteOwner::is($request->user())) {
+                    $settingsChildren[] = new NavItem(
+                        key: 'settings.advanced',
+                        label: __('admin.adv.title'),
+                        url: route('admin.settings.advanced'),
+                        active: $request->routeIs('admin.settings.advanced'),
                         permission: 'settings.manage',
                     );
                 }

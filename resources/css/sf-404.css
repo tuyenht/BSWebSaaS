@@ -114,6 +114,38 @@
     text-wrap: pretty;
 }
 
+/* A website under maintenance: when it is expected back, then its public phone and email under the
+   reload button (board 26, «Đang bảo trì»). */
+.sf-404__when {
+    margin: 0;
+    color: var(--color-text-strong);
+    font-weight: 600;
+}
+
+.sf-404__contacts {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.25rem 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.sf-404__contact {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    color: var(--color-primary-text);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.sf-404__contact:hover {
+    color: var(--color-primary-text);
+}
+
 /* Under the buttons, centred like them, with a thin line above (the An Vinh board's 404). */
 .sf-404__more {
     box-sizing: border-box;
@@ -209,7 +241,8 @@
 }
 
 .sf-404__btn:focus-visible,
-.sf-404__link:focus-visible {
+.sf-404__link:focus-visible,
+.sf-404__contact:focus-visible {
     outline: 2px solid var(--color-primary-text);
     outline-offset: 2px;
 }

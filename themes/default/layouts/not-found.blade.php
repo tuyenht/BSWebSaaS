@@ -6,6 +6,8 @@
     ($notice.actions: on the 404 page "home" then the site's contact page when it names one, labelled
     with the site's own name; on a site that is not open one button, reload or the site's public
     email), then the main menu's first links ($suggestions, 404 only; left out when there are none).
+    A website under maintenance adds the reopen time under the line of help ($notice.when) and its
+    public phone and email under the button ($notice.contacts); an empty line of help is left out.
     $notice absent = the 404 page. Nothing here names a tenant. On the 404 page, while the site has
     search ($search, PageChrome), the site search box comes under the line of help, before the buttons.
 --}}
@@ -41,7 +43,12 @@
             <p class="sf-404__code">{{ $notice['code'] }}</p>
 @endif
             <h1 class="sf-404__title">{{ $notice['heading'] }}</h1>
+@if (($notice['text'] ?? '') !== '')
             <p class="sf-404__text">{{ $notice['text'] }}</p>
+@endif
+@if (! empty($notice['when']))
+            <p class="sf-404__when">{{ $notice['when'] }}</p>
+@endif
 @if ($sfMissing && ! empty($search))
             <div class="sf-404__search">
                 @include('theme::partials.sf-search-field', ['action' => $search, 'id' => 'sf-404-q', 'label' => __('storefront.search.field'), 'small' => true])
@@ -53,6 +60,13 @@
                 <a class="sf-404__btn{{ empty($action['kind']) ? '' : ' sf-404__btn--'.$action['kind'] }}" href="{{ $action['href'] }}">@if (! empty($action['icon']))@include('theme::partials.sf-notice-icon', ['name' => $action['icon'], 'size' => 20, 'stroke' => 2])@endif{{ $action['label'] }}</a>
 @endforeach
             </div>
+@endif
+@if (! empty($notice['contacts']))
+            <ul class="sf-404__contacts">
+@foreach ($notice['contacts'] as $contact)
+                <li><a class="sf-404__contact" href="{{ $contact['href'] }}">@include('theme::partials.sf-notice-icon', ['name' => $contact['icon'], 'size' => 20, 'stroke' => 2])<span dir="ltr">{{ $contact['label'] }}</span></a></li>
+@endforeach
+            </ul>
 @endif
 @if (! empty($suggestions))
             <nav class="sf-404__more" aria-labelledby="sf-404-more">
