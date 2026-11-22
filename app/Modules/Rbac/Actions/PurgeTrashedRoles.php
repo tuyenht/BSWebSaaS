@@ -21,8 +21,11 @@ use Throwable;
  * `roles` is platform-wide (no RLS): which sites have something to purge is read from the trash
  * index a page of site ids at a time, then each site runs in its own tenant context (its audit rows
  * need it) and transaction. Within a site the roles go in chunks of $chunk rows in id order, each
- * chunk read after the last id of the one before and in its own savepoint; a savepoint releases no
- * lock, so every role picked stays locked until that site commits. Memory and each statement's work
+ * chunk read after the last id of the one before and run inside a savepoint. The savepoint does not
+ * isolate a chunk: an error in any chunk rolls the savepoint back and then leaves the site's
+ * transaction, so everything purged on that site in this run is rolled back with it (and reported),
+ * while the other sites still run. A savepoint releases no lock either, so every role picked stays
+ * locked until that site commits. Memory and each statement's work
  * are bounded by the chunk, whatever the trash holds (CustomRoleRules::MAX_KEPT_CUSTOM_ROLES caps it
  * per site anyway). Each row is locked and checked again (still in the trash, still past the cutoff,
  * custom, this site) before it goes, so a role restored a moment ago is never touched. A role in the
@@ -77,7 +80,8 @@ final readonly class PurgeTrashedRoles
     }
 
     /**
-     * One site, in its own transaction; a site that fails is logged and the next one still runs.
+     * One site, in its own transaction, all or nothing: a chunk that throws rolls back every chunk of
+     * the site, the error is reported and the next site still runs.
      *
      * @return array{purged: int, held: int}
      */
@@ -88,6 +92,7 @@ final readonly class PurgeTrashedRoles
                 $counts = ['purged' => 0, 'held' => 0];
                 $after = 0;
                 do {
+                    // a savepoint per chunk: an error here is not caught inside the site, so it undoes the whole site
                     $read = DB::transaction(function () use ($siteId, $cutoff, $chunk, $after, &$counts): array {
                         $doomed = Role::onlyTrashed()->where('site_id', $siteId)->where('is_system', false)
                             ->where('deleted_at', '<=', $cutoff)->where('id', '>', $after)
