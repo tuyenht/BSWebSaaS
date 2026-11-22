@@ -15,7 +15,21 @@
     $Js = \Illuminate\Support\Js::class;
 @endphp
 <div class="space-y-4">
-    <x-bs-admin::page-header :title="__('admin.inbox.title')" :subtitle="__('admin.inbox.subtitle')" />
+    {{-- The header, as the admin shell draws it (board 17): the trail «⌂ › Hộp duyệt», the title row with the (?)
+         guide and «Tải lại» at its end, then the one line on what the screen is for. --}}
+    <header class="flex flex-col gap-1">
+        <x-bs-admin::breadcrumb :items="[['label' => __('admin.inbox.title')]]" />
+        <x-bs-admin::title-row :title="__('admin.inbox.title')" title-id="inbox-title">
+            <x-slot:help>
+                <x-bs-admin::guide :guide="$guide" />
+            </x-slot:help>
+            <x-bs-admin::button variant="outline" color="neutral" data-guide="reload" wire:click="reloadInbox" wire:loading.attr="disabled" wire:target="reloadInbox"
+                                :title="__('admin.inbox.reload_tip')" :label="__('admin.inbox.reload')">
+                <x-bs-admin::icon name="ri-refresh" class="size-[min(1.5rem,calc(1rem+var(--user-text-boost)))]" />
+            </x-bs-admin::button>
+        </x-bs-admin::title-row>
+        <p class="m-0 text-small leading-relaxed text-text-muted [text-wrap:pretty]">{{ __('admin.inbox.subtitle') }}</p>
+    </header>
 
     @error('inbox')
         @unless ($noteOpen)
@@ -43,20 +57,20 @@
     @endif
 
     {{-- Tabs --}}
-    <div class="flex flex-wrap gap-2" data-inbox-tabs>
-        @foreach ([['queue', 'ri-inbox-archive', $queueCount], ['mine', 'ri-user-follow', $mineCount]] as [$key, $icon, $count])
-            <button type="button" wire:click="setTab('{{ $key }}')" @class([
-                'inline-flex items-center gap-2 rounded border px-3.5 py-2 text-sm font-medium transition-colors',
-                'border-accent bg-admin-primary/5 text-accent' => $tab === $key,
-                'border-border text-body-muted hover:border-border-strong' => $tab !== $key,
+    <div class="flex flex-wrap gap-2" data-inbox-tabs data-guide="tabs">
+        @foreach ([['mine', 'ri-user-follow', $mineCount], ['queue', 'ri-inbox-archive', $queueCount]] as [$key, $icon, $count])
+            <button type="button" wire:click="setTab('{{ $key }}')" aria-pressed="{{ $tab === $key ? 'true' : 'false' }}" @class([
+                'hit-area inline-flex min-h-control items-center gap-2 rounded border px-3.5 py-1.5 text-small font-medium transition-colors',
+                'border-primary-text bg-primary/5 font-semibold text-primary-text' => $tab === $key,
+                'border-border-input bg-surface text-text hover:bg-surface-hover' => $tab !== $key,
             ])>
-                <x-bs-admin::icon :name="$icon" class="size-4" />
+                <x-bs-admin::icon :name="$icon" class="size-[min(1.5rem,calc(1rem+var(--user-text-boost)))]" />
                 {{ __('admin.inbox.tab_'.$key) }}
                 @unless ($loadFailed)
                     <span @class([
-                        'rounded-full px-1.5 text-[11px] font-bold',
-                        'bg-primary text-white' => $tab === $key,
-                        'text-text-muted' => $tab !== $key,
+                        'inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-caption font-bold',
+                        'bg-primary text-on-primary' => $tab === $key,
+                        'text-text' => $tab !== $key,
                     ])>{{ $count }}</span>
                 @endunless
             </button>
@@ -108,13 +122,13 @@
     <livewire:admin.entries.review-changes wire:key="inbox-changes" />
 
     @unless ($loadFailed)
-    <div class="grid gap-4 @container lg:grid-cols-[352px_1fr]" wire:loading.delay.remove wire:target="{{ $reloads }}">
+    <div class="grid grid-cols-[minmax(0,1fr)] items-start gap-4 @container lg:grid-cols-[352px_minmax(0,1fr)]" wire:loading.delay.remove wire:target="{{ $reloads }}">
         {{-- LEFT: the queue --}}
         <x-bs-admin::card class="{{ $reader !== null ? 'hidden lg:block' : '' }}">
             <x-slot:header>
                 <div class="flex min-w-0 flex-1 items-center gap-2">
-                    <span class="text-sm font-semibold text-heading">{{ __('admin.inbox.tab_'.$tab) }}</span>
-                    <span class="ml-auto text-[11.5px] text-body-muted">{{ __('admin.inbox.showing', ['shown' => count($rows), 'total' => $total]) }}</span>
+                    <span class="text-body font-semibold text-text-strong">{{ __('admin.inbox.list_'.$tab) }}</span>
+                    <span class="ms-auto text-caption text-text-muted">{{ __('admin.inbox.showing', ['shown' => count($rows), 'total' => $total]) }}</span>
                 </div>
             </x-slot:header>
 
@@ -144,13 +158,13 @@
 
             {{-- Search + type filter --}}
             <div class="mb-3 flex flex-col gap-2">
-                <label class="field flex items-center gap-2 rounded border border-border px-2.5 focus-within:border-primary-text focus-within:ring-[3px] focus-within:ring-primary/20">
-                    <x-bs-admin::icon name="ri-search" class="size-4 shrink-0 text-body-muted" />
-                    <input type="search" wire:model.live.debounce.300ms="search" class="w-full border-0 bg-transparent p-0 text-text"
-                           placeholder="{{ __('admin.inbox.search_placeholder') }}" aria-label="{{ __('admin.inbox.search_placeholder') }}">
+                <label data-guide="search" class="field flex items-center gap-2 rounded border border-border-input px-2.5 focus-within:border-primary-text focus-within:ring-[3px] focus-within:ring-primary/20">
+                    <x-bs-admin::icon name="ri-search" class="size-4 shrink-0 text-text-muted" />
+                    <input type="search" wire:model.live.debounce.300ms="search" class="w-full min-w-0 border-0 bg-transparent p-0 text-text"
+                           placeholder="{{ __('admin.inbox.search_placeholder') }}" aria-label="{{ __('admin.inbox.search_label') }}">
                 </label>
                 @if (count($sections) > 1)
-                    <select wire:model.live="sectionFilter" class="field w-full rounded border border-border bg-surface px-2.5 text-text focus:border-primary-text" aria-label="{{ __('admin.inbox.all_types') }}">
+                    <select wire:model.live="sectionFilter" data-guide="type" class="field w-auto max-w-full self-start rounded border border-border-input bg-surface px-2.5 text-text focus:border-primary-text" aria-label="{{ __('admin.inbox.all_types') }}">
                         <option value="">{{ __('admin.inbox.all_types') }}</option>
                         @foreach ($sections as $key => $label)
                             <option value="{{ $key }}">{{ $label }}</option>
@@ -170,7 +184,7 @@
                     @endif
                 </div>
             @else
-                <ul class="-mx-4 divide-y divide-border-soft">
+                <ul class="-mx-4 divide-y divide-border-soft" data-guide="rows">
                     @foreach ($rows as $row)
                         @php $isPicked = in_array($row['ulid'], $picked, true); @endphp
                         <li wire:key="inbox-{{ $row['ulid'] }}" @class([
@@ -181,20 +195,26 @@
                             <x-bs-admin::list.check :checked="$isPicked" :label="__('admin.inbox.pick_label', ['title' => $row['title']])"
                                                     :title="$isPicked ? __('admin.inbox.pick_off') : __('admin.inbox.pick_on')"
                                                     wire:click="togglePick({{ $Js::from($row['ulid']) }})" class="mt-1.5 ms-1" data-inbox-pick="{{ $row['ulid'] }}" />
-                            <button type="button" wire:click="open(@js($row['ulid']))" class="flex min-w-0 flex-1 gap-2.5 py-3 pe-4 ps-1 text-left transition-colors hover:bg-surface-hover">
+                            <button type="button" wire:click="open(@js($row['ulid']))" class="flex min-w-0 flex-1 gap-2.5 py-3 pe-4 ps-1 text-start transition-colors hover:bg-surface-hover">
                                 <span class="flex min-w-0 flex-1 flex-col gap-1">
-                                    <span class="truncate text-[13px] font-semibold text-heading">{{ $row['title'] }}</span>
-                                    <span class="flex flex-wrap items-center gap-1.5 text-[11.5px] text-body-muted">
-                                        <span class="size-1.5 shrink-0 rounded-full bg-admin-warning"></span>
-                                        <span class="font-medium text-body-text">{{ $row['stage'] }}</span>
+                                    {{-- A name is never cut with «…»: it wraps to as many lines as it needs. --}}
+                                    <span class="text-small font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ $row['title'] }}</span>
+                                    <span class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-caption text-text-muted">
+                                        <span class="size-2 shrink-0 rounded-full bg-warning-base" aria-hidden="true"></span>
+                                        <span class="font-semibold text-text">{{ $row['stage'] }}</span>
                                         @if ($row['section'] !== '')
-                                            <span class="text-placeholder">·</span><span>{{ $row['section'] }}</span>
+                                            <span class="text-text-faint" aria-hidden="true">·</span><span>{{ $row['section'] }}</span>
                                         @endif
                                     </span>
-                                    <span class="flex flex-wrap items-center gap-1.5 text-[11.5px] text-body-muted">
-                                        <span>{{ $row['author'] }}</span>
-                                        <span class="text-placeholder">·</span>
-                                        <span class="{{ $row['late'] ? 'font-semibold text-[#8a5f18]' : '' }}">{{ $row['waited_at']?->locale(app()->getLocale())->diffForHumans() }}</span>
+                                    <span class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-caption text-text-muted">
+                                        <span class="[overflow-wrap:anywhere]">{{ __('admin.inbox.by_sender', ['name' => $row['author']]) }}</span>
+                                        <span class="text-text-faint" aria-hidden="true">·</span>
+                                        @php $waitDays = $row['waited_at'] === null ? 0 : (int) floor(now()->diffInDays($row['waited_at'], true)); @endphp
+                                        <span @class(['font-semibold text-warning-text' => $row['late']])>{{ match (true) {
+                                            $row['late'] => __('admin.inbox.wait_late', ['n' => $waitDays]),
+                                            $waitDays <= 0 => __('admin.inbox.wait_now'),
+                                            default => __('admin.inbox.wait_days', ['n' => $waitDays]),
+                                        } }}</span>
                                     </span>
                                 </span>
                             </button>
@@ -216,115 +236,183 @@
         @if ($reader === null)
             <x-bs-admin::card class="hidden lg:block">
                 <div class="flex flex-col items-center gap-3 px-6 py-10 text-center">
-                    <span class="flex size-13 items-center justify-center rounded-full bg-admin-primary/10">
-                        <x-bs-admin::icon name="ri-file-list-3" class="size-6 text-accent" />
+                    <span class="flex size-13 items-center justify-center rounded-full bg-primary/10">
+                        <x-bs-admin::icon name="ri-file-list-3" class="size-6 text-primary-text" />
                     </span>
-                    <p class="text-[15px] font-semibold text-heading">{{ __('admin.inbox.pick_title') }}</p>
-                    <p class="max-w-[420px] text-[13px] leading-relaxed text-body-muted">{{ __('admin.inbox.pick_body') }}</p>
+                    <p class="text-lead font-semibold text-text-strong">{{ __('admin.inbox.pick_title') }}</p>
+                    <p class="max-w-[420px] text-small leading-relaxed text-text-muted">{{ __('admin.inbox.pick_body') }}</p>
                 </div>
             </x-bs-admin::card>
         @else
-            <x-bs-admin::card>
-                <x-slot:header>
-                    <div class="flex min-w-0 flex-1 items-center gap-2">
-                        <x-bs-admin::button color="light" size="sm" class="shrink-0 lg:hidden" wire:click="closeReader">
-                            <x-bs-admin::icon name="ri-arrow-left" class="size-4" />{{ __('admin.inbox.back') }}
-                        </x-bs-admin::button>
-                        <span class="min-w-0 truncate text-sm font-semibold text-heading">{{ $reader['title'] }}</span>
-                        @if ($reader['section'] !== '')
-                            <span class="ml-auto shrink-0 rounded-full bg-surface-hover px-2.5 py-0.5 text-[10.5px] font-bold text-body-muted">{{ $reader['section'] }}</span>
-                        @endif
-                    </div>
-                </x-slot:header>
+            @php
+                $sentDays = $reader['sent_at'] === null ? 0 : (int) floor(now()->diffInDays($reader['sent_at'], true));
+                $isLate = $reader['sent_at'] !== null && $reader['sent_at']->getTimestamp() < now()->subDays(3)->getTimestamp();
+                $doneCount = count(array_filter($reader['steps'], fn (array $step): bool => $step['state'] === 'done'));
+                $nextStep = collect($reader['steps'])->firstWhere('state', 'todo');
+                $lastNote = $reader['trail'][0]['note'] ?? null;
+                $stepIcons = fn (array $step): string => match (true) {
+                    $step['state'] === 'done' => 'ri-check',
+                    $step['is_published'] => 'ri-global',
+                    $step['state'] === 'current' => 'ri-user-search',
+                    default => 'ri-archive',
+                };
+            @endphp
+            <section aria-label="{{ __('admin.inbox.reading') }}" data-guide="reader"
+                     class="flex min-w-0 flex-col rounded-md border border-border bg-surface shadow-card lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)]">
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-4 py-3">
+                    <x-bs-admin::button color="light" size="sm" class="shrink-0 lg:hidden" wire:click="closeReader">
+                        <x-bs-admin::icon name="ri-arrow-left" class="size-4" />{{ __('admin.inbox.back') }}
+                    </x-bs-admin::button>
+                    <h2 class="m-0 min-w-0 flex-1 text-body font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ $reader['title'] }}</h2>
+                    @if ($reader['section'] !== '')
+                        <span class="ms-auto inline-flex min-h-6 shrink-0 items-center rounded-full bg-surface-hover px-2.5 text-caption font-bold text-text-muted">{{ $reader['section'] }}</span>
+                    @endif
+                </div>
 
-                <div class="space-y-4">
-                    {{-- Who sent it --}}
+                <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-4">
+                    {{-- Who sent it, and how long it has waited --}}
                     <div class="flex flex-wrap items-center gap-2.5">
-                        <span class="inline-flex size-8 items-center justify-center rounded-full bg-admin-primary/10 text-[12px] font-bold text-accent">
+                        <span class="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-caption font-bold text-primary-text">
                             {{ mb_strtoupper(mb_substr(\Illuminate\Support\Str::of($reader['author'])->trim()->afterLast(' '), 0, 1)) }}
                         </span>
-                        <span class="flex flex-col">
-                            <span class="text-[12.5px] font-semibold text-heading">{{ $reader['author'] }}</span>
-                            <span class="text-[11.5px] text-body-muted">{{ __('admin.inbox.sent_line', ['when' => $reader['sent_at']?->locale(app()->getLocale())->diffForHumans() ?? '']) }}</span>
+                        <span class="flex min-w-0 flex-col">
+                            <span class="text-small font-semibold text-text-strong [overflow-wrap:anywhere]">{{ $reader['author'] }}</span>
+                            <span class="text-caption text-text-muted">{{ $sentDays <= 0 ? __('admin.inbox.wait_now') : __('admin.inbox.sent_days', ['n' => $sentDays]) }}</span>
+                        </span>
+                        @if ($isLate)
+                            <span class="ms-auto inline-flex min-h-6 items-center gap-1 rounded-full bg-warning-base/20 px-2.5 text-caption font-bold text-warning-text">
+                                <x-bs-admin::icon name="ri-alarm-warning" class="size-[min(1.5rem,calc(0.75rem+var(--user-text-boost)))] shrink-0" />{{ __('admin.inbox.wait_late', ['n' => $sentDays]) }}
+                            </span>
+                        @endif
+                    </div>
+
+                    {{-- The step the post is at, and the whole road: a rail from 600px, a bar below --}}
+                    <div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                        <span class="inline-flex items-center gap-1 text-small font-bold text-primary-text">
+                            <x-bs-admin::icon :name="$stepIcons(['state' => 'current', 'is_published' => false])" class="size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0" />{{ __('admin.wfb.step_of', ['n' => $reader['step_no'], 'total' => $reader['step_count'], 'label' => $reader['step_label']]) }}
+                        </span>
+                        <span class="inline-flex items-center gap-1 text-caption text-text-muted">
+                            <x-bs-admin::icon name="ri-flow-chart" class="size-[min(1.5rem,calc(0.75rem+var(--user-text-boost)))] shrink-0" />{{ $reader['workflow'] }}
                         </span>
                     </div>
-
-                    {{-- Stage --}}
-                    <div class="space-y-2">
-                        <p class="text-[12.5px] font-bold text-accent">
-                            {{ __('admin.wfb.step_of', ['n' => $reader['step_no'], 'total' => $reader['step_count'], 'label' => $reader['step_label']]) }}
-                            <span class="font-normal text-body-muted">· {{ $reader['workflow'] }}</span>
-                        </p>
-                        <ol class="flex flex-wrap items-center gap-1.5">
+                    <div class="@container">
+                        <ol class="m-0 hidden list-none p-0 @min-[37.5rem]:flex" data-inbox-track>
                             @foreach ($reader['steps'] as $step)
-                                <li @class([
-                                    'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11.5px]',
-                                    'border-admin-primary bg-admin-primary text-white' => $step['state'] === 'done',
-                                    'border-accent font-bold text-accent' => $step['state'] === 'current' && ! $step['is_published'],
-                                    'border-admin-success-text font-bold text-[#0a6d60]' => $step['state'] === 'current' && $step['is_published'],
-                                    'border-border text-body-muted' => $step['state'] === 'todo',
-                                ])>{{ $step['label'] }}</li>
+                                @php $cur = $step['state'] === 'current'; $done = $step['state'] === 'done'; @endphp
+                                <li class="flex min-w-0 flex-1 flex-col items-center gap-1.5" @if ($cur) aria-current="step" @endif>
+                                    <span class="flex w-full items-center" aria-hidden="true">
+                                        <span @class(['h-0.5 flex-1', 'invisible' => $loop->first, 'bg-primary-text' => $done || $cur, 'bg-border-strong' => ! $done && ! $cur])></span>
+                                        <span @class([
+                                            'inline-flex size-[calc(1.625rem+var(--user-text-boost))] shrink-0 items-center justify-center rounded-full border-2',
+                                            'border-primary bg-primary text-on-primary' => $done,
+                                            'border-primary-text bg-surface text-primary-text shadow-[0_0_0_4px_color-mix(in_oklab,var(--color-primary-base)_14%,transparent)]' => $cur && ! $step['is_published'],
+                                            'border-success-base bg-surface text-success-text shadow-[0_0_0_4px_color-mix(in_oklab,var(--color-success-base)_16%,transparent)]' => $cur && $step['is_published'],
+                                            'border-success-base/45 bg-surface text-success-text' => ! $done && ! $cur && $step['is_published'],
+                                            'border-border-input bg-surface text-text-muted' => ! $done && ! $cur && ! $step['is_published'],
+                                        ])>
+                                            <x-bs-admin::icon :name="$stepIcons($step)" class="size-[min(1.5rem,calc(0.8125rem+var(--user-text-boost)))]" />
+                                        </span>
+                                        <span @class(['h-0.5 flex-1', 'invisible' => $loop->last, 'bg-primary-text' => $done, 'bg-border-strong' => ! $done])></span>
+                                    </span>
+                                    <span @class([
+                                        'px-1 text-center text-caption leading-snug [text-wrap:pretty]',
+                                        'font-bold text-primary-text' => $cur && ! $step['is_published'],
+                                        'font-bold text-success-text' => $cur && $step['is_published'],
+                                        'text-text' => $done,
+                                        'text-text-muted' => ! $done && ! $cur,
+                                    ])>{{ $step['label'] }}</span>
+                                </li>
                             @endforeach
                         </ol>
+                        <div class="flex flex-col gap-1.5 @min-[37.5rem]:hidden" data-inbox-progress>
+                            <span class="flex h-1.5 overflow-hidden rounded-full bg-border" aria-hidden="true">
+                                <span class="block h-1.5 rounded-full bg-primary-text" style="width: {{ $reader['step_count'] > 1 ? round($doneCount / ($reader['step_count'] - 1) * 100) : 100 }}%"></span>
+                            </span>
+                            <span class="text-caption text-text-muted">{{ $nextStep !== null ? __('admin.inbox.next_step', ['label' => $nextStep['label']]) : __('admin.inbox.last_step') }}</span>
+                        </div>
                     </div>
 
-                    {{-- Cover --}}
-                    @if ($reader['cover'] !== null)
-                        <img src="{{ $reader['cover'] }}" alt="{{ __('entries.cover_alt') }}" class="max-h-64 w-auto rounded border border-border-soft" loading="lazy">
-                    @else
-                        <p class="flex items-center gap-2 rounded bg-admin-warning/15 px-3 py-2.5 text-[12.5px] text-[#8a5f18]">
-                            <x-bs-admin::icon name="ri-image-add" class="size-4 shrink-0" />{{ __('admin.inbox.no_cover') }}
+                    {{-- The last thing said when the post last moved --}}
+                    @if ($lastNote !== null)
+                        <p class="m-0 flex gap-2.5 rounded-r border-l-2 border-border-strong bg-surface-muted px-3 py-3 text-small leading-relaxed text-text">
+                            <x-bs-admin::icon name="ri-chat-quote" class="size-[min(1.5rem,calc(1rem+var(--user-text-boost)))] shrink-0 text-text-muted" />
+                            <span class="min-w-0 [overflow-wrap:anywhere]">{{ $lastNote }}</span>
                         </p>
                     @endif
 
+                    {{-- Cover --}}
+                    <x-bs-admin::fold :title="__('admin.inbox.fold_cover')" :warn="$reader['cover'] === null ? __('admin.inbox.missing') : null">
+                        @if ($reader['cover'] !== null)
+                            <img src="{{ $reader['cover'] }}" alt="{{ __('entries.cover_alt') }}" class="max-h-64 w-auto max-w-full self-start rounded border border-border-soft" loading="lazy">
+                        @else
+                            <p class="m-0 flex items-start gap-2 rounded bg-warning-base/15 px-3 py-2.5 text-small text-warning-text">
+                                <x-bs-admin::icon name="ri-image-add" class="mt-0.5 size-4 shrink-0" />{{ __('admin.inbox.no_cover') }}
+                            </p>
+                        @endif
+                    </x-bs-admin::fold>
+
+                    {{-- The short description (what the list's card shows) --}}
+                    <x-bs-admin::fold :title="__('admin.inbox.fold_excerpt')" :hint="__('admin.inbox.fold_excerpt_hint')" :warn="blank($reader['excerpt']) ? __('admin.inbox.not_entered') : null">
+                        @if (filled($reader['excerpt']))
+                            <p class="m-0 text-small leading-relaxed text-text [overflow-wrap:anywhere]">{{ $reader['excerpt'] }}</p>
+                        @else
+                            <p class="m-0 rounded bg-warning-base/15 px-3 py-2.5 text-small text-warning-text">{{ __('admin.inbox.no_excerpt') }}</p>
+                        @endif
+                    </x-bs-admin::fold>
+
                     {{-- The post, as text --}}
-                    <div class="space-y-2">
-                        <p class="text-[11px] font-bold uppercase tracking-[.06em] text-body-muted">{{ __('admin.inbox.content') }}</p>
+                    <x-bs-admin::fold :title="__('admin.inbox.content')">
                         @forelse ($reader['blocks'] as $block)
                             @php
                                 $text = trim(strip_tags(collect($block['props'] ?? [])->flatten()->filter(fn ($v) => is_string($v))->implode("\n")));
                             @endphp
                             @if ($text !== '')
-                                <p class="whitespace-pre-line text-[13px] leading-relaxed text-body-text">{{ \Illuminate\Support\Str::limit($text, 1200) }}</p>
+                                <p class="m-0 whitespace-pre-line text-small leading-relaxed text-text [overflow-wrap:anywhere]">{{ \Illuminate\Support\Str::limit($text, 1200) }}</p>
                             @endif
                         @empty
-                            <p class="rounded bg-admin-warning/15 px-3 py-2.5 text-[12.5px] text-[#8a5f18]">{{ __('admin.inbox.no_content') }}</p>
+                            <p class="m-0 rounded bg-warning-base/15 px-3 py-2.5 text-small text-warning-text">{{ __('admin.inbox.no_content') }}</p>
                         @endforelse
-                    </div>
+                    </x-bs-admin::fold>
 
                     {{-- What visitors and Google will see --}}
-                    <div class="space-y-1 rounded border border-border-soft p-3">
-                        <p class="text-[11px] font-bold uppercase tracking-[.06em] text-body-muted">{{ __('admin.inbox.seo_title') }}</p>
-                        <p class="text-[13px] text-body-text">{{ $reader['seo_title'] ?: $reader['title'] }}</p>
-                        <p class="text-[12.5px] leading-relaxed text-body-muted">{{ $reader['seo_description'] ?: $reader['excerpt'] ?: __('admin.inbox.seo_auto') }}</p>
-                        @if ($reader['path'] !== null)
-                            <p class="text-[11.5px] text-[#22688f]">{{ $reader['path'] }}</p>
-                        @endif
-                    </div>
+                    <x-bs-admin::fold :title="__('admin.inbox.seo_title')">
+                        <div class="flex flex-col gap-1 rounded border border-border-soft p-3">
+                            @if ($reader['path'] !== null)
+                                <p class="m-0 text-caption text-success-text [overflow-wrap:anywhere]">{{ $reader['path'] }}</p>
+                            @endif
+                            <p class="m-0 text-body leading-snug text-secondary-text [overflow-wrap:anywhere]">{{ $reader['seo_title'] ?: $reader['title'] }}</p>
+                            <p class="m-0 text-small leading-relaxed text-text-muted [overflow-wrap:anywhere]">{{ $reader['seo_description'] ?: $reader['excerpt'] ?: __('admin.inbox.seo_auto') }}</p>
+                        </div>
+                    </x-bs-admin::fold>
+
+                    @if ($reader['edit_url'] !== null)
+                        <x-bs-admin::button variant="ghost" color="primary" class="self-start" :href="$reader['edit_url']">
+                            <x-bs-admin::icon name="ri-external-link" class="size-4" />{{ __('admin.inbox.open_full') }}
+                        </x-bs-admin::button>
+                    @endif
 
                     {{-- Trail --}}
                     @if ($reader['trail'] !== [])
-                        <div class="space-y-1.5">
-                            <p class="text-[11px] font-bold uppercase tracking-[.06em] text-body-muted">{{ __('admin.wfb.trail_title') }}</p>
+                        <x-bs-admin::fold :title="__('admin.wfb.trail_title')" :end="__('admin.inbox.trail_count', ['n' => count($reader['trail'])])" :open="false">
                             @foreach ($reader['trail'] as $row)
-                                <p class="text-[12px] text-body-muted" wire:key="inbox-log-{{ $row['id'] }}">
-                                    <span class="font-semibold text-body-text">{{ $row['actor'] ?? __('admin.wfb.actor_gone') }}</span>
+                                <p class="m-0 text-caption text-text-muted" wire:key="inbox-log-{{ $row['id'] }}">
+                                    <span class="font-semibold text-text">{{ $row['actor'] ?? __('admin.wfb.actor_gone') }}</span>
                                     {{ mb_strtolower($row['transition']) }} · {{ $row['from'] }} → {{ $row['to'] }} · {{ $row['at'] }}
                                     @if ($row['note'] !== null)
-                                        <span class="mt-1 block rounded-r border-l-2 border-border bg-surface-muted px-3 py-2 text-[12.5px] text-body-text">{{ $row['note'] }}</span>
+                                        <span class="mt-1 block rounded-r border-l-2 border-border-strong bg-surface-muted px-3 py-2 text-small text-text [overflow-wrap:anywhere]">{{ $row['note'] }}</span>
                                     @endif
                                 </p>
                             @endforeach
-                        </div>
+                        </x-bs-admin::fold>
                     @endif
                 </div>
 
-                {{-- The only place approval actions live (design: foot of the reader) --}}
-                <x-slot:footer>
+                {{-- The only place approval actions live (design: foot of the reader), with the walk through the list --}}
+                <div class="flex flex-wrap items-center gap-2 rounded-b-md border-t border-border bg-surface-muted px-4 py-3 max-[599.98px]:[&_[data-inbox-act]]:flex-[1_1_8.75rem]">
                     @if ($reader['actions'] === [])
-                        <p class="text-[12.5px] text-body-muted">{{ __('admin.inbox.no_actions') }}</p>
+                        <p class="m-0 text-small text-text-muted" data-guide="bar">{{ __('admin.inbox.no_actions') }}</p>
                     @else
-                        <div class="flex flex-wrap gap-2">
+                        <div class="contents" data-guide="bar">
                             @foreach ($reader['actions'] as $action)
                                 @if ($action['note'])
                                     {{-- A move that demands a reason opens the reason dialog (with «Giao cho») --}}
@@ -360,8 +448,21 @@
                             @endforeach
                         </div>
                     @endif
-                </x-slot:footer>
-            </x-bs-admin::card>
+                    @if ($nav !== null)
+                        <span class="ms-auto flex items-center gap-1.5 max-[599.98px]:ms-0 max-[599.98px]:w-full max-[599.98px]:justify-between" data-guide="nav">
+                            <span class="flex items-center gap-1.5">
+                                <x-bs-admin::button variant="ghost" color="primary" icon wire:click="step(-1)" :disabled="$nav['at'] <= 1" :title="__('admin.inbox.prev')" :aria-label="__('admin.inbox.prev')">
+                                    <x-bs-admin::icon name="ri-arrow-up-s" class="size-[min(1.5rem,calc(1.125rem+var(--user-text-boost)))]" />
+                                </x-bs-admin::button>
+                                <x-bs-admin::button variant="ghost" color="primary" icon wire:click="step(1)" :disabled="$nav['at'] >= $nav['of']" :title="__('admin.inbox.next')" :aria-label="__('admin.inbox.next')">
+                                    <x-bs-admin::icon name="ri-arrow-down-s" class="size-[min(1.5rem,calc(1.125rem+var(--user-text-boost)))]" />
+                                </x-bs-admin::button>
+                            </span>
+                            <span class="whitespace-nowrap text-caption text-text-muted">{{ __('admin.inbox.position', ['at' => $nav['at'], 'of' => $nav['of']]) }}</span>
+                        </span>
+                    @endif
+                </div>
+            </section>
         @endif
     </div>
     @endunless

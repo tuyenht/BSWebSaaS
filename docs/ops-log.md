@@ -253,3 +253,14 @@
 - **Duyệt:** anh Tuyền nhắn 20/11 trong phiên: «nếu cần thiết thì cho phép máy chủ cài ffmpeg».
 - **Lý do:** trích khung hình từ video quay màn hình admin của anh (.mp4 H.264) để tìm lỗi chuyển trang chậm. Bản ffmpeg kèm Playwright là bản rút gọn, không mở được mp4.
 - **Gỡ:** `apt-get remove -y ffmpeg`, rồi xem `apt-get -s autoremove` trước khi dọn các thư viện đi kèm.
+
+## 2026-11-22 08:0x (+07) — trần RAM cho dev và test sau sự cố hết RAM 21/11
+
+- **Sự cố:** 21/11 04:46:58 một bài đo tải (8 tiến trình con fork, mỗi tiến trình nạp danh mục quyền của 2000 site) chạy trên stack thử không có trần RAM. 04:48–04:50 RAM đầy 12 GB và swap 3,6 GB. Kernel OOM killer giết Chrome, PHP, `user@0.service` (systemd giết luôn mọi tiến trình con) và các phiên Claude trong tmux. Cả 3 phòng chết. 22/11 07:52 máy được khởi động lại. Việc dọn dẹp 04:15 không liên quan: nó không giết tiến trình nào, và RAM lúc 04:30–04:40 vẫn bình thường (3,2 GB). Bằng chứng: `journalctl -b -1 -k` (Out of memory: Killed process), `sar -r -f /var/log/sysstat/sa21`.
+- **Đã làm (chỉ dev, prod không đổi):**
+  - `docker-compose.override.yml` trong cây dev (git-ignored; prod là checkout riêng, không đọc tệp này): trần app 6 GB, horizon 1 GB, scheduler 512 MB, postgres 2 GB, pgbouncer 256 MB, valkey 512 MB, cùng `cgroup_parent: bsweb-test.slice`. Container đang chạy nhận trần ngay bằng `docker update`, không khởi động lại. Đo: PHPStan đầy đủ đạt đỉnh 2,4 GB trong trần 6 GB.
+  - `plans/tools/pest-scratch.sh`: trần app 4 GB (`SCRATCH_MEM` để đổi), pg 2 GB, valkey 1 GB, pgbouncer 256 MB, cùng nhóm `bsweb-test.slice`. Đã chạy thử, đạt.
+- **Anh đã chạy 22/11 08:3x** (bộ chặn không cho AI sửa systemd của máy chủ). Kết quả: `bsweb-test.slice` có memory.max 6 GB, high 5 GB, swap 2 GB; `user.slice` có max 8 GB, high 7 GB. Tệp nằm ở `/etc/systemd/system/bsweb-test.slice` và `/etc/systemd/system/user.slice.d/50-bsweb-memory.conf`, nên giữ được qua lần khởi động lại. Các container dev đã chạy từ trước chỉ vào nhóm này khi được tạo lại; trong lúc chờ, mỗi container vẫn có trần riêng. Lệnh đã chạy: `bash /opt/bswebsaas/dev/plans/tools/host-memory-guard-261122.sh`. Lệnh này đặt `bsweb-test.slice` (cả dev lẫn test) tối đa 6 GB và `user.slice` (các phòng Claude, shell, Chrome) tối đa 8 GB. Prod không có trần. Chỉ ghi tệp cấu hình systemd, không cài gói.
+- **Gỡ:**
+  - Phần máy chủ: chạy lại script trên, thêm `undo`.
+  - Phần dev: xoá `docker-compose.override.yml` rồi chạy `docker compose up -d`. Bỏ các dòng `--memory`, `mem_limit`, `cgroup` trong `pest-scratch.sh`.

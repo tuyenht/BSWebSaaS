@@ -369,7 +369,7 @@ it('draws no card while nothing waits', function (): void {
             ->assertDontSee(__('admin.inbox.chg_title'));
     });
 
-    $this->actingAs($cast['approver'])->get('http://a.test/admin/content/review')->assertOk()
+    $this->actingAs($cast['approver'])->get('http://a.test/admin/content/review?tab=queue')->assertOk()
         ->assertSee(__('admin.inbox.empty_queue'))
         ->assertDontSee(__('admin.inbox.chg_title'));
 });
