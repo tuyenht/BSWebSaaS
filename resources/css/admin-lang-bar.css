@@ -1,0 +1,541 @@
+/* The shared language bar of an editor (components/lang-bar.blade.php, board 07 and 09): the pills of
+   the versions, «+N», the selector of the open version and its panel, the open version's state, how
+   many versions are complete, and the line under it. The bar's own width decides what shows (the
+   board's container widths): 860px and less drops the state chip, 700px and less trades the pills for
+   the selector, 520px and less drops the count, names the open version by its code and folds the
+   line under the bar behind «Xem thêm». More than ten languages ([data-compact]), or pills that do
+   not fit even with only the source and the open one left ([data-squeeze], measured in
+   admin-lang-bar.js), use the selector at any width. */
+@layer components {
+    .lb {
+        position: relative;
+        z-index: 5;
+        container-type: inline-size;
+        border: 1px solid var(--color-border);
+        border-radius: 0.375rem;
+        background: var(--color-surface);
+        box-shadow: var(--shadow-card, 0 1px 2px rgb(56 65 74 / 0.15));
+    }
+
+    /* one line: the pills give way (admin-lang-bar.js), the line never wraps under them */
+    .lb-row {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 0.5rem 0.625rem;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .lb-ic {
+        display: inline-flex;
+        color: var(--color-text-muted);
+    }
+
+    .lb-pills {
+        display: flex;
+        flex: 0 1 auto;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+        overflow: hidden;
+        /* room for the focus ring inside the clipped strip */
+        margin: -0.25rem;
+        padding: 0.25rem;
+    }
+
+    .lb-pill,
+    .lb-sel,
+    .lb-more {
+        display: inline-flex;
+        flex-shrink: 0;
+        align-items: center;
+        gap: 0.4375rem;
+        box-sizing: border-box;
+        min-height: var(--spacing-control);
+        padding: 0 0.625rem;
+        border: 1px solid var(--color-border-input);
+        border-radius: 0.3125rem;
+        background: var(--color-surface);
+        font: inherit;
+        font-size: var(--text-small);
+        color: var(--color-text);
+        white-space: nowrap;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .lb-pill:hover,
+    .lb-sel:hover,
+    .lb-more:hover {
+        border-color: var(--color-primary-text);
+    }
+
+    .lb-pill[aria-current='true'] {
+        border: 1.5px solid var(--color-primary-text);
+        background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+        font-weight: 600;
+        color: var(--color-text-strong);
+    }
+
+    .lb-dot {
+        flex-shrink: 0;
+        width: 0.5rem;
+        height: 0.5rem;
+        box-sizing: border-box;
+        border-radius: 50%;
+        background: var(--color-success);
+    }
+
+    .lb-dot[data-k='empty'] {
+        border: 1.5px dashed var(--color-text-muted);
+        background: transparent;
+    }
+
+    .lb-dot[data-k='partial'] {
+        background: var(--color-warning);
+    }
+
+    .lb-dot[data-k='stale'] {
+        background: var(--color-danger);
+    }
+
+    .lb-star {
+        display: inline-flex;
+        color: var(--color-warning);
+    }
+
+    .lb-chev {
+        color: var(--color-text-muted);
+    }
+
+    .lb-anchor {
+        position: relative;
+        display: flex;
+        flex-shrink: 0;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+    }
+
+    .lb-sel {
+        display: none;
+        max-width: min(14.375rem, 100%);
+        font-size: var(--text-small);
+    }
+
+    .lb-sel-nm {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-weight: 600;
+    }
+
+    .lb-sel-cd {
+        display: none;
+        font-weight: 700;
+    }
+
+    .lb-more {
+        gap: 0.1875rem;
+        padding: 0 0.5rem 0 0.625rem;
+        background: var(--color-surface-muted);
+        font-weight: 600;
+    }
+
+    .lb[data-compact] .lb-pills,
+    .lb[data-squeeze] .lb-pills,
+    .lb[data-compact] .lb-more,
+    .lb[data-squeeze] .lb-more {
+        display: none;
+    }
+
+    .lb[data-compact] .lb-sel,
+    .lb[data-squeeze] .lb-sel {
+        display: inline-flex;
+    }
+
+    .lb[data-over] .lb-chip {
+        display: none;
+    }
+
+    .lb-chip {
+        display: inline-flex;
+        flex-shrink: 0;
+        align-items: center;
+        gap: 0.375rem;
+        min-height: 1.5rem;
+        padding: 0 0.5625rem;
+        border-radius: 1.25rem;
+        background: color-mix(in srgb, var(--color-success) 12%, transparent);
+        font-size: var(--text-caption);
+        font-weight: 500;
+        color: var(--color-success-text);
+        white-space: nowrap;
+    }
+
+    .lb-chip[data-k='empty'] {
+        background: color-mix(in srgb, var(--color-text-muted) 12%, transparent);
+        color: var(--color-text-muted);
+    }
+
+    .lb-chip[data-k='partial'] {
+        background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+        color: var(--color-warning-text);
+    }
+
+    .lb-chip[data-k='stale'] {
+        background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+        color: var(--color-danger-text);
+    }
+
+    .lb-gap {
+        flex: 1 1 auto;
+        min-width: 0.5rem;
+    }
+
+    .lb-div {
+        flex-shrink: 0;
+        width: 1px;
+        height: 1.25rem;
+        background: var(--color-border-strong);
+    }
+
+    .lb-prog {
+        display: inline-flex;
+        flex-shrink: 0;
+        align-items: center;
+        gap: 0.4375rem;
+        font-size: var(--text-caption);
+        color: var(--color-text-muted);
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .lb-bar {
+        display: inline-block;
+        width: 2.75rem;
+        height: 0.3125rem;
+        overflow: hidden;
+        border-radius: 0.25rem;
+        background: var(--color-border);
+    }
+
+    .lb-fill {
+        display: block;
+        height: 100%;
+        border-radius: 0.25rem;
+        background: var(--color-primary-text);
+    }
+
+    .lb-fill[data-full] {
+        background: var(--color-success);
+    }
+
+    /* The panel of every version, under the selector or «+N». */
+    .lb-panel {
+        position: absolute;
+        top: calc(100% + 0.375rem);
+        left: 0;
+        z-index: 70;
+        box-sizing: border-box;
+        width: min(21rem, calc(100vw - 2.5rem));
+        padding: 0.25rem;
+        border: 1px solid var(--color-border-strong);
+        border-radius: 0.5rem;
+        background: var(--color-surface);
+        box-shadow: 0 10px 28px rgb(33 37 41 / 0.16);
+    }
+
+    .lb-ph {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.625rem;
+        padding: 0.5rem 0.5rem 0.375rem;
+        font-size: var(--text-caption);
+        color: var(--color-text-muted);
+    }
+
+    .lb-ph-t {
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .lb-ph-n {
+        white-space: nowrap;
+    }
+
+    .lb-search {
+        display: flex;
+        align-items: center;
+        gap: 0.4375rem;
+        box-sizing: border-box;
+        min-height: var(--spacing-control);
+        margin: 0 0.25rem 0.375rem;
+        padding: 0 0.625rem;
+        border: 1px solid var(--color-border-input);
+        border-radius: 0.375rem;
+        background: var(--color-surface-muted);
+        color: var(--color-text-muted);
+    }
+
+    .lb-search:has(:focus-visible) {
+        outline: var(--focus-ring-width) solid var(--color-focus);
+        outline-offset: var(--focus-ring-offset);
+    }
+
+    .lb-search input {
+        flex: 1;
+        min-width: 0;
+        border: 0;
+        background: transparent;
+        font: inherit;
+        font-size: var(--text-small);
+        color: var(--color-text);
+        outline: none;
+    }
+
+    .lb-search input::placeholder {
+        color: var(--color-placeholder);
+    }
+
+    .lb-list {
+        max-height: 18.75rem;
+        overflow-y: auto;
+    }
+
+    .lb-it {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        box-sizing: border-box;
+        width: 100%;
+        min-height: var(--spacing-menu-row);
+        padding: 0.4375rem 0.625rem 0.4375rem 0.5rem;
+        border-radius: 0.375rem;
+        color: var(--color-text);
+        text-decoration: none;
+    }
+
+    .lb-it:hover,
+    .lb-it[aria-checked='true'] {
+        background: var(--color-surface-hover);
+    }
+
+    .lb-it-tx {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        gap: 1px;
+        min-width: 0;
+    }
+
+    .lb-it-nm {
+        overflow: hidden;
+        font-size: var(--text-small);
+        font-weight: 500;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .lb-it[aria-checked='true'] .lb-it-nm {
+        font-weight: 600;
+        color: var(--color-text-strong);
+    }
+
+    .lb-it-sub {
+        overflow: hidden;
+        font-size: var(--text-caption);
+        color: var(--color-text-muted);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .lb-it-n {
+        flex: 0 0 auto;
+        min-width: 1.875rem;
+        font-size: var(--text-caption);
+        color: var(--color-text-muted);
+        text-align: right;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .lb-none {
+        margin: 0;
+        padding: 1rem 0.75rem;
+        font-size: var(--text-caption);
+        color: var(--color-text-muted);
+        text-align: center;
+    }
+
+    .lb-pf {
+        display: flex;
+        margin-top: 0.25rem;
+        padding: 0.5rem 0.375rem 0.25rem;
+        border-top: 1px solid var(--color-border);
+    }
+
+    .lb-manage {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        min-height: var(--spacing-control);
+        margin-left: auto;
+        padding: 0 0.625rem;
+        border-radius: 0.375rem;
+        font-size: var(--text-caption);
+        font-weight: 500;
+        color: var(--color-text-muted);
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .lb-manage:hover {
+        background: var(--color-surface-hover);
+        color: var(--color-primary-text);
+    }
+
+    /* The line under the bar: what to do with the open version. */
+    .lb-note {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.4375rem 0.75rem;
+        border-top: 1px solid var(--color-border);
+        border-radius: 0 0 0.375rem 0.375rem;
+        background: var(--color-surface-muted);
+        font-size: var(--text-caption);
+        line-height: 1.5;
+        color: var(--color-text-muted);
+    }
+
+    .lb-note[data-tone='warning'] {
+        background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
+        color: var(--color-warning-text);
+    }
+
+    .lb-note[data-tone='danger'] {
+        background: color-mix(in srgb, var(--color-danger) 8%, var(--color-surface));
+        color: var(--color-danger-text);
+    }
+
+    .lb-note-full,
+    .lb-note-head {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .lb-note-head,
+    .lb-note-tg {
+        display: none;
+    }
+
+    .lb-note-tg {
+        position: relative;
+        flex-shrink: 0;
+        margin-left: auto;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        font: inherit;
+        font-weight: 600;
+        color: inherit;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+        cursor: pointer;
+    }
+
+    /* the touch area of the small «Xem thêm» link */
+    .lb-note-tg::after {
+        content: '';
+        position: absolute;
+        inset: min(0px, calc((100% - var(--spacing-hit)) / 2));
+    }
+
+    @media (any-pointer: coarse) {
+        .lb-pill,
+        .lb-sel,
+        .lb-more,
+        .lb-search,
+        .lb-manage {
+            min-height: var(--spacing-hit);
+        }
+
+        .lb-it {
+            min-height: var(--spacing-menu-row-touch);
+        }
+    }
+
+    @container (max-width: 53.75rem) {
+        .lb-chip {
+            display: none;
+        }
+    }
+
+    @container (max-width: 43.75rem) {
+        .lb-pills,
+        .lb-more {
+            display: none;
+        }
+
+        .lb .lb-sel {
+            display: inline-flex;
+        }
+    }
+
+    @container (max-width: 32.5rem) {
+        .lb-div,
+        .lb-prog {
+            display: none;
+        }
+
+        .lb-sel-nm {
+            display: none;
+        }
+
+        .lb-sel-cd {
+            display: inline;
+        }
+
+        .lb-panel {
+            max-width: calc(100vw - 2rem);
+        }
+
+        .lb-note:not([data-open]) .lb-note-full:has(~ .lb-note-head) {
+            display: none;
+        }
+
+        .lb-note:not([data-open]) .lb-note-head,
+        .lb-note-tg {
+            display: inline;
+        }
+    }
+}
+
+/* The bar's icons grow with the member's text size (the board's min(24px, …)). Outside the layers on
+   purpose: <x-bs-admin::icon> carries the utility size-5, which a component-layer rule cannot beat. */
+.lb .lb-g {
+    flex-shrink: 0;
+    width: min(1.5rem, calc(1.0625rem + var(--user-text-boost)));
+    height: min(1.5rem, calc(1.0625rem + var(--user-text-boost)));
+}
+
+.lb .lb-star .lb-g {
+    width: min(1.5rem, calc(0.75rem + var(--user-text-boost)));
+    height: min(1.5rem, calc(0.75rem + var(--user-text-boost)));
+}
+
+.lb .lb-chev,
+.lb .lb-search .lb-g,
+.lb .lb-manage .lb-g {
+    width: min(1.5rem, calc(1rem + var(--user-text-boost)));
+    height: min(1.5rem, calc(1rem + var(--user-text-boost)));
+}
+
+.lb .lb-note-i {
+    width: min(1.5rem, calc(0.875rem + var(--user-text-boost)));
+    height: min(1.5rem, calc(0.875rem + var(--user-text-boost)));
+}

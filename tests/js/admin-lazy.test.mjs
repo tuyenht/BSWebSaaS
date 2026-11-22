@@ -119,3 +119,12 @@ test('a Livewire redraw of a started part takes the server root without x-ignore
     lazy.keepStarted(other, otherTo);
     assert.equal(otherTo.hasAttribute('x-ignore'), true);
 });
+
+test('a part that a redraw adds starts when the added element itself is scanned', async () => {
+    const { root } = page();
+    const { lazy, seen } = loader([true]);
+    lazy.scan(root);
+    await tick();
+    assert.deepEqual(seen.started, [root]);
+    assert.equal(root.hasAttribute('x-ignore'), false);
+});
