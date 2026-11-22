@@ -61,7 +61,11 @@ function ipStored(int $site = 1): ?array
         ->where('group_name', AdminAddressLimit::GROUP)->where('key', AdminAddressLimit::KEY)->first()?->value);
 }
 
-/** @return list<array{action: string, meta: mixed}> */
+/**
+ * The address-list audit rows; meta keys come back in jsonb order (shorter keys first, then by name).
+ *
+ * @return list<array{action: string, meta: mixed}>
+ */
 function ipAudits(): array
 {
     return app(Tenancy::class)->enter(1, fn () => AuditLog::query()->orderBy('id')->get(['action', 'meta'])
@@ -132,6 +136,21 @@ it('reads the address the proxies hand over, never a header the visitor writes',
     'CF-Connecting-IP from a public address' => [['CF-Connecting-IP' => '203.0.113.24'], '198.51.100.9'],
     'X-Real-IP and Forwarded' => [['X-Real-IP' => '203.0.113.24', 'Forwarded' => 'for=203.0.113.24'], '198.51.100.9'],
     'CF-Connecting-IP through the private proxy' => [['CF-Connecting-IP' => '203.0.113.24'], '10.0.0.5'],
+]);
+
+it('takes the client address the private proxy forwards, as production requests arrive', function (string $remote, string $forwarded, bool $in): void {
+    ipLimit(['203.0.113.0/24']);
+    $owner = blockLibraryUser(1, 'owner');
+
+    $signIn = fromIp($this, $remote)->withHeader('X-Forwarded-For', $forwarded)->get('http://a.test/admin/login');
+    $in ? $signIn->assertOk() : $signIn->assertForbidden();
+    $admin = fromIp($this, $remote)->withHeader('X-Forwarded-For', $forwarded)->actingAs($owner)->get('http://a.test/admin');
+    $in ? $admin->assertOk() : $admin->assertForbidden();
+})->with([
+    'a listed client behind the proxy' => ['10.0.0.5', '203.0.113.24', true],
+    // the proxy appends the address it saw: the visitor's own listed one, written first, is not it
+    'a client not listed, behind a listed address it wrote itself' => ['10.0.0.5', '203.0.113.24, 198.51.100.9', false],
+    'a public address that writes a listed one' => ['198.51.100.9', '203.0.113.24', false],
 ]);
 
 it('leaves the storefront and other websites alone', function (): void {
@@ -257,7 +276,7 @@ it('starts an empty list with the address in use, saves it without purging the e
     expect(ipStored())->toEqual(['on' => true, 'entries' => [
         ['address' => '127.0.0.1', 'note' => 'Máy bạn đang dùng'],
         ['address' => '203.0.113.0/24', 'note' => 'Văn phòng Đà Nẵng'],
-    ]])->and(ipAudits())->toBe([['action' => 'settings.admin_ip.on', 'meta' => ['on' => true, 'count' => 2]]]);
+    ]])->and(ipAudits())->toBe([['action' => 'settings.admin_ip.on', 'meta' => ['on' => true, 'added' => ['127.0.0.1', '203.0.113.0/24'], 'count' => 2, 'removed' => []]]]);
     Bus::assertNotDispatched(PurgeSiteEdgeCache::class);
 });
 
@@ -291,6 +310,16 @@ it('refuses an address that would let every address in, and says why', function 
 
     expect(ipStored())->toBeNull();
 })->with(['0.0.0.0/0', '::/0', '::ffff:0.0.0.0/96']);
+
+it('refuses a range so wide it would let almost every address in, and says what to enter', function (string $wide): void {
+    $owner = blockLibraryUser(1, 'owner');
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($owner)->test(AdvancedSettings::class)
+        ->call('toggleIp')->call('addIpRow')->set('ips.1.address', $wide)->call('save')
+        ->assertSee('«'.$wide.'» là một dải quá rộng, gồm hàng triệu địa chỉ ở những nơi khác, nên giới hạn gần như không chặn được ai. Nhập địa chỉ của văn phòng bạn, hoặc một dải hẹp hơn, ví dụ 203.0.113.0/24.'));
+
+    expect(ipStored())->toBeNull();
+})->with(['0.0.0.0/1', '128.0.0.0/1', '10.0.0.0/7', '2001::/15', '::ffff:10.0.0.0/103']);
 
 it('never saves a list that would lock out the owner saving it', function (): void {
     $owner = blockLibraryUser(1, 'owner');
@@ -421,19 +450,40 @@ it('keeps the valid addresses when switched off, and records it', function (): v
         ->assertSeeHtml('data-adv-ip-chip="off"'));
 
     expect(ipStored())->toEqual(['on' => false, 'entries' => [['address' => '127.0.0.1', 'note' => ''], ['address' => '203.0.113.0/24', 'note' => '']]])
-        ->and(ipAudits())->toBe([['action' => 'settings.admin_ip.off', 'meta' => ['on' => false, 'count' => 2]]]);
+        ->and(ipAudits())->toBe([['action' => 'settings.admin_ip.off', 'meta' => ['on' => false, 'added' => [], 'count' => 2, 'removed' => []]]]);
 });
 
-it('records a changed list as a change, and leaves the other parts of the page alone', function (): void {
-    ipLimit(['127.0.0.1']);
+it('records a changed list as a change, with the addresses that came and went, and leaves the other parts of the page alone', function (): void {
+    ipLimit(['127.0.0.1', '198.51.100.7']);
     $owner = blockLibraryUser(1, 'owner');
 
-    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($owner)->test(AdvancedSettings::class)
-        ->call('addIpRow')->set('ips.1.address', '2001:DB8:1234:5678:0:0:0:1/64')->call('save')->assertHasNoErrors());
+    app(Tenancy::class)->enter(1, function () use ($owner): void {
+        $lw = Livewire::actingAs($owner)->test(AdvancedSettings::class);
+        $lw->call('removeIpRow', $lw->get('ips.1.id'))
+            ->call('addIpRow')->set('ips.1.address', '2001:DB8:1234:5678:0:0:0:1/64')->set('ips.1.note', 'Ghi chú văn phòng')
+            ->call('save')->assertHasNoErrors();
+    });
 
     expect(ipStored()['entries'][1]['address'])->toBe('2001:db8:1234:5678::/64')
-        ->and(ipAudits())->toBe([['action' => 'settings.admin_ip.changed', 'meta' => ['on' => true, 'count' => 2]]])
+        ->and(ipAudits())->toBe([['action' => 'settings.admin_ip.changed', 'meta' => ['on' => true, 'added' => ['2001:db8:1234:5678::/64'], 'count' => 2, 'removed' => ['198.51.100.7']]]])
         ->and(app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('group_name', 'storefront')->count()))->toBe(0);
+});
+
+it('records at most fifty addresses each way, and never the notes', function (): void {
+    ipLimit(array_map(fn (int $i): string => '198.51.100.'.$i, range(1, 50)));
+    $owner = blockLibraryUser(1, 'owner');
+    $rows = array_map(fn (int $i): array => ['id' => 100 + $i, 'address' => '203.0.113.'.$i, 'note' => 'Ghi chú riêng'], range(1, 50));
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($owner)->test(AdvancedSettings::class)
+        ->call('toggleIp')->set('ips', $rows)->call('save')->assertHasNoErrors());
+
+    $audits = ipAudits();
+    expect($audits)->toHaveCount(1)
+        ->and($audits[0]['action'])->toBe('settings.admin_ip.off')
+        ->and($audits[0]['meta']['count'])->toBe(50)
+        ->and($audits[0]['meta']['added'])->toBe(array_map(fn (int $i): string => '203.0.113.'.$i, range(1, 50)))
+        ->and($audits[0]['meta']['removed'])->toBe(array_map(fn (int $i): string => '198.51.100.'.$i, range(1, 50)))
+        ->and(json_encode($audits[0]['meta'], JSON_UNESCAPED_UNICODE))->not->toContain('Ghi chú');
 });
 
 it('shows another holder of settings.manage the list read-only', function (): void {

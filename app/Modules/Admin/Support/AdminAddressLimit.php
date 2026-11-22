@@ -21,10 +21,11 @@ use Throwable;
  *
  *   {"on": bool, "entries": [{"address": "203.0.113.0/24", "note": "Văn phòng Đà Nẵng"}, …]}
  *
- * An address is one IPv4 or IPv6 address, or a range in CIDR form (/1–32, /1–128), kept in one
+ * An address is one IPv4 or IPv6 address, or a range in CIDR form (/8–32, /16–128), kept in one
  * written form (normalize): an IPv4 address written as IPv6 (::ffff:203.0.113.24) is kept as the
  * IPv4 address it is, a range keeps only its network part. A range of /0 (0.0.0.0/0, ::/0) would let
- * every address in and is refused. The visitor's address is the request's own ($request->ip()):
+ * every address in and is refused; so is one wider than /8 (IPv4) or /16 (IPv6): a few of them
+ * (0.0.0.0/1 + 128.0.0.0/1) would let every address in too while the screen shows the limit on. The visitor's address is the request's own ($request->ip()):
  * Caddy resolves it from Cloudflare and the app trusts only the private proxy ranges
  * (bootstrap/app.php), so a header a visitor writes cannot choose it.
  *
@@ -39,6 +40,12 @@ final class AdminAddressLimit
     public const string GROUP = 'admin_access';
 
     public const string KEY = 'ip_limit';
+
+    /** The widest IPv4 range kept (/8 is already some 16.7 million addresses). */
+    public const int MIN_PREFIX_V4 = 8;
+
+    /** The widest IPv6 range kept. */
+    public const int MIN_PREFIX_V6 = 16;
 
     /** Most addresses one website may list. */
     public const int MAX_ENTRIES = 50;
@@ -64,9 +71,10 @@ final class AdminAddressLimit
 
     /**
      * An address as it is written and kept, or why it cannot be one: `empty`, `invalid` (not an
-     * address), `prefix` (the part after / is not 1–32 or 1–128) or `everywhere` (a /0 range).
+     * address), `prefix` (the part after / is not 1–32 or 1–128), `everywhere` (a /0 range) or `wide`
+     * (a range wider than MIN_PREFIX_V4 / MIN_PREFIX_V6; an IPv4 range written as IPv6 counts as IPv4).
      *
-     * @return array{ok: true, address: string}|array{ok: false, error: 'empty'|'invalid'|'prefix'|'everywhere'}
+     * @return array{ok: true, address: string}|array{ok: false, error: 'empty'|'invalid'|'prefix'|'everywhere'|'wide'}
      */
     public static function normalize(string $input): array
     {
@@ -105,6 +113,9 @@ final class AdminAddressLimit
         }
         if ($bits === 0) {
             return ['ok' => false, 'error' => 'everywhere'];
+        }
+        if ($bits !== null && $bits < ($max === 32 ? self::MIN_PREFIX_V4 : self::MIN_PREFIX_V6)) {
+            return ['ok' => false, 'error' => 'wide'];
         }
         if ($bits === null || $bits === $max) {
             return ['ok' => true, 'address' => Cast::string(inet_ntop($packed))];

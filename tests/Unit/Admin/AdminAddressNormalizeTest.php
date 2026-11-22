@@ -5,7 +5,8 @@ use App\Modules\Admin\Support\AdminAddressLimit;
 /*
  * The addresses «Giới hạn nơi được vào trang quản trị» keeps: one IPv4 or IPv6 address or a CIDR
  * range, in one written form (a range keeps its network part, an IPv4 address written as IPv6 is
- * that IPv4 address), and never a /0 range, which would let every address in.
+ * that IPv4 address), and never a /0 range, which would let every address in, nor one wider than
+ * /8 (IPv4) or /16 (IPv6): a couple of those would let almost every address in too.
  */
 
 it('keeps an address in one written form', function (string $input, string $kept): void {
@@ -17,14 +18,16 @@ it('keeps an address in one written form', function (string $input, string $kept
     'IPv4 range' => ['203.0.113.0/24', '203.0.113.0/24'],
     'IPv4 range written from a host' => ['203.0.113.77/24', '203.0.113.0/24'],
     'IPv4 odd range' => ['203.0.113.77/27', '203.0.113.64/27'],
-    'IPv4 /1' => ['203.0.113.77/1', '128.0.0.0/1'],
+    'IPv4 /8, the widest kept' => ['203.0.113.77/8', '203.0.0.0/8'],
     'IPv6 upper case, long form' => ['2001:DB8:0:0:0:0:0:1', '2001:db8::1'],
     'IPv6 /128 is the address' => ['2001:db8::1/128', '2001:db8::1'],
     'IPv6 range' => ['2001:db8:1234:5678::/64', '2001:db8:1234:5678::/64'],
     'IPv6 range written from a host' => ['2001:db8:1234:5678:9abc::1/64', '2001:db8:1234:5678::/64'],
     'IPv6 odd range' => ['2001:db8:1234:56ff::/60', '2001:db8:1234:56f0::/60'],
+    'IPv6 /16, the widest kept' => ['2001:db8::1/16', '2001::/16'],
     'IPv4 written as IPv6' => ['::ffff:203.0.113.24', '203.0.113.24'],
     'IPv4 range written as IPv6' => ['::ffff:203.0.113.0/120', '203.0.113.0/24'],
+    'IPv4 /8 written as IPv6 is held to the IPv4 floor' => ['::ffff:10.1.2.3/104', '10.0.0.0/8'],
 ]);
 
 it('says why something is not an address it keeps', function (string $input, string $error): void {
@@ -49,6 +52,13 @@ it('says why something is not an address it keeps', function (string $input, str
     'every IPv6 address' => ['::/0', 'everywhere'],
     'every IPv4 address written as IPv6' => ['::ffff:0.0.0.0/96', 'everywhere'],
     'a mapped range wider than IPv4, which no visitor could match' => ['::ffff:0.0.0.0/95', 'prefix'],
+    'IPv4 /1, half of every address' => ['0.0.0.0/1', 'wide'],
+    'the other IPv4 /1' => ['128.0.0.0/1', 'wide'],
+    'IPv4 /7, just wider than kept' => ['10.0.0.0/7', 'wide'],
+    'IPv6 /1' => ['::/1', 'wide'],
+    'IPv6 /15, just wider than kept' => ['2001:db8::/15', 'wide'],
+    'IPv4 /7 written as IPv6 uses the IPv4 floor' => ['::ffff:10.0.0.0/103', 'wide'],
+    'IPv4 /1 written as IPv6' => ['::ffff:128.0.0.0/97', 'wide'],
     'the old IPv4-compatible form' => ['::203.0.113.24', 'invalid'],
     'the old IPv4-compatible form as a range' => ['::203.0.113.0/120', 'invalid'],
 ]);

@@ -443,7 +443,7 @@ final class AdvancedSettings extends Component
                     $ip = ['on' => $this->ipOn, 'entries' => $this->storedIps()];
                     if ($ip != ($savedIp ?? ['on' => false, 'entries' => []])) {
                         app(EdgeCachePause::class)->during(fn () => $repository->put(AdminAddressLimit::GROUP, AdminAddressLimit::KEY, $ip));
-                        $ipWritten = ['value' => $ip, 'was' => AdminAddressLimit::shape($savedIp)['on']];
+                        $ipWritten = ['value' => $ip, 'was' => AdminAddressLimit::shape($savedIp)];
                     }
                 }
 
@@ -469,11 +469,21 @@ final class AdvancedSettings extends Component
         }
         if ($written['ip'] !== null) {
             $on = $written['ip']['value']['on'];
+            $wasOn = $written['ip']['was']['on'];
+            // which addresses came and went (each as it is kept; never the notes), so a row tells who
+            // opened the admin to where; each list stops at the most a list may hold
+            $now = array_column($written['ip']['value']['entries'], 'address');
+            $before = array_column($written['ip']['was']['entries'], 'address');
             Audit::record(match (true) {
-                $on && ! $written['ip']['was'] => 'settings.admin_ip.on',
-                ! $on && $written['ip']['was'] => 'settings.admin_ip.off',
+                $on && ! $wasOn => 'settings.admin_ip.on',
+                ! $on && $wasOn => 'settings.admin_ip.off',
                 default => 'settings.admin_ip.changed',
-            }, ['meta' => ['on' => $on, 'count' => count($written['ip']['value']['entries'])]]);
+            }, ['meta' => [
+                'on' => $on,
+                'count' => count($now),
+                'added' => array_slice(array_values(array_diff($now, $before)), 0, AdminAddressLimit::MAX_ENTRIES),
+                'removed' => array_slice(array_values(array_diff($before, $now)), 0, AdminAddressLimit::MAX_ENTRIES),
+            ]]);
         }
 
         $this->askCode = false;
