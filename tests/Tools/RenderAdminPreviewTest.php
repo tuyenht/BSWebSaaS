@@ -21,6 +21,7 @@
  * render with the real compiled CSS/JS, so build the front end first (pnpm run build).
  */
 
+use App\Modules\Admin\Livewire\AdvancedSettings;
 use App\Modules\Admin\Livewire\Blocks\Library as BlockLibrary;
 use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Admin\Livewire\Catalog\Index;
@@ -539,10 +540,51 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/advanced/preview')->assertOk()->getContent();
     expect($html)->toContain('Website đang bảo trì', 'Chúng tôi đang cập nhật chuyên mục sản phẩm', 'sf-404__when');
     file_put_contents($dir.'/advanced-visitor.html', $html);
+    // «Mã nhúng thêm»: the question before the first save that turns code on, then the code saved and
+    // running (the four boxes, the chip «Đang chạy trên website»), which the admin then sees «Chỉ xem».
+    $asking = app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($owner)->test(AdvancedSettings::class)
+        ->call('toggleCode')->set('code.foot', '<script async src="https://chat.example.vn/widget.js"></script>')
+        ->call('save')->assertSet('askCode', true));
+    // the harness leaves the snapshot off the root once an action ran: put it back so the browser boots
+    // the component, and swap it for the page's own root (from the div carrying its snapshot to the div closing it)
+    $snapshot = (fn () => $this->lastState->getSnapshot())->call($asking);
+    $ask = (string) preg_replace('/^<div wire:id="([^"]+)"/', '<div wire:snapshot="'.e(is_string($snapshot) ? $snapshot : (string) json_encode($snapshot)).'" wire:effects="[]" wire:id="$1"', $asking->html(), 1);
+    expect($ask)->toContain('role="alertdialog"', 'Bật mã nhúng thêm cho website?', 'data-adv-ask-ok', 'wire:snapshot=');
+    $page = (string) $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/advanced')->assertOk()->getContent();
+    expect(preg_match('/<div (?:wire:key="[^"]*" )?wire:snapshot="[^"]*advanced-settings/', $page, $root, PREG_OFFSET_CAPTURE))->toBe(1);
+    $from = $root[0][1];
+    preg_match_all('~<div\b|</div>~', $page, $tags, PREG_OFFSET_CAPTURE, $from);
+    $depth = 0;
+    $to = null;
+    foreach ($tags[0] as [$tag, $at]) {
+        $depth += $tag === '</div>' ? -1 : 1;
+        if ($depth === 0) {
+            $to = $at + 6;
+            break;
+        }
+    }
+    expect($to)->not->toBeNull();
+    file_put_contents($dir.'/advanced-code-ask.html', substr($page, 0, $from).$ask.substr($page, (int) $to));
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'storefront', 'key' => 'embed_code'], ['value' => [
+        'on' => true,
+        'code' => [
+            'head' => '',
+            'body_top' => '<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-ABC123" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>',
+            'body_end' => '',
+            'foot' => "<script async src=\"https://chat.example.vn/widget.js\"></script>\n<script>window.chatId = 'av-01';</script>",
+        ],
+        'acknowledged_at' => now()->subDay()->utc()->toIso8601ZuluString(),
+        'acknowledged_by' => $owner->id,
+    ]]));
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/advanced')->assertOk()->getContent();
+    expect($html)->toContain('Đang chạy trên website', 'data-adv-code-box="head"', 'data-adv-code-box="foot"', 'Khuyên dùng')
+        ->not->toContain('<script>window.chatId');
+    file_put_contents($dir.'/advanced-code.html', $html);
     $siteAdmin = blockLibraryUser(1, 'admin');
     $this->flushSession();
     $html = $this->actingAs($siteAdmin)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/advanced')->assertOk()->getContent();
-    expect($html)->toContain('Chỉ xem', 'nên chỉ xem được');
+    expect($html)->toContain('Chỉ xem', 'nên chỉ xem được', 'data-adv-code-box="foot"', 'readonly');
     file_put_contents($dir.'/advanced-ro.html', $html);
     app(Tenancy::class)->enter(1, fn () => $siteAdmin->removeRole('admin')); // the members screens below list the site's own people only
     $this->flushSession();
@@ -1419,5 +1461,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         ->and(file_get_contents($dir.'/review-inbox-changes-approve.html'))->toContain(e(__('entries.chg.ask_now')))
         ->and(file_get_contents($dir.'/review-inbox-changes-return.html'))->toContain(e(__('entries.chg.return_err')));
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 128);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 130);
 });
