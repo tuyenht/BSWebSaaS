@@ -64,7 +64,7 @@ it('lists admin entries on a flat query budget (no N+1 across rows)', function (
     // creator columns) and ONE grouped status-count (tabs + trash). All flat: an N+1 would
     // scale with the 10 seeded rows and blow past this; the no-growth guarantee is additionally
     // pinned in PagesIndexTest ("renders at a flat query budget regardless of row count").
-    expect($count)->toBeLessThanOrEqual(22);
+    expect($count)->toBeLessThanOrEqual(23); // +1: the admin address limit, read once per site and then served from the shared cache
 });
 
 it('lists admin entries on the same budget for a member who may edit only their own records', function (): void {
@@ -87,7 +87,7 @@ it('lists admin entries on the same budget for a member who may edit only their 
     $count = countQueries(fn () => $this->actingAs($author)->get('http://a.test/admin/content')->assertOk());
 
     // +1: the top bar's bell reads the unread count (one bounded query on every admin page).
-    expect($count)->toBeLessThanOrEqual(23);
+    expect($count)->toBeLessThanOrEqual(24); // +1: the admin address limit, read once per site and then served from the shared cache
 });
 
 it('lists admin catalog on a flat query budget (no N+1 across rows)', function (): void {

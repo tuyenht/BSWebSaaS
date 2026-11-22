@@ -357,7 +357,7 @@ it('lists a large page tree a top page at a time, with the pages below each one'
     });
 
     $count = countQueries(fn () => $this->actingAs($user)->get('http://a.test/admin/content')->assertOk());
-    expect($count)->toBeLessThanOrEqual(22);
+    expect($count)->toBeLessThanOrEqual(23); // +1: the admin address limit, read once per site and then served from the shared cache
 });
 
 it('reads a large posts list on the flat query budget', function (): void {
@@ -373,7 +373,7 @@ it('reads a large posts list on the flat query budget', function (): void {
         // +1: the top bar's bell reads the unread count (one bounded query on every admin page).
         // +3: the section's categories (the Chuyên mục filter and column), the rows' main categories, and the
         // section's workflow for the role card above the list (until the member dismisses it).
-        expect($count)->toBeLessThanOrEqual(26, "query string {$query}");
+        expect($count)->toBeLessThanOrEqual(27, "query string {$query}"); // +1: the admin address limit, read once per site and then served from the shared cache
     }
 });
 

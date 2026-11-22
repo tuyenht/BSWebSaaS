@@ -87,10 +87,17 @@ final class AdminAddressLimit
         if (! is_string($packed)) {
             return ['ok' => false, 'error' => 'invalid'];
         }
-        // an IPv4 host written as IPv6 is that IPv4 host (and a mapped range of /96 or more an IPv4 range)
-        if (strlen($packed) === 16 && str_starts_with($packed, self::MAPPED) && ($bits === null || $bits >= 96)) {
+        // an IPv4 host written as IPv6 is that IPv4 host (and a mapped range of /96 or more an IPv4
+        // range). A visitor is always matched in IPv4 form, so a mapped range wider than IPv4 and the
+        // old IPv4-compatible form (::a.b.c.d) could never match what the owner meant: refused.
+        if (strlen($packed) === 16 && str_starts_with($packed, self::MAPPED)) {
+            if ($bits !== null && $bits < 96) {
+                return ['ok' => false, 'error' => 'prefix'];
+            }
             $packed = substr($packed, 12);
             $bits = $bits === null ? null : $bits - 96;
+        } elseif (strlen($packed) === 16 && str_contains($address, '.')) {
+            return ['ok' => false, 'error' => 'invalid'];
         }
         $max = strlen($packed) * 8;
         if ($bits !== null && $bits > $max) {

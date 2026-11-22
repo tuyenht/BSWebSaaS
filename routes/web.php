@@ -192,7 +192,7 @@ Route::domain((string) config('tenancy.platform_host'))
 
 // ── Tenant admin — login (guest, tenant context) ──────────────────────────────
 Route::prefix(config('admin.prefix', 'admin'))
-    ->middleware(['web', SetCurrentSite::class, RestrictAdminAddress::class, 'site.active', SetLocale::class])
+    ->middleware(['web', SetCurrentSite::class, EnforceSupportSession::class, RestrictAdminAddress::class, 'site.active', SetLocale::class])
     ->group(function (): void {
         Route::get('/login', Login::class)->name('admin.login');
         Route::get('/forgot-password', ForgotPassword::class)->name('admin.password.request');
@@ -223,9 +223,10 @@ Route::prefix(config('admin.prefix', 'admin'))
         // Support sign-in: the console's single-use link lands here (a GET — CSP form-action 'self'
         // forbids a cross-host form post) and signs the staff member in as the chosen member.
         // Not behind the address limit: the link is single-use, bound to this website and to the
-        // support desk browser, and support is how a locked-out owner gets back in.
+        // support desk browser, and support is how a locked-out owner gets back in. Nor behind the
+        // check that ends a support session: an earlier, finished one must not stop a new one.
         Route::get('/support/enter', [SupportSignInController::class, 'enter'])
-            ->withoutMiddleware(RestrictAdminAddress::class)
+            ->withoutMiddleware([EnforceSupportSession::class, RestrictAdminAddress::class])
             ->middleware('throttle:30,1')
             ->name('admin.support.enter');
 

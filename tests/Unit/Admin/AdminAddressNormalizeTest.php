@@ -25,7 +25,6 @@ it('keeps an address in one written form', function (string $input, string $kept
     'IPv6 odd range' => ['2001:db8:1234:56ff::/60', '2001:db8:1234:56f0::/60'],
     'IPv4 written as IPv6' => ['::ffff:203.0.113.24', '203.0.113.24'],
     'IPv4 range written as IPv6' => ['::ffff:203.0.113.0/120', '203.0.113.0/24'],
-    'a mapped range wider than IPv4 stays IPv6' => ['::ffff:0.0.0.0/95', '::fffe:0:0/95'],
 ]);
 
 it('says why something is not an address it keeps', function (string $input, string $error): void {
@@ -49,6 +48,9 @@ it('says why something is not an address it keeps', function (string $input, str
     'every IPv4 address from a host' => ['10.1.2.3/0', 'everywhere'],
     'every IPv6 address' => ['::/0', 'everywhere'],
     'every IPv4 address written as IPv6' => ['::ffff:0.0.0.0/96', 'everywhere'],
+    'a mapped range wider than IPv4, which no visitor could match' => ['::ffff:0.0.0.0/95', 'prefix'],
+    'the old IPv4-compatible form' => ['::203.0.113.24', 'invalid'],
+    'the old IPv4-compatible form as a range' => ['::203.0.113.0/120', 'invalid'],
 ]);
 
 it('matches a visitor against the list in every written form', function (array $list, ?string $ip, bool $in): void {

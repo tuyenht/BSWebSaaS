@@ -191,7 +191,7 @@ final class AdvancedSettings extends Component
 
         $this->ipOn = ! $this->ipOn;
         // turned on with nothing listed: start with the address in use (never a support desk's)
-        $me = self::myAddress();
+        $me = self::myEntry();
         if ($this->ipOn && $this->ips === [] && $me !== null && ! self::inSupport()) {
             $this->ips[] = ['id' => ++$this->ipSeq, 'address' => $me, 'note' => Cast::string(__('admin.adv.ip.me_note'))];
         }
@@ -218,8 +218,8 @@ final class AdvancedSettings extends Component
     {
         abort_unless(self::mayChange(), 403);
 
-        $me = self::myAddress();
-        if ($me === null || AdminAddressLimit::covers($this->validIps(), $me) || ! $this->roomForIp()) {
+        $me = self::myEntry();
+        if ($me === null || AdminAddressLimit::covers($this->validIps(), self::myAddress()) || ! $this->roomForIp()) {
             $this->checkIps();
 
             return;
@@ -542,6 +542,22 @@ final class AdvancedSettings extends Component
     private static function myAddress(): ?string
     {
         return AdminAddressLimit::clientForm(request()->ip());
+    }
+
+    /**
+     * What «Thêm địa chỉ này» adds: the IPv4 address in use, or for IPv6 its /64 network, since a
+     * device on IPv6 changes its own address within that network every day or so (the board's hint
+     * says the same) and a single IPv6 address would lock its owner out tomorrow.
+     */
+    private static function myEntry(): ?string
+    {
+        $me = self::myAddress();
+        if ($me === null || ! str_contains($me, ':')) {
+            return $me;
+        }
+        $network = AdminAddressLimit::normalize($me.'/64');
+
+        return $network['ok'] ? $network['address'] : null;
     }
 
     /** A platform staff member in a live support session (support itself is how a locked-out owner gets in). */

@@ -192,6 +192,24 @@ it('lets platform support in from anywhere during a live support session only', 
     fromIp($this, '198.51.100.50')->get('http://a.test/admin/login')->assertForbidden();
 });
 
+it('stops letting a support session through the sign-in pages once support has lost its right', function (): void {
+    ipLimit(['203.0.113.0/24']);
+    $owner = blockLibraryUser(1, 'owner');
+    $staff = User::factory()->create(['name' => 'Staff support']);
+    app(PlatformAccess::class)->onPlatform(fn () => $staff->assignRole('support'));
+    app(PlatformAccess::class)->forgetMemo();
+    $token = app(SupportSignIn::class)->issue($staff, Site::query()->findOrFail(1), $owner, 'Khách bị chặn khỏi trang quản trị', 15, IPL_UA);
+    fromIp($this, '198.51.100.50')->withHeader('User-Agent', IPL_UA)->get("http://a.test/admin/support/enter?token={$token}")->assertStatus(303);
+    fromIp($this, '198.51.100.50')->get('http://a.test/admin/session-expired')->assertOk();
+
+    app(PlatformAccess::class)->onPlatform(fn () => $staff->removeRole('support'));
+    app(PlatformAccess::class)->forgetMemo();
+
+    // the sign-in side ends the session as the rest of the admin does, and then the limit holds
+    fromIp($this, '198.51.100.50')->get('http://a.test/admin/session-expired')->assertRedirectContains('/admin/login');
+    fromIp($this, '198.51.100.50')->get('http://a.test/admin/login')->assertForbidden();
+});
+
 // ── the query budget ───────────────────────────────────────────────────────────────
 
 it('adds no query to an admin request, limited or not', function (): void {
@@ -312,6 +330,24 @@ it('checks the saver’s own address in each written form, IPv4, IPv6 and IPv4 w
     'an IPv4 visitor against a mapped range' => [['::ffff:203.0.113.0/120'], '203.0.113.200', true],
     'IPv4 never matches an IPv6 range' => [['2001:db8::/32'], '203.0.113.9', false],
 ]);
+
+it('starts an owner on IPv6 with the /64 network in use, not an address the device will change', function (): void {
+    $owner = blockLibraryUser(1, 'owner');
+    $this->actingAs($owner);
+
+    $page = (string) fromIp($this, '2001:db8:1234:5678:9abc:def0:1:2')->get('http://a.test/admin/settings/advanced')->assertOk()->getContent();
+    expect(preg_match('/wire:snapshot="([^"]*advanced-settings[^"]*)"/', $page, $m))->toBe(1);
+    $response = fromIp($this, '2001:db8:1234:5678:9abc:def0:1:2')->withHeader('X-Livewire', '1')->postJson('http://a.test/livewire/update', ['components' => [[
+        'snapshot' => html_entity_decode($m[1]), 'updates' => [],
+        'calls' => [['method' => 'toggleIp', 'params' => [], 'metadata' => []], ['method' => 'save', 'params' => [], 'metadata' => []]],
+    ]]])->assertOk();
+
+    expect($response->json('components.0.effects.html'))->not->toContain('Chưa lưu: danh sách này sẽ chặn chính bạn.')
+        ->and(ipStored()['entries'])->toEqual([['address' => '2001:db8:1234:5678::/64', 'note' => 'Máy bạn đang dùng']]);
+    // the same device a day later, on a new address of the same network, still gets in
+    fromIp($this, '2001:db8:1234:5678:1111:2222:3333:4444')->get('http://a.test/admin')->assertOk();
+    fromIp($this, '2001:db8:1234:9999::1')->get('http://a.test/admin')->assertForbidden();
+});
 
 it('does not hold a support session to the lock-out check, and offers it no address of its own', function (): void {
     $owner = blockLibraryUser(1, 'owner');
