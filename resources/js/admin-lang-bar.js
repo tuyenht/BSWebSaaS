@@ -4,7 +4,9 @@
 // through the page's shared unsaved-changes dialog. This part:
 //  - fits the pills to the bar: when they do not all fit, the state chip goes first, then the last
 //    pills (never the source nor the open version), counted on «+N»; when even those two do not fit
-//    the bar draws the selector instead ([data-squeeze]). Measured again when the bar's width or the
+//    the bar draws the selector instead ([data-squeeze]). A bar of 700px or less draws the selector in
+//    place of the pills (the stylesheet decides), and «+N» beside it counts the other versions (board
+//    07; the stylesheet hides it again at 420px and less). Measured again when the bar's width or the
 //    member's text size changes, and after each redraw of the page;
 //  - opens the panel from the selector or «+N» (Enter, Space or ↓; the focus goes to the search box
 //    when there is one, else to the open version), moves through its rows with ↑ ↓ Home End, filters
@@ -180,7 +182,16 @@ export function langBar(cfg) {
             };
             setMore(0);
             const cut = [];
-            if (!cfg.compact && window.getComputedStyle(pills).display !== 'none') {
+            // a narrow bar: the selector names the open version, «+N» the others (more than ten: the selector alone)
+            const narrow = !cfg.compact && window.getComputedStyle(pills).display === 'none';
+            if (narrow) {
+                this.cut = cut;
+                this.over = Math.max(0, items.length - 1);
+                setMore(this.over);
+
+                return;
+            }
+            if (!cfg.compact) {
                 const tight = () => pills.scrollWidth > pills.clientWidth + 1;
                 if (tight()) {
                     root.setAttribute('data-over', '');

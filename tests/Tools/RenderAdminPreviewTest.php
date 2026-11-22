@@ -807,6 +807,13 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog/'.$product->ulid.'/edit')->assertOk()->getContent();
     expect($html)->toContain('data-seo-fields')->not->toContain('wire:model="excerpt"');
     file_put_contents($dir.'/product-editor.html', $html);
+    // The language bar (board 09) on the English version: the name and link written, Japanese not yet,
+    // Vietnamese the source; the product's own cards locked with «Chung».
+    app(Tenancy::class)->enter(1, fn () => $product->translations()->create(['locale' => 'en', 'name' => '5-axis CNC workholding fixture', 'slug' => 'cnc-5-axis-fixture']));
+    $en = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog/'.$product->ulid.'/edit?locale=en')->assertOk()->getContent();
+    file_put_contents($dir.'/product-editor-en.html', $en);
+    expect($html)->toContain('data-lang-bar', 'data-lb-pill="en"')->not->toContain('data-shared-chip')
+        ->and($en)->toContain('data-lang-bar', 'data-current="en"', 'data-lb-pill="ja" data-k="empty"', 'data-lb-pill="en" data-k="partial"', 'data-shared-chip');
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog/create')->assertOk()->getContent();
     expect($html)->toContain('data-child-screen', 'ped-child-mi')->not->toContain('wire:click="trash"');
     file_put_contents($dir.'/product-new.html', $html);
@@ -1377,5 +1384,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         ->and(file_get_contents($dir.'/review-inbox-changes-approve.html'))->toContain(e(__('entries.chg.ask_now')))
         ->and(file_get_contents($dir.'/review-inbox-changes-return.html'))->toContain(e(__('entries.chg.return_err')));
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 123);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 124);
 });

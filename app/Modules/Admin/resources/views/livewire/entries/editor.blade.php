@@ -512,9 +512,7 @@
                     <div class="flex flex-wrap items-center gap-2">
                         <h2 id="entry-cover-h" class="{{ $cardTitle }}">{{ __('entries.ed.card_cover') }}</h2>
                         @if ($sharedLock)
-                            <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-hover px-2 py-0.5 text-small font-semibold text-text-muted" title="{{ __('entries.ed.shared_tip') }}">
-                                <x-bs-admin::icon name="ri-lock" class="size-[min(1.5rem,calc(0.75rem+var(--user-text-boost)))]" />{{ __('entries.ed.shared_chip') }}
-                            </span>
+                            <x-bs-admin::shared-chip />
                         @endif
                     </div>
                     <div class="relative aspect-video w-full overflow-hidden rounded-md border bg-surface-muted {{ $cover ? 'border-border' : 'border-dashed border-border-input' }}">
@@ -629,9 +627,7 @@
                         <div class="{{ $cardHead }}">
                             <h2 id="entry-props-h" class="{{ $cardTitle }}">{{ __('entries.ed.card_page_props') }}</h2>
                             @if ($sharedLock)
-                                <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-hover px-2 py-0.5 text-small font-semibold text-text-muted" title="{{ __('entries.ed.shared_tip') }}">
-                                    <x-bs-admin::icon name="ri-lock" class="size-[min(1.5rem,calc(0.75rem+var(--user-text-boost)))]" />{{ __('entries.ed.shared_chip') }}
-                                </span>
+                                <x-bs-admin::shared-chip />
                             @endif
                         </div>
                         <div class="p-4">

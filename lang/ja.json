@@ -2351,6 +2351,7 @@
     "catalog.slug_format": "URL には小文字の英字・数字・ハイフンのみ使えます。",
     "catalog.slug_taken": "この URL は別の商品で使われています。",
     "catalog.slug_conflict": "このURLは既存のページまたはカテゴリーで使われています。別のURLを指定してください。",
+    "catalog.ed.slug_taken_in": ":lang版のリンクは別のページで使われています。:lang版を開いてリンクを変更してから、ここでもう一度保存してください。",
     "catalog.category_label": "カテゴリー",
     "catalog.category_placeholder": "— カテゴリーを選択 —",
     "catalog.category_invalid": "カテゴリーが正しくありません。",

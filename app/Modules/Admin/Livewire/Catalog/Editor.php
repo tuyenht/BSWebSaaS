@@ -3,8 +3,10 @@
 namespace App\Modules\Admin\Livewire\Catalog;
 
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
+use App\Modules\Admin\Support\Catalog\ProductLangStates;
 use App\Modules\Admin\Support\CategoryTree;
 use App\Modules\Admin\Support\Guide\EditorGuide;
+use App\Modules\Admin\Support\LangBar;
 use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Catalog\Actions\ChangeProductSlug;
 use App\Modules\Catalog\Actions\ChangeProductStatus;
@@ -22,6 +24,7 @@ use App\Modules\Catalog\Support\UniqueViolation;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
@@ -61,7 +64,15 @@ use Livewire\Component;
  * authorizes through CatalogPolicy (catalog.manage, asked about the stored product itself) and the
  * product is addressed by ulid, never its raw id. A member limited to some product categories
  * (CategoryScopes) opens and saves only products whose main category is inside the limits, picks
- * only such a category (one is required for them), and never files a product under no category. The site's default locale drives which translation row is edited.
+ * only such a category (one is required for them), and never files a product under no category.
+ *
+ * Each language has its own version of the product's words (product_translations: name, link,
+ * short description, description, the Google title and description), opened with `?locale=` when it
+ * is one of the website's enabled languages (else the website's default language) and saved in that
+ * language only; a version not written yet is created by its first save. Everything else (pictures,
+ * price, stock, sale, SKU, labels, categories, status) is the product's, one for every language: it
+ * is changed in the default language only. Another language shows it locked («Chung») and a save
+ * there writes nothing of it. A new product is always written in the default language first.
  *
  * The status is never taken from the browser: "Lưu nháp" / "Lưu" save keeping it, "Đăng" /
  * "Cập nhật" save it published. A draft (a new product too) also saves itself a few seconds after
@@ -88,6 +99,7 @@ final class Editor extends Component
     use AuthorizesRequests;
     use WithMediaLibraryPicker {
         insertPicked as private insertLibraryPicked;
+        openImagePicker as private openLibraryPicker;
     }
 
     /** The summary's length for new text; an older, longer one is kept until it is changed. */
@@ -159,9 +171,18 @@ final class Editor extends Component
     /** The guide is printed with the first draw only (the browser keeps it; later round trips skip it). */
     private bool $guideDue = false;
 
-    /** Server-resolved from the site's default locale; never client-set. */
+    /** The language whose version is edited: `?locale=` when the site has it enabled, else its default; never client-set. */
     #[Locked]
     public string $locale = 'vi';
+
+    /**
+     * The language bar of a saved product on a site with more than one language (LangBar): one item per
+     * enabled language, read in one query when the editor opens and again after each save. Empty: no bar.
+     *
+     * @var list<array{code: string, label: string, kind: string, done: int, total: int, href: string, current: bool, source: bool, public: bool, live: bool}>
+     */
+    #[Locked]
+    public array $langBar = [];
 
     public string $name = '';
 
@@ -321,9 +342,10 @@ final class Editor extends Component
     /** The stored product this request's checks were asked about (authorizeEdit), read once per request. */
     private ?Product $checked = null;
 
-    public function mount(?string $ulid = null): void
+    public function mount(?string $ulid = null, ?string $locale = null): void
     {
-        $this->locale = app(SiteLocale::class)->default();
+        // a new product is written in the default language first: the shared fields are set there
+        $this->locale = $ulid === null ? app(SiteLocale::class)->default() : $this->resolveLocale($locale ?? request()->query('locale'));
         $zone = app(SiteTime::class)->zone();
         $this->clock = $zone === SiteTime::DEFAULT_ZONE ? Cast::string(__('catalog.ed.zone_vn')) : $zone;
         $this->selling = ! app(CatalogMode::class)->isBrochure();
@@ -375,6 +397,7 @@ final class Editor extends Component
                 $product->setRelation('taxonomies', $product->taxonomies()->wherePivot('position', '<', Product::FACET_POSITION_BASE)->get());
                 $this->authorize('view', $product);
                 $this->load($product);
+                $this->readLangBar();
 
                 return $product;
             });
@@ -415,6 +438,10 @@ final class Editor extends Component
     {
         // only from the Trash card: the error card holds a key nothing has checked yet
         abort_unless($this->screen === 'trash', 404);
+        // it comes back as a draft: the status is the product's, moved in the default language only
+        if ($this->sharedRefused()) {
+            return;
+        }
         $this->bringBack(asDraft: true);
     }
 
@@ -435,6 +462,9 @@ final class Editor extends Component
             $this->bringBack(asDraft: false);
         } elseif ($undo === 'image' && $image !== null && $this->screen === 'form') {
             $this->authorizeEdit();
+            if ($this->sharedRefused()) {
+                return;
+            }
             $ids = array_values(array_filter($this->imageMediaIds, static fn (int $id): bool => $id !== $image['id']));
             array_splice($ids, max(0, min($image['at'], count($ids))), 0, [$image['id']]);
             $this->imageMediaIds = $ids;
@@ -469,10 +499,12 @@ final class Editor extends Component
         $this->screen = 'form';
         $this->status = $back->status;
         $this->publishedAt = self::iso($back->published_at);
-        $this->liveUrl = $this->status === 'published' ? $this->address['base'].$this->slug : null;
+        // a language with no version yet has no page on the website
+        $this->liveUrl = $this->status === 'published' && $this->slug !== '' ? $this->address['base'].$this->slug : null;
         $this->checked = null;
         $this->canEdit = Gate::allows('update', $back);
         $this->mayTrash = $this->canEdit && $this->mayDelete($back);
+        $this->readLangBar();
         if ($asDraft) {
             $this->dispatch('bs-toast', text: Cast::string(__('catalog.ed.toast_restored')));
         }
@@ -582,6 +614,91 @@ final class Editor extends Component
         $this->dispatch('bs-toast', text: Cast::string(__('admin.editor.gone')), stay: true, close: Cast::string(__('admin.close')));
     }
 
+    /**
+     * The language to edit: a `?locale=` the site has enabled (the language bar's links carry it), else
+     * the site's default. #[Locked] $locale then pins it for the component's lifetime, so the browser
+     * can never change which version is written.
+     */
+    private function resolveLocale(mixed $requested): string
+    {
+        $languages = app(SiteLocale::class);
+
+        return is_string($requested) && in_array($requested, $languages->enabled(), true) ? $requested : $languages->default();
+    }
+
+    /** Another language than the website's default is open: the product's shared fields are locked. */
+    private function translating(): bool
+    {
+        return $this->locale !== app(SiteLocale::class)->default();
+    }
+
+    /** Why a shared field is locked here: where to change it (the post editor's words). */
+    private function sharedWhy(): string
+    {
+        return Cast::string(__('entries.ed.shared_guard', ['lang' => LangBar::name(app(SiteLocale::class)->default())]));
+    }
+
+    /**
+     * In another language than the website's default the product's shared fields (pictures, price,
+     * stock, sale, SKU, labels, categories, status) are not changed: say where they are, in a message
+     * that stays until it is closed. Returns whether it refused.
+     */
+    private function sharedRefused(): bool
+    {
+        if (! $this->translating()) {
+            return false;
+        }
+        $this->dispatch('bs-toast', text: $this->sharedWhy(), stay: true, close: Cast::string(__('admin.close')));
+
+        return true;
+    }
+
+    /**
+     * A shared field sent from another language than the default (its control is locked there, so only a
+     * hand-made request does it): put back what is stored and say where it is changed.
+     */
+    private function keepShared(string $field): bool
+    {
+        if (! $this->sharedRefused()) {
+            return false;
+        }
+        $saved = $this->saved[$field] ?? '';
+        $this->{$field} = match ($field) {
+            'featured', 'bestseller' => $saved === '1',
+            'saleStartsAt', 'saleEndsAt' => $saved,
+            'imageMediaIds' => $this->normalizeIds((array) json_decode($saved !== '' ? $saved : '[]', true)),
+            default => $saved !== '' ? $saved : null,
+        };
+
+        return true;
+    }
+
+    /**
+     * The language bar's items for a saved product, when the site writes in more than one language:
+     * each version's state from one read of its stored rows (ProductLangStates), each opening this
+     * editor in its language (the default language without `?locale=`).
+     */
+    private function readLangBar(): void
+    {
+        if (! $this->multiLocale || $this->ulid === null || $this->productId === null) {
+            $this->langBar = [];
+
+            return;
+        }
+        $languages = app(SiteLocale::class);
+        $default = $languages->default();
+        $ulid = $this->ulid;
+        $this->langBar = LangBar::items(
+            ProductLangStates::read($this->productId, $this->status === self::PRODUCT_LIVE),
+            $languages->enabled(),
+            $default,
+            $languages->public(),
+            $this->locale,
+            ProductLangStates::FIELDS,
+            static fn (string $code): string => route('admin.catalog.edit', ['ulid' => $ulid] + ($code !== $default ? ['locale' => $code] : [])),
+        );
+    }
+
     private function entitled(): bool
     {
         return in_array('catalog', app(Entitlement::class)->entitledModuleKeys(), true);
@@ -598,6 +715,11 @@ final class Editor extends Component
     public function updatedCategoryId(): void
     {
         $this->authorizeEdit();
+        if ($this->sharedRefused()) {
+            $this->categoryId = $this->categoryIds[0] ?? null;
+
+            return;
+        }
         // like the list's boxes and stars: a category outside the member's limits is refused (none is
         // left to the save, which asks for one in words)
         if ($this->categoryId !== null) {
@@ -620,6 +742,9 @@ final class Editor extends Component
     public function toggleCategory(string $ulid): void
     {
         $this->authorizeEdit();
+        if ($this->sharedRefused()) {
+            return;
+        }
         $id = $this->categoryIdOf($ulid);
         $this->authorizeFiling($id);
         if (in_array($id, $this->categoryIds, true)) {
@@ -634,6 +759,9 @@ final class Editor extends Component
     public function setMainCategory(string $ulid): void
     {
         $this->authorizeEdit();
+        if ($this->sharedRefused()) {
+            return;
+        }
         $id = $this->categoryIdOf($ulid);
         abort_unless(in_array($id, $this->categoryIds, true), 404);
         $this->authorizeFiling($id);
@@ -670,6 +798,9 @@ final class Editor extends Component
     public function updatedPrice(): void
     {
         $this->authorizeEdit();
+        if ($this->keepShared('price')) {
+            return;
+        }
         $this->price = self::tidyAmount($this->price, ProductPrice::AMOUNT_DIGITS);
         $this->recheck('price', ...($this->shownErrors()->has('salePrice') ? ['salePrice'] : []));
     }
@@ -677,6 +808,9 @@ final class Editor extends Component
     public function updatedSalePrice(): void
     {
         $this->authorizeEdit();
+        if ($this->keepShared('salePrice')) {
+            return;
+        }
         $this->salePrice = self::tidyAmount($this->salePrice, ProductPrice::AMOUNT_DIGITS);
         $this->recheck('salePrice');
     }
@@ -684,6 +818,9 @@ final class Editor extends Component
     public function updatedStock(): void
     {
         $this->authorizeEdit();
+        if ($this->keepShared('stock')) {
+            return;
+        }
         $count = ProductPrice::readable($this->stock, ProductPrice::STOCK_DIGITS) ? ProductPrice::parse($this->stock, ProductPrice::STOCK_DIGITS) : false;
         $this->stock = match (true) {
             $count === null => null,
@@ -697,6 +834,9 @@ final class Editor extends Component
     public function updatedSaleStartsAt(): void
     {
         $this->authorizeEdit();
+        if ($this->keepShared('saleStartsAt')) {
+            return;
+        }
         $this->saleStartsAt ??= '';
         $this->recheck('saleStartsAt', ...($this->saleEndsAt !== '' ? ['saleEndsAt'] : []));
     }
@@ -704,6 +844,9 @@ final class Editor extends Component
     public function updatedSaleEndsAt(): void
     {
         $this->authorizeEdit();
+        if ($this->keepShared('saleEndsAt')) {
+            return;
+        }
         $this->saleEndsAt ??= '';
         $this->recheck('saleEndsAt');
     }
@@ -731,6 +874,9 @@ final class Editor extends Component
     public function updatedSku(): void
     {
         $this->authorizeEdit();
+        if ($this->keepShared('sku')) {
+            return;
+        }
         $this->sku = $this->sku !== null ? SkuCode::normalize($this->sku) : null;
         $this->recheck('sku');
     }
@@ -768,6 +914,23 @@ final class Editor extends Component
         $amount = ProductPrice::parse($typed, $digits);
 
         return $amount === null ? null : ProductPrice::format($amount);
+    }
+
+    /** «Nổi bật» / «Bán chạy» are the product's: another language than the default keeps them as stored. */
+    public function updatedFeatured(): void
+    {
+        $this->keepShared('featured');
+    }
+
+    public function updatedBestseller(): void
+    {
+        $this->keepShared('bestseller');
+    }
+
+    /** The pictures are the product's: another language than the default keeps them as stored. */
+    public function updatedImageMediaIds(): void
+    {
+        $this->keepShared('imageMediaIds');
     }
 
     /** "Lưu nháp" / "Lưu": save, keeping the status. */
@@ -824,6 +987,10 @@ final class Editor extends Component
     {
         $this->onTheForm();
         $this->authorizeEdit();
+        // the status is the product's, one for every language: it moves in the default language only
+        if ($this->sharedRefused()) {
+            return;
+        }
         $was = $this->status;
         $this->publishing = true;
         $this->target = $status;
@@ -942,12 +1109,28 @@ final class Editor extends Component
     }
 
     /**
+     * «Thêm ảnh» opens the shared picker for the product's pictures, which are every language's: another
+     * language than the default says where to change them and opens nothing. The description's own
+     * «Chèn ảnh» (editor mode) is this language's and always opens.
+     */
+    public function openImagePicker(string $mode = 'gallery'): void
+    {
+        if (! in_array($mode, ['editor', 'single'], true) && $this->sharedRefused()) {
+            return;
+        }
+        $this->openLibraryPicker($mode);
+    }
+
+    /**
      * Gallery hook for the shared picker (gallery mode): append once — duplicates are the
      * UNIQUE(product_id, media_id) guard, app-side. The picker stays open for multi-pick.
      */
     protected function addGalleryImage(int $mediaId): void
     {
         $this->authorizeEdit();
+        if ($this->sharedRefused()) {
+            return;
+        }
         if (! in_array($mediaId, $this->imageMediaIds, true)) {
             $this->imageMediaIds[] = $mediaId;
         }
@@ -960,6 +1143,9 @@ final class Editor extends Component
     public function removeImage(int $index): void
     {
         $this->authorizeEdit();
+        if ($this->sharedRefused()) {
+            return;
+        }
         if (! array_key_exists($index, $this->imageMediaIds)) {
             return;
         }
@@ -981,6 +1167,9 @@ final class Editor extends Component
     public function moveImage(int $from, int $to): void
     {
         $this->authorizeEdit();
+        if ($this->sharedRefused()) {
+            return;
+        }
         if (! array_key_exists($from, $this->imageMediaIds) || ! array_key_exists($to, $this->imageMediaIds) || $from === $to) {
             return;
         }
@@ -1000,12 +1189,18 @@ final class Editor extends Component
     public function moveImageUp(int $index): void
     {
         $this->authorizeEdit();
+        if ($this->sharedRefused()) {
+            return;
+        }
         $this->swapImages($index, $index - 1);
     }
 
     public function moveImageDown(int $index): void
     {
         $this->authorizeEdit();
+        if ($this->sharedRefused()) {
+            return;
+        }
         $this->swapImages($index, $index + 1);
     }
 
@@ -1037,7 +1232,7 @@ final class Editor extends Component
                 'preview' => match (true) {
                     ! $this->canEdit => ['url' => null, 'why' => null],
                     $isNew => ['url' => null, 'why' => Cast::string(__('admin.editor.preview_new'))],
-                    default => ['url' => route('admin.catalog.preview', ['ulid' => $this->ulid]), 'why' => null],
+                    default => ['url' => route('admin.catalog.preview', ['ulid' => $this->ulid] + ($this->translating() ? ['locale' => $this->locale] : [])), 'why' => null],
                 },
                 'trash' => ! $isNew && $this->mayTrash ? ['why' => null] : null,
             ],
@@ -1055,6 +1250,11 @@ final class Editor extends Component
             'summaryWarning' => $this->summaryWarning(),
             'changes' => $this->changeCount(),
             'roRole' => ! $this->canEdit && $user instanceof User ? RoleLabel::topOf($user) : null,
+            // «Quản lý ngôn ngữ» on the language bar: the site's languages, for a member who may change them
+            'langManage' => $this->langBar !== [] && $user instanceof User && $user->can('settings.manage') ? route('admin.settings.languages') : null,
+            // the product's own fields are every language's: another language shows them locked («Chung»)
+            'sharedLock' => $this->translating(),
+            'sharedWhy' => $this->translating() ? $this->sharedWhy() : '',
         ]);
     }
 
@@ -1285,7 +1485,8 @@ final class Editor extends Component
         $this->address = $this->previewAddress($category);
         $this->imageMediaIds = $this->normalizeIds($product->images()->pluck('media_id')->all());
         $this->saved = $this->tracked();
-        $this->liveUrl = $this->status === 'published' ? $this->address['base'].$this->slug : null;
+        // a language with no version yet has no page on the website
+        $this->liveUrl = $this->status === 'published' && $translation instanceof ProductTranslation ? $this->address['base'].$this->slug : null;
     }
 
     /**
@@ -1411,6 +1612,8 @@ final class Editor extends Component
             $this->summaryShown = '';
         }
         $this->saved = $this->tracked();
+        // what this save stored moves this language's state on the bar, and the others' when it is the source
+        $this->readLangBar();
 
         if ($wasNew) {
             $this->mayTrash = $this->mayDelete($product);
@@ -1448,6 +1651,19 @@ final class Editor extends Component
         $live = $this->status === 'published';
         if (! $this->canEdit) {
             return ['secondary' => null, 'primary' => null, 'primaryAction' => 'publish', 'primaryIcon' => 'ri-global'];
+        }
+        if ($this->translating()) {
+            // another language's version: one button that saves it, the product's status kept (it is shared)
+            return [
+                'secondary' => null,
+                'primary' => (string) match ($this->status) {
+                    'published' => __('catalog.ed.update'),
+                    'archived' => __('catalog.ed.save_plain'),
+                    default => __('catalog.ed.save_draft'),
+                },
+                'primaryAction' => 'save',
+                'primaryIcon' => $live ? 'ri-refresh' : 'ri-save-3',
+            ];
         }
 
         return [
@@ -1740,6 +1956,9 @@ final class Editor extends Component
         if ($this->publishing) {
             $this->status = $this->target;
         }
+        if ($stored !== null && $this->translating()) {
+            return $this->persistTranslation($stored, $filled);
+        }
         try {
             $this->validate();
             // where the product is filed, held against the stored categories under the row lock
@@ -1788,9 +2007,15 @@ final class Editor extends Component
             $product = Product::query()->create($attributes + ['status' => $this->status]);
             $this->ulid = $product->ulid;
             $this->productId = $product->id;
+            $wasPublished = false;
+            $mainBefore = null;
         } else {
             $product = $stored;
+            $wasPublished = $product->status === self::PRODUCT_LIVE;
             $this->authorize('update', $product);
+            // the main category as stored under the row lock (another tab may have moved it): a published
+            // product moved elsewhere gives every language's address the new category
+            $mainBefore = $wasPublished ? $product->primaryCategory()?->id : null;
             // the product row before its translation, like every other write of a name or a SKU
             ProductSearchWords::lock($product->site_id, $product->id);
             // the labels through the list's own write, saved in the same statement as the other fields
@@ -1832,11 +2057,81 @@ final class Editor extends Component
 
         if ($product->status === 'published') {
             // Drafts and archived products keep whatever address they had — the storefront renders
-            // only published ones, so their route rows are harmless and keep old links stable.
+            // only published ones, so their route rows are harmless and keep old links stable. A product
+            // going live, or moving to another main category, gives every language it is written in its
+            // address (the other versions' paths carry the category too); otherwise this language's.
+            // This language first, so a link taken in it is said on its own field.
             app(ChangeProductStatus::class)->publishEffects($product, $this->locale, $this->slug);
+            if (! $wasPublished || $mainBefore !== ($filing[0] ?? null)) {
+                $this->syncOtherLanguages($product);
+            }
         }
         // the list shows what was stored (as on opening): a category dropped above leaves it
         $this->categoryIds = $filing;
+
+        return $product;
+    }
+
+    /**
+     * Every other language's address of a published product, after it went live or moved to another
+     * main category (their paths carry the category too). A version whose address another page holds
+     * stops the save with the language named, since its link is not on this form.
+     *
+     * @throws ValidationException
+     */
+    private function syncOtherLanguages(Product $product): void
+    {
+        $sync = app(RouteSync::class);
+        $category = $product->primaryCategory();
+        $others = $product->translations()->where('locale', '!=', $this->locale)->orderBy('locale')->get(['locale', 'slug']);
+        foreach ($others as $translation) {
+            try {
+                $sync->syncProduct($product->id, $category, $translation->locale, $translation->slug);
+            } catch (RouteConflictException) {
+                throw ValidationException::withMessages(['slug' => (string) __('catalog.ed.slug_taken_in', ['lang' => LangBar::name($translation->locale)])]);
+            }
+        }
+    }
+
+    /**
+     * Save the open language's version of a stored product (another language than the website's
+     * default), under the row lock persist() took: its words only, created by its first save. The
+     * product's own fields (pictures, price, stock, sale, SKU, labels, categories, status) are never
+     * written here, whatever the request holds: they show what is stored. A published product's address
+     * in this language is written with it.
+     *
+     * @throws ValidationException|RouteConflictException
+     */
+    private function persistTranslation(Product $product, bool $filled): Product
+    {
+        try {
+            $this->validate(array_intersect_key($this->rules(), array_flip(['name', 'slug', 'description', 'summary', 'seoTitle', 'seoDescription'])));
+        } catch (ValidationException $e) {
+            if ($filled) {
+                $this->slug = '';
+            }
+
+            throw $e;
+        }
+        $this->authorize('update', $product);
+        // the product row before its translation, like every other write of a name
+        ProductSearchWords::lock($product->site_id, $product->id);
+
+        $summary = $this->keepsStoredSummary() ? $this->summaryStored : $this->summary;
+        $product->translations()->updateOrCreate(
+            ['locale' => $this->locale],
+            [
+                'name' => $this->name,
+                'slug' => $this->slug,
+                'description' => $this->description !== '' ? $this->description : null,
+                'summary' => $summary !== '' ? $summary : null,
+                'seo_title' => $this->seoTitle !== '' ? $this->seoTitle : null,
+                'seo_description' => $this->seoDescription !== '' ? $this->seoDescription : null,
+            ],
+        );
+        if ($product->status === self::PRODUCT_LIVE) {
+            app(RouteSync::class)->syncProduct($product->id, $product->primaryCategory(), $this->locale, $this->slug);
+        }
 
         return $product;
     }

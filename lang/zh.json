@@ -2351,6 +2351,7 @@
     "catalog.slug_format": "网址只能包含小写字母、数字和连字符。",
     "catalog.slug_taken": "此网址已被其他产品使用。",
     "catalog.slug_conflict": "此网址已被现有页面或分类使用，请换一个。",
+    "catalog.ed.slug_taken_in": ":lang版本的链接已被其他页面使用。请打开:lang版本修改链接，然后在此重新保存。",
     "catalog.category_label": "分类",
     "catalog.category_placeholder": "— 选择分类 —",
     "catalog.category_invalid": "分类无效。",
