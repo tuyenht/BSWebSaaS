@@ -1,7 +1,8 @@
 {{--
     "Hộp duyệt" — board 17, ported onto the admin tokens: a list of what is waiting on the left,
-    the picked post on the right, and one set of approval buttons at the foot of the reader. Below
-    940px only one pane shows at a time.
+    the picked post on the right, and one set of approval buttons at the foot of the reader. On a wide
+    screen the first post opens by itself; below the two-pane width the list shows first and a post
+    opens over the whole screen, with «Quay lại» back to the list (board 17 `.sp-detail`).
 
     Content is rendered as TEXT, never as the stored HTML: a reviewer needs to read the post, and
     running a tenant's markup inside the admin shell would hand them the page.
@@ -124,7 +125,7 @@
     @unless ($loadFailed)
     <div class="grid grid-cols-[minmax(0,1fr)] items-start gap-4 @container lg:grid-cols-[352px_minmax(0,1fr)]" wire:loading.delay.remove wire:target="{{ $reloads }}">
         {{-- LEFT: the queue --}}
-        <x-bs-admin::card class="{{ $reader !== null ? 'hidden lg:block' : '' }}">
+        <x-bs-admin::card class="{{ $reader !== null && $detail ? 'hidden lg:block' : '' }}">
             <x-slot:header>
                 <div class="flex min-w-0 flex-1 items-center gap-2">
                     <span class="text-body font-semibold text-text-strong">{{ __('admin.inbox.list_'.$tab) }}</span>
@@ -195,12 +196,12 @@
                             <x-bs-admin::list.check :checked="$isPicked" :label="__('admin.inbox.pick_label', ['title' => $row['title']])"
                                                     :title="$isPicked ? __('admin.inbox.pick_off') : __('admin.inbox.pick_on')"
                                                     wire:click="togglePick({{ $Js::from($row['ulid']) }})" class="mt-1.5 ms-1" data-inbox-pick="{{ $row['ulid'] }}" />
-                            <button type="button" wire:click="open(@js($row['ulid']))" class="flex min-w-0 flex-1 gap-2.5 py-3 pe-4 ps-1 text-start transition-colors hover:bg-surface-hover">
+                            <button type="button" wire:click="open(@js($row['ulid']))" data-inbox-open="{{ $row['ulid'] }}" @if ($row['current']) data-current @endif class="flex min-w-0 flex-1 gap-2.5 py-3 pe-4 ps-1 text-start transition-colors hover:bg-surface-hover">
                                 <span class="flex min-w-0 flex-1 flex-col gap-1">
                                     {{-- A name is never cut with «…»: it wraps to as many lines as it needs. --}}
                                     <span class="text-small font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ $row['title'] }}</span>
                                     <span class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-caption text-text-muted">
-                                        <span class="size-2 shrink-0 rounded-full bg-warning-base" aria-hidden="true"></span>
+                                        <x-bs-admin::status-pill :status="$row['tone']" dot />
                                         <span class="font-semibold text-text">{{ $row['stage'] }}</span>
                                         @if ($row['section'] !== '')
                                             <span class="text-text-faint" aria-hidden="true">·</span><span>{{ $row['section'] }}</span>
@@ -239,8 +240,9 @@
                     <span class="flex size-13 items-center justify-center rounded-full bg-primary/10">
                         <x-bs-admin::icon name="ri-file-list-3" class="size-6 text-primary-text" />
                     </span>
-                    <p class="text-lead font-semibold text-text-strong">{{ __('admin.inbox.pick_title') }}</p>
-                    <p class="max-w-[420px] text-small leading-relaxed text-text-muted">{{ __('admin.inbox.pick_body') }}</p>
+                    {{-- Nothing to open: the list is empty (board 17), or the open post has no workflow any more --}}
+                    <p class="text-lead font-semibold text-text-strong">{{ $rows === [] ? __('admin.inbox.empty_pick_title') : __('admin.inbox.pick_title') }}</p>
+                    <p class="max-w-[420px] text-small leading-relaxed text-text-muted">{{ $rows === [] ? __('admin.inbox.empty_pick_body') : __('admin.inbox.pick_body') }}</p>
                 </div>
             </x-bs-admin::card>
         @else
@@ -250,20 +252,31 @@
                 $doneCount = count(array_filter($reader['steps'], fn (array $step): bool => $step['state'] === 'done'));
                 $nextStep = collect($reader['steps'])->firstWhere('state', 'todo');
                 $lastNote = $reader['trail'][0]['note'] ?? null;
-                $stepIcons = fn (array $step): string => match (true) {
-                    $step['state'] === 'done' => 'ri-check',
-                    $step['is_published'] => 'ri-global',
-                    $step['state'] === 'current' => 'ri-user-search',
-                    default => 'ri-archive',
-                };
+                // a node of the road: a step behind is ticked, the others carry their step's own icon
+                $stepIcons = fn (array $step): string => $step['state'] === 'done' ? 'ri-check' : $step['icon'];
+                $seoMissing = blank($reader['seo_title']) || blank($reader['seo_description']);
+                $seoFieldErrors = $errors->hasAny(['seo', 'seoTitle', 'seoDescription']);
+                $bandIcons = ['empty' => 'ri-edit', 'short' => 'ri-arrow-up', 'near' => 'ri-arrow-right-up', 'good' => 'ri-check', 'long' => 'ri-error-warning', 'over' => 'ri-close-circle'];
             @endphp
-            <section aria-label="{{ __('admin.inbox.reading') }}" data-guide="reader"
-                     class="flex min-w-0 flex-col rounded-md border border-border bg-surface shadow-card lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)]">
-                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-4 py-3">
-                    <x-bs-admin::button color="light" size="sm" class="shrink-0 lg:hidden" wire:click="closeReader">
+            {{-- Below the two-pane width the reader is hidden until a post is opened, then covers the whole
+                 screen (board 17 `.sp-detail`: no frame, the phone's safe areas kept clear). Covering, it is a
+                 modal dialog: the shell behind it is inert and does not scroll, so Tab and a screen reader stay
+                 in the post until «Quay lại». --}}
+            <div class="contents" x-data="{ narrow: false }"
+                 x-init="const q = window.matchMedia('(max-width: 63.999rem)'); narrow = q.matches; q.addEventListener('change', (e) => { narrow = e.matches })">
+            <section aria-label="{{ __('admin.inbox.reading') }}" data-guide="reader" data-inbox-reader x-data="bsSeoFields({{ $Js::from($seoConfig) }})"
+                     x-trap.inert.noscroll.noautofocus.noreturn="narrow && $wire.detail" x-bind:role="narrow && $wire.detail ? 'dialog' : null"
+                     x-bind:aria-modal="narrow && $wire.detail ? 'true' : null" @class([
+                'flex min-w-0 flex-col bg-surface lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:rounded-md lg:border lg:border-border lg:shadow-card',
+                'max-lg:fixed max-lg:inset-0 max-lg:z-50 max-lg:pt-[env(safe-area-inset-top)] max-lg:ps-[env(safe-area-inset-left)] max-lg:pe-[env(safe-area-inset-right)]' => $detail,
+                'max-lg:hidden' => ! $detail,
+            ])>
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-4 py-3 max-lg:min-h-14">
+                    <x-bs-admin::button color="light" size="sm" class="shrink-0 lg:hidden" wire:click="closeReader" :title="__('admin.inbox.back_tip')" data-inbox-back>
                         <x-bs-admin::icon name="ri-arrow-left" class="size-4" />{{ __('admin.inbox.back') }}
                     </x-bs-admin::button>
-                    <h2 class="m-0 min-w-0 flex-1 text-body font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ $reader['title'] }}</h2>
+                    {{-- A long title wraps rather than being cut with «…» (the design bar: nothing important is clipped). --}}
+                    <h2 id="inbox-reader-title" tabindex="-1" class="m-0 min-w-0 flex-1 text-body font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ $reader['title'] }}</h2>
                     @if ($reader['section'] !== '')
                         <span class="ms-auto inline-flex min-h-6 shrink-0 items-center rounded-full bg-surface-hover px-2.5 text-caption font-bold text-text-muted">{{ $reader['section'] }}</span>
                     @endif
@@ -289,7 +302,7 @@
                     {{-- The step the post is at, and the whole road: a rail from 600px, a bar below --}}
                     <div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                         <span class="inline-flex items-center gap-1 text-small font-bold text-primary-text">
-                            <x-bs-admin::icon :name="$stepIcons(['state' => 'current', 'is_published' => false])" class="size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0" />{{ __('admin.wfb.step_of', ['n' => $reader['step_no'], 'total' => $reader['step_count'], 'label' => $reader['step_label']]) }}
+                            <x-bs-admin::icon :name="$reader['step_icon']" class="size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0" />{{ __('admin.wfb.step_of', ['n' => $reader['step_no'], 'total' => $reader['step_count'], 'label' => $reader['step_label']]) }}
                         </span>
                         <span class="inline-flex items-center gap-1 text-caption text-text-muted">
                             <x-bs-admin::icon name="ri-flow-chart" class="size-[min(1.5rem,calc(0.75rem+var(--user-text-boost)))] shrink-0" />{{ $reader['workflow'] }}
@@ -340,6 +353,14 @@
                         </p>
                     @endif
 
+                    {{-- What the post still lacks (board 17 `missLine`): approving stays possible --}}
+                    @if ($reader['missing'] !== [])
+                        <p class="m-0 flex gap-2.5 rounded-r border-l-2 border-warning-base bg-warning-base/15 px-3 py-3 text-small leading-relaxed text-warning-text" data-inbox-missing>
+                            <x-bs-admin::icon name="ri-error-warning" class="size-[min(1.5rem,calc(1rem+var(--user-text-boost)))] shrink-0" />
+                            <span class="min-w-0 [overflow-wrap:anywhere]">{{ __('admin.inbox.missing_line', ['items' => implode(', ', $reader['missing'])]) }}</span>
+                        </p>
+                    @endif
+
                     {{-- Cover --}}
                     <x-bs-admin::fold :title="__('admin.inbox.fold_cover')" :warn="$reader['cover'] === null ? __('admin.inbox.missing') : null">
                         @if ($reader['cover'] !== null)
@@ -351,38 +372,117 @@
                         @endif
                     </x-bs-admin::fold>
 
-                    {{-- The short description (what the list's card shows) --}}
+                    {{-- «Thông tin chính»: the details this kind of post carries besides its text --}}
+                    @if ($reader['fields'] !== [])
+                        <x-bs-admin::fold :title="__('admin.inbox.fold_fields')" :hint="$reader['section'] !== '' ? __('admin.inbox.fold_fields_hint', ['section' => $reader['section']]) : null" data-inbox-fields>
+                            <div class="@container">
+                            <dl class="m-0 grid grid-cols-1 gap-x-4 gap-y-3 @min-[35rem]:grid-cols-2">
+                                @foreach ($reader['fields'] as $field)
+                                    <div class="flex min-w-0 flex-col gap-0.5">
+                                        <dt class="text-caption text-text-muted">{{ $field['label'] }}</dt>
+                                        <dd class="m-0 text-small font-medium leading-relaxed text-text-strong [overflow-wrap:anywhere]">{{ $field['value'] }}</dd>
+                                    </div>
+                                @endforeach
+                            </dl>
+                            </div>
+                        </x-bs-admin::fold>
+                    @endif
+
+                    {{-- The short description (what the list's card shows), with its length meter --}}
                     <x-bs-admin::fold :title="__('admin.inbox.fold_excerpt')" :hint="__('admin.inbox.fold_excerpt_hint')" :warn="blank($reader['excerpt']) ? __('admin.inbox.not_entered') : null">
                         @if (filled($reader['excerpt']))
                             <p class="m-0 text-small leading-relaxed text-text [overflow-wrap:anywhere]">{{ $reader['excerpt'] }}</p>
+                            <span class="seo-meter mt-0!" :data-b="excerptMeter.band" aria-hidden="true">
+                                <span class="seo-meter__zone" :style="{ left: excerptMeter.lo + '%', width: excerptMeter.zw + '%' }"></span>
+                                <span class="seo-meter__fill" :style="{ width: excerptMeter.pct + '%' }"></span>
+                                <span class="seo-meter__tick" :style="{ left: excerptMeter.tick + '%' }"></span>
+                            </span>
+                            <span class="text-caption text-text-muted" x-text="excerptMeter.text"></span>
                         @else
                             <p class="m-0 rounded bg-warning-base/15 px-3 py-2.5 text-small text-warning-text">{{ __('admin.inbox.no_excerpt') }}</p>
                         @endif
                     </x-bs-admin::fold>
 
                     {{-- The post, as text --}}
-                    <x-bs-admin::fold :title="__('admin.inbox.content')">
-                        @forelse ($reader['blocks'] as $block)
-                            @php
-                                $text = trim(strip_tags(collect($block['props'] ?? [])->flatten()->filter(fn ($v) => is_string($v))->implode("\n")));
-                            @endphp
-                            @if ($text !== '')
-                                <p class="m-0 whitespace-pre-line text-small leading-relaxed text-text [overflow-wrap:anywhere]">{{ \Illuminate\Support\Str::limit($text, 1200) }}</p>
-                            @endif
+                    <x-bs-admin::fold :title="__('admin.inbox.content')" :end="$reader['body'] !== [] ? __('admin.inbox.body_counts', ['words' => \Illuminate\Support\Number::format($reader['words'], locale: app()->getLocale()), 'paragraphs' => $reader['paragraphs']]) : null">
+                        @forelse ($reader['body'] as $line)
+                            <p @class([
+                                'm-0 text-small leading-relaxed [overflow-wrap:anywhere]',
+                                'font-semibold text-text-strong' => $line['k'] === 'h',
+                                'text-text' => $line['k'] !== 'h',
+                                'ps-4 before:-ms-3 before:me-1.5 before:content-[\'•\']' => $line['k'] === 'li',
+                            ])>{{ $line['t'] }}</p>
                         @empty
                             <p class="m-0 rounded bg-warning-base/15 px-3 py-2.5 text-small text-warning-text">{{ __('admin.inbox.no_content') }}</p>
                         @endforelse
                     </x-bs-admin::fold>
 
                     {{-- What visitors and Google will see --}}
-                    <x-bs-admin::fold :title="__('admin.inbox.seo_title')">
+                    {{-- What visitors and Google will see: the result line, then the two Google fields with their
+                         meters. Someone the edit policy lets in edits them here on a post not yet live; each box
+                         saves when it is left. Folded at first (board 17), «cần xem» while one is empty. --}}
+                    <x-bs-admin::fold :title="__('admin.inbox.seo_title')" :warn="$seoMissing ? __('admin.inbox.seo_warn') : null" :open="$seoFieldErrors" data-inbox-seo>
                         <div class="flex flex-col gap-1 rounded border border-border-soft p-3">
                             @if ($reader['path'] !== null)
                                 <p class="m-0 text-caption text-success-text [overflow-wrap:anywhere]">{{ $reader['path'] }}</p>
                             @endif
-                            <p class="m-0 text-body leading-snug text-secondary-text [overflow-wrap:anywhere]">{{ $reader['seo_title'] ?: $reader['title'] }}</p>
-                            <p class="m-0 text-small leading-relaxed text-text-muted [overflow-wrap:anywhere]">{{ $reader['seo_description'] ?: $reader['excerpt'] ?: __('admin.inbox.seo_auto') }}</p>
+                            @if (filled($reader['seo_title']))
+                                <p class="m-0 text-body leading-snug text-secondary-text [overflow-wrap:anywhere]">{{ $reader['seo_title'] }}</p>
+                            @else
+                                <p class="m-0 text-small leading-relaxed text-warning-text">{{ __('admin.inbox.seo_no_title') }}</p>
+                            @endif
+                            @if (filled($reader['seo_description']))
+                                <p class="m-0 text-small leading-relaxed text-text-muted [overflow-wrap:anywhere]">{{ $reader['seo_description'] }}</p>
+                            @else
+                                <p class="m-0 text-small leading-relaxed text-warning-text">{{ __('admin.inbox.seo_no_description') }}</p>
+                            @endif
                         </div>
+
+                        @error('seo') <x-bs-admin::field-error>{{ $message }}</x-bs-admin::field-error> @enderror
+                        @foreach ([['seoTitle', 'title', 'seoTitle', 'admin.inbox.seo_field_title', 'titleMeter'], ['seoDescription', 'description', 'seoDesc', 'admin.inbox.seo_field_description', 'descriptionMeter']] as [$model, $part, $limit, $labelKey, $meter])
+                            <div class="flex min-w-0 flex-col gap-1.5" wire:key="inbox-seo-{{ $part }}-{{ $reader['ulid'] }}">
+                                <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
+                                    @if ($reader['seo_edit'])
+                                        <label for="inbox-seo-{{ $part }}" class="text-small font-semibold text-text-strong">{{ __($labelKey) }}</label>
+                                    @else
+                                        <span class="text-small font-semibold text-text-strong">{{ __($labelKey) }}</span>
+                                    @endif
+                                    <span id="inbox-seo-{{ $part }}-c" class="seo-count" :data-b="{{ $meter }}.band" data-b="empty">
+                                        @foreach ($bandIcons as $band => $icon)
+                                            <x-bs-admin::icon :name="$icon" x-show="{{ $meter }}.band === '{{ $band }}'" x-cloak />
+                                        @endforeach
+                                        <span class="tabular-nums" x-text="[...String($wire.$get('{{ $model }}') ?? '')].length + '/{{ $seoLimits[$limit]['display'] }}'"></span>
+                                    </span>
+                                </div>
+                                @if ($reader['seo_edit'])
+                                    @if ($part === 'title')
+                                        <input type="text" id="inbox-seo-title" wire:model="seoTitle" x-on:change="$wire.saveSeo()" maxlength="{{ \App\Modules\Admin\Support\SeoFields::hardCap('seoTitle') }}"
+                                               aria-describedby="inbox-seo-title-c inbox-seo-title-m @error('seoTitle') inbox-seo-title-e @enderror" @error('seoTitle') aria-invalid="true" @enderror
+                                               class="field block w-full rounded-md border border-border-input bg-surface-muted px-3 text-text placeholder:text-placeholder transition-colors focus:border-primary-text aria-invalid:border-danger-text">
+                                    @else
+                                        <textarea id="inbox-seo-description" wire:model="seoDescription" x-on:change="$wire.saveSeo()" rows="2" maxlength="{{ \App\Modules\Admin\Support\SeoFields::hardCap('seoDesc') }}"
+                                                  aria-describedby="inbox-seo-description-c inbox-seo-description-m @error('seoDescription') inbox-seo-description-e @enderror" @error('seoDescription') aria-invalid="true" @enderror
+                                                  x-on:keydown.enter="if (! $event.isComposing && $event.keyCode !== 229) $event.preventDefault()"
+                                                  class="field block w-full resize-y rounded-md border border-border-input bg-surface-muted px-3 py-2.5 text-text placeholder:text-placeholder transition-colors focus:border-primary-text aria-invalid:border-danger-text"></textarea>
+                                    @endif
+                                @endif
+                                <span class="seo-meter mt-0!" :data-b="{{ $meter }}.band" aria-hidden="true">
+                                    <span class="seo-meter__zone" :style="{ left: {{ $meter }}.lo + '%', width: {{ $meter }}.zw + '%' }"></span>
+                                    <span class="seo-meter__fill" :style="{ width: {{ $meter }}.pct + '%' }"></span>
+                                    <span class="seo-meter__tick" :style="{ left: {{ $meter }}.tick + '%' }"></span>
+                                </span>
+                                <span id="inbox-seo-{{ $part }}-m" class="text-caption text-text-muted" x-text="{{ $meter }}.text"></span>
+                                @error($model) <x-bs-admin::field-error id="inbox-seo-{{ $part }}-e">{{ $message }}</x-bs-admin::field-error> @enderror
+                            </div>
+                        @endforeach
+                        @if ($reader['seo_edit'])
+                            <p class="m-0 flex flex-wrap items-center gap-x-2 gap-y-1 text-caption text-text-muted">
+                                <span>{{ __('admin.inbox.seo_edit_hint') }}</span>
+                                <x-bs-admin::saved-note wire:loading.remove wire:target="saveSeo">{{ $seoSaved ? __('admin.saved') : '' }}</x-bs-admin::saved-note>
+                            </p>
+                        @elseif ($reader['edit_url'] !== null)
+                            <p class="m-0 text-caption leading-relaxed text-text-muted">{{ __('admin.inbox.seo_live') }}</p>
+                        @endif
                     </x-bs-admin::fold>
 
                     @if ($reader['edit_url'] !== null)
@@ -393,22 +493,42 @@
 
                     {{-- Trail --}}
                     @if ($reader['trail'] !== [])
-                        <x-bs-admin::fold :title="__('admin.wfb.trail_title')" :end="__('admin.inbox.trail_count', ['n' => count($reader['trail'])])" :open="false">
-                            @foreach ($reader['trail'] as $row)
-                                <p class="m-0 text-caption text-text-muted" wire:key="inbox-log-{{ $row['id'] }}">
-                                    <span class="font-semibold text-text">{{ $row['actor'] ?? __('admin.wfb.actor_gone') }}</span>
-                                    {{ mb_strtolower($row['transition']) }} · {{ $row['from'] }} → {{ $row['to'] }} · {{ $row['at'] }}
-                                    @if ($row['note'] !== null)
-                                        <span class="mt-1 block rounded-r border-l-2 border-border-strong bg-surface-muted px-3 py-2 text-small text-text [overflow-wrap:anywhere]">{{ $row['note'] }}</span>
-                                    @endif
-                                </p>
-                            @endforeach
+                        <x-bs-admin::fold :title="__('admin.wfb.trail_title')" :end="__('admin.inbox.trail_count', ['n' => $reader['trail_total']])" :open="false" data-inbox-trail>
+                            <ol class="m-0 flex list-none flex-col gap-3 p-0">
+                                @foreach ($reader['trail'] as $row)
+                                    @php $who = $row['actor'] ?? __('admin.wfb.actor_gone'); @endphp
+                                    <li class="flex gap-2.5" wire:key="inbox-log-{{ $row['id'] }}">
+                                        <span class="inline-flex size-[calc(1.625rem+var(--user-text-boost))] shrink-0 items-center justify-center rounded-full bg-primary/10 text-caption font-bold text-primary-text" aria-hidden="true">
+                                            {{ mb_strtoupper(mb_substr(\Illuminate\Support\Str::of($who)->trim()->afterLast(' '), 0, 1)) }}
+                                        </span>
+                                        <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+                                            <span class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                                                <span class="text-small font-semibold text-text-strong [overflow-wrap:anywhere]">{{ $who }}</span>
+                                                <span class="text-caption text-text">{{ mb_strtolower($row['transition']) }}</span>
+                                                <span class="text-caption text-text-muted">{{ $row['at'] }}</span>
+                                            </span>
+                                            <span class="text-caption text-text-muted [overflow-wrap:anywhere]">{{ __('admin.inbox.trail_flow', ['from' => $row['from'], 'to' => $row['to']]) }}</span>
+                                            @if ($row['note'] !== null)
+                                                <span class="mt-1 block rounded-r border-l-2 border-border-strong bg-surface-muted px-3 py-2 text-caption leading-relaxed text-text [overflow-wrap:anywhere]">{{ $row['note'] }}</span>
+                                            @endif
+                                        </span>
+                                    </li>
+                                @endforeach
+                            </ol>
+                            @if ($reader['trail_more'] > 0)
+                                <x-bs-admin::button variant="ghost" color="primary" size="sm" class="self-start" wire:click="moreTrail" wire:loading.attr="disabled" wire:target="moreTrail" data-inbox-trail-more>
+                                    <x-bs-admin::icon name="ri-arrow-down" class="size-4" />{{ __('admin.inbox.trail_more', ['n' => $reader['trail_more']]) }}
+                                </x-bs-admin::button>
+                            @endif
                         </x-bs-admin::fold>
                     @endif
                 </div>
 
                 {{-- The only place approval actions live (design: foot of the reader), with the walk through the list --}}
-                <div class="flex flex-wrap items-center gap-2 rounded-b-md border-t border-border bg-surface-muted px-4 py-3 max-[599.98px]:[&_[data-inbox-act]]:flex-[1_1_8.75rem]">
+                <div @class([
+                    'flex flex-wrap items-center gap-2 border-t border-border bg-surface-muted px-4 py-3 lg:rounded-b-md max-[599.98px]:[&_[data-inbox-act]]:flex-[1_1_8.75rem]',
+                    'max-lg:pb-[calc(0.75rem+env(safe-area-inset-bottom))]' => $detail,
+                ])>
                     @if ($reader['actions'] === [])
                         <p class="m-0 text-small text-text-muted" data-guide="bar">{{ __('admin.inbox.no_actions') }}</p>
                     @else
@@ -463,6 +583,7 @@
                     @endif
                 </div>
             </section>
+            </div>
         @endif
     </div>
     @endunless
