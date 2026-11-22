@@ -70,7 +70,12 @@ final class SyncRbac extends Command
             $backfilled = $this->backfillSystemTenantRoles($ids);
             $closed = $this->closeCustomRolesUnderImplies($ids);
 
-            $registrar->forgetCachedPermissions();
+            if (! $registrar->forgetCachedPermissions()) {
+                // the rows are saved; running workers would keep their old permission lists
+                $this->error('RBAC synced, but the permission cache could not be refreshed (see the log): run `php artisan permission:cache-reset` once the cache store is reachable.');
+
+                return self::FAILURE;
+            }
 
             $this->info(sprintf(
                 'RBAC synced: %d permissions, %d platform roles, %d tenant grants back-filled, %d custom-role grants closed.',
