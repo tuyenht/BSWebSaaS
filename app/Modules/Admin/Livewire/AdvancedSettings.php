@@ -99,6 +99,10 @@ final class AdvancedSettings extends Component
     #[Locked]
     public int $askSeq = 0;
 
+    /** The server opened the question this time: only then does save(true) count as the confirmation. */
+    #[Locked]
+    public bool $codeAsked = false;
+
     /** Set once at mount: the member may look but not change («Chỉ xem»). */
     #[Locked]
     public bool $readOnly = true;
@@ -164,10 +168,17 @@ final class AdvancedSettings extends Component
         $this->checkCode($slot);
     }
 
-    /** Only the owner opens or closes the embed-code dialog (opening it changes nothing by itself). */
+    /**
+     * Only the owner opens or closes the embed-code dialog (opening it changes nothing by itself);
+     * once it is closed («Hủy», ✕, Escape), a confirmation needs the question asked again.
+     */
     public function updatedAskCode(): void
     {
         abort_unless(self::mayChange(), 403);
+
+        if (! $this->askCode) {
+            $this->codeAsked = false;
+        }
     }
 
     /** A message was typed: only the website's languages, only text, checked for its length. */
@@ -226,13 +237,23 @@ final class AdvancedSettings extends Component
         }
         if (! $ok) {
             $this->askCode = false;
+            $this->codeAsked = false;
             $this->notify(__('admin.adv.toast_invalid'), 'error');
             $this->dispatch('adv-first-error');
 
             return false;
         }
-        if (! $confirmed && $this->codeOn && SiteEmbedCode::hasCode($this->draftCode()) && ! $this->codeAcknowledged) {
+
+        // only the parts this tab changed are written: a part left as it was loaded keeps whatever
+        // another tab saved since (switching broken code off elsewhere is never undone from here)
+        $changed = $this->unsavedFields();
+        $codeTouched = array_filter($changed, static fn (string $f): bool => str_starts_with($f, 'code.')) !== [];
+        $mtTouched = array_filter($changed, static fn (string $f): bool => ! str_starts_with($f, 'code.')) !== [];
+
+        $confirmed = $confirmed && $this->codeAsked;
+        if (! $confirmed && $codeTouched && $this->codeOn && SiteEmbedCode::hasCode($this->draftCode()) && ! $this->codeAcknowledged) {
             $this->askCode = true;
+            $this->codeAsked = true;
             $this->askSeq++;
 
             return false;
@@ -241,25 +262,35 @@ final class AdvancedSettings extends Component
         try {
             // read what is saved under the lock: another tab's save is neither lost (the words of a
             // language not shown here) nor miscounted (each switch's audit compares with its row)
-            $written = SettingsWrite::run('advanced', function () use ($confirmed): array {
+            $written = SettingsWrite::run('advanced', function () use ($confirmed, $mtTouched, $codeTouched): array {
                 $repository = app(SettingsRepository::class);
 
-                // a part is written only when it changed (a part never saved compares as its empty
-                // value), so saving one part leaves the other's row, stamp and audit alone
-                $savedMt = $repository->get(SiteMaintenance::GROUP, SiteMaintenance::KEY);
-                $wasOn = SiteMaintenance::shape($savedMt)['on'];
-                $mt = $this->stored(SiteMaintenance::shape($savedMt)['messages']);
-                $mtChanged = $mt != ($savedMt ?? ['on' => false, 'messages' => [], 'reopens_at' => null]);
-                if ($mtChanged) {
-                    $repository->put(SiteMaintenance::GROUP, SiteMaintenance::KEY, $mt);
+                // a touched part is written only when it differs from its row (a part never saved
+                // compares as its empty value), so saving one part leaves the other's row, stamp and audit alone
+                $mtChanged = false;
+                $wasOn = false;
+                $mt = null;
+                if ($mtTouched) {
+                    $savedMt = $repository->get(SiteMaintenance::GROUP, SiteMaintenance::KEY);
+                    $wasOn = SiteMaintenance::shape($savedMt)['on'];
+                    $mt = $this->stored(SiteMaintenance::shape($savedMt)['messages']);
+                    $mtChanged = $mt != ($savedMt ?? ['on' => false, 'messages' => [], 'reopens_at' => null]);
+                    if ($mtChanged) {
+                        $repository->put(SiteMaintenance::GROUP, SiteMaintenance::KEY, $mt);
+                    }
                 }
 
-                $savedCode = $repository->get(SiteEmbedCode::GROUP, SiteEmbedCode::KEY);
-                $was = SiteEmbedCode::shape($savedCode);
-                $code = $this->storedCode($was, $confirmed);
-                $codeChanged = $code != ($savedCode ?? ['on' => false, 'code' => ['head' => '', 'body_top' => '', 'body_end' => '', 'foot' => ''], 'acknowledged_at' => null, 'acknowledged_by' => null]);
-                if ($codeChanged) {
-                    $repository->put(SiteEmbedCode::GROUP, SiteEmbedCode::KEY, $code);
+                $codeChanged = false;
+                $was = null;
+                $code = null;
+                if ($codeTouched) {
+                    $savedCode = $repository->get(SiteEmbedCode::GROUP, SiteEmbedCode::KEY);
+                    $was = SiteEmbedCode::shape($savedCode);
+                    $code = $this->storedCode($was, $confirmed);
+                    $codeChanged = $code != ($savedCode ?? ['on' => false, 'code' => ['head' => '', 'body_top' => '', 'body_end' => '', 'foot' => ''], 'acknowledged_at' => null, 'acknowledged_by' => null]);
+                    if ($codeChanged) {
+                        $repository->put(SiteEmbedCode::GROUP, SiteEmbedCode::KEY, $code);
+                    }
                 }
 
                 return [
@@ -283,6 +314,7 @@ final class AdvancedSettings extends Component
         }
 
         $this->askCode = false;
+        $this->codeAsked = false;
         $this->load();
         $this->notify(__('admin.adv.toast_saved'));
 
@@ -296,6 +328,7 @@ final class AdvancedSettings extends Component
         abort_unless(self::mayChange(), 403);
 
         $this->askCode = false;
+        $this->codeAsked = false;
         $this->load();
         $this->resetErrorBag();
         $this->notify(__('admin.adv.toast_reset'));

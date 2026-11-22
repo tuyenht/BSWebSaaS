@@ -39,9 +39,10 @@ namespace App\Modules\Theme\Chrome;
  * snippets are inline scripts that load scripts, pixels, beacons, sockets and frames from their
  * provider's https host, so those directives open to any https source (wss: for a chat widget's
  * socket) and scripts gain 'unsafe-inline' — in place of the boot script's hash, since a browser
- * ignores 'unsafe-inline' wherever a hash is listed. Styles and fonts open to https too: a widget
- * brings its own, and once any https script may run, a narrower style or font list protects
- * nothing. Still closed: 'unsafe-eval', plain http, form posts and <base> to other hosts.
+ * ignores 'unsafe-inline' wherever a hash is listed. Styles, fonts and media (a chat widget's sound)
+ * open to https too: a widget brings its own, and once any https script may run, a narrower list
+ * protects nothing. Still closed: 'unsafe-eval' (so a Tag Manager "Custom JavaScript" variable
+ * does not run), plain http, form posts and <base> to other hosts.
  */
 final class StorefrontCsp
 {
@@ -71,7 +72,7 @@ final class StorefrontCsp
         return implode('; ', [
             "default-src 'self'",
             trim("img-src 'self' ".$media.' data: https:'),
-            trim("media-src 'self' ".$media),
+            trim("media-src 'self' ".$media.' https:'),
             "style-src 'self' 'unsafe-inline' https:",
             "script-src 'self' 'unsafe-inline' https:",
             "connect-src 'self' https: wss:",

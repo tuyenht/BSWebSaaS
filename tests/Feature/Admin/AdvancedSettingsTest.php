@@ -318,8 +318,11 @@ it('asks the owner to confirm the first save that turns code on, then saves it, 
         Livewire::actingAs($owner)->test(AdvancedSettings::class)
             ->call('toggleCode')->set('code.foot', $code)
             ->call('save')->assertSet('askCode', true)
-            // «Hủy» closes it and nothing is kept
+            // «Hủy» closes it and nothing is kept; a confirmation sent without the question open asks again
             ->set('askCode', false)
+            ->call('save', true)
+            ->assertReturned(false)
+            ->assertSet('askCode', true)
             ->call('save', true)
             ->assertReturned(true)
             ->assertSet('askCode', false)
@@ -419,4 +422,34 @@ it('shows another holder of settings.manage the saved code read-only, never as p
         ->assertDontSeeHtml('<script>window.advLeak = 1;</script>'));
 
     $this->actingAs($admin)->get('http://a.test/admin/settings/advanced')->assertOk()->assertDontSee('<script>window.advLeak = 1;</script>', false);
+});
+
+it('takes no confirmation the server did not ask for', function (): void {
+    $owner = blockLibraryUser(1, 'owner');
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($owner)->test(AdvancedSettings::class)
+        ->call('toggleCode')->set('code.foot', '<script>a()</script>')
+        ->call('save', true)->assertReturned(false)->assertSet('askCode', true));
+
+    expect(advStored(1, 'embed_code'))->toBeNull();
+});
+
+it('never writes back a part this tab left alone: code switched off in another tab stays off', function (): void {
+    $owner = blockLibraryUser(1, 'owner');
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'embed_code', 'value' => [
+        'on' => true, 'code' => ['head' => '', 'body_top' => '', 'body_end' => '', 'foot' => '<script>broken(</script>'], 'acknowledged_at' => '2026-11-01T00:00:00Z', 'acknowledged_by' => $owner->id,
+    ]]));
+    $auditBefore = (int) app(Tenancy::class)->enter(1, fn () => AuditLog::query()->max('id'));
+
+    app(Tenancy::class)->enter(1, function () use ($owner): void {
+        $older = Livewire::actingAs($owner)->test(AdvancedSettings::class);
+        // another tab switches the broken code off
+        Livewire::actingAs($owner)->test(AdvancedSettings::class)->call('toggleCode')->call('save')->assertReturned(true);
+        // the older tab saves only the maintenance words
+        $older->set('messages.vi', 'Đang nâng cấp.')->call('save')->assertReturned(true);
+    });
+
+    expect(advStored(1, 'embed_code')['on'])->toBeFalse()
+        ->and(advStored()['messages'])->toBe(['vi' => 'Đang nâng cấp.'])
+        ->and(array_column(advCodeAudits($auditBefore), 'action'))->toBe(['settings.embed_code.off']);
 });

@@ -58,10 +58,12 @@ final readonly class AddSecurityHeaders
 
         // ── Content-Security-Policy: storefront plane only ───────────────────
         // A page that printed the website's extra embed code (only for a visitor with no session, on
-        // a website whose owner switched it on) gets the one loosened policy; every other response
-        // keeps the strict one.
+        // a website whose owner switched it on) and was answered as drawn (200, or its 304) gets the
+        // one loosened policy; every other response — an error raised after the code was printed
+        // included — keeps the strict one.
         if ($this->isStorefrontPlane($request)) {
-            $response->headers->set('Content-Security-Policy', app(SiteEmbedCode::class)->printed() ? StorefrontCsp::withEmbedCode() : StorefrontCsp::header());
+            $loose = app(SiteEmbedCode::class)->printed() && in_array($response->getStatusCode(), [200, 304], true);
+            $response->headers->set('Content-Security-Policy', $loose ? StorefrontCsp::withEmbedCode() : StorefrontCsp::header());
         }
 
         return $response;

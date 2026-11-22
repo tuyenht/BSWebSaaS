@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AddSecurityHeaders;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Storefront\Support\SiteEmbedCode;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -7,6 +8,8 @@ use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Chrome\StorefrontChrome;
 use App\Modules\Theme\Chrome\StorefrontCsp;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Testing\TestResponse;
 
 /*
@@ -91,8 +94,10 @@ it('prints the code in its four places for a visitor with no session, and loosen
         ->and(rtrim(substr($html, 0, (int) strrpos($html, '</body>'))))->toEndWith(EC_CODE['foot'])
         ->and(ecCsp($response))->toBe(StorefrontCsp::withEmbedCode());
     if ($path === '/') {
-        // the edge may still keep it: every visitor without a session gets these same bytes
-        expect((string) $response->headers->get('Cache-Control'))->toContain('public')->toContain('s-maxage');
+        // the edge may still keep it (every visitor without a session gets these same bytes), but a
+        // browser must ask again before showing its copy: no stale window
+        expect((string) $response->headers->get('Cache-Control'))->toContain('public')->toContain('s-maxage')->toContain('must-revalidate')
+            ->not->toContain('stale-while-revalidate');
     }
 })->with(['the home page' => '/', 'search' => '/tim-kiem?q=may']);
 
@@ -106,7 +111,7 @@ it('loosens only scripts, pixels, connections, frames, styles and fonts to https
         ->toContain('frame-src https:')
         ->toContain("style-src 'self' 'unsafe-inline' https:")
         ->toContain("font-src 'self' https: data:")
-        ->toMatch('#(?:^|; )media-src \'self\' https://files\.baoson\.net(?:;|$)#')
+        ->toContain("media-src 'self' https://files.baoson.net https:")
         ->toContain("default-src 'self'")
         ->toContain("base-uri 'self'")
         ->toContain("form-action 'self'")
@@ -149,6 +154,8 @@ it('touches no other website: its pages keep no code and the strict policy, byte
     $response = ecGet($this, 'http://b.test/')->assertOk();
 
     ecHasNone((string) $response->getContent());
+    // the edge and the browser keep it as before
+    expect((string) $response->headers->get('Cache-Control'))->toContain('stale-while-revalidate')->not->toContain('must-revalidate');
     // today's policy, written out: a site without the code must never get a different one
     expect(ecCsp($response))->toBe(
         "default-src 'self'; img-src 'self' https://files.baoson.net data:; media-src 'self' https://files.baoson.net; style-src 'self' 'unsafe-inline'; "
@@ -190,3 +197,36 @@ it('drops a stored code over the size limit instead of cutting it', function ():
         ->and(ecCsp($response))->toBe(StorefrontCsp::header())
         ->and(SiteEmbedCode::shape(['on' => true, 'code' => ['foot' => str_repeat('a', SiteEmbedCode::MAX_BYTES)]])['code']['foot'])->toHaveLength(SiteEmbedCode::MAX_BYTES);
 });
+
+it('answers HEAD and a matching 304 like the page it stands for, and never matches the copy without code', function (): void {
+    ecOn(1);
+
+    $page = ecGet($this, 'http://a.test/')->assertOk();
+    $etag = (string) $page->headers->get('ETag');
+    expect($etag)->not->toBe('');
+
+    $same = $this->get('http://a.test/', ['If-None-Match' => $etag])->assertStatus(304);
+    expect(ecCsp($same))->toBe(StorefrontCsp::withEmbedCode());
+
+    app()->forgetScopedInstances();
+    $head = $this->call('HEAD', 'http://a.test/')->assertOk();
+    expect(ecCsp($head))->toBe(StorefrontCsp::withEmbedCode());
+
+    // signed in since: the same tag no longer matches, the page comes back without the code
+    app()->forgetScopedInstances();
+    $member = $this->actingAs(blockLibraryUser(1, 'owner'))->withCookie((string) config('session.cookie'), 'member')
+        ->get('http://a.test/', ['If-None-Match' => $etag])->assertOk();
+    ecHasNone((string) $member->getContent());
+    expect(ecCsp($member))->toBe(StorefrontCsp::header())
+        ->and((string) $member->headers->get('ETag'))->not->toBe($etag);
+});
+
+it('keeps the strict policy on an error answered after the code was printed', function (int $status): void {
+    $embed = app(SiteEmbedCode::class);
+    (fn () => $this->printed = true)->call($embed);
+    expect($embed->printed())->toBeTrue();
+
+    $answer = app(AddSecurityHeaders::class)->handle(Request::create('http://a.test/'), fn () => new Response('x', $status));
+
+    expect((string) $answer->headers->get('Content-Security-Policy'))->toBe($status === 200 ? StorefrontCsp::withEmbedCode() : StorefrontCsp::header());
+})->with([200, 404, 500, 503]);
