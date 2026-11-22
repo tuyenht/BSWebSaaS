@@ -276,7 +276,7 @@
                         <x-bs-admin::icon name="ri-arrow-left" class="size-4" />{{ __('admin.inbox.back') }}
                     </x-bs-admin::button>
                     {{-- A long title wraps rather than being cut with «…» (the design bar: nothing important is clipped). --}}
-                    <h2 id="inbox-reader-title" tabindex="-1" class="m-0 min-w-0 flex-1 text-body font-semibold leading-snug text-text-strong outline-none [overflow-wrap:anywhere] focus-visible:ring-[3px] focus-visible:ring-primary/30">{{ $reader['title'] }}</h2>
+                    <h2 id="inbox-reader-title" tabindex="-1" class="m-0 min-w-0 flex-1 text-body font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ $reader['title'] }}</h2>
                     @if ($reader['section'] !== '')
                         <span class="ms-auto inline-flex min-h-6 shrink-0 items-center rounded-full bg-surface-hover px-2.5 text-caption font-bold text-text-muted">{{ $reader['section'] }}</span>
                     @endif
