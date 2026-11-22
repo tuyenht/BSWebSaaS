@@ -3322,6 +3322,7 @@
     "rbac.role_change.changed_elsewhere": "Someone else has just changed this role — reload to see the new version.",
     "rbac.role_change.gone": "This role no longer exists; it may have just been deleted. Please reload the page.",
     "rbac.role_change.restore_name_taken": "Another role on this website has the same name — rename that role first, then restore this one.",
+    "rbac.role_change.restore_in_use": "This role is still given to someone even though it is in the trash, so it cannot be restored. Please contact support to check it.",
     "rbac.role.super_admin": "Platform administrator",
     "rbac.role.support": "Support staff",
     "rbac.role.billing": "Billing staff",

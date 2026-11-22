@@ -3322,6 +3322,7 @@
     "rbac.role_change.changed_elsewhere": "Nhóm này vừa được người khác sửa — tải lại để xem bản mới.",
     "rbac.role_change.gone": "Nhóm này không còn nữa, có thể vừa bị xóa. Hãy tải lại trang.",
     "rbac.role_change.restore_name_taken": "Website đã có một nhóm khác cùng tên — đổi tên nhóm đó trước, rồi khôi phục nhóm này.",
+    "rbac.role_change.restore_in_use": "Nhóm này vẫn đang được gán cho người khác dù đã ở thùng rác, nên chưa khôi phục được. Hãy liên hệ bộ phận hỗ trợ để kiểm tra.",
     "rbac.role.super_admin": "Quản trị nền tảng",
     "rbac.role.support": "Nhân viên hỗ trợ",
     "rbac.role.billing": "Nhân viên thanh toán",

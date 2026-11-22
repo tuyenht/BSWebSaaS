@@ -23,6 +23,7 @@ use App\Modules\Tenancy\Models\SiteFeature;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Spatie\Permission\PermissionRegistrar;
 
 /*
@@ -517,4 +518,42 @@ it('stores on restore exactly the permissions it records in the audit', function
     expect($audited)->toBeArray()->toContain('entries.view')
         ->and(collect($back->fresh()?->permissions->pluck('name'))->sort()->values()->all())
         ->toBe(collect($audited)->sort()->values()->all());
+});
+
+it('refuses to restore a role in the trash that someone holds anyway', function (): void {
+    $owner = trashMember(1, 'owner');
+    $role = trashRole(1, 'Kế toán', 20, ['entries.view']);
+    trashDelete($owner, $role);
+    // a holder written behind the actions' back (an old worker, a rollback, hand-written SQL)
+    $member = User::factory()->create();
+    DB::connection('pgsql_admin')->table('model_has_roles')->insert(['role_id' => $role->getKey(), 'model_type' => User::class, 'model_id' => $member->id, 'site_id' => 1]);
+
+    expect(fn () => trashRestore($owner, $role))->toThrow(RoleChangeRejectedException::class, 'restore_in_use')
+        ->and(trashRow($role)?->trashed())->toBeTrue()
+        ->and(trashAudit(1, 'rbac.role.restored'))->toBeNull()
+        ->and(trashIn(1, fn (): bool => User::query()->findOrFail($member->id)->can('entries.view')))->toBeFalse();
+});
+
+it('keeps in the trash a role past its time that someone holds anyway, and says so', function (): void {
+    $owner = trashMember(1, 'owner');
+    $held = trashRole(1, 'Kế toán', 20, ['entries.view']);
+    $free = trashRole(1, 'Cũ', 20, ['entries.view']);
+    trashDelete($owner, $held);
+    trashDelete($owner, $free);
+    DB::connection('pgsql_admin')->table('roles')->whereIn('id', [$held->getKey(), $free->getKey()])->update(['deleted_at' => now()->subDays(Role::TRASH_DAYS + 1)]);
+    $member = User::factory()->create();
+    DB::connection('pgsql_admin')->table('model_has_roles')->insert(['role_id' => $held->getKey(), 'model_type' => User::class, 'model_id' => $member->id, 'site_id' => 1]);
+    Log::spy();
+
+    $this->artisan('roles:purge-trash')
+        ->expectsOutputToContain('Purged 1 role(s)')
+        ->expectsOutputToContain('Kept 1 role(s) in the trash')
+        ->assertSuccessful();
+
+    expect(trashRow($held)?->trashed())->toBeTrue()
+        ->and(DB::connection('pgsql_admin')->table('model_has_roles')->where('role_id', $held->getKey())->where('model_id', $member->id)->exists())->toBeTrue()
+        ->and(DB::connection('pgsql_admin')->table('role_has_permissions')->where('role_id', $held->getKey())->exists())->toBeTrue()
+        ->and(trashRow($free))->toBeNull();
+    Log::shouldHaveReceived('warning')->withArgs(fn (string $message, array $context): bool => str_contains($message, 'still holds')
+        && $context['role_id'] === $held->getKey() && $context['site_id'] === 1)->once();
 });

@@ -3322,6 +3322,7 @@
     "rbac.role_change.changed_elsewhere": "此权限组刚被其他人修改 — 请重新加载以查看最新内容。",
     "rbac.role_change.gone": "此权限组已不存在，可能刚被删除。请重新加载页面。",
     "rbac.role_change.restore_name_taken": "网站已有另一个同名的权限组 — 请先为那个权限组改名，再恢复此权限组。",
+    "rbac.role_change.restore_in_use": "此权限组虽在回收站中，但仍分配给了某些人，因此无法恢复。请联系支持人员检查。",
     "rbac.role.super_admin": "平台管理员",
     "rbac.role.support": "支持人员",
     "rbac.role.billing": "账单人员",

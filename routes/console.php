@@ -39,8 +39,11 @@ Artisan::command('roles:purge-trash {--days='.Role::TRASH_DAYS.' : how many days
         return 1;
     }
     $days = (int) $raw;
-    $purged = $purge->handle($days);
+    ['purged' => $purged, 'held' => $held] = $purge->handle($days);
     $this->info("Purged {$purged} role(s) left in the trash over {$days} day(s).");
+    if ($held > 0) {
+        $this->warn("Kept {$held} role(s) in the trash: someone still holds them (role ids in the log).");
+    }
 
     return 0;
 })->purpose('Delete for good the custom roles left in the trash longer than the retention window');

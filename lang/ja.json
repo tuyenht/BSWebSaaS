@@ -3322,6 +3322,7 @@
     "rbac.role_change.changed_elsewhere": "このグループはたった今ほかの人が変更しました。再読み込みして最新の内容を確認してください。",
     "rbac.role_change.gone": "このグループはもうありません。削除されたばかりの可能性があります。ページを再読み込みしてください。",
     "rbac.role_change.restore_name_taken": "このサイトには同じ名前の別のグループがあります。先にそのグループの名前を変えてから、このグループを復元してください。",
+    "rbac.role_change.restore_in_use": "このグループはごみ箱にあるのに、まだ誰かに割り当てられているため、復元できません。サポートに確認を依頼してください。",
     "rbac.role.super_admin": "プラットフォーム管理者",
     "rbac.role.support": "サポート担当",
     "rbac.role.billing": "請求担当",

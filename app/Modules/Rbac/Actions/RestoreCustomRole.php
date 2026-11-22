@@ -30,7 +30,7 @@ use Spatie\Permission\PermissionRegistrar;
  * allow. Like a new role it comes back with no holders, so the category-limit veto on adding
  * permissions to a held role does not apply. Its stored name is kept even if it has become
  * reserved since, as an edit keeps it. A role that is no longer in the trash (a second click) is
- * returned as it is.
+ * returned as it is. A role in the trash that someone holds anyway is refused (`restore_in_use`).
  */
 final readonly class RestoreCustomRole
 {
@@ -51,7 +51,7 @@ final readonly class RestoreCustomRole
 
     /**
      * @throws AuthorizationException
-     * @throws RoleChangeRejectedException custom_roles_disabled · restore_name_taken · too_many · gone
+     * @throws RoleChangeRejectedException custom_roles_disabled · restore_name_taken · restore_in_use · too_many · gone
      */
     public function handle(User $actor, Role $role): Role
     {
@@ -72,6 +72,13 @@ final readonly class RestoreCustomRole
             $this->rules->assertManageable($actor, $row);
             if (! $row->trashed()) {
                 return $row;
+            }
+            // Delete refuses a held role, but a holder can still reach one in the trash (an old worker
+            // during a deploy, a code-only rollback, hand-written SQL). Restoring would hand that holder
+            // the role's permissions again without anyone choosing to, so refuse. The row lock keeps a
+            // new holder out until this transaction ends (its foreign key needs a share lock on it).
+            if (DB::table('model_has_roles')->where('role_id', $row->getKey())->exists()) {
+                throw new RoleChangeRejectedException('restore_in_use');
             }
 
             /** @var list<string> $held */
