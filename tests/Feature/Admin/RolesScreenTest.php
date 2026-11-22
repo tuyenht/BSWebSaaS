@@ -206,6 +206,52 @@ it('says where each role stands and what it typically does', function (): void {
     });
 });
 
+it('says which role a copy was made from, also once that role is in the trash, and nothing for a role that is no copy', function (): void {
+    rscSystemRoles();
+    $admin = app(Tenancy::class)->enter(1, fn (): ?Role => Role::query()->where('site_id', 1)->where('name', 'admin')->first());
+    $source = rscCustom('Gốc', 40, ['entries.view']);
+    $elsewhere = rscCustom('Ngoài', 40, ['entries.view'], 2);
+    $link = fn (Role $copy, Role $from) => app(Tenancy::class)->enter(1, fn () => $copy->forceFill(['forked_from_role_id' => $from->getKey()])->save());
+    $link(rscCustom('Trợ lý', 60, ['entries.view']), $admin);
+    $link(rscCustom('Bản sao', 30, ['entries.view']), $source);
+    $link(rscCustom('Lạc', 20, ['entries.view']), $elsewhere);
+    rscCustom('Nhóm A', 15, ['entries.view']);
+    app(Tenancy::class)->enter(1, fn () => $source->delete());
+    $owner = rscMember('owner');
+
+    rscPage($owner, function (Testable $page): void {
+        $rows = collect($page->viewData('rows'))->keyBy('key');
+        expect($rows['Trợ lý']['from'])->toBe(__('rbac.role.admin'))
+            ->and($rows['Bản sao']['from'])->toBe('Gốc')
+            ->and($rows['Lạc']['from'])->toBeNull()        // another website's role is never named
+            ->and($rows['Nhóm A']['from'])->toBeNull()
+            ->and($rows['admin']['from'])->toBeNull();
+        $page->assertSeeText(__('admin.roles.from', ['role' => __('rbac.role.admin')]))
+            ->assertSeeText(__('admin.roles.from', ['role' => 'Gốc']))
+            ->assertDontSeeText(__('admin.roles.from', ['role' => 'Ngoài']));
+    });
+});
+
+it('gives a system role its one-line description when it has one', function (): void {
+    rscSystemRoles();
+    app(Tenancy::class)->enter(1, function (): void {
+        $role = Role::findOrCreate('customer_care', PermissionRegistry::GUARD);
+        $role->forceFill(['level' => 40, 'is_system' => true])->save();
+        $role->syncPermissions(['forms.view', 'forms.manage']);
+    });
+    rscCustom('customer_care_copy', 35, ['forms.view']);
+    $owner = rscMember('owner');
+
+    rscPage($owner, function (Testable $page): void {
+        $rows = collect($page->viewData('rows'))->keyBy('key');
+        expect($rows['customer_care']['desc'])->toBe(__('admin.roles.sys_desc.customer_care'))
+            ->and($rows['customer_care']['desc'])->not->toBe('admin.roles.sys_desc.customer_care')
+            ->and($rows['editor']['desc'])->toBeNull()
+            ->and($rows['customer_care_copy']['desc'])->toBeNull();
+        $page->assertSeeText(__('admin.roles.sys_desc.customer_care'));
+    });
+});
+
 it('finds roles without minding accents, narrows them by chip, and says how many it found', function (): void {
     rscSystemRoles();
     rscCustom('Duyệt tin', 40, ['entries.view']);

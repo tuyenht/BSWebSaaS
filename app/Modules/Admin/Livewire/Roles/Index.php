@@ -17,6 +17,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -209,7 +210,10 @@ final class Index extends Component
         try {
             // a savepoint inside the request's tenancy transaction: a failed read leaves it usable for the rest of the page
             [$roles, $members, $invites] = DB::transaction(fn (): array => [
-                Role::query()->where('site_id', $siteId)->with('permissions:id,name')->get(['id', 'name', 'level', 'is_system']),
+                // the role a copy was made from comes in one query, a trashed one too: its name still tells where the copy began
+                Role::query()->where('site_id', $siteId)
+                    ->with(['permissions:id,name', 'forkedFrom' => fn (BelongsTo $q): BelongsTo => $q->withTrashed()->select(['id', 'name', 'site_id', 'is_system'])])
+                    ->get(['id', 'name', 'level', 'is_system', 'site_id', 'forked_from_role_id']),
                 app(MemberDirectory::class)->counts()['roles'],
                 app(InvitationDirectory::class)->roleCounts('pending'),
             ]);
@@ -260,7 +264,7 @@ final class Index extends Component
      * @param  Collection<int, Role>  $roles
      * @param  array<string, int>  $members
      * @param  array<string, int>  $invites
-     * @return array{key: string, name: string, system: bool, pos: string, members: int, invites: int, membersText: string, typical: string}
+     * @return array{key: string, name: string, system: bool, from: string|null, desc: string|null, pos: string, members: int, invites: int, membersText: string, typical: string}
      */
     private function rowView(Role $role, Collection $roles, array $members, array $invites): array
     {
@@ -271,6 +275,8 @@ final class Index extends Component
             'key' => $role->name,
             'name' => RoleLabel::for($role),
             'system' => $role->is_system,
+            'from' => self::forkedFromName($role),
+            'desc' => $role->is_system ? self::systemDesc($role->name) : null,
             'pos' => RoleAbilities::position($role, $roles),
             'members' => $m,
             'invites' => $i,
@@ -385,6 +391,30 @@ final class Index extends Component
         $rest = count($held) - count($top);
 
         return $rest > 0 ? $text.' · '.trans_choice('admin.roles.more_jobs', $rest, ['n' => $rest]) : $text;
+    }
+
+    /**
+     * «Tạo từ: X» on a role of the site's own: the role it was copied from, also when that one is in
+     * the trash now; nothing when it was never a copy or its source is gone for good. A source on
+     * another website is never named.
+     */
+    private static function forkedFromName(Role $role): ?string
+    {
+        $source = $role->is_system ? null : $role->forkedFrom;
+        if (! $source instanceof Role || (! $source->is_system && $source->site_id !== $role->site_id)) {
+            return null;
+        }
+
+        return RoleLabel::for($source);
+    }
+
+    /** The one-line description of a system role, when there is one for its name. */
+    private static function systemDesc(string $name): ?string
+    {
+        $key = 'admin.roles.sys_desc.'.$name;
+        $text = Cast::string(__($key));
+
+        return $text !== $key && $text !== '' ? $text : null;
     }
 
     /** «N thành viên» and, when some wait, « · M lời mời». */

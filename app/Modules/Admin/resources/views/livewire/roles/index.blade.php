@@ -177,6 +177,12 @@
                                     <x-bs-admin::badge color="warning" soft pill><x-bs-admin::icon name="ri-user-settings" class="size-3.5" />{{ __('admin.roles.chip_cust') }}</x-bs-admin::badge>
                                 @endif
                             </span>
+                            @if ($r['from'] !== null)
+                                <p class="m-0 text-small text-text-muted [overflow-wrap:anywhere]">{{ __('admin.roles.from', ['role' => $r['from']]) }}</p>
+                            @endif
+                            @if ($r['desc'] !== null)
+                                <p class="m-0 text-small text-text-muted [text-wrap:pretty]">{{ $r['desc'] }}</p>
+                            @endif
                             <p class="list-line m-0"><span>{{ $r['pos'] }}</span><span>{{ $r['membersText'] }}</span></p>
                         </x-bs-admin::list.cell>
                         <x-bs-admin::list.cell col="f1">{{ $r['pos'] }}</x-bs-admin::list.cell>

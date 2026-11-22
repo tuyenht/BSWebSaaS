@@ -433,7 +433,9 @@ it('lists the roles on a flat query budget, whatever the number of roles and mem
         app(Tenancy::class)->enter(1, function () use ($from, $to): void {
             foreach (range($from, $to) as $i) {
                 $role = Role::findOrCreate('Nhóm '.$i, PermissionRegistry::GUARD);
-                $role->forceFill(['level' => 10 + $i, 'is_system' => false])->save();
+                // each a copy of the one before: «Tạo từ» is read with the list, never per row
+                $from = $i > 1 ? Role::query()->where('site_id', 1)->where('name', 'Nhóm '.($i - 1))->value('id') : null;
+                $role->forceFill(['level' => 10 + $i, 'is_system' => false, 'forked_from_role_id' => $from])->save();
                 $role->syncPermissions(['entries.view', 'media.view', 'forms.view']);
                 User::factory()->create()->assignRole($role);
             }
