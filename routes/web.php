@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Http\Controllers\AccessRequestController;
 use App\Modules\Admin\Http\Controllers\HintPreferenceController;
+use App\Modules\Admin\Http\Controllers\LeadExportController;
 use App\Modules\Admin\Http\Controllers\OAuthController;
 use App\Modules\Admin\Http\Controllers\SessionController;
 use App\Modules\Admin\Http\Controllers\SupportSignInController;
@@ -60,6 +61,7 @@ use App\Modules\Admin\Livewire\TwoFactorChallenge;
 use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
 use App\Modules\Admin\Livewire\WebsiteAppearanceSettings;
 use App\Modules\Admin\Livewire\WorkflowSettings;
+use App\Modules\Admin\Support\Leads\LeadExportTicket;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Cms\Models\ContentBlock;
@@ -357,6 +359,13 @@ Route::prefix(config('admin.prefix', 'admin'))
         // screen's own no-permission card; the component asks forms.view / forms.manage on every
         // request (the livewire/update endpoint bypasses route middleware). Addressed by ulid (D2).
         Route::get('/forms', FormsInbox::class)->name('admin.forms.index');
+        // «Tải danh sách về máy»: the CSV, behind the one-time ticket the dialog issued once the
+        // member typed their password or code again. The controller asks the plan, forms.manage and
+        // "not a support session" itself; the ticket is bound to the member, the site and the filter.
+        Route::get('/forms/export/{token}', LeadExportController::class)
+            ->where('token', LeadExportTicket::PATTERN)
+            ->middleware('throttle:20,1')
+            ->name('admin.forms.export');
         Route::get('/forms/{ulid}', FormsInbox::class)->name('admin.forms.show');
         // Biểu mẫu (the forms themselves, contacts module): no `can:` here either — the screens show
         // the plan and no-permission cards themselves and ask FormPolicy on every request and write.

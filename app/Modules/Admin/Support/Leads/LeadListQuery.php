@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Support\Leads;
 
 use App\Modules\Forms\Models\Form;
+use App\Modules\Forms\Models\FormField;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Forms\Support\LeadSearchTerms;
 use App\Modules\Shared\Support\Cast;
@@ -63,6 +64,82 @@ final class LeadListQuery
 
     /** @var array<string, array<string, int>> the word counts of each search read so far (termCounts()) */
     private array $termCounts = [];
+
+    /** "Now" for the time window, when a long read must not see it move (pinNow()). */
+    private ?CarbonImmutable $now = null;
+
+    /** The last search read gathered its leads first (searchIn()): their ids are a bounded list. */
+    private bool $gathers = false;
+
+    /**
+     * Fix "now" for the presets (today, 7 and 30 days), so a read in many statements — the CSV
+     * file, chunk after chunk — keeps one window from its first statement to its last.
+     */
+    public function pinNow(): self
+    {
+        $this->now = $this->time->now();
+
+        return $this;
+    }
+
+    /**
+     * The ids of a tab's leads, newest first (undated ones first), when the search gathers its
+     * leads (at most the gather limit of them, see searchIn()); null when there is no search or the
+     * search walks the list instead. A read in many statements takes them once and then reads the
+     * leads by id, so the gathering runs once and not once per statement.
+     *
+     * @return list<int>|null
+     */
+    public function gatheredIds(string $tab): ?array
+    {
+        if (trim($this->search) === '') {
+            return null;
+        }
+        $query = self::inTab($this->base(), $tab)->toBase();
+        if (! $this->gathers) {
+            return null;
+        }
+
+        return array_values(array_map(fn (mixed $id): int => Cast::int($id), $query->orderByRaw('created_at desc nulls first')->orderByDesc('ulid')->pluck('id')->all()));
+    }
+
+    /**
+     * The list a screen's filter asks for: the search, the forms ticked (by ulid, kept only when
+     * they are among $forms), the time window. Forms ticked but none of them this site's (gone,
+     * another website's, past the forms read) match no rows, never the whole list.
+     *
+     * @param  list<string>  $formUlids
+     * @param  Collection<int, Form>  $forms  the site's forms (knownForms())
+     * @param  list<int>  $hidden  the site's forms being deleted (knownForms())
+     */
+    public static function of(string $search, array $formUlids, string $when, string $from, string $to, Collection $forms, array $hidden, SiteTime $time): self
+    {
+        $ids = array_values($forms->whereIn('ulid', $formUlids)->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->all());
+
+        return new self(trim($search), $ids, $when, $from, $to, $time, $formUlids !== [] && $ids === [], $hidden);
+    }
+
+    /**
+     * The site's forms (disabled ones too: their leads stay), each with its fields for the answers,
+     * and the ids of those being deleted, whose leads no list shows, read in the same statement
+     * (first, so the 200 never crowd them out).
+     *
+     * @return array{0: Collection<int, Form>, 1: list<int>}
+     */
+    public static function knownForms(): array
+    {
+        $read = Form::query()->withoutGlobalScope(Form::NOT_DELETING)->select(['id', 'ulid', 'key', 'name', 'status'])
+            ->orderByRaw('status = ? desc', [Form::DELETING])->orderBy('id')->limit(200)->get();
+        $forms = $read->filter(fn (Form $form): bool => $form->status !== Form::DELETING)->values();
+        $hidden = array_values($read->filter(fn (Form $form): bool => $form->status === Form::DELETING)->map(fn (Form $form): int => $form->id)->all());
+        $fields = FormField::query()->whereIn('form_id', $forms->pluck('id')->all())
+            ->select(['id', 'form_id', 'key', 'type', 'label', 'options', 'sort_order'])->orderBy('sort_order')->orderBy('id')->get()->groupBy('form_id');
+        foreach ($forms as $form) {
+            $form->setRelation('fields', $fields->get($form->id) ?? new Collection);
+        }
+
+        return [$forms, $hidden];
+    }
 
     /**
      * The site's leads a screen may show: none of a form being deleted, which reads as gone
@@ -257,6 +334,7 @@ final class LeadListQuery
      */
     private function searchIn(Builder $query): void
     {
+        $this->gathers = false;
         $words = trim($this->search);
         if ($words === '') {
             return;
@@ -289,6 +367,7 @@ final class LeadListQuery
                 $bindings = [...$bindings, $siteId, ...$values];
             }
             $query->whereRaw("form_submissions.id = any (array({$sql}))", $bindings);
+            $this->gathers = true;
 
             return;
         }
@@ -340,7 +419,7 @@ final class LeadListQuery
      */
     private function window(Builder $query, string $when): void
     {
-        $now = $this->time->now();
+        $now = $this->now ?? $this->time->now();
         match ($when) {
             'today' => $query->where('created_at', '>=', $now->startOfDay()->utc()),
             '7' => $query->where('created_at', '>=', $now->subDays(7)->utc()),
