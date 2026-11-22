@@ -129,6 +129,22 @@ final class EntryNotifier
         }
     }
 
+    /**
+     * The time came and the post could not go live because $path, an address its publication writes
+     * (its own, or a sub-page's that moves with it), is used by other content: the author and whoever
+     * scheduled it learn it, once, and how to fix it. $sentence: `failed_address` (a draft again, to be
+     * scheduled again), `failed_address_draft` (a draft at the flow's start, to be sent for review) or
+     * `failed_address_review` (waiting for review again). Nobody made this move, so nobody is left out.
+     */
+    public function scheduleAddressTaken(Entry $entry, string $locale, ?int $schedulerId, string $sentence, string $path): void
+    {
+        $data = [...$this->plainFacts($entry, $locale), 'sentence' => $sentence, 'path' => $path];
+
+        foreach (array_unique(array_filter([$entry->author_id, $schedulerId], is_int(...))) as $userId) {
+            Notify::user($userId, 'workflow.scheduled', $data);
+        }
+    }
+
     /** @return array{entry: string, locale: string, title: string} */
     private function plainFacts(Entry $entry, string $locale): array
     {

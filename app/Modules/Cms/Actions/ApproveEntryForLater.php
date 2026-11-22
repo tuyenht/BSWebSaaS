@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Cms\Actions;
 
+use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
+use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Exceptions\SchedulePastException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
@@ -54,6 +56,9 @@ final readonly class ApproveEntryForLater
 
     /** The notice sentence of any hold that ends at the flow's initial stage: a draft again, to be sent for review. */
     private const string HELD_TO_DRAFT = 'draft';
+
+    /** The audit mark of a post taken out of the due queue because an address its publication writes is taken. */
+    public const string HELD_ADDRESS = 'address';
 
     public function __construct(
         private EntryWorkflowResolver $workflows,
@@ -323,6 +328,84 @@ final readonly class ApproveEntryForLater
         });
 
         return $result;
+    }
+
+    /**
+     * entries:publish-due after a due post was refused because an address its publication writes is
+     * taken (RouteConflictException: its own, or a sub-page's that moves along with it; the refused
+     * publication rolled back in its own savepoint, so the row is still scheduled). Left due, it would
+     * fail the same way every minute until someone changes an address, and nobody would know. So it
+     * leaves the due queue, its time and approver cleared: under an approval flow it goes back to
+     * waiting at its stage (a draft at the flow's initial stage), as a hold does; with no flow it is a
+     * draft again. Its author and whoever scheduled it (the approver; for a post scheduled from the
+     * status menu, the member the audit trail names, best-effort) are told once, with the address.
+     *
+     * @return bool false when the row was no longer due (trashed, cancelled, rescheduled or gone) and nothing was written
+     */
+    public function holdTakenAddress(Entry $entry, RouteConflictException $conflict): bool
+    {
+        return DB::transaction(function () use ($entry, $conflict): bool {
+            $locked = Entry::withTrashed()->whereKey($entry->id)->lockForUpdate()->first();
+            if ($locked === null) {
+                return false;
+            }
+            $entry->refresh();
+
+            $due = $entry->status === EntryStatus::Scheduled->value
+                && ! $entry->trashed()
+                && $entry->published_at !== null
+                && $entry->published_at <= now();
+            if (! $due) {
+                return false;
+            }
+
+            $scheduler = $entry->scheduled_by ?? $this->scheduledFromStatusMenuBy($entry);
+            $workflow = $this->workflows->forEntry($entry);
+            $atStart = true;
+            if ($workflow instanceof Workflow) {
+                $workflow->loadMissing('states');
+                $stage = $workflow->states->firstWhere('key', EntryWorkflowResolver::originIn($workflow, $entry));
+                $atStart = $stage instanceof WorkflowState && $stage->is_initial;
+            }
+            $status = $atStart ? EntryStatus::Draft->value : EntryStatus::Pending->value;
+
+            $entry->update(['status' => $status, 'published_at' => null, 'scheduled_by' => null]
+                + ($workflow instanceof Workflow ? [] : ['workflow_state' => null]));
+            if ($workflow instanceof Workflow && $atStart) {
+                $this->translationsToDraft($entry);
+            }
+            EntryStatusAudit::record($entry, EntryStatus::Scheduled->value, $status, 'scheduler', null, ['held' => self::HELD_ADDRESS, 'path' => $conflict->path], actorLabel: 'system');
+
+            $locale = $this->localeOf($entry);
+            if ($locale !== null) {
+                $this->notifier->scheduleAddressTaken($entry, $locale, $scheduler, match (true) {
+                    ! $workflow instanceof Workflow => 'failed_address',
+                    $atStart => 'failed_address_draft',
+                    default => 'failed_address_review',
+                }, $conflict->path);
+            }
+
+            return true;
+        });
+    }
+
+    /**
+     * Who set the time of a post scheduled from the status menu: that road keeps no approver on the row
+     * (scheduled_by is an approval under a flow), so the newest status line that moved it to `scheduled`
+     * names them. The audit trail is best-effort: null when it has no such line.
+     */
+    private function scheduledFromStatusMenuBy(Entry $entry): ?int
+    {
+        $actor = AuditLog::query()
+            ->where('auditable_type', Entry::class)
+            ->where('auditable_id', $entry->id)
+            ->where('site_id', $entry->site_id)
+            ->where('action', EntryStatusAudit::ACTION)
+            ->where('meta->to', EntryStatus::Scheduled->value)
+            ->orderByDesc('id')
+            ->value('actor_id');
+
+        return is_numeric($actor) ? (int) $actor : null;
     }
 
     /**

@@ -16,6 +16,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Notifications\Models\SiteNotification;
@@ -274,6 +275,49 @@ it('keeps the post offline when the flow changes before the time', function (str
     });
     expect(laterNotices(1, $author))->toBe(['approved', 'failed_flow']);
 })->with(['move removed', 'move asks a reason']);
+
+it('sends a post approved for later back to review when its address was taken before its time, and tells its author and approver once', function (): void {
+    [$author, $approver] = laterPeople();
+    $categoryId = laterSection();
+
+    [$post, $path] = app(Tenancy::class)->enter(1, function () use ($author, $approver, $categoryId): array {
+        $post = laterPost($categoryId, $author);
+        app(ApproveEntryForLater::class)->approve($post, 'vi', $approver, 'approve', now()->addHour());
+        // before its time, a live page takes the address the post would go live at
+        $path = app(PathBuilder::class)->forEntry($post->fresh(), 'vi', 'ban-tin');
+        $other = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()->subDay()]);
+        $other->translations()->create(['locale' => 'vi', 'title' => 'Trang khác', 'slug' => 'trang-khac', 'status' => 'published', 'body' => ['blocks' => []]]);
+        SiteRoute::query()->create(['locale' => 'vi', 'path' => $path, 'entry_id' => $other->id]);
+
+        return [$post, $path];
+    });
+
+    $this->travel(2)->hours();
+    $this->artisan('entries:publish-due')
+        ->expectsOutput(laterSweepSays(published: 0, held: 0))
+        ->expectsOutput('1 entr(y/ies) not published because an address they need is already in use: taken off the schedule, their author and scheduler told.')
+        ->assertSuccessful();
+
+    app(Tenancy::class)->enter(1, function () use ($post): void {
+        $fresh = $post->fresh();
+        // waiting at the stage it was approved from, back in the review inbox, never put live
+        expect($fresh->status)->toBe('pending')
+            ->and($fresh->workflow_state)->toBe('pending')
+            ->and($fresh->scheduled_by)->toBeNull()
+            ->and($fresh->published_at)->toBeNull()
+            ->and(SiteRoute::query()->where('entry_id', $post->id)->exists())->toBeFalse();
+    });
+    $sent = fn (User $user): array => app(Tenancy::class)->enter(1, fn (): array => SiteNotification::query()
+        ->where('user_id', $user->id)->where('kind', 'workflow.scheduled')->where('data->sentence', 'failed_address_review')
+        ->pluck('data')->map(fn (array $data): string => (string) ($data['path'] ?? ''))->all());
+    expect(laterNotices(1, $author))->toBe(['approved', 'failed_address_review'])
+        ->and(laterNotices(1, $approver))->toBe(['failed_address_review'])
+        ->and($sent($author))->toBe([$path]);
+
+    // told once: the next run finds nothing due
+    $this->artisan('entries:publish-due')->expectsOutput(laterSweepSays(published: 0, held: 0))->assertSuccessful();
+    expect(laterNotices(1, $approver))->toBe(['failed_address_review']);
+});
 
 it('publishes at its time, like any scheduled post, a post approved for later whose flow was switched off since', function (bool $approverGone): void {
     [$author, $approver] = laterPeople();
