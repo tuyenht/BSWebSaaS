@@ -196,6 +196,10 @@ return [
     |
     */
 
+    // maxTime: every worker restarts (after its current job) within an hour. A queue worker keeps
+    // what it loaded for its whole life; this bounds how long anything it could not be told about
+    // lives on — e.g. a permission change whose cache version could not be written
+    // (VersionedPermissionRegistrar logs that). An hour costs one cold boot per worker per hour.
     'defaults' => [
         'supervisor-1' => [
             'connection' => 'redis',
@@ -203,7 +207,7 @@ return [
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'maxProcesses' => 1,
-            'maxTime' => 0,
+            'maxTime' => 3600,
             'maxJobs' => 0,
             'memory' => 128,
             'tries' => 1,
@@ -220,7 +224,7 @@ return [
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'maxProcesses' => 1,
-            'maxTime' => 0,
+            'maxTime' => 3600,
             'maxJobs' => 0,
             'memory' => 128,
             'tries' => 1,
