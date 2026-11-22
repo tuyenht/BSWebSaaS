@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Livewire\AdminUiSettings;
 use App\Modules\Admin\Support\SettingsRepository;
+use App\Modules\Admin\Theme\AdminChromeResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -91,6 +92,11 @@ it('loads the stored pins and drops a key set back to inherit', function (): voi
 
         expect(app(SettingsRepository::class)->get('admin_theme'))->toBe(['topbar' => 'dark']);
     });
+});
+
+it('offers no site-wide contrast: it is each member\'s own choice', function (): void {
+    expect(AdminChromeResolver::siteFields())->not->toHaveKey('contrast')->toHaveKey('text_size')
+        ->and(property_exists(AdminUiSettings::class, 'contrast'))->toBeFalse();
 });
 
 it('appears in the settings nav only for settings.manage holders', function (): void {

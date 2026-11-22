@@ -78,8 +78,8 @@
  | The blocks below activate ONLY when the matching attribute is set on <html>
  | (Customizer / SSR); with no attribute the @theme values render today's look.
  | ORDER IS LOAD-BEARING (equal specificity, later wins):
- |   dark scheme → [data-topbar=dark] → [data-sidebar=light] → gradients
- | so an explicit topbar/sidebar variant beats the scheme's zone values.
+ |   dark scheme → high contrast (light, then dark) → [data-topbar=dark] → [data-sidebar=light] → gradients
+ | so an explicit topbar/sidebar variant beats the scheme's zone values (high contrast sets no zone value).
  | AA (measured, WCAG): text ≥4.5 · icons/11px micro-labels ≥3.0. Deviations
  | from the Velzon reference values are AA bumps, noted `vz-ref:`.
  | Brand-coloured values derive from the brand tokens (--color-primary-base / --color-primary,
@@ -103,6 +103,7 @@
     --color-border-strong: #24304d;
     --color-border-input: #6b7896;                     /* form-field edge · 3.7 on the card */
     --color-border-soft: #1b2642;
+    --color-track: #202b45;                            /* progress/meter track, disabled button fill */
     --color-text-strong: #eef2fa;                      /* 14.4 on the card */
     --color-text: #c5cde0;                             /* 10.1 on the card */
     --color-text-muted: #9aa5bf;                       /* 6.5 on the card */
@@ -139,6 +140,38 @@
     --color-sidebar-fg: #a9b4cc;                       /* 8.9 */
     --color-sidebar-active: color-mix(in srgb, var(--color-primary-on-dark) 14%, transparent);
     --color-sidebar-title: #8e9ab5;                    /* group titles are text · 6.3 */
+}
+
+/* High contrast — data-contrast="high" on <html> (My account › Tương phản cao, or the device's
+   "more contrast" when the member has not chosen: theme-boot). Only the neutral text and border
+   roles change, so every screen follows without CSS of its own: text >= 7:1 on the card, the page
+   and the hover/zebra fills; every border, dividers included, >= 3:1 and a field edge >= 6.5:1;
+   a 3px focus ring. Surfaces, --color-track (the fill under a progress bar), the brand and the
+   status hues keep their values (already >= 4.5).
+   The light values sit here, after the dark block; the dark ones in the next block (more specific),
+   so the pair works in both schemes. node scripts/contrast-check.mjs measures both. */
+:root[data-contrast='high'] {
+    --color-text-strong: #0f1a33;                      /* 17.2 on the card */
+    --color-text: #1f2b4d;                             /* 13.9 card · 12.5 hover fill */
+    --color-text-muted: #3c4765;                       /* 9.2 card · 8.3 hover fill */
+    --color-text-faint: #4b5470;                       /* 7.5: decorative detail reads too */
+    --color-border: #737a8f;                           /* 4.2 card · 3.8 hover fill */
+    --color-border-strong: #737a8f;
+    --color-border-soft: #737a8f;
+    --color-border-input: #4b5470;                     /* 7.5 card · 6.8 page */
+    --focus-ring-width: 3px;
+}
+
+:root[data-contrast='high'][data-bs-theme='dark'], /* legacy-token-ok: AdminChromeResolver still writes this attribute */
+:root[data-contrast='high'][data-theme='dark'] {
+    --color-text-strong: #ffffff;                      /* 16.1 on the card */
+    --color-text: #e3e8f3;                             /* 13.1 card · 11.8 hover fill */
+    --color-text-muted: #c5cde0;                       /* 10.1 card · 9.1 hover fill */
+    --color-text-faint: #c5cde0;
+    --color-border: #7d89a8;                           /* 4.6 card · 4.1 hover fill */
+    --color-border-strong: #7d89a8;
+    --color-border-soft: #7d89a8;
+    --color-border-input: #a9b4cc;                     /* 7.7 card · 8.5 page */
 }
 
 /* Dark topbar — ONE block for both schemes: the brand fill, white ink on it (the table's solid

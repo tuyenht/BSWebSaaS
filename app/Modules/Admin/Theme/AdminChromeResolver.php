@@ -44,6 +44,10 @@ final readonly class AdminChromeResolver
         // Per-user motion (My account → Giảm chuyển động): auto follows the device setting;
         // reduce stops transitions and animations in the admin whatever the device says.
         'motion' => ['auto', 'reduce'],
+        // Per-user contrast (My account → Tương phản cao): high darkens text and borders through the
+        // contrast token set (admin-chrome.css). The member's own choice only, never a site default;
+        // with no choice the device's "more contrast" setting decides (CONTRAST_AUTO_ATTRIBUTE).
+        'contrast' => ['normal', 'high'],
     ];
 
     /** Axis → the <html> data-attribute it drives (Velzon/Bootstrap 5.3 names). */
@@ -58,6 +62,7 @@ final readonly class AdminChromeResolver
         'sidebar_image' => 'data-sidebar-image',
         'text_size' => 'data-text-size',
         'motion' => 'data-motion',
+        'contrast' => 'data-contrast',
     ];
 
     /**
@@ -71,12 +76,25 @@ final readonly class AdminChromeResolver
     public const string SCHEME_AUTO_ATTRIBUTE = 'data-scheme-auto';
 
     /**
+     * Axes only a member sets for themselves: the site tier never pins them (the Appearance
+     * settings page leaves them out), so they always read app default → the member's choice.
+     */
+    public const array USER_ONLY_FIELDS = ['contrast'];
+
+    /**
+     * A member who has not chosen a contrast follows the device: the server renders the default
+     * into data-contrast with this flag, and theme-boot swaps in high before paint when the
+     * device asks for more contrast (prefers-contrast: more), and again on every OS switch.
+     */
+    public const string CONTRAST_AUTO_ATTRIBUTE = 'data-contrast-auto';
+
+    /**
      * The axes the platform console renders. Its sidebar, topbar and position never follow
      * tenant-admin variants; the sidebar size is the one exception — the console's menu
      * button collapses its sidebar to the icon rail from 1280px, using the same per-user
-     * preference as the tenant shell. The text size and the motion setting are a person's needs, so they follow them too.
+     * preference as the tenant shell. The text size, the motion and the contrast settings are a person's needs, so they follow them too.
      */
-    public const array PLATFORM_FIELDS = ['scheme', 'sidebar_size', 'text_size', 'motion'];
+    public const array PLATFORM_FIELDS = ['scheme', 'sidebar_size', 'text_size', 'motion', 'contrast'];
 
     public function __construct(private SettingsRepository $settings) {}
 
@@ -91,6 +109,17 @@ final readonly class AdminChromeResolver
     }
 
     /**
+     * The axes a site may pin as its default (the Appearance settings page): every axis but the
+     * member-only ones.
+     *
+     * @return array<string, list<string>>
+     */
+    public static function siteFields(): array
+    {
+        return array_diff_key(self::FIELDS, array_flip(self::USER_ONLY_FIELDS));
+    }
+
+    /**
      * @return array<string, string> field => resolved value (always complete)
      */
     public function resolve(?User $user): array
@@ -98,7 +127,8 @@ final readonly class AdminChromeResolver
         $resolved = array_map(fn (array $allowed): string => $allowed[0], self::FIELDS);
 
         if (! AdminPlane::isPlatform()) {
-            $resolved = $this->overlay($resolved, $this->settings->get('admin_theme') ?? []);
+            $site = Cast::arr($this->settings->get('admin_theme'));
+            $resolved = $this->overlay($resolved, array_diff_key($site, array_flip(self::USER_ONLY_FIELDS)));
         }
 
         return $this->overlay($resolved, Cast::arr($user?->preferences['theme'] ?? null));
@@ -121,8 +151,17 @@ final readonly class AdminChromeResolver
         if (self::followsDevice($user)) {
             $attributes[self::SCHEME_AUTO_ATTRIBUTE] = 'true';
         }
+        if (! self::choseContrast($user)) {
+            $attributes[self::CONTRAST_AUTO_ATTRIBUTE] = 'true';
+        }
 
         return $attributes;
+    }
+
+    /** Whether the member picked a contrast of their own (else the device decides). */
+    public static function choseContrast(?User $user): bool
+    {
+        return in_array(Cast::arr($user?->preferences['theme'] ?? null)['contrast'] ?? null, self::FIELDS['contrast'], true);
     }
 
     /** Whether the member chose "follow the device" for light/dark. */

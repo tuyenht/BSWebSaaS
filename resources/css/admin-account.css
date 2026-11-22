@@ -203,6 +203,16 @@
     grid-column: 1 / -1;
 }
 
+/* A switch row (Tương phản cao, laid out by utilities): its label and hint sit 2px apart. */
+.ac-sw .ac-lab {
+    margin: 0;
+}
+
+.ac-sw .ac-hint {
+    display: block;
+    margin: 2px 0 0;
+}
+
 .ac-opt {
     display: flex;
     align-items: center;
@@ -530,7 +540,7 @@
 .ac-meter i {
     height: 4px;
     border-radius: 2px;
-    background: var(--color-border-strong);
+    background: var(--color-track);
 }
 
 .ac-meter[data-s='1'] i:nth-child(-n + 1) {

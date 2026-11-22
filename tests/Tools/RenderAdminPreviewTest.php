@@ -65,6 +65,7 @@ use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\UserPreferences;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Provisioning\Actions\ProvisionSite;
@@ -199,6 +200,17 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.$path)->assertOk()->getContent();
         file_put_contents($dir.'/'.$name.'.html', $html);
     }
+
+    // The Tùy chọn tab with the owner's own high contrast on: <html data-contrast="high"> from the
+    // server, the switch on. Taken off again so every other screen renders with the defaults.
+    UserPreferences::set($owner, ['theme', 'contrast'], 'high');
+    UserPreferences::reload($owner);
+    app('livewire')->flushState();
+    $html = (string) $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/account?tab=prefs')->assertOk()->getContent();
+    expect($html)->toContain('data-contrast="high"');
+    file_put_contents($dir.'/account-prefs-hc.html', $html);
+    UserPreferences::forget($owner, ['theme', 'contrast']);
+    UserPreferences::reload($owner);
 
     // The Trang list as a page tree three levels deep (each row with its grip and the move items), and
     // the same list searched, where a drag and «Chuyển lên / xuống» are locked with their reason.
@@ -1384,5 +1396,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         ->and(file_get_contents($dir.'/review-inbox-changes-approve.html'))->toContain(e(__('entries.chg.ask_now')))
         ->and(file_get_contents($dir.'/review-inbox-changes-return.html'))->toContain(e(__('entries.chg.return_err')));
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 124);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 125);
 });

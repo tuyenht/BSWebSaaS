@@ -73,7 +73,7 @@
         <x-bs-admin::button color="primary" data-sb-save aria-describedby="{{ $stat }}"
                             aria-disabled="{{ $blocked ? 'true' : 'false' }}" x-bind:aria-disabled="blocked ? 'true' : 'false'"
                             aria-busy="false" x-bind:aria-busy="busy === 'save' ? 'true' : 'false'" x-on:click="go()"
-                            class="aria-busy:cursor-progress aria-disabled:cursor-not-allowed aria-disabled:bg-border aria-disabled:text-text-muted aria-disabled:shadow-none aria-disabled:hover:brightness-100">
+                            class="aria-busy:cursor-progress aria-disabled:cursor-not-allowed aria-disabled:bg-track aria-disabled:text-text-muted aria-disabled:shadow-none aria-disabled:hover:brightness-100">
             <span class="contents" x-show="busy !== 'save'"><x-bs-admin::icon name="ri-save-3" :class="$glyph" /></span>
             <span class="contents" x-show="busy === 'save'" x-cloak><x-bs-admin::icon name="ri-loader-4" :class="$glyph.' motion-safe:animate-spin'" /></span>
             <span x-text="busy === 'save' ? @js(__('admin.savebar.saving')) : @js(__('admin.savebar.save'))">{{ __('admin.savebar.save') }}</span>

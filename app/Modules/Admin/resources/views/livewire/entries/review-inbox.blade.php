@@ -338,7 +338,7 @@
                             @endforeach
                         </ol>
                         <div class="flex flex-col gap-1.5 @min-[37.5rem]:hidden" data-inbox-progress>
-                            <span class="flex h-1.5 overflow-hidden rounded-full bg-border" aria-hidden="true">
+                            <span class="flex h-1.5 overflow-hidden rounded-full bg-track" aria-hidden="true">
                                 <span class="block h-1.5 rounded-full bg-primary-text" style="width: {{ $reader['step_count'] > 1 ? round($doneCount / ($reader['step_count'] - 1) * 100) : 100 }}%"></span>
                             </span>
                             <span class="text-caption text-text-muted">{{ $nextStep !== null ? __('admin.inbox.next_step', ['label' => $nextStep['label']]) : __('admin.inbox.last_step') }}</span>

@@ -8,6 +8,10 @@
  * text on its background must reach 4.5:1 (WCAG 1.4.3); borders, focus rings and icons 3:1 (1.4.11).
  * Gradients are sampled at 101 points and the worst point is reported.
  *
+ * High contrast (data-contrast="high", My account › Tương phản cao) is measured on top: every row
+ * again under it, for every brand colour and both schemes, plus HC_ROWS — the neutral text at 7:1
+ * and every border at 3:1, each one also stronger than without high contrast.
+ *
  * ROWS below say which token each piece of the UI paints with, by the standard names of
  * docs/notes/design-tokens.md (the old names Blade may still use are one-way aliases of these) —
  * when a component switches tokens, update its row here in the same change.
@@ -100,6 +104,8 @@ const overrideSelectors = (state) => {
     if (state.topbar === 'dark') active.push(":root[data-topbar='dark']");
     if (state.sidebar === 'light') active.push(":root[data-sidebar='light']");
     if (state.sidebar?.startsWith('gradient')) active.push(":root[data-sidebar^='gradient']");
+    if (state.contrast === 'high') active.push(":root[data-contrast='high']");
+    if (state.contrast === 'high' && state.scheme === 'dark') active.push(":root[data-contrast='high'][data-theme='dark']");
     return active;
 };
 
@@ -400,6 +406,9 @@ const ROWS = [
 
     // Badge "dark" soft — the neutral dark-text tier (no standard name with its value yet, app.css).
     { item: 'Màu ngữ nghĩa', role: 'Badge "dark" soft — chữ', fg: '--color-admin-dark-text', bg: ['--color-surface', ['--color-gray-900', 0.1]], min: 4.5 },
+
+    // A progress bar: the done part (the brand as ink) on its track (thanh ngôn ngữ, hộp duyệt bài).
+    { item: 'Thanh tiến độ', role: 'Phần đã xong (primary-text) trên rãnh --color-track', fg: '--color-primary-text', bg: ['--color-track'], min: 3 },
 ];
 
 // ── Storefront --primary-text ───────────────────────────────────────────────────────────────
@@ -492,6 +501,46 @@ for (const brand of BRANDS) {
     const ratioCell = (result, min) => (result ? `${passes(result, min) ? '✅' : '❌'} ${shown(result.value).toFixed(2)}` : '—');
     lines.push(`| ${brand.name} (\`${brand.key}\`) | \`${brand.solid}\` | \`${brand.ink}\` | ${ratioCell(worst.light[4.5], 4.5)} | ${ratioCell(worst.light[3], 3)} | ${ratioCell(worst.dark[4.5], 4.5)} | ${ratioCell(worst.dark[3], 3)} | ${failed.length ? failed.join('; ') : '0'} |`);
 }
+
+// High contrast: the neutral text roles at 7:1 on every surface they sit on, every border role at
+// 3:1, and each of them stronger than without high contrast (a high-contrast value that is weaker
+// than the normal one is a fault even above the minimum).
+const HC_SURFACES = [['--color-surface'], ['--color-bg'], ['--color-surface-hover'], ['--color-surface-muted']];
+const HC_ROWS = [
+    { role: 'Tiêu đề (text-strong)', fg: '--color-text-strong', bgs: HC_SURFACES, min: 7 },
+    { role: 'Chữ thường (text)', fg: '--color-text', bgs: HC_SURFACES, min: 7 },
+    { role: 'Chữ phụ (text-muted)', fg: '--color-text-muted', bgs: HC_SURFACES, min: 7 },
+    { role: 'Placeholder ô nhập', fg: '--color-placeholder', bgs: [['--color-surface'], ['--color-bg']], min: 7 },
+    { role: 'Viền chia (border)', fg: '--color-border', bgs: HC_SURFACES.slice(0, 3), min: 3 },
+    { role: 'Viền nhấn (border-strong)', fg: '--color-border-strong', bgs: HC_SURFACES.slice(0, 3), min: 3 },
+    { role: 'Viền mảnh (border-soft)', fg: '--color-border-soft', bgs: HC_SURFACES.slice(0, 3), min: 3 },
+    { role: 'Viền ô nhập / công tắc (border-input)', fg: '--color-border-input', bgs: HC_SURFACES.slice(0, 3), min: 4.5 },
+];
+lines.push('', '**Tương phản cao** (`data-contrast="high"`, Tài khoản của tôi › Tương phản cao, hoặc máy đặt "tăng tương phản" khi người dùng chưa chọn). Chữ trung tính ≥ 7 trên thẻ, nền trang, nền hover và nền xen kẽ; mọi viền ≥ 3 (viền ô nhập ≥ 4.5); mỗi giá trị phải đậm hơn khi tắt. Ô = tắt → bật.', '');
+lines.push('| Cặp | Ngưỡng | Sáng | Tối |', '|---|---|---|---|');
+for (const row of HC_ROWS) {
+    const cells = both.map((scheme) => {
+        const off = measure(row, { scheme, brand: defaultBrand });
+        const on = measure(row, { scheme, brand: defaultBrand, contrast: 'high' });
+        const ok = passes(on, row.min) && on.value > off.value;
+        if (!ok) failures++;
+        return `${ok ? '✅' : '❌'} ${shown(off.value).toFixed(2)} → ${shown(on.value).toFixed(2)} · \`${on.fg}\` / \`${on.bg}\``;
+    });
+    lines.push(`| ${row.role} | ${row.min} | ${cells[0]} | ${cells[1]} |`);
+}
+const hcFailed = [];
+for (const brand of BRANDS) {
+    for (const row of ROWS) {
+        for (const scheme of both) {
+            const result = row.fg === null ? null : measure(row, { scheme, brand, contrast: 'high' });
+            if (!passes(result, row.min)) hcFailed.push(`${brand.key}: ${row.role} (${scheme === 'light' ? 'Sáng' : 'Tối'}${result ? ` ${shown(result.value).toFixed(2)}` : ''})`);
+        }
+    }
+}
+failures += hcFailed.length;
+lines.push('', hcFailed.length === 0
+    ? `Mọi cặp của bảng đầu cũng đạt khi bật tương phản cao, cho cả ${BRANDS.length} màu thương hiệu, sáng và tối.`
+    : `Cặp chưa đạt khi bật tương phản cao: ${hcFailed.join(' · ')}`);
 
 lines.push('', `**Storefront — chữ màu thương hiệu** (\`--color-primary-text\` cho chữ trên nền sáng: thẻ = \`--color-surface\`, nền trang = \`color-mix(in srgb, --surface ${pageShare * 100}%, --ink)\`; \`--color-primary-on-dark\` cho chữ trên nền tối \`--ink\`: footer, menu con, CTA phụ; \`--color-on-primary\` cho chữ trên nền \`--color-primary\`. Tên cũ \`--primary-text\` · \`--primary-on-ink\` mang đúng giá trị đó.)`, '');
 lines.push('| Bộ màu | `--color-primary` | `--color-primary-text` | trên `--color-surface` | trên nền trang | `--color-primary-on-dark` | trên `--ink` | `--color-on-primary` | trên `--color-primary` |', '|---|---|---|---|---|---|---|---|---|');
