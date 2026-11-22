@@ -13,6 +13,18 @@ use PragmaRX\Google2FA\Google2FA;
  * wait); a code is taken once, even while the app still shows it.
  */
 
+/** A 6-digit code the authenticator does not accept now (none of the codes in its window). */
+function confirmWrongCode(string $secret): string
+{
+    foreach (['000000', '111111', '222222', '333333', '444444'] as $code) {
+        if (! app(TwoFactorService::class)->verify($secret, $code)) {
+            return $code;
+        }
+    }
+
+    throw new RuntimeException('no wrong code found');
+}
+
 function confirmTwoFactor(User $user): string
 {
     $service = app(TwoFactorService::class);
@@ -68,7 +80,7 @@ it('takes a current authenticator code once, with or without its space', functio
         ->and($confirm->code($user, 'abcdef'))->toBe(IdentityCheck::Missing)
         ->and($confirm->code($user, substr($code, 0, 3).' '.substr($code, 3)))->toBe(IdentityCheck::Confirmed)
         ->and($confirm->code($user, $code))->toBe(IdentityCheck::Wrong)
-        ->and($confirm->code($user, $code === '000000' ? '111111' : '000000'))->toBe(IdentityCheck::Wrong);
+        ->and($confirm->code($user, confirmWrongCode($secret)))->toBe(IdentityCheck::Wrong);
 });
 
 it('limits wrong codes like wrong passwords', function (): void {
@@ -76,7 +88,7 @@ it('limits wrong codes like wrong passwords', function (): void {
     $secret = confirmTwoFactor($user);
     $user = $user->fresh();
     $confirm = app(ConfirmIdentity::class);
-    $wrong = (new Google2FA)->getCurrentOtp($secret) === '000000' ? '111111' : '000000';
+    $wrong = confirmWrongCode($secret);
 
     foreach (range(1, ConfirmIdentity::ATTEMPTS) as $i) {
         $confirm->code($user, $wrong);
@@ -87,4 +99,25 @@ it('limits wrong codes like wrong passwords', function (): void {
 
 it('refuses a code from a member without two-step sign-in', function (): void {
     expect(app(ConfirmIdentity::class)->code(User::factory()->create(), '123456'))->toBe(IdentityCheck::NoTwoFactor);
+});
+
+it('counts wrong passwords and wrong codes together, and a right answer starts the count again', function (): void {
+    $user = User::factory()->create();
+    $secret = confirmTwoFactor($user);
+    $user = $user->fresh();
+    $confirm = app(ConfirmIdentity::class);
+    $wrong = confirmWrongCode($secret);
+
+    foreach (range(1, 4) as $i) {
+        $confirm->password($user, 'sai-'.$i);
+    }
+    expect($confirm->password($user, 'password'))->toBe(IdentityCheck::Confirmed);
+
+    // the count started again: four more wrong tries (two of each kind) still leave one
+    $confirm->password($user, 'sai');
+    $confirm->code($user, $wrong);
+    $confirm->password($user, 'sai');
+    $confirm->code($user, $wrong);
+    expect($confirm->code($user, $wrong))->toBe(IdentityCheck::Wrong)
+        ->and($confirm->password($user, 'password'))->toBe(IdentityCheck::Throttled);
 });

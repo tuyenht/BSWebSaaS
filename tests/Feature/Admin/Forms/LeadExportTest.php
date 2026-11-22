@@ -4,6 +4,7 @@ use App\Modules\Admin\Http\Controllers\LeadExportController;
 use App\Modules\Admin\Livewire\Forms\Inbox;
 use App\Modules\Admin\Support\Leads\LeadCsvExport;
 use App\Modules\Admin\Support\Leads\LeadExportTicket;
+use App\Modules\Audit\Facades\Audit;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Identity\Models\User;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use PragmaRX\Google2FA\Google2FA;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /*
  * «Tải danh sách về máy» in «Khách liên hệ»: a member who manages leads types their password (or
@@ -206,6 +208,39 @@ it('exports what the list shows: its group, its search and its dates', function 
         ->and(json_encode($meta))->not->toContain('dang');
 });
 
+it('writes leads without a time first, and keeps one window for a preset from first chunk to last', function (): void {
+    $manager = exportManager();
+    exportLead(1, 'Tuần này', ['created_at' => now()->subDays(2)]);
+    exportLead(1, 'Tháng trước', ['created_at' => now()->subDays(20)]);
+    $undated = exportLead(1, 'Không rõ lúc gửi');
+    DB::connection('pgsql_admin')->table('form_submissions')->where('ulid', $undated->ulid)->update(['created_at' => null]);
+
+    $all = exportRows($this->actingAs($manager)->get('http://a.test'.exportPath($manager))->assertOk()->streamedContent());
+    expect(array_column(array_slice($all, 1), 1))->toBe(['Không rõ lúc gửi', 'Tuần này', 'Tháng trước'])
+        ->and($all[1][6])->toBe('');
+
+    $week = exportRows($this->actingAs($manager)->get('http://a.test'.exportPath($manager, 'password', ['when' => '7']))->assertOk()->streamedContent());
+    expect(array_column(array_slice($week, 1), 1))->toBe(['Tuần này']);
+});
+
+it('gathers a search once and then reads its leads by id, whatever the number of chunks', function (): void {
+    $manager = exportManager();
+    exportLead(1, 'Đinh Bảo Ngọc');
+    exportLead(1, 'Đinh Gia Huy');
+    exportLead(1, 'Lý Thanh');
+
+    $response = $this->actingAs($manager)->get('http://a.test'.exportPath($manager, 'password', ['search' => 'dinh']))->assertOk();
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+    $rows = exportRows($response->streamedContent());
+    $log = DB::getQueryLog();
+    DB::disableQueryLog();
+
+    expect(array_column(array_slice($rows, 1), 1))->toEqualCanonicalizing(['Đinh Bảo Ngọc', 'Đinh Gia Huy']);
+    $gathers = array_filter($log, fn (array $q): bool => str_contains($q['query'], 'any (array(select t.lead_id'));
+    expect($gathers)->toHaveCount(1);
+});
+
 it('escapes every cell a spreadsheet would run as a formula', function (): void {
     $manager = exportManager();
     exportLead(1, '=HYPERLINK("http://evil.test","Bấm")', [
@@ -224,6 +259,55 @@ it('escapes every cell a spreadsheet would run as a formula', function (): void 
         ->and(LeadCsvExport::cell("\rx"))->toBe("'\rx")
         ->and(LeadCsvExport::cell('Bình thường = 1'))->toBe('Bình thường = 1')
         ->and(LeadCsvExport::cell(''))->toBe('');
+});
+
+it('escapes a form name that starts like a formula, in the real file', function (): void {
+    $manager = exportManager();
+    app(Tenancy::class)->enter(1, function (): void {
+        $form = Form::query()->create(['key' => 'evil', 'name' => ['vi' => '@cmd|calc', 'en' => '@cmd|calc'], 'status' => 'active']);
+        FormSubmission::query()->create(['form_id' => $form->id, 'name' => 'Vũ Hà', 'status' => 'new', 'data' => ['name' => 'Vũ Hà']]);
+    });
+
+    $rows = exportRows($this->actingAs($manager)->get('http://a.test'.exportPath($manager))->assertOk()->streamedContent());
+
+    expect($rows[1][4])->toBe("'@cmd|calc");
+});
+
+it('never keeps the password in the page or sends it back', function (): void {
+    $manager = exportManager();
+    $secret = 'password';
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $secret): void {
+        $page = Livewire::actingAs($manager)->test(Inbox::class)->call('openExport')->call('confirmExport', $secret)->assertDispatched('leads-export-ready');
+        $snapshot = (fn () => $this->lastState->getSnapshot())->call($page);
+        expect(json_encode($snapshot))->not->toContain('"'.$secret.'"')
+            ->and($page->html())->not->toContain('value="'.$secret.'"');
+    });
+});
+
+it('sends no file when its audit row cannot be written', function (): void {
+    $manager = exportManager();
+    exportLead(1, 'Mai Anh');
+    $path = exportPath($manager);
+    // the audit store refuses the row (the service is final: swap the facade's object)
+    Audit::swap(new class
+    {
+        public function recordOrFail(): never
+        {
+            throw new RuntimeException('audit down');
+        }
+
+        /** @param  array<int, mixed>  $args */
+        public function __call(string $method, array $args): mixed
+        {
+            return null;
+        }
+    });
+
+    $response = $this->actingAs($manager)->get('http://a.test'.$path);
+
+    expect($response->status())->toBe(500)
+        ->and($response->baseResponse)->not->toBeInstanceOf(StreamedResponse::class);
 });
 
 it('streams a large list by keyset chunks of 1,000, each read in its own tenant transaction, never by OFFSET', function (): void {

@@ -62,22 +62,38 @@ final class LeadExportController
         $name = LeadCsvExport::fileName($time);
 
         return new StreamedResponse(function () use ($export, $tenancy, $siteId, $filter, $locale): void {
+            // A big list takes longer than a page: no time limit while this file is written (the
+            // worker's own limit is put back afterwards, since an Octane worker sets it once when it
+            // starts), and the writer is not stopped when the browser goes away, so it can see that
+            // and say so in the closing audit row.
+            $limit = (int) ini_get('max_execution_time');
+            set_time_limit(0);
+            $ignored = ignore_user_abort(true);
             $out = fopen('php://output', 'wb');
-            if ($out === false) {
-                return;
-            }
-            $written = null;
+            $written = 0;
+            $complete = false;
             try {
-                $written = $export->write($siteId, $filter, $locale, $out);
-            } catch (Throwable $e) {
-                report($e);
+                if ($out === false) {
+                    return;
+                }
+                try {
+                    $complete = $export->write($siteId, $filter, $locale, $out, $written);
+                } catch (Throwable $e) {
+                    report($e);
+                    // the browser already holds part of the file: its last line says it is not whole
+                    $export->unfinished($out);
+                }
             } finally {
-                fclose($out);
+                if ($out !== false) {
+                    fclose($out);
+                }
+                $tenancy->enter($siteId, fn () => Audit::record('forms.leads.export_finished', ['meta' => [
+                    'rows' => $written,
+                    'complete' => $complete,
+                ]]));
+                ignore_user_abort((bool) $ignored);
+                set_time_limit($limit);
             }
-            $tenancy->enter($siteId, fn () => Audit::record('forms.leads.export_finished', ['meta' => [
-                'rows' => $written ?? 0,
-                'complete' => $written !== null,
-            ]]));
         }, 200, [
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="'.$name.'"',

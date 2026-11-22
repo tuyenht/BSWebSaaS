@@ -18,8 +18,7 @@ use Illuminate\Support\Facades\RateLimiter;
  * At most ATTEMPTS wrong tries per DECAY seconds, counted per member whichever of the two they
  * type (switching from the password to the code never buys more guesses); a success clears the
  * count. An empty field or a code that is not 6 digits is answered without counting a try. A code
- * is accepted once: the same code again, while its window is still open, counts as wrong, so a
- * code read over the member's shoulder cannot be replayed.
+ * is accepted once here: the same code again, while its window is still open, counts as wrong.
  */
 final readonly class ConfirmIdentity
 {
@@ -44,9 +43,10 @@ final readonly class ConfirmIdentity
         if ($password === '') {
             return IdentityCheck::Missing;
         }
+        if (! self::take($user)) {
+            return IdentityCheck::Throttled;
+        }
         if (! Hash::check($password, $hash)) {
-            RateLimiter::hit(self::key($user), self::DECAY);
-
             return IdentityCheck::Wrong;
         }
         RateLimiter::clear(self::key($user));
@@ -67,12 +67,13 @@ final readonly class ConfirmIdentity
         if (preg_match('/^\d{6}$/', $code) !== 1) {
             return IdentityCheck::Missing;
         }
+        if (! self::take($user)) {
+            return IdentityCheck::Throttled;
+        }
         // checked first, so a wrong code is never remembered as used; then the code is taken once
         // (an atomic add: two requests with the same code, only one gets it)
         if (! $this->twoFactor->verify($secret, $code)
             || ! Cache::add('confirm-identity:used:'.Cast::int($user->getKey()).':'.hash('sha256', $code), true, self::USED_CODE_TTL)) {
-            RateLimiter::hit(self::key($user), self::DECAY);
-
             return IdentityCheck::Wrong;
         }
         RateLimiter::clear(self::key($user));
@@ -84,6 +85,16 @@ final readonly class ConfirmIdentity
     public function retryIn(User $user): int
     {
         return max(1, RateLimiter::availableIn(self::key($user)));
+    }
+
+    /**
+     * Count this try before checking it (an atomic increment), so requests sent side by side never
+     * get more than ATTEMPTS checks in a window; false when this one is over the limit. A right
+     * answer clears the count afterwards.
+     */
+    private static function take(User $user): bool
+    {
+        return RateLimiter::hit(self::key($user), self::DECAY) <= self::ATTEMPTS;
     }
 
     private static function key(User $user): string

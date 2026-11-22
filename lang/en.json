@@ -1938,6 +1938,7 @@
     "leads.csv_sent": "Sent at",
     "leads.csv_status": "Status",
     "leads.csv_answers": "Answers",
+    "leads.csv_unfinished": "⚠ This file is NOT complete: an error stopped it part way. Please download the list again.",
     "leads.mark_spam": "Mark as spam",
     "leads.not_spam": "Not spam",
     "leads.erase": "Delete at the visitor's request",

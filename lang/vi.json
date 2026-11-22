@@ -1938,6 +1938,7 @@
     "leads.csv_sent": "Thời gian gửi",
     "leads.csv_status": "Trạng thái",
     "leads.csv_answers": "Nội dung",
+    "leads.csv_unfinished": "⚠ Tệp này CHƯA ĐỦ: có lỗi khi tạo tệp nên dừng giữa chừng. Hãy tải lại danh sách.",
     "leads.mark_spam": "Là thư rác",
     "leads.not_spam": "Không phải thư rác",
     "leads.erase": "Xóa theo yêu cầu của khách",

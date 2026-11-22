@@ -53,23 +53,28 @@ final readonly class LeadCsvExport
     }
 
     /**
-     * Write the file to $out; returns how many leads it holds.
+     * Write the file to $out, counting the leads written in $written as it goes (so a caller that
+     * catches a failure still knows how far it got). Returns false when the browser went away before
+     * the end (the rest is not read), true when the file is whole.
+     *
+     * A search that gathers its leads (LeadListQuery::gatheredIds(), at most its gather limit)
+     * takes their ids once and reads them CHUNK at a time by id; any other list walks by keyset.
      *
      * @param  array{tab: string, search: string, forms: list<string>, when: string, from: string, to: string}  $filter
      * @param  resource  $out
      */
-    public function write(int $siteId, array $filter, string $locale, $out): int
+    public function write(int $siteId, array $filter, string $locale, $out, int &$written = 0): bool
     {
-        /** @var array{0: Collection<int, Form>, 1: LeadListQuery, 2: string, 3: string} $read */
-        $read = $this->tenancy->enter($siteId, function () use ($filter): array {
-            [$forms, $hidden] = LeadListQuery::knownForms();
-
-            return [$forms, LeadListQuery::of($filter['search'], $filter['forms'], $filter['when'], $filter['from'], $filter['to'], $forms, $hidden, $this->time),
-                $this->time->zone(), $this->time->dateFormat()];
-        });
-        [$forms, $list, $zone, $dayFormat] = $read;
-        $byId = $forms->keyBy('id');
         $tab = in_array($filter['tab'], LeadListQuery::TABS, true) ? $filter['tab'] : 'all';
+        /** @var array{0: Collection<int, Form>, 1: LeadListQuery, 2: string, 3: string, 4: list<int>|null} $read */
+        $read = $this->tenancy->enter($siteId, function () use ($filter, $tab): array {
+            [$forms, $hidden] = LeadListQuery::knownForms();
+            $list = LeadListQuery::of($filter['search'], $filter['forms'], $filter['when'], $filter['from'], $filter['to'], $forms, $hidden, $this->time)->pinNow();
+
+            return [$forms, $list, $this->time->zone(), $this->time->dateFormat(), $list->gatheredIds($tab)];
+        });
+        [$forms, $list, $zone, $dayFormat, $ids] = $read;
+        $byId = $forms->keyBy('id');
 
         fwrite($out, "\xEF\xBB\xBF");
         $this->put($out, array_map(fn (string $key): string => Cast::string(__('leads.csv_'.$key)), ['ref', 'name', 'email', 'phone', 'form', 'page', 'sent', 'status', 'answers']));
@@ -77,13 +82,30 @@ final readonly class LeadCsvExport
         $written = 0;
         $undated = true;
         $cursor = null;
+        $page = 0;
         while (true) {
-            $rows = $this->tenancy->enter($siteId, fn (): BaseCollection => $this->chunk($list, $tab, $undated, $cursor));
+            if ($ids !== null) {
+                $part = array_slice($ids, $page * self::CHUNK, self::CHUNK);
+                $page++;
+                $rows = $part === [] ? new BaseCollection : $this->tenancy->enter($siteId, fn (): BaseCollection => $this->byIds($part));
+            } else {
+                $rows = $this->tenancy->enter($siteId, fn (): BaseCollection => $this->chunk($list, $tab, $undated, $cursor));
+            }
             foreach ($rows as $row) {
                 $this->put($out, $this->line($row, $byId->get(Cast::int($row->form_id)), $locale, $zone, $dayFormat));
                 $written++;
             }
             flush();
+            if (connection_aborted() === 1) {
+                return false;
+            }
+            if ($ids !== null) {
+                if (count($part) < self::CHUNK) {
+                    break;
+                }
+
+                continue;
+            }
             if ($rows->count() < self::CHUNK) {
                 if (! $undated) {
                     break;
@@ -100,7 +122,17 @@ final readonly class LeadCsvExport
             $cursor = [Cast::string($last->created_at), Cast::string($last->ulid)];
         }
 
-        return $written;
+        return true;
+    }
+
+    /**
+     * The last line of a file that could not be finished, so whoever opens it sees it is not whole.
+     *
+     * @param  resource  $out
+     */
+    public function unfinished($out): void
+    {
+        $this->put($out, [Cast::string(__('leads.csv_unfinished'))]);
     }
 
     /**
@@ -125,6 +157,18 @@ final readonly class LeadCsvExport
         }
 
         return $query->limit(self::CHUNK)->get();
+    }
+
+    /**
+     * Leads by id (a gathered search's), in the list's order.
+     *
+     * @param  list<int>  $ids
+     * @return BaseCollection<int, \stdClass>
+     */
+    private function byIds(array $ids): BaseCollection
+    {
+        return LeadListQuery::leads()->toBase()->select(self::COLUMNS)->whereIn('id', $ids)
+            ->orderByRaw('created_at desc nulls first')->orderByDesc('ulid')->get();
     }
 
     /** @return list<string> */

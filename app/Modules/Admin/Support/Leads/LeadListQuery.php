@@ -65,6 +65,44 @@ final class LeadListQuery
     /** @var array<string, array<string, int>> the word counts of each search read so far (termCounts()) */
     private array $termCounts = [];
 
+    /** "Now" for the time window, when a long read must not see it move (pinNow()). */
+    private ?CarbonImmutable $now = null;
+
+    /** The last search read gathered its leads first (searchIn()): their ids are a bounded list. */
+    private bool $gathers = false;
+
+    /**
+     * Fix "now" for the presets (today, 7 and 30 days), so a read in many statements — the CSV
+     * file, chunk after chunk — keeps one window from its first statement to its last.
+     */
+    public function pinNow(): self
+    {
+        $this->now = $this->time->now();
+
+        return $this;
+    }
+
+    /**
+     * The ids of a tab's leads, newest first (undated ones first), when the search gathers its
+     * leads (at most the gather limit of them, see searchIn()); null when there is no search or the
+     * search walks the list instead. A read in many statements takes them once and then reads the
+     * leads by id, so the gathering runs once and not once per statement.
+     *
+     * @return list<int>|null
+     */
+    public function gatheredIds(string $tab): ?array
+    {
+        if (trim($this->search) === '') {
+            return null;
+        }
+        $query = self::inTab($this->base(), $tab)->toBase();
+        if (! $this->gathers) {
+            return null;
+        }
+
+        return array_values(array_map(fn (mixed $id): int => Cast::int($id), $query->orderByRaw('created_at desc nulls first')->orderByDesc('ulid')->pluck('id')->all()));
+    }
+
     /**
      * The list a screen's filter asks for: the search, the forms ticked (by ulid, kept only when
      * they are among $forms), the time window. Forms ticked but none of them this site's (gone,
@@ -296,6 +334,7 @@ final class LeadListQuery
      */
     private function searchIn(Builder $query): void
     {
+        $this->gathers = false;
         $words = trim($this->search);
         if ($words === '') {
             return;
@@ -328,6 +367,7 @@ final class LeadListQuery
                 $bindings = [...$bindings, $siteId, ...$values];
             }
             $query->whereRaw("form_submissions.id = any (array({$sql}))", $bindings);
+            $this->gathers = true;
 
             return;
         }
@@ -379,7 +419,7 @@ final class LeadListQuery
      */
     private function window(Builder $query, string $when): void
     {
-        $now = $this->time->now();
+        $now = $this->now ?? $this->time->now();
         match ($when) {
             'today' => $query->where('created_at', '>=', $now->startOfDay()->utc()),
             '7' => $query->where('created_at', '>=', $now->subDays(7)->utc()),

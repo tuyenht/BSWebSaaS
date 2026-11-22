@@ -1938,6 +1938,7 @@
     "leads.csv_sent": "发送时间",
     "leads.csv_status": "状态",
     "leads.csv_answers": "内容",
+    "leads.csv_unfinished": "⚠ 此文件不完整:生成时出错而中途停止。请重新下载列表。",
     "leads.mark_spam": "标记为垃圾信息",
     "leads.not_spam": "不是垃圾信息",
     "leads.erase": "应客户要求删除",

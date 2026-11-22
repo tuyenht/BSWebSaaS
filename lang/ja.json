@@ -1938,6 +1938,7 @@
     "leads.csv_sent": "送信日時",
     "leads.csv_status": "状態",
     "leads.csv_answers": "内容",
+    "leads.csv_unfinished": "⚠ このファイルは不完全です。作成中にエラーが起きて途中で止まりました。一覧をもう一度ダウンロードしてください。",
     "leads.mark_spam": "迷惑メールにする",
     "leads.not_spam": "迷惑メールではない",
     "leads.erase": "お客様の依頼で削除",
