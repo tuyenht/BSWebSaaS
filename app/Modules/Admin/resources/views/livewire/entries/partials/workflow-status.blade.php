@@ -102,7 +102,7 @@
 
             {{-- Compact bar (narrow container) --}}
             <div class="flex w-full flex-col gap-1.5 @[35rem]:hidden">
-                <span class="flex h-1.5 overflow-hidden rounded-full bg-border-soft"><span class="block h-1.5 rounded-full bg-admin-primary" style="width: {{ $progress }}%"></span></span>
+                <span class="flex h-1.5 overflow-hidden rounded-full bg-track"><span class="block h-1.5 rounded-full bg-primary" style="width: {{ $progress }}%"></span></span>
                 <span class="text-[11.5px] text-body-muted">
                     {{ __('admin.wfb.step_of', ['n' => $workflow['current']['index'] + 1, 'total' => $stepCount, 'label' => $workflow['current']['label']]) }}
                     · {{ $workflow['next_label'] !== null ? __('admin.wfb.next_step', ['label' => $workflow['next_label']]) : __('admin.wfb.last_step') }}

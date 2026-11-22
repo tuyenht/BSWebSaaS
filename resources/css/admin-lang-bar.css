@@ -219,7 +219,7 @@
         height: 0.3125rem;
         overflow: hidden;
         border-radius: 0.25rem;
-        background: var(--color-border);
+        background: var(--color-track);
     }
 
     .lb-fill {

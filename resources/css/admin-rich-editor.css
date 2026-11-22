@@ -706,7 +706,7 @@
     font-weight: 600;
 }
 .rte-dlg-ok[aria-disabled='true'] {
-    background: var(--color-border);
+    background: var(--color-track);
     color: var(--color-text-muted);
     cursor: not-allowed;
 }

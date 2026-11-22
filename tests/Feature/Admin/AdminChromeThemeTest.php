@@ -113,6 +113,22 @@ it('emits only the scheme and the sidebar size on the platform console', functio
         ->assertDontSee('data-sidebar-image=', false);
 });
 
+it('paints an operator\'s own high contrast on the platform console too', function (): void {
+    $host = (string) config('tenancy.platform_host');
+    $operator = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));
+    app(PlatformAccess::class)->forgetMemo();
+
+    $operator = $operator->fresh();
+    $operator->preferences = ['theme' => ['contrast' => 'high']];
+    $operator->save();
+
+    $page = (string) $this->actingAs($operator->fresh())->get("http://{$host}/tenants")->assertOk()->getContent();
+    preg_match('/<html[^>]*>/', $page, $tag);
+
+    expect($tag[0])->toContain('data-contrast="high"')->not->toContain('data-contrast-auto');
+});
+
 it('renders the platform console collapsed when the operator pinned the small sidebar', function (): void {
     $host = (string) config('tenancy.platform_host');
     $operator = User::factory()->create();

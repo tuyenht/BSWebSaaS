@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Livewire\Account;
 use App\Modules\Admin\Notifications\TwoFactorDisabledNotification;
+use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Identity\Models\SocialIdentity;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
@@ -402,6 +403,51 @@ it('saves scheme, text size and motion as the member\'s own and paints them on t
     expect($user->fresh()->preferences['theme'])->not->toHaveKey('text_size');
 });
 
+it('saves high contrast as the member\'s own and paints it on every admin page after a reload', function (): void {
+    $user = accountMember();
+    $html = fn (User $who, string $path): string => (string) $this->actingAs($who)->get('http://a.test'.$path)->assertOk()->getContent();
+    $tag = function (string $page): string {
+        preg_match('/<html[^>]*>/', $page, $match);
+
+        return $match[0];
+    };
+
+    // Before any choice the device decides: the default is printed with the follow-the-device flag.
+    expect($tag($html($user, '/admin/account?tab=prefs')))->toContain('data-contrast="normal"')->toContain('data-contrast-auto="true"');
+
+    app(Tenancy::class)->enter(1, fn () => accountPage($user)->set('tab', 'prefs')
+        ->assertSee('Tương phản cao')->assertSee('Chữ và đường viền đậm hơn, dễ đọc khi màn hình chói.')
+        ->call('setContrast', 'high')->assertDispatched('admin-chrome-changed', fn (string $name, array $params): bool => ($params['attributes']['data-contrast'] ?? null) === 'high' && ! isset($params['attributes']['data-contrast-auto']))
+        ->assertSee('Đã lưu — áp dụng ngay')
+        ->call('setContrast', 'max'));
+
+    expect($user->fresh()->preferences['theme'])->toBe(['contrast' => 'high']);
+
+    // reload: the account page and another admin page both open in high contrast, the switch on
+    $account = $html($user->fresh(), '/admin/account?tab=prefs');
+    expect($tag($account))->toContain('data-contrast="high"')->not->toContain('data-contrast-auto')
+        ->and($account)->toMatch('/role="switch" aria-checked="true"[^>]*aria-labelledby="ac-l-hc"/');
+    expect($tag($html($user->fresh(), '/admin/content')))->toContain('data-contrast="high"')->not->toContain('data-contrast-auto');
+
+    // turning it off is a choice too: the device no longer decides
+    app(Tenancy::class)->enter(1, fn () => accountPage($user->fresh())->call('setContrast', 'normal'));
+    expect($tag($html($user->fresh(), '/admin/content')))->toContain('data-contrast="normal"')->not->toContain('data-contrast-auto');
+});
+
+it('keeps one member\'s high contrast to that member, and never takes it from the site', function (): void {
+    $user = accountMember();
+    $other = accountMember();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        app(SettingsRepository::class)->put('admin_theme', 'config', ['contrast' => 'high', 'text_size' => 'lg']);
+        accountPage($user)->call('setContrast', 'high');
+    });
+
+    $this->actingAs($other)->get('http://a.test/admin/content')->assertOk()
+        ->assertSee('data-contrast="normal"', false)->assertSee('data-contrast-auto="true"', false)
+        ->assertSee('data-text-size="lg"', false); // the site tier still works for the axes it may pin
+    expect($other->fresh()->preferences)->toBe([]);
+});
+
 it('changes only the notifications the member receives, never a locked one or an unsent channel', function (): void {
     $user = accountMember(['entries.view', 'entries.review']);
 
@@ -466,6 +512,7 @@ it('only lets support staff look: every change is refused during a support sessi
     'text size' => ['setTextSize', ['xl']],
     'reset text size' => ['resetTextSize', []],
     'motion' => ['setMotion', ['reduce']],
+    'contrast' => ['setContrast', ['high']],
     'notification' => ['setNotification', ['system.domain_problem', 'mail', false]],
 ]);
 
