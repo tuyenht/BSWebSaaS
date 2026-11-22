@@ -7,7 +7,8 @@
     // A page passes `hints` (FirstHints key => the sentence as it shows on that page) for the
     // explanations it offers; only the dismissed ones go into the note.
     // `head` false leaves the row out for a page whose own card header still names the section.
-    // A page may pass a `more` slot: its "⋮" menu, put at the end of the title row on phones only.
+    // A page may pass a `more` slot: its "⋮" menu, put at the end of the title row on phones only,
+    // and an `aside` slot: what ends the title row at every width (a page's «Hướng dẫn»).
     // A section that keeps its draft on the server passes its change count (`:unsaved="$changes"`)
     // and, when they are named otherwise, its save and discard methods. The shell then draws the one
     // save bar under the section (<x-bs-admin::save-bar>: "Chưa có thay đổi" · "Bỏ thay đổi" · "Lưu",
@@ -70,6 +71,11 @@
             }
             if (Route::has('admin.settings.integrations')) {
                 $workspace[] = ['key' => 'integrations', 'route' => 'admin.settings.integrations', 'label' => __('admin.int.title')];
+            }
+            // Owner-only in the menu (maintenance and the other switches only the owner changes);
+            // another holder of settings.manage who opens the address reads it «Chỉ xem».
+            if (Route::has('admin.settings.advanced') && (request()->routeIs('admin.settings.advanced') || \App\Modules\Admin\Support\SiteOwner::is(auth()->user()))) {
+                $workspace[] = ['key' => 'advanced', 'route' => 'admin.settings.advanced', 'label' => __('admin.adv.title')];
             }
             // Operator-only: the approval-workflow switchboard (north-star — super_admin
             // enables approval per site × per content type; tenant roles never see it).
@@ -148,6 +154,9 @@
                                 <x-bs-admin::icon name="ri-information" :class="$infoGlyph" />
                             </button>
                         @endif
+                        @isset($aside)
+                            <div class="ms-auto shrink-0">{{ $aside }}</div>
+                        @endisset
                         @isset($more)
                             {{-- The page's own "⋮" (phones only): what the row above the fields offers on a wide screen. --}}
                             <div class="ms-auto shrink-0 md:hidden">{{ $more }}</div>

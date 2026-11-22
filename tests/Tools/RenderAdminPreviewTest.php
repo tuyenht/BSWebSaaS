@@ -524,6 +524,29 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('Xác minh &amp; Công cụ', 'wire:model.live.blur="tokens.google"');
     file_put_contents($dir.'/integrations.html', $html);
 
+    // "Bảo mật & Nâng cao": maintenance on with words in both languages and a reopen time ahead, as
+    // the owner sees it; then the same page «Chỉ xem» for the website's admin.
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'storefront', 'key' => 'maintenance'], ['value' => [
+        'on' => true,
+        'messages' => ['vi' => 'Chúng tôi đang cập nhật chuyên mục sản phẩm để phục vụ bạn tốt hơn.', 'en' => 'We are updating our product pages to serve you better.'],
+        'reopens_at' => now()->addDays(2)->startOfHour()->utc()->toIso8601ZuluString(),
+    ]]));
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/advanced')->assertOk()->getContent();
+    expect($html)->toContain('Chế độ bảo trì', 'wire:model.live.blur="messages.en"', 'Website đang bảo trì');
+    file_put_contents($dir.'/advanced.html', $html);
+    // the storefront's maintenance page, as «Xem trang khách sẽ thấy» opens it
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/advanced/preview')->assertOk()->getContent();
+    expect($html)->toContain('Website đang bảo trì', 'Chúng tôi đang cập nhật chuyên mục sản phẩm', 'sf-404__when');
+    file_put_contents($dir.'/advanced-visitor.html', $html);
+    $siteAdmin = blockLibraryUser(1, 'admin');
+    $this->flushSession();
+    $html = $this->actingAs($siteAdmin)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/advanced')->assertOk()->getContent();
+    expect($html)->toContain('Chỉ xem', 'nên chỉ xem được');
+    file_put_contents($dir.'/advanced-ro.html', $html);
+    app(Tenancy::class)->enter(1, fn () => $siteAdmin->removeRole('admin')); // the members screens below list the site's own people only
+    $this->flushSession();
+
     // "Chuyển hướng": rows the system made and rows added by hand, a temporary one, a loop pair and a
     // long address; the add dialog open with a field error; and the Trash with one row.
     app(Tenancy::class)->enter(1, function (): void {
@@ -1396,5 +1419,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         ->and(file_get_contents($dir.'/review-inbox-changes-approve.html'))->toContain(e(__('entries.chg.ask_now')))
         ->and(file_get_contents($dir.'/review-inbox-changes-return.html'))->toContain(e(__('entries.chg.return_err')));
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 125);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 128);
 });
