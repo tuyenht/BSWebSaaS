@@ -701,7 +701,7 @@ it('tries a failed version write once more, then logs it and tells the others at
     'store refuses twice' => ['refuses', 2],
 ]);
 
-it('keeps the permissions from before a change on every worker after the whole store was down, until the writer is back at work', function (): void {
+it('keeps the permissions from before a change on every worker after the whole store was down, until the writer is back at work', function (string $back): void {
     // A known limit, not a goal: while the store cannot be reached, the change commits but neither
     // the new version nor the removal of the old shared catalog gets through. Once the store is
     // back, every other worker (a new one too) still grants what the change took away, until the
@@ -726,12 +726,27 @@ it('keeps the permissions from before a change on every worker after the whole s
     expect(workerSays($b, $member, 'forms.view'))->toBeTrue()               // stale: its token did not move
         ->and(workerSays(otherWorker(), $member, 'forms.view'))->toBeTrue(); // stale: the old shared catalog is still there
 
-    nextUnitOfWork($writer); // the writer's next request writes the version it owes
+    if ($back === 'its next request') {
+        nextUnitOfWork($writer);
+    } else {
+        // still in the same request: another change that rolls back writes the version it owes too
+        try {
+            app(Tenancy::class)->enter(1, function () use ($role): void {
+                $role->fresh()->givePermissionTo('domains.view');
+
+                throw new RuntimeException('rolled back');
+            });
+        } catch (RuntimeException) {
+        }
+    }
 
     expect(workerSays($b, $member, 'forms.view'))->toBeFalse()
         ->and(workerSays(otherWorker(), $member, 'forms.view'))->toBeFalse()
         ->and(workerSays($writer, $member, 'forms.view'))->toBeFalse();
-});
+})->with([
+    'its next request' => ['its next request'],
+    'its next change, rolled back' => ['its next change, rolled back'],
+]);
 
 it('reloads the catalog at every request while the version cannot be read, never sharing it', function (): void {
     $owner = cacheOwner();
