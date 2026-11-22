@@ -38,12 +38,13 @@ release_smoke() {
     n=$(curl -s "https://${HOST}/lien-he" | grep -c 'wire:submit\|<form' || true)
     expect "trang liên hệ vẫn có biểu mẫu" "$([ "${n:-0}" -gt 0 ] && echo 1 || echo 0)" "1"
     # #899: av1 is not in maintenance (the home page answers 200, not 503)
-    n=$(curl -s -D - "https://${HOST}/" | head -n 1 | tr -d '\r')
-    expect "trang chủ av1 không ở chế độ bảo trì" "$(echo "$n" | grep -c ' 200')" "1"
+    # the whole header block is read (pages send 103 Early Hints first; head would close the pipe and curl exits 23)
+    n=$(curl -s -D - "https://${HOST}/" | grep -cE '^HTTP/[0-9.]+ 200' || true)
+    expect "trang chủ av1 không ở chế độ bảo trì" "${n:-0}" "1"
     # #900: Cloudflare never serves a stored page to a visitor carrying the session cookie
     n=$(curl -s -D - -H 'Cookie: bswebsaas-session=x' "https://${HOST}/" | grep -i '^cf-cache-status' | tr -d '\r' | awk '{print toupper($2)}')
     expect "Cloudflare không trả bản lưu sẵn cho người có phiên đăng nhập (${n:-trống})" "$([ "${n}" != HIT ] && echo 1 || echo 0)" "1"
     # #900: embed code is off on av1, so the storefront script policy stays strict (printed)
-    note "chính sách script trang chủ av1: $(curl -s -D - "https://${HOST}/" | grep -i '^content-security-policy' | tr ';' '\n' | grep -i 'script-src' | head -n 1 | cut -c1-160)"
+    note "chính sách script trang chủ av1: $(curl -s -D - "https://${HOST}/" | grep -i '^content-security-policy' | tr ';' '\n' | grep -i 'script-src' | awk 'NR==1' | cut -c1-160)"
     note "cài đặt bảo trì / mã nhúng đã lưu ở av1: $(q "SELECT coalesce(string_agg(ss.key, ' ' ORDER BY ss.key), '-') FROM site_settings ss JOIN domains d ON d.site_id = ss.site_id WHERE d.hostname = 'av1.baoson.net' AND ss.key IN ('maintenance', 'embed_code')")"
 }
