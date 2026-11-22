@@ -427,6 +427,35 @@ it('lists admin members on a flat query budget (no N+1 across rows)', function (
     expect($count)->toBe(16);
 });
 
+it('lists the roles on a flat query budget, whatever the number of roles and members', function (): void {
+    $owner = User::factory()->create();
+    $seed = function (int $from, int $to): void {
+        app(Tenancy::class)->enter(1, function () use ($from, $to): void {
+            foreach (range($from, $to) as $i) {
+                $role = Role::findOrCreate('Nhóm '.$i, PermissionRegistry::GUARD);
+                // each a copy of the one before: «Tạo từ» is read with the list, never per row
+                $from = $i > 1 ? Role::query()->where('site_id', 1)->where('name', 'Nhóm '.($i - 1))->value('id') : null;
+                $role->forceFill(['level' => 10 + $i, 'is_system' => false, 'forked_from_role_id' => $from])->save();
+                $role->syncPermissions(['entries.view', 'media.view', 'forms.view']);
+                User::factory()->create()->assignRole($role);
+            }
+        });
+    };
+    app(Tenancy::class)->enter(1, fn () => grantRole($owner, 'owner', PermissionRegistry::TENANT_PERMISSIONS));
+    $seed(1, 2);
+
+    $this->actingAs($owner)->get('http://a.test/admin/roles')->assertOk(); // the permission and settings caches fill on the first request
+    $few = countQueries(fn () => $this->actingAs($owner)->get('http://a.test/admin/roles')->assertOk());
+    $fewView = countQueries(fn () => $this->actingAs($owner)->get('http://a.test/admin/roles?nhom=Nh%C3%B3m%201&che=xem')->assertOk());
+
+    $seed(3, 14);
+    $this->actingAs($owner)->get('http://a.test/admin/roles')->assertOk();
+    $many = countQueries(fn () => $this->actingAs($owner)->get('http://a.test/admin/roles')->assertOk());
+    $manyView = countQueries(fn () => $this->actingAs($owner)->get('http://a.test/admin/roles?nhom=Nh%C3%B3m%201&che=xem')->assertOk());
+
+    expect($many)->toBe($few)->and($manyView)->toBe($fewView)->and($few)->toBeLessThanOrEqual(24);
+});
+
 it('keeps the members list flat with a search, a role filter and a second page, whatever the number of members', function (): void {
     $admin = User::factory()->create(['name' => 'Ánh Quản Trị']);
     $seed = function (int $from, int $to) use ($admin): void {

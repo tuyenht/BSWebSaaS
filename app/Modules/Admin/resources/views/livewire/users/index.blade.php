@@ -594,22 +594,7 @@
     <x-bs-admin::modal model="explainOpen" size="lg" :title="$explain !== null ? __('admin.members.x_title', ['role' => $explain['name']]) : ''"
         :subtitle="$explain['meta'] ?? null" :close-label="__('admin.members.x_close')">
         @if ($explain !== null)
-            @foreach ($explain['areas'] as $area)
-                <section class="flex min-w-0 flex-col gap-1.5" aria-labelledby="members-x-{{ $area['key'] }}">
-                    <h3 id="members-x-{{ $area['key'] }}" class="m-0 text-[calc(0.875rem+var(--user-text-boost))] font-semibold text-text-strong">{{ $area['name'] }}</h3>
-                    @if ($area['off'] !== '')
-                        <p class="m-0 flex items-start gap-1.5 text-small text-text-muted"><x-bs-admin::icon name="ri-lock-2" class="mt-0.5 size-4 shrink-0" /><span>{{ $area['off'] }}</span></p>
-                    @endif
-                    <ul class="m-0 flex list-none flex-col gap-1 p-0">
-                        @foreach ($area['items'] as $item)
-                            <li @class(['flex items-start gap-2 text-body', 'text-text' => $item['ok'], 'text-text-muted' => ! $item['ok']])>
-                                <x-bs-admin::icon :name="$item['ok'] ? 'ri-checkbox-circle' : 'ri-close-circle'" @class(['mt-0.5 size-4.5 shrink-0', 'text-success-text' => $item['ok'], 'text-text-muted' => ! $item['ok']]) />
-                                <span class="min-w-0 [overflow-wrap:anywhere]">{{ $item['text'] }}</span>
-                            </li>
-                        @endforeach
-                    </ul>
-                </section>
-            @endforeach
+            <x-bs-admin::role-explain :areas="$explain['areas']" id-prefix="members-x" />
         @endif
         <x-slot:footer>
             <x-bs-admin::button color="primary" wire:click="closeExplain">{{ __('admin.close') }}</x-bs-admin::button>

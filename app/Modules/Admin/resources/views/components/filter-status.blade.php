@@ -3,6 +3,7 @@
     'summary' => null,
     'chips' => [],
     'clear' => null,
+    'alone' => false,
 ])
 @php
     // The active-filter status line of a record list (canvas .lf-flm, K69): "Tạm ngưng · 1 website
@@ -15,10 +16,12 @@
     // $chips: list<array{label: string, remove: string, icon?: string, aria?: string}> — remove is the host's Livewire call;
     //         icon sits before the label; aria names the ✕ in full ("Bỏ lọc chuyên mục “Dao phay”"), else the label names it.
     // $clear: the host's public method that resets the group and every condition.
+    // $alone: the line also shows with only a summary (no group, no chip), for a list whose board draws just
+    //         "Tìm thấy N trong M · Bỏ lọc"; the host passes the summary only while something is filtered.
     // remove and $clear are printed into wire:click as they are: build them in PHP from fixed method
     // names and Js::from() arguments, never from user input.
 @endphp
-@if ($group !== null || $chips !== [])
+@if ($group !== null || $chips !== [] || ($alone && $summary !== null))
     <p {{ $attributes->merge(['class' => 'm-0 flex min-h-control flex-wrap items-center gap-x-1.5 gap-y-1 px-3 pb-1 text-body text-text [overflow-wrap:anywhere] any-pointer-coarse:min-h-hit']) }}>
         @if ($group !== null || $summary !== null)
             <span role="status" class="inline-flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
