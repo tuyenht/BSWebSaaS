@@ -18,7 +18,7 @@ const { window } = dom;
 globalThis.window = window;
 globalThis.document = window.document;
 globalThis.Element = window.Element;
-const { backTarget, carriesTrash, menuMove, trashHeld, trashDrawn, TRASH_HOLD_MS } = await import('../../resources/js/admin-list-focus.js');
+const { backTarget, carriesTrash, menuLeave, menuMove, trashHeld, trashDrawn, TRASH_HOLD_MS } = await import('../../resources/js/admin-list-focus.js');
 const doc = window.document;
 // jsdom lays nothing out: "shown" is whatever is still in the page and not marked hidden here
 const shown = (el) => !!el && el.isConnected && ! el.closest('[data-hidden]');
@@ -151,3 +151,42 @@ test('a list menu opens on its first item that shows and its keys skip the hidde
     m.remove();
 });
 
+test('Tab on an open menu item hands the focus back to the button and hides the menu at once, so the key moves on from the button', () => {
+    const host = doc.createElement('div');
+    host.innerHTML = '<button id="lvB">⋮</button><div id="lvShow" x-show="open"><div id="lvM" role="menu"><button id="lvI" role="menuitem">Sửa</button></div></div>';
+    doc.body.append(host);
+    const btn = doc.getElementById('lvB');
+    const keyEvent = (shiftKey) => new window.KeyboardEvent('keydown', { key: 'Tab', shiftKey, cancelable: true });
+
+    doc.getElementById('lvI').focus();
+    const tab = keyEvent(false);
+    menuLeave(tab, doc.getElementById('lvM'), () => btn.focus());
+    assert.equal(doc.activeElement, btn);
+    assert.equal(doc.getElementById('lvShow').style.display, 'none'); // the part with x-show, hidden before the browser moves on
+    assert.equal(tab.defaultPrevented, false); // Tab goes on from the button to what follows it
+
+    doc.getElementById('lvShow').style.display = '';
+    doc.getElementById('lvI').focus();
+    const back = keyEvent(true);
+    menuLeave(back, doc.getElementById('lvM'), () => btn.focus());
+    assert.equal(doc.activeElement, btn);
+    assert.equal(back.defaultPrevented, true); // Shift+Tab stops on the button
+
+    // a menu always open with nothing to give the focus back to keeps both keys and stays shown
+    doc.getElementById('lvShow').style.display = '';
+    doc.getElementById('lvI').focus();
+    const stay = keyEvent(true);
+    menuLeave(stay, doc.getElementById('lvM'), () => {});
+    assert.equal(doc.activeElement.id, 'lvI');
+    assert.equal(doc.getElementById('lvShow').style.display, '');
+    assert.equal(stay.defaultPrevented, false);
+
+    // the shared list menu carries x-show itself: that panel is the part hidden
+    host.innerHTML = '<button id="lvB2">⋮</button><div id="lvP" x-show="open" role="menu"><button id="lvI2" role="menuitem">Sửa</button></div>';
+    const btn2 = doc.getElementById('lvB2');
+    doc.getElementById('lvI2').focus();
+    menuLeave(keyEvent(false), doc.getElementById('lvP'), () => btn2.focus());
+    assert.equal(doc.activeElement, btn2);
+    assert.equal(doc.getElementById('lvP').style.display, 'none');
+    host.remove();
+});
