@@ -196,6 +196,13 @@ return [
     |
     */
 
+    // maxTime: every worker restarts (after its current job) within an hour, so what a queue worker
+    // loaded lives at most that long. It does NOT bound a permission change whose cache version
+    // could not be written (VersionedPermissionRegistrar logs that): a restarted worker reads the
+    // same old version and the old shared catalog. That lasts until the writing worker writes the
+    // version at its next request or job or when it stops; failing that, until the next role or
+    // permission change or the shared catalog's expiry (config/permission.php). An hour costs one
+    // cold boot per worker per hour.
     'defaults' => [
         'supervisor-1' => [
             'connection' => 'redis',
@@ -203,7 +210,7 @@ return [
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'maxProcesses' => 1,
-            'maxTime' => 0,
+            'maxTime' => 3600,
             'maxJobs' => 0,
             'memory' => 128,
             'tries' => 1,
@@ -220,7 +227,7 @@ return [
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'maxProcesses' => 1,
-            'maxTime' => 0,
+            'maxTime' => 3600,
             'maxJobs' => 0,
             'memory' => 128,
             'tries' => 1,
