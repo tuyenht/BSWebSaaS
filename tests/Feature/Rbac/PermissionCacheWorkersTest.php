@@ -812,6 +812,7 @@ it('fails rbac:sync when the permission cache cannot be refreshed', function ():
     $store = flakyPermissionStore();
     app(PermissionRegistrar::class)->getPermissions(); // a version exists, then the store stops taking writes to it
     $store->failVersionWrites = 1000;
+    Sleep::fake(); // the pause between the two write attempts, not a real one
 
     $this->artisan('rbac:sync')->assertFailed();
 });

@@ -510,6 +510,44 @@ it('asks before deleting a role that holds a permission the member may not give,
     expect(reeRole('Kho ảnh')->trashed())->toBeTrue();
 });
 
+it('offers «Hoàn tác» to a member who is not the owner when every permission of the role is one they may give, and it brings the role back', function (): void {
+    reePlan();
+    reeCustom('Trưởng nhóm', 60, ['roles.manage', 'media.view', 'media.upload']);
+    reeCustom('Kho ảnh', 20, ['media.view', 'media.upload']);   // all within what the lead may give
+    $lead = reeMember('Trưởng nhóm');
+
+    reePage($lead, function (Testable $page): void {
+        $page->call('askDelete', 'Kho ảnh')->assertSet('asking', false)->assertSet('ask', '')->assertSet('toastUndo', true)
+            ->assertSet('undoName', 'Kho ảnh')->assertSet('toast', __('admin.roles.deleted', ['role' => 'Kho ảnh']))->assertSee(__('admin.undo'));
+        expect(reeRole('Kho ảnh')->trashed())->toBeTrue();
+
+        $page->call('undoDelete')->assertSet('toast', __('admin.roles.restored'))->assertSet('toastUndo', false);
+        expect(reeKeys($page))->toContain('Kho ảnh');
+    });
+
+    expect(reeRole('Kho ảnh')->trashed())->toBeFalse()->and(reePerms('Kho ảnh'))->toBe(['media.upload', 'media.view']);
+});
+
+it('says the role changed elsewhere, not that it went to the trash, when someone brings it back right after the delete', function (): void {
+    reePlan();
+    reeCustom('Duyệt tin', 40, ['entries.view']);
+    $owner = reeMember('owner');
+    // another member restores the row the moment this delete has moved it
+    Role::deleted(function (Role $role): void {
+        if ($role->getAttribute('name') === 'Duyệt tin') {
+            $role->restore();
+        }
+    });
+
+    reePage($owner, function (Testable $page): void {
+        $page->call('askDelete', 'Duyệt tin')->assertSet('toast', __('rbac.role_change.changed_elsewhere'))
+            ->assertSet('toastTone', 'error')->assertSet('toastReload', true)
+            ->assertSet('toastUndo', false)->assertSet('undoKey', '')->assertSet('undoName', '');
+    });
+
+    expect(reeRole('Duyệt tin')->trashed())->toBeFalse();
+});
+
 it('lets «Hoàn tác» bring back only what that member deleted on that website by that delete', function (string $case): void {
     reePlan();
     $role = reeCustom('Duyệt tin', 40, ['entries.view']);

@@ -868,21 +868,30 @@ final class Index extends Component
             return;
         }
         $this->explainRole = $this->explainRole === $role->name ? '' : $this->explainRole;
-        $this->say(__($undo ? 'admin.roles.deleted' : 'admin.roles.deleted_off', ['role' => $role->name]));
-        $siteId = app(CurrentSite::class)->id();
-        $deletedAt = $undo ? Role::onlyTrashed()->where('site_id', $siteId)->whereKey($role->getKey())->toBase()->value('deleted_at') : null;
-        if (is_string($deletedAt)) {
-            // the exact row this member moved by this delete, never another of the same name, nor
-            // the same row deleted again later by someone else, nor for another member or website
-            $this->undoName = $role->name;
-            $this->undoKey = Crypt::encryptString(json_encode([
-                'id' => Cast::int($role->getKey()),
-                'actor' => Cast::int($this->actor()->getKey()),
-                'site' => $siteId,
-                'deleted_at' => $deletedAt,
-            ], JSON_THROW_ON_ERROR));
-            $this->toastUndo = true;
+        if (! $undo) {
+            $this->say(__('admin.roles.deleted_off', ['role' => $role->name]));
+
+            return;
         }
+        $siteId = app(CurrentSite::class)->id();
+        $deletedAt = Role::onlyTrashed()->where('site_id', $siteId)->whereKey($role->getKey())->toBase()->value('deleted_at');
+        if (! is_string($deletedAt)) {
+            // someone brought it back (or emptied it from the trash) right after this delete
+            $this->say($this->reasonText('changed_elsewhere'), 'error', reload: true);
+
+            return;
+        }
+        $this->say(__('admin.roles.deleted', ['role' => $role->name]));
+        // the exact row this member moved by this delete, never another of the same name, nor
+        // the same row deleted again later by someone else, nor for another member or website
+        $this->undoName = $role->name;
+        $this->undoKey = Crypt::encryptString(json_encode([
+            'id' => Cast::int($role->getKey()),
+            'actor' => Cast::int($this->actor()->getKey()),
+            'site' => $siteId,
+            'deleted_at' => $deletedAt,
+        ], JSON_THROW_ON_ERROR));
+        $this->toastUndo = true;
     }
 
     private function ask(string $kind, string $role): void
