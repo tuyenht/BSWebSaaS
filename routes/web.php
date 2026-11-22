@@ -49,6 +49,7 @@ use App\Modules\Admin\Livewire\Platform\Support\Index as SupportSessionsIndex;
 use App\Modules\Admin\Livewire\Platform\Tenants\Detail;
 use App\Modules\Admin\Livewire\Platform\Tenants\Index;
 use App\Modules\Admin\Livewire\ResetPassword;
+use App\Modules\Admin\Livewire\Roles\Index as RolesIndex;
 use App\Modules\Admin\Livewire\SeoSettings;
 use App\Modules\Admin\Livewire\Settings\Domains as DomainSettings;
 use App\Modules\Admin\Livewire\Settings\Redirects as RedirectSettings;
@@ -302,6 +303,10 @@ Route::prefix(config('admin.prefix', 'admin'))
         // AssignRole / RevokeRole actions, so the role hierarchy is enforced server-side. No `can:`
         // here: a member without users.manage sees the screen's own no-permission card.
         Route::get('/users', UsersIndex::class)->name('admin.users.index');
+
+        // The website's roles, read-only: what each may do, who holds it. No `can:` here either: a
+        // member without roles.manage sees the screen's own no-permission card.
+        Route::get('/roles', RolesIndex::class)->name('admin.roles.index');
 
         // Dev-only design-system showcase (component mount() aborts in production).
         Route::get('/_gallery', ComponentGallery::class)->name('admin.gallery');

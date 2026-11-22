@@ -32,6 +32,7 @@ use App\Modules\Admin\Livewire\LanguageSettings;
 use App\Modules\Admin\Livewire\Media\Library;
 use App\Modules\Admin\Livewire\NotificationBell;
 use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog;
+use App\Modules\Admin\Livewire\Roles\Index as RolesIndex;
 use App\Modules\Admin\Livewire\SeoSettings;
 use App\Modules\Admin\Livewire\Settings\Domains as DomainSettings;
 use App\Modules\Admin\Livewire\Settings\Redirects as RedirectSettings;
@@ -1102,6 +1103,25 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($invitations)->toContain('tam.ngo@', __('admin.members.inv_resend_note', ['days' => InviteMember::VALID_DAYS]));
     file_put_contents($dir.'/members-invitations.html', $invitations);
 
+    // The roles screen (board «Nhóm quyền»): the system roles of the team above and one of the website's own,
+    // then one role read-only and «Nhóm này làm được gì?» in the side panel.
+    app(Tenancy::class)->enter(1, function (): void {
+        $own = Role::findOrCreate('Duyệt tin tức và sự kiện của công ty', PermissionRegistry::GUARD);
+        $own->forceFill(['level' => 40, 'is_system' => false])->save();
+        $own->syncPermissions(['entries.view', 'entries.review', 'entries.approve', 'forms.view']);
+    });
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/roles')->assertOk()->getContent();
+    expect($html)->toContain(e('Duyệt tin tức và sự kiện của công ty'), __('admin.roles.chip_cust'));
+    file_put_contents($dir.'/roles.html', $html);
+    $this->flushSession();
+    $view = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/roles?nhom=editor&che=xem')->assertOk()->getContent();
+    expect($view)->toContain(e(__('admin.roles.ro_title', ['role' => __('rbac.role.editor')])), e(__('admin.roles.ro_system')));
+    file_put_contents($dir.'/roles-view.html', $view);
+    $rolesExplain = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($owner)->test(RolesIndex::class)->call('openExplain', 'author')));
+    expect($rolesExplain)->toContain(e(__('admin.members.x_title', ['role' => __('rbac.role.author')])));
+    file_put_contents($dir.'/roles-explain.html', $swap($html, $rolesExplain, 'admin\\.roles\\.index'));
+
     // The admin's error pages (design board 25): in the frame for a member — no permission, not
     // found, a fault with its reference, too many requests — and on a page of their own: the
     // session that ended, a website that is not open. Faults come from preview-only routes.
@@ -1327,5 +1347,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         ->and(file_get_contents($dir.'/review-inbox-changes-approve.html'))->toContain(e(__('entries.chg.ask_now')))
         ->and(file_get_contents($dir.'/review-inbox-changes-return.html'))->toContain(e(__('entries.chg.return_err')));
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 116);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 119);
 });

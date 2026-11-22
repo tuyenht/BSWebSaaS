@@ -121,6 +121,20 @@ it('excludes a feature module whose nav_permission the user lacks (entitled ∩ 
     expect($keys)->toContain('media')->not->toContain('users');
 });
 
+it('offers «Nhóm quyền» only to a member who may manage roles', function (): void {
+    $members = User::factory()->create();
+    $roles = User::factory()->create();
+    app(Tenancy::class)->enter(1, function () use ($members, $roles): void {
+        grantRole($members, 'members-only', ['users.manage']);
+        grantRole($roles, 'roles-keeper', ['roles.manage']);
+    });
+
+    $keys = fn (User $u): array => array_map(fn (NavItem $i): string => $i->key, app(Tenancy::class)->enter(1, fn (): array => (new AdminNav)->items($u->fresh())));
+
+    expect($keys($members))->toContain('users')->not->toContain('roles')
+        ->and($keys($roles))->toContain('roles')->not->toContain('users');
+});
+
 it('orders each content group Add new before List (action-forward)', function (): void {
     $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
     $items = app(Tenancy::class)->enter(1, fn (): array => (new AdminNav)->items($owner));
@@ -193,7 +207,7 @@ it('cuts the menu into the untitled top, then the content, tools and system grou
         ->and($byKey['tools']->label)->toBe(__('admin.nav_group.tools'))
         ->and(array_map(fn (NavItem $i): string => $i->key, $byKey['tools']->items))->toBe(['media', 'contacts', 'forms', 'menus', 'blocks'])
         ->and($byKey['system']->label)->toBe(__('admin.nav_group.system'))
-        ->and(array_map(fn (NavItem $i): string => $i->key, $byKey['system']->items))->toBe(['users', 'settings']);
+        ->and(array_map(fn (NavItem $i): string => $i->key, $byKey['system']->items))->toBe(['users', 'roles', 'settings']);
 });
 
 it('names the menu entries with the design wording and its icons', function (): void {
@@ -206,7 +220,10 @@ it('names the menu entries with the design wording and its icons', function (): 
         ->and($byKey['media']->label)->toBe('Thư viện ảnh & tệp')
         ->and($byKey['media']->icon)->toBe('ri-image-2')
         ->and($byKey['users']->label)->toBe('Thành viên')
-        ->and($byKey['users']->icon)->toBe('ri-team');
+        ->and($byKey['users']->icon)->toBe('ri-team')
+        ->and($byKey['roles']->label)->toBe('Nhóm quyền')
+        ->and($byKey['roles']->icon)->toBe('ri-shield-user')
+        ->and($byKey['roles']->url)->toBe(route('admin.roles.index'));
 });
 
 it('leaves a group out when none of its entries is visible, so no heading stands alone', function (): void {

@@ -68,6 +68,7 @@ final class AdminNav
         'menus' => 'tools',
         'blocks' => 'tools',
         'users' => 'system',
+        'roles' => 'system',
         'settings' => 'system',
     ];
 
@@ -331,6 +332,7 @@ final class AdminNav
             // the block library asks its policy: `blocks.manage`, for a member not limited to some categories
             ['blocks', 'blocks.title', 'admin.blocks.index', 'ri-stack', ['create', ContentBlock::class], 'blocks'],
             ['users', 'admin.users', 'admin.users.index', 'ri-team', 'users.manage', 'users'],
+            ['roles', 'admin.roles', 'admin.roles.index', 'ri-shield-user', 'roles.manage', 'roles'],
         ];
 
         foreach ($features as [$key, $labelKey, $routeName, $icon, $permission, $entitlementKey]) {

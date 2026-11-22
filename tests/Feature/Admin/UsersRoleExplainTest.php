@@ -110,7 +110,7 @@ it('reads a role of the website\'s own the same way, and changes as soon as its 
 
     expect(RoleAbilities::sentence('Lan', [rxRole('Duyệt tin')], [], false))
         ->toBe('Lan được: duyệt bài ở mọi chuyên mục; xem khách liên hệ. Không được: thư viện ảnh, trình đơn, thành viên, cài đặt.')
-        ->and(RoleAbilities::position($role, rxSiteRoles()))->toBe('Giữa Biên tập và Tác giả');
+        ->and(RoleAbilities::position($role, rxSiteRoles()))->toBe('Giữa Biên tập và Người viết');
 
     app(Tenancy::class)->enter(1, fn () => $role->syncPermissions(['entries.view', 'entries.create', 'entries.approve', 'entries.publish', 'users.invite']));
 
@@ -170,7 +170,7 @@ it('places each role among the website\'s system roles', function (): void {
     expect(RoleAbilities::position(rxRole('owner'), $all))->toBe('Cao nhất')
         ->and(RoleAbilities::position(rxRole('editor'), $all))->toBe('Dưới Quản trị')
         ->and(RoleAbilities::position(rxRole('viewer'), $all))->toBe('Dưới Cộng tác viên')
-        ->and(RoleAbilities::position(rxCustom('Ngang', 30, []), $all))->toBe('Ngang Tác giả')
+        ->and(RoleAbilities::position(rxCustom('Ngang', 30, []), $all))->toBe('Ngang Người viết')
         ->and(RoleAbilities::position(rxCustom('Thấp', 5, []), $all))->toBe('Dưới Chỉ xem');
 });
 

@@ -42,6 +42,7 @@ use App\Modules\Admin\Livewire\Platform\Tenants\ChangePlanDialog as PlatformChan
 use App\Modules\Admin\Livewire\Platform\Tenants\Detail as PlatformTenantsDetail;
 use App\Modules\Admin\Livewire\Platform\Tenants\Index as PlatformTenantsIndex;
 use App\Modules\Admin\Livewire\ResetPassword;
+use App\Modules\Admin\Livewire\Roles\Index as RolesIndex;
 use App\Modules\Admin\Livewire\SocialSettings;
 use App\Modules\Admin\Livewire\TwoFactorChallenge;
 use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
@@ -148,6 +149,7 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.entries.editor', Editor::class);
         Livewire::component('admin.entries.review-changes', ReviewChanges::class);
         Livewire::component('admin.users.index', UsersIndex::class);
+        Livewire::component('admin.roles.index', RolesIndex::class);
         Livewire::component('admin.menus.index', MenusIndex::class);
         Livewire::component('admin.blocks.library', BlockLibrary::class);
         Livewire::component('admin.blocks.editor', BlockEditor::class);
