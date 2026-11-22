@@ -176,10 +176,27 @@
     $card = 'min-w-0 rounded-md border border-border bg-surface shadow-card';
     $h2 = 'm-0 text-[calc(1.125rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]';
 @endphp
-<div class="leads group/kl @container/kl flex flex-col gap-4 max-[599.98px]:gap-2" data-open="{{ $opened ? '1' : '0' }}">
+<div class="leads group/kl @container/kl flex flex-col gap-4 max-[599.98px]:gap-2" data-open="{{ $opened ? '1' : '0' }}"
+     x-on:leads-export-ready.window="window.location.assign($event.detail.url)">
 
     <header class="flex flex-col gap-1">
-        <h1 class="m-0 min-w-0 text-[calc(1.25rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ __('leads.title') }}</h1>
+        <div class="flex items-start gap-3">
+            <h1 class="m-0 min-w-0 flex-auto self-center text-[calc(1.25rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ __('leads.title') }}</h1>
+            {{-- ⋮ «Việc khác» of the whole list, beside the title on every width: «Tải danh sách về máy»,
+                 for whoever manages leads. Support staff signed in for a member never take that file:
+                 the item stays, with why. --}}
+            @if ($canManage && ! $failed)
+                <x-bs-admin::list.actions head name="" :label="__('leads.more')" :title="__('leads.more_title')">
+                    <x-slot:menu>
+                        @if ($support)
+                            <x-bs-admin::list.menu-item icon="ri-download-2" :why="__('admin.support.locked')">{{ __('leads.export') }}</x-bs-admin::list.menu-item>
+                        @else
+                            <x-bs-admin::list.menu-item icon="ri-download-2" wire:click="openExport">{{ __('leads.export') }}</x-bs-admin::list.menu-item>
+                        @endif
+                    </x-slot:menu>
+                </x-bs-admin::list.actions>
+            @endif
+        </div>
         <p class="m-0 text-body text-text-muted [overflow-wrap:anywhere] [text-wrap:pretty]">{{ __('leads.desc') }}</p>
     </header>
 
@@ -463,6 +480,10 @@
             @endif
         </div>
     @endif
+    @endif
+
+    @if ($canManage && ! $failed && ! $support)
+        @include('admin::livewire.forms.partials.export-dialog', ['exportN' => $fmt($countOf($counts[$tab] ?? 0))])
     @endif
 
     {{-- «Xóa theo yêu cầu của khách»: the lead goes at once, never to a Trash, and cannot be undone. --}}

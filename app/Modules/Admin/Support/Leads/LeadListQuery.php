@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Support\Leads;
 
 use App\Modules\Forms\Models\Form;
+use App\Modules\Forms\Models\FormField;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Forms\Support\LeadSearchTerms;
 use App\Modules\Shared\Support\Cast;
@@ -63,6 +64,44 @@ final class LeadListQuery
 
     /** @var array<string, array<string, int>> the word counts of each search read so far (termCounts()) */
     private array $termCounts = [];
+
+    /**
+     * The list a screen's filter asks for: the search, the forms ticked (by ulid, kept only when
+     * they are among $forms), the time window. Forms ticked but none of them this site's (gone,
+     * another website's, past the forms read) match no rows, never the whole list.
+     *
+     * @param  list<string>  $formUlids
+     * @param  Collection<int, Form>  $forms  the site's forms (knownForms())
+     * @param  list<int>  $hidden  the site's forms being deleted (knownForms())
+     */
+    public static function of(string $search, array $formUlids, string $when, string $from, string $to, Collection $forms, array $hidden, SiteTime $time): self
+    {
+        $ids = array_values($forms->whereIn('ulid', $formUlids)->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->all());
+
+        return new self(trim($search), $ids, $when, $from, $to, $time, $formUlids !== [] && $ids === [], $hidden);
+    }
+
+    /**
+     * The site's forms (disabled ones too: their leads stay), each with its fields for the answers,
+     * and the ids of those being deleted, whose leads no list shows, read in the same statement
+     * (first, so the 200 never crowd them out).
+     *
+     * @return array{0: Collection<int, Form>, 1: list<int>}
+     */
+    public static function knownForms(): array
+    {
+        $read = Form::query()->withoutGlobalScope(Form::NOT_DELETING)->select(['id', 'ulid', 'key', 'name', 'status'])
+            ->orderByRaw('status = ? desc', [Form::DELETING])->orderBy('id')->limit(200)->get();
+        $forms = $read->filter(fn (Form $form): bool => $form->status !== Form::DELETING)->values();
+        $hidden = array_values($read->filter(fn (Form $form): bool => $form->status === Form::DELETING)->map(fn (Form $form): int => $form->id)->all());
+        $fields = FormField::query()->whereIn('form_id', $forms->pluck('id')->all())
+            ->select(['id', 'form_id', 'key', 'type', 'label', 'options', 'sort_order'])->orderBy('sort_order')->orderBy('id')->get()->groupBy('form_id');
+        foreach ($forms as $form) {
+            $form->setRelation('fields', $fields->get($form->id) ?? new Collection);
+        }
+
+        return [$forms, $hidden];
+    }
 
     /**
      * The site's leads a screen may show: none of a form being deleted, which reads as gone

@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Livewire\Forms;
 
+use App\Modules\Admin\Support\Leads\LeadCsvExport;
+use App\Modules\Admin\Support\Leads\LeadExportTicket;
 use App\Modules\Admin\Support\Leads\LeadListQuery;
 use App\Modules\Forms\Actions\EraseLead;
 use App\Modules\Forms\Actions\SetFormStatus;
 use App\Modules\Forms\Models\Form;
-use App\Modules\Forms\Models\FormField;
 use App\Modules\Forms\Models\FormSubmission;
+use App\Modules\Identity\Actions\ConfirmIdentity;
+use App\Modules\Identity\Actions\IdentityCheck;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Models\Role;
@@ -24,6 +27,8 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Number;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -49,6 +54,9 @@ final class Inbox extends Component
 
     /** The most rows the list holds at once, and the most rows a tick can hold. */
     public const int MAX_ROWS = 300;
+
+    /** «Tải danh sách về máy»: at most this many files per member per hour. */
+    public const int EXPORTS_PER_HOUR = 10;
 
     #[Url(as: 'status', except: 'all')]
     public string $tab = 'all';
@@ -97,6 +105,17 @@ final class Inbox extends Component
     #[Locked]
     public ?array $erasing = null;
 
+    /** «Tải danh sách về máy» is open (entangled with the dialog). */
+    public bool $exportOpen = false;
+
+    /** The dialog asks for the authenticator app's code instead of the password. */
+    #[Locked]
+    public bool $exportByCode = false;
+
+    /** Why the last try opened no file (a wrong password, too many tries…); '' = none. */
+    #[Locked]
+    public string $exportError = '';
+
     public function boot(): void
     {
         $user = Auth::user();
@@ -112,6 +131,11 @@ final class Inbox extends Component
         $this->clean();
         if ($this->lead !== '' && $this->entitled() && Gate::allows('forms.view')) {
             $this->markRead($this->lead);
+        }
+        // a download that could not start (its pass expired or was already used) comes back here
+        $notice = session('leads.notice');
+        if (is_string($notice) && $notice !== '') {
+            $this->say($notice, 'error');
         }
     }
 
@@ -280,6 +304,89 @@ final class Inbox extends Component
     }
 
     /**
+     * «Tải danh sách về máy» in the screen's ⋮: the leads the list shows now (its group, search,
+     * forms and time) as a file. A file of visitors' personal data, so only a member who manages
+     * leads, never support staff signed in for a member, and only after typing their password (or
+     * their authenticator code) again.
+     */
+    public function openExport(): void
+    {
+        $this->guardWrite();
+        app(SupportSession::class)->forbid();
+        $this->exportByCode = false;
+        $this->exportError = '';
+        $this->exportOpen = true;
+    }
+
+    /** «Dùng mã xác thực 2 lớp thay mật khẩu» / «Dùng mật khẩu»: the code only when the member has the app set up. */
+    public function useExportCode(bool $code): void
+    {
+        $this->guardWrite();
+        $this->exportByCode = $code && $this->actingUser()->two_factor_confirmed_at !== null;
+        $this->exportError = '';
+    }
+
+    public function cancelExport(): void
+    {
+        $this->guardWrite();
+        $this->exportOpen = false;
+        $this->exportByCode = false;
+        $this->exportError = '';
+    }
+
+    /**
+     * «Tải tệp về máy (N)»: the password or code is checked (ConfirmIdentity: its own limit on wrong
+     * tries), then a one-time pass for this member, this website and the filter shown now is issued,
+     * and the browser is sent to the download (LeadExportController), which writes the audit row. The
+     * secret is an argument, never a property: it is not kept in the page between requests.
+     */
+    public function confirmExport(string $secret): void
+    {
+        $this->guardWrite();
+        app(SupportSession::class)->forbid();
+        if (! $this->exportOpen) {
+            return;
+        }
+        $user = $this->actingUser();
+        $limit = 'lead-export:'.$user->id;
+        if (RateLimiter::tooManyAttempts($limit, self::EXPORTS_PER_HOUR)) {
+            $this->exportError = __('leads.export_limit', ['max' => self::EXPORTS_PER_HOUR, 'minutes' => (int) ceil(max(1, RateLimiter::availableIn($limit)) / 60)]);
+
+            return;
+        }
+        $confirm = app(ConfirmIdentity::class);
+        $check = $this->exportByCode ? $confirm->code($user, $secret) : $confirm->password($user, $secret);
+        if (! $check->confirmed()) {
+            $this->exportError = match ($check) {
+                IdentityCheck::Throttled => __('leads.export_throttled', ['seconds' => $confirm->retryIn($user)]),
+                IdentityCheck::NoPassword => __('leads.export_no_password'),
+                IdentityCheck::NoTwoFactor => __('leads.export_no_code'),
+                IdentityCheck::Missing => $this->exportByCode ? __('leads.export_code_format') : __('leads.export_pw_required'),
+                default => $this->exportByCode ? __('leads.export_code_wrong') : __('leads.export_pw_wrong'),
+            };
+
+            return;
+        }
+        RateLimiter::hit($limit, 3600);
+
+        $this->clean();
+        [$forms, $hidden] = $this->knownForms();
+        $count = $this->listQuery($forms, $hidden)->tabCounts()[$this->tab] ?? 0;
+        $token = LeadExportTicket::issue($user, app(CurrentSite::class)->id(), [
+            'tab' => $this->tab, 'search' => trim($this->search), 'forms' => $this->formF,
+            'when' => $this->when, 'from' => $this->from, 'to' => $this->to,
+        ]);
+        $this->exportOpen = false;
+        $this->exportByCode = false;
+        $this->exportError = '';
+        $this->dispatch('leads-export-ready', url: route('admin.forms.export', ['token' => $token], false));
+        $this->say(__('leads.export_done', [
+            'file' => LeadCsvExport::fileName(app(SiteTime::class)),
+            'count' => $count > LeadListQuery::CAP ? Cast::string(__('catalog.count_over')) : Cast::string(Number::format($count, locale: app()->getLocale())),
+        ]));
+    }
+
+    /**
      * The check boxes: a row's box and "Chọn tất cả" send the ulids they stand for. All of them
      * already ticked → they are unticked, else they are added. Nothing is trusted until an action
      * looks the leads up again.
@@ -431,6 +538,7 @@ final class Inbox extends Component
             'filterCount' => count($this->formF) + ($this->when !== '' ? 1 : 0),
             'siteTime' => $siteTime,
             'cap' => LeadListQuery::CAP,
+            'canCode' => $canManage && $this->actingUser()->two_factor_confirmed_at !== null,
         ]));
     }
 
@@ -471,26 +579,10 @@ final class Inbox extends Component
             ->first();
     }
 
-    /**
-     * The site's forms (disabled ones too: their leads stay), each with its fields for the answers,
-     * and the ids of those being deleted, whose leads no list shows, read in the same statement
-     * (first, so the 200 never crowd them out).
-     *
-     * @return array{0: Collection<int, Form>, 1: list<int>}
-     */
+    /** @return array{0: Collection<int, Form>, 1: list<int>} */
     private function knownForms(): array
     {
-        $read = Form::query()->withoutGlobalScope(Form::NOT_DELETING)->select(['id', 'ulid', 'key', 'name', 'status'])
-            ->orderByRaw('status = ? desc', [Form::DELETING])->orderBy('id')->limit(200)->get();
-        $forms = $read->filter(fn (Form $form): bool => $form->status !== Form::DELETING)->values();
-        $hidden = array_values($read->filter(fn (Form $form): bool => $form->status === Form::DELETING)->map(fn (Form $form): int => $form->id)->all());
-        $fields = FormField::query()->whereIn('form_id', $forms->pluck('id')->all())
-            ->select(['id', 'form_id', 'key', 'type', 'label', 'options', 'sort_order'])->orderBy('sort_order')->orderBy('id')->get()->groupBy('form_id');
-        foreach ($forms as $form) {
-            $form->setRelation('fields', $fields->get($form->id) ?? new Collection);
-        }
-
-        return [$forms, $hidden];
+        return LeadListQuery::knownForms();
     }
 
     /**
@@ -499,10 +591,7 @@ final class Inbox extends Component
      */
     private function listQuery(Collection $forms, array $hidden): LeadListQuery
     {
-        $ids = array_values($forms->whereIn('ulid', $this->formF)->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->all());
-
-        // forms ticked but none of them this site's (gone, another website's, past the forms read): no rows, never the whole list
-        return new LeadListQuery(trim($this->search), $ids, $this->when, self::dateOr($this->from), self::dateOr($this->to), app(SiteTime::class), $this->formF !== [] && $ids === [], $hidden);
+        return LeadListQuery::of($this->search, $this->formF, $this->when, self::dateOr($this->from), self::dateOr($this->to), $forms, $hidden, app(SiteTime::class));
     }
 
     /**

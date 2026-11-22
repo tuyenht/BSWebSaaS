@@ -1501,5 +1501,20 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         ->and(file_get_contents($dir.'/review-inbox-changes-approve.html'))->toContain(e(__('entries.chg.ask_now')))
         ->and(file_get_contents($dir.'/review-inbox-changes-return.html'))->toContain(e(__('entries.chg.return_err')));
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 133);
+    // «Tải danh sách về máy» from the leads list's ⋮: the dialog asking for the password, the same
+    // dialog after a wrong one, and the message naming the file once the password is right.
+    $leadsPage = (string) file_get_contents($dir.'/leads.html');
+    $inbox = fn () => Livewire::actingAs($owner)->test(Inbox::class)->call('openExport')->assertSet('exportOpen', true);
+    foreach ([
+        'leads-export' => fn () => $inbox(),
+        'leads-export-error' => fn () => $inbox()->call('confirmExport', 'chua-dung')->assertSet('exportError', __('leads.export_pw_wrong')),
+        'leads-export-done' => fn () => $inbox()->call('confirmExport', 'a-strong-password')->assertSet('exportOpen', false)->assertDispatched('leads-export-ready'),
+    ] as $name => $state) {
+        $part = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($state()));
+        file_put_contents($dir.'/'.$name.'.html', $swap($leadsPage, $part, 'app\\.modules\\.admin\\.livewire\\.forms\\.inbox'));
+    }
+    expect(file_get_contents($dir.'/leads-export.html'))->toContain('id="lx-pw"', e(__('leads.export_pw_hint')))
+        ->and(file_get_contents($dir.'/leads-export-error.html'))->toContain('aria-invalid="true"', e(__('leads.export_pw_wrong')))
+        ->and(file_get_contents($dir.'/leads-export-done.html'))->toContain('data-tone="success"');
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 136);
 });
