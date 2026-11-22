@@ -8,6 +8,7 @@ use App\Modules\Admin\Livewire\Concerns\EditsPendingChange;
 use App\Modules\Admin\Livewire\Concerns\ShowsEntryRevisions;
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\Categories\CategorySections;
+use App\Modules\Admin\Support\Entries\EntryLangStates;
 use App\Modules\Admin\Support\Entries\EntryRefusal;
 use App\Modules\Admin\Support\Entries\PageMoveWords;
 use App\Modules\Admin\Support\Entries\PageParentChoices;
@@ -15,6 +16,7 @@ use App\Modules\Admin\Support\Entries\PostCategoryChoices;
 use App\Modules\Admin\Support\Entries\ScheduleInput;
 use App\Modules\Admin\Support\EntryProseBody;
 use App\Modules\Admin\Support\Guide\EditorGuide;
+use App\Modules\Admin\Support\LangBar;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
@@ -172,6 +174,15 @@ final class Editor extends Component
     /** Whether the site writes in more than one language (the per-language fields then carry its code). */
     #[Locked]
     public bool $multiLocale = false;
+
+    /**
+     * The language bar of a saved entry on a site with more than one language (LangBar): one item per
+     * enabled language, read in one query when the editor opens and again after each save. Empty: no bar.
+     *
+     * @var list<array{code: string, label: string, kind: string, done: int, total: int, href: string, current: bool, source: bool, public: bool, live: bool}>
+     */
+    #[Locked]
+    public array $langBar = [];
 
     /**
      * Primary category id (posts only; index 0 of entry_taxonomies drives the URL): the first of
@@ -559,6 +570,7 @@ final class Editor extends Component
         $this->loadSchedule($entry);
         $this->saved = $this->tracked();
         $this->guideDue = true;
+        $this->readLangBar($entry);
 
         if ($this->governingWorkflow() !== null) {
             $this->loadTrail($entry->id);
@@ -1199,6 +1211,31 @@ final class Editor extends Component
         }
 
         return $siteLocale->default();
+    }
+
+    /**
+     * The language bar's items for a saved entry, when the site writes in more than one language:
+     * each version's state from one read of its stored rows (EntryLangStates), each opening this
+     * editor in its language (the default language without `?locale=`).
+     */
+    private function readLangBar(Entry $entry): void
+    {
+        if (! $this->multiLocale) {
+            $this->langBar = [];
+
+            return;
+        }
+        $languages = app(SiteLocale::class);
+        $default = $languages->default();
+        $this->langBar = LangBar::items(
+            EntryLangStates::read($entry->id),
+            $languages->enabled(),
+            $default,
+            $languages->public(),
+            $this->locale,
+            EntryLangStates::FIELDS,
+            static fn (string $code): string => route('admin.entries.edit', ['ulid' => $entry->ulid] + ($code !== $default ? ['locale' => $code] : [])),
+        );
     }
 
     public function addBlock(string $type): void
@@ -2000,6 +2037,8 @@ final class Editor extends Component
             'kinds' => $this->blockKinds(),
             'prosePreview' => $this->prose ? EntryProseBody::preview($this->bodyHtml) : '',
             'localeLabel' => Locales::label($this->locale),
+            // «Quản lý ngôn ngữ» on the language bar: the site's languages, for a member who may change them
+            'langManage' => $this->langBar !== [] && $this->user()->can('settings.manage') ? route('admin.settings.languages') : null,
             // the Home page's locked link: the website's root in this language
             'homePath' => app(PathBuilder::class)->publicUrl('/', $this->locale),
             // «Trang cha» is one value for every language: it is changed in the website's default language only
@@ -3415,6 +3454,8 @@ final class Editor extends Component
             $this->frameRights($entry);
         }
         $this->saved = $this->tracked();
+        // what this save stored moves this language's state on the bar, and the others' when it is the source
+        $this->readLangBar($entry);
         // the save stores the text; «Hẹn giờ đăng» is moved after it (save → moveSchedule), so until then it is still unsaved
         $this->saved['scheduleAt'] = $this->scheduleLoaded;
         // so is a status picked: only the move after the save takes it (an autosave never does), so it still counts

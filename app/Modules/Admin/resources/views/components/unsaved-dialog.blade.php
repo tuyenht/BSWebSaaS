@@ -36,20 +36,21 @@
                     @if ($body !== null)
                         <span x-text="body">{{ $body }}</span>
                     @else
-                        <span x-show="section">{{ __('admin.unsaved.body_section', ['label' => $label]) }}</span>
-                        <span x-show="!section">{{ __('admin.unsaved.body_leave', ['label' => $label]) }}</span>
+                        <span x-show="own" x-text="body"></span>
+                        <span x-show="!own && section">{{ __('admin.unsaved.body_section', ['label' => $label]) }}</span>
+                        <span x-show="!own && !section">{{ __('admin.unsaved.body_leave', ['label' => $label]) }}</span>
                     @endif
                 </p>
                 <div class="sx-ud-foot" x-ref="foot">
                     <button type="button" class="sx-ud-b sx-ud-p hit-area" data-ud="p" aria-busy="false" x-bind:aria-busy="busy ? 'true' : 'false'" x-on:click="saveGo()">
                         <span data-ud-t x-show="section">{{ __('admin.unsaved.save_section') }}</span>
-                        <span data-ud-t x-show="!section" @if ($saveLabel !== null) x-text="saveText" @endif>{{ $saveLabel ?? __('admin.unsaved.save_leave') }}</span>
+                        <span data-ud-t x-show="!section" x-text="saveText || {{ \Illuminate\Support\Js::from($saveLabel ?? __('admin.unsaved.save_leave')) }}">{{ $saveLabel ?? __('admin.unsaved.save_leave') }}</span>
                     </button>
                     <button type="button" class="sx-ud-b sx-ud-s hit-area" data-ud="s" x-on:click="stay()">{{ __('admin.unsaved.stay') }}</button>
                     <button type="button" class="sx-ud-b sx-ud-x hit-area" data-ud="x" x-on:click="discardGo()">
                         <x-bs-admin::icon name="ri-error-warning" :class="$glyph" />
                         <span data-ud-t x-show="section">{{ __('admin.unsaved.discard_section') }}</span>
-                        <span data-ud-t x-show="!section">{{ $discardLabel ?? __('admin.unsaved.discard_leave') }}</span>
+                        <span data-ud-t x-show="!section" x-text="discardText || {{ \Illuminate\Support\Js::from($discardLabel ?? __('admin.unsaved.discard_leave')) }}">{{ $discardLabel ?? __('admin.unsaved.discard_leave') }}</span>
                     </button>
                 </div>
             </div>

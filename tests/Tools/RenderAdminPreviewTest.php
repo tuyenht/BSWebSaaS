@@ -658,6 +658,16 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$post->ulid.'/edit')->assertOk()->getContent();
     expect($html)->toContain('data-seo-fields', 'wire:model="excerpt"', 'id="entry-cover-alt"');
     file_put_contents($dir.'/post-editor.html', $html);
+    // The language bar (board 07) on the English version: written in part (title, link and short
+    // description), Japanese not written yet (switched on above: the test's app keeps the site's
+    // languages read before that), Vietnamese the source.
+    app(Tenancy::class)->enter(1, fn () => app(App\Modules\Tenancy\Context\SiteLocale::class)->forget());
+    app(Tenancy::class)->enter(1, fn () => $post->translations()->create(['locale' => 'en', 'title' => 'New precision machining plant opens in Phu Nghia Industrial Park',
+        'slug' => 'new-precision-plant', 'status' => 'draft', 'excerpt' => 'A 5,000 m² plant with 5-axis CNC lines halves delivery times.', 'body' => ['blocks' => []]]));
+    $en = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$post->ulid.'/edit?locale=en')->assertOk()->getContent();
+    file_put_contents($dir.'/post-editor-en.html', $en);
+    expect($html)->toContain('data-lang-bar', 'data-lb-pill="en"')
+        ->and($en)->toContain('data-lang-bar', 'data-current="en"', 'data-lb-pill="ja" data-k="empty"', 'data-lb-pill="en" data-k="partial"');
     // «Ảnh đại diện» (board 07): «Đổi ảnh» opens the shared «Chọn ảnh» dialog for one picture, and
     // «Bỏ ảnh» says «Đã gỡ ảnh đại diện» with «Hoàn tác».
     expect($html)->toContain('aria-controls="entry-cover-where"', e(__('entries.ed.cover_change')));
@@ -1367,5 +1377,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         ->and(file_get_contents($dir.'/review-inbox-changes-approve.html'))->toContain(e(__('entries.chg.ask_now')))
         ->and(file_get_contents($dir.'/review-inbox-changes-return.html'))->toContain(e(__('entries.chg.return_err')));
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 122);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 123);
 });

@@ -143,6 +143,11 @@
                 </x-bs-admin::alert>
             </div>
         @endif
+        @if (count($langBar) > 1)
+            {{-- The language bar (board 07): the version open and the state of every other; another version opens
+                 in this editor with its own link, through the unsaved-changes question, its title field focused. --}}
+            <x-bs-admin::lang-bar :langs="$langBar" :manage="$langManage" focus="entry-title" />
+        @endif
 
         <div class="flex min-w-0 flex-wrap items-start gap-5">
             <div class="flex min-w-0 flex-[999_1_520px] flex-col gap-4">

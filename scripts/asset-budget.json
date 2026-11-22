@@ -2,7 +2,7 @@
   "entries": {
     "resources/css/app.css": {
       "js": 0,
-      "css": 49920
+      "css": 52194
     },
     "resources/css/admin-account.css": {
       "js": 0,
@@ -171,7 +171,7 @@
       "css": 36159
     },
     "resources/js/admin-unsaved.js": {
-      "js": 2565,
+      "js": 2652,
       "css": 0
     },
     "resources/js/admin-save-bar.js": {
@@ -189,6 +189,10 @@
     "resources/js/media-uppy.js": {
       "js": 106668,
       "css": 10606
+    },
+    "resources/js/admin-lang-bar.js": {
+      "js": 1739,
+      "css": 0
     },
     "resources/js/admin-menus.js": {
       "js": 28701,
