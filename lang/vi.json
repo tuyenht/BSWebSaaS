@@ -1016,6 +1016,7 @@
     "admin.roles.restored": "Đã khôi phục nhóm.",
     "admin.roles.delete_off_title": "Xóa nhóm “:role”?",
     "admin.roles.delete_off_text": "Gói hiện tại chưa có nhóm tự tạo nên không khôi phục được nhóm này sau khi xóa.",
+    "admin.roles.delete_kept_text": "Nhóm này có quyền mà bạn không được cấp nên bạn không khôi phục được nhóm sau khi xóa.",
     "admin.roles.delete_off_ok": "Xóa nhóm",
     "admin.roles.deleted_off": "Đã xóa nhóm “:role”.",
     "admin.roles.err_name_invalid": "Tên nhóm cần từ 1 đến 60 ký tự, ví dụ “Người duyệt bài”.",

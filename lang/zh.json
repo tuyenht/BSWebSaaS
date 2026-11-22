@@ -1016,6 +1016,7 @@
     "admin.roles.restored": "已恢复权限组。",
     "admin.roles.delete_off_title": "删除权限组“:role”？",
     "admin.roles.delete_off_text": "当前套餐不含自定义权限组，删除后无法恢复此权限组。",
+    "admin.roles.delete_kept_text": "此权限组含有您无法授予的权限，删除后您将无法恢复它。",
     "admin.roles.delete_off_ok": "删除权限组",
     "admin.roles.deleted_off": "已删除权限组“:role”。",
     "admin.roles.err_name_invalid": "权限组名称需为 1 到 60 个字符，例如“文章审核人”。",

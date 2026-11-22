@@ -1016,6 +1016,7 @@
     "admin.roles.restored": "Role restored.",
     "admin.roles.delete_off_title": "Delete role “:role”?",
     "admin.roles.delete_off_text": "The current plan does not include custom roles, so this role cannot be restored once deleted.",
+    "admin.roles.delete_kept_text": "This role holds a permission you cannot give, so you will not be able to restore it once deleted.",
     "admin.roles.delete_off_ok": "Delete role",
     "admin.roles.deleted_off": "Role “:role” deleted.",
     "admin.roles.err_name_invalid": "A role name needs 1 to 60 characters, for example “Post reviewer”.",

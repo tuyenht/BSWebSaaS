@@ -1016,6 +1016,7 @@
     "admin.roles.restored": "グループを復元しました。",
     "admin.roles.delete_off_title": "グループ「:role」を削除しますか？",
     "admin.roles.delete_off_text": "現在のプランには独自のグループが含まれていないため、削除後にこのグループを復元できません。",
+    "admin.roles.delete_kept_text": "このグループにはあなたが付与できない権限が含まれているため、削除後にあなたは復元できません。",
     "admin.roles.delete_off_ok": "グループを削除",
     "admin.roles.deleted_off": "グループ「:role」を削除しました。",
     "admin.roles.err_name_invalid": "グループ名は1〜60文字にしてください。例：「記事の承認者」",

@@ -208,6 +208,22 @@ final readonly class CustomRoleRules
     }
 
     /**
+     * Whether {@see restorable()} would accept $held for $actor, asked before the role goes to the trash.
+     *
+     * @param  list<string>  $held
+     */
+    public function allowsBack(User $actor, array $held): bool
+    {
+        try {
+            $this->restorable($actor, $held);
+
+            return true;
+        } catch (AuthorizationException) {
+            return false;
+        }
+    }
+
+    /**
      * Every reserved name, folded: the technical names (code resolves those: `assignRole('owner')`,
      * the platform gate) and the label each one is shown by in every admin language, since a custom
      * role is shown by its raw name and «Quản trị» would read exactly like the system role.

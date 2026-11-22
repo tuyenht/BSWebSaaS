@@ -3,6 +3,7 @@
 use App\Modules\Admin\Livewire\Roles\Index;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Actions\DeleteCustomRole;
+use App\Modules\Rbac\Actions\RestoreCustomRole;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
@@ -13,6 +14,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteFeature;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 
@@ -489,6 +491,80 @@ it('says whether a delete moved the role, so the screen offers «Hoàn tác» on
     reeIn(1, fn () => expect(app(DeleteCustomRole::class)->handle($owner->fresh(), $role->fresh()))->toBeTrue()
         ->and(app(DeleteCustomRole::class)->handle($owner->fresh(), $role->fresh()))->toBeFalse());
 });
+
+it('asks before deleting a role that holds a permission the member may not give, since «Hoàn tác» could not bring it back', function (): void {
+    reePlan();
+    reeCustom('Trưởng nhóm', 60, ['roles.manage', 'media.view']);
+    reeCustom('Kho ảnh', 20, ['media.view', 'media.upload']);   // the owner gave it «Tải lên», which the lead lacks
+    $lead = reeMember('Trưởng nhóm');
+
+    reePage($lead, function (Testable $page): void {
+        $page->call('askDelete', 'Kho ảnh')->assertSet('ask', 'delete_kept')->assertSet('asking', true)->assertSet('toastUndo', false)
+            ->assertSee(__('admin.roles.delete_kept_text'));
+        expect(reeRole('Kho ảnh')->trashed())->toBeFalse();
+
+        $page->call('confirmAsk')->assertSet('toast', __('admin.roles.deleted_off', ['role' => 'Kho ảnh']))
+            ->assertSet('toastUndo', false)->assertSet('undoKey', '');
+    });
+
+    expect(reeRole('Kho ảnh')->trashed())->toBeTrue();
+});
+
+it('lets «Hoàn tác» bring back only what that member deleted on that website by that delete', function (string $case): void {
+    reePlan();
+    $role = reeCustom('Duyệt tin', 40, ['entries.view']);
+    $owner = reeMember('owner');
+    $other = reeMember('owner');
+
+    reePage($owner, function (Testable $page) use ($case, $role, $other): void {
+        $page->call('askDelete', 'Duyệt tin')->assertSet('toastUndo', true);
+        if ($case === 'another member') {
+            // the same sealed token replayed in another member's session
+            $this->actingAs($other->fresh());
+        } else {
+            // brought back and deleted again later by someone else: no longer this member's delete
+            $this->travel(2)->seconds();
+            app(RestoreCustomRole::class)->handle($other->fresh(), $role->fresh());
+            $this->travel(2)->seconds();
+            app(DeleteCustomRole::class)->handle($other->fresh(), $role->fresh());
+        }
+
+        $page->call('undoDelete')->assertSet('undoKey', '');
+        expect($page->get('toast'))->not->toBe(__('admin.roles.restored'));
+    });
+
+    expect(reeRole('Duyệt tin')->trashed())->toBeTrue();
+})->with(['another member', 'trashed again']);
+
+it('refuses «Hoàn tác» once the plan has dropped custom roles, and the role stays in the trash', function (): void {
+    reePlan();
+    reeCustom('Duyệt tin', 40, ['entries.view']);
+    $owner = reeMember('owner');
+
+    reePage($owner, function (Testable $page): void {
+        $page->call('askDelete', 'Duyệt tin')->assertSet('toastUndo', true);
+        SiteFeature::query()->where('feature_key', 'rbac.custom_roles')->delete();
+
+        $page->call('undoDelete')->assertSet('toastTone', 'error');
+        expect($page->get('toast'))->not->toBe(__('admin.roles.restored'));
+    });
+
+    expect(reeRole('Duyệt tin')->trashed())->toBeTrue();
+});
+
+it('refuses a browser write to the state only the server sets', function (string $property, mixed $value): void {
+    reePlan();
+    reeCustom('Duyệt tin', 40, ['entries.view']);
+    $owner = reeMember('owner');
+
+    reePage($owner, fn (Testable $page) => expect(fn () => $page->set($property, $value))->toThrow(CannotUpdateLockedPropertyException::class));
+})->with([
+    'level' => ['level', 95],
+    'sel' => ['sel', ['roles.manage']],
+    'undoKey' => ['undoKey', 'forged'],
+    'ask' => ['ask', 'delete'],
+    'askRole' => ['askRole', 'Duyệt tin'],
+]);
 
 it('shows «+ Thêm ▾» on phones with «Hướng dẫn» right before it, the full label kept in its name', function (): void {
     reePlan();

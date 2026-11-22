@@ -167,7 +167,11 @@ final class Index extends Component
     #[Locked]
     public string $noteArea = '';
 
-    /** The question open: '' none · 'leave' unsaved changes · 'inuse' a role someone holds · 'delete' a delete with no way back. */
+    /**
+     * The question open: '' none · 'leave' unsaved changes · 'inuse' a role someone holds · 'delete' a
+     * delete with no way back (the plan has no custom roles) · 'delete_kept' a delete the member could
+     * not undo (the role holds a permission they may not give).
+     */
     #[Locked]
     public string $ask = '';
 
@@ -186,7 +190,10 @@ final class Index extends Component
     #[Locked]
     public bool $staleTold = false;
 
-    /** That exact row, sealed (encrypted, never a readable id): «Hoàn tác» brings back only it. */
+    /**
+     * That exact row, sealed (encrypted, never a readable id) with who deleted it, on which website
+     * and when: «Hoàn tác» brings back only it, for that member, from that very delete.
+     */
     #[Locked]
     public string $undoKey = '';
 
@@ -432,7 +439,8 @@ final class Index extends Component
     /**
      * «Xóa…»: a role someone holds or is invited to cannot go (says who, and opens Thành viên); a
      * role that can come back goes to the trash at once with «Hoàn tác»; while the plan has no
-     * custom roles nothing could bring it back, so that delete asks first.
+     * custom roles nothing could bring it back, so that delete asks first, and so does the delete of
+     * a role holding a permission the member may not give (RestoreCustomRole would refuse the undo).
      */
     public function askDelete(string $name): void
     {
@@ -462,8 +470,14 @@ final class Index extends Component
 
             return;
         }
-        if (! app(RestoreCustomRole::class)->availableOnThisSite()) {
+        $restore = app(RestoreCustomRole::class);
+        if (! $restore->availableOnThisSite()) {
             $this->ask('delete', $found->name);
+
+            return;
+        }
+        if (! $restore->permitsBack($this->actor(), $found)) {
+            $this->ask('delete_kept', $found->name);
 
             return;
         }
@@ -481,7 +495,7 @@ final class Index extends Component
             $this->closeEditor();
         } elseif ($ask === 'inuse') {
             $this->redirectRoute('admin.users.index', ['nhom' => [$name]], navigate: true);
-        } elseif ($ask === 'delete') {
+        } elseif ($ask === 'delete' || $ask === 'delete_kept') {
             $found = $this->siteRole($name);
             if ($found instanceof Role) {
                 $this->delete($found, undo: false);
@@ -512,13 +526,18 @@ final class Index extends Component
             return;
         }
         try {
-            $id = (int) Crypt::decryptString($key);
+            $sealed = json_decode(Crypt::decryptString($key), true);
         } catch (DecryptException) {
             return;
         }
-        // the row this member just moved, still in this website's trash
-        $trashed = Role::onlyTrashed()->where('site_id', app(CurrentSite::class)->id())->where('is_system', false)->whereKey($id)->first();
-        if (! $trashed instanceof Role) {
+        $siteId = app(CurrentSite::class)->id();
+        if (! is_array($sealed) || ! is_int($sealed['id'] ?? null) || ! is_string($sealed['deleted_at'] ?? null)
+            || ($sealed['actor'] ?? null) !== Cast::int($this->actor()->getKey()) || ($sealed['site'] ?? null) !== $siteId) {
+            return;   // sealed for another member or another website: nothing of this member's to undo
+        }
+        // the row this member just moved, still in this website's trash from that same delete
+        $trashed = Role::onlyTrashed()->where('site_id', $siteId)->where('is_system', false)->whereKey($sealed['id'])->first();
+        if (! $trashed instanceof Role || $trashed->getRawOriginal('deleted_at') !== $sealed['deleted_at']) {
             $this->say(__('rbac.role_change.gone'), 'error');
 
             return;
@@ -850,10 +869,18 @@ final class Index extends Component
         }
         $this->explainRole = $this->explainRole === $role->name ? '' : $this->explainRole;
         $this->say(__($undo ? 'admin.roles.deleted' : 'admin.roles.deleted_off', ['role' => $role->name]));
-        if ($undo) {
-            // the exact row this member moved, never another of the same name deleted meanwhile
+        $siteId = app(CurrentSite::class)->id();
+        $deletedAt = $undo ? Role::onlyTrashed()->where('site_id', $siteId)->whereKey($role->getKey())->toBase()->value('deleted_at') : null;
+        if (is_string($deletedAt)) {
+            // the exact row this member moved by this delete, never another of the same name, nor
+            // the same row deleted again later by someone else, nor for another member or website
             $this->undoName = $role->name;
-            $this->undoKey = Crypt::encryptString((string) Cast::int($role->getKey()));
+            $this->undoKey = Crypt::encryptString(json_encode([
+                'id' => Cast::int($role->getKey()),
+                'actor' => Cast::int($this->actor()->getKey()),
+                'site' => $siteId,
+                'deleted_at' => $deletedAt,
+            ], JSON_THROW_ON_ERROR));
             $this->toastUndo = true;
         }
     }
@@ -893,7 +920,8 @@ final class Index extends Component
                 'ok' => __('admin.roles.inuse_ok'), 'cancel' => __('admin.close'), 'danger' => false, 'icon' => 'ri-error-warning'];
         }
 
-        return ['title' => __('admin.roles.delete_off_title', ['role' => $this->askRole]), 'lines' => [__('admin.roles.delete_off_text')],
+        return ['title' => __('admin.roles.delete_off_title', ['role' => $this->askRole]),
+            'lines' => [__($this->ask === 'delete_kept' ? 'admin.roles.delete_kept_text' : 'admin.roles.delete_off_text')],
             'ok' => __('admin.roles.delete_off_ok'), 'cancel' => __('admin.cancel'), 'danger' => true, 'icon' => 'ri-delete-bin'];
     }
 
