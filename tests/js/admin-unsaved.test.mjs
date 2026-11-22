@@ -139,6 +139,19 @@ test('a link with its own words (another language version of the editor) is aske
     last.stay();
 });
 
+test('the focus goes back to the button of a popup closed meanwhile, when it came from a row inside it', async () => {
+    const { c } = page(1);
+    const host = document.createElement('div');
+    host.innerHTML = '<button id="opener" aria-controls="pop">EN</button><div id="pop"><a id="row" href="/x?locale=ja">ja</a></div>';
+    document.body.appendChild(host);
+    const row = document.getElementById('row');
+    row.focus();
+    assert.equal(await navigate('/admin/posts'), false);
+    document.getElementById('pop').style.display = 'none'; // the panel closed under the dialog
+    c.stay();
+    assert.equal(document.activeElement, document.getElementById('opener'));
+});
+
 test('a link to the section already open does nothing', async () => {
     const { c } = page(1);
     assert.equal(await navigate('/admin/settings/general'), false);

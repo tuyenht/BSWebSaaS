@@ -16,7 +16,7 @@ use Carbon\CarbonImmutable;
  *
  * The translatable fields are the board's (07): title, link, short description, the Google title,
  * the Google description and the body. A body counts as filled when it holds a block other than
- * written text, or written text with a word or a picture in it (a space, a non-breaking one included, is not a word). When the content changed is the
+ * written text, or written text with a word or a picture in it; spaces alone, non-breaking ones included, fill no field. When the content changed is the
  * version's content mark (TracksContentChange: a change of status or of the author's name leaves
  * it), or its updated_at while it has none.
  */
@@ -30,9 +30,11 @@ final class EntryLangStates
     public static function read(int $entryId): array
     {
         $prose = EntryProseBody::TYPE;
-        $filled = "(btrim(title) <> '')::int + (btrim(slug) <> '')::int"
-            ." + (btrim(coalesce(excerpt, '')) <> '')::int + (btrim(coalesce(seo_title, '')) <> '')::int"
-            ." + (btrim(coalesce(seo_description, '')) <> '')::int"
+        $filled = "(regexp_replace(title, '\\s|\\u00a0', '', 'g') <> '')::int"
+            ." + (regexp_replace(slug, '\\s|\\u00a0', '', 'g') <> '')::int"
+            ." + (regexp_replace(coalesce(excerpt, ''), '\\s|\\u00a0', '', 'g') <> '')::int"
+            ." + (regexp_replace(coalesce(seo_title, ''), '\\s|\\u00a0', '', 'g') <> '')::int"
+            ." + (regexp_replace(coalesce(seo_description, ''), '\\s|\\u00a0', '', 'g') <> '')::int"
             ." + (case when jsonb_typeof(body->'blocks') = 'array' and exists (select 1 from jsonb_array_elements(body->'blocks') as b(block)"
             ." where block->>'type' is distinct from '{$prose}'"
             ." or regexp_replace(coalesce(block->'props'->>'html', ''), '<[^>]*>|&nbsp;|\\s|\\u00a0', '', 'g') <> ''"

@@ -87,6 +87,18 @@ it('shows nothing on an entry not saved yet', function (): void {
     });
 });
 
+it('shows the bar once a new entry has been saved', function (): void {
+    $editor = lbMember();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        lbLanguages('en');
+        $c = Livewire::actingAs($editor)->test(Editor::class)->assertSet('langBar', [])
+            ->set('title', 'Giới thiệu')->call('save')->assertHasNoErrors();
+        expect(lbItems($c)['vi']['kind'])->toBe('source')->and(lbItems($c)['en']['kind'])->toBe('empty')
+            ->and($c->html())->toContain('data-lang-bar', 'data-bs-lazy="bsLangBar"');
+    });
+});
+
 it('gives each language the state of its version', function (): void {
     $editor = lbMember();
 
@@ -97,7 +109,7 @@ it('gives each language the state of its version', function (): void {
         // title, link and an empty paragraph: the body does not count
         $post->translations()->create(['locale' => 'ja', 'title' => '記事', 'slug' => 'kiji', 'status' => 'draft', 'body' => ['blocks' => [['type' => EntryProseBody::TYPE, 'props' => ['html' => '<p>&nbsp;</p>']]]]]);
         // a version with nothing filled is empty, as one never written (zh)
-        $post->translations()->create(['locale' => 'th', 'title' => ' ', 'slug' => '', 'status' => 'draft', 'body' => ['blocks' => []]]);
+        $post->translations()->create(['locale' => 'th', 'title' => "\u{00A0} \u{00A0}", 'slug' => '', 'status' => 'draft', 'body' => ['blocks' => [['type' => EntryProseBody::TYPE, 'props' => ['html' => "<p>\u{00A0}</p>"]]]]]);
         $post->translations()->create(['locale' => 'ko'] + lbFull('게시물', 'gesimul'));
         // Korean was last written before the source changed
         EntryTranslation::query()->where('entry_id', $post->id)->where('locale', 'ko')->toBase()->update(['content_changed_at' => CarbonImmutable::now()->subDay()]);

@@ -104,7 +104,7 @@
                     @if ($search)
                         <label class="lb-search" data-focus-wrap>
                             <x-bs-admin::icon name="ri-search" class="{{ $glyph }}" />
-                            <input type="search" x-ref="q" x-model="q" aria-label="{{ __('admin.lb.search_aria') }}" placeholder="{{ __('admin.lb.search') }}"
+                            <input type="search" class="border-0 bg-transparent p-0" x-ref="q" x-model="q" aria-label="{{ __('admin.lb.search_aria') }}" placeholder="{{ __('admin.lb.search') }}"
                                    autocomplete="off" x-on:keydown.down.prevent="step(1, true)">
                         </label>
                     @endif

@@ -48,6 +48,45 @@ export const ORDER = { row: ['x', 's', 'p'], col: ['p', 's', 'x'] };
 
 let ctx = null;
 
+/** Whether an element is drawn: connected, and neither it nor a parent hidden or display:none. */
+function drawn(el) {
+    if (!el || !el.isConnected) {
+        return false;
+    }
+    for (let x = el; x && x.nodeType === 1; x = x.parentElement) {
+        if (x.hidden || window.getComputedStyle(x).display === 'none') {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Where the focus goes back when the dialog closes: what had it, or, when that was in a popup closed
+ * meanwhile (a row of the language bar's panel), the drawn button that controls that popup.
+ */
+function returnTo(from) {
+    if (!from || !from.isConnected) {
+        return null;
+    }
+    if (drawn(from)) {
+        return from;
+    }
+    for (let p = from.parentElement; p; p = p.parentElement) {
+        if (p.id) {
+            const by = Array.from(document.querySelectorAll('[aria-controls]')).find(
+                (b) => b.getAttribute('aria-controls').split(/\s+/).includes(p.id) && drawn(b),
+            );
+            if (by) {
+                return by;
+            }
+        }
+    }
+
+    return null;
+}
+
 /** A link on the page to `target` that carries its own words for the dialog, or null. */
 function ownWords(target) {
     if (!target) {
@@ -321,8 +360,9 @@ export function unsavedDialog(cfg) {
                 ro = null;
             }
             unlock();
-            if (back && o && o.isConnected) {
-                o.focus();
+            const to = back ? returnTo(o) : null;
+            if (to) {
+                to.focus();
             }
         },
 
