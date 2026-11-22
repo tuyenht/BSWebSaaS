@@ -47,10 +47,12 @@ use Spatie\Permission\PermissionRegistrar;
  *  - when the token moves, one worker rebuilds the shared catalog while the others wait for it
  *    (a lock, and a small marker key the waiters poll instead of fetching the catalog), instead of
  *    every worker querying the whole catalog at once;
- *  - a new token that cannot be written (the cache store fails) is tried again once, then logged,
- *    and the call returns false (`rbac:sync` then fails). A worker that serves requests or jobs
- *    then loads the catalog from the database for itself and tries again at each next unit of
- *    work and when it stops; a one-shot process (artisan, migrate) cannot, so its caller must.
+ *  - a new token that cannot be written (the cache store fails) is tried again once after a short
+ *    pause, then logged, and the call returns false (`rbac:sync` then fails). A worker that serves
+ *    requests or jobs then loads the catalog from the database for itself and tries again at each
+ *    next unit of work and when it stops; a one-shot process (artisan, migrate) cannot, so its
+ *    caller must. Until the token is written, every other worker keeps the catalog from before the
+ *    change; if it never is, that lasts until the next change or the shared catalog's expiry.
  *
  * A member's own roles are not in the catalog: they are read from the database on each request, so
  * giving or taking a role needs no new token.
@@ -72,11 +74,18 @@ class VersionedPermissionRegistrar extends PermissionRegistrar
     private const int REBUILD_POLL_MILLISECONDS = 50;
 
     /**
-     * Looks before a waiting worker builds its own copy: as long as the lock lasts (600 × 50 ms =
-     * 30 s). The builder started first, so waiting for it is never slower than building again;
-     * a builder that died frees the lock when it expires, and the next waiter takes it over.
+     * Looks before a waiting worker builds its own copy: 200 × 50 ms = 10 s, a few times a measured
+     * build and well inside a request's time limit (Octane's max_execution_time, 30 s), because the
+     * waiter sits inside its request transaction meanwhile. A builder that died frees the lock when
+     * it expires (REBUILD_LOCK_SECONDS); a waiter that is still polling then takes it over.
      */
-    private const int REBUILD_MAX_POLLS = 600;
+    private const int REBUILD_MAX_POLLS = 200;
+
+    /** Between the two attempts to write a new token: a store that blinked for a moment is back. */
+    private const int VERSION_RETRY_MILLISECONDS = 150;
+
+    /** At most one warning per worker this often while the token cannot be read. */
+    private const int UNKNOWN_VERSION_WARN_SECONDS = 60;
 
     /** The catalog key from config, without a token. */
     private string $baseKey = '';
@@ -110,6 +119,9 @@ class VersionedPermissionRegistrar extends PermissionRegistrar
 
     /** Does this process take units of work (an Octane or queue worker), unlike a one-shot command? */
     private bool $servesUnitsOfWork = false;
+
+    /** When this worker last warned that the token could not be read (Unix seconds; 0 = never). */
+    private int $unknownVersionWarnedAt = 0;
 
     #[\Override]
     public function initializeCache(): void
@@ -192,6 +204,12 @@ class VersionedPermissionRegistrar extends PermissionRegistrar
 
         if (! $this->publishQueued) {
             $this->publishQueued = true;
+            // afterCommit/afterRollBack attach to the newest open transaction of ANY connection,
+            // while the level check above and this name use the default connection. Only the
+            // Tenancy request transaction on the default connection is expected to hold an RBAC
+            // change; a change inside a transaction on a second connection would publish before the
+            // outer commit, and a catalog rebuilt from pre-commit rows would then sit under the new
+            // token.
             $this->changeConnection = DB::connection()->getName();
             $this->commitAttempted = false;
             $this->watchCommits();
@@ -304,6 +322,10 @@ class VersionedPermissionRegistrar extends PermissionRegistrar
         $failure = null;
 
         for ($attempt = 1; $attempt <= 2; $attempt++) {
+            if ($attempt > 1) {
+                Sleep::usleep(self::VERSION_RETRY_MILLISECONDS * 1000);
+            }
+
             try {
                 $previous = $this->shared->get($this->versionKey());
 
@@ -320,7 +342,7 @@ class VersionedPermissionRegistrar extends PermissionRegistrar
         }
 
         if ($failure !== null) {
-            Log::error('Permission change saved, but the new permission-cache version could not be written: other workers keep their loaded permissions until this worker writes it at its next unit of work, or until they restart.', [
+            Log::error('Permission change saved, but the new permission-cache version could not be written: every worker, a restarted or new one too, keeps the permissions from before the change until this worker writes it (at its next request or job, or when it stops); if it never does, until the next role or permission change or until the shared permission catalog expires.', [
                 'key' => $this->versionKey(),
                 'error' => $failure,
             ]);
@@ -404,7 +426,31 @@ class VersionedPermissionRegistrar extends PermissionRegistrar
             $version = $this->shared->get($this->versionKey());
         }
 
-        return is_string($version) ? $version : '';
+        if (is_string($version) && $version !== '') {
+            return $version;
+        }
+
+        $this->warnUnknownVersion();
+
+        return '';
+    }
+
+    /**
+     * The store answers but keeps no token: every unit of work that checks a permission now loads
+     * the whole catalog from the database (fail closed). Said once a minute per worker, not per load.
+     */
+    private function warnUnknownVersion(): void
+    {
+        $now = now()->getTimestamp();
+
+        if ($this->unknownVersionWarnedAt !== 0 && $now - $this->unknownVersionWarnedAt < self::UNKNOWN_VERSION_WARN_SECONDS) {
+            return;
+        }
+
+        $this->unknownVersionWarnedAt = $now;
+        Log::warning('The permission-cache version cannot be read from the cache store: this worker loads the permission catalog from the database for every request or job until it can.', [
+            'key' => $this->versionKey(),
+        ]);
     }
 
     /**

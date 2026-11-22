@@ -16,9 +16,11 @@ use App\Modules\Rbac\Support\VersionedPermissionRegistrar;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteFeature;
+use Carbon\CarbonInterval;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Events\KeyWritten;
 use Illuminate\Cache\Events\RetrievingKey;
+use Illuminate\Contracts\Cache\Lock;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Database\Events\TransactionCommitting;
 use Illuminate\Http\Request;
@@ -32,6 +34,7 @@ use Illuminate\Support\Sleep;
 use Laravel\Octane\Events\RequestReceived;
 use Laravel\Octane\Events\TaskReceived;
 use Laravel\Octane\Events\TickReceived;
+use Laravel\Octane\Events\WorkerStopping as OctaneWorkerStopping;
 use Spatie\Permission\PermissionRegistrar;
 
 /*
@@ -383,23 +386,34 @@ it('checks the permission catalog at the start of every Octane request, task and
     }
 });
 
-it('writes no new version when the change rolled back', function (): void {
+it('writes no new version when the change rolled back', function (bool $otherConnectionCommits): void {
     $owner = cacheOwner();
     [$role] = accountantWith($owner, ['entries.view']);
     $before = permissionVersion();
 
     try {
-        app(Tenancy::class)->enter(1, function () use ($role): void {
+        app(Tenancy::class)->enter(1, function () use ($role, $otherConnectionCommits): void {
             $role->fresh()->givePermissionTo('forms.view');
+
+            if ($otherConnectionCommits) {
+                // a commit on another connection meanwhile is not the commit of this change
+                DB::connection('pgsql_admin')->transaction(fn (): array => DB::connection('pgsql_admin')->select('select 1'));
+            }
 
             throw new RuntimeException('rolled back');
         });
     } catch (RuntimeException) {
     }
 
-    // nothing of the rolled-back change reached the shared cache: every worker keeps its catalog
+    // nothing of the rolled-back change reached the shared cache: every worker keeps its catalog,
+    // and the worker that made it owes nothing at its next request either
     expect(permissionVersion())->toBe($before);
-});
+    nextUnitOfWork(app(PermissionRegistrar::class));
+    expect(permissionVersion())->toBe($before);
+})->with([
+    'alone' => [false],
+    'while another connection commits' => [true],
+]);
 
 /** The catalog every worker reads under the current token, built once and then taken out again. */
 function evictedSharedCatalog(PermissionRegistrar $worker): array
@@ -456,7 +470,32 @@ it('builds its own catalog when the worker rebuilding it takes too long', functi
 
     expect(workerSays(otherWorker(), $member, 'forms.view'))->toBeTrue()
         ->and(cache()->get($key))->toBeArray();
-    Sleep::assertSleptTimes(600);
+    Sleep::assertSleptTimes(200); // 10 s of polling, then it builds
+});
+
+it('takes the rebuild over when the lock of a worker that died mid-rebuild expires', function (): void {
+    $owner = cacheOwner();
+    [, $member] = accountantWith($owner, ['forms.view']);
+    [$key] = evictedSharedCatalog(otherWorker());
+
+    $this->freezeTime();
+    expect(cache()->lock($key.'.rebuild', 30)->get())->toBeTrue(); // a worker took the lock ...
+    $this->travel(25)->seconds();                                  // ... and died 25 s ago
+    Sleep::fake(syncWithCarbon: true);
+    $c = otherWorker();
+    nextUnitOfWork($c);
+    $user = User::query()->findOrFail($member->getKey());
+    DB::enableQueryLog();
+    DB::flushQueryLog();
+
+    $allowed = onWorker($c, fn (): bool => app(Tenancy::class)->enter(1, fn (): bool => $user->can('forms.view')));
+
+    expect($allowed)->toBeTrue()
+        ->and(catalogQueries())->toBeGreaterThan(0)            // the waiter built it ...
+        ->and(cache()->get($key))->toBeArray()                 // ... into the shared store, for the others
+        ->and(cache()->has($key.'.built'))->toBeTrue()
+        ->and(cache()->lock($key.'.rebuild', 30)->get())->toBeTrue(); // and let the lock go
+    Sleep::assertSleptTimes(100); // the dead lock's last 5 s, inside the waiter's 10 s
 });
 
 /** A connection whose COMMIT reaches the database but whose answer is lost on the way back. */
@@ -542,9 +581,14 @@ final class FlakyVersionStore extends ArrayStore
 
     public bool $versionUnreadable = false;
 
+    /** Every call throws, as when the store cannot be reached at all. */
+    public bool $down = false;
+
     #[Override]
     public function forever($key, $value): bool
     {
+        $this->reach();
+
         if (str_ends_with((string) $key, '.version') && $this->failVersionWrites > 0) {
             $this->failVersionWrites--;
             if ($this->failBy === 'throws') {
@@ -560,8 +604,56 @@ final class FlakyVersionStore extends ArrayStore
     #[Override]
     public function get($key): mixed
     {
+        $this->reach();
+
         return $this->versionUnreadable && str_ends_with((string) $key, '.version') ? null : parent::get($key);
     }
+
+    #[Override]
+    public function put($key, $value, $seconds): bool
+    {
+        $this->reach();
+
+        return parent::put($key, $value, $seconds);
+    }
+
+    #[Override]
+    public function forget($key): bool
+    {
+        $this->reach();
+
+        return parent::forget($key);
+    }
+
+    #[Override]
+    public function increment($key, $value = 1): int
+    {
+        $this->reach();
+
+        return parent::increment($key, $value);
+    }
+
+    #[Override]
+    public function lock($name, $seconds = 0, $owner = null): Lock
+    {
+        $this->reach();
+
+        return parent::lock($name, $seconds, $owner);
+    }
+
+    private function reach(): void
+    {
+        if ($this->down) {
+            throw new RuntimeException('cache store unreachable');
+        }
+    }
+}
+
+/** Did the store make exactly one 150 ms pause before trying the version write again? */
+function pausedOnceBeforeRetry(): void
+{
+    Sleep::assertSleptTimes(1);
+    Sleep::assertSlept(fn (CarbonInterval $pause): bool => (int) $pause->totalMilliseconds === 150);
 }
 
 /** From here on, every worker (this one too) shares a cache store whose token can fail. */
@@ -582,11 +674,13 @@ it('tries a failed version write once more, then logs it and tells the others at
     $b = otherWorker();
     expect(workerSays($b, $member, 'forms.view'))->toBeTrue();
     Log::spy();
+    Sleep::fake();
     $store->failBy = $failBy;
     $store->failVersionWrites = $failures;
 
     // the change is saved; a cache store that fails after the commit never turns it into an error
     app(Tenancy::class)->enter(1, fn () => app(UpdateCustomRole::class)->handle($owner->fresh(), $role->fresh(), 'Kế toán', 20, ['entries.view']));
+    pausedOnceBeforeRetry();
 
     if ($failures === 1) {
         Log::shouldNotHaveReceived('error');
@@ -607,6 +701,38 @@ it('tries a failed version write once more, then logs it and tells the others at
     'store refuses twice' => ['refuses', 2],
 ]);
 
+it('keeps the permissions from before a change on every worker after the whole store was down, until the writer is back at work', function (): void {
+    // A known limit, not a goal: while the store cannot be reached, the change commits but neither
+    // the new version nor the removal of the old shared catalog gets through. Once the store is
+    // back, every other worker (a new one too) still grants what the change took away, until the
+    // worker that made it writes the version at its next request or job, or when it stops.
+    $owner = cacheOwner();
+    [$role, $member] = accountantWith($owner, ['forms.view', 'entries.view']);
+    $store = flakyPermissionStore();
+    $writer = app(PermissionRegistrar::class);
+    nextUnitOfWork($writer);
+    onWorker($writer, fn () => $writer->getPermissions()); // loaded before the store went down
+    $b = otherWorker();
+    expect(workerSays($b, $member, 'forms.view'))->toBeTrue();
+    Log::spy();
+    Sleep::fake();
+
+    $store->down = true;
+    app(Tenancy::class)->enter(1, fn () => app(UpdateCustomRole::class)->handle($owner->fresh(), $role->fresh(), 'Kế toán', 20, ['entries.view']));
+    $store->down = false;
+
+    pausedOnceBeforeRetry();
+    Log::shouldHaveReceived('error')->withArgs(fn (string $message): bool => str_contains($message, 'could not be written'))->once();
+    expect(workerSays($b, $member, 'forms.view'))->toBeTrue()               // stale: its token did not move
+        ->and(workerSays(otherWorker(), $member, 'forms.view'))->toBeTrue(); // stale: the old shared catalog is still there
+
+    nextUnitOfWork($writer); // the writer's next request writes the version it owes
+
+    expect(workerSays($b, $member, 'forms.view'))->toBeFalse()
+        ->and(workerSays(otherWorker(), $member, 'forms.view'))->toBeFalse()
+        ->and(workerSays($writer, $member, 'forms.view'))->toBeFalse();
+});
+
 it('reloads the catalog at every request while the version cannot be read, never sharing it', function (): void {
     $owner = cacheOwner();
     [$role, $member] = accountantWith($owner, ['forms.view', 'entries.view']);
@@ -614,8 +740,15 @@ it('reloads the catalog at every request while the version cannot be read, never
     $b = otherWorker();
     expect(workerSays($b, $member, 'forms.view'))->toBeTrue();
 
+    Log::spy();
+    $unknown = fn (string $message): bool => str_contains($message, 'cannot be read');
     $store->versionUnreadable = true;
+    expect(workerSays($b, $member, 'forms.view'))->toBeTrue()
+        ->and(workerSays($b, $member, 'forms.view'))->toBeTrue();
+    Log::shouldHaveReceived('warning')->withArgs($unknown)->once(); // one warning a minute per worker, not one per load
+    $this->travel(61)->seconds();
     expect(workerSays($b, $member, 'forms.view'))->toBeTrue();
+    Log::shouldHaveReceived('warning')->withArgs($unknown)->twice();
 
     app(Tenancy::class)->enter(1, fn () => app(UpdateCustomRole::class)->handle($owner->fresh(), $role->fresh(), 'Kế toán', 20, ['entries.view']));
 
@@ -668,7 +801,7 @@ it('fails rbac:sync when the permission cache cannot be refreshed', function ():
     $this->artisan('rbac:sync')->assertFailed();
 });
 
-it('writes a token it still owes when its worker stops', function (): void {
+it('writes a token it still owes when its worker stops', function (string $stopping): void {
     $owner = cacheOwner();
     [$role, $member] = accountantWith($owner, ['forms.view', 'entries.view']);
     $store = flakyPermissionStore();
@@ -682,8 +815,11 @@ it('writes a token it still owes when its worker stops', function (): void {
     app(Tenancy::class)->enter(1, fn () => app(UpdateCustomRole::class)->handle($owner->fresh(), $role->fresh(), 'Kế toán', 20, ['entries.view']));
     expect(Cache::store('flaky')->get(config('permission.cache.key').'.version'))->toBe($before);
 
-    event(new WorkerStopping);
+    event($stopping === OctaneWorkerStopping::class ? new OctaneWorkerStopping(app()) : new WorkerStopping);
 
     expect(Cache::store('flaky')->get(config('permission.cache.key').'.version'))->not->toBe($before)
         ->and(workerSays($b, $member, 'forms.view'))->toBeFalse();
-});
+})->with([
+    'queue worker' => [WorkerStopping::class],
+    'Octane worker' => [OctaneWorkerStopping::class],
+]);
