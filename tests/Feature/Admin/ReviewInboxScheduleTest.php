@@ -71,7 +71,7 @@ function laterPost(int $categoryId, User $author, string $slug = 'ban-tin'): Ent
     $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $author->id]);
     $entry->translations()->create([
         'locale' => 'vi', 'title' => 'Bản tin hẹn giờ', 'slug' => $slug, 'status' => 'draft',
-        'body' => ['blocks' => [['type' => 'richtext', 'props' => ['body' => 'Nội dung bài']]]],
+        'body' => ['blocks' => [['type' => 'richtext', 'props' => ['paragraphs' => ['Nội dung bài']]]]],
     ]);
     $entry->assignCategories([$categoryId]);
     app(ApplyEntryWorkflowTransition::class)->handle($entry->fresh(), 'vi', $author->fresh(), 'submit');
@@ -197,9 +197,10 @@ it('refuses a tampered move or post, and a reviewer without the right to publish
             ->call('open', $post->ulid)
             ->call('approveLater', 'reject', laterAt())->assertHasErrors('inbox')
             ->call('approveLater', 'nope', laterAt())->assertHasErrors('inbox');
-        // A post that is not open in this inbox.
-        Livewire::actingAs($approver)->test(ReviewInbox::class)->set('tab', 'queue')
+        // No post open in this inbox (nothing is handed to the approver, so «Giao cho tôi» is empty).
+        Livewire::actingAs($approver)->test(ReviewInbox::class)->set('tab', 'mine')
             ->call('open', '01JUNKUNKNOWNULID000000000')
+            ->assertSet('current', null)
             ->call('approveLater', 'approve', laterAt())->assertHasErrors('inbox');
         // Seeing the post is not approving it.
         Livewire::actingAs($reviewer->fresh())->test(ReviewInbox::class)->set('tab', 'queue')
@@ -389,15 +390,20 @@ it('judges each site on its own: an approval, its rights and its sweep stay insi
     });
 
     app(Tenancy::class)->enter(1, function () use ($author, $approver, $categoryA, $postB): void {
-        laterPost($categoryA, $author);
-        // site B's post is not in site A's inbox, so it cannot be approved from there
+        $postA = laterPost($categoryA, $author);
+        // site B's post is not in site A's inbox, so it never opens there: the reader keeps site A's own post
         Livewire::actingAs($approver)->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('open', (string) $postB->ulid)
-            ->call('approveLater', 'approve', laterAt())->assertHasErrors('inbox');
+            ->assertSet('current', (string) $postA->ulid)
+            ->assertSet('detail', false)
+            // and «Duyệt và hẹn giờ đăng» acts on that post, the only one it can reach
+            ->call('approveLater', 'approve', laterAt())->assertHasNoErrors();
+        expect($postA->fresh()?->approvedForLater())->toBeTrue();
     });
 
     // Site A's approver holds no role on site B: approving there is refused, judged in B's team.
     app(Tenancy::class)->enter(2, function () use ($approver, $postB): void {
+        expect($postB->fresh()?->approvedForLater())->toBeFalse();
         app(TeamContext::class)->forget();
         expect(fn () => app(ApproveEntryForLater::class)->approve($postB->fresh(), 'vi', $approver->fresh(), 'approve', now()->addHour()))
             ->toThrow(AuthorizationException::class);
