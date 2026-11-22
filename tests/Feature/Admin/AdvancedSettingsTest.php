@@ -296,7 +296,7 @@ it('asks the owner to confirm the first save that turns code on, then saves it, 
     app(Tenancy::class)->enter(1, function () use ($owner, $code): void {
         Livewire::actingAs($owner)->test(AdvancedSettings::class)
             ->assertSee('Mã nhúng thêm')
-            ->assertSee('Mã không chạy khi bạn đang đăng nhập trang quản trị, để giữ an toàn cho tài khoản.')
+            ->assertSee('Trang bạn mở khi đã đăng nhập không chạy mã này.')
             ->assertSee('Mở Tích hợp &amp; Theo dõi', false)
             ->assertDontSeeHtml('data-adv-code-box')
             ->call('toggleCode')
