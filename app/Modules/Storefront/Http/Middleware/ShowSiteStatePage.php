@@ -49,6 +49,11 @@ final readonly class ShowSiteStatePage
         $status = $this->entitlement->siteStatus();
 
         if ($status === 'active') {
+            // A path with a dot is a scanner's (StorefrontController): it keeps its plain 404 and
+            // reads none of the site's settings, maintenance or not.
+            if (str_contains(rawurldecode($request->path()), '.')) {
+                return $next($request);
+            }
             $maintenance = $this->maintenance->active();
 
             return $maintenance === null || $this->isMember($request)

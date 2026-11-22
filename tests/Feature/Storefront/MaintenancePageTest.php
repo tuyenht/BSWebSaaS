@@ -175,6 +175,8 @@ it('keeps robots.txt and the sitemap answering, and gives no search suggestions'
     $this->get('http://a.test/robots.txt')->assertOk();
     $this->get('http://a.test/sitemap.xml')->assertOk();
     $this->get('http://a.test/tim-kiem/goi-y?q=may')->assertNotFound();
+    // a scanner's path keeps its plain 404, read before any setting
+    expect($this->get('http://a.test/wp-login.php')->assertNotFound()->getContent())->toContain('class="error-page"');
 });
 
 it('reads nothing more for the maintenance page than for a site that is not open', function (): void {
