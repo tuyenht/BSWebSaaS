@@ -291,8 +291,9 @@ it('costs an invitation one more query: the counts and the limit come in one sta
     limitWaiting(1, $owner, 'nhan@example.test');
     $accept = app(Tenancy::class)->enter(1, fn (): int => countQueries(fn () => app(AcceptInvitation::class)->withNewAccount('link-nhan@example.test', 'Người Mới', 'Mat-khau-rat-manh-2026')));
 
-    // invite: 18 before the people limit, + the one statement; accept: 25 before, + the lock and the one statement
-    expect([$check, $invite, $accept])->toBe([1, 19, 27]);
+    // invite: 18 before the people limit, + the one statement; accept: 25 before, + the lock and the one statement;
+    // each + the share lock proving the roles given are not in the trash (RoleHierarchyGuard::lockLive)
+    expect([$check, $invite, $accept])->toBe([1, 20, 28]);
 });
 
 /** The `users.max` overrides the seeding migration wrote, by website. */

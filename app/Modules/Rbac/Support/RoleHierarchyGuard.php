@@ -5,6 +5,7 @@ namespace App\Modules\Rbac\Support;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection;
@@ -111,6 +112,29 @@ final readonly class RoleHierarchyGuard
         }
 
         throw new AuthorizationException('You may only grant a role below your own level, within the permissions you hold.');
+    }
+
+    /**
+     * Inside the grant's transaction, before it writes: every one of $roles is still live, read
+     * under a share lock. DeleteCustomRole holds the row lock while it checks that nobody holds the
+     * role, so a grant either commits first (and the delete sees it and refuses) or waits for the
+     * delete and finds the role in the trash here. Without this, the foreign key alone would let
+     * the grant through: a role in the trash still has its row.
+     *
+     * @param  list<Role>  $roles
+     *
+     * @throws AuthorizationException when one of them was moved to the trash meanwhile
+     */
+    public function lockLive(array $roles): void
+    {
+        $ids = array_values(array_unique(array_map(static fn (Role $role): int => Cast::int($role->getKey()), $roles)));
+        if ($ids === []) {
+            return;
+        }
+
+        if (count(Role::query()->whereKey($ids)->sharedLock()->pluck('id')->all()) !== count($ids)) {   // FOR SHARE takes no aggregate
+            throw new AuthorizationException('This role was deleted meanwhile and can no longer be given.');
+        }
     }
 
     /** True if the actor personally holds every permission the role would grant. */

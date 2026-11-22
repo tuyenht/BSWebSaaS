@@ -1,5 +1,7 @@
 <?php
 
+use App\Modules\Rbac\Actions\PurgeTrashedRoles;
+use App\Modules\Rbac\Models\Role;
 use App\Modules\Shared\Support\Cast;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -26,6 +28,26 @@ Schedule::command('entries:purge-trash')->daily()->withoutOverlapping();
 
 // Empty each site's redirect Trash of redirects removed more than 30 days ago (Redirect::TRASH_DAYS).
 Schedule::command('redirects:purge-trash')->daily()->withoutOverlapping();
+
+// Empty each site's role trash of custom roles removed more than 30 days ago (Role::TRASH_DAYS).
+// --days=0 empties it now (before rolling back the migration that added the trash).
+Artisan::command('roles:purge-trash {--days='.Role::TRASH_DAYS.' : how many days a role stays in the trash}', function (PurgeTrashedRoles $purge): int {
+    $raw = $this->option('days');
+    if (! (is_int($raw) && $raw >= 0) && ! (is_string($raw) && preg_match('/^\d{1,5}$/', $raw) === 1)) {
+        $this->error('--days must be a whole number of days, 0 or more.');
+
+        return 1;
+    }
+    $days = (int) $raw;
+    ['purged' => $purged, 'held' => $held] = $purge->handle($days);
+    $this->info("Purged {$purged} role(s) left in the trash over {$days} day(s).");
+    if ($held > 0) {
+        $this->warn("Kept {$held} role(s) in the trash: someone still holds them (role ids in the log).");
+    }
+
+    return 0;
+})->purpose('Delete for good the custom roles left in the trash longer than the retention window');
+Schedule::command('roles:purge-trash')->daily()->withoutOverlapping();
 
 // Re-count every category's posts and products and correct a drifted total (logged per drift).
 // 20:15 UTC is 03:15 in Vietnam: the sites are quiet, and the purges (00:00 UTC) and the audit

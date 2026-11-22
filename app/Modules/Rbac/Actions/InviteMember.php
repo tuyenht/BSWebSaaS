@@ -96,6 +96,7 @@ final readonly class InviteMember
 
         return DB::transaction(function () use ($actor, $email, $roles, $message, $siteId, $token): IssuedInvitation {
             DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', [self::lockKey($siteId)]);
+            $this->guard->lockLive($roles);   // none moved to the trash since it was read
 
             $invitation = Invitation::query()
                 ->whereNull('accepted_at')

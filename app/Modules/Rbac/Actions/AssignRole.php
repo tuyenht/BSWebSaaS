@@ -31,6 +31,7 @@ final readonly class AssignRole
         $this->guard->assertCanGrant($actor, $role);
 
         DB::transaction(function () use ($target, $role): void {
+            $this->guard->lockLive([$role]);   // not moved to the trash since it was read
             $target->assignRole($role);
 
             Audit::record('rbac.role.assigned', [
