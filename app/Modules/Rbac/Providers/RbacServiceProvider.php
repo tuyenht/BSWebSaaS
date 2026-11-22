@@ -18,6 +18,9 @@ use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Octane\Events\RequestReceived;
+use Laravel\Octane\Events\TaskReceived;
+use Laravel\Octane\Events\TickReceived;
 use Spatie\Permission\PermissionRegistrar;
 
 final class RbacServiceProvider extends ServiceProvider
@@ -46,8 +49,12 @@ final class RbacServiceProvider extends ServiceProvider
     {
         Gate::policy(Role::class, RolePolicy::class);
 
-        // A queue worker lives as long as an Octane worker: each job starts from the current catalog.
-        Event::listen(JobProcessing::class, SyncPermissionCache::class);
+        // Every long-lived worker starts each unit of work from the current permission catalog: an
+        // Octane worker at each request, task and tick, a queue worker at each job. Registered here,
+        // after Octane's own listeners from config/octane.php, so they run in the same order.
+        foreach ([RequestReceived::class, TaskReceived::class, TickReceived::class, JobProcessing::class] as $event) {
+            Event::listen($event, SyncPermissionCache::class);
+        }
 
         Gate::before(function (mixed $user, string $ability): ?bool {
             if (! $user instanceof User) {
