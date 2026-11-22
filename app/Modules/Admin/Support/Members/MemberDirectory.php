@@ -92,6 +92,7 @@ final class MemberDirectory
     {
         $rows = DB::table('model_has_roles as mhr')
             ->join('roles as r', 'r.id', '=', 'mhr.role_id')
+            ->whereNull('r.deleted_at')   // a role in the trash is never a filter chip
             ->where('mhr.site_id', $this->site->id())
             ->where('mhr.model_type', User::class)
             ->groupByRaw('grouping sets ((r.name), ())')
@@ -133,6 +134,7 @@ final class MemberDirectory
             $query->whereExists(fn (QueryBuilder $m): QueryBuilder => $m->selectRaw('1')
                 ->from('model_has_roles as fr')
                 ->join('roles as frr', 'frr.id', '=', 'fr.role_id')
+                ->whereNull('frr.deleted_at')
                 ->whereColumn('fr.model_id', 'users.id')
                 ->where('fr.model_type', User::class)
                 ->where('fr.site_id', $siteId)

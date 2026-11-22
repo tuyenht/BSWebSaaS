@@ -24,6 +24,11 @@ use Illuminate\Support\Facades\Gate;
  * row carries the permission diff (INV-R6), so "who gave this group publish rights" is one query.
  * Adding permissions is announced first (CustomRolePermissionsAdding): a module keeping per-member
  * limits may refuse it, and nothing is written.
+ *
+ * The role is read again under the site's lock and its own row lock: a role moved to the trash
+ * meanwhile is refused (`gone`), and an editor that passes the fingerprint it was opened with
+ * ({@see CustomRoleRules::fingerprint()}) is refused when another manager saved the role since
+ * (`changed_elsewhere`) rather than overwriting that save.
  */
 final readonly class UpdateCustomRole
 {
@@ -35,33 +40,43 @@ final readonly class UpdateCustomRole
      * @throws AuthorizationException
      * @throws RoleChangeRejectedException
      */
-    public function handle(User $actor, Role $role, string $name, int $level, array $permissions): Role
+    public function handle(User $actor, Role $role, string $name, int $level, array $permissions, ?string $openedAs = null): Role
     {
         app(MembershipLock::class)->authorize($actor, Cast::int($role->site_id), 'roles.manage');   // never on someone's behalf, from outside the site, or without roles.manage there
         Gate::forUser($actor)->authorize('update', $role);
         $this->rules->assertManageable($actor, $role);
 
-        $name = $this->rules->name($name, except: $role);
+        $name = $this->rules->name($name, current: Cast::string($role->getAttribute('name')));
         $this->rules->assertLevel($actor, $level);
 
-        /** @var list<string> $before */
-        $before = $role->permissions->pluck('name')->filter(fn (mixed $permission): bool => is_string($permission))->values()->all();
-        $granted = $this->rules->permissions($actor, $permissions, $before);
+        return DB::transaction(function () use ($actor, $role, $name, $level, $permissions, $openedAs): Role {
+            $this->rules->lockSite();
+            $fresh = Role::query()->whereKey($role->getKey())->lockForUpdate()->first();
+            if (! $fresh instanceof Role) {
+                throw new RoleChangeRejectedException('gone');
+            }
+            $this->rules->assertManageable($actor, $fresh);
+            if ($openedAs !== null && ! hash_equals(CustomRoleRules::fingerprint($fresh), $openedAs)) {
+                throw new RoleChangeRejectedException('changed_elsewhere');
+            }
+            $this->rules->assertNameFree($name, except: $fresh);
 
-        $previousName = $role->getAttribute('name');
-        $previousLevel = $role->level;
+            /** @var list<string> $before */
+            $before = $fresh->permissions->pluck('name')->filter(fn (mixed $permission): bool => is_string($permission))->values()->all();
+            $granted = $this->rules->permissions($actor, $permissions, $before);
+            $previousName = $fresh->getAttribute('name');
+            $previousLevel = $fresh->level;
 
-        DB::transaction(function () use ($actor, $role, $name, $level, $granted, $before, $previousName, $previousLevel): void {
             if (array_diff($granted, $before) !== []) {
                 // e.g. an actor limited to some categories never makes the role work in every one
-                Event::dispatch(new CustomRolePermissionsAdding($actor, $role, $before, $granted));
+                Event::dispatch(new CustomRolePermissionsAdding($actor, $fresh, $before, $granted));
             }
-            $role->forceFill(['name' => $name, 'level' => $level])->save();
-            $role->syncPermissions($granted);
+            $fresh->forceFill(['name' => $name, 'level' => $level])->save();
+            $fresh->syncPermissions($granted);
 
             Audit::record('rbac.role.updated', [
                 'auditable_type' => Role::class,
-                'auditable_id' => $role->getKey(),
+                'auditable_id' => $fresh->getKey(),
                 'meta' => [
                     'name' => $name,
                     'renamed_from' => $previousName !== $name ? $previousName : null,
@@ -70,8 +85,8 @@ final readonly class UpdateCustomRole
                     'removed' => array_values(array_diff($before, $granted)),
                 ],
             ]);
-        });
 
-        return $role->refresh();
+            return $fresh->refresh();
+        });
     }
 }

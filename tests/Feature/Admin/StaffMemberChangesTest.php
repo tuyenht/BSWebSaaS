@@ -7,6 +7,7 @@ use App\Modules\Rbac\Actions\AssignRole;
 use App\Modules\Rbac\Actions\CreateCustomRole;
 use App\Modules\Rbac\Actions\DeleteCustomRole;
 use App\Modules\Rbac\Actions\InviteMember;
+use App\Modules\Rbac\Actions\RestoreCustomRole;
 use App\Modules\Rbac\Actions\RevokeInvitation;
 use App\Modules\Rbac\Actions\RevokeRole;
 use App\Modules\Rbac\Actions\UpdateCustomRole;
@@ -208,12 +209,13 @@ it('refuses direct platform staff in the actions themselves, not only on the scr
         'create a role' => app(CreateCustomRole::class)->handle($staff->fresh(), 'Nhóm mới', 15, ['entries.view']),
         'edit a role' => app(UpdateCustomRole::class)->handle($staff->fresh(), $custom->fresh(), 'Cộng tác đổi tên', 15, []),
         'delete a role' => app(DeleteCustomRole::class)->handle($staff->fresh(), $custom->fresh()),
+        'restore a role' => app(RestoreCustomRole::class)->handle($staff->fresh(), $custom->fresh()),
     }))->toThrow(AuthorizationException::class, __('admin.staff.locked'));
 
     expect(staffLockRoles($member))->toBe(['viewer'])
         ->and(staffLockRoles($owner))->toBe(['owner'])
         ->and(staffLockCustomRoles())->toBe(['Cộng tác' => 15]);
-})->with(['assign owner', 'revoke', 'invite', 'withdraw', 'create a role', 'edit a role', 'delete a role']);
+})->with(['assign owner', 'revoke', 'invite', 'withdraw', 'create a role', 'edit a role', 'delete a role', 'restore a role']);
 
 it('refuses a grant of another website\'s role made from a site where the staff member belongs', function (): void {
     $staff = staffLockStaff('owner');               // a real owner of site 1
@@ -340,6 +342,7 @@ it('refuses staff who are only an editor on the site in the actions themselves',
         'create a role' => app(CreateCustomRole::class)->handle($staff->fresh(), 'Nhóm mới', 15, ['entries.view']),
         'edit a role' => app(UpdateCustomRole::class)->handle($staff->fresh(), $custom->fresh(), 'Cộng tác đổi tên', 15, []),
         'delete a role' => app(DeleteCustomRole::class)->handle($staff->fresh(), $custom->fresh()),
+        'restore a role' => app(RestoreCustomRole::class)->handle($staff->fresh(), $custom->fresh()),
     }))->toThrow(AuthorizationException::class);
 
     expect(staffLockRoles($member))->toBe(['viewer'])
@@ -349,7 +352,7 @@ it('refuses staff who are only an editor on the site in the actions themselves',
             Invitation::query()->whereNotNull('revoked_at')->count(),
         ]))->toBe([1, 0])
         ->and(staffLockCustomRoles())->toBe(['Cộng tác' => 15]);
-})->with(['assign', 'revoke', 'invite', 'withdraw', 'category limits', 'create a role', 'edit a role', 'delete a role']);
+})->with(['assign', 'revoke', 'invite', 'withdraw', 'category limits', 'create a role', 'edit a role', 'delete a role', 'restore a role']);
 
 it('bounds what staff may put in a role by their own role on the site, not the whole site', function (): void {
     $outside = staffLockStaff();

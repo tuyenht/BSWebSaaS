@@ -43,6 +43,7 @@ it('routes every role-permission mutation through a guarded custom-role action',
     $allowed = [
         'app/Modules/Rbac/Actions/CreateCustomRole.php',      // guarded: CustomRoleRules ceilings
         'app/Modules/Rbac/Actions/UpdateCustomRole.php',      // guarded: CustomRoleRules ceilings
+        'app/Modules/Rbac/Actions/RestoreCustomRole.php',     // guarded: CustomRoleRules ceilings (drops what left the site)
         'app/Modules/Rbac/Console/SyncRbac.php',              // system: registry → platform + template roles
         'app/Modules/Provisioning/Actions/ProvisionSite.php', // system: template roles of a new site
     ];

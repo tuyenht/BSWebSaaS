@@ -130,6 +130,7 @@ final class InvitationDirectory
         $siteId = $this->site->id();
         $query = DB::table('invitation_roles as ir')
             ->join('roles as r', 'r.id', '=', 'ir.role_id')
+            ->whereNull('r.deleted_at')   // an expired or withdrawn invitation may still name a role in the trash
             ->join('invitations', function (JoinClause $join) use ($siteId): void {
                 $join->on('invitations.id', '=', 'ir.invitation_id')->where('invitations.site_id', '=', $siteId);
             })
@@ -201,6 +202,7 @@ final class InvitationDirectory
             $query->whereExists(fn (QueryBuilder $r): QueryBuilder => $r->selectRaw('1')
                 ->from('invitation_roles as fir')
                 ->join('roles as firr', 'firr.id', '=', 'fir.role_id')
+                ->whereNull('firr.deleted_at')
                 ->whereColumn('fir.invitation_id', 'invitations.id')
                 ->where('fir.site_id', $siteId)
                 ->whereIn('firr.name', $roles));

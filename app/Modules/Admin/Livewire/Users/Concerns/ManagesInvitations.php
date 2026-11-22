@@ -59,6 +59,9 @@ trait ManagesInvitations
         if (! $invitation instanceof Invitation) {
             return;
         }
+        if ($this->carriesTrashedRole($invitation)) {
+            return;
+        }
         // the roles in full: the grant check reads each one's guard and permissions
         $roles = $invitation->roles()->get()->all();
         if ($roles === []) {
@@ -148,6 +151,9 @@ trait ManagesInvitations
 
             return;
         }
+        if ($this->carriesTrashedRole($invitation)) {
+            return;
+        }
         // the same daily share as "Mời thành viên": the dialog would only refuse at "Gửi"
         if ($this->siteFull()) {
             $this->say(__('admin.members.inv_full', ['max' => InviteMember::DAILY_LIMIT]), 'error');
@@ -187,6 +193,21 @@ trait ManagesInvitations
     public static function invitationGrantable(Invitation $invitation, array $grantable): bool
     {
         return $invitation->roles->every(fn (Role $role): bool => in_array($role->name, $grantable, true));
+    }
+
+    /**
+     * An invitation whose role was moved to the trash since is not sent again as it is: it would
+     * reach the person with fewer roles than it names (the trash hides that role). Says so and
+     * returns true.
+     */
+    private function carriesTrashedRole(Invitation $invitation): bool
+    {
+        if (! $invitation->roles()->onlyTrashed()->exists()) {
+            return false;
+        }
+        $this->say(__('admin.members.inv_role_trashed'), 'error');
+
+        return true;
     }
 
     /** The invitation write methods: the member may manage members AND send invitations. */

@@ -179,13 +179,13 @@ it('changes or removes ticked members at a fixed cost per member, whatever the n
     $each = intdiv($five - $one, 4);
 
     // the same cost for each further member, whatever the number ticked: AssignRole / RevokeRole per
-    // role (their grant checks, the write, the audit row), the member's "roles changed" notice on a
+    // role (their grant checks, the role still out of the trash, the write, the audit row), the member's "roles changed" notice on a
     // role change (one insert, to the member already loaded), and nothing that grows with the selection
     expect($five - $one)->toBe(4 * $each)
         ->and($ten - $five)->toBe(5 * $each)
         ->and($each)->toBe($perMember);
 })->with([
-    'new roles (one granted, one revoked)' => ['roles', 14],
+    'new roles (one granted, one revoked)' => ['roles', 15],
     'removal (one role revoked)' => ['remove', 7],
 ]);
 
@@ -225,10 +225,10 @@ it('changes ticked members at a fixed cost per member for an actor limited to so
     $each = intdiv($five - $one, 4);
 
     // the lead's own limits are read once, not again for each member (re-reading them was 24 a member);
-    // one of the 22 is the member's "roles changed" notice
+    // one of the 23 is the member's "roles changed" notice, one the share lock proving the role is not in the trash
     expect($five - $one)->toBe(4 * $each)
         ->and($ten - $five)->toBe(5 * $each)
-        ->and($each)->toBe(22);
+        ->and($each)->toBe(23);
 });
 
 it('keeps at most 250 ticks on the server: a longer forged list is cut to its first 250', function (): void {

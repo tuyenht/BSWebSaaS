@@ -29,7 +29,7 @@ final class AuditCatalog
             'identity.email.notice_failed',
         ],
         'members' => [
-            'rbac.role.assigned', 'rbac.role.revoked', 'rbac.role.created', 'rbac.role.updated', 'rbac.role.deleted',
+            'rbac.role.assigned', 'rbac.role.revoked', 'rbac.role.created', 'rbac.role.updated', 'rbac.role.deleted', 'rbac.role.restored', 'rbac.role.purged',
             'rbac.invitation.sent', 'rbac.invitation.accepted', 'rbac.invitation.revoked', 'rbac.invitation.send_failed',
             'cms.category_scopes.changed', 'cms.category_scopes.cleared', 'cms.category_scopes.invited', 'identity.profile.updated',
         ],

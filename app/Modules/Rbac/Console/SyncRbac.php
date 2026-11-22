@@ -169,7 +169,8 @@ final class SyncRbac extends Command
     {
         $granted = 0;
 
-        Role::query()->where('is_system', false)->with('permissions')->chunkById(500, function (Collection $roles) use ($ids, &$granted): void {
+        // the trash too: a role restored later must come back with what its permissions imply now
+        Role::withTrashed()->where('is_system', false)->with('permissions')->chunkById(500, function (Collection $roles) use ($ids, &$granted): void {
             foreach ($roles as $role) {
                 $current = array_values(array_map(
                     fn ($name): string => is_string($name) ? $name : '',

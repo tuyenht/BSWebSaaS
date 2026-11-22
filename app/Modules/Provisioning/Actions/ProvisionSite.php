@@ -297,6 +297,7 @@ final readonly class ProvisionSite
     {
         $owners = DB::table('model_has_roles')
             ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+            ->whereNull('roles.deleted_at')
             ->where('model_has_roles.site_id', $siteId)
             ->where('model_has_roles.model_type', User::class)
             ->where('roles.site_id', $siteId)
