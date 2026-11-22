@@ -21,8 +21,8 @@ use Livewire\Livewire;
  * The roles screen, read-only: every system role and every role of the website's own, highest
  * first, with where each stands, who holds it and what it typically does; the search ignores
  * accents, the chips narrow to the default or the custom roles, one role opens read-only and
- * «Nhóm này làm được gì?» explains one in a side panel. It is for `roles.manage` only, shows only
- * this website's live roles (never another website's, never one in the trash) and changes nothing.
+ * «Nhóm này làm được gì?» explains one in a side panel. It is for `roles.manage` only and shows only
+ * this website's live roles (never another website's, never one in the trash). Its writes: RolesEditTest.
  */
 
 beforeEach(function (): void {
@@ -313,7 +313,7 @@ it('opens one role read-only from a link or the list, every catalog permission h
             ->call('backToList')->assertSet('role', '')->assertSet('mode', '')->assertViewHas('viewed', null);
     }, ['nhom' => 'Duyệt tin', 'che' => 'xem']);
 
-    // «sua» shows the same read-only view; «moi» has nothing to show yet
+    // «sua» on a system role is its read-only view; «moi» while the plan has no custom roles is the list
     rscPage($owner, fn (Testable $page) => $page->assertSet('mode', 'xem')->assertSet('role', 'editor'), ['nhom' => 'editor', 'che' => 'sua']);
     rscPage($owner, fn (Testable $page) => $page->assertSet('mode', '')->assertSet('role', ''), ['che' => 'moi']);
 

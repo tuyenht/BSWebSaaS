@@ -23,8 +23,8 @@ use Illuminate\Support\Facades\Gate;
  * §15.3: system roles stay locked; wanting something different means a custom role, which keeps
  * `forked_from_role_id` as provenance). Gated by `roles.manage` AND the site's `rbac.custom_roles`
  * entitlement (default off). Every invariant lives in {@see CustomRoleRules}; the free name and
- * the room under the per-site cap are checked under the site's lock, inside the insert's
- * transaction.
+ * the room under the per-site caps (live roles, and live and trashed roles together) are checked
+ * under the site's lock, inside the insert's transaction.
  */
 final readonly class CreateCustomRole
 {
@@ -65,6 +65,7 @@ final readonly class CreateCustomRole
             }
             $this->rules->assertNameFree($name);
             $this->rules->assertRoomForAnother();
+            $this->rules->assertRoomToKeepAnother();
 
             $role = new Role;
             $role->forceFill([

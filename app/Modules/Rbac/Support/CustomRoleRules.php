@@ -33,6 +33,16 @@ final readonly class CustomRoleRules
      */
     public const int MAX_CUSTOM_ROLES = 50;
 
+    /**
+     * The most custom roles one website keeps at all: the live ones and those in the trash
+     * together. A role in the trash keeps its row and its permission rows until the purge, so
+     * without this, deleting and creating again would grow a website's rows without bound within
+     * the Role::TRASH_DAYS window (and the purge's share of work with them). Twice the live cap
+     * lets a website replace every one of its roles once inside that window; deleting is never
+     * refused for it (a delete moves a role, it adds none), only a new role is.
+     */
+    public const int MAX_KEPT_CUSTOM_ROLES = 2 * self::MAX_CUSTOM_ROLES;
+
     public function __construct(
         private CurrentSite $currentSite,
         private RoleHierarchyGuard $guard,
@@ -121,6 +131,18 @@ final readonly class CustomRoleRules
         $count = Role::query()->where('site_id', $this->siteId())->where('is_system', false)->count();
         if ($count >= self::MAX_CUSTOM_ROLES) {
             throw new RoleChangeRejectedException('too_many');
+        }
+    }
+
+    /**
+     * One more custom role, live or in the trash, still fits under MAX_KEPT_CUSTOM_ROLES on this
+     * site. Only a new role adds one; a restore moves a role back out of the trash and adds none.
+     */
+    public function assertRoomToKeepAnother(): void
+    {
+        $count = Role::withTrashed()->where('site_id', $this->siteId())->where('is_system', false)->count();
+        if ($count >= self::MAX_KEPT_CUSTOM_ROLES) {
+            throw new RoleChangeRejectedException('trash_full');
         }
     }
 

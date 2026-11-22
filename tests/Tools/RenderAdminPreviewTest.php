@@ -1122,6 +1122,26 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($rolesExplain)->toContain(e(__('admin.members.x_title', ['role' => __('rbac.role.author')])));
     file_put_contents($dir.'/roles-explain.html', $swap($html, $rolesExplain, 'admin\\.roles\\.index'));
 
+    // The write side: the editor of the website's own role, a new role started from «Biên tập» (with
+    // custom roles in the plan), and the list just after a delete, «Hoàn tác» in its message.
+    $ownName = 'Duyệt tin tức và sự kiện của công ty';
+    $this->flushSession();
+    $edit = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/roles?'.http_build_query(['nhom' => $ownName, 'che' => 'sua']))->assertOk()->getContent();
+    expect($edit)->toContain(e(__('admin.roles.edit_title', ['role' => $ownName])), e(__('admin.roles.pv_title')), e(__('admin.roles.save')));
+    file_put_contents($dir.'/roles-edit.html', $edit);
+    app(Tenancy::class)->enter(1, fn () => SiteFeature::query()->updateOrCreate(['feature_key' => 'rbac.custom_roles'], ['value' => true]));
+    $this->flushSession();
+    $new = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/roles?nhom=editor&che=moi')->assertOk()->getContent();
+    expect($new)->toContain(e(__('admin.roles.from', ['role' => __('rbac.role.editor')])), e(__('admin.roles.save_new')));
+    file_put_contents($dir.'/roles-new.html', $new);
+    $rolesDeleted = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($owner)->test(RolesIndex::class)->call('askDelete', $ownName)));
+    expect($rolesDeleted)->toContain(e(__('admin.roles.deleted', ['role' => $ownName])), __('admin.undo'));
+    file_put_contents($dir.'/roles-deleted.html', $swap($html, $rolesDeleted, 'admin\\.roles\\.index'));
+    app(Tenancy::class)->enter(1, function () use ($ownName): void {
+        Role::onlyTrashed()->where('site_id', 1)->where('name', $ownName)->restore();
+        SiteFeature::query()->where('feature_key', 'rbac.custom_roles')->delete();
+    });
+
     // The admin's error pages (design board 25): in the frame for a member — no permission, not
     // found, a fault with its reference, too many requests — and on a page of their own: the
     // session that ended, a website that is not open. Faults come from preview-only routes.
@@ -1347,5 +1367,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         ->and(file_get_contents($dir.'/review-inbox-changes-approve.html'))->toContain(e(__('entries.chg.ask_now')))
         ->and(file_get_contents($dir.'/review-inbox-changes-return.html'))->toContain(e(__('entries.chg.return_err')));
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 119);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 122);
 });

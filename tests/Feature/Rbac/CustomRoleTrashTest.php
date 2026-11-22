@@ -6,6 +6,7 @@ use App\Modules\Rbac\Actions\AssignRole;
 use App\Modules\Rbac\Actions\CreateCustomRole;
 use App\Modules\Rbac\Actions\DeleteCustomRole;
 use App\Modules\Rbac\Actions\InviteMember;
+use App\Modules\Rbac\Actions\PurgeTrashedRoles;
 use App\Modules\Rbac\Actions\RestoreCustomRole;
 use App\Modules\Rbac\Actions\UpdateCustomRole;
 use App\Modules\Rbac\Context\TeamContext;
@@ -22,6 +23,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteFeature;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Spatie\Permission\PermissionRegistrar;
@@ -556,4 +558,64 @@ it('keeps in the trash a role past its time that someone holds anyway, and says 
         ->and(trashRow($free))->toBeNull();
     Log::shouldHaveReceived('warning')->withArgs(fn (string $message, array $context): bool => str_contains($message, 'still holds')
         && $context['role_id'] === $held->getKey() && $context['site_id'] === 1)->once();
+});
+
+it('keeps at most 100 custom roles per website, the trash counted, and still lets one be deleted or brought back', function (): void {
+    $owner = trashMember(1, 'owner');
+    $now = now();
+    $rows = [];
+    // one short of the cap in all: 51 in the trash, 48 live (under the live cap of 50)
+    for ($i = 1; $i < CustomRoleRules::MAX_KEPT_CUSTOM_ROLES; $i++) {
+        $rows[] = ['site_id' => 1, 'name' => "Nhóm {$i}", 'guard_name' => PermissionRegistry::GUARD, 'level' => 10, 'is_system' => false,
+            'created_at' => $now, 'updated_at' => $now, 'deleted_at' => $i <= CustomRoleRules::MAX_CUSTOM_ROLES + 1 ? $now : null];
+    }
+    DB::connection('pgsql_admin')->table('roles')->insert($rows);
+    trashRole(2, 'Nhóm khác', 10, ['entries.view']);   // another site's roles do not count
+    $ownerB = trashMember(2, 'owner');
+    $create = fn (string $name): Role => trashIn(1, fn (): Role => app(CreateCustomRole::class)->handle($owner->fresh(), $name, 20, ['entries.view']));
+
+    $last = $create('Nhóm cuối');   // 99 kept + 1 = the cap
+    expect(fn () => $create('Nhóm thừa'))->toThrow(RoleChangeRejectedException::class, 'trash_full');
+
+    // a delete moves a role and adds none, so it is never refused for it; nor is bringing it back
+    trashDelete($owner, $last);
+    expect(trashRestore($owner, $last)->trashed())->toBeFalse()
+        ->and(trashIn(1, fn (): int => Role::withTrashed()->where('site_id', 1)->where('is_system', false)->count()))->toBe(CustomRoleRules::MAX_KEPT_CUSTOM_ROLES)
+        ->and(trashIn(2, fn (): Role => app(CreateCustomRole::class)->handle($ownerB->fresh(), 'Nhóm mới', 20, ['entries.view']))->exists)->toBeTrue();
+
+    // the purge makes room again
+    DB::connection('pgsql_admin')->table('roles')->where('site_id', 1)->whereNotNull('deleted_at')->update(['deleted_at' => now()->subDays(Role::TRASH_DAYS + 1)]);
+    app(PurgeTrashedRoles::class)->handle();
+    expect($create('Nhóm thừa')->exists)->toBeTrue();
+});
+
+it('purges the trash a chunk at a time, every chunk bounded, and reaches every role and site', function (): void {
+    $now = now()->subDays(Role::TRASH_DAYS + 1);
+    $rows = [];
+    foreach ([1, 2] as $site) {
+        for ($i = 1; $i <= 7; $i++) {
+            $rows[] = ['site_id' => $site, 'name' => "Cũ {$i}", 'guard_name' => PermissionRegistry::GUARD, 'level' => 10, 'is_system' => false,
+                'created_at' => $now, 'updated_at' => $now, 'deleted_at' => $now];
+        }
+    }
+    DB::connection('pgsql_admin')->table('roles')->insert($rows);
+    // one role someone still holds sits in the middle of site 1's ids: it is kept and does not stop the rest
+    $heldId = DB::connection('pgsql_admin')->table('roles')->where('site_id', 1)->where('name', 'Cũ 3')->value('id');
+    $member = User::factory()->create();
+    DB::connection('pgsql_admin')->table('model_has_roles')->insert(['role_id' => $heldId, 'model_type' => User::class, 'model_id' => $member->id, 'site_id' => 1]);
+
+    $reads = [];
+    DB::listen(function (QueryExecuted $query) use (&$reads): void {
+        if (str_starts_with(strtolower($query->sql), 'select') && str_contains($query->sql, '"roles"') && str_contains($query->sql, 'deleted_at')) {
+            $reads[] = $query->sql;
+        }
+    });
+
+    expect(app(PurgeTrashedRoles::class)->handle(chunk: 3))->toBe(['purged' => 13, 'held' => 1])
+        ->and(Role::withTrashed()->whereIn('site_id', [1, 2])->where('is_system', false)->pluck('id')->all())->toBe([$heldId])
+        ->and(DB::connection('pgsql_admin')->table('audit_logs')->where('action', 'rbac.role.purged')->count())->toBe(13)
+        ->and($reads)->not->toBeEmpty();
+    foreach ($reads as $sql) {
+        expect($sql)->toContain('limit 3');
+    }
 });
