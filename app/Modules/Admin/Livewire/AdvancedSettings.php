@@ -159,11 +159,16 @@ final class AdvancedSettings extends Component
             return false;
         }
 
-        $value = $this->stored();
-        $wasOn = $this->savedOn;
         try {
-            SettingsWrite::run('advanced', function () use ($value): void {
-                app(SettingsRepository::class)->put(SiteMaintenance::GROUP, SiteMaintenance::KEY, $value);
+            // read what is saved under the lock: another tab's save is neither lost (the words of a
+            // language not shown here) nor miscounted (the switch's audit compares with the row)
+            [$wasOn, $value] = SettingsWrite::run('advanced', function (): array {
+                $repository = app(SettingsRepository::class);
+                $saved = SiteMaintenance::shape($repository->get(SiteMaintenance::GROUP, SiteMaintenance::KEY));
+                $value = $this->stored($saved['messages']);
+                $repository->put(SiteMaintenance::GROUP, SiteMaintenance::KEY, $value);
+
+                return [$saved['on'], $value];
             });
         } catch (SettingsChangeRejected $e) {
             if ($e->reason !== 'busy') {
@@ -312,11 +317,11 @@ final class AdvancedSettings extends Component
      * What is saved: the switch, the words of each language (those of a language switched off since
      * are kept, for when it comes back) and the reopen time in UTC.
      *
+     * @param  array<string, string>  $messages  the words saved now, per language
      * @return array{on: bool, messages: array<string, string>, reopens_at: string|null}
      */
-    private function stored(): array
+    private function stored(array $messages): array
     {
-        $messages = SiteMaintenance::shape(app(SettingsRepository::class)->get(SiteMaintenance::GROUP, SiteMaintenance::KEY))['messages'];
         foreach ($this->locales() as $lc) {
             $text = trim($this->messages[$lc] ?? '');
             if ($text === '') {

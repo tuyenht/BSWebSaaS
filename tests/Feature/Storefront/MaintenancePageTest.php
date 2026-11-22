@@ -88,6 +88,13 @@ it('tells when the website is expected back, and waits until then', function ():
         ->and((string) $response->getContent())->toContain('<p class="sf-404__when">Dự kiến xong lúc 22/11/2026 12:30.</p>');
 });
 
+it('has crawlers look again within a day when the reopen time is further ahead', function (): void {
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-11-22 03:00:00', 'UTC'));
+    mtSet(1, ['on' => true, 'messages' => [], 'reopens_at' => '2027-03-01T00:00:00Z']);
+
+    expect($this->get('http://a.test/')->assertStatus(503)->headers->get('Retry-After'))->toBe('86400');
+});
+
 it('no longer tells a reopen time that has passed, and waits an hour again', function (): void {
     CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-11-22 06:00:00', 'UTC'));
     mtSet(1, ['on' => true, 'messages' => [], 'reopens_at' => '2026-11-22T05:30:00Z']);

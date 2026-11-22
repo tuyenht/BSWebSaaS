@@ -11,7 +11,6 @@
     $multi = count($locales) > 1;
     $whenBad = $errors->has('reopen');
     $fieldLook = 'w-full min-w-0 rounded-md border bg-surface px-2.5 text-text placeholder:text-placeholder';
-    $locked = 'bg-surface-muted text-text-muted';
 @endphp
 <x-bs-admin::settings-shell active="advanced" :unsaved="$changes" :invalid="count($errors->keys())" live-errors first-error="adv-first-error">
     <x-slot:aside>
@@ -86,7 +85,7 @@
                         <label for="{{ $fid }}" class="mb-1.5 block text-[calc(0.8125rem+var(--user-text-boost))] leading-[1.45] font-semibold text-text-strong">{{ $multi ? __('admin.adv.mt.msg_label', ['name' => $name]) : __('admin.adv.mt.msg_label_one') }}</label>
                         <textarea id="{{ $fid }}" rows="3" lang="{{ $lc }}" wire:model.live.blur="{{ $bag }}" placeholder="{{ $ph }}" maxlength="{{ SiteMaintenance::MAX_MESSAGE }}"
                                   @if ($readOnly) readonly @endif aria-invalid="{{ $bad ? 'true' : 'false' }}" aria-describedby="{{ $bad ? $fid.'-err ' : '' }}{{ $fid }}-h"
-                                  class="field {{ $fieldLook }} min-h-[5.5rem] resize-y py-2 {{ $bad ? 'border-danger-text' : 'border-border-input' }} {{ $readOnly ? $locked : '' }}"></textarea>
+                                  class="field {{ $fieldLook }} min-h-[5.5rem] resize-y py-2 {{ $bad ? 'border-danger-text' : 'border-border-input' }}"></textarea>
                         @if ($bad)
                             <x-bs-admin::field-error id="{{ $fid }}-err" class="mt-1.5">{{ $errors->first($bag) }}</x-bs-admin::field-error>
                         @endif
@@ -100,10 +99,10 @@
                 <div class="flex flex-wrap gap-2">
                     <input id="adv-when-d" type="date" wire:model.live.blur="reopenDate" aria-label="{{ __('admin.adv.mt.when_date') }}" @if ($readOnly) readonly @endif
                            aria-invalid="{{ $whenBad ? 'true' : 'false' }}" aria-describedby="{{ $whenBad ? 'adv-when-err ' : '' }}adv-when-h"
-                           class="field {{ $fieldLook }} max-w-56 flex-[1_1_10rem] {{ $whenBad ? 'border-danger-text' : 'border-border-input' }} {{ $readOnly ? $locked : '' }}">
+                           class="field {{ $fieldLook }} max-w-56 flex-[1_1_10rem] {{ $whenBad ? 'border-danger-text' : 'border-border-input' }}">
                     <input id="adv-when-t" type="time" wire:model.live.blur="reopenTime" aria-label="{{ __('admin.adv.mt.when_time') }}" @if ($readOnly) readonly @endif
                            aria-invalid="{{ $whenBad ? 'true' : 'false' }}" aria-describedby="{{ $whenBad ? 'adv-when-err ' : '' }}adv-when-h"
-                           class="field {{ $fieldLook }} max-w-56 flex-[1_1_10rem] {{ $whenBad ? 'border-danger-text' : 'border-border-input' }} {{ $readOnly ? $locked : '' }}">
+                           class="field {{ $fieldLook }} max-w-56 flex-[1_1_10rem] {{ $whenBad ? 'border-danger-text' : 'border-border-input' }}">
                 </div>
                 @if ($whenBad)
                     <x-bs-admin::field-error id="adv-when-err" class="mt-1.5 max-w-[46rem]">{{ $errors->first('reopen') }}</x-bs-admin::field-error>

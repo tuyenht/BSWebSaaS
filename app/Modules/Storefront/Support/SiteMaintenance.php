@@ -104,13 +104,16 @@ final readonly class SiteMaintenance
         return $reopens !== null && $reopens->greaterThan($now ?? CarbonImmutable::now()) ? $reopens : null;
     }
 
-    /** Seconds a crawler should wait: until the reopen time while it is ahead, else an hour. */
+    /** Longest Retry-After: a reopen time far ahead still has crawlers look again daily. */
+    public const int MAX_RETRY_AFTER = 86400;
+
+    /** Seconds a crawler should wait: until the reopen time while it is ahead (a day at most), else an hour. */
     public static function retryAfter(?CarbonImmutable $reopens, ?CarbonImmutable $now = null): int
     {
         $now ??= CarbonImmutable::now();
         $ahead = self::ahead($reopens, $now);
 
-        return $ahead === null ? self::DEFAULT_RETRY_AFTER : max(60, $ahead->getTimestamp() - $now->getTimestamp());
+        return $ahead === null ? self::DEFAULT_RETRY_AFTER : min(self::MAX_RETRY_AFTER, max(60, $ahead->getTimestamp() - $now->getTimestamp()));
     }
 
     /** A reopen time as visitors and the admin read it: the website's local day and hour (22/11/2026 15:00). */
