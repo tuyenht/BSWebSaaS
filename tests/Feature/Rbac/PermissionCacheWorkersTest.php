@@ -80,7 +80,9 @@ function nextUnitOfWork(PermissionRegistrar $worker, string $event = RequestRece
 {
     onWorker($worker, function () use ($event): void {
         foreach (app('events')->getRawListeners()[$event] ?? [] as $listener) {
-            if (is_string($listener) && str_starts_with($listener, 'App\\')) {
+            // This app's own argument-free listeners (the catalog check); Octane's and closures are not modelled.
+            if (is_string($listener) && str_starts_with($listener, 'App\\')
+                && (new ReflectionMethod($listener, 'handle'))->getNumberOfRequiredParameters() === 0) {
                 app($listener)->handle();
             }
         }
@@ -361,5 +363,11 @@ it('moves the version on rbac:sync and on ProvisionSite', function (): void {
 it('checks the permission catalog at the start of every Octane request, task and tick and every queued job', function (): void {
     foreach ([RequestReceived::class, TaskReceived::class, TickReceived::class, JobProcessing::class] as $event) {
         expect(app('events')->getRawListeners()[$event] ?? [])->toContain(SyncPermissionCache::class);
+    }
+
+    // Registered by the Rbac provider, never through config/octane.php: the release tooling treats any change to
+    // that file as a server change, so app listeners stay out of it.
+    foreach ([RequestReceived::class, TaskReceived::class, TickReceived::class] as $event) {
+        expect(config('octane.listeners.'.$event, []))->each->not->toStartWith('App\\');
     }
 });
