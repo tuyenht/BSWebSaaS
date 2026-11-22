@@ -547,24 +547,54 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         ->call('save')->assertSet('askCode', true));
     // the harness leaves the snapshot off the root once an action ran: put it back so the browser boots
     // the component, and swap it for the page's own root (from the div carrying its snapshot to the div closing it)
-    $snapshot = (fn () => $this->lastState->getSnapshot())->call($asking);
-    $ask = (string) preg_replace('/^<div wire:id="([^"]+)"/', '<div wire:snapshot="'.e(is_string($snapshot) ? $snapshot : (string) json_encode($snapshot)).'" wire:effects="[]" wire:id="$1"', $asking->html(), 1);
-    expect($ask)->toContain('role="alertdialog"', 'Bật mã nhúng thêm cho website?', 'data-adv-ask-ok', 'wire:snapshot=');
-    $page = (string) $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/advanced')->assertOk()->getContent();
-    expect(preg_match('/<div (?:wire:key="[^"]*" )?wire:snapshot="[^"]*advanced-settings/', $page, $root, PREG_OFFSET_CAPTURE))->toBe(1);
-    $from = $root[0][1];
-    preg_match_all('~<div\b|</div>~', $page, $tags, PREG_OFFSET_CAPTURE, $from);
-    $depth = 0;
-    $to = null;
-    foreach ($tags[0] as [$tag, $at]) {
-        $depth += $tag === '</div>' ? -1 : 1;
-        if ($depth === 0) {
-            $to = $at + 6;
-            break;
+    $advancedWith = function (mixed $lw) use ($owner): string {
+        $snapshot = (fn () => $this->lastState->getSnapshot())->call($lw);
+        $root = (string) preg_replace('/^<div wire:id="([^"]+)"/', '<div wire:snapshot="'.e(is_string($snapshot) ? $snapshot : (string) json_encode($snapshot)).'" wire:effects="[]" wire:id="$1"', $lw->html(), 1);
+        expect($root)->toContain('wire:snapshot=');
+        $page = (string) $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/advanced')->assertOk()->getContent();
+        expect(preg_match('/<div (?:wire:key="[^"]*" )?wire:snapshot="[^"]*advanced-settings/', $page, $found, PREG_OFFSET_CAPTURE))->toBe(1);
+        $from = $found[0][1];
+        preg_match_all('~<div\b|</div>~', $page, $tags, PREG_OFFSET_CAPTURE, $from);
+        $depth = 0;
+        $to = null;
+        foreach ($tags[0] as [$tag, $at]) {
+            $depth += $tag === '</div>' ? -1 : 1;
+            if ($depth === 0) {
+                $to = $at + 6;
+                break;
+            }
         }
-    }
-    expect($to)->not->toBeNull();
-    file_put_contents($dir.'/advanced-code-ask.html', substr($page, 0, $from).$ask.substr($page, (int) $to));
+        expect($to)->not->toBeNull();
+
+        return substr($page, 0, $from).$root.substr($page, (int) $to);
+    };
+    $ask = $advancedWith($asking);
+    expect($ask)->toContain('role="alertdialog"', 'Bật mã nhúng thêm cho website?', 'data-adv-ask-ok');
+    file_put_contents($dir.'/advanced-code-ask.html', $ask);
+    // «Giới hạn nơi được vào trang quản trị»: a row left with a wrong address, then a save refused
+    // because the list would lock the owner out (the preview's requests come from 127.0.0.1)
+    $html = $advancedWith(app(Tenancy::class)->enter(1, function () use ($owner): mixed {
+        $lw = Livewire::actingAs($owner)->test(AdvancedSettings::class)->call('toggleIp')->call('addIpRow');
+        $id = $lw->get('ips.1.id');
+
+        return $lw->set('ips.1.address', '113.161.42')->set('ips.1.note', 'Văn phòng Đà Nẵng')->call('touchIp', $id);
+    }));
+    expect($html)->toContain('chưa đúng dạng địa chỉ mạng', 'Có địa chỉ bạn đang dùng');
+    file_put_contents($dir.'/advanced-ip-bad.html', $html);
+    $html = $advancedWith(app(Tenancy::class)->enter(1, fn (): mixed => Livewire::actingAs($owner)->test(AdvancedSettings::class)
+        ->call('toggleIp')->set('ips.0.address', '198.51.100.0/24')->set('ips.0.note', 'Văn phòng Đà Nẵng')->call('save')));
+    expect($html)->toContain('Chưa lưu: danh sách này sẽ chặn chính bạn.', 'Thêm địa chỉ đang dùng');
+    file_put_contents($dir.'/advanced-ip-lock.html', $html);
+    // saved and on (127.0.0.1 listed, so the preview itself still gets in): advanced-code and
+    // advanced-ro below show it as the owner and, «Chỉ xem», as the website's admin
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'admin_access', 'key' => 'ip_limit'], ['value' => [
+        'on' => true,
+        'entries' => [
+            ['address' => '203.0.113.0/24', 'note' => 'Văn phòng Đà Nẵng'],
+            ['address' => '127.0.0.1', 'note' => 'Máy bạn đang dùng'],
+            ['address' => '2001:db8:1234:5678::/64', 'note' => 'Mạng IPv6 của văn phòng'],
+        ],
+    ]]));
     app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'storefront', 'key' => 'embed_code'], ['value' => [
         'on' => true,
         'code' => [
@@ -578,14 +608,15 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     ]]));
     $this->flushSession();
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/advanced')->assertOk()->getContent();
-    expect($html)->toContain('Đang chạy trên website', 'data-adv-code-box="head"', 'data-adv-code-box="foot"', 'Khuyên dùng')
+    expect($html)->toContain('Đang chạy trên website', 'data-adv-code-box="head"', 'data-adv-code-box="foot"', 'Khuyên dùng', 'Đang giới hạn', 'data-adv-ip-row="3"')
         ->not->toContain('<script>window.chatId');
     file_put_contents($dir.'/advanced-code.html', $html);
     $siteAdmin = blockLibraryUser(1, 'admin');
     $this->flushSession();
     $html = $this->actingAs($siteAdmin)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/advanced')->assertOk()->getContent();
-    expect($html)->toContain('Chỉ xem', 'nên chỉ xem được', 'data-adv-code-box="foot"', 'readonly');
+    expect($html)->toContain('Chỉ xem', 'nên chỉ xem được', 'data-adv-code-box="foot"', 'readonly', 'data-adv-ip-row="3"')->not->toContain('data-adv-ip-remove');
     file_put_contents($dir.'/advanced-ro.html', $html);
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('group_name', 'admin_access')->first()?->delete());
     app(Tenancy::class)->enter(1, fn () => $siteAdmin->removeRole('admin')); // the members screens below list the site's own people only
     $this->flushSession();
 
@@ -1279,6 +1310,15 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->get('http://'.ADMIN_PREVIEW_HOST.'/admin/login')->assertForbidden()->getContent();
     expect($html)->toContain('data-te-page="suspended"');
     file_put_contents($dir.'/error-suspended.html', $html);
+    // the website's admin limited to an office network, opened from elsewhere: the page on its own
+    DB::connection('pgsql_admin')->table('sites')->where('id', 1)->update(['status' => 'active']);
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'admin_access', 'key' => 'ip_limit'], ['value' => ['on' => true, 'entries' => [['address' => '203.0.113.0/24', 'note' => '']]]]));
+    $html = $this->withServerVariables(['REMOTE_ADDR' => '198.51.100.8'])->get('http://'.ADMIN_PREVIEW_HOST.'/admin/login')->assertForbidden()->getContent();
+    expect($html)->toContain('data-te-page="ipblock"')->not->toContain('203.0.113');
+    file_put_contents($dir.'/error-ipblock.html', $html);
+    $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1']);
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('group_name', 'admin_access')->first()?->delete());
+    DB::connection('pgsql_admin')->table('sites')->where('id', 1)->update(['status' => 'suspended']);
 
     // The media library's folder column (design board 12): three folders and a sub-folder, the open one
     // with its ⋮ menu, the same folder being renamed in place, the question asked before deleting a
@@ -1461,5 +1501,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         ->and(file_get_contents($dir.'/review-inbox-changes-approve.html'))->toContain(e(__('entries.chg.ask_now')))
         ->and(file_get_contents($dir.'/review-inbox-changes-return.html'))->toContain(e(__('entries.chg.return_err')));
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 130);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 133);
 });

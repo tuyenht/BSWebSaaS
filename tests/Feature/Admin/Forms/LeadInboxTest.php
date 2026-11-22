@@ -194,6 +194,7 @@ it('lists leads on a flat query budget (no N+1 across rows or forms)', function 
     // counts, the rows and the open lead — the same with 5 leads on one form as
     // with 17 on two; a query per row or per form would grow it
     // +1: the top bar's bell reads the unread count (one bounded query on every admin page).
-    expect($cold)->toBeLessThanOrEqual(23)
+    // +1: the admin address limit, read once per site and then served from the shared cache.
+    expect($cold)->toBeLessThanOrEqual(24)
         ->and($many)->toBe($few)->toBeLessThanOrEqual(14);
 });

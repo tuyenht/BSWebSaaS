@@ -624,7 +624,7 @@ describe('query budget', function (): void {
 
         $get = countQueries(fn () => $this->actingAs($user)->get("http://a.test/admin/catalog/{$ulid}/edit")->assertOk());
         // the price card names the website's clock (its time zone, read once on opening)
-        expect($get)->toBeLessThanOrEqual(25);
+        expect($get)->toBeLessThanOrEqual(26); // +1: the admin address limit, read once per site and then served from the shared cache
 
         $auto = 0;
         app(Tenancy::class)->enter(1, function () use ($user, $ulid, &$auto): void {
@@ -656,7 +656,7 @@ describe('query budget', function (): void {
         foreach ([$lead, $viewer] as $member) {
             $this->flushSession();
             $get = countQueries(fn () => $this->actingAs($member)->get("http://a.test/admin/catalog/{$ulid}/edit")->assertOk()->assertSee('Khuôn'));
-            expect($get)->toBeLessThanOrEqual(25);
+            expect($get)->toBeLessThanOrEqual(26); // +1: the admin address limit, read once per site and then served from the shared cache
         }
     });
 });

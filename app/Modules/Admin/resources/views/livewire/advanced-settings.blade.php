@@ -1,4 +1,5 @@
 @php
+    use App\Modules\Admin\Support\AdminAddressLimit;
     use App\Modules\Storefront\Support\SiteEmbedCode;
     use App\Modules\Storefront\Support\SiteMaintenance;
 
@@ -11,6 +12,10 @@
     // four boxes show while the drafted switch is on (or a box is in error). The first save that turns
     // code on opens the «Bật mã nhúng thêm cho website?» dialog, whose «Bật và lưu» stays unavailable
     // until «Tôi hiểu…» is ticked; the server asks for that confirmation (save(true)) itself.
+    //
+    // The «Giới hạn nơi được vào trang quản trị» card: the chip follows the saved limit, the rows show
+    // while the drafted switch is on. A row's fault shows once it was left, the empty list and the
+    // lock-out band once a save was tried (the server decides both, against the request's own address).
     $glyph = 'size-[min(1.5rem,calc(1rem+var(--user-text-boost)))] shrink-0';
     $small = 'size-[min(1.5rem,calc(0.75rem+var(--user-text-boost)))] shrink-0';
     $chip = 'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-caption font-semibold';
@@ -29,10 +34,10 @@
             </button>
             <x-bs-admin::modal state="help" close="help = false" :title="__('admin.adv.help.title')" :close-label="__('admin.adv.help.close_aria')">
                 <dl class="m-0 flex flex-col gap-3">
-                    @foreach ([1, 2, 4] as $i)
+                    @foreach ([1, 2, 3, 4] as $i)
                         <div>
                             <dt class="font-semibold text-text-strong">{{ __('admin.adv.help.q'.$i) }}</dt>
-                            <dd class="m-0 mt-0.5 text-text">{{ __('admin.adv.help.a'.$i) }}</dd>
+                            <dd class="m-0 mt-0.5 text-text">{{ __('admin.adv.help.a'.$i, ['platform' => $platform]) }}</dd>
                         </div>
                     @endforeach
                 </dl>
@@ -44,7 +49,7 @@
     </x-slot:aside>
 
     <div class="flex flex-col gap-4" data-adv
-         x-data x-on:adv-first-error.window="$nextTick(() => $el.querySelector('[aria-invalid=true]')?.focus())">
+         x-data x-on:adv-first-error.window="$nextTick(() => $el.querySelector('[aria-invalid=true], [data-adv-err]')?.focus())">
 
         @if ($readOnly)
             <p class="m-0 text-[calc(0.8125rem+var(--user-text-boost))] text-text md:hidden" data-adv-ro-line>
@@ -121,6 +126,109 @@
                     <x-bs-admin::icon name="ri-external-link" class="{{ $glyph }}" />{{ __('admin.adv.mt.preview') }}
                 </x-bs-admin::button>
             </div>
+        </section>
+
+        <section class="@container/adv flex min-w-0 flex-col gap-4 rounded-md border border-border bg-surface p-[1.375rem] shadow-card max-md:rounded-none max-md:border-0 max-md:border-t max-md:border-border max-md:bg-transparent max-md:px-0 max-md:pt-5 max-md:pb-5 max-md:shadow-none"
+                 aria-labelledby="adv-ip-h" id="adv-ip" data-adv-ip
+                 x-on:adv-ip-focus.window="$nextTick(() => document.getElementById('adv-ip-' + $event.detail.id)?.focus())">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                <h2 id="adv-ip-h" class="min-w-0 flex-[1_1_12em] text-[min(1.375rem,calc(1rem+var(--user-text-boost)))] leading-[1.4] font-semibold break-words text-text-strong">{{ __('admin.adv.ip.title') }}</h2>
+                @if ($ipSavedOn)
+                    <span class="{{ $chip }} bg-success-soft text-success-text" data-adv-ip-chip="on"><x-bs-admin::icon name="ri-checkbox-circle" class="{{ $small }}" />{{ __('admin.adv.ip.chip_on') }}</span>
+                @else
+                    <span class="{{ $chip }} bg-surface-muted text-text-muted" data-adv-ip-chip="off"><x-bs-admin::icon name="ri-checkbox-blank-circle" class="{{ $small }}" />{{ __('admin.adv.ip.chip_off') }}</span>
+                @endif
+                <span class="inline-flex min-h-hit shrink-0 items-center">
+                    <button type="button" class="switch hit-area" role="switch" aria-checked="{{ $ipOn ? 'true' : 'false' }}" aria-label="{{ __('admin.adv.ip.switch') }}"
+                            @if ($readOnly) disabled aria-disabled="true" @else wire:click="toggleIp" @endif></button>
+                </span>
+            </div>
+
+            <p class="m-0 max-w-[46rem] text-text [text-wrap:pretty]">{{ __('admin.adv.ip.lead') }}</p>
+
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded border border-border bg-surface-muted px-4 py-3" data-adv-ip-me>
+                <span class="min-w-0 flex-[1_1_14em] text-text">{{ __('admin.adv.ip.me') }} <b class="font-semibold break-all text-text-strong tabular-nums">{{ $myIp ?? '—' }}</b></span>
+                @if ($inSupport)
+                    <span class="min-w-0 flex-[1_1_100%] text-caption text-text-muted" data-adv-ip-support>{{ __('admin.adv.ip.me_support') }}</span>
+                @elseif (! $readOnly && $ipOn && ! $meIn && $myIp !== null)
+                    <x-bs-admin::button variant="outline" color="secondary" size="sm" wire:click="addMyIp" data-adv-ip-add-me>
+                        <x-bs-admin::icon name="ri-add" class="{{ $small }}" />{{ __('admin.adv.ip.add_me') }}
+                    </x-bs-admin::button>
+                @elseif ($ipOn && $meIn)
+                    <span class="{{ $chip }} bg-success-soft text-success-text" data-adv-ip-me-in><x-bs-admin::icon name="ri-check" class="{{ $small }}" />{{ __('admin.adv.ip.me_in') }}</span>
+                @endif
+            </div>
+
+            @if ($errors->has('ip.lock'))
+                <x-bs-admin::alert color="danger" icon="ri-error-warning" role="alert" id="adv-ip-lock" tabindex="-1" data-adv-err="ip-lock">
+                    <p class="m-0"><b class="font-semibold">{{ __('admin.adv.ip.lock_b') }}</b> {{ $errors->first('ip.lock') }}</p>
+                    <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+                        <x-bs-admin::button variant="outline" color="secondary" size="sm" wire:click="addMyIp" data-adv-ip-lock-add>
+                            <x-bs-admin::icon name="ri-add" class="{{ $small }}" />{{ __('admin.adv.ip.lock_add') }}
+                        </x-bs-admin::button>
+                    </div>
+                </x-bs-admin::alert>
+            @endif
+
+            @if ($ipOn)
+                @php
+                    $ipLabel = 'text-[calc(0.8125rem+var(--user-text-boost))] leading-[1.45] font-semibold text-text-strong';
+                @endphp
+                {{-- one grid on wider cards: the header and every row share its three columns (subgrid) --}}
+                <div class="flex min-w-0 flex-col @min-[36rem]/adv:grid @min-[36rem]/adv:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] @min-[36rem]/adv:gap-x-3">
+                    <div class="mb-1.5 hidden {{ $ipLabel }} @min-[36rem]/adv:col-span-3 @min-[36rem]/adv:grid @min-[36rem]/adv:grid-cols-subgrid" aria-hidden="true">
+                        <span>{{ __('admin.adv.ip.col_address') }}</span><span>{{ __('admin.adv.ip.col_note') }}</span><span></span>
+                    </div>
+                    <ul class="m-0 flex list-none flex-col gap-3 p-0 @min-[36rem]/adv:col-span-3 @min-[36rem]/adv:grid @min-[36rem]/adv:grid-cols-subgrid" aria-label="{{ __('admin.adv.ip.list_aria') }}">
+                        @foreach ($ipRows as $i => $row)
+                            @php
+                                $fid = 'adv-ip-'.$row['id'];
+                                $bad = $row['error'] !== null;
+                            @endphp
+                            <li class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 border-b border-border pb-3 @min-[36rem]/adv:col-span-3 @min-[36rem]/adv:grid-cols-subgrid @min-[36rem]/adv:border-b-0 @min-[36rem]/adv:pb-0"
+                                wire:key="adv-ip-row-{{ $row['id'] }}" data-adv-ip-row="{{ $row['no'] }}">
+                                <span class="col-span-2 row-start-1 {{ $ipLabel }} @min-[36rem]/adv:hidden" aria-hidden="true">{{ __('admin.adv.ip.row_label', ['n' => $row['no']]) }}</span>
+                                <input id="{{ $fid }}" type="text" wire:model="ips.{{ $i }}.address" x-on:blur="$wire.touchIp({{ $row['id'] }})"
+                                       autocomplete="off" autocapitalize="off" spellcheck="false" dir="ltr" maxlength="64"
+                                       placeholder="{{ $readOnly ? '' : __('admin.adv.ip.address_ph') }}" aria-label="{{ __('admin.adv.ip.row_label', ['n' => $row['no']]) }}"
+                                       @if ($readOnly) readonly @endif aria-invalid="{{ $bad ? 'true' : 'false' }}" aria-describedby="{{ $bad ? $fid.'-err ' : '' }}adv-ip-hint"
+                                       class="field {{ $fieldLook }} col-start-1 row-start-2 tabular-nums @min-[36rem]/adv:row-start-1 {{ $bad ? 'border-danger-text' : 'border-border-input' }}">
+                                <span class="col-span-2 row-start-3 mt-1 {{ $ipLabel }} @min-[36rem]/adv:hidden" aria-hidden="true">{{ __('admin.adv.ip.row_note') }}</span>
+                                <input type="text" wire:model.live.blur="ips.{{ $i }}.note" maxlength="{{ AdminAddressLimit::MAX_NOTE }}"
+                                       placeholder="{{ $readOnly ? '' : __('admin.adv.ip.note_ph') }}" aria-label="{{ __('admin.adv.ip.note_aria', ['n' => $row['no']]) }}" @if ($readOnly) readonly @endif
+                                       class="field {{ $fieldLook }} col-span-2 row-start-4 border-border-input @min-[36rem]/adv:col-span-1 @min-[36rem]/adv:col-start-2 @min-[36rem]/adv:row-start-1">
+                                @unless ($readOnly)
+                                    <x-bs-admin::button variant="ghost" color="secondary" wire:click="removeIpRow({{ $row['id'] }})"
+                                                        :aria-label="trim($row['address']) !== '' ? __('admin.adv.ip.remove_aria_value', ['n' => $row['no'], 'value' => trim($row['address'])]) : __('admin.adv.ip.remove_aria', ['n' => $row['no']])"
+                                                        class="col-start-2 row-start-2 @min-[36rem]/adv:col-start-3 @min-[36rem]/adv:row-start-1" data-adv-ip-remove>
+                                        <x-bs-admin::icon name="ri-delete-bin" class="{{ $glyph }}" />{{ __('admin.adv.ip.remove') }}
+                                    </x-bs-admin::button>
+                                @endunless
+                                @if ($bad)
+                                    <x-bs-admin::field-error id="{{ $fid }}-err" class="col-span-full">{{ $row['error'] }}</x-bs-admin::field-error>
+                                @elseif ($row['isMe'])
+                                    <p class="col-span-full m-0 flex items-center gap-1 text-caption text-success-text" data-adv-ip-row-me><x-bs-admin::icon name="ri-check" class="{{ $small }}" />{{ __('admin.adv.ip.row_me') }}</p>
+                                @endif
+                            </li>
+                        @endforeach
+                    </ul>
+                    @if ($errors->has('ip.list'))
+                        <x-bs-admin::field-error id="adv-ip-list-err" class="mt-3 @min-[36rem]/adv:col-span-3" tabindex="-1" data-adv-err="ip-list">{{ $errors->first('ip.list') }}</x-bs-admin::field-error>
+                    @endif
+                    @unless ($readOnly)
+                        <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 @min-[36rem]/adv:col-span-3">
+                            <x-bs-admin::button variant="outline" color="secondary" wire:click="addIpRow" data-adv-ip-add-row>
+                                <x-bs-admin::icon name="ri-add" class="{{ $glyph }}" />{{ __('admin.adv.ip.add_row') }}
+                            </x-bs-admin::button>
+                        </div>
+                    @endunless
+                    <p id="adv-ip-hint" class="m-0 mt-1.5 max-w-[46rem] @min-[36rem]/adv:col-span-3 text-caption leading-relaxed text-text-muted">{{ __('admin.adv.ip.hint') }}</p>
+                </div>
+            @endif
+
+            <x-bs-admin::alert color="info" icon="ri-customer-service-2" role="note">
+                <p class="m-0"><b class="font-semibold">{{ __('admin.adv.ip.help_b') }}</b> {{ __('admin.adv.ip.help', ['platform' => $platform]) }}</p>
+            </x-bs-admin::alert>
         </section>
 
         <section class="@container/adv flex min-w-0 flex-col gap-4 rounded-md border border-border bg-surface p-[1.375rem] shadow-card max-md:rounded-none max-md:border-0 max-md:border-t max-md:border-border max-md:bg-transparent max-md:px-0 max-md:pt-5 max-md:pb-5 max-md:shadow-none"

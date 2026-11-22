@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Livewire;
 
 use App\Modules\Admin\Livewire\Concerns\TracksSavedState;
+use App\Modules\Admin\Support\AdminAddressLimit;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Admin\Support\Settings\SettingsChangeRejected;
 use App\Modules\Admin\Support\Settings\SettingsStamp;
@@ -13,17 +14,21 @@ use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Admin\Support\SiteOwner;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Support\RoleLabel;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\EdgeCachePause;
 use App\Modules\Storefront\Support\SiteEmbedCode;
 use App\Modules\Storefront\Support\SiteMaintenance;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\MessageBag;
 use Illuminate\View\View;
 use Livewire\Attributes\Authorize;
 use Livewire\Attributes\Layout;
@@ -44,6 +49,14 @@ use Livewire\Component;
  * with the code, so it is never asked again. Switched off, the code is kept but not printed. Each box
  * holds at most SiteEmbedCode::MAX_BYTES; the audit records the sizes and short hashes of what was
  * saved, never the code itself.
+ *
+ * And where the admin may be opened from (AdminAddressLimit): one switch and a list of network
+ * addresses (one address or a range) with a note each. Turning it on with an empty list starts it
+ * with the address in use; a row is checked when it is left and every row on save; a list that is on
+ * must hold at least one address and must cover the address the owner saves from, so no save can
+ * lock him out (a member in a support session is let in by support itself and is not checked).
+ * Switched off, the valid addresses are kept for later. Saving it purges nothing on the edge: the
+ * admin is never cached there.
  *
  * The page edits a draft and saves it in one step (the shared save bar). The reopen time is checked
  * when its fields are left and again on save: both a day and an hour, and not already past (a time
@@ -103,6 +116,29 @@ final class AdvancedSettings extends Component
     #[Locked]
     public bool $codeAsked = false;
 
+    /** @var list<array{id: int, address: string, note: string}> the drafted addresses, each with a stable id */
+    public array $ips = [];
+
+    /** The address-limit switch as drafted; changed only through toggleIp(). */
+    #[Locked]
+    public bool $ipOn = false;
+
+    /** The address limit as saved: its chip follows it. */
+    #[Locked]
+    public bool $ipSavedOn = false;
+
+    /** The last row id handed out. */
+    #[Locked]
+    public int $ipSeq = 0;
+
+    /** @var list<int> the rows left once (their faults show from then on) */
+    #[Locked]
+    public array $ipTouched = [];
+
+    /** A save was tried: every row's fault, the empty list and the lock-out band show. */
+    #[Locked]
+    public bool $ipTried = false;
+
     /** Set once at mount: the member may look but not change («Chỉ xem»). */
     #[Locked]
     public bool $readOnly = true;
@@ -146,6 +182,110 @@ final class AdvancedSettings extends Component
         abort_unless(self::mayChange(), 403);
 
         $this->codeOn = ! $this->codeOn;
+    }
+
+    #[Authorize('settings.manage')]
+    public function toggleIp(): void
+    {
+        abort_unless(self::mayChange(), 403);
+
+        $this->ipOn = ! $this->ipOn;
+        // turned on with nothing listed: start with the address in use (never a support desk's)
+        $me = self::myEntry();
+        if ($this->ipOn && $this->ips === [] && $me !== null && ! self::inSupport()) {
+            $this->ips[] = ['id' => ++$this->ipSeq, 'address' => $me, 'note' => Cast::string(__('admin.adv.ip.me_note'))];
+        }
+        $this->checkIps();
+    }
+
+    /** «Thêm địa chỉ»: an empty row, focused by the page. */
+    #[Authorize('settings.manage')]
+    public function addIpRow(): void
+    {
+        abort_unless(self::mayChange(), 403);
+
+        if (! $this->roomForIp()) {
+            return;
+        }
+        $this->ips[] = ['id' => ++$this->ipSeq, 'address' => '', 'note' => ''];
+        $this->checkIps();
+        $this->dispatch('adv-ip-focus', id: $this->ipSeq);
+    }
+
+    /** «Thêm địa chỉ này» / «Thêm địa chỉ đang dùng»: the address in use, unless a row covers it. */
+    #[Authorize('settings.manage')]
+    public function addMyIp(): void
+    {
+        abort_unless(self::mayChange(), 403);
+
+        $me = self::myEntry();
+        if ($me === null || AdminAddressLimit::covers($this->validIps(), self::myAddress()) || ! $this->roomForIp()) {
+            $this->checkIps();
+
+            return;
+        }
+        $this->ips[] = ['id' => ++$this->ipSeq, 'address' => $me, 'note' => Cast::string(__('admin.adv.ip.me_note'))];
+        $this->checkIps();
+    }
+
+    #[Authorize('settings.manage')]
+    public function removeIpRow(int $id): void
+    {
+        abort_unless(self::mayChange(), 403);
+
+        $this->ips = array_values(array_filter($this->ips, static fn (array $row): bool => $row['id'] !== $id));
+        $this->ipTouched = array_values(array_diff($this->ipTouched, [$id]));
+        $this->checkIps();
+    }
+
+    /** A row's address was left: its fault shows from now on. */
+    #[Authorize('settings.manage')]
+    public function touchIp(int $id): void
+    {
+        abort_unless(self::mayChange(), 403);
+
+        if (in_array($id, array_column($this->ips, 'id'), true) && ! in_array($id, $this->ipTouched, true)) {
+            $this->ipTouched[] = $id;
+        }
+        $this->checkIps();
+    }
+
+    /** An address or a note was typed: only rows of text, as many as the list may hold. */
+    public function updatedIps(): void
+    {
+        abort_unless(self::mayChange(), 403);
+
+        $rows = [];
+        $ids = [];
+        foreach (self::untrusted($this->ips) as $row) {
+            $row = is_array($row) ? $row : [];
+            $id = is_int($row['id'] ?? null) ? $row['id'] : ++$this->ipSeq;
+            if (isset($ids[$id])) {
+                $id = ++$this->ipSeq;
+            }
+            $ids[$id] = true;
+            $this->ipSeq = max($this->ipSeq, $id);
+            $rows[] = [
+                'id' => $id,
+                'address' => mb_substr(is_string($row['address'] ?? null) ? $row['address'] : '', 0, 64),
+                'note' => mb_substr(is_string($row['note'] ?? null) ? $row['note'] : '', 0, AdminAddressLimit::MAX_NOTE),
+            ];
+            if (count($rows) === AdminAddressLimit::MAX_ENTRIES) {
+                break;
+            }
+        }
+        $this->ips = $rows;
+        $this->checkIps();
+    }
+
+    /**
+     * A value the browser may have sent in any shape, as a list.
+     *
+     * @return list<mixed>
+     */
+    private static function untrusted(mixed $value): array
+    {
+        return is_array($value) ? array_values($value) : [];
     }
 
     /** Code was typed: only the four places, only text, checked for its size. */
@@ -235,6 +375,8 @@ final class AdvancedSettings extends Component
         foreach (SiteEmbedCode::SLOTS as $slot) {
             $ok = $this->checkCode($slot) && $ok;
         }
+        $this->ipTried = true;
+        $ok = $this->checkIps() && $ok;
         if (! $ok) {
             $this->askCode = false;
             $this->codeAsked = false;
@@ -248,7 +390,8 @@ final class AdvancedSettings extends Component
         // another tab saved since (switching broken code off elsewhere is never undone from here)
         $changed = $this->unsavedFields();
         $codeTouched = array_filter($changed, static fn (string $f): bool => str_starts_with($f, 'code.')) !== [];
-        $mtTouched = array_filter($changed, static fn (string $f): bool => ! str_starts_with($f, 'code.')) !== [];
+        $ipPart = array_filter($changed, static fn (string $f): bool => str_starts_with($f, 'ip.')) !== [];
+        $mtTouched = array_filter($changed, static fn (string $f): bool => ! str_starts_with($f, 'code.') && ! str_starts_with($f, 'ip.')) !== [];
 
         $confirmed = $confirmed && $this->codeAsked;
         if (! $confirmed && $codeTouched && $this->codeOn && SiteEmbedCode::hasCode($this->draftCode()) && ! $this->codeAcknowledged) {
@@ -262,7 +405,7 @@ final class AdvancedSettings extends Component
         try {
             // read what is saved under the lock: another tab's save is neither lost (the words of a
             // language not shown here) nor miscounted (each switch's audit compares with its row)
-            $written = SettingsWrite::run('advanced', function () use ($confirmed, $mtTouched, $codeTouched): array {
+            $written = SettingsWrite::run('advanced', function () use ($confirmed, $mtTouched, $codeTouched, $ipPart): array {
                 $repository = app(SettingsRepository::class);
 
                 // a touched part is written only when it differs from its row (a part never saved
@@ -293,9 +436,21 @@ final class AdvancedSettings extends Component
                     }
                 }
 
+                // the admin is never cached at the edge: this part purges nothing
+                $ipWritten = null;
+                if ($ipPart) {
+                    $savedIp = $repository->get(AdminAddressLimit::GROUP, AdminAddressLimit::KEY);
+                    $ip = ['on' => $this->ipOn, 'entries' => $this->storedIps()];
+                    if ($ip != ($savedIp ?? ['on' => false, 'entries' => []])) {
+                        app(EdgeCachePause::class)->during(fn () => $repository->put(AdminAddressLimit::GROUP, AdminAddressLimit::KEY, $ip));
+                        $ipWritten = ['value' => $ip, 'was' => AdminAddressLimit::shape($savedIp)];
+                    }
+                }
+
                 return [
                     'mt' => $mtChanged && $mt['on'] !== $wasOn ? $mt['on'] : null,
                     'code' => $codeChanged ? ['value' => $code, 'was' => $was] : null,
+                    'ip' => $ipWritten,
                 ];
             });
         } catch (SettingsChangeRejected $e) {
@@ -311,6 +466,24 @@ final class AdvancedSettings extends Component
         }
         if ($written['code'] !== null) {
             $this->auditCode($written['code']['value'], $written['code']['was']);
+        }
+        if ($written['ip'] !== null) {
+            $on = $written['ip']['value']['on'];
+            $wasOn = $written['ip']['was']['on'];
+            // which addresses came and went (each as it is kept; never the notes), so a row tells who
+            // opened the admin to where; each list stops at the most a list may hold
+            $now = array_column($written['ip']['value']['entries'], 'address');
+            $before = array_column($written['ip']['was']['entries'], 'address');
+            Audit::record(match (true) {
+                $on && ! $wasOn => 'settings.admin_ip.on',
+                ! $on && $wasOn => 'settings.admin_ip.off',
+                default => 'settings.admin_ip.changed',
+            }, ['meta' => [
+                'on' => $on,
+                'count' => count($now),
+                'added' => array_slice(array_values(array_diff($now, $before)), 0, AdminAddressLimit::MAX_ENTRIES),
+                'removed' => array_slice(array_values(array_diff($before, $now)), 0, AdminAddressLimit::MAX_ENTRIES),
+            ]]);
         }
 
         $this->askCode = false;
@@ -357,6 +530,12 @@ final class AdvancedSettings extends Component
             'role' => $user instanceof User ? RoleLabel::topOf($user) : null,
             'whenText' => $this->whenText(),
             'codeKept' => ! $this->codeOn && SiteEmbedCode::hasCode($this->draftCode()),
+            'myIp' => self::myAddress(),
+            'meIn' => AdminAddressLimit::covers($this->validIps(), self::myAddress()),
+            'inSupport' => self::inSupport(),
+            'ipRows' => $this->ipRows(),
+            'ipMax' => AdminAddressLimit::MAX_ENTRIES,
+            'platform' => Cast::string(config('admin.brand.name')),
         ]);
         $view->title(__('admin.adv.title'));
 
@@ -367,6 +546,160 @@ final class AdvancedSettings extends Component
     private static function mayChange(): bool
     {
         return SiteOwner::is(Auth::user());
+    }
+
+    /** The address this request comes from, in the form the list keeps (never a header's say). */
+    private static function myAddress(): ?string
+    {
+        return AdminAddressLimit::clientForm(request()->ip());
+    }
+
+    /**
+     * What «Thêm địa chỉ này» adds: the IPv4 address in use, or for IPv6 its /64 network, since a
+     * device on IPv6 changes its own address within that network every day or so (the board's hint
+     * says the same) and a single IPv6 address would lock its owner out tomorrow.
+     */
+    private static function myEntry(): ?string
+    {
+        $me = self::myAddress();
+        if ($me === null || ! str_contains($me, ':')) {
+            return $me;
+        }
+        $network = AdminAddressLimit::normalize($me.'/64');
+
+        return $network['ok'] ? $network['address'] : null;
+    }
+
+    /** A platform staff member in a live support session (support itself is how a locked-out owner gets in). */
+    private static function inSupport(): bool
+    {
+        return app(SupportSession::class)->active();
+    }
+
+    /**
+     * The drafted addresses that are addresses, as they would be kept.
+     *
+     * @return list<string>
+     */
+    private function validIps(): array
+    {
+        return array_column($this->storedIps(), 'address');
+    }
+
+    /**
+     * What is saved for the list: each address that is one, once, as normalize() keeps it, with its note.
+     *
+     * @return list<array{address: string, note: string}>
+     */
+    private function storedIps(): array
+    {
+        $out = [];
+        $seen = [];
+        foreach ($this->ips as $row) {
+            $address = AdminAddressLimit::normalize($row['address']);
+            if (! $address['ok'] || isset($seen[$address['address']])) {
+                continue;
+            }
+            $seen[$address['address']] = true;
+            $out[] = ['address' => $address['address'], 'note' => mb_substr(trim($row['note']), 0, AdminAddressLimit::MAX_NOTE)];
+        }
+
+        return $out;
+    }
+
+    private function errorBag(): MessageBag
+    {
+        $bag = $this->getErrorBag();
+
+        return $bag instanceof MessageBag ? $bag : new MessageBag;
+    }
+
+    /** Below the most addresses a list may hold; otherwise say so on the list. */
+    private function roomForIp(): bool
+    {
+        if (count($this->ips) < AdminAddressLimit::MAX_ENTRIES) {
+            return true;
+        }
+        $this->checkIps();
+        $this->addError('ip.list', __('admin.adv.ip.err_many', ['max' => AdminAddressLimit::MAX_ENTRIES]));
+
+        return false;
+    }
+
+    /**
+     * The address list's faults, told as the board tells them: a row's once it was left (or a save
+     * was tried), the empty list and the lock-out only once a save was tried. Answers whether the
+     * list may be saved (a list switched off always may: its invalid rows are simply not kept).
+     */
+    private function checkIps(): bool
+    {
+        // only the list's own: an empty list of keys would clear every other fault on the screen
+        $own = array_values(array_filter($this->errorBag()->keys(), static fn (mixed $key): bool => str_starts_with(Cast::string($key), 'ip.')));
+        if ($own !== []) {
+            $this->resetErrorBag($own);
+        }
+        if (! $this->ipOn) {
+            return true;
+        }
+
+        $ok = true;
+        foreach ($this->ips as $i => $row) {
+            $text = trim($row['address']);
+            $result = AdminAddressLimit::normalize($text);
+            if ($result['ok']) {
+                continue;
+            }
+            $ok = false;
+            if ($this->ipTried || in_array($row['id'], $this->ipTouched, true)) {
+                $this->addError('ip.'.$row['id'], __('admin.adv.ip.err_'.$result['error'], ['n' => $i + 1, 'value' => $text]));
+            }
+        }
+
+        $valid = $this->validIps();
+        if ($this->ips === []) {
+            $ok = false;
+            if ($this->ipTried) {
+                $this->addError('ip.list', __('admin.adv.ip.err_list'));
+            }
+        } elseif (count($this->ips) > AdminAddressLimit::MAX_ENTRIES) {
+            $ok = false;
+            if ($this->ipTried) {
+                $this->addError('ip.list', __('admin.adv.ip.err_many', ['max' => AdminAddressLimit::MAX_ENTRIES]));
+            }
+        } elseif ($valid !== [] && ! self::inSupport() && ! AdminAddressLimit::covers($valid, request()->ip())) {
+            // the very address this save comes from must stay in, or the save locks its owner out
+            $ok = false;
+            if ($this->ipTried) {
+                $this->addError('ip.lock', __('admin.adv.ip.lock', ['ip' => self::myAddress() ?? '']));
+            }
+        }
+
+        return $ok;
+    }
+
+    /**
+     * The rows as the page draws them: number, fault (when told) and whether it holds the address in use.
+     *
+     * @return list<array{id: int, no: int, address: string, note: string, error: string|null, isMe: bool}>
+     */
+    private function ipRows(): array
+    {
+        $me = self::myAddress();
+        $rows = [];
+        foreach ($this->ips as $i => $row) {
+            $error = $this->errorBag()->first('ip.'.$row['id']);
+            $result = AdminAddressLimit::normalize($row['address']);
+            $rows[] = [
+                'id' => $row['id'],
+                'no' => $i + 1,
+                'address' => $row['address'],
+                'note' => $row['note'],
+                'error' => $error !== '' ? $error : null,
+                'isMe' => $error === '' && $result['ok'] && AdminAddressLimit::covers([$result['address']], $me),
+            ];
+        }
+
+        return $rows;
     }
 
     /**
@@ -562,11 +895,8 @@ final class AdvancedSettings extends Component
 
     private function load(): void
     {
-        $rows = SiteSetting::query()
-            ->where('group_name', SiteMaintenance::GROUP)
-            ->whereIn('key', [SiteMaintenance::KEY, SiteEmbedCode::KEY])
-            ->get(['id', 'key', 'value', 'updated_at', 'updated_by']);
-        $shape = SiteMaintenance::shape($rows->firstWhere('key', SiteMaintenance::KEY)?->value);
+        $rows = self::rows()->get(['id', 'group_name', 'key', 'value', 'updated_at', 'updated_by']);
+        $shape = SiteMaintenance::shape($rows->first(static fn (SiteSetting $row): bool => $row->group_name === SiteMaintenance::GROUP && $row->key === SiteMaintenance::KEY)?->value);
 
         $this->maintenanceOn = $shape['on'];
         $this->savedOn = $shape['on'];
@@ -579,14 +909,36 @@ final class AdvancedSettings extends Component
         $this->reopenTime = $local?->format('H:i') ?? '';
         $this->savedReopen = $local?->format('Y-m-d H:i') ?? '';
 
-        $code = SiteEmbedCode::shape($rows->firstWhere('key', SiteEmbedCode::KEY)?->value);
+        $code = SiteEmbedCode::shape($rows->first(static fn (SiteSetting $row): bool => $row->group_name === SiteEmbedCode::GROUP && $row->key === SiteEmbedCode::KEY)?->value);
         $this->codeOn = $code['on'];
         $this->code = $code['code'];
         $this->codeRunning = $code['on'] && SiteEmbedCode::hasCode($code['code']);
         $this->codeAcknowledged = $code['acknowledged_at'] !== null;
 
+        $ip = AdminAddressLimit::shape($rows->first(static fn (SiteSetting $row): bool => $row->group_name === AdminAddressLimit::GROUP && $row->key === AdminAddressLimit::KEY)?->value);
+        $this->ipOn = $ip['on'];
+        $this->ipSavedOn = $ip['on'];
+        $this->ips = [];
+        foreach ($ip['entries'] as $entry) {
+            $this->ips[] = ['id' => ++$this->ipSeq, 'address' => $entry['address'], 'note' => $entry['note']];
+        }
+        $this->ipTouched = [];
+        $this->ipTried = false;
+
         $this->stampRows = $rows;
         $this->rememberSaved();
+    }
+
+    /**
+     * The rows this page edits: maintenance, the embed code and the address limit.
+     *
+     * @return Builder<SiteSetting>
+     */
+    private static function rows(): Builder
+    {
+        return SiteSetting::query()->where(static fn (Builder $q): Builder => $q
+            ->where(static fn (Builder $m): Builder => $m->where('group_name', SiteMaintenance::GROUP)->whereIn('key', [SiteMaintenance::KEY, SiteEmbedCode::KEY]))
+            ->orWhere(static fn (Builder $a): Builder => $a->where('group_name', AdminAddressLimit::GROUP)->where('key', AdminAddressLimit::KEY)));
     }
 
     /**
@@ -595,10 +947,7 @@ final class AdvancedSettings extends Component
      */
     private function stampText(): ?string
     {
-        $rows = $this->stampRows ?? SiteSetting::query()
-            ->where('group_name', SiteMaintenance::GROUP)
-            ->whereIn('key', [SiteMaintenance::KEY, SiteEmbedCode::KEY])
-            ->get(['id', 'updated_at', 'updated_by']);
+        $rows = $this->stampRows ?? self::rows()->get(['id', 'updated_at', 'updated_by']);
         $stamp = app(SettingsStamp::class)->of($rows);
         if ($stamp === null) {
             return null;
@@ -628,7 +977,7 @@ final class AdvancedSettings extends Component
      * Both switches, each language's words, the reopen time and each place's code as they would be
      * kept, for the save bar.
      *
-     * @return array<string, bool|string>
+     * @return array<string, bool|string|list<array{0: string, 1: string}>>
      */
     protected function trackedState(): array
     {
@@ -641,6 +990,8 @@ final class AdvancedSettings extends Component
         foreach ($this->draftCode() as $slot => $text) {
             $state['code.'.$slot] = $text;
         }
+        $state['ip.on'] = $this->ipOn;
+        $state['ip.rows'] = array_map(static fn (array $row): array => [trim($row['address']), trim($row['note'])], $this->ips);
 
         return $state;
     }
