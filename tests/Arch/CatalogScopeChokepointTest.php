@@ -55,6 +55,7 @@ it('touches products in the admin only in the known places', function (): void {
     expect($admin)->toBe([
         'app/Modules/Admin/Livewire/Catalog/Editor.php',            // writes: asks the policy about the product
         'app/Modules/Admin/Livewire/Catalog/Index.php',             // writes: through products() / the list query
+        'app/Modules/Admin/Support/Catalog/ProductLangStates.php', // reads the editor's own product's versions (the bar), writes nothing
         'app/Modules/Admin/Support/Catalog/ProductListQuery.php',  // reads the list, narrowed by `within`
         'app/Modules/Admin/Support/MediaUsageLocator.php',         // reads names only
         'app/Modules/Admin/Support/Menus/MenuSourceSearch.php',    // reads names to pick a menu target, writes nothing
