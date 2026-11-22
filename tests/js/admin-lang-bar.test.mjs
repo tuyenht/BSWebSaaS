@@ -73,6 +73,33 @@ test('when even the source and the open version do not fit, the bar draws the se
     assert.equal(document.getElementById('more').hidden, true);
 });
 
+test('a bar of 700px or less draws the selector, with «+N» beside it counting the other versions', () => {
+    const { c, root } = bar({ room: 250, each: 100 });
+    // the stylesheet's container query hides the pills on a narrow bar (jsdom has none: set by hand)
+    document.getElementById('pills').style.display = 'none';
+    c.fit(true);
+    assert.equal(c.over, 3);
+    assert.deepEqual(c.cut, [], 'no pill is cut: the selector stands for all of them');
+    assert.equal(c.moreLabel(), 'Thêm 3 ngôn ngữ');
+    assert.equal(document.getElementById('more').hidden, false);
+    assert.equal(document.getElementById('more').querySelector('span').textContent, '+3');
+    assert.equal(root.hasAttribute('data-squeeze'), false);
+
+    // wide again: back to the pills, «+N» only for the pills that do not fit
+    document.getElementById('pills').style.display = '';
+    c.fit(true);
+    assert.equal(c.over, 2);
+    assert.deepEqual(c.cut, ['zh', 'ja']);
+});
+
+test('a narrow bar of more than ten languages keeps the selector alone, with no «+N»', () => {
+    const { c } = bar({ room: 250, each: 100, compact: true });
+    document.getElementById('pills').style.display = 'none';
+    c.fit(true);
+    assert.equal(c.over, 0);
+    assert.equal(document.getElementById('more').hidden, true);
+});
+
 test('more than ten languages: nothing is measured, the selector stands alone', () => {
     const { c, root } = bar({ room: 100, each: 100, compact: true });
     assert.deepEqual(c.cut, []);

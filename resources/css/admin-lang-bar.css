@@ -2,8 +2,9 @@
    the versions, «+N», the selector of the open version and its panel, the open version's state, how
    many versions are complete, and the line under it. The bar's own width decides what shows (the
    board's container widths): 860px and less drops the state chip, 700px and less trades the pills for
-   the selector, 520px and less drops the count, names the open version by its code and folds the
-   line under the bar behind «Xem thêm». More than ten languages ([data-compact]), or pills that do
+   the selector with «+N» beside it (the other versions, counted in admin-lang-bar.js), 520px and less
+   drops the count, names the open version by its code and folds the line under the bar behind «Xem
+   thêm», 420px and less drops «+N». More than ten languages ([data-compact]), or pills that do
    not fit even with only the source and the open one left ([data-squeeze], measured in
    admin-lang-bar.js), use the selector at any width. */
 @layer components {
@@ -476,13 +477,18 @@
     }
 
     @container (max-width: 43.75rem) {
-        .lb-pills,
-        .lb-more {
+        .lb-pills {
             display: none;
         }
 
         .lb .lb-sel {
             display: inline-flex;
+        }
+    }
+
+    @container (max-width: 26.25rem) {
+        .lb-more {
+            display: none;
         }
     }
 
