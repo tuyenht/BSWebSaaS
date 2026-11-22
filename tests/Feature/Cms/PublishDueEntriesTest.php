@@ -9,6 +9,7 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Support\EntryStatusAudit;
 use App\Modules\Identity\Models\User;
+use App\Modules\Notifications\Models\SiteNotification;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Database\DeadlockException;
@@ -84,48 +85,152 @@ it('leaves a future-scheduled entry untouched', function (): void {
     });
 });
 
-it('does not let one broken entry abort the sweep for the rest of that site or the sites after it', function (): void {
-    $tenancy = app(Tenancy::class);
-    $ids = [];
+/** The `workflow.scheduled` notices $user was sent on site 1, oldest first: sentence and path. */
+function sweepNotices(User $user): array
+{
+    return app(Tenancy::class)->enter(1, fn (): array => SiteNotification::query()
+        ->where('user_id', $user->id)->where('kind', 'workflow.scheduled')->orderBy('id')
+        ->get()->map(fn (SiteNotification $n): array => [$n->data['sentence'] ?? null, $n->data['path'] ?? null])->all());
+}
 
-    $tenancy->enter(1, function () use (&$ids): void {
-        // A live page already owns /lien-he…
+/**
+ * On site 1: a live page that already owns /lien-he, and a page by $author that $scheduler scheduled
+ * from the status menu for the same address, its time since passed. Returns the scheduled page's id.
+ */
+function takenAddressPage(User $author, User $scheduler): int
+{
+    return app(Tenancy::class)->enter(1, function () use ($author, $scheduler): int {
+        grantRole($scheduler, 'editor', ['entries.edit.any', 'entries.publish']);
+
         $live = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()->subDay()]);
         $live->translations()->create(['locale' => 'vi', 'title' => 'Liên hệ', 'slug' => 'lien-he', 'status' => 'published', 'body' => ['blocks' => []]]);
         app(RouteSync::class)->sync($live, 'vi', 'lien-he');
 
-        // …and a scheduled page wants the very same path: RouteSync will refuse it.
-        $clashing = Entry::query()->create(['type' => 'page', 'status' => 'scheduled', 'published_at' => now()->subMinute()]);
-        $clashing->translations()->create(['locale' => 'vi', 'title' => 'Liên hệ 2', 'slug' => 'lien-he', 'status' => 'draft', 'body' => ['blocks' => []]]);
+        $clashing = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $author->id]);
+        $clashing->translations()->create(['locale' => 'vi', 'title' => 'Liên hệ mới', 'slug' => 'lien-he', 'status' => 'draft', 'body' => ['blocks' => []]]);
+        app(TransitionEntryStatus::class)->handle($clashing, EntryStatus::Scheduled, $scheduler->fresh(), now()->addHour());
+        // its time comes
+        Entry::query()->whereKey($clashing->id)->update(['published_at' => now()->subMinute()]);
 
-        // A healthy one due in the same site, sorted after it.
-        $healthy = Entry::query()->create(['type' => 'page', 'status' => 'scheduled', 'published_at' => now()->subMinute()]);
-        $healthy->translations()->create(['locale' => 'vi', 'title' => 'Tin nội bộ', 'slug' => 'tin-noi-bo', 'status' => 'draft', 'body' => ['blocks' => []]]);
-
-        $ids['clashing'] = $clashing->id;
-        $ids['healthy'] = $healthy->id;
+        return $clashing->id;
     });
+}
 
+it('takes a due page whose address is taken off the schedule, tells its author and scheduler once, and still publishes the rest', function (): void {
+    $this->artisan('rbac:sync')->assertSuccessful();
+    app(TeamContext::class)->forget();
+    $author = User::factory()->create();
+    $scheduler = User::factory()->create();
+    $tenancy = app(Tenancy::class);
+    $ids = ['clashing' => takenAddressPage($author, $scheduler)];
+    app(TeamContext::class)->forget();
+
+    $tenancy->enter(1, function () use (&$ids): void {
+        // a healthy one due in the same site, sorted after it
+        $ids['healthy'] = dueScheduledPage('tin-noi-bo')->id;
+    });
     $tenancy->enter(2, function () use (&$ids): void {
-        $other = Entry::query()->create(['type' => 'page', 'status' => 'scheduled', 'published_at' => now()->subMinute()]);
-        $other->translations()->create(['locale' => 'vi', 'title' => 'Bảng giá', 'slug' => 'bang-gia', 'status' => 'draft', 'body' => ['blocks' => []]]);
-        $ids['other_site'] = $other->id;
+        $ids['other_site'] = dueScheduledPage('bang-gia')->id;
     });
 
-    // The sweep reports the failure and carries on — the cron runs every minute, so an aborting
-    // sweep would keep every later tenant permanently unpublished.
+    Exceptions::fake();
+
     $this->artisan('entries:publish-due')
-        ->expectsOutputToContain('1 failed')
+        ->expectsOutputToContain('Published 2 scheduled entr(y/ies), skipped 0 governed by an approval workflow, 0 failed')
+        ->expectsOutput('1 entr(y/ies) not published because an address they need is already in use: taken off the schedule, their author and scheduler told.')
         ->assertSuccessful();
 
-    $tenancy->enter(1, function () use ($ids): void {
-        expect(Entry::query()->whereKey($ids['clashing'])->value('status'))->toBe('scheduled')
-            ->and(Entry::query()->whereKey($ids['healthy'])->value('status'))->toBe('published');
-    });
+    // a known case, not an error: nothing reported
+    Exceptions::assertNothingReported();
 
+    $tenancy->enter(1, function () use ($ids): void {
+        $clashing = Entry::query()->whereKey($ids['clashing'])->firstOrFail();
+        // out of the due queue: a draft again, its time cleared, never put live
+        expect($clashing->status)->toBe('draft')
+            ->and($clashing->published_at)->toBeNull()
+            ->and($clashing->scheduled_by)->toBeNull()
+            ->and(SiteRoute::query()->where('entry_id', $clashing->id)->exists())->toBeFalse()
+            ->and($clashing->translations()->where('status', 'published')->exists())->toBeFalse()
+            ->and(Entry::query()->whereKey($ids['healthy'])->value('status'))->toBe('published');
+        // the audit trail says why the scheduler moved it
+        $line = AuditLog::query()->where('action', EntryStatusAudit::ACTION)->where('auditable_id', $clashing->id)->orderByDesc('id')->firstOrFail();
+        expect($line->meta)->toMatchArray(['from' => 'scheduled', 'to' => 'draft', 'via' => 'scheduler', 'held' => 'address', 'path' => '/lien-he']);
+    });
     $tenancy->enter(2, function () use ($ids): void {
         expect(Entry::query()->whereKey($ids['other_site'])->value('status'))->toBe('published');
     });
+
+    expect(sweepNotices($author))->toBe([['failed_address', '/lien-he']])
+        ->and(sweepNotices($scheduler))->toBe([['failed_address', '/lien-he']])
+        ->and(__('notifications.workflow.scheduled.failed_address', ['title' => 'Liên hệ mới', 'path' => '/lien-he'], 'vi'))
+        ->toContain('/lien-he')->toContain('bản nháp')->toContain('đổi đường dẫn');
+
+    // The next minute finds nothing due and tells nobody again.
+    $this->artisan('entries:publish-due')
+        ->expectsOutputToContain('Published 0 scheduled entr(y/ies), skipped 0 governed by an approval workflow, 0 failed')
+        ->expectsOutput('0 entr(y/ies) not published because an address they need is already in use: taken off the schedule, their author and scheduler told.')
+        ->assertSuccessful();
+    expect(sweepNotices($author))->toHaveCount(1)
+        ->and(sweepNotices($scheduler))->toHaveCount(1);
+});
+
+it('sends one notice, not two, when the author scheduled the page with a taken address themselves', function (): void {
+    $this->artisan('rbac:sync')->assertSuccessful();
+    app(TeamContext::class)->forget();
+    $author = User::factory()->create();
+    takenAddressPage($author, $author);
+    app(TeamContext::class)->forget();
+
+    $this->artisan('entries:publish-due')->assertSuccessful();
+
+    expect(sweepNotices($author))->toBe([['failed_address', '/lien-he']]);
+});
+
+it('still reports an unexpected failure and leaves the entry due for the next run', function (): void {
+    // Not a taken address: an error nobody planned for. A trigger raises it for one slug only.
+    $admin = DB::connection('pgsql_admin');
+    $admin->unprepared(<<<'SQL'
+        create or replace function test_publish_due_unexpected() returns trigger language plpgsql as $fn$
+        begin
+            raise exception 'unexpected failure while publishing';
+        end
+        $fn$;
+        drop trigger if exists test_publish_due_unexpected on entry_translations;
+        create trigger test_publish_due_unexpected before update on entry_translations
+            for each row when (new.slug = 'loi-la' and new.status = 'published')
+            execute function test_publish_due_unexpected();
+        SQL);
+
+    try {
+        $author = User::factory()->create();
+        $ids = [];
+        app(Tenancy::class)->enter(1, function () use (&$ids, $author): void {
+            $broken = dueScheduledPage('loi-la');
+            Entry::query()->whereKey($broken->id)->update(['author_id' => $author->id]);
+            $ids['broken'] = $broken->id;
+            $ids['healthy'] = dueScheduledPage('binh-thuong')->id;
+        });
+
+        Exceptions::fake();
+
+        foreach ([1, 2] as $run) {
+            $this->artisan('entries:publish-due')
+                ->expectsOutputToContain('Published '.($run === 1 ? 1 : 0).' scheduled entr(y/ies), skipped 0 governed by an approval workflow, 1 failed')
+                ->expectsOutput('0 entr(y/ies) not published because an address they need is already in use: taken off the schedule, their author and scheduler told.')
+                ->assertSuccessful();
+
+            // reported every run, and still due: the next run tries it again
+            Exceptions::assertReportedCount($run);
+            app(Tenancy::class)->enter(1, function () use ($ids): void {
+                expect(Entry::query()->whereKey($ids['broken'])->value('status'))->toBe('scheduled')
+                    ->and(Entry::query()->whereKey($ids['broken'])->value('published_at'))->not->toBeNull()
+                    ->and(Entry::query()->whereKey($ids['healthy'])->value('status'))->toBe('published');
+            });
+        }
+        expect(sweepNotices($author))->toBe([]);
+    } finally {
+        $admin->unprepared('drop trigger if exists test_publish_due_unexpected on entry_translations; drop function if exists test_publish_due_unexpected();');
+    }
 });
 
 /*
