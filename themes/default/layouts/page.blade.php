@@ -30,8 +30,8 @@
         {{-- $sections is pre-rendered, per-block Blade-escaped HTML (BlockRenderer). --}}
         {!! $sections !!}
     </main>
-    @include('theme::partials.embed-code', ['embedSlot' => 'body_end'])
+@include('theme::partials.embed-code', ['embedSlot' => 'body_end'])
     @include('theme::partials.footer', ['menu' => $menu ?? [], 'brand' => $brand ?? null])
-    @include('theme::partials.embed-code', ['embedSlot' => 'foot'])
+@include('theme::partials.embed-code', ['embedSlot' => 'foot'])
 </body>
 </html>

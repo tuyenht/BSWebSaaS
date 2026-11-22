@@ -64,14 +64,15 @@ final readonly class EdgeCacheHeaders
         $known = $rules === null || is_array(config($config));
 
         $shared = $known && $this->shareable($request, $response, Cast::strings(config($config.'.query_allow')));
-        $lifetime = $rules === null ? $this->pageLifetime($request) : max(0, Cast::int(config($config.'.s_maxage'), 300));
+        // the lifetime is worked out only for a page that is shared (it may read the site's settings)
+        $lifetime = fn (): int => $rules === null ? $this->pageLifetime($request) : max(0, Cast::int(config($config.'.s_maxage'), 300));
         $response->headers->set('Cache-Control', match (true) {
             ! $shared => StorefrontSession::PRIVATE,
             // a page carrying the website's extra embed code: a browser may never show its kept copy
             // without asking first (no stale window), so a visitor who has signed in since gets the
             // page drawn for a session, without the code
-            app(SiteEmbedCode::class)->printed() => sprintf('public, max-age=0, must-revalidate, s-maxage=%d', $lifetime),
-            default => sprintf('public, max-age=0, s-maxage=%d, stale-while-revalidate=%d', $lifetime, max(0, Cast::int(config($config.'.stale_while_revalidate'), 60))),
+            app(SiteEmbedCode::class)->printed() => sprintf('public, max-age=0, must-revalidate, s-maxage=%d', $lifetime()),
+            default => sprintf('public, max-age=0, s-maxage=%d, stale-while-revalidate=%d', $lifetime(), max(0, Cast::int(config($config.'.stale_while_revalidate'), 60))),
         });
 
         return $response;
