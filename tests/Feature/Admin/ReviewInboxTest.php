@@ -193,7 +193,7 @@ it('demands a reason before sending a post back, and records who asked', functio
             ->and($post->status)->toBe('draft');
 
         // The trail keeps the reason for the writer to read in the editor.
-        Livewire::actingAs($author->fresh())->test(ReviewInbox::class)->set('tab', 'queue')->assertDontSee('Thiếu ảnh máy CNC');
+        Livewire::actingAs($author->fresh())->test(ReviewInbox::class)->assertDontSee('Thiếu ảnh máy CNC');
         expect(WorkflowLog::query()->where('entry_id', $post->id)->where('transition_key', 'reject')->value('note'))
             ->toBe('Thiếu ảnh máy CNC');
     });
