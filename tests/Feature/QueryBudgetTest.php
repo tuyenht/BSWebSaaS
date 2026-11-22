@@ -57,6 +57,17 @@ it('renders the storefront home with the site’s search settings within the sam
     expect($count)->toBeLessThanOrEqual($budget);
 });
 
+it('renders the storefront home with its extra embed code on within the same budget', function (): void {
+    $budget = 11; // the embed code rides the one site-settings query the page already makes
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'embed_code', 'value' => [
+        'on' => true, 'code' => ['head' => '', 'body_top' => '', 'body_end' => '', 'foot' => '<script>window.qbEmbed = 1;</script>'], 'acknowledged_at' => '2026-11-22T03:00:00Z', 'acknowledged_by' => null,
+    ]]));
+
+    $count = countQueries(fn () => $this->get('http://a.test/')->assertOk()->assertSee('<script>window.qbEmbed = 1;</script>', false));
+
+    expect($count)->toBeLessThanOrEqual($budget);
+});
+
 it('renders the storefront home with its brand images set within the budget plus one', function (): void {
     // The four brand images resolve in ONE media query (Storefront BrandImages); with none set the
     // home stays at its own budget (the first test), so this is the home budget + 1.

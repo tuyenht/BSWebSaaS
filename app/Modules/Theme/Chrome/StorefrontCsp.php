@@ -33,6 +33,15 @@ namespace App\Modules\Theme\Chrome;
  *   font-src     'self'            – self-hosted web fonts
  *   base-uri     'self'            – prevent base-tag injection attacks
  *   form-action  'self'            – constrain POST submission targets
+ *
+ * withEmbedCode() is the one loosening, for a response that printed the website's extra embed code
+ * (Storefront\Support\SiteEmbedCode: its owner switched it on, the visitor has no session). Pasted
+ * snippets are inline scripts that load scripts, pixels, beacons, sockets and frames from their
+ * provider's https host, so those directives open to any https source (wss: for a chat widget's
+ * socket) and scripts gain 'unsafe-inline' — in place of the boot script's hash, since a browser
+ * ignores 'unsafe-inline' wherever a hash is listed. Styles and fonts open to https too: a widget
+ * brings its own, and once any https script may run, a narrower style or font list protects
+ * nothing. Still closed: 'unsafe-eval', plain http, form posts and <base> to other hosts.
  */
 final class StorefrontCsp
 {
@@ -49,6 +58,25 @@ final class StorefrontCsp
             "connect-src 'self' https://cloudflareinsights.com",
             'frame-src https://www.google.com https://challenges.cloudflare.com https://www.youtube-nocookie.com https://player.vimeo.com',
             "font-src 'self'",
+            "base-uri 'self'",
+            "form-action 'self'",
+        ]);
+    }
+
+    /** The policy of a response that carries the website's extra embed code (see the class). */
+    public static function withEmbedCode(): string
+    {
+        $media = implode(' ', self::mediaOrigins());
+
+        return implode('; ', [
+            "default-src 'self'",
+            trim("img-src 'self' ".$media.' data: https:'),
+            trim("media-src 'self' ".$media),
+            "style-src 'self' 'unsafe-inline' https:",
+            "script-src 'self' 'unsafe-inline' https:",
+            "connect-src 'self' https: wss:",
+            'frame-src https:',
+            "font-src 'self' https: data:",
             "base-uri 'self'",
             "form-action 'self'",
         ]);

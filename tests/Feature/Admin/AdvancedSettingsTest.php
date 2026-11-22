@@ -39,10 +39,18 @@ afterEach(function (): void {
 });
 
 /** @return array<string, mixed>|null */
-function advStored(int $siteId = 1): ?array
+function advStored(int $siteId = 1, string $key = 'maintenance'): ?array
 {
     return app(Tenancy::class)->enter($siteId, fn () => SiteSetting::query()
-        ->where('group_name', 'storefront')->where('key', 'maintenance')->first()?->value);
+        ->where('group_name', 'storefront')->where('key', $key)->first()?->value);
+}
+
+/** @return list<array{action: string, meta: mixed}> the embed-code audit rows after $after */
+function advCodeAudits(int $after): array
+{
+    return app(Tenancy::class)->enter(1, fn () => AuditLog::query()->where('id', '>', $after)->orderBy('id')->get(['action', 'meta'])
+        ->filter(fn (AuditLog $row): bool => str_starts_with((string) $row->action, 'settings.embed_code.'))
+        ->map(fn (AuditLog $row): array => ['action' => (string) $row->action, 'meta' => $row->meta])->values()->all());
 }
 
 it('lets the owner turn maintenance on with words and a reopen time, stored in UTC', function (): void {
@@ -71,6 +79,8 @@ it('lets the owner turn maintenance on with words and a reopen time, stored in U
     // 15:30 in Asia/Ho_Chi_Minh is 08:30 UTC
     expect(advStored())->toBe(['on' => true, 'messages' => ['vi' => 'Chúng tôi đang cập nhật chuyên mục sản phẩm.'], 'reopens_at' => '2026-11-22T08:30:00Z'])
         ->and(advStored(2))->toBeNull()
+        // the embed code was not touched, so it has no row of its own
+        ->and(advStored(1, 'embed_code'))->toBeNull()
         ->and(app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('key', 'maintenance')->value('updated_by')))->toBe($owner->id);
 });
 
@@ -178,7 +188,7 @@ it('shows another holder of settings.manage the page «Chỉ xem», with no save
             ->assertSet('readOnly', true)
             ->assertSee('Chỉ xem')
             ->assertSee('Chỉ Chủ website đổi được mục này.')
-            ->assertSee('nên chỉ xem được. Chỉ Chủ website đổi được chế độ bảo trì.')
+            ->assertSee('nên chỉ xem được. Chỉ Chủ website đổi được chế độ bảo trì và mã nhúng thêm.')
             ->assertSeeHtml('disabled aria-disabled="true"')
             ->assertDontSeeHtml('data-set-savebar')
             ->assertDontSee('Ví dụ: Chúng tôi đang cập nhật');
@@ -205,6 +215,10 @@ it('refuses every change from a member who is not the owner', function (string $
     'a message' => ['set', ['messages.vi', 'x']],
     'the day' => ['set', ['reopenDate', '2030-01-01']],
     'the hour' => ['set', ['reopenTime', '10:00']],
+    'toggleCode' => ['toggleCode', []],
+    'a confirmed save' => ['save', [true]],
+    'a code box' => ['set', ['code.foot', '<script></script>']],
+    'the embed-code question' => ['set', ['askCode', true]],
 ]);
 
 it('refuses the switch from the browser side too', function (string $property, mixed $value): void {
@@ -216,6 +230,9 @@ it('refuses the switch from the browser side too', function (string $property, m
     'read-only' => ['readOnly', false],
     'the saved switch' => ['savedOn', true],
     'the saved time' => ['savedReopen', '2020-01-01 00:00'],
+    'the code switch' => ['codeOn', true],
+    'the running code' => ['codeRunning', true],
+    'the confirmation' => ['codeAcknowledged', true],
 ])->throws(CannotUpdateLockedPropertyException::class);
 
 it('lets a platform operator change it', function (): void {
@@ -264,4 +281,142 @@ it('shows the owner what visitors will see, in the language asked for, never cac
 it('puts settings.manage on every action, not only in boot()', function (string $method): void {
     $attrs = (new ReflectionMethod(AdvancedSettings::class, $method))->getAttributes(Authorize::class);
     expect($attrs)->toHaveCount(1)->and($attrs[0]->getArguments()[0])->toBe('settings.manage');
-})->with(['toggleMaintenance', 'save', 'resetChanges', 'dismissToast']);
+})->with(['toggleMaintenance', 'toggleCode', 'save', 'resetChanges', 'dismissToast']);
+
+// ── «Mã nhúng thêm» ─────────────────────────────────────────────────────────
+
+it('asks the owner to confirm the first save that turns code on, then saves it, purges and records it without the code', function (): void {
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-11-22 03:00:00', 'UTC'));
+    edgeCacheRecorder();
+    Bus::fake([PurgeSiteEdgeCache::class]);
+    $owner = blockLibraryUser(1, 'owner');
+    $auditBefore = (int) app(Tenancy::class)->enter(1, fn () => AuditLog::query()->max('id'));
+    $code = '<script>window.dataLayer = []; /* secret-ish provider key 1234 */</script>';
+
+    app(Tenancy::class)->enter(1, function () use ($owner, $code): void {
+        Livewire::actingAs($owner)->test(AdvancedSettings::class)
+            ->assertSee('Mã nhúng thêm')
+            ->assertSee('Mã không chạy khi bạn đang đăng nhập trang quản trị, để giữ an toàn cho tài khoản.')
+            ->assertSee('Mở Tích hợp &amp; Theo dõi', false)
+            ->assertDontSeeHtml('data-adv-code-box')
+            ->call('toggleCode')
+            ->assertSeeHtml('data-adv-code-box="head"')->assertSeeHtml('data-adv-code-box="foot"')
+            ->assertSee('Không khuyên dùng')->assertSee('Khuyên dùng')
+            ->set('code.foot', $code)
+            ->assertHasNoErrors()
+            // the first save asks, and keeps nothing yet
+            ->call('save')
+            ->assertReturned(false)
+            ->assertSet('askCode', true)
+            ->assertSee('Bật mã nhúng thêm cho website?')
+            ->assertSee('Tôi hiểu. Mã này do tôi tự thêm và tôi chịu trách nhiệm về nó.');
+    });
+    expect(advStored(1, 'embed_code'))->toBeNull()
+        ->and(Bus::dispatched(PurgeSiteEdgeCache::class))->toHaveCount(0);
+
+    app(Tenancy::class)->enter(1, function () use ($owner, $code): void {
+        Livewire::actingAs($owner)->test(AdvancedSettings::class)
+            ->call('toggleCode')->set('code.foot', $code)
+            ->call('save')->assertSet('askCode', true)
+            // «Hủy» closes it and nothing is kept
+            ->set('askCode', false)
+            ->call('save', true)
+            ->assertReturned(true)
+            ->assertSet('askCode', false)
+            ->assertSet('codeRunning', true)
+            ->assertSee('Đang chạy trên website')
+            ->assertSee('Đã lưu Bảo mật &amp; Nâng cao.', false);
+    });
+
+    expect(advStored(1, 'embed_code'))->toEqual(['on' => true, 'code' => ['head' => '', 'body_top' => '', 'body_end' => '', 'foot' => $code], 'acknowledged_at' => '2026-11-22T03:00:00Z', 'acknowledged_by' => $owner->id])
+        ->and(advStored(2, 'embed_code'))->toBeNull()
+        // the maintenance part did not change, so it was not written
+        ->and(advStored())->toBeNull()
+        ->and(Bus::dispatched(PurgeSiteEdgeCache::class)->map->siteId->values()->all())->toBe([1]);
+
+    $rows = advCodeAudits($auditBefore);
+    expect($rows)->toHaveCount(1)
+        ->and($rows[0]['action'])->toBe('settings.embed_code.on')
+        ->and($rows[0]['meta']['bytes'])->toEqual(['head' => 0, 'body_top' => 0, 'body_end' => 0, 'foot' => strlen($code)])
+        ->and($rows[0]['meta']['acknowledged'])->toBeTrue()
+        ->and(json_encode($rows[0]['meta']))->not->toContain('dataLayer')->not->toContain('1234');
+});
+
+it('never asks again once the first enable was confirmed, and keeps the code when switched off', function (): void {
+    edgeCacheRecorder();
+    Bus::fake([PurgeSiteEdgeCache::class]);
+    $owner = blockLibraryUser(1, 'owner');
+    $auditBefore = (int) app(Tenancy::class)->enter(1, fn () => AuditLog::query()->max('id'));
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'embed_code', 'value' => [
+        'on' => true, 'code' => ['head' => '', 'body_top' => '', 'body_end' => '', 'foot' => '<script>a()</script>'], 'acknowledged_at' => '2026-11-01T00:00:00Z', 'acknowledged_by' => $owner->id,
+    ]]));
+
+    app(Tenancy::class)->enter(1, function () use ($owner): void {
+        Livewire::actingAs($owner)->test(AdvancedSettings::class)
+            ->assertSee('Đang chạy trên website')
+            ->call('toggleCode')
+            ->assertSee('Mã đã lưu được giữ lại nhưng không chạy trên website khi công tắc tắt.')
+            ->call('save')->assertReturned(true)->assertSet('askCode', false)
+            ->assertSee('Đang tắt')
+            ->call('toggleCode')->set('code.head', '<meta name="x" content="y">')
+            ->call('save')->assertReturned(true)->assertSet('askCode', false)
+            ->assertSee('Đang chạy trên website');
+    });
+
+    expect(advStored(1, 'embed_code'))->toEqual(['on' => true, 'code' => ['head' => '<meta name="x" content="y">', 'body_top' => '', 'body_end' => '', 'foot' => '<script>a()</script>'], 'acknowledged_at' => '2026-11-01T00:00:00Z', 'acknowledged_by' => $owner->id])
+        ->and(array_column(advCodeAudits($auditBefore), 'action'))->toBe(['settings.embed_code.off', 'settings.embed_code.on'])
+        ->and(Bus::dispatched(PurgeSiteEdgeCache::class))->not->toHaveCount(0);
+});
+
+it('needs no confirmation to keep code switched off, and keeps it for later', function (): void {
+    $owner = blockLibraryUser(1, 'owner');
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($owner)->test(AdvancedSettings::class)
+        ->call('toggleCode')->set('code.body_top', '<noscript>x</noscript>')->call('toggleCode')
+        ->call('save')->assertReturned(true)->assertSet('askCode', false));
+
+    expect(advStored(1, 'embed_code'))->toEqual(['on' => false, 'code' => ['head' => '', 'body_top' => '<noscript>x</noscript>', 'body_end' => '', 'foot' => ''], 'acknowledged_at' => null, 'acknowledged_by' => null]);
+});
+
+it('refuses code longer than the limit in any box, and keeps nothing', function (): void {
+    $owner = blockLibraryUser(1, 'owner');
+
+    app(Tenancy::class)->enter(1, function () use ($owner): void {
+        Livewire::actingAs($owner)->test(AdvancedSettings::class)
+            ->call('toggleCode')
+            ->set('code.head', str_repeat('a', 32 * 1024))
+            ->assertHasNoErrors()
+            ->set('code.head', str_repeat('a', 32 * 1024 + 1))
+            ->assertHasErrors('code.head')
+            ->assertSee('Mã ở ô này dài quá 32 KB.')
+            ->call('save', true)->assertReturned(false)->assertHasErrors('code.head')->assertSet('askCode', false);
+    });
+
+    expect(advStored(1, 'embed_code'))->toBeNull();
+});
+
+it('keeps only the four places, as text', function (): void {
+    $owner = blockLibraryUser(1, 'owner');
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($owner)->test(AdvancedSettings::class)
+        ->set('code.elsewhere', '<script>x()</script>')
+        ->assertSet('code', ['head' => '', 'body_top' => '', 'body_end' => '', 'foot' => ''])
+        ->set('code.foot', ['not', 'text'])
+        ->assertSet('code.foot', ''));
+});
+
+it('shows another holder of settings.manage the saved code read-only, never as page markup', function (): void {
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'embed_code', 'value' => [
+        'on' => true, 'code' => ['head' => '', 'body_top' => '', 'body_end' => '', 'foot' => '<script>window.advLeak = 1;</script>'], 'acknowledged_at' => '2026-11-01T00:00:00Z', 'acknowledged_by' => null,
+    ]]));
+    $admin = blockLibraryUser(1, 'admin');
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(AdvancedSettings::class)
+        ->assertSee('Đang chạy trên website')
+        ->assertSeeHtml('data-adv-code-box="foot"')
+        ->assertSeeHtml('readonly')
+        ->assertSet('code.foot', '<script>window.advLeak = 1;</script>')
+        ->assertDontSeeHtml('<script>window.advLeak = 1;</script>'));
+
+    $this->actingAs($admin)->get('http://a.test/admin/settings/advanced')->assertOk()->assertDontSee('<script>window.advLeak = 1;</script>', false);
+});

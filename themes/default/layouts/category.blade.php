@@ -2,8 +2,10 @@
 <html lang="{{ $lang ?? 'vi' }}"{!! ($dir ?? 'ltr') === 'rtl' ? ' dir="rtl"' : '' !!}>
 <head>
 @include('theme::partials.head')
+@include('theme::partials.embed-code', ['embedSlot' => 'head'])
 </head>
 <body>
+@include('theme::partials.embed-code', ['embedSlot' => 'body_top'])
     <a class="sf-skip" href="#noi-dung">{{ __('storefront.skip_to_content') }}</a>
     @include('theme::partials.header', ['menu' => $menu ?? [], 'brand' => $brand ?? null])
     <main class="category" id="noi-dung" tabindex="-1">
@@ -42,6 +44,8 @@
         <div class="slot-band">{!! $slotHtml['after_list'] !!}</div>
 @endif
     </main>
+    @include('theme::partials.embed-code', ['embedSlot' => 'body_end'])
     @include('theme::partials.footer', ['menu' => $menu ?? [], 'brand' => $brand ?? null])
+    @include('theme::partials.embed-code', ['embedSlot' => 'foot'])
 </body>
 </html>

@@ -26,8 +26,10 @@
 <html lang="{{ $lang ?? 'vi' }}"{!! ($dir ?? 'ltr') === 'rtl' ? ' dir="rtl"' : '' !!}>
 <head>
 @include('theme::partials.head')
+@include('theme::partials.embed-code', ['embedSlot' => 'head'])
 </head>
 <body>
+@include('theme::partials.embed-code', ['embedSlot' => 'body_top'])
     <a class="sf-skip" href="#noi-dung"@if (! empty($preview)) target="_self"@endif>{{ __('storefront.skip_to_content') }}</a>
 @if (! empty($preview))
     <p class="sf-preview" role="note">{{ __(! empty($previewLive) ? 'storefront.preview_band_live' : 'storefront.preview_band') }}</p>
@@ -89,6 +91,8 @@
         <div class="slot-band">{!! $sfAfter !!}</div>
 @endif
     </main>
+    @include('theme::partials.embed-code', ['embedSlot' => 'body_end'])
     @include('theme::partials.footer', ['menu' => $menu ?? [], 'brand' => $brand ?? null])
+    @include('theme::partials.embed-code', ['embedSlot' => 'foot'])
 </body>
 </html>
