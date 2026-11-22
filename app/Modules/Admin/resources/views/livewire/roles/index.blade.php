@@ -69,21 +69,21 @@
                 @php $searching = trim($permSearch) !== ''; @endphp
                 @foreach ($viewed['areas'] as $area)
                     <div wire:key="area-{{ $area['key'] }}-{{ $searching ? 'q' : 'all' }}" role="group" aria-label="{{ $area['name'] }}"
-                        x-data="{ open: {{ Js::from($searching || $area['key'] === 'entries') }} }" x-bind:data-open="open"
+                        x-data="{ unfolded: {{ Js::from($searching || $area['key'] === 'entries') }} }" x-bind:data-open="unfolded"
                         class="min-w-0 rounded-md border border-border bg-surface">
                         <div class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-t-md border-b border-border bg-surface-muted px-3 py-2"
-                            x-bind:class="open ? '' : '@max-[48rem]/pm:rounded-b-md @max-[48rem]/pm:border-b-0'">
+                            x-bind:class="unfolded ? '' : '@max-[48rem]/pm:rounded-b-md @max-[48rem]/pm:border-b-0'">
                             <span class="flex min-w-0 flex-1 items-baseline gap-1.5 font-semibold text-text-strong @max-[48rem]/pm:hidden">
                                 {{ $area['name'] }} <span class="text-caption font-normal text-text-muted">{{ $area['held'] }}/{{ $area['of'] }}</span>
                             </span>
-                            <button type="button" x-on:click="open = ! open" x-bind:aria-expanded="open.toString()" aria-expanded="{{ $searching || $area['key'] === 'entries' ? 'true' : 'false' }}"
+                            <button type="button" x-on:click="unfolded = ! unfolded" x-bind:aria-expanded="unfolded.toString()" aria-expanded="{{ $searching || $area['key'] === 'entries' ? 'true' : 'false' }}"
                                 class="hidden min-h-hit flex-1 items-center gap-2 border-0 bg-transparent p-0 text-start font-semibold text-text-strong @max-[48rem]/pm:inline-flex">
-                                <x-bs-admin::icon name="ri-arrow-right-s" class="size-5 shrink-0 transition-transform motion-reduce:transition-none" x-bind:class="open && 'rotate-90'" />
+                                <x-bs-admin::icon name="ri-arrow-right-s" class="size-5 shrink-0 transition-transform motion-reduce:transition-none" x-bind:class="unfolded && 'rotate-90'" />
                                 <span class="min-w-0 [overflow-wrap:anywhere]">{{ $area['name'] }}</span>
                                 <span class="ms-auto text-caption font-normal text-text-muted">{{ $area['held'] }}/{{ $area['of'] }}</span>
                             </button>
                         </div>
-                        <div x-bind:class="open ? '' : '@max-[48rem]/pm:hidden'">
+                        <div x-bind:class="unfolded ? '' : '@max-[48rem]/pm:hidden'">
                             @if ($area['off'] !== '')
                                 <p class="m-0 flex items-start gap-2 border-b border-border px-3 py-2 text-small text-text-muted">
                                     <x-bs-admin::icon name="ri-lock-2" class="mt-0.5 size-4 shrink-0" /><span>{{ $area['off'] }}</span>
