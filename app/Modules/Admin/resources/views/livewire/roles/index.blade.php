@@ -37,26 +37,7 @@
                         </x-bs-admin::button>
                     @else
                         {{-- «Tạo nhóm ▾»: a blank role, or one that starts from a role the member may give --}}
-                        <div class="relative shrink-0" x-data="{ open: false, up: false, close(back) { this.open = false; if (back) { this.$refs.add.focus() } } }"
-                            x-on:click.outside="open = false" x-on:keydown.escape.prevent.stop="close(true)">
-                            <x-bs-admin::button color="primary" x-ref="add" data-guide="add" title="{{ __('admin.roles.create_tip') }}"
-                                aria-haspopup="menu" aria-expanded="false" ::aria-expanded="open.toString()"
-                                x-on:click="up = window.innerHeight - $el.getBoundingClientRect().bottom < 300; open = ! open; open && $nextTick(() => window.bsMenu.move($refs.menu, 'first'))">
-                                <x-bs-admin::icon name="ri-add" class="size-4" /><span class="max-md:sr-only">{{ __('admin.roles.create') }}</span><span class="md:hidden" aria-hidden="true">{{ __('admin.roles.create_short') }}</span>
-                                <x-bs-admin::icon name="ri-arrow-down-s" class="size-4" />
-                            </x-bs-admin::button>
-                            <x-bs-admin::list.menu class="list-menu" :label="__('admin.roles.create')">
-                                <div class="list-lmh" aria-hidden="true">{{ __('admin.roles.create') }}</div>
-                                <x-bs-admin::list.menu-item icon="ri-file-add" wire:click="newRole">{{ __('admin.roles.create_blank') }}</x-bs-admin::list.menu-item>
-                                @if ($sources !== [])
-                                    <x-bs-admin::list.menu-sep />
-                                    <div class="list-lmh" role="presentation">{{ __('admin.roles.create_from_head') }}</div>
-                                    @foreach ($sources as $s)
-                                        <x-bs-admin::list.menu-item :icon="$s['system'] ? 'ri-shield-user' : 'ri-user-settings'" wire:click="copyRole({{ Js::from($s['key']) }})">{{ __('admin.roles.create_from', ['role' => $s['name']]) }}</x-bs-admin::list.menu-item>
-                                    @endforeach
-                                @endif
-                            </x-bs-admin::list.menu>
-                        </div>
+                        @include('admin::livewire.roles.create-menu')
                     @endif
                 @endif
             </x-bs-admin::title-row>
