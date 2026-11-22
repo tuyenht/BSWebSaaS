@@ -77,4 +77,4 @@ chỗ chờ, gồm thu phí khi bật HTTPS cho tên miền riêng) · bộ AI (
 Meilisearch · đóng gói core v1.0 (installer, quét white-label — gồm đổi tiền tố token CSS mượn tên template tham khảo
 `--vz-*` cùng lúc đồng bộ design system với Claude Design —, tài liệu EN, bench 1M bản ghi/tenant, versioning — backlog "G-P") ·
 chạy Claude Code bằng user không phải root + tách dev khỏi prod (giải pháp gốc thay host-guard; nhánh lưu trữ
-`ops/host-guard-and-deploy-scripts`).
+`ops/host-guard-and-deploy-scripts`) · trang quản trị của website khách trên tên miền riêng, tách khỏi địa chỉ website (chặn tận gốc việc «Mã nhúng thêm» dùng phiên đăng nhập quản trị; làm trước khi website thật đầu tiên bật mã nhúng).
