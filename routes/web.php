@@ -8,6 +8,7 @@ use App\Modules\Admin\Http\Controllers\SupportSignInController;
 use App\Modules\Admin\Http\Controllers\ThemePreferenceController;
 use App\Modules\Admin\Http\Middleware\AddServerTiming;
 use App\Modules\Admin\Http\Middleware\EnforceSupportSession;
+use App\Modules\Admin\Http\Middleware\RestrictAdminAddress;
 use App\Modules\Admin\Http\Middleware\SetLocale;
 use App\Modules\Admin\Http\Middleware\TrackSignedInDevice;
 use App\Modules\Admin\Livewire\AcceptInvitation;
@@ -191,7 +192,7 @@ Route::domain((string) config('tenancy.platform_host'))
 
 // ── Tenant admin — login (guest, tenant context) ──────────────────────────────
 Route::prefix(config('admin.prefix', 'admin'))
-    ->middleware(['web', SetCurrentSite::class, 'site.active', SetLocale::class])
+    ->middleware(['web', SetCurrentSite::class, RestrictAdminAddress::class, 'site.active', SetLocale::class])
     ->group(function (): void {
         Route::get('/login', Login::class)->name('admin.login');
         Route::get('/forgot-password', ForgotPassword::class)->name('admin.password.request');
@@ -221,7 +222,10 @@ Route::prefix(config('admin.prefix', 'admin'))
 
         // Support sign-in: the console's single-use link lands here (a GET — CSP form-action 'self'
         // forbids a cross-host form post) and signs the staff member in as the chosen member.
+        // Not behind the address limit: the link is single-use, bound to this website and to the
+        // support desk browser, and support is how a locked-out owner gets back in.
         Route::get('/support/enter', [SupportSignInController::class, 'enter'])
+            ->withoutMiddleware(RestrictAdminAddress::class)
             ->middleware('throttle:30,1')
             ->name('admin.support.enter');
 
@@ -256,7 +260,7 @@ Route::prefix(config('admin.prefix', 'admin'))
 
 // ── Tenant admin plane — protected (auth + tenant context + site membership) ───
 Route::prefix(config('admin.prefix', 'admin'))
-    ->middleware([AddServerTiming::class, 'web', SetCurrentSite::class, EnforceSupportSession::class, 'site.active', 'auth', 'auth.session', 'tenant.member', SetLocale::class, TrackSignedInDevice::class])
+    ->middleware([AddServerTiming::class, 'web', SetCurrentSite::class, EnforceSupportSession::class, RestrictAdminAddress::class, 'site.active', 'auth', 'auth.session', 'tenant.member', SetLocale::class, TrackSignedInDevice::class])
     ->group(function (): void {
         Route::get('/', Dashboard::class)->name('admin.dashboard');
         // "Thông báo": the reader's own notifications on this site (the bell's "Xem tất cả thông báo").
@@ -472,7 +476,7 @@ Route::domain((string) config('tenancy.platform_host'))
         Route::get('/{any}', [SessionController::class, 'unknownOnPlatform'])->where('any', '.*')->fallback()->name('platform.unknown');
     });
 Route::prefix(config('admin.prefix', 'admin'))
-    ->middleware(['web', SetCurrentSite::class, EnforceSupportSession::class, 'site.active', 'auth.session', SetLocale::class])
+    ->middleware(['web', SetCurrentSite::class, EnforceSupportSession::class, RestrictAdminAddress::class, 'site.active', 'auth.session', SetLocale::class])
     ->group(function (): void {
         Route::get('/{any}', [SessionController::class, 'unknownOnSite'])->where('any', '.*')->fallback()->name('admin.unknown');
     });

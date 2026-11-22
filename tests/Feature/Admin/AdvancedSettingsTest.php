@@ -188,7 +188,7 @@ it('shows another holder of settings.manage the page «Chỉ xem», with no save
             ->assertSet('readOnly', true)
             ->assertSee('Chỉ xem')
             ->assertSee('Chỉ Chủ website đổi được mục này.')
-            ->assertSee('nên chỉ xem được. Chỉ Chủ website đổi được chế độ bảo trì và mã nhúng thêm.')
+            ->assertSee('nên chỉ xem được. Chỉ Chủ website đổi được chế độ bảo trì, nơi được vào trang quản trị và mã nhúng thêm.')
             ->assertSeeHtml('disabled aria-disabled="true"')
             ->assertDontSeeHtml('data-set-savebar')
             ->assertDontSee('Ví dụ: Chúng tôi đang cập nhật');
