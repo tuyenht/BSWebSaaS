@@ -23,7 +23,8 @@ use ZipArchive;
  *     `[Content_Types].xml` · JPG `FF D8 FF` · PNG its 8-byte header.
  *
  * Only the first HEAD_BYTES are read; a DOCX is opened through its central directory (ZipArchive),
- * only `[Content_Types].xml` is read (at most 1 MB). A kept file is still only ever handed out as a download
+ * and only `[Content_Types].xml` is read, whole (a zip with two entries of one name, a part over
+ * 1 MB, or a part this check could misread is refused; see declaresNoMacro). A kept file is still only ever handed out as a download
  * (`application/octet-stream` + `attachment`), never shown in a page: the platform runs no virus
  * scan, a DOC can carry macros this check cannot see, and a DOCX can still point at a remote
  * template.
@@ -73,6 +74,9 @@ final class LeadFileKinds
 
     /** A real document holds a few dozen parts; far more is not a Word file. */
     private const int DOCX_MAX_ENTRIES = 5000;
+
+    /** The largest `[Content_Types].xml` a DOCX may carry: a real one is a few kilobytes. */
+    private const int TYPES_MAX_BYTES = 1024 * 1024;
 
     /**
      * Why $name / $path is not a file of $kind, or null when it is one.
@@ -205,24 +209,67 @@ final class LeadFileKinds
             if ($zip->numFiles < 2 || $zip->numFiles > self::DOCX_MAX_ENTRIES) {
                 return false;
             }
-            if ($zip->locateName('word/document.xml') === false || $zip->locateName('[Content_Types].xml') === false) {
-                return false;
-            }
+            $types = null;
+            $seen = [];
             for ($i = 0; $i < $zip->numFiles; $i++) {
                 $entry = $zip->getNameIndex($i);
-                if (is_string($entry) && str_ends_with(mb_strtolower($entry), 'vbaproject.bin')) {
+                if (! is_string($entry)) {
                     return false;
                 }
+                // part names compare without case (OPC); a reader may also take `\` or a leading `/`
+                $part = ltrim(str_replace('\\', '/', mb_strtolower($entry)), '/');
+                // two entries of one name: which one a reader takes is not ours to guess
+                if (isset($seen[$part]) || str_ends_with($part, 'vbaproject.bin')) {
+                    return false;
+                }
+                $seen[$part] = true;
+                if ($part === '[content_types].xml') {
+                    $types = $i;
+                }
             }
-            // a macro part under another name still has to be declared as one
-            $types = $zip->getFromName('[Content_Types].xml', 1024 * 1024);
-            if (! is_string($types) || stripos($types, 'macroEnabled') !== false || stripos($types, 'vbaProject') !== false) {
+            if ($types === null || ! isset($seen['word/document.xml'])) {
                 return false;
             }
 
-            return true;
+            return self::declaresNoMacro($zip, $types);
         } finally {
             $zip->close();
         }
+    }
+
+    /**
+     * `[Content_Types].xml` must declare no macro part under any name. It is read whole or not at
+     * all: one over TYPES_MAX_BYTES is refused rather than read in part, and so is one this check
+     * could misread: UTF-16 or UTF-32 (a BOM, NUL bytes, or another declared encoding), a DTD (OPC
+     * forbids one; it could define entities), or a word spelt with character references
+     * (`macro&#69;nabled`), which are decoded before the words are looked for.
+     */
+    private static function declaresNoMacro(ZipArchive $zip, int $index): bool
+    {
+        $stat = $zip->statIndex($index);
+        $size = is_array($stat) ? $stat['size'] : -1;
+        if ($size < 1 || $size > self::TYPES_MAX_BYTES) {
+            return false;
+        }
+        $types = $zip->getFromIndex($index, $size);
+        if (! is_string($types) || strlen($types) !== $size) {
+            return false;
+        }
+        if (str_starts_with($types, "\xEF\xBB\xBF")) {
+            $types = substr($types, 3);
+        }
+        if (str_starts_with($types, "\xFF\xFE") || str_starts_with($types, "\xFE\xFF") || str_contains($types, "\x00")) {
+            return false;
+        }
+        if (! str_starts_with(ltrim($types), '<') || stripos($types, '<!DOCTYPE') !== false || stripos($types, '<!ENTITY') !== false) {
+            return false;
+        }
+        if (preg_match('/\A\s*<\?xml[^>]*\bencoding\s*=\s*["\']([^"\']*)["\']/i', $types, $declared) === 1
+            && ! in_array(strtolower($declared[1]), ['utf-8', 'utf8'], true)) {
+            return false;
+        }
+        $types = html_entity_decode($types, ENT_QUOTES | ENT_XML1, 'UTF-8');
+
+        return stripos($types, 'macroEnabled') === false && stripos($types, 'vbaProject') === false;
     }
 }
