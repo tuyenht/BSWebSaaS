@@ -66,7 +66,7 @@ final class LeadRetention
 
     /**
      * The stored value in its one shape. No row (null) is the default period; a value that is not
-     * one of the choices reads as `valid: false`, and the purge then leaves that website alone.
+     * one of the choices reads as `valid: false`, and the purge then deletes nothing of that website for age.
      *
      * @return array{valid: bool, months: int|null, was: int|null, shortened_at: CarbonImmutable|null}
      */

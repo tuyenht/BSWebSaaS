@@ -28,6 +28,7 @@ use App\Modules\Tenancy\Models\SiteSetting;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\QueryException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -487,7 +488,7 @@ final class Inbox extends Component
             return;
         }
         $support = app(SupportSession::class)->active();
-        $outcome = DB::transaction(function () use ($to, $support): string {
+        $save = fn (): string => DB::transaction(function () use ($to, $support): string {
             $row = SiteSetting::query()->where('group_name', LeadRetention::GROUP)->where('key', LeadRetention::KEY)->lockForUpdate()->first();
             $setting = LeadRetention::shape($row?->value);
             $from = $setting['valid'] ? $setting['months'] : null;
@@ -503,6 +504,12 @@ final class Inbox extends Component
 
             return 'saved';
         });
+        try {
+            $outcome = $save();
+        } catch (UniqueConstraintViolationException) {
+            // a first save from another tab inserted the row between the read and the write: read it again
+            $outcome = $save();
+        }
         if ($outcome === 'support') {
             $this->retentionError = __('leads.ret_support');
 

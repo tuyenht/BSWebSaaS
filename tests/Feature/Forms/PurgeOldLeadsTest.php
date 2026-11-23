@@ -9,8 +9,10 @@ use App\Modules\Tenancy\Models\SiteSetting;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\Events\TransactionBeginning;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -186,18 +188,21 @@ it('works through many leads with no transaction holding more than 200 rows', fu
                case when g > 450 then now() - interval '90 days' else now() - interval '30 months' end - g * interval '1 second', now() - interval '90 days'
         from generate_series(1, 700) g
     SQL, [$lead->form_id]);
-    $deletes = [];
-    DB::listen(function (QueryExecuted $query) use (&$deletes): void {
-        if (str_starts_with(strtolower($query->sql), 'delete from "form_submissions"')) {
-            $deletes[] = count($query->bindings);
+    // rows deleted per transaction: a new bucket at each transaction the command opens
+    $perTransaction = [];
+    Event::listen(TransactionBeginning::class, function () use (&$perTransaction): void {
+        $perTransaction[] = 0;
+    });
+    DB::listen(function (QueryExecuted $query) use (&$perTransaction): void {
+        if (str_starts_with(strtolower($query->sql), 'delete from "form_submissions"') && $perTransaction !== []) {
+            $perTransaction[array_key_last($perTransaction)] += count($query->bindings) - 1; // the ids, not the scope's site_id
         }
     });
 
     $this->artisan('leads:purge-old')->expectsOutputToContain('Purged 450 lead(s) past their website\'s retention period and 250 spam')->assertSuccessful();
 
     expect(DB::connection('pgsql_admin')->table('form_submissions')->where('site_id', 1)->count())->toBe(1)
-        ->and($deletes)->toHaveCount(5)
-        ->and(max($deletes))->toBeLessThanOrEqual(201) // 200 ids + the site_id of the scope
+        ->and(array_values(array_filter($perTransaction)))->toBe([200, 200, 50, 200, 50])
         ->and(array_map(fn (array $a): int => $a['meta']['count'], polAudits()))->toBe([450, 250]);
 });
 

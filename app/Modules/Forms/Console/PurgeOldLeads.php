@@ -28,9 +28,11 @@ use Throwable;
  * their locks, whatever a website keeps: the rows are read oldest first through the kept leads'
  * indexes (form_submissions_kept_created_idx, form_submissions_kept_status_created_idx) and locked
  * (FOR UPDATE) until their chunk commits. The spam walk moves on by a (created_at, ulid) cursor, so
- * an old lead marked spam recently is passed over once, not read again by every chunk. The first
- * transaction of a website also reads its setting (one indexed site_settings read); a website with
- * nothing to delete costs that one transaction.
+ * an old lead marked spam recently is passed over once, not read again by every chunk; the age walk
+ * moves on the same way, so no chunk scans past the index entries of the rows deleted before it. A
+ * chunk that deletes nothing ends the website's walk. The first transaction of a website also reads
+ * its setting (one indexed site_settings read); a website with nothing to delete costs that one
+ * transaction.
  *
  * One audit row per website and kind that lost anything (`forms.leads.retention_purged` with the
  * count and the months, `forms.leads.spam_purged` with the count and the days), never a visitor's
@@ -61,6 +63,7 @@ final class PurgeOldLeads extends Command
                     $this->purgeSite($tenancy, $siteId, $now, $spamCutoff, $site);
                 } catch (Throwable $e) {
                     $failed++;
+                    Log::error('leads:purge-old could not purge a website.', ['site_id' => $siteId]);
                     report($e);
                 } finally {
                     try {
@@ -90,14 +93,15 @@ final class PurgeOldLeads extends Command
     private function purgeSite(Tenancy $tenancy, int $siteId, CarbonImmutable $now, CarbonImmutable $spamCutoff, array &$site): void
     {
         $cutoff = false;
+        $oldCursor = null;
         $cursor = null;
         $spamOnly = false;
         do {
-            $done = Cast::int($tenancy->enter($siteId, function () use ($siteId, $now, $spamCutoff, &$cutoff, &$cursor, &$spamOnly, &$site): int {
+            $done = Cast::int($tenancy->enter($siteId, function () use ($siteId, $now, $spamCutoff, &$cutoff, &$oldCursor, &$cursor, &$spamOnly, &$site): int {
                 if ($cutoff === false) {
                     $setting = LeadRetention::current();
                     if (! $setting['valid']) {
-                        Log::warning('leads:purge-old left a website alone: its retention setting is not one of the choices.', ['site_id' => $siteId]);
+                        Log::warning('leads:purge-old deleted nothing for age on a website: its retention setting is not one of the choices.', ['site_id' => $siteId]);
                     }
                     $site['months'] = LeadRetention::inForce($setting, $now);
                     $cutoff = LeadRetention::cutoff($site['months'], $now);
@@ -107,15 +111,19 @@ final class PurgeOldLeads extends Command
                         ->where('site_id', $siteId)
                         ->whereNull('deleted_at')
                         ->where('created_at', '<', $cutoff)
+                        ->when($oldCursor !== null, fn ($q) => $q->whereRaw('(created_at, ulid) > (?::timestamptz, ?)', $oldCursor))
                         ->orderBy('created_at')->orderBy('ulid')
                         ->limit(self::CHUNK)
                         ->lockForUpdate()
                         ->toBase()
                         ->get(['id', 'ulid', 'created_at']);
                     if ($chunk->isNotEmpty()) {
-                        $site['old'] += $this->delete($chunk->all());
+                        $last = $chunk->last();
+                        $oldCursor = [Cast::string($last->created_at ?? null), Cast::string($last->ulid ?? null)];
+                        $deleted = $this->delete($chunk->all());
+                        $site['old'] += $deleted;
 
-                        return $chunk->count();
+                        return $deleted;
                     }
                 }
                 $spamOnly = true;
@@ -137,9 +145,10 @@ final class PurgeOldLeads extends Command
                 }
                 $last = $spam->last();
                 $cursor = [Cast::string($last->created_at ?? null), Cast::string($last->ulid ?? null)];
-                $site['spam'] += $this->delete($spam->all());
+                $deleted = $this->delete($spam->all());
+                $site['spam'] += $deleted;
 
-                return $spam->count();
+                return $deleted;
             }));
         } while ($done > 0);
     }
