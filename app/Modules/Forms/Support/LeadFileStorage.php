@@ -15,10 +15,14 @@ use LogicException;
 /**
  * Where the files visitors send with a lead are kept: the private disk `config('forms.files_disk')`
  * (filesystems.php `leads`, never served by the public media Worker), under
- * `leads/{site ulid}/{file ulid}`. The key names nothing of the visitor and no file name, so the
- * bucket's listing and the access log hold no personal data. Objects are written as
- * `application/octet-stream` + `attachment`, and the only way out is a signed link that lives
- * LINK_SECONDS, made after the permission check and the audit row (LeadFileDownloadController).
+ * `leads/{site ulid}/{file ulid}`. The key names nothing of the visitor and no file name, and the
+ * signed link's query asks for a neutral name to save under (downloadName: `tep-dinh-kem-2.pdf`),
+ * never the visitor's own: a link is written down by the bucket's and the edge's access logs and
+ * the browser's history, so neither the bucket's listing nor those logs hold the visitor's file
+ * name. The real name is shown only in the lead's detail, behind the permission check. Objects are
+ * written as `application/octet-stream` + `attachment`, and the only way out is a signed link that
+ * lives LINK_SECONDS, made after the permission check and the audit row
+ * (LeadFileDownloadController).
  */
 final class LeadFileStorage
 {
@@ -58,12 +62,24 @@ final class LeadFileStorage
     }
 
     /**
-     * The signed link to one kept file, valid LINK_SECONDS, that the browser saves under the file's
-     * name (an ASCII fallback first, the real name per RFC 6266 second) and never opens in a page.
+     * The signed link to one kept file, valid LINK_SECONDS, that the browser saves under
+     * downloadName() and never opens in a page.
      */
     public static function downloadUrl(FormSubmissionFile $file): string
     {
         $key = $file->storage_key ?? throw new LogicException('A refused file has nothing to download.');
+
+        return self::signedUrl($key, self::downloadName($file));
+    }
+
+    /**
+     * A link to the object under $key, valid LINK_SECONDS, that asks the bucket to answer as a
+     * download saved as $name (`application/octet-stream`, `attachment`, `no-store`). Shared by
+     * downloadUrl and forms:check-file-storage, so the self-check signs exactly what a download
+     * signs.
+     */
+    public static function signedUrl(string $key, string $name): string
+    {
         $disk = self::disk();
         if (! $disk instanceof FilesystemAdapter) {
             throw new LogicException('The lead files disk cannot sign a link.');
@@ -71,16 +87,35 @@ final class LeadFileStorage
 
         return $disk->temporaryUrl($key, now()->addSeconds(self::LINK_SECONDS), [
             'ResponseContentType' => 'application/octet-stream',
-            'ResponseContentDisposition' => self::disposition($file->original_name),
+            'ResponseContentDisposition' => self::disposition($name),
             'ResponseCacheControl' => 'no-store, private',
         ]);
     }
 
+    /**
+     * The name a downloaded file is saved under: `tep-dinh-kem-{n}.{type}`, n its place among its
+     * lead's files (as the lead's detail lists them, refused ones included), the type its kept
+     * extension. Nothing of the visitor: no name, not even transliterated, since a file name is
+     * often the visitor's own («CV Nguyễn Văn A.pdf») and this one travels in the signed link.
+     */
+    public static function downloadName(FormSubmissionFile $file): string
+    {
+        $extension = LeadFileKinds::extension($file->original_name);
+        $extension = $extension !== null && preg_match('/\A[a-z0-9]{1,8}\z/', $extension) === 1 ? $extension : 'bin';
+        $place = $file->form_submission_id === null ? 1 : FormSubmissionFile::query()
+            ->where('form_submission_id', $file->form_submission_id)
+            ->where('id', '<=', $file->id)
+            ->count();
+
+        return 'tep-dinh-kem-'.max(1, $place).'.'.$extension;
+    }
+
+    /** `attachment` with a plain ASCII file name (no `filename*`: the name is ASCII already). */
     public static function disposition(string $name): string
     {
-        $ascii = (string) preg_replace('/[^A-Za-z0-9._ -]+/', '_', Str::ascii($name));
-        $ascii = trim($ascii, ' .') === '' ? 'tep' : $ascii;
+        $ascii = (string) preg_replace('/[^A-Za-z0-9._-]+/', '-', Str::ascii($name));
+        $ascii = trim($ascii, ' .-') === '' ? 'tep-dinh-kem' : $ascii;
 
-        return 'attachment; filename="'.$ascii.'"; filename*=UTF-8\'\''.rawurlencode($name);
+        return 'attachment; filename="'.$ascii.'"';
     }
 }

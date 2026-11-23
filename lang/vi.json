@@ -1446,6 +1446,7 @@
     "admin.audit.act.forms.leads.spam_purged": "Tự xóa hẳn thư rác cũ",
     "admin.audit.act.forms.lead.file_downloaded": "Tải 1 tệp khách gửi kèm liên hệ",
     "admin.audit.act.forms.lead_files.swept": "Tự xóa tệp đính kèm của liên hệ đã xóa",
+    "admin.audit.act.forms.lead_files.reconciled": "Tự xóa tệp đính kèm không thuộc liên hệ nào",
     "admin.audit.act.auth.login.succeeded": "Đăng nhập",
     "admin.audit.act.auth.login.failed": "Đăng nhập sai mật khẩu",
     "admin.audit.act.auth.login.throttled": "Tạm chặn đăng nhập vì sai nhiều lần",

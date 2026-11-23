@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Http\Controllers\LeadFileDownloadController;
+use App\Modules\Admin\Support\SupportSignIn;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Forms\Actions\StoreLeadFile;
 use App\Modules\Forms\Models\Form;
@@ -10,11 +11,15 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Registry\PermissionRegistry;
+use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\Site;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 
 /*
@@ -88,7 +93,7 @@ it('sends a member with forms.files to a 60-second link the browser saves, after
         ->and($this->signed[0]['path'])->toBe($file->storage_key)
         ->and($this->signed[0]['seconds'])->toBe(60)
         ->and($this->signed[0]['options']['ResponseContentType'])->toBe('application/octet-stream')
-        ->and($this->signed[0]['options']['ResponseContentDisposition'])->toStartWith('attachment; filename="Ho so Binh.pdf"');
+        ->and($this->signed[0]['options']['ResponseContentDisposition'])->toBe('attachment; filename="tep-dinh-kem-1.pdf"');
 
     $audits = lfdAudits();
     expect($audits)->toHaveCount(1)
@@ -207,6 +212,28 @@ it('never lets support staff signed in for a member take a file', function (): v
     });
 
     expect(lfdAudits())->toBe([])->and($this->signed)->toHaveCount(0);
+});
+
+it('refuses a file to support staff signed in for a member, through the real route and its middleware', function (): void {
+    Notification::fake();
+    Mail::fake();
+    $member = lfdMember(['forms.view', 'forms.files']);
+    $file = lfdFile();
+    $staff = User::factory()->create(['name' => 'Staff support']);
+    app(PlatformAccess::class)->onPlatform(fn () => $staff->assignRole('support'));
+    app(PlatformAccess::class)->forgetMemo();
+    $browser = 'Mozilla/5.0 (support desk)';
+    $token = app(SupportSignIn::class)->issue($staff, Site::query()->findOrFail(1), $member, 'Khách nhờ xem liên hệ', 30, $browser);
+
+    // signed in the way staff really are: the one-time link, then the admin pages
+    $this->withHeader('User-Agent', $browser)->get('http://a.test/admin/support/enter?token='.$token)->assertStatus(303);
+    $this->assertAuthenticatedAs($member);
+    $this->get('http://a.test/admin')->assertOk();
+
+    $this->get('http://a.test/admin/forms/files/'.$file->ulid)->assertForbidden();
+
+    expect(lfdAudits())->toBe([])->and($this->signed)->toHaveCount(0);
+    $this->assertAuthenticatedAs($member);
 });
 
 it('makes no link when the audit row cannot be written', function (): void {

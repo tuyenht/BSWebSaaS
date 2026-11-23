@@ -35,7 +35,8 @@ use Throwable;
  * back, the object is deleted again (afterRollBack); if the row cannot be written, at once. A worker
  * killed between the write and the commit leaves one object behind that no row points at: its key
  * names no one, but its body is the visitor's file, and neither the sweeper nor an erase can reach
- * it. Only a pass that lists `leads/{site ulid}/` against the rows would find it (not built yet).
+ * it: forms:reconcile-files (ReconcileLeadFiles) lists `leads/{site ulid}/` against the rows daily
+ * and deletes such objects once they are over an hour old.
  */
 final class StoreLeadFile
 {
@@ -46,6 +47,10 @@ final class StoreLeadFile
         }
         if ($fieldKey === '' || strlen($fieldKey) > 40) {
             throw new InvalidArgumentException('A field key is 1 to 40 characters.');
+        }
+        // a file row with no lead would be swept as an orphan at once, and its object with it
+        if (! $lead->exists) {
+            throw new LogicException('A lead\'s files are kept only once the lead is saved.');
         }
         $current = app(CurrentSite::class);
         if (! $current->hasId() || $current->id() !== $lead->site_id) {

@@ -1446,6 +1446,7 @@
     "admin.audit.act.forms.leads.spam_purged": "古い迷惑メールを自動で完全に削除",
     "admin.audit.act.forms.lead.file_downloaded": "お問い合わせの添付ファイルを1件ダウンロード",
     "admin.audit.act.forms.lead_files.swept": "削除されたお問い合わせの添付ファイルを自動で削除",
+    "admin.audit.act.forms.lead_files.reconciled": "どのお問い合わせにも属さない添付ファイルを自動で削除",
     "admin.audit.act.auth.login.succeeded": "ログイン",
     "admin.audit.act.auth.login.failed": "パスワード誤りのログイン",
     "admin.audit.act.auth.login.throttled": "失敗が続いたためログインを一時停止",

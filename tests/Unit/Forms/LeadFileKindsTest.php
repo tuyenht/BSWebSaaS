@@ -44,6 +44,26 @@ function lfkDocx(array $extra = []): string
     return lfkZip(['[Content_Types].xml' => '<Types/>', 'word/document.xml' => '<w:document/>', ...$extra]);
 }
 
+/**
+ * A zip written byte by byte (stored, no compression), so it can hold what ZipArchive would never
+ * write: two entries of one name. @param list<array{0: string, 1: string}> $entries name, body
+ */
+function lfkRawZip(array $entries): string
+{
+    $local = '';
+    $central = '';
+    foreach ($entries as [$name, $body]) {
+        $offset = strlen($local);
+        $crc = crc32($body);
+        $size = strlen($body);
+        $local .= pack('VvvvvvVVVvv', 0x04034B50, 20, 0, 0, 0, 0, $crc, $size, $size, strlen($name), 0).$name.$body;
+        $central .= pack('VvvvvvvVVVvvvvvVV', 0x02014B50, 20, 20, 0, 0, 0, 0, $crc, $size, $size, strlen($name), 0, 0, 0, 0, 0, $offset).$name;
+    }
+    $end = pack('VvvvvVVv', 0x06054B50, 0, 0, count($entries), count($entries), strlen($central), strlen($local), 0);
+
+    return lfkSample($local.$central.$end);
+}
+
 dataset('genuine', fn (): array => [
     'STEP (.step)' => ['cad', 'truc.step', fn () => lfkSample("ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION(('Truc'),'2;1');\nENDSEC;\n")],
     'STEP with a BOM (.stp)' => ['cad', 'truc.STP', fn () => lfkSample("\xEF\xBB\xBF  ISO-10303-21;\nHEADER;\n")],
@@ -57,6 +77,8 @@ dataset('genuine', fn (): array => [
     'PDF CV' => ['cv', 'Hồ sơ Nguyễn Văn A.pdf', fn () => lfkSample("%PDF-1.4\n")],
     'DOC' => ['cv', 'cv.doc', fn () => lfkSample("\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1".str_repeat("\x00", 64))],
     'DOCX' => ['cv', 'cv.docx', fn () => lfkDocx()],
+    'DOCX written by hand' => ['cv', 'cv.docx', fn () => lfkRawZip([['[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8"?><Types/>'], ['word/document.xml', '<w:document/>']])],
+    'DOCX whose types part has a UTF-8 BOM' => ['cv', 'cv.docx', fn () => lfkDocx(['[Content_Types].xml' => "\xEF\xBB\xBF<Types/>"])],
     'JPG' => ['img', 'anh.jpg', fn () => lfkSample("\xFF\xD8\xFF\xE0\x00\x10JFIF\x00")],
     'JPEG' => ['img', 'anh.JPEG', fn () => lfkSample("\xFF\xD8\xFF\xE1\x00\x10Exif\x00")],
     'PNG' => ['img', 'anh.png', fn () => lfkSample("\x89PNG\r\n\x1A\n\x00\x00\x00\x0DIHDR")],
@@ -89,6 +111,34 @@ dataset('forged', fn (): array => [
 it('refuses a file whose bytes are not its type', function (string $kind, string $name, Closure $sample): void {
     expect(LeadFileKinds::refusal($kind, $name, $sample()))->toBe('forged');
 })->with('forged');
+
+dataset('docx tricks', fn (): array => [
+    // the macro word sits past the first megabyte: the part is refused, not read in part
+    'types part over 1 MB' => [fn () => lfkDocx(['[Content_Types].xml' => '<Types>'.str_repeat(' ', 1024 * 1024).'<Default ContentType="application/vnd.ms-word.document.macroEnabled.main+xml"/></Types>'])],
+    'types part over 1 MB with no macro' => [fn () => lfkDocx(['[Content_Types].xml' => '<Types>'.str_repeat(' ', 1024 * 1024).'</Types>'])],
+    'types part in UTF-16 LE' => [fn () => lfkDocx(['[Content_Types].xml' => "\xFF\xFE".mb_convert_encoding('<Types><Default ContentType="application/vnd.ms-word.document.macroEnabled.main+xml"/></Types>', 'UTF-16LE', 'UTF-8')])],
+    'types part in UTF-16 BE' => [fn () => lfkDocx(['[Content_Types].xml' => "\xFE\xFF".mb_convert_encoding('<Types/>', 'UTF-16BE', 'UTF-8')])],
+    'types part in UTF-16 with no BOM' => [fn () => lfkDocx(['[Content_Types].xml' => mb_convert_encoding('<Types/>', 'UTF-16LE', 'UTF-8')])],
+    'types part declaring another encoding' => [fn () => lfkDocx(['[Content_Types].xml' => '<?xml version="1.0" encoding="UTF-32"?><Types/>'])],
+    'types part holding a NUL byte' => [fn () => lfkDocx(['[Content_Types].xml' => "<Types>\x00</Types>"])],
+    'types part with a DTD' => [fn () => lfkDocx(['[Content_Types].xml' => '<!DOCTYPE Types [<!ENTITY m "macroEnabled">]><Types><Default ContentType="application/vnd.ms-word.document.&m;.main+xml"/></Types>'])],
+    'macro word spelt with character references' => [fn () => lfkDocx(['[Content_Types].xml' => '<Types><Default ContentType="application/vnd.ms-word.document.macro&#69;nabled.main+xml"/></Types>'])],
+    'macro part named with a hex reference' => [fn () => lfkDocx(['[Content_Types].xml' => '<Types><Override PartName="/word/x.bin" ContentType="application/vnd.ms-office.vba&#x50;roject"/></Types>', 'word/x.bin' => 'x'])],
+    'empty types part' => [fn () => lfkDocx(['[Content_Types].xml' => ''])],
+    // a clean part first, the one declaring the macro second: a reader may take either
+    'two types parts' => [fn () => lfkRawZip([['[Content_Types].xml', '<Types/>'], ['word/document.xml', '<w:document/>'], ['[Content_Types].xml', '<Types><Default ContentType="application/vnd.ms-word.document.macroEnabled.main+xml"/></Types>']])],
+    'two types parts in other cases' => [fn () => lfkRawZip([['[Content_Types].xml', '<Types/>'], ['word/document.xml', '<w:document/>'], ['[CONTENT_TYPES].XML', '<Types/>']])],
+    'two document parts' => [fn () => lfkRawZip([['[Content_Types].xml', '<Types/>'], ['word/document.xml', '<w:document/>'], ['Word/Document.xml', '<w:document/>']])],
+    'two macro projects' => [fn () => lfkRawZip([['[Content_Types].xml', '<Types/>'], ['word/document.xml', '<w:document/>'], ['word/vbaProject.bin', 'x'], ['word/VbaProject.Bin', 'x']])],
+    'a macro project in another folder' => [fn () => lfkDocx(['customXml/item1vbaPROJECT.bin' => 'x'])],
+    'a macro project behind a backslash' => [fn () => lfkRawZip([['[Content_Types].xml', '<Types/>'], ['word/document.xml', '<w:document/>'], ['word\\vbaProject.bin', 'x']])],
+    'types part behind a leading slash, twice' => [fn () => lfkRawZip([['[Content_Types].xml', '<Types/>'], ['word/document.xml', '<w:document/>'], ['/[Content_Types].xml', '<Types/>']])],
+    'no types part' => [fn () => lfkZip(['word/document.xml' => '<w:document/>', 'docProps/app.xml' => '<x/>'])],
+]);
+
+it('refuses a DOCX whose parts could hide a macro from this check', function (Closure $sample): void {
+    expect(LeadFileKinds::refusal('cv', 'cv.docx', $sample()))->toBe('forged');
+})->with('docx tricks');
 
 it('refuses a blocked name part before anything else, wherever it sits', function (string $name): void {
     expect(LeadFileKinds::refusal('cv', $name, lfkSample("%PDF-1.4\n")))->toBe('blocked');

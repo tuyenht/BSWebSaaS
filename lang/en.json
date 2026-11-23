@@ -1446,6 +1446,7 @@
     "admin.audit.act.forms.leads.spam_purged": "Deleted for good the old spam",
     "admin.audit.act.forms.lead.file_downloaded": "Downloaded 1 file sent with a contact",
     "admin.audit.act.forms.lead_files.swept": "Deleted the attachments of deleted contacts",
+    "admin.audit.act.forms.lead_files.reconciled": "Deleted attachments that belong to no contact",
     "admin.audit.act.auth.login.succeeded": "Signed in",
     "admin.audit.act.auth.login.failed": "Sign-in with a wrong password",
     "admin.audit.act.auth.login.throttled": "Sign-in paused after too many tries",
