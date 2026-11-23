@@ -10,7 +10,6 @@ use App\Modules\Forms\Support\LeadFileKinds;
 use App\Modules\Forms\Support\LeadFileStorage;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
-use App\Modules\Tenancy\Models\Site;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -78,7 +77,7 @@ final class StoreLeadFile
 
         $extension = Cast::string(LeadFileKinds::extension($name));
         $ulid = (string) Str::ulid();
-        $key = LeadFileStorage::key(Cast::string(Site::query()->whereKey($lead->site_id)->value('ulid')), $ulid);
+        $key = LeadFileStorage::key(Cast::string(DB::table('sites')->where('id', $lead->site_id)->value('ulid')), $ulid);
         $disk = LeadFileStorage::disk();
 
         $stream = fopen($path, 'rb');
