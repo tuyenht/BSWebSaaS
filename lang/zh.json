@@ -1446,6 +1446,7 @@
     "admin.audit.act.forms.leads.spam_purged": "自动彻底删除旧垃圾信息",
     "admin.audit.act.forms.lead.file_downloaded": "下载 1 个联系记录附件",
     "admin.audit.act.forms.lead_files.swept": "自动删除已删除联系记录的附件",
+    "admin.audit.act.forms.lead_files.reconciled": "自动删除不属于任何联系记录的附件",
     "admin.audit.act.auth.login.succeeded": "登录",
     "admin.audit.act.auth.login.failed": "密码错误的登录",
     "admin.audit.act.auth.login.throttled": "多次失败后暂停登录",

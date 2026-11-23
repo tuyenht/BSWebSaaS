@@ -168,6 +168,14 @@ it('keeps exactly up to the size limit', function (): void {
     expect(lfStore($lead, lfPdf('cv.pdf', 1024 * 1024 - 9))?->status)->toBe('stored');
 });
 
+it('refuses to keep a file for a lead that is not saved', function (): void {
+    $lead = (new FormSubmission)->forceFill(['site_id' => 1, 'name' => 'Bình', 'status' => 'new']);
+
+    expect(fn () => lfStore($lead, lfPdf()))->toThrow(LogicException::class, 'once the lead is saved');
+    expect(Storage::disk('leads')->allFiles())->toBe([])
+        ->and(DB::connection('pgsql_admin')->table('form_submission_files')->count())->toBe(0);
+});
+
 it('keeps nothing of a spam lead: no object, no row', function (): void {
     $spam = lfLead(1, ['status' => 'spam', 'is_spam' => true]);
 
@@ -390,5 +398,36 @@ it('signs a 60-second download link to the object, as an attachment that is neve
         ->and($seen['path'])->toBe($file->storage_key)
         ->and($seen['seconds'])->toBe(60)
         ->and($seen['options']['ResponseContentType'])->toBe('application/octet-stream')
-        ->and($seen['options']['ResponseContentDisposition'])->toBe('attachment; filename="Ho so Binh.pdf"; filename*=UTF-8\'\''.rawurlencode('Hồ sơ Bình.pdf'));
+        ->and($seen['options']['ResponseContentDisposition'])->toBe('attachment; filename="tep-dinh-kem-1.pdf"');
+});
+
+it('names a downloaded file by its place in the lead, never with anything of the visitor\'s name', function (): void {
+    $lead = lfLead(1);
+    $refused = lfStore($lead, UploadedFile::fake()->createWithContent('Nguyễn Văn Bình.exe', 'MZ'));
+    $cv = lfStore($lead, lfPdf('CV Nguyễn Văn Bình.pdf'));
+    $drawing = lfStore($lead, UploadedFile::fake()->createWithContent('Bản vẽ của Bình.STEP', "ISO-10303-21;\nHEADER;\n"), 'cad', 'ban_ve');
+    $other = lfStore(lfLead(1), lfPdf('Bình.pdf'));
+    $seen = [];
+    Storage::disk('leads')->buildTemporaryUrlsUsing(function (string $path, DateTimeInterface $expires, array $options) use (&$seen): string {
+        $seen[] = $options['ResponseContentDisposition'];
+
+        return 'https://r2.example.test/'.$path;
+    });
+
+    expect($refused?->status)->toBe(FormSubmissionFile::REJECTED);
+    // in the website, as the download route asks (outside one, no row is seen and every file is 1)
+    app(Tenancy::class)->enter(1, function () use ($cv, $drawing, $other): void {
+        foreach ([$cv, $drawing, $other] as $file) {
+            LeadFileStorage::downloadUrl($file);
+        }
+    });
+
+    expect($seen)->toBe([
+        'attachment; filename="tep-dinh-kem-2.pdf"',
+        'attachment; filename="tep-dinh-kem-3.step"',
+        'attachment; filename="tep-dinh-kem-1.pdf"',
+    ]);
+    foreach ($seen as $disposition) {
+        expect($disposition)->not->toContain('Binh')->not->toContain('Nguyen')->not->toContain('filename*');
+    }
 });
