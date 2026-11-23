@@ -7,9 +7,11 @@ use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Forms\Support\LeadTrash;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -361,4 +363,30 @@ it('shows the Trash on a flat query budget (no N+1 across rows)', function (): v
     // statement holding every group and the Trash
     expect($cold)->toBeLessThanOrEqual(24)
         ->and($many)->toBe($few)->toBeLessThanOrEqual(14);
+});
+
+it('never lets support staff signed in for a member move a lead to the Trash', function (): void {
+    $manager = ltMember(['forms.view', 'forms.manage']);
+    $lead = ltLead(1, 'Nguyễn Thị Hoa');
+
+    $session = app('session')->driver();
+    request()->setLaravelSession($session);
+    auth()->login($manager);
+    app(SupportSession::class)->start($manager, $manager, 1, 'Kiểm tra', now()->addMinutes(30));
+    app()->rebinding('request', function ($app, Request $request) use ($session): void {
+        if (! $request->hasSession()) {
+            $request->setLaravelSession($session);
+        }
+    });
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $lead): void {
+        Livewire::actingAs($manager)->test(Inbox::class)
+            ->set('lead', $lead->ulid)
+            ->assertDontSeeHtml('moveToTrash(')
+            ->assertSee(__('leads.to_trash'))
+            ->call('moveToTrash', $lead->ulid)
+            ->assertForbidden();
+    });
+
+    expect(ltTrashedAt($lead))->toBeNull()->and(ltAudits())->toBe([]);
 });

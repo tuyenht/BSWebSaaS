@@ -109,7 +109,8 @@ final class FormList extends Component
         $this->deleting = [
             'ulid' => $form->ulid,
             'name' => $this->nameOf($form),
-            'leads' => $this->leadCounts([$form->id])[$form->id] ?? 0,
+            // the Trash goes with the form too, so the question counts it (DeleteForm does)
+            'leads' => $this->leadCounts([$form->id], withTrash: true)[$form->id] ?? 0,
             'active' => $form->status === 'active',
         ];
         $this->confirmOpen = true;
@@ -302,7 +303,7 @@ final class FormList extends Component
      * @param  list<int>  $ids
      * @return array<int, int>
      */
-    private function leadCounts(array $ids): array
+    private function leadCounts(array $ids, bool $withTrash = false): array
     {
         if ($ids === []) {
             return [];
@@ -310,7 +311,7 @@ final class FormList extends Component
         $site = app(CurrentSite::class)->id();
         $marks = implode(',', array_fill(0, count($ids), '?'));
         $rows = DB::select(
-            'select f.id, (select count(*) from (select 1 from form_submissions s where s.site_id = ? and s.form_id = f.id and s.status <> \'spam\' and s.deleted_at is null limit '.(self::LEAD_CAP + 1).') x) as n
+            'select f.id, (select count(*) from (select 1 from form_submissions s where s.site_id = ? and s.form_id = f.id and s.status <> \'spam\''.($withTrash ? '' : ' and s.deleted_at is null').' limit '.(self::LEAD_CAP + 1).') x) as n
              from forms f where f.site_id = ? and f.id in ('.$marks.')',
             [$site, $site, ...$ids],
         );

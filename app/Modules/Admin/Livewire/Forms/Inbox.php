@@ -308,11 +308,13 @@ final class Inbox extends Component
     /**
      * «Chuyển vào Thùng rác» in the lead's ⋮: no question, the message offers «Hoàn tác» (10 s). The
      * lead keeps its status, so «Khôi phục» and «Hoàn tác» put it back exactly as it was. LeadPolicy
-     * decides who may; one audit row says a lead went there, never who the visitor was.
+     * decides who may; one audit row says a lead went there, never who the visitor was. Support
+     * staff signed in for a member never do it: the Trash is emptied for good after its days.
      */
     public function moveToTrash(string $ulid): void
     {
         $this->guardWrite();
+        app(SupportSession::class)->forbid();
         $lead = LeadListQuery::leads()->where('ulid', $ulid)->select(['id', 'ulid', 'form_id', 'status'])->lockForUpdate()->first();
         if ($lead === null) {
             $this->say(__('leads.gone'), 'error');
