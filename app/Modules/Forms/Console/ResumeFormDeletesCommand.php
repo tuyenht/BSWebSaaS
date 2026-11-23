@@ -9,6 +9,8 @@ use App\Modules\Forms\Models\Form;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Queues DeleteLargeForm again for every form left in `deleting` with no run queued for --minutes:
@@ -33,19 +35,35 @@ final class ResumeFormDeletesCommand extends Command
         $minutes = max(1, Cast::int($this->option('minutes'), 30));
         $asked = 0;
 
-        $tenancy->eachSite(function (int $siteId) use ($minutes, &$asked): void {
-            // the database clock, as the claims are written with it
-            $ids = Form::query()->withoutGlobalScope(Form::NOT_DELETING)->where('status', Form::DELETING)
-                ->whereRaw('updated_at < clock_timestamp() - make_interval(mins => ?)', [$minutes])->pluck('id');
-            foreach ($ids as $id) {
-                // claimed again only if no run claimed it since the read above
-                if (DeleteLargeForm::queueRun($siteId, Cast::int($id), staleMinutes: $minutes)) {
-                    $asked++;
-                }
+        $failed = 0;
+
+        foreach ($tenancy->siteIds() as $siteId) {
+            try {
+                $tenancy->enter($siteId, function () use ($siteId, $minutes, &$asked): void {
+                    // the database clock, as the claims are written with it
+                    $ids = Form::query()->withoutGlobalScope(Form::NOT_DELETING)->where('status', Form::DELETING)
+                        ->whereRaw('updated_at < clock_timestamp() - make_interval(mins => ?)', [$minutes])->pluck('id');
+                    foreach ($ids as $id) {
+                        // claimed again only if no run claimed it since the read above
+                        if (DeleteLargeForm::queueRun($siteId, Cast::int($id), staleMinutes: $minutes)) {
+                            $asked++;
+                        }
+                    }
+                });
+            } catch (Throwable $e) {
+                $failed++;
+                Log::error('forms:resume-deletes could not process a website.', ['site_id' => $siteId]);
+                report($e);
             }
-        });
+        }
 
         $this->info("Queued again {$asked} form delete(s).");
+
+        if ($failed > 0) {
+            $this->error("{$failed} website(s) could not be processed (see the error log).");
+
+            return self::FAILURE;
+        }
 
         return self::SUCCESS;
     }
