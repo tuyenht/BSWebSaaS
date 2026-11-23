@@ -6,11 +6,10 @@ namespace App\Modules\Forms\Console;
 
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Forms\Models\FormSubmission;
+use App\Modules\Forms\Support\LeadNotices;
 use App\Modules\Forms\Support\LeadTrash;
-use App\Modules\Notifications\Models\SiteNotification;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\Tenancy;
-use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -21,10 +20,7 @@ use Illuminate\Support\Facades\DB;
  * touched.
  *
  * With each lead go its search words (lead_search_terms, ON DELETE CASCADE) and the bell's «new
- * lead» notices of it, which carry the visitor's name or phone: looked up through the notices'
- * (site_id, created_at) index from a minute before the chunk's first lead to an hour after its last,
- * as «Xóa theo yêu cầu của khách» (EraseLead) and DeleteLargeForm do; a chunk holding a lead without
- * a time is looked up without one.
+ * lead» notices of it, which carry the visitor's name or phone (LeadNotices).
  *
  * Chunks of CHUNK rows in id order, each in its own savepoint inside the site's one transaction. Each
  * chunk's SELECT locks its rows, and a savepoint releases no lock: every row picked stays locked
@@ -37,8 +33,6 @@ use Illuminate\Support\Facades\DB;
 final class PurgeTrashedLeads extends Command
 {
     private const int CHUNK = 200;
-
-    private const int NOTICE_WINDOW_MINUTES = 60;
 
     #[\Override]
     protected $signature = 'leads:purge-trash';
@@ -68,7 +62,7 @@ final class PurgeTrashedLeads extends Command
                         if ($chunk->isEmpty()) {
                             return 0;
                         }
-                        $this->deleteNotices($chunk->all());
+                        LeadNotices::deleteFor($chunk->all());
                         FormSubmission::query()->whereIn('id', $chunk->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->all())
                             ->toBase()->delete();
 
@@ -89,31 +83,5 @@ final class PurgeTrashedLeads extends Command
         $this->info("Purged {$purged} lead(s) left in the Trash over ".LeadTrash::DAYS.' day(s).');
 
         return self::SUCCESS;
-    }
-
-    /**
-     * The bell's «new lead» notices of these leads.
-     *
-     * @param  array<int, object>  $leads  rows with ulid and created_at
-     */
-    private function deleteNotices(array $leads): void
-    {
-        $ulids = [];
-        $times = [];
-        $undated = false;
-        foreach ($leads as $lead) {
-            $ulids[] = Cast::string($lead->ulid ?? null);
-            $at = $lead->created_at ?? null;
-            if ($at === null) {
-                $undated = true;
-            } else {
-                $times[] = CarbonImmutable::parse(Cast::string($at));
-            }
-        }
-        $notices = SiteNotification::query()->where('kind', 'lead.new')->whereIn(DB::raw("data->>'submission'"), $ulids);
-        if (! $undated && $times !== []) {
-            $notices->whereBetween('created_at', [min($times)->subMinute(), max($times)->addMinutes(self::NOTICE_WINDOW_MINUTES)]);
-        }
-        $notices->delete();
     }
 }

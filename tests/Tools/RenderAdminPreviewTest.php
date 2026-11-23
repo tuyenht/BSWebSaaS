@@ -65,6 +65,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
+use App\Modules\Forms\Support\LeadRetention;
 use App\Modules\Forms\Support\LeadTrash;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\UserPreferences;
@@ -1529,11 +1530,26 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         $part = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($state()));
         file_put_contents($dir.'/'.$name.'.html', $swap($leadsPage, $part, 'app\\.modules\\.admin\\.livewire\\.forms\\.inbox'));
     }
+    // «Thời hạn lưu giữ liên hệ» from the same ⋮: the dialog on the 24 months of a website that never
+    // chose, the same with «Không tự xóa» picked (the law warning), and the message once saved.
+    $retention = fn () => Livewire::actingAs($owner)->test(Inbox::class)->call('openRetention')->assertSet('retentionOpen', true);
+    foreach ([
+        'leads-retention' => fn () => $retention()->assertSet('retentionPick', '24'),
+        'leads-retention-none' => fn () => $retention()->set('retentionPick', 'none'),
+        'leads-retention-saved' => fn () => $retention()->set('retentionPick', '36')->call('saveRetention')->assertSet('retentionOpen', false),
+    ] as $name => $state) {
+        $part = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($state()));
+        file_put_contents($dir.'/'.$name.'.html', $swap($leadsPage, $part, 'app\\.modules\\.admin\\.livewire\\.forms\\.inbox'));
+    }
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('group_name', LeadRetention::GROUP)->where('key', LeadRetention::KEY)->delete());
+    expect(file_get_contents($dir.'/leads-retention.html'))->toContain('id="lr-opt-24"', e(__('leads.ret_spam')))
+        ->and(file_get_contents($dir.'/leads-retention-none.html'))->toContain(e(__('leads.ret_none_warn_1')))
+        ->and(file_get_contents($dir.'/leads-retention-saved.html'))->toContain(e(__('leads.ret_saved', ['months' => 36])));
     expect(file_get_contents($dir.'/leads-export.html'))->toContain('id="lx-pw"', e(__('leads.export_pw_hint')))
         ->and(file_get_contents($dir.'/leads-export-error.html'))->toContain('aria-invalid="true"', e(__('leads.export_pw_wrong')))
         ->and(file_get_contents($dir.'/leads-export-done.html'))->toContain('data-tone="success"');
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 139);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 142);
 });

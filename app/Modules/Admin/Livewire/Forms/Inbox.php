@@ -12,6 +12,7 @@ use App\Modules\Forms\Actions\EraseLead;
 use App\Modules\Forms\Actions\SetFormStatus;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
+use App\Modules\Forms\Support\LeadRetention;
 use App\Modules\Identity\Actions\ConfirmIdentity;
 use App\Modules\Identity\Actions\IdentityCheck;
 use App\Modules\Identity\Models\User;
@@ -23,8 +24,11 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Entitlement\Entitlement;
+use App\Modules\Tenancy\Models\SiteSetting;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\QueryException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -117,6 +121,16 @@ final class Inbox extends Component
     /** Why the last try opened no file (a wrong password, too many tries…); '' = none. */
     #[Locked]
     public string $exportError = '';
+
+    /** «Thời hạn lưu giữ liên hệ» is open (entangled with the dialog). */
+    public bool $retentionOpen = false;
+
+    /** The period picked in it: '12', '24', '36' or 'none' (LeadRetention::key). */
+    public string $retentionPick = '24';
+
+    /** Why the last «Lưu thời hạn» saved nothing; '' = none. */
+    #[Locked]
+    public string $retentionError = '';
 
     public function boot(): void
     {
@@ -436,6 +450,74 @@ final class Inbox extends Component
             'file' => LeadCsvExport::fileName(app(SiteTime::class)),
             'count' => $count > LeadListQuery::CAP ? Cast::string(__('catalog.count_over')) : Cast::string(Number::format($count, locale: app()->getLocale())),
         ]));
+    }
+
+    /**
+     * «Thời hạn lưu giữ liên hệ» in the screen's ⋮, for a member who manages leads: the dialog opens on
+     * the period saved (24 months when never set).
+     */
+    public function openRetention(): void
+    {
+        $this->guardWrite();
+        $this->retentionPick = LeadRetention::key(LeadRetention::current()['months']);
+        $this->retentionError = '';
+        $this->retentionOpen = true;
+    }
+
+    public function cancelRetention(): void
+    {
+        $this->guardWrite();
+        $this->retentionOpen = false;
+        $this->retentionError = '';
+    }
+
+    /**
+     * «Lưu thời hạn»: the period picked is saved for the website (LeadRetention); a shorter one
+     * deletes nothing before LeadRetention::WAIT_DAYS. Support staff signed in for a member never
+     * shorten it: older leads would be deleted for good, a delayed erase. A change is audited with
+     * the months before and after, nothing else. Read and written under the row's lock, so two tabs
+     * saving at once never lose the wait.
+     */
+    public function saveRetention(): void
+    {
+        $this->guardWrite();
+        $to = LeadRetention::fromKey($this->retentionPick);
+        if ($to === false) {
+            $this->retentionError = __('leads.ret_invalid');
+
+            return;
+        }
+        $support = app(SupportSession::class)->active();
+        $save = fn (): string => DB::transaction(function () use ($to, $support): string {
+            $row = SiteSetting::query()->where('group_name', LeadRetention::GROUP)->where('key', LeadRetention::KEY)->lockForUpdate()->first();
+            $setting = LeadRetention::shape($row?->value);
+            $from = $setting['valid'] ? $setting['months'] : null;
+            if ($support && LeadRetention::shorter($to, $from)) {
+                return 'support';
+            }
+            if ($setting['valid'] && $to === $from) {
+                return 'same';
+            }
+            $value = LeadRetention::next($setting, $to, CarbonImmutable::now());
+            SiteSetting::query()->updateOrCreate(['group_name' => LeadRetention::GROUP, 'key' => LeadRetention::KEY], ['value' => $value]);
+            Audit::record('forms.leads.retention_changed', ['meta' => ['from' => $from, 'to' => $to, 'waits' => $value['shortened_at'] !== null]]);
+
+            return 'saved';
+        });
+        try {
+            $outcome = $save();
+        } catch (UniqueConstraintViolationException) {
+            // a first save from another tab inserted the row between the read and the write: read it again
+            $outcome = $save();
+        }
+        if ($outcome === 'support') {
+            $this->retentionError = __('leads.ret_support');
+
+            return;
+        }
+        $this->retentionOpen = false;
+        $this->retentionError = '';
+        $this->say($to === null ? __('leads.ret_saved_none') : __('leads.ret_saved', ['months' => $to]));
     }
 
     /**

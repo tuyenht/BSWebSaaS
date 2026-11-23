@@ -189,17 +189,21 @@
     <header class="flex flex-col gap-1">
         <div class="flex items-start gap-3">
             <h1 class="m-0 min-w-0 flex-auto self-center text-[calc(1.25rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ __('leads.title') }}</h1>
-            {{-- ⋮ «Việc khác» of the whole list, beside the title on every width: «Tải danh sách về máy»,
-                 for whoever manages leads, never of the Trash (the file holds no lead in it). Support
-                 staff signed in for a member never take that file: the item stays, with why. --}}
-            @if ($canManage && ! $failed && ! $inTrash)
+            {{-- ⋮ «Việc khác» of the whole list, beside the title on every width, for whoever manages
+                 leads: «Tải danh sách về máy», never of the Trash (the file holds no lead in it), and
+                 «Thời hạn lưu giữ liên hệ». Support staff signed in for a member never take that file:
+                 the item stays, with why; they may open the period but not shorten it. --}}
+            @if ($canManage && ! $failed)
                 <x-bs-admin::list.actions head name="" :label="__('leads.more')" :title="__('leads.more_title')">
                     <x-slot:menu>
-                        @if ($support)
+                        @if ($inTrash)
+                            {{-- no download of the Trash --}}
+                        @elseif ($support)
                             <x-bs-admin::list.menu-item icon="ri-download-2" :why="__('admin.support.locked')">{{ __('leads.export') }}</x-bs-admin::list.menu-item>
                         @else
                             <x-bs-admin::list.menu-item icon="ri-download-2" wire:click="openExport">{{ __('leads.export') }}</x-bs-admin::list.menu-item>
                         @endif
+                        <x-bs-admin::list.menu-item icon="ri-time" wire:click="openRetention">{{ __('leads.ret_title') }}</x-bs-admin::list.menu-item>
                     </x-slot:menu>
                 </x-bs-admin::list.actions>
             @endif
@@ -511,6 +515,10 @@
 
     @if ($canManage && ! $failed && ! $support)
         @include('admin::livewire.forms.partials.export-dialog', ['exportN' => $fmt($countOf($counts[$tab] ?? 0))])
+    @endif
+
+    @if ($canManage && ! $failed)
+        @include('admin::livewire.forms.partials.retention-dialog')
     @endif
 
     {{-- «Xóa theo yêu cầu của khách»: the lead goes at once, never to a Trash, and cannot be undone. --}}
