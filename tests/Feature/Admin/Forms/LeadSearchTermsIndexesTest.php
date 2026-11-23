@@ -145,7 +145,7 @@ it('reads the words of a search through the keys, never the whole table', functi
     ]],
     'only common words: the list walks newest first and checks each row' => ['khach', 100, 'exists (select 1 from "lead_search_terms" as "w"', [
         'lead_search_terms_lead_id_index' => 'lead_id = form_submissions.id',
-    ], ['form_submissions_live_created_idx' => 'site_id']],
+    ], ['form_submissions_kept_created_idx' => 'site_id']],
 ]);
 
 it('walks a website\'s leads for the word check through the list\'s time index, never the whole table', function (): void {

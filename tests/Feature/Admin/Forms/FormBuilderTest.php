@@ -157,10 +157,17 @@ it('filters by group, by a search that ignores Vietnamese marks, and by leads re
     $manager = builderManager();
     $quote = seedBuilderForm(1, 'bao-gia', 'Yêu cầu báo giá');
     seedBuilderForm(1, 'tu-van', 'Đăng ký tư vấn', 'disabled');
+    $advice = seedBuilderForm(1, 'hoi-dap', 'Hỏi đáp kỹ thuật');
     app(Tenancy::class)->enter(1, fn () => FormSubmission::query()->create(['form_id' => $quote->id, 'data' => [], 'status' => 'new']));
+    // a form whose only lead is in the Trash has received none, as «Khách liên hệ» shows it
+    app(Tenancy::class)->enter(1, fn () => FormSubmission::query()->create(['form_id' => $advice->id, 'data' => [], 'status' => 'read'])
+        ->forceFill(['deleted_at' => now()])->save());
 
     app(Tenancy::class)->enter(1, function () use ($manager): void {
         Livewire::actingAs($manager)->test(FormList::class)
+            ->set('has', ['no'])->assertSee('Hỏi đáp kỹ thuật')
+            ->set('has', ['yes'])->assertDontSee('Hỏi đáp kỹ thuật')
+            ->set('has', [])
             ->set('search', 'bao gia')->assertSee('Yêu cầu báo giá')->assertDontSee('Đăng ký tư vấn')
             ->set('search', 'dang ky')->assertSee('Đăng ký tư vấn')->assertDontSee('Yêu cầu báo giá')
             ->set('search', '')->set('tab', 'off')->assertSee('Đăng ký tư vấn')->assertDontSee('Yêu cầu báo giá')

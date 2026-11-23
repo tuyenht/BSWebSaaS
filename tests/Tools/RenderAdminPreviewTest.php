@@ -65,6 +65,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
+use App\Modules\Forms\Support\LeadTrash;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\UserPreferences;
 use App\Modules\Media\Models\Media;
@@ -284,6 +285,21 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         ->call('askErase', $lead->ulid)->assertSet('eraseOpen', true)->html());
     expect($erase)->toContain('role="alertdialog"', e(__('leads.erase_title', ['name' => 'Phạm Thị Lan'])));
     file_put_contents($dir.'/lead-erase.html', str_replace('</body>', $erase.'</body>', $leadPage));
+    // «Chuyển vào Thùng rác» on the lead being read: the message with «Hoàn tác»; then the Trash tab
+    // (each row with its days left) and a lead in it, with its band and «Khôi phục».
+    $moved = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(Inbox::class, ['ulid' => $lead->ulid])
+        ->call('moveToTrash', $lead->ulid)->assertSet('toastMsg', __('leads.toast_trashed'))->html());
+    file_put_contents($dir.'/lead-trashed-toast.html', str_replace('</body>', $moved.'</body>', (string) file_get_contents($dir.'/leads.html')));
+    app(Tenancy::class)->enter(1, function () use ($lead): void {
+        $lead->form->submissions()->create(['status' => 'archived', 'name' => 'Lê Văn Tùng', 'email' => 'tung.le@example.test', 'data' => ['name' => 'Lê Văn Tùng', 'details' => 'Hỏi giá bánh răng côn.']])
+            ->forceFill(['deleted_at' => now()->subDays(12)])->save();
+    });
+    foreach (['leads-trash' => '/admin/forms?status=trash', 'lead-trash-detail' => '/admin/forms?status=trash&lead='.$lead->ulid] as $name => $path) {
+        $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.$path)->assertOk()->getContent();
+        expect($html)->toContain(e(__('leads.st_trash')));
+        file_put_contents($dir.'/'.$name.'.html', $html);
+    }
+    app(Tenancy::class)->enter(1, fn () => FormSubmission::query()->whereKey($lead->id)->update(['deleted_at' => null]));
 
     // Biểu mẫu: the list (the quote form above, with its leads and one recipient), its editor and a
     // new form from the «Đăng ký tư vấn» starting point.
@@ -1516,5 +1532,8 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/leads-export.html'))->toContain('id="lx-pw"', e(__('leads.export_pw_hint')))
         ->and(file_get_contents($dir.'/leads-export-error.html'))->toContain('aria-invalid="true"', e(__('leads.export_pw_wrong')))
         ->and(file_get_contents($dir.'/leads-export-done.html'))->toContain('data-tone="success"');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 136);
+    expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
+        ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
+        ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 139);
 });

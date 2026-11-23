@@ -29,6 +29,10 @@ Schedule::command('entries:purge-trash')->daily()->withoutOverlapping();
 // Empty each site's redirect Trash of redirects removed more than 30 days ago (Redirect::TRASH_DAYS).
 Schedule::command('redirects:purge-trash')->daily()->withoutOverlapping();
 
+// Empty each site's «Khách liên hệ» Trash of leads moved there more than 30 days ago (LeadTrash::DAYS),
+// with their search words and the bell's notices of them.
+Schedule::command('leads:purge-trash')->daily()->withoutOverlapping();
+
 // Empty each site's role trash of custom roles removed more than 30 days ago (Role::TRASH_DAYS).
 // --days=0 empties it now (before rolling back the migration that added the trash).
 Artisan::command('roles:purge-trash {--days='.Role::TRASH_DAYS.' : how many days a role stays in the trash}', function (PurgeTrashedRoles $purge): int {
