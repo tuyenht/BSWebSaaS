@@ -33,6 +33,11 @@ Schedule::command('redirects:purge-trash')->daily()->withoutOverlapping();
 // with their search words and the bell's notices of them.
 Schedule::command('leads:purge-trash')->daily()->withoutOverlapping();
 
+// Delete each site's leads older than its «Thời hạn lưu giữ liên hệ» (LeadRetention: 12/24/36 months,
+// 24 when never set, none for «Không tự xóa»; a shortened period waits 7 days) and its spam sent and
+// last changed over 30 days ago, with their search words and the bell's notices of them.
+Schedule::command('leads:purge-old')->daily()->withoutOverlapping();
+
 // Empty each site's role trash of custom roles removed more than 30 days ago (Role::TRASH_DAYS).
 // --days=0 empties it now (before rolling back the migration that added the trash).
 Artisan::command('roles:purge-trash {--days='.Role::TRASH_DAYS.' : how many days a role stays in the trash}', function (PurgeTrashedRoles $purge): int {
