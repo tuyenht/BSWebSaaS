@@ -1,7 +1,8 @@
 {{-- «Thời hạn lưu giữ liên hệ»: how long the website keeps a lead before the nightly purge deletes it
      for good (LeadRetention). The pick stays in the browser until «Lưu thời hạn» sends it; the law
-     warning follows the pick as it changes, without asking the server. The first option takes the
-     focus when it opens, as the board does: a frame after the dialog's own first-control focus. --}}
+     warning follows the pick as it changes, without asking the server. The chosen option takes the
+     focus when it opens (a radio group's own rule: Space never changes the pick by surprise), a frame
+     after the dialog's own first-control focus. --}}
 @php
     $choices = array_map(\App\Modules\Forms\Support\LeadRetention::key(...), \App\Modules\Forms\Support\LeadRetention::CHOICES);
     $hint = 'm-0 text-small text-text-muted [overflow-wrap:anywhere] [text-wrap:pretty]';
@@ -9,7 +10,7 @@
 <x-bs-admin::modal model="retentionOpen" :title="__('leads.ret_title')" :close-label="__('admin.close')" size="md"
     wire:loading.attr="aria-busy" wire:target="saveRetention">
     <div class="flex flex-col gap-3.5"
-         x-init="$wire.$watch('retentionOpen', (open) => { if (open) { $nextTick(() => requestAnimationFrame(() => document.getElementById('lr-opt-12')?.focus())) } })">
+         x-init="$wire.$watch('retentionOpen', (open) => { if (open) { $nextTick(() => requestAnimationFrame(() => (document.querySelector('input[name=lr-months]:checked') ?? document.getElementById('lr-opt-12'))?.focus())) } })">
         <p class="m-0 [text-wrap:pretty]">{{ __('leads.ret_text') }}</p>
 
         <div class="flex flex-col gap-2" role="radiogroup" aria-label="{{ __('leads.ret_group') }}"
