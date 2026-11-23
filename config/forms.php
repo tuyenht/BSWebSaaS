@@ -18,7 +18,9 @@ return [
     'file_max_mb' => (int) env('FORMS_FILE_MAX_MB', 20),
     // The kinds a file field may be set to take (LeadFileKinds::KINDS), comma-separated. A kind
     // left out is not offered in «Biểu mẫu», its starting field is left out of new forms, and a
-    // field already set to it is neither shown on the website nor collected — e.g. `cad,img` holds
-    // back CVs until keeping them is signed off.
-    'file_kinds' => array_values(array_filter(array_map('trim', explode(',', (string) env('FORMS_FILE_KINDS', 'cad,cv,img'))))),
+    // field already set to it is neither shown on the website nor collected. CVs are held back by
+    // default: a recruiting site must delete the CV of anyone it does not hire (personal data
+    // protection law 91/2025, art. 25), and that shorter keeping period is not built yet. Adding
+    // `cv` here (`cad,cv,img`) turns them on.
+    'file_kinds' => array_values(array_filter(array_map('trim', explode(',', (string) env('FORMS_FILE_KINDS', 'cad,img'))))),
 ];

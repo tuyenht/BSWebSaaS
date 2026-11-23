@@ -211,8 +211,13 @@ it('creates a form from a starting point, with the consent box last and a key fr
     });
 });
 
-it('starts an application form with a one-file CV field, and leaves it out while CVs are held back', function (): void {
+it('holds CVs back unless the platform turns them on', function (): void {
+    expect(config('forms.file_kinds'))->toBe(['cad', 'img']);
+});
+
+it('starts an application form with a one-file CV field when CVs are on, and leaves it out while they are held back', function (): void {
     $manager = builderManager();
+    config(['forms.file_kinds' => ['cad', 'cv', 'img']]);
 
     app(Tenancy::class)->enter(1, function () use ($manager): void {
         Livewire::actingAs($manager)->test(FormEditor::class, ['purpose' => 'application'])->call('save');
