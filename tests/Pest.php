@@ -476,3 +476,13 @@ function totpCode(string $secret, int $steps = 0): string
 
     return $engine->oathTotp($secret, $engine->getTimestamp() + $steps);
 }
+
+/**
+ * Whether $code fits one of the steps the app's window accepts now (±2 steps, as TwoFactorService
+ * checks), remembering nothing: for fixtures that need a code the service would refuse. The service
+ * itself only checks a code by taking it.
+ */
+function totpFits(string $secret, string $code): bool
+{
+    return (new Google2FA)->verifyKey($secret, $code, 2) !== false;
+}

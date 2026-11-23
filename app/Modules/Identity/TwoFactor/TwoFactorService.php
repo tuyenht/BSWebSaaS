@@ -38,15 +38,6 @@ final readonly class TwoFactorService
     }
 
     /**
-     * Whether the code fits the secret now, remembering nothing. A code a member types to get in or
-     * to go on goes through verifyOnce instead.
-     */
-    public function verify(string $secret, string $code): bool
-    {
-        return $this->engine->verifyKey($secret, $code, self::VERIFY_WINDOW) !== false;
-    }
-
-    /**
      * The member's app code, accepted once: false for a wrong code and for a code whose step was
      * already taken (the same code again, an older one, or the same code sent twice side by side).
      * A wrong code is never remembered.
@@ -91,17 +82,40 @@ final readonly class TwoFactorService
         return true;
     }
 
+    /**
+     * Take one of the member's recovery codes: true once per code, false for a wrong code (nothing
+     * is written then). The list is encrypted, so the database cannot match a code itself: the
+     * member's row is read again under a row lock, checked and written back in one transaction (a
+     * savepoint when the request already holds one, the lock then lasting until the request
+     * commits). Two requests at once therefore run one after the other on what the other wrote,
+     * never on the copy loaded at the start of the request: the same code passes once, and two
+     * different codes are both gone afterwards. $user is brought up to date with what was stored.
+     */
     public function consumeRecoveryCode(User $user, string $code): bool
     {
-        $codes = is_array($user->two_factor_recovery_codes) ? $user->two_factor_recovery_codes : [];
-
-        if (! in_array($code, $codes, true)) {
+        if ($code === '') {
             return false;
         }
 
-        $user->forceFill([
-            'two_factor_recovery_codes' => array_values(array_filter($codes, static fn ($c): bool => $c !== $code)),
-        ])->save();
+        $left = $user->getConnection()->transaction(static function () use ($user, $code): ?array {
+            $locked = $user->newQuery()->whereKey($user->getKey())->lockForUpdate()->first();
+            $codes = $locked instanceof User ? Cast::strings($locked->two_factor_recovery_codes) : [];
+
+            if (! $locked instanceof User || ! in_array($code, $codes, true)) {
+                return null;
+            }
+
+            $left = array_values(array_filter($codes, static fn (string $c): bool => $c !== $code));
+            $locked->forceFill(['two_factor_recovery_codes' => $left])->save();
+
+            return $left;
+        });
+
+        if ($left === null) {
+            return false;
+        }
+
+        $user->forceFill(['two_factor_recovery_codes' => $left])->syncOriginalAttribute('two_factor_recovery_codes');
 
         return true;
     }
