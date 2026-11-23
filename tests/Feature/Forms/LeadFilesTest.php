@@ -161,6 +161,15 @@ it('records the size the browser gave for an upload that never arrived whole', f
         ->and(Storage::disk('leads')->allFiles())->toBe([]);
 });
 
+it('records an upload PHP refused as too large at the least it can have been, never as an empty file', function (): void {
+    $lead = lfLead(1);
+    // over upload_max_filesize: PHP keeps no temporary file and reports a size of 0
+    $file = new UploadedFile('', 'ban-ve-lon.step', null, UPLOAD_ERR_INI_SIZE, true);
+
+    expect(lfRow(lfStore($lead, $file, 'cad')))->toMatchArray(['status' => 'rejected', 'storage_key' => null,
+        'size_bytes' => max(LeadFileStorage::maxBytes(), (int) UploadedFile::getMaxFilesize()) + 1]);
+});
+
 it('keeps exactly up to the size limit', function (): void {
     config(['forms.file_max_mb' => 1]);
     $lead = lfLead(1);

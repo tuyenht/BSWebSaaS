@@ -324,6 +324,9 @@
                                 @if ($rowPage !== '')
                                     <span aria-hidden="true">·</span><span class="[overflow-wrap:anywhere]">{{ $rowPage }}</span>
                                 @endif
+                                @if (($nFiles = Cast::int($lead->files_count ?? 0)) > 0)
+                                    <span aria-hidden="true">·</span><span class="inline-flex items-center gap-1 whitespace-nowrap"><x-bs-admin::icon name="ri-attachment-2" class="size-[calc(0.8125rem+var(--user-text-boost))]" />{{ trans_choice('leads.files_n', $nFiles, ['count' => $num($nFiles)]) }}</span>
+                                @endif
                                 @if ($lead->is_spam && $lead->status !== 'spam')
                                     <span class="inline-flex items-center gap-1 text-danger-text"><x-bs-admin::icon name="ri-shield-flash" class="size-[calc(0.8125rem+var(--user-text-boost))]" />{{ __('leads.flagged') }}</span>
                                 @endif
@@ -460,6 +463,37 @@
                             <dd class="m-0 text-text-strong">{{ $d['when'] }}</dd>
                         </div>
                     </dl>
+
+                    @if ($files !== [])
+                        {{-- «Tệp đính kèm»: each file the visitor sent, kept or not. «Tải về» for a member
+                             given the files permission; a support session never opens one. --}}
+                        <section class="flex min-w-0 flex-col gap-2" aria-labelledby="kl-att-h">
+                            <h3 id="kl-att-h" class="m-0 text-[calc(0.875rem+var(--user-text-boost))] font-semibold leading-[1.45] text-text-strong">{{ __('leads.files_title', ['n' => $num(count($files))]) }}</h3>
+                            <ul class="m-0 flex list-none flex-col gap-2 p-0">
+                                @foreach ($files as $file)
+                                    <li class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-border-strong bg-surface-muted px-3 py-2" wire:key="kl-f-{{ $file['ulid'] }}">
+                                        <x-bs-admin::icon :name="$file['icon']" @class(['size-[calc(1.25rem+var(--user-text-boost))] shrink-0', 'text-danger-text' => $file['bad'], 'text-text-muted' => ! $file['bad']]) />
+                                        <span class="flex min-w-0 flex-[1_1_12em] flex-col gap-1">
+                                            <b class="font-semibold text-text-strong [overflow-wrap:anywhere]">{{ $file['name'] }}</b>
+                                            <small class="text-caption text-text-muted">{{ $file['meta'] }}</small>
+                                            @if ($file['bad'])
+                                                <span class="flex items-start gap-1 text-[calc(0.8125rem+var(--user-text-boost))] leading-[1.45] text-danger-text"><x-bs-admin::icon name="ri-error-warning" class="mt-px size-4 shrink-0" />{{ $file['reason'] }}</span>
+                                            @elseif ($support)
+                                                <span class="flex items-start gap-1 text-[calc(0.8125rem+var(--user-text-boost))] leading-[1.45] text-text-muted"><x-bs-admin::icon name="ri-lock" class="mt-px size-4 shrink-0" />{{ __('admin.support.locked') }}</span>
+                                            @elseif (! $canFiles)
+                                                <span class="flex items-start gap-1 text-[calc(0.8125rem+var(--user-text-boost))] leading-[1.45] text-text-muted"><x-bs-admin::icon name="ri-lock" class="mt-px size-4 shrink-0" />{{ __('leads.file_no_perm') }}</span>
+                                            @endif
+                                        </span>
+                                        @if (! $file['bad'] && ! $support && $canFiles)
+                                            <x-bs-admin::button variant="outline" class="ms-auto shrink-0" :href="route('admin.forms.file', $file['ulid'])" :navigate="false" aria-label="{{ __('leads.file_download_aria', ['name' => $file['name']]) }}" title="{{ __('leads.file_download_aria', ['name' => $file['name']]) }}">
+                                                <x-bs-admin::icon name="ri-download-2" class="size-4" /> {{ __('leads.file_download') }}
+                                            </x-bs-admin::button>
+                                        @endif
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </section>
+                    @endif
 
                     @foreach ($d['consents'] as $consent)
                         <div role="note" aria-label="{{ __('leads.consent_label') }}" class="flex items-start gap-2.5 rounded-md border border-border-strong bg-surface-muted p-3">

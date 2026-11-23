@@ -203,7 +203,26 @@ it('creates a form from a starting point, with the consent box last and a key fr
         expect($form->name['vi'])->toBe('Báo giá inox')
             ->and($form->status)->toBe('active')
             ->and($form->settings['edited'] ?? null)->toBeTrue()
-            ->and(fieldKeys($form))->toBe(['name', 'phone', 'email', 'company', 'message', 'consent']);
+            ->and(fieldKeys($form))->toBe(['name', 'phone', 'email', 'company', 'message', 'drawing', 'consent']);
+        $drawing = FormField::query()->where('form_id', $form->id)->where('key', 'drawing')->firstOrFail();
+        expect($drawing->type)->toBe('file')
+            ->and($drawing->options['accept'] ?? null)->toBe('cad')
+            ->and($drawing->validation['max_files'] ?? null)->toBe(3);
+    });
+});
+
+it('starts an application form with a one-file CV field, and leaves it out while CVs are held back', function (): void {
+    $manager = builderManager();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        Livewire::actingAs($manager)->test(FormEditor::class, ['purpose' => 'application'])->call('save');
+        $form = Form::query()->latest('id')->firstOrFail();
+        $cv = FormField::query()->where('form_id', $form->id)->where('key', 'cv')->firstOrFail();
+        expect([$cv->type, $cv->options['accept'] ?? null, $cv->validation['max_files'] ?? null])->toBe(['file', 'cv', 1]);
+
+        config(['forms.file_kinds' => ['cad', 'img']]);
+        $page = Livewire::actingAs($manager)->test(FormEditor::class, ['purpose' => 'application']);
+        expect(array_column($page->get('fields'), 'key'))->not->toContain('cv');
     });
 });
 
@@ -331,7 +350,9 @@ it('refuses a field key, a field kind or the recipients set straight from the pa
     });
 })->with([
     'key' => ['fields.0.key', 'consent'],
-    'kind' => ['fields.0.type', 'file'],
+    'kind' => ['fields.0.type', 'number'],
+    'a kind of file the platform has not' => ['fields.0.accept', 'exe'],
+    'too many files' => ['fields.0.max_files', 9],
     'all fields' => ['fields', []],
     'a row the draft has not' => ['fields.9.label', 'Thêm'],
     'a list as a label' => ['fields.0.label', ['x']],
@@ -425,6 +446,94 @@ it('lets the page change a field\'s kind, required mark and choices', function (
         expect($field->type)->toBe('select')
             ->and($field->is_required)->toBeFalse()
             ->and(Form::query()->find($form->id)?->status)->toBe('disabled');
+    });
+});
+
+it('adds a file field with the kind and number of files picked, and saves them beside its other settings', function (): void {
+    $manager = builderManager();
+    $form = seedBuilderForm(1, 'bao-gia', 'Yêu cầu báo giá');
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $form): void {
+        $page = Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid])
+            ->call('addField', 'file');
+        $key = $page->get('openKey');
+        $i = count($page->get('fields')) - 1;
+        // a new file field starts as drawings, up to 3 files (board «Biểu mẫu»)
+        expect($page->get("fields.{$i}"))->toMatchArray(['type' => 'file', 'accept' => 'cad', 'max_files' => 3]);
+        $page->assertSee(__('form_builder.file_accept'))
+            ->assertSee(__('form_builder.file_size', ['mb' => 20]))
+            ->assertSee(__('form_builder.file_ext', ['ext' => '.step · .stp · .iges · .igs · .dwg · .dxf · .pdf']))
+            ->set("fields.{$i}.label", 'Ảnh hiện trạng')
+            ->set("fields.{$i}.accept", 'img')
+            ->set("fields.{$i}.max_files", '5')
+            ->assertSee(__('form_builder.file_preview', ['types' => 'JPG, PNG']))
+            ->call('save')
+            ->assertSet('toastMsg', __('form_builder.toast_saved'));
+
+        $field = FormField::query()->where('form_id', $form->id)->where('key', $key)->firstOrFail();
+        expect($field->type)->toBe('file')
+            ->and($field->options)->toBe(['accept' => 'img'])
+            ->and($field->validation)->toBe(['max_files' => 5])
+            ->and(fieldKeys($form))->toBe(['name', 'email', $key, 'consent'])
+            ->and($page->instance()->changeCount())->toBe(0);
+
+        // turned into another kind of field, it keeps no file setting
+        $page->set("fields.{$i}.type", 'text')->call('save');
+        $field->refresh();
+        expect([$field->type, $field->options, $field->validation])->toBe(['text', [], []]);
+    });
+});
+
+it('keeps a kind the platform has since held back on a field that has it, never lets it be picked anew', function (): void {
+    $manager = builderManager();
+    $form = seedBuilderForm(1, 'tuyen-dung', 'Ứng tuyển');
+    app(Tenancy::class)->enter(1, fn () => FormField::query()->create(['form_id' => $form->id, 'key' => 'cv', 'type' => 'file', 'label' => ['vi' => 'CV'], 'is_required' => false,
+        'options' => ['accept' => 'cv'], 'validation' => ['max_files' => 1], 'sort_order' => 3]));
+    config(['forms.file_kinds' => ['cad', 'img']]);
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $form): void {
+        $page = Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid]);
+        expect($page->instance()->changeCount())->toBe(0);
+        $page->set('fields.0.label', 'Tên')->call('save')->assertSet('toastMsg', __('form_builder.toast_saved'));
+        expect(FormField::query()->where('form_id', $form->id)->where('key', 'cv')->value('options'))->toBe(['accept' => 'cv']);
+
+        // a held-back kind is never newly given to a field, even straight from the page
+        $page->call('addField', 'file');
+        $i = count($page->get('fields')) - 1;
+        $page->set("fields.{$i}.accept", 'cv')->assertForbidden();
+    });
+
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => app(SaveForm::class)->handle(null, [
+        'name' => 'Mới', 'success' => '', 'active' => true, 'emails' => [],
+        'fields' => [['key' => 'cv', 'type' => 'file', 'label' => 'CV', 'required' => false, 'choices' => '', 'accept' => 'cv', 'max_files' => 1]],
+    ], 'vi')))->toThrow(InvalidArgumentException::class);
+});
+
+it('offers no file type while the platform takes no kind of file', function (): void {
+    $manager = builderManager();
+    $form = seedBuilderForm(1, 'bao-gia', 'Yêu cầu báo giá');
+    config(['forms.file_kinds' => []]);
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $form): void {
+        $page = Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid])
+            ->assertSee(__('form_builder.fields_hint_rest', ['n' => 6]))
+            ->call('addField', 'file');
+        expect(array_column($page->get('fields'), 'type'))->not->toContain('file');
+        $page->set('fields.0.type', 'file')->assertForbidden();
+    });
+});
+
+it('refuses a file field from a member without forms.manage', function (): void {
+    $viewer = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($viewer, 'editor', ['forms.view']));
+    $form = seedBuilderForm(1, 'bao-gia', 'Yêu cầu báo giá');
+
+    app(Tenancy::class)->enter(1, function () use ($viewer, $form): void {
+        Livewire::actingAs($viewer->fresh())->test(FormEditor::class, ['ulid' => $form->ulid])
+            ->call('addField', 'file')
+            ->call('save');
+
+        expect(fieldKeys($form))->toBe(['name', 'email', 'consent']);
     });
 });
 

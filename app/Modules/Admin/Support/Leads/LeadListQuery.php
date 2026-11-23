@@ -137,7 +137,7 @@ final class LeadListQuery
         $forms = $read->filter(fn (Form $form): bool => $form->status !== Form::DELETING)->values();
         $hidden = array_values($read->filter(fn (Form $form): bool => $form->status === Form::DELETING)->map(fn (Form $form): int => $form->id)->all());
         $fields = FormField::query()->whereIn('form_id', $forms->pluck('id')->all())
-            ->select(['id', 'form_id', 'key', 'type', 'label', 'options', 'sort_order'])->orderBy('sort_order')->orderBy('id')->get()->groupBy('form_id');
+            ->select(['id', 'form_id', 'key', 'type', 'label', 'options', 'validation', 'sort_order'])->orderBy('sort_order')->orderBy('id')->get()->groupBy('form_id');
         foreach ($forms as $form) {
             $form->setRelation('fields', $fields->get($form->id) ?? new Collection);
         }
@@ -310,7 +310,9 @@ final class LeadListQuery
             $limit = $max;
         }
 
-        return $query->orderByDesc($order)->orderByDesc('ulid')->limit($limit)->get();
+        // each row says how many files came with it («N tệp đính kèm»): one count per row on the
+        // files' lead index, inside the one statement
+        return $query->withCount('files')->orderByDesc($order)->orderByDesc('ulid')->limit($limit)->get();
     }
 
     /**

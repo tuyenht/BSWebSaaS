@@ -10,6 +10,7 @@ use App\Modules\Forms\Actions\DeleteForm;
 use App\Modules\Forms\Actions\SetFormStatus;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Support\FormDraft;
+use App\Modules\Forms\Support\FormFieldTypes;
 use App\Modules\Forms\Support\FormTemplates;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Shared\Support\Cast;
@@ -286,14 +287,20 @@ final class FormList extends Component
      */
     private function purposes(string $locale): array
     {
-        return array_map(fn (string $p): array => [
-            'key' => $p,
-            'label' => __('form_builder.purpose.'.$p),
-            'desc' => __('form_builder.purpose_desc.'.$p),
-            'icon' => FormTemplates::ICONS[$p],
-            'n' => count(FormTemplates::fields($p, $locale)) + 1,
-            'href' => route('admin.form-builder.create', ['purpose' => $p]),
-        ], FormTemplates::PURPOSES);
+        return array_map(function (string $p) use ($locale): array {
+            $fields = FormTemplates::fields($p, $locale);
+            // a purpose that brings an attachment field says so (one the platform holds back does not)
+            $withFile = in_array(FormFieldTypes::FILE, array_column($fields, 'type'), true);
+
+            return [
+                'key' => $p,
+                'label' => __('form_builder.purpose.'.$p),
+                'desc' => __('form_builder.purpose_desc.'.$p.($withFile ? '_file' : '')),
+                'icon' => FormTemplates::ICONS[$p],
+                'n' => count($fields) + 1,
+                'href' => route('admin.form-builder.create', ['purpose' => $p]),
+            ];
+        }, FormTemplates::PURPOSES);
     }
 
     /**

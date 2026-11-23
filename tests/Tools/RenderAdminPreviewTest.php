@@ -27,6 +27,7 @@ use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Admin\Livewire\Catalog\Index;
 use App\Modules\Admin\Livewire\Entries\ReviewChanges;
 use App\Modules\Admin\Livewire\Entries\ReviewInbox;
+use App\Modules\Admin\Livewire\Forms\FormEditor;
 use App\Modules\Admin\Livewire\Forms\FormList;
 use App\Modules\Admin\Livewire\Forms\Inbox;
 use App\Modules\Admin\Livewire\LanguageSettings;
@@ -63,6 +64,7 @@ use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\CategoryScopes;
+use App\Modules\Forms\Actions\StoreLeadFile;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Forms\Support\LeadRetention;
@@ -93,11 +95,13 @@ use App\Modules\Theme\Theming\AiCrawlerCheck;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -266,15 +270,25 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
             ['key' => 'service', 'type' => 'select', 'label' => ['vi' => 'Nhu cầu'], 'sort_order' => 4,
                 'options' => ['choices' => [['value' => 'cnc', 'label' => ['vi' => 'Gia công CNC']]]]],
             ['key' => 'details', 'type' => 'textarea', 'label' => ['vi' => 'Nội dung cần báo giá'], 'sort_order' => 5],
-            ['key' => 'consent', 'type' => 'checkbox', 'label' => ['vi' => 'Tôi đồng ý cho website lưu thông tin liên hệ.'], 'is_required' => true, 'sort_order' => 6],
+            ['key' => 'drawing', 'type' => 'file', 'label' => ['vi' => 'Bản vẽ kèm theo'], 'sort_order' => 6,
+                'options' => ['accept' => 'cad'], 'validation' => ['max_files' => 3]],
+            ['key' => 'consent', 'type' => 'checkbox', 'label' => ['vi' => 'Tôi đồng ý cho website lưu thông tin liên hệ.'], 'is_required' => true, 'sort_order' => 7],
         ]);
         $form->submissions()->create(['data' => ['name' => 'Trần Minh Khoa', 'phone' => '0903 112 233'], 'name' => 'Trần Minh Khoa', 'phone' => '0903 112 233', 'status' => 'new']);
         $form->submissions()->create(['data' => ['name' => 'Nhận vay nhanh', 'details' => 'Vay tiền trực tuyến duyệt trong 5 phút.'], 'name' => 'Nhận vay nhanh', 'email' => 'vaynhanh247@mail.ru', 'status' => 'spam', 'is_spam' => true]);
 
-        return $form->submissions()->create(['status' => 'read', 'name' => 'Phạm Thị Lan', 'phone' => '0915 668 383', 'source_url' => 'https://'.ADMIN_PREVIEW_HOST.'/lien-he', 'data' => [
+        $lead = $form->submissions()->create(['status' => 'read', 'name' => 'Phạm Thị Lan', 'phone' => '0915 668 383', 'source_url' => 'https://'.ADMIN_PREVIEW_HOST.'/lien-he', 'data' => [
             'name' => 'Phạm Thị Lan', 'phone' => '0915 668 383', 'company' => 'Công ty TNHH Cơ khí Bình Minh', 'service' => 'cnc',
             'details' => "Trục inox 304, 40 cái.\nCần giao trong tháng 12.", 'consent' => 'Tôi đồng ý cho website lưu thông tin liên hệ.',
         ]]);
+        // «Tệp đính kèm»: two drawings kept and a file whose bytes are not what its name says
+        Storage::fake('leads');
+        $store = app(StoreLeadFile::class);
+        $store->handle($lead, 'drawing', 'cad', UploadedFile::fake()->createWithContent('truc-inox-304.step', "ISO-10303-21;\n".str_repeat('x', 2_500_000)));
+        $store->handle($lead, 'drawing', 'cad', UploadedFile::fake()->createWithContent('ban-ve-lap-rap.pdf', "%PDF-1.4\n".str_repeat('x', 880_000)));
+        $store->handle($lead, 'drawing', 'cad', UploadedFile::fake()->createWithContent('bang-gia.dwg', 'MZ'));
+
+        return $lead;
     });
     foreach (['leads' => '/admin/forms', 'lead-detail' => '/admin/forms/'.$lead->ulid, 'leads-spam' => '/admin/forms?status=spam'] as $name => $path) {
         $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.$path)->assertOk()->getContent();
@@ -285,6 +299,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $erase = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(Inbox::class, ['ulid' => $lead->ulid])
         ->call('askErase', $lead->ulid)->assertSet('eraseOpen', true)->html());
     expect($erase)->toContain('role="alertdialog"', e(__('leads.erase_title', ['name' => 'Phạm Thị Lan'])));
+    expect($leadPage)->toContain(e(__('leads.files_title', ['n' => 3])), 'truc-inox-304.step', e(__('leads.file_bad')), e(__('leads.file_download')));
     file_put_contents($dir.'/lead-erase.html', str_replace('</body>', $erase.'</body>', $leadPage));
     // «Chuyển vào Thùng rác» on the lead being read: the message with «Hoàn tác»; then the Trash tab
     // (each row with its days left) and a lead in it, with its band and «Khôi phục».
@@ -314,6 +329,11 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.$path)->assertOk()->getContent();
         file_put_contents($dir.'/'.$name.'.html', $html);
     }
+    // A file field open in the editor: its kinds, its number of files and the size note.
+    $fileField = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(FormEditor::class, ['ulid' => $quote->ulid])
+        ->call('addField', 'file')->html());
+    expect($fileField)->toContain(e(__('form_builder.file_accept')), e(__('form_builder.file_bigger')));
+    file_put_contents($dir.'/form-builder-file.html', str_replace('</body>', $fileField.'</body>', (string) file_get_contents($dir.'/form-builder-edit.html')));
     // «Xóa» on the quote form: the question with its leads and «Tắt biểu mẫu» instead.
     $formsPage = (string) file_get_contents($dir.'/form-builder.html');
     $ask = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(FormList::class)
@@ -1551,5 +1571,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 142);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 143);
 });
