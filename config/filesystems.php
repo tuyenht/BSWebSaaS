@@ -80,6 +80,29 @@ return [
             'report' => false,
         ],
 
+        // The files visitors send with a lead (CVs, drawings): PRIVATE, never served by the public
+        // media Worker on files.baoson.net. Same R2 account as media; its own bucket when
+        // FORMS_FILES_BUCKET is set, else the media bucket under the `_private/` root, a first
+        // segment the Worker never serves (keys starting with "_", deploy/media-worker/src/keys.js),
+        // and the keys carry no extension, which it never serves either. Read only through a
+        // 60-second signed link, after the permission check and the audit row
+        // (LeadFileDownloadController).
+        'leads' => [
+            'driver' => 's3',
+            'key' => env('R2_ACCESS_KEY_ID'),
+            'secret' => env('R2_SECRET_ACCESS_KEY'),
+            'region' => env('R2_REGION', 'auto'),
+            'bucket' => env('FORMS_FILES_BUCKET', env('R2_BUCKET')),
+            'endpoint' => env('R2_ENDPOINT'),
+            'root' => env('FORMS_FILES_ROOT', '_private'),
+            'visibility' => 'private',
+            'use_path_style_endpoint' => true,
+            'request_checksum_calculation' => 'when_required',
+            'response_checksum_validation' => 'when_required',
+            'throw' => false,
+            'report' => false,
+        ],
+
     ],
 
     /*

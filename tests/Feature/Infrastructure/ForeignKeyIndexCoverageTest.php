@@ -33,7 +33,7 @@ it('gives every foreign key an index that its parent-delete lookup can use', fun
             'workflow_log.assigned_to',
         ],
         // Soft-deleted only.
-        'sites' => ['form_fields.site_id', 'mediables.site_id', 'site_profile_translations.site_id'],
+        'sites' => ['form_fields.site_id', 'form_submission_files.site_id', 'mediables.site_id', 'site_profile_translations.site_id'],
         'tenants' => ['sites.tenant_id'],
         // Reference catalogs: synced or imported, never deleted.
         'permissions' => ['model_has_permissions.permission_id'],
