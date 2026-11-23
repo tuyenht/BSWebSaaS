@@ -10,8 +10,11 @@ namespace App\Modules\Forms\Support;
  * site's main language (the wording comes from lang/*.json), and every form also gets the consent box
  * (SaveForm), which is why the count shown with each purpose adds one.
  *
- * The board's quote and application purposes also bring an attachment field; attachments are not
- * built yet (form_fields.type cannot hold one), so those fields are left out until they are.
+ * The quote and application purposes also bring an attachment field («Tệp đính kèm»): a drawing
+ * (up to 3 files) and a CV (one). One whose kind the platform holds back (forms.file_kinds) is
+ * left out.
+ *
+ * @phpstan-import-type DraftField from FormDraft
  */
 final class FormTemplates
 {
@@ -30,26 +33,32 @@ final class FormTemplates
     /**
      * The fields a purpose starts with, in order, labelled in $locale.
      *
-     * @return list<array{key: string, type: string, label: string, required: bool, choices: string}>
+     * @return list<DraftField>
      */
     public static function fields(string $purpose, string $locale): array
     {
-        $f = static fn (string $key, string $type, bool $required, string $label, string $choices = ''): array => [
+        $f = static fn (string $key, string $type, bool $required, string $label, string $choices = '', string $accept = '', int $max = 0): array => [
             'key' => $key,
             'type' => $type,
             'label' => (string) __('form_builder.tpl.'.$label, [], $locale),
             'required' => $required,
             'choices' => $choices === '' ? '' : (string) __('form_builder.tpl.'.$choices, [], $locale),
+            'accept' => $accept,
+            'max_files' => $max,
         ];
+        $kinds = FormFieldTypes::fileKinds();
+        $file = static fn (string $key, string $label, string $kind, int $max): array => in_array($kind, $kinds, true)
+            ? [$f($key, FormFieldTypes::FILE, false, $label, '', $kind, $max)]
+            : [];
         $name = $f('name', 'text', true, 'name');
         $phone = $f('phone', 'tel', false, 'phone');
         $phoneRequired = $f('phone', 'tel', true, 'phone');
         $email = $f('email', 'email', false, 'email');
 
         return match ($purpose) {
-            'quote' => [$name, $phone, $email, $f('company', 'text', false, 'company'), $f('message', 'textarea', true, 'message_quote')],
+            'quote' => [$name, $phone, $email, $f('company', 'text', false, 'company'), $f('message', 'textarea', true, 'message_quote'), ...$file('drawing', 'drawing', 'cad', 3)],
             'consult' => [$name, $phoneRequired, $f('need', 'textarea', false, 'need'), $f('callback', 'select', false, 'callback', 'callback_choices')],
-            'application' => [$name, $phoneRequired, $email, $f('position', 'text', false, 'position'), $f('message', 'textarea', false, 'intro')],
+            'application' => [$name, $phoneRequired, $email, $f('position', 'text', false, 'position'), $f('message', 'textarea', false, 'intro'), ...$file('cv', 'cv', 'cv', 1)],
             'custom' => [$name, $phone, $email],
             default => [$name, $email, $phone, $f('message', 'textarea', true, 'message')],
         };

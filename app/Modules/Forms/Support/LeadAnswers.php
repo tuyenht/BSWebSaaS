@@ -14,7 +14,8 @@ use App\Modules\Shared\Support\Cast;
  * the visitor agreed to when they sent it), never the box's current wording. An answer whose field
  * was removed later still shows, under its key — nothing the visitor sent is hidden. With
  * $withEmpty a field the visitor left empty is listed too, with an empty value (the inbox writes
- * "Khách không điền" there); an unticked box is never listed.
+ * "Khách không điền" there); an unticked box is never listed. A file field is not an answer: its
+ * files are listed apart («Tệp đính kèm»).
  */
 final class LeadAnswers
 {
@@ -31,6 +32,11 @@ final class LeadAnswers
         $seen = [];
 
         foreach ($form->fields ?? [] as $field) {
+            if ($field->type === FormFieldTypes::FILE) {
+                // its files are rows of their own (the lead's «Tệp đính kèm»), never an answer; a
+                // value under its key was typed while the field was of another kind, and still shows
+                continue;
+            }
             $seen[$field->key] = true;
             $answer = self::answer($field, $data[$field->key] ?? null, $locale, $withEmpty);
             if ($answer !== null) {

@@ -62,22 +62,13 @@ final class StoreLeadFile
 
         $name = LeadFileKinds::cleanName($file->getClientOriginalName());
         $path = $file->isValid() ? $file->getRealPath() : false;
-        // an upload PHP refused (too large for its limits) keeps the size the browser gave
-        $size = max(0, (int) ($path === false ? $file->getSize() : filesize($path)));
+        $size = $path === false ? self::sentSize($file) : max(0, (int) filesize($path));
 
         $refused = $path === false
             || $size > LeadFileStorage::maxBytes()
             || LeadFileKinds::refusal($kind, $name, $path) !== null;
         if ($refused) {
-            return FormSubmissionFile::query()->create([
-                'form_submission_id' => $lead->getKey(),
-                'field_key' => $fieldKey,
-                'original_name' => $name,
-                'mime' => null,
-                'size_bytes' => $size,
-                'storage_key' => null,
-                'status' => FormSubmissionFile::REJECTED,
-            ]);
+            return $this->rejected($lead, $fieldKey, $name, $size);
         }
 
         $extension = Cast::string(LeadFileKinds::extension($name));
@@ -121,5 +112,62 @@ final class StoreLeadFile
 
             throw $e;
         }
+    }
+
+    /**
+     * Records $file as refused without looking at it: a file over the field's «Số tệp tối đa».
+     * Its bytes are never read or kept; a spam lead keeps nothing (null), as in handle().
+     */
+    public function refuse(FormSubmission $lead, string $fieldKey, UploadedFile $file): ?FormSubmissionFile
+    {
+        if ($fieldKey === '' || strlen($fieldKey) > 40) {
+            throw new InvalidArgumentException('A field key is 1 to 40 characters.');
+        }
+        if (! $lead->exists) {
+            throw new LogicException('A lead\'s files are kept only once the lead is saved.');
+        }
+        $current = app(CurrentSite::class);
+        if (! $current->hasId() || $current->id() !== $lead->site_id) {
+            throw new LogicException('A lead\'s files are kept in the lead\'s own website.');
+        }
+        if ($lead->is_spam || $lead->status === 'spam') {
+            return null;
+        }
+
+        return $this->rejected($lead, $fieldKey, LeadFileKinds::cleanName($file->getClientOriginalName()), self::sentSize($file));
+    }
+
+    private function rejected(FormSubmission $lead, string $fieldKey, string $name, int $size): FormSubmissionFile
+    {
+        return FormSubmissionFile::query()->create([
+            'form_submission_id' => $lead->getKey(),
+            'field_key' => $fieldKey,
+            'original_name' => $name,
+            'mime' => null,
+            'size_bytes' => $size,
+            'storage_key' => null,
+            'status' => FormSubmissionFile::REJECTED,
+        ]);
+    }
+
+    /**
+     * The size of an upload as received: the temporary file's, else the size the browser gave. An
+     * upload PHP refused has no temporary file to ask (asking throws), and PHP reports 0 for one
+     * over its own limits: such a file is recorded at the least it can have been, one byte over the
+     * larger of the two limits, so that it reads as too large rather than as an empty file.
+     */
+    private static function sentSize(UploadedFile $file): int
+    {
+        try {
+            $path = $file->getRealPath();
+            $size = max(0, (int) ($path !== false && $path !== '' && is_file($path) ? filesize($path) : $file->getSize()));
+        } catch (Throwable) {
+            $size = 0;
+        }
+        if ($size === 0 && in_array($file->getError(), [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) {
+            return max(LeadFileStorage::maxBytes(), (int) min(UploadedFile::getMaxFilesize(), PHP_INT_MAX - 1)) + 1;
+        }
+
+        return $size;
     }
 }

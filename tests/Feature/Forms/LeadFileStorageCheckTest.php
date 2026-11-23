@@ -12,7 +12,8 @@ use Psr\Http\Message\RequestInterface;
 
 /*
  * forms:check-file-storage, run from the release smoke against the real private disk: it writes a
- * tiny object under a check prefix, reads its stored headers back, fetches a link signed exactly
+ * tiny object under a check prefix, lists that prefix (the object must come back under the key it
+ * was written to), reads its stored headers back, fetches a link signed exactly
  * as a download is, deletes the object, and prints one line, OK or FAIL with the step, never a
  * key, a bucket, an endpoint or a link. Here the bucket is an S3 client whose answers the test
  * gives (the link is still really signed); the run against R2 itself happens at release.
@@ -30,8 +31,12 @@ function lscDisk(object $test, ?Closure $answer = null): void
 {
     $test->calls = $calls = new ArrayObject;
     $answer ??= fn (string $name): mixed => null;
-    $handler = function (CommandInterface $command, RequestInterface $request) use ($calls, $answer) {
+    $written = new ArrayObject;
+    $handler = function (CommandInterface $command, RequestInterface $request) use ($calls, $answer, $written) {
         $calls[] = ['name' => $command->getName(), 'params' => $command->toArray()];
+        if ($command->getName() === 'PutObject') {
+            $written[] = $command->toArray()['Key'];
+        }
         $given = $answer($command->getName(), $command->toArray());
         if ($given instanceof S3Exception) {
             return Create::rejectionFor($given);
@@ -42,6 +47,8 @@ function lscDisk(object $test, ?Closure $answer = null): void
 
         return Create::promiseFor(new Result(match ($command->getName()) {
             'HeadObject' => ['ContentType' => 'application/octet-stream', 'ContentDisposition' => 'attachment'],
+            // the bucket lists what was written, under its own key
+            'ListObjectsV2' => ['IsTruncated' => false, 'Contents' => array_map(fn (string $key): array => ['Key' => $key, 'Size' => 25], $written->getArrayCopy())],
             default => [],
         }));
     };
@@ -86,9 +93,11 @@ it('says OK when the object is kept and handed out only as a download, and leave
         ->doesntExpectOutputToContain('check-key')
         ->assertExitCode(0);
 
-    expect(lscNames($this))->toBe(['PutObject', 'HeadObject', 'DeleteObject']);
-    [$put, $head, $delete] = $this->calls->getArrayCopy();
+    expect(lscNames($this))->toBe(['PutObject', 'ListObjectsV2', 'HeadObject', 'DeleteObject']);
+    [$put, $list, $head, $delete] = $this->calls->getArrayCopy();
     expect($put['params']['Key'])->toStartWith('_private/storage-check/')->not->toContain('leads/')
+        ->and($list['params']['Prefix'])->toBe('_private/storage-check/')
+        ->and($list['params']['Bucket'])->toBe('leads-bucket')
         ->and($put['params']['ContentType'])->toBe('application/octet-stream')
         ->and($put['params']['ContentDisposition'])->toBe('attachment')
         ->and($head['params']['Key'])->toBe($put['params']['Key'])
@@ -111,7 +120,7 @@ it('fails on stored headers that would let the object open in a page, and still 
 
     $this->artisan('forms:check-file-storage')->expectsOutput('FAIL: '.$reason)->assertExitCode(1);
 
-    expect(lscNames($this))->toBe(['PutObject', 'HeadObject', 'DeleteObject'])
+    expect(lscNames($this))->toBe(['PutObject', 'ListObjectsV2', 'HeadObject', 'DeleteObject'])
         ->and($this->fetched)->toHaveCount(0);
 })->with([
     'shown as text' => [['ContentType' => 'text/html', 'ContentDisposition' => 'attachment'], 'the stored object is not kept as application/octet-stream'],
@@ -128,7 +137,7 @@ it('fails on a signed link that is not answered as a saved download, and still d
         ->doesntExpectOutputToContain('http')
         ->assertExitCode(1);
 
-    expect(lscNames($this))->toBe(['PutObject', 'HeadObject', 'DeleteObject']);
+    expect(lscNames($this))->toBe(['PutObject', 'ListObjectsV2', 'HeadObject', 'DeleteObject']);
 })->with([
     'refused' => [[], 403, 'denied', 'the signed link answered 403, not 200'],
     'other bytes' => [[], 200, 'something else', 'the signed link did not return the check object'],
@@ -136,6 +145,27 @@ it('fails on a signed link that is not answered as a saved download, and still d
     'inline' => [['Content-Disposition' => 'inline; filename="x.txt"'], 200, LSC_BODY, 'the signed link is not answered as an attachment'],
     'attachment then inline' => [['Content-Disposition' => 'attachment, inline'], 200, LSC_BODY, 'the signed link is not answered as an attachment'],
     'cacheable' => [['Cache-Control' => 'public, max-age=3600'], 200, LSC_BODY, 'the signed link is not answered as no-store'],
+]);
+
+it('fails when the listing does not give the object back under the key it was written to, and still deletes it', function (Closure $contents, string $reason): void {
+    lscDisk($this, fn (string $name, array $params): mixed => match ($name) {
+        'ListObjectsV2' => $contents($params),
+        default => null,
+    });
+    lscLink($this);
+
+    $this->artisan('forms:check-file-storage')
+        ->expectsOutput('FAIL: '.$reason)
+        ->doesntExpectOutputToContain('storage-check/')
+        ->assertExitCode(1);
+
+    expect(lscNames($this))->toBe(['PutObject', 'ListObjectsV2', 'DeleteObject'])
+        ->and($this->fetched)->toHaveCount(0);
+})->with([
+    'not listed' => [fn (array $params): Result => new Result(['IsTruncated' => false, 'Contents' => []]), 'the check object is not listed under the key it was written to'],
+    'another key only' => [fn (array $params): Result => new Result(['IsTruncated' => false, 'Contents' => [['Key' => '_private/storage-check/someone-else', 'Size' => 25]]]), 'the check object is not listed under the key it was written to'],
+    'listed without the disk root' => [fn (array $params): Result => new Result(['IsTruncated' => false, 'Contents' => [['Key' => 'storage-check/x', 'Size' => 25]]]), 'the check object is not listed under the key it was written to'],
+    'listing refused' => [fn (array $params): S3Exception => new S3Exception('denied at https://bucket-endpoint.example.test', new Command('ListObjectsV2')), 'could not list the check object'],
 ]);
 
 it('fails without a word of the bucket when the object cannot be written, and has nothing to delete', function (): void {

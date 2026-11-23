@@ -6,6 +6,7 @@ namespace App\Modules\Admin\Livewire\Forms;
 
 use App\Modules\Admin\Support\Leads\LeadCsvExport;
 use App\Modules\Admin\Support\Leads\LeadExportTicket;
+use App\Modules\Admin\Support\Leads\LeadFileRows;
 use App\Modules\Admin\Support\Leads\LeadListQuery;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Forms\Actions\EraseLead;
@@ -675,6 +676,11 @@ final class Inbox extends Component
                 $counts = $list->tabCounts();
                 $rows = $list->rows($this->tab, $this->until, self::PAGE, self::MAX_ROWS);
                 $open = $this->lead !== '' ? ($rows->firstWhere('ulid', $this->lead) ?? $this->findLead($this->lead, $hidden)) : $rows->first();
+                // the lead's «Tệp đính kèm», in the order they came: one read, none when its row
+                // already counted no file
+                $open?->setRelation('files', $open->getAttribute('files_count') === 0
+                    ? new Collection
+                    : $open->files()->select(['id', 'ulid', 'form_submission_id', 'field_key', 'original_name', 'size_bytes', 'status'])->get());
                 $formIds = array_values($forms->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->all());
 
                 return [
@@ -715,6 +721,9 @@ final class Inbox extends Component
             'failed' => $read['failed'] ?? false,
             'canManage' => $canManage,
             'support' => app(SupportSession::class)->active(),
+            'files' => $read['open'] !== null ? LeadFileRows::of($read['open']->files, $openForm, app()->getLocale()) : [],
+            // «Tải về» for a member given forms.files (a lead in the trash: who may also manage leads)
+            'canFiles' => $read['open'] !== null && Gate::allows('downloadFile', $read['open']),
             'offForms' => $this->offForms($read['forms']),
             'filterCount' => count($this->formF) + ($this->when !== '' ? 1 : 0),
             'siteTime' => $siteTime,

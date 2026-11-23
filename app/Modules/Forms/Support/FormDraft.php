@@ -13,9 +13,10 @@ use Illuminate\Support\Str;
  * site's main one), whether it takes leads, and its fields in order — the consent box left out (it is
  * the platform's, always last, and never edited there). A choice field's choices are one per line.
  * SaveForm writes such a draft back; the other languages and every setting the editor does not show
- * (an empty field's example, length limits) stay as they were.
+ * (an empty field's example, length limits) stay as they were. A file field carries its kind
+ * (`accept`, LeadFileKinds::KINDS) and its most files; any other field has '' and 0 there.
  *
- * @phpstan-type DraftField array{key: string, type: string, label: string, required: bool, choices: string}
+ * @phpstan-type DraftField array{key: string, type: string, label: string, required: bool, choices: string, accept: string, max_files: int}
  * @phpstan-type Draft array{name: string, success: string, active: bool, emails: list<string>, fields: list<DraftField>}
  */
 final class FormDraft
@@ -65,6 +66,8 @@ final class FormDraft
                 'label' => self::text($field->label, $locale),
                 'required' => $field->is_required,
                 'choices' => FormFieldTypes::isChoice($field->type) ? implode("\n", array_values(FormFieldTypes::choiceLabels($field, $locale))) : '',
+                'accept' => $field->type === FormFieldTypes::FILE ? FormFieldTypes::fileKind($field) : '',
+                'max_files' => $field->type === FormFieldTypes::FILE ? FormFieldTypes::maxFiles($field) : 0,
             ];
         }
 

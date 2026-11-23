@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Forms\Support;
 
+use App\Modules\Shared\Support\Cast;
 use InvalidArgumentException;
 use ZipArchive;
 
@@ -85,6 +86,17 @@ final class LeadFileKinds
      */
     public static function refusal(string $kind, string $name, string $path): ?string
     {
+        return self::nameRefusal($kind, $name) ?? (self::looksLike(Cast::string(self::extension($name)), $path) ? null : 'forged');
+    }
+
+    /**
+     * Why the name alone rules $name out for $kind (step 1 above), or null when the name is one the
+     * kind takes. Also how the inbox tells, from a refused file's kept name, that its type was wrong.
+     *
+     * @return 'blocked'|'wrong_type'|null
+     */
+    public static function nameRefusal(string $kind, string $name): ?string
+    {
         $takes = self::KINDS[$kind] ?? throw new InvalidArgumentException("Unknown file kind [{$kind}].");
 
         $parts = explode('.', mb_strtolower($name));
@@ -96,11 +108,8 @@ final class LeadFileKinds
         }
 
         $extension = self::extension($name);
-        if ($extension === null || ! in_array($extension, $takes, true)) {
-            return 'wrong_type';
-        }
 
-        return self::looksLike($extension, $path) ? null : 'forged';
+        return $extension === null || ! in_array($extension, $takes, true) ? 'wrong_type' : null;
     }
 
     /** The name's last part, lower case, or null when it has none. */

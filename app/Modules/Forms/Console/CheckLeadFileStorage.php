@@ -22,11 +22,14 @@ use Throwable;
  *
  *  1. writes a tiny object under CHECK_PREFIX (never under a website's `leads/` prefix, so
  *     forms:reconcile-files and the sweeper never see it) with LeadFileStorage::OBJECT_OPTIONS;
- *  2. reads its stored headers back from the bucket: `application/octet-stream` and `attachment`;
- *  3. signs a link exactly as a download does (LeadFileStorage::signedUrl) and fetches it: the
+ *  2. lists CHECK_PREFIX the way forms:reconcile-files lists a website's prefix: the object must
+ *     be listed, under the very key it was written to (a disk whose listing does not give back the
+ *     written keys, say a prefix it adds or drops, would have the reconcile miss or delete files);
+ *  3. reads its stored headers back from the bucket: `application/octet-stream` and `attachment`;
+ *  4. signs a link exactly as a download does (LeadFileStorage::signedUrl) and fetches it: the
  *     answer must be 200 with the object's bytes, `application/octet-stream`, `attachment` (never
  *     `inline`) and `no-store`;
- *  4. deletes the object, whatever happened before.
+ *  5. deletes the object, whatever happened before.
  *
  * Exit code 0 on OK, 1 on FAIL.
  */
@@ -66,6 +69,7 @@ final class CheckLeadFileStorage extends Command
 
                 return $written ? null : 'could not write the check object';
             })
+                ?? $this->step('could not list the check object', fn (): ?string => $this->listed($disk, $key))
                 ?? $this->step('could not read the check object\'s headers', fn (): ?string => $this->storedHeaders($disk, $key))
                 ?? $this->step('could not fetch the signed link', fn (): ?string => $this->signedAnswer($key));
         } finally {
@@ -97,6 +101,17 @@ final class CheckLeadFileStorage extends Command
 
             return $reason;
         }
+    }
+
+    private function listed(AwsS3V3Adapter $disk, string $key): ?string
+    {
+        foreach ($disk->getDriver()->listContents(self::CHECK_PREFIX, true) as $item) {
+            if ($item->isFile() && $item->path() === $key) {
+                return null;
+            }
+        }
+
+        return 'the check object is not listed under the key it was written to';
     }
 
     private function storedHeaders(AwsS3V3Adapter $disk, string $key): ?string

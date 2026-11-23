@@ -8,6 +8,8 @@ use App\Modules\Forms\Support\FormFieldTypes;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Validates a storefront lead submission (the contact / quote form, GĐ1). The endpoint is public
@@ -15,6 +17,11 @@ use Illuminate\Foundation\Http\FormRequest;
  * controller + SubmitForm, not here. The rules come from the fields the site defined for the form
  * (FormFieldTypes): every field the visitor is shown is validated and kept, nothing else is. A form
  * that asks for both email and phone needs one of them, so such a lead is always reachable.
+ *
+ * A file field's files come as a list under its key (`drawing[]`); an empty file box sends nothing.
+ * They are checked for being files only: each is kept or refused on its own afterwards (SubmitForm),
+ * never by failing the lead. A send whose body is over post_max_size reaches here with nothing in
+ * it (PHP drops the whole body): the visitor gets their form back with one plain message.
  */
 final class StoreLeadRequest extends FormRequest
 {
@@ -54,6 +61,61 @@ final class StoreLeadRequest extends FormRequest
         // that form only. Set on the application request: the error redirect and the controller's
         // withInput() flash that one, not this copy. Never a stored field (not in rules()).
         request()->merge(['lead_form' => (string) $this->route('key')]);
+
+        $limit = self::postLimit();
+        if ($limit > 0 && Cast::int($this->server('CONTENT_LENGTH')) > $limit) {
+            throw ValidationException::withMessages(['form' => __('forms.err_files_total', ['mb' => intdiv($limit, 1024 * 1024)])]);
+        }
+    }
+
+    /**
+     * What the validator reads: the input, and each file field's uploads as a list without the
+     * empty entries a file box left blank sends (no list at all when none is left).
+     *
+     * @return array<string, mixed>
+     */
+    #[\Override]
+    public function validationData(): array
+    {
+        /** @var array<string, mixed> $data */
+        $data = $this->all();
+        foreach ($this->collectableFields() as $field) {
+            if ($field->type !== FormFieldTypes::FILE || ! array_key_exists($field->key, $data)) {
+                continue;
+            }
+            $sent = $data[$field->key] instanceof UploadedFile ? [$data[$field->key]] : $data[$field->key]; // a lone file sent without []
+            $sent = is_array($sent) ? array_values(array_filter($sent, fn (mixed $one): bool => $one !== null && $one !== '')) : $sent;
+            if ($sent === [] || $sent === null || $sent === '') {
+                unset($data[$field->key]);
+            } else {
+                $data[$field->key] = $sent;
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * The answers to keep with the lead, and the files sent with it by file field key (validated:
+     * files only), apart.
+     *
+     * @return array{0: array<string, mixed>, 1: array<string, list<UploadedFile>>}
+     */
+    public function answersAndFiles(): array
+    {
+        /** @var array<string, mixed> $answers */
+        $answers = $this->validated();
+        $files = [];
+        foreach ($this->collectableFields() as $field) {
+            if ($field->type !== FormFieldTypes::FILE) {
+                continue;
+            }
+            $sent = $answers[$field->key] ?? [];
+            unset($answers[$field->key]);
+            $files[$field->key] = array_values(array_filter(is_array($sent) ? $sent : [], fn (mixed $one): bool => $one instanceof UploadedFile));
+        }
+
+        return [$answers, array_filter($files)];
     }
 
     /**
@@ -142,6 +204,11 @@ final class StoreLeadRequest extends FormRequest
             if (FormFieldTypes::isChoice($field->type)) {
                 $messages[$field->key.'.required'] = __('forms.err_choice_required');
             }
+            if ($field->type === FormFieldTypes::FILE) {
+                $messages[$field->key.'.required'] = __('forms.err_file_required');
+                $messages[$field->key.'.array'] = __('forms.err_field_invalid');
+                $messages[$field->key.'.max'] = __('forms.err_field_invalid');
+            }
             if ($field->type === 'number') {
                 $messages[$field->key.'.min'] = __('forms.err_number_min');
                 $messages[$field->key.'.max'] = __('forms.err_number_max');
@@ -180,6 +247,22 @@ final class StoreLeadRequest extends FormRequest
         $form = $this->leadForm();
 
         return $form === null ? [] : array_values($form->fields->filter(FormFieldTypes::isCollectable(...))->all());
+    }
+
+    /** post_max_size in bytes (0 when unlimited), read as PHP reads it. */
+    private static function postLimit(): int
+    {
+        $value = trim((string) ini_get('post_max_size'));
+        if ($value === '' || is_numeric($value)) {
+            return (int) $value;
+        }
+
+        return (int) $value * match (strtoupper(substr($value, -1))) {
+            'K' => 1024,
+            'M' => 1024 * 1024,
+            'G' => 1024 * 1024 * 1024,
+            default => 1,
+        };
     }
 
     private function field(string $key): ?FormField

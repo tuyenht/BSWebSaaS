@@ -4,6 +4,7 @@ use App\Modules\Forms\Models\FormField;
 use App\Modules\Forms\Support\FormFieldTypes;
 use App\Modules\Tenancy\Context\SiteTime;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
 
 /*
@@ -111,6 +112,41 @@ it('shows only the types the storefront form block can draw', function (): void 
         ->and(FormFieldTypes::isCollectable(typedField('select')))->toBeFalse()
         ->and(FormFieldTypes::isCollectable(typedField('radio', PICKS)))->toBeFalse()
         ->and(FormFieldTypes::isCollectable(typedField('number')))->toBeFalse();
+});
+
+it('draws a file field only while the platform takes its kind of file', function (): void {
+    config(['forms.file_kinds' => ['cad', 'cv', 'img']]);
+    $cv = typedField('file', ['options' => ['accept' => 'cv']]);
+    expect(FormFieldTypes::isCollectable($cv))->toBeTrue()
+        ->and(FormFieldTypes::isCollectable(typedField('file')))->toBeTrue(); // no kind reads as drawings
+
+    config(['forms.file_kinds' => ['cad', 'img']]);
+    expect(FormFieldTypes::isCollectable($cv))->toBeFalse()
+        ->and(FormFieldTypes::fileKinds())->toBe(['cad', 'img']);
+
+    config(['forms.file_kinds' => ['img', 'nope', 'cad']]); // the platform's order never changes the builder's
+    expect(FormFieldTypes::fileKinds())->toBe(['cad', 'img']);
+});
+
+it('reads a file field\'s number of files between 1 and 5, else 3, and its kind, else drawings', function (): void {
+    expect(FormFieldTypes::maxFiles(typedField('file', ['validation' => ['max_files' => 5]])))->toBe(5)
+        ->and(FormFieldTypes::maxFiles(typedField('file', ['validation' => ['max_files' => 9]])))->toBe(3)
+        ->and(FormFieldTypes::maxFiles(typedField('file', ['validation' => ['max_files' => 0]])))->toBe(3)
+        ->and(FormFieldTypes::maxFiles(typedField('file')))->toBe(3)
+        ->and(FormFieldTypes::fileKind(typedField('file', ['options' => ['accept' => 'exe']])))->toBe('cad')
+        ->and(FormFieldTypes::accept('img'))->toBe('.jpg,.jpeg,.png')
+        ->and(FormFieldTypes::accept('nope'))->toBe('');
+});
+
+it('takes only sent files in a file field, a few at most, and needs one when it is required', function (): void {
+    $file = fn (): UploadedFile => UploadedFile::fake()->createWithContent('a.pdf', '%PDF-1.4');
+
+    expect(fieldPasses(typedField('file'), [$file(), $file()]))->toBeTrue()
+        ->and(fieldPasses(typedField('file'), null))->toBeTrue()
+        ->and(fieldPasses(typedField('file'), ['a.pdf']))->toBeFalse()
+        ->and(fieldPasses(typedField('file'), $file()))->toBeFalse()   // not a list
+        ->and(fieldPasses(typedField('file'), array_fill(0, 21, $file())))->toBeFalse()
+        ->and(fieldPasses(typedField('file', ['is_required' => true]), null))->toBeFalse();
 });
 
 it('reads each choice in the visitor\'s language, else Vietnamese, else its value', function (): void {
