@@ -12,6 +12,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use LogicException;
 use Throwable;
 
 /**
@@ -98,8 +99,12 @@ final class ReconcileLeadFiles extends Command
      */
     private function reconcileSite(Tenancy $tenancy, int $siteId, string $siteUlid, array &$site): void
     {
+        // a malformed ulid would widen the listing to `leads/` and so to every website's objects
+        if (preg_match('/\A[0-9A-Za-z]{26}\z/', $siteUlid) !== 1) {
+            throw new LogicException('A website without a well-formed ulid has no lead files prefix.');
+        }
         $disk = LeadFileStorage::disk();
-        $listing = $disk->getDriver()->listContents('leads/'.$siteUlid, true);
+        $listing = $disk->getDriver()->listContents('leads/'.$siteUlid.'/', true);
         $before = now()->getTimestamp() - self::GRACE_SECONDS;
 
         /** @var array<string, int|null> $chunk key => last modified (unix time) */

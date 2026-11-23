@@ -231,6 +231,10 @@ it('refuses a file to support staff signed in for a member, through the real rou
     $this->get('http://a.test/admin')->assertOk();
 
     $this->get('http://a.test/admin/forms/files/'.$file->ulid)->assertForbidden();
+    // and it is the support lock that refuses, not the plan or the permission before it
+    $this->withoutExceptionHandling();
+    expect(fn () => $this->get('http://a.test/admin/forms/files/'.$file->ulid))
+        ->toThrow(AuthorizationException::class, __('admin.support.locked'));
 
     expect(lfdAudits())->toBe([])->and($this->signed)->toHaveCount(0);
     $this->assertAuthenticatedAs($member);

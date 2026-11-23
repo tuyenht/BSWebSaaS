@@ -166,6 +166,20 @@ it('goes on with the other websites when one fails, and says so by site and coun
     Log::shouldHaveReceived('error')->withArgs(fn (mixed $message, mixed $context = null): bool => $context === ['site_id' => 1])->once();
 });
 
+it('never lists past a website whose ulid is malformed: that would be every website\'s prefix', function (): void {
+    $a = lrcObject(1, 7200);
+    $b = lrcObject(2, 7200);
+    DB::connection('pgsql_admin')->table('sites')->where('id', 1)->update(['ulid' => str_repeat(' ', 26)]);
+
+    $this->artisan('forms:reconcile-files')
+        ->expectsOutputToContain('1 website(s) could not be reconciled')
+        ->assertFailed();
+
+    expect(Storage::disk('leads')->exists($a))->toBeTrue()
+        ->and(Storage::disk('leads')->exists($b))->toBeFalse()
+        ->and(lrcAudits())->toBe([[2, ['count' => 1, 'scheduled' => true]]]);
+});
+
 it('keeps an object it could not delete for the next run, and fails', function (): void {
     $a = lrcObject(1, 7200);
     $real = Storage::disk('leads');
@@ -191,6 +205,6 @@ it('runs the reconcile pass every day', function (): void {
     $event = collect(app(Schedule::class)->events())->first(fn ($e): bool => str_contains((string) $e->command, 'forms:reconcile-files'));
 
     expect($event)->not->toBeNull()
-        ->and($event->expression)->toBe('0 0 * * *')
+        ->and($event->expression)->toBe('30 3 * * *')
         ->and($event->withoutOverlapping)->toBeTrue();
 });

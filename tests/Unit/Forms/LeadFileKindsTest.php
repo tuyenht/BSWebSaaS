@@ -121,7 +121,7 @@ dataset('docx tricks', fn (): array => [
     'types part in UTF-16 with no BOM' => [fn () => lfkDocx(['[Content_Types].xml' => mb_convert_encoding('<Types/>', 'UTF-16LE', 'UTF-8')])],
     'types part declaring another encoding' => [fn () => lfkDocx(['[Content_Types].xml' => '<?xml version="1.0" encoding="UTF-32"?><Types/>'])],
     'types part holding a NUL byte' => [fn () => lfkDocx(['[Content_Types].xml' => "<Types>\x00</Types>"])],
-    'types part with a DTD' => [fn () => lfkDocx(['[Content_Types].xml' => '<!DOCTYPE Types [<!ENTITY m "macroEnabled">]><Types><Default ContentType="application/vnd.ms-word.document.&m;.main+xml"/></Types>'])],
+    'types part with a DTD' => [fn () => lfkDocx(['[Content_Types].xml' => '<!DOCTYPE Types [<!ENTITY m "macro">]><Types><Default ContentType="application/vnd.ms-word.document.&m;Enabled.main+xml"/></Types>'])],
     'macro word spelt with character references' => [fn () => lfkDocx(['[Content_Types].xml' => '<Types><Default ContentType="application/vnd.ms-word.document.macro&#69;nabled.main+xml"/></Types>'])],
     'macro part named with a hex reference' => [fn () => lfkDocx(['[Content_Types].xml' => '<Types><Override PartName="/word/x.bin" ContentType="application/vnd.ms-office.vba&#x50;roject"/></Types>', 'word/x.bin' => 'x'])],
     'empty types part' => [fn () => lfkDocx(['[Content_Types].xml' => ''])],

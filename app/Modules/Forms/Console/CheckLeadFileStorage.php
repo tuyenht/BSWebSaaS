@@ -10,6 +10,7 @@ use Closure;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\AwsS3V3Adapter;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -17,7 +18,7 @@ use Throwable;
  * Checks, on the real private lead-files disk, that a kept file can only ever come out as a
  * download: run from the release smoke. It needs nothing on its command line (the disk's own
  * configuration) and prints one line, `OK` or `FAIL: <step>`, never a key, a bucket, an endpoint or
- * a link; what went wrong in detail goes to the log.
+ * a link; the log gets the failed step and the exception's class, nothing more.
  *
  *  1. writes a tiny object under CHECK_PREFIX (never under a website's `leads/` prefix, so
  *     forms:reconcile-files and the sweeper never see it) with LeadFileStorage::OBJECT_OPTIONS;
@@ -43,7 +44,15 @@ final class CheckLeadFileStorage extends Command
 
     public function handle(): int
     {
-        $disk = LeadFileStorage::disk();
+        $disk = null;
+        $opened = $this->step('the lead files disk could not be opened', function () use (&$disk): ?string {
+            $disk = LeadFileStorage::disk();
+
+            return null;
+        });
+        if ($opened !== null) {
+            return $this->refuse($opened);
+        }
         if (! $disk instanceof AwsS3V3Adapter) {
             return $this->refuse('the lead files disk is not an S3 disk');
         }
@@ -74,13 +83,17 @@ final class CheckLeadFileStorage extends Command
         return self::SUCCESS;
     }
 
-    /** Runs one step: its own refusal, or $reason when it throws (the detail goes to the log). */
+    /**
+     * Runs one step: its own refusal, or $reason when it throws. The log gets the step and the
+     * exception's class only: its message can carry the endpoint, the bucket or a signed link with
+     * its access key id.
+     */
     private function step(string $reason, Closure $step): ?string
     {
         try {
             return Cast::stringOrNull($step());
         } catch (Throwable $e) {
-            report($e);
+            Log::warning('forms:check-file-storage: '.$reason.'.', ['exception_class' => $e::class]);
 
             return $reason;
         }
