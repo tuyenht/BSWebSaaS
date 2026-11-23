@@ -29,7 +29,7 @@ function confirmTwoFactor(User $user): string
 {
     $service = app(TwoFactorService::class);
     $secret = $service->generateSecret();
-    $service->enable($user, $secret, (new Google2FA)->getCurrentOtp($secret));
+    $service->enable($user, $secret, totpCode($secret, -1));
 
     return $secret;
 }

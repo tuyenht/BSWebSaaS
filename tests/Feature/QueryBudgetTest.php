@@ -25,7 +25,6 @@ use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Workflow\Actions\InstantiateWorkflow;
 use Illuminate\Support\Facades\View;
-use PragmaRX\Google2FA\Google2FA;
 
 /*
  * Query Budget guardrail (CLAUDE.md §6): assert a hard ceiling of DB queries per
@@ -556,7 +555,7 @@ it('renders the member\'s own account page within its query budget', function ()
     app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view', 'entries.review', 'forms.view', 'domains.manage']));
     $service = app(TwoFactorService::class);
     $secret = $service->generateSecret();
-    $service->enable($user, $secret, (new Google2FA)->getCurrentOtp($secret));
+    $service->enable($user, $secret, totpCode($secret, -1));
     SocialIdentity::query()->create(['user_id' => $user->id, 'provider' => 'google', 'sub' => 'g-'.$user->ulid, 'email' => $user->email]);
     $user = $user->fresh();
 

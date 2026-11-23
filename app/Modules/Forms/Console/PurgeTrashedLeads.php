@@ -12,10 +12,12 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Delete for good the leads that have sat in the «Khách liên hệ» Trash longer than LeadTrash::DAYS,
- * site by site inside Tenancy::eachSite, so RLS and the model's scope pick each site's own Trash and
+ * site by site, each in its own Tenancy::enter transaction, so RLS and the model's scope pick each site's own Trash and
  * nothing else. Only rows in the Trash are read (form_submissions_trash_idx); kept leads are never
  * touched.
  *
@@ -44,43 +46,58 @@ final class PurgeTrashedLeads extends Command
     {
         $cutoff = LeadTrash::cutoff(now());
         $purged = 0;
+        $failed = 0;
 
         if ($cutoff !== null) {
-            $tenancy->eachSite(function (int $siteId) use ($cutoff, &$purged): void {
-                $site = 0;
-                do {
-                    $done = DB::transaction(function () use ($siteId, $cutoff): int {
-                        $chunk = FormSubmission::query()
-                            ->where('site_id', $siteId)
-                            ->whereNotNull('deleted_at')
-                            ->where('deleted_at', '<', $cutoff)
-                            ->orderBy('id')
-                            ->limit(self::CHUNK)
-                            ->lockForUpdate()
-                            ->toBase()
-                            ->get(['id', 'ulid', 'created_at']);
-                        if ($chunk->isEmpty()) {
-                            return 0;
+            foreach ($tenancy->siteIds() as $siteId) {
+                try {
+                    $tenancy->enter($siteId, function () use ($siteId, $cutoff, &$purged): void {
+                        $site = 0;
+                        do {
+                            $done = DB::transaction(function () use ($siteId, $cutoff): int {
+                                $chunk = FormSubmission::query()
+                                    ->where('site_id', $siteId)
+                                    ->whereNotNull('deleted_at')
+                                    ->where('deleted_at', '<', $cutoff)
+                                    ->orderBy('id')
+                                    ->limit(self::CHUNK)
+                                    ->lockForUpdate()
+                                    ->toBase()
+                                    ->get(['id', 'ulid', 'created_at']);
+                                if ($chunk->isEmpty()) {
+                                    return 0;
+                                }
+                                LeadNotices::deleteFor($chunk->all());
+                                FormSubmission::query()->whereIn('id', $chunk->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->all())
+                                    ->toBase()->delete();
+
+                                return $chunk->count();
+                            });
+                            $site += $done;
+                        } while ($done > 0);
+
+                        if ($site > 0) {
+                            Audit::record('forms.leads.trash_purged', [
+                                'meta' => ['count' => $site, 'scheduled' => true, 'trash_days' => LeadTrash::DAYS],
+                            ]);
                         }
-                        LeadNotices::deleteFor($chunk->all());
-                        FormSubmission::query()->whereIn('id', $chunk->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->all())
-                            ->toBase()->delete();
-
-                        return $chunk->count();
+                        $purged += $site;
                     });
-                    $site += $done;
-                } while ($done > 0);
-
-                if ($site > 0) {
-                    Audit::record('forms.leads.trash_purged', [
-                        'meta' => ['count' => $site, 'scheduled' => true, 'trash_days' => LeadTrash::DAYS],
-                    ]);
+                } catch (Throwable $e) {
+                    $failed++;
+                    Log::error('leads:purge-trash could not purge a website.', ['site_id' => $siteId]);
+                    report($e);
                 }
-                $purged += $site;
-            });
+            }
         }
 
         $this->info("Purged {$purged} lead(s) left in the Trash over ".LeadTrash::DAYS.' day(s).');
+
+        if ($failed > 0) {
+            $this->error("{$failed} website(s) could not be purged (see the error log).");
+
+            return self::FAILURE;
+        }
 
         return self::SUCCESS;
     }

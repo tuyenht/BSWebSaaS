@@ -118,7 +118,7 @@ it('logs the user in after a valid TOTP code', function (): void {
     $service = app(TwoFactorService::class);
     $secret = $service->generateSecret();
     $user = User::factory()->create();
-    $service->enable($user, $secret, (new Google2FA)->getCurrentOtp($secret));
+    $service->enable($user, $secret, totpCode($secret, -1));
     session(['2fa.user_id' => $user->getAuthIdentifier()]);
 
     Livewire::test(TwoFactorChallenge::class)
@@ -135,7 +135,7 @@ it('logs the user in with a single-use recovery code', function (): void {
     $service = app(TwoFactorService::class);
     $secret = $service->generateSecret();
     $user = User::factory()->create();
-    $service->enable($user, $secret, (new Google2FA)->getCurrentOtp($secret));
+    $service->enable($user, $secret, totpCode($secret, -1));
     $recovery = $user->refresh()->two_factor_recovery_codes[0];
     session(['2fa.user_id' => $user->getAuthIdentifier()]);
 
@@ -153,7 +153,7 @@ it('rejects an invalid TOTP code and stays guest', function (): void {
     $service = app(TwoFactorService::class);
     $secret = $service->generateSecret();
     $user = User::factory()->create();
-    $service->enable($user, $secret, (new Google2FA)->getCurrentOtp($secret));
+    $service->enable($user, $secret, totpCode($secret, -1));
     session(['2fa.user_id' => $user->getAuthIdentifier()]);
 
     Livewire::test(TwoFactorChallenge::class)

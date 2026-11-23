@@ -19,7 +19,8 @@ use Livewire\Component;
 /**
  * Step two of email+password login: the TOTP (or recovery-code) challenge. The pending
  * user id is stashed in the session by Login; the user is only authenticated here once a
- * valid code is verified by TwoFactorService.
+ * valid code is verified by TwoFactorService (an app code passes once: the same code again, here
+ * or in any later check, reads as a wrong one).
  */
 #[Layout('admin::layouts.auth')]
 final class TwoFactorChallenge extends Component
@@ -83,7 +84,7 @@ final class TwoFactorChallenge extends Component
 
         $ok = $this->useRecovery
             ? $service->consumeRecoveryCode($user, $code)
-            : $service->verify((string) $user->two_factor_secret, (string) preg_replace('/\s+/', '', $code));
+            : $service->verifyOnce($user, (string) preg_replace('/\s+/', '', $code));
 
         if (! $ok) {
             RateLimiter::hit($rlKey, 600);

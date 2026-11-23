@@ -66,7 +66,7 @@ it('locks the TOTP challenge after too many wrong codes and audits it (parity wi
     $service = app(TwoFactorService::class);
     $secret = $service->generateSecret();
     $user = User::factory()->create();
-    $service->enable($user, $secret, (new Google2FA)->getCurrentOtp($secret));
+    $service->enable($user, $secret, totpCode($secret, -1));
     session(['2fa.user_id' => $user->getAuthIdentifier()]);
 
     foreach (range(1, 6) as $ignored) {
@@ -81,7 +81,7 @@ it('records a successful sign-in with the second factor used', function (): void
     $service = app(TwoFactorService::class);
     $secret = $service->generateSecret();
     $user = User::factory()->create();
-    $service->enable($user, $secret, (new Google2FA)->getCurrentOtp($secret));
+    $service->enable($user, $secret, totpCode($secret, -1));
     session(['2fa.user_id' => $user->getAuthIdentifier()]);
 
     Livewire::test(TwoFactorChallenge::class)

@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
+use PragmaRX\Google2FA\Google2FA;
 use Spatie\Permission\PermissionRegistrar;
 use Symfony\Component\Mailer\SentMessage;
 use Symfony\Component\Mime\Email;
@@ -462,4 +463,16 @@ function edgeCacheRecorder(bool $hostsAccepted = true): object
     config(['tenancy.base_domains' => ['test']]);   // a.test / b.test sit in the purged zone
 
     return $fake;
+}
+
+/**
+ * The authenticator code for the 30-second step `$steps` away from now (0 = the one the app shows).
+ * An app code passes once, so a fixture that turns two-step sign-in on uses the previous step's code
+ * (-1), and the current code is still free for the sign-in or check under test.
+ */
+function totpCode(string $secret, int $steps = 0): string
+{
+    $engine = new Google2FA;
+
+    return $engine->oathTotp($secret, $engine->getTimestamp() + $steps);
 }

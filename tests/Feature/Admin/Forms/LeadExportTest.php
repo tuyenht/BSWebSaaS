@@ -79,7 +79,7 @@ function exportTwoFactor(User $user): string
 {
     $service = app(TwoFactorService::class);
     $secret = $service->generateSecret();
-    $service->enable($user, $secret, (new Google2FA)->getCurrentOtp($secret));
+    $service->enable($user, $secret, totpCode($secret, -1));
 
     return $secret;
 }
@@ -259,6 +259,31 @@ it('escapes every cell a spreadsheet would run as a formula', function (): void 
         ->and(LeadCsvExport::cell("\rx"))->toBe("'\rx")
         ->and(LeadCsvExport::cell('Bình thường = 1'))->toBe('Bình thường = 1')
         ->and(LeadCsvExport::cell(''))->toBe('');
+});
+
+it('keeps the leading zero of a phone number by writing it as a text formula, and only that', function (): void {
+    expect(LeadCsvExport::cell('0912345678'))->toBe('="0912345678"')
+        ->and(LeadCsvExport::cell('0'))->toBe('0')
+        ->and(LeadCsvExport::cell('912345678'))->toBe('912345678')
+        ->and(LeadCsvExport::cell('+84912345678'))->toBe("'+84912345678")
+        ->and(LeadCsvExport::cell('0912 345 678'))->toBe('0912 345 678')
+        ->and(LeadCsvExport::cell('0a12'))->toBe('0a12')
+        ->and(LeadCsvExport::cell("0912345678\n"))->toBe("0912345678\n")
+        ->and(LeadCsvExport::cell('=HYPERLINK("http://evil.test","x")'))->toBe('\'=HYPERLINK("http://evil.test","x")')
+        ->and(LeadCsvExport::cell('=1+1'))->toBe("'=1+1")
+        ->and(LeadCsvExport::cell('-'))->toBe("'-")
+        ->and(LeadCsvExport::cell('@'))->toBe("'@");
+});
+
+it('writes the phone of a lead as ="0912345678", which the CSV parses back unchanged', function (): void {
+    $manager = exportManager();
+    exportLead(1, 'Khách có số', ['phone' => '0912345678']);
+
+    $csv = $this->actingAs($manager)->get('http://a.test'.exportPath($manager))->assertOk()->streamedContent();
+    $rows = exportRows($csv);
+
+    expect($csv)->toContain('"=""0912345678"""')
+        ->and($rows[1][3])->toBe('="0912345678"');
 });
 
 it('escapes a form name that starts like a formula, in the real file', function (): void {

@@ -193,7 +193,7 @@ it('returns to the page that sent the visitor to sign in, after the second facto
     $service = app(TwoFactorService::class);
     $secret = $service->generateSecret();
     $user = User::factory()->create();
-    $service->enable($user, $secret, (new Google2FA)->getCurrentOtp($secret));
+    $service->enable($user, $secret, totpCode($secret, -1));
     session(['2fa.user_id' => $user->getAuthIdentifier(), 'url.intended' => 'http://a.test/admin/invitations/'.str_repeat('a', 64)]);
 
     Livewire::test(TwoFactorChallenge::class)

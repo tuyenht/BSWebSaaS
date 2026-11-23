@@ -63,7 +63,7 @@ function emWithApp(User $user): User
 {
     $service = app(TwoFactorService::class);
     $secret = $service->generateSecret();
-    $service->enable($user, $secret, (new Google2FA)->getCurrentOtp($secret));
+    $service->enable($user, $secret, totpCode($secret, -1));
 
     return $user->fresh();
 }
@@ -192,6 +192,22 @@ it('asks for the authenticator app instead of a mailed code when it is on, and t
     });
 
     expect($user->fresh()->two_factor_recovery_codes)->not->toContain($recovery);
+});
+
+it('refuses an app code already used to sign in, and takes the next one', function (): void {
+    $user = emWithApp(emMember());
+    $secret = (string) $user->two_factor_secret;
+    $code = totpCode($secret);
+    expect(app(TwoFactorService::class)->verifyOnce($user, $code))->toBeTrue(); // the sign-in
+
+    app(Tenancy::class)->enter(1, function () use ($user, $secret, $code): void {
+        $page = emPage($user)->call('openEmailChange')
+            ->set('newEmail', emNewAddress())->set('emailPassword', 'old-password-123')
+            ->call('startEmailChange')->assertSet('emailStep', 2)->assertSet('emailFactor', 'app');
+
+        $page->set('emailFactorCode', $code)->call('verifyEmailFactor')->assertHasErrors('emailFactorCode')->assertSet('emailStep', 2);
+        $page->set('emailFactorCode', totpCode($secret, 1))->call('verifyEmailFactor')->assertHasNoErrors()->assertSet('emailStep', 3);
+    });
 });
 
 // ── step 1 ─────────────────────────────────────────────────────────

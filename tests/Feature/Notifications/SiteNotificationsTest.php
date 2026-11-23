@@ -23,7 +23,6 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
-use PragmaRX\Google2FA\Google2FA;
 
 /*
  * In-app notifications (design.md §15, decision Q5): stored per person per site (RLS), sent by the
@@ -281,7 +280,7 @@ it('warns the account owner, on record, when two-step sign-in is switched off', 
     $user = noticeMember(1, 'owner');
     $service = app(TwoFactorService::class);
     $secret = $service->generateSecret();
-    $service->enable($user, $secret, (new Google2FA)->getCurrentOtp($secret));
+    $service->enable($user, $secret, totpCode($secret, -1));
 
     app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($user->fresh())->test(Account::class)->call('openDialog', 'disable')->set('confirmPassword', 'password')->call('disableTwoFactor'));
 
