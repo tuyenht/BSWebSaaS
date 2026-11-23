@@ -128,7 +128,8 @@
                 <a class="lead-form__again" href="{{ request()->getPathInfo() }}#{{ $sfFormId }}">{{ __('forms.send_another') }}</a>
             </div>
         @else
-        <form class="lead-form__form"@if (! $sfPreview) method="POST" action="{{ $action }}"{!! $sfFiles ? ' enctype="multipart/form-data"' : '' !!}@endif novalidate>
+        <form class="lead-form__form"@if (! $sfPreview) method="POST" action="{{ $action }}"@if ($sfFiles) enctype="multipart/form-data"@endif
+@endif novalidate>
             {{-- The language the visitor is reading, so errors and the thank-you come back in it
                  (the POST URL carries no locale prefix). The server accepts only a public locale. --}}
             <input type="hidden" name="locale" value="{{ $locale ?? '' }}">
