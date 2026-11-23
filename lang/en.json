@@ -1855,7 +1855,7 @@
     "leads.restore": "Restore",
     "leads.trash_band": "This contact is in the Trash. Items in the Trash are deleted for good after :days days.",
     "leads.trash_empty": "The Trash is empty.",
-    "leads.trash_days_left": ":n days left",
+    "leads.trash_days_left": "days left: :n",
     "leads.trash_goes_today": "deleted for good today",
     "leads.groups_label": "Filter by status",
     "leads.list_label": "Contact request list",

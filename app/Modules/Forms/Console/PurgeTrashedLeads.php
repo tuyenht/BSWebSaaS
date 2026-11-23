@@ -30,7 +30,8 @@ use Illuminate\Support\Facades\DB;
  * chunk's SELECT locks its rows, and a savepoint releases no lock: every row picked stays locked
  * until the whole site's purge commits. A «Khôi phục» therefore either commits before the read (the
  * row is not picked) or waits until that site is done and then finds nothing to restore. Re-running
- * deletes nothing twice. One audit row per site that lost anything, with the count and no visitor
+ * deletes nothing twice. The loop runs until a chunk comes back empty: a row a «Khôi phục» changed
+ * meanwhile drops out of a chunk, which may then hold fewer than CHUNK rows with more still to go. One audit row per site that lost anything, with the count and no visitor
  * data. Scheduled daily.
  */
 final class PurgeTrashedLeads extends Command
@@ -74,7 +75,7 @@ final class PurgeTrashedLeads extends Command
                         return $chunk->count();
                     });
                     $site += $done;
-                } while ($done === self::CHUNK);
+                } while ($done > 0);
 
                 if ($site > 0) {
                     Audit::record('forms.leads.trash_purged', [

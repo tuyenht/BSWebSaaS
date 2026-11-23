@@ -310,7 +310,7 @@ final class FormList extends Component
         $site = app(CurrentSite::class)->id();
         $marks = implode(',', array_fill(0, count($ids), '?'));
         $rows = DB::select(
-            'select f.id, (select count(*) from (select 1 from form_submissions s where s.site_id = ? and s.form_id = f.id and s.status <> \'spam\' limit '.(self::LEAD_CAP + 1).') x) as n
+            'select f.id, (select count(*) from (select 1 from form_submissions s where s.site_id = ? and s.form_id = f.id and s.status <> \'spam\' and s.deleted_at is null limit '.(self::LEAD_CAP + 1).') x) as n
              from forms f where f.site_id = ? and f.id in ('.$marks.')',
             [$site, $site, ...$ids],
         );

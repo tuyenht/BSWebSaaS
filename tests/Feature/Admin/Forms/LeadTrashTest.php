@@ -12,6 +12,7 @@ use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 
@@ -80,9 +81,9 @@ function trashAudits(): array
 it('moves a lead to the Trash with no question, offers Hoàn tác, keeps its status and audits it without the visitor', function (): void {
     $manager = trashMember(['forms.view', 'forms.manage']);
     $lead = trashLead(1, 'Nguyễn Thị Hoa', ['phone' => '0912 345 678', 'email' => 'hoa@example.test', 'status' => 'read']);
-    $other = trashLead(1, 'Trần Văn Bình');
+    trashLead(1, 'Trần Văn Bình');
 
-    app(Tenancy::class)->enter(1, function () use ($manager, $lead, $other): void {
+    app(Tenancy::class)->enter(1, function () use ($manager, $lead): void {
         Livewire::actingAs($manager)->test(Inbox::class, ['ulid' => $lead->ulid])
             ->assertSee('moveToTrash(', false)
             ->call('moveToTrash', $lead->ulid)
@@ -92,7 +93,6 @@ it('moves a lead to the Trash with no question, offers Hoàn tác, keeps its sta
             ->assertSet('eraseOpen', false)
             ->assertDontSee('Nguyễn Thị Hoa')
             ->assertSee('Trần Văn Bình');
-        expect($other->ulid)->not->toBe($lead->ulid);
     });
 
     expect(trashedAt($lead))->not->toBeNull()
@@ -297,9 +297,16 @@ it('lets a member who only reads leads see the Trash, and refuses each of its wr
         ->assertDontSee('restoreLead(', false)
         ->assertDontSee('askErase(', false);
 
-    app(Tenancy::class)->enter(1, function () use ($viewer, $kept, $gone): void {
+    $manager = trashMember(['forms.view', 'forms.manage']);
+    app(Tenancy::class)->enter(1, function () use ($viewer, $manager, $kept, $gone): void {
         Livewire::actingAs($viewer)->test(Inbox::class)->call('moveToTrash', $kept->ulid)->assertForbidden();
         Livewire::actingAs($viewer)->test(Inbox::class)->call('restoreLead', $gone->ulid)->assertForbidden();
+        // the policy itself, apart from the screen's own guard
+        $lead = FormSubmission::query()->whereKey($kept->id)->firstOrFail();
+        expect(Gate::forUser($viewer)->allows('trash', $lead))->toBeFalse()
+            ->and(Gate::forUser($viewer)->allows('restore', $lead))->toBeFalse()
+            ->and(Gate::forUser($manager)->allows('trash', $lead))->toBeTrue()
+            ->and(Gate::forUser($manager)->allows('restore', $lead))->toBeTrue();
     });
     expect(trashedAt($kept))->toBeNull()->and(trashedAt($gone))->not->toBeNull()->and(trashAudits())->toBe([]);
 });
