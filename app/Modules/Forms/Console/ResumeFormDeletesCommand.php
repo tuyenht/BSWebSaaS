@@ -39,17 +39,21 @@ final class ResumeFormDeletesCommand extends Command
 
         foreach ($tenancy->siteIds() as $siteId) {
             try {
-                $tenancy->enter($siteId, function () use ($siteId, $minutes, &$asked): void {
+                // counted only once the site's transaction has committed
+                $asked += Cast::int($tenancy->enter($siteId, function () use ($siteId, $minutes): int {
+                    $queued = 0;
                     // the database clock, as the claims are written with it
                     $ids = Form::query()->withoutGlobalScope(Form::NOT_DELETING)->where('status', Form::DELETING)
                         ->whereRaw('updated_at < clock_timestamp() - make_interval(mins => ?)', [$minutes])->pluck('id');
                     foreach ($ids as $id) {
                         // claimed again only if no run claimed it since the read above
                         if (DeleteLargeForm::queueRun($siteId, Cast::int($id), staleMinutes: $minutes)) {
-                            $asked++;
+                            $queued++;
                         }
                     }
-                });
+
+                    return $queued;
+                }));
             } catch (Throwable $e) {
                 $failed++;
                 Log::error('forms:resume-deletes could not process a website.', ['site_id' => $siteId]);

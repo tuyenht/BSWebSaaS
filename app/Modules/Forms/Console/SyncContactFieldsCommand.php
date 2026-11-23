@@ -39,17 +39,20 @@ final class SyncContactFieldsCommand extends Command
 
         foreach ($tenancy->siteIds() as $siteId) {
             try {
-                $tenancy->enter($siteId, function () use ($ensure, $refreshConsent, &$synced, &$refreshed): void {
+                // counted only once the site's transaction has committed
+                $result = $tenancy->enter($siteId, function () use ($ensure, $refreshConsent): ?bool {
                     if (! Form::query()->where('key', 'contact')->exists()) {
-                        return;
+                        return null;
                     }
 
                     $form = $ensure->handle([]);
-                    $synced++;
-                    if ($refreshConsent && $ensure->refreshConsentLabel($form)) {
-                        $refreshed++;
-                    }
+
+                    return $refreshConsent && $ensure->refreshConsentLabel($form);
                 });
+                if ($result !== null) {
+                    $synced++;
+                    $refreshed += $result ? 1 : 0;
+                }
             } catch (Throwable $e) {
                 $failed++;
                 Log::error('forms:sync-contact-fields could not process a website.', ['site_id' => $siteId]);

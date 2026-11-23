@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\File;
  * the form delete live in the Forms module and are not read by this rule.
  */
 
-/** Where the leads screens live: the Livewire components, the support classes and the controllers. */
+/** Where the leads screens live: the Livewire components, the support classes, the dashboard's reader and the controllers. */
 function leadScreenFiles(): array
 {
     $files = [];
@@ -20,6 +20,9 @@ function leadScreenFiles(): array
         $files[] = $file->getPathname();
     }
     foreach (File::allFiles(app_path('Modules/Admin/Support/Leads')) as $file) {
+        $files[] = $file->getPathname();
+    }
+    foreach (File::allFiles(app_path('Modules/Admin/Support/Dashboard')) as $file) {
         $files[] = $file->getPathname();
     }
     foreach (File::glob(app_path('Modules/Admin/Http/Controllers/Lead*.php')) as $path) {
@@ -68,7 +71,7 @@ function leadReaderBypasses(string $source, array $allowed = []): array
         $code = (string) preg_replace($pattern, '', $code);
     }
 
-    preg_match_all('/FormSubmission::(?!class\b)\w+|\bform_submissions\b|->submissions\s*\(|[\'"]submissions[\'"]/', $code, $found);
+    preg_match_all('/FormSubmission::(?!class\b)\w+|\bnew\s+FormSubmission\b|FormSubmission::class\)\s*->|\bform_submissions\b|->submissions\s*\(|[\'"]submissions[\'"]/', $code, $found);
 
     return $found[0];
 }
@@ -105,6 +108,8 @@ it('catches a reader that skips leads()', function (string $source): void {
     'model find' => 'FormSubmission::find($id);',
     'query builder on the table' => "DB::table('form_submissions')->where('site_id', 1)->count();",
     'raw SQL' => "DB::select('select id from form_submissions where site_id = ?', [1]);",
+    'new instance' => '(new FormSubmission)->newQuery()->get();',
+    'container instance' => 'app(FormSubmission::class)->newQuery()->get();',
     'relation of a form' => '$form->submissions()->count();',
 ]);
 
