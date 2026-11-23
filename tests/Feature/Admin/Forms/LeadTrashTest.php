@@ -38,7 +38,7 @@ beforeEach(function (): void {
 });
 
 /** A lead of $site's contact form. @param array<string, mixed> $attrs */
-function trashLead(int $site, string $name, array $attrs = []): FormSubmission
+function ltLead(int $site, string $name, array $attrs = []): FormSubmission
 {
     return app(Tenancy::class)->enter($site, function () use ($name, $attrs): FormSubmission {
         $form = Form::query()->firstOrCreate(['key' => 'contact'], ['name' => ['vi' => 'Liên hệ'], 'status' => 'active']);
@@ -51,13 +51,13 @@ function trashLead(int $site, string $name, array $attrs = []): FormSubmission
 }
 
 /** Put $lead in the Trash since $at, past RLS, as moveToTrash leaves it. */
-function trashSince(FormSubmission $lead, Carbon $at): void
+function ltSince(FormSubmission $lead, Carbon $at): void
 {
     DB::connection('pgsql_admin')->table('form_submissions')->where('id', $lead->id)->update(['deleted_at' => $at->utc()->toDateTimeString().'+00']);
 }
 
 /** A member of $site holding exactly $permissions. @param list<string> $permissions */
-function trashMember(array $permissions, int $site = 1): User
+function ltMember(array $permissions, int $site = 1): User
 {
     $user = User::factory()->create();
     app(Tenancy::class)->enter($site, fn () => grantRole($user, 'trash-'.md5(implode(',', $permissions)), $permissions));
@@ -66,22 +66,22 @@ function trashMember(array $permissions, int $site = 1): User
     return $user->fresh() ?? $user;
 }
 
-function trashedAt(FormSubmission $lead): ?string
+function ltTrashedAt(FormSubmission $lead): ?string
 {
     $at = DB::connection('pgsql_admin')->table('form_submissions')->where('id', $lead->id)->value('deleted_at');
 
     return $at === null ? null : (string) $at;
 }
 
-function trashAudits(): array
+function ltAudits(): array
 {
     return DB::connection('pgsql_admin')->table('audit_logs')->where('action', 'like', 'forms.lead%')->orderBy('id')->get()->all();
 }
 
 it('moves a lead to the Trash with no question, offers Hoàn tác, keeps its status and audits it without the visitor', function (): void {
-    $manager = trashMember(['forms.view', 'forms.manage']);
-    $lead = trashLead(1, 'Nguyễn Thị Hoa', ['phone' => '0912 345 678', 'email' => 'hoa@example.test', 'status' => 'read']);
-    trashLead(1, 'Trần Văn Bình');
+    $manager = ltMember(['forms.view', 'forms.manage']);
+    $lead = ltLead(1, 'Nguyễn Thị Hoa', ['phone' => '0912 345 678', 'email' => 'hoa@example.test', 'status' => 'read']);
+    ltLead(1, 'Trần Văn Bình');
 
     app(Tenancy::class)->enter(1, function () use ($manager, $lead): void {
         Livewire::actingAs($manager)->test(Inbox::class, ['ulid' => $lead->ulid])
@@ -95,9 +95,9 @@ it('moves a lead to the Trash with no question, offers Hoàn tác, keeps its sta
             ->assertSee('Trần Văn Bình');
     });
 
-    expect(trashedAt($lead))->not->toBeNull()
+    expect(ltTrashedAt($lead))->not->toBeNull()
         ->and(DB::connection('pgsql_admin')->table('form_submissions')->where('id', $lead->id)->value('status'))->toBe('read');
-    $audits = trashAudits();
+    $audits = ltAudits();
     expect($audits)->toHaveCount(1)
         ->and($audits[0]->action)->toBe('forms.lead.trashed')
         ->and((int) $audits[0]->actor_id)->toBe($manager->id)
@@ -106,8 +106,8 @@ it('moves a lead to the Trash with no question, offers Hoàn tác, keeps its sta
 });
 
 it('brings the lead back with Hoàn tác, as it was', function (): void {
-    $manager = trashMember(['forms.view', 'forms.manage']);
-    $lead = trashLead(1, 'Nguyễn Thị Hoa', ['status' => 'archived']);
+    $manager = ltMember(['forms.view', 'forms.manage']);
+    $lead = ltLead(1, 'Nguyễn Thị Hoa', ['status' => 'archived']);
 
     app(Tenancy::class)->enter(1, function () use ($manager, $lead): void {
         Livewire::actingAs($manager)->test(Inbox::class)
@@ -119,14 +119,14 @@ it('brings the lead back with Hoàn tác, as it was', function (): void {
             ->assertSee('Nguyễn Thị Hoa');
     });
 
-    expect(trashedAt($lead))->toBeNull()
+    expect(ltTrashedAt($lead))->toBeNull()
         ->and(DB::connection('pgsql_admin')->table('form_submissions')->where('id', $lead->id)->value('status'))->toBe('archived')
-        ->and(array_column(trashAudits(), 'action'))->toBe(['forms.lead.trashed', 'forms.lead.restored']);
+        ->and(array_column(ltAudits(), 'action'))->toBe(['forms.lead.trashed', 'forms.lead.restored']);
 });
 
 it('says so when Hoàn tác finds the lead already out of the Trash', function (): void {
-    $manager = trashMember(['forms.view', 'forms.manage']);
-    $lead = trashLead(1, 'Nguyễn Thị Hoa');
+    $manager = ltMember(['forms.view', 'forms.manage']);
+    $lead = ltLead(1, 'Nguyễn Thị Hoa');
 
     app(Tenancy::class)->enter(1, function () use ($manager, $lead): void {
         $page = Livewire::actingAs($manager)->test(Inbox::class)->call('moveToTrash', $lead->ulid);
@@ -137,9 +137,9 @@ it('says so when Hoàn tác finds the lead already out of the Trash', function (
 });
 
 it('restores a lead from its band in the Trash, with its status', function (): void {
-    $manager = trashMember(['forms.view', 'forms.manage']);
-    $lead = trashLead(1, 'Nguyễn Thị Hoa', ['status' => 'read']);
-    trashSince($lead, now()->subDays(3));
+    $manager = ltMember(['forms.view', 'forms.manage']);
+    $lead = ltLead(1, 'Nguyễn Thị Hoa', ['status' => 'read']);
+    ltSince($lead, now()->subDays(3));
 
     app(Tenancy::class)->enter(1, function () use ($manager, $lead): void {
         Livewire::actingAs($manager)->withQueryParams(['status' => 'trash', 'lead' => $lead->ulid])->test(Inbox::class)
@@ -158,15 +158,15 @@ it('restores a lead from its band in the Trash, with its status', function (): v
             ->assertSee(__('leads.trash_empty'));
     });
 
-    expect(trashedAt($lead))->toBeNull()
+    expect(ltTrashedAt($lead))->toBeNull()
         ->and(DB::connection('pgsql_admin')->table('form_submissions')->where('id', $lead->id)->value('status'))->toBe('read')
-        ->and(array_column(trashAudits(), 'action'))->toBe(['forms.lead.restored']);
+        ->and(array_column(ltAudits(), 'action'))->toBe(['forms.lead.restored']);
 });
 
 it('keeps a lead in the Trash out of every group and count, and counts it in the Trash', function (): void {
     foreach (['new', 'read', 'archived', 'spam'] as $status) {
-        trashLead(1, "Giữ {$status}", ['status' => $status]);
-        trashSince(trashLead(1, "Bỏ {$status}", ['status' => $status]), now()->subDay());
+        ltLead(1, "Giữ {$status}", ['status' => $status]);
+        ltSince(ltLead(1, "Bỏ {$status}", ['status' => $status]), now()->subDay());
     }
 
     app(Tenancy::class)->enter(1, function (): void {
@@ -193,8 +193,8 @@ it('keeps a lead in the Trash out of every group and count, and counts it in the
 });
 
 it('finds a lead in the Trash by search only in the Trash', function (): void {
-    trashLead(1, 'Nguyễn Thị Hoa');
-    trashSince(trashLead(1, 'Nguyễn Văn Hòa', ['phone' => '0912 345 678']), now()->subDay());
+    ltLead(1, 'Nguyễn Thị Hoa');
+    ltSince(ltLead(1, 'Nguyễn Văn Hòa', ['phone' => '0912 345 678']), now()->subDay());
 
     app(Tenancy::class)->enter(1, function (): void {
         $list = new LeadListQuery('hoa', [], '', '', '', app(SiteTime::class), hiddenFormIds: []);
@@ -209,13 +209,13 @@ it('finds a lead in the Trash by search only in the Trash', function (): void {
 it('lists the Trash last trashed first, a page at a time by its cursor, each row with its days left', function (): void {
     // well past the day the Trash opened, so every lead's days count from when it was trashed
     $this->travelTo(Carbon::parse(LeadTrash::SINCE, 'UTC')->addDays(45)->setTime(3, 0));
-    $viewer = trashMember(['forms.view']);
-    $old = trashLead(1, 'Khách cũ');
-    $mid = trashLead(1, 'Khách giữa');
-    $new = trashLead(1, 'Khách mới bỏ');
-    trashSince($old, now()->subDays(30)->subHour());
-    trashSince($mid, now()->subDays(10));
-    trashSince($new, now()->subMinutes(5));
+    $viewer = ltMember(['forms.view']);
+    $old = ltLead(1, 'Khách cũ');
+    $mid = ltLead(1, 'Khách giữa');
+    $new = ltLead(1, 'Khách mới bỏ');
+    ltSince($old, now()->subDays(30)->subHour());
+    ltSince($mid, now()->subDays(10));
+    ltSince($new, now()->subMinutes(5));
 
     app(Tenancy::class)->enter(1, function (): void {
         $list = new LeadListQuery('', [], '', '', '', app(SiteTime::class), hiddenFormIds: []);
@@ -233,8 +233,8 @@ it('lists the Trash last trashed first, a page at a time by its cursor, each row
 });
 
 it('says the Trash is empty, and offers no download there', function (): void {
-    $manager = trashMember(['forms.view', 'forms.manage']);
-    trashLead(1, 'Nguyễn Thị Hoa');
+    $manager = ltMember(['forms.view', 'forms.manage']);
+    ltLead(1, 'Nguyễn Thị Hoa');
 
     $this->actingAs($manager)->get('http://a.test/admin/forms?status=trash')
         ->assertOk()
@@ -252,9 +252,9 @@ it('says the Trash is empty, and offers no download there', function (): void {
 });
 
 it('opens no lead in the Trash from a bell link outside the Trash, and marks nothing read', function (): void {
-    $manager = trashMember(['forms.view', 'forms.manage']);
-    $lead = trashLead(1, 'Nguyễn Thị Hoa', ['phone' => '0987 654 321']);
-    trashSince($lead, now()->subDay());
+    $manager = ltMember(['forms.view', 'forms.manage']);
+    $lead = ltLead(1, 'Nguyễn Thị Hoa', ['phone' => '0987 654 321']);
+    ltSince($lead, now()->subDay());
 
     $this->actingAs($manager)->get('http://a.test/admin/forms/'.$lead->ulid)
         ->assertOk()
@@ -264,9 +264,9 @@ it('opens no lead in the Trash from a bell link outside the Trash, and marks not
 });
 
 it('leaves a lead in the Trash out of the CSV file', function (): void {
-    $manager = trashMember(['forms.view', 'forms.manage']);
-    trashLead(1, 'Nguyễn Thị Hoa');
-    trashSince(trashLead(1, 'Khách đã bỏ', ['phone' => '0911 000 111']), now()->subDay());
+    $manager = ltMember(['forms.view', 'forms.manage']);
+    ltLead(1, 'Nguyễn Thị Hoa');
+    ltSince(ltLead(1, 'Khách đã bỏ', ['phone' => '0911 000 111']), now()->subDay());
 
     $url = app(Tenancy::class)->enter(1, function () use ($manager): string {
         $url = '';
@@ -285,10 +285,10 @@ it('leaves a lead in the Trash out of the CSV file', function (): void {
 });
 
 it('lets a member who only reads leads see the Trash, and refuses each of its writes', function (): void {
-    $viewer = trashMember(['forms.view']);
-    $kept = trashLead(1, 'Nguyễn Thị Hoa');
-    $gone = trashLead(1, 'Khách đã bỏ');
-    trashSince($gone, now()->subDay());
+    $viewer = ltMember(['forms.view']);
+    $kept = ltLead(1, 'Nguyễn Thị Hoa');
+    $gone = ltLead(1, 'Khách đã bỏ');
+    ltSince($gone, now()->subDay());
 
     $this->actingAs($viewer)->get('http://a.test/admin/forms?status=trash&lead='.$gone->ulid)
         ->assertOk()
@@ -297,7 +297,7 @@ it('lets a member who only reads leads see the Trash, and refuses each of its wr
         ->assertDontSee('restoreLead(', false)
         ->assertDontSee('askErase(', false);
 
-    $manager = trashMember(['forms.view', 'forms.manage']);
+    $manager = ltMember(['forms.view', 'forms.manage']);
     app(Tenancy::class)->enter(1, function () use ($viewer, $manager, $kept, $gone): void {
         Livewire::actingAs($viewer)->test(Inbox::class)->call('moveToTrash', $kept->ulid)->assertForbidden();
         Livewire::actingAs($viewer)->test(Inbox::class)->call('restoreLead', $gone->ulid)->assertForbidden();
@@ -308,15 +308,15 @@ it('lets a member who only reads leads see the Trash, and refuses each of its wr
             ->and(Gate::forUser($manager)->allows('trash', $lead))->toBeTrue()
             ->and(Gate::forUser($manager)->allows('restore', $lead))->toBeTrue();
     });
-    expect(trashedAt($kept))->toBeNull()->and(trashedAt($gone))->not->toBeNull()->and(trashAudits())->toBe([]);
+    expect(ltTrashedAt($kept))->toBeNull()->and(ltTrashedAt($gone))->not->toBeNull()->and(ltAudits())->toBe([]);
 });
 
 it('never reaches another website\'s lead, in or out of the Trash (RLS)', function (): void {
-    $manager = trashMember(['forms.view', 'forms.manage']);
-    trashLead(1, 'Khách site A');
-    $foreign = trashLead(2, 'Khách site B');
-    $foreignTrashed = trashLead(2, 'Khách site B đã bỏ');
-    trashSince($foreignTrashed, now()->subDay());
+    $manager = ltMember(['forms.view', 'forms.manage']);
+    ltLead(1, 'Khách site A');
+    $foreign = ltLead(2, 'Khách site B');
+    $foreignTrashed = ltLead(2, 'Khách site B đã bỏ');
+    ltSince($foreignTrashed, now()->subDay());
 
     app(Tenancy::class)->enter(1, function () use ($manager, $foreign, $foreignTrashed): void {
         Livewire::actingAs($manager)->test(Inbox::class)
@@ -327,13 +327,13 @@ it('never reaches another website\'s lead, in or out of the Trash (RLS)', functi
             ->assertSee(__('leads.trash_empty'));
         expect(LeadListQuery::leads(trashed: null)->count())->toBe(1);
     });
-    expect(trashedAt($foreign))->toBeNull()->and(trashedAt($foreignTrashed))->not->toBeNull()->and(trashAudits())->toBe([]);
+    expect(ltTrashedAt($foreign))->toBeNull()->and(ltTrashedAt($foreignTrashed))->not->toBeNull()->and(ltAudits())->toBe([]);
 });
 
 it('erases a lead in the Trash at the visitor\'s request', function (): void {
-    $manager = trashMember(['forms.view', 'forms.manage']);
-    $lead = trashLead(1, 'Nguyễn Thị Hoa');
-    trashSince($lead, now()->subDay());
+    $manager = ltMember(['forms.view', 'forms.manage']);
+    $lead = ltLead(1, 'Nguyễn Thị Hoa');
+    ltSince($lead, now()->subDay());
 
     app(Tenancy::class)->enter(1, function () use ($manager, $lead): void {
         Livewire::actingAs($manager)->withQueryParams(['status' => 'trash'])->test(Inbox::class)
@@ -345,10 +345,10 @@ it('erases a lead in the Trash at the visitor\'s request', function (): void {
 });
 
 it('shows the Trash on a flat query budget (no N+1 across rows)', function (): void {
-    $viewer = trashMember(['forms.view', 'forms.manage']);
+    $viewer = ltMember(['forms.view', 'forms.manage']);
     $seed = function (int $n): void {
         foreach (range(1, $n) as $i) {
-            trashSince(trashLead(1, 'Khách '.Str::random(6)), now()->subMinutes($i));
+            ltSince(ltLead(1, 'Khách '.Str::random(6)), now()->subMinutes($i));
         }
     };
     $seed(3);
