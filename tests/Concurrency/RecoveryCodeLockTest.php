@@ -12,10 +12,10 @@ use Illuminate\Support\Facades\DB;
  *
  * PHP runs one statement at a time, so the race is staged on two real connections: the first take
  * runs on pgsql_admin inside a transaction left open, the second on the app connection with a short
- * lock_timeout. Without the lock the second would read the list as it was and pass too; with it the
- * second waits on the member's row and times out (55P03). Once the first commits, a request that
- * loaded the member before it is refused the same code, and another such request's code still
- * works without bringing the first code back.
+ * lock_timeout: it waits on the member's row and times out (55P03). Once the first commits, a
+ * request that loaded the member before it is refused the same code, and another such request's
+ * code still works without bringing the first code back. Without the lock both would check the list
+ * as they loaded it: the same code would pass again and the other write would restore it.
  */
 
 /** Run a take on the app connection, giving up on a lock quickly: 'passed', 'refused' or the SQLSTATE. */

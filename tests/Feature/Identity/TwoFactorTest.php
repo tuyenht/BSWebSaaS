@@ -17,7 +17,8 @@ it('verifies a valid TOTP code and rejects an invalid one', function (): void {
     $service->enable($user, $secret, totpCode($secret, -1));
     $wrong = collect(['000000', '111111', '222222', '333333'])->first(fn (string $c): bool => ! totpFits($secret, $c));
 
-    expect($service->verifyOnce($user->refresh(), (string) $wrong))->toBeFalse()
+    expect($wrong)->toBeString()
+        ->and($service->verifyOnce($user->refresh(), (string) $wrong))->toBeFalse()
         ->and($service->verifyOnce($user, totpCode($secret)))->toBeTrue();
 });
 
@@ -126,7 +127,8 @@ it('brings the member it was given up to date with the codes stored', function (
 
     expect(app(TwoFactorService::class)->consumeRecoveryCode($stale, $codes[1]))->toBeTrue()
         ->and($stale->two_factor_recovery_codes)->toBe(array_slice($codes, 2))
-        ->and($stale->isDirty())->toBeFalse();
+        ->and($stale->isDirty())->toBeFalse()
+        ->and($stale->updated_at?->toJSON())->toBe(User::query()->findOrFail($user->id)->updated_at?->toJSON());
 });
 
 it('takes a recovery code inside a transaction the request already holds', function (): void {

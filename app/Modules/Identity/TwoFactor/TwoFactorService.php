@@ -97,7 +97,7 @@ final readonly class TwoFactorService
             return false;
         }
 
-        $left = $user->getConnection()->transaction(static function () use ($user, $code): ?array {
+        $stored = $user->getConnection()->transaction(static function () use ($user, $code): ?User {
             $locked = $user->newQuery()->whereKey($user->getKey())->lockForUpdate()->first();
             $codes = $locked instanceof User ? Cast::strings($locked->two_factor_recovery_codes) : [];
 
@@ -105,17 +105,22 @@ final readonly class TwoFactorService
                 return null;
             }
 
-            $left = array_values(array_filter($codes, static fn (string $c): bool => $c !== $code));
-            $locked->forceFill(['two_factor_recovery_codes' => $left])->save();
+            $locked->forceFill([
+                'two_factor_recovery_codes' => array_values(array_filter($codes, static fn (string $c): bool => $c !== $code)),
+            ])->save();
 
-            return $left;
+            return $locked;
         });
 
-        if ($left === null) {
+        if ($stored === null) {
             return false;
         }
 
-        $user->forceFill(['two_factor_recovery_codes' => $left])->syncOriginalAttribute('two_factor_recovery_codes');
+        $written = array_intersect_key(
+            $stored->getAttributes(),
+            array_flip(array_filter(['two_factor_recovery_codes', $user->getUpdatedAtColumn()])),
+        );
+        $user->setRawAttributes([...$user->getAttributes(), ...$written])->syncOriginalAttributes(array_keys($written));
 
         return true;
     }
