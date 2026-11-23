@@ -48,6 +48,9 @@ function leadReaderAllowed(): array
         'Inbox.php' => [
             '/FormSubmission::query\(\)->where(?:Key|In)\([^;]*?->update\(/s' => 'writes by id of leads already read through leads(): trash, restore, change of status',
         ],
+        'LeadFileDownloadController.php' => [
+            '/FormSubmission::query\(\)->whereKey\(\$file->form_submission_id\)->first\(\[[^\]]*\'deleted_at\'\]\)/' => 'reads the lead of one stored file with its deleted_at, and LeadPolicy::downloadFile decides for a trashed one',
+        ],
         'FormList.php' => [
             '/from form_submissions s where s\.site_id = \? and s\.form_id = f\.id and s\.status <> \\\\\'spam\\\\\'\'\.\(\$withTrash \? \'\' : \' and s\.deleted_at is null\'\)/' => 'the count per form: it names deleted_at itself, with or without the Trash',
         ],
