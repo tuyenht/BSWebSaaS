@@ -13,6 +13,10 @@ use App\Modules\Identity\Models\User;
  * website's leads (`forms.manage`, team-scoped by the spatie guard = current site), the same people
  * who change a lead's status. A member who may only read leads (`forms.view`) sees the Trash and
  * changes nothing in it. super_admin passes through Gate::before.
+ *
+ * Who may download the files a visitor sent with a lead («Tải về» under «Tệp đính kèm»): a member
+ * given `forms.files`, which a role that only reads leads does not hold by default. A lead in the
+ * Trash is seen only by those who manage leads, so its files need forms.manage too.
  */
 final class LeadPolicy
 {
@@ -29,5 +33,10 @@ final class LeadPolicy
     public function restore(User $user, FormSubmission $lead): bool
     {
         return $user->can('forms.manage');
+    }
+
+    public function downloadFile(User $user, FormSubmission $lead): bool
+    {
+        return $user->can('forms.files') && ($lead->deleted_at === null || $user->can('forms.manage'));
     }
 }

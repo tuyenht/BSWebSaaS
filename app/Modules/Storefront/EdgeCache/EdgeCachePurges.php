@@ -45,8 +45,9 @@ final class EdgeCachePurges
         'form_placements',
         // unpublished drafts and past versions: publishing one writes entries / entry_translations
         'entry_drafts', 'entry_revisions',
-        // what visitors sent through a form, and its words for the inbox search: the admin's inbox
-        'form_submissions', 'lead_search_terms',
+        // what visitors sent through a form, its words for the inbox search and the files sent with
+        // it: the admin's inbox
+        'form_submission_files', 'form_submissions', 'lead_search_terms',
         // admin members: invitations, their roles, the categories a member may edit
         'invitation_category_scopes', 'invitation_roles', 'invitations', 'member_category_scopes',
         // the admin library's folders: no media address names its folder
