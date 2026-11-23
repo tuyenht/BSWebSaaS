@@ -23,7 +23,8 @@ use Illuminate\Support\Facades\DB;
  * group, and the counts beside each of them. Every count stops at CAP + 1, so a site with millions
  * of leads never walks them all to print one number. Rows come newest first with the code (ulid) as the
  * tie-break, read up to a cursor (the last row loaded), never by OFFSET. Leads of a form being
- * deleted are never listed or counted (leads()).
+ * deleted are never listed or counted (leads()), and leads in the Trash only in its own group
+ * (TRASH), last trashed first, by (deleted_at, ulid).
  */
 final class LeadListQuery
 {
@@ -37,13 +38,16 @@ final class LeadListQuery
 
     public const array STATUSES = ['new', 'read', 'archived', 'spam'];
 
+    /** The Trash: the leads moved there, in no other group (and never in the CSV file). */
+    public const string TRASH = 'trash';
+
     /** "Thời gian": a preset, or RANGE while the two dates decide. */
     public const array WHEN = ['', 'today', '7', '30'];
 
     public const string RANGE = 'range';
 
     /** What a row needs, and nothing more. */
-    private const array ROW_COLUMNS = ['id', 'ulid', 'form_id', 'name', 'email', 'phone', 'source_url', 'ip_address', 'user_agent', 'status', 'is_spam', 'data', 'created_at'];
+    public const array ROW_COLUMNS = ['id', 'ulid', 'form_id', 'name', 'email', 'phone', 'source_url', 'ip_address', 'user_agent', 'status', 'is_spam', 'data', 'created_at', 'deleted_at'];
 
     /**
      * @param  list<int>  $formIds  the forms ticked (ids of this site's forms, already checked)
@@ -143,7 +147,9 @@ final class LeadListQuery
 
     /**
      * The site's leads a screen may show: none of a form being deleted, which reads as gone
-     * everywhere while DeleteLargeForm deletes its leads in batches.
+     * everywhere while DeleteLargeForm deletes its leads in batches; and either the leads kept
+     * (the default: every group, count, search, the bell's links, the CSV file), those in the Trash
+     * ($trashed true), or both ($trashed null: «Xóa theo yêu cầu của khách» reaches a lead in either).
      *
      * Given the ids of those forms (read with the site's forms, almost always none), the filter is
      * that constant list, or nothing at all, so a count stays an index-only walk of a list index,
@@ -154,9 +160,14 @@ final class LeadListQuery
      * @param  list<int>|null  $hiddenFormIds
      * @return Builder<FormSubmission>
      */
-    public static function leads(?array $hiddenFormIds = null): Builder
+    public static function leads(?array $hiddenFormIds = null, ?bool $trashed = false): Builder
     {
         $query = FormSubmission::query();
+        if ($trashed === true) {
+            $query->whereNotNull('form_submissions.deleted_at');
+        } elseif ($trashed === false) {
+            $query->whereNull('form_submissions.deleted_at');
+        }
         if ($hiddenFormIds === null) {
             return $query->whereNotIn('form_submissions.form_id', Form::query()
                 ->withoutGlobalScope(Form::NOT_DELETING)->where('forms.status', Form::DELETING)->select('forms.id'));
@@ -166,13 +177,14 @@ final class LeadListQuery
     }
 
     /**
-     * The leads that match the search and the conditions, before the status group.
+     * The leads that match the search and the conditions, before the status group: those kept, or
+     * with $trash those in the Trash.
      *
      * @return Builder<FormSubmission>
      */
-    public function base(bool $forms = true, bool $dates = true): Builder
+    public function base(bool $forms = true, bool $dates = true, bool $trash = false): Builder
     {
-        $query = self::leads($this->hiddenFormIds);
+        $query = self::leads($this->hiddenFormIds, $trash);
         $this->searchIn($query);
         if ($forms && $this->noForms) {
             $query->whereRaw('false');
@@ -196,15 +208,27 @@ final class LeadListQuery
     }
 
     /**
-     * Each status group's count under the search and the conditions, in one statement.
+     * A group's leads under the search and the conditions: a status group (inTab) of the leads kept,
+     * or the Trash.
+     *
+     * @return Builder<FormSubmission>
+     */
+    public function group(string $tab, bool $forms = true, bool $dates = true): Builder
+    {
+        return $tab === self::TRASH ? $this->base($forms, $dates, trash: true) : self::inTab($this->base($forms, $dates), $tab);
+    }
+
+    /**
+     * Each group's count (the status groups, then the Trash) under the search and the conditions,
+     * in one statement.
      *
      * @return array<string, int>
      */
     public function tabCounts(): array
     {
         $parts = [];
-        foreach (self::TABS as $tab) {
-            $parts[$tab] = self::inTab($this->base(), $tab);
+        foreach ([...self::TABS, self::TRASH] as $tab) {
+            $parts[$tab] = $this->group($tab);
         }
 
         return $this->bounded($parts);
@@ -213,7 +237,9 @@ final class LeadListQuery
     /** The group's count with no search and no condition ("Tìm thấy N trong M liên hệ"). */
     public function total(string $tab): int
     {
-        return $this->bounded(['total' => self::inTab(self::leads($this->hiddenFormIds), $tab)])['total'];
+        $all = $tab === self::TRASH ? self::leads($this->hiddenFormIds, true) : self::inTab(self::leads($this->hiddenFormIds), $tab);
+
+        return $this->bounded(['total' => $all])['total'];
     }
 
     /**
@@ -231,12 +257,12 @@ final class LeadListQuery
         // the group's total above already holds the forms ticked; the grouped scan does not, so it
         // is gated on the count without them
         if ($this->formIds !== [] || $this->noForms) {
-            $all = $this->bounded(['all' => self::inTab($this->base(forms: false), $tab)])['all'];
+            $all = $this->bounded(['all' => $this->group($tab, forms: false)])['all'];
             if ($all > self::CAP) {
                 return null;
             }
         }
-        $rows = self::inTab($this->base(forms: false), $tab)->toBase()
+        $rows = $this->group($tab, forms: false)->toBase()
             ->select('form_id', DB::raw('count(*) as n'))->groupBy('form_id')->limit(count($formIds))->get();
         $out = [];
         foreach ($rows as $row) {
@@ -255,7 +281,7 @@ final class LeadListQuery
     {
         $parts = [];
         foreach (self::WHEN as $when) {
-            $query = self::inTab($this->base(dates: false), $tab);
+            $query = $this->group($tab, dates: false);
             $this->window($query, $when);
             $parts['w'.$when] = $query;
         }
@@ -269,21 +295,22 @@ final class LeadListQuery
     }
 
     /**
-     * The rows of a group, newest first: the first $limit, or every row down to the cursor
-     * (`created_at|ulid` of the last row loaded) when one is given, at most $max.
+     * The rows of a group, newest first (the Trash: last trashed first): the first $limit, or every
+     * row down to the cursor (`time|ulid` of the last row loaded) when one is given, at most $max.
      *
      * @return Collection<int, FormSubmission>
      */
     public function rows(string $tab, ?string $until, int $limit, int $max): Collection
     {
-        $query = self::inTab($this->base(), $tab)->select(self::ROW_COLUMNS);
+        $order = self::orderColumn($tab);
+        $query = $this->group($tab)->select(self::ROW_COLUMNS);
         $cursor = self::cursor($until);
         if ($cursor !== null) {
-            $query->whereRaw('(created_at, ulid) >= (?::timestamptz, ?)', $cursor);
+            $query->whereRaw("({$order}, ulid) >= (?::timestamptz, ?)", $cursor);
             $limit = $max;
         }
 
-        return $query->orderByDesc('created_at')->orderByDesc('ulid')->limit($limit)->get();
+        return $query->orderByDesc($order)->orderByDesc('ulid')->limit($limit)->get();
     }
 
     /**
@@ -292,17 +319,28 @@ final class LeadListQuery
      */
     public function nextCursor(string $tab, ?string $until, int $first, int $more): ?string
     {
-        $query = self::inTab($this->base(), $tab)->toBase()->select('created_at', 'ulid');
+        $order = self::orderColumn($tab);
+        $query = $this->group($tab)->toBase()->select($order, 'ulid');
         $cursor = self::cursor($until);
         if ($cursor !== null) {
-            $query->whereRaw('(created_at, ulid) < (?::timestamptz, ?)', $cursor)->limit($more);
+            $query->whereRaw("({$order}, ulid) < (?::timestamptz, ?)", $cursor)->limit($more);
         } else {
             $query->limit($first + $more);
         }
-        $found = $query->orderByDesc('created_at')->orderByDesc('ulid')->get();
+        $found = $query->orderByDesc($order)->orderByDesc('ulid')->get();
         $last = $found->last();
 
-        return $last === null ? $until : CarbonImmutable::parse(Cast::string($last->created_at))->utc()->format('Y-m-d H:i:s.uP').'|'.Cast::string($last->ulid);
+        return $last === null ? $until : CarbonImmutable::parse(Cast::string($last->{$order}))->utc()->format('Y-m-d H:i:s.uP').'|'.Cast::string($last->ulid);
+    }
+
+    /**
+     * The time a group is read by: the Trash by when each lead went there, the rest by when it was sent.
+     *
+     * @return 'deleted_at'|'created_at'
+     */
+    private static function orderColumn(string $tab): string
+    {
+        return $tab === self::TRASH ? 'deleted_at' : 'created_at';
     }
 
     /** @return array{0: string, 1: string}|null */

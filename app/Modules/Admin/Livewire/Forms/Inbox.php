@@ -7,6 +7,7 @@ namespace App\Modules\Admin\Livewire\Forms;
 use App\Modules\Admin\Support\Leads\LeadCsvExport;
 use App\Modules\Admin\Support\Leads\LeadExportTicket;
 use App\Modules\Admin\Support\Leads\LeadListQuery;
+use App\Modules\Audit\Facades\Audit;
 use App\Modules\Forms\Actions\EraseLead;
 use App\Modules\Forms\Actions\SetFormStatus;
 use App\Modules\Forms\Models\Form;
@@ -39,7 +40,8 @@ use Livewire\Component;
  * "Khách liên hệ" (tenant plane): the site's leads on the left, the one being read on the right
  * (below 940px one at a time, with "Quay lại danh sách"). Status groups, search without
  * diacritics, the forms and time filters, ticking rows for a status change, and every change
- * undone from its message.
+ * undone from its message. «Thùng rác» holds the leads moved there (no question asked, «Hoàn tác» on
+ * the message) for LeadTrash::DAYS days, last trashed first; «Khôi phục» brings one back as it was.
  *
  * Reads need forms.view, writes forms.manage, both asked on every request (the livewire/update
  * endpoint carries no route middleware); the plan is asked first. Leads are site-scoped by
@@ -94,7 +96,7 @@ final class Inbox extends Component
 
     public int $toastSeq = 0;
 
-    /** @var array{items: array<string, string>, set: string}|null what "Hoàn tác" puts back: ulid => the status before; `set` is the status the action gave them */
+    /** @var array{items: array<string, string>, set: string}|null what "Hoàn tác" puts back: ulid => the status before; `set` is the status the action gave them (LeadListQuery::TRASH: they went to the Trash) */
     #[Locked]
     public ?array $undoOp = null;
 
@@ -259,7 +261,7 @@ final class Inbox extends Component
     {
         $this->guardWrite();
         app(SupportSession::class)->forbid();
-        $lead = LeadListQuery::leads()->where('ulid', $ulid)->select(['id', 'ulid', 'name', 'email', 'phone'])->first();
+        $lead = LeadListQuery::leads(trashed: null)->where('ulid', $ulid)->select(['id', 'ulid', 'name', 'email', 'phone'])->first();
         if ($lead === null) {
             $this->say(__('leads.gone'), 'error');
 
@@ -280,7 +282,7 @@ final class Inbox extends Component
         if ($asked === null) {
             return;
         }
-        $lead = LeadListQuery::leads()->where('ulid', $asked['ulid'])->select(['id', 'ulid'])->first();
+        $lead = LeadListQuery::leads(trashed: null)->where('ulid', $asked['ulid'])->select(['id', 'ulid'])->first();
         if ($lead !== null) {
             Gate::authorize('delete', $lead);
         }
@@ -304,6 +306,49 @@ final class Inbox extends Component
     }
 
     /**
+     * «Chuyển vào Thùng rác» in the lead's ⋮: no question, the message offers «Hoàn tác» (10 s). The
+     * lead keeps its status, so «Khôi phục» and «Hoàn tác» put it back exactly as it was. LeadPolicy
+     * decides who may; one audit row says a lead went there, never who the visitor was.
+     */
+    public function moveToTrash(string $ulid): void
+    {
+        $this->guardWrite();
+        $lead = LeadListQuery::leads()->where('ulid', $ulid)->select(['id', 'ulid', 'form_id', 'status'])->lockForUpdate()->first();
+        if ($lead === null) {
+            $this->say(__('leads.gone'), 'error');
+
+            return;
+        }
+        Gate::authorize('trash', $lead);
+        FormSubmission::query()->whereKey($lead->id)->update(['deleted_at' => now(), 'updated_at' => now()]);
+        $this->auditTrash('forms.lead.trashed', $lead);
+        $this->selected = array_values(array_diff($this->selected, [$lead->ulid]));
+        if ($this->lead === $lead->ulid) {
+            $this->lead = '';
+        }
+        $this->say(__('leads.toast_trashed'), 'success', ['items' => [$lead->ulid => $lead->status], 'set' => LeadListQuery::TRASH]);
+    }
+
+    /** «Khôi phục» on a lead in the Trash: it goes back to its group, with the status it had. */
+    public function restoreLead(string $ulid): void
+    {
+        $this->guardWrite();
+        $lead = LeadListQuery::leads(trashed: true)->where('ulid', $ulid)->select(['id', 'ulid', 'form_id', 'status'])->lockForUpdate()->first();
+        if ($lead === null) {
+            $this->say(__('leads.gone'), 'error');
+
+            return;
+        }
+        Gate::authorize('restore', $lead);
+        FormSubmission::query()->whereKey($lead->id)->update(['deleted_at' => null, 'updated_at' => now()]);
+        $this->auditTrash('forms.lead.restored', $lead);
+        if ($this->lead === $lead->ulid) {
+            $this->lead = '';
+        }
+        $this->say(__('leads.toast_restored'));
+    }
+
+    /**
      * «Tải danh sách về máy» in the screen's ⋮: the leads the list shows now (its group, search,
      * forms and time) as a file. A file of visitors' personal data, so only a member who manages
      * leads, never support staff signed in for a member, and only after typing their password (or
@@ -313,6 +358,11 @@ final class Inbox extends Component
     {
         $this->guardWrite();
         app(SupportSession::class)->forbid();
+        $this->clean();
+        if ($this->tab === LeadListQuery::TRASH) {
+            // the file never holds the Trash: the screen offers no download there
+            return;
+        }
         $this->exportByCode = false;
         $this->exportError = '';
         $this->exportOpen = true;
@@ -344,7 +394,8 @@ final class Inbox extends Component
     {
         $this->guardWrite();
         app(SupportSession::class)->forbid();
-        if (! $this->exportOpen) {
+        $this->clean();
+        if (! $this->exportOpen || $this->tab === LeadListQuery::TRASH) {
             return;
         }
         $user = $this->actingUser();
@@ -369,7 +420,6 @@ final class Inbox extends Component
         }
         RateLimiter::hit($limit, 3600);
 
-        $this->clean();
         [$forms, $hidden] = $this->knownForms();
         $count = $this->listQuery($forms, $hidden)->tabCounts()[$this->tab] ?? 0;
         $token = LeadExportTicket::issue($user, app(CurrentSite::class)->id(), [
@@ -436,6 +486,11 @@ final class Inbox extends Component
             return;
         }
         $this->guardWrite();
+        if ($op['set'] === LeadListQuery::TRASH) {
+            $this->untrash(array_map(strval(...), array_keys(array_slice($op['items'], 0, self::MAX_ROWS, true))));
+
+            return;
+        }
         $byStatus = [];
         foreach (array_slice($op['items'], 0, self::MAX_ROWS, true) as $ulid => $status) {
             if (in_array($status, LeadListQuery::STATUSES, true)) {
@@ -460,6 +515,48 @@ final class Inbox extends Component
         } else {
             $this->say(__('leads.toast_undone'));
         }
+    }
+
+    /**
+     * «Hoàn tác» after «Chuyển vào Thùng rác»: the leads still in the Trash come back (one a colleague
+     * restored or erased since is left as it is).
+     *
+     * @param  list<string>  $ulids
+     */
+    private function untrash(array $ulids): void
+    {
+        if ($ulids === []) {
+            return;
+        }
+        $leads = LeadListQuery::leads(trashed: true)->whereIn('ulid', $ulids)->select(['id', 'ulid', 'form_id', 'status'])
+            ->orderBy('id')->lockForUpdate()->get();
+        foreach ($leads as $lead) {
+            Gate::authorize('restore', $lead);
+        }
+        if ($leads->isNotEmpty()) {
+            FormSubmission::query()->whereIn('id', $leads->pluck('id')->all())->update(['deleted_at' => null, 'updated_at' => now()]);
+            foreach ($leads as $lead) {
+                $this->auditTrash('forms.lead.restored', $lead);
+            }
+        }
+        $back = $leads->count();
+        if ($back === 0) {
+            $this->say(__('leads.undo_changed'), 'error');
+        } elseif ($back < count($ulids)) {
+            $this->say(__('leads.undo_partial', ['count' => $back, 'left' => count($ulids) - $back]));
+        } else {
+            $this->say(__('leads.toast_undone'));
+        }
+    }
+
+    /** One audit row for a move into or out of the Trash: the lead's form key, nothing of the visitor. */
+    private function auditTrash(string $action, FormSubmission $lead): void
+    {
+        Audit::record($action, [
+            'auditable_type' => FormSubmission::class,
+            'auditable_id' => $lead->id,
+            'meta' => ['form' => Cast::string(Form::query()->withoutGlobalScope(Form::NOT_DELETING)->whereKey($lead->form_id)->value('key'))],
+        ]);
     }
 
     /** Close the message the member (or its timer) names; a newer message stays. */
@@ -505,13 +602,13 @@ final class Inbox extends Component
                     'whenCounts' => $list->whenCounts($this->tab),
                     'total' => $this->filtering() ? $list->total($this->tab) : null,
                     // the ticked leads still in what is shown, with their status (the bar's counts)
-                    'picked' => $canManage && $this->selected !== [] ? $this->pickedStatuses($list) : [],
-                    'any' => $counts['all'] + $counts['spam'] > 0 || $this->filtering() || $this->leadsExist($hidden),
+                    'picked' => $canManage && $this->selected !== [] && $this->tab !== LeadListQuery::TRASH ? $this->pickedStatuses($list) : [],
+                    'any' => $counts['all'] + $counts['spam'] + $counts[LeadListQuery::TRASH] > 0 || $this->filtering() || $this->leadsExist($hidden),
                 ];
             });
         } catch (QueryException $e) {
             report($e);
-            $read = ['forms' => new Collection, 'counts' => array_fill_keys(LeadListQuery::TABS, 0), 'rows' => new Collection, 'open' => null,
+            $read = ['forms' => new Collection, 'counts' => array_fill_keys([...LeadListQuery::TABS, LeadListQuery::TRASH], 0), 'rows' => new Collection, 'open' => null,
                 'formCounts' => null, 'whenCounts' => [], 'total' => null, 'picked' => [], 'any' => true, 'failed' => true];
         }
 
@@ -539,6 +636,7 @@ final class Inbox extends Component
             'siteTime' => $siteTime,
             'cap' => LeadListQuery::CAP,
             'canCode' => $canManage && $this->actingUser()->two_factor_confirmed_at !== null,
+            'inTrash' => $this->tab === LeadListQuery::TRASH,
         ]));
     }
 
@@ -571,11 +669,16 @@ final class Inbox extends Component
         LeadListQuery::leads()->where('ulid', $ulid)->where('status', 'new')->update(['status' => 'read', 'updated_at' => now()]);
     }
 
-    /** @param  list<int>  $hidden  the site's forms being deleted */
+    /**
+     * The lead the address names, among those the group shows: the Trash's in the Trash, the kept
+     * ones elsewhere (a bell's link to a lead moved to the Trash finds nothing).
+     *
+     * @param  list<int>  $hidden  the site's forms being deleted
+     */
     private function findLead(string $ulid, array $hidden): ?FormSubmission
     {
-        return LeadListQuery::leads($hidden)->where('ulid', $ulid)
-            ->select(['id', 'ulid', 'form_id', 'name', 'email', 'phone', 'source_url', 'ip_address', 'user_agent', 'status', 'is_spam', 'data', 'created_at'])
+        return LeadListQuery::leads($hidden, $this->tab === LeadListQuery::TRASH)->where('ulid', $ulid)
+            ->select(LeadListQuery::ROW_COLUMNS)
             ->first();
     }
 
@@ -643,7 +746,7 @@ final class Inbox extends Component
     /** Keep only values the screen knows: a pasted address with anything else falls back to the default. */
     private function clean(): void
     {
-        if (! in_array($this->tab, LeadListQuery::TABS, true)) {
+        if (! in_array($this->tab, [...LeadListQuery::TABS, LeadListQuery::TRASH], true)) {
             $this->tab = 'all';
         }
         $this->search = mb_substr($this->search, 0, 100);

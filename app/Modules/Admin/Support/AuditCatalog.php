@@ -39,6 +39,7 @@ final class AuditCatalog
             'cms.content_block.created', 'cms.content_block.updated', 'cms.content_block.body_saved',
             'cms.content_block.published', 'cms.content_block.unpublished', 'cms.content_block.duplicated',
             'cms.content_block.deleted', 'forms.lead.erased', 'forms.leads.exported', 'forms.leads.export_finished',
+            'forms.lead.trashed', 'forms.lead.restored', 'forms.leads.trash_purged',
         ],
         'menus' => [
             'cms.menu.saved', 'cms.menu.assigned', 'cms.menu.followed', 'cms.menu.deleted', 'cms.menu_item.saved', 'cms.menu_item.moved',

@@ -2,6 +2,7 @@
     use App\Modules\Admin\Support\DeviceLabel;
     use App\Modules\Admin\Support\Leads\LeadListQuery;
     use App\Modules\Forms\Support\LeadAnswers;
+    use App\Modules\Forms\Support\LeadTrash;
     use App\Modules\Shared\Support\Cast;
     use Illuminate\Support\Js;
     use Illuminate\Support\Number;
@@ -13,20 +14,25 @@
     $fmt = fn (int|string $n): string => is_string($n) ? $n : $num($n);
 
     // The status of a lead: its words, icon and colours (the pill of a row and of the lead being read).
-    $stIcons = ['new' => 'ri-mail-unread', 'read' => 'ri-mail-open', 'archived' => 'ri-check-double', 'spam' => 'ri-spam-2'];
+    // A lead in the Trash shows «Trong Thùng rác» in place of its status (which it keeps for «Khôi phục»).
+    $stIcons = ['new' => 'ri-mail-unread', 'read' => 'ri-mail-open', 'archived' => 'ri-check-double', 'spam' => 'ri-spam-2', 'trash' => 'ri-delete-bin'];
     $stTone = [
         'new' => 'bg-info-soft text-info-text',
         'read' => 'bg-surface-hover text-text',
         'archived' => 'bg-success-soft text-success-text',
         'spam' => 'bg-danger-soft text-danger-text',
+        'trash' => 'border border-dashed border-border-input bg-transparent text-text-muted',
     ];
+    $stOf = fn ($lead): string => $lead->deleted_at !== null ? 'trash' : $lead->status;
     $pill = 'inline-flex min-h-[1.375rem] items-center gap-1 whitespace-nowrap rounded-full px-2 text-caption font-semibold leading-snug';
 
-    // Status groups: every lead but spam, then each status (spam last).
+    // Status groups: every lead but spam, then each status (spam last), and the Trash at the far end,
+    // never in "Khác".
     $groups = [];
     foreach (LeadListQuery::TABS as $key) {
         $groups[] = ['key' => $key, 'label' => __('leads.tab_'.$key), 'count' => $countOf($counts[$key] ?? 0)];
     }
+    $groups[] = ['key' => LeadListQuery::TRASH, 'label' => __('leads.tab_trash'), 'count' => $countOf($counts[LeadListQuery::TRASH] ?? 0), 'trash' => true];
     $groupLabel = $tab === 'all' ? null : __('leads.tab_'.$tab);
 
     // A form's name in the member's language (its first name otherwise).
@@ -156,6 +162,7 @@
         $d = [
             'name' => Cast::string($open->name) !== '' ? Cast::string($open->name) : ($phone !== '' ? $phone : ($email !== '' ? $email : __('leads.no_name'))),
             'status' => $open->status,
+            'trashed' => $open->deleted_at !== null,
             'form' => $formName($openForm),
             'ago' => $ago($open->created_at),
             'when' => $at($open->created_at),
@@ -183,9 +190,9 @@
         <div class="flex items-start gap-3">
             <h1 class="m-0 min-w-0 flex-auto self-center text-[calc(1.25rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ __('leads.title') }}</h1>
             {{-- ⋮ «Việc khác» of the whole list, beside the title on every width: «Tải danh sách về máy»,
-                 for whoever manages leads. Support staff signed in for a member never take that file:
-                 the item stays, with why. --}}
-            @if ($canManage && ! $failed)
+                 for whoever manages leads, never of the Trash (the file holds no lead in it). Support
+                 staff signed in for a member never take that file: the item stays, with why. --}}
+            @if ($canManage && ! $failed && ! $inTrash)
                 <x-bs-admin::list.actions head name="" :label="__('leads.more')" :title="__('leads.more_title')">
                     <x-slot:menu>
                         @if ($support)
@@ -252,7 +259,7 @@
                     <x-bs-admin::search id="leads-search" :label="__('leads.search_label')" :placeholder="__('leads.search_hint')"
                         :clear-label="__('leads.search_clear')" clear-action="$set('search', '')" :clear-on="trim($search) !== ''" wire:model.live.debounce.300ms="search" />
                 </div>
-                @if ($canManage && $rowUlids !== [])
+                @if ($canManage && $rowUlids !== [] && ! $inTrash)
                     <div class="min-w-0">
                         <x-bs-admin::list.check :checked="$allState" :label="__('leads.select_all')" :aria-label="__('leads.select_all_aria', ['n' => $num(count($rowUlids))])" visible wire:click="{{ $selectCall }}" />
                     </div>
@@ -284,25 +291,31 @@
                         $contact = array_values(array_filter([Cast::string($lead->phone), Cast::string($lead->email)]));
                         $rowPage = $page($lead->source_url)['path'];
                         $ticked = isset($picked[$lead->ulid]);
+                        $rowSt = $stOf($lead);
+                        $left = $lead->deleted_at !== null ? LeadTrash::daysLeft($lead->deleted_at, $nowAt) : null;
+                        $pickable = $canManage && ! $inTrash;
                     @endphp
                     <div wire:key="lead-{{ $lead->ulid }}" data-lead="{{ $lead->ulid }}" @class([
                         'relative flex items-stretch border-t border-border',
                         'bg-primary-soft before:absolute before:inset-y-0 before:start-0 before:w-[3px] before:bg-primary-text' => $isOn,
                     ])>
-                        @if ($canManage)
+                        @if ($pickable)
                             <div class="flex shrink-0 items-start justify-center ps-1 pt-1">
                                 <x-bs-admin::list.check :checked="$ticked" :label="__('leads.select_named', ['name' => $name])" wire:click="toggleSelect({{ Js::from([$lead->ulid]) }})" />
                             </div>
                         @endif
                         <button type="button" wire:click="openLead({{ Js::from($lead->ulid) }})" @if ($isOn) aria-current="true" @endif
-                            @class(['focus-ring flex min-w-0 flex-1 flex-col gap-[3px] border-0 bg-transparent py-2.5 pe-3 text-start text-body text-text hover:bg-surface-hover', 'ps-1' => $canManage, 'ps-4' => ! $canManage])>
+                            @class(['focus-ring flex min-w-0 flex-1 flex-col gap-[3px] border-0 bg-transparent py-2.5 pe-3 text-start text-body text-text hover:bg-surface-hover', 'ps-1' => $pickable, 'ps-4' => ! $pickable])>
                             <span class="flex min-w-0 flex-wrap items-baseline gap-x-2">
                                 <span @class(['min-w-0 flex-[1_1_9em] text-text-strong [overflow-wrap:break-word]', 'font-bold' => $lead->status === 'new', 'font-semibold' => $lead->status !== 'new'])>{{ $name }}</span>
                                 <span class="shrink-0 whitespace-nowrap text-caption text-text-muted">{{ $ago($lead->created_at) }}</span>
                             </span>
                             <span class="text-small text-text [overflow-wrap:anywhere]">{{ $contact !== [] ? implode(' · ', $contact) : __('leads.no_contact') }}</span>
                             <span class="flex flex-wrap items-center gap-x-2 gap-y-1 text-caption text-text-muted">
-                                <span class="{{ $pill }} {{ $stTone[$lead->status] ?? $stTone['read'] }}"><x-bs-admin::icon :name="$stIcons[$lead->status] ?? 'ri-mail-open'" class="size-[calc(0.8125rem+var(--user-text-boost))]" />{{ __('leads.st_'.$lead->status) }}</span>
+                                <span class="{{ $pill }} {{ $stTone[$rowSt] ?? $stTone['read'] }}"><x-bs-admin::icon :name="$stIcons[$rowSt] ?? 'ri-mail-open'" class="size-[calc(0.8125rem+var(--user-text-boost))]" />{{ __('leads.st_'.$rowSt) }}</span>
+                                @if ($left !== null)
+                                    <span class="whitespace-nowrap">{{ $left > 0 ? __('leads.trash_days_left', ['n' => $num($left)]) : __('leads.trash_goes_today') }}</span>
+                                @endif
                                 <span class="[overflow-wrap:anywhere]">{{ $formName($formsById->get($lead->form_id)) }}</span>
                                 @if ($rowPage !== '')
                                     <span aria-hidden="true">·</span><span class="[overflow-wrap:anywhere]">{{ $rowPage }}</span>
@@ -319,7 +332,7 @@
                 @empty
                     <div class="flex flex-col items-center justify-center gap-2 border-t border-border px-4 py-12 text-center text-body text-text-muted">
                         <x-bs-admin::icon name="ri-search-eye" class="size-[calc(2rem+var(--user-text-boost))] text-text-faint" />
-                        <span>{{ $narrowed ? __('leads.no_match') : __('leads.none_here') }}</span>
+                        <span>{{ $narrowed ? __('leads.no_match') : ($inTrash ? __('leads.trash_empty') : __('leads.none_here')) }}</span>
                         @if ($narrowed)
                             <x-bs-admin::button variant="outline" color="secondary" wire:click="clearAllFilters">{{ __('admin.list.clear_filters') }}</x-bs-admin::button>
                         @endif
@@ -348,7 +361,8 @@
                 <div class="flex flex-col gap-2 border-b border-border p-4">
                     <h2 class="{{ $h2 }} scroll-mt-2">{{ $d['name'] }}</h2>
                     <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-small text-text-muted">
-                        <span class="{{ $pill }} {{ $stTone[$d['status']] ?? $stTone['read'] }}"><x-bs-admin::icon :name="$stIcons[$d['status']] ?? 'ri-mail-open'" class="size-[calc(0.8125rem+var(--user-text-boost))]" />{{ __('leads.st_'.$d['status']) }}</span>
+                        @php $dSt = $d['trashed'] ? 'trash' : $d['status']; @endphp
+                        <span class="{{ $pill }} {{ $stTone[$dSt] ?? $stTone['read'] }}"><x-bs-admin::icon :name="$stIcons[$dSt] ?? 'ri-mail-open'" class="size-[calc(0.8125rem+var(--user-text-boost))]" />{{ __('leads.st_'.$dSt) }}</span>
                         <span>{{ __('leads.sent_via', ['form' => $d['form']]) }}</span>
                         <span>{{ $d['ago'] }}</span>
                     </div>
@@ -368,7 +382,7 @@
                             @endif
                         </div>
                         @if ($canManage)
-                            @include('admin::livewire.forms.partials.lead-menu', ['status' => $d['status'], 'ulid' => $open->ulid, 'name' => $d['name']])
+                            @include('admin::livewire.forms.partials.lead-menu', ['status' => $d['status'], 'trashed' => $d['trashed'], 'ulid' => $open->ulid, 'name' => $d['name']])
                         @endif
                     </div>
                     @if (! $d['tel'] && ! $d['mailto'])
@@ -377,7 +391,20 @@
                 </div>
 
                 <div class="flex min-h-0 min-w-0 flex-col gap-4 p-4 @min-[58.75rem]/kl:flex-1 @min-[58.75rem]/kl:overflow-auto">
-                    @if ($d['status'] === 'spam')
+                    @if ($d['trashed'])
+                        {{-- In the Trash: no status to change; «Khôi phục» for whoever manages leads. --}}
+                        {{-- the words and «Khôi phục» on one line when there is room (the alert wraps its slot in a block) --}}
+                        <x-bs-admin::alert color="warning" data-state="in-trash">
+                            <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+                                <span class="min-w-0 flex-[1_1_15rem] text-body">{{ __('leads.trash_band', ['days' => $num(LeadTrash::DAYS)]) }}</span>
+                                @if ($canManage)
+                                    <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="restoreLead({{ Js::from($open->ulid) }})" wire:loading.attr="disabled" wire:target="restoreLead">
+                                        <x-bs-admin::icon name="ri-arrow-go-back" class="size-4" /> {{ __('leads.restore') }}
+                                    </x-bs-admin::button>
+                                @endif
+                            </div>
+                        </x-bs-admin::alert>
+                    @elseif ($d['status'] === 'spam')
                         <x-bs-admin::alert color="danger" class="flex flex-wrap items-center gap-x-3 gap-y-2">
                             <span class="min-w-0 flex-[1_1_15rem] text-body">{{ __('leads.spam_note') }}</span>
                             @if ($canManage)
@@ -476,7 +503,7 @@
                 <x-bs-admin::button color="primary" class="min-h-12 min-w-[min(100%,max-content)] flex-1" :href="$d['mailto']" :navigate="false"><x-bs-admin::icon name="ri-mail-send" class="size-4" /> {{ __('leads.email_big') }}</x-bs-admin::button>
             @endif
             @if ($canManage)
-                @include('admin::livewire.forms.partials.lead-menu', ['status' => $d['status'], 'ulid' => $open->ulid, 'name' => $d['name']])
+                @include('admin::livewire.forms.partials.lead-menu', ['status' => $d['status'], 'trashed' => $d['trashed'], 'ulid' => $open->ulid, 'name' => $d['name']])
             @endif
         </div>
     @endif
