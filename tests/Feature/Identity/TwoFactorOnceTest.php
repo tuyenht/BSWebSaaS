@@ -30,7 +30,7 @@ function onceMember(): array
 function onceWrongCode(string $secret): string
 {
     foreach (['000000', '111111', '222222', '333333', '444444'] as $code) {
-        if (! app(TwoFactorService::class)->verify($secret, $code)) {
+        if (! totpFits($secret, $code)) {
             return $code;
         }
     }
@@ -78,7 +78,7 @@ it('refuses an older code nobody used once a newer one was taken', function (): 
     $service = app(TwoFactorService::class);
 
     expect($service->verifyOnce($user, totpCode($secret, 1)))->toBeTrue()
-        ->and($service->verify($secret, totpCode($secret)))->toBeTrue() // still inside the app's window
+        ->and(totpFits($secret, totpCode($secret)))->toBeTrue() // still inside the app's window
         ->and($service->verifyOnce($user, totpCode($secret)))->toBeFalse()
         ->and($service->verifyOnce($user, totpCode($secret, 2)))->toBeTrue();
 });

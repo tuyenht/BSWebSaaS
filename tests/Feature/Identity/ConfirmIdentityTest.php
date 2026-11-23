@@ -17,7 +17,7 @@ use PragmaRX\Google2FA\Google2FA;
 function confirmWrongCode(string $secret): string
 {
     foreach (['000000', '111111', '222222', '333333', '444444'] as $code) {
-        if (! app(TwoFactorService::class)->verify($secret, $code)) {
+        if (! totpFits($secret, $code)) {
             return $code;
         }
     }
