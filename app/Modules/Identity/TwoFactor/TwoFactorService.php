@@ -93,6 +93,9 @@ final readonly class TwoFactorService
      */
     public function consumeRecoveryCode(User $user, string $code): bool
     {
+        // codes are issued in lower case (generateRecoveryCodes): one typed in capitals or with
+        // spaces around it is the same code, wherever it is entered
+        $code = Str::lower(trim($code));
         if ($code === '') {
             return false;
         }
