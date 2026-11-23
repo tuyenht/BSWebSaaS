@@ -7,7 +7,6 @@ namespace App\Modules\Identity\Actions;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\TwoFactor\TwoFactorService;
 use App\Modules\Shared\Support\Cast;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -18,16 +17,14 @@ use Illuminate\Support\Facades\RateLimiter;
  * At most ATTEMPTS wrong tries per DECAY seconds, counted per member whichever of the two they
  * type (switching from the password to the code never buys more guesses); a success clears the
  * count. An empty field or a code that is not 6 digits is answered without counting a try. A code
- * is accepted once here: the same code again, while its window is still open, counts as wrong.
+ * is accepted once (TwoFactorService::verifyOnce): one already used here, at sign-in or in any
+ * other check counts as wrong, even while the app still shows it.
  */
 final readonly class ConfirmIdentity
 {
     public const int ATTEMPTS = 5;
 
     public const int DECAY = 300;
-
-    /** How long a used code is remembered: longer than the ±2 periods of 30 s TwoFactorService accepts. */
-    private const int USED_CODE_TTL = 300;
 
     public function __construct(private TwoFactorService $twoFactor) {}
 
@@ -70,10 +67,7 @@ final readonly class ConfirmIdentity
         if (! self::take($user)) {
             return IdentityCheck::Throttled;
         }
-        // checked first, so a wrong code is never remembered as used; then the code is taken once
-        // (an atomic add: two requests with the same code, only one gets it)
-        if (! $this->twoFactor->verify($secret, $code)
-            || ! Cache::add('confirm-identity:used:'.Cast::int($user->getKey()).':'.hash('sha256', $code), true, self::USED_CODE_TTL)) {
+        if (! $this->twoFactor->verifyOnce($user, $code)) {
             return IdentityCheck::Wrong;
         }
         RateLimiter::clear(self::key($user));

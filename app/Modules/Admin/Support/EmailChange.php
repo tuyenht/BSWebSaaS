@@ -167,7 +167,7 @@ final class EmailChange
             $service = app(TwoFactorService::class);
             $ok = $recovery
                 ? $service->consumeRecoveryCode($user, Str::lower(trim($code)))
-                : $service->verify(Cast::string($user->two_factor_secret), $code);
+                : $service->verifyOnce($user, $code);
             if (! $ok) {
                 return self::WRONG;
             }
