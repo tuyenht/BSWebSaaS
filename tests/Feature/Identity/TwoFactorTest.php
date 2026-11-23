@@ -59,6 +59,16 @@ it('consumes a recovery code exactly once', function (): void {
         ->and($service->consumeRecoveryCode($user->refresh(), $code))->toBeFalse();
 });
 
+it('takes a recovery code typed in capitals or with spaces around it, once', function (): void {
+    [$user, $codes] = recoveryMember();
+    $service = app(TwoFactorService::class);
+
+    expect($service->consumeRecoveryCode($user, '  '.strtoupper($codes[0]).' '))->toBeTrue()
+        ->and($service->consumeRecoveryCode($user->fresh(), $codes[0]))->toBeFalse()
+        ->and(storedRecoveryCodes($user))->not->toContain($codes[0])
+        ->and($service->consumeRecoveryCode($user->fresh(), '   '))->toBeFalse();
+});
+
 /** A member with the app on; returns the member (fresh) and their recovery codes. */
 function recoveryMember(): array
 {
@@ -115,7 +125,8 @@ it('changes nothing for a wrong or empty recovery code', function (): void {
 
     expect($service->consumeRecoveryCode($user, 'aaaaa-bbbbb'))->toBeFalse()
         ->and($service->consumeRecoveryCode($user, ''))->toBeFalse()
-        ->and($service->consumeRecoveryCode($user, strtoupper($codes[0])))->toBeFalse()
+        ->and($service->consumeRecoveryCode($user, substr($codes[0], 0, -1)))->toBeFalse()
+        ->and($service->consumeRecoveryCode($user, $codes[0].'x'))->toBeFalse()
         ->and($row())->toBe($before)
         ->and($user->two_factor_recovery_codes)->toBe($codes);
 });
