@@ -4,10 +4,13 @@ use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Forms\Support\LeadTrash;
 use App\Modules\Identity\Models\User;
+use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /*
@@ -118,4 +121,28 @@ it('is scheduled daily without overlapping', function (): void {
     expect($event)->not->toBeNull()
         ->and($event->expression)->toBe('0 0 * * *')
         ->and($event->withoutOverlapping)->toBeTrue();
+});
+
+it('keeps emptying the Trash of the websites after one whose purge fails, then exits with a failure', function (): void {
+    $first = purgeLead(1, 'Khách site một', 31);
+    $second = purgeLead(2, 'Khách site hai', 31);
+    Exceptions::fake();
+    Log::spy();
+    // the delete of site 1's leads fails after it ran: its transaction must roll back as one
+    DB::listen(function ($query): void {
+        if (str_starts_with($query->sql, 'delete from "form_submissions"') && app(CurrentSite::class)->id() === 1) {
+            throw new RuntimeException('delete failed');
+        }
+    });
+
+    $this->artisan('leads:purge-trash')
+        ->expectsOutputToContain('Purged 1 lead(s)')
+        ->expectsOutputToContain('1 website(s) could not be purged')
+        ->assertFailed();
+
+    // the failed website keeps everything (its purge rolled back as one); the next one is purged
+    expect(purgeLeft($first)['lead'])->toBeTrue()
+        ->and(purgeLeft($second)['lead'])->toBeFalse();
+    Exceptions::assertReported(fn (RuntimeException $e): bool => $e->getMessage() === 'delete failed');
+    Log::shouldHaveReceived('error')->withArgs(fn (string $message, array $context): bool => str_contains($message, 'leads:purge-trash') && $context === ['site_id' => 1])->once();
 });
