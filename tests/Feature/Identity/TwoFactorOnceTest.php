@@ -114,7 +114,7 @@ it('refuses a code used at sign-in for a second sign-in and for the re-check', f
     onceSignIn($user, $code)->assertHasNoErrors()->assertRedirect(route('admin.dashboard'));
     $this->assertAuthenticatedAs($user);
 
-    onceSignIn($user, $code)->assertHasErrors('code')->assertSee(__('auth.two_factor_invalid'))->assertNoRedirect();
+    onceSignIn($user, $code)->assertHasErrors('code')->assertSee(__('admin.account.tfa_code_wrong'))->assertNoRedirect();
     $this->assertGuest();
 
     expect(app(ConfirmIdentity::class)->code($user, $code))->toBe(IdentityCheck::Wrong)

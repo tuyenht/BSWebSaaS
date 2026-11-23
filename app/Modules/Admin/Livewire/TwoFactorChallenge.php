@@ -88,7 +88,9 @@ final class TwoFactorChallenge extends Component
 
         if (! $ok) {
             RateLimiter::hit($rlKey, 600);
-            $this->addError('code', __('auth.two_factor_invalid'));
+            // an app code says what to type, as «Tài khoản của tôi» does: a code just used is refused
+            // too, and the hint to take the one showing now (it changes every 30 seconds) covers it
+            $this->addError('code', __($this->useRecovery ? 'auth.two_factor_invalid' : 'admin.account.tfa_code_wrong'));
             $this->focusField('code');
 
             return null;
