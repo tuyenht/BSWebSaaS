@@ -120,12 +120,15 @@ final readonly class TwoFactorService
     /**
      * Check the code first (a wrong one leaves nothing behind), then take the step it matched. Only
      * a step after the last one taken can match; the atomic add settles two requests carrying the
-     * same code (one gets it). The last-step mark only narrows what can match, so a late write of
-     * an older step cannot reopen one: every taken step keeps its own key for TAKEN_TTL.
+     * same code (one gets it), and every taken step keeps its own key for TAKEN_TTL, so no write
+     * order can let a taken step pass again. The last-step mark is a plain read and write: two
+     * different codes sent side by side can leave it lower, so an older step nobody took may still
+     * pass then. Keys carry a short hash of the secret: setting the app up again with a new secret
+     * starts clean.
      */
     private function take(User $user, string $secret, string $code): bool
     {
-        $id = Cast::int($user->getKey());
+        $id = Cast::int($user->getKey()).':'.substr(hash('sha256', $secret), 0, 16);
         $lastKey = 'two-factor:last-step:'.$id;
         $last = Cast::int(Cache::get($lastKey, 0));
 

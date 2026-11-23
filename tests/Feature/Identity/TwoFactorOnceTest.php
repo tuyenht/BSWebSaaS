@@ -59,7 +59,7 @@ it('takes a code once, and the same code sent twice side by side passes only onc
     // atomic key still turns it away
     $next = totpCode($secret, 1);
     expect($service->verifyOnce($user, $next))->toBeTrue();
-    Cache::forget('two-factor:last-step:'.$user->id);
+    Cache::forget('two-factor:last-step:'.$user->id.':'.substr(hash('sha256', $secret), 0, 16));
     expect($service->verifyOnce($user, $next))->toBeFalse();
 });
 
@@ -71,6 +71,28 @@ it('never remembers a wrong code, refuses an older code and takes the next one',
         ->and($service->verifyOnce($user, totpCode($secret)))->toBeTrue()
         ->and($service->verifyOnce($user, totpCode($secret, -1)))->toBeFalse() // the code that turned the app on
         ->and($service->verifyOnce($user, totpCode($secret, 1)))->toBeTrue();
+});
+
+it('refuses an older code nobody used once a newer one was taken', function (): void {
+    [$user, $secret] = onceMember();
+    $service = app(TwoFactorService::class);
+
+    expect($service->verifyOnce($user, totpCode($secret, 1)))->toBeTrue()
+        ->and($service->verify($secret, totpCode($secret)))->toBeTrue() // still inside the app's window
+        ->and($service->verifyOnce($user, totpCode($secret)))->toBeFalse()
+        ->and($service->verifyOnce($user, totpCode($secret, 2)))->toBeTrue();
+});
+
+it('starts clean when the app is set up again with a new secret', function (): void {
+    $service = app(TwoFactorService::class);
+    $user = User::factory()->create();
+    $first = $service->generateSecret();
+    $service->enable($user, $first, totpCode($first, 1));
+
+    $user->forceFill(['two_factor_secret' => null, 'two_factor_recovery_codes' => null, 'two_factor_confirmed_at' => null])->save();
+    $second = $service->generateSecret();
+
+    expect($service->enable($user->fresh(), $second, totpCode($second)))->toBeTrue();
 });
 
 it('keeps each member to their own codes', function (): void {
