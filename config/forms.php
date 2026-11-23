@@ -10,4 +10,10 @@ return [
     // well under two seconds on a slower disk (20,000 leads × 42 words took 0.6 s on tmpfs).
     'delete_inline_max_leads' => (int) env('FORMS_DELETE_INLINE_MAX_LEADS', 5000),
     'delete_batch_leads' => (int) env('FORMS_DELETE_BATCH_LEADS', 2000),
+
+    // «Tệp đính kèm»: the private disk the files visitors send with a lead are written to
+    // (filesystems.php `leads`), and the largest file a field takes, in megabytes (board «Biểu
+    // mẫu»: «Tối đa 20 MB mỗi tệp»). One value for every website until the plans carry it.
+    'files_disk' => env('FORMS_FILES_DISK', 'leads'),
+    'file_max_mb' => (int) env('FORMS_FILE_MAX_MB', 20),
 ];
