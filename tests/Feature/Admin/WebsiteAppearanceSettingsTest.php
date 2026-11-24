@@ -118,8 +118,8 @@ it('lists both looks in the settings menus under their own names and addresses, 
     // Each page marks its own entry as the one open (the shell's key).
     $look = (string) $this->get('http://a.test/admin/settings/appearance')->assertOk()->getContent();
     $panel = (string) $this->get('http://a.test/admin/settings/admin-ui')->assertOk()->getContent();
-    expect($look)->toMatch('~href="'.preg_quote(route('admin.settings.appearance'), '~').'"[^>]*class="[^"]*bg-admin-primary/10~')
-        ->and($panel)->toMatch('~href="'.preg_quote(route('admin.settings.admin-ui'), '~').'"[^>]*class="[^"]*bg-admin-primary/10~');
+    expect($look)->toMatch('~href="'.preg_quote(route('admin.settings.appearance'), '~').'"[^>]*class="[^"]*bg-primary/10~')
+        ->and($panel)->toMatch('~href="'.preg_quote(route('admin.settings.admin-ui'), '~').'"[^>]*class="[^"]*bg-primary/10~');
 });
 
 it('still saves the admin panel look to admin_theme.config on its new address', function (): void {
