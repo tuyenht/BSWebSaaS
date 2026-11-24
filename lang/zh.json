@@ -699,7 +699,7 @@
     "admin.turnstile_login_label": "登录时要求 Turnstile 验证",
     "admin.turnstile_login_help": "开启后，验证通过才会检查密码。关闭将移除所有位置的验证。",
     "admin.turnstile_login_note": "仅在服务器已配置 Cloudflare 密钥时生效。若 Cloudflare 主机名配置错误导致无法登录，关闭此项可立即恢复登录。",
-    "admin.system_social": "系统社交登录",
+    "admin.system_social": "快捷登录",
     "admin.system_default_warning": "这是平台默认设置 — 适用于所有未单独配置邮件的网站。",
     "admin.oauth_setup_guide": "设置指南：",
     "admin.oauth_guide_step1": "在提供商控制台创建 Web OAuth 应用。",

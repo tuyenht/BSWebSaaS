@@ -699,7 +699,7 @@
     "admin.turnstile_login_label": "ログイン時にTurnstileチャレンジを必須にする",
     "admin.turnstile_login_help": "オンの場合、パスワード確認の前にCloudflareチャレンジの通過が必要です。オフにすると全体でチャレンジが無効になります。",
     "admin.turnstile_login_note": "サーバーにCloudflareキーが設定されている場合のみ有効です。Cloudflareのホスト名設定ミスでログインできない場合は、オフにすると即座に復旧します。",
-    "admin.system_social": "システムソーシャルログイン",
+    "admin.system_social": "クイックログイン",
     "admin.system_default_warning": "これはプラットフォームの既定です — 独自のメールを設定していない全サイトに適用されます。",
     "admin.oauth_setup_guide": "セットアップ手順:",
     "admin.oauth_guide_step1": "プロバイダーのコンソールでWeb OAuthアプリを作成します。",

@@ -699,7 +699,7 @@
     "admin.turnstile_login_label": "Bắt buộc thử thách Turnstile khi đăng nhập",
     "admin.turnstile_login_help": "Khi bật, phải vượt qua thử thách Cloudflare trước khi kiểm tra mật khẩu. Tắt đi sẽ bỏ thử thách ở mọi nơi.",
     "admin.turnstile_login_note": "Chỉ có hiệu lực khi đã cấu hình khoá Cloudflare trên máy chủ. Nếu cấu hình hostname Cloudflare sai làm khoá người dùng, hãy tắt để khôi phục đăng nhập ngay.",
-    "admin.system_social": "Đăng nhập Social hệ thống",
+    "admin.system_social": "Đăng nhập nhanh",
     "admin.system_default_warning": "Đây là mặc định toàn hệ thống — áp dụng cho TẤT CẢ website chưa cấu hình email riêng.",
     "admin.oauth_setup_guide": "Hướng dẫn cài đặt:",
     "admin.oauth_guide_step1": "Tạo ứng dụng OAuth (Web) trong console của nhà cung cấp.",

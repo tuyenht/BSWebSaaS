@@ -699,7 +699,7 @@
     "admin.turnstile_login_label": "Require the Turnstile challenge on login",
     "admin.turnstile_login_help": "When on, a solved Cloudflare challenge is required before a password is checked. Turning it off removes the challenge everywhere.",
     "admin.turnstile_login_note": "Applies only when the Cloudflare keys are configured on the server. If a Cloudflare hostname mis-config locks people out, turn this off to restore login immediately.",
-    "admin.system_social": "System Social Login",
+    "admin.system_social": "Quick sign-in",
     "admin.system_default_warning": "This is the platform default — it applies to ALL sites that don't set their own email.",
     "admin.oauth_setup_guide": "Setup guide:",
     "admin.oauth_guide_step1": "Create a Web OAuth app in the provider's console.",
