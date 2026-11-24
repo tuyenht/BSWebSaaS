@@ -36,7 +36,7 @@
         default => null,
     };
     $caps = ['title' => SeoFields::hardCap('seoTitle'), 'template' => SeoFields::hardCap('seoTitle'), 'description' => SeoFields::hardCap('seoDesc'), 'robots' => SiteSeo::ROBOTS_MAX];
-    $placeholders = ['title' => __('admin.seo.title_placeholder'), 'template' => '%tieu-de% | %ten-website%', 'description' => __('admin.seo.description_placeholder'), 'robots' => "User-agent: *\nDisallow:"];
+    $placeholders = ['title' => __('admin.seo.title_placeholder'), 'template' => SiteSeo::DEFAULT_TEMPLATE, 'description' => __('admin.seo.description_placeholder'), 'robots' => "User-agent: *\nDisallow:"];
 
     // A field is shown when the one it depends on is on (the design's `when`).
     $shown = static fn (string $key): bool => match ($key) {

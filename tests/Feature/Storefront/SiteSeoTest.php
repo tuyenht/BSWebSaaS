@@ -54,19 +54,19 @@ function ssDescription(string $html): ?string
     return preg_match('/<meta name="description" content="([^"]*)">/', $html, $m) === 1 ? html_entity_decode($m[1]) : null;
 }
 
-it('keeps today’s head without the setting', function (): void {
+it('ends every title with the brand and keeps the rest of the head without the setting', function (): void {
     ssBrand();
     ssPage('/gioi-thieu', 'Giới thiệu');
 
     $home = $this->get('http://a.test/')->assertOk()->getContent();
     $page = $this->get('http://a.test/gioi-thieu')->assertOk()->getContent();
 
-    expect($home)->toContain('<title>Trang chủ A</title>')->not->toContain('name="robots"')
-        ->and($page)->toContain('<title>Giới thiệu</title>')
+    expect($home)->toContain('<title>Trang chủ A | Cơ Khí A</title>')->not->toContain('name="robots"')
+        ->and($page)->toContain('<title>Giới thiệu | Cơ Khí A</title>')
         ->and(ssDescription($page))->toBe('Mô tả thương hiệu');
 });
 
-it('builds the title: own title, the home default, the template elsewhere, none without a template', function (): void {
+it('builds the title: own title, the home default, the template elsewhere, the default template without one', function (): void {
     ssBrand('Cơ Khí A');
     ssPage('/gioi-thieu', 'Giới thiệu');
     ssPage('/rieng', 'Trang riêng', ['seo_title' => 'Tiêu đề Google riêng']);
@@ -76,10 +76,13 @@ it('builds the title: own title, the home default, the template elsewhere, none 
         ->and($this->get('http://a.test/gioi-thieu')->getContent())->toContain('<title>Giới thiệu | Cơ Khí A</title>')
         ->and($this->get('http://a.test/rieng')->getContent())->toContain('<title>Tiêu đề Google riêng</title>');
 
-    // The home page without a default title follows the template too; no template keeps the page title.
+    // The home page without a default title follows the template too; no template means the default one,
+    // and a site that wants bare page titles says so with %tieu-de% alone.
     ssSet(['template' => '%tieu-de% – %ten-website%']);
     expect($this->get('http://a.test/')->getContent())->toContain('<title>Trang chủ A – Cơ Khí A</title>');
     ssSet(['titles' => ['vi' => 'Mặc định'], 'template' => '']);
+    expect($this->get('http://a.test/gioi-thieu')->getContent())->toContain('<title>Giới thiệu | Cơ Khí A</title>');
+    ssSet(['template' => '%tieu-de%']);
     expect($this->get('http://a.test/gioi-thieu')->getContent())->toContain('<title>Giới thiệu</title>');
 
     // A site without a name drops the dangling separator.

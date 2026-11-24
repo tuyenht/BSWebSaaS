@@ -79,7 +79,9 @@ it('validates the real pack: schema, bodies, slots, content published but job of
                 expect($item->data['verified'])->toBe($confirmed, $item->key)
                     ->and($item->data['status'])->toBe($confirmed ? 'published' : 'draft', $item->key);
                 if ($confirmed) {
-                    expect($item->data)->not->toHaveKey('claims');
+                    // The card shows the pay among its facts, so the short text under it says what the job is.
+                    expect($item->data)->not->toHaveKey('claims')
+                        ->and($item->data['excerpt']['vi'])->not->toContain('triệu', $item->key);
                 } else {
                     expect($item->data['claims'])->not->toBeEmpty();
                 }
@@ -289,7 +291,11 @@ it('plans the real pack on a fresh site with no conflict, and every internal lin
         ->assertSee('Thái Nguyên: TDP Kim Tỉnh, phường Trung Thành')->assertSee('Hotline 0985 885 286');
     $this->get('http://'.ContentPacks::HOST.'/ke-toan-noi-bo')->assertOk()->assertSee('9 – 15 triệu')->assertSee('mailto:ngavt@ckanvinh.vn', false)
         ->assertSee('Ứng tuyển vị trí này');
-    $this->get('http://'.ContentPacks::HOST.'/tuyen-dung')->assertOk()->assertSee('Kế toán nội bộ')->assertSee('Kỹ sư cơ khí');
+    // The careers list keeps the board's heading on the page and tells search engines it is about jobs.
+    $this->get('http://'.ContentPacks::HOST.'/tuyen-dung')->assertOk()->assertSee('Kế toán nội bộ')->assertSee('Kỹ sư cơ khí')
+        ->assertSee('<title>Tuyển dụng – Gia nhập đội ngũ | Cơ Khí An Vinh</title>', false)
+        ->assertSee('<meta name="description" content="Việc làm tại 3 nhà máy', false)
+        ->assertSee('Gia nhập đội ngũ An Vinh</h1>', false);
     $home = $this->get('http://'.ContentPacks::HOST.'/')->getContent();
     foreach (['/thiet-ke-lap-trinh' => 'Thiết kế Jig &amp; Đồ gá', '/gia-cong-phay-tien-cnc' => 'Gia công Phay &amp; Tiện CNC', '/han-lap-rap-co-khi' => 'Hàn &amp; Lắp ráp cơ khí', '/nang-luc' => 'Sản xuất chi tiết máy &amp; OEM'] as $href => $title) {
         expect($home)->toContain('<a class="sf-card__link" href="'.$href.'">'.$title.'</a>');

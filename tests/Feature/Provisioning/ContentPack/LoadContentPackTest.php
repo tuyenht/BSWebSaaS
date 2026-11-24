@@ -778,6 +778,44 @@ it('keeps the live card label of a category whose pack item does not name one', 
         ->and(cpLabelAndByline($this->siteId)['label'])->toBe('Bản tin');
 });
 
+/** The news category's Google title and description, as stored. */
+function cpCategorySeo(int $siteId): array
+{
+    return ContentPacks::in($siteId, fn (): array => TaxonomyTranslation::query()->where('slug', 'tin-tuc')->where('locale', 'vi')
+        ->first(['seo_title', 'seo_description'])?->only(['seo_title', 'seo_description']) ?? []);
+}
+
+it('writes a category\'s Google title and description, keeps the live ones when the pack does not name them, and clears them when it states them empty', function (): void {
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and(cpCategorySeo($this->siteId))->toBe(['seo_title' => null, 'seo_description' => null]);
+
+    cpCategoryFields($this->folder, ['seo_title' => ['vi' => 'Tin tức | Công ty A'], 'seo_description' => ['vi' => 'Tin mới về sản phẩm và hoạt động của Công ty A.']]);
+    [, $plan] = ContentPacks::run();
+    expect(ContentPacks::verdict($plan, 'tax:post_cat/tin-tuc'))->toBe('update');
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)
+        ->and(cpCategorySeo($this->siteId))->toBe(['seo_title' => 'Tin tức | Công ty A', 'seo_description' => 'Tin mới về sản phẩm và hoạt động của Công ty A.']);
+    [, $again] = ContentPacks::run();
+    expect(ContentPacks::verdict($again, 'tax:post_cat/tin-tuc'))->toBe('unchanged');
+
+    // An item that no longer names them keeps the live ones (staff may have written them).
+    ContentPacks::item($this->folder, 'taxonomies.json', 'tax:post_cat/tin-tuc', function (array $item): array {
+        unset($item['seo_title'], $item['seo_description']);
+
+        return $item;
+    });
+    [, $kept] = ContentPacks::run();
+    expect(ContentPacks::verdict($kept, 'tax:post_cat/tin-tuc'))->toBe('unchanged')
+        ->and(cpCategorySeo($this->siteId)['seo_title'])->toBe('Tin tức | Công ty A');
+
+    cpCategoryFields($this->folder, ['seo_title' => ['vi' => ''], 'seo_description' => ['vi' => '']]);
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and(cpCategorySeo($this->siteId))->toBe(['seo_title' => null, 'seo_description' => null]);
+    [, $settled] = ContentPacks::run();
+    expect(ContentPacks::verdict($settled, 'tax:post_cat/tin-tuc'))->toBe('unchanged');
+});
+
 it('names the website\'s first owner as the creator of every post and page a pack makes', function (): void {
     [$exit, $output] = ContentPacks::load();
     expect($exit)->toBe(0, $output);
