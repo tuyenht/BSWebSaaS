@@ -595,6 +595,11 @@
   /* Golden Standard: 10.5px (NOT 12px) */
 }
 
+/* One provider shown: its button takes the whole row. */
+.auth-social-grid--one {
+  grid-template-columns: 1fr;
+}
+
 .auth-social-btn {
   display: flex;
   align-items: center;

@@ -4,11 +4,27 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Support;
 
+use App\Modules\Identity\Models\SocialIdentity;
+use App\Modules\Tenancy\Context\CurrentSite;
+
 /**
- * Resolves social-login (Google/Facebook/…) OAuth app credentials with the same hybrid
- * precedence as mail: tenant override (site_settings group 'oauth_social', key = provider)
- * → platform default (platform_settings) → none. A provider is "enabled" only once its
- * client id + secret are configured; until then the login buttons render disabled.
+ * Resolves which social-login (Google/Facebook/…) OAuth app a sign-in uses, from two tiers:
+ *
+ *  - the platform's shared app (platform_settings group 'oauth_social', key = provider):
+ *    {client_id, client_secret, enabled (master switch), status ('ok'|'error'|null), checked_at};
+ *  - the website's own choice (site_settings group 'oauth_social', key = provider):
+ *    {on (the site's switch), own (use its own app), client_id, client_secret}.
+ *
+ * A website's own app wins once it is chosen and complete; otherwise the shared app serves, when
+ * it is complete, switched on and not found broken by the periodic check. A provider is enabled
+ * on a website only when the site's switch is on and one of the two apps is ready.
+ *
+ * Rows written before the switch existed ({client_id, client_secret, enabled}) still read: a row
+ * with a client id means the site's own app and its old `enabled` is the switch; a row with no
+ * client id is not a choice to turn the shared app off (there was none then), so it reads as on.
+ *
+ * On a host with no website (the platform console) only the platform tier applies, and nothing
+ * here queries a tenant table.
  */
 final readonly class SocialAuth
 {
@@ -19,30 +35,20 @@ final readonly class SocialAuth
 
     public function enabled(string $provider): bool
     {
-        $cfg = $this->config($provider);
+        $site = $this->siteRow($provider);
 
-        return $cfg !== null
-            && ! empty($cfg['client_id'])
-            && ! empty($cfg['client_secret'])
-            && ($cfg['enabled'] ?? true) !== false;
+        return self::switchedOn($site) && $this->resolve($provider, $site) !== null;
     }
 
     /**
+     * The app a sign-in with this provider uses here: the website's own when chosen and complete,
+     * else the platform's shared one when ready, else none. Ignores the site's switch (see enabled()).
+     *
      * @return array<string, mixed>|null
      */
     public function config(string $provider): ?array
     {
-        $tenant = $this->tenant->get('oauth_social', $provider);
-        if (is_array($tenant) && ! empty($tenant['client_id'])) {
-            return $tenant;
-        }
-
-        $platform = $this->platform->get('oauth_social', $provider);
-        if (is_array($platform) && ! empty($platform['client_id'])) {
-            return $platform;
-        }
-
-        return null;
+        return $this->resolve($provider, $this->siteRow($provider));
     }
 
     public function clientSecret(string $provider): ?string
@@ -51,5 +57,114 @@ final readonly class SocialAuth
         $secret = $cfg['client_secret'] ?? null;
 
         return is_string($secret) ? SecretCipher::decrypt($secret) : null;
+    }
+
+    /** The platform's shared app is complete, switched on and not found broken by the last check. */
+    public function sharedReady(string $provider): bool
+    {
+        return self::platformReady($this->platform->get('oauth_social', $provider));
+    }
+
+    /** The website's own switch for this provider (on by default). */
+    public function siteOn(string $provider): bool
+    {
+        return self::switchedOn($this->siteRow($provider));
+    }
+
+    /** The website chose to use its own app for this provider. */
+    public function usesOwn(string $provider): bool
+    {
+        return self::choosesOwn($this->siteRow($provider));
+    }
+
+    /** The website chose its own app and both its client id and secret are saved. */
+    public function ownReady(string $provider): bool
+    {
+        return self::ownComplete($this->siteRow($provider));
+    }
+
+    /** How many accounts have linked this provider (across the platform). */
+    public function usersCount(string $provider): int
+    {
+        return SocialIdentity::query()->where('provider', $provider)->count();
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $site
+     * @return array<string, mixed>|null
+     */
+    private function resolve(string $provider, ?array $site): ?array
+    {
+        if ($site !== null && self::ownComplete($site)) {
+            return $site;
+        }
+
+        $platform = $this->platform->get('oauth_social', $provider);
+
+        return self::platformReady($platform) ? $platform : null;
+    }
+
+    /**
+     * The website's row, or null on a host with no website (no tenant query is made there).
+     *
+     * @return array<string, mixed>|null
+     */
+    private function siteRow(string $provider): ?array
+    {
+        if (! app(CurrentSite::class)->hasId()) {
+            return null;
+        }
+
+        return $this->tenant->get('oauth_social', $provider);
+    }
+
+    /** @param  array<string, mixed>|null  $site */
+    private static function switchedOn(?array $site): bool
+    {
+        if ($site === null) {
+            return true;
+        }
+        if (array_key_exists('on', $site)) {
+            return (bool) $site['on'];
+        }
+
+        // A row from before the switch: with its own client id, the old `enabled` was the switch.
+        return self::filledString($site['client_id'] ?? null) ? (bool) ($site['enabled'] ?? true) : true;
+    }
+
+    /** @param  array<string, mixed>|null  $site */
+    private static function choosesOwn(?array $site): bool
+    {
+        if ($site === null) {
+            return false;
+        }
+        if (array_key_exists('own', $site)) {
+            return (bool) $site['own'];
+        }
+
+        return self::filledString($site['client_id'] ?? null);
+    }
+
+    /** @param  array<string, mixed>|null  $site */
+    private static function ownComplete(?array $site): bool
+    {
+        return self::choosesOwn($site)
+            && self::filledString($site['client_id'] ?? null)
+            && self::filledString($site['client_secret'] ?? null);
+    }
+
+    /** @param  array<string, mixed>|null  $platform */
+    private static function platformReady(?array $platform): bool
+    {
+        return $platform !== null
+            && self::filledString($platform['client_id'] ?? null)
+            && self::filledString($platform['client_secret'] ?? null)
+            && ($platform['enabled'] ?? true) !== false
+            && ($platform['status'] ?? null) !== 'error';
+    }
+
+    private static function filledString(mixed $value): bool
+    {
+        return is_string($value) && $value !== '';
     }
 }

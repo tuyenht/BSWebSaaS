@@ -19,6 +19,8 @@ use Spatie\Permission\PermissionRegistrar;
 beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
+    // The platform's shared sign-in apps live in platform_settings, which nothing rolls back.
+    DB::connection('pgsql_admin')->statement('truncate platform_settings restart identity cascade');
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
 });
