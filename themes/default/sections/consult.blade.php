@@ -1,11 +1,22 @@
 {{--
     The consult box of a side column (a block slot only): a small line, a heading, a line of text and
     one button, then the hotline and the email. Those two come from the site's contact settings
-    (`$sfSlot['contact']`, SlotContext); a line the settings leave empty is hidden.
+    (`$sfSlot['contact']`, SlotContext); a line the settings leave empty is hidden. A box may name its
+    own number (`phone`) or address (`email`) instead (a careers column points at the hiring desk):
+    each one that is a valid number or address replaces the site's line, the other line stays the site's.
 --}}
 @php
     $sfButton = \App\Modules\Theme\Components\ButtonLink::of($props, 'button_url');
     $sfLines = is_array($sfSlot['contact'] ?? null) ? $sfSlot['contact'] : [];
+    $sfOwn = \App\Modules\Storefront\Support\SlotContext::contact(['hotline' => $props['phone'] ?? null, 'email' => $props['email'] ?? null]);
+    if ($sfOwn['call'] !== null) {
+        $sfLines['phone'] = $sfOwn['phone'];
+        $sfLines['call'] = $sfOwn['call'];
+    }
+    if ($sfOwn['mail'] !== null) {
+        $sfLines['email'] = $sfOwn['email'];
+        $sfLines['mail'] = $sfOwn['mail'];
+    }
 @endphp
 <section class="slot-consult">
 @if (! empty($props['eyebrow']))

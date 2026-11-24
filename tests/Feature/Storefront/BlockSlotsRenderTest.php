@@ -316,6 +316,28 @@ it('hides the empty lines of the consult box and takes hotline and email from th
     expect($none)->toContain('Cần tư vấn hoặc báo giá?')->not->toContain('slot-consult__call')->not->toContain('slot-consult__mail');
 });
 
+it('lets a consult box name its own number and address, each replacing only the site line it is valid for', function (): void {
+    slotsSite();
+    $id = slotsSiteId();
+    app(Tenancy::class)->enter($id, function (): void {
+        SiteProfile::query()->update(['hotline' => '0915 66 83 83', 'email' => 'quybv@ckanvinh.vn']);
+    });
+    $box = fn (array $own): array => ['type' => 'consult', 'props' => ['heading' => 'Ứng tuyển vị trí này', ...$own]];
+
+    slotsDefault($id, 'post_aside', [$box(['phone' => '0985 885 286', 'email' => 'ngavt@ckanvinh.vn'])]);
+    slotsFresh();
+    preg_match('#<section class="slot-consult">.*?</section>#s', slotsHtml('/tin-tuc/ong-dang-doc'), $own);
+    expect($own[0])->toContain('href="tel:0985885286"')->toContain('Hotline 0985 885 286')->toContain('href="mailto:ngavt@ckanvinh.vn"')
+        ->not->toContain('0915')->not->toContain('quybv@');
+
+    // Only the address given, and a number that is no number: the site's hotline stays.
+    slotsDefault($id, 'post_aside', [$box(['phone' => 'gọi giờ hành chính', 'email' => 'ngavt@ckanvinh.vn'])]);
+    slotsFresh();
+    preg_match('#<section class="slot-consult">.*?</section>#s', slotsHtml('/tin-tuc/ong-dang-doc'), $mixed);
+    expect($mixed[0])->toContain('Hotline 0915 66 83 83')->toContain('href="mailto:ngavt@ckanvinh.vn"')->not->toContain('quybv@')
+        ->not->toContain('giờ hành chính');
+});
+
 it('makes anchors for the formatted-text headings from two up, unique and Vietnamese-safe, and leaves a body with fewer untouched', function (): void {
     $two = '<section class="sf-prose">'."\n".'<h2>Đồ gá kiểm</h2><p>x</p><h2>Lớp phủ bề mặt</h2><h3>Con</h3><h2>Đồ gá kiểm</h2>'."\n".'</section>';
     $toc = ArticleToc::of($two);
