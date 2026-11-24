@@ -347,6 +347,14 @@ export function unsavedDialog(cfg) {
             const stay = foot.querySelector('[data-ud="s"]');
             if (stay) {
                 stay.focus();
+                // asked from a timer (a drawer's close), the dialog may not be drawn yet on this tick
+                if (document.activeElement !== stay) {
+                    window.requestAnimationFrame(() => {
+                        if (this.open) {
+                            stay.focus();
+                        }
+                    });
+                }
             }
         },
 
