@@ -65,7 +65,7 @@ const ADMIN_HAND_BUILT_PARTS = [
     // «Xem trước khi lưu» summary and the save bar's change count (each re-read as the draft changes)
     'roles/index.blade.php' => [0, 3, 0],
     // + the screen's error state
-    'settings/domains.blade.php' => [0, 3, 0],
+    'settings/domains-body.blade.php' => [0, 3, 0],
     // the list's error state (its error lines are the shared field-error)
     'users/index.blade.php' => [0, 1, 0],
     // the invitations list's error state (heading, words, "Thử lại", as its board draws it)
