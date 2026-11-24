@@ -37,7 +37,7 @@ use Illuminate\Support\Facades\Validator;
  * key shapes and uniqueness, locale maps, the "unverified ⇒ draft" rule, every page and post body
  * through the editor's own ValidPageJson, header/footer/theme settings through the storefront's
  * own readers (a value the reader would drop is an error here, never a silent drop), category
- * order and references, forms (FormFieldTypes), menus, redirects and image slots (a named file must exist and be an image
+ * order and references, content sections, forms (FormFieldTypes), menus, redirects and image slots (a named file must exist and be an image
  * by its magic bytes). Returns every problem at once.
  */
 final readonly class PackValidator
@@ -82,6 +82,9 @@ final readonly class PackValidator
 
     private const int MENU_DEPTH = 3;
 
+    /** Section keys the platform itself owns (the pages section; the products surface, now the catalog's): never a pack's. */
+    private const array PLATFORM_SECTIONS = ['pages', 'products'];
+
     /** Image magic bytes → MIME (the upload whitelist's raster types). */
     private const array MAGIC = [
         "\xFF\xD8\xFF" => 'image/jpeg',
@@ -120,6 +123,7 @@ final readonly class PackValidator
         $seen = [];
         $taxonomies = [];
         $pages = [];
+        $sectionCategories = [];
         foreach ($pack->items as $item) {
             if (isset($seen[$item->key])) {
                 $errors[] = "{$item->key}: the key is used twice.";
@@ -131,6 +135,7 @@ final readonly class PackValidator
                 'setting' => $this->setting($pack, $item, $errors),
                 'profile' => $this->profile($pack, $item, $errors),
                 'taxonomy' => $this->taxonomy($pack, $item, $taxonomies, $errors),
+                'section' => $this->section($item, $taxonomies, $sectionCategories, $errors),
                 'product' => $this->product($pack, $item, $taxonomies, $errors),
                 'post' => $this->post($pack, $item, $taxonomies, $errors),
                 'page' => $this->page($pack, $item, $pages, $errors),
@@ -741,6 +746,53 @@ final readonly class PackValidator
                 // is read nowhere today, so it keeps any theme layout (same as CreateTaxonomy/UpdateTaxonomy).
                 $errors[] = "{$item->key}: detail_template must be a post layout, or @parent.";
             }
+        }
+    }
+
+    /**
+     * A content section (sections.json): a post section built on one of the pack's post categories,
+     * one section per category. Its key is the section's own key (stable, in the admin's links and
+     * the permalink settings), its label one line of text as the section stores it.
+     *
+     * @param  array<string, true>  $taxonomies  category keys seen so far (taxonomies come first)
+     * @param  array<string, true>  $categories  categories a section of the pack is already built on
+     * @param  list<string>  $errors
+     */
+    private function section(PackItem $item, array $taxonomies, array &$categories, array &$errors): void
+    {
+        if (preg_match('/\Asection:([a-z][a-z0-9_]{0,49})\z/', $item->key, $m) !== 1) {
+            $errors[] = "{$item->key}: a section key is section:<key> (lowercase letters, digits and underscores).";
+
+            return;
+        }
+        if (in_array($m[1], self::PLATFORM_SECTIONS, true)) {
+            $errors[] = "{$item->key}: «{$m[1]}» is the platform's own section; a pack does not write it.";
+        }
+        $label = $item->data['label'] ?? null;
+        if (! is_string($label) || $label === '' || trim($label) !== $label || mb_strlen($label) > self::TEXT_MAX || preg_match('/[\x00-\x1F\x7F<>]/u', $label) === 1) {
+            $errors[] = "{$item->key}: label must be one line of text (at most ".self::TEXT_MAX.' characters, no tags, no spaces at the ends).';
+        }
+        if (($item->data['entry_type'] ?? null) !== 'post') {
+            $errors[] = "{$item->key}: entry_type must be post (a pack creates post sections only).";
+        }
+        $category = $item->data['category'] ?? null;
+        $chain = is_string($category) ? self::taxonomyChain($category) : null;
+        if (! is_string($category) || $chain === null || $chain['vocabulary'] !== 'post_cat') {
+            $errors[] = "{$item->key}: category must be a post category key (tax:post_cat/…).";
+        } elseif (! isset($taxonomies[$category])) {
+            $errors[] = "{$item->key}: category {$category} is not in taxonomies.json.";
+        } elseif (isset($categories[$category])) {
+            $errors[] = "{$item->key}: another section of the pack is built on {$category}.";
+        } else {
+            $categories[$category] = true;
+        }
+        $icon = $item->data['icon'] ?? null;
+        if ($icon !== null && (! is_string($icon) || strlen($icon) > 64 || preg_match('/\Ari-[a-z0-9]+(?:-[a-z0-9]+)*\z/', $icon) !== 1)) {
+            $errors[] = "{$item->key}: icon must be a glyph name (ri-…).";
+        }
+        $order = $item->data['sort_order'] ?? null;
+        if (! is_int($order) || $order < 0 || $order > 1_000_000) {
+            $errors[] = "{$item->key}: sort_order must be a whole number from 0.";
         }
     }
 

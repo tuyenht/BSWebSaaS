@@ -15,6 +15,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
+use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Database\Eloquent\Model;
@@ -22,7 +23,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Before --apply writes anything: a gzip JSON file of every row the plan is about to change (per
- * item: the record, its translations, routes, category links, images, image-usage rows, menu
+ * item: the record (a content section's row), its translations, routes, category links, images, image-usage rows, menu
  * tree or form fields; for a category, the routes of the posts and products it carries along; settings; the
  * profile; redirects) plus every redirect from or to an address the load moves, writes or vacates
  * (the new addresses of the posts and products a category carries along included),
@@ -160,6 +161,7 @@ final readonly class Backup
             'page', 'post' => $this->entryRows((int) $id),
             'product' => $this->productRows((int) $id),
             'taxonomy' => $this->taxonomyRows((int) $id, $planned->item->key, $planner),
+            'section' => ['section' => ContentSection::query()->findOrFail($id)->attributesToArray()],
             'menu' => $this->menuRows($id, $planned->item->anchor(), $planner->defaultLocale()),
             'form' => $this->formRows((int) $id),
             'setting' => $this->settingRows($planned->item->anchor()),
