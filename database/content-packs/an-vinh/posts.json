@@ -363,8 +363,9 @@
   },
   {
    "key": "post:ky-su-thiet-ke-co-khi-do-ga",
-   "verified": false,
-   "status": "draft",
+   "verified": true,
+   "status": "published",
+   "published_at": "2026-11-24",
    "categories": [
     "tax:post_cat/tuyen-dung"
    ],
@@ -372,62 +373,46 @@
     "media": "cad-1"
    },
    "title": {
-    "vi": "Kỹ sư thiết kế cơ khí – đồ gá"
+    "vi": "Kỹ sư cơ khí – thiết kế jig, đồ gá ô tô & xe máy"
    },
    "excerpt": {
-    "vi": "Thiết kế 3D jig, đồ gá trên SolidWorks/NX theo bản vẽ và yêu cầu của khách hàng; lập bản vẽ chế tạo."
+    "vi": "Thiết kế jig, đồ gá cho ô tô và xe máy trên NX, Inventor, Catia. Lương 10 – 20 triệu/tháng + thưởng, làm việc tại Hà Nội hoặc Thái Nguyên."
    },
    "body": {
     "vi": [
      {
       "type": "richtext_html",
       "props": {
-       "html": "<h2>Mô tả công việc</h2><ul><li>Thiết kế 3D jig, đồ gá trên SolidWorks/NX theo bản vẽ và yêu cầu của khách hàng.</li><li>Lập bản vẽ chế tạo, bản vẽ lắp và danh mục vật tư cho xưởng gia công.</li><li>Tính toán chuẩn định vị, cơ cấu kẹp và dung sai của đồ gá theo chi tiết sản phẩm.</li><li>Phối hợp xưởng gia công, lắp ráp và QC trong quá trình chế tạo, chạy thử và bàn giao đồ gá.</li><li>Trao đổi kỹ thuật với khách hàng khi làm rõ yêu cầu và nghiệm thu.</li></ul><h2>Yêu cầu</h2><ul><li>Tốt nghiệp đại học chuyên ngành cơ khí, cơ điện tử hoặc tương đương.</li><li>Sử dụng thành thạo SolidWorks hoặc NX; đọc hiểu bản vẽ và dung sai hình học.</li><li>Ưu tiên ứng viên đã thiết kế jig hàn, đồ gá kiểm tra hoặc đồ gá gia công.</li><li>Hiểu biết về gia công phay, tiện, cắt dây và vật liệu chế tạo đồ gá.</li><li>Cẩn thận, chủ động, làm việc nhóm tốt.</li></ul><h2>Quyền lợi</h2><ul><li>Lương theo năng lực, thưởng lễ Tết và tháng lương thứ 13.</li><li>Đóng BHXH, BHYT, BHTN đầy đủ theo quy định.</li><li>Tham gia trực tiếp dự án jig, đồ gá cho khách hàng ngành ô tô, điện tử, tự động hóa.</li><li>Team building, hoạt động tập thể hằng năm.</li></ul><h2>Thời gian & địa điểm làm việc</h2><p>Thứ 2 – Thứ 7, 7:30 – 17:00 · Trụ sở: Thôn Xuân Sơn, xã Trung Giã, TP Hà Nội.</p><h2>Cách ứng tuyển</h2><p>Hồ sơ gồm: CV hoặc đơn xin việc; bản sao bằng cấp, chứng chỉ (nếu có). Gửi hồ sơ về <a href=\"mailto:quybv@ckanvinh.vn\">quybv@ckanvinh.vn</a> hoặc gọi, nhắn Zalo <a href=\"tel:0915668383\">0915 66 83 83</a>.</p><p>Liên hệ tuyển dụng: Điện thoại / Zalo 0915 66 83 83, email quybv@ckanvinh.vn.</p>"
+       "html": "<p>Công ty TNHH TM&amp;DV Thiết kế Gia công Cơ khí An Vinh cần tuyển <strong>kỹ sư cơ khí</strong> thiết kế jig, đồ gá cho ngành cơ khí ô tô và xe máy.</p><h2>Mô tả công việc</h2><ul><li>Thiết kế đồ gá (jig) cho ô tô và xe máy.</li><li>Triển khai bản vẽ 2D/3D, bóc tách chi tiết.</li><li>Gia công, lắp ráp và thử nghiệm jig.</li><li>Chỉnh sửa, cải tiến jig theo yêu cầu.</li></ul><h2>Yêu cầu</h2><ul><li>Tốt nghiệp đại học hoặc cao đẳng chuyên ngành cơ khí.</li><li>Sử dụng thành thạo NX, Inventor, Catia…</li><li>Có kinh nghiệm thiết kế jig là lợi thế.</li><li>Chăm chỉ, trách nhiệm, sáng tạo.</li></ul><h2>Quyền lợi</h2><ul><li>Lương 10 – 20 triệu đồng/tháng, cộng thưởng.</li><li>Đóng BHXH, BHYT, BHTN đầy đủ.</li><li>Du lịch hằng năm, thưởng Tết.</li><li>Môi trường làm việc chuyên nghiệp.</li></ul><h2>Địa điểm làm việc</h2><ul><li>Trung Giã, Hà Nội: thôn Xuân Sơn, xã Trung Giã, TP Hà Nội.</li><li>Kim Tỉnh, Thái Nguyên: TDP Kim Tỉnh, phường Trung Thành, tỉnh Thái Nguyên.</li></ul><h2>Liên hệ ứng tuyển</h2><p>Gọi hoặc nhắn Zalo cho bộ phận tuyển dụng:</p><ul><li>Mr. Quy: <a href=\"tel:0915668383\">0915 668 383</a></li><li>Ms. Nga: <a href=\"tel:0985885286\">0985 885 286</a></li><li>Ms. Trang: <a href=\"tel:0983896615\">0983 896 615</a></li></ul><p>Hoặc gửi CV về email <a href=\"mailto:quybv@ckanvinh.vn\">quybv@ckanvinh.vn</a>.</p>"
       }
      }
     ]
    },
-   "claims": [
-    "Vị trí: Kỹ sư thiết kế cơ khí – đồ gá (tuyển gấp)",
-    "Nơi làm việc: Trụ sở – Nhà máy 1, Trung Giã",
-    "Số lượng: 2",
-    "Lương: Thỏa thuận",
-    "Hạn nộp: 31/12/2026",
-    "Yêu cầu: đại học cơ khí/cơ điện tử, SolidWorks hoặc NX",
-    "Quyền lợi: tháng lương thứ 13, thưởng lễ Tết, BHXH/BHYT/BHTN",
-    "Giờ làm: Thứ 2 – Thứ 7, 7:30 – 17:00"
-   ],
    "facts": [
     {
      "text": {
-      "vi": "Trụ sở – Nhà máy 1, Trung Giã"
+      "vi": "Trung Giã (HN) · Kim Tỉnh (TN)"
      },
      "tone": "plain"
     },
     {
      "text": {
-      "vi": "Toàn thời gian · SL: 2"
+      "vi": "ĐH/CĐ Cơ khí · NX, Inventor, Catia"
      },
      "tone": "plain"
     },
     {
      "text": {
-      "vi": "Lương: Thỏa thuận"
+      "vi": "Lương: 10 – 20 triệu + thưởng"
      },
      "tone": "accent"
-    },
-    {
-     "text": {
-      "vi": "Hạn nộp: 31/12/2026"
-     },
-     "tone": "plain"
     }
    ],
    "seo_title": {
-    "vi": "Tuyển kỹ sư thiết kế cơ khí – đồ gá | Cơ Khí An Vinh"
+    "vi": "Tuyển kỹ sư cơ khí thiết kế jig, đồ gá | Cơ Khí An Vinh"
    },
    "seo_description": {
-    "vi": "An Vinh tuyển kỹ sư thiết kế 3D jig, đồ gá trên SolidWorks, NX theo bản vẽ và yêu cầu của khách hàng, lập bản vẽ chế tạo. Xem yêu cầu và cách ứng tuyển."
+    "vi": "An Vinh tuyển kỹ sư cơ khí thiết kế jig, đồ gá ô tô và xe máy tại Hà Nội, Thái Nguyên. Lương 10 – 20 triệu + thưởng, BHXH đầy đủ. Gọi 0915 668 383."
    }
   },
   {

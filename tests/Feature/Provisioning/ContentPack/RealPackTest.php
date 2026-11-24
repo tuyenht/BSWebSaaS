@@ -20,6 +20,9 @@ use Tests\Fixtures\StorefrontCards;
  * loading, every internal link it holds resolves to a live address.
  */
 
+/** Job offers the company has sent itself (24/11/2026): published as sent. */
+const CONFIRMED_JOBS = ['post:ky-su-thiet-ke-co-khi-do-ga'];
+
 const RETIRED = ['post:thiet-ke-jig-do-ga', 'post:san-xuat-chi-tiet-may-oem'];
 
 /** The about section: the company page, then its subpages in menu order. */
@@ -67,10 +70,17 @@ it('validates the real pack: schema, bodies, slots, content published but job of
         if (preg_match('/\A(page|post|product):/', $item->key) === 1) {
             $content++;
             if (in_array('tax:post_cat/tuyen-dung', $item->data['categories'] ?? [], true)) {
+                // A job offer goes live only once the company has sent it; the ones written ahead of that stay
+                // unverified drafts that list their claims for the confirmation sheet.
                 $jobs[] = $item->key;
-                expect($item->data['verified'])->toBeFalse($item->key)
-                    ->and($item->data['status'])->toBe('draft', $item->key)
-                    ->and($item->data['claims'])->not->toBeEmpty();
+                $confirmed = in_array($item->key, CONFIRMED_JOBS, true);
+                expect($item->data['verified'])->toBe($confirmed, $item->key)
+                    ->and($item->data['status'])->toBe($confirmed ? 'published' : 'draft', $item->key);
+                if ($confirmed) {
+                    expect($item->data)->not->toHaveKey('claims');
+                } else {
+                    expect($item->data['claims'])->not->toBeEmpty();
+                }
             } else {
                 expect($item->data['verified'])->toBeTrue($item->key)
                     ->and($item->data['status'])->toBe(in_array($item->key, RETIRED, true) ? 'draft' : 'published', $item->key)
@@ -264,9 +274,10 @@ it('plans the real pack on a fresh site with no conflict, and every internal lin
         '/gia-cong-cat-day-xung-dien', '/han-lap-rap-co-khi', '/do-kiem-qa-qc', '/du-an', '/tin-tuc', '/san-pham', '/lien-he', '/ho-so-nang-luc'] as $path) {
         $this->get('http://'.ContentPacks::HOST.$path)->assertOk();
     }
-    foreach (['/ky-thuat-vien-van-hanh-may-cnc', '/ky-su-thiet-ke-co-khi-do-ga', '/nhan-vien-kiem-tra-chat-luong-qc'] as $path) {
+    foreach (['/ky-thuat-vien-van-hanh-may-cnc', '/nhan-vien-kiem-tra-chat-luong-qc'] as $path) {
         $this->get('http://'.ContentPacks::HOST.$path)->assertNotFound();
     }
+    $this->get('http://'.ContentPacks::HOST.'/ky-su-thiet-ke-co-khi-do-ga')->assertOk()->assertSee('0985 885 286');
     $home = $this->get('http://'.ContentPacks::HOST.'/')->getContent();
     foreach (['/thiet-ke-lap-trinh' => 'Thiết kế Jig &amp; Đồ gá', '/gia-cong-phay-tien-cnc' => 'Gia công Phay &amp; Tiện CNC', '/han-lap-rap-co-khi' => 'Hàn &amp; Lắp ráp cơ khí', '/nang-luc' => 'Sản xuất chi tiết máy &amp; OEM'] as $href => $title) {
         expect($home)->toContain('<a class="sf-card__link" href="'.$href.'">'.$title.'</a>');
