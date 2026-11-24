@@ -10,8 +10,8 @@
     $cardHead = 'text-caption font-bold uppercase tracking-[.04em] text-text-muted';
     $icons = ['google' => ['icon' => 'ri-google', 'color' => '#ea4335'], 'facebook' => ['icon' => 'ri-facebook-fill', 'color' => '#1877f2']];
     $chip = [
-        'ok' => ['text-success-text', 'bg-admin-success'],
-        'error' => ['text-danger-text', 'bg-admin-danger'],
+        'ok' => ['text-success-text', 'bg-success-base'],
+        'error' => ['text-danger-text', 'bg-danger-base'],
         'none' => ['text-text-muted', 'border-[1.5px] border-dashed border-text-muted'],
     ];
     $shown = [];
@@ -29,11 +29,11 @@
 
     <div class="@container/sl flex min-w-0 flex-col gap-4">
         @if ($platform)
-            <div role="note" class="flex items-start gap-3 rounded-md border border-admin-warning/45 bg-admin-warning/12 px-4 py-3 text-body leading-relaxed text-text">
+            <div role="note" class="flex items-start gap-3 rounded-md border border-warning-base/45 bg-warning-base/12 px-4 py-3 text-body leading-relaxed text-text">
                 <x-bs-admin::icon name="ri-error-warning" class="{{ $glyph }} mt-0.5 text-warning-text" />
                 <p><b class="text-warning-text">{{ $t('plat_banner_lead') }}</b> {{ $t('plat_banner') }}</p>
             </div>
-            <div class="flex items-start gap-3 rounded-md border border-admin-info/40 bg-admin-info/9 px-4 py-3 text-body leading-relaxed text-info-text">
+            <div class="flex items-start gap-3 rounded-md border border-info-base/40 bg-info-base/9 px-4 py-3 text-body leading-relaxed text-info-text">
                 <x-bs-admin::icon name="ri-information" class="{{ $glyph }} mt-0.5" />
                 <p>{!! $t('saas_banner', ['one' => '<b>'.e($t('one')).'</b>']) !!}</p>
             </div>
@@ -118,7 +118,7 @@
                                 @endif
 
                                 @if ($platform)
-                                    <div id="sl-cfg-{{ $key }}" x-show="cfg" x-cloak class="mx-1 mb-3 rounded-md border border-[color-mix(in_srgb,var(--color-accent)_32%,transparent)] bg-surface-muted px-4.5 py-4">
+                                    <div id="sl-cfg-{{ $key }}" x-show="cfg" x-cloak class="mx-1 mb-3 rounded-md border border-[color-mix(in_srgb,var(--color-primary-text)_32%,transparent)] bg-surface-muted px-4.5 py-4">
                                         @include('admin::livewire.social-settings.platform-keys', ['key' => $key, 'app' => $app, 'name' => $name, 'rows' => $copyRows[$key], 'console' => $consoles[$key]])
                                     </div>
                                 @elseif ((bool) $app['opened'] || (bool) $app['own'])
@@ -143,7 +143,7 @@
                         </span>
                     </div>
                     <div class="flex items-start gap-3.5">
-                        <span class="mt-2 size-2 shrink-0 rounded-full bg-admin-success" aria-hidden="true"></span>
+                        <span class="mt-2 size-2 shrink-0 rounded-full bg-success-base" aria-hidden="true"></span>
                         <div class="min-w-0">
                             <div class="flex flex-wrap items-center gap-1 text-[calc(0.84375rem+var(--user-text-boost))] font-semibold text-text-strong">
                                 {{ $t('link_rule') }}
@@ -171,11 +171,11 @@
                         <div class="flex flex-col gap-1.5">
                             <span class="flex items-baseline justify-between gap-2">
                                 <span class="text-caption font-medium text-text">{{ __('auth.password_label') }}</span>
-                                <span class="text-caption text-accent">{{ __('auth.forgot_password') }}</span>
+                                <span class="text-caption text-primary-text">{{ __('auth.forgot_password') }}</span>
                             </span>
                             <span class="block h-8.5 rounded border border-border-strong bg-surface"></span>
                         </div>
-                        <div class="flex min-h-9.5 items-center justify-center rounded bg-admin-primary text-[calc(0.78125rem+var(--user-text-boost))] font-semibold text-white">{{ __('auth.sign_in') }}</div>
+                        <div class="flex min-h-9.5 items-center justify-center rounded bg-primary text-[calc(0.78125rem+var(--user-text-boost))] font-semibold text-white">{{ __('auth.sign_in') }}</div>
                         @if ($quick > 0)
                             <div class="flex items-center gap-2.5 text-caption text-text-muted">
                                 <span class="h-px flex-1 bg-border-strong"></span>{{ __('auth.or_continue') }}<span class="h-px flex-1 bg-border-strong"></span>

@@ -16,7 +16,7 @@
 @endphp
 <p class="mx-1 mb-1.5 text-caption text-text-muted">{{ $app['own_ready'] ? __('admin.sl.mode_own') : __('admin.sl.mode_shared') }}</p>
 <details wire:ignore.self class="group mx-1 mb-2.5 rounded-md border border-border bg-surface px-3.5 pt-1.5 pb-2.5" @if (! $app['opened']) open @endif>
-    <summary class="hit-area flex min-h-control cursor-pointer list-none items-center gap-1.5 text-[calc(0.8125rem+var(--user-text-boost))] font-semibold text-accent [&::-webkit-details-marker]:hidden">
+    <summary class="hit-area flex min-h-control cursor-pointer list-none items-center gap-1.5 text-[calc(0.8125rem+var(--user-text-boost))] font-semibold text-primary-text [&::-webkit-details-marker]:hidden">
         <x-bs-admin::icon name="ri-arrow-right-s" class="{{ $sm }} transition-transform group-open:rotate-90 motion-reduce:transition-none" />{{ __('admin.sl.adv_title') }}
     </summary>
     <div x-ignore wire:ignore.self data-bs-lazy="bsSocialKeys" x-data="bsSocialKeys({{ \Illuminate\Support\Js::from($cfg) }})">

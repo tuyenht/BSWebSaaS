@@ -54,7 +54,7 @@
             <ol class="m-0 flex list-none flex-col gap-3 px-3.5 py-3">
                 @foreach ([1, 2, 3, 4, 5] as $n)
                     <li class="flex items-start gap-2.5">
-                        <span class="mt-px inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-primary-soft text-caption font-bold text-accent" aria-hidden="true">{{ $n }}</span>
+                        <span class="mt-px inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-primary-soft text-caption font-bold text-primary-text" aria-hidden="true">{{ $n }}</span>
                         <span class="min-w-0 text-[calc(0.78125rem+var(--user-text-boost))] leading-relaxed text-text-muted"><b class="font-semibold text-text-strong">{{ $p('step'.$n.'_t') }}</b> — {{ $p('step'.$n.'_d') }}</span>
                     </li>
                 @endforeach
@@ -73,10 +73,10 @@
                             <x-bs-admin::help-pop :label="__('admin.sl.where_aria')"><b>{{ __('admin.sl.paste_into') }}</b> {{ $row['where'] }}<br>{{ $row['why'] }}</x-bs-admin::help-pop>
                         </span>
                         <span class="flex items-stretch overflow-hidden rounded-md border border-border bg-surface-muted">
-                            <span class="min-w-0 flex-1 py-2 ps-3 pe-1 font-mono text-[calc(0.78125rem+var(--user-text-boost))] font-semibold text-accent [overflow-wrap:anywhere]">{{ $row['value'] }}</span>
+                            <span class="min-w-0 flex-1 py-2 ps-3 pe-1 font-mono text-[calc(0.78125rem+var(--user-text-boost))] font-semibold text-primary-text [overflow-wrap:anywhere]">{{ $row['value'] }}</span>
                             <button type="button" x-on:click="copy(@js($row['key']), @js($row['value']))"
                                     aria-label="{{ __('admin.sl.copy_aria', ['label' => $row['label']]) }}" title="{{ __('admin.sl.copy_aria', ['label' => $row['label']]) }}"
-                                    class="hit-area inline-flex w-[calc(2.125rem+var(--user-text-boost))] shrink-0 items-center justify-center border-s border-border text-text-muted transition-colors hover:bg-primary-soft hover:text-accent"
+                                    class="hit-area inline-flex w-[calc(2.125rem+var(--user-text-boost))] shrink-0 items-center justify-center border-s border-border text-text-muted transition-colors hover:bg-primary-soft hover:text-primary-text"
                                     x-bind:class="copiedKey === @js($row['key']) && 'text-success-text'">
                                 <span x-show="copiedKey !== @js($row['key'])" class="inline-flex"><x-bs-admin::icon name="ri-file-copy" class="{{ $sm }}" /></span>
                                 <span x-show="copiedKey === @js($row['key'])" class="inline-flex"><x-bs-admin::icon name="ri-check" class="{{ $sm }}" /></span>
@@ -145,7 +145,7 @@
 
         <div class="mt-3 border-t border-border pt-3">
             <button type="button" x-on:click="trouble = ! trouble" x-bind:aria-expanded="trouble ? 'true' : 'false'" aria-controls="sl-trouble-{{ $key }}"
-                    class="hit-area inline-flex items-center gap-1.5 text-[calc(0.78125rem+var(--user-text-boost))] font-semibold text-accent">
+                    class="hit-area inline-flex items-center gap-1.5 text-[calc(0.78125rem+var(--user-text-boost))] font-semibold text-primary-text">
                 <span x-show="! trouble" class="inline-flex"><x-bs-admin::icon name="ri-lifebuoy" class="{{ $sm }}" /></span><span x-show="trouble" class="inline-flex"><x-bs-admin::icon name="ri-arrow-up-s" class="{{ $sm }}" /></span>{{ __('admin.sl.trouble') }}
             </button>
             <div id="sl-trouble-{{ $key }}" x-show="trouble" class="mt-2.5 flex flex-col gap-2.5">
