@@ -691,13 +691,15 @@
         "props": {
          "eyebrow": "Tuyển dụng",
          "heading": "Ứng tuyển vị trí này",
-         "text": "Gọi hoặc nhắn Zalo bộ phận tuyển dụng, hoặc gửi CV qua email — An Vinh sẽ liên hệ lại.",
+         "text": "Gửi CV qua email hoặc gọi, nhắn Zalo cho bộ phận tuyển dụng — An Vinh sẽ liên hệ lại.",
          "button_label": "Gửi CV qua email",
          "button_url_do": {
           "k": "mail",
           "email": "ngavt@ckanvinh.vn",
           "subject": "Ứng tuyển vào An Vinh"
-         }
+         },
+         "phone": "0985 885 286",
+         "email": "ngavt@ckanvinh.vn"
         }
        }
       ]

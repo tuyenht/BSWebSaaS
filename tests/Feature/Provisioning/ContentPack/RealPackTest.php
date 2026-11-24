@@ -279,7 +279,8 @@ it('plans the real pack on a fresh site with no conflict, and every internal lin
     }
     // A job offer's side column asks for an application, never for a quote.
     $this->get('http://'.ContentPacks::HOST.'/ky-su-thiet-ke-co-khi-do-ga')->assertOk()->assertSee('0985 885 286')
-        ->assertSee('Ứng tuyển vị trí này')->assertSee('mailto:ngavt@ckanvinh.vn', false)->assertDontSee('Cần tư vấn hoặc báo giá?');
+        ->assertSee('Ứng tuyển vị trí này')->assertSee('mailto:ngavt@ckanvinh.vn', false)->assertDontSee('Cần tư vấn hoặc báo giá?')
+        ->assertSee('Thái Nguyên: TDP Kim Tỉnh, phường Trung Thành')->assertSee('Hotline 0985 885 286');
     $this->get('http://'.ContentPacks::HOST.'/ke-toan-noi-bo')->assertOk()->assertSee('9 – 15 triệu')->assertSee('mailto:ngavt@ckanvinh.vn', false)
         ->assertSee('Ứng tuyển vị trí này');
     $this->get('http://'.ContentPacks::HOST.'/tuyen-dung')->assertOk()->assertSee('Kế toán nội bộ')->assertSee('Kỹ sư cơ khí');
