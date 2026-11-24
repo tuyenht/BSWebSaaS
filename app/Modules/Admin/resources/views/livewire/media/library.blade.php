@@ -236,7 +236,7 @@
                                     class="flex size-control items-center justify-center rounded-full text-text-muted transition-colors hover:bg-primary/12 aria-checked:bg-primary/16 aria-checked:text-primary-text aria-checked:shadow-[inset_0_0_0_1px_currentColor] any-pointer-coarse:size-hit"><x-bs-admin::icon name="ri-list-check" class="size-4" /></button>
                         </div>
                     </div>
-                    <x-bs-admin::tool-row class="gap-3">
+                    <x-bs-admin::tool-row class="gap-3 min-[900px]:flex-wrap">
                         @if ($selAll)
                             <div class="min-[900px]:hidden">
                                 <x-bs-admin::list.check :checked="$allOn" :label="__('media.lib.sel_all')" :aria-label="__('media.lib.sel_all_aria')" visible wire:click="{{ $selectCall }}" />
