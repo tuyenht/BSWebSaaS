@@ -1546,6 +1546,7 @@
     "admin.audit.act.support.session.notice_failed": "Support session notice could not be sent",
     "admin.audit.act.settings.support_access.changed": "Support staff sign-in permission changed",
     "admin.audit.act.platform.security.turnstile_login": "Anti-bot check at sign-in changed",
+    "admin.audit.act.platform.oauth_social.status": "Shared quick sign-in app changed state after its check",
     "admin.audit.act.audit.month_deleted": "Activity log of an old month deleted",
     "admin.audit.act.audit.months_pruned": "Activity log older than 24 months removed automatically",
     "admin.audit.purge.denied": "Only the platform's top administrator can delete the activity log.",

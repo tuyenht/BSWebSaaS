@@ -1546,6 +1546,7 @@
     "admin.audit.act.support.session.notice_failed": "无法发送支持会话通知",
     "admin.audit.act.settings.support_access.changed": "更改是否允许支持人员登录",
     "admin.audit.act.platform.security.turnstile_login": "更改登录时的防机器人验证",
+    "admin.audit.act.platform.oauth_social.status": "共享快捷登录应用在检查后状态已变更",
     "admin.audit.act.audit.month_deleted": "删除旧月份的操作日志",
     "admin.audit.act.audit.months_pruned": "自动删除超过24个月的操作日志",
     "admin.audit.purge.denied": "只有平台最高管理员才能删除操作日志。",

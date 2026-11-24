@@ -1546,6 +1546,7 @@
     "admin.audit.act.support.session.notice_failed": "Không gửi được thư báo phiên hỗ trợ",
     "admin.audit.act.settings.support_access.changed": "Đổi công tắc cho phép nhân viên hỗ trợ đăng nhập",
     "admin.audit.act.platform.security.turnstile_login": "Đổi xác minh chống bot khi đăng nhập",
+    "admin.audit.act.platform.oauth_social.status": "Ứng dụng đăng nhập nhanh chung đổi trạng thái sau lần tự kiểm",
     "admin.audit.act.audit.month_deleted": "Xóa nhật ký của một tháng cũ",
     "admin.audit.act.audit.months_pruned": "Tự động xóa nhật ký cũ hơn 24 tháng",
     "admin.audit.purge.denied": "Chỉ quản trị viên cao nhất của nền tảng mới được xóa nhật ký.",

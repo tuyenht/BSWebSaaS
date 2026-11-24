@@ -1546,6 +1546,7 @@
     "admin.audit.act.support.session.notice_failed": "サポートセッションのお知らせを送信できませんでした",
     "admin.audit.act.settings.support_access.changed": "サポート担当のログイン許可を変更",
     "admin.audit.act.platform.security.turnstile_login": "ログイン時のボット対策を変更",
+    "admin.audit.act.platform.oauth_social.status": "共通のクイックログインアプリの状態が確認後に変わりました",
     "admin.audit.act.audit.month_deleted": "古い月の操作ログを削除",
     "admin.audit.act.audit.months_pruned": "24か月より古い操作ログを自動削除",
     "admin.audit.purge.denied": "操作ログを削除できるのはプラットフォームの最上位管理者だけです。",
