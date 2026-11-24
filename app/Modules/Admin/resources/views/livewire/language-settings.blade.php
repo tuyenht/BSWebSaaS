@@ -39,7 +39,7 @@
     @endif
 
     <div class="@container overflow-hidden rounded-[9px] border border-border bg-surface">
-        <div class="grid grid-cols-[minmax(150px,1fr)_repeat(3,96px)] items-center gap-x-2 gap-y-2.5 border-b border-border bg-surface-hover px-3.5 py-[11px] text-[calc(0.75rem+var(--user-text-boost))] font-semibold text-text-muted @max-[32.5rem]:hidden" aria-hidden="true">
+        <div class="grid grid-cols-[minmax(150px,1fr)_repeat(3,96px)] items-center gap-x-2 gap-y-2.5 border-b border-border bg-surface-hover px-3.5 py-[11px] text-[calc(0.75rem+var(--user-text-boost))] font-bold tracking-[0.04em] text-text-muted uppercase @max-[32.5rem]:hidden" aria-hidden="true">
             <span class="min-w-0 truncate">{{ __('admin.lng.col_lang') }}</span>
             <span class="whitespace-nowrap text-center" title="{{ __('admin.lng.col_on_tip') }}">{{ __('admin.lng.col_on') }}</span>
             <span class="whitespace-nowrap text-center" title="{{ __('admin.lng.col_pub_tip') }}">{{ __('admin.lng.col_pub') }}</span>

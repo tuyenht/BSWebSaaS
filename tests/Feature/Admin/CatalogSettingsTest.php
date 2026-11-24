@@ -11,6 +11,8 @@ use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteSetting;
+use Dom\Element;
+use Dom\HTMLDocument;
 use Livewire\Livewire;
 
 /*
@@ -178,4 +180,27 @@ it('refuses the switch to a member without settings.manage and leaves the header
 
     app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($member->fresh())->test(CatalogSettings::class)->assertForbidden());
     expect(csHeader())->toBe(['sticky' => false]);
+});
+
+it('draws the mode as two cards, each with the product card a visitor sees, and names ordering as later only in selling mode', function (): void {
+    $admin = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        grantRole($admin, 'site-admin', ['settings.manage']);
+
+        $page = Livewire::actingAs($admin->fresh())->test(CatalogSettings::class);
+        $dom = HTMLDocument::createFromString((string) $page->html(), LIBXML_NOERROR);
+        $cards = $dom->querySelectorAll('[role="radiogroup"][aria-labelledby="cs-mode-l"] label');
+        $text = static fn (?Element $e): string => (string) preg_replace('/\s+/u', ' ', trim((string) $e?->textContent));
+
+        expect($cards->length)->toBe(2)
+            ->and($text($cards->item(0)))->toContain(__('catalog.mode_brochure_label'))->toContain(__('catalog.art_cta'))->not->toContain('(brochure)')
+            ->and($text($cards->item(1)))->toContain(__('catalog.mode_commerce_label'))->toContain(__('catalog.art_price'))->toContain(__('catalog.art_stock'))
+            ->and($dom->querySelector('input[name="cs-mode"][value="brochure"]')?->hasAttribute('wire:model.live'))->toBeTrue()
+            ->and($text($dom->querySelector('#cs-g-view')))->not->toContain(__('catalog.commerce_note'))
+            ->and($dom->querySelectorAll('h1')->length)->toBe(1);
+
+        $selling = HTMLDocument::createFromString((string) $page->set('mode', 'commerce')->html(), LIBXML_NOERROR);
+        expect($text($selling->querySelector('#cs-g-view [role="note"]')))->toBe(__('catalog.commerce_note'));
+    });
 });
