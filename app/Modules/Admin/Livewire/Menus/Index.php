@@ -25,6 +25,7 @@ use App\Modules\Cms\Navigation\MenuLimits;
 use App\Modules\Cms\Navigation\MenuVersion;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Theme\Chrome\StorefrontIcons;
@@ -43,7 +44,9 @@ use Livewire\Component;
  * small array and holds no state on the server, so there is no public property at all (no model,
  * no id ever reaches the page). Every method is an endpoint: boot() re-checks menus.manage on each
  * request, the method authorizes its own ability through MenuPolicy, and validates every argument
- * (menus and items are named by ulid). A refused change comes back as
+ * (menus and items are named by ulid). While support staff are signed in for a member, every
+ * change is refused with support_session: the screen loads, searches and self-checks only. A
+ * refused change comes back as
  * {ok: false, reason, message} — the reason code of MenuChangeRejectedException (or input_invalid)
  * and the plain-language sentence for it; success is {ok: true, …}.
  */
@@ -353,6 +356,8 @@ final class Index extends Component
                 'product' => route('admin.catalog.edit', ['ulid' => '__REF__']),
             ],
             'siteName' => $this->siteName($main),
+            // support staff signed in for a member: the screen only looks (every change is refused here too)
+            'support' => app(SupportSession::class)->active(),
             'kinds' => MenuIconGuess::KIND,
             'icons' => array_map(fn (string $group): array => [
                 'group' => __('menus.icon_group_'.$group),
@@ -412,6 +417,11 @@ final class Index extends Component
     private function attempt(Closure $run, ?Menu $menu = null): array
     {
         try {
+            // every change passes here: a support session only looks
+            if (app(SupportSession::class)->active()) {
+                throw new MenuChangeRejectedException('support_session');
+            }
+
             return $run();
         } catch (MenuChangeRejectedException $refusal) {
             return $this->refused($refusal->reason, $menu);

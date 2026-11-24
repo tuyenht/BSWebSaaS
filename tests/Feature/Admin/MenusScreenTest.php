@@ -17,6 +17,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Navigation\MenuIconGuess;
 use App\Modules\Cms\Navigation\MenuItemOptions;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Models\Permission;
 use App\Modules\Rbac\Models\Role;
@@ -27,6 +28,7 @@ use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Chrome\StorefrontIcons;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
@@ -619,4 +621,74 @@ it('saves "no icon" for an item through the screen and gives it back as it was c
 
     $bad = msCall($this->editor, 'saveDraft', $menu->ulid, ['version' => $unset['version'], 'tree' => [['key' => $key, 'parent' => null]], 'updates' => [['key' => $key, 'options' => ['icon' => 'bogus']]]]);
     expect($bad)->toMatchArray(['ok' => false, 'reason' => 'option_invalid']);
+});
+
+/** Opens a support session for $user on site 1 and hands its session to every Livewire test request (they skip StartSession). */
+function msSupport(User $user): void
+{
+    $session = app('session')->driver();
+    request()->setLaravelSession($session);
+    auth()->login($user);
+    app(SupportSession::class)->start($user, $user, 1, 'Kiểm tra', now()->addMinutes(30));
+    app()->rebinding('request', function ($app, Request $request) use ($session): void {
+        if (! $request->hasSession()) {
+            $request->setLaravelSession($session);
+        }
+    });
+}
+
+it('only lets support staff look: every change is refused during a support session, and the screen says so', function (): void {
+    [$menu, $item, $trashed] = msIn(1, function (): array {
+        $menu = app(SaveMenu::class)->handle(null, 'Menu chính');
+        $item = msLink($menu, 'entry', msPage('Giới thiệu')->id, null, 'Giới thiệu');
+        $trashed = msLink($menu, 'entry', msPage('Tin cũ')->id, null, 'Tin cũ');
+        $trashed->delete();
+        MenuAssignment::query()->updateOrCreate(['region_key' => 'primary', 'locale' => 'vi'], ['menu_id' => $menu->id, 'same_as_region' => null]);
+
+        return [$menu, $item, $trashed];
+    });
+    $editor = $this->editor->fresh();
+    $version = msCall($editor, 'load', $menu->ulid)['menu']['version'];
+    msSupport($editor);
+    $refused = ['ok' => false, 'reason' => 'support_session', 'message' => __('menus.reason_support_session')];
+
+    foreach ([
+        ['createMenu', 'Menu mới'],
+        ['saveDraft', $menu->ulid, ['version' => $version, 'tree' => []]],
+        ['renameMenu', $menu->ulid, 'Tên khác', $version],
+        ['copyMenu', $menu->ulid],
+        ['copyItem', $menu->ulid, $item->ulid, $version],
+        ['deleteMenu', $menu->ulid, true],
+        ['restore', $menu->ulid, $trashed->ulid],
+        ['setAutoAdd', $menu->ulid, true, $version],
+        ['assign', 'footer', 'vi', $menu->ulid],
+        ['follow', 'handheld', 'vi'],
+        ['clearArea', 'primary', 'vi'],
+    ] as $call) {
+        expect(msCall($editor, ...$call))->toBe($refused);
+    }
+    // looking still works
+    expect(msCall($editor, 'load', $menu->ulid)['ok'])->toBeTrue()
+        ->and(msCall($editor, 'search', 'gioi', 'page', $menu->ulid)['ok'])->toBeTrue()
+        ->and(msCall($editor, 'selfCheck', $menu->ulid)['ok'])->toBeTrue()
+        ->and(msCall($editor, 'load', $menu->ulid)['menu']['version'])->toBe($version);
+
+    msIn(1, fn () => expect(Menu::query()->count())->toBe(1)
+        ->and(Menu::query()->value('name'))->toBe('Menu chính')
+        ->and(Menu::query()->value('meta')['auto_add_pages'] ?? false)->toBeFalse()
+        ->and(MenuItem::query()->where('menu_id', $menu->id)->count())->toBe(1)
+        ->and(MenuAssignment::query()->where('region_key', 'primary')->value('menu_id'))->toBe($menu->id)
+        ->and(MenuAssignment::query()->whereIn('region_key', ['footer', 'handheld'])->exists())->toBeFalse());
+
+    msIn(1, fn () => Livewire::actingAs($editor)->test(MenusIndex::class)
+        ->assertSee(__('menus.ui_support_banner'))
+        ->assertViewHas('support', true));
+});
+
+it('changes menus as before when no support session is open, and the screen shows no support note', function (): void {
+    expect(msCall($this->editor, 'createMenu', 'Menu mới')['ok'])->toBeTrue();
+
+    msIn(1, fn () => Livewire::actingAs($this->editor->fresh())->test(MenusIndex::class)
+        ->assertDontSee(__('menus.ui_support_banner'))
+        ->assertViewHas('support', false));
 });

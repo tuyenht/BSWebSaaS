@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { buildDraft, goneKeysOf, goneSpanOf, iconGroupsOf, autoIconOf, suggestIconOf, treeRowsOf } from '../../resources/js/admin-menus.js';
+import { buildDraft, descMaxOf, goneKeysOf, goneSpanOf, iconGroupsOf, autoIconOf, suggestIconOf, treeRowsOf } from '../../resources/js/admin-menus.js';
 
 const opts = (more = {}) => ({ hidden: false, new_tab: false, icon: null, description: {}, cta: false, mega: null, badge: null, device: 'all', ...more });
 const row = (key, parent, labels, more = {}) => ({ key, parent, link: { type: 'url', url: '/' + key }, labels, options: opts(more) });
@@ -214,4 +214,11 @@ test('the automatic icon is strict and answers as the phone does (same cases as 
         assert.equal(autoIconOf(groups, KINDS, { type: 'url' }, label), icon, label);
     }
     assert.equal(autoIconOf(groups, KINDS, { type: 'special', key: 'map' }, 'Chi nhánh'), 'map');
+});
+
+test('the description of a top-level item may run to 200 letters before the screen warns, one below it to 90', () => {
+    assert.equal(descMaxOf(0), 200);
+    assert.equal(descMaxOf(1), 90);
+    assert.equal(descMaxOf(3), 90);
+    assert.equal(descMaxOf(undefined), 90);
 });
