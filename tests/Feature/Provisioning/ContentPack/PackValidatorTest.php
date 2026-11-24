@@ -483,7 +483,7 @@ it('refuses a Cloudflare Web Analytics token the storefront would not print', fu
 ]);
 
 it('accepts a short card label on a category and a byline on a post, one line of plain text each', function (): void {
-    ContentPacks::item($this->folder, 'taxonomies.json', 'tax:post_cat/tin-tuc', fn (array $item): array => [...$item, 'card_label' => ['vi' => 'Bản tin']]);
+    ContentPacks::item($this->folder, 'taxonomies.json', 'tax:post_cat/tin-tuc', fn (array $item): array => [...$item, 'card_label' => ['vi' => 'Bản tin'], 'seo_title' => ['vi' => 'Tin tức | Công ty A'], 'seo_description' => ['vi' => 'Tin mới của Công ty A.']]);
     ContentPacks::item($this->folder, 'posts.json', 'post:ra-mat-website', fn (array $item): array => [...$item, 'author' => ['vi' => 'Phòng Kỹ thuật']]);
 
     expect(cpProblems())->toBe([]);
@@ -497,6 +497,9 @@ it('refuses a card label or a byline that is too long, holds tags or is not text
     'a label over 40 characters' => ['taxonomies.json', 'tax:post_cat/tin-tuc', 'card_label', str_repeat('a', 41), 'tax:post_cat/tin-tuc: card_label (vi) is longer than 40 characters.'],
     'a label with a tag' => ['taxonomies.json', 'tax:post_cat/tin-tuc', 'card_label', '<b>Tin</b>', 'tax:post_cat/tin-tuc: card_label (vi) must be one line of plain text'],
     'a label on two lines' => ['taxonomies.json', 'tax:post_cat/tin-tuc', 'card_label', "Tin\ntức", 'tax:post_cat/tin-tuc: card_label (vi) must be one line of plain text'],
+    'a Google title over 255 characters' => ['taxonomies.json', 'tax:post_cat/tin-tuc', 'seo_title', str_repeat('a', 256), 'tax:post_cat/tin-tuc: seo_title (vi) is longer than 255 characters.'],
+    'a Google description on two lines' => ['taxonomies.json', 'tax:post_cat/tin-tuc', 'seo_description', "Tin\ntức", 'tax:post_cat/tin-tuc: seo_description (vi) must be one line'],
+    'a Google title with spaces at the ends' => ['taxonomies.json', 'tax:post_cat/tin-tuc', 'seo_title', ' Tin tức ', 'tax:post_cat/tin-tuc: seo_title (vi) must be one line'],
     'a byline over 80 characters' => ['posts.json', 'post:ra-mat-website', 'author', str_repeat('a', 81), 'post:ra-mat-website: author (vi) is longer than 80 characters.'],
     'a byline with a tag' => ['posts.json', 'post:ra-mat-website', 'author', 'Phòng <i>Kỹ thuật</i>', 'post:ra-mat-website: author (vi) must be one line of plain text'],
     'a byline that is not text' => ['posts.json', 'post:ra-mat-website', 'author', 12, 'post:ra-mat-website: author (vi) must be text.'],

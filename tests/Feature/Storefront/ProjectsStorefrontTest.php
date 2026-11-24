@@ -85,7 +85,7 @@ it('renders a project detail with breadcrumb JSON-LD', function (): void {
     $html = $this->get('http://anvinh.platform.test/du-an/day-chuyen-lap-rap-tu-dong')->assertOk()->getContent();
 
     expect($html)
-        ->toContain('<title>Dây chuyền lắp ráp tự động</title>')
+        ->toContain('<title>Dây chuyền lắp ráp tự động | Cơ Khí Chính Xác An Vinh</title>')
         ->toContain('<nav class="sf-crumbs')
         ->toContain('href="/du-an"')
         ->toContain('"@type":"BreadcrumbList"')
@@ -113,7 +113,7 @@ it('renders a service detail page with breadcrumb', function (): void {
     $html = $this->get('http://anvinh.platform.test/dich-vu/thiet-ke-jig-do-ga')->assertOk()->getContent();
 
     expect($html)
-        ->toContain('<title>Thiết kế Jig &amp; Đồ gá</title>')
+        ->toContain('<title>Thiết kế Jig &amp; Đồ gá | Cơ Khí Chính Xác An Vinh</title>')
         ->toContain('<nav class="sf-crumbs')
         ->toContain('href="/dich-vu"')
         ->toContain('"@type":"BreadcrumbList"')
@@ -137,7 +137,7 @@ it('renders a product detail page with breadcrumb', function (): void {
     $html = $this->get('http://anvinh.platform.test/san-pham/truc-may-cnc')->assertOk()->getContent();
 
     expect($html)
-        ->toContain('<title>Trục máy CNC</title>')
+        ->toContain('<title>Trục máy CNC | Cơ Khí Chính Xác An Vinh</title>')
         ->toContain('<nav class="sf-crumbs')
         ->toContain('href="/san-pham"')
         ->toContain('"name":"Sản phẩm"');
@@ -149,7 +149,7 @@ it('renders /gioi-thieu with about content', function (): void {
     $html = $this->get('http://anvinh.platform.test/gioi-thieu')->assertOk()->getContent();
 
     expect($html)
-        ->toContain('<title>Giới thiệu</title>')
+        ->toContain('<title>Giới thiệu | Cơ Khí Chính Xác An Vinh</title>')
         ->toContain('<meta name="description" content="Giới thiệu Cơ Khí Chính Xác An Vinh')  // §5: page has a real meta description, not empty
         ->toContain('?w=1280')         // about image resolved at the whitelisted content-image width — the Worker serves it (a non-whitelisted ?w would 400)
         ->not->toContain('?w=800')     // regression guard: the width must never be the rejected 800
@@ -163,7 +163,7 @@ it('renders /doi-tac with partner names and testimonials', function (): void {
     $html = $this->get('http://anvinh.platform.test/doi-tac')->assertOk()->getContent();
 
     expect($html)
-        ->toContain('<title>Đối tác</title>')
+        ->toContain('<title>Đối tác | Cơ Khí Chính Xác An Vinh</title>')
         ->toContain('VinFast')
         ->toContain('Hutchinson')
         ->toContain('Vinmanutech');

@@ -205,11 +205,21 @@ final class Applier
             $stated = array_key_exists((string) $locale, Cast::arr($planned->item->data['description'] ?? null));
             // The card label the same way.
             $labelStated = array_key_exists((string) $locale, Cast::arr($planned->item->data['card_label'] ?? null));
+            // The Google title and description the same way.
+            $seo = [];
+            foreach (['seo_title', 'seo_description'] as $field) {
+                if (array_key_exists((string) $locale, Cast::arr($planned->item->data[$field] ?? null))) {
+                    $seo[$field] = Cast::stringOrNull($row[$field] ?? null);
+                } elseif (is_string($row[$field] ?? null)) {
+                    $seo[$field] = $row[$field];
+                }
+            }
             $taxonomy->translations()->updateOrCreate(['locale' => (string) $locale], [
                 'name' => Cast::string($row['name'] ?? null),
                 'slug' => Cast::string($row['slug'] ?? null),
             ] + ($stated ? ['description' => Cast::stringOrNull($row['description'] ?? null)] : (is_string($row['description'] ?? null) ? ['description' => $row['description']] : []))
-              + ($labelStated ? ['card_label' => Cast::stringOrNull($row['card_label'] ?? null)] : (is_string($row['card_label'] ?? null) ? ['card_label' => $row['card_label']] : [])));
+              + ($labelStated ? ['card_label' => Cast::stringOrNull($row['card_label'] ?? null)] : (is_string($row['card_label'] ?? null) ? ['card_label' => $row['card_label']] : []))
+              + $seo);
             $this->routes->syncTaxonomy($taxonomy, (string) $locale, Cast::string($row['slug'] ?? null));
         }
         $this->paths->refreshBranch($taxonomy->id);

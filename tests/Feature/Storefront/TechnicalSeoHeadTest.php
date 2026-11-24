@@ -44,7 +44,7 @@ it('prints a Twitter card, the site name and a full locale next to Open Graph', 
 
     expect($html)
         ->toContain('<meta name="twitter:card" content="summary">')
-        ->toContain('<meta name="twitter:title" content="Trang thử">')
+        ->toContain('<meta name="twitter:title" content="Trang thử | Xưởng Mẫu">')
         ->toContain('<meta property="og:site_name" content="Xưởng Mẫu">')
         ->toContain('<meta property="og:locale" content="vi_VN">');
 });

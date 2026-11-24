@@ -44,6 +44,9 @@ final class SiteSeo
     /** The meta robots value every page sends while the site is hidden from search engines. */
     public const string HIDDEN = 'noindex, nofollow';
 
+    /** The title template of a site that has not set one: the page's title, then the brand. */
+    public const string DEFAULT_TEMPLATE = '%tieu-de% | %ten-website%';
+
     /** @var array<int, array{titles: array<string, string>, descriptions: array<string, string>, template: string, indexable: bool, sitemap: bool, robots: string}> */
     private array $memo = [];
 
@@ -103,7 +106,8 @@ final class SiteSeo
      * A page's <title>: its own Google title when it has one; on the home page the site's default
      * title in that language; on any other page (and a home page without a default title) the
      * template, with %tieu-de% the page's title and %ten-website% the site's name in that language.
-     * No template keeps the page's title, as before.
+     * A site that has not set a template gets DEFAULT_TEMPLATE, so every page carries the brand
+     * at the end; a site that wants bare page titles sets the template to %tieu-de%.
      */
     public function title(?string $own, string $pageTitle, bool $home, string $locale, string $siteName): string
     {
@@ -115,11 +119,13 @@ final class SiteSeo
         if ($home && $default !== '') {
             return $default;
         }
-        if ($settings['template'] === '') {
+        // A page named after the website ("An Vinh" on An Vinh's home) keeps its title rather than repeating the name.
+        if ($settings['template'] === '' && mb_strtolower(trim($pageTitle)) === mb_strtolower(trim($siteName))) {
             return $pageTitle;
         }
+        $template = $settings['template'] !== '' ? $settings['template'] : self::DEFAULT_TEMPLATE;
         // strtr replaces each placeholder once: a page title holding "%ten-website%" stays text.
-        $title = strtr($settings['template'], ['%tieu-de%' => $pageTitle, '%ten-website%' => $siteName]);
+        $title = strtr($template, ['%tieu-de%' => $pageTitle, '%ten-website%' => $siteName]);
         // An empty part leaves its separator dangling at an end ("Giới thiệu | ").
         // A pattern, not trim(): trim() strips bytes, and "–—·" share bytes with "ồ", "“" and CJK.
         $title = Cast::string(preg_replace('/^[\s|\-–—·:,]+|[\s|\-–—·:,]+$/u', '', $title));

@@ -707,6 +707,17 @@ final readonly class PackValidator
                 }
             }
         }
+        // The Google title and description (one line each): the same check the category screen makes.
+        foreach (['seo_title', 'seo_description'] as $field) {
+            if (array_key_exists($field, $item->data)) {
+                $this->localeMap($pack, $item->key, $item->data, $field, false, TaxonomyRules::SEO_MAX, $errors, true);
+                foreach (Cast::arr($item->data[$field]) as $locale => $text) {
+                    if (is_string($text) && TaxonomyRules::seoText($text) !== $text) {
+                        $errors[] = "{$item->key}: {$field} ({$locale}) must be one line, without control characters or spaces at the ends.";
+                    }
+                }
+            }
+        }
         if (array_key_exists('cover', $item->data) && ! self::isMediaRef($item->data['cover'])) {
             $errors[] = "{$item->key}: cover must be an image reference ({\"media\": slot}).";
         }
