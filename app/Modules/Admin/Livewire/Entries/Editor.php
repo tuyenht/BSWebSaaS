@@ -254,6 +254,16 @@ final class Editor extends Component
      */
     public array $tags = [];
 
+    /**
+     * The post's tags in this language as this form last read them (mount, a save): what a save
+     * compares the form's tags with, so it files only the tags the member added or took out since
+     * (EntryTags::apply) and never undoes a tag another save filed meanwhile. Server-set only.
+     *
+     * @var list<string>
+     */
+    #[Locked]
+    public array $tagsLoaded = [];
+
     /** What is typed in the «Thẻ» card's box, not added yet. */
     public string $tagDraft = '';
 
@@ -560,6 +570,7 @@ final class Editor extends Component
             $this->templateKey = TemplateCatalog::variant($entry->template_override) ?? '';
             $this->displayDate = DisplayDate::of($entry->meta);
             $this->tags = app(EntryTags::class)->names($entry, $this->locale);
+            $this->tagsLoaded = $this->tags;
         }
 
         // one read for the post's categories in order, the main one (position 0) among them
@@ -2125,7 +2136,7 @@ final class Editor extends Component
         $this->saveFailed = false;
         // A language with no saved version yet loads nothing back: start from an empty form.
         $preset = $this->ulid === null ? $this->parentLoaded : null;
-        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'coverAlt', 'templateKey', 'displayDate', 'tags', 'tagDraft', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
+        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'coverAlt', 'templateKey', 'displayDate', 'tags', 'tagsLoaded', 'tagDraft', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
             'transitionNote', 'assignTo', 'showImagePicker', 'blockImagePickerPath', 'coverToast', 'coverUndo', 'stale', 'overwrite',
             'parentUlid', 'parentLoaded', 'parentName', 'pageHome', 'scheduleAt', 'scheduleLoaded', 'statusTo', 'autoSaved', 'slugFresh', 'slugTouched');
         $this->mount($this->ulid, $this->sectionKey, $this->locale, $preset);
@@ -3561,8 +3572,9 @@ final class Editor extends Component
                 // a main category in another section moves the post there: its list and crumb follow
                 $this->placeInList($this->sectionOf($this->categoryId !== null ? Taxonomy::query()->find($this->categoryId) : null));
             }
-            // «Thẻ»: the tags as stored (a name typed twice is one tag, a new name a new tag)
-            $this->tags = app(EntryTags::class)->assign($entry, $this->locale, $this->tags);
+            // «Thẻ»: only what this form added or took out since it read the tags, filed onto the tags stored
+            // now; the card then shows them as stored (one another save added among them)
+            $this->fileTags($entry);
         }
 
         // A save on live content is what visitors now see: keep that version (skipped when unchanged).
@@ -4065,10 +4077,6 @@ final class Editor extends Component
     }
 
     /**
-     * The gate of the save path, for an endpoint that changes the page being edited: `create` for a
-     * page not saved yet, else `update` on the entry.
-     */
-    /**
      * «Thêm» / Enter in the «Thẻ» card: the names typed (several at once, split at commas) join the
      * post's tags, each once (one address, one tag). Stored on save; a name no tag has yet makes a
      * tag then, which needs nothing beyond the right to edit the post.
@@ -4129,6 +4137,33 @@ final class Editor extends Component
         $this->tags = array_values($tags);
     }
 
+    /**
+     * The save's «Thẻ» write (EntryTags::apply). A name it could not file (its address became another
+     * page's, or the post reached its limit through another save) is not lost: it goes back into the
+     * card's box with the reason, and the rest of the save stands, so a save by itself does not try
+     * it again and again.
+     */
+    private function fileTags(Entry $entry): void
+    {
+        ['tags' => $stored, 'refused' => $refused] = app(EntryTags::class)->apply($entry, $this->locale, $this->tagsLoaded, $this->tags);
+        $this->tags = $stored;
+        $this->tagsLoaded = $stored;
+        if ($refused === []) {
+            return;
+        }
+        $names = array_column($refused, 'name');
+        $draft = trim($this->tagDraft);
+        $this->tagDraft = implode(', ', $draft === '' ? $names : [...$names, $draft]);
+        $first = $refused[0];
+        $this->addError('tagDraft', Cast::string($first['why'] === 'full'
+            ? __('entries.ed.tag_full', ['max' => EntryTags::MAX_TAGS])
+            : __('entries.ed.tag_taken', ['name' => $first['name']])));
+    }
+
+    /**
+     * The gate of the save path, for an endpoint that changes the page being edited: `create` for a
+     * page not saved yet, else `update` on the entry.
+     */
     private function authorizeEditing(): void
     {
         if ($this->ulid === null) {

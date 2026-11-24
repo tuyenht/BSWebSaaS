@@ -37,6 +37,7 @@ use App\Modules\Storefront\Support\ProductPage;
 use App\Modules\Storefront\Support\SlotContext;
 use App\Modules\Storefront\Support\ThankYouPages;
 use App\Modules\Storefront\Support\TitleDisambiguator;
+use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Theme\Chrome\StorefrontCsp;
@@ -515,26 +516,36 @@ final readonly class StorefrontController
      * page is `noindex,follow` (a thin page; the sitemap leaves it out too, SitemapRoutes): the
      * first page holds every post then, so it decides without a count.
      *
+     * A tag with no such post has no page (404): a tag is made by any save of a member who may edit a
+     * post, a draft's too, so its name reaches visitors only once a post carrying it went live, through
+     * publishing and so through approval where a workflow asks for one.
+     *
      * @param  array<string, mixed>  $chrome  page chrome (menu, lang, hreflang)
      */
     private function renderTag(ResolvedCategory $resolved, string $locale, string $path, array $chrome): Response
     {
         $position = $this->lists->position(request());
-        $query = Entry::query()
-            ->select('entries.*')
+        // resolved per request: the controller is kept between requests, the current site is not
+        $siteId = app(CurrentSite::class)->id();
+        $live = fn (): Builder => Entry::query()
             ->join('entry_taxonomies as tagged', fn (JoinClause $join) => $join->on('tagged.entry_id', '=', 'entries.id')
+                ->where('tagged.site_id', $siteId)
                 ->where('tagged.taxonomy_id', $resolved->taxonomy->id)->where('tagged.position', '>=', Entry::FACET_POSITION_BASE))
             ->where('entries.type', 'post')
             ->where('entries.status', 'published')
-            ->whereHas('translations', fn (Builder $query) => $query->where('locale', $locale)->where('status', 'published'))
-            ->with(['translations', 'routes']);
-        ['rows' => $rows, 'more' => $more] = $this->lists->window($query, Entry::class, $position);
+            ->whereHas('translations', fn (Builder $query) => $query->where('locale', $locale)->where('status', 'published'));
+        ['rows' => $rows, 'more' => $more] = $this->lists->window($live()->select('entries.*')->with(['translations', 'routes']), Entry::class, $position);
+        // no live post carries the tag: no page (a later page past the last post asks once more)
+        $first = $position['after'] === null && $position['page'] === 1;
+        if ($rows->isEmpty() && ($first || ! $live()->exists())) {
+            abort(404);
+        }
 
         $extra = $chrome;
         $extra['cards'] = $this->lists->postCards($rows, $locale, [], true);
         $extra['chips'] = [];
         $extra['band'] = $this->listBand($resolved);
-        if ($position['after'] === null && $position['page'] === 1 && ! $more && $rows->count() < 2) {
+        if ($first && ! $more && $rows->count() < 2) {
             $extra['robots'] = 'noindex,follow';
         }
 
@@ -613,7 +624,7 @@ final readonly class StorefrontController
         // Home → the categories above → this one (its own entry keeps the page's canonical address).
         // a tag stands alone under Home, at its own address
         $trail = $resolved->taxonomy->vocabulary === Taxonomy::TAG
-            ? [$this->crumbs->crumb($resolved->translation->name, $this->paths->forTag($resolved->translation->slug))]
+            ? [$this->crumbs->crumb($resolved->translation->name, $this->paths->publicUrl($this->paths->forTag($resolved->translation->slug), $locale))]
             : $this->crumbs->category($resolved->taxonomy, $locale, $resolved->translation->name, $resolved->translation->slug);
         $parentName = count($trail) >= 2 ? $trail[count($trail) - 2]['name'] : null;
         $lastLevel = count($trail) - 1;

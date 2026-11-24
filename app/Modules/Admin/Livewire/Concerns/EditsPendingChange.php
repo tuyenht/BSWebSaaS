@@ -150,16 +150,10 @@ trait EditsPendingChange
 
                 return false;
             }
-            // «Thẻ» goes straight to the website, so a held-back save cannot change it (the card says so)
-            $typed = [];
-            foreach ($this->tags as $name) {
-                $typed[] = EntryTags::slugOf($name, $this->locale);
-            }
-            $stored = [];
-            foreach (app(EntryTags::class)->names($entry, $this->locale) as $name) {
-                $stored[] = EntryTags::slugOf($name, $this->locale);
-            }
-            if (array_values(array_unique($typed)) !== $stored) {
+            // «Thẻ» goes straight to the website, so a held-back save cannot change it (the card says so):
+            // judged against what this form read, so a tag another save filed meanwhile is no change of this one
+            $tagChanges = EntryTags::changes($this->tagsLoaded, $this->tags, $this->locale);
+            if ($tagChanges['added'] !== [] || $tagChanges['removed'] !== []) {
                 $this->addError('tagDraft', Cast::string(__('entries.ed.tag_held')));
 
                 return false;

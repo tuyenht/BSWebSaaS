@@ -5,6 +5,7 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\EntryTags;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteLocale;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Tests\Fixtures\StorefrontCards;
@@ -116,4 +117,50 @@ it('changes only the tags named in the language saved, and keeps them off the ca
             // the Vietnamese tag stays, out of the post only
             ->and(Taxonomy::query()->where('vocabulary', Taxonomy::TAG)->count())->toBe(2);
     });
+});
+
+it('has no tag page while no live post carries the tag, and a noindex one once a post carrying it is published', function (): void {
+    $siteId = StorefrontCards::site();
+    $draft = app(Tenancy::class)->enter($siteId, function (): Entry {
+        $draft = StorefrontCards::post(StorefrontCards::news(), 'Bản nháp', 'ban-nhap');
+        $draft->forceFill(['status' => 'draft'])->save();
+        $draft->translations()->update(['status' => 'draft']);
+
+        return $draft;
+    });
+    tagPost($siteId, $draft, ['Tên lạ']);
+
+    // made by a draft's save: the tag's name is not on the website, on no page of the list
+    $this->get(POST_TAGS_HOST.'/the/ten-la')->assertNotFound()->assertDontSee('Tên lạ');
+    $this->get(POST_TAGS_HOST.'/the/ten-la?page=2')->assertNotFound();
+    // a post published, but its Vietnamese version still a draft: no page either
+    app(Tenancy::class)->enter($siteId, fn () => $draft->forceFill(['status' => 'published'])->save());
+    $this->get(POST_TAGS_HOST.'/the/ten-la')->assertNotFound();
+
+    app(Tenancy::class)->enter($siteId, fn () => $draft->translations()->update(['status' => 'published']));
+    $page = $this->get(POST_TAGS_HOST.'/the/ten-la')->assertOk()->getContent();
+    expect($page)->toContain('Bản nháp')->toContain('<meta name="robots" content="noindex,follow">');
+
+    // the post taken off the website again: the page goes with it
+    app(Tenancy::class)->enter($siteId, fn () => $draft->delete());
+    $this->get(POST_TAGS_HOST.'/the/ten-la')->assertNotFound();
+});
+
+it('gives a tag page of another language its language in every address', function (): void {
+    $siteId = StorefrontCards::site();
+    $post = app(Tenancy::class)->enter($siteId, function (): Entry {
+        SiteLocale::query()->create(['locale' => 'en', 'is_default' => false, 'enabled' => true, 'is_public' => true]);
+        $post = StorefrontCards::post(StorefrontCards::news(), 'Bài', 'bai');
+        $post->translations()->create(['locale' => 'en', 'title' => 'New milling machine', 'slug' => 'new-milling', 'status' => 'published', 'body' => ['blocks' => []]]);
+        SiteRoute::query()->create(['locale' => 'en', 'path' => '/new-milling', 'entry_id' => $post->id]);
+
+        return $post;
+    });
+    tagPost($siteId, $post, ['Milling'], 'en');
+
+    $page = $this->get(POST_TAGS_HOST.'/en/the/milling')->assertOk()->getContent();
+    expect($page)->toContain('New milling machine')
+        ->toContain('<link rel="canonical" href="'.POST_TAGS_HOST.'/en/the/milling">')
+        ->not->toContain('"'.POST_TAGS_HOST.'/the/milling"')
+        ->not->toContain('href="/the/milling"');
 });
