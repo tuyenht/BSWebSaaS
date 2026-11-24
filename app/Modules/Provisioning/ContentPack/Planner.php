@@ -571,7 +571,7 @@ final class Planner
         $covers = Media::query()->whereIn('id', $rows->pluck('cover_media_id')->filter()->all())->pluck('storage_key', 'id');
         // Every language, not only the pack's: a category write re-syncs the posts and products under
         // it in every language they are routed in, and their addresses there carry these slugs.
-        $translations = $this->locked(TaxonomyTranslation::query())->get(['taxonomy_id', 'locale', 'name', 'slug', 'description', 'card_label']);
+        $translations = $this->locked(TaxonomyTranslation::query())->get(['taxonomy_id', 'locale', 'name', 'slug', 'description', 'card_label', 'seo_title', 'seo_description']);
 
         foreach ($rows as $row) {
             $this->taxonomies[$row->id] = [
@@ -590,7 +590,9 @@ final class Planner
                 $this->taxonomies[$translation->taxonomy_id]['tr'][$translation->locale] = ['name' => $translation->name, 'slug' => $translation->slug]
                     + (trim((string) $translation->description) === '' ? [] : ['description' => (string) $translation->description])
                     // Like the intro, part of the state only when set, so a category without one keeps its ledger hash.
-                    + (trim((string) $translation->card_label) === '' ? [] : ['card_label' => (string) $translation->card_label]);
+                    + (trim((string) $translation->card_label) === '' ? [] : ['card_label' => (string) $translation->card_label])
+                    + (trim((string) $translation->seo_title) === '' ? [] : ['seo_title' => (string) $translation->seo_title])
+                    + (trim((string) $translation->seo_description) === '' ? [] : ['seo_description' => (string) $translation->seo_description]);
             }
         }
     }
@@ -751,6 +753,15 @@ final class Planner
                     : Cast::string(Cast::arr($live[$locale] ?? null)['card_label'] ?? null);
                 if ($label !== '') {
                     $translation = Cast::arr($translation) + ['card_label' => $label];
+                }
+                // The Google title and description the same way.
+                foreach (['seo_title', 'seo_description'] as $field) {
+                    $seo = array_key_exists($locale, Cast::arr($item->data[$field] ?? null))
+                        ? (TaxonomyRules::seoText(Cast::string(Cast::arr($item->data[$field])[$locale])) ?? '')
+                        : Cast::string(Cast::arr($live[$locale] ?? null)[$field] ?? null);
+                    if ($seo !== '') {
+                        $translation = Cast::arr($translation) + [$field => $seo];
+                    }
                 }
             }
             $translations[$locale] = $translation;
