@@ -40,7 +40,7 @@ it('returns an empty menu for a guest (fail-closed)', function (): void {
     expect((new AdminNav)->items(null))->toBe([]);
 });
 
-it('renders Dashboard as a leaf and Settings as an expandable group of tabs for the owner', function (): void {
+it('renders Dashboard and Settings as leaves for the owner, Settings opening the first section', function (): void {
     $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
 
     $items = app(Tenancy::class)->enter(1, fn (): array => (new AdminNav)->items($owner));
@@ -49,11 +49,8 @@ it('renders Dashboard as a leaf and Settings as an expandable group of tabs for 
     expect($byKey->get('dashboard')?->url)->toContain('/admin')
         ->and($byKey->get('dashboard')?->hasChildren())->toBeFalse()
         ->and($byKey->get('settings')?->icon)->toBe('ri-settings-4')
-        ->and($byKey->get('settings')?->hasChildren())->toBeTrue()
-        ->and($byKey->get('settings')?->url)->toBeNull();
-
-    $security = collect($byKey->get('settings')->children)->firstWhere('key', 'settings.security');
-    expect($security?->url)->toContain('/admin/account?tab=security');
+        ->and($byKey->get('settings')?->hasChildren())->toBeFalse()
+        ->and($byKey->get('settings')?->url)->toBe(route('admin.settings.general').'#settings-menu');
 });
 
 it('nests each content section as a group of List + Add new for a creator', function (): void {

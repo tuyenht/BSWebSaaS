@@ -62,6 +62,7 @@ use App\Modules\Admin\Livewire\TwoFactorChallenge;
 use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
 use App\Modules\Admin\Livewire\WebsiteAppearanceSettings;
 use App\Modules\Admin\Livewire\WorkflowSettings;
+use App\Modules\Admin\Navigation\SettingsMenu;
 use App\Modules\Admin\Support\Leads\LeadExportTicket;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Audit\Facades\Audit;
@@ -272,8 +273,9 @@ Route::prefix(config('admin.prefix', 'admin'))
         // "Tài khoản của tôi": the signed-in member's own account, one tab at a time (?tab=…). Every
         // member reaches it; the component scopes every read and write to auth()->user().
         Route::get('/account', Account::class)->name('admin.account');
-        // The older addresses of the account page land on it (bookmarks, the settings menu).
-        Route::get('/settings', fn () => redirect()->route('admin.account'))->name('admin.settings');
+        // Settings: the first section the member may open (the list of sections on phones), or their
+        // own «Bảo mật» when they manage no site-wide setting. The older security address lands there.
+        Route::get('/settings', fn () => redirect()->to(SettingsMenu::entryUrlForMember()))->name('admin.settings');
         Route::get('/settings/security', fn () => redirect()->route('admin.account', ['tab' => 'security']))->name('admin.settings.security');
         // Site-wide settings — only roles with `settings.manage` (owner/admin/super_admin).
         // The Livewire components ALSO guard in boot() because the livewire/update endpoint

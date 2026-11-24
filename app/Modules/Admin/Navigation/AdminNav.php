@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Navigation;
 
-use App\Modules\Admin\Support\SiteOwner;
 use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Identity\Models\User;
@@ -354,84 +353,21 @@ final class AdminNav
             );
         }
 
-        // Settings → group of tabs. Shown if the site carries the settings module (corporate
-        // always does). Security is every-member; the site-wide tabs need settings.manage, so a
-        // plain member sees Settings with only Security under it.
+        // Settings → one item, as on the design board: the sections are listed by the settings
+        // frame itself (SettingsMenu). Shown if the site carries the settings module (corporate
+        // always does). Security is every-member, so a plain member's «Cài đặt» opens their own
+        // «Bảo mật»; a holder of settings.manage lands on the first section (the list on phones).
         if (in_array('settings', $entitled, true)) {
-            $settingsChildren = [
-                new NavItem(
-                    key: 'settings.security',
-                    label: __('admin.security'),
-                    url: route('admin.account', ['tab' => 'security']),
-                    active: $request->routeIs('admin.account'),
-                ),
-            ];
-
-            if ($can('settings.manage')) {
-                foreach ([
-                    ['settings.general', 'admin.gs.title', 'admin.settings.general'],
-                    ['settings.appearance', 'admin.website_look', 'admin.settings.appearance'],
-                    ['settings.admin-ui', 'admin.admin_ui', 'admin.settings.admin-ui'],
-                    ['settings.langs', 'admin.lng.title', 'admin.settings.languages'],
-                    ['settings.email', 'admin.email_settings', 'admin.settings.email'],
-                    ['settings.social', 'admin.social_login', 'admin.settings.social'],
-                    ['settings.catalog', 'admin.catalog_settings', 'admin.settings.catalog'],
-                    ['settings.floating-contact', 'admin.fc.title', 'admin.settings.floating-contact'],
-                    ['settings.redirects', 'admin.rd.title', 'admin.settings.redirects'],
-                    ['settings.integrations', 'admin.int.title', 'admin.settings.integrations'],
-                ] as [$sKey, $sLabelKey, $sRoute]) {
-                    $settingsChildren[] = new NavItem(
-                        key: $sKey,
-                        label: __($sLabelKey),
-                        url: route($sRoute),
-                        active: $request->routeIs($sRoute),
-                        permission: 'settings.manage',
-                    );
-                }
-                // Only the owner changes maintenance and the other site-wide switches, so only the
-                // owner (or an operator) finds them in the menu; anyone else with the address reads them.
-                if (SiteOwner::is($request->user())) {
-                    $settingsChildren[] = new NavItem(
-                        key: 'settings.advanced',
-                        label: __('admin.adv.title'),
-                        url: route('admin.settings.advanced'),
-                        active: $request->routeIs('admin.settings.advanced'),
-                        permission: 'settings.manage',
-                    );
-                }
-            }
-
-            // Domains: read-only for whoever holds domains.view (adding and changing need
-            // domains.manage on the screen itself), so it sits outside the settings.manage block.
-            if (in_array('domains', $entitled, true) && $can('domains.view')) {
-                $settingsChildren[] = new NavItem(
-                    key: 'settings.domains',
-                    label: __('admin.domains'),
-                    url: route('admin.settings.domains'),
-                    active: $request->routeIs('admin.settings.domains'),
-                    permission: 'domains.view',
-                );
-            }
-
-            // Operator-only: approval-workflow switchboard. No tenant role template carries
-            // this permission, so only platform operators (Gate::before) ever see the tab.
-            if ($can('platform.workflows.manage')) {
-                $settingsChildren[] = new NavItem(
-                    key: 'settings.workflow',
-                    label: __('admin.workflow_settings'),
-                    url: route('admin.settings.workflows'),
-                    active: $request->routeIs('admin.settings.workflows'),
-                    permission: 'platform.workflows.manage',
-                );
-            }
-
             $items[] = new NavItem(
                 key: 'settings',
                 label: __('admin.settings'),
+                url: SettingsMenu::entryUrl(
+                    $can('settings.manage'),
+                    in_array('domains', $entitled, true) && $can('domains.view'),
+                ),
                 icon: 'ri-settings-4',
-                // The member's own account page sits under Settings › Bảo mật in this menu.
+                // The member's own account page sits under Settings › Bảo mật in the settings menu.
                 active: $request->routeIs('admin.settings*', 'admin.account'),
-                children: $settingsChildren,
             );
         }
 
