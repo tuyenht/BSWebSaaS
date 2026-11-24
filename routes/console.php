@@ -119,6 +119,11 @@ Schedule::command('notifications:prune')->daily()->withoutOverlapping();
 // removes older ones past cms.revisions.days (entry_revisions).
 Schedule::command('cms:prune-revisions')->daily()->withoutOverlapping();
 
+// Check the platform's shared Google/Facebook sign-in apps with their providers: refused keys hide
+// that sign-in button on every website using the shared app (the password still works); a network
+// fault keeps the last status (CheckSocialApps).
+Schedule::command('social:check-apps')->everySixHours()->withoutOverlapping();
+
 // Customers' own domains expire and get pointed elsewhere: mark the failing ones, stop serving a
 // domain that has been failing for 30 days, drop the ones never pointed here (design.md §28).
 Schedule::command('domains:recheck')->daily()->withoutOverlapping();

@@ -2,8 +2,10 @@
 
 namespace App\Modules\Admin\Providers;
 
+use App\Modules\Admin\Console\CheckSocialApps;
 use App\Modules\Admin\Console\ReconcileContentUsage;
 use App\Modules\Admin\Console\RecoverSiteOwnerCommand;
+use App\Modules\Admin\Http\Controllers\FacebookDataDeletionController;
 use App\Modules\Admin\Http\Middleware\AddServerTiming;
 use App\Modules\Admin\Http\Middleware\EnforceSupportSession;
 use App\Modules\Admin\Http\Middleware\ResolveLivewireContext;
@@ -66,13 +68,16 @@ use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Rendering\LayoutSlots;
 use Illuminate\Auth\Events\Login as SignedIn;
 use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\View\View as ViewContract;
+use Illuminate\Http\Request;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -105,8 +110,11 @@ final class AdminServiceProvider extends ServiceProvider
         View::addNamespace('admin', $this->app->basePath('app/Modules/Admin/resources/views'));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([ReconcileContentUsage::class, RecoverSiteOwnerCommand::class]);
+            $this->commands([CheckSocialApps::class, ReconcileContentUsage::class, RecoverSiteOwnerCommand::class]);
         }
+
+        // Meta's data-deletion callback and its status page: per IP, a burst Meta never needs.
+        RateLimiter::for(FacebookDataDeletionController::LIMITER, static fn (Request $request): Limit => Limit::perMinute(30)->by((string) $request->ip()));
 
         // The block slots setting, the footer (its branch pictures) and the floating contact (its
         // channels' icon pictures) own "in use" rows in the

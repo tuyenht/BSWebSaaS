@@ -24,7 +24,7 @@ final class AuditCatalog
             'auth.login.succeeded', 'auth.login.failed', 'auth.login.throttled', 'auth.login.captcha_failed',
             'auth.login.platform_denied', 'auth.otp.locked', 'auth.otp.send_failed', 'auth.otp.throttled',
             'auth.password.reset', 'auth.password.forgot_throttled', 'auth.password.reset_send_failed',
-            'auth.password.changed', 'auth.session.signed_out', 'auth.2fa.enabled', 'auth.2fa.disabled', 'auth.2fa.recovery_regenerated', 'auth.social.unlinked',
+            'auth.password.changed', 'auth.session.signed_out', 'auth.2fa.enabled', 'auth.2fa.disabled', 'auth.2fa.recovery_regenerated', 'auth.social.unlinked', 'auth.social.facebook_deletion',
             'identity.email.changed', 'identity.email.change_locked', 'identity.email.code_throttled', 'identity.email.code_send_failed',
             'identity.email.notice_failed',
         ],
@@ -67,7 +67,7 @@ final class AuditCatalog
         ],
         'new_site' => ['provisioning.site.provisioned'],
         'support' => ['support.session.issued', 'support.session.entered', 'support.session.ended', 'support.session.notice_failed'],
-        'settings' => ['settings.support_access.changed', 'settings.locales.changed', 'settings.locales.default_changed', 'settings.maintenance.on', 'settings.maintenance.off', 'settings.embed_code.on', 'settings.embed_code.off', 'settings.embed_code.changed', 'settings.admin_ip.on', 'settings.admin_ip.off', 'settings.admin_ip.changed', 'platform.security.turnstile_login', 'audit.month_deleted', 'audit.months_pruned',
+        'settings' => ['settings.support_access.changed', 'settings.locales.changed', 'settings.locales.default_changed', 'settings.maintenance.on', 'settings.maintenance.off', 'settings.embed_code.on', 'settings.embed_code.off', 'settings.embed_code.changed', 'settings.admin_ip.on', 'settings.admin_ip.off', 'settings.admin_ip.changed', 'platform.security.turnstile_login', 'platform.oauth_social.status', 'audit.month_deleted', 'audit.months_pruned',
             'cms.redirect.external_added', 'cms.redirect.external_changed', 'cms.redirect.external_trashed', 'cms.redirect.external_restored', 'cms.redirect.external_purged'],
     ];
 

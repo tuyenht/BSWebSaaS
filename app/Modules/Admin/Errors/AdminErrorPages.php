@@ -259,6 +259,20 @@ final class AdminErrorPages
     }
 
     /**
+     * The page Meta links a person to after their Facebook sign-in data was deleted on request: what
+     * was removed, that the password still works, and the confirmation code Meta showed them.
+     *
+     * @return array<string, mixed>
+     */
+    public static function facebookDataDeletedPage(string $code): array
+    {
+        return self::page('fb-data-deleted', __('admin.oauth_fb_deletion_title'), __('admin.oauth_fb_deletion_line'), [
+            'icon' => 'ri-checkbox-circle',
+            'ok' => __('admin.oauth_fb_deletion_code', ['code' => $code]),
+        ]);
+    }
+
+    /**
      * A path on this host's own admin plane to come back to, with its query string (a list's
      * filter, the Thùng rác tab), or null (anything else: another host, a scheme, a
      * protocol-relative or odd path, a backslash or control character, the sign-in pages).

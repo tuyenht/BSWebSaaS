@@ -44,7 +44,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // by Turnstile + honeypot + rate-limit (§23/R20), not the session CSRF token — which can't
         // ride along on edge/full-page-cacheable storefront HTML. Exempt it so the public form
         // submits cleanly; every authenticated admin/platform POST keeps CSRF protection.
-        $middleware->validateCsrfTokens(except: ['forms/*']);
+        // Meta's data-deletion callback is posted by Meta's servers and proven by its signed_request.
+        $middleware->validateCsrfTokens(except: ['forms/*', 'oauth/facebook/data-deletion']);
 
         // A lead whose attached files add up past post_max_size comes back to its form with a plain
         // message (StoreLeadRequest) rather than Laravel's 413 page; every other POST keeps it.

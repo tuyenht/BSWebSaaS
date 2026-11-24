@@ -588,6 +588,7 @@ workflow_log(id, site_id, workflow_id NULL, entry_id, locale NULL, target ∈ {e
 - **Export** = package-first monorepo + exporter; "single-tenant = N=1"; driver-swap (DB/cache/storage). *(ADR-12)*
 - **License bản export = WHMCS Software Licensing addon** (Bảo Sơn đang vận hành, 368 license BSWeb-, đã xác nhận bản quyền hợp lệ). Bind domain; không phép → trang trắng câm; đổi domain qua Reissue. *(ADR-13)*
 - Định giá Standalone Export theo từng khách; mẫu license agreement cần luật sư (gắn câu #3).
+- **Đăng nhập nhanh khi tách site:** không xuất khóa ứng dụng Google/Facebook chung của nền tảng; khóa ứng dụng riêng của website phải nhập lại (khóa mã hóa `SETTINGS_ENCRYPTION_KEY` khác); `OAUTH_CALLBACK_URL` trỏ tên miền của site; liên kết Facebook mất (ID người dùng riêng theo từng ứng dụng) → thành viên đăng nhập bằng mật khẩu rồi liên kết lại; liên kết Google giữ được (`sub` theo tài khoản Google — theo tài liệu của Google, chưa thử).
 
 ### 22.1 Cấu trúc thư mục (Modular Monolith) + diễn giải ADR-12 *(chốt v2.8 — normative)*
 

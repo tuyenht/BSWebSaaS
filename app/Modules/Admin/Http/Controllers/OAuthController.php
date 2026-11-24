@@ -358,7 +358,8 @@ final readonly class OAuthController
     private function creds(string $provider, string $purpose): array
     {
         if ($purpose === 'login' || $purpose === 'connect') {
-            $cfg = $this->social->config($provider) ?? [];
+            // A provider the website switched off has no app here, even when the shared app works.
+            $cfg = $this->social->enabled($provider) ? ($this->social->config($provider) ?? []) : [];
 
             return [
                 is_string($cfg['client_id'] ?? null) ? $cfg['client_id'] : null,
