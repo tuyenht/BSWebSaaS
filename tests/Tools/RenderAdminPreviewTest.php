@@ -41,6 +41,8 @@ use App\Modules\Admin\Livewire\Settings\Redirects as RedirectSettings;
 use App\Modules\Admin\Livewire\Users\Index as MembersIndex;
 use App\Modules\Admin\Livewire\WorkflowSettings;
 use App\Modules\Admin\Support\PlatformPlans;
+use App\Modules\Admin\Support\PlatformSettings;
+use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\Settings\SetBrandImages;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Catalog\Models\Product;
@@ -392,6 +394,23 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $this->flushSession();
     $html = $this->actingAs($top)->get($platform.'/audit')->assertOk()->getContent();
     file_put_contents($dir.'/audit-cleanup.html', str_replace($platform, 'http://'.ADMIN_PREVIEW_HOST, $html));
+
+    // «Đăng nhập nhanh»: the platform's face with Google connected and Facebook not yet (its policy
+    // addresses configured), then a website's face on the same shared apps.
+    config(['admin.encryption_key' => 'base64:'.base64_encode('0123456789abcdef0123456789abcdef'),
+        'oauth.legal.privacy_url' => 'https://baoson.net/chinh-sach-bao-mat', 'oauth.legal.terms_url' => 'https://baoson.net/dieu-khoan']);
+    app(PlatformSettings::class)->put('oauth_social', 'google', ['client_id' => '812734-abcxyz.apps.googleusercontent.com',
+        'client_secret' => SecretCipher::encrypt('GOCSPX-preview-only'), 'enabled' => true, 'status' => 'ok', 'checked_at' => now()->toIso8601String()]);
+    $this->flushSession();
+    $html = $this->actingAs($top)->get($platform.'/settings/social')->assertOk()->getContent();
+    expect($html)->toContain(e(__('admin.sl.providers_platform')))->not->toContain('GOCSPX-preview-only');
+    file_put_contents($dir.'/system-social.html', str_replace($platform, 'http://'.ADMIN_PREVIEW_HOST, $html));
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/social')->assertOk()->getContent();
+    expect($html)->toContain(e(__('admin.sl.providers_site')));
+    file_put_contents($dir.'/social.html', $html);
+    DB::connection('pgsql_admin')->table('platform_settings')->where('group_name', 'oauth_social')->delete();
+    $this->flushSession();
 
     // Its dialog open on each step, put into that page (it opens from the browser, never from a URL).
     $old = now()->utc()->startOfMonth()->subMonths(13)->format('Y-m');
@@ -1582,5 +1601,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 144);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 146);
 });
