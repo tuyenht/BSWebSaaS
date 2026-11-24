@@ -12,33 +12,42 @@
     $num = fn (int $n): string => Number::format($n, locale: app()->getLocale());
     $glyph = 'size-[calc(1rem+var(--user-text-boost))] shrink-0';
 @endphp
-<div class="@container/tv flex flex-col gap-4">
-    <header class="flex flex-col gap-1">
-        <nav aria-label="{{ __('admin.breadcrumb') }}" class="flex flex-wrap items-center gap-1 text-small text-text-muted">
-            <span>{{ __('admin.domains_crumb_settings') }}</span>
-            <x-bs-admin::icon name="ri-arrow-right-s" :class="$glyph" />
-            <span>{{ __('admin.rd.crumb_group') }}</span>
-            <x-bs-admin::icon name="ri-arrow-right-s" :class="$glyph" />
-            <span aria-current="page" class="text-text-strong">{{ __('admin.rd.title') }}</span>
-        </nav>
-        <x-bs-admin::title-row :title="__('admin.rd.title')">
-            @if ($allowed && ! $failed)
+<div>
+    @if (! $allowed)
+        {{-- Not this member's to open: the page keeps its own title (the frame lists only what the member may open). --}}
+        <div class="flex flex-col gap-4">
+            <header class="flex flex-col gap-1">
+                <nav aria-label="{{ __('admin.breadcrumb') }}" class="flex flex-wrap items-center gap-1 text-small text-text-muted">
+                    <span>{{ __('admin.domains_crumb_settings') }}</span>
+                    <x-bs-admin::icon name="ri-arrow-right-s" :class="$glyph" />
+                    <span>{{ __('admin.rd.crumb_group') }}</span>
+                    <x-bs-admin::icon name="ri-arrow-right-s" :class="$glyph" />
+                    <span aria-current="page" class="text-text-strong">{{ __('admin.rd.title') }}</span>
+                </nav>
+                <x-bs-admin::title-row :title="__('admin.rd.title')">
+                </x-bs-admin::title-row>
+                <p class="m-0 max-w-[72ch] text-body text-text-muted [text-wrap:pretty]">{{ __('admin.rd.desc') }}</p>
+            </header>
+            <div class="flex flex-col items-start gap-2 rounded-md border border-border bg-surface p-5 shadow-card">
+                <x-bs-admin::icon name="ri-forbid" class="size-6 text-text-muted" />
+                <h2 class="m-0 text-[calc(1rem+var(--user-text-boost))] font-semibold text-text-strong">{{ __('admin.rd.noperm_title') }}</h2>
+                <p class="m-0 text-text-muted">{{ __('admin.rd.noperm_body', ['role' => $role !== '' ? $role : __('admin.domains_noperm_role_none')]) }}</p>
+            </div>
+        </div>
+    @else
+    {{-- Inside the settings frame (design board «Khung quản trị», section «Chuyển hướng»): the frame draws the
+         section's name, note and short description, and the add button ends its title row. --}}
+    <x-bs-admin::settings-shell active="redirects">
+        @if (! $failed)
+            <x-slot:aside>
                 <x-bs-admin::button color="primary" id="rd-add" class="shrink-0" wire:click="openAdd" :label="__('admin.rd.add')" :short="__('admin.rd.add_short')"
                     :title="__('admin.rd.add_title')">
                     <x-bs-admin::icon name="ri-add" class="size-4" />
                 </x-bs-admin::button>
-            @endif
-        </x-bs-admin::title-row>
-        <p class="m-0 max-w-[72ch] text-body text-text-muted [text-wrap:pretty]">{{ __('admin.rd.desc') }}</p>
-    </header>
-
-    @if (! $allowed)
-        <div class="flex flex-col items-start gap-2 rounded-md border border-border bg-surface p-5 shadow-card">
-            <x-bs-admin::icon name="ri-forbid" class="size-6 text-text-muted" />
-            <h2 class="m-0 text-[calc(1rem+var(--user-text-boost))] font-semibold text-text-strong">{{ __('admin.rd.noperm_title') }}</h2>
-            <p class="m-0 text-text-muted">{{ __('admin.rd.noperm_body', ['role' => $role !== '' ? $role : __('admin.domains_noperm_role_none')]) }}</p>
-        </div>
-    @elseif ($failed)
+            </x-slot:aside>
+        @endif
+    <div class="@container/tv flex flex-col gap-4">
+    @if ($failed)
         {{-- the page itself in this state (its heading says it), not a message that arrives later: no live region --}}
         <div class="flex flex-col items-start gap-2 rounded-md border border-border bg-surface p-5 shadow-card" wire:loading.remove wire:target="$refresh">
             <x-bs-admin::icon name="ri-wifi-off" class="size-6 text-danger-text" />
@@ -370,6 +379,9 @@
                 <x-bs-admin::confirm-line icon="ri-error-warning">{{ __('admin.rd.purge_body') }}</x-bs-admin::confirm-line>
             </x-bs-admin::confirm-dialog>
         @endif
+    @endif
+    </div>
+    </x-bs-admin::settings-shell>
     @endif
 
     <x-bs-admin::toast :message="$toast" :tone="$toastTone" dismiss="dismissToast" :undo="$undoKeys !== [] ? 'undoTrash' : null" :seq="$toastSeq" raised />

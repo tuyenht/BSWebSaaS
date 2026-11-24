@@ -12,6 +12,7 @@ use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Domains\OwnershipProof;
 use App\Modules\Tenancy\Domains\PointingMethod;
+use Dom\HTMLDocument;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\Cache;
@@ -616,6 +617,33 @@ it('serves the platform console\'s view of one site behind the platform permissi
         ->assertForbidden();
 
     expect(dsHosts(1))->toContain('tencongty.vn');
+});
+
+it('opens inside the settings frame for the website\'s owner, the add button on the frame\'s title row', function (): void {
+    $this->artisan('site:feature', ['host' => 'a.test', 'feature' => 'custom_domains.max', 'value' => '2'])->assertSuccessful();
+    $html = (string) $this->actingAs(dsMember(1, 'owner'))->get('http://a.test/admin/settings/domains')->assertOk()->getContent();
+    $dom = HTMLDocument::createFromString($html, LIBXML_NOERROR);
+    $shell = $dom->querySelector('[data-set-shell]');
+
+    expect($shell)->not->toBeNull()
+        ->and($dom->querySelectorAll('h1')->length)->toBe(1)
+        ->and(trim((string) $shell->querySelector('nav[data-set-nav] a[aria-current="page"]')?->textContent))->toBe('Tên miền')
+        ->and(substr_count($html, 'wire:click="openAdd"'))->toBe(1)
+        ->and($shell->querySelector('[data-set-main] [wire\\:click="openAdd"]'))->toBeNull()
+        ->and($shell->querySelector('[data-set-savebar]'))->toBeNull();
+});
+
+it('keeps the console\'s own title and the add button on the card, outside the settings frame', function (): void {
+    $this->artisan('site:feature', ['host' => 'a.test', 'feature' => 'custom_domains.max', 'value' => '2'])->assertSuccessful();
+    $ops = dsStaff('super_admin');
+
+    $this->actingAs($ops);
+    $html = Livewire::actingAs($ops)->test(Domains::class, ['ulid' => 'SITEA000000000000000000001'])->assertOk()->html();
+
+    expect($html)->not->toContain('data-set-shell')
+        ->and(substr_count($html, '<h1'))->toBe(1)
+        ->and(substr_count($html, 'wire:click="openAdd"'))->toBe(1)
+        ->and($html)->toMatch('/<section[^>]*aria-labelledby="tm-h-list".*wire:click="openAdd"/s');
 });
 
 it('lets platform staff who manage sites change a site\'s names, logged on that site', function (): void {
