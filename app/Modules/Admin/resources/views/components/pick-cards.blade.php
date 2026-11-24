@@ -16,7 +16,7 @@
     // platform's default and draws it, its value '' (inherit). Native radios under the cards: arrows move between
     // them, Space chooses, the focus ring shows on the card. The page drawings use fixed literal colours on purpose:
     // each card shows one fixed look, so it must not repaint with the live light or dark scheme; the brand colour
-    // reads its token.
+    // reads its token. The gradients are the app's own deepened bands (admin-chrome.css), so the card matches the sidebar.
     $brand = 'var(--color-primary)';
     $default = $values[0] ?? '';
     $draw = static function (string $axis, string $v) use ($brand): array {
@@ -26,10 +26,10 @@
         $side = match (true) {
             $axis === 'sidebar' && $v === 'dark', $axis === 'sidebar_image' => "color-mix(in srgb, {$brand} 72%, #0b1d45)",
             $axis === 'sidebar' && $v === 'light' => '#ffffff',
-            $axis === 'sidebar' && $v === 'gradient' => "linear-gradient(to bottom, {$brand}, #0ab39c)",
-            $axis === 'sidebar' && $v === 'gradient-2' => 'linear-gradient(to bottom, #299cdb, #3577f1)',
-            $axis === 'sidebar' && $v === 'gradient-3' => 'linear-gradient(to bottom, #299cdb, #0ab39c)',
-            $axis === 'sidebar' && $v === 'gradient-4' => "linear-gradient(to bottom, #1a1d21, {$brand})",
+            $axis === 'sidebar' && $v === 'gradient' => "linear-gradient(to right, {$brand}, #056d5e)",
+            $axis === 'sidebar' && $v === 'gradient-2' => 'linear-gradient(to right, #036797, #185ad2)',
+            $axis === 'sidebar' && $v === 'gradient-3' => 'linear-gradient(to right, #036797, #056d5e)',
+            $axis === 'sidebar' && $v === 'gradient-4' => "linear-gradient(to right, #1a1d21, {$brand})",
             $dark => '#111a30',
             default => '#e8ecf3',
         };
