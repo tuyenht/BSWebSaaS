@@ -54,8 +54,10 @@ final readonly class MediaUsageLocator
      * per role.
      * `url` is the screen the thing is changed on; null when no admin screen changes it yet (the
      * site's own block slots and its branch list are written by the content-pack loader only).
+     * `sub` (products and entries only) is the short line the library's detail drawer prints under
+     * the label: a product's code, an entry's address in that locale.
      *
-     * @return list<array{kind: string, role: string, label: string, url: string|null}>
+     * @return list<array{kind: string, role: string, label: string, url: string|null, sub?: string|null}>
      */
     public function usagesFor(Media $media, string $locale): array
     {
@@ -70,6 +72,7 @@ final readonly class MediaUsageLocator
                 'role' => 'gallery',
                 'label' => $translation !== null ? $translation->name : __('catalog.untitled'),
                 'url' => route('admin.catalog.edit', ['ulid' => $product->ulid]),
+                'sub' => $product->sku !== null && $product->sku !== '' ? $product->sku : null,
             ];
         }
 
@@ -218,7 +221,7 @@ final readonly class MediaUsageLocator
     }
 
     /**
-     * @return array{kind: string, role: string, label: string, url: string|null}
+     * @return array{kind: string, role: string, label: string, url: string|null, sub: string|null}
      */
     private function entryUsage(Entry $entry, string $role, string $locale): array
     {
@@ -229,6 +232,7 @@ final readonly class MediaUsageLocator
             'role' => $role,
             'label' => $translation !== null ? $translation->title : __('entries.untitled'),
             'url' => route('admin.entries.edit', ['ulid' => $entry->ulid]),
+            'sub' => $translation !== null && $translation->slug !== '' ? '/'.$translation->slug : null,
         ];
     }
 

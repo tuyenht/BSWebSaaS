@@ -1453,6 +1453,23 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $ownAsk = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($own()->call('trashPicked')));
     expect($ownAsk)->toContain('giữ nguyên');
     file_put_contents($dir.'/media-trash-own-ask.html', $swap($html, $ownAsk, $media));
+    // the file detail drawer: a picture with its Vietnamese description and an English one still
+    // missing, and a file in the Trash with «Khôi phục» and its days left
+    [$liveUlid, $trashUlid] = app(Tenancy::class)->enter(1, function (): array {
+        Media::query()->where('slug', 'anh-xuong-3')->update(['alt' => json_encode(['vi' => 'Máy phay CNC 5 trục đang gia công khuôn nhôm']),
+            'title' => json_encode(['vi' => 'Máy phay CNC 5 trục'])]);
+        $gone = Media::query()->where('slug', 'anh-xuong-4')->firstOrFail();
+        $gone->delete();
+
+        return [(string) Media::query()->where('slug', 'anh-xuong-3')->value('ulid'), $gone->ulid];
+    });
+    $detail = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($library()->call('openDetail', $liveUlid)));
+    expect($detail)->toContain('data-bs-lazy="bsMediaDrawer"', 'wire:model="detailAlt.en"');
+    file_put_contents($dir.'/media-detail.html', $swap($html, $detail, $media));
+    $trashed = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($owner)->test(Library::class)
+        ->call('setFolder', '~trash')->call('openDetail', $trashUlid)));
+    expect($trashed)->toContain('wire:click="restoreDetail"');
+    file_put_contents($dir.'/media-detail-trash.html', $swap($html, $trashed, $media));
     config(['media' => $mediaConfig]);
 
     // Hộp duyệt (design board 17): three posts of «Dự án» waiting, two of them ticked with the bar
@@ -1601,5 +1618,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 146);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 148);
 });

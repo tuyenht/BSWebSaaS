@@ -12,6 +12,9 @@
     'saveLabel' => null,
     // An editor's own words for discarding and leaving, in place of "Bỏ thay đổi và rời đi".
     'discardLabel' => null,
+    // A CSS selector for the part of the page this dialog guards (a drawer: `[data-unsaved-scope=…]`,
+    // which a drawer with `guard` carries): text typed outside it is not counted as unsaved.
+    'scope' => null,
 ])
 @php
     // The one blocking dialog for unsaved changes (design 01 "Bạn có thay đổi chưa lưu"; behaviour
@@ -23,7 +26,7 @@
     // question instead. The dialog itself sits under wire:ignore: its buttons are laid out in the
     // browser (one row when they fit, stacked otherwise) and a redraw must not undo that.
     $seed = 'ud-'.substr(md5($label.'|'.$save), 0, 8);
-    $config = ['save' => $save, 'discard' => $discard, 'sections' => array_values($sections)];
+    $config = ['save' => $save, 'discard' => $discard, 'sections' => array_values($sections), 'scope' => $scope];
     $glyph = 'size-[1.15em] shrink-0';
 @endphp
 <div x-ignore wire:ignore.self data-bs-lazy="bsUnsaved" x-data="bsUnsaved(@js($config))" data-unsaved-guard>

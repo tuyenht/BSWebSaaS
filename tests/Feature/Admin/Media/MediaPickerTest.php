@@ -585,6 +585,27 @@ it('saves alt for the site locale without touching other locales (media.upload)'
     });
 });
 
+it('keeps another language changed between opening the detail and saving its alt', function (): void {
+    $user = pickerManager(['media.upload']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $media = seedPickerMedia('altrace', ['alt' => ['vi' => 'cũ', 'en' => 'old']]);
+
+        $component = Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'gallery')
+            ->call('openPickerDetail', $media->ulid)
+            ->set('pickerDetailAlt', 'Bàn gá khoan');
+
+        // Meanwhile another editor saves the English words in the library drawer.
+        $other = $media->fresh();
+        $other?->update(['alt' => ['vi' => 'cũ', 'en' => 'Drilling jig']]);
+
+        $component->call('savePickerDetailAlt')->assertHasNoErrors();
+
+        expect($media->fresh()?->alt)->toEqual(['vi' => 'Bàn gá khoan', 'en' => 'Drilling jig']); // jsonb keeps its own key order
+    });
+});
+
 it('refuses an alt text longer than the SEO hard cap and saves one at the cap', function (): void {
     $user = pickerManager(['media.upload']);
 
