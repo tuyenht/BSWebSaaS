@@ -42,7 +42,7 @@ final readonly class SiteSuggest
     ) {}
 
     /**
-     * @return array{categories: list<int>, entries: list<array{id: int, type: string, title: string, path: string, at: string|null, root: int, image: string}>, products: list<array{id: int, title: string, sku: string, path: string, at: string|null, image: string}>}
+     * @return array{categories: list<int>, entries: list<array{id: int, type: string, title: string, path: string, at: string|null, day: string|null, root: int, image: string}>, products: list<array{id: int, title: string, sku: string, path: string, at: string|null, image: string}>}
      */
     public function find(SearchText $q, string $locale): array
     {
@@ -121,7 +121,7 @@ final readonly class SiteSuggest
      * The newest posts and pages whose title holds every word typed.
      *
      * @param  list<int>  $counts  each word's rows (plan)
-     * @return list<array{id: int, type: string, title: string, path: string, at: string|null, root: int, image: string}>
+     * @return list<array{id: int, type: string, title: string, path: string, at: string|null, day: string|null, root: int, image: string}>
      */
     private function entries(SearchText $q, string $locale, array $counts): array
     {
@@ -149,7 +149,7 @@ final readonly class SiteSuggest
             $order = 'e.published_at desc nulls last, e.id desc';
         }
 
-        $inner = "select e.id, e.type, e.published_at, e.meta->>'image_url' as image, t.title from {$source} join entries e on e.site_id = ? and e.id = c.id"
+        $inner = "select e.id, e.type, e.published_at, e.meta->>'image_url' as image, e.meta->>'display_date' as shown_day, t.title from {$source} join entries e on e.site_id = ? and e.id = c.id"
             ." join entry_translations t on t.entry_id = e.id and t.site_id = ? and t.locale = ? and t.status = 'published'"
             ." where e.deleted_at is null and e.status = 'published' and e.type in ('page', 'post')"
             .' and (e.published_at is null or e.published_at <= now()) and e.ulid::text <> all (?::text[])';
@@ -163,7 +163,7 @@ final readonly class SiteSuggest
         $b[] = self::ROWS;
 
         // for the few rows found: the address and the level-1 post category of the main category (the group)
-        $sql = 'select x.id, x.type, x.published_at, x.title, x.image, (select r.path from routes r where r.site_id = ? and r.locale = ? and r.entry_id = x.id order by r.id limit 1) as path,'
+        $sql = 'select x.id, x.type, x.published_at, x.shown_day, x.title, x.image, (select r.path from routes r where r.site_id = ? and r.locale = ? and r.entry_id = x.id order by r.id limit 1) as path,'
             ." coalesce(root.id, 0) as root_id from ({$inner}) as x"
             .' left join lateral (select p.taxonomy_id from entry_taxonomies p where p.site_id = ? and p.entry_id = x.id and p.position = 0 order by p.id limit 1) as main on true'
             .' left join taxonomies pt on pt.site_id = ? and pt.id = main.taxonomy_id'
@@ -184,6 +184,8 @@ final readonly class SiteSuggest
                 'title' => Cast::string($row['title'] ?? ''),
                 'path' => $path,
                 'at' => Cast::stringOrNull($row['published_at'] ?? null),
+                // the day the post shows as published (DisplayDate), null for the real one
+                'day' => Cast::stringOrNull($row['shown_day'] ?? null),
                 'root' => Cast::int($row['root_id'] ?? 0),
                 'image' => Cast::string($row['image'] ?? ''),
             ];

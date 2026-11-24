@@ -15,12 +15,14 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\TaxonomyTranslation;
+use App\Modules\Cms\Support\DisplayDate;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\PlainText;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
+use App\Modules\Theme\Rendering\TemplateCatalog;
 use App\Modules\Workflow\Exceptions\InvalidTransitionException;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowTransition;
@@ -95,6 +97,12 @@ trait EditsPendingChange
         if (array_key_exists('meta', $shared)) {
             $cover = data_get($shared['meta'], 'image_url');
             $this->coverImageKey = is_string($cover) ? $cover : '';
+            if ($this->type === 'post') {
+                $this->displayDate = DisplayDate::of($shared['meta']);
+            }
+        }
+        if ($this->type === 'post' && array_key_exists('template_override', $shared)) {
+            $this->templateKey = TemplateCatalog::variant(is_string($shared['template_override']) ? $shared['template_override'] : null) ?? '';
         }
         $primary = $shared['primary_category_id'] ?? null;
         if ($this->type !== 'post' || ! is_int($primary)) {
@@ -160,6 +168,13 @@ trait EditsPendingChange
             unset($meta['image_url']);
         }
         $shared = ['meta' => $meta] + ($this->type === 'post' && $filing !== [] ? ['primary_category_id' => $filing[0]] : []);
+        // «Thuộc tính bài» goes into the change too, from the website's default language (every language's)
+        if ($this->type === 'post' && ! $this->sharedLocked() && $this->postPropsRead) {
+            $before = $change !== null && array_key_exists('template_override', $change->content['shared'] ?? []) ? $change->content['shared']['template_override'] : $entry->template_override;
+            $meta = DisplayDate::into($meta, $this->displayDate);
+            $shared['meta'] = $meta;
+            $shared['template_override'] = $this->formTemplate(is_string($before) ? $before : null);
+        }
 
         if ($change === null && $this->sameAsLive($entry, $live, $text, $meta, $filing[0] ?? null)) {
             $this->heldSave = 'same';
@@ -203,6 +218,7 @@ trait EditsPendingChange
 
         return self::keysSorted($before) === self::keysSorted($text['body'])
             && data_get($entry->meta, 'image_url') === ($meta['image_url'] ?? null)
+            && ($this->type !== 'post' || ! $this->postPropsRead || (DisplayDate::of($entry->meta) === DisplayDate::of($meta) && $entry->template_override === $this->formTemplate($entry->template_override)))
             && ($this->type !== 'post' || $primary === ($this->storedCategories($entry)[0] ?? null));
     }
 

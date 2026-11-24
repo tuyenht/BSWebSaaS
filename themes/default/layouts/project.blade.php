@@ -6,6 +6,8 @@
     The blocks of the `post_aside` slot make a side column beside the body (none: one column), those
     of `after_post` close the page.
     A post whose body opens with a title band gets its h1 and breadcrumb from that band instead.
+    The post's own look («Mẫu hiển thị», $layoutVariant): `hero` puts the cover photo at the full page
+    width above the band (the band then holds the text alone), `wide` draws no side column.
     Everything comes server-built from the controller; no id reaches the markup.
 --}}
 @php
@@ -17,7 +19,8 @@
     $sfRelated = $related ?? [];
     // The project board shows the consult box alone in its side column: no table of contents.
     $sfToc = [];
-    $sfAside = trim((string) (($slotHtml ?? [])['post_aside'] ?? ''));
+    $sfHero = ($layoutVariant ?? null) === 'hero' && $sfCover !== null;
+    $sfAside = ($layoutVariant ?? null) === 'wide' ? '' : trim((string) (($slotHtml ?? [])['post_aside'] ?? ''));
     $sfCols = $sfAside !== '' || $sfToc !== [];
     $sfAfter = trim((string) (($slotHtml ?? [])['after_post'] ?? ''));
     $sfAllUrl = isset($category) ? \App\Modules\Shared\Support\SafeLink::href($category['url'] ?? null) : null;
@@ -37,8 +40,16 @@
     @include('theme::partials.header', ['menu' => $menu ?? [], 'brand' => $brand ?? null])
     <main class="post-page post-page--project" id="noi-dung" tabindex="-1">
         <article class="post post--project">
+@if ($sfOwnBand && $sfHero)
+            <figure class="post-cover post-cover--hero">
+                @include('theme::partials.sf-img', ['src' => $sfCover['src'], 'srcset' => $sfCover['srcset'], 'sizes' => '100vw', 'alt' => $sfCover['alt'], 'w' => $sfCover['width'], 'h' => $sfCover['height'], 'priority' => $sfCoverPriority, 'class' => 'post-cover__img'])
+@if ($sfCover['caption'] !== '')
+                <figcaption class="post-cover__caption">{{ $sfCover['caption'] }}</figcaption>
+@endif
+            </figure>
+@endif
 @if ($sfOwnBand)
-            <header class="post-band post-band--split">
+            <header class="post-band{{ $sfHero ? '' : ' post-band--split' }}">
                 <div class="post-band__inner">
                     <div class="post-band__text">
                         @include('theme::partials.sf-breadcrumb', ['crumbs' => $crumbsShown ?? $breadcrumb ?? [], 'tone' => 'dark', 'class' => 'post-band__crumbs'])
@@ -47,7 +58,7 @@
                         <p class="post-band__excerpt">{{ $sfPost['excerpt'] }}</p>
 @endif
                     </div>
-@if ($sfCover !== null)
+@if ($sfCover !== null && ! $sfHero)
                     <div class="post-band__media">
                         @include('theme::partials.sf-img', ['src' => $sfCover['src'], 'srcset' => $sfCover['srcset'], 'sizes' => '(min-width:80rem) 31rem, (min-width:1024px) 40vw, calc(100vw - 2rem)', 'alt' => $sfCover['alt'], 'w' => $sfCover['width'], 'h' => $sfCover['height'], 'priority' => $sfCoverPriority, 'class' => 'post-band__img'])
                     </div>

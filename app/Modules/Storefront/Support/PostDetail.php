@@ -8,6 +8,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Cms\Support\DisplayDate;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Tenancy\Context\SiteTime;
@@ -73,7 +74,8 @@ final readonly class PostDetail
      */
     public function dates(Entry $post, EntryTranslation $translation, string $locale): array
     {
-        $published = $this->time->forDisplay($post->published_at);
+        // The day the post shows as published: its own display day when an editor set one, else the real one.
+        $published = DisplayDate::shown($post->getAttribute('meta'), $this->time->forDisplay($post->published_at), $this->time->zone());
         // The same content date as the Article's dateModified (contentDate()).
         $edited = $this->time->forDisplay($translation->contentDate($post->published_at));
         $format = $this->time->dateFormat();
@@ -222,8 +224,8 @@ final readonly class PostDetail
     {
         return Entry::query()
             ->select(['entries.id', 'entries.site_id', 'entries.type', 'entries.published_at'])
-            // Cards read only the image link from meta; do not carry the rest of the document.
-            ->selectRaw("jsonb_build_object('image_url', entries.meta->'image_url') as meta")
+            // Cards read only the image link and the shown day from meta; do not carry the rest of the document.
+            ->selectRaw("jsonb_strip_nulls(jsonb_build_object('image_url', entries.meta->'image_url', 'display_date', entries.meta->'display_date')) as meta")
             // Which part of the union a row came from; $slot is one of this class's four literals.
             ->selectRaw("'{$slot}'::text as slot")
             ->where('entries.type', 'post')

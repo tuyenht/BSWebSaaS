@@ -143,6 +143,8 @@ final readonly class PageRenderer
             'toc' => $toc['items'],
             // The author numbered the headings: the contents list then adds no numbers of its own.
             'tocOwn' => $tocOwn,
+            // A post's own look over its category's layout («Mẫu hiển thị»): hero, wide, or null.
+            'layoutVariant' => $type === 'post' ? TemplateCatalog::variant($templateOverride) : null,
         ] + $extra)->render());
     }
 

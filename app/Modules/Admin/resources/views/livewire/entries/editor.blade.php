@@ -313,11 +313,11 @@
                 <x-bs-admin::seo-fields excerpt="excerpt" part="card" :kind="$type" :address="$address" :locale="$locale" :multi-locale="$multiLocale" id="entry-seo" />
             </div>
 
-            {{-- A page's «Thuộc tính trang» waits behind «Thêm tùy chọn» (design 07), open or closed per browser as in the
-                 product editor (localStorage 'bs-editor'); a refused «Trang cha» opens it, and so does a page that has a
-                 parent (an existing one, or preset by «Thêm trang con»), so the chosen parent shows. --}}
+            {{-- A page's «Thuộc tính trang» and a post's «Thuộc tính bài» wait behind «Thêm tùy chọn» (design 07), open or
+                 closed per browser as in the product editor (localStorage 'bs-editor'); a refused value opens it, and so does
+                 a value already set (a page's parent, preset by «Thêm trang con» too; a post's own look or shown day), so it shows. --}}
             <div class="flex min-w-0 flex-[1_1_300px] flex-col gap-4"
-                 @if ($isPage) @if ($parentUlid !== null) data-more-open @endif x-data="{ more: false, init() { if ('moreOpen' in this.$el.dataset) { this.more = true; return } try { this.more = JSON.parse(localStorage.getItem('bs-editor') || '{}').more === true } catch (e) {} }, setMore(on) { this.more = on; try { const o = JSON.parse(localStorage.getItem('bs-editor') || '{}') || {}; o.more = on; localStorage.setItem('bs-editor', JSON.stringify(o)) } catch (e) {} } }" @endif>
+                 @if ($isPage || $type === 'post') @if (($isPage && $parentUlid !== null) || (! $isPage && ($templateKey !== '' || $displayDate !== ''))) data-more-open @endif x-data="{ more: false, init() { if ('moreOpen' in this.$el.dataset) { this.more = true; return } try { this.more = JSON.parse(localStorage.getItem('bs-editor') || '{}').more === true } catch (e) {} }, setMore(on) { this.more = on; try { const o = JSON.parse(localStorage.getItem('bs-editor') || '{}') || {}; o.more = on; localStorage.setItem('bs-editor', JSON.stringify(o)) } catch (e) {} } }" @endif>
                 <section class="{{ $card }}" aria-labelledby="entry-pub-h">
                     <div class="flex items-center justify-between gap-2.5 border-b border-border px-4 py-3">
                         <h2 id="entry-pub-h" class="{{ $cardTitle }}">{{ __('entries.ed.card_publish') }}</h2>
@@ -632,6 +632,54 @@
                         </div>
                         <div class="p-4">
                             @include('admin::livewire.entries.partials.parent-picker')
+                        </div>
+                    </section>
+                @endif
+
+                @if ($type === 'post')
+                    <button type="button" x-on:click="setMore(! more)" x-bind:aria-expanded="more ? 'true' : 'false'" aria-expanded="false" aria-controls="entry-post-props"
+                            aria-label="{{ __('catalog.ed.more') }} — {{ __('entries.ed.more_sub_post') }}"
+                            x-bind:aria-label="more ? @js(__('catalog.ed.less').' — '.__('catalog.ed.less_sub')) : @js(__('catalog.ed.more').' — '.__('entries.ed.more_sub_post'))"
+                            class="grid w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2.5 gap-y-1 rounded-md border border-dashed border-border-input px-4 py-2.5 text-left text-body font-semibold text-primary-text transition-colors min-h-12 hover:bg-[color-mix(in_srgb,var(--color-primary-text)_6%,var(--color-surface))]">
+                        <x-bs-admin::icon name="ri-add" :class="$glyph" x-show="! more" />
+                        <x-bs-admin::icon name="ri-subtract" :class="$glyph" x-show="more" x-cloak />
+                        <span x-text="more ? @js(__('catalog.ed.less')) : @js(__('catalog.ed.more'))">{{ __('catalog.ed.more') }}</span>
+                        <span class="col-start-2 text-small font-normal text-text-muted" aria-hidden="true">
+                            <span class="ped-ms-l" x-text="more ? @js(__('catalog.ed.less_sub')) : @js(__('entries.ed.more_sub_post'))">{{ __('entries.ed.more_sub_post') }}</span>
+                            {{-- the short line of the phone's child screen --}}
+                            <span class="ped-ms-s" x-text="more ? @js(__('catalog.ed.less_sub_s')) : @js(__('entries.ed.more_sub_post_s'))">{{ __('entries.ed.more_sub_post_s') }}</span>
+                        </span>
+                    </button>
+                    @if ($errors->has('templateKey') || $errors->has('displayDate')) <span hidden x-init="more = true"></span> @endif
+                    {{-- «Thuộc tính bài» (design 07): the post's own look over its category's layout, and the day it shows as
+                         published (empty = the real day). Both are every language's (Editor::$templateKey, $displayDate). --}}
+                    <section id="entry-post-props" class="{{ $card }}" aria-labelledby="entry-post-props-h" data-post-props x-show="more" x-cloak>
+                        <div class="{{ $cardHead }}">
+                            <h2 id="entry-post-props-h" class="{{ $cardTitle }}">{{ __('entries.ed.card_post_props', ['unit' => mb_strtolower($unit)]) }}</h2>
+                            @if ($sharedLock)
+                                <x-bs-admin::shared-chip />
+                            @endif
+                        </div>
+                        <div class="flex flex-col gap-3 p-4">
+                            <div class="flex flex-col gap-1.5">
+                                <label for="entry-tpl" class="{{ $label }}">{{ __('entries.rev.f_tpl') }}</label>
+                                <select id="entry-tpl" wire:model="templateKey" @disabled($sharedLock) @if ($sharedLock) title="{{ $sharedWhy }}" @endif
+                                        @error('templateKey') aria-describedby="entry-tpl-e" aria-invalid="true" @enderror
+                                        class="field {{ $fieldLook }}">
+                                    <option value="">{{ __('entries.rev.tpl_default') }}</option>
+                                    <option value="{{ \App\Modules\Theme\Rendering\TemplateCatalog::VARIANT_HERO }}">{{ __('entries.ed.tpl_hero', ['doc' => __('entries.ed.doc_post')]) }}</option>
+                                    <option value="{{ \App\Modules\Theme\Rendering\TemplateCatalog::VARIANT_WIDE }}">{{ __('entries.ed.tpl_wide') }}</option>
+                                </select>
+                                @error('templateKey') <x-bs-admin::field-error id="entry-tpl-e">{{ $message }}</x-bs-admin::field-error> @enderror
+                            </div>
+                            <div class="flex flex-col gap-1.5">
+                                <label for="entry-pd" class="{{ $label }}">{{ __('entries.ed.pd_label', ['doc' => __('entries.ed.doc_post')]) }}</label>
+                                <input type="date" id="entry-pd" wire:model="displayDate" @readonly($sharedLock) @if ($sharedLock) aria-readonly="true" title="{{ $sharedWhy }}" @endif
+                                       aria-describedby="entry-pd-h @error('displayDate') entry-pd-e @enderror" @error('displayDate') aria-invalid="true" @enderror
+                                       class="field {{ $fieldLook }}">
+                                @error('displayDate') <x-bs-admin::field-error id="entry-pd-e">{{ $message }}</x-bs-admin::field-error> @enderror
+                                <p id="entry-pd-h" class="m-0 text-caption text-text-muted [overflow-wrap:anywhere]">{{ __('entries.ed.pd_hint') }}</p>
+                            </div>
                         </div>
                     </section>
                 @endif

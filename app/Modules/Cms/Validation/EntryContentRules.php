@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Cms\Validation;
 
+use App\Modules\Cms\Support\DisplayDate;
 use App\Modules\Cms\Support\JobFacts;
 use App\Modules\Shared\Support\PlainText;
 
@@ -77,16 +78,16 @@ final readonly class EntryContentRules
     }
 
     /**
-     * Why an entry's `meta` cannot be stored (the short facts and the badge of a card, JobFacts);
-     * empty when it is fine. The editor does not edit these keys, a revision restore and a content
-     * pack carry them.
+     * Why an entry's `meta` cannot be stored (the short facts and the badge of a card, JobFacts; the
+     * day a post shows as published, DisplayDate); empty when it is fine. The editor writes only the
+     * display day; a revision restore, a pending change and a content pack carry them all.
      *
      * @param  array<array-key, mixed>  $meta
      * @return list<string>
      */
     public function metaErrors(array $meta): array
     {
-        return JobFacts::errors($meta);
+        return [...JobFacts::errors($meta), ...DisplayDate::errors($meta)];
     }
 
     /**
