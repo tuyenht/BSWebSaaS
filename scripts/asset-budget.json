@@ -163,7 +163,7 @@
       "css": 0
     },
     "resources/js/admin-categories.js": {
-      "js": 26086,
+      "js": 26894,
       "css": 0
     },
     "resources/js/admin-rich-editor.js": {
@@ -195,7 +195,7 @@
       "css": 0
     },
     "resources/js/admin-menus.js": {
-      "js": 28701,
+      "js": 29578,
       "css": 0
     },
     "resources/js/admin-bell.js": {
@@ -213,6 +213,10 @@
     "resources/js/admin-guide.js": {
       "js": 8952,
       "css": 1945
+    },
+    "resources/js/admin-social.js": {
+      "js": 1311,
+      "css": 0
     }
   }
 }

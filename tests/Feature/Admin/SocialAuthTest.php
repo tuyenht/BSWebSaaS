@@ -241,23 +241,23 @@ function socialSiteAdmin(): User
     return $admin->fresh();
 }
 
-it('turns the shared app off on a website when its box is saved unticked, and on again when ticked', function (): void {
+it('turns the shared app off on a website when its switch is saved off, and on again when saved on', function (): void {
     seedSocialRows(null, SOCIAL_SHARED_READY);
     $admin = socialSiteAdmin();
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         Livewire::actingAs($admin)->test(SocialSettings::class)
-            ->assertSet('forms.google.enabled', true)
-            ->set('forms.google.enabled', false)
-            ->call('save', 'google')->assertHasNoErrors();
+            ->assertSet('on.google', true)
+            ->call('toggle', 'google')->call('confirmAsk')
+            ->call('save')->assertHasNoErrors();
 
         expect(app(SocialAuth::class)->enabled('google'))->toBeFalse()
             ->and(app(SocialAuth::class)->config('google')['client_id'] ?? null)->toBe('shared-id');
-        Livewire::actingAs($admin)->test(SocialSettings::class)->assertSet('forms.google.enabled', false);
+        Livewire::actingAs($admin)->test(SocialSettings::class)->assertSet('on.google', false);
 
         Livewire::actingAs($admin)->test(SocialSettings::class)
-            ->set('forms.google.enabled', true)
-            ->call('save', 'google')->assertHasNoErrors();
+            ->call('toggle', 'google')
+            ->call('save')->assertHasNoErrors();
 
         expect(app(SocialAuth::class)->enabled('google'))->toBeTrue();
     });
@@ -269,22 +269,20 @@ it('uses the website\'s own app once its keys are saved on the screen', function
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         Livewire::actingAs($admin)->test(SocialSettings::class)
-            ->set('forms.google.client_id', 'own-id')
-            ->set('forms.google.client_secret', 'own-secret')
-            ->set('forms.google.enabled', true)
-            ->call('save', 'google')->assertHasNoErrors();
+            ->call('useOwn', 'google', 'own-id.apps.googleusercontent.com', 'GOCSPX-own-secret')
+            ->assertReturned(true);
 
         expect(app(SocialAuth::class)->enabled('google'))->toBeTrue()
             ->and(app(SocialAuth::class)->usesOwn('google'))->toBeTrue()
-            ->and(app(SocialAuth::class)->config('google')['client_id'] ?? null)->toBe('own-id')
-            ->and(app(SocialAuth::class)->clientSecret('google'))->toBe('own-secret');
+            ->and(app(SocialAuth::class)->config('google')['client_id'] ?? null)->toBe('own-id.apps.googleusercontent.com')
+            ->and(app(SocialAuth::class)->clientSecret('google'))->toBe('GOCSPX-own-secret');
     });
 });
 
-it('shows the box as the switch really is for a row saved before the switch existed', function (): void {
+it('shows the switch as it really is for a row saved before the switch existed', function (): void {
     seedSocialRows(['client_id' => '', 'client_secret' => '', 'enabled' => false], SOCIAL_SHARED_READY);
     $admin = socialSiteAdmin();
 
     app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(SocialSettings::class)
-        ->assertSet('forms.google.enabled', true));
+        ->assertSet('on.google', true));
 });

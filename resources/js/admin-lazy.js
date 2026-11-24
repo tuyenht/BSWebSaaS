@@ -29,6 +29,7 @@ const PARTS = {
     bsSaveBar: () => import('./admin-save-bar.js'),
     bsBell: () => import('./admin-bell.js'),
     bsNotifications: () => import('./admin-notifications.js'),
+    bsSocialKeys: () => import('./admin-social.js'),
 };
 
 export function makeLazy({ parts, alpine, reload }) {

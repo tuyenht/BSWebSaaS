@@ -175,6 +175,8 @@ Route::domain((string) config('tenancy.platform_host'))
         Route::get('/plans/{key}', PlanEdit::class)->where('key', '[A-Za-z0-9_-]{1,64}')->name('platform.plans.edit');
 
         Route::get('/settings/email', EmailSettings::class)->defaults('scope', 'platform')->name('platform.settings.email');
+        // The platform's shared Google/Facebook sign-in apps (super_admin only, checked by the component on every request).
+        Route::get('/settings/social', SocialSettings::class)->defaults('scope', 'platform')->name('platform.settings.social');
         Route::get('/settings/security', LoginSecuritySettings::class)->name('platform.settings.security');
 
         // Per-user Customizer persistence (fetch/JSON). Mirrored per plane because the
