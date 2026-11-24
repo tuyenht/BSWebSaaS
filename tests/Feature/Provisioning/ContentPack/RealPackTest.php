@@ -21,7 +21,7 @@ use Tests\Fixtures\StorefrontCards;
  */
 
 /** Job offers the company has sent itself (24/11/2026): published as sent. */
-const CONFIRMED_JOBS = ['post:ky-su-thiet-ke-co-khi-do-ga'];
+const CONFIRMED_JOBS = ['post:ky-su-thiet-ke-co-khi-do-ga', 'post:ke-toan-noi-bo'];
 
 const RETIRED = ['post:thiet-ke-jig-do-ga', 'post:san-xuat-chi-tiet-may-oem'];
 
@@ -89,7 +89,7 @@ it('validates the real pack: schema, bodies, slots, content published but job of
         }
         expect(json_encode($item->data))->not->toContain('testimonial');
     }
-    expect($content)->toBe(46)->and($jobs)->toHaveCount(3);
+    expect($content)->toBe(47)->and($jobs)->toHaveCount(4);
     foreach ($pack->slots as $slot) {
         if (isset($slot['file'])) {
             expect(PackValidator::mime($pack->dir.'/'.$slot['file'], PackValidator::isDocument($slot)))->not->toBeNull();
@@ -277,7 +277,12 @@ it('plans the real pack on a fresh site with no conflict, and every internal lin
     foreach (['/ky-thuat-vien-van-hanh-may-cnc', '/nhan-vien-kiem-tra-chat-luong-qc'] as $path) {
         $this->get('http://'.ContentPacks::HOST.$path)->assertNotFound();
     }
-    $this->get('http://'.ContentPacks::HOST.'/ky-su-thiet-ke-co-khi-do-ga')->assertOk()->assertSee('0985 885 286');
+    // A job offer's side column asks for an application, never for a quote.
+    $this->get('http://'.ContentPacks::HOST.'/ky-su-thiet-ke-co-khi-do-ga')->assertOk()->assertSee('0985 885 286')
+        ->assertSee('Ứng tuyển vị trí này')->assertSee('mailto:ngavt@ckanvinh.vn', false)->assertDontSee('Cần tư vấn hoặc báo giá?');
+    $this->get('http://'.ContentPacks::HOST.'/ke-toan-noi-bo')->assertOk()->assertSee('9 – 15 triệu')->assertSee('mailto:ngavt@ckanvinh.vn', false)
+        ->assertSee('Ứng tuyển vị trí này');
+    $this->get('http://'.ContentPacks::HOST.'/tuyen-dung')->assertOk()->assertSee('Kế toán nội bộ')->assertSee('Kỹ sư cơ khí');
     $home = $this->get('http://'.ContentPacks::HOST.'/')->getContent();
     foreach (['/thiet-ke-lap-trinh' => 'Thiết kế Jig &amp; Đồ gá', '/gia-cong-phay-tien-cnc' => 'Gia công Phay &amp; Tiện CNC', '/han-lap-rap-co-khi' => 'Hàn &amp; Lắp ráp cơ khí', '/nang-luc' => 'Sản xuất chi tiết máy &amp; OEM'] as $href => $title) {
         expect($home)->toContain('<a class="sf-card__link" href="'.$href.'">'.$title.'</a>');

@@ -632,24 +632,24 @@
          "bg": "tint",
          "items": [
           {
-           "icon": "graduation",
-           "title": "Đào tạo bài bản",
-           "text": "Đào tạo vận hành CNC, kể cả máy 5 trục, và an toàn lao động định kỳ."
-          },
-          {
            "icon": "coin",
            "title": "Thu nhập & chế độ",
-           "text": "Lương theo năng lực, thưởng lễ Tết, đóng BHXH đầy đủ, phụ cấp ăn ca."
+           "text": "Lương tháng 13, thưởng hiệu quả, thưởng Lễ – Tết và cuối năm; BHXH, BHYT, BHTN đầy đủ."
+          },
+          {
+           "icon": "graduation",
+           "title": "Đào tạo & thăng tiến",
+           "text": "Đào tạo nâng cao chuyên môn, lộ trình thăng tiến rõ ràng."
+          },
+          {
+           "icon": "group",
+           "title": "Chăm lo đời sống",
+           "text": "Ăn trưa tại công ty, nghỉ mát hằng năm, khám sức khỏe định kỳ."
           },
           {
            "icon": "pin",
            "title": "Làm việc gần nhà",
-           "text": "3 nhà máy tại xã Trung Giã, xã Thạch Thất (Hà Nội) và Thái Nguyên."
-          },
-          {
-           "icon": "group",
-           "title": "Gắn kết",
-           "text": "Team building thường niên, môi trường làm việc tập thể."
+           "text": "3 nhà máy tại xã Trung Giã, xã Thạch Thất (Hà Nội) và Thái Nguyên, máy móc hiện đại."
           }
          ]
         }
@@ -668,7 +668,7 @@
          "button_label": "Gửi CV qua email",
          "button_url_do": {
           "k": "mail",
-          "email": "quybv@ckanvinh.vn",
+          "email": "ngavt@ckanvinh.vn",
           "subject": "Ứng tuyển vào An Vinh"
          },
          "button2_label": "Nhắn Zalo",
@@ -678,6 +678,26 @@
          },
          "variant": "card",
          "button2_tone": "zalo"
+        }
+       }
+      ]
+     }
+    },
+    "post_aside": {
+     "vi": {
+      "blocks": [
+       {
+        "type": "consult",
+        "props": {
+         "eyebrow": "Tuyển dụng",
+         "heading": "Ứng tuyển vị trí này",
+         "text": "Gọi hoặc nhắn Zalo bộ phận tuyển dụng, hoặc gửi CV qua email — An Vinh sẽ liên hệ lại.",
+         "button_label": "Gửi CV qua email",
+         "button_url_do": {
+          "k": "mail",
+          "email": "ngavt@ckanvinh.vn",
+          "subject": "Ứng tuyển vào An Vinh"
+         }
         }
        }
       ]
