@@ -7,9 +7,12 @@ use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Admin\Support\SocialAuth;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Database\QueryException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
@@ -80,6 +83,21 @@ function ssAudits(string $action): int
     return AuditLog::query()->where('action', $action)->count();
 }
 
+/** From here on, `$user` is signed in for support: every request carries that session. */
+function ssUnderSupport(User $user): void
+{
+    $session = app('session')->driver();
+    request()->setLaravelSession($session);
+    auth()->login($user);
+    app(SupportSession::class)->start($user, $user, 1, 'Kiểm tra', now()->addMinutes(30));
+    // Livewire's test requests skip the middleware, so nothing starts the session on them.
+    app()->rebinding('request', function ($app, Request $request) use ($session): void {
+        if (! $request->hasSession()) {
+            $request->setLaravelSession($session);
+        }
+    });
+}
+
 // ---- the platform face ------------------------------------------------------------------------
 
 it('opens the platform face for a super admin only', function (): void {
@@ -127,7 +145,7 @@ it('saves nothing when the provider refuses the keys, and says so under the secr
         ->call('check', 'google', SS_GOOGLE_ID, SS_GOOGLE_SECRET)->effects['returns'][0];
 
     expect($answer['ok'])->toBeFalse()
-        ->and($answer['secret'])->toContain('invalid_client')
+        ->and($answer['secret'])->toBe(__('admin.sl.refused', ['name' => 'Google']))->not->toContain('invalid_client')
         ->and(app(PlatformSettings::class)->get('oauth_social', 'google'))->toBeNull();
 });
 
@@ -332,4 +350,183 @@ it('offers a website\'s own-app form even where the platform has not opened the 
 
         expect($html)->toContain("toggle('google')")->not->toContain('GOCSPX-own');
     });
+});
+
+it('counts the linked accounts of every provider in one query per load', function (): void {
+    ssSharedApp('google');
+    ssSharedApp('facebook', ['client_id' => '1234567890123456', 'client_secret' => SecretCipher::encrypt('0123456789abcdef0123456789abcdef')]);
+    $operator = ssOperator();
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+    Livewire::actingAs($operator)->test(SocialSettings::class, ['scope' => 'platform'])
+        ->assertSet('apps.google.users', 0)->assertSet('apps.facebook.users', 0);
+    $counts = array_filter(DB::getQueryLog(), static fn (array $q): bool => str_contains($q['query'], 'social_identities'));
+    DB::disableQueryLog();
+
+    expect($counts)->toHaveCount(1);
+});
+
+it('keeps the last verdict when the same keys are saved again and the provider cannot answer', function (): void {
+    $checkedAt = now()->subHour()->toIso8601String();
+    ssSharedApp('google', ['status' => 'ok', 'checked_at' => $checkedAt]);
+    Http::fake(['oauth2.googleapis.com/*' => Http::response('', 503)]);
+
+    Livewire::actingAs(ssOperator())->test(SocialSettings::class, ['scope' => 'platform'])
+        ->call('check', 'google', SS_GOOGLE_ID, '')->assertReturned(['ok' => true])
+        ->assertSet('apps.google.status', 'ok');
+
+    $row = app(PlatformSettings::class)->get('oauth_social', 'google');
+    expect($row['status'])->toBe('ok')->and($row['checked_at'])->toBe($checkedAt);
+});
+
+it('saves nothing when the saved secret is replaced while the provider answers', function (): void {
+    ssSharedApp('google', ['status' => 'error']);
+    $replaced = SecretCipher::encrypt('GOCSPX-someone-elses');
+    Http::fake(['oauth2.googleapis.com/*' => function () use ($replaced) {
+        ssSharedApp('google', ['client_secret' => $replaced, 'status' => 'error']); // another operator, meanwhile
+
+        return Http::response(['error' => 'invalid_grant'], 400);
+    }]);
+
+    Livewire::actingAs(ssOperator())->test(SocialSettings::class, ['scope' => 'platform'])
+        ->call('check', 'google', SS_GOOGLE_ID, '')->assertReturned(['ok' => false])
+        ->assertSet('toast', __('admin.sl.changed_meanwhile'))->assertSet('toastTone', 'error');
+
+    $row = app(PlatformSettings::class)->get('oauth_social', 'google');
+    expect($row['client_secret'])->toBe($replaced)->and($row['status'])->toBe('error');
+});
+
+it('does not say «saved» when the master switch\'s app was disconnected meanwhile', function (): void {
+    ssSharedApp();
+
+    $lw = Livewire::actingAs(ssOperator())->test(SocialSettings::class, ['scope' => 'platform'])
+        ->call('toggle', 'google')->call('confirmAsk')->assertSet('on.google', false);
+    app(PlatformSettings::class)->put('oauth_social', 'google', []); // disconnected in another tab
+
+    $lw->call('save')->assertReturned(false)
+        ->assertSet('toast', __('admin.sl.switch_meanwhile'))->assertSet('toastTone', 'error')
+        ->assertSet('apps.google.connected', false);
+    expect(app(PlatformSettings::class)->get('oauth_social', 'google'))->toBe([]);
+});
+
+it('refuses a platform action to an operator who is not a super admin', function (string $action, array $args): void {
+    ssSharedApp();
+    $lw = Livewire::actingAs(ssOperator())->test(SocialSettings::class, ['scope' => 'platform']);
+
+    $this->actingAs(ssOperator('support'));
+    app(PlatformAccess::class)->forgetMemo();
+    $lw->call($action, ...$args)->assertForbidden();
+
+    $row = app(PlatformSettings::class)->get('oauth_social', 'google');
+    expect($row['client_id'])->toBe(SS_GOOGLE_ID)->and($row['enabled'])->toBeTrue();
+})->with([
+    '«Kiểm tra & lưu»' => ['check', ['google', '999-new.apps.googleusercontent.com', 'GOCSPX-a-new-one']],
+    '«Ngắt kết nối»' => ['askDisconnect', ['google']],
+    'the switch' => ['toggle', ['google']],
+]);
+
+it('locks both faces while signed in for support', function (): void {
+    ssSharedApp();
+    $operator = ssOperator();
+    $admin = ssSiteAdmin();
+    Http::fake();
+
+    $platform = Livewire::actingAs($operator)->test(SocialSettings::class, ['scope' => 'platform']);
+    ssUnderSupport($operator);
+    $platform->call('check', 'google', '999-new.apps.googleusercontent.com', 'GOCSPX-a-new-one')->assertForbidden();
+    Livewire::actingAs($operator)->test(SocialSettings::class, ['scope' => 'platform'])->assertForbidden();
+    app(SupportSession::class)->end();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $site = Livewire::actingAs($admin)->test(SocialSettings::class);
+        ssUnderSupport($admin);
+        $site->call('useOwn', 'google', 'own-1.apps.googleusercontent.com', 'GOCSPX-own-secret')->assertForbidden();
+        Livewire::actingAs($admin)->test(SocialSettings::class)->assertForbidden();
+
+        expect(app(SettingsRepository::class)->get('oauth_social', 'google'))->toBeNull();
+    });
+
+    expect(app(PlatformSettings::class)->get('oauth_social', 'google')['client_id'])->toBe(SS_GOOGLE_ID);
+    Http::assertNothingSent();
+});
+
+it('refuses a website\'s own app where the platform has not opened the provider and it never chose one', function (): void {
+    $admin = ssSiteAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Livewire::actingAs($admin)->test(SocialSettings::class)
+            ->call('useOwn', 'google', 'own-1.apps.googleusercontent.com', 'GOCSPX-own-secret')->assertReturned(false)
+            ->assertSet('toast', __('admin.sl.own_closed', ['name' => 'Google']))->assertSet('toastTone', 'error')
+            ->call('useShared', 'google');
+
+        expect(app(SettingsRepository::class)->get('oauth_social', 'google'))->toBeNull();
+    });
+});
+
+it('saves a website\'s switch on a row from before the switch, writing on and own and keeping its keys', function (): void {
+    $admin = ssSiteAdmin();
+    $cipher = SecretCipher::encrypt('GOCSPX-own');
+    app(Tenancy::class)->enter(1, fn () => app(SettingsRepository::class)->put('oauth_social', 'google', [
+        'client_id' => 'own-1.apps.googleusercontent.com', 'client_secret' => $cipher, 'enabled' => false,
+    ]));
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $cipher): void {
+        Livewire::actingAs($admin)->test(SocialSettings::class)
+            ->assertSet('on.google', false)->assertSet('apps.google.own_ready', true)
+            ->call('toggle', 'google')->call('save')->assertReturned(true);
+
+        expect(app(SettingsRepository::class)->get('oauth_social', 'google'))->toMatchArray([
+            'on' => true, 'own' => true, 'client_id' => 'own-1.apps.googleusercontent.com', 'client_secret' => $cipher,
+        ]);
+    });
+});
+
+it('writes a website\'s choice on its row as saved now, not on the copy the page loaded', function (): void {
+    ssSharedApp();
+    $admin = ssSiteAdmin();
+    $cipher = SecretCipher::encrypt('GOCSPX-own');
+    app(Tenancy::class)->enter(1, fn () => app(SettingsRepository::class)->put('oauth_social', 'google', [
+        'on' => true, 'own' => true, 'client_id' => 'own-1.apps.googleusercontent.com', 'client_secret' => $cipher,
+    ]));
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $cipher): void {
+        $lw = Livewire::actingAs($admin)->test(SocialSettings::class)->assertSet('on.google', true);
+        // Another admin saves the switch off and new own keys meanwhile.
+        app(SettingsRepository::class)->put('oauth_social', 'google', [
+            'on' => false, 'own' => true, 'client_id' => 'own-2.apps.googleusercontent.com', 'client_secret' => $cipher,
+        ]);
+
+        $lw->call('useShared', 'google');
+
+        expect(app(SettingsRepository::class)->get('oauth_social', 'google'))->toMatchArray([
+            'on' => false, 'own' => false, 'client_id' => 'own-2.apps.googleusercontent.com',
+        ]);
+    });
+});
+
+it('holds the website row\'s lock while it merges, and creates the row when there is none', function (): void {
+    app(Tenancy::class)->enter(1, fn () => app(SettingsRepository::class)->put('oauth_social', 'google', ['on' => true]));
+    $other = DB::connection('pgsql_admin');
+    $lockedOut = static fn () => $other->select(
+        'select id from site_settings where site_id = 1 and group_name = ? and key = ? for update nowait',
+        ['oauth_social', 'google'],
+    );
+
+    app(Tenancy::class)->enter(1, function () use ($lockedOut): void {
+        $seen = null;
+        $written = app(SettingsRepository::class)->change('oauth_social', 'google', function (?array $row) use ($lockedOut, &$seen): array {
+            $seen = $row;
+            expect($lockedOut)->toThrow(QueryException::class); // another session cannot take the row now
+
+            return array_merge($row ?? [], ['own' => true]);
+        });
+
+        expect($seen)->toBe(['on' => true])->and($written)->toBe(['on' => true, 'own' => true])
+            ->and(app(SettingsRepository::class)->change('oauth_social', 'facebook', fn (?array $row): ?array => $row === null ? ['on' => false] : null))->toBe(['on' => false])
+            ->and(app(SettingsRepository::class)->change('oauth_social', 'facebook', fn (?array $row): ?array => null))->toBeNull()
+            ->and(app(SettingsRepository::class)->get('oauth_social', 'facebook'))->toBe(['on' => false]);
+    });
+
+    expect($lockedOut())->toHaveCount(1); // released with the transaction
 });

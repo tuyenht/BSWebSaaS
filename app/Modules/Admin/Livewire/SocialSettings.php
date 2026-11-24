@@ -153,7 +153,11 @@ final class SocialSettings extends Component
         $this->askProvider = '';
     }
 
-    /** The save bar's «Lưu»: the switches that differ from what is saved. False when none did. */
+    /**
+     * The save bar's «Lưu»: the switches that differ from what is saved. False when none did, or
+     * when a switch could not be saved (its app was disconnected meanwhile): the page then shows
+     * what is saved now and says so.
+     */
     public function save(): bool
     {
         $this->guard();
@@ -162,15 +166,20 @@ final class SocialSettings extends Component
             return false;
         }
 
+        $missed = false;
         foreach ($chosen as $provider) {
             $on = (bool) ($this->on[$provider] ?? true);
-            if ($this->scope === 'platform') {
-                $this->storeMaster($provider, $on);
-            } else {
-                $this->storeSite($provider, ['on' => $on]);
-            }
+            $written = $this->scope === 'platform'
+                ? $this->storeMaster($provider, $on)
+                : $this->storeSite($provider, ['on' => $on]);
+            $missed = $missed || ! $written;
         }
         $this->load();
+        if ($missed) {
+            $this->notify(__('admin.sl.switch_meanwhile'), 'error');
+
+            return false;
+        }
         $this->notify(__('admin.sl.saved'));
 
         return true;
@@ -366,8 +375,16 @@ final class SocialSettings extends Component
         if ($secret !== '') {
             $values['client_secret'] = SecretCipher::encrypt($secret);
         }
-        $this->storeSite($provider, $values);
+        // The form is offered only where the platform opened the provider or the website already
+        // uses its own app: the same rule here, on the saved row.
+        $opened = app(SocialAuth::class)->sharedReady($provider);
+        $written = $this->storeSite($provider, $values, static fn (?array $row): bool => $opened || SocialAuth::choosesOwn($row));
         $this->apps[$provider] = $this->siteApp($provider);
+        if (! $written) {
+            $this->notify(__('admin.sl.own_closed', ['name' => $name]), 'error');
+
+            return false;
+        }
         $this->notify(__('admin.sl.own_toast', ['name' => $name]));
 
         return true;
@@ -380,9 +397,12 @@ final class SocialSettings extends Component
         if (! self::offered($provider)) {
             return;
         }
-        $this->storeSite($provider, ['own' => false]);
+        // Offered only while the website uses its own app.
+        $written = $this->storeSite($provider, ['own' => false], static fn (?array $row): bool => SocialAuth::choosesOwn($row));
         $this->apps[$provider] = $this->siteApp($provider);
-        $this->notify(__('admin.sl.shared_toast'));
+        if ($written) {
+            $this->notify(__('admin.sl.shared_toast'));
+        }
     }
 
     /** The browser copied `$count` values for the provider's console (0: it could not). */
@@ -470,9 +490,11 @@ final class SocialSettings extends Component
 
     private function load(): void
     {
+        // The linked accounts of every provider in one query (live: no counter yet).
+        $users = $this->scope === 'platform' ? app(SocialAuth::class)->usersCounts(self::PROVIDERS) : [];
         foreach (self::PROVIDERS as $provider) {
             if ($this->scope === 'platform') {
-                $this->apps[$provider] = $this->platformApp($provider);
+                $this->apps[$provider] = $this->platformApp($provider, $users[$provider] ?? null);
                 $this->on[$provider] = (bool) $this->apps[$provider]['enabled'];
             } else {
                 $this->apps[$provider] = $this->siteApp($provider);
@@ -482,8 +504,11 @@ final class SocialSettings extends Component
         $this->rememberSaved();
     }
 
-    /** @return array{client_id: string, connected: bool, status: string, users: int, enabled: bool} */
-    private function platformApp(string $provider): array
+    /**
+     * @param  int|null  $users  the provider's linked accounts when already counted
+     * @return array{client_id: string, connected: bool, status: string, users: int, enabled: bool}
+     */
+    private function platformApp(string $provider, ?int $users = null): array
     {
         $row = app(PlatformSettings::class)->get(self::GROUP, $provider) ?? [];
         $clientId = Cast::string($row['client_id'] ?? null);
@@ -499,7 +524,7 @@ final class SocialSettings extends Component
             'client_id' => $clientId,
             'connected' => $connected,
             'status' => $status,
-            'users' => $connected ? app(SocialAuth::class)->usersCount($provider) : 0,
+            'users' => $connected ? ($users ?? app(SocialAuth::class)->usersCount($provider)) : 0,
             'enabled' => ($row['enabled'] ?? true) !== false,
         ];
     }
@@ -520,8 +545,8 @@ final class SocialSettings extends Component
         ];
     }
 
-    /** The platform's master switch, on a provider that has an app (none: nothing to switch). */
-    private function storeMaster(string $provider, bool $on): void
+    /** The platform's master switch, on a provider that has an app (none: nothing is written, false). */
+    private function storeMaster(string $provider, bool $on): bool
     {
         $from = null;
         $written = app(PlatformSettings::class)->change(self::GROUP, $provider, function (?array $row) use ($on, &$from): ?array {
@@ -540,20 +565,28 @@ final class SocialSettings extends Component
                 'meta' => ['provider' => $provider, 'on' => $on],
             ]);
         }
+
+        return $written !== null;
     }
 
     /**
      * Writes the website's row with `on` and `own` always explicit (an old row without them reads
-     * as SocialAuth reads it), the given values over what is saved.
+     * as SocialAuth reads it), the given values over what is saved — all on the row as it is now,
+     * under its lock (SettingsRepository::change()). `$allowed` judges that row; false writes
+     * nothing. True when the row was written.
      *
      * @param  array<string, mixed>  $values
+     * @param  (callable(array<string, mixed>|null): bool)|null  $allowed
      */
-    private function storeSite(string $provider, array $values): void
+    private function storeSite(string $provider, array $values, ?callable $allowed = null): bool
     {
-        $repo = app(SettingsRepository::class);
-        $choice = app(SocialAuth::class)->siteChoice($provider);
-        $row = $repo->get(self::GROUP, $provider) ?? [];
-        $repo->put(self::GROUP, $provider, array_merge($row, ['on' => $choice['on'], 'own' => $choice['own']], $values));
+        return app(SettingsRepository::class)->change(self::GROUP, $provider, static function (?array $row) use ($values, $allowed): ?array {
+            if ($allowed !== null && ! $allowed($row)) {
+                return null;
+            }
+
+            return array_merge($row ?? [], ['on' => SocialAuth::switchedOn($row), 'own' => SocialAuth::choosesOwn($row)], $values);
+        }) !== null;
     }
 
     private function disconnect(string $provider): void
