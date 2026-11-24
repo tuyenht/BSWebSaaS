@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 beforeEach(function (): void {
     seedTenancy();
     DB::connection('pgsql_admin')->statement('truncate platform_settings, social_identities restart identity cascade');
+    DB::connection('pgsql_admin')->table('audit_logs')->where('action', 'auth.social.facebook_deletion')->delete();
     config(['admin.encryption_key' => 'base64:'.base64_encode('0123456789abcdef0123456789abcdef')]);
     app(PlatformSettings::class)->put('oauth_social', 'facebook', [
         'client_id' => 'fb-app', 'client_secret' => SecretCipher::encrypt('fb-app-secret'), 'enabled' => true,
@@ -38,6 +39,24 @@ function fbSignedRequest(array $payload, string $secret = 'fb-app-secret'): stri
     $encoded = fbBase64Url((string) json_encode($payload));
 
     return fbBase64Url(hash_hmac('sha256', $encoded, $secret, true)).'.'.$encoded;
+}
+
+/** A signed request in standard base64 with padding ('+', '/', '='), for one whose signature has a '+' or '/'. */
+function fbSignedRequestStandardBase64(): string
+{
+    for ($i = 1; ; $i++) {
+        $encoded = base64_encode((string) json_encode(['algorithm' => 'HMAC-SHA256', 'user_id' => '1234567890', 'n' => $i]));
+        $signature = base64_encode(hash_hmac('sha256', $encoded, 'fb-app-secret', true));
+        if (strpbrk($signature, '+/') !== false && str_ends_with($signature, '=')) {
+            return $signature.'.'.$encoded;
+        }
+    }
+}
+
+/** @return list<object> */
+function fbDeletionAudits(): array
+{
+    return DB::connection('pgsql_admin')->table('audit_logs')->where('action', 'auth.social.facebook_deletion')->get()->all();
 }
 
 function fbLink(string $provider, string $sub): SocialIdentity
@@ -66,12 +85,31 @@ it('deletes only that person\'s Facebook link and answers with a confirmation', 
         ->assertOk()
         ->assertSee(__('admin.oauth_fb_deletion_title'))
         ->assertSee($code);
+
+    $audits = fbDeletionAudits();
+    expect($audits)->toHaveCount(1)
+        ->and(json_decode((string) $audits[0]->meta, true))->toBe(['provider' => 'facebook', 'links_removed' => 1])
+        ->and(json_encode($audits[0]))->not->toContain('1234567890');
 });
+
+it('takes a numeric user id and the padded standard-base64 spelling', function (Closure $signed): void {
+    $link = fbLink('facebook', '1234567890');
+
+    $this->post('http://platform.bswebsaas.test/oauth/facebook/data-deletion', ['signed_request' => $signed()])
+        ->assertOk()->assertJsonStructure(['url', 'confirmation_code']);
+
+    expect(SocialIdentity::query()->whereKey($link->getKey())->exists())->toBeFalse();
+})->with([
+    'numeric user id' => [fn (): string => fbSignedRequest(['algorithm' => 'HMAC-SHA256', 'user_id' => 1234567890])],
+    'standard base64 with padding' => [fn (): string => fbSignedRequestStandardBase64()],
+]);
 
 it('confirms a request for a person with no link', function (): void {
     $this->post('http://platform.bswebsaas.test/oauth/facebook/data-deletion', [
         'signed_request' => fbSignedRequest(['algorithm' => 'HMAC-SHA256', 'user_id' => '42']),
     ])->assertOk()->assertJsonStructure(['url', 'confirmation_code']);
+
+    expect(json_decode((string) (fbDeletionAudits()[0]->meta ?? ''), true))->toBe(['provider' => 'facebook', 'links_removed' => 0]);
 });
 
 it('refuses a request not signed right, saying nothing about why', function (Closure $signed): void {
@@ -81,7 +119,8 @@ it('refuses a request not signed right, saying nothing about why', function (Clo
 
     $response->assertStatus(400);
     expect($response->getContent())->toBe('')
-        ->and(SocialIdentity::query()->whereKey($link->getKey())->exists())->toBeTrue();
+        ->and(SocialIdentity::query()->whereKey($link->getKey())->exists())->toBeTrue()
+        ->and(fbDeletionAudits())->toBe([]);
 })->with([
     'wrong secret' => [fn (): string => fbSignedRequest(['algorithm' => 'HMAC-SHA256', 'user_id' => '1234567890'], 'other-secret')],
     'other algorithm' => [fn (): string => fbSignedRequest(['algorithm' => 'HMAC-SHA1', 'user_id' => '1234567890'])],

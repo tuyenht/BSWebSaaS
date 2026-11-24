@@ -149,6 +149,32 @@ it('writes the check time but no audit row when the status stays the same', func
         ->and(socialStatusAudits())->toBe(0);
 });
 
+it('stamps nothing on keys replaced while the provider answered', function (array $replacement): void {
+    sharedSocialApp('google', ['status' => 'ok', 'checked_at' => '2026-11-01T00:00:00+00:00']);
+    // The provider refuses the old keys; meanwhile someone saves new ones.
+    Http::fake(function () use ($replacement) {
+        app(PlatformSettings::class)->put('oauth_social', 'google', [
+            'client_id' => $replacement['client_id'],
+            'client_secret' => SecretCipher::encrypt($replacement['secret']),
+            'enabled' => true,
+        ]);
+
+        return Http::response(['error' => 'invalid_client'], 401);
+    });
+
+    $this->artisan('social:check-apps')->assertSuccessful();
+
+    $row = sharedSocialRow('google');
+    expect($row['client_id'])->toBe($replacement['client_id'])
+        ->and(SecretCipher::decrypt($row['client_secret']))->toBe($replacement['secret'])
+        ->and($row)->not->toHaveKey('status')
+        ->and($row)->not->toHaveKey('checked_at')
+        ->and(socialStatusAudits())->toBe(0);
+})->with([
+    'new client id' => [['client_id' => 'new-id', 'secret' => 'new-secret']],
+    'same id, new secret' => [['client_id' => 'google-id', 'secret' => 'new-secret']],
+]);
+
 it('brings a broken app back once its keys are accepted', function (): void {
     sharedSocialApp('facebook', ['status' => 'error']);
     Http::fake(['graph.facebook.com/*' => Http::response(['access_token' => 'app|token'])]);

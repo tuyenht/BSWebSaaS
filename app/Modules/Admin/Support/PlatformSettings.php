@@ -38,6 +38,39 @@ final class PlatformSettings
         );
     }
 
+    /**
+     * Rewrites one row while holding its lock, so nothing else writes it between the read and the
+     * write: $change gets the current value (null when there is no row) and returns the new value,
+     * or null to leave the row untouched.
+     *
+     * @param  callable(array<string, mixed>|null): (array<string, mixed>|null)  $change
+     * @return array<string, mixed>|null the value written, or null when nothing was written
+     */
+    public function change(string $group, string $key, callable $change): ?array
+    {
+        return (new PlatformSetting)->getConnection()->transaction(function () use ($group, $key, $change): ?array {
+            $row = PlatformSetting::query()
+                ->where('group_name', $group)
+                ->where('key', $key)
+                ->lockForUpdate()
+                ->first();
+
+            $value = $change(is_array($row?->value) ? $row->value : null);
+            if ($value === null) {
+                return null;
+            }
+
+            if ($row === null) {
+                PlatformSetting::query()->create(['group_name' => $group, 'key' => $key, 'value' => $value]);
+            } else {
+                $row->value = $value;
+                $row->save();
+            }
+
+            return $value;
+        });
+    }
+
     public function encryptSecret(string $plain): string
     {
         return SecretCipher::encrypt($plain);

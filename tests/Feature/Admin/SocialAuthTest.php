@@ -11,6 +11,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Http;
 
 /*
  * Which social-login app a website's sign-in uses: the website's own app when it chose one and
@@ -186,3 +187,46 @@ it('refuses to start a sign-in the website switched off, even with a working sha
         ->assertRedirectContains('/admin/login')
         ->assertSessionHasErrors('oauth');
 });
+
+it('never hands one website\'s own app to another website', function (?array $platform, ?string $clientId, ?string $secret): void {
+    seedSocialRows(['on' => true, 'own' => true, 'client_id' => 'site1-id', 'client_secret' => '@secret:site1-secret'], $platform);
+
+    $social = app(SocialAuth::class);
+    [$cfg, $plain, $ownReady] = app(Tenancy::class)->enter(2, fn (): array => [
+        $social->config('google'), $social->clientSecret('google'), $social->ownReady('google'),
+    ]);
+
+    expect($cfg['client_id'] ?? null)->toBe($clientId)
+        ->and($plain)->toBe($secret)
+        ->and($ownReady)->toBeFalse()
+        ->and(app(Tenancy::class)->enter(1, fn (): ?string => $social->clientSecret('google')))->toBe('site1-secret');
+})->with([
+    'shared app ready' => [SOCIAL_SHARED_READY, 'shared-id', 'shared-secret'],
+    'no shared app' => [null, null, null],
+]);
+
+it('refuses the provider\'s answer when the app was switched off after the start', function (string $purpose, array $site, ?array $platform): void {
+    seedSocialRows(null, SOCIAL_SHARED_READY);
+    $user = User::factory()->create();
+    Http::fake();
+
+    $start = $purpose === 'connect' ? $this->actingAs($user) : $this;
+    $location = (string) $start->get('http://a.test/admin/oauth/google/start?purpose='.$purpose)->headers->get('Location');
+    expect($location)->toContain('accounts.google.com');
+    parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
+
+    // Switched off while the person was at the provider.
+    seedSocialRows($site === [] ? null : $site, $platform);
+
+    $this->get('http://a.test/oauth/callback?code=the-code&state='.$query['state'])
+        ->assertRedirectContains($purpose === 'connect' ? '/admin/account?tab=linked&oauth_error=' : '/admin/login?oauth_error=');
+
+    Http::assertNothingSent();
+    expect(SocialIdentity::query()->count())->toBe(0);
+})->with([
+    'sign-in' => ['login'],
+    'link' => ['connect'],
+])->with([
+    'website switch' => [['on' => false, 'own' => false], null],
+    'platform switch' => [[], [...SOCIAL_SHARED_READY, 'enabled' => false]],
+]);

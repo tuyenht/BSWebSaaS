@@ -61,19 +61,26 @@ class CheckSocialApps extends Command
             }
 
             // The keys may have been replaced while the provider answered: never stamp a verdict on
-            // keys that were not the ones checked.
-            $row = $platform->get(self::GROUP, $provider);
-            if ($row === null || ($row['client_id'] ?? null) !== $clientId || ($row['client_secret'] ?? null) !== $stored) {
+            // keys that were not the ones checked. The re-read and the write share one row lock, so
+            // a save of new keys cannot land between them.
+            $new = $verdict === SocialAppVerdict::Valid ? 'ok' : 'error';
+            $old = null;
+            $written = $platform->change(self::GROUP, $provider, function (?array $row) use ($clientId, $stored, $new, &$old): ?array {
+                if ($row === null || ($row['client_id'] ?? null) !== $clientId || ($row['client_secret'] ?? null) !== $stored) {
+                    return null;
+                }
+
+                $old = Cast::stringOrNull($row['status'] ?? null);
+                $row['status'] = $new;
+                $row['checked_at'] = now()->toIso8601String();
+
+                return $row;
+            });
+            if ($written === null) {
                 $this->line("{$provider}: the keys changed during the check; status kept.");
 
                 continue;
             }
-
-            $old = Cast::stringOrNull($row['status'] ?? null);
-            $new = $verdict === SocialAppVerdict::Valid ? 'ok' : 'error';
-            $row['status'] = $new;
-            $row['checked_at'] = now()->toIso8601String();
-            $platform->put(self::GROUP, $provider, $row);
 
             if ($old !== $new) {
                 Audit::record('platform.oauth_social.status', [

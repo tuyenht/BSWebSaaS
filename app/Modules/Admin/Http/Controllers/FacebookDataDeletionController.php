@@ -8,6 +8,7 @@ use App\Modules\Admin\Errors\AdminErrorPages;
 use App\Modules\Admin\Support\PlatformSettings;
 use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Theme\AdminBrandColor;
+use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\SocialIdentity;
 use App\Modules\Shared\Support\Cast;
 use Illuminate\Http\JsonResponse;
@@ -20,7 +21,8 @@ use Illuminate\Support\Str;
  * Meta's data-deletion callback for the platform's shared Facebook app. When a person removes the
  * app from their Facebook settings, Meta posts a `signed_request` here; it is checked with that
  * app's secret, the person's Facebook link (provider 'facebook', sub = their app-scoped user id) is
- * deleted, and Meta gets back a confirmation code and the address of a page showing it.
+ * deleted, and Meta gets back a confirmation code and the address of a page showing it. An audit
+ * row records that it happened and how many links went, never the person's Facebook id.
  *
  * Only the shared app is served here: a website with its own Facebook app names its own address in
  * that app. The request carries no session or CSRF token (it comes from Meta's servers); the
@@ -41,7 +43,11 @@ final readonly class FacebookDataDeletionController
             return response('', 400);
         }
 
-        SocialIdentity::query()->where('provider', 'facebook')->where('sub', $userId)->delete();
+        $removed = Cast::int(SocialIdentity::query()->where('provider', 'facebook')->where('sub', $userId)->delete());
+        Audit::record('auth.social.facebook_deletion', [
+            'site_id' => null,
+            'meta' => ['provider' => 'facebook', 'links_removed' => $removed],
+        ]);
 
         $code = Str::lower(Str::random(32));
         Cache::put(self::CACHE_PREFIX.$code, ['done_at' => now()->toIso8601String()], now()->addDays(self::KEEP_DAYS));
