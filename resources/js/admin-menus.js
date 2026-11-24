@@ -20,6 +20,13 @@ function emptyOptions() {
     return { hidden: false, new_tab: false, icon: null, description: {}, cta: false, mega: null, badge: null, device: 'all' };
 }
 
+// How long an item's short description may run before the screen warns (the website shows about that
+// much before it cuts the rest): the intro of a top-level item (depth 0) 200 letters, the small line
+// under an item below it 90. Only a suggestion: the server's ceiling is MenuItemOptions::DESCRIPTION_MAX.
+export function descMaxOf(depth) {
+    return depth === 0 ? 200 : 90;
+}
+
 // What a typed address becomes: {ok, url, note} or {ok: false, msg}.
 export function normUrl(raw, t) {
     const v = String(raw || '').trim().replace(/\s+/g, '');
@@ -267,6 +274,7 @@ if (typeof window !== 'undefined' && window.Alpine) {
 
         return {
             screen: 'loading', // loading · error · data
+            support: !!cfg.support, // support staff signed in for a member: the screen only looks
             saveBusy: false,
             saveErr: false,
             d: null, // the load() answer without the open menu
@@ -588,7 +596,7 @@ if (typeof window !== 'undefined' && window.Alpine) {
                 return JSON.stringify(this.items);
             },
             change(fn, keepSel = true) {
-                if (this.saveBusy) {
+                if (this.saveBusy || this.locked()) {
                     return; // the editing area is inert while "Lưu" runs; nothing slips in
                 }
                 const before = this.snap();
@@ -715,6 +723,9 @@ if (typeof window !== 'undefined' && window.Alpine) {
                 this.setOpt(k, 'mega', { type: 'columns', columns: parseInt(n, 10) || 3 });
             },
             pick(k) {
+                if (this.locked()) {
+                    return;
+                }
                 this.sel = this.sel === k ? null : k;
                 this.iconOpen = false;
                 if (this.sel) {
@@ -735,8 +746,11 @@ if (typeof window !== 'undefined' && window.Alpine) {
                 return this.onMain && !this.label(it) && !this.fallbackName(it);
             },
             descMax(it) {
-                const dep = this.depthMap();
-                return dep[it.key] === 0 && it.options.mega ? 160 : 90;
+                return descMaxOf(this.depthMap()[it.key]);
+            },
+            // The intro of a top-level item, or the small line under one below it (placeholder and hint follow).
+            descTop(it) {
+                return this.depthMap()[it.key] === 0;
             },
             canMega(it) {
                 const dep = this.depthMap();
@@ -744,7 +758,7 @@ if (typeof window !== 'undefined' && window.Alpine) {
             },
             remove(k) {
                 const it = this.item(k);
-                if (!it) {
+                if (!it || this.locked()) {
                     return;
                 }
                 const name = this.name(it);
@@ -776,7 +790,7 @@ if (typeof window !== 'undefined' && window.Alpine) {
             },
             removeGone() {
                 const keys = this.goneKeys;
-                if (keys.length < 2) {
+                if (keys.length < 2 || this.locked()) {
                     return;
                 }
                 const n = keys.length;
@@ -797,6 +811,9 @@ if (typeof window !== 'undefined' && window.Alpine) {
             },
             toggleHide(k) {
                 const it = this.item(k);
+                if (!it || this.locked()) {
+                    return;
+                }
                 this.setOpt(k, 'hidden', !it.options.hidden);
                 this.notify(fill(it.options.hidden ? t.hiddenNow : t.shownNow, { name: this.name(it) }), true);
             },
@@ -810,6 +827,9 @@ if (typeof window !== 'undefined' && window.Alpine) {
             },
             async copy(k) {
                 const it = this.item(k);
+                if (this.locked()) {
+                    return;
+                }
                 if (this.dirty().n) {
                     // copying works on the saved menu: a draft with changes is refused (draft_stale)
                     this.fail(t.copyNeedsSave);
@@ -855,6 +875,9 @@ if (typeof window !== 'undefined' && window.Alpine) {
             },
             // The shared tree's move (drag, Alt + arrows, the ⋮ menu): null when done, else the reason.
             treeMove(k, parent, pos) {
+                if (this.support) {
+                    return t.supWhy;
+                }
                 if (this.filtering) {
                     return t.noMoveFiltered;
                 }
@@ -946,6 +969,9 @@ if (typeof window !== 'undefined' && window.Alpine) {
 
             // "Chuyển đến…"
             mvOpen(k) {
+                if (this.locked()) {
+                    return;
+                }
                 this.mv = { k, q: '', pick: null };
                 this.$nextTick(() => {
                     const el = document.getElementById('mn-mv-q');
@@ -1124,7 +1150,7 @@ if (typeof window !== 'undefined' && window.Alpine) {
                 return buildDraft(this.items, JSON.parse(this.saved), this.menu.version);
             },
             async save() {
-                if (!this.menu || this.saveBusy || !this.dirty().n) {
+                if (!this.menu || this.saveBusy || !this.dirty().n || this.locked()) {
                     return;
                 }
                 const bad = this.items.find((it) => this.labelErr(it));
@@ -1213,6 +1239,9 @@ if (typeof window !== 'undefined' && window.Alpine) {
                 this.guard(() => this.reload(key));
             },
             startRename(m) {
+                if (this.locked()) {
+                    return;
+                }
                 this.renaming = m.key;
                 this.renameVal = m.name;
                 this.$nextTick(() => {
@@ -1246,6 +1275,9 @@ if (typeof window !== 'undefined' && window.Alpine) {
             },
             // Both open the new menu: the open draft is asked about first, before anything is made.
             newMenu() {
+                if (this.locked()) {
+                    return;
+                }
                 this.guard(async () => {
                     const res = await this.server(() => this.$wire.createMenu(t.newMenuName));
                     if (res) {
@@ -1255,6 +1287,9 @@ if (typeof window !== 'undefined' && window.Alpine) {
                 });
             },
             dupMenu(m) {
+                if (this.locked()) {
+                    return;
+                }
                 this.guard(async () => {
                     const res = await this.server(() => this.$wire.copyMenu(m.key));
                     if (res) {
@@ -1264,6 +1299,9 @@ if (typeof window !== 'undefined' && window.Alpine) {
                 });
             },
             delMenu(m) {
+                if (this.locked()) {
+                    return;
+                }
                 const used = m.use.length > 0;
                 this.ask = {
                     title: fill(t.delTitle, { name: m.name }),
@@ -1298,7 +1336,7 @@ if (typeof window !== 'undefined' && window.Alpine) {
                 });
             },
             async setAutoAdd() {
-                if (!this.menu) {
+                if (!this.menu || this.locked()) {
                     return;
                 }
                 const on = !this.menu.autoAdd;
@@ -1337,6 +1375,10 @@ if (typeof window !== 'undefined' && window.Alpine) {
                 return fill(t.areasSet, { on: as.filter((a) => this.areaValue(a, cfg.main)).length, all: as.length });
             },
             async setArea(a, loc, v) {
+                if (this.locked()) {
+                    a.shows = { ...a.shows }; // the choice goes back to what the website shows
+                    return;
+                }
                 const res = await this.server(() => (v === '@same'
                     ? this.$wire.follow(a.key, loc)
                     : (v ? this.$wire.assign(a.key, loc, v) : this.$wire.clearArea(a.key, loc))));
@@ -1492,6 +1534,9 @@ if (typeof window !== 'undefined' && window.Alpine) {
                 return (r.count > 1 ? fill(t.trashKids, { n: r.count - 1 }) + ' · ' : '') + fill(t.trashDays, { n: days });
             },
             async restore(r) {
+                if (this.locked()) {
+                    return;
+                }
                 if (this.dirty().n) {
                     this.fail(t.restoreNeedsSave);
                     return;
@@ -1525,6 +1570,14 @@ if (typeof window !== 'undefined' && window.Alpine) {
             // it hides by itself. fail() is a refusal or an error: it stays until closed.
             notify(text, undo = false) {
                 this.toast = { text, tone: 'success', undo: !!undo, seq: ++toastSeq };
+            },
+            // A support session only looks: a change says why instead of happening (the server refuses it too).
+            locked() {
+                if (!this.support) {
+                    return false;
+                }
+                this.toast = { text: t.supWhy, tone: 'info', undo: false, seq: ++toastSeq };
+                return true;
             },
             fail(text) {
                 if (text) {
