@@ -2,6 +2,8 @@
 
 use App\Modules\Admin\Support\Settings\FloatingContactInput;
 use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Forms\Support\LeadRetention;
+use App\Modules\Forms\Support\LeadTrash;
 use App\Modules\Provisioning\ContentPack\PackReader;
 use App\Modules\Provisioning\ContentPack\PackValidator;
 use App\Modules\Tenancy\Models\SiteSetting;
@@ -247,6 +249,10 @@ it('publishes a privacy policy naming the company, what the form collects and ho
         ->toContain('họ tên')
         ->toContain('địa chỉ IP')
         ->toContain('Google Maps')
+        // The periods it promises are the ones the purges keep (no retention row on the site = the default).
+        ->toContain('lưu tối đa '.LeadRetention::DEFAULT_MONTHS.' tháng')
+        ->toContain('thư rác được xóa hẳn sau '.LeadRetention::SPAM_DAYS.' ngày')
+        ->toContain('thùng rác tối đa '.LeadTrash::DAYS.' ngày')
         // The band over the text carries the effective date; the body repeats none, so the page never gives two.
         ->not->toContain('Ngày hiệu lực');
 });

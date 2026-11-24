@@ -262,6 +262,19 @@ it('sizes the kit badge at the caption size, so it follows the reader\'s text si
         ->and(explode(' ', $m[1]))->toContain('text-caption')->not->toContain('text-xs');
 });
 
+it('keeps the website menu button at its full size when the top bar is crowded', function (): void {
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
+
+    $dom = platformShellDom((string) $this->actingAs($user->fresh())->get('http://a.test/admin/content')->assertOk()->getContent());
+
+    // A flex item shrinks to its content (the 36px tile) unless told not to: on a touch tablet the
+    // 44px target became 36 wide when the bar filled up.
+    $buttons = shellClassesOf($dom, 'header.admin-topbar button[aria-controls="admin-sidebar"]');
+    expect($buttons)->toHaveCount(1)
+        ->and($buttons[0])->toContain('shrink-0', 'any-pointer-coarse:size-hit');
+});
+
 it('sizes the site menu labels by the text roles, so they follow the reader\'s text size', function (): void {
     $user = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
