@@ -181,9 +181,7 @@ it('plans the storefront grid category lookup on the slug index, generic plan in
 
     expect($sql)->toContain('slug::text = ?')->and($bindings)->toContain('muc-7');
 
-    // The tag exclusion reads `taxonomies` (a different table, by its own index); the slug lookup is
-    // what is planned here, on taxonomy_translations.
-    $scans = lclScans(lclGenericPlan($sql, $bindings), 'taxonomy_translations');
+    $scans = lclScans(lclGenericPlan($sql, $bindings));
     expect($scans)->toHaveCount(1)
         ->and($scans[0][0])->toBe('taxonomy_translations_site_id_locale_slug_text_index')
         ->and($scans[0][1])->toContain('(slug)::text = $');
@@ -222,7 +220,9 @@ it('plans the category slug-taken check on the category slug index, generic plan
 
     expect($bindings)->toContain('muc-moi');
 
-    $scans = lclScans(lclGenericPlan($sql, $bindings));
+    // The tag exclusion reads `taxonomies` (a different table, by its own index); the slug lookup is
+    // what is planned here, on taxonomy_translations.
+    $scans = lclScans(lclGenericPlan($sql, $bindings), 'taxonomy_translations');
     expect($scans)->toHaveCount(1)
         ->and($scans[0][0])->toBe('taxonomy_translations_site_id_locale_slug_text_index')
         ->and($scans[0][1])->toContain('(slug)::text = $');
