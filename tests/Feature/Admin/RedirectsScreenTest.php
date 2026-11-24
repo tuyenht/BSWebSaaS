@@ -7,6 +7,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use Dom\HTMLDocument;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
@@ -103,6 +104,24 @@ it('opens over HTTP for an admin', function (): void {
     rdRow(1, '/cu', '/moi');
 
     $this->actingAs($admin)->get('http://a.test/admin/settings/redirects')->assertOk()->assertSee('Chuyển hướng')->assertSee('/cu');
+});
+
+it('opens inside the settings frame, its add button ending the frame\'s title row', function (): void {
+    $admin = blockLibraryUser(1, 'admin');
+
+    $html = (string) $this->actingAs($admin)->get('http://a.test/admin/settings/redirects')->assertOk()->getContent();
+    $dom = HTMLDocument::createFromString($html, LIBXML_NOERROR);
+    $shell = $dom->querySelector('[data-set-shell]');
+
+    expect($shell)->not->toBeNull()
+        ->and($dom->querySelectorAll('h1')->length)->toBe(1)
+        ->and(trim((string) $shell->querySelector('nav[data-set-nav] a[aria-current="page"]')?->textContent))->toBe('Chuyển hướng')
+        // one add button, on the title row and not in the section below it
+        ->and($dom->querySelectorAll('#rd-add')->length)->toBe(1)
+        ->and($shell->querySelector('[data-set-main] #rd-add'))->toBeNull()
+        // the frame's short description replaces the page's own heading block; no save bar (nothing to save)
+        ->and($html)->toContain('Đưa khách từ địa chỉ cũ sang địa chỉ mới.')
+        ->and($shell->querySelector('[data-set-savebar]'))->toBeNull();
 });
 
 it('never shows nor touches another website’s redirects', function (): void {
