@@ -76,7 +76,7 @@ it('falls back to the category\'s look for a name the theme does not draw', func
     expect($html)->toContain('<figure class="post-cover">')->toContain('<aside class="post-aside');
 });
 
-it('prints the shown day on the band and the cards, while the data and the sitemap keep the real one', function (): void {
+it('prints the shown day on the band, the cards and the post\'s data, while the sitemap keeps the real one', function (): void {
     $post = postOptionsPost(null, ['display_date' => '2026-09-15']);
     // the news list (dated cards) and a second post whose related cards show the first one
     app(Tenancy::class)->enter($post->site_id, function (): void {
@@ -87,7 +87,7 @@ it('prints the shown day on the band and the cards, while the data and the sitem
     $html = (string) $this->get(POST_OPTIONS_HOST.'/tin-tuc/may-phay-moi')->assertOk()->getContent();
     expect($html)->toContain('<time datetime="2026-09-15">15/09/2026</time>')
         ->not->toContain('<time datetime="2026-10-01">')
-        ->and(ldNode($html, 'Article')['datePublished'] ?? null)->toStartWith('2026-10-01T');
+        ->and(ldNode($html, 'Article')['datePublished'] ?? null)->toStartWith('2026-09-15T00:00:00');
 
     $list = (string) $this->get(POST_OPTIONS_HOST.'/tin-tuc')->assertOk()->getContent();
     expect($list)->toContain('<time class="sf-card__date" datetime="2026-09-15">15/09/2026</time>');

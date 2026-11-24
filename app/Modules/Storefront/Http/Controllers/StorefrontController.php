@@ -36,6 +36,7 @@ use App\Modules\Storefront\Support\SlotContext;
 use App\Modules\Storefront\Support\ThankYouPages;
 use App\Modules\Storefront\Support\TitleDisambiguator;
 use App\Modules\Tenancy\Context\SiteLocale;
+use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Theme\Chrome\StorefrontCsp;
 use App\Modules\Theme\Rendering\PageRenderer;
 use App\Modules\Theme\Rendering\TemplateCatalog;
@@ -76,6 +77,7 @@ final readonly class StorefrontController
         private TitleDisambiguator $titles,
         private NotFoundPage $notFoundPage,
         private RedirectRules $redirectRules,
+        private SiteTime $time,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -345,6 +347,7 @@ final readonly class StorefrontController
                     is_string($extra['ogImage'] ?? null) ? $extra['ogImage'] : null, is_array($brand) ? $brand : null,
                     // The capability look prints no author line, so its data names no byline either.
                     $postTemplate !== 'capability',
+                    $this->time->zone(),
                 );
             }
 

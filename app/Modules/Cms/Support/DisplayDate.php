@@ -11,8 +11,8 @@ use DateTimeInterface;
  * «Ngày đăng hiện trên bài» (board 07): the day a post shows as its publish day, kept in the entry's
  * meta as `display_date` (a calendar day, Y-m-d, already in the site's zone). Empty or absent means
  * the real publish day. It is only printed — on the post's band and its cards — never filtered or
- * sorted on, so it stays in meta (the graduation rule); the post's structured data, the sitemap and
- * the feeds keep the real publish time.
+ * sorted on, so it stays in meta (the graduation rule). The post's structured data says the same day
+ * (it must match what a reader sees); the sitemap and the feeds keep the real publish time.
  */
 final class DisplayDate
 {
