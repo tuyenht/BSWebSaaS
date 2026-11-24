@@ -7113,6 +7113,7 @@
     "media.drw.alt_ph": "Máy phay CNC đứng trong xưởng, nhìn từ phía trước",
     "media.drw.alt_hint": "Mô tả ảnh giúp Google và người khiếm thị hiểu ảnh — đổi ở đây là đổi cho mọi nơi dùng ảnh này.",
     "media.drw.alt_long": "Mô tả ảnh dài quá — tối đa :max ký tự.",
+    "media.drw.alt_near": "Mô tả ảnh đã dài hơn :n ký tự nên có — tối đa :max ký tự.",
     "media.drw.title": "Tiêu đề ảnh",
     "media.drw.title_ph": "Máy phay CNC VMC-850",
     "media.drw.title_hint": "Hiện khi khách rê chuột lên ảnh trên website. Để trống cũng được.",

@@ -7113,6 +7113,7 @@
     "media.drw.alt_ph": "车间里的立式数控铣床，正面视角",
     "media.drw.alt_hint": "图片描述帮助 Google 和视障访客理解图片 — 在此修改会应用到所有使用此图片的地方。",
     "media.drw.alt_long": "图片描述太长 — 最多 :max 个字符。",
+    "media.drw.alt_near": "图片描述已超过建议的 :n 个字符 — 最多 :max 个字符。",
     "media.drw.title": "图片标题",
     "media.drw.title_ph": "数控铣床 VMC-850",
     "media.drw.title_hint": "访客在网站上将鼠标移到图片上时显示。可以留空。",

@@ -5,6 +5,7 @@ use App\Modules\Admin\Http\Controllers\FacebookDataDeletionController;
 use App\Modules\Admin\Http\Controllers\HintPreferenceController;
 use App\Modules\Admin\Http\Controllers\LeadExportController;
 use App\Modules\Admin\Http\Controllers\LeadFileDownloadController;
+use App\Modules\Admin\Http\Controllers\MediaFileDownloadController;
 use App\Modules\Admin\Http\Controllers\OAuthController;
 use App\Modules\Admin\Http\Controllers\SessionController;
 use App\Modules\Admin\Http\Controllers\SupportSignInController;
@@ -387,6 +388,12 @@ Route::prefix(config('admin.prefix', 'admin'))
         // Media library (DAM). Read gated by media.view; upload/delete re-gate media.upload/.delete
         // inside the component (the livewire/update endpoint bypasses this route middleware).
         Route::get('/media', MediaLibrary::class)->middleware('can:media.view')->name('admin.media.index');
+        // «Tải xuống» in the library's file drawer: by the file's ulid (D2), media.view, this
+        // website's live files only; a 60-second signed link that saves it (MediaFileDownloadController).
+        Route::get('/media/files/{ulid}/download', MediaFileDownloadController::class)
+            ->where('ulid', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')
+            ->middleware(['can:media.view', 'throttle:60,1'])
+            ->name('admin.media.download');
 
         // Upload endpoints (DAM): presign issues an R2 PUT URL, register finalizes (browser PUTs
         // straight to R2 — no PHP upload limit / Livewire-temp / proxy); upload is the local-disk

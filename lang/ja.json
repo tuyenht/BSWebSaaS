@@ -7113,6 +7113,7 @@
     "media.drw.alt_ph": "工場内の立形 CNC フライス盤を正面から",
     "media.drw.alt_hint": "画像の説明は Google や目の不自由な方が画像を理解する助けになります — ここで変えると、この画像を使うすべての場所に反映されます。",
     "media.drw.alt_long": "画像の説明が長すぎます — 最大 :max 文字です。",
+    "media.drw.alt_near": "画像の説明が推奨の :n 文字を超えています — 最大 :max 文字です。",
     "media.drw.title": "画像のタイトル",
     "media.drw.title_ph": "CNC フライス盤 VMC-850",
     "media.drw.title_hint": "ウェブサイトで画像にマウスを合わせると表示されます。空欄でもかまいません。",

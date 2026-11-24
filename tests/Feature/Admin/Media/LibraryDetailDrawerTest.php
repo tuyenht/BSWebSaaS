@@ -12,6 +12,7 @@ use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
 /*
@@ -234,7 +235,7 @@ it('makes the words read-only without the upload right and refuses a save from t
             ->not->toContain('data-unsaved-body="'.e(__('media.drw.ud_body')).'"') // no unsaved dialog: nothing to save
             ->not->toContain('wire:click="moveDetail"')
             ->not->toContain('wire:click="trashDetail"')
-            ->toContain('wire:click="downloadDetail"');
+            ->toContain('/admin/media/files/'.$file->ulid.'/download" role="menuitem"');
 
         $page->set('detailAlt.vi', 'Đổi trộm')->call('saveDetail')->assertForbidden();
         Livewire::actingAs($user)->test(Library::class)->call('openDetail', $file->ulid)->call('moveDetail')->assertForbidden();
@@ -324,16 +325,54 @@ it('moves only the open file from its menu', function (): void {
     });
 });
 
-it('downloads the open file under its name', function (): void {
+it('links «Tải xuống» to the download route, which hands out a signed link saving the file under its name', function (): void {
     $user = drwUser(['media.view']);
-    $file = drwFile('tai-ve.png');
-    Storage::disk('r2')->put($file->storage_key, 'png-bytes');
+    $file = drwFile('Bản vẽ máy.png');
+    $signed = new ArrayObject;
+    Storage::disk('r2')->buildTemporaryUrlsUsing(function (string $path, DateTimeInterface $expires, array $options) use ($signed): string {
+        $signed[] = ['path' => $path, 'seconds' => $expires->getTimestamp() - now()->getTimestamp(), 'options' => $options];
+
+        return 'https://bucket.r2.example.test/'.$path.'?X-Amz-Expires=60';
+    });
 
     app(Tenancy::class)->enter(1, function () use ($user, $file): void {
-        Livewire::actingAs($user)->test(Library::class)->call('openDetail', $file->ulid)
-            ->call('downloadDetail')
-            ->assertFileDownloaded('tai-ve.png');
+        $html = Livewire::actingAs($user)->test(Library::class)->call('openDetail', $file->ulid)->html();
+        expect($html)->toContain('href="'.route('admin.media.download', $file->ulid).'" role="menuitem"')
+            ->toContain(' download')
+            ->not->toContain('downloadDetail'); // no file through Livewire's JSON
     });
+
+    $this->actingAs($user)->get('http://a.test/admin/media/files/'.$file->ulid.'/download')
+        ->assertRedirect('https://bucket.r2.example.test/s1/library/Bản vẽ máy.png?X-Amz-Expires=60')
+        ->assertHeader('Cache-Control', 'no-store, private');
+    expect($signed)->toHaveCount(1)
+        ->and($signed[0]['seconds'])->toBe(60)
+        ->and($signed[0]['options']['ResponseContentDisposition'])->toBe("attachment; filename=Ban-ve-may.png; filename*=utf-8''B%E1%BA%A3n%20v%E1%BA%BD%20m%C3%A1y.png");
+});
+
+it('refuses the download without media.view, and for another website\'s or a trashed file', function (): void {
+    $viewer = drwUser(['media.view']);
+    $stranger = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($stranger, 'no-media', ['entries.view']));
+    $mine = drwFile('cua-minh.png');
+    $theirs = drwFile('cua-site-khac.png', [], 2);
+    $trashed = drwFile('da-xoa.png');
+    app(Tenancy::class)->enter(1, fn () => $trashed->delete());
+    $signed = new ArrayObject;
+    Storage::disk('r2')->buildTemporaryUrlsUsing(function (string $path) use ($signed): string {
+        $signed[] = $path;
+
+        return 'https://bucket.r2.example.test/'.$path;
+    });
+
+    $this->actingAs($stranger->fresh())->get('http://a.test/admin/media/files/'.$mine->ulid.'/download')->assertForbidden();
+    $this->actingAs($viewer)->get('http://a.test/admin/media/files/'.$theirs->ulid.'/download')->assertNotFound();
+    $this->actingAs($viewer)->get('http://a.test/admin/media/files/'.$trashed->ulid.'/download')->assertNotFound();
+    $this->actingAs($viewer)->get('http://a.test/admin/media/files/12345/download')->assertNotFound(); // never a numeric id
+    expect($signed)->toHaveCount(0);
+
+    $this->actingAs($viewer)->get('http://a.test/admin/media/files/'.$mine->ulid.'/download')->assertRedirect();
+    expect($signed->getArrayCopy())->toBe(['s1/library/cua-minh.png']);
 });
 
 it('opens a trashed file for someone who sees the Trash, and restores it from the footer', function (): void {
@@ -352,7 +391,7 @@ it('opens a trashed file for someone who sees the Trash, and restores it from th
             ->toContain(e(__('media.drw.was_used', ['n' => 0])))
             ->toContain('wire:click="restoreDetail"')
             ->toContain('readonly')
-            ->not->toContain('wire:click="downloadDetail"')
+            ->not->toContain('/download" role="menuitem"')
             ->not->toContain('wire:click="purgeDetail"'); // no media.purge
 
         // a trashed file's words are read-only on the server too
@@ -431,5 +470,105 @@ it('gives each file opener the id the drawer returns the focus to', function ():
         $page = Livewire::actingAs($user)->test(Library::class);
         expect($page->html())->toContain('id="mopen-'.$file->ulid.'"');
         expect($page->call('openDetail', $file->ulid)->html())->toContain('back: \'mopen-'.$file->ulid.'\'');
+    });
+});
+
+it('saves only the languages this editor changed, so another editor\'s change to another language is kept', function (): void {
+    $lan = drwUser(['media.view', 'media.upload']);
+    $binh = drwUser(['media.view', 'media.upload']);
+    $file = drwFile('hai-nguoi.png', ['alt' => ['vi' => 'Máy cũ', 'en' => 'Old machine'], 'title' => ['vi' => 'Tiêu đề']]);
+
+    app(Tenancy::class)->enter(1, function () use ($lan, $binh, $file): void {
+        drwEnglish();
+        // both open the drawer before either saves
+        $first = Livewire::actingAs($lan)->test(Library::class)->call('openDetail', $file->ulid);
+        $second = Livewire::actingAs($binh)->test(Library::class)->call('openDetail', $file->ulid);
+
+        $first->set('detailAlt.vi', 'Máy phay mới')->call('saveDetail')->assertHasNoErrors();
+        $this->actingAs($binh);
+        $second->set('detailAlt.en', 'New milling machine')->call('saveDetail')->assertHasNoErrors()
+            ->assertSet('detailAlt', ['vi' => 'Máy phay mới', 'en' => 'New milling machine']); // the drawer shows the other's words now
+
+        expect($file->fresh()->alt)->toEqualCanonicalizing(['vi' => 'Máy phay mới', 'en' => 'New milling machine'])
+            ->and($file->fresh()->title)->toBe(['vi' => 'Tiêu đề']);
+        // and the second drawer counts nothing unsaved once its words are in
+        expect($second->html())->toContain('data-unsaved-count="0"');
+    });
+});
+
+it('refuses to save words for a file that is not a picture and writes nothing', function (): void {
+    $user = drwUser(['media.view', 'media.upload']);
+    $file = drwFile('bang-gia.pdf', ['width' => null, 'height' => null, 'alt' => ['vi' => 'Bảng giá']]);
+
+    app(Tenancy::class)->enter(1, function () use ($user, $file): void {
+        Livewire::actingAs($user)->test(Library::class)->call('openDetail', $file->ulid)
+            ->set('detailAlt.vi', 'Đổi trộm')
+            ->set('detailTitle.vi', 'Tiêu đề trộm')
+            ->call('saveDetail')
+            ->assertForbidden();
+        expect($file->fresh()->alt)->toBe(['vi' => 'Bảng giá'])
+            ->and($file->fresh()->title)->toBe([]);
+    });
+});
+
+it('never opens or saves another website\'s file by its ulid', function (): void {
+    $user = drwUser(['media.view', 'media.upload']);
+    $theirs = drwFile('cua-site-b.png', ['alt' => ['vi' => 'Của site B']], 2);
+
+    app(Tenancy::class)->enter(1, function () use ($user, $theirs): void {
+        $page = Livewire::actingAs($user)->test(Library::class)
+            ->call('openDetail', $theirs->ulid)
+            ->assertSet('pickerDetailUlid', null)
+            ->assertSet('detailAlt', []);
+        expect($page->html())->not->toContain('id="media-detail-guard"');
+
+        $page->set('detailAlt.vi', 'Ghi đè')->call('saveDetail')->assertHasNoErrors();
+        // the open file's pointer cannot be set from the browser
+        expect(fn () => $page->set('pickerDetailUlid', $theirs->ulid))->toThrow(CannotUpdateLockedPropertyException::class);
+    });
+
+    expect(app(Tenancy::class)->enter(2, fn () => Media::query()->whereKey($theirs->id)->first()?->alt))->toBe(['vi' => 'Của site B']);
+});
+
+it('refuses a draft that is not text (null or a list), naming the field and writing nothing', function (): void {
+    $user = drwUser(['media.view', 'media.upload']);
+    $file = drwFile('gia-tri-la.png', ['alt' => ['vi' => 'Mô tả'], 'title' => ['vi' => 'Tiêu đề']]);
+
+    app(Tenancy::class)->enter(1, function () use ($user, $file): void {
+        Livewire::actingAs($user)->test(Library::class)->call('openDetail', $file->ulid)
+            ->set('detailTitle.vi', null)
+            ->call('saveDetail')
+            ->assertHasErrors(['detailTitle.vi' => __('media.drw.title_long', ['max' => Media::TITLE_MAX_LENGTH])])
+            ->assertDispatched('media-detail-saved', ok: false, lang: 'vi');
+        Livewire::actingAs($user)->test(Library::class)->call('openDetail', $file->ulid)
+            ->set('detailAlt.vi', null)
+            ->set('detailTitle.vi', 'Tiêu đề mới')
+            ->call('saveDetail')
+            ->assertHasErrors(['detailAlt.vi']);
+        expect($file->fresh()->alt)->toBe(['vi' => 'Mô tả'])
+            ->and($file->fresh()->title)->toBe(['vi' => 'Tiêu đề']);
+    });
+});
+
+it('opens the drawer on a flat query budget, however many places use the file', function (): void {
+    $user = drwUser(['media.view', 'media.upload', 'media.delete.any']);
+    $one = drwFile('mot-noi.png', ['created_by' => $user->id]);
+    $many = drwFile('nhieu-noi.png', ['created_by' => $user->id]);
+
+    app(Tenancy::class)->enter(1, function () use ($user, $one, $many): void {
+        drwEnglish();
+        drwUse($one, 'SP-1');
+        foreach (['SP-2', 'SP-3', 'SP-4', 'SP-5', 'SP-6'] as $sku) {
+            drwUse($many, $sku);
+        }
+        $page = Livewire::actingAs($user)->test(Library::class);
+        $page->call('openDetail', $one->ulid)->call('closeDetail'); // what one request caches for the next (languages, rights)
+
+        $a = countQueries(fn () => $page->call('openDetail', $one->ulid)->assertSet('pickerDetailUlid', $one->ulid));
+        $page->call('closeDetail');
+        $b = countQueries(fn () => $page->call('openDetail', $many->ulid)->assertSet('pickerDetailUlid', $many->ulid));
+
+        // the page's own redraw plus the file, its folder, its uses and its people: measured 15
+        expect($b)->toBe($a)->toBeLessThanOrEqual(15);
     });
 });

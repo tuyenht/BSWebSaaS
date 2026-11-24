@@ -9,16 +9,14 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
-use App\Modules\Media\Support\MediaKey;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteLocale;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Locked;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * The media library's file detail drawer (design board 12 «Thư viện ảnh & tệp»): a picture or a
@@ -31,6 +29,12 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * support staff signed in for a member). The open file's ulid is the locked pointer the shared
  * picker already keeps ($pickerDetailUlid), set only after a site-scoped lookup.
  *
+ * «Lưu» writes only the languages whose words differ from what was stored when the drawer opened
+ * (the locked $detailBase), merged onto the row as it is stored at that moment (read under a row
+ * lock), so another editor's change to another language meanwhile is kept. Only a picture has words
+ * to change: the server refuses a save for any other file, as the drawer draws no fields for it.
+ * «Tải xuống» is a plain link to the admin route that hands out the file (MediaFileDownloadController).
+ *
  * The page (Library) supplies the move / Trash / purge dialogs, which act on the open file while
  * $single is set (targets()), and its toast (say()).
  */
@@ -41,6 +45,15 @@ trait WithMediaDetailDrawer
 
     /** @var array<string, string> the picture title being edited, by website language */
     public array $detailTitle = [];
+
+    /**
+     * The words as they were stored when the drawer was filled: a language whose draft still equals
+     * its entry here is not written by «Lưu».
+     *
+     * @var array{alt: array<string, string>, title: array<string, string>}
+     */
+    #[Locked]
+    public array $detailBase = ['alt' => [], 'title' => []];
 
     /** The words of the open file were just saved (the footer's «Đã lưu»). */
     #[Locked]
@@ -74,45 +87,58 @@ trait WithMediaDetailDrawer
         $this->resetErrorBag();
     }
 
-    /** «Lưu»: the description and title of every website language at once (media.upload, live files only). */
+    /**
+     * «Lưu»: the description and title of every website language that changed (media.upload; live
+     * pictures only), merged onto the words as they are stored now.
+     */
     public function saveDetail(): void
     {
         abort_unless(Gate::allows('media.upload'), 403);
 
-        $media = $this->pickerDetailUlid === null ? null : Media::query()->where('ulid', $this->pickerDetailUlid)->first();
-        if ($media === null) {
-            return; // gone or in the Trash meanwhile: a trashed file's words are read-only
+        $ulid = $this->pickerDetailUlid;
+        if ($ulid === null) {
+            return;
         }
 
         $this->resetErrorBag();
-        $alt = $media->alt;
-        $title = $media->title;
         $wrong = null;
-        foreach (app(SiteLocale::class)->enabled() as $code) {
-            $a = $this->detailText($this->detailAlt[$code] ?? '');
-            $t = $this->detailText($this->detailTitle[$code] ?? '');
-            if ($a === null || mb_strlen($a) > Media::ALT_MAX_LENGTH) {
-                $this->addError('detailAlt.'.$code, __('media.drw.alt_long', ['max' => Media::ALT_MAX_LENGTH]));
-                $wrong ??= $code;
+        $media = DB::transaction(function () use ($ulid, &$wrong): ?Media {
+            // the row as stored now, held until the write: a save racing this one waits for it
+            $media = Media::query()->where('ulid', $ulid)->lockForUpdate()->first();
+            if ($media === null) {
+                return null; // gone or in the Trash meanwhile: a trashed file's words are read-only
             }
-            if ($t === null || mb_strlen($t) > Media::TITLE_MAX_LENGTH) {
-                $this->addError('detailTitle.'.$code, __('media.drw.title_long', ['max' => Media::TITLE_MAX_LENGTH]));
-                $wrong ??= $code;
+            abort_unless(str_starts_with($media->mime, 'image/'), 403); // only a picture has words
+
+            $alt = $media->alt;
+            $title = $media->title;
+            foreach (app(SiteLocale::class)->enabled() as $code) {
+                $a = $this->detailEdit($this->detailAlt, 'alt', $code);
+                $t = $this->detailEdit($this->detailTitle, 'title', $code);
+                if ($a === false || (is_string($a) && mb_strlen($a) > Media::ALT_MAX_LENGTH)) {
+                    $this->addError('detailAlt.'.$code, __('media.drw.alt_long', ['max' => Media::ALT_MAX_LENGTH]));
+                    $wrong ??= $code;
+                }
+                if ($t === false || (is_string($t) && mb_strlen($t) > Media::TITLE_MAX_LENGTH)) {
+                    $this->addError('detailTitle.'.$code, __('media.drw.title_long', ['max' => Media::TITLE_MAX_LENGTH]));
+                    $wrong ??= $code;
+                }
+                if ($wrong !== null) {
+                    continue;
+                }
+                // per-locale JSON: an emptied language drops its key; an unchanged language, and a
+                // language no longer on the website, keep the words stored now
+                self::putWords($alt, $code, $a);
+                self::putWords($title, $code, $t);
             }
-            if ($wrong !== null) {
-                continue;
+            if ($wrong === null && ($alt !== $media->alt || $title !== $media->title)) {
+                $media->update(['alt' => $alt, 'title' => $title]);
             }
-            // per-locale JSON: an emptied language drops its key, a language no longer on the website keeps its words
-            if ($a === '') {
-                unset($alt[$code]);
-            } else {
-                $alt[$code] = $a;
-            }
-            if ($t === '') {
-                unset($title[$code]);
-            } else {
-                $title[$code] = $t;
-            }
+
+            return $media;
+        });
+        if ($media === null) {
+            return;
         }
         if ($wrong !== null) {
             $this->detailSaved = false;
@@ -122,10 +148,7 @@ trait WithMediaDetailDrawer
             return;
         }
 
-        if ($alt !== $media->alt || $title !== $media->title) {
-            $media->update(['alt' => $alt, 'title' => $title]);
-        }
-        $this->fillDetail($media->refresh());
+        $this->fillDetail($media);
         $this->detailSaved = true;
         $this->dispatch('media-detail-saved', ok: true, lang: '');
     }
@@ -142,19 +165,6 @@ trait WithMediaDetailDrawer
             return;
         }
         $this->fillDetail($media);
-    }
-
-    /** «Tải xuống»: the stored file itself, under its name. */
-    public function downloadDetail(): ?StreamedResponse
-    {
-        abort_unless(Gate::allows('media.view'), 403);
-
-        $media = $this->pickerDetailUlid === null ? null : Media::query()->where('ulid', $this->pickerDetailUlid)->first();
-        if ($media === null) {
-            return null;
-        }
-
-        return Storage::disk(MediaKey::disk())->download($media->storage_key, $this->detailName($media));
     }
 
     /** «Di chuyển sang thư mục…»: the page's move dialog, for the open file. */
@@ -271,10 +281,11 @@ trait WithMediaDetailDrawer
         $left = $trashed && $deletedAt instanceof CarbonInterface
             ? max(0, $retention - (int) floor($deletedAt->diffInDays(now()))) : 0;
 
+        // counted against the words as they were when the drawer was filled, like «Lưu» does
         $changes = 0;
         foreach ($codes as $code) {
-            $changes += (int) (trim(Cast::string($this->detailAlt[$code] ?? '')) !== ($media->alt[$code] ?? ''));
-            $changes += (int) (trim(Cast::string($this->detailTitle[$code] ?? '')) !== ($media->title[$code] ?? ''));
+            $changes += (int) ($this->detailEdit($this->detailAlt, 'alt', $code) !== null);
+            $changes += (int) ($this->detailEdit($this->detailTitle, 'title', $code) !== null);
         }
 
         return [
@@ -287,9 +298,10 @@ trait WithMediaDetailDrawer
             'preview' => $image ? $urls->url($media->storage_key, 800) : null,
             'srcset' => $image ? $urls->srcset($media->storage_key, [480, 800, 1200], $media->width) : null,
             'fileUrl' => $urls->fileUrl($media->storage_key),
+            'download' => route('admin.media.download', $media->ulid),
             'languages' => array_map(fn (string $code): array => ['code' => $code, 'name' => LangBar::name($code), 'source' => $code === $source], $codes),
             'source' => $source,
-            'stored' => ['alt' => $media->alt, 'title' => $media->title],
+            'base' => $this->detailBase,
             'uploader' => $uploader,
             'groups' => array_filter($groups),
             'useN' => count($usages),
@@ -321,33 +333,62 @@ trait WithMediaDetailDrawer
         return MediaDeleteRights::visibleTrash(Media::onlyTrashed()->with('folder')->where('ulid', $ulid))->first();
     }
 
-    /** The drafts from what is stored, one entry per website language. */
+    /** The drafts and their baseline from what is stored, one entry per website language. */
     private function fillDetail(Media $media): void
     {
         $this->detailAlt = [];
         $this->detailTitle = [];
+        $this->detailBase = ['alt' => [], 'title' => []];
         foreach (app(SiteLocale::class)->enabled() as $code) {
-            $this->detailAlt[$code] = $media->alt[$code] ?? '';
-            $this->detailTitle[$code] = $media->title[$code] ?? '';
+            $this->detailAlt[$code] = $this->detailBase['alt'][$code] = $media->alt[$code] ?? '';
+            $this->detailTitle[$code] = $this->detailBase['title'][$code] = $media->title[$code] ?? '';
         }
         $this->detailSaved = false;
         $this->resetErrorBag();
     }
 
-    /** A draft value from the wire, trimmed; null when it is not text (a forged payload). */
-    private function detailText(mixed $value): ?string
+    /**
+     * What «Lưu» does with one language of one field: null leaves it as stored (the draft, trimmed,
+     * still equals the baseline, or the wire sent no draft for it), a string is the new text ('' =
+     * emptied), false a draft that is not text (a forged payload).
+     *
+     * @param  array<array-key, mixed>  $drafts
+     * @param  'alt'|'title'  $field
+     */
+    private function detailEdit(array $drafts, string $field, string $code): string|false|null
     {
-        return is_string($value) ? trim($value) : null;
+        if (! array_key_exists($code, $drafts)) {
+            return null;
+        }
+        $value = $drafts[$code];
+        if (! is_string($value)) {
+            return false;
+        }
+        $text = trim($value);
+
+        return $text === ($this->detailBase[$field][$code] ?? '') ? null : $text;
+    }
+
+    /**
+     * One language's change onto stored per-locale words: null keeps them, '' drops the key.
+     *
+     * @param  array<string, string>  $words
+     */
+    private static function putWords(array &$words, string $code, string|false|null $text): void
+    {
+        if (! is_string($text)) {
+            return;
+        }
+        if ($text === '') {
+            unset($words[$code]);
+        } else {
+            $words[$code] = $text;
+        }
     }
 
     private function detailName(Media $media): string
     {
-        $name = $media->original_filename;
-        if ($name !== null && $name !== '') {
-            return $name;
-        }
-
-        return ($media->slug !== null && $media->slug !== '' ? $media->slug : $media->ulid).'.'.$media->extLabel();
+        return $media->downloadName();
     }
 
     /**

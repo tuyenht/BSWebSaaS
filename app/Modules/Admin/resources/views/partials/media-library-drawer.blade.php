@@ -26,6 +26,7 @@
         'lineEmpty' => __('media.drw.line_empty'),
         'lineFull' => __('media.drw.line_full'),
         'progress' => __('media.drw.lang_progress'),
+        'near' => __('media.drw.alt_near', ['n' => \App\Modules\Media\Models\Media::ALT_RECOMMENDED_LENGTH, 'max' => \App\Modules\Media\Models\Media::ALT_MAX_LENGTH]),
     ];
     $groupIcons = ['product' => 'ri-shopping-bag-3', 'cover' => 'ri-image', 'content' => 'ri-file-text', 'brand' => 'ri-image'];
     $dims = $m->width !== null && $m->height !== null
@@ -34,7 +35,7 @@
 @endphp
 <div id="media-detail-guard">
     @if ($d['canEdit'])
-        <x-bs-admin::unsaved-dialog :count="$d['changes']" :label="$d['name']" save="saveDetail" discard="discardDetail"
+        <x-bs-admin::unsaved-dialog :count="$d['changes']" :label="$d['name']" save="saveDetail" discard="discardDetail" scope="[data-unsaved-scope=media-detail-guard]"
             :body="__('media.drw.ud_body')" :save-label="__('media.drw.ud_save')" :discard-label="__('media.drw.ud_discard')" />
     @endif
 </div>
@@ -45,7 +46,7 @@
             <x-bs-admin::list.actions head :name="__('media.drw.this_file')" :title="__('media.drw.menu')">
                 <x-slot:menu>
                     @if (! $d['trashed'])
-                        <x-bs-admin::list.menu-item icon="ri-download-2" wire:click="downloadDetail">{{ __('media.drw.download') }}</x-bs-admin::list.menu-item>
+                        <x-bs-admin::list.menu-item icon="ri-download-2" :href="$d['download']" download>{{ __('media.drw.download') }}</x-bs-admin::list.menu-item>
                         @if ($d['canUpload'])
                             <x-bs-admin::list.menu-item icon="ri-folder-transfer" wire:click="moveDetail">{{ __('media.drw.move') }}</x-bs-admin::list.menu-item>
                         @endif
@@ -64,12 +65,12 @@
     @endif
 
     <div class="flex flex-col gap-4" x-ignore wire:ignore.self data-bs-lazy="bsMediaDrawer"
-         x-data="bsMediaDrawer(@js(['source' => $d['source'], 'names' => $names, 'few' => $few, 'w' => $words]))"
+         x-data="bsMediaDrawer(@js(['source' => $d['source'], 'names' => $names, 'few' => $few, 'near' => \App\Modules\Media\Models\Media::ALT_RECOMMENDED_LENGTH, 'w' => $words]))"
          x-on:input="scan()" x-on:media-detail-saved.window="saved($event)">
         <div class="flex h-[min(16.25rem,40dvh)] items-center justify-center overflow-hidden rounded-md border border-border bg-surface-muted p-3">
             @if ($d['image'])
                 <img src="{{ $d['preview'] }}" @if ($d['srcset']) srcset="{{ $d['srcset'] }}" sizes="(min-width: 600px) 30rem, 100vw" @endif
-                     alt="{{ ($d['stored']['alt'][$d['source']] ?? '') !== '' ? $d['stored']['alt'][$d['source']] : $d['name'] }}"
+                     alt="{{ ($m->alt[$d['source']] ?? '') !== '' ? $m->alt[$d['source']] : $d['name'] }}"
                      @if ($m->width) width="{{ $m->width }}" height="{{ $m->height }}" @endif decoding="async"
                      class="h-auto max-h-full w-auto max-w-full object-contain">
             @else
@@ -156,10 +157,10 @@
                         <label for="mdrw-alt-{{ $code }}" class="{{ $label }}">
                             {{ __('media.drw.alt') }}
                             @if ($multi)<span class="rounded bg-surface-muted px-1.5 text-caption font-semibold uppercase text-text-muted">{{ $code }}</span>@endif
-                            <span class="ms-auto text-caption font-medium tabular-nums text-text-muted" aria-live="polite" x-bind:class="count > 150 && 'font-semibold text-danger-text'" x-text="count + '/{{ \App\Modules\Media\Models\Media::ALT_MAX_LENGTH }}'"></span>
+                            <span class="ms-auto text-caption font-medium tabular-nums text-text-muted" x-bind:class="count > near && 'font-semibold text-danger-text'" x-text="count + '/{{ \App\Modules\Media\Models\Media::ALT_MAX_LENGTH }}'"></span>
                         </label>
                         <textarea id="mdrw-alt-{{ $code }}" rows="3" maxlength="{{ \App\Modules\Media\Models\Media::ALT_MAX_LENGTH }}" dir="{{ $dir }}" lang="{{ $code }}"
-                                  wire:model="detailAlt.{{ $code }}" data-lang="{{ $code }}" data-orig="{{ $d['stored']['alt'][$code] ?? '' }}"
+                                  wire:model="detailAlt.{{ $code }}" data-lang="{{ $code }}" data-orig="{{ $d['base']['alt'][$code] ?? '' }}"
                                   placeholder="{{ $l['source'] ? __('media.drw.alt_ph') : $l['name'] }}"
                                   aria-describedby="mdrw-alt-{{ $code }}-h{{ $altErr !== '' ? ' mdrw-alt-'.$code.'-e' : '' }}" @if ($altErr !== '') aria-invalid="true" @endif
                                   @if (! $d['canEdit']) readonly @endif
@@ -168,6 +169,8 @@
                             <x-bs-admin::field-error id="mdrw-alt-{{ $code }}-e" class="mt-1.5">{{ $altErr }}</x-bs-admin::field-error>
                         @endif
                         <p id="mdrw-alt-{{ $code }}-h" class="{{ $hint }}">{{ __('media.drw.alt_hint') }}</p>
+                        {{-- said once when the description passes the recommended length, not on every key --}}
+                        <p class="sr-only" role="status" x-text="count > near ? w.near : ''"></p>
                     </div>
                     <div class="flex min-w-0 flex-col">
                         <label for="mdrw-title-{{ $code }}" class="{{ $label }}">
@@ -175,7 +178,7 @@
                             @if ($multi)<span class="rounded bg-surface-muted px-1.5 text-caption font-semibold uppercase text-text-muted">{{ $code }}</span>@endif
                         </label>
                         <input id="mdrw-title-{{ $code }}" type="text" maxlength="{{ \App\Modules\Media\Models\Media::TITLE_MAX_LENGTH }}" dir="{{ $dir }}" lang="{{ $code }}"
-                               wire:model="detailTitle.{{ $code }}" value="{{ is_string($detailTitle[$code] ?? null) ? $detailTitle[$code] : '' }}" data-orig="{{ $d['stored']['title'][$code] ?? '' }}"
+                               wire:model="detailTitle.{{ $code }}" value="{{ is_string($detailTitle[$code] ?? null) ? $detailTitle[$code] : '' }}" data-orig="{{ $d['base']['title'][$code] ?? '' }}"
                                placeholder="{{ $l['source'] ? __('media.drw.title_ph') : $l['name'] }}"
                                aria-describedby="mdrw-title-{{ $code }}-h{{ $titleErr !== '' ? ' mdrw-title-'.$code.'-e' : '' }}" @if ($titleErr !== '') aria-invalid="true" @endif
                                @if (! $d['canEdit']) readonly @endif

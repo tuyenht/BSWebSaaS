@@ -406,10 +406,18 @@ trait WithMediaLibraryPicker
             return;
         }
 
-        // Per-locale JSONB — only this locale's key changes; other locales' alt survive.
-        $alt = $media->alt;
-        $alt[$this->pickerContentLocale()] = $text;
-        $media->update(['alt' => $alt]);
+        // Per-locale JSONB — only this locale's key changes; other locales' alt survive, read again
+        // under a row lock so a save of another language meanwhile (the library drawer) is kept.
+        $locale = $this->pickerContentLocale();
+        DB::transaction(function () use ($media, $locale, $text): void {
+            $locked = Media::query()->whereKey($media->id)->lockForUpdate()->first();
+            if ($locked === null) {
+                return;
+            }
+            $alt = $locked->alt;
+            $alt[$locale] = $text;
+            $locked->update(['alt' => $alt]);
+        });
 
         session()->flash('media-status', __('media.picker_detail_saved'));
     }

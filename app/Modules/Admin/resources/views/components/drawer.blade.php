@@ -39,7 +39,8 @@
     // buttons save or drop the change and then close (the question opens after the key or click
     // that asked has finished, so the dialog's own Esc = «Ở lại» does not take the same Esc). Until
     // its script has started, a close with unsaved changes (the count the server drew) does nothing
-    // rather than lose them.
+    // rather than lose them. The panel then carries data-unsaved-scope="{guard}", which the dialog's
+    // `scope` names so that only text typed in the panel counts as unsaved.
     $alpine = $state !== null;
     $tid = 'drw-'.\Illuminate\Support\Str::random(6);
     $closeLabel ??= __('admin.dismiss');
@@ -73,6 +74,7 @@
      }"
      @keydown.escape.window.prevent.stop="above() || hide()"
      @keydown.tab.window="trap($event)"
+     @if ($guard) data-unsaved-scope="{{ $guard }}" @endif
      {{ $attributes }}>
     <div @click="hide()" class="fixed inset-0 z-60 bg-[rgb(15_18_30/0.45)]" aria-hidden="true"></div>
     <div x-ref="panel" role="dialog" aria-modal="true" aria-labelledby="{{ $tid }}" @if ($subtitle) aria-describedby="{{ $tid }}-s" @endif tabindex="-1"

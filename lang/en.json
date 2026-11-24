@@ -7113,6 +7113,7 @@
     "media.drw.alt_ph": "A vertical CNC milling machine in the workshop, seen from the front",
     "media.drw.alt_hint": "The description helps Google and blind visitors understand the picture — a change here applies everywhere the picture is used.",
     "media.drw.alt_long": "The description is too long — at most :max characters.",
+    "media.drw.alt_near": "The description is longer than the recommended :n characters — at most :max.",
     "media.drw.title": "Picture title",
     "media.drw.title_ph": "VMC-850 CNC mill",
     "media.drw.title_hint": "Shows when a visitor points at the picture on the website. It may stay empty.",

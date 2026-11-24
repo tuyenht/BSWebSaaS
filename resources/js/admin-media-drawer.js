@@ -9,9 +9,9 @@
 // shows with its field focused. «Sao chép» copies the file address; the toast is the page's.
 
 /**
- * @param {{ source: string, names: Record<string, string>, few: boolean, w: Record<string, string> }} cfg
+ * @param {{ source: string, names: Record<string, string>, few: boolean, near: number, w: Record<string, string> }} cfg
  *   the source language, the website languages' names by code (source first), whether every chip
- *   shows (three languages or fewer), and the words the part writes.
+ *   shows (three languages or fewer), the recommended description length, and the words the part writes.
  */
 export function mediaDrawer(cfg) {
     let copyTimer = null;
@@ -22,6 +22,9 @@ export function mediaDrawer(cfg) {
         names: cfg.names,
         w: cfg.w,
         few: cfg.few,
+        // past this many characters the «n/188» counter turns to the warning colour, and the
+        // field's status line says so once (the counter itself is not announced on every key)
+        near: cfg.near,
         open: false,
         q: '',
         filled: {},
