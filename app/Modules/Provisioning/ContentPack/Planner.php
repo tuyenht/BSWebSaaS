@@ -39,6 +39,7 @@ use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Components\ButtonLink;
 use App\Modules\Theme\Rendering\LayoutSlots;
+use App\Modules\Workflow\Models\Workflow;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -116,6 +117,9 @@ final class Planner
     /** @var array<string, list<array{column: string, id: int, locale: string, from: string, to: string}>> category key → the moves of the posts and products it carries along */
     private array $carriedMoves = [];
 
+    /** @var array<string, array{key: string, type: string}> category key → the section this load builds on it (a new binding) */
+    private array $plannedSections = [];
+
     private bool $lock = false;
 
     /** The row lock of the --apply re-plan (see the class comment). */
@@ -163,6 +167,7 @@ final class Planner
         foreach ($this->taxonomyItems($pack, $context) as $planned) {
             $items[] = $planned;
         }
+        $sections = $this->sectionItems($pack, $context, $items);
         $entries = $this->entryItems($pack, $context);
         $products = $this->productItems($pack, $context);
         $menus = $this->menuItems($pack, $context);
@@ -173,6 +178,7 @@ final class Planner
                 'setting' => $this->settingItem($item, $context),
                 'profile' => $this->profileItem($item, $context),
                 'taxonomy' => null,
+                'section' => $sections[$item->key] ?? null,
                 'product' => $products[$item->key] ?? null,
                 'post', 'page' => $entries[$item->key] ?? null,
                 'menu' => $menus[$item->key] ?? null,
@@ -299,6 +305,7 @@ final class Planner
         $this->plannedPaths = [];
         $this->branchRoutes = [];
         $this->carriedMoves = [];
+        $this->plannedSections = [];
         $this->lock = false;
     }
 
@@ -801,6 +808,274 @@ final class Planner
         $desired['translations'] = $translations;
 
         return $desired;
+    }
+
+    // ---------------------------------------------------------------- content sections
+
+    /**
+     * Each pack section's line: the site's section under the same key, or a new one. A section is
+     * never moved to another category, never changed to another kind or to other permissions (a
+     * conflict), and a category already carrying a section gets no second one. A new section is
+     * refused when an active workflow already waits on its key: the workflow would govern the
+     * branch's posts the moment the section exists, and no one chose that for them. A site's section
+     * the loader has not written before keeps its label, icon and order (skip:edited, as products:
+     * nothing tells a staff choice apart from an old default). Whether a new binding takes its
+     * branch from another section or moves a post's address is decided once the category tree is
+     * planned (sectionMoves).
+     *
+     * @param  list<PlanItem>  $taxonomies  the plan's category lines
+     * @return array<string, PlanItem>
+     */
+    private function sectionItems(Pack $pack, PlanContext $context, array $taxonomies): array
+    {
+        $items = $pack->ofKind('section');
+        if ($items === []) {
+            return [];
+        }
+
+        $live = [];
+        $keys = array_map(fn (PackItem $item): string => $item->anchor(), $items);
+        foreach ($this->locked(ContentSection::query()->whereIn('key', $keys))->get(['id', 'key', 'label', 'icon', 'sort_order', 'entry_type', 'taxonomy_id', 'permission_prefix']) as $row) {
+            $live[$row->key] = $row;
+        }
+        $bound = [];   // category id → the section built on it (the first by display order)
+        foreach ($this->locked(ContentSection::query()->whereNotNull('taxonomy_id')->orderBy('sort_order')->orderBy('id'))->get(['id', 'key', 'taxonomy_id']) as $row) {
+            $bound[Cast::int($row->taxonomy_id)] ??= $row->key;
+        }
+        // Accepted race: a workflow switched on, or a section added by staff, between the apply's re-plan and its
+        // commit is not blocked. The window is one transaction, and the next plan shows it.
+        $waiting = [];   // section key → the active workflow already keyed to it
+        foreach ($this->locked(Workflow::query()->whereIn('applies_to_type', $keys)->where('is_active', true))->get(['applies_to_type', 'name']) as $workflow) {
+            $waiting[$workflow->applies_to_type] ??= $workflow->name;
+        }
+        $created = [];
+        foreach ($taxonomies as $planned) {
+            if ($planned->verdict === PlanItem::CREATE && $planned->recordId === null) {
+                $created[$planned->item->key] = true;
+            }
+        }
+
+        $planned = [];
+        foreach ($items as $item) {
+            $key = $item->anchor();
+            $categoryKey = Cast::string($item->data['category'] ?? null);
+            $categoryId = $this->matched[$categoryKey] ?? null;
+            $row = $live[$key] ?? null;
+            $current = $row === null ? null : $this->sectionState($row);
+            $conflict = match (true) {
+                $row === null => match (true) {
+                    $categoryId !== null && isset($bound[$categoryId]) => "{$categoryKey} is already the section «{$bound[$categoryId]}»; a category carries one section",
+                    isset($waiting[$key]) => "the workflow «{$waiting[$key]}» already waits on the section key «{$key}»; it would govern the posts of {$categoryKey} the moment the section exists: switch that workflow off, or give the section another key, first",
+                    $categoryId === null && ! isset($created[$categoryKey]) => "{$categoryKey} is not on the site and this load does not create it",
+                    default => null,
+                },
+                $row->entry_type !== 'post' => "the site's section «{$key}» is not a post section; the loader never changes a section's kind",
+                ! in_array($row->permission_prefix, [null, '', 'entries'], true) => "the site's section «{$key}» uses the «{$row->permission_prefix}» permissions; the loader never changes a section's permissions",
+                $row->taxonomy_id === null || Cast::int($row->taxonomy_id) !== $categoryId => "the site's section «{$key}» is built on ".($current['category'] ?? 'no category').'; the loader never moves a section to another category',
+                default => null,
+            };
+
+            $line = $this->decide(
+                $context,
+                $item,
+                $current,
+                $this->desiredSection($item, $current),
+                $row === null ? null : $key,
+                $row?->id,
+                evidence: 'a section the loader has not written before keeps the label, icon and order the site gave it',
+                conflict: $conflict,
+            );
+            if ($line->verdict === PlanItem::CREATE) {
+                $this->plannedSections[$categoryKey] = ['key' => $key, 'type' => 'posts'];
+            }
+            $planned[$item->key] = $line;
+        }
+
+        return $planned;
+    }
+
+    /**
+     * A section's managed fields. Its key, kind and permissions are fixed (a mismatch is a conflict),
+     * its templates and meta are the site's own.
+     *
+     * @return array{label: string, entry_type: string|null, category: string|null, icon: string|null, sort_order: int}
+     */
+    private function sectionState(ContentSection $row): array
+    {
+        return [
+            'label' => $row->label,
+            'entry_type' => $row->entry_type,
+            'category' => $row->taxonomy_id === null ? null : $this->taxonomyKey(Cast::int($row->taxonomy_id)),
+            'icon' => $row->icon,
+            'sort_order' => $row->sort_order,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $current
+     * @return array{label: string, entry_type: string, category: string, icon: string|null, sort_order: int}
+     */
+    private function desiredSection(PackItem $item, ?array $current): array
+    {
+        return [
+            'label' => Cast::string($item->data['label'] ?? null),
+            'entry_type' => 'post',
+            'category' => Cast::string($item->data['category'] ?? null),
+            // An item that names no icon keeps the live one.
+            'icon' => array_key_exists('icon', $item->data) ? Cast::stringOrNull($item->data['icon']) : Cast::stringOrNull($current['icon'] ?? null),
+            'sort_order' => Cast::int($item->data['sort_order'] ?? null),
+        ];
+    }
+
+    /**
+     * What each new section binding does to the posts already filed under its branch (the category
+     * and every category below it that no other section is built on). A branch that belongs to a
+     * section now, through a category above it, is refused: the new section would take its posts
+     * out of that section (its workflow, its reviewers' reach, its admin list), so a pack builds a
+     * section only on a branch that belongs to no section, in the tree as it is and as the load
+     * leaves it. Then the addresses: a
+     * post's address follows its section's permalink, so a binding whose section composes
+     * addresses differently from the one the branch had would move them. The loader never moves
+     * addresses for a section — such a binding is a conflict and leaves the plan; otherwise the
+     * line says that nothing moves. Only categories whose permalink changes are read (one query
+     * per thousand of them; none when the permalink stays, as for a flat section on a flat branch).
+     *
+     * @param  list<PlanItem>  $items
+     * @param  array<string, array{id: int|null, parent: string|null, slugs: array<string, string>}>  $tree
+     * @param  array<int, array{key: string, type: string}>  $bindings
+     * @return array<string, array{0: string|null, 1: string}> pack key → [conflict, note]
+     */
+    private function sectionMoves(array $items, array $tree, array $bindings): array
+    {
+        $lines = [];
+        $live = $this->plannedTree([]);
+        foreach ($items as $planned) {
+            if ($planned->item->kind !== 'section' || $planned->verdict !== PlanItem::CREATE) {
+                continue;
+            }
+            $categoryKey = Cast::string($planned->desired['category'] ?? null);
+            $section = $this->plannedSections[$categoryKey] ?? null;
+            if ($section === null) {
+                continue;
+            }
+            // The live tree is keyed by the category's live slugs, which this load may be renaming.
+            $liveId = $this->matched[$categoryKey] ?? null;
+            $owner = ($liveId === null ? null : $this->boundAbove($this->taxonomyKey($liveId), $live, $bindings))
+                ?? $this->boundAbove($categoryKey, $tree, $bindings);
+            if ($owner !== null) {
+                unset($this->plannedSections[$categoryKey]);
+                $lines[$planned->item->key] = [
+                    "{$categoryKey} belongs to the section «{$owner[0]}» (built on {$owner[1]}); a section here would take its posts out of «{$owner[0]}»: its workflow, its reviewers and its admin list. The loader builds a section only on a branch that belongs to no section",
+                    '',
+                ];
+
+                continue;
+            }
+            $after = $this->permalinkOf($section);
+            $changed = [];
+            foreach ($tree as $key => $node) {
+                if ($node['id'] === null || ($this->nearestSection($key, $tree, $bindings)['key'] ?? null) !== $section['key']) {
+                    continue;
+                }
+                if ($this->permalinkOf($this->nearestSection($key, $tree, $bindings, $section['key'])) !== $after) {
+                    $changed[] = $node['id'];
+                }
+            }
+            $moves = [];
+            foreach (array_chunk($changed, 1000) as $chunk) {
+                $query = $this->branchItems('post', $chunk, published: false)->orderBy('it.id')->orderBy('r.locale');
+                if ($this->lock) {
+                    $query->lock(self::LOCK);
+                }
+                foreach ($query->get(['pv.taxonomy_id', 'r.locale', 'r.path', 'tr.slug']) as $row) {
+                    $path = Cast::string($row->path);
+                    $new = $this->itemPath('post', $this->taxonomyKey(Cast::int($row->taxonomy_id)), $tree, $bindings, Cast::string($row->locale), Cast::string($row->slug));
+                    if ($new !== $path) {
+                        $moves[] = "{$path} → {$new}";
+                    }
+                }
+            }
+
+            if ($moves === []) {
+                $lines[$planned->item->key] = [null, "built on {$categoryKey}; 0 post addresses move"];
+
+                continue;
+            }
+            unset($this->plannedSections[$categoryKey]);
+            $count = count($moves);
+            $lines[$planned->item->key] = [
+                "{$count} post address".($count === 1 ? '' : 'es').' under '.$categoryKey.' would move ('.implode(', ', array_slice($moves, 0, 3)).($count > 3 ? ', …' : '')
+                    .'); the loader never moves addresses for a section: give the section the permalink its posts have now first',
+                '',
+            ];
+        }
+
+        return $lines;
+    }
+
+    /**
+     * The section a category's posts belong to as the load leaves the tree: the nearest category up
+     * the planned tree that a section is built on (this load's new ones included, but $except).
+     *
+     * @param  array<string, array{id: int|null, parent: string|null, slugs: array<string, string>}>  $tree
+     * @param  array<int, array{key: string, type: string}>  $bindings
+     * @return array{key: string, type: string}|null
+     */
+    private function nearestSection(string $key, array $tree, array $bindings, ?string $except = null): ?array
+    {
+        $seen = [];
+        for ($cursor = $key; $cursor !== null && isset($tree[$cursor]) && ! isset($seen[$cursor]); $cursor = $tree[$cursor]['parent']) {
+            $seen[$cursor] = true;
+            $planned = $this->plannedSections[$cursor] ?? null;
+            if ($planned !== null && $planned['key'] !== $except) {
+                return $planned;
+            }
+            $id = $tree[$cursor]['id'];
+            if ($id !== null && isset($bindings[$id])) {
+                return $bindings[$id];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The site's section a category's posts belong to before this load binds anything (the nearest
+     * category up the given tree that a live section is built on, this load's new ones left out),
+     * and the category it is built on.
+     *
+     * @param  array<string, array{id: int|null, parent: string|null, slugs: array<string, string>}>  $tree
+     * @param  array<int, array{key: string, type: string}>  $bindings
+     * @return array{0: string, 1: string}|null
+     */
+    private function boundAbove(string $key, array $tree, array $bindings): ?array
+    {
+        $seen = [];
+        for ($cursor = $key; $cursor !== null && isset($tree[$cursor]) && ! isset($seen[$cursor]); $cursor = $tree[$cursor]['parent']) {
+            $seen[$cursor] = true;
+            $id = $tree[$cursor]['id'];
+            if ($id !== null && isset($bindings[$id])) {
+                return [$bindings[$id]['key'], $cursor];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * How a section composes its posts' addresses: its permalink pattern, with the base segment for
+     * the `base` preset (no section: the flat default).
+     *
+     * @param  array{key: string, type: string}|null  $section
+     */
+    private function permalinkOf(?array $section): string
+    {
+        if ($section === null) {
+            return PermalinkConfig::DEFAULT_PATTERN;
+        }
+        $pattern = $this->permalinks->pattern($section['key'], $section['type']);
+
+        return $pattern === 'base' ? 'base:'.($this->permalinks->base($section['key']) ?? '') : $pattern;
     }
 
     // ---------------------------------------------------------------- entries
@@ -2288,6 +2563,8 @@ final class Planner
     {
         $tree = $this->plannedTree($items);
         $bindings = $this->sectionBindings();
+        // Before any address is composed: a new section whose binding would move a post drops out here.
+        $sectionLines = $this->sectionMoves($items, $tree, $bindings);
         $writing = array_values(array_filter($items, fn (PlanItem $planned): bool => $planned->writes()));
 
         $routed = $this->routedLocales($writing);
@@ -2336,6 +2613,12 @@ final class Planner
         $out = [];
         foreach ($items as $planned) {
             $key = $planned->item->key;
+            if (isset($sectionLines[$key])) {
+                [$conflict, $note] = $sectionLines[$key];
+                $out[] = $conflict !== null ? $planned->asConflict($conflict) : $planned->carrying([$note], null);
+
+                continue;
+            }
             if (isset($conflicts[$key])) {
                 $out[] = $planned->asConflict($conflicts[$key]);
 
@@ -2477,7 +2760,8 @@ final class Planner
 
     /**
      * A post's or product's address from its primary category in the planned tree — PathBuilder's
-     * presets (flat, category, category_path, base) and SectionResolver's section walk.
+     * presets (flat, category, category_path, base) and SectionResolver's section walk, with the
+     * sections this load builds.
      *
      * @param  array<string, array{id: int|null, parent: string|null, slugs: array<string, string>}>  $tree
      * @param  array<int, array{key: string, type: string}>  $bindings
@@ -2493,8 +2777,8 @@ final class Planner
             for ($cursor = $primary; $cursor !== null && isset($tree[$cursor]) && ! isset($seen[$cursor]); $cursor = $tree[$cursor]['parent']) {
                 $seen[$cursor] = true;
                 $id = $tree[$cursor]['id'];
-                if ($id !== null && isset($bindings[$id])) {
-                    $bound = $bindings[$id];
+                $bound = $this->plannedSections[$cursor] ?? ($id !== null ? $bindings[$id] ?? null : null);
+                if ($bound !== null) {
                     break;
                 }
             }
@@ -2665,8 +2949,9 @@ final class Planner
      *
      * @param  'post'|'product'  $kind
      * @param  list<int>  $taxonomyIds
+     * @param  bool  $published  only published items (what a relink re-syncs); false: every item that holds an address
      */
-    private function branchItems(string $kind, array $taxonomyIds): QueryBuilder
+    private function branchItems(string $kind, array $taxonomyIds, bool $published = true): QueryBuilder
     {
         [$pivot, $column, $table, $translations] = self::BRANCH_KINDS[$kind];
         $query = DB::table("{$pivot} as pv")
@@ -2676,8 +2961,10 @@ final class Planner
             ->where('pv.site_id', $this->site->id())
             ->where('pv.position', 0)
             ->whereIn('pv.taxonomy_id', $taxonomyIds)
-            ->where('it.status', 'published')
             ->whereNull('it.deleted_at');
+        if ($published) {
+            $query->where('it.status', 'published');
+        }
         if ($kind === 'post') {
             $query->where('it.type', 'post');
         }
