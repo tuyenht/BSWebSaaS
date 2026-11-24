@@ -350,6 +350,53 @@ it('links «Tải xuống» to the download route, which hands out a signed link
         ->and($signed[0]['options']['ResponseContentDisposition'])->toBe("attachment; filename=Ban-ve-may.png; filename*=utf-8''B%E1%BA%A3n%20v%E1%BA%BD%20m%C3%A1y.png");
 });
 
+it('saves a file whose uploaded name holds a path separator under that name with «-», on a signed link', function (string $uploaded, string $disposition): void {
+    config(['media.disk' => 'r2']);
+    $user = drwUser(['media.view']);
+    $file = drwFile('tach.png', ['original_filename' => $uploaded, 'storage_key' => 's1/library/tach-'.md5($uploaded)]);
+    $signed = new ArrayObject;
+    Storage::disk('r2')->buildTemporaryUrlsUsing(function (string $path, DateTimeInterface $expires, array $options) use ($signed): string {
+        $signed[] = $options;
+
+        return 'https://bucket.r2.example.test/'.$path;
+    });
+
+    $this->actingAs($user)->get('http://a.test/admin/media/files/'.$file->ulid.'/download')->assertRedirect();
+    expect($signed)->toHaveCount(1)
+        ->and($signed[0]['ResponseContentDisposition'])->toBe($disposition);
+})->with([
+    'backslash' => ['bao\\cao.pdf', 'attachment; filename=bao-cao.pdf'],
+    'slash' => ['a/b.png', 'attachment; filename=a-b.png'],
+]);
+
+it('streams the file as an attachment from a disk that is not s3, even one that hands out temporary links', function (string $uploaded, string $saved): void {
+    // A local disk with `serve` (dev) answers providesTemporaryUrls(), but its serve route shows the
+    // file inline and ignores the disposition: the download must not go there.
+    config(['media.disk' => 'local']);
+    Storage::fake('local');
+    $signed = new ArrayObject;
+    Storage::disk('local')->buildTemporaryUrlsUsing(function (string $path) use ($signed): string {
+        $signed[] = $path;
+
+        return 'http://a.test/storage/'.$path;
+    });
+    expect(Storage::disk('local')->providesTemporaryUrls())->toBeTrue();
+    $user = drwUser(['media.view']);
+    $file = drwFile('tai.png', ['original_filename' => $uploaded, 'storage_key' => 's1/library/tai-'.md5($uploaded)]);
+    Storage::disk('local')->put($file->storage_key, 'noi-dung-tep');
+
+    $response = $this->actingAs($user)->get('http://a.test/admin/media/files/'.$file->ulid.'/download')
+        ->assertOk()
+        ->assertHeader('Content-Disposition', 'attachment; filename='.$saved)
+        ->assertHeader('X-Content-Type-Options', 'nosniff');
+    expect($response->headers->get('Cache-Control'))->toContain('no-store')
+        ->and($response->streamedContent())->toBe('noi-dung-tep')
+        ->and($signed)->toHaveCount(0);
+})->with([
+    'backslash' => ['bao\\cao.pdf', 'bao-cao.pdf'],
+    'slash' => ['a/b.png', 'a-b.png'],
+]);
+
 it('refuses the download without media.view, and for another website\'s or a trashed file', function (): void {
     $viewer = drwUser(['media.view']);
     $stranger = User::factory()->create();
