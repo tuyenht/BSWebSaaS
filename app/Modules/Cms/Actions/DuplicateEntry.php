@@ -101,13 +101,12 @@ final class DuplicateEntry
         return $copy;
     }
 
-    /** The original's own layout when the theme still lists it for this kind of page, else none. */
+    /** The original's own layout (or a post's own variant) when the theme still lists it for this kind of page, else none. */
     private function ownLayout(Entry $entry): ?string
     {
         $layout = $entry->template_override;
-        $role = TemplateCatalog::roleOfEntry($entry->type);
 
-        return $layout !== null && $role !== null && TemplateCatalog::fits($layout, $role) ? $layout : null;
+        return $layout !== null && TemplateCatalog::fitsEntry($layout, $entry->type) ? $layout : null;
     }
 
     /** Appends a suffix until the slug is free for this locale (site-scoped by RLS). */

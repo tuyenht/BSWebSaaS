@@ -6,6 +6,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
+use App\Modules\Cms\Support\DisplayDate;
 use App\Modules\Cms\Support\JobFacts;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -357,7 +358,7 @@ final readonly class EntryGridComponent implements Component
             $image = isset($meta['image_url']) && is_string($meta['image_url']) ? $meta['image_url'] : '';
             $isKey = $image !== '' && ! str_contains($image, '://') && str_contains($image, '/');
             $isGlyph = $image !== '' && ! str_contains($image, '/') && ! str_contains($image, '.') && ! str_contains($image, ':');
-            $published = $time?->forDisplay($entry->published_at);
+            $published = $time !== null ? DisplayDate::shown($meta, $time->forDisplay($entry->published_at), $time->zone()) : null;
 
             $cards[] = [
                 'title' => $translation instanceof EntryTranslation ? $translation->title : '',

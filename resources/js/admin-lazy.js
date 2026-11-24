@@ -30,6 +30,7 @@ const PARTS = {
     bsBell: () => import('./admin-bell.js'),
     bsNotifications: () => import('./admin-notifications.js'),
     bsMediaDrawer: () => import('./admin-media-drawer.js'),
+    bsSocialKeys: () => import('./admin-social.js'),
 };
 
 export function makeLazy({ parts, alpine, reload }) {

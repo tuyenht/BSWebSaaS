@@ -37,6 +37,41 @@ final class SettingsRepository
         );
     }
 
+    /**
+     * Rewrites one of the current website's rows while holding its lock, so nothing else writes it
+     * between the read and the write: $change gets the current value (null when there is no row)
+     * and returns the new value, or null to leave the row untouched. The row is read through the
+     * website's scope (BelongsToSite), and a new one is created for the current website. Inside the
+     * request's tenant transaction this is a savepoint: the lock lasts until that transaction ends.
+     *
+     * @param  callable(array<string, mixed>|null): (array<string, mixed>|null)  $change
+     * @return array<string, mixed>|null the value written, or null when nothing was written
+     */
+    public function change(string $group, string $key, callable $change): ?array
+    {
+        return (new SiteSetting)->getConnection()->transaction(function () use ($group, $key, $change): ?array {
+            $row = SiteSetting::query()
+                ->where('group_name', $group)
+                ->where('key', $key)
+                ->lockForUpdate()
+                ->first();
+
+            $value = $change(is_array($row?->value) ? $row->value : null);
+            if ($value === null) {
+                return null;
+            }
+
+            if ($row === null) {
+                SiteSetting::query()->create(['group_name' => $group, 'key' => $key, 'value' => $value]);
+            } else {
+                $row->value = $value;
+                $row->save();
+            }
+
+            return $value;
+        });
+    }
+
     public function encryptSecret(string $plain): string
     {
         return SecretCipher::encrypt($plain);

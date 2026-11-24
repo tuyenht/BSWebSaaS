@@ -7,7 +7,11 @@ namespace App\Modules\Admin\Support\Entries;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryTranslation;
+use App\Modules\Cms\Support\DisplayDate;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Context\SiteTime;
+use App\Modules\Theme\Rendering\TemplateCatalog;
+use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -72,6 +76,19 @@ final readonly class PendingChangeDiff
             $rows[] = ['code' => null, 'label' => Cast::string(__('entries.chg.f_cover')),
                 'now' => is_string($cover) ? Cast::string(__('entries.chg.cover_other')) : $empty, 'seen' => is_string($liveCover) ? Cast::string(__('entries.chg.cover_other')) : $empty];
         }
+        if ($entry->type === 'post') {
+            // «Thuộc tính bài»: the post's own look and the day it shows as published
+            $template = array_key_exists('template_override', $shared) ? Cast::stringOrNull($shared['template_override']) : $entry->template_override;
+            if ($template !== $entry->template_override) {
+                $rows[] = ['code' => null, 'label' => Cast::string(__('entries.rev.f_tpl')), 'now' => self::templateName($template), 'seen' => self::templateName($entry->template_override)];
+            }
+            $day = array_key_exists('meta', $shared) ? DisplayDate::of($shared['meta']) : DisplayDate::of($entry->meta);
+            $liveDay = DisplayDate::of($entry->meta);
+            if ($day !== $liveDay) {
+                $rows[] = ['code' => null, 'label' => Cast::string(__('entries.ed.pd_label', ['doc' => Cast::string(__('entries.ed.doc_post'))])),
+                    'now' => self::dayName($day), 'seen' => self::dayName($liveDay)];
+            }
+        }
         $primary = $shared['primary_category_id'] ?? null;
         if ($entry->type === 'post' && is_int($primary) && $primary !== $livePrimary) {
             $names = $categoryNames($livePrimary !== null ? [$primary, $livePrimary] : [$primary]);
@@ -80,6 +97,27 @@ final readonly class PendingChangeDiff
         }
 
         return ['rows' => $rows, 'drafts' => $drafts];
+    }
+
+    /** A display day (Y-m-d) written as the website writes days, or «the real day» for none. */
+    private static function dayName(string $day): string
+    {
+        $at = $day !== '' ? CarbonImmutable::createFromFormat('!Y-m-d', $day) : null;
+
+        return $at instanceof CarbonImmutable
+            ? SiteTime::formatDay($at, app(SiteTime::class)->dateFormat(), app()->getLocale())
+            : Cast::string(__('entries.ed.pd_real'));
+    }
+
+    /** A post's template_override as «Mẫu hiển thị» names it. */
+    private static function templateName(?string $template): string
+    {
+        return match ($template) {
+            TemplateCatalog::VARIANT_HERO => Cast::string(__('entries.ed.tpl_hero', ['doc' => Cast::string(__('entries.ed.doc_post'))])),
+            TemplateCatalog::VARIANT_WIDE => Cast::string(__('entries.ed.tpl_wide')),
+            null, '' => Cast::string(__('entries.rev.tpl_default')),
+            default => $template,
+        };
     }
 
     /** The main category a change files its post under, when it holds one. */

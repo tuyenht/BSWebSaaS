@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Support;
 
 use App\Modules\Identity\Models\SocialIdentity;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 
 /**
@@ -84,10 +85,51 @@ final readonly class SocialAuth
         return self::ownComplete($this->siteRow($provider));
     }
 
+    /**
+     * The website's whole choice for this provider from one read of each tier, for the settings
+     * screen: its switch, whether it chose its own app, whether that app is complete, and whether
+     * the platform's shared app is ready.
+     *
+     * @return array{on: bool, own: bool, own_ready: bool, shared_ready: bool}
+     */
+    public function siteChoice(string $provider): array
+    {
+        $site = $this->siteRow($provider);
+
+        return [
+            'on' => self::switchedOn($site),
+            'own' => self::choosesOwn($site),
+            'own_ready' => self::ownComplete($site),
+            'shared_ready' => $this->sharedReady($provider),
+        ];
+    }
+
     /** How many accounts have linked this provider (across the platform). */
     public function usersCount(string $provider): int
     {
         return SocialIdentity::query()->where('provider', $provider)->count();
+    }
+
+    /**
+     * How many accounts have linked each provider, in one query.
+     *
+     * @param  list<string>  $providers
+     * @return array<string, int>
+     */
+    public function usersCounts(array $providers): array
+    {
+        $counts = SocialIdentity::query()
+            ->whereIn('provider', $providers)
+            ->groupBy('provider')
+            ->selectRaw('provider, count(*) as linked')
+            ->pluck('linked', 'provider');
+
+        $out = [];
+        foreach ($providers as $provider) {
+            $out[$provider] = Cast::int($counts[$provider] ?? 0);
+        }
+
+        return $out;
     }
 
     /**
@@ -119,8 +161,12 @@ final readonly class SocialAuth
         return $this->tenant->get('oauth_social', $provider);
     }
 
-    /** @param  array<string, mixed>|null  $site */
-    private static function switchedOn(?array $site): bool
+    /**
+     * A website row's switch, as read for a row without `on` too (a row from before the switch).
+     *
+     * @param  array<string, mixed>|null  $site
+     */
+    public static function switchedOn(?array $site): bool
     {
         if ($site === null) {
             return true;
@@ -133,8 +179,12 @@ final readonly class SocialAuth
         return self::filledString($site['client_id'] ?? null) ? (bool) ($site['enabled'] ?? true) : true;
     }
 
-    /** @param  array<string, mixed>|null  $site */
-    private static function choosesOwn(?array $site): bool
+    /**
+     * Whether a website row chose its own app, as read for a row without `own` too.
+     *
+     * @param  array<string, mixed>|null  $site
+     */
+    public static function choosesOwn(?array $site): bool
     {
         if ($site === null) {
             return false;

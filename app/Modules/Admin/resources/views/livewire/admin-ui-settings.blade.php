@@ -1,121 +1,54 @@
-<x-bs-admin::settings-shell active="admin-ui" :head="false" :unsaved="$changes" :invalid="count($errors->keys())">
+@php
+    use App\Modules\Admin\Theme\AdminChromeResolver;
+
+    // Design board «Khung quản trị», section «Giao diện trang quản trị»: a note, then two folding groups of
+    // settings, each drawn as picture cards; the first card keeps the platform's default and names it (X),
+    // so the owner sees what the default resolves to. Only the values the panel can draw today are offered.
+    $groups = [
+        'layout' => ['layout_width', 'position', 'sidebar_size'],
+        'look' => ['scheme', 'topbar', 'sidebar', 'sidebar_image', 'text_size'],
+    ];
+    $opt = fn (string $axis, string $value): string => $axis === 'text_size' ? __('admin.account.fs_'.$value) : __('admin.aui.o.'.$axis.'.'.$value);
+    $bad = $errors->keys();
+@endphp
+<x-bs-admin::settings-shell active="admin-ui" :unsaved="$changes" :invalid="count($bad)">
     @if ($saved)
         <x-bs-admin::alert color="success" icon="ri-checkbox-circle">{{ __('admin.theme_saved_note') }}</x-bs-admin::alert>
     @endif
     {{-- Enter in a field is the save bar's "Lưu" (it waits while a save runs and does nothing with nothing to save); the form itself never submits, so the page never reloads --}}
-    <form x-data x-on:submit.prevent>
-        <div class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
-            <div class="border-b border-border px-5 py-3">
-                <h2 class="text-[15px] font-semibold text-text">{{ __('admin.admin_ui') }}</h2>
-                <p class="mt-0.5 text-xs text-body-muted">{{ __('admin.appearance_desc') }}</p>
-            </div>
+    <div x-data="{ open: 'layout' }">
+    <form x-data x-on:submit.prevent class="flex flex-col gap-3">
+        <p class="flex items-start gap-2 rounded-md border border-info-text/30 bg-info-soft px-3 py-2.5 text-caption leading-relaxed text-info-text" role="note">
+            <x-bs-admin::icon name="ri-information" class="mt-px size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0" />
+            <span class="min-w-0">{{ __('admin.aui.note') }}</span>
+        </p>
 
-            <div class="space-y-6 p-5">
-                @foreach ([
-                    'scheme' => __('admin.theme_scheme_desc'),
-                    'sidebar' => __('admin.theme_sidebar_desc'),
-                    'topbar' => __('admin.theme_topbar_desc'),
-                ] as $axis => $description)
-                    <fieldset>
-                        <legend class="text-sm font-medium text-body-text">{{ __('admin.theme_'.$axis) }}</legend>
-                        <p class="mb-3 mt-0.5 text-xs text-body-muted">{{ $description }}</p>
-                        <div class="grid max-w-md grid-cols-3 gap-3">
-                            {{-- '' = inherit the app default; shown as its own card so "not pinned" stays visible. --}}
-                            <label class="group block cursor-pointer">
-                                <input type="radio" value="" wire:model.live="{{ $axis }}" class="peer sr-only">
-                                <span class="grid h-14 place-items-center rounded border border-dashed border-border-strong text-[11px] font-medium text-body-muted transition-all peer-checked:border-solid peer-checked:border-accent peer-checked:ring-2 peer-checked:ring-accent/30 peer-focus-visible:ring-2 peer-focus-visible:ring-accent/60">
-                                    {{ __('admin.theme_inherit') }}
-                                </span>
-                                <span class="mt-1.5 block text-center text-xs font-medium text-body-muted group-has-[:checked]:text-accent">{{ __('admin.theme_default') }}</span>
-                            </label>
-                            @foreach (\App\Modules\Admin\Theme\AdminChromeResolver::FIELDS[$axis] as $value)
-                                <x-bs-admin::theme-option :axis="$axis" :value="$value" name="st-{{ $axis }}"
-                                                       :label="__('admin.theme_'.str_replace('-', '_', $value))" wire:model.live="{{ $axis }}" />
-                            @endforeach
+        @foreach ($groups as $group => $axes)
+            <x-bs-admin::settings-group :key="$group" id="aui-g-{{ $group }}" :title="__('admin.aui.g_'.$group)" :count="count($axes)"
+                                        :bad="count(array_intersect($axes, $bad))" :first="$loop->first"
+                                        class="flex flex-col gap-6">
+                @foreach ($axes as $axis)
+                    @php
+                        $fid = 'aui-'.$axis;
+                        $labels = [];
+                        foreach (AdminChromeResolver::FIELDS[$axis] as $value) {
+                            $labels[$value] = $opt($axis, $value);
+                        }
+                    @endphp
+                    <div class="flex min-w-0 flex-col gap-2.5" wire:key="aui-f-{{ $axis }}">
+                        <div class="flex flex-col gap-0.5">
+                            <h3 id="{{ $fid }}" class="text-[calc(0.8125rem+var(--user-text-boost))] font-semibold text-text-strong">{{ __('admin.aui.f_'.$axis) }}</h3>
+                            <p id="{{ $fid }}-d" class="text-caption text-text-muted">{{ __('admin.aui.d_'.$axis) }}</p>
                         </div>
-                        @error($axis) <p class="mt-1 text-xs text-admin-danger-text">{{ $message }}</p> @enderror
-                    </fieldset>
+                        <x-bs-admin::pick-cards :axis="$axis" :values="AdminChromeResolver::FIELDS[$axis]" :labels="$labels" :labelledby="$fid"
+                                                :inherit="__('admin.aui.inherit_card')" aria-describedby="{{ $fid }}-d" />
+                        @error($axis)
+                            <x-bs-admin::field-error>{{ $message }}</x-bs-admin::field-error>
+                        @enderror
+                    </div>
                 @endforeach
-
-                <fieldset>
-                    <legend class="text-sm font-medium text-body-text">{{ __('admin.theme_layout_width') }}</legend>
-                    <p class="mb-3 mt-0.5 text-xs text-body-muted">{{ __('admin.theme_layout_width_desc') }}</p>
-                    <div class="inline-flex rounded border border-border-strong p-0.5">
-                        @foreach (['' => __('admin.theme_default'), 'fluid' => __('admin.theme_fluid'), 'boxed' => __('admin.theme_boxed')] as $value => $label)
-                            <label @class([
-                                'cursor-pointer rounded px-3 py-1.5 text-xs font-medium transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent/60',
-                                'bg-admin-primary text-white' => $layout_width === (string) $value,
-                                'text-body-muted hover:bg-surface-hover' => $layout_width !== (string) $value,
-                            ])>
-                                <input type="radio" value="{{ $value }}" wire:model.live="layout_width" class="sr-only">
-                                {{ $label }}
-                            </label>
-                        @endforeach
-                    </div>
-                    @error('layout_width') <p class="mt-1 text-xs text-admin-danger-text">{{ $message }}</p> @enderror
-                </fieldset>
-
-                <fieldset>
-                    <legend class="text-sm font-medium text-body-text">{{ __('admin.theme_sidebar_size') }}</legend>
-                    <p class="mb-3 mt-0.5 text-xs text-body-muted">{{ __('admin.theme_sidebar_size_desc') }}</p>
-                    <div class="inline-flex rounded border border-border-strong p-0.5">
-                        @foreach (['' => __('admin.theme_default'), 'lg' => __('admin.theme_size_default'), 'sm' => __('admin.theme_size_compact')] as $value => $label)
-                            <label @class([
-                                'cursor-pointer rounded px-3 py-1.5 text-xs font-medium transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent/60',
-                                'bg-admin-primary text-white' => $sidebar_size === (string) $value,
-                                'text-body-muted hover:bg-surface-hover' => $sidebar_size !== (string) $value,
-                            ])>
-                                <input type="radio" value="{{ $value }}" wire:model.live="sidebar_size" class="sr-only">
-                                {{ $label }}
-                            </label>
-                        @endforeach
-                    </div>
-                    @error('sidebar_size') <p class="mt-1 text-xs text-admin-danger-text">{{ $message }}</p> @enderror
-                </fieldset>
-
-                <fieldset>
-                    <legend class="text-sm font-medium text-body-text">{{ __('admin.theme_sidebar_image') }}</legend>
-                    <p class="mb-3 mt-0.5 text-xs text-body-muted">{{ __('admin.theme_sidebar_image_desc') }}</p>
-                    <div class="grid max-w-md grid-cols-6 gap-2">
-                        <label class="group block cursor-pointer">
-                            <input type="radio" value="" wire:model.live="sidebar_image" class="peer sr-only">
-                            <span class="grid aspect-[3/5] place-items-center rounded border border-dashed border-border-strong text-[9px] font-medium text-body-muted transition-all peer-checked:border-solid peer-checked:border-accent peer-checked:ring-2 peer-checked:ring-accent/30 peer-focus-visible:ring-2 peer-focus-visible:ring-accent/60">
-                                {{ __('admin.theme_default') }}
-                            </span>
-                        </label>
-                        @foreach (\App\Modules\Admin\Theme\AdminChromeResolver::FIELDS['sidebar_image'] as $value)
-                            <label class="group block cursor-pointer">
-                                <input type="radio" value="{{ $value }}" wire:model.live="sidebar_image" class="peer sr-only"
-                                       @if ($value !== 'none') aria-label="{{ __('admin.theme_sidebar_image').' '.str_replace('img-', '', $value) }}" @endif>
-                                <span class="grid aspect-[3/5] place-items-center overflow-hidden rounded border border-border bg-surface-muted text-[9px] text-body-muted transition-all peer-checked:border-accent peer-checked:ring-2 peer-checked:ring-accent/30 peer-focus-visible:ring-2 peer-focus-visible:ring-accent/60"
-                                      style="{{ $value === 'none' ? '' : 'background-image:url(/images/admin/sidebar/'.$value.'.jpg);background-size:cover;background-position:center' }}">
-                                    {{ $value === 'none' ? __('admin.theme_image_none') : '' }}
-                                </span>
-                            </label>
-                        @endforeach
-                    </div>
-                    @error('sidebar_image') <p class="mt-1 text-xs text-admin-danger-text">{{ $message }}</p> @enderror
-                </fieldset>
-
-                <fieldset>
-                    <legend class="text-sm font-medium text-body-text">{{ __('admin.theme_position') }}</legend>
-                    <p class="mb-3 mt-0.5 text-xs text-body-muted">{{ __('admin.theme_position_desc') }}</p>
-                    <div class="inline-flex rounded border border-border-strong p-0.5">
-                        @foreach (['' => __('admin.theme_default'), 'fixed' => __('admin.theme_fixed'), 'scrollable' => __('admin.theme_scrollable')] as $value => $label)
-                            <label @class([
-                                'cursor-pointer rounded px-3 py-1.5 text-xs font-medium transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent/60',
-                                'bg-admin-primary text-white' => $position === (string) $value,
-                                'text-body-muted hover:bg-surface-hover' => $position !== (string) $value,
-                            ])>
-                                <input type="radio" value="{{ $value }}" wire:model.live="position" class="sr-only">
-                                {{ $label }}
-                            </label>
-                        @endforeach
-                    </div>
-                    @error('position') <p class="mt-1 text-xs text-admin-danger-text">{{ $message }}</p> @enderror
-                </fieldset>
-            </div>
-
-        </div>
+            </x-bs-admin::settings-group>
+        @endforeach
     </form>
+    </div>
 </x-bs-admin::settings-shell>

@@ -84,7 +84,7 @@ final class AdminNav
     private const NO_SHELL_TRAIL = [
         'admin.dashboard', 'admin.entries.review', 'admin.gallery',
         'admin.entries.index', 'admin.entries.create', 'admin.entries.edit',
-        'admin.catalog.*', 'admin.settings.*', 'admin.form-builder.create', 'admin.form-builder.edit',
+        'admin.catalog.*', 'admin.settings.*', 'platform.settings.*', 'admin.form-builder.create', 'admin.form-builder.edit',
     ];
 
     /**

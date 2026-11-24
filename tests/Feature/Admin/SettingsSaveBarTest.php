@@ -13,6 +13,7 @@ use App\Modules\Admin\Livewire\SocialSettings;
 use App\Modules\Admin\Livewire\WebsiteAppearanceSettings;
 use App\Modules\Admin\Support\LoginTurnstile;
 use App\Modules\Admin\Support\PlatformSettings;
+use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Identity\Models\User;
@@ -20,6 +21,7 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteSetting;
+use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
@@ -41,6 +43,7 @@ beforeEach(function (): void {
 });
 
 afterEach(function (): void {
+    DB::connection('pgsql_admin')->table('platform_settings')->where('group_name', 'oauth_social')->delete();   // platform_settings is never rolled back
     Livewire::flushState();   // a full-page GET leaves Livewire's asset-injection flag set for the next file's pages
 });
 
@@ -50,6 +53,17 @@ function sbAdmin(): User
     app(Tenancy::class)->enter(1, fn () => grantRole($admin, 'site-admin', ['settings.manage']));
 
     return $admin->fresh();
+}
+
+/** A website admin whose platform opened Google and Facebook, so quick sign-in's switches show. */
+function sbSocialAdmin(): User
+{
+    config(['admin.encryption_key' => 'base64:'.base64_encode('0123456789abcdef0123456789abcdef')]);
+    foreach (['google', 'facebook'] as $provider) {
+        app(PlatformSettings::class)->put('oauth_social', $provider, ['client_id' => $provider.'-shared', 'client_secret' => SecretCipher::encrypt('shared-secret'), 'enabled' => true, 'status' => 'ok']);
+    }
+
+    return sbAdmin();
 }
 
 /** A platform operator (super_admin) for the system-wide login security, its switch saved on. */
@@ -131,7 +145,7 @@ it('turns the bar on after one change, and "Bỏ thay đổi" puts the saved val
     'seo' => [SeoSettings::class, fn (Testable $lw) => $lw->set('form.template', '%tieu-de%'), 'form.template', ''],
     'admin panel appearance' => [AdminUiSettings::class, fn (Testable $lw) => $lw->set('scheme', 'dark'), 'scheme', ''],
     'email' => [EmailSettings::class, fn (Testable $lw) => $lw->set('fromName', 'Cửa hàng A'), 'fromName', ''],
-    'quick sign-in' => [SocialSettings::class, fn (Testable $lw) => $lw->set('forms.google.client_id', 'abc.apps'), 'forms.google.client_id', ''],
+    'quick sign-in' => [SocialSettings::class, fn (Testable $lw) => $lw->call('toggle', 'google')->call('confirmAsk'), 'on.google', true, fn () => sbSocialAdmin()],
     'catalog' => [CatalogSettings::class, fn (Testable $lw) => $lw->set('mode', 'commerce'), 'mode', 'brochure'],
     'floating contact' => [FloatingContactSettings::class, fn (Testable $lw) => $lw->call('toggleEnabled'), 'enabled', false],
     'integrations' => [IntegrationsSettings::class, fn (Testable $lw) => $lw->set('tokens.google', 'abcdefghijklmnopqrstuvwxyz'), 'tokens.google', ''],
@@ -153,24 +167,25 @@ it('goes back to nothing to save once the change is saved', function (string $pa
 })->with([
     'admin panel appearance' => [AdminUiSettings::class, fn (Testable $lw) => $lw->set('scheme', 'dark')],
     'email' => [EmailSettings::class, fn (Testable $lw) => $lw->set('fromName', 'Cửa hàng A')],
-    'quick sign-in' => [SocialSettings::class, fn (Testable $lw) => $lw->set('forms.google.client_id', 'abc.apps')],
+    'quick sign-in' => [SocialSettings::class, fn (Testable $lw) => $lw->call('toggle', 'google')->call('confirmAsk'), fn () => sbSocialAdmin()],
     'catalog' => [CatalogSettings::class, fn (Testable $lw) => $lw->set('mode', 'commerce')],
     'login security' => [LoginSecuritySettings::class, fn (Testable $lw) => $lw->set('turnstileLogin', false), fn () => sbOperator()],
     'website appearance: "Có tìm kiếm"' => [WebsiteAppearanceSettings::class, fn (Testable $lw) => $lw->call('toggleSearch'), fn () => sbHeaderAdmin()],
 ]);
 
-it('saves every quick sign-in app that changed with the one "Lưu", and leaves the others alone', function (): void {
-    $admin = sbAdmin();
+it('saves every quick sign-in switch that changed with the one "Lưu"', function (): void {
+    $admin = sbSocialAdmin();
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         Livewire::actingAs($admin)->test(SocialSettings::class)
-            ->set('forms.google.client_id', 'g.apps')
-            ->set('forms.facebook.client_id', 'fb-123')
+            ->call('toggle', 'google')->call('confirmAsk')
+            ->call('toggle', 'facebook')->call('confirmAsk')
             ->call('save')->assertHasNoErrors();
 
         Livewire::actingAs($admin)->test(SocialSettings::class)
-            ->assertSet('forms.google.client_id', 'g.apps')
-            ->assertSet('forms.facebook.client_id', 'fb-123');
+            ->assertSet('on.google', false)
+            ->assertSet('on.facebook', false);
+        expect(app(SettingsRepository::class)->get('oauth_social', 'google'))->toBe(['on' => false, 'own' => false]);
     });
 });
 
@@ -280,7 +295,7 @@ it('answers the bar with true only when a section really saved', function (strin
     'general' => [GeneralSettings::class, fn (Testable $lw) => $lw->set('i18n.vi.name', 'Cơ khí An Vinh')->set('form.legalName', 'CÔNG TY TNHH CƠ KHÍ AN VINH')],
     'admin panel appearance' => [AdminUiSettings::class, fn (Testable $lw) => $lw->set('scheme', 'dark')],
     'email' => [EmailSettings::class, fn (Testable $lw) => $lw->set('fromName', 'Cửa hàng A')],
-    'quick sign-in' => [SocialSettings::class, fn (Testable $lw) => $lw->set('forms.google.client_id', 'abc.apps')],
+    'quick sign-in' => [SocialSettings::class, fn (Testable $lw) => $lw->call('toggle', 'google')->call('confirmAsk'), fn () => sbSocialAdmin()],
     'catalog' => [CatalogSettings::class, fn (Testable $lw) => $lw->set('mode', 'commerce')],
     'floating contact' => [FloatingContactSettings::class, fn (Testable $lw) => $lw->call('toggleEnabled')],
     'integrations' => [IntegrationsSettings::class, fn (Testable $lw) => $lw->set('tokens.google', 'abcdefghijklmnopqrstuvwxyz')],
@@ -298,19 +313,21 @@ it('answers false when quick sign-in has nothing to save', function (): void {
 });
 
 it('keeps the quick sign-in providers out of the browser\'s reach, so a tampered request writes no other key', function (): void {
-    $admin = sbAdmin();
+    $admin = sbSocialAdmin();
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         $lw = Livewire::actingAs($admin)->test(SocialSettings::class);
-        expect(fn () => $lw->set('providers', ['google', 'facebook', 'evil']))->toThrow(CannotUpdateLockedPropertyException::class)
-            ->and(fn () => $lw->set('secretSet', ['google' => true]))->toThrow(CannotUpdateLockedPropertyException::class);
+        expect(fn () => $lw->set('on', ['google' => true, 'evil' => true]))->toThrow(CannotUpdateLockedPropertyException::class)
+            ->and(fn () => $lw->set('apps', []))->toThrow(CannotUpdateLockedPropertyException::class)
+            ->and(fn () => $lw->set('scope', 'platform'))->toThrow(CannotUpdateLockedPropertyException::class)
+            ->and(fn () => $lw->set('askProvider', 'evil'))->toThrow(CannotUpdateLockedPropertyException::class);
 
-        // a form row for a provider the screen does not offer: neither "Lưu" nor a named save stores it
-        $lw->set('forms.evil', ['client_id' => 'x', 'client_secret' => 'y', 'enabled' => true])->call('save')->assertOk();
-        $lw->call('save', 'evil')->assertOk();
+        // a provider the screen does not offer: neither the switch nor "Lưu" nor «Dùng khóa riêng» stores it
+        $lw->call('toggle', 'evil')->call('save')->assertOk();
+        $lw->call('useOwn', 'evil', 'x', 'y')->assertOk();
 
         expect(app(SettingsRepository::class)->get('oauth_social', 'evil'))->toBeNull()
-            ->and($lw->get('providers'))->toBe(['google', 'facebook']);
+            ->and(array_keys($lw->get('on')))->toBe(['google', 'facebook']);
     });
 });
 
@@ -395,7 +412,6 @@ it('sends Enter in a settings form through the bar, never straight to the save',
 })->with([
     'admin panel appearance' => [AdminUiSettings::class],
     'email' => [EmailSettings::class],
-    'quick sign-in' => [SocialSettings::class],
     'login security' => [LoginSecuritySettings::class, fn () => sbOperator()],
 ]);
 

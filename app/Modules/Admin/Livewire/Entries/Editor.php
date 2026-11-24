@@ -48,6 +48,7 @@ use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Cms\Support\CategoryScopes;
+use App\Modules\Cms\Support\DisplayDate;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Support\EntryCategoryWriter;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
@@ -66,6 +67,7 @@ use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Theme\Components\ComponentRegistry;
+use App\Modules\Theme\Rendering\TemplateCatalog;
 use App\Modules\Workflow\Exceptions\InvalidTransitionException;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowState;
@@ -144,7 +146,7 @@ final class Editor extends Component
      * The fields the save state and the leave dialog count against the saved entry. The block list
      * is counted apart (blocksChanged): the browser cannot write it the way the server does.
      */
-    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryIds', 'coverImageKey', 'coverAlt', 'parentUlid', 'scheduleAt', 'statusTo'];
+    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryIds', 'coverImageKey', 'coverAlt', 'parentUlid', 'scheduleAt', 'statusTo', 'templateKey', 'displayDate'];
 
     /** Which entry is being edited — server-resolved (mount/persist); never client-set. */
     #[Locked]
@@ -229,6 +231,26 @@ final class Editor extends Component
      * Google and a screen reader take from it; empty = the picture's own words, then the title.
      */
     public string $coverAlt = '';
+
+    /**
+     * «Mẫu hiển thị» of a post (board 07 «Thuộc tính bài»): '' = the look its category gives it, else one
+     * of the post variants (TemplateCatalog::ROLE_POST_VARIANT). One value for every language.
+     */
+    public string $templateKey = '';
+
+    /**
+     * «Ngày đăng hiện trên bài»: the day (Y-m-d, in the website's zone) the post shows as published on
+     * its page and its cards; '' = the real publish day (DisplayDate). One value for every language.
+     */
+    public string $displayDate = '';
+
+    /**
+     * Whether this form loaded «Mẫu hiển thị» and «Ngày đăng hiện trên bài» (set on every mount). A form
+     * opened before they existed comes back from its snapshot without them, its two fields empty: its
+     * save then leaves both as stored instead of clearing a look or a day set since.
+     */
+    #[Locked]
+    public bool $postPropsRead = false;
 
     /**
      * The message under the form after a cover pick or «Bỏ ảnh» (components/toast): its words and its
@@ -469,6 +491,7 @@ final class Editor extends Component
     {
         $this->locale = $this->resolveLocale(app(SiteLocale::class), $locale ?? request()->query('locale'));
         $this->multiLocale = count(app(SiteLocale::class)->enabled()) > 1;
+        $this->postPropsRead = true;
 
         if ($ulid === null) {
             $this->authorize('create', Entry::class);
@@ -520,6 +543,10 @@ final class Editor extends Component
 
         $cover = data_get($entry->meta, 'image_url');
         $this->coverImageKey = is_string($cover) ? $cover : '';
+        if ($this->type === 'post') {
+            $this->templateKey = TemplateCatalog::variant($entry->template_override) ?? '';
+            $this->displayDate = DisplayDate::of($entry->meta);
+        }
 
         // one read for the post's categories in order, the main one (position 0) among them
         $filed = $this->type === 'post'
@@ -547,7 +574,7 @@ final class Editor extends Component
         // carries when it was last saved.
         $this->savedAt = self::iso($translation?->updated_at);
         // what visitors see, also while the form edits a pending change: the overwrite check compares the website
-        $this->storedPrint = self::printOf($translation, $entry->meta, $liveCategories);
+        $this->storedPrint = self::printOf($translation, $entry->meta, $liveCategories, $entry->template_override);
         $this->loadedAt = self::iso(CarbonImmutable::now());
         $this->mayPublish = $this->user()->can('publish', $entry);
         $this->frameRights($entry);
@@ -2082,7 +2109,7 @@ final class Editor extends Component
         $this->saveFailed = false;
         // A language with no saved version yet loads nothing back: start from an empty form.
         $preset = $this->ulid === null ? $this->parentLoaded : null;
-        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'coverAlt', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
+        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'coverAlt', 'templateKey', 'displayDate', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
             'transitionNote', 'assignTo', 'showImagePicker', 'blockImagePickerPath', 'coverToast', 'coverUndo', 'stale', 'overwrite',
             'parentUlid', 'parentLoaded', 'parentName', 'pageHome', 'scheduleAt', 'scheduleLoaded', 'statusTo', 'autoSaved', 'slugFresh', 'slugTouched');
         $this->mount($this->ulid, $this->sectionKey, $this->locale, $preset);
@@ -2153,6 +2180,17 @@ final class Editor extends Component
             }
         }
         $this->restoreKeptCover($kept['coverImageKey'] ?? null);
+        // a post's own look and shown day, in the website's default language (they are every language's)
+        if ($this->type === 'post' && ! $this->sharedLocked()) {
+            $template = $kept['templateKey'] ?? null;
+            if (is_string($template) && ($template === '' || in_array($template, TemplateCatalog::names(TemplateCatalog::ROLE_POST_VARIANT), true))) {
+                $this->templateKey = $template;
+            }
+            $day = $kept['displayDate'] ?? null;
+            if (is_string($day) && ($day === '' || DisplayDate::valid($day))) {
+                $this->displayDate = $day;
+            }
+        }
         if ($this->type === 'post' && is_array($kept['categoryIds'] ?? null)) {
             $this->restoreCategories($kept['categoryIds']);
         } elseif ($this->type === 'post' && array_key_exists('categoryId', $kept)) {
@@ -2182,7 +2220,7 @@ final class Editor extends Component
         // The whole row: the save writes through this same model, so the check costs no extra read.
         $translation = $entry->translations()->where('locale', $this->locale)->first();
 
-        return ['print' => self::printOf($translation, $entry->meta, $this->type === 'post' ? $this->storedCategories($entry) : []), 'translation' => $translation];
+        return ['print' => self::printOf($translation, $entry->meta, $this->type === 'post' ? $this->storedCategories($entry) : [], $entry->template_override), 'translation' => $translation];
     }
 
     /**
@@ -2192,7 +2230,7 @@ final class Editor extends Component
      * @param  list<int>  $categoryIds  a post's categories, the main one first (none for a page)
      * @return array<string, string>
      */
-    private static function printOf(?EntryTranslation $translation, mixed $meta, array $categoryIds): array
+    private static function printOf(?EntryTranslation $translation, mixed $meta, array $categoryIds, ?string $template): array
     {
         $cover = is_array($meta) ? ($meta['image_url'] ?? null) : null;
 
@@ -2207,6 +2245,9 @@ final class Editor extends Component
             'category' => implode(',', $categoryIds),
             // last: a form opened before the field existed holds a print without it (see save())
             'cover_alt' => md5((string) $translation?->cover_alt),
+            // after it, as later fields: a form opened before them holds a print without them (see save())
+            'template' => md5((string) $template),
+            'display_date' => md5(DisplayDate::of($meta)),
         ];
     }
 
@@ -2308,6 +2349,8 @@ final class Editor extends Component
             'cover' => [__('entries.ed.card_cover'), $this->coverName($this->coverImageKey), $this->coverName(is_string($cover) ? $cover : '')],
             'cover_alt' => [__('entries.ed.cover_alt_label'), $this->coverAlt, (string) $translation?->cover_alt],
             'category' => [__('entries.ed.card_category'), $categoryNames($this->categoryIds), $categoryNames($theirIds)],
+            'template' => [__('entries.rev.f_tpl'), $this->templateName($this->formTemplate($entry->template_override)), $this->templateName($entry->template_override)],
+            'display_date' => [__('entries.ed.pd_label', ['doc' => $this->docNoun()]), $this->dayName($this->displayDate), $this->dayName(DisplayDate::of($entry->meta))],
         ];
 
         $rows = [];
@@ -2852,6 +2895,53 @@ final class Editor extends Component
         return $at !== null ? CarbonImmutable::instance($at)->utc()->toIso8601String() : null;
     }
 
+    /**
+     * The template_override this form stores for a post: the variant picked, else none — but a layout
+     * stored some other way (a content pack, a copy) is kept, since the form does not offer it.
+     */
+    private function formTemplate(?string $stored): ?string
+    {
+        if ($this->type !== 'post') {
+            return $stored;
+        }
+        if ($this->templateKey !== '') {
+            return $this->templateKey;
+        }
+
+        return TemplateCatalog::variant($stored) !== null ? null : $stored;
+    }
+
+    /** A template_override as «Mẫu hiển thị» names it (the stale question, the history). */
+    private function templateName(mixed $template): string
+    {
+        return match ($template) {
+            TemplateCatalog::VARIANT_HERO => Cast::string(__('entries.ed.tpl_hero', ['doc' => $this->docNoun()])),
+            TemplateCatalog::VARIANT_WIDE => Cast::string(__('entries.ed.tpl_wide')),
+            null, '' => Cast::string(__('entries.rev.tpl_default')),
+            default => Cast::string($template),
+        };
+    }
+
+    /** A display day as the website writes dates; '' when none (the real day shows). */
+    private function dayName(string $day): string
+    {
+        $at = $day !== '' ? CarbonImmutable::createFromFormat('!Y-m-d', $day) : null;
+
+        return $at instanceof CarbonImmutable ? SiteTime::formatDay($at, app(SiteTime::class)->dateFormat(), $this->locale) : '';
+    }
+
+    /** The short word for the content in «Ảnh lớn đầu …» / «Ngày đăng hiện trên …» (board 07 docN). */
+    private function docNoun(): string
+    {
+        return Cast::string(__($this->type === 'page' ? 'entries.ed.doc_page' : 'entries.ed.doc_post'));
+    }
+
+    /** One value for every language (cover, look, shown day): set in the website's default language only. */
+    private function sharedLocked(): bool
+    {
+        return $this->locale !== app(SiteLocale::class)->default();
+    }
+
     /** What is being edited, in the sentence: "trang", or the post section's name ("tin tức"). */
     private function unit(): string
     {
@@ -3024,6 +3114,13 @@ final class Editor extends Component
             // keeps below the facet terms
             $rules['categoryIds'] = ['array', 'max:'.(Entry::FACET_POSITION_BASE - 1), $this->arePostCategories(...)];
             $rules['categoryIds.*'] = ['integer', 'distinct'];
+            // «Thuộc tính bài»: a look the theme draws for posts, a real calendar day
+            $rules['templateKey'] = ['string', Rule::in(TemplateCatalog::names(TemplateCatalog::ROLE_POST_VARIANT))];
+            $rules['displayDate'] = ['nullable', 'string', 'date_format:Y-m-d', static function (string $attribute, mixed $value, Closure $fail): void {
+                if (is_string($value) && $value !== '' && ! DisplayDate::valid($value)) {
+                    $fail(Cast::string(__('entries.ed.pd_invalid')));
+                }
+            }];
         }
 
         return $rules;
@@ -3108,6 +3205,8 @@ final class Editor extends Component
             'categoryId.exists' => __('entries.category_invalid'),
             'categoryIds.*' => __('entries.category_invalid'),
             'coverAlt.max' => __('entries.ed.cover_alt_too_long', ['max' => EntryContentRules::COVER_ALT_MAX]),
+            'templateKey.in' => __('entries.ed.tpl_invalid'),
+            'displayDate.date_format' => __('entries.ed.pd_invalid'),
         ];
     }
 
@@ -3336,6 +3435,14 @@ final class Editor extends Component
             if ($this->overwrite !== null) {
                 $this->overwrite += ['cover_alt' => md5('')];
             }
+            // a form opened before «Mẫu hiển thị» and «Ngày đăng hiện trên bài» could not change them: read as stored
+            $later = array_intersect_key($stored['print'], ['template' => true, 'display_date' => true]);
+            if ($this->storedPrint !== []) {
+                $this->storedPrint += $later;
+            }
+            if ($this->overwrite !== null) {
+                $this->overwrite += $later;
+            }
             if ($stored['print'] !== $this->storedPrint && $stored['print'] !== $this->overwrite) {
                 if ($filled) {
                     $this->slug = '';
@@ -3383,8 +3490,13 @@ final class Editor extends Component
         } else {
             unset($meta['image_url']);
         }
+        // «Thuộc tính bài»: every language's, so set in the website's default language only
+        if ($this->type === 'post' && ! $this->sharedLocked() && $this->postPropsRead) {
+            $meta = DisplayDate::into($meta, $this->displayDate);
+            $entry->template_override = $this->formTemplate($entry->template_override);
+        }
         $entry->meta = $meta;
-        $sharedChanged = $entry->isDirty('meta');
+        $sharedChanged = $entry->isDirty(['meta', 'template_override']);
         $coverChanged = ($meta['image_url'] ?? null) !== $coverBefore;
         $entry->save();
 
@@ -3448,7 +3560,7 @@ final class Editor extends Component
         $this->loadedAt = $this->savedAt;
         // What this save stored is what the next one compares against (the written model holds it).
         // The main category just written is the form's own value, so it needs no second read.
-        $this->storedPrint = self::printOf($translation, $entry->meta, $this->type === 'post' ? $this->categoryIds : []);
+        $this->storedPrint = self::printOf($translation, $entry->meta, $this->type === 'post' ? $this->categoryIds : [], $entry->template_override);
         $this->mayPublish = $this->user()->can('publish', $entry);
         if ($wasNew) {
             $this->frameRights($entry);

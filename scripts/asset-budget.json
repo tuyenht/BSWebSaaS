@@ -54,7 +54,7 @@
     },
     "resources/css/sf-post.css": {
       "js": 0,
-      "css": 3062
+      "css": 3158
     },
     "resources/css/sf-product.css": {
       "js": 0,
@@ -217,6 +217,10 @@
     "resources/js/admin-guide.js": {
       "js": 8952,
       "css": 1945
+    },
+    "resources/js/admin-social.js": {
+      "js": 1311,
+      "css": 0
     }
   }
 }
