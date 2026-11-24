@@ -8,7 +8,9 @@ use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\MemberCategoryScope;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\TaxonomyTranslation;
+use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Support\CategoryScopes;
+use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\ContentPack\Ledger;
 use App\Modules\Provisioning\ContentPack\PackReader;
@@ -16,6 +18,7 @@ use App\Modules\Provisioning\ContentPack\PackValidator;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Workflow\Models\Workflow;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Fixtures\ContentPacks;
@@ -88,6 +91,14 @@ function psRoutes(int $siteId): array
         ->mapWithKeys(fn (SiteRoute $route): array => [$route->locale.':'.$route->path => $route->entry_id.'|'.$route->taxonomy_id.'|'.$route->product_id])->all());
 }
 
+/** An active approval workflow on the section key (no stages needed: the plan only asks whether one governs the key). */
+function psWorkflow(int $siteId, string $appliesTo): Workflow
+{
+    return ContentPacks::in($siteId, fn (): Workflow => Workflow::query()->create([
+        'key' => 'review-'.$appliesTo, 'name' => 'Duyệt bài', 'applies_to_type' => $appliesTo, 'template' => 'admin_approval', 'is_active' => true,
+    ]));
+}
+
 function psPost(int $siteId, string $slug): Entry
 {
     return ContentPacks::in($siteId, fn (): Entry => Entry::query()->findOrFail(EntryTranslation::query()->where('locale', 'vi')->where('slug', $slug)->value('entry_id')));
@@ -144,23 +155,44 @@ describe('the plan and the write', function (): void {
             ->and(ContentPacks::in($this->siteId, fn () => ContentSection::query()->where('key', 'services')->count()))->toBe(1);
     });
 
-    it('adopts the section the site already has under the key on the same category, keeping its permissions', function (): void {
+    it('keeps the label, icon and order of a section the loader has not written before, unless forced', function (): void {
+        // No ledger line: nothing tells a staff choice apart from an old default, so, as for products,
+        // the site's own presentation wins; the binding (same key, same category, its permissions) is the site's already.
         ContentPacks::load();
         $category = psCategoryId($this->siteId, 'dich-vu');
         ContentPacks::in($this->siteId, fn () => ContentSection::query()->create([
-            'key' => 'services', 'label' => 'DV cũ', 'entry_type' => 'post', 'taxonomy_id' => $category, 'permission_prefix' => null, 'sort_order' => 7,
+            'key' => 'services', 'label' => 'DV cũ', 'entry_type' => 'post', 'taxonomy_id' => $category, 'permission_prefix' => null, 'icon' => 'ri-tools', 'sort_order' => 7,
         ]));
+        $before = psSection($this->siteId, 'services');
         psSections($this->folder, [psServices()]);
 
         [$exit, $output] = ContentPacks::run();
-        expect($exit)->toBe(0, $output)->and(ContentPacks::verdict($output, 'section:services'))->toBe('adopt');
+        expect($exit)->toBe(0, $output)
+            ->and(ContentPacks::verdict($output, 'section:services'))->toBe('skip:edited')
+            ->and(psLine($output, 'section:services'))->toContain('the loader has not written before');
 
         [$exit, $output] = ContentPacks::load();
+        expect($exit)->toBe(0, $output)->and(psSection($this->siteId, 'services'))->toBe($before);
+
+        [$exit, $output] = ContentPacks::load(force: ['section:services']);
         expect($exit)->toBe(0, $output)
             ->and(psSection($this->siteId, 'services'))->toMatchArray([
                 'label' => 'Dịch vụ', 'icon' => 'ri-briefcase', 'sort_order' => 2, 'taxonomy_id' => $category, 'permission_prefix' => null,
             ])
             ->and(ContentPacks::in($this->siteId, fn () => ContentSection::query()->where('key', 'services')->count()))->toBe(1);
+    });
+
+    it('takes over a section the site already has as it is, when its presentation matches the pack', function (): void {
+        ContentPacks::load();
+        $category = psCategoryId($this->siteId, 'dich-vu');
+        ContentPacks::in($this->siteId, fn () => ContentSection::query()->create([
+            'key' => 'services', 'label' => 'Dịch vụ', 'entry_type' => 'post', 'taxonomy_id' => $category, 'permission_prefix' => 'entries', 'icon' => 'ri-briefcase', 'sort_order' => 2,
+        ]));
+        psSections($this->folder, [psServices()]);
+
+        [$exit, $output] = ContentPacks::run();
+
+        expect($exit)->toBe(0, $output)->and(ContentPacks::verdict($output, 'section:services'))->toBe('unchanged');
     });
 
     it('never rebinds a section the site has on another category: a conflict, nothing written', function (): void {
@@ -190,17 +222,68 @@ describe('the plan and the write', function (): void {
             ->and(psLine($output, 'section:news2'))->toContain('already the section «posts»');
     });
 
-    it('refuses a binding that would move post addresses, and says how many', function (): void {
-        // Cập nhật sits under Tin tức, whose posts are addressed under their category (/cap-nhat/…);
-        // a section of its own, flat by default, would move them to /….
+    it('refuses a section on a branch of a category another section is built on, even when no address moves', function (): void {
+        // A flat site: a section of its own on Cập nhật (under Tin tức, the «posts» section) would move
+        // no address, but it would take the branch's posts out of «posts» — out of its workflow, its
+        // reviewers' reach and its admin list.
+        ContentPacks::in($this->siteId, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'permalinks', 'key' => 'posts'], ['value' => ['pattern' => 'flat']]));
+        ContentPacks::load();
+        $workflow = psWorkflow($this->siteId, 'posts');
+        $post = psPost($this->siteId, 'ra-mat-website');
+        $governing = function () use ($post): ?int {
+            app(SectionResolver::class)->flush();
+
+            return ContentPacks::in($this->siteId, fn (): ?int => app(EntryWorkflowResolver::class)->forEntry($post)?->id);
+        };
+        expect($governing())->toBe($workflow->id);
+        psSections($this->folder, [psServices(['key' => 'section:updates', 'category' => 'tax:post_cat/tin-tuc/cap-nhat'])]);
+
+        [$exit, $output] = ContentPacks::run();
+        expect($exit)->toBe(1, $output)
+            ->and(ContentPacks::verdict($output, 'section:updates'))->toBe('conflict')
+            ->and(psLine($output, 'section:updates'))->toContain('tax:post_cat/tin-tuc/cap-nhat belongs to the section «posts»')
+            ->and(psLine($output, 'section:updates'))->not->toContain('0 post addresses move');
+
+        expect(fn () => ContentPacks::load())->toThrow(RuntimeException::class);
+        expect(psSection($this->siteId, 'updates'))->toBeNull()
+            ->and($governing())->toBe($workflow->id);
+    });
+
+    it('refuses the same branch on a site whose news addresses follow their category', function (): void {
         ContentPacks::load();
         psSections($this->folder, [psServices(['key' => 'section:updates', 'category' => 'tax:post_cat/tin-tuc/cap-nhat'])]);
 
         [$exit, $output] = ContentPacks::run();
 
         expect($exit)->toBe(1, $output)
-            ->and(ContentPacks::verdict($output, 'section:updates'))->toBe('conflict')
-            ->and(psLine($output, 'section:updates'))->toContain('1 post address')->toContain('/cap-nhat/ra-mat-website → /ra-mat-website');
+            ->and(psLine($output, 'section:updates'))->toContain('belongs to the section «posts»');
+    });
+
+    it('refuses a new section whose key an active workflow already waits on', function (): void {
+        // The workflow would govern every post of the branch the moment the section exists, with
+        // no one having chosen that for these posts: the loader refuses rather than notes it.
+        ContentPacks::load();
+        psWorkflow($this->siteId, 'services');
+        psSections($this->folder, [psServices()]);
+
+        [$exit, $output] = ContentPacks::run();
+
+        expect($exit)->toBe(1, $output)
+            ->and(ContentPacks::verdict($output, 'section:services'))->toBe('conflict')
+            ->and(psLine($output, 'section:services'))->toContain('the workflow «Duyệt bài» already waits on the section key «services»');
+        expect(fn () => ContentPacks::load())->toThrow(RuntimeException::class);
+        expect(psSection($this->siteId, 'services'))->toBeNull();
+    });
+
+    it('creates the section when the workflow on its key is switched off', function (): void {
+        ContentPacks::load();
+        $workflow = psWorkflow($this->siteId, 'services');
+        ContentPacks::in($this->siteId, fn () => $workflow->update(['is_active' => false]));
+        psSections($this->folder, [psServices()]);
+
+        [$exit, $output] = ContentPacks::run();
+
+        expect($exit)->toBe(0, $output)->and(ContentPacks::verdict($output, 'section:services'))->toBe('create');
     });
 
     it('takes the permalink the site already set for the key into account', function (): void {
@@ -211,7 +294,8 @@ describe('the plan and the write', function (): void {
         [$exit, $output] = ContentPacks::run();
 
         expect($exit)->toBe(1, $output)
-            ->and(psLine($output, 'section:services'))->toContain('/thiet-ke-mau → /dich-vu/thiet-ke-mau');
+            ->and(ContentPacks::verdict($output, 'section:services'))->toBe('conflict')
+            ->and(psLine($output, 'section:services'))->toContain('1 post address under tax:post_cat/dich-vu would move (/thiet-ke-mau → /dich-vu/thiet-ke-mau)');
     });
 
     it('keeps a staff edit since the last load unless forced, and never deletes a section the pack no longer lists', function (): void {

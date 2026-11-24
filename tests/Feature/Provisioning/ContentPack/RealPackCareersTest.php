@@ -3,7 +3,10 @@
 use App\Modules\Admin\Livewire\Entries\Index;
 use App\Modules\Admin\Navigation\AdminNav;
 use App\Modules\Admin\Navigation\NavItem;
+use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteSetting;
@@ -39,6 +42,14 @@ it('adds the careers section on the job category with no route changing, and lis
     $routes = fn (): array => ContentPacks::in($siteId, fn (): array => SiteRoute::query()->orderBy('locale')->orderBy('path')->get(['locale', 'path', 'entry_id', 'taxonomy_id', 'product_id'])
         ->map(fn (SiteRoute $route): string => "{$route->locale}:{$route->path}={$route->entry_id}|{$route->taxonomy_id}|{$route->product_id}")->all());
     $before = $routes();
+    // The section a job post belongs to: none before the load (it sits in no admin list but «all posts»).
+    $jobSection = fn (): ?string => ContentPacks::in($siteId, function (): ?string {
+        app(SectionResolver::class)->flush();
+        $post = Entry::query()->findOrFail(EntryTranslation::query()->where('locale', 'vi')->where('slug', 'ke-toan-noi-bo')->value('entry_id'));
+
+        return app(SectionResolver::class)->forEntry($post)['key'] ?? null;
+    });
+    expect($jobSection())->toBeNull();
 
     file_put_contents($folder.'/sections.json', $sections);
     [$exit, $output] = ContentPacks::run('an-vinh');
@@ -48,7 +59,8 @@ it('adds the careers section on the job category with no route changing, and lis
 
     [$exit, $output] = ContentPacks::load('an-vinh');
     expect($exit)->toBe(0, $output)
-        ->and($routes())->toBe($before);
+        ->and($routes())->toBe($before)
+        ->and($jobSection())->toBe('careers');
     expect(array_filter($before, fn (string $line): bool => str_starts_with($line, 'vi:/ky-su-thiet-ke-co-khi-do-ga=') || str_starts_with($line, 'vi:/ke-toan-noi-bo=') || str_starts_with($line, 'vi:/tuyen-dung=')))->toHaveCount(3);
 
     $this->get('http://'.ContentPacks::HOST.'/tuyen-dung')->assertOk()->assertSee('Kế toán nội bộ');
