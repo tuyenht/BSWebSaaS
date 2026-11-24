@@ -98,6 +98,9 @@
             $sfPending = null;
         }
     }
+    // A form with a file field sends its files with the lead (multipart); the others stay plain.
+    $sfFiles = in_array('file', array_column($fields, 'type'), true);
+    $sfMissed = $sfSent ? (int) $sfSession?->get('form_files_missed', 0) : 0;
     [$sfNoteBefore, $sfNoteAfter] = array_pad(explode('__MARK__', __('forms.required_note', ['mark' => '__MARK__']), 2), 2, '');
 @endphp
 @if (! empty($action))
@@ -119,10 +122,14 @@
                 <span class="lead-form__sent-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>
                 <p class="lead-form__sent-title">{{ __('forms.success_title') }}</p>
                 <p class="lead-form__sent-text">{{ $sfSent }}</p>
+                @if ($sfMissed > 0)
+                    <p class="lead-form__sent-text">{{ trans_choice('forms.files_missed', $sfMissed, ['count' => $sfMissed]) }}</p>
+                @endif
                 <a class="lead-form__again" href="{{ request()->getPathInfo() }}#{{ $sfFormId }}">{{ __('forms.send_another') }}</a>
             </div>
         @else
-        <form class="lead-form__form"@if (! $sfPreview) method="POST" action="{{ $action }}"@endif novalidate>
+        <form class="lead-form__form"@if (! $sfPreview) method="POST" action="{{ $action }}"@if ($sfFiles) enctype="multipart/form-data"@endif
+@endif novalidate>
             {{-- The language the visitor is reading, so errors and the thank-you come back in it
                  (the POST URL carries no locale prefix). The server accepts only a public locale. --}}
             <input type="hidden" name="locale" value="{{ $locale ?? '' }}">
@@ -178,6 +185,17 @@
                                   @if ($sfBad) aria-invalid="true" @endif
                                   @if ($sfDescribed !== '') aria-describedby="{{ $sfDescribed }}" @endif
                                   @if ($sfFirstBad === $field['key']) autofocus @endif>{{ $sfOld($field['key']) }}</textarea>
+                    @elseif ($field['type'] === 'file')
+                        {{-- The browser's own file box: no script. It offers only the kind's files
+                             (`accept`); the server checks each file again and keeps or refuses it. The
+                             hint says which files and how many, and is always read with the box. --}}
+                        <input id="{{ $sfId }}" type="file" name="{{ $field['key'] }}[]" accept="{{ $field['accept'] }}"
+                               @if (($field['max_files'] ?? 1) > 1) multiple @endif
+                               @if ($field['is_required']) required @endif
+                               @if ($sfBad) aria-invalid="true" @endif
+                               aria-describedby="{{ trim($sfId.'--files '.$sfDescribed) }}"
+                               @if ($sfFirstBad === $field['key']) autofocus @endif>
+                        <p class="lead-form__hint" id="{{ $sfId }}--files">{{ $field['file_hint'] }}</p>
                     @elseif ($field['type'] === 'select')
                         {{-- The empty pick comes first: it is the answer an optional select leaves, and what a
                              required one asks to change. It reads the field's own example, else the general one.

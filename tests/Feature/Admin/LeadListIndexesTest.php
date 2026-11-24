@@ -9,8 +9,9 @@ use Illuminate\Support\Facades\DB;
 
 /*
  * The leads list ("Khách liên hệ") reads a website's leads newest first, by (created_at, ulid),
- * in the "all" group (every status but spam) or in one status. Each shape has an index in that
- * order. The definitions are pinned here, and the statements LeadListQuery really sends are
+ * in the "all" group (every status but spam) or in one status, without the Trash; and the Trash
+ * last trashed first, by (deleted_at, ulid). Each shape has an index in that order. The
+ * definitions are pinned here, and the statements LeadListQuery really sends are
  * planned against them as app_user, inside the website's tenancy context (RLS on: only leakproof
  * operators may become index conditions there). The test database is small, so the planner is
  * told to avoid a full table read (`enable_seqscan = off`) and must then pick an index that can
@@ -29,14 +30,15 @@ beforeEach(function (): void {
         ]);
     }
     // 2,000 leads on each of the two websites, one an hour; 1 in 50 new, 1 in 33 spam, the rest
-    // read or archived
+    // read or archived; 1 in 40 in the Trash, moved there a day after it came
     $admin->statement(<<<'SQL'
-        insert into form_submissions (site_id, ulid, form_id, name, status, created_at, updated_at)
+        insert into form_submissions (site_id, ulid, form_id, name, status, created_at, updated_at, deleted_at)
         select s, lpad(s::text || 'x' || g::text, 26, '0'), f.id, 'Khách ' || g,
                case when g % 50 = 0 then 'new' when g % 33 = 0 then 'spam'
                     when g % 2 = 0 then 'read' else 'archived' end,
                timestamptz '2026-12-01 00:00:00+00' - g * interval '1 hour',
-               timestamptz '2026-12-01 00:00:00+00' - g * interval '1 hour'
+               timestamptz '2026-12-01 00:00:00+00' - g * interval '1 hour',
+               case when g % 40 = 0 then timestamptz '2026-12-02 00:00:00+00' - g * interval '1 hour' end
         from generate_series(1, 2) s
         join forms f on f.site_id = s
         cross join generate_series(1, 2000) g
@@ -123,6 +125,9 @@ it('defines each index of the leads list as measured, and drops the one they rep
 })->with([
     'every lead but spam, newest first' => ['form_submissions_live_created_idx', '(site_id, created_at DESC, ulid DESC)'],
     'one status, newest first' => ['form_submissions_status_created_idx', '(site_id, status, created_at DESC, ulid DESC)'],
+    'every kept lead but spam, newest first' => ['form_submissions_kept_created_idx', '(site_id, created_at DESC, ulid DESC) WHERE (deleted_at IS NULL)'],
+    'one status of the kept leads, newest first' => ['form_submissions_kept_status_created_idx', '(site_id, status, created_at DESC, ulid DESC) WHERE (deleted_at IS NULL)'],
+    'the Trash, last trashed first' => ['form_submissions_trash_idx', '(site_id, deleted_at DESC, ulid DESC) WHERE (deleted_at IS NOT NULL)'],
     'the old (site_id, status) index' => ['form_submissions_site_id_status_index', null],
 ]);
 
@@ -134,9 +139,10 @@ it('plans the first page of each group on its index', function (string $tab, str
         expect(array_column(leadPlannedScans($sent[0]['sql'], $sent[0]['bindings']), 0))->toBe([$index]);
     });
 })->with([
-    'Tất cả' => ['all', 'form_submissions_live_created_idx'],
-    'Đã đọc' => ['read', 'form_submissions_status_created_idx'],
-    'Mới' => ['new', 'form_submissions_status_created_idx'],
+    'Tất cả' => ['all', 'form_submissions_kept_created_idx'],
+    'Đã đọc' => ['read', 'form_submissions_kept_status_created_idx'],
+    'Mới' => ['new', 'form_submissions_kept_status_created_idx'],
+    'Thùng rác' => ['trash', 'form_submissions_trash_idx'],
 ]);
 
 it('plans a cursor step deep in the list with the cursor as a range of the index', function (string $tab, int $first, string $index): void {
@@ -159,22 +165,25 @@ it('plans a cursor step deep in the list with the cursor as a range of the index
             ->and($scans[0][1])->toContain('ROW(');
     });
 })->with([
-    'Tất cả' => ['all', 1500, 'form_submissions_live_created_idx'],
-    'Đã đọc' => ['read', 700, 'form_submissions_status_created_idx'],
+    'Tất cả' => ['all', 1500, 'form_submissions_kept_created_idx'],
+    'Đã đọc' => ['read', 700, 'form_submissions_kept_status_created_idx'],
+    'Thùng rác' => ['trash', 30, 'form_submissions_trash_idx'],
 ]);
 
-it('counts each status on the status index, every count on an index led by the website', function (): void {
+it('counts each status on the status index and the Trash on its own, every count on an index led by the website', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         $sent = leadStatements(fn () => leadList()->tabCounts());
 
         expect($sent)->toHaveCount(1);
         $scans = leadPlannedScans($sent[0]['sql'], $sent[0]['bindings']);
-        // five capped counts; "all but spam" may take any index led by site_id (the planner picks
-        // the smallest on a small table), each single status must take the status index
+        // six capped counts; "all but spam" may take any index led by site_id (the planner picks
+        // the smallest on a small table), each single status must take the kept leads' status index
+        // and the Trash its own
         $byStatus = array_filter($scans, fn (array $scan): bool => preg_match('/\(?status\)?(::\w+)? = /', $scan[1]) === 1);
-        expect($scans)->toHaveCount(5)
+        expect($scans)->toHaveCount(6)
             ->and($byStatus)->toHaveCount(4)
-            ->and(array_values(array_unique(array_column($byStatus, 0))))->toBe(['form_submissions_status_created_idx']);
+            ->and(array_values(array_unique(array_column($byStatus, 0))))->toBe(['form_submissions_kept_status_created_idx'])
+            ->and(array_column($scans, 0))->toContain('form_submissions_trash_idx');
         foreach ($scans as [$index, $cond]) {
             expect($index)->toStartWith('form_submissions_')->and($cond)->toContain('site_id =');
         }
@@ -189,7 +198,7 @@ it('leaves a deleting form\'s leads out of the counts by a constant list, with n
 
         expect($sent)->toHaveCount(1)
             ->and($plan)->not->toContain('SubPlan')->toContain('form_id <> ALL')
-            ->and(leadPlannedScans($sent[0]['sql'], $sent[0]['bindings']))->toHaveCount(5);
+            ->and(leadPlannedScans($sent[0]['sql'], $sent[0]['bindings']))->toHaveCount(6);
     });
 });
 

@@ -1155,8 +1155,11 @@ final readonly class PackValidator
             $errors[] = "{$where}: '{$name}' is not a field setting the loader writes (type, label, is_required, placeholder, choices).";
         }
         $type = $field['type'] ?? null;
-        if (! is_string($type) || ! in_array($type, FormFieldTypes::STORED_TYPES, true)) {
-            $errors[] = "{$where}: type must be one of ".implode(', ', FormFieldTypes::STORED_TYPES).'.';
+        // A pack never brings a file field: its kind and count are set in «Biểu mẫu», which the loader
+        // does not write (options/validation).
+        $types = array_values(array_diff(FormFieldTypes::STORED_TYPES, [FormFieldTypes::FILE]));
+        if (! is_string($type) || ! in_array($type, $types, true)) {
+            $errors[] = "{$where}: type must be one of ".implode(', ', $types).'.';
 
             return;
         }

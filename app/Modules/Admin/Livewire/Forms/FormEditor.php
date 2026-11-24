@@ -11,6 +11,7 @@ use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Support\FormDraft;
 use App\Modules\Forms\Support\FormFieldTypes;
 use App\Modules\Forms\Support\FormTemplates;
+use App\Modules\Forms\Support\LeadFileStorage;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
@@ -24,7 +25,7 @@ use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
- * The «Biểu mẫu» editor (board 15): a form's name and switch, its fields (six kinds; dragged or
+ * The «Biểu mẫu» editor (board 15): a form's name and switch, its fields (seven kinds; dragged or
  * moved up and down, one opened at a time), the thank-you sentence and the addresses its lead emails
  * go to, with the visitor's view beside them. The draft lives here until «Lưu»: the bar counts the
  * changes the board's way (each of name, thanks, emails and switch is one; each field changed, added
@@ -32,6 +33,9 @@ use Livewire\Component;
  * changes asks first. The consent box is the platform's: shown locked, last, never part of the draft.
  *
  * Texts are written in the site's main language; other languages stay as they are (SaveForm).
+ * A file field («Tệp đính kèm») picks one of the platform's kinds of file and how many (1 to 5);
+ * the kind is offered only while the platform takes it (forms.file_kinds), and the type not at all
+ * when it takes none. A field keeps a kind the platform has since held back, shown as picked.
  *
  * @phpstan-import-type Draft from FormDraft
  * @phpstan-import-type DraftField from FormDraft
@@ -42,7 +46,7 @@ final class FormEditor extends Component
     use GatesFormScreens;
 
     /** The kinds of field a member can add, in the board's order, with their icons. */
-    public const array KINDS = ['text' => 'ri-text', 'email' => 'ri-mail', 'tel' => 'ri-phone', 'textarea' => 'ri-file-text', 'select' => 'ri-list-check', 'checkbox' => 'ri-checkbox'];
+    public const array KINDS = ['text' => 'ri-text', 'email' => 'ri-mail', 'tel' => 'ri-phone', 'textarea' => 'ri-file-text', 'select' => 'ri-list-check', 'checkbox' => 'ri-checkbox', FormFieldTypes::FILE => 'ri-attachment-2'];
 
     #[Locked]
     public ?string $ulid = null;
@@ -128,6 +132,7 @@ final class FormEditor extends Component
             $this->consentLabel = (string) __('forms.consent_label', [], $this->locale);
         }
         $this->fill($this->draftProps($draft));
+        $this->saved = $draft; // first as read, so a field keeps a kind the platform has since held back
         $this->saved = $this->draft(); // compared the way the draft is, so nothing counts as changed on opening
     }
 
@@ -140,11 +145,13 @@ final class FormEditor extends Component
             'openKey' => $value === null || is_string($value),
             default => null,
         };
-        if ($scalar === null && preg_match('/^fields\.(\d+)\.(label|type|required|choices)$/', $property, $m) === 1) {
+        if ($scalar === null && preg_match('/^fields\.(\d+)\.(label|type|required|choices|accept|max_files)$/', $property, $m) === 1) {
             // only a row the draft has, with a value of the column's own kind
             $scalar = isset($this->fields[(int) $m[1]]) && match ($m[2]) {
                 'required' => is_bool($value),
-                'type' => is_string($value) && array_key_exists($value, self::KINDS),
+                'type' => is_string($value) && array_key_exists($value, $this->kinds()),
+                'accept' => is_string($value) && (in_array($value, FormFieldTypes::fileKinds(), true) || $value === ($this->savedKind($this->fields[(int) $m[1]]['key']) ?? '')),
+                'max_files' => (is_int($value) || (is_string($value) && ctype_digit($value))) && (int) $value >= 1 && (int) $value <= FormFieldTypes::MAX_FILES,
                 default => is_string($value),
             };
         }
@@ -162,6 +169,8 @@ final class FormEditor extends Component
             $this->touched['f:'.$this->fields[(int) $m[1]]['key']] = true;
         } elseif ($property === 'newEmail') {
             $this->emailError = '';
+        } elseif (preg_match('/^fields\.(\d+)\.(type|max_files)$/', $property, $m) === 1 && isset($this->fields[(int) $m[1]])) {
+            $this->fields[(int) $m[1]] = $this->fileSettings($this->fields[(int) $m[1]]);
         }
     }
 
@@ -193,7 +202,7 @@ final class FormEditor extends Component
     /** «Thêm ô»: a new empty field of $type, opened, its name field focused. */
     public function addField(string $type): void
     {
-        if (! array_key_exists($type, self::KINDS) || count($this->fields) >= FormDraft::MAX_FIELDS) {
+        if (! array_key_exists($type, $this->kinds()) || count($this->fields) >= FormDraft::MAX_FIELDS) {
             return;
         }
         // The inbox fills a lead's email and phone (and the reply address) from the fields keyed
@@ -206,7 +215,7 @@ final class FormEditor extends Component
                 $key = $type.'_'.base_convert((string) $n++, 10, 36);
             } while ($this->indexOf($key) !== null || ! FormFieldTypes::isUsableKey($key));
         }
-        $this->fields[] = ['key' => $key, 'type' => $type, 'label' => '', 'required' => false, 'choices' => ''];
+        $this->fields[] = $this->fileSettings(['key' => $key, 'type' => $type, 'label' => '', 'required' => false, 'choices' => '', 'accept' => '', 'max_files' => 0]);
         $this->openKey = $key;
         $this->dispatch('bm-focus', id: 'bm-l-'.$key);
     }
@@ -396,7 +405,9 @@ final class FormEditor extends Component
             'invalid' => count($errors),
             'shown' => $shown,
             'firstError' => $firstError,
-            'kinds' => self::KINDS,
+            'kinds' => $this->kinds(),
+            'fileKinds' => FormFieldTypes::fileKinds(),
+            'fileMaxMb' => LeadFileStorage::maxBytes() / (1024 * 1024),
             'sendLabel' => __('forms.submit_button', [], $this->locale),
             'privacyLabel' => __('forms.privacy_link', [], $this->locale),
             'thanksDefault' => __('form_builder.thanks_default', [], $this->locale),
@@ -453,13 +464,15 @@ final class FormEditor extends Component
             'success' => trim($this->success),
             'active' => $this->active,
             'emails' => $this->emails,
-            'fields' => array_map(fn (array $f): array => [
+            'fields' => array_map(fn (array $f): array => $this->fileSettings([
                 'key' => Cast::string($f['key']),
                 'type' => Cast::string($f['type']),
                 'label' => trim(Cast::string($f['label'])),
                 'required' => Cast::bool($f['required']),
                 'choices' => Cast::string($f['type']) === 'select' ? implode("\n", FormDraft::lines(Cast::string($f['choices']))) : '',
-            ], $this->fields),
+                'accept' => Cast::string($f['accept']),
+                'max_files' => Cast::int($f['max_files']),
+            ]), $this->fields),
         ];
     }
 
@@ -470,6 +483,50 @@ final class FormEditor extends Component
     private function draftProps(array $draft): array
     {
         return ['name' => $draft['name'], 'success' => $draft['success'], 'active' => $draft['active'], 'emails' => $draft['emails'], 'fields' => $draft['fields']];
+    }
+
+    /**
+     * The kinds of field offered here: every one, the file type only while the platform takes some
+     * kind of file.
+     *
+     * @return array<string, string>
+     */
+    private function kinds(): array
+    {
+        return FormFieldTypes::fileKinds() === [] ? array_diff_key(self::KINDS, [FormFieldTypes::FILE => true]) : self::KINDS;
+    }
+
+    /** The kind the field of $key had when last saved, if it was a file field. */
+    private function savedKind(string $key): ?string
+    {
+        foreach ($this->saved['fields'] as $f) {
+            if ($f['key'] === $key && $f['type'] === FormFieldTypes::FILE) {
+                return $f['accept'];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * $field with its file settings made whole: a file field gets a kind it may have (the first the
+     * platform takes, unless it has one) and 1 to 5 files (3 unless set); any other field '' and 0.
+     *
+     * @param  DraftField  $field
+     * @return DraftField
+     */
+    private function fileSettings(array $field): array
+    {
+        if ($field['type'] !== FormFieldTypes::FILE) {
+            return [...$field, 'accept' => '', 'max_files' => 0];
+        }
+        $kinds = FormFieldTypes::fileKinds();
+        $accept = in_array($field['accept'], $kinds, true) || $field['accept'] === $this->savedKind($field['key'])
+            ? $field['accept']
+            : ($kinds[0] ?? FormFieldTypes::DEFAULT_KIND);
+        $max = (int) $field['max_files'];
+
+        return [...$field, 'accept' => $accept, 'max_files' => $max >= 1 && $max <= FormFieldTypes::MAX_FILES ? $max : FormFieldTypes::DEFAULT_MAX_FILES];
     }
 
     private function indexOf(string $key): ?int

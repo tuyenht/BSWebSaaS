@@ -6,6 +6,7 @@ namespace App\Modules\Storefront\Http\Controllers;
 
 use App\Modules\Forms\Actions\SubmitForm;
 use App\Modules\Forms\Models\Form;
+use App\Modules\Forms\Models\FormSubmissionFile;
 use App\Modules\Shared\Contracts\PageLinks;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\SafeLink;
@@ -20,7 +21,9 @@ use Illuminate\Support\Facades\RateLimiter;
  * validated it, the lead is captured via
  * SubmitForm, and the visitor is redirected back to the page with a localized confirmation — or,
  * when the form names a thank-you page (`settings.redirect_entry`, the page's ulid) that a visitor
- * can open on this site in their language, sent there with a 303. Too many attempts from one IP
+ * can open on this site in their language, sent there with a 303. Files sent with the lead are
+ * passed to SubmitForm apart from the answers; how many did not come through is told on the
+ * thank-you card. Too many attempts from one IP
  * are throttled with a plain-language message (no 429 dead end) and never leave the page.
  */
 final readonly class FormSubmissionController
@@ -45,10 +48,9 @@ final readonly class FormSubmissionController
         }
         RateLimiter::hit($throttle, self::DECAY_SECONDS);
 
-        /** @var array<string, mixed> $data */
-        $data = $request->validated();
+        [$data, $files] = $request->answersAndFiles();
 
-        $this->submit->handle(
+        $lead = $this->submit->handle(
             $form,
             $data,
             honeypot: $request->string('company_website')->toString(),
@@ -58,6 +60,7 @@ final readonly class FormSubmissionController
                 'user_agent' => $request->userAgent(),
                 'source_url' => $request->headers->get('referer'),
             ],
+            files: $files,
         );
 
         $thankYou = $this->thankYouPath($form);
@@ -66,8 +69,14 @@ final readonly class FormSubmissionController
         }
 
         $confirmation = $form->successMessageFor(app()->getLocale()) ?? (string) __('forms.submit_success');
+        $back = back()->with('form_success', $confirmation)->with('form_success_key', $form->key);
 
-        return back()->with('form_success', $confirmation)->with('form_success_key', $form->key);
+        // The files that did not come through (refused, over the count, or not written): the
+        // thank-you card says how many. A spam lead keeps none and is told nothing more.
+        $sent = array_sum(array_map(count(...), $files));
+        $missed = $lead->is_spam ? 0 : $sent - $lead->files->where('status', FormSubmissionFile::STORED)->count();
+
+        return $missed > 0 ? $back->with('form_files_missed', $missed) : $back;
     }
 
     /**

@@ -5,6 +5,7 @@ namespace App\Modules\Forms\Components;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormField;
 use App\Modules\Forms\Support\FormFieldTypes;
+use App\Modules\Forms\Support\LeadFileStorage;
 use App\Modules\Shared\Contracts\Component;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\PreviewMode;
@@ -75,6 +76,10 @@ final class FormComponent implements Component
                 'is_required' => $field->is_required,
                 'choices' => FormFieldTypes::isChoice($field->type) ? FormFieldTypes::choiceLabels($field, $locale) : [],
                 'placeholder' => $this->localized(Cast::arr($field->options)['placeholder'] ?? null, $locale),
+                // a file field: the input's `accept`, how many files it takes, and its hint's wording
+                'accept' => $field->type === FormFieldTypes::FILE ? FormFieldTypes::accept(FormFieldTypes::fileKind($field)) : '',
+                'max_files' => $field->type === FormFieldTypes::FILE ? FormFieldTypes::maxFiles($field) : 0,
+                'file_hint' => $field->type === FormFieldTypes::FILE ? $this->fileHint($field) : '',
             ])->all() ?? [],
             'branchMap' => SectionProps::choice($props, 'map_source', SectionProps::MAP_SOURCES) === 'branches'
                 ? app(BranchMap::class)->places($locale)
@@ -83,6 +88,18 @@ final class FormComponent implements Component
             'turnstileSiteKey' => $preview ? '' : Cast::string(config('services.turnstile.site_key')),
             'preview' => $preview,
         ];
+    }
+
+    /** «STEP, IGES, DWG, DXF, PDF · tối đa 3 tệp, mỗi tệp 20 MB», in the page's language. */
+    private function fileHint(FormField $field): string
+    {
+        $max = FormFieldTypes::maxFiles($field);
+
+        return trans_choice('forms.file_hint', $max, [
+            'types' => __('forms.file_types.'.FormFieldTypes::fileKind($field)),
+            'count' => $max,
+            'mb' => LeadFileStorage::maxBytes() / (1024 * 1024),
+        ]);
     }
 
     /**

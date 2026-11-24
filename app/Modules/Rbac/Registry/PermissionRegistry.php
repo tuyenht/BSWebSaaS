@@ -48,6 +48,9 @@ final class PermissionRegistry
         'blocks.manage',
         'forms.view',
         'forms.manage',
+        // Downloading the files visitors send with a lead (a CV, a drawing): apart from reading the
+        // lead, so a member who may only read leads does not take the files by default.
+        'forms.files',
         'catalog.view',
         'catalog.manage',
         'settings.manage',
@@ -100,6 +103,7 @@ final class PermissionRegistry
         // lists stay flat (withImplied() goes one level), so media.view is named here too.
         'media.purge' => ['media.delete.any', 'media.view'],
         'forms.manage' => ['forms.view'],
+        'forms.files' => ['forms.view'],
         'catalog.manage' => ['catalog.view'],
         'domains.manage' => ['domains.view'],
     ];
@@ -213,7 +217,7 @@ final class PermissionRegistry
                 'entries.view', 'entries.create', 'entries.edit.any', 'entries.delete.any',
                 'entries.submit', 'entries.review', 'entries.approve', 'entries.publish',
                 'media.view', 'media.upload', 'media.delete.any',
-                'taxonomies.manage', 'menus.manage', 'blocks.manage', 'forms.view', 'forms.manage',
+                'taxonomies.manage', 'menus.manage', 'blocks.manage', 'forms.view', 'forms.manage', 'forms.files',
                 'catalog.view', 'catalog.manage', 'domains.view',
             ]],
             'author' => ['level' => 30, 'permissions' => [
