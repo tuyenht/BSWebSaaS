@@ -1258,7 +1258,8 @@
       "props": {
        "heading": "Lưu trữ trong bao lâu",
        "paragraphs": [
-        "Thông tin bạn gửi qua biểu mẫu được lưu trong thời gian cần thiết để xử lý và theo dõi yêu cầu của bạn, hoặc cho đến khi bạn yêu cầu xóa, trừ trường hợp pháp luật yêu cầu lưu lâu hơn.",
+        "Thông tin bạn gửi qua biểu mẫu được lưu tối đa 24 tháng kể từ ngày gửi, sau đó hệ thống tự động xóa hẳn. Bạn có thể yêu cầu xóa sớm hơn bất cứ lúc nào (xem mục «Quyền của bạn»), trừ trường hợp pháp luật yêu cầu lưu lâu hơn.",
+        "Tin gửi bị xác định là thư rác được xóa hẳn sau 30 ngày. Khi chúng tôi xóa một liên hệ, liên hệ đó nằm trong thùng rác tối đa 30 ngày rồi mới bị xóa hẳn.",
         "Nhật ký kỹ thuật chỉ được giữ trong thời gian cần cho việc vận hành và bảo vệ website."
        ]
       }
