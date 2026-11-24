@@ -95,7 +95,7 @@
             $activeGroup = $navItems->first(fn ($i) => $i->hasChildren() && $i->active)?->key ?? '';
             // The page's trail (⌂ › entry › child) from the same menu, shown above the page.
             $trail = app(\App\Modules\Admin\Navigation\AdminNav::class)->trail($navItems, isset($title) ? (string) $title : null);
-            // The current page's row (and its group's, so the collapsed rail still shows it): white
+            // The current page's row (its group's only while that group is closed or the rail is collapsed): white
             // ink, the active fill and an inset bar on the left — told apart by shape, not only by
             // color, now that resting items are white/.85. Links also carry aria-current="page".
             $currentRow = 'text-sidebar-fg-active bg-sidebar-active shadow-[inset_3px_0_0_var(--color-sidebar-fg-active)]';
@@ -136,10 +136,20 @@
                                         @click="openGroup = (openGroup === '{{ $item->key }}' ? '' : '{{ $item->key }}')"
                                         aria-expanded="{{ $item->key === $activeGroup ? 'true' : 'false' }}"
                                         :aria-expanded="openGroup === '{{ $item->key }}'"
-                                        :class="openGroup === '{{ $item->key }}' && 'text-sidebar-fg-active'"
+                                        {{-- The current page's group (design board 01, barOn): while it is open its
+                                             child link carries the bar, so the group row only turns bold and bright —
+                                             one marked row, not two. Closed (another group opened) it takes the bar
+                                             back, and on the collapsed rail (.is-trail in admin-chrome.css) it always
+                                             has it, so the reader still sees where they are. --}}
+                                        @if ($item->active)
+                                            :class="(openGroup === '{{ $item->key }}' ? 'text-sidebar-fg-active' : '{{ $currentRow }}')"
+                                        @else
+                                            :class="openGroup === '{{ $item->key }}' && 'text-sidebar-fg-active'"
+                                        @endif
                                         @class([
-                                            'group flex min-h-control w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-body font-medium transition-colors hover:text-sidebar-fg-hover any-pointer-coarse:min-h-hit',
-                                            $currentRow => $item->active,
+                                            'group flex min-h-control w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-body transition-colors hover:text-sidebar-fg-hover any-pointer-coarse:min-h-hit',
+                                            'font-medium' => ! $item->active,
+                                            'is-trail font-semibold text-sidebar-fg-active' => $item->active,
                                         ])>
                                     <x-bs-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
                                     <span class="sidebar-label flex-1 text-start">{{ $item->label }}</span>
