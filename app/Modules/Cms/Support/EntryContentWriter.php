@@ -51,7 +51,8 @@ final readonly class EntryContentWriter
      * version must be one this code reads, every field must have its type and fit its column, a
      * template must name a layout the theme has, and the title, slug and blocks must pass the rules
      * an editor save passes (title/slug ≤ 200). A layout the entry already stores is accepted as it is
-     * ($keptTemplate): the editor has no field to change it, so refusing it would block every save.
+     * ($keptTemplate): the editor offers only the post variants, so refusing an older stored layout
+     * would block every save.
      * With $dropMisfit a layout that does not fit is read as null (a restore of an old snapshot).
      *
      * @param  array<array-key, mixed>  $snapshot
@@ -161,13 +162,11 @@ final readonly class EntryContentWriter
 
     /**
      * Whether an entry's own layout is acceptable: in the theme's template list and of the entry type's
-     * role (a post takes post layouts, a page takes page layouts).
+     * role (a post takes post layouts and the post variants, a page takes page layouts).
      */
     private function templateFits(string $template, string $entryType): bool
     {
-        $role = TemplateCatalog::roleOfEntry($entryType);
-
-        return $role !== null && TemplateCatalog::fits($template, $role);
+        return TemplateCatalog::fitsEntry($template, $entryType);
     }
 
     /**

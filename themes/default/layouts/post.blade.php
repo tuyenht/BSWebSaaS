@@ -7,8 +7,10 @@
     from it follow as news cards. A side column (the table of contents on a wide screen, and the
     blocks of the `post_aside` slot) sits beside the body and the links when either has something;
     with neither, the body keeps its single column. The `after_post` slot's blocks close the page. A post whose body opens with a title band gets its h1 and
-    breadcrumb from that band instead. Everything comes server-built from the controller; no id
-    reaches the markup.
+    breadcrumb from that band instead. A post's own look («Mẫu hiển thị», $layoutVariant) changes two
+    things on any layout that includes this one: `hero` puts the cover photo at the full page width
+    above the band, `wide` draws no side column (the contents stay as the closed list above the text).
+    Everything comes server-built from the controller; no id reaches the markup.
 --}}
 @php
     $sfPost = is_array($post ?? null) ? $post : [];
@@ -27,7 +29,9 @@
     $sfNext = $sfPlain ? null : ($next ?? null);
     $sfRelated = $sfPlain ? [] : ($related ?? []);
     $sfToc = $toc ?? [];
-    $sfAside = trim((string) (($slotHtml ?? [])['post_aside'] ?? ''));
+    $sfHero = ($layoutVariant ?? null) === 'hero' && $sfCover !== null;
+    $sfWide = ($layoutVariant ?? null) === 'wide';
+    $sfAside = $sfWide ? '' : trim((string) (($slotHtml ?? [])['post_aside'] ?? ''));
     // The news look: who wrote it and how long it takes (under the title), a share bar beside the text and a reading
     // progress line at the top of the window. The author is the post's own byline in this language (a team or
     // department an editor typed), else the site's business: no staff account's name leaves the admin.
@@ -38,8 +42,8 @@
     $sfMinutes = $sfNews ? \App\Modules\Theme\Components\ReadingTime::minutes((string) $sections) : 0;
     $sfInitials = $sfAuthor !== '' ? \App\Modules\Theme\Components\ReadingTime::initials($sfAuthor) : '';
     $sfRail = $sfShareUrl !== '';
-    $sfHasAside = $sfAside !== '' || $sfToc !== [];
-    $sfCols = $sfHasAside || $sfRail;
+    $sfHasAside = ! $sfWide && ($sfAside !== '' || $sfToc !== []);
+    $sfCols = $sfHasAside || $sfRail || ($sfWide && $sfToc !== []);
     $sfAfter = trim((string) (($slotHtml ?? [])['after_post'] ?? ''));
 @endphp
 <!doctype html>
@@ -60,6 +64,14 @@
 @endif
     <main class="post-page{{ $sfPlain ? ' post-page--capability' : '' }}" id="noi-dung" tabindex="-1">
         <article class="post">
+@if ($sfOwnBand && $sfHero)
+            <figure class="post-cover post-cover--hero">
+                @include('theme::partials.sf-img', ['src' => $sfCover['src'], 'srcset' => $sfCover['srcset'], 'sizes' => '100vw', 'alt' => $sfCover['alt'], 'w' => $sfCover['width'], 'h' => $sfCover['height'], 'priority' => $sfCoverPriority, 'class' => 'post-cover__img'])
+@if ($sfCover['caption'] !== '')
+                <figcaption class="post-cover__caption">{{ $sfCover['caption'] }}</figcaption>
+@endif
+            </figure>
+@endif
 @if ($sfOwnBand)
             <header class="post-band{{ $sfJobBand ? ' post-band--job' : '' }}">
                 <div class="post-band__inner">
@@ -105,7 +117,7 @@
 @endif
                 </div>
             </header>
-@if ($sfCover !== null)
+@if ($sfCover !== null && ! $sfHero)
             <figure class="post-cover">
                 @include('theme::partials.sf-img', ['src' => $sfCover['src'], 'srcset' => $sfCover['srcset'], 'sizes' => '(min-width:80rem) 76rem, (min-width:64rem) calc(100vw - 4rem), calc(100vw - 2rem)', 'alt' => $sfCover['alt'], 'w' => $sfCover['width'], 'h' => $sfCover['height'], 'priority' => $sfCoverPriority, 'class' => 'post-cover__img'])
 @if ($sfCover['caption'] !== '')
@@ -117,7 +129,7 @@
             {{-- $sections is pre-rendered, per-block Blade-escaped HTML (BlockRenderer). Post
                  bodies reuse the block-list Page-JSON (D1), so they render exactly like a page. --}}
 @if ($sfCols)
-            <div class="post-columns sf-container{{ $sfRail ? ' post-columns--share' : '' }}">
+            <div class="post-columns sf-container{{ $sfRail ? ' post-columns--share' : '' }}{{ $sfWide ? ' post-columns--wide' : '' }}">
 @if ($sfRail)
                 @include('theme::partials.post-share', ['url' => $sfShareUrl, 'rail' => true])
 @endif

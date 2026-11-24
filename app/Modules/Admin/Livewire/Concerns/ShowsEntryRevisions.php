@@ -12,6 +12,7 @@ use App\Modules\Cms\Exceptions\RevisionRestoreRejectedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Queries\EntryRevisions;
+use App\Modules\Cms\Support\DisplayDate;
 use App\Modules\Cms\Support\EntryContentWriter;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteTime;
@@ -382,9 +383,11 @@ trait ShowsEntryRevisions
             ['entries.rev.f_cover', $coverThen, $coverNow, true],
             // the picture's words, when the version holds them (one saved before they existed leaves them as they are)
             array_key_exists('cover_alt', $snap) ? ['entries.ed.cover_alt_label', $str($snap['cover_alt']), $this->coverAlt, false] : null,
-            ['entries.rev.f_tpl', $this->revisionTemplate($snap['template_override'] ?? null), $this->revisionTemplate($entry->template_override), true],
+            ['entries.rev.f_tpl', $this->revisionTemplate($snap['template_override'] ?? null), $this->revisionTemplate($this->formTemplate($entry->template_override)), true],
+            // a post's shown publish day (empty in a version: the real day)
+            $entry->type === 'post' ? ['entries.ed.pd_label', $this->revisionDay(DisplayDate::of($snap['meta'] ?? null)), $this->revisionDay($this->displayDate), true] : null,
         ]) as [$label, $then, $now, $shared]) {
-            $fields[] = ['label' => Cast::string(__($label)), 'value' => $then, 'now' => $now, 'differs' => $then !== $now, 'shared' => $shared];
+            $fields[] = ['label' => Cast::string(__($label, ['doc' => $this->docNoun()])), 'value' => $then, 'now' => $now, 'differs' => $then !== $now, 'shared' => $shared];
         }
 
         $blocks = data_get($snap, 'body.blocks');
@@ -455,7 +458,12 @@ trait ShowsEntryRevisions
 
     private function revisionTemplate(mixed $template): string
     {
-        return is_string($template) && $template !== '' ? $template : Cast::string(__('entries.rev.tpl_default'));
+        return $this->templateName($template);
+    }
+
+    private function revisionDay(string $day): string
+    {
+        return $day !== '' ? $this->dayName($day) : Cast::string(__('entries.ed.pd_real'));
     }
 
     private function revisionCoverName(string $key): string

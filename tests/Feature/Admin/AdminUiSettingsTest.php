@@ -6,6 +6,7 @@ use App\Modules\Admin\Theme\AdminChromeResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use Dom\HTMLDocument;
 use Livewire\Livewire;
 
 /*
@@ -137,5 +138,42 @@ it('persists the new visual axes to the admin_theme group', function (): void {
                 'sidebar_size' => 'sm',
                 'sidebar_image' => 'img-2',
             ]);
+    });
+});
+
+it('draws the board\'s two groups as picture cards, the first card naming the default it keeps, the text size among them', function (): void {
+    $owner = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($owner, 'owner', ['settings.manage', 'entries.view']));
+
+    $html = (string) $this->actingAs($owner)->withSession(['locale' => 'vi'])->get('http://a.test/admin/settings/admin-ui')->assertOk()->getContent();
+    $dom = HTMLDocument::createFromString($html, LIBXML_NOERROR);
+    $groups = array_map(static fn ($b): string => trim((string) $b->textContent), iterator_to_array($dom->querySelectorAll('[data-set-main] form h2 button')));
+    $labels = array_map(static fn ($l): string => trim((string) $l->textContent), iterator_to_array($dom->querySelectorAll('[data-set-main] form h3[id^="aui-"]')));
+
+    expect($groups)->toHaveCount(2)
+        ->and($groups[0])->toContain('Bố cục')->toContain('3 mục')
+        ->and($groups[1])->toContain('Màu & chữ')->toContain('5 mục')
+        ->and($labels)->toBe(['Độ rộng trang', 'Khi cuộn trang', 'Cỡ thanh bên', 'Chế độ màu', 'Thanh trên cùng', 'Màu thanh bên', 'Ảnh nền thanh bên', 'Cỡ chữ'])
+        ->and(preg_replace('/\s+/u', ' ', trim((string) $dom->querySelector('[aria-labelledby="aui-text_size"] input[value=""]')?->closest('label')?->textContent)))->toEndWith('Theo mặc định (Vừa)')
+        ->and(preg_replace('/\s+/u', ' ', trim((string) $dom->querySelector('[aria-labelledby="aui-layout_width"] input[value=""]')?->closest('label')?->textContent)))->toBe('Theo mặc định (Giãn hết màn hình)')
+        // the default card and one card per size, each a radio of the same group
+        ->and($dom->querySelectorAll('[role="radiogroup"][aria-labelledby="aui-text_size"] input[type="radio"][name="pick-text_size"]')->length)->toBe(5)
+        // the frame names the section; the page draws no second title of its own
+        ->and($dom->querySelectorAll('h1')->length)->toBe(1)
+        ->and($html)->toContain('Màu trang quản trị do nền tảng đặt chung, không đổi ở đây.');
+});
+
+it('saves a site-wide text size picked on its card', function (): void {
+    $owner = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($owner): void {
+        grantRole($owner, 'owner', ['settings.manage', 'entries.view']);
+
+        Livewire::actingAs($owner->fresh())->test(AdminUiSettings::class)
+            ->set('text_size', 'xl')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        expect(app(SettingsRepository::class)->get('admin_theme'))->toBe(['text_size' => 'xl']);
     });
 });

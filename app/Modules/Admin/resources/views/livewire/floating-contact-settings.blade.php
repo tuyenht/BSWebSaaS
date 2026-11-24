@@ -197,6 +197,12 @@
                                     <span class="ms-auto text-caption whitespace-nowrap text-text-muted">{{ __('admin.fc.lang_count', ['done' => $l['done'], 'all' => $filled]) }}</span>
                                 </button>
                             @endforeach
+                            <div class="lb-pf">
+                                <a href="{{ route('admin.settings.languages') }}" wire:navigate class="lb-manage">
+                                    <x-bs-admin::icon name="ri-settings-3" class="{{ $glyph }}" />
+                                    <span>{{ __('admin.lb.manage') }}</span>
+                                </a>
+                            </div>
                         </div>
                     </div>
 

@@ -74,9 +74,8 @@ final class CountWrongTemplates extends Command
         $rows = Entry::query()->whereNotNull('template_override')->whereIn('type', ['post', 'page'])
             ->selectRaw('type, template_override, count(*) as total')->groupBy('type', 'template_override')->get();
         foreach ($rows as $row) {
-            $role = TemplateCatalog::roleOfEntry($row->type);
             $layout = Cast::string($row->getAttribute('template_override'));
-            if ($role !== null && ! TemplateCatalog::fits($layout, $role)) {
+            if (TemplateCatalog::roleOfEntry($row->type) !== null && ! TemplateCatalog::fitsEntry($layout, $row->type)) {
                 $entries[$row->type] += Cast::int($row->getAttribute('total'));
             }
         }

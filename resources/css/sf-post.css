@@ -198,6 +198,28 @@
     }
 }
 
+/* «Ảnh lớn đầu bài» (the post's `hero` look): the cover leads the page at the full window width, above the band. */
+.post-cover.post-cover--hero {
+    max-width: none;
+    padding-inline: 0;
+}
+
+.post-cover--hero .post-cover__img {
+    aspect-ratio: 4 / 3;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.post-cover--hero .post-cover__caption {
+    padding-inline: 1rem;
+}
+
+@media (min-width: 768px) {
+    .post-cover--hero .post-cover__img {
+        aspect-ratio: 21 / 9;
+    }
+}
+
 /* Previous / next: two plain links, older on the left, newer on the right. */
 .post-nav {
     display: grid;
@@ -904,6 +926,15 @@
 
     .post-toc-phone {
         display: none;
+    }
+
+    /* «Không cột bên» (the post's `wide` look): one column, the contents kept as the closed list above the text. */
+    .post-columns.post-columns--wide:not(.post-columns--share) {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .post-columns--wide .post-toc-phone {
+        display: block;
     }
 }
 
