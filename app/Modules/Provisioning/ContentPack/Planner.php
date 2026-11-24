@@ -842,6 +842,8 @@ final class Planner
         foreach ($this->locked(ContentSection::query()->whereNotNull('taxonomy_id')->orderBy('sort_order')->orderBy('id'))->get(['id', 'key', 'taxonomy_id']) as $row) {
             $bound[Cast::int($row->taxonomy_id)] ??= $row->key;
         }
+        // Accepted race: a workflow switched on, or a section added by staff, between the apply's re-plan and its
+        // commit is not blocked. The window is one transaction, and the next plan shows it.
         $waiting = [];   // section key → the active workflow already keyed to it
         foreach ($this->locked(Workflow::query()->whereIn('applies_to_type', $keys)->where('is_active', true))->get(['applies_to_type', 'name']) as $workflow) {
             $waiting[$workflow->applies_to_type] ??= $workflow->name;

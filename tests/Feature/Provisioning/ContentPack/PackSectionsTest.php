@@ -259,6 +259,27 @@ describe('the plan and the write', function (): void {
             ->and(psLine($output, 'section:updates'))->toContain('belongs to the section «posts»');
     });
 
+    it('refuses a section on a category the same pack creates under a category another section is built on', function (): void {
+        // The branch does not exist yet: only the planned tree can show that «posts» owns its parent.
+        ContentPacks::load();
+        ContentPacks::edit($this->folder, 'taxonomies.json', function (array $data): array {
+            $data['items'][] = ['key' => 'tax:post_cat/tin-tuc/moi', 'parent' => 'tax:post_cat/tin-tuc', 'name' => ['vi' => 'Mới'], 'position' => 2];
+
+            return $data;
+        });
+        psSections($this->folder, [psServices(['key' => 'section:fresh', 'category' => 'tax:post_cat/tin-tuc/moi'])]);
+
+        [$exit, $output] = ContentPacks::run();
+
+        expect($exit)->toBe(1, $output)
+            ->and(ContentPacks::verdict($output, 'section:fresh'))->toBe('conflict')
+            ->and(psLine($output, 'section:fresh'))->toContain('tax:post_cat/tin-tuc/moi belongs to the section «posts»');
+
+        expect(fn () => ContentPacks::load())->toThrow(RuntimeException::class);
+        expect(psSection($this->siteId, 'fresh'))->toBeNull()
+            ->and(TaxonomyTranslation::query()->where('slug', 'moi')->exists())->toBeFalse();
+    });
+
     it('refuses a new section whose key an active workflow already waits on', function (): void {
         // The workflow would govern every post of the branch the moment the section exists, with
         // no one having chosen that for these posts: the loader refuses rather than notes it.
