@@ -115,6 +115,23 @@ class EntryDraft extends Model
     }
 
     /**
+     * A post's categories once a change's main category is put on it: the one main category is all a
+     * change holds, so the others follow from where it came from. One of the post's other categories
+     * made main keeps the old main beside the rest; a category from outside replaces the old main.
+     *
+     * @param  list<int>  $stored  the post's categories now, the main one first
+     * @return list<int>
+     */
+    public static function filingUnder(array $stored, int $main): array
+    {
+        $others = in_array($main, $stored, true)
+            ? array_values(array_filter($stored, static fn (int $id): bool => $id !== $main))
+            : array_slice($stored, 1);
+
+        return [$main, ...$others];
+    }
+
+    /**
      * content: the html props of each language's body are sanitized on every write (ADR-19).
      *
      * @return array<string, string>

@@ -2,17 +2,21 @@
 
 use App\Modules\Admin\Http\Controllers\AccessRequestController;
 use App\Modules\Admin\Http\Controllers\HintPreferenceController;
+use App\Modules\Admin\Http\Controllers\LeadExportController;
+use App\Modules\Admin\Http\Controllers\LeadFileDownloadController;
 use App\Modules\Admin\Http\Controllers\OAuthController;
 use App\Modules\Admin\Http\Controllers\SessionController;
 use App\Modules\Admin\Http\Controllers\SupportSignInController;
 use App\Modules\Admin\Http\Controllers\ThemePreferenceController;
 use App\Modules\Admin\Http\Middleware\AddServerTiming;
 use App\Modules\Admin\Http\Middleware\EnforceSupportSession;
+use App\Modules\Admin\Http\Middleware\RestrictAdminAddress;
 use App\Modules\Admin\Http\Middleware\SetLocale;
 use App\Modules\Admin\Http\Middleware\TrackSignedInDevice;
 use App\Modules\Admin\Livewire\AcceptInvitation;
 use App\Modules\Admin\Livewire\Account;
 use App\Modules\Admin\Livewire\AdminUiSettings;
+use App\Modules\Admin\Livewire\AdvancedSettings;
 use App\Modules\Admin\Livewire\Blocks\Editor as BlockEditor;
 use App\Modules\Admin\Livewire\Blocks\Library as BlockLibrary;
 use App\Modules\Admin\Livewire\Catalog\Editor as CatalogEditor;
@@ -49,6 +53,7 @@ use App\Modules\Admin\Livewire\Platform\Support\Index as SupportSessionsIndex;
 use App\Modules\Admin\Livewire\Platform\Tenants\Detail;
 use App\Modules\Admin\Livewire\Platform\Tenants\Index;
 use App\Modules\Admin\Livewire\ResetPassword;
+use App\Modules\Admin\Livewire\Roles\Index as RolesIndex;
 use App\Modules\Admin\Livewire\SeoSettings;
 use App\Modules\Admin\Livewire\Settings\Domains as DomainSettings;
 use App\Modules\Admin\Livewire\Settings\Redirects as RedirectSettings;
@@ -57,6 +62,7 @@ use App\Modules\Admin\Livewire\TwoFactorChallenge;
 use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
 use App\Modules\Admin\Livewire\WebsiteAppearanceSettings;
 use App\Modules\Admin\Livewire\WorkflowSettings;
+use App\Modules\Admin\Support\Leads\LeadExportTicket;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Cms\Models\ContentBlock;
@@ -65,6 +71,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Media\Http\Controllers\MediaUploadController;
 use App\Modules\Storefront\Http\Controllers\FormSubmissionController;
+use App\Modules\Storefront\Http\Controllers\MaintenancePreviewController;
 use App\Modules\Storefront\Http\Controllers\ProductPreviewController;
 use App\Modules\Storefront\Http\Controllers\RecordContactClick;
 use App\Modules\Storefront\Http\Controllers\RecordEntryView;
@@ -188,7 +195,7 @@ Route::domain((string) config('tenancy.platform_host'))
 
 // ── Tenant admin — login (guest, tenant context) ──────────────────────────────
 Route::prefix(config('admin.prefix', 'admin'))
-    ->middleware(['web', SetCurrentSite::class, 'site.active', SetLocale::class])
+    ->middleware(['web', SetCurrentSite::class, EnforceSupportSession::class, RestrictAdminAddress::class, 'site.active', SetLocale::class])
     ->group(function (): void {
         Route::get('/login', Login::class)->name('admin.login');
         Route::get('/forgot-password', ForgotPassword::class)->name('admin.password.request');
@@ -218,7 +225,11 @@ Route::prefix(config('admin.prefix', 'admin'))
 
         // Support sign-in: the console's single-use link lands here (a GET — CSP form-action 'self'
         // forbids a cross-host form post) and signs the staff member in as the chosen member.
+        // Not behind the address limit: the link is single-use, bound to this website and to the
+        // support desk browser, and support is how a locked-out owner gets back in. Nor behind the
+        // check that ends a support session: an earlier, finished one must not stop a new one.
         Route::get('/support/enter', [SupportSignInController::class, 'enter'])
+            ->withoutMiddleware([EnforceSupportSession::class, RestrictAdminAddress::class])
             ->middleware('throttle:30,1')
             ->name('admin.support.enter');
 
@@ -253,7 +264,7 @@ Route::prefix(config('admin.prefix', 'admin'))
 
 // ── Tenant admin plane — protected (auth + tenant context + site membership) ───
 Route::prefix(config('admin.prefix', 'admin'))
-    ->middleware([AddServerTiming::class, 'web', SetCurrentSite::class, EnforceSupportSession::class, 'site.active', 'auth', 'auth.session', 'tenant.member', SetLocale::class, TrackSignedInDevice::class])
+    ->middleware([AddServerTiming::class, 'web', SetCurrentSite::class, EnforceSupportSession::class, RestrictAdminAddress::class, 'site.active', 'auth', 'auth.session', 'tenant.member', SetLocale::class, TrackSignedInDevice::class])
     ->group(function (): void {
         Route::get('/', Dashboard::class)->name('admin.dashboard');
         // "Thông báo": the reader's own notifications on this site (the bell's "Xem tất cả thông báo").
@@ -277,6 +288,11 @@ Route::prefix(config('admin.prefix', 'admin'))
         Route::get('/settings/catalog', CatalogSettings::class)->middleware('can:settings.manage')->name('admin.settings.catalog');
         Route::get('/settings/integrations', IntegrationsSettings::class)->middleware('can:settings.manage')->name('admin.settings.integrations');
         Route::get('/settings/floating-contact', FloatingContactSettings::class)->middleware('can:settings.manage')->name('admin.settings.floating-contact');
+        // Maintenance mode and the other owner-only switches: every holder of settings.manage may open
+        // it, only the website's owner may change it (the component checks that on every action).
+        Route::get('/settings/advanced', AdvancedSettings::class)->middleware('can:settings.manage')->name('admin.settings.advanced');
+        // What visitors see while the website is under maintenance (a signed-in member sees the site).
+        Route::get('/settings/advanced/preview', MaintenancePreviewController::class)->middleware('can:settings.manage')->name('admin.settings.advanced.preview');
         // The site's redirects (old address → new one). settings.manage, checked by the component
         // itself (no route gate: a member without it gets the board's no-permission card).
         Route::get('/settings/redirects', RedirectSettings::class)->name('admin.settings.redirects');
@@ -302,6 +318,10 @@ Route::prefix(config('admin.prefix', 'admin'))
         // AssignRole / RevokeRole actions, so the role hierarchy is enforced server-side. No `can:`
         // here: a member without users.manage sees the screen's own no-permission card.
         Route::get('/users', UsersIndex::class)->name('admin.users.index');
+
+        // The website's roles, read-only: what each may do, who holds it. No `can:` here either: a
+        // member without roles.manage sees the screen's own no-permission card.
+        Route::get('/roles', RolesIndex::class)->name('admin.roles.index');
 
         // Dev-only design-system showcase (component mount() aborts in production).
         Route::get('/_gallery', ComponentGallery::class)->name('admin.gallery');
@@ -340,6 +360,20 @@ Route::prefix(config('admin.prefix', 'admin'))
         // screen's own no-permission card; the component asks forms.view / forms.manage on every
         // request (the livewire/update endpoint bypasses route middleware). Addressed by ulid (D2).
         Route::get('/forms', FormsInbox::class)->name('admin.forms.index');
+        // «Tải danh sách về máy»: the CSV, behind the one-time ticket the dialog issued once the
+        // member typed their password or code again. The controller asks the plan, forms.manage and
+        // "not a support session" itself; the ticket is bound to the member, the site and the filter.
+        Route::get('/forms/export/{token}', LeadExportController::class)
+            ->where('token', LeadExportTicket::PATTERN)
+            ->middleware('throttle:20,1')
+            ->name('admin.forms.export');
+        // «Tải về» of a file a visitor sent with a lead: by the file's ulid (D2), for a member given
+        // forms.files, never in a support session; audited, then a 60-second signed link to the
+        // private disk that the browser saves (LeadFileDownloadController).
+        Route::get('/forms/files/{ulid}', LeadFileDownloadController::class)
+            ->where('ulid', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')
+            ->middleware('throttle:60,1')
+            ->name('admin.forms.file');
         Route::get('/forms/{ulid}', FormsInbox::class)->name('admin.forms.show');
         // Biểu mẫu (the forms themselves, contacts module): no `can:` here either — the screens show
         // the plan and no-permission cards themselves and ask FormPolicy on every request and write.
@@ -460,7 +494,7 @@ Route::domain((string) config('tenancy.platform_host'))
         Route::get('/{any}', [SessionController::class, 'unknownOnPlatform'])->where('any', '.*')->fallback()->name('platform.unknown');
     });
 Route::prefix(config('admin.prefix', 'admin'))
-    ->middleware(['web', SetCurrentSite::class, EnforceSupportSession::class, 'site.active', 'auth.session', SetLocale::class])
+    ->middleware(['web', SetCurrentSite::class, EnforceSupportSession::class, RestrictAdminAddress::class, 'site.active', 'auth.session', SetLocale::class])
     ->group(function (): void {
         Route::get('/{any}', [SessionController::class, 'unknownOnSite'])->where('any', '.*')->fallback()->name('admin.unknown');
     });

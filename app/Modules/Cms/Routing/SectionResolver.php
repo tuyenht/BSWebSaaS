@@ -202,11 +202,18 @@ final class SectionResolver
      * several are), as resolveMany() reads it. A post whose primary category has no usable path
      * (older rows) is kept, for the caller's own forEntry() check to decide.
      *
+     * A post's pending change stands at a stage of its own (entry_drafts.workflow_state): a query of
+     * entries nested under one of changes names that column as $stage, and the pair is judged on it.
+     *
      * @param  Builder<Entry>  $entries
      * @param  array<string, list<string>>  $stages  section key => stage keys
+     * @param  'entries.workflow_state'|'entry_drafts.workflow_state'  $stage  the column holding the stage
      */
-    public function whereOnSectionStage(Builder $entries, array $stages): void
+    public function whereOnSectionStage(Builder $entries, array $stages, string $stage = 'entries.workflow_state'): void
     {
+        // Named into the SQL: only ever one of the two known columns, whatever a caller passes.
+        $column = $stage === 'entry_drafts.workflow_state' ? 'entry_drafts.workflow_state' : 'entries.workflow_state';
+
         $bindings = [];
         foreach ($stages as $section => $keys) {
             foreach ($keys as $key) {
@@ -237,7 +244,7 @@ final class SectionResolver
             ->where('et.site_id', $site)
             ->whereColumn('et.entry_id', 'entries.id')
             ->where('et.position', 0)
-            ->whereRaw("(not {$usable} or ({$section}, entries.workflow_state) in ({$pairs}))", [$site, ...$bindings]));
+            ->whereRaw("(not {$usable} or ({$section}, {$column}) in ({$pairs}))", [$site, ...$bindings]));
     }
 
     /**

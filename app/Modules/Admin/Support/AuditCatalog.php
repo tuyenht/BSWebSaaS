@@ -29,7 +29,7 @@ final class AuditCatalog
             'identity.email.notice_failed',
         ],
         'members' => [
-            'rbac.role.assigned', 'rbac.role.revoked', 'rbac.role.created', 'rbac.role.updated', 'rbac.role.deleted',
+            'rbac.role.assigned', 'rbac.role.revoked', 'rbac.role.created', 'rbac.role.updated', 'rbac.role.deleted', 'rbac.role.restored', 'rbac.role.purged',
             'rbac.invitation.sent', 'rbac.invitation.accepted', 'rbac.invitation.revoked', 'rbac.invitation.send_failed',
             'cms.category_scopes.changed', 'cms.category_scopes.cleared', 'cms.category_scopes.invited', 'identity.profile.updated',
         ],
@@ -38,7 +38,10 @@ final class AuditCatalog
             'entries.revision.restored', 'entries.entry.purged', 'catalog.product.purged',
             'cms.content_block.created', 'cms.content_block.updated', 'cms.content_block.body_saved',
             'cms.content_block.published', 'cms.content_block.unpublished', 'cms.content_block.duplicated',
-            'cms.content_block.deleted', 'forms.lead.erased',
+            'cms.content_block.deleted', 'forms.lead.erased', 'forms.leads.exported', 'forms.leads.export_finished',
+            'forms.lead.trashed', 'forms.lead.restored', 'forms.leads.trash_purged',
+            'forms.leads.retention_changed', 'forms.leads.retention_purged', 'forms.leads.spam_purged',
+            'forms.lead.file_downloaded', 'forms.lead_files.swept', 'forms.lead_files.reconciled',
         ],
         'menus' => [
             'cms.menu.saved', 'cms.menu.assigned', 'cms.menu.followed', 'cms.menu.deleted', 'cms.menu_item.saved', 'cms.menu_item.moved',
@@ -64,7 +67,7 @@ final class AuditCatalog
         ],
         'new_site' => ['provisioning.site.provisioned'],
         'support' => ['support.session.issued', 'support.session.entered', 'support.session.ended', 'support.session.notice_failed'],
-        'settings' => ['settings.support_access.changed', 'settings.locales.changed', 'settings.locales.default_changed', 'platform.security.turnstile_login', 'audit.month_deleted', 'audit.months_pruned',
+        'settings' => ['settings.support_access.changed', 'settings.locales.changed', 'settings.locales.default_changed', 'settings.maintenance.on', 'settings.maintenance.off', 'settings.embed_code.on', 'settings.embed_code.off', 'settings.embed_code.changed', 'settings.admin_ip.on', 'settings.admin_ip.off', 'settings.admin_ip.changed', 'platform.security.turnstile_login', 'audit.month_deleted', 'audit.months_pruned',
             'cms.redirect.external_added', 'cms.redirect.external_changed', 'cms.redirect.external_trashed', 'cms.redirect.external_restored', 'cms.redirect.external_purged'],
     ];
 

@@ -7,6 +7,7 @@ use App\Modules\Admin\Console\RecoverSiteOwnerCommand;
 use App\Modules\Admin\Http\Middleware\AddServerTiming;
 use App\Modules\Admin\Http\Middleware\EnforceSupportSession;
 use App\Modules\Admin\Http\Middleware\ResolveLivewireContext;
+use App\Modules\Admin\Http\Middleware\RestrictAdminAddress;
 use App\Modules\Admin\Http\Middleware\TrackSignedInDevice;
 use App\Modules\Admin\Listeners\SetTenantReplyTo;
 use App\Modules\Admin\Listeners\TellSiteAboutDomain;
@@ -24,6 +25,7 @@ use App\Modules\Admin\Livewire\EmailOtpChallenge;
 use App\Modules\Admin\Livewire\EmailSettings;
 use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
+use App\Modules\Admin\Livewire\Entries\ReviewChanges;
 use App\Modules\Admin\Livewire\ForgotPassword;
 use App\Modules\Admin\Livewire\Login;
 use App\Modules\Admin\Livewire\LoginSecuritySettings;
@@ -41,11 +43,13 @@ use App\Modules\Admin\Livewire\Platform\Tenants\ChangePlanDialog as PlatformChan
 use App\Modules\Admin\Livewire\Platform\Tenants\Detail as PlatformTenantsDetail;
 use App\Modules\Admin\Livewire\Platform\Tenants\Index as PlatformTenantsIndex;
 use App\Modules\Admin\Livewire\ResetPassword;
+use App\Modules\Admin\Livewire\Roles\Index as RolesIndex;
 use App\Modules\Admin\Livewire\SocialSettings;
 use App\Modules\Admin\Livewire\TwoFactorChallenge;
 use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
 use App\Modules\Admin\Navigation\AdminNav;
 use App\Modules\Admin\Navigation\PlatformNav;
+use App\Modules\Admin\Support\AdminAddressLimit;
 use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Support\Settings\BranchList;
 use App\Modules\Admin\Support\Settings\FloatingContactInput;
@@ -91,6 +95,9 @@ final class AdminServiceProvider extends ServiceProvider
         // Feature modules (Forms' lead notice) send tenant mail through the Shared contract; the
         // settings, secrets and OAuth transport behind it stay here.
         $this->app->bind(TenantMailConfigurator::class, TenantMailer::class);
+
+        // Per request (Octane-safe): where the website's admin may be opened from, read once.
+        $this->app->scoped(AdminAddressLimit::class);
     }
 
     public function boot(): void
@@ -105,6 +112,16 @@ final class AdminServiceProvider extends ServiceProvider
         // channels' icon pictures) own "in use" rows in the
         // library (polymorphic, no FK cascade): a deleted row takes them with it. app(), not
         // $this->app: under Octane each request runs in a clone of the booted app.
+        // Where the admin may be opened from is kept in the shared cache per website
+        // (AdminAddressLimit): a write drops that copy once committed.
+        $forgetAddresses = function (SiteSetting $setting): void {
+            if ($setting->group_name === AdminAddressLimit::GROUP && $setting->key === AdminAddressLimit::KEY) {
+                app(AdminAddressLimit::class)->forget(Cast::int($setting->site_id));
+            }
+        };
+        SiteSetting::saved($forgetAddresses);
+        SiteSetting::deleted($forgetAddresses);
+
         SiteSetting::deleted(function (SiteSetting $setting): void {
             if ($setting->group_name === LayoutSlots::SETTING_GROUP && $setting->key === LayoutSlots::SETTING_KEY) {
                 app(BlockMediaUsage::class)->forget('site_setting', [Cast::int($setting->getKey())]);
@@ -145,7 +162,9 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.catalog-settings', CatalogSettings::class);
         Livewire::component('admin.entries.index', EntriesIndex::class);
         Livewire::component('admin.entries.editor', Editor::class);
+        Livewire::component('admin.entries.review-changes', ReviewChanges::class);
         Livewire::component('admin.users.index', UsersIndex::class);
+        Livewire::component('admin.roles.index', RolesIndex::class);
         Livewire::component('admin.menus.index', MenusIndex::class);
         Livewire::component('admin.blocks.library', BlockLibrary::class);
         Livewire::component('admin.blocks.editor', BlockEditor::class);
@@ -242,6 +261,6 @@ final class AdminServiceProvider extends ServiceProvider
         // level: the guest login and the authed admin share this single route. auth.session (a no-op
         // for a guest) signs out a session whose password changed elsewhere, as on the admin pages.
         Livewire::setUpdateRoute(fn (array $handle) => Route::post('/livewire/update', $handle)
-            ->middleware([AddServerTiming::class, 'web', ResolveLivewireContext::class, EnforceSupportSession::class, 'auth.session', TrackSignedInDevice::class]));
+            ->middleware([AddServerTiming::class, 'web', ResolveLivewireContext::class, EnforceSupportSession::class, RestrictAdminAddress::class, 'auth.session', TrackSignedInDevice::class]));
     }
 }

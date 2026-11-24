@@ -17,6 +17,11 @@ carries only its own site's content:
 docker compose run --rm --no-deps app bash tests/Concurrency/octane-hammer.sh
 ```
 
+Two more legs run on the same pool: support sign-in (one staff member per site, each signed in
+as that site's owner, interleaved; a staff member has one open support session at a time), and a
+permission change (every worker loads the permissions, then another process takes `entries.view`
+from the owner role; no worker may still open the content list, else `❌ STALE PERMISSION`).
+
 Tunables: `HAMMER_REQUESTS` (default 200), `HAMMER_CONCURRENCY` (24), `HAMMER_PORT`
 (8088). A leak prints `❌ TENANT LEAK DETECTED` and exits non-zero. Kept out of the
 default CI suite (which runs against Postgres directly, single process) to avoid

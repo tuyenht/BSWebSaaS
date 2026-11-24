@@ -2,10 +2,15 @@
 
 namespace App\Modules\Admin\Livewire\Entries;
 
+use App\Modules\Admin\Support\Entries\EntryBodyLines;
+use App\Modules\Admin\Support\Entries\ReviewInboxGuide;
 use App\Modules\Admin\Support\Entries\ReviewWaiting;
 use App\Modules\Admin\Support\Entries\ScheduleInput;
+use App\Modules\Admin\Support\Entries\WorkflowStepLook;
+use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\ApproveEntryForLater;
+use App\Modules\Cms\Actions\SaveEntrySeo;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Exceptions\SchedulePastException;
@@ -13,10 +18,13 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
+use App\Modules\Cms\Support\JobFacts;
+use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Rbac\Support\RoleLabel;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -34,6 +42,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Js;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -50,6 +59,8 @@ use PDOException;
  * path: it reads a post and applies a transition, so `entries.review`/`entries.approve` is all
  * it asks for (EntryPolicy::review). An approve-only role can do its whole job here without the
  * right to edit a single word — the separation the `editorial` template exists to express.
+ * The one write besides a move is the Google title and description of a post not yet live
+ * (saveSeo, through SaveEntrySeo), offered only to someone the edit policy lets in.
  *
  * Which posts are waiting is a question about STAGES, answered by ReviewQueue: one `whereIn`
  * over entries rather than a per-row walk.
@@ -62,8 +73,11 @@ final class ReviewInbox extends Component
     /** Rows added per "Tải thêm" (design: +5). */
     private const int PAGE = 5;
 
-    /** Trail rows shown inside the reader. */
+    /** Trail rows shown inside the reader at first; «Xem thêm N lần chuyển» adds as many again (board 17). */
     private const int TRAIL_PAGE = 3;
+
+    /** The most trail rows one reader asks for. */
+    private const int TRAIL_MAX = 300;
 
     /** Hard ceiling on how much of the queue is hydrated in one request (see waiting()). */
     private const int MAX_QUEUE = 500;
@@ -77,8 +91,9 @@ final class ReviewInbox extends Component
     /** At most this many posts in one «Duyệt đăng N bài»: each is its own locked engine move inside the request. */
     private const int PICK_MAX = 50;
 
-    #[Url(as: 'tab', except: 'queue')]
-    public string $tab = 'queue';
+    /** «Giao cho tôi» opens first (board 17); «Hàng chờ duyệt» is the other tab. */
+    #[Url(as: 'tab', except: 'mine')]
+    public string $tab = 'mine';
 
     #[Url(as: 'q', except: '')]
     public string $search = '';
@@ -127,6 +142,33 @@ final class ReviewInbox extends Component
     #[Locked]
     public int $shown = self::PAGE;
 
+    /** How many moves of the open post's trail the reader shows; «Xem thêm N lần chuyển» adds TRAIL_PAGE. */
+    #[Locked]
+    public int $trailShown = self::TRAIL_PAGE;
+
+    /**
+     * Below the two-pane width the reader covers the whole screen once a post is opened (board 17); «Quay
+     * lại» shows the list again. On a wide screen both panes show and the first post opens by itself.
+     */
+    #[Locked]
+    public bool $detail = false;
+
+    /** «Tiêu đề trên Google» and «Mô tả trên Google» of the open post as typed; saved when the box is left (saveSeo). */
+    public string $seoTitle = '';
+
+    public string $seoDescription = '';
+
+    /** The post the two boxes were filled from, and what they read then (SaveEntrySeo::print). */
+    #[Locked]
+    public ?string $seoFor = null;
+
+    #[Locked]
+    public string $seoSeen = '';
+
+    /** The open post's short description, read by its length meter in the browser. */
+    #[Locked]
+    public string $excerptText = '';
+
     /**
      * Per-request caches. The list resolves a workflow, its stages and its section label for
      * every row; without these each row costs its own queries and the inbox scales with the
@@ -147,11 +189,17 @@ final class ReviewInbox extends Component
      */
     protected ?EloquentCollection $waitingMemo = null;
 
+    /** The guide («Hướng dẫn») is printed on the screen's first draw only (a redraw keeps it, wire:ignore). */
+    private bool $guideDue = false;
+
     /** The queue could not be read this request (board 17 «Lỗi tải»): the screen offers «Thử lại». */
     protected bool $loadFailed = false;
 
     /** @var array<string, array<int, array{id: int, name: string, role: string|null}>> */
     protected array $memberMemo = [];
+
+    /** The Google title and description were just saved: «Đã lưu» shows beside them on this draw. */
+    protected bool $seoSaved = false;
 
     public function boot(): void
     {
@@ -168,9 +216,16 @@ final class ReviewInbox extends Component
      */
     public function mount(): void
     {
+        $this->guideDue = true;
         $ulid = request()->query('bai');
         if (! is_string($ulid) || $ulid === '') {
             return;
+        }
+
+        // A post that is not handed to this person is found in the shared queue.
+        $mine = $this->waiting()->contains(fn (Entry $entry): bool => $entry->ulid === $ulid && $entry->assigned_to === $this->actor()->id);
+        if (! $mine) {
+            $this->tab = 'queue';
         }
 
         $this->open($ulid);
@@ -182,7 +237,7 @@ final class ReviewInbox extends Component
 
     public function setTab(string $tab): void
     {
-        $this->tab = in_array($tab, ['queue', 'mine'], true) ? $tab : 'queue';
+        $this->tab = in_array($tab, ['queue', 'mine'], true) ? $tab : 'mine';
         $this->resetList();
     }
 
@@ -207,16 +262,123 @@ final class ReviewInbox extends Component
     public function open(string $ulid): void
     {
         $this->current = $this->visible()->firstWhere('ulid', $ulid)?->ulid;
+        $this->detail = $this->current !== null;
+        $this->trailShown = self::TRAIL_PAGE;
         $this->note = '';
         $this->closeNote();
         $this->resetErrorBag();
+        if ($this->detail) {
+            // Below the two-pane width the reader now covers the list: the reading starts at its title.
+            $this->js("if (window.matchMedia('(max-width: 63.999rem)').matches) document.getElementById('inbox-reader-title')?.focus()");
+        }
     }
 
+    /**
+     * «Bài trước» / «Bài sau» in the reader's bar: the neighbour of the open post in the list on screen.
+     * Only a post of this person's list opens (open() checks it again).
+     */
+    public function step(int $by): void
+    {
+        $ulids = $this->visible()->map(fn (Entry $entry): string => (string) $entry->ulid)->values();
+        $at = $this->current === null ? false : $ulids->search($this->current);
+        if ($at === false) {
+            return;
+        }
+
+        $target = $ulids->get($at + ($by < 0 ? -1 : 1));
+        if (is_string($target)) {
+            $this->open($target);
+            $this->shown = max($this->shown, $ulids->search($target) + 1);
+        }
+    }
+
+    /**
+     * «Quay lại» of the full-screen reader: the list shows again, with the post that was open still
+     * marked, and the focus goes back to its row.
+     */
     public function closeReader(): void
     {
-        $this->current = null;
+        $this->detail = false;
         $this->note = '';
         $this->closeNote();
+        if ($this->current !== null) {
+            $this->js('document.querySelector('.Js::from('[data-inbox-open="'.$this->current.'"]').')?.focus()');
+        }
+    }
+
+    /** «Xem thêm N lần chuyển» in the open post's trail. */
+    public function moreTrail(): void
+    {
+        $this->trailShown = min($this->trailShown + self::TRAIL_PAGE, self::TRAIL_MAX);
+    }
+
+    /**
+     * Save the Google title and description of the open post (the boxes of «Khi đăng, khách và Google sẽ
+     * thấy»), when a box is left. Only someone the edit policy lets in, and through SaveEntrySeo: under
+     * the entry's row lock, never on a live or approved-for-later post, never over a value saved
+     * elsewhere since the reader read it (the boxes are filled again with it and the reason shows).
+     */
+    public function saveSeo(): void
+    {
+        $this->resetErrorBag(['seo', 'seoTitle', 'seoDescription']);
+
+        $entry = $this->currentEntry();
+        if (! $entry instanceof Entry || $this->seoFor !== $entry->ulid) {
+            // Said above the list, not under the boxes: by the next render they hold another post.
+            $this->addError('inbox', __('admin.inbox.err_gone'));
+
+            return;
+        }
+        $this->authorize('update', $entry);
+
+        // One line each, as the editor stores them: Google shows them on one line.
+        $this->seoTitle = SeoFields::singleLine($this->seoTitle);
+        $this->seoDescription = SeoFields::singleLine($this->seoDescription);
+        $rules = app(EntryContentRules::class);
+        $this->validate(
+            ['seoTitle' => $rules->rules()['seo_title'], 'seoDescription' => $rules->rules()['seo_description']],
+            ['seoTitle.max' => $rules->messages()['seo_title.max'], 'seoDescription.max' => $rules->messages()['seo_description.max']],
+        );
+
+        $locale = app(SiteLocale::class)->default();
+        try {
+            $why = app(SaveEntrySeo::class)->handle($entry, $this->actor(), $locale, $this->seoTitle, $this->seoDescription, $this->seoSeen);
+        } catch (AuthorizationException) {
+            $this->addError('seo', __('admin.wfb.err_forbidden'));
+
+            return;
+        }
+
+        $translation = $entry->translationFor($locale);
+        if ($why === SaveEntrySeo::CHANGED) {
+            // Saved elsewhere meanwhile: the boxes show what is stored now, and the reason stays until the next save.
+            $fresh = EntryTranslation::query()->where('entry_id', $entry->id)->where('locale', $locale)->first();
+            if ($translation instanceof EntryTranslation && $fresh instanceof EntryTranslation) {
+                $translation->seo_title = $fresh->seo_title;
+                $translation->seo_description = $fresh->seo_description;
+            }
+            $this->fillSeo($entry);
+            $this->addError('seo', __('admin.inbox.seo_err_changed'));
+
+            return;
+        }
+        if ($why !== null) {
+            $this->addError('seo', __(match ($why) {
+                SaveEntrySeo::APPROVED_LATER => 'entries.err_approved_later',
+                SaveEntrySeo::LIVE => 'admin.inbox.seo_live',
+                default => 'admin.inbox.seo_err_no_translation',
+            }));
+
+            return;
+        }
+
+        // The reader on this draw reads the post from the queue already in memory: it shows what was stored.
+        if ($translation instanceof EntryTranslation) {
+            $translation->seo_title = $this->seoTitle !== '' ? $this->seoTitle : null;
+            $translation->seo_description = $this->seoDescription !== '' ? $this->seoDescription : null;
+        }
+        $this->seoSeen = SaveEntrySeo::print($translation);
+        $this->seoSaved = true;
     }
 
     public function loadMore(): void
@@ -429,8 +591,10 @@ final class ReviewInbox extends Component
 
         // Handled — carry on DOWN the list: the first post that came after this one and is still
         // waiting. (Taking the head of the re-sorted list would throw the reviewer back to the
-        // top after every decision.)
+        // top after every decision.) Below the two-pane width the list shows again (board 17).
         $this->current = $this->nextAfter($queueBefore, (string) $this->current);
+        $this->showList();
+        $this->trailShown = self::TRAIL_PAGE;
     }
 
     /**
@@ -503,6 +667,8 @@ final class ReviewInbox extends Component
         $at = app(SiteTime::class)->forDisplay($when);
         $this->dispatch('bs-toast', text: __('admin.inbox.ap_done', ['when' => $at !== null ? $at->format('d/m/Y · H:i') : '']));
         $this->current = $this->nextAfter($queueBefore, (string) $this->current);
+        $this->showList();
+        $this->trailShown = self::TRAIL_PAGE;
 
         return null;
     }
@@ -696,7 +862,21 @@ final class ReviewInbox extends Component
     public function render(): View
     {
         $visible = $this->visible();
+        // The reader always holds a post while the list has one (board 17): the one opened, else the
+        // first. It is set here, on the component, so a move clicked later acts on the post that was
+        // on screen, never on whichever post heads the list by then. A post that left the list gives
+        // way to the first one, and below the two-pane width the list shows again with the reason.
+        if ($this->current === null || ! $visible->contains('ulid', $this->current)) {
+            if ($this->current !== null) {
+                $this->showList();
+            }
+            $this->current = $visible->first()?->ulid;
+            $this->trailShown = self::TRAIL_PAGE;
+        }
         $entry = $this->currentEntry();
+        if ($entry instanceof Entry && $this->seoFor !== $entry->ulid) {
+            $this->fillSeo($entry);
+        }
         $noteDialog = $entry instanceof Entry && $this->noteKey !== null ? $this->noteDialog($entry, $this->noteKey) : null;
         if ($this->noteOpen && $noteDialog === null) {
             // The post left the queue or the move is gone while the dialog was open: close it, so
@@ -704,7 +884,16 @@ final class ReviewInbox extends Component
             $this->closeNote();
         }
 
+        $guide = null;
+        if ($this->guideDue) {
+            $user = $this->actor();
+            $guide = ReviewInboxGuide::for($user)->toArray($user, app(CurrentSite::class)->id());
+        }
+
+        $position = $this->current === null ? false : $visible->search(fn (Entry $e): bool => $e->ulid === $this->current);
         $view = view('admin::livewire.entries.review-inbox', [
+            'guide' => $guide,
+            'nav' => $position === false ? null : ['at' => $position + 1, 'of' => $visible->count()],
             'rows' => $this->rows($visible->take($this->shown)),
             'total' => $visible->count(),
             'queueCount' => $this->waiting()->count(),
@@ -714,6 +903,9 @@ final class ReviewInbox extends Component
             'loadFailed' => $this->loadFailed,
             'bulk' => $this->bulkBar(),
             'noteDialog' => $noteDialog,
+            'seoSaved' => $this->seoSaved,
+            'seoConfig' => SeoFields::clientConfig(['excerpt' => 'excerptText', 'title' => 'seoTitle', 'description' => 'seoDescription'], ['base' => '', 'home' => null, 'homeSlug' => ''], true),
+            'seoLimits' => SeoFields::LIMITS,
         ]);
         $view->title(__('admin.inbox.title'));
 
@@ -889,7 +1081,7 @@ final class ReviewInbox extends Component
      * List rows: title, stage, section, who sent it and how long it has waited.
      *
      * @param  Collection<int, Entry>  $entries
-     * @return list<array{ulid: string, title: string, stage: string, section: string, author: string, waited_at: DateTimeInterface|null, late: bool, current: bool}>
+     * @return list<array{ulid: string, title: string, stage: string, tone: string, section: string, author: string, waited_at: DateTimeInterface|null, late: bool, current: bool}>
      */
     private function rows(Collection $entries): array
     {
@@ -905,6 +1097,7 @@ final class ReviewInbox extends Component
                 'ulid' => (string) $entry->ulid,
                 'title' => $translation instanceof EntryTranslation && $translation->title !== '' ? $translation->title : (string) __('entries.unnamed'),
                 'stage' => $this->stageLabel($workflow, $entry),
+                'tone' => $this->stageTone($workflow, $entry),
                 'section' => $this->sectionLabel($entry),
                 'author' => $this->authorName($entry),
                 'waited_at' => $waited,
@@ -923,13 +1116,16 @@ final class ReviewInbox extends Component
      *
      * @return array{
      *     ulid: string, title: string, section: string, author: string, sent_at: DateTimeInterface|null,
-     *     cover: string|null, blocks: list<array<array-key, mixed>>, excerpt: string|null,
-     *     seo_title: string|null, seo_description: string|null, path: string|null,
-     *     steps: list<array{key: string, label: string, is_published: bool, state: string}>,
-     *     step_no: int, step_count: int, step_label: string, workflow: string,
+     *     cover: string|null, body: list<array{k: string, t: string}>, excerpt: string|null,
+     *     seo_title: string|null, seo_description: string|null, path: string|null, edit_url: string|null,
+     *     steps: list<array{key: string, label: string, is_published: bool, state: string, icon: string}>,
+     *     step_no: int, step_count: int, step_label: string, step_icon: string, workflow: string,
+     *     fields: list<array{label: string, value: string}>, missing: list<string>, seo_edit: bool,
+     *     words: int, paragraphs: int,
      *     actions: list<array{key: string, label: string, to_label: string, to_published: bool, first: bool, note: bool, icon: string}>,
      *     schedule: array{at: string, offset: int, zone: string},
      *     trail: list<array{id: int, at: string, actor: string|null, transition: string, from: string, to: string, note: string|null}>,
+     *     trail_total: int, trail_more: int,
      * }|null
      */
     private function reader(Entry $entry): ?array
@@ -952,6 +1148,7 @@ final class ReviewInbox extends Component
                 'label' => $state->label,
                 'is_published' => $state->is_published,
                 'state' => $index < $currentIndex ? 'done' : ($index === $currentIndex ? 'current' : 'todo'),
+                'icon' => WorkflowStepLook::icon($state),
             ];
         }
 
@@ -977,7 +1174,16 @@ final class ReviewInbox extends Component
             ];
         }
 
-        $trail = app(WorkflowTrail::class)->forEntry($entry->id, self::TRAIL_PAGE);
+        $trail = app(WorkflowTrail::class)->forEntry($entry->id, $this->trailShown);
+        $body = $this->bodyLines($translation);
+        $words = 0;
+        foreach ($body as $line) {
+            $words += count(preg_split('/\s+/u', trim($line['t']), -1, PREG_SPLIT_NO_EMPTY) ?: []);
+        }
+        $paragraphs = count(array_filter($body, static fn (array $line): bool => $line['k'] !== 'h'));
+        $seoTitle = $translation?->seo_title;
+        $seoDescription = $translation?->seo_description;
+        $mayEdit = $actor->can('update', $entry);
 
         return [
             'ulid' => (string) $entry->ulid,
@@ -986,15 +1192,30 @@ final class ReviewInbox extends Component
             'author' => $this->authorName($entry),
             'sent_at' => $this->waitedAt($entry),
             'cover' => $this->coverUrl($entry),
-            'blocks' => $this->readerBlocks($translation),
+            'body' => $body,
             'excerpt' => $translation?->excerpt,
-            'seo_title' => $translation?->seo_title,
-            'seo_description' => $translation?->seo_description,
+            'seo_title' => $seoTitle,
+            'seo_description' => $seoDescription,
             'path' => $this->publicPath($entry, $locale),
+            // «Mở bài viết đầy đủ để sửa»: only for someone the edit policy lets in (an approve-only role has none)
+            'edit_url' => $mayEdit ? route('admin.entries.edit', ['ulid' => $entry->ulid]) : null,
+            // the Google boxes: someone the edit policy lets in, on a post that is not live or approved for later
+            'seo_edit' => $mayEdit && $entry->status !== 'published' && ! $entry->approvedForLater() && $translation instanceof EntryTranslation,
+            'fields' => $this->mainFields($entry, $locale),
+            // «Bài này còn thiếu …» (board 17): what a reader of the card or of Google will miss
+            'missing' => array_values(array_filter([
+                $this->coverUrl($entry) === null ? (string) __('admin.inbox.missing_cover') : null,
+                ($translation->excerpt ?? '') === '' ? (string) __('admin.inbox.missing_excerpt') : null,
+                ($seoTitle ?? '') === '' ? (string) __('admin.inbox.missing_seo_title') : null,
+                ($seoDescription ?? '') === '' ? (string) __('admin.inbox.missing_seo_description') : null,
+            ])),
+            'words' => $words,
+            'paragraphs' => $paragraphs,
             'steps' => $steps,
             'step_no' => $currentIndex + 1,
             'step_count' => $states->count(),
             'step_label' => $states->get($currentIndex) instanceof WorkflowState ? $states->get($currentIndex)->label : $fromState,
+            'step_icon' => WorkflowStepLook::icon($states->get($currentIndex)),
             'workflow' => $workflow->name,
             'actions' => $actions,
             'schedule' => $this->scheduleField(),
@@ -1007,7 +1228,52 @@ final class ReviewInbox extends Component
                 'to' => $row['to'],
                 'note' => $row['note'],
             ], $trail['rows']),
+            'trail_total' => $trail['total'],
+            // «Xem thêm N lần chuyển»: the next page of moves, never more than are left
+            'trail_more' => $this->trailShown < self::TRAIL_MAX ? min(self::TRAIL_PAGE, max(0, $trail['total'] - count($trail['rows']))) : 0,
         ];
+    }
+
+    /**
+     * «Thông tin chính» (board 17): the details a post of this kind carries besides its text, as
+     * label and value. Only the job card's facts and badge exist so far (JobFacts); they carry no
+     * name of their own, so each fact is numbered.
+     *
+     * @return list<array{label: string, value: string}>
+     */
+    private function mainFields(Entry $entry, string $locale): array
+    {
+        $card = JobFacts::read($entry->meta, $locale);
+        $fields = [];
+        foreach ($card['facts'] as $i => $fact) {
+            $fields[] = ['label' => (string) __('admin.inbox.field_fact', ['n' => $i + 1]), 'value' => $fact['text']];
+        }
+        if ($card['badge'] !== '') {
+            $fields[] = ['label' => (string) __('admin.inbox.field_badge'), 'value' => $card['badge']];
+        }
+
+        return $fields;
+    }
+
+    /**
+     * The post's text as the reader shows it (board 17 «Nội dung chi tiết»): a written body paragraph by
+     * paragraph, each list item its own line, a laid-out one block by block, named by its kind. Plain
+     * text only; the hint above it counts its words and paragraphs (headings are not paragraphs).
+     *
+     * @return list<array{k: string, t: string}>
+     */
+    private function bodyLines(?EntryTranslation $translation): array
+    {
+        $blocks = [];
+        foreach ($this->readerBlocks($translation) as $block) {
+            if (is_string($block['type'] ?? null)) {
+                /** @var array<string, mixed> $props */
+                $props = is_array($block['props'] ?? null) ? $block['props'] : [];
+                $blocks[] = ['type' => $block['type'], 'props' => $props];
+            }
+        }
+
+        return app(EntryBodyLines::class)->lines($blocks);
     }
 
     /**
@@ -1070,6 +1336,43 @@ final class ReviewInbox extends Component
         $state = $workflow->states->firstWhere('key', $key);
 
         return $state instanceof WorkflowState ? $state->label : $key;
+    }
+
+    /** The colour of the list row's dot: the step the post waits at, as the workflow configures it. */
+    private function stageTone(?Workflow $workflow, Entry $entry): string
+    {
+        if ($workflow === null) {
+            return WorkflowStepLook::tone(null, (string) $entry->workflow_state);
+        }
+
+        $key = app(EntryWorkflowResolver::class)->originFor($workflow, $entry);
+
+        return WorkflowStepLook::tone($workflow->states->firstWhere('key', $key), $key);
+    }
+
+    /** The two Google boxes and the short description's meter, filled from the open post's stored text. */
+    private function fillSeo(Entry $entry): void
+    {
+        $translation = $entry->translationFor(app(SiteLocale::class)->default());
+        $this->seoFor = (string) $entry->ulid;
+        $this->seoTitle = $translation->seo_title ?? '';
+        $this->seoDescription = $translation->seo_description ?? '';
+        $this->seoSeen = SaveEntrySeo::print($translation);
+        $this->excerptText = $translation->excerpt ?? '';
+        $this->resetErrorBag(['seo', 'seoTitle', 'seoDescription']);
+    }
+
+    /**
+     * Below the two-pane width, the covering reader gives way to the list (a post was decided, or left the
+     * list). The focus would fall to the page with the hidden button, so it goes to the row of the post now
+     * marked, or to the screen's title when the list is empty.
+     */
+    private function showList(): void
+    {
+        if ($this->detail) {
+            $this->js("if (window.matchMedia('(max-width: 63.999rem)').matches) (document.querySelector('[data-inbox-open][data-current]') ?? document.getElementById('inbox-title'))?.focus()");
+        }
+        $this->detail = false;
     }
 
     private function sectionKey(Entry $entry): ?string
@@ -1165,6 +1468,8 @@ final class ReviewInbox extends Component
     {
         $this->shown = self::PAGE;
         $this->current = null;
+        $this->detail = false;
+        $this->trailShown = self::TRAIL_PAGE;
         $this->picked = [];
         $this->waitingMemo = null;
     }

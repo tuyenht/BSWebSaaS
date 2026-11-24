@@ -2,11 +2,11 @@
   "entries": {
     "resources/css/app.css": {
       "js": 0,
-      "css": 48349
+      "css": 52194
     },
     "resources/css/admin-account.css": {
       "js": 0,
-      "css": 2568
+      "css": 2654
     },
     "resources/css/storefront.css": {
       "js": 0,
@@ -78,7 +78,7 @@
     },
     "resources/css/sf-404.css": {
       "js": 0,
-      "css": 1007
+      "css": 1077
     },
     "resources/css/sf-search.css": {
       "js": 0,
@@ -171,7 +171,7 @@
       "css": 36159
     },
     "resources/js/admin-unsaved.js": {
-      "js": 2565,
+      "js": 2772,
       "css": 0
     },
     "resources/js/admin-save-bar.js": {
@@ -190,8 +190,12 @@
       "js": 106668,
       "css": 10606
     },
+    "resources/js/admin-lang-bar.js": {
+      "js": 1739,
+      "css": 0
+    },
     "resources/js/admin-menus.js": {
-      "js": 27832,
+      "js": 28701,
       "css": 0
     },
     "resources/js/admin-bell.js": {

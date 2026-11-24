@@ -95,7 +95,9 @@ final readonly class RouteSync
         $seen = [$ancestor->id => true];
 
         while ($frontier !== []) {
-            $children = Entry::query()->whereIn('parent_id', $frontier)->get();
+            // each child's text in this language comes with it (translationFor reads it), not one query per child
+            $children = Entry::query()->whereIn('parent_id', $frontier)
+                ->with(['translations' => fn ($query) => $query->where('locale', $locale)])->get();
             $frontier = [];
 
             foreach ($children as $child) {
@@ -111,6 +113,38 @@ final readonly class RouteSync
                         $this->sync($child, $locale, $translation->slug);
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * A page going live (again), or one of its languages ($locale): its published sub-pages follow the
+     * address it stands at in each of its live languages, each move with its 301. While the page was
+     * offline its own address may have moved (a pending change folded into it as it left the website,
+     * EntryDraftFolder) and the sub-pages kept theirs. A language that is not live, or whose page
+     * address is not where its slug puts it yet, is left: its sub-pages move when that language goes
+     * live. Called by the roads that put a page or a language live, after the page's own route sync,
+     * under the page's row lock; a sub-page's address another item holds throws, so the publication
+     * rolls back as for the page's own address.
+     *
+     * @throws RouteConflictException
+     */
+    public function syncSubPagesOf(Entry $page, ?string $locale = null): void
+    {
+        if ($page->type !== 'page' || ! Entry::query()->where('parent_id', $page->id)->exists()) {
+            return;
+        }
+        $routed = SiteRoute::query()->where('entry_id', $page->id)->pluck('path', 'locale')->all();
+        if ($routed === []) {
+            return;
+        }
+        $live = $page->translations()->where('status', 'published')
+            ->whereIn('locale', $locale === null ? array_keys($routed) : array_intersect([$locale], array_keys($routed)))
+            ->orderBy('locale')->get(['id', 'entry_id', 'locale', 'slug']);
+        foreach ($live as $translation) {
+            $in = $translation->locale;
+            if ($routed[$in] === $this->paths->forEntry($page, $in, (string) $translation->slug)) {
+                $this->syncDescendants($page, $in);
             }
         }
     }
@@ -220,11 +254,12 @@ final readonly class RouteSync
      */
     private function assertPathAvailable(string $locale, string $path, string $ownColumn, int $ownId): void
     {
+        $entryId = $ownColumn === 'entry_id' ? $ownId : null;
         if (PathBuilder::isReserved($path) && ! $this->standsAt($locale, $path, $ownColumn, $ownId)) {
-            throw new RouteConflictException($path);
+            throw new RouteConflictException($path, $entryId);
         }
         if ($this->foreignRoute($locale, $path, $ownColumn, $ownId) !== null) {
-            throw new RouteConflictException($path);
+            throw new RouteConflictException($path, $entryId);
         }
     }
 

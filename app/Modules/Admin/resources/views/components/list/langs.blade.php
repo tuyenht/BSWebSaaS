@@ -111,7 +111,7 @@
                         <div x-ref="menu" role="menu" aria-label="{{ __('entries.lc_menu_label', ['title' => $name]) }}"
                             x-on:keydown.down.prevent="$focus.within($refs.menu).wrap().next()" x-on:keydown.up.prevent="$focus.within($refs.menu).wrap().prev()"
                             x-on:keydown.home.prevent="$focus.within($refs.menu).first()" x-on:keydown.end.prevent="$focus.within($refs.menu).last()"
-                            x-on:keydown.tab="open = false">
+                            x-on:keydown.tab="window.bsMenu.leave($event, $refs.menu, () => close(true))">
                             @foreach ($locales as $lc)
                                 @php $s = $state($lc); @endphp
                                 @if ($run instanceof \Closure && $canEdit($lc))

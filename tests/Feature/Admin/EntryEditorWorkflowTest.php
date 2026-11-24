@@ -391,14 +391,16 @@ it('shows a live pre-workflow post at the public stage — no submit button that
         app(PublishEntry::class)->handle($post, 'vi', $editor->fresh());   // live under tier-1
         app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
 
-        // The author: nothing to press (submit does not exist from the published stage), told
-        // plainly that the post is live and that saved edits show at once.
+        // The author: no move of the post itself (submit does not exist from the published stage);
+        // their edits go into a pending change they send for review, visitors keep the live version.
         Livewire::actingAs($author->fresh())
             ->test(Editor::class, ['ulid' => $post->ulid])
             ->assertSee(__('admin.wfb.live_chip'))
             ->assertSee(__('admin.wfb.step_of', ['n' => 3, 'total' => 4, 'label' => 'Đã đăng']))
             ->assertDontSee(__('admin.wfb.pre_workflow'))
-            ->assertDontSee('Gửi duyệt')
+            ->assertDontSeeHtml('wf-action-submit')
+            ->assertSeeHtml('wire:click="submitChange"')
+            ->assertSee(__('entries.chg.head_editing', ['noun' => __('entries.chg.noun_post')]))
             ->assertSee(__('admin.wfb.wait_line_live'));
 
         // The editor: only the moves that exist from the published stage.
@@ -408,7 +410,7 @@ it('shows a live pre-workflow post at the public stage — no submit button that
             ->assertSee('Lưu trữ')
             ->assertDontSee('Gửi duyệt')
             ->assertDontSee('Duyệt đăng')
-            ->assertSee(__('admin.wfb.live_edit_hint'));
+            ->assertSee(__('entries.chg.head_editing', ['noun' => __('entries.chg.noun_post')]));
 
         expect($post->fresh()->status)->toBe('published');
     });

@@ -80,6 +80,7 @@ final class AdminErrorPages
             $this->applyLocale($request);
             $page = match (true) {
                 $e instanceof SiteNotActive => $this->siteClosed($e->siteStatus),
+                $e instanceof AdminAddressNotAllowed => $this->addressNotAllowed(),
                 $e instanceof ModuleNotEnabled => $this->locked($e->module),
                 $status === 419 => $this->expired($request),
                 $status === 429 => $this->rate($e),
@@ -201,6 +202,20 @@ final class AdminErrorPages
                 'tone' => 'muted', 'icon' => 'ri-pause-circle', ...self::callSupport(),
             ]),
         };
+    }
+
+    /**
+     * The website's admin is limited to some network addresses and this one is not among them
+     * (RestrictAdminAddress): no word about addresses or lists, only that this place is not
+     * allowed and that the platform's support opens it again.
+     *
+     * @return array<string, mixed>
+     */
+    private function addressNotAllowed(): array
+    {
+        return self::page('ipblock', __('errors.ipblock.title'), __('errors.ipblock.line', ['platform' => Cast::string(config('admin.brand.name'))]), [
+            'tone' => 'muted', 'icon' => 'ri-shield-keyhole', ...self::callSupport(),
+        ]);
     }
 
     /** @return array<string, mixed> */

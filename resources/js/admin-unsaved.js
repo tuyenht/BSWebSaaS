@@ -9,7 +9,9 @@
 //    the page and puts the focus back. "Bỏ thay đổi và <đi>" drops the draft through the page's
 //    discard method, then goes;
 //  - a link to another settings section says "sang mục khác", any other link "rời đi"; a link to
-//    the section already open does nothing. Back and forward through the history pass.
+//    the section already open does nothing. Back and forward through the history pass;
+//  - a link that carries its own words (data-ud-body, data-ud-save, data-ud-discard: the language
+//    bar's "switch to another version") is asked about in those words.
 // Text typed into a field that reaches the server only when the field is left (wire:model.blur)
 // counts as a change until a round trip has carried it. Before asking, the field is left and the
 // draft sent, so the dialog opens only when the server's count says something is unsaved.
@@ -45,6 +47,54 @@ export function layoutOf(avail, widths) {
 export const ORDER = { row: ['x', 's', 'p'], col: ['p', 's', 'x'] };
 
 let ctx = null;
+
+/** Whether an element is drawn: connected, and neither it nor a parent hidden or display:none. */
+function drawn(el) {
+    if (!el || !el.isConnected) {
+        return false;
+    }
+    for (let x = el; x && x.nodeType === 1; x = x.parentElement) {
+        if (x.hidden || window.getComputedStyle(x).display === 'none') {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Where the focus goes back when the dialog closes: what had it, or, when that was in a popup closed
+ * meanwhile (a row of the language bar's panel), the drawn button that controls that popup.
+ */
+function returnTo(from) {
+    if (!from || !from.isConnected) {
+        return null;
+    }
+    if (drawn(from)) {
+        return from;
+    }
+    for (let p = from.parentElement; p; p = p.parentElement) {
+        if (p.id) {
+            const by = Array.from(document.querySelectorAll('[aria-controls]')).find(
+                (b) => b.getAttribute('aria-controls').split(/\s+/).includes(p.id) && drawn(b),
+            );
+            if (by) {
+                return by;
+            }
+        }
+    }
+
+    return null;
+}
+
+/** A link on the page to `target` that carries its own words for the dialog, or null. */
+function ownWords(target) {
+    if (!target) {
+        return null;
+    }
+
+    return Array.from(document.querySelectorAll('a[data-ud-body]')).find((a) => a.href === target.href) || null;
+}
 
 /** The words a button shows now (its x-show variant for this way out). */
 function labelOf(b) {
@@ -167,6 +217,8 @@ export function unsavedDialog(cfg) {
         // an editor's own sentence and save button, as the page last drew them
         body: '',
         saveText: '',
+        discardText: '',
+        own: false,
 
         init() {
             root = this.$root;
@@ -253,9 +305,12 @@ export function unsavedDialog(cfg) {
             opener = from && from !== document.body ? from : null;
             go = goOn;
             const words = this.$refs.count;
-            this.body = (words && words.getAttribute('data-unsaved-body')) || '';
-            this.saveText = (words && words.getAttribute('data-unsaved-save')) || '';
-            this.section = !!target && (cfg.sections || []).includes(target.pathname);
+            const link = ownWords(target);
+            this.own = !!link;
+            this.body = (link && link.getAttribute('data-ud-body')) || (words && words.getAttribute('data-unsaved-body')) || '';
+            this.saveText = (link && link.getAttribute('data-ud-save')) || (words && words.getAttribute('data-unsaved-save')) || '';
+            this.discardText = (link && link.getAttribute('data-ud-discard')) || '';
+            this.section = !link && !!target && (cfg.sections || []).includes(target.pathname);
             this.open = true;
             lock();
             this.$nextTick(() => this.shown());
@@ -305,8 +360,9 @@ export function unsavedDialog(cfg) {
                 ro = null;
             }
             unlock();
-            if (back && o && o.isConnected) {
-                o.focus();
+            const to = back ? returnTo(o) : null;
+            if (to) {
+                to.focus();
             }
         },
 

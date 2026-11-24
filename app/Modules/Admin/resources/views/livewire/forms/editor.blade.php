@@ -56,7 +56,7 @@
                     <span class="text-small text-text-muted">{{ trans_choice('form_builder.fields_n', count($fields) + 1, ['n' => count($fields) + 1]) }}</span>
                 </div>
                 <div class="flex min-w-0 flex-col gap-4 p-4">
-                    <p class="m-0 text-small text-text-muted">{{ __('form_builder.fields_hint_drag') }} <x-bs-admin::icon name="ri-draggable" class="inline size-4 align-text-bottom" /> {{ __('form_builder.fields_hint_rest') }}</p>
+                    <p class="m-0 text-small text-text-muted">{{ __('form_builder.fields_hint_drag') }} <x-bs-admin::icon name="ri-draggable" class="inline size-4 align-text-bottom" /> {{ __('form_builder.fields_hint_rest', ['n' => count($kinds)]) }}</p>
                     <div class="flex flex-col overflow-hidden rounded-md border border-border" role="list" aria-label="{{ __('form_builder.fields_label') }}" wire:sort="sortField">
                         @foreach ($fields as $i => $f)
                             @php
@@ -117,6 +117,44 @@
                                                 </select>
                                             </div>
                                         </div>
+                                        @if ($f['type'] === 'file')
+                                            {{-- «Tệp đính kèm»: which files it takes (the platform's kinds; one this field
+                                                 already has stays listed), how many, and the size note. --}}
+                                            <fieldset class="m-0 min-w-0 border-0 p-0">
+                                                <legend class="{{ $lab }} p-0">{{ __('form_builder.file_accept') }}</legend>
+                                                <div class="flex flex-col gap-2">
+                                                    @foreach (array_values(array_unique([...$fileKinds, $f['accept']])) as $acc)
+                                                        @php $accOn = $f['accept'] === $acc; @endphp
+                                                        <label @class(['flex min-h-hit cursor-pointer items-start gap-2.5 rounded-md border px-3 py-2.5', 'border-border-strong' => ! $accOn, 'border-primary-text bg-[color-mix(in_srgb,var(--color-primary-text)_6%,transparent)]' => $accOn])>
+                                                            <input type="radio" name="bm-a-{{ $key }}" value="{{ $acc }}" class="mt-0.5 size-4.5 shrink-0 accent-primary-text" wire:model.live="fields.{{ $i }}.accept">
+                                                            <span class="flex min-w-0 flex-col gap-1 text-body text-text-strong [overflow-wrap:anywhere]">
+                                                                <span>{{ __('form_builder.file_kind.'.$acc) }}</span>
+                                                                @if ($accOn)
+                                                                    <small class="text-small text-text-muted">{{ __('form_builder.file_ext', ['ext' => implode(' · ', array_map(fn (string $e): string => '.'.$e, \App\Modules\Forms\Support\LeadFileKinds::KINDS[$acc] ?? []))]) }}</small>
+                                                                @endif
+                                                            </span>
+                                                        </label>
+                                                    @endforeach
+                                                </div>
+                                            </fieldset>
+                                            <div class="grid gap-4 min-[600px]:grid-cols-2">
+                                                <div>
+                                                    <label for="bm-m-{{ $key }}" class="{{ $lab }}">{{ __('form_builder.file_max') }}</label>
+                                                    <select id="bm-m-{{ $key }}" class="field {{ $in }}" wire:model.live="fields.{{ $i }}.max_files">
+                                                        @for ($n = 1; $n <= \App\Modules\Forms\Support\FormFieldTypes::MAX_FILES; $n++)
+                                                            <option value="{{ $n }}">{{ trans_choice('form_builder.file_max_n', $n, ['n' => $n]) }}</option>
+                                                        @endfor
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-start gap-2 text-body text-text">
+                                                <x-bs-admin::icon name="ri-information" class="mt-0.5 size-[calc(1rem+var(--user-text-boost))] shrink-0 text-info-text" />
+                                                <p class="m-0 flex min-w-0 flex-col gap-1">
+                                                    <b class="font-semibold">{{ __('form_builder.file_size', ['mb' => $fileMaxMb]) }}</b>
+                                                    <span class="text-small text-text-muted">{{ __('form_builder.file_bigger') }}</span>
+                                                </p>
+                                            </div>
+                                        @endif
                                         @if ($f['type'] === 'select')
                                             <div>
                                                 <label for="bm-o-{{ $key }}" class="{{ $lab }}">{{ __('form_builder.choices_label') }}</label>
@@ -254,6 +292,11 @@
                             @php $pl = (trim($f['label']) !== '' ? trim($f['label']) : __('form_builder.field_unnamed')).($f['required'] ? ' *' : ''); @endphp
                             @if ($f['type'] === 'checkbox')
                                 <span class="flex items-start gap-2 text-small font-semibold text-text-strong"><span class="mt-0.5 size-4 shrink-0 rounded-sm border border-border-input bg-surface"></span><span class="[overflow-wrap:anywhere]">{{ $pl }}</span></span>
+                            @elseif ($f['type'] === 'file')
+                                <span class="flex flex-col gap-1 text-small font-semibold text-text-strong">
+                                    <span class="[overflow-wrap:anywhere]">{{ $pl }}</span>
+                                    <span class="flex min-h-9 items-center gap-2 rounded border border-dashed border-border-input bg-surface px-3 py-2 text-small font-normal text-text-muted [overflow-wrap:anywhere]"><x-bs-admin::icon name="ri-attachment-2" class="size-4 shrink-0" /><span>{{ __('form_builder.file_preview', ['types' => __('form_builder.file_types.'.($f['accept'] !== '' ? $f['accept'] : 'cad'))]) }}</span></span>
+                                </span>
                             @else
                                 <span class="flex flex-col gap-1 text-small font-semibold text-text-strong">
                                     <span class="[overflow-wrap:anywhere]">{{ $pl }}</span>

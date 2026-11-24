@@ -8,6 +8,7 @@ use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Storefront\Http\Middleware\StorefrontSession;
 use App\Modules\Storefront\Search\SearchSuggestions;
 use App\Modules\Storefront\Search\SearchText;
+use App\Modules\Storefront\Support\SiteMaintenance;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Theme\Chrome\StorefrontChrome;
@@ -24,8 +25,9 @@ use Symfony\Component\HttpFoundation\Response;
  * (SearchSuggestions), the script drawing each row from plain text under its group's heading. `total`:
  * how many results the search page lists, counted up to SearchSuggestions::COUNT_CAP (the box shows
  * «50+» past 50; `total_more`: at least that many), null with no row. Nothing typed, or one letter: no rows. While the site has
- * search switched off, or under a prefix that is not a public language of the site, the address does
- * not exist (`{}` with a 404): it never serves a content page.
+ * search switched off or under maintenance (SiteMaintenance: this route has no session, so no member
+ * is told apart from a visitor), or under a prefix that is not a public language of the site, the
+ * address does not exist (`{}` with a 404): it never serves a content page.
  *
  * Never indexed. An answer is the same for every visitor of the address (published titles only, no
  * session on this route), so the edge may keep it a minute (EdgeCacheHeaders' `suggest` rules: a
@@ -46,6 +48,7 @@ final readonly class SearchSuggestController
         private SearchSuggestions $suggestions,
         private PathBuilder $paths,
         private CurrentSite $current,
+        private SiteMaintenance $maintenance,
     ) {}
 
     public function __invoke(Request $request, ?string $locale = null): Response
@@ -66,7 +69,7 @@ final readonly class SearchSuggestController
         }
         $locale ??= $default;
 
-        if (! StorefrontChrome::searchOn($this->settings->get('storefront', 'header'))) {
+        if (! StorefrontChrome::searchOn($this->settings->get('storefront', 'header')) || $this->maintenance->on()) {
             return self::private(new JsonResponse(new \stdClass, 404));
         }
         app()->setLocale($locale);

@@ -45,6 +45,27 @@ it('pins a submitted axis and echoes the resolved attributes', function (): void
     expect($user->fresh()->preferences['theme'])->toBe(['scheme' => 'dark']);
 });
 
+it('saves a posted contrast as the member\'s own, and a reset gives it back to the device', function (): void {
+    $user = prefMember();
+
+    $this->actingAs($user)
+        ->postJson('http://a.test/admin/theme-preference', ['contrast' => 'high'])
+        ->assertOk()
+        ->assertJsonPath('attributes.data-contrast', 'high')
+        ->assertJsonMissingPath('attributes.data-contrast-auto');
+    expect($user->fresh()->preferences['theme'])->toBe(['contrast' => 'high']);
+
+    $this->actingAs($user->fresh())
+        ->postJson('http://a.test/admin/theme-preference', ['contrast' => 'max'])
+        ->assertStatus(422);
+
+    $this->actingAs($user->fresh())
+        ->deleteJson('http://a.test/admin/theme-preference')
+        ->assertOk()
+        ->assertJsonPath('attributes.data-contrast', 'normal')
+        ->assertJsonPath('attributes.data-contrast-auto', 'true');
+});
+
 it('merges per field instead of replacing the whole override', function (): void {
     $user = prefMember();
     $user->preferences = ['theme' => ['sidebar' => 'light']];

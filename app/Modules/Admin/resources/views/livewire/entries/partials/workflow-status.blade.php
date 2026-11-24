@@ -102,7 +102,7 @@
 
             {{-- Compact bar (narrow container) --}}
             <div class="flex w-full flex-col gap-1.5 @[35rem]:hidden">
-                <span class="flex h-1.5 overflow-hidden rounded-full bg-border-soft"><span class="block h-1.5 rounded-full bg-admin-primary" style="width: {{ $progress }}%"></span></span>
+                <span class="flex h-1.5 overflow-hidden rounded-full bg-track"><span class="block h-1.5 rounded-full bg-primary" style="width: {{ $progress }}%"></span></span>
                 <span class="text-[11.5px] text-body-muted">
                     {{ __('admin.wfb.step_of', ['n' => $workflow['current']['index'] + 1, 'total' => $stepCount, 'label' => $workflow['current']['label']]) }}
                     · {{ $workflow['next_label'] !== null ? __('admin.wfb.next_step', ['label' => $workflow['next_label']]) : __('admin.wfb.last_step') }}
@@ -152,13 +152,6 @@
                     <p class="text-[11.5px] leading-relaxed text-body-muted">
                         {{ $workflow['next_label'] !== null ? __('admin.wfb.actions_hint_next', ['label' => $workflow['next_label']]).' ' : '' }}{{ __('admin.wfb.actions_hint_role') }}
                     </p>
-                    @if ($workflow['is_live'])
-                        {{-- No revisions yet: a saved edit to live content is live at once. Say so. --}}
-                        <p class="flex items-start gap-2 rounded bg-surface-hover px-3 py-2.5 text-[12.5px] leading-relaxed text-body-muted">
-                            <x-bs-admin::icon name="ri-information" class="mt-0.5 size-4 shrink-0" />
-                            <span>{{ __('admin.wfb.live_edit_hint') }}</span>
-                        </p>
-                    @endif
                 </div>
             @else
                 <p class="flex items-start gap-2 rounded bg-admin-info/10 px-3 py-2.5 text-[12.5px] leading-relaxed text-[#22688f]">

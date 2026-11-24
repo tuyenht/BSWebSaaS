@@ -230,6 +230,11 @@ function applyThemeAttributes(attributes) {
         document.documentElement.toggleAttribute('data-scheme-auto', 'data-scheme-auto' in attributes);
         window.__adminSchemeAuto?.();
     }
+    // The contrast the same way: no choice of the member's own → the device decides.
+    if ('data-contrast' in attributes) {
+        document.documentElement.toggleAttribute('data-contrast-auto', 'data-contrast-auto' in attributes);
+        window.__adminContrastAuto?.();
+    }
 }
 
 async function postTheme(url, method, body) {
@@ -257,6 +262,10 @@ document.addEventListener('alpine:init', () => {
             if (field === 'scheme') {
                 // An explicit light/dark pick ends "Theo máy" (the saved value replaces 'auto').
                 document.documentElement.removeAttribute('data-scheme-auto');
+            }
+            if (field === 'contrast') {
+                // A contrast picked here is the member's own: the device no longer decides.
+                document.documentElement.removeAttribute('data-contrast-auto');
             }
             document.documentElement.setAttribute(spec.attr, value);
             if (field === 'sidebar_size') {

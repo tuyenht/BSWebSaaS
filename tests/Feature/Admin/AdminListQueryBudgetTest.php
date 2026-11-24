@@ -15,6 +15,7 @@ use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Tenancy\Models\SiteFeature;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteSetting;
@@ -63,7 +64,7 @@ it('lists admin entries on a flat query budget (no N+1 across rows)', function (
     // creator columns) and ONE grouped status-count (tabs + trash). All flat: an N+1 would
     // scale with the 10 seeded rows and blow past this; the no-growth guarantee is additionally
     // pinned in PagesIndexTest ("renders at a flat query budget regardless of row count").
-    expect($count)->toBeLessThanOrEqual(22);
+    expect($count)->toBeLessThanOrEqual(23); // +1: the admin address limit, read once per site and then served from the shared cache
 });
 
 it('lists admin entries on the same budget for a member who may edit only their own records', function (): void {
@@ -86,7 +87,7 @@ it('lists admin entries on the same budget for a member who may edit only their 
     $count = countQueries(fn () => $this->actingAs($author)->get('http://a.test/admin/content')->assertOk());
 
     // +1: the top bar's bell reads the unread count (one bounded query on every admin page).
-    expect($count)->toBeLessThanOrEqual(23);
+    expect($count)->toBeLessThanOrEqual(24); // +1: the admin address limit, read once per site and then served from the shared cache
 });
 
 it('lists admin catalog on a flat query budget (no N+1 across rows)', function (): void {
@@ -425,6 +426,48 @@ it('lists admin members on a flat query budget (no N+1 across rows)', function (
     // 14 for the list itself + 1 for the "Lời mời" tab label (its waiting invitations, read up to 99 + 1)
     // + 1: the top bar's bell reads the unread count (one bounded query on every admin page)
     expect($count)->toBe(16);
+});
+
+it('lists the roles on a flat query budget, whatever the number of roles and members', function (): void {
+    $owner = User::factory()->create();
+    $seed = function (int $from, int $to): void {
+        app(Tenancy::class)->enter(1, function () use ($from, $to): void {
+            foreach (range($from, $to) as $i) {
+                $role = Role::findOrCreate('Nhóm '.$i, PermissionRegistry::GUARD);
+                // each a copy of the one before: «Tạo từ» is read with the list, never per row
+                $from = $i > 1 ? Role::query()->where('site_id', 1)->where('name', 'Nhóm '.($i - 1))->value('id') : null;
+                $role->forceFill(['level' => 10 + $i, 'is_system' => false, 'forked_from_role_id' => $from])->save();
+                $role->syncPermissions(['entries.view', 'media.view', 'forms.view']);
+                User::factory()->create()->assignRole($role);
+            }
+        });
+    };
+    app(Tenancy::class)->enter(1, fn () => grantRole($owner, 'owner', PermissionRegistry::TENANT_PERMISSIONS));
+    app(Tenancy::class)->enter(1, function (): void {
+        // the owner role as the site's seeder makes it (top level), so every role below may be edited
+        Role::query()->where('site_id', 1)->where('name', 'owner')->update(['level' => 90, 'is_system' => true]);
+        SiteFeature::query()->create(['feature_key' => 'rbac.custom_roles', 'value' => true]);
+    });
+    $seed(1, 2);
+    // the editor of a role, and a new role started from one
+    $edit = 'http://a.test/admin/roles?nhom=Nh%C3%B3m%201&che=sua';
+    $new = 'http://a.test/admin/roles?nhom=Nh%C3%B3m%201&che=moi';
+
+    $this->actingAs($owner)->get('http://a.test/admin/roles')->assertOk(); // the permission and settings caches fill on the first request
+    $few = countQueries(fn () => $this->actingAs($owner)->get('http://a.test/admin/roles')->assertOk());
+    $fewView = countQueries(fn () => $this->actingAs($owner)->get('http://a.test/admin/roles?nhom=Nh%C3%B3m%201&che=xem')->assertOk());
+    $fewEdit = countQueries(fn () => $this->actingAs($owner)->get($edit)->assertOk()->assertSee(e(__('admin.roles.save'))));
+    $fewNew = countQueries(fn () => $this->actingAs($owner)->get($new)->assertOk()->assertSee(e(__('admin.roles.save_new'))));
+
+    $seed(3, 14);
+    $this->actingAs($owner)->get('http://a.test/admin/roles')->assertOk();
+    $many = countQueries(fn () => $this->actingAs($owner)->get('http://a.test/admin/roles')->assertOk());
+    $manyView = countQueries(fn () => $this->actingAs($owner)->get('http://a.test/admin/roles?nhom=Nh%C3%B3m%201&che=xem')->assertOk());
+    $manyEdit = countQueries(fn () => $this->actingAs($owner)->get($edit)->assertOk());
+    $manyNew = countQueries(fn () => $this->actingAs($owner)->get($new)->assertOk());
+
+    expect($many)->toBe($few)->and($manyView)->toBe($fewView)->and($few)->toBeLessThanOrEqual(24)
+        ->and($manyEdit)->toBe($fewEdit)->and($manyNew)->toBe($fewNew);
 });
 
 it('keeps the members list flat with a search, a role filter and a second page, whatever the number of members', function (): void {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Modules\Storefront\Support\SiteEmbedCode;
 use App\Modules\Tenancy\Context\ResolvedHost;
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Domains\DomainName;
@@ -20,7 +21,8 @@ use Symfony\Component\HttpFoundation\Response;
  *   Referrer-Policy, Permissions-Policy.
  *
  * Content-Security-Policy is plane-specific:
- *   Storefront (pure Blade SSR, known origins) — strict allow-list CSP applied (StorefrontCsp).
+ *   Storefront (pure Blade SSR, known origins) — strict allow-list CSP applied (StorefrontCsp);
+ *   loosened (StorefrontCsp::withEmbedCode) only on a page that printed the website's embed code.
  *   Admin + platform (Livewire 4 / Alpine.js) — CSP omitted entirely.
  *   Livewire hydration and Alpine reactivity require 'unsafe-eval'; shipping a
  *   strict CSP on those planes would break the admin UI. Omitting CSP there is
@@ -55,8 +57,13 @@ final readonly class AddSecurityHeaders
         $response->headers->set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
 
         // ── Content-Security-Policy: storefront plane only ───────────────────
+        // A page that printed the website's extra embed code (only for a visitor with no session, on
+        // a website whose owner switched it on) and was answered as drawn (200, or its 304) gets the
+        // one loosened policy; every other response — an error raised after the code was printed
+        // included — keeps the strict one.
         if ($this->isStorefrontPlane($request)) {
-            $response->headers->set('Content-Security-Policy', StorefrontCsp::header());
+            $loose = app(SiteEmbedCode::class)->printed() && in_array($response->getStatusCode(), [200, 304], true);
+            $response->headers->set('Content-Security-Policy', $loose ? StorefrontCsp::withEmbedCode() : StorefrontCsp::header());
         }
 
         return $response;

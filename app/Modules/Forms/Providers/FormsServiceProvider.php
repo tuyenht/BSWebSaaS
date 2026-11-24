@@ -3,8 +3,13 @@
 namespace App\Modules\Forms\Providers;
 
 use App\Modules\Forms\Components\FormComponent;
+use App\Modules\Forms\Console\CheckLeadFileStorage;
+use App\Modules\Forms\Console\PurgeOldLeads;
+use App\Modules\Forms\Console\PurgeTrashedLeads;
 use App\Modules\Forms\Console\RebuildLeadSearchTermsCommand;
+use App\Modules\Forms\Console\ReconcileLeadFiles;
 use App\Modules\Forms\Console\ResumeFormDeletesCommand;
+use App\Modules\Forms\Console\SweepLeadFiles;
 use App\Modules\Forms\Console\SyncContactFieldsCommand;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
@@ -29,7 +34,8 @@ final class FormsServiceProvider extends ServiceProvider
         Gate::policy(FormSubmission::class, LeadPolicy::class);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([SyncContactFieldsCommand::class, ResumeFormDeletesCommand::class, RebuildLeadSearchTermsCommand::class]);
+            $this->commands([SyncContactFieldsCommand::class, ResumeFormDeletesCommand::class, RebuildLeadSearchTermsCommand::class, PurgeTrashedLeads::class, PurgeOldLeads::class, SweepLeadFiles::class]);
+            $this->commands([ReconcileLeadFiles::class, CheckLeadFileStorage::class]);
         }
     }
 }

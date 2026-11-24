@@ -14,6 +14,7 @@ use App\Modules\Rbac\Actions\AssignRole;
 use App\Modules\Rbac\Actions\CreateCustomRole;
 use App\Modules\Rbac\Actions\DeleteCustomRole;
 use App\Modules\Rbac\Actions\InviteMember;
+use App\Modules\Rbac\Actions\RestoreCustomRole;
 use App\Modules\Rbac\Actions\RevokeInvitation;
 use App\Modules\Rbac\Actions\RevokeRole;
 use App\Modules\Rbac\Actions\UpdateCustomRole;
@@ -458,13 +459,14 @@ it('locks custom roles and invitations at the action itself during a support ses
         'create a custom role' => app(CreateCustomRole::class)->handle($owner, 'Biên tập viên', 40, []),
         'edit a custom role' => app(UpdateCustomRole::class)->handle($owner, $role, 'Biên tập viên', 40, []),
         'delete a custom role' => app(DeleteCustomRole::class)->handle($owner, $role),
+        'restore a custom role' => app(RestoreCustomRole::class)->handle($owner, $role),
         'revoke an invitation' => app(RevokeInvitation::class)->handle($owner, $invitation),
         'accept an invitation' => app(AcceptInvitationAction::class)->asSignedInUser(str_repeat('a', 64), $owner),
         'accept with a new account' => app(AcceptInvitationAction::class)->withNewAccount(str_repeat('a', 64), 'Tên', 'mat-khau-dai-du-12'),
     });
 
     expect($call)->toThrow(AuthorizationException::class, __('admin.support.locked'));
-})->with(['create a custom role', 'edit a custom role', 'delete a custom role', 'revoke an invitation', 'accept an invitation', 'accept with a new account']);
+})->with(['create a custom role', 'edit a custom role', 'delete a custom role', 'restore a custom role', 'revoke an invitation', 'accept an invitation', 'accept with a new account']);
 
 // ── review follow-ups ───────────────────────────────────────────────────────────────
 

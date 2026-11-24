@@ -3,7 +3,9 @@
 use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\ReviewInbox;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
+use App\Modules\Cms\Actions\SaveEntrySeo;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
@@ -55,7 +57,7 @@ function submittedPost(int $categoryId, User $author, string $title = 'Bản tin
     $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $author->id]);
     $entry->translations()->create([
         'locale' => 'vi', 'title' => $title, 'slug' => $slug, 'status' => 'draft',
-        'body' => ['blocks' => [['type' => 'richtext', 'props' => ['body' => 'Nội dung bài']]]],
+        'body' => ['blocks' => [['type' => 'richtext', 'props' => ['paragraphs' => ['Nội dung bài']]]]],
     ]);
     $entry->assignCategories([$categoryId]);
     app(ApplyEntryWorkflowTransition::class)->handle($entry->fresh(), 'vi', $author->fresh(), 'submit');
@@ -74,7 +76,7 @@ it('lets an approve-only role work — no edit rights, and the editor stays shut
         $post = submittedPost(inboxCollection(), $author);
 
         Livewire::actingAs($approver->fresh())
-            ->test(ReviewInbox::class)
+            ->test(ReviewInbox::class)->set('tab', 'queue')
             ->assertSee('Bản tin')
             ->assertSee('Người viết')
             ->call('open', $post->ulid)
@@ -124,7 +126,7 @@ it('shows only what is waiting for me — not drafts, not live posts, not anothe
         app(ApplyEntryWorkflowTransition::class)->handle($live, 'vi', $reviewer->fresh(), 'approve');
 
         Livewire::actingAs($reviewer->fresh())
-            ->test(ReviewInbox::class)
+            ->test(ReviewInbox::class)->set('tab', 'queue')
             ->assertSee('Đang chờ duyệt')
             ->assertDontSee('Bản nháp riêng')
             ->assertDontSee('Đã lên sóng')
@@ -149,7 +151,7 @@ it('separates "assigned to me" from the shared queue', function (): void {
         $mine->update(['assigned_to' => $reviewer->id]);
         submittedPost($categoryId, $author, 'Của cả nhóm', 'cua-ca-nhom');
 
-        $component = Livewire::actingAs($reviewer->fresh())->test(ReviewInbox::class);
+        $component = Livewire::actingAs($reviewer->fresh())->test(ReviewInbox::class)->set('tab', 'queue');
 
         // The shared queue holds both; "assigned to me" holds only the hand-off.
         $component->assertSee('Giao cho tôi')->assertSee('Của cả nhóm')
@@ -159,7 +161,7 @@ it('separates "assigned to me" from the shared queue', function (): void {
 
         // A colleague sees the shared one but not someone else's hand-off.
         Livewire::actingAs($colleague->fresh())
-            ->test(ReviewInbox::class)
+            ->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('setTab', 'mine')
             ->assertDontSee('Giao cho tôi')
             ->assertDontSee('Của cả nhóm');
@@ -176,7 +178,7 @@ it('demands a reason before sending a post back, and records who asked', functio
         $post = submittedPost(inboxCollection(), $author);
 
         $component = Livewire::actingAs($reviewer->fresh())
-            ->test(ReviewInbox::class)
+            ->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('open', $post->ulid)
             ->set('note', '  ')
             ->call('apply', 'reject')
@@ -218,7 +220,7 @@ it('says plainly when there is nothing to review', function (): void {
         inboxCollection();
 
         Livewire::actingAs($reviewer->fresh())
-            ->test(ReviewInbox::class)
+            ->test(ReviewInbox::class)->set('tab', 'queue')
             ->assertSee(__('admin.inbox.empty_queue'))
             ->assertDontSee(__('admin.inbox.no_match'));
     });
@@ -268,7 +270,7 @@ it('keeps the shared-queue count visible while the assigned-to-me tab is open', 
         // On the "mine" tab the shared queue still says 3 — reading it as "the team queue is
         // empty" would be exactly the wrong conclusion.
         Livewire::actingAs($reviewer->fresh())
-            ->test(ReviewInbox::class)
+            ->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('setTab', 'mine')
             ->assertSee(__('admin.inbox.showing', ['shown' => 1, 'total' => 1]))
             ->assertSeeHtml('>3</span>')
@@ -299,7 +301,7 @@ it('does not mix content types that share a stage key', function (): void {
         // In `editorial`, pending→reviewing needs entries.review, which this person lacks — so
         // the services post is work they cannot do and must not be listed or counted.
         Livewire::actingAs($newsOnly->fresh())
-            ->test(ReviewInbox::class)
+            ->test(ReviewInbox::class)->set('tab', 'queue')
             ->assertSee('Tin chờ duyệt')
             ->assertDontSee('Dịch vụ chờ biên tập');
     });
@@ -318,13 +320,13 @@ it('approves a post that exists only in a non-default language instead of failin
         $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $author->id]);
         $entry->translations()->create([
             'locale' => 'en', 'title' => 'English only', 'slug' => 'english-only', 'status' => 'draft',
-            'body' => ['blocks' => [['type' => 'richtext', 'props' => ['body' => 'Body text']]]],
+            'body' => ['blocks' => [['type' => 'richtext', 'props' => ['paragraphs' => ['Body text']]]]],
         ]);
         $entry->assignCategories([$categoryId]);
         app(ApplyEntryWorkflowTransition::class)->handle($entry->fresh(), 'en', $author->fresh(), 'submit');
 
         Livewire::actingAs($reviewer->fresh())
-            ->test(ReviewInbox::class)
+            ->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('open', $entry->ulid)
             ->call('apply', 'approve')
             ->assertHasNoErrors();
@@ -351,7 +353,7 @@ it('carries the reviewer down the list, not back to the top', function (): void 
         $c = submittedPost($categoryId, $author, 'Bài C', 'bai-c');
 
         Livewire::actingAs($reviewer->fresh())
-            ->test(ReviewInbox::class)
+            ->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('open', $b->ulid)
             ->call('apply', 'approve')
             ->assertHasNoErrors()
@@ -399,7 +401,7 @@ it('offers a send move only to a reviewer who could also edit the post', functio
         $post = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $author->id]);
         $post->translations()->create([
             'locale' => 'vi', 'title' => 'Bản tin', 'slug' => 'ban-tin', 'status' => 'draft',
-            'body' => ['blocks' => [['type' => 'richtext', 'props' => ['body' => 'Nội dung bài']]]],
+            'body' => ['blocks' => [['type' => 'richtext', 'props' => ['paragraphs' => ['Nội dung bài']]]]],
         ]);
         $post->assignCategories([$categoryId]);
         app(ApplyEntryWorkflowTransition::class)->handle($post->fresh(), 'vi', $author->fresh(), 'to_desk');
@@ -409,7 +411,7 @@ it('offers a send move only to a reviewer who could also edit the post', functio
         // The post is in both queues and both may send it back, but sending it on is working on
         // it: a button the action would refuse is not shown to the one who cannot edit it.
         Livewire::actingAs($deskhand->fresh())
-            ->test(ReviewInbox::class)
+            ->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('open', $post->ulid)
             ->assertSee('Nội dung bài')
             ->assertSeeHtml('wire:key="act-send_back"')
@@ -419,7 +421,7 @@ it('offers a send move only to a reviewer who could also edit the post', functio
         expect($post->fresh()->workflow_state)->toBe('copyedit');
 
         Livewire::actingAs($copyEditor->fresh())
-            ->test(ReviewInbox::class)
+            ->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('open', $post->ulid)
             ->assertSeeHtml('wire:key="act-send_back"')
             ->assertSeeHtml('wire:key="act-send_on"');
@@ -452,18 +454,21 @@ it('opens the post a link names (?bai=…) — only one waiting for this reviewe
         $draft->translations()->create(['locale' => 'vi', 'title' => 'Nháp chưa gửi', 'slug' => 'nhap-chua-gui', 'status' => 'draft', 'body' => ['blocks' => []]]);
         $draft->assignCategories([$category]);
 
-        Livewire::withQueryParams(['bai' => $oldest->ulid])->actingAs($reviewer->fresh())->test(ReviewInbox::class)
+        Livewire::withQueryParams(['bai' => $oldest->ulid])->actingAs($reviewer->fresh())->test(ReviewInbox::class)->set('tab', 'queue')
             ->assertSet('current', $oldest->ulid)
+            ->assertSet('detail', true)
             ->assertSet('shown', 10)
             ->assertSee('Bài gửi sớm nhất')
             ->assertSee('Nội dung bài');
 
+        // A link to a post out of reach opens nothing of it: the list shows first, its top post in the reader.
         foreach ([$foreign, $draft->ulid, 'khong-co-bai-nay', ''] as $ulid) {
-            Livewire::withQueryParams(['bai' => $ulid])->actingAs($reviewer->fresh())->test(ReviewInbox::class)
+            $inbox = Livewire::withQueryParams(['bai' => $ulid])->actingAs($reviewer->fresh())->test(ReviewInbox::class)->set('tab', 'queue')
                 ->assertOk()
-                ->assertSet('current', null)
+                ->assertSet('detail', false)
                 ->assertSet('shown', 5)
                 ->assertDontSee('Bài site khác');
+            expect($inbox->get('current'))->toBeString()->not->toBe($ulid)->not->toBe($draft->ulid);
         }
     });
 });
@@ -483,7 +488,7 @@ it('approves the ticked posts one engine move each, and lists the one that could
         $first = submittedPost($categoryId, $author, 'Bài đầu', 'trung-duong-dan');
 
         $inbox = Livewire::actingAs($approver->fresh())
-            ->test(ReviewInbox::class)
+            ->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('togglePick', $first->ulid)
             ->call('togglePick', $other->ulid)
             ->call('togglePick', $clash->ulid)
@@ -525,7 +530,7 @@ it('says how many of the ticked posts this person can publish, and leaves the re
         app(ApplyEntryWorkflowTransition::class)->handle($atReview, 'vi', $reviewer->fresh(), 'to_review');
 
         Livewire::actingAs($reviewer->fresh())
-            ->test(ReviewInbox::class)
+            ->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('togglePick', $atEdit->ulid)
             ->call('togglePick', $atReview->ulid)
             ->assertSee(__('admin.inbox.bulk_why_some', ['ready' => 1, 'picked' => 2]))
@@ -549,7 +554,7 @@ it('publishes nothing in bulk for someone whose step is not the publishing one',
         $post = submittedPost(inboxCollection(), $author);
 
         Livewire::actingAs($reviewer->fresh())
-            ->test(ReviewInbox::class)
+            ->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('togglePick', $post->ulid)
             ->assertSee(__('admin.inbox.bulk_none_btn'))
             ->assertSee(__('admin.inbox.bulk_why_none'))
@@ -577,7 +582,7 @@ it('ticks only posts that are waiting for this person on this website', function
         inboxCollection();
 
         Livewire::actingAs($reviewer->fresh())
-            ->test(ReviewInbox::class)
+            ->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('togglePick', $elsewhere->ulid)
             ->call('togglePick', 'not-a-post')
             ->assertSet('picked', [])
@@ -606,7 +611,7 @@ it('hands a returned post only to a member of this website who can take the next
         $post = submittedPost(inboxCollection(), $author);
 
         $inbox = Livewire::actingAs($reviewer->fresh())
-            ->test(ReviewInbox::class)
+            ->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('open', $post->ulid)
             ->call('askNote', 'reject')
             ->assertSet('noteOpen', true)
@@ -644,7 +649,7 @@ it('never carries a hand-off onto a move that asks no reason', function (): void
         $post = submittedPost(inboxCollection(), $author);
 
         Livewire::actingAs($approver->fresh())
-            ->test(ReviewInbox::class)
+            ->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('open', $post->ulid)
             ->call('askNote', 'approve')                 // no reason is asked for going live
             ->assertSet('noteOpen', false)
@@ -669,7 +674,7 @@ it('opens the reason dialog only for a move this person may make on the open pos
         $post = submittedPost(inboxCollection(), $author);
 
         Livewire::actingAs($approver->fresh())
-            ->test(ReviewInbox::class)
+            ->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('open', $post->ulid)
             ->call('askNote', 'reject')
             ->assertSet('noteOpen', false)
@@ -702,7 +707,7 @@ it('shows «Chưa tải được hộp duyệt» with «Thử lại» when the q
         });
 
         $inbox = Livewire::actingAs($reviewer)
-            ->test(ReviewInbox::class)
+            ->test(ReviewInbox::class)->set('tab', 'queue')
             ->assertOk()
             ->assertSee(__('admin.inbox.err_load_title'))
             ->assertSee(__('admin.inbox.retry'))
@@ -740,7 +745,7 @@ it('ticking more posts costs no query per ticked post', function (): void {
         $categoryId = inboxCollection();
         $posts = collect(range(1, 7))->map(fn (int $i): Entry => submittedPost($categoryId, $author->fresh(), "Bài {$i}", "bai-{$i}"));
 
-        $inbox = Livewire::actingAs($approver->fresh())->test(ReviewInbox::class)
+        $inbox = Livewire::actingAs($approver->fresh())->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('togglePick', $posts[0]->ulid);
         $one = countQueries(fn () => $inbox->call('togglePick', $posts[1]->ulid));
 
@@ -767,7 +772,7 @@ it('reports a ticked post that left the queue before the bulk approval instead o
         $taken = submittedPost($categoryId, $author, 'Bài đã có người duyệt', 'bai-da-duyet');
 
         $inbox = Livewire::actingAs($approver->fresh())
-            ->test(ReviewInbox::class)
+            ->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('togglePick', $kept->ulid)
             ->call('togglePick', $taken->ulid);
 
@@ -797,7 +802,7 @@ it('closes the reason dialog with its post gone, and shows why on the page', fun
         $post = submittedPost(inboxCollection(), $author);
 
         $inbox = Livewire::actingAs($reviewer->fresh())
-            ->test(ReviewInbox::class)
+            ->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('open', $post->ulid)
             ->call('askNote', 'reject')
             ->assertSet('noteOpen', true);
@@ -822,7 +827,7 @@ it('forgets the dialog when the browser closes it (Esc, ✕ or the backdrop)', f
         $post = submittedPost(inboxCollection(), $author);
 
         Livewire::actingAs($reviewer->fresh())
-            ->test(ReviewInbox::class)
+            ->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('open', $post->ulid)
             ->call('askNote', 'reject')
             ->set('assignTo', $author->id)
@@ -843,7 +848,7 @@ it('asks the reason in the dialog for a publishing move that requires one', func
         Workflow::query()->firstOrFail()->transitions()->where('key', 'approve')->update(['requires_note' => true]);
 
         Livewire::actingAs($approver->fresh())
-            ->test(ReviewInbox::class)
+            ->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('open', $post->ulid)
             // Both moves now ask a reason: neither is a direct (confirmed) apply from the reader foot.
             ->assertSeeHtml('askNote(')
@@ -872,7 +877,7 @@ it('never carries a reason typed in a closed dialog onto a move that asks none',
         $post = submittedPost(inboxCollection(), $author);
 
         Livewire::actingAs($approver->fresh())
-            ->test(ReviewInbox::class)
+            ->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('open', $post->ulid)
             ->call('askNote', 'reject')
             ->set('note', 'Thiếu ảnh')
@@ -884,5 +889,365 @@ it('never carries a reason typed in a closed dialog onto a move that asks none',
 
         expect($post->fresh()->status)->toBe('published')
             ->and(WorkflowLog::query()->where('entry_id', $post->id)->where('transition_key', 'approve')->value('note'))->toBeNull();
+    });
+});
+
+it('opens on «Giao cho tôi», with that tab before «Hàng chờ duyệt», and shows the header the board draws', function (): void {
+    $author = User::factory()->create();
+    $reviewer = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $reviewer): void {
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
+        grantRole($reviewer, 'reviewer', ['entries.review', 'entries.approve']);
+        $categoryId = inboxCollection();
+        submittedPost($categoryId, $author, 'Giao cho tôi', 'giao-cho-toi')->update(['assigned_to' => $reviewer->id]);
+        submittedPost($categoryId, $author, 'Của cả nhóm', 'cua-ca-nhom');
+
+        $component = Livewire::actingAs($reviewer->fresh())->test(ReviewInbox::class)
+            ->assertSet('tab', 'mine')
+            ->assertSee(__('admin.inbox.list_mine'))
+            ->assertSee('Giao cho tôi')
+            ->assertDontSee('Của cả nhóm')
+            ->assertSee(__('admin.inbox.subtitle'))
+            ->assertSee(__('admin.inbox.reload'))
+            ->assertSeeHtml('data-guide-open');
+
+        $html = $component->html();
+        expect(strpos($html, __('admin.inbox.tab_mine')))->toBeLessThan(strpos($html, __('admin.inbox.tab_queue')));
+    });
+});
+
+it('never cuts a long title with an ellipsis in the list or the reader', function (): void {
+    $author = User::factory()->create();
+    $reviewer = User::factory()->create();
+    $long = 'Lắp đặt dây chuyền CNC cho nhà máy Bình Dương giai đoạn hai, kèm đào tạo vận hành và bảo trì năm đầu';
+
+    app(Tenancy::class)->enter(1, function () use ($author, $reviewer, $long): void {
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
+        grantRole($reviewer, 'reviewer', ['entries.review', 'entries.approve']);
+        $post = submittedPost(inboxCollection(), $author, $long, 'dai');
+
+        $component = Livewire::actingAs($reviewer->fresh())->test(ReviewInbox::class)->set('tab', 'queue')
+            ->assertSee($long)
+            ->call('open', $post->ulid)
+            ->assertSee($long);
+
+        expect($component->html())->not->toContain('truncate');
+    });
+});
+
+it('opens a post from a link in the shared queue even when it is not handed to the reader', function (): void {
+    $author = User::factory()->create();
+    $reviewer = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $reviewer): void {
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
+        grantRole($reviewer, 'reviewer', ['entries.review', 'entries.approve']);
+        $post = submittedPost(inboxCollection(), $author, 'Của cả nhóm', 'cua-ca-nhom');
+
+        Livewire::withQueryParams(['bai' => $post->ulid])->actingAs($reviewer->fresh())->test(ReviewInbox::class)
+            ->assertSet('tab', 'queue')
+            ->assertSet('current', $post->ulid);
+    });
+});
+
+it('walks to the previous and the next post of the list from the reader', function (): void {
+    $author = User::factory()->create();
+    $reviewer = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $reviewer): void {
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
+        grantRole($reviewer, 'reviewer', ['entries.review', 'entries.approve']);
+        $categoryId = inboxCollection();
+        $a = submittedPost($categoryId, $author, 'Bài A', 'bai-a');
+        $b = submittedPost($categoryId, $author, 'Bài B', 'bai-b');
+
+        $component = Livewire::actingAs($reviewer->fresh())->test(ReviewInbox::class)->set('tab', 'queue')
+            ->call('open', $a->ulid)
+            ->call('step', -1)->call('step', -1);
+        $top = $component->get('current');
+
+        $component->assertSee(__('admin.inbox.position', ['at' => 1, 'of' => 2]))
+            ->call('step', 1);
+        $bottom = $component->get('current');
+        expect([$top, $bottom])->toEqualCanonicalizing([$a->ulid, $b->ulid])->and($bottom)->not->toBe($top);
+
+        $component->assertSee(__('admin.inbox.position', ['at' => 2, 'of' => 2]))
+            ->call('step', 1)
+            ->assertSet('current', $bottom)
+            ->call('step', -1)
+            ->assertSet('current', $top);
+    });
+});
+
+it('offers the full-edit link only to someone who may edit the post', function (): void {
+    $author = User::factory()->create();
+    $approver = User::factory()->create();
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $approver, $editor): void {
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
+        grantRole($approver, 'approver', ['entries.review', 'entries.approve']);
+        grantRole($editor, 'seo-editor', ['entries.review', 'entries.approve', 'entries.edit.any']);
+        $post = submittedPost(inboxCollection(), $author, 'Bài cần sửa', 'bai-can-sua');
+
+        Livewire::actingAs($approver->fresh())->test(ReviewInbox::class)->set('tab', 'queue')
+            ->call('open', $post->ulid)
+            ->assertDontSee(__('admin.inbox.open_full'));
+        Livewire::actingAs($editor->fresh())->test(ReviewInbox::class)->set('tab', 'queue')
+            ->call('open', $post->ulid)
+            ->assertSee(__('admin.inbox.open_full'));
+    });
+});
+
+it('keeps the only post open when stepping past either end, and a link to a post out of reach opens the list', function (): void {
+    $author = User::factory()->create();
+    $reviewer = User::factory()->create();
+    $outsider = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $reviewer): void {
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
+        grantRole($reviewer, 'reviewer', ['entries.review', 'entries.approve']);
+        $post = submittedPost(inboxCollection(), $author, 'Của tôi', 'cua-toi');
+        $post->update(['assigned_to' => $reviewer->id]);
+
+        Livewire::actingAs($reviewer->fresh())->test(ReviewInbox::class)
+            ->assertSet('current', $post->ulid)->assertSet('detail', false)
+            ->call('step', 1)->assertSet('current', $post->ulid)
+            ->call('step', -1)->assertSet('current', $post->ulid)->assertSet('detail', false);
+        Livewire::withQueryParams(['bai' => $post->ulid])->actingAs($reviewer->fresh())->test(ReviewInbox::class)
+            ->assertSet('tab', 'mine')->assertSet('current', $post->ulid)->assertSet('detail', true);
+        Livewire::withQueryParams(['bai' => 'khong-co-that'])->actingAs($reviewer->fresh())->test(ReviewInbox::class)
+            ->assertSet('current', $post->ulid)->assertSet('detail', false);
+    });
+});
+
+it('opens the first post by itself, covers the screen below the two-pane width only once a post is opened, and goes back to the list', function (): void {
+    $author = User::factory()->create();
+    $reviewer = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $reviewer): void {
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
+        grantRole($reviewer, 'reviewer', ['entries.review', 'entries.approve']);
+        $categoryId = inboxCollection();
+        $a = submittedPost($categoryId, $author, 'Bài A', 'bai-a');
+        submittedPost($categoryId, $author, 'Bài B', 'bai-b');
+
+        $inbox = Livewire::actingAs($reviewer->fresh())->test(ReviewInbox::class)->set('tab', 'queue')
+            ->assertSet('detail', false)
+            ->assertSeeHtml('data-inbox-reader');
+        $first = $inbox->get('current');
+        expect($first)->toBeString();
+
+        // Not opened yet: the reader holds the first post but stays out of a phone's way.
+        $inbox->assertSeeHtml('max-lg:hidden')
+            ->call('open', $a->ulid)
+            ->assertSet('current', $a->ulid)
+            ->assertSet('detail', true)
+            ->assertSeeHtml('max-lg:fixed')
+            ->assertSee(__('admin.inbox.back'))
+            ->call('closeReader')
+            ->assertSet('detail', false)
+            ->assertSet('current', $a->ulid);
+
+        // A tab change starts again from the top of the new list, with the list showing.
+        $inbox->call('open', $a->ulid)->call('setTab', 'mine')->assertSet('detail', false)->assertSet('current', null)
+            ->assertSee(__('admin.inbox.empty_pick_title'));
+    });
+});
+
+it('colours each row dot and each step node from the workflow, and warns of what the post still lacks', function (): void {
+    $author = User::factory()->create();
+    $reviewer = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $reviewer): void {
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
+        grantRole($reviewer, 'reviewer', ['entries.review', 'entries.approve']);
+        $post = submittedPost(inboxCollection(), $author, 'Thiếu đủ thứ', 'thieu-du-thu');
+
+        Livewire::actingAs($reviewer->fresh())->test(ReviewInbox::class)->set('tab', 'queue')
+            ->assertSet('current', $post->ulid)
+            ->assertSeeHtml('data-s="pending"')
+            ->assertDontSeeHtml('bg-warning-base" aria-hidden="true"')
+            ->assertSee(__('admin.inbox.missing_line', ['items' => implode(', ', [__('admin.inbox.missing_cover'), __('admin.inbox.missing_excerpt'), __('admin.inbox.missing_seo_title'), __('admin.inbox.missing_seo_description')])]))
+            ->assertSee(__('admin.inbox.seo_no_title'))
+            ->assertSee(__('admin.inbox.seo_no_description'));
+
+        $post->update(['meta' => ['image_url' => 'site-1/anh-a1b2c3d4e5f6.jpg']]);
+        $post->translationFor('vi')?->update(['excerpt' => 'Một mô tả ngắn', 'seo_title' => 'Tiêu đề Google', 'seo_description' => 'Mô tả Google']);
+
+        Livewire::actingAs($reviewer->fresh())->test(ReviewInbox::class)->set('tab', 'queue')
+            ->assertDontSeeHtml('data-inbox-missing')
+            ->assertDontSee(__('admin.inbox.seo_no_title'))
+            ->assertDontSee(__('admin.inbox.seo_no_description'))
+            ->assertSee('Tiêu đề Google');
+    });
+});
+
+it('shows a job post\'s details under «Thông tin chính», and the counts of its text', function (): void {
+    $author = User::factory()->create();
+    $reviewer = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $reviewer): void {
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
+        grantRole($reviewer, 'reviewer', ['entries.review', 'entries.approve']);
+        $post = submittedPost(inboxCollection(), $author, 'Tuyển thợ tiện', 'tuyen-tho-tien');
+        $post->update(['meta' => ['facts' => [['text' => ['vi' => 'Lương 12–15 triệu'], 'tone' => 'plain'], ['text' => ['vi' => 'Bình Dương']]], 'badge' => ['vi' => 'Gấp']]]);
+
+        Livewire::actingAs($reviewer->fresh())->test(ReviewInbox::class)->set('tab', 'queue')
+            ->assertSee(__('admin.inbox.fold_fields'))
+            ->assertSee([__('admin.inbox.field_fact', ['n' => 1]), 'Lương 12–15 triệu', __('admin.inbox.field_fact', ['n' => 2]), 'Bình Dương', __('admin.inbox.field_badge'), 'Gấp'])
+            ->assertSee(__('admin.inbox.body_counts', ['words' => 3, 'paragraphs' => 1]));
+
+        // A post with no such details has no empty block for them.
+        $post->update(['meta' => []]);
+        Livewire::actingAs($reviewer->fresh())->test(ReviewInbox::class)->set('tab', 'queue')
+            ->assertDontSeeHtml('data-inbox-fields');
+    });
+});
+
+it('pages through the trail three moves at a time, counting every move', function (): void {
+    $author = User::factory()->create();
+    $reviewer = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $reviewer): void {
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
+        grantRole($reviewer, 'reviewer', ['entries.review', 'entries.approve']);
+        $post = submittedPost(inboxCollection(), $author, 'Qua lại nhiều lần', 'qua-lai');
+        foreach (range(1, 3) as $round) {
+            app(ApplyEntryWorkflowTransition::class)->handle($post->fresh(), 'vi', $reviewer->fresh(), 'reject', "Sửa lần {$round}");
+            app(ApplyEntryWorkflowTransition::class)->handle($post->fresh(), 'vi', $author->fresh(), 'submit');
+        }
+        expect(WorkflowLog::query()->where('entry_id', $post->id)->count())->toBe(7);
+
+        Livewire::actingAs($reviewer->fresh())->test(ReviewInbox::class)->set('tab', 'queue')
+            ->assertSet('trailShown', 3)
+            ->assertSee(__('admin.inbox.trail_count', ['n' => 7]))
+            ->assertSee(__('admin.inbox.trail_more', ['n' => 3]))
+            ->call('moreTrail')
+            ->assertSet('trailShown', 6)
+            ->assertSee('Sửa lần 1')
+            ->assertSee(__('admin.inbox.trail_more', ['n' => 1]))
+            ->call('moreTrail')
+            ->assertSet('trailShown', 9)
+            ->assertDontSeeHtml('data-inbox-trail-more')
+            // opening a post starts its trail from the top again
+            ->call('open', $post->ulid)
+            ->assertSet('trailShown', 3);
+    });
+});
+
+it('saves the Google title and description from the reader for someone who may edit the post, and only then', function (): void {
+    $author = User::factory()->create();
+    $editor = User::factory()->create();
+    $approver = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $editor, $approver): void {
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
+        grantRole($editor, 'seo-editor', ['entries.review', 'entries.approve', 'entries.edit.any']);
+        grantRole($approver, 'approver', ['entries.review', 'entries.approve']);
+        $post = submittedPost(inboxCollection(), $author, 'Có Google', 'co-google');
+
+        // An approve-only role reads the meters but gets no box, and the server refuses it too.
+        Livewire::actingAs($approver->fresh())->test(ReviewInbox::class)->set('tab', 'queue')
+            ->assertDontSeeHtml('id="inbox-seo-title"')
+            ->set('seoTitle', 'Không được ghi')
+            ->call('saveSeo')
+            ->assertForbidden();
+        expect($post->translationFor('vi')?->fresh()?->seo_title)->toBeNull();
+
+        $inbox = Livewire::actingAs($editor->fresh())->test(ReviewInbox::class)->set('tab', 'queue')
+            ->assertSeeHtml('id="inbox-seo-title"')
+            ->set('seoTitle', "  Tiêu đề\nmột dòng  ")
+            ->set('seoDescription', str_repeat('a', 256))
+            ->call('saveSeo')
+            ->assertHasErrors(['seoDescription' => 'max']);
+        expect($post->fresh()->translationFor('vi')?->seo_title)->toBeNull();
+
+        $inbox->set('seoDescription', 'Mô tả cho Google')
+            ->call('saveSeo')
+            ->assertHasNoErrors()
+            ->assertSee(__('admin.saved'));
+        $translation = $post->fresh()->translationFor('vi');
+        expect($translation?->seo_title)->toBe('Tiêu đề một dòng')
+            ->and($translation?->seo_description)->toBe('Mô tả cho Google')
+            ->and($post->fresh()->workflow_state)->toBe('pending');
+
+        // Saved elsewhere meanwhile: nothing is written over it, and the boxes show what is stored now.
+        $translation?->update(['seo_title' => 'Người khác vừa lưu']);
+        $inbox->set('seoTitle', 'Bản của tôi')
+            ->call('saveSeo')
+            ->assertHasErrors('seo')
+            ->assertSet('seoTitle', 'Người khác vừa lưu');
+        expect($post->fresh()->translationFor('vi')?->seo_title)->toBe('Người khác vừa lưu');
+
+        // A second save after reading the newer value goes through.
+        $inbox->set('seoTitle', 'Bản của tôi')->call('saveSeo')->assertHasNoErrors();
+        expect($post->fresh()->translationFor('vi')?->seo_title)->toBe('Bản của tôi');
+    });
+});
+
+it('never writes the Google fields of a post that is approved for later, live or without its text', function (): void {
+    $author = User::factory()->create();
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
+        grantRole($editor, 'seo-editor', ['entries.review', 'entries.approve', 'entries.edit.any']);
+        $category = inboxCollection();
+        $later = submittedPost($category, $author, 'Hẹn giờ', 'hen-gio');
+        $live = submittedPost($category, $author, 'Lên trang rồi', 'len-trang');
+        $bare = submittedPost($category, $author, 'Mất bản dịch', 'mat-ban-dich');
+
+        $inbox = Livewire::actingAs($editor->fresh())->test(ReviewInbox::class)->set('tab', 'queue')
+            ->call('open', (string) $later->ulid);
+        // Approved for later in another tab, after this reader opened it: the post left the queue,
+        // so the reader says so above the list and writes nothing.
+        Entry::query()->whereKey($later->id)->update(['status' => 'scheduled', 'scheduled_by' => $editor->id, 'published_at' => now()->addDay()]);
+        // (one request, as the browser sends a typed box and the save on leaving it)
+        $inbox->update(calls: [['method' => 'saveSeo', 'params' => [], 'path' => '']], updates: ['seoTitle' => 'Muộn rồi'])
+            ->assertHasErrors('inbox')->assertHasNoErrors('seo');
+        expect($later->fresh()->translationFor('vi')?->seo_title)->toBeNull();
+
+        // The action itself refuses each case under its row lock (a decision landing between the
+        // reader's check and the lock): approved for later, live, no text in the language.
+        Entry::query()->whereKey($live->id)->update(['status' => 'published', 'published_at' => now()]);
+        $seen = SaveEntrySeo::print(null);
+        $save = fn (Entry $entry): ?string => app(SaveEntrySeo::class)->handle($entry, $editor->fresh(), 'vi', 'Tiêu đề', 'Mô tả', $seen);
+        expect($save($later))->toBe(SaveEntrySeo::APPROVED_LATER)
+            ->and($save($live))->toBe(SaveEntrySeo::LIVE)
+            ->and($save($bare))->toBeNull();   // the control: a post under review is written
+
+        EntryTranslation::query()->where('entry_id', $bare->id)->delete();
+        expect($save($bare))->toBe(SaveEntrySeo::NO_TRANSLATION)
+            ->and(EntryTranslation::query()->where('entry_id', $bare->id)->exists())->toBeFalse()
+            ->and($later->fresh()->translationFor('vi')?->seo_title)->toBeNull()
+            ->and($live->fresh()->translationFor('vi')?->seo_title)->toBeNull();
+    });
+});
+
+it('says above the list, not under the next post\'s boxes, that a post left the queue before its Google fields were saved', function (): void {
+    $author = User::factory()->create();
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
+        grantRole($editor, 'seo-editor', ['entries.review', 'entries.approve', 'entries.edit.any']);
+        $category = inboxCollection();
+        $gone = submittedPost($category, $author, 'Sẽ rời hàng chờ', 'se-roi');
+        $next = submittedPost($category, $author, 'Bài kế tiếp', 'bai-ke');
+
+        $inbox = Livewire::actingAs($editor->fresh())->test(ReviewInbox::class)->set('tab', 'queue')
+            ->call('open', (string) $gone->ulid);
+        // decided in another tab (approved for later): it leaves the queue
+        Entry::query()->whereKey($gone->id)->update(['status' => 'scheduled', 'scheduled_by' => $editor->id, 'published_at' => now()->addDay()]);
+
+        // one request, as the browser sends the typed box with the save on leaving it
+        $inbox->update(calls: [['method' => 'saveSeo', 'params' => [], 'path' => '']], updates: ['seoTitle' => 'Không còn chỗ ghi'])
+            ->assertHasErrors('inbox')
+            ->assertHasNoErrors('seo')
+            ->assertSet('current', (string) $next->ulid)
+            ->assertSet('seoTitle', '');
+        expect(EntryTranslation::query()->where('entry_id', $next->id)->value('seo_title'))->toBeNull();
     });
 });

@@ -37,6 +37,8 @@
                 var value = pending[field];
                 if (typeof value === 'string' && axes[field].values.indexOf(value) !== -1) {
                     document.documentElement.setAttribute(axes[field].attr, value);
+                    // an unsaved contrast pick is the member's own: the device no longer decides
+                    if (field === 'contrast') document.documentElement.removeAttribute('data-contrast-auto');
                 }
             });
         } catch (e) { /* corrupt buffer → SSR attributes stand */ }
@@ -52,5 +54,16 @@
     window.__adminSchemeAuto();
     if (window.matchMedia) {
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', window.__adminSchemeAuto);
+    }
+    // No contrast chosen yet (data-contrast-auto): the device's "more contrast" setting turns high
+    // contrast on before paint, and on every OS switch; app.js calls it again after a live change.
+    window.__adminContrastAuto = function () {
+        var html = document.documentElement;
+        if (!html.hasAttribute('data-contrast-auto') || !window.matchMedia) return;
+        html.setAttribute('data-contrast', window.matchMedia('(prefers-contrast: more)').matches ? 'high' : 'normal');
+    };
+    window.__adminContrastAuto();
+    if (window.matchMedia) {
+        window.matchMedia('(prefers-contrast: more)').addEventListener('change', window.__adminContrastAuto);
     }
 </script>

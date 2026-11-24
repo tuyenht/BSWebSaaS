@@ -63,6 +63,7 @@ Luật:
 | `--color-placeholder` | Chữ gợi ý trong ô nhập | ≥ 4,5:1 |
 | `--color-border` · `--color-border-strong` · `--color-border-soft` | Vạch chia (trang trí) | miễn |
 | `--color-border-input` | Viền ô nhập, nút viền | ≥ 3:1 |
+| `--color-track` | Nền trung tính dạng mảng: rãnh thanh tiến độ, vạch đo, nút đang khóa. Tương phản cao giữ nó sáng | phần tô trên nó ≥ 3:1 |
 | `--color-primary` | Nền màu thương hiệu (nút chính, huy hiệu) | `on-primary` trên nó ≥ 4,5:1 |
 | `--color-on-primary` | Chữ / biểu tượng trên `primary` | PHP chọn trắng hay `--color-dark`, cái nào đọc được. Website khách màu sáng (vàng hổ phách của An Vinh) thì là chữ tối. Màu thương hiệu tông giữa (cả hai dưới 4,5:1) thì chữ tối được đậm thêm; nền thương hiệu không bị đổi. |
 | `--color-primary-hover` (website khách) | Nền nút thương hiệu khi trỏ chuột | PHP dời nền ra xa màu chữ (chữ tối → nền sáng lên, chữ trắng → nền tối đi), nên chữ vẫn ≥ 4,5:1. Mỗi bộ màu có `--sch-{bộ}-pri-hover` riêng. |
@@ -156,6 +157,7 @@ Cách khai báo:
 - **Chế độ tối:** thuộc tính `data-theme="dark"` trên `<html>`, thay `data-bs-theme` (code) và `data-scheme` (bản thiết kế). Trong thời gian chuyển, CSS nhận cả hai tên cũ.
 - **Chỉ tầng 2 và tầng 3 đổi giá trị** dưới chế độ tối và các kiểu thanh (`data-topbar`, `data-sidebar`, `data-layout`… giữ tên thuộc tính đang có).
 - **Cỡ chữ theo người:** `--user-text-boost` đặt trên `<html>` theo thứ tự lựa chọn của người đó › mặc định của website › Vừa (D0-7, D3-1s).
+- **Tương phản cao theo người:** thuộc tính `data-contrast="high"` trên `<html>` (Tài khoản của tôi › Tương phản cao). Chỉ người đó chọn, website không đặt mặc định; chưa chọn thì theo máy (`prefers-contrast: more`, `data-contrast-auto` + theme-boot, trước khi vẽ). Chỉ đổi các vai chữ và viền trung tính ở tầng 2 (`admin-chrome.css`, một khối sáng, một khối tối): chữ ≥ 7:1, mọi viền ≥ 3:1, vòng focus 3px; nền, màu thương hiệu, màu trạng thái giữ nguyên. `scripts/contrast-check.mjs` đo cả hai chế độ.
 
 ## 6. Bí danh và luật chuyển
 

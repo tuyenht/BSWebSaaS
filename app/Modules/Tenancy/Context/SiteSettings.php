@@ -20,7 +20,7 @@ use LogicException;
 final readonly class SiteSettings
 {
     /** @var list<string> */
-    public const array READABLE_GROUPS = ['catalog'];
+    public const array READABLE_GROUPS = ['catalog', 'forms'];
 
     /**
      * The stored value of $group/$key, or null when the site has no such setting.

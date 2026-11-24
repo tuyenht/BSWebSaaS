@@ -4,12 +4,17 @@ namespace App\Modules\Forms\Actions;
 
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
+use App\Modules\Forms\Models\FormSubmissionFile;
 use App\Modules\Forms\Notifications\NewLeadNotification;
+use App\Modules\Forms\Support\FormFieldTypes;
 use App\Modules\Notifications\Support\Notify;
 use App\Modules\Shared\Contracts\TenantMailConfigurator;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\TurnstileVerifier;
 use App\Modules\Tenancy\Context\SiteLocale;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Throwable;
 
@@ -21,14 +26,22 @@ use Throwable;
  * (name/email/phone) are graduated for the inbox, and recipients are notified best-effort
  * (a mail failure must never lose the captured lead). site_id is stamped by BelongsToSite
  * from the current tenant context (RLS).
+ *
+ * Files sent with a clean lead («Tệp đính kèm») are kept once the lead row exists, field by field:
+ * up to the field's «Số tệp tối đa» each goes through StoreLeadFile (kept, or refused with a row),
+ * the rest are recorded as refused unread. Each file runs in its own savepoint, so one that cannot
+ * be written (the disk is down) is reported and left out while the lead and the other files stay:
+ * a file never costs the visitor their lead. A spam lead keeps no file at all. The lead comes back
+ * with the rows written as its `files` relation, and the email says how many came.
  */
 final readonly class SubmitForm
 {
-    public function __construct(private TurnstileVerifier $turnstile) {}
+    public function __construct(private TurnstileVerifier $turnstile, private StoreLeadFile $storeFile) {}
 
     /**
-     * @param  array<string, mixed>  $data  validated field values (no honeypot / token)
+     * @param  array<string, mixed>  $data  validated field values (no honeypot / token, no files)
      * @param  array{ip?: string|null, user_agent?: string|null, source_url?: string|null}  $meta
+     * @param  array<string, list<UploadedFile>>  $files  the files sent, by file field key
      */
     public function handle(
         Form $form,
@@ -36,6 +49,7 @@ final readonly class SubmitForm
         ?string $honeypot = null,
         ?string $turnstileToken = null,
         array $meta = [],
+        array $files = [],
     ): FormSubmission {
         $ip = $meta['ip'] ?? null;
         $data = $this->recordConsent($form, $data);
@@ -56,6 +70,8 @@ final readonly class SubmitForm
             'status' => $isSpam ? 'spam' : 'new',
             'is_spam' => $isSpam,
         ]);
+
+        $submission->setRelation('files', new Collection($isSpam ? [] : $this->keepFiles($form, $submission, $files)));
 
         if (! $isSpam) {
             $this->notify($form, $submission);
@@ -91,6 +107,40 @@ final readonly class SubmitForm
         return $data;
     }
 
+    /**
+     * @param  array<string, list<UploadedFile>>  $files
+     * @return list<FormSubmissionFile>
+     */
+    private function keepFiles(Form $form, FormSubmission $lead, array $files): array
+    {
+        $rows = [];
+        foreach ($form->fields as $field) {
+            if ($field->type !== FormFieldTypes::FILE || ! FormFieldTypes::isCollectable($field)) {
+                continue;
+            }
+            $kind = FormFieldTypes::fileKind($field);
+            $max = FormFieldTypes::maxFiles($field);
+            $i = 0;
+            foreach ($files[$field->key] ?? [] as $file) {
+                $i++;
+                try {
+                    $row = DB::transaction(fn (): ?FormSubmissionFile => $i <= $max
+                        ? $this->storeFile->handle($lead, $field->key, $kind, $file)
+                        : $this->storeFile->refuse($lead, $field->key, $file));
+                } catch (Throwable $e) {
+                    report($e);
+
+                    continue;
+                }
+                if ($row !== null) {
+                    $rows[] = $row;
+                }
+            }
+        }
+
+        return $rows;
+    }
+
     /** Narrow to a non-empty string capped to $limit characters (the column width), else null. */
     private function cap(mixed $value, int $limit): ?string
     {
@@ -123,7 +173,7 @@ final readonly class SubmitForm
             app(TenantMailConfigurator::class)->apply();
             // The owner reads the lead in the SITE's language, whatever language the visitor used.
             Notification::route('mail', $recipients)
-                ->notify((new NewLeadNotification($submission, $form))->locale(app(SiteLocale::class)->default()));
+                ->notify((new NewLeadNotification($submission, $form, $submission->files->where('status', FormSubmissionFile::STORED)->count()))->locale(app(SiteLocale::class)->default()));
         } catch (Throwable $e) {
             // Best-effort: a mail/transport failure must not 500 the storefront or lose the lead.
             report($e);

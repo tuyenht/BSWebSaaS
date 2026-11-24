@@ -240,11 +240,11 @@ it('draws every on/off switch of the admin with the one shared switch', function
     // the product settings page 1 (the phone menu's products tab), the
     // integrations page 1 (one per provider, in a loop), a block button's "open in a new tab" 1, the
     // plans list 2 (the upgrade invitation, one per plan row in a loop), the plan editor 1 (on sale),
-    // my account 1 (one per notification kind and channel, in a loop), the website look 1 (Có tìm kiếm),
+    // my account 2 (one per notification kind and channel, in a loop; high contrast), the website look 1 (Có tìm kiếm),
     // the product editor 1 (one per label, in a loop: Nổi bật, Bán chạy), the forms list 1 (one per
     // form, in a loop), the form editor 1 (Đang bật), the site languages page 2 (Bật and Khách thấy,
-    // one per language row in a loop)
-    expect($found)->toBe(27);
+    // one per language row in a loop), Bảo mật & Nâng cao 3 (maintenance, the admin address limit, extra embed code)
+    expect($found)->toBe(31);
 });
 
 it('sizes the image picker and theme panel buttons by the shared control tokens', function (string $view, string $marker, string $size): void {

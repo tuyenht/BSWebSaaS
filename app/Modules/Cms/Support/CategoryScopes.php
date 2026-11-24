@@ -365,7 +365,7 @@ final class CategoryScopes
                 ->where('invitation_category_scopes.site_id', $site)
                 ->whereColumn('invitation_category_scopes.invitation_id', 'invitations.id')
                 ->whereIn('invitation_category_scopes.taxonomy_id', $taxonomyIds))
-            ->selectRaw('invitations.id, invitations.email::text as email, (select coalesce(max(r.level), 0) from invitation_roles ir join roles r on r.id = ir.role_id where ir.site_id = invitations.site_id and ir.invitation_id = invitations.id) as level')
+            ->selectRaw('invitations.id, invitations.email::text as email, (select coalesce(max(r.level), 0) from invitation_roles ir join roles r on r.id = ir.role_id and r.deleted_at is null where ir.site_id = invitations.site_id and ir.invitation_id = invitations.id) as level')
             ->orderBy('email')->orderBy('invitations.id')
             ->get();
 

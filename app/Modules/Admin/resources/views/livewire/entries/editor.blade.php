@@ -49,7 +49,7 @@
 <div class="entry-editor @container" data-entry-editor data-kind="{{ $type }}">
     <x-bs-admin::editor-frame :title="$frame['title']" :crumbs="$frame['crumbs']" :description="$frame['description']" :guide="$frame['guide']"
                               :back-url="$listUrl" :back-label="__('entries.ed.back_title', ['list' => mb_strtolower($listLabel)])"
-                              :note="$note" :save-config="$saveConfig" :actions="$actions" target="save,publish,applyTransition" :save-tip="__($pill['status'] === 'draft' ? 'entries.ed.save_tip_auto' : 'entries.ed.save_tip')"
+                              :note="$note" :save-config="$saveConfig" :actions="$actions" target="save,publish,applyTransition,submitChange,askApplyChange" :save-tip="__($pill['status'] === 'draft' ? 'entries.ed.save_tip_auto' : 'entries.ed.save_tip')"
                               :preview="$frame['preview']" :trash="$frame['trash']" :name="$title !== '' ? $title : $frame['title']">
         @if ($liveUrl !== null)
             <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-[color-mix(in_srgb,var(--color-success-text)_9%,var(--color-surface))] px-3.5 py-2.5 text-body font-semibold text-success-text">
@@ -74,6 +74,39 @@
                             <x-bs-admin::icon name="ri-close-circle" :class="$glyph" /> {{ __('entries.unsched') }}
                         </x-bs-admin::button>
                     </div>
+                </div>
+            </x-bs-admin::alert>
+        @endif
+        @if ($changeBand !== null)
+            {{-- Live content whose edits go into its pending change (board 07): where the change stands, that visitors
+                 keep the live version, and the moves this member may make. A move that is not theirs to make is drawn
+                 locked with its reason (aria-disabled, said in a toast when pressed). --}}
+            <x-bs-admin::alert role="status" :color="$changeBand['tone']" :icon="$changeBand['icon']" data-change-band>
+                <div class="flex flex-wrap items-start gap-2.5">
+                    <div class="flex min-w-0 flex-[1_1_16.25rem] flex-col gap-0.5 [overflow-wrap:anywhere]">
+                        <b class="font-semibold text-text-strong">{{ $changeBand['head'] }}</b>
+                        <span>{{ $changeBand['sub'] }}</span>
+                    </div>
+                    @if ($changeBand['acts'] !== [])
+                        <div class="flex max-w-full flex-[0_1_auto] flex-wrap gap-2">
+                            @foreach ($changeBand['acts'] as $act)
+                                @php
+                                    $call = match ($act['do']) { 'diff' => 'openChangeDiff', 'apply' => 'askApplyChange', 'discard' => 'askDiscardChange', 'return' => 'openChangeReturn', default => 'moveChange' };
+                                @endphp
+                                @if ($act['why'] !== null)
+                                    <x-bs-admin::button variant="outline" color="secondary" size="sm" class="aria-disabled:cursor-not-allowed aria-disabled:opacity-60" aria-disabled="true" title="{{ $act['why'] }}"
+                                                        data-change-act="{{ $act['do'] }}" x-data x-on:click="$bsToast({{ Js::from(['text' => $act['why'], 'stay' => true, 'close' => __('admin.close')]) }})">
+                                        <x-bs-admin::icon :name="$act['icon']" :class="$glyph" /> {{ $act['label'] }}
+                                    </x-bs-admin::button>
+                                @else
+                                    <x-bs-admin::button :variant="$act['soft'] ? 'soft' : 'outline'" :color="$act['soft'] ? 'primary' : 'secondary'" size="sm" data-change-act="{{ $act['do'] }}"
+                                                        wire:click="{{ $call }}{{ $act['key'] !== null ? '('.Js::from($act['key']).')' : '' }}" wire:loading.attr="disabled" wire:target="{{ $call }}">
+                                        <x-bs-admin::icon :name="$act['icon']" :class="$glyph" /> {{ $act['label'] }}
+                                    </x-bs-admin::button>
+                                @endif
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
             </x-bs-admin::alert>
         @endif
@@ -109,6 +142,11 @@
                 </div>
                 </x-bs-admin::alert>
             </div>
+        @endif
+        @if (count($langBar) > 1)
+            {{-- The language bar (board 07): the version open and the state of every other; another version opens
+                 in this editor with its own link, through the unsaved-changes question, its title field focused. --}}
+            <x-bs-admin::lang-bar :langs="$langBar" :manage="$langManage" focus="entry-title" />
         @endif
 
         <div class="flex min-w-0 flex-wrap items-start gap-5">
@@ -474,24 +512,17 @@
                     <div class="flex flex-wrap items-center gap-2">
                         <h2 id="entry-cover-h" class="{{ $cardTitle }}">{{ __('entries.ed.card_cover') }}</h2>
                         @if ($sharedLock)
-                            <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-hover px-2 py-0.5 text-small font-semibold text-text-muted" title="{{ __('entries.ed.shared_tip') }}">
-                                <x-bs-admin::icon name="ri-lock" class="size-[min(1.5rem,calc(0.75rem+var(--user-text-boost)))]" />{{ __('entries.ed.shared_chip') }}
-                            </span>
+                            <x-bs-admin::shared-chip />
                         @endif
                     </div>
                     <div class="relative aspect-video w-full overflow-hidden rounded-md border bg-surface-muted {{ $cover ? 'border-border' : 'border-dashed border-border-input' }}">
                         @if ($cover)
                             <img src="{{ $cover['url'] }}" alt="{{ $cover['name'] !== '' ? __('entries.ed.cover_img', ['name' => $cover['name']]) : __('entries.cover_alt') }}" class="entry-cover__preview size-full object-cover">
                             @if ($mayPick)
-                                <button type="button" wire:click="clearCover" class="absolute end-1.5 top-1.5 inline-flex min-h-hit items-center"
-                                        title="{{ __('entries.ed.cover_remove_title', ['unit' => $unit]) }}" aria-label="{{ __('entries.ed.cover_remove_title', ['unit' => $unit]) }}">
-                                    <span class="inline-flex min-h-8 items-center gap-1 rounded-full border border-white px-3 text-[calc(0.875rem+var(--user-text-boost))] font-semibold leading-tight text-white" style="background: rgba(15, 23, 41, .72)">
-                                        <x-bs-admin::icon name="ri-close" class="size-4 shrink-0" />{{ __('entries.cover_remove') }}
-                                    </span>
-                                </button>
+                                <x-bs-admin::cover-remove wire:click="clearCover" :title="__('entries.ed.cover_remove_title', ['unit' => $unit])">{{ __('entries.cover_remove') }}</x-bs-admin::cover-remove>
                             @endif
                         @elseif ($mayPick)
-                            <button type="button" wire:click="openCoverPicker" class="absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-3 text-center text-[calc(0.8125rem+var(--user-text-boost))] leading-normal text-text transition-colors hover:bg-surface-hover">
+                            <button type="button" data-cover-pick wire:click="openCoverPicker" class="absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-3 text-center text-[calc(0.8125rem+var(--user-text-boost))] leading-normal text-text transition-colors hover:bg-surface-hover">
                                 <x-bs-admin::icon name="ri-image-add" class="size-6 text-primary-text" />
                                 <span class="font-semibold text-primary-text">{{ __('entries.ed.cover_choose') }}</span>
                             </button>
@@ -596,9 +627,7 @@
                         <div class="{{ $cardHead }}">
                             <h2 id="entry-props-h" class="{{ $cardTitle }}">{{ __('entries.ed.card_page_props') }}</h2>
                             @if ($sharedLock)
-                                <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-hover px-2 py-0.5 text-small font-semibold text-text-muted" title="{{ __('entries.ed.shared_tip') }}">
-                                    <x-bs-admin::icon name="ri-lock" class="size-[min(1.5rem,calc(0.75rem+var(--user-text-boost)))]" />{{ __('entries.ed.shared_chip') }}
-                                </span>
+                                <x-bs-admin::shared-chip />
                             @endif
                         </div>
                         <div class="p-4">
@@ -610,6 +639,68 @@
         </div>
 
     </x-bs-admin::editor-frame>
+
+    @if ($changeBand !== null && $changeBand['ask']['title'] !== '')
+        {{-- «Duyệt đăng thay đổi?» / «Cập nhật website?»: what goes live, at once (no time to pick: a change of
+             live content goes up when approved), and that the website's version stays in the history. --}}
+        <x-bs-admin::confirm-dialog model="changeApplyAsk" :title="$changeBand['ask']['title']" icon="ri-global" :ok="$changeBand['ask']['ok']" ok-icon="ri-check-double"
+                                    confirm="applyChange" cancel="cancelChangeAsk">
+            @foreach ($changeBand['ask']['lines'] as $line)
+                <x-bs-admin::confirm-line>{{ $line }}</x-bs-admin::confirm-line>
+            @endforeach
+        </x-bs-admin::confirm-dialog>
+        {{-- «Bỏ thay đổi?»: whose edits, in which languages, and that it cannot be undone. --}}
+        <x-bs-admin::confirm-dialog model="changeDiscardAsk" :title="__('entries.chg.discard_title')" icon="ri-arrow-go-back" danger :ok="__('entries.chg.btn_discard')" ok-icon="ri-arrow-go-back"
+                                    confirm="discardChange" cancel="cancelChangeAsk">
+            @foreach ($changeBand['discard'] as $line)
+                <x-bs-admin::confirm-line>{{ $line }}</x-bs-admin::confirm-line>
+            @endforeach
+        </x-bs-admin::confirm-dialog>
+        {{-- «So sánh với bản đang trên website»: per language, each field that differs — the new value, then what
+             visitors see. --}}
+        <x-bs-admin::modal model="changeDiffOpen" size="wide" :title="__('entries.chg.diff_title')" :subtitle="$changeBand['diff']['sub']" :close-label="__('admin.close')">
+            @if ($changeBand['diff']['rows'] === [])
+                <p class="m-0 text-text-muted">{{ __('entries.chg.diff_none') }}</p>
+            @else
+                <ul class="m-0 flex list-none flex-col gap-3 p-0" data-change-diff>
+                    @foreach ($changeBand['diff']['rows'] as $row)
+                        <li class="flex min-w-0 flex-col gap-1 rounded-md border border-border px-3 py-2.5">
+                            <span class="flex flex-wrap items-center gap-2 text-small font-semibold text-text-strong">
+                                @if ($row['lang'] !== null)
+                                    <span class="rounded-sm bg-surface-hover px-1.5 text-caption font-semibold text-text-muted">{{ $row['lang'] }}</span>
+                                @endif
+                                {{ $row['label'] }}
+                            </span>
+                            <span class="text-text [overflow-wrap:anywhere]">{{ $row['now'] }}</span>
+                            <span class="text-small text-text-muted [overflow-wrap:anywhere]">{{ __('entries.chg.diff_seen', ['text' => $row['seen']]) }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+            <x-slot:footer>
+                <x-bs-admin::button color="light" autofocus x-on:click="$wire.changeDiffOpen = false">{{ __('admin.close') }}</x-bs-admin::button>
+            </x-slot:footer>
+        </x-bs-admin::modal>
+        {{-- «Trả lại thay đổi»: the note is required (said on the field, kept until it is written). --}}
+        <x-bs-admin::modal model="changeReturnOpen" size="narrow" :title="__('entries.chg.return_title')" :close-label="__('admin.close')">
+            <div class="flex flex-col gap-1.5">
+                <label for="change-note" class="text-small font-semibold text-text">{{ __('entries.chg.return_label', ['by' => $changeBand['return']['by']]) }} <span class="text-danger-text" aria-hidden="true">*</span></label>
+                <textarea id="change-note" wire:model="changeNote" rows="4" maxlength="2000" required aria-describedby="change-note-hint change-note-err"
+                          aria-invalid="{{ $errors->has('changeNote') ? 'true' : 'false' }}"
+                          class="w-full rounded border bg-surface px-3 py-2.5 text-text focus:border-primary-text {{ $errors->has('changeNote') ? 'border-danger-text' : 'border-border-input' }}"></textarea>
+                <p id="change-note-hint" class="m-0 text-caption text-text-muted">{{ __('entries.chg.return_hint') }}</p>
+                <div id="change-note-err">
+                    @error('changeNote') <x-bs-admin::field-error role="alert">{{ $message }}</x-bs-admin::field-error> @enderror
+                </div>
+            </div>
+            <x-slot:footer>
+                <x-bs-admin::button color="light" x-on:click="$wire.changeReturnOpen = false">{{ __('admin.cancel') }}</x-bs-admin::button>
+                <x-bs-admin::button color="danger" variant="outline" wire:click="returnChange" wire:loading.attr="disabled" wire:target="returnChange" data-change-return-ok>
+                    <x-bs-admin::icon name="ri-reply" class="size-4" />{{ __('entries.chg.btn_return') }}
+                </x-bs-admin::button>
+            </x-slot:footer>
+        </x-bs-admin::modal>
+    @endif
 
     @if ($revisions !== null)
         @include('admin::livewire.entries.partials.revision-dialogs')

@@ -16,6 +16,7 @@ use App\Modules\Storefront\EdgeCache\EdgeCachePurges;
 use App\Modules\Storefront\EdgeCache\NullEdgeCache;
 use App\Modules\Storefront\EdgeCache\PurgeOnPublicChange;
 use App\Modules\Storefront\Support\DrawerProducts;
+use App\Modules\Storefront\Support\SiteEmbedCode;
 use App\Modules\Tenancy\Events\DomainNeedsAttention;
 use App\Modules\Tenancy\Events\PlanGrantsChanged;
 use App\Modules\Tenancy\Events\PublicSiteChanged;
@@ -48,6 +49,8 @@ final class StorefrontServiceProvider extends ServiceProvider
         $this->app->scoped(EdgeCachePause::class);
         // Holds the scoped product-list lookup, so it lives per request too.
         $this->app->scoped(DrawerProducts::class);
+        // Per request: whether this response printed the site's embed code (its CSP follows it).
+        $this->app->scoped(SiteEmbedCode::class);
     }
 
     public function boot(): void

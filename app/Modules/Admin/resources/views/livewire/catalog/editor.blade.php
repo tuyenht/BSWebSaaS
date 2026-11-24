@@ -10,7 +10,9 @@
      has an error. Amounts, stock, dates and the SKU are checked when the field is left. The save state at rest is drawn here; typing, saving and a lost connection are
      drawn over it in the browser (resources/js/admin-editor.js). The description is a Jodit island
      (lazy chunk) inside wire:ignore; its HTML syncs back deferred. Sizes come from the control
-     tokens; the layout follows the editor's own width (container queries). --}}
+     tokens; the layout follows the editor's own width (container queries). On a site that writes in more
+     than one language the language bar (board 09) opens another language's version; there the product's
+     own cards (pictures, price, categories, SKU and labels) carry «Chung» and read only. --}}
 @php
     use App\Modules\Admin\Livewire\Catalog\Editor;
     use App\Modules\Admin\Support\SeoFields;
@@ -43,6 +45,8 @@
     $subLabel = 'mb-1.5 block text-small font-medium text-text-strong';
     $stockWords = ['none' => __('catalog.ed.stock_hint_none'), 'out' => __('catalog.ed.stock_hint_out'), 'in' => __('catalog.ed.stock_hint_in')];
     $stockKind = static fn (?string $typed): string => ($digits = preg_replace('/\D/', '', (string) $typed)) === '' ? 'none' : ((int) $digits === 0 ? 'out' : 'in');
+    // the product's own fields: changed by who may manage it, in the website's default language only
+    $editShared = $canEdit && ! $sharedLock;
 @endphp
 <div class="catalog-editor @container" data-catalog-editor>
     <x-bs-admin::editor-frame :title="$frame['title']" :crumbs="$frame['crumbs']" :description="$frame['description']" :guide="$frame['guide']"
@@ -52,7 +56,7 @@
                               :name="$name !== '' ? $name : $frame['title']">
         {{-- the ⋮'s status moves (the board's): a published product can be taken off the website or put back
              to draft, an archived one put back to draft — each a full save, a field to fix stops it --}}
-        @if ($canEdit && $ulid !== null && in_array($status, ['published', 'archived'], true))
+        @if ($editShared && $ulid !== null && in_array($status, ['published', 'archived'], true))
             <x-slot:menu>
                 @if ($status === 'published')
                     <x-bs-admin::list.menu-item icon="ri-archive" wire:click="unpublish" wire:loading.attr="disabled" wire:target="save,publish,unpublish,toDraft">{{ __('catalog.ed.menu_unpublish') }}</x-bs-admin::list.menu-item>
@@ -68,6 +72,11 @@
                 <p class="m-0 min-w-0 flex-1"><b>{{ __('catalog.ed.ro_lead') }}</b> {{ $roRole !== null ? __('catalog.ed.ro_text', ['role' => $roRole]) : __('catalog.ed.ro_text_plain') }}</p>
             </div>
         @endunless
+        @if (count($langBar) > 1)
+            {{-- The language bar (board 09): the version open and the state of every other; another version opens
+                 in this editor with its own link, through the unsaved-changes question, its name field focused. --}}
+            <x-bs-admin::lang-bar :langs="$langBar" :manage="$langManage" focus="catalog-name" />
+        @endif
         <div class="grid min-w-0 items-start gap-4 @min-[64rem]:grid-cols-3"
              x-data="{ more: false, init() { try { this.more = JSON.parse(localStorage.getItem('bs-editor') || '{}').more === true } catch (e) {} }, setMore(on) { this.more = on; try { const o = JSON.parse(localStorage.getItem('bs-editor') || '{}') || {}; o.more = on; localStorage.setItem('bs-editor', JSON.stringify(o)) } catch (e) {} } }">
             <div class="flex min-w-0 flex-col gap-4 @min-[64rem]:col-span-2">
@@ -174,7 +183,7 @@
                      place; ← → go from picture to picture. The order is saved with the product. --}}
                 @php
                     $imgN = count($galleryImages);
-                    $mayAddImages = $canEdit && auth()->user()?->can('media.view');
+                    $mayAddImages = $editShared && auth()->user()?->can('media.view');
                     $imgWords = [
                         'pos' => __('catalog.ed.img_pos'), 'posCover' => __('catalog.ed.img_pos_cover'),
                         'upFirst' => __('catalog.ed.img_up_first'), 'up' => __('catalog.ed.img_up_why'),
@@ -198,6 +207,9 @@
                          x-on:resize.window.debounce.100ms="edge()">
                     <div class="{{ $cardHead }}">
                         <h2 id="ped-h-img" class="{{ $cardTitle }}">{{ __('catalog.card_gallery') }}</h2>
+                        @if ($sharedLock)
+                            <x-bs-admin::shared-chip :why="$sharedWhy" />
+                        @endif
                         <span class="flex-1"></span>
                         @if ($mayAddImages)
                             <x-bs-admin::button variant="outline" color="secondary" size="sm" wire:click="openImagePicker">
@@ -209,7 +221,7 @@
                         @if ($galleryImages === [])
                             <div class="ped-imempty">
                                 <x-bs-admin::icon name="ri-image-add" class="size-7" />
-                                <span>{{ __('catalog.ed.img_empty') }}</span>
+                                <span>{{ $sharedLock ? $sharedWhy : __('catalog.ed.img_empty') }}</span>
                                 @if ($mayAddImages)
                                     <x-bs-admin::button variant="outline" color="secondary" wire:click="openImagePicker">
                                         <x-bs-admin::icon name="ri-image-add" :class="$glyph" /> {{ __('catalog.ed.img_choose') }}
@@ -226,14 +238,14 @@
                                     @foreach ($galleryImages as $i => $image)
                                         @php
                                             $file = $image['name'] ?? __('catalog.gallery_missing');
-                                            $aria = __($i === 0 ? 'catalog.ed.img_aria_cover' : 'catalog.ed.img_aria', ['i' => $i + 1, 'n' => $imgN]).($canEdit ? __('catalog.ed.img_aria_pick') : '');
+                                            $aria = __($i === 0 ? 'catalog.ed.img_aria_cover' : 'catalog.ed.img_aria', ['i' => $i + 1, 'n' => $imgN]).($editShared ? __('catalog.ed.img_aria_pick') : '');
                                         @endphp
                                         <div wire:key="gallery-{{ $image['id'] }}" class="ped-im" role="listitem"
                                              x-bind:data-sel="sel === {{ $i }} ? '1' : '0'" x-bind:data-over="over === {{ $i }} ? '1' : '0'"
-                                             @if ($canEdit) draggable="true" x-on:dragstart="from = {{ $i }}; $event.dataTransfer.effectAllowed = 'move'" x-on:dragover.prevent="over = {{ $i }}"
+                                             @if ($editShared) draggable="true" x-on:dragstart="from = {{ $i }}; $event.dataTransfer.effectAllowed = 'move'" x-on:dragover.prevent="over = {{ $i }}"
                                              x-on:dragleave="over === {{ $i }} && (over = null)" x-on:drop.prevent="drop({{ $i }})" x-on:dragend="from = over = null" @endif>
                                             <button type="button" class="ped-imb" data-img-i="{{ $i }}" title="{{ $file }}" aria-label="{{ $aria }}"
-                                                    @if ($canEdit) aria-pressed="false" x-bind:aria-pressed="(sel === {{ $i }}).toString()" x-on:click="pick({{ $i }})" @endif
+                                                    @if ($editShared) aria-pressed="false" x-bind:aria-pressed="(sel === {{ $i }}).toString()" x-on:click="pick({{ $i }})" @endif
                                                     x-on:keydown="key($event, {{ $i }})">
                                                 <span class="ped-imf">
                                                     @if ($image['missing'])
@@ -261,7 +273,7 @@
                                     <x-bs-admin::icon name="ri-arrow-right-s" class="size-5" />
                                 </button>
                             </div>
-                            @if ($canEdit)
+                            @if ($editShared)
                                 <div class="ped-tb" role="toolbar" aria-label="{{ __('catalog.ed.img_toolbar') }}" x-show="sel !== null" x-cloak>
                                     <span>{{ __('catalog.ed.img_selected') }} <strong x-text="w.pos.replace(':i', sel + 1).replace(':n', n)"></strong></span>
                                     <x-bs-admin::button variant="outline" color="secondary" size="sm" x-bind:aria-disabled="(sel === 0).toString()" x-bind:title="sel === 0 ? w.upFirst : w.up"
@@ -281,7 +293,7 @@
                                     </x-bs-admin::button>
                                 </div>
                             @endif
-                            <p class="{{ $hint }} mt-0">{{ $canEdit ? __('catalog.ed.img_hint') : __('catalog.ed.img_hint_ro') }}</p>
+                            <p class="{{ $hint }} mt-0">{{ $sharedLock ? $sharedWhy : ($canEdit ? __('catalog.ed.img_hint') : __('catalog.ed.img_hint_ro')) }}</p>
                         @endif
                         @error('imageMediaIds.*') <p class="mt-1 text-sm text-danger-text">{{ $message }}</p> @enderror
                     </div>
@@ -291,7 +303,12 @@
                      presents its products folds the card behind a note (the amounts are kept); a field to fix
                      inside it opens it. Two columns while the card is wide enough. --}}
                 <section class="@container rounded-md border border-border bg-surface shadow-card" aria-labelledby="ped-h-price" x-data="{ priceOpen: false }">
-                    <div class="{{ $cardHead }}"><h2 id="ped-h-price" class="{{ $cardTitle }}">{{ $selling ? __('catalog.ed.card_price_stock') : __('catalog.card_price') }}</h2></div>
+                    <div class="{{ $cardHead }}">
+                        <h2 id="ped-h-price" class="{{ $cardTitle }}">{{ $selling ? __('catalog.ed.card_price_stock') : __('catalog.card_price') }}</h2>
+                        @if ($sharedLock)
+                            <x-bs-admin::shared-chip :why="$sharedWhy" />
+                        @endif
+                    </div>
                     <div class="flex flex-col gap-4 p-4">
                         @unless ($selling)
                             <div class="{{ $fold }}" x-show="! priceOpen">
@@ -321,7 +338,7 @@
                                 <div>
                                     <label for="catalog-price" class="{{ $label }} mb-1.5">{{ __('catalog.ed.price_label') }}</label>
                                     <div class="{{ $moneyBox }}">
-                                        <input type="text" id="catalog-price" x-ref="priceFirst" wire:model.blur="price" @readonly(! $canEdit) inputmode="numeric" autocomplete="off" placeholder="1.250.000"
+                                        <input type="text" id="catalog-price" x-ref="priceFirst" wire:model.blur="price" @readonly(! $editShared) inputmode="numeric" autocomplete="off" placeholder="1.250.000"
                                                aria-describedby="catalog-price-h @error('price') catalog-price-e @enderror" @error('price') aria-invalid="true" @enderror class="field min-w-0 flex-1 border-0 bg-transparent px-3 text-right tabular-nums text-text placeholder:text-placeholder">
                                         <span class="pe-3 font-semibold text-text-muted" aria-hidden="true">₫</span>
                                     </div>
@@ -330,7 +347,7 @@
                                 </div>
                                 <div x-show="more" x-cloak>
                                     <label for="catalog-stock" class="{{ $label }} mb-1.5">{{ __('catalog.ed.stock_label') }}</label>
-                                    <input type="text" id="catalog-stock" wire:model.blur="stock" @readonly(! $canEdit) inputmode="numeric" autocomplete="off" placeholder="24"
+                                    <input type="text" id="catalog-stock" wire:model.blur="stock" @readonly(! $editShared) inputmode="numeric" autocomplete="off" placeholder="24"
                                            aria-describedby="catalog-stock-h @error('stock') catalog-stock-e @enderror" @error('stock') aria-invalid="true" @enderror class="field block w-full rounded-md border border-border-input bg-surface-muted px-3 text-text placeholder:text-placeholder transition-colors focus:border-primary-text aria-invalid:border-danger-text">
                                     @error('stock') <x-bs-admin::field-error id="catalog-stock-e" class="mt-1" x-init="priceOpen = true; setMore(true)">{{ $message }}</x-bs-admin::field-error> @enderror
                                     <p id="catalog-stock-h" class="{{ $hint }}" x-data="{ words: {{ Js::from($stockWords) }} }"
@@ -343,7 +360,7 @@
                                     <div>
                                         <label for="catalog-sale" class="{{ $subLabel }}">{{ __('catalog.ed.sale_label') }}</label>
                                         <div class="{{ $moneyBox }}">
-                                            <input type="text" id="catalog-sale" wire:model.blur="salePrice" @readonly(! $canEdit) inputmode="numeric" autocomplete="off" placeholder="1.090.000"
+                                            <input type="text" id="catalog-sale" wire:model.blur="salePrice" @readonly(! $editShared) inputmode="numeric" autocomplete="off" placeholder="1.090.000"
                                                    @error('salePrice') aria-invalid="true" aria-describedby="catalog-sale-e" @enderror class="field min-w-0 flex-1 border-0 bg-transparent px-3 text-right tabular-nums text-text placeholder:text-placeholder">
                                             <span class="pe-3 font-semibold text-text-muted" aria-hidden="true">₫</span>
                                         </div>
@@ -352,13 +369,13 @@
                                     <div aria-hidden="true"></div>
                                     <div>
                                         <label for="catalog-sale-from" class="{{ $subLabel }}">{{ __('catalog.ed.sale_from') }}</label>
-                                        <input type="datetime-local" id="catalog-sale-from" wire:model.blur="saleStartsAt" @readonly(! $canEdit) aria-describedby="catalog-sale-h @error('saleStartsAt') catalog-sale-from-e @enderror"
+                                        <input type="datetime-local" id="catalog-sale-from" wire:model.blur="saleStartsAt" @readonly(! $editShared) aria-describedby="catalog-sale-h @error('saleStartsAt') catalog-sale-from-e @enderror"
                                                @error('saleStartsAt') aria-invalid="true" @enderror class="field block w-full rounded-md border border-border-input bg-surface-muted px-3 text-text placeholder:text-placeholder transition-colors focus:border-primary-text aria-invalid:border-danger-text">
                                         @error('saleStartsAt') <x-bs-admin::field-error id="catalog-sale-from-e" class="mt-1" x-init="priceOpen = true; setMore(true)">{{ $message }}</x-bs-admin::field-error> @enderror
                                     </div>
                                     <div>
                                         <label for="catalog-sale-to" class="{{ $subLabel }}">{{ __('catalog.ed.sale_to') }}</label>
-                                        <input type="datetime-local" id="catalog-sale-to" wire:model.blur="saleEndsAt" @readonly(! $canEdit) aria-describedby="catalog-sale-h @error('saleEndsAt') catalog-sale-to-e @enderror"
+                                        <input type="datetime-local" id="catalog-sale-to" wire:model.blur="saleEndsAt" @readonly(! $editShared) aria-describedby="catalog-sale-h @error('saleEndsAt') catalog-sale-to-e @enderror"
                                                @error('saleEndsAt') aria-invalid="true" @enderror class="field block w-full rounded-md border border-border-input bg-surface-muted px-3 text-text placeholder:text-placeholder transition-colors focus:border-primary-text aria-invalid:border-danger-text">
                                         @error('saleEndsAt') <x-bs-admin::field-error id="catalog-sale-to-e" class="mt-1" x-init="priceOpen = true; setMore(true)">{{ $message }}</x-bs-admin::field-error> @enderror
                                     </div>
@@ -450,23 +467,28 @@
                      until the product is. --}}
                 <section class="rounded-md border border-border bg-surface shadow-card" aria-labelledby="ped-h-cat" x-show="more" x-cloak
                          x-data="{ q: '', fold(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').trim(); }, hit(t) { const w = this.fold(this.q); return w === '' || this.fold(t).includes(w); }, get searching() { return this.fold(this.q) !== ''; } }">
-                    <div class="{{ $cardHead }}"><h2 id="ped-h-cat" class="{{ $cardTitle }}">{{ __('catalog.card_opt_cat') }}</h2></div>
+                    <div class="{{ $cardHead }}">
+                        <h2 id="ped-h-cat" class="{{ $cardTitle }}">{{ __('catalog.card_opt_cat') }}</h2>
+                        @if ($sharedLock)
+                            <x-bs-admin::shared-chip :why="$sharedWhy" />
+                        @endif
+                    </div>
                     <div class="flex flex-col gap-3 p-4">
                         @if ($categories !== [])
-                            <x-bs-admin::search :label="__('catalog.ed.cat_search')" :placeholder="__('catalog.ed.cat_search_ph')" x-model="q" :disabled="! $canEdit" />
+                            <x-bs-admin::search :label="__('catalog.ed.cat_search')" :placeholder="__('catalog.ed.cat_search_ph')" x-model="q" :disabled="! $editShared" />
                         @endif
                         <div id="catalog-category" class="ped-cl max-h-[300px] overflow-y-auto overflow-x-hidden rounded border border-border [scrollbar-gutter:stable]" role="group" aria-label="{{ __('catalog.ed.cat_group') }}" tabindex="-1"
                              @error('categoryId') aria-invalid="true" aria-describedby="catalog-category-e" @enderror>
                             @foreach ($categories as $i => $category)
                                 <div wire:key="cat-{{ $category['ulid'] }}" class="ped-cr" data-d="{{ $category['depth'] }}" x-bind:data-d="searching ? 0 : {{ $category['depth'] }}" x-show="hit(@js($category['path'].$category['label']))">
                                     <label for="catalog-cat-{{ $i }}">
-                                        <input id="catalog-cat-{{ $i }}" type="checkbox" @checked($category['on']) @disabled(! $canEdit)
+                                        <input id="catalog-cat-{{ $i }}" type="checkbox" @checked($category['on']) @disabled(! $editShared)
                                                wire:click="toggleCategory('{{ $category['ulid'] }}')" wire:loading.attr="disabled" wire:target="toggleCategory,setMainCategory">
                                         <span title="{{ $category['path'].$category['label'] }}"><span class="text-text-muted" x-show="searching" x-cloak>{{ $category['path'] }}</span>{{ $category['label'] }}</span>
                                     </label>
                                     @if ($category['main'])
                                         <x-bs-admin::badge color="warning" soft class="ped-main"><x-bs-admin::icon name="ri-star-fill" class="size-3.5" />{{ __('catalog.ed.cat_main') }}</x-bs-admin::badge>
-                                    @elseif ($category['on'] && $canEdit)
+                                    @elseif ($category['on'] && $editShared)
                                         <button type="button" class="ped-star" wire:click="setMainCategory('{{ $category['ulid'] }}')" wire:loading.attr="disabled" wire:target="toggleCategory,setMainCategory"
                                                 aria-label="{{ __('catalog.ed.cat_star_aria', ['name' => $category['label']]) }}">
                                             <x-bs-admin::icon name="ri-star" class="size-3.5" />{{ __('catalog.ed.cat_star') }}
@@ -483,7 +505,7 @@
                         </div>
                         @error('categoryId') <p id="catalog-category-e" class="{{ $error }}" x-init="setMore(true)">{{ $message }}</p> @enderror
                         @error('categoryIds.*') <p class="{{ $error }}" x-init="setMore(true)">{{ $message }}</p> @enderror
-                        <p class="{{ $hint }} mt-0">{{ __('catalog.ed.cat_hint') }}</p>
+                        <p class="{{ $hint }} mt-0">{{ $sharedLock ? $sharedWhy : __('catalog.ed.cat_hint') }}</p>
                         @if ($mayManageCategories)
                             <div>
                                 <x-bs-admin::button variant="ghost" size="sm" :href="route('admin.taxonomies.index', ['section' => 'catalog'])">
@@ -495,11 +517,16 @@
                 </section>
 
                 <section class="rounded-md border border-border bg-surface shadow-card" aria-labelledby="ped-h-sku" x-show="more" x-cloak>
-                    <div class="{{ $cardHead }}"><h2 id="ped-h-sku" class="{{ $cardTitle }}">{{ __('catalog.ed.card_code_tags') }}</h2></div>
+                    <div class="{{ $cardHead }}">
+                        <h2 id="ped-h-sku" class="{{ $cardTitle }}">{{ __('catalog.ed.card_code_tags') }}</h2>
+                        @if ($sharedLock)
+                            <x-bs-admin::shared-chip :why="$sharedWhy" />
+                        @endif
+                    </div>
                     <div class="flex flex-col gap-3 p-4">
                         <div>
                             <label for="catalog-sku" class="{{ $label }} mb-1.5">{{ __('catalog.card_opt_sku') }}</label>
-                            <input type="text" id="catalog-sku" wire:model.blur="sku" @readonly(! $canEdit) dir="ltr" autocomplete="off" spellcheck="false" placeholder="AV-DP-D10" maxlength="64"
+                            <input type="text" id="catalog-sku" wire:model.blur="sku" @readonly(! $editShared) dir="ltr" autocomplete="off" spellcheck="false" placeholder="AV-DP-D10" maxlength="64"
                                    x-on:input="if ($event.isComposing) return; const a = $el.selectionStart, v = $el.value.toUpperCase().replace(/\s+/g, '-').slice(0, 64); if (v !== $el.value) { $el.value = v; $el.setSelectionRange(Math.min(a, v.length), Math.min(a, v.length)); }"
                                    x-on:compositionend="const a = $el.selectionStart, v = $el.value.toUpperCase().replace(/\s+/g, '-').slice(0, 64); if (v !== $el.value) { $el.value = v; $el.setSelectionRange(Math.min(a, v.length), Math.min(a, v.length)); }"
                                    aria-describedby="catalog-sku-h @error('sku') catalog-sku-e @enderror" @error('sku') aria-invalid="true" @enderror
@@ -515,7 +542,7 @@
                                     <span class="block text-small text-text-muted" x-text="$wire.{{ $flag }} ? @js(__($flagOn)) : @js(__('catalog.ed.flag_off'))">{{ $flagIsOn ? __($flagOn) : __('catalog.ed.flag_off') }}</span>
                                 </span>
                                 <button type="button" class="switch hit-area" role="switch" aria-labelledby="{{ $flagId }}" aria-checked="{{ $flagIsOn ? 'true' : 'false' }}"
-                                        x-bind:aria-checked="$wire.{{ $flag }} ? 'true' : 'false'" @if ($canEdit) x-on:click="$wire.{{ $flag }} = ! $wire.{{ $flag }}" @else aria-disabled="true" @endif></button>
+                                        x-bind:aria-checked="$wire.{{ $flag }} ? 'true' : 'false'" @if ($editShared) x-on:click="$wire.{{ $flag }} = ! $wire.{{ $flag }}" @else aria-disabled="true" @endif></button>
                             </div>
                         @endforeach
                     </div>

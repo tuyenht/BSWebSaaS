@@ -914,6 +914,8 @@ window.Alpine.data('bsCategories', (cfg) => {
         dropCover() {
             this.pan.d.cover = null;
             this.pan.d.coverChanged = true;
+            // the button that held focus is hidden now: focus moves on to the empty box's «Chọn ảnh»
+            this.$nextTick(() => document.getElementById('cm-cover-pick')?.focus());
         },
         async save(again = false) {
             const P = this.pan;

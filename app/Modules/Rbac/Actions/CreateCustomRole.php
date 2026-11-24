@@ -11,6 +11,7 @@ use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Rbac\Support\CustomRoleRules;
 use App\Modules\Rbac\Support\MembershipLock;
+use App\Modules\Rbac\Support\RoleHierarchyGuard;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -21,13 +22,16 @@ use Illuminate\Support\Facades\Gate;
  * Create a site's own role — blank, or forked off an existing role of the same site (design.md
  * §15.3: system roles stay locked; wanting something different means a custom role, which keeps
  * `forked_from_role_id` as provenance). Gated by `roles.manage` AND the site's `rbac.custom_roles`
- * entitlement (default off). Every invariant lives in {@see CustomRoleRules}.
+ * entitlement (default off). Every invariant lives in {@see CustomRoleRules}; the free name and
+ * the room under the per-site caps (live roles, and live and trashed roles together) are checked
+ * under the site's lock, inside the insert's transaction.
  */
 final readonly class CreateCustomRole
 {
     public function __construct(
         private CustomRoleRules $rules,
         private Entitlement $entitlement,
+        private RoleHierarchyGuard $guard,
     ) {}
 
     /**
@@ -55,6 +59,14 @@ final readonly class CreateCustomRole
         $granted = $this->rules->permissions($actor, $permissions);
 
         return DB::transaction(function () use ($name, $level, $granted, $forkFrom, $siteId): Role {
+            $this->rules->lockSite();
+            if ($forkFrom !== null) {
+                $this->guard->lockLive([$forkFrom]);   // not moved to the trash since it was read
+            }
+            $this->rules->assertNameFree($name);
+            $this->rules->assertRoomForAnother();
+            $this->rules->assertRoomToKeepAnother();
+
             $role = new Role;
             $role->forceFill([
                 'name' => $name,

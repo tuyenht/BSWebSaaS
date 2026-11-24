@@ -25,7 +25,6 @@ use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Workflow\Actions\InstantiateWorkflow;
 use Illuminate\Support\Facades\View;
-use PragmaRX\Google2FA\Google2FA;
 
 /*
  * Query Budget guardrail (CLAUDE.md §6): assert a hard ceiling of DB queries per
@@ -53,6 +52,17 @@ it('renders the storefront home with the site’s search settings within the sam
     ]]));
 
     $count = countQueries(fn () => $this->get('http://a.test/')->assertOk()->assertSee('noindex, nofollow', false));
+
+    expect($count)->toBeLessThanOrEqual($budget);
+});
+
+it('renders the storefront home with its extra embed code on within the same budget', function (): void {
+    $budget = 11; // the embed code rides the one site-settings query the page already makes
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'embed_code', 'value' => [
+        'on' => true, 'code' => ['head' => '', 'body_top' => '', 'body_end' => '', 'foot' => '<script>window.qbEmbed = 1;</script>'], 'acknowledged_at' => '2026-11-22T03:00:00Z', 'acknowledged_by' => null,
+    ]]));
+
+    $count = countQueries(fn () => $this->get('http://a.test/')->assertOk()->assertSee('<script>window.qbEmbed = 1;</script>', false));
 
     expect($count)->toBeLessThanOrEqual($budget);
 });
@@ -545,7 +555,7 @@ it('renders the member\'s own account page within its query budget', function ()
     app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view', 'entries.review', 'forms.view', 'domains.manage']));
     $service = app(TwoFactorService::class);
     $secret = $service->generateSecret();
-    $service->enable($user, $secret, (new Google2FA)->getCurrentOtp($secret));
+    $service->enable($user, $secret, totpCode($secret, -1));
     SocialIdentity::query()->create(['user_id' => $user->id, 'provider' => 'google', 'sub' => 'g-'.$user->ulid, 'email' => $user->email]);
     $user = $user->fresh();
 

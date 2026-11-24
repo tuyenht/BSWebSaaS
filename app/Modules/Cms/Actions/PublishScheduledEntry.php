@@ -92,6 +92,8 @@ final readonly class PublishScheduledEntry
             $translation->update(['status' => 'published']);
             $this->routes->sync($entry, $translation->locale, $translation->slug);
         }
+        // a page's sub-pages follow the addresses it went live at (left behind while it was offline)
+        $this->routes->syncSubPagesOf($entry);
 
         // The scheduler has no actor: created_by stays null.
         $this->revisions->forAllLocales($entry, RevisionKind::Publish, null);

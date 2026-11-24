@@ -4,12 +4,18 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Livewire\Forms;
 
+use App\Modules\Admin\Support\Leads\LeadCsvExport;
+use App\Modules\Admin\Support\Leads\LeadExportTicket;
+use App\Modules\Admin\Support\Leads\LeadFileRows;
 use App\Modules\Admin\Support\Leads\LeadListQuery;
+use App\Modules\Audit\Facades\Audit;
 use App\Modules\Forms\Actions\EraseLead;
 use App\Modules\Forms\Actions\SetFormStatus;
 use App\Modules\Forms\Models\Form;
-use App\Modules\Forms\Models\FormField;
 use App\Modules\Forms\Models\FormSubmission;
+use App\Modules\Forms\Support\LeadRetention;
+use App\Modules\Identity\Actions\ConfirmIdentity;
+use App\Modules\Identity\Actions\IdentityCheck;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Models\Role;
@@ -19,11 +25,16 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Entitlement\Entitlement;
+use App\Modules\Tenancy\Models\SiteSetting;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\QueryException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Number;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -34,7 +45,8 @@ use Livewire\Component;
  * "Khách liên hệ" (tenant plane): the site's leads on the left, the one being read on the right
  * (below 940px one at a time, with "Quay lại danh sách"). Status groups, search without
  * diacritics, the forms and time filters, ticking rows for a status change, and every change
- * undone from its message.
+ * undone from its message. «Thùng rác» holds the leads moved there (no question asked, «Hoàn tác» on
+ * the message) for LeadTrash::DAYS days, last trashed first; «Khôi phục» brings one back as it was.
  *
  * Reads need forms.view, writes forms.manage, both asked on every request (the livewire/update
  * endpoint carries no route middleware); the plan is asked first. Leads are site-scoped by
@@ -49,6 +61,9 @@ final class Inbox extends Component
 
     /** The most rows the list holds at once, and the most rows a tick can hold. */
     public const int MAX_ROWS = 300;
+
+    /** «Tải danh sách về máy»: at most this many files per member per hour. */
+    public const int EXPORTS_PER_HOUR = 10;
 
     #[Url(as: 'status', except: 'all')]
     public string $tab = 'all';
@@ -86,7 +101,7 @@ final class Inbox extends Component
 
     public int $toastSeq = 0;
 
-    /** @var array{items: array<string, string>, set: string}|null what "Hoàn tác" puts back: ulid => the status before; `set` is the status the action gave them */
+    /** @var array{items: array<string, string>, set: string}|null what "Hoàn tác" puts back: ulid => the status before; `set` is the status the action gave them (LeadListQuery::TRASH: they went to the Trash) */
     #[Locked]
     public ?array $undoOp = null;
 
@@ -96,6 +111,27 @@ final class Inbox extends Component
     /** @var array{ulid: string, name: string}|null the lead the question names, read when it opened */
     #[Locked]
     public ?array $erasing = null;
+
+    /** «Tải danh sách về máy» is open (entangled with the dialog). */
+    public bool $exportOpen = false;
+
+    /** The dialog asks for the authenticator app's code instead of the password. */
+    #[Locked]
+    public bool $exportByCode = false;
+
+    /** Why the last try opened no file (a wrong password, too many tries…); '' = none. */
+    #[Locked]
+    public string $exportError = '';
+
+    /** «Thời hạn lưu giữ liên hệ» is open (entangled with the dialog). */
+    public bool $retentionOpen = false;
+
+    /** The period picked in it: '12', '24', '36' or 'none' (LeadRetention::key). */
+    public string $retentionPick = '24';
+
+    /** Why the last «Lưu thời hạn» saved nothing; '' = none. */
+    #[Locked]
+    public string $retentionError = '';
 
     public function boot(): void
     {
@@ -112,6 +148,11 @@ final class Inbox extends Component
         $this->clean();
         if ($this->lead !== '' && $this->entitled() && Gate::allows('forms.view')) {
             $this->markRead($this->lead);
+        }
+        // a download that could not start (its pass expired or was already used) comes back here
+        $notice = session('leads.notice');
+        if (is_string($notice) && $notice !== '') {
+            $this->say($notice, 'error');
         }
     }
 
@@ -235,7 +276,7 @@ final class Inbox extends Component
     {
         $this->guardWrite();
         app(SupportSession::class)->forbid();
-        $lead = LeadListQuery::leads()->where('ulid', $ulid)->select(['id', 'ulid', 'name', 'email', 'phone'])->first();
+        $lead = LeadListQuery::leads(trashed: null)->where('ulid', $ulid)->select(['id', 'ulid', 'name', 'email', 'phone'])->first();
         if ($lead === null) {
             $this->say(__('leads.gone'), 'error');
 
@@ -256,7 +297,7 @@ final class Inbox extends Component
         if ($asked === null) {
             return;
         }
-        $lead = LeadListQuery::leads()->where('ulid', $asked['ulid'])->select(['id', 'ulid'])->first();
+        $lead = LeadListQuery::leads(trashed: null)->where('ulid', $asked['ulid'])->select(['id', 'ulid'])->first();
         if ($lead !== null) {
             Gate::authorize('delete', $lead);
         }
@@ -277,6 +318,207 @@ final class Inbox extends Component
         $this->guardRead();
         $this->eraseOpen = false;
         $this->erasing = null;
+    }
+
+    /**
+     * «Chuyển vào Thùng rác» in the lead's ⋮: no question, the message offers «Hoàn tác» (10 s). The
+     * lead keeps its status, so «Khôi phục» and «Hoàn tác» put it back exactly as it was. LeadPolicy
+     * decides who may; one audit row says a lead went there, never who the visitor was. Support
+     * staff signed in for a member never do it: the Trash is emptied for good after its days.
+     */
+    public function moveToTrash(string $ulid): void
+    {
+        $this->guardWrite();
+        app(SupportSession::class)->forbid();
+        $lead = LeadListQuery::leads()->where('ulid', $ulid)->select(['id', 'ulid', 'form_id', 'status'])->lockForUpdate()->first();
+        if ($lead === null) {
+            $this->say(__('leads.gone'), 'error');
+
+            return;
+        }
+        Gate::authorize('trash', $lead);
+        FormSubmission::query()->whereKey($lead->id)->update(['deleted_at' => now(), 'updated_at' => now()]);
+        $this->auditTrash('forms.lead.trashed', $lead);
+        $this->selected = array_values(array_diff($this->selected, [$lead->ulid]));
+        if ($this->lead === $lead->ulid) {
+            $this->lead = '';
+        }
+        $this->say(__('leads.toast_trashed'), 'success', ['items' => [$lead->ulid => $lead->status], 'set' => LeadListQuery::TRASH]);
+    }
+
+    /** «Khôi phục» on a lead in the Trash: it goes back to its group, with the status it had. */
+    public function restoreLead(string $ulid): void
+    {
+        $this->guardWrite();
+        $lead = LeadListQuery::leads(trashed: true)->where('ulid', $ulid)->select(['id', 'ulid', 'form_id', 'status'])->lockForUpdate()->first();
+        if ($lead === null) {
+            $this->say(__('leads.gone'), 'error');
+
+            return;
+        }
+        Gate::authorize('restore', $lead);
+        FormSubmission::query()->whereKey($lead->id)->update(['deleted_at' => null, 'updated_at' => now()]);
+        $this->auditTrash('forms.lead.restored', $lead);
+        if ($this->lead === $lead->ulid) {
+            $this->lead = '';
+        }
+        $this->say(__('leads.toast_restored'));
+    }
+
+    /**
+     * «Tải danh sách về máy» in the screen's ⋮: the leads the list shows now (its group, search,
+     * forms and time) as a file. A file of visitors' personal data, so only a member who manages
+     * leads, never support staff signed in for a member, and only after typing their password (or
+     * their authenticator code) again.
+     */
+    public function openExport(): void
+    {
+        $this->guardWrite();
+        app(SupportSession::class)->forbid();
+        $this->clean();
+        if ($this->tab === LeadListQuery::TRASH) {
+            // the file never holds the Trash: the screen offers no download there
+            return;
+        }
+        $this->exportByCode = false;
+        $this->exportError = '';
+        $this->exportOpen = true;
+    }
+
+    /** «Dùng mã xác thực 2 lớp thay mật khẩu» / «Dùng mật khẩu»: the code only when the member has the app set up. */
+    public function useExportCode(bool $code): void
+    {
+        $this->guardWrite();
+        $this->exportByCode = $code && $this->actingUser()->two_factor_confirmed_at !== null;
+        $this->exportError = '';
+    }
+
+    public function cancelExport(): void
+    {
+        $this->guardWrite();
+        $this->exportOpen = false;
+        $this->exportByCode = false;
+        $this->exportError = '';
+    }
+
+    /**
+     * «Tải tệp về máy (N)»: the password or code is checked (ConfirmIdentity: its own limit on wrong
+     * tries), then a one-time pass for this member, this website and the filter shown now is issued,
+     * and the browser is sent to the download (LeadExportController), which writes the audit row. The
+     * secret is an argument, never a property: it is not kept in the page between requests.
+     */
+    public function confirmExport(string $secret): void
+    {
+        $this->guardWrite();
+        app(SupportSession::class)->forbid();
+        $this->clean();
+        if (! $this->exportOpen || $this->tab === LeadListQuery::TRASH) {
+            return;
+        }
+        $user = $this->actingUser();
+        $limit = 'lead-export:'.$user->id;
+        if (RateLimiter::tooManyAttempts($limit, self::EXPORTS_PER_HOUR)) {
+            $this->exportError = __('leads.export_limit', ['max' => self::EXPORTS_PER_HOUR, 'minutes' => (int) ceil(max(1, RateLimiter::availableIn($limit)) / 60)]);
+
+            return;
+        }
+        $confirm = app(ConfirmIdentity::class);
+        $check = $this->exportByCode ? $confirm->code($user, $secret) : $confirm->password($user, $secret);
+        if (! $check->confirmed()) {
+            $this->exportError = match ($check) {
+                IdentityCheck::Throttled => __('leads.export_throttled', ['seconds' => $confirm->retryIn($user)]),
+                IdentityCheck::NoPassword => __('leads.export_no_password'),
+                IdentityCheck::NoTwoFactor => __('leads.export_no_code'),
+                IdentityCheck::Missing => $this->exportByCode ? __('leads.export_code_format') : __('leads.export_pw_required'),
+                default => $this->exportByCode ? __('leads.export_code_wrong') : __('leads.export_pw_wrong'),
+            };
+
+            return;
+        }
+        RateLimiter::hit($limit, 3600);
+
+        [$forms, $hidden] = $this->knownForms();
+        $count = $this->listQuery($forms, $hidden)->tabCounts()[$this->tab] ?? 0;
+        $token = LeadExportTicket::issue($user, app(CurrentSite::class)->id(), [
+            'tab' => $this->tab, 'search' => trim($this->search), 'forms' => $this->formF,
+            'when' => $this->when, 'from' => $this->from, 'to' => $this->to,
+        ]);
+        $this->exportOpen = false;
+        $this->exportByCode = false;
+        $this->exportError = '';
+        $this->dispatch('leads-export-ready', url: route('admin.forms.export', ['token' => $token], false));
+        $this->say(__('leads.export_done', [
+            'file' => LeadCsvExport::fileName(app(SiteTime::class)),
+            'count' => $count > LeadListQuery::CAP ? Cast::string(__('catalog.count_over')) : Cast::string(Number::format($count, locale: app()->getLocale())),
+        ]));
+    }
+
+    /**
+     * «Thời hạn lưu giữ liên hệ» in the screen's ⋮, for a member who manages leads: the dialog opens on
+     * the period saved (24 months when never set).
+     */
+    public function openRetention(): void
+    {
+        $this->guardWrite();
+        $this->retentionPick = LeadRetention::key(LeadRetention::current()['months']);
+        $this->retentionError = '';
+        $this->retentionOpen = true;
+    }
+
+    public function cancelRetention(): void
+    {
+        $this->guardWrite();
+        $this->retentionOpen = false;
+        $this->retentionError = '';
+    }
+
+    /**
+     * «Lưu thời hạn»: the period picked is saved for the website (LeadRetention); a shorter one
+     * deletes nothing before LeadRetention::WAIT_DAYS. Support staff signed in for a member never
+     * shorten it: older leads would be deleted for good, a delayed erase. A change is audited with
+     * the months before and after, nothing else. Read and written under the row's lock, so two tabs
+     * saving at once never lose the wait.
+     */
+    public function saveRetention(): void
+    {
+        $this->guardWrite();
+        $to = LeadRetention::fromKey($this->retentionPick);
+        if ($to === false) {
+            $this->retentionError = __('leads.ret_invalid');
+
+            return;
+        }
+        $support = app(SupportSession::class)->active();
+        $save = fn (): string => DB::transaction(function () use ($to, $support): string {
+            $row = SiteSetting::query()->where('group_name', LeadRetention::GROUP)->where('key', LeadRetention::KEY)->lockForUpdate()->first();
+            $setting = LeadRetention::shape($row?->value);
+            $from = $setting['valid'] ? $setting['months'] : null;
+            if ($support && LeadRetention::shorter($to, $from)) {
+                return 'support';
+            }
+            if ($setting['valid'] && $to === $from) {
+                return 'same';
+            }
+            $value = LeadRetention::next($setting, $to, CarbonImmutable::now());
+            SiteSetting::query()->updateOrCreate(['group_name' => LeadRetention::GROUP, 'key' => LeadRetention::KEY], ['value' => $value]);
+            Audit::record('forms.leads.retention_changed', ['meta' => ['from' => $from, 'to' => $to, 'waits' => $value['shortened_at'] !== null]]);
+
+            return 'saved';
+        });
+        try {
+            $outcome = $save();
+        } catch (UniqueConstraintViolationException) {
+            // a first save from another tab inserted the row between the read and the write: read it again
+            $outcome = $save();
+        }
+        if ($outcome === 'support') {
+            $this->retentionError = __('leads.ret_support');
+
+            return;
+        }
+        $this->retentionOpen = false;
+        $this->retentionError = '';
+        $this->say($to === null ? __('leads.ret_saved_none') : __('leads.ret_saved', ['months' => $to]));
     }
 
     /**
@@ -329,6 +571,11 @@ final class Inbox extends Component
             return;
         }
         $this->guardWrite();
+        if ($op['set'] === LeadListQuery::TRASH) {
+            $this->untrash(array_map(strval(...), array_keys(array_slice($op['items'], 0, self::MAX_ROWS, true))));
+
+            return;
+        }
         $byStatus = [];
         foreach (array_slice($op['items'], 0, self::MAX_ROWS, true) as $ulid => $status) {
             if (in_array($status, LeadListQuery::STATUSES, true)) {
@@ -353,6 +600,48 @@ final class Inbox extends Component
         } else {
             $this->say(__('leads.toast_undone'));
         }
+    }
+
+    /**
+     * «Hoàn tác» after «Chuyển vào Thùng rác»: the leads still in the Trash come back (one a colleague
+     * restored or erased since is left as it is).
+     *
+     * @param  list<string>  $ulids
+     */
+    private function untrash(array $ulids): void
+    {
+        if ($ulids === []) {
+            return;
+        }
+        $leads = LeadListQuery::leads(trashed: true)->whereIn('ulid', $ulids)->select(['id', 'ulid', 'form_id', 'status'])
+            ->orderBy('id')->lockForUpdate()->get();
+        foreach ($leads as $lead) {
+            Gate::authorize('restore', $lead);
+        }
+        if ($leads->isNotEmpty()) {
+            FormSubmission::query()->whereIn('id', $leads->pluck('id')->all())->update(['deleted_at' => null, 'updated_at' => now()]);
+            foreach ($leads as $lead) {
+                $this->auditTrash('forms.lead.restored', $lead);
+            }
+        }
+        $back = $leads->count();
+        if ($back === 0) {
+            $this->say(__('leads.undo_changed'), 'error');
+        } elseif ($back < count($ulids)) {
+            $this->say(__('leads.undo_partial', ['count' => $back, 'left' => count($ulids) - $back]));
+        } else {
+            $this->say(__('leads.toast_undone'));
+        }
+    }
+
+    /** One audit row for a move into or out of the Trash: the lead's form key, nothing of the visitor. */
+    private function auditTrash(string $action, FormSubmission $lead): void
+    {
+        Audit::record($action, [
+            'auditable_type' => FormSubmission::class,
+            'auditable_id' => $lead->id,
+            'meta' => ['form' => Cast::string(Form::query()->withoutGlobalScope(Form::NOT_DELETING)->whereKey($lead->form_id)->value('key'))],
+        ]);
     }
 
     /** Close the message the member (or its timer) names; a newer message stays. */
@@ -387,6 +676,11 @@ final class Inbox extends Component
                 $counts = $list->tabCounts();
                 $rows = $list->rows($this->tab, $this->until, self::PAGE, self::MAX_ROWS);
                 $open = $this->lead !== '' ? ($rows->firstWhere('ulid', $this->lead) ?? $this->findLead($this->lead, $hidden)) : $rows->first();
+                // the lead's «Tệp đính kèm», in the order they came: one read, none when its row
+                // already counted no file
+                $open?->setRelation('files', $open->getAttribute('files_count') === 0
+                    ? new Collection
+                    : $open->files()->select(['id', 'ulid', 'form_submission_id', 'field_key', 'original_name', 'size_bytes', 'status'])->get());
                 $formIds = array_values($forms->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->all());
 
                 return [
@@ -398,13 +692,13 @@ final class Inbox extends Component
                     'whenCounts' => $list->whenCounts($this->tab),
                     'total' => $this->filtering() ? $list->total($this->tab) : null,
                     // the ticked leads still in what is shown, with their status (the bar's counts)
-                    'picked' => $canManage && $this->selected !== [] ? $this->pickedStatuses($list) : [],
-                    'any' => $counts['all'] + $counts['spam'] > 0 || $this->filtering() || $this->leadsExist($hidden),
+                    'picked' => $canManage && $this->selected !== [] && $this->tab !== LeadListQuery::TRASH ? $this->pickedStatuses($list) : [],
+                    'any' => $counts['all'] + $counts['spam'] + $counts[LeadListQuery::TRASH] > 0 || $this->filtering() || $this->leadsExist($hidden),
                 ];
             });
         } catch (QueryException $e) {
             report($e);
-            $read = ['forms' => new Collection, 'counts' => array_fill_keys(LeadListQuery::TABS, 0), 'rows' => new Collection, 'open' => null,
+            $read = ['forms' => new Collection, 'counts' => array_fill_keys([...LeadListQuery::TABS, LeadListQuery::TRASH], 0), 'rows' => new Collection, 'open' => null,
                 'formCounts' => null, 'whenCounts' => [], 'total' => null, 'picked' => [], 'any' => true, 'failed' => true];
         }
 
@@ -427,10 +721,15 @@ final class Inbox extends Component
             'failed' => $read['failed'] ?? false,
             'canManage' => $canManage,
             'support' => app(SupportSession::class)->active(),
+            'files' => $read['open'] !== null ? LeadFileRows::of($read['open']->files, $openForm, app()->getLocale()) : [],
+            // «Tải về» for a member given forms.files (a lead in the trash: who may also manage leads)
+            'canFiles' => $read['open'] !== null && Gate::allows('downloadFile', $read['open']),
             'offForms' => $this->offForms($read['forms']),
             'filterCount' => count($this->formF) + ($this->when !== '' ? 1 : 0),
             'siteTime' => $siteTime,
             'cap' => LeadListQuery::CAP,
+            'canCode' => $canManage && $this->actingUser()->two_factor_confirmed_at !== null,
+            'inTrash' => $this->tab === LeadListQuery::TRASH,
         ]));
     }
 
@@ -463,34 +762,23 @@ final class Inbox extends Component
         LeadListQuery::leads()->where('ulid', $ulid)->where('status', 'new')->update(['status' => 'read', 'updated_at' => now()]);
     }
 
-    /** @param  list<int>  $hidden  the site's forms being deleted */
+    /**
+     * The lead the address names, among those the group shows: the Trash's in the Trash, the kept
+     * ones elsewhere (a bell's link to a lead moved to the Trash finds nothing).
+     *
+     * @param  list<int>  $hidden  the site's forms being deleted
+     */
     private function findLead(string $ulid, array $hidden): ?FormSubmission
     {
-        return LeadListQuery::leads($hidden)->where('ulid', $ulid)
-            ->select(['id', 'ulid', 'form_id', 'name', 'email', 'phone', 'source_url', 'ip_address', 'user_agent', 'status', 'is_spam', 'data', 'created_at'])
+        return LeadListQuery::leads($hidden, $this->tab === LeadListQuery::TRASH)->where('ulid', $ulid)
+            ->select(LeadListQuery::ROW_COLUMNS)
             ->first();
     }
 
-    /**
-     * The site's forms (disabled ones too: their leads stay), each with its fields for the answers,
-     * and the ids of those being deleted, whose leads no list shows, read in the same statement
-     * (first, so the 200 never crowd them out).
-     *
-     * @return array{0: Collection<int, Form>, 1: list<int>}
-     */
+    /** @return array{0: Collection<int, Form>, 1: list<int>} */
     private function knownForms(): array
     {
-        $read = Form::query()->withoutGlobalScope(Form::NOT_DELETING)->select(['id', 'ulid', 'key', 'name', 'status'])
-            ->orderByRaw('status = ? desc', [Form::DELETING])->orderBy('id')->limit(200)->get();
-        $forms = $read->filter(fn (Form $form): bool => $form->status !== Form::DELETING)->values();
-        $hidden = array_values($read->filter(fn (Form $form): bool => $form->status === Form::DELETING)->map(fn (Form $form): int => $form->id)->all());
-        $fields = FormField::query()->whereIn('form_id', $forms->pluck('id')->all())
-            ->select(['id', 'form_id', 'key', 'type', 'label', 'options', 'sort_order'])->orderBy('sort_order')->orderBy('id')->get()->groupBy('form_id');
-        foreach ($forms as $form) {
-            $form->setRelation('fields', $fields->get($form->id) ?? new Collection);
-        }
-
-        return [$forms, $hidden];
+        return LeadListQuery::knownForms();
     }
 
     /**
@@ -499,10 +787,7 @@ final class Inbox extends Component
      */
     private function listQuery(Collection $forms, array $hidden): LeadListQuery
     {
-        $ids = array_values($forms->whereIn('ulid', $this->formF)->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->all());
-
-        // forms ticked but none of them this site's (gone, another website's, past the forms read): no rows, never the whole list
-        return new LeadListQuery(trim($this->search), $ids, $this->when, self::dateOr($this->from), self::dateOr($this->to), app(SiteTime::class), $this->formF !== [] && $ids === [], $hidden);
+        return LeadListQuery::of($this->search, $this->formF, $this->when, self::dateOr($this->from), self::dateOr($this->to), $forms, $hidden, app(SiteTime::class));
     }
 
     /**
@@ -554,7 +839,7 @@ final class Inbox extends Component
     /** Keep only values the screen knows: a pasted address with anything else falls back to the default. */
     private function clean(): void
     {
-        if (! in_array($this->tab, LeadListQuery::TABS, true)) {
+        if (! in_array($this->tab, [...LeadListQuery::TABS, LeadListQuery::TRASH], true)) {
             $this->tab = 'all';
         }
         $this->search = mb_substr($this->search, 0, 100);

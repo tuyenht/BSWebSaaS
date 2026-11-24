@@ -27,6 +27,9 @@
 /* The product editor's frame: the save-state pill, the sticky button bars. */
 @import './admin-editor.css';
 
+/* The editors' shared language bar (<x-bs-admin::lang-bar>): the versions, their states, the panel. */
+@import './admin-lang-bar.css';
+
 /* The admin's error pages, the "Mất kết nối" strip and the "Phiên sắp hết hạn" dialog. */
 @import './admin-errors.css';
 
@@ -89,6 +92,10 @@
                                                     (WCAG 1.4.11): 3.31 white · 3.04 page bg. The design's
                                                     #8a90a2 reads 2.92 on the page, so one step darker. */
     --color-border-soft: #f3f6f9;                /* hairline list dividers (gray-100) */
+    --color-track: #e9ecf4;                      /* a neutral FILL, not a line: progress and meter tracks,
+                                                    a disabled button. Its own name so high contrast,
+                                                    which darkens every border, leaves it light (the
+                                                    coloured fill on it must still stand out) */
     --color-text-strong: #1f2b4d;                /* page/card/section headings · 13.9 on white */
     --color-text: #3c4765;                       /* base text · 9.2 on white */
     --color-text-muted: #5b6275;                 /* secondary text a reader needs — breadcrumb, footer,

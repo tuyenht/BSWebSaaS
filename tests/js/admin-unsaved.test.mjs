@@ -112,6 +112,46 @@ test('a page that gives its own sentence and save label shows them, read when th
     c.stay();
 });
 
+test('a link with its own words (another language version of the editor) is asked about in them, then goes there', async () => {
+    const { c, calls } = page(1);
+    const own = document.createElement('a');
+    own.href = '/admin/settings/general?locale=en';
+    own.setAttribute('data-ud-body', 'Bạn đang chuyển sang bản Tiếng Anh.');
+    own.setAttribute('data-ud-save', 'Lưu rồi chuyển');
+    own.setAttribute('data-ud-discard', 'Bỏ thay đổi và chuyển');
+    document.body.appendChild(own);
+    assert.equal(await navigate('/admin/settings/general?locale=en'), false, 'the same page in another language still asks');
+    assert.equal(c.open, true);
+    assert.equal(c.own, true);
+    assert.equal(c.section, false);
+    assert.equal(c.body, 'Bạn đang chuyển sang bản Tiếng Anh.');
+    assert.equal(c.saveText, 'Lưu rồi chuyển');
+    assert.equal(c.discardText, 'Bỏ thay đổi và chuyển');
+    await c.saveGo();
+    await tick();
+    assert.deepEqual(calls, ['save']);
+    assert.deepEqual(went.map((u) => String(u)), ['https://a.test/admin/settings/general?locale=en']);
+    // a plain link afterwards reads the page's own words again
+    page(1);
+    assert.equal(await navigate('/admin/posts'), false);
+    assert.equal(last.own, false);
+    assert.equal(last.discardText, '');
+    last.stay();
+});
+
+test('the focus goes back to the button of a popup closed meanwhile, when it came from a row inside it', async () => {
+    const { c } = page(1);
+    const host = document.createElement('div');
+    host.innerHTML = '<button id="opener" aria-controls="pop">EN</button><div id="pop"><a id="row" href="/x?locale=ja">ja</a></div>';
+    document.body.appendChild(host);
+    const row = document.getElementById('row');
+    row.focus();
+    assert.equal(await navigate('/admin/posts'), false);
+    document.getElementById('pop').style.display = 'none'; // the panel closed under the dialog
+    c.stay();
+    assert.equal(document.activeElement, document.getElementById('opener'));
+});
+
 test('a link to the section already open does nothing', async () => {
     const { c } = page(1);
     assert.equal(await navigate('/admin/settings/general'), false);

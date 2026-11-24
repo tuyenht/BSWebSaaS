@@ -181,5 +181,29 @@ export function menuMove(menu, to, isShown = shown) {
     return t;
 }
 
+/**
+ * Tab or Shift+Tab on an item of an open menu that is not a sheet: close it with the focus back on its
+ * button (`back`, the host's close(true)) and hide it at once. Alpine hides a menu only after the key's
+ * own move has run, and that move took the focus to an item of the menu still on screen, which then
+ * vanished and left the focus nowhere (on the page itself). Hidden at once, the menu is skipped: Tab
+ * moves on from the button to what follows it, and Shift+Tab stops on the button, the place before
+ * the menu. A host whose close gives the focus back to nothing (a menu always open, inside a dialog)
+ * keeps both keys as they are.
+ * @param {KeyboardEvent} event
+ * @param {HTMLElement} menu the menu (its x-show, or the closest one around it, is the part hidden)
+ * @param {() => void} back closes the menu and focuses its button
+ */
+export function menuLeave(event, menu, back) {
+    const from = document.activeElement;
+    back();
+    if (document.activeElement === from) {
+        return;
+    }
+    (menu.closest('[x-show]') ?? menu).style.display = 'none';
+    if (event.shiftKey) {
+        event.preventDefault();
+    }
+}
+
 window.bsListFocus = { expect };
-window.bsMenu = { move: (menu, to) => menuMove(menu, to) };
+window.bsMenu = { move: (menu, to) => menuMove(menu, to), leave: (event, menu, back) => menuLeave(event, menu, back) };

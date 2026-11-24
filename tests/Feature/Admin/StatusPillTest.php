@@ -26,6 +26,8 @@ it('draws each known status in its own tone and glyph, with no visible border, 2
     ['draft', '[--c:var(--color-text)]', 'ri-draft'],
     ['scheduled', '[--c:color-mix(in_oklab,var(--color-secondary-text)_80%,var(--color-text-strong))]', 'ri-calendar-schedule'],
     ['pending', '[--c:var(--color-warning-text)]', 'ri-inbox-unarchive'],
+    // a review step of a content workflow (the dot of a «Hộp duyệt» row)
+    ['reviewing', '[--c:var(--color-info-text)]', 'ri-chat-check'],
     // the retired private keeps its pill for an old row, until cms:retire-private-status moves it
     ['private', '[--c:var(--color-primary-text)]', 'ri-lock-2'],
     ['archived', '[--c:var(--color-text-muted)]', 'ri-archive'],

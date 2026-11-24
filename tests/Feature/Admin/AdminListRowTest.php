@@ -105,7 +105,8 @@ it('turns a row menu without a title into the phone sheet board 05 draws, titled
         // while it is a sheet Tab stays inside and the page does not scroll; the stylesheet says when it is one
         ->and($html)->toContain("getPropertyValue('--list-sheet').trim() === '1' && lock(true)")
         ->and($html)->toContain("if (on) { this.was = de.overflow; de.overflow = 'hidden' } else { de.overflow = this.was }")
-        ->and($html)->toContain('x-on:keydown.tab="$data.sheet ? ($event.preventDefault(), window.bsMenu.move($refs.menu, $event.shiftKey ? \'prev\' : \'next\')) : (open = false)"')
+        // as a menu Tab closes it with the focus back on the ⋮ and hides it at once, so the focus moves on from the ⋮
+        ->and($html)->toContain('x-on:keydown.tab="$data.sheet ? ($event.preventDefault(), window.bsMenu.move($refs.menu, $event.shiftKey ? \'prev\' : \'next\')) : window.bsMenu.leave($event, $refs.menu, () => close(true))"')
         // the keys and the opening move only between the items that show (an item the row shows as its own button is hidden)
         ->and($html)->toContain('x-on:keydown.down.prevent="window.bsMenu.move($refs.menu, \'next\')"')
         ->and($html)->toContain("window.bsMenu.move(\$refs.menu, 'first')")
@@ -633,7 +634,10 @@ describe('the posts and pages list on the shared row', function (): void {
                     ->and($html)->toContain('role="menu" aria-label="'.e('Các bản ngôn ngữ — Nhiều ngôn ngữ').'"')
                     ->and(substr_count($html, 'wire:navigate role="menuitem"'))->toBe(10)
                     ->and($html)->toContain('href="'.e(route('admin.entries.edit', ['ulid' => $entry->ulid, 'locale' => 'ko'])).'" wire:navigate role="menuitem"')
-                    ->and($html)->toContain('x-on:keydown.down.prevent=');
+                    ->and($html)->toContain('x-on:keydown.down.prevent=')
+                    // Tab leaves the menu from its button, never from an item that is about to vanish
+                    ->and($html)->toContain('x-on:keydown.tab="window.bsMenu.leave($event, $refs.menu, () => close(true))"')
+                    ->and($html)->not->toContain('x-on:keydown.tab="open = false"');
             });
         });
 

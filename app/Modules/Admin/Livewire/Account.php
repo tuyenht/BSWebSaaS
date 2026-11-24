@@ -882,6 +882,17 @@ final class Account extends Component
         $this->savePreference(['theme', 'motion'], $motion);
     }
 
+    /** "Tương phản cao": high or normal, the member's own from then on (no longer the device's). */
+    public function setContrast(string $contrast): void
+    {
+        $this->writable();
+        if (! in_array($contrast, AdminChromeResolver::FIELDS['contrast'], true)) {
+            return;
+        }
+
+        $this->savePreference(['theme', 'contrast'], $contrast);
+    }
+
     /**
      * Turn one notification kind on or off for one channel. Locked kinds, kinds the member does
      * not receive, and channels the kind is not sent on are refused.
@@ -1352,7 +1363,7 @@ final class Account extends Component
     }
 
     /**
-     * @return array{locale: string, scheme: string, textSize: string, ownTextSize: bool, siteTextSize: string, motion: string}
+     * @return array{locale: string, scheme: string, textSize: string, ownTextSize: bool, siteTextSize: string, motion: string, contrast: string}
      */
     private function preferenceState(User $user): array
     {
@@ -1368,6 +1379,8 @@ final class Account extends Component
             'ownTextSize' => in_array($own['text_size'] ?? null, AdminChromeResolver::FIELDS['text_size'], true),
             'siteTextSize' => in_array($siteSize, AdminChromeResolver::FIELDS['text_size'], true) ? $siteSize : 'md',
             'motion' => $resolved['motion'],
+            // the saved choice, or the default when the device decides (the switch reads <html> then)
+            'contrast' => $resolved['contrast'],
         ];
     }
 

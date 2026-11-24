@@ -21,16 +21,20 @@
  * render with the real compiled CSS/JS, so build the front end first (pnpm run build).
  */
 
+use App\Modules\Admin\Livewire\AdvancedSettings;
 use App\Modules\Admin\Livewire\Blocks\Library as BlockLibrary;
 use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Admin\Livewire\Catalog\Index;
+use App\Modules\Admin\Livewire\Entries\ReviewChanges;
 use App\Modules\Admin\Livewire\Entries\ReviewInbox;
+use App\Modules\Admin\Livewire\Forms\FormEditor;
 use App\Modules\Admin\Livewire\Forms\FormList;
 use App\Modules\Admin\Livewire\Forms\Inbox;
 use App\Modules\Admin\Livewire\LanguageSettings;
 use App\Modules\Admin\Livewire\Media\Library;
 use App\Modules\Admin\Livewire\NotificationBell;
 use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog;
+use App\Modules\Admin\Livewire\Roles\Index as RolesIndex;
 use App\Modules\Admin\Livewire\SeoSettings;
 use App\Modules\Admin\Livewire\Settings\Domains as DomainSettings;
 use App\Modules\Admin\Livewire\Settings\Redirects as RedirectSettings;
@@ -41,15 +45,18 @@ use App\Modules\Admin\Support\Settings\SetBrandImages;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Support\ProductIndexLink;
+use App\Modules\Cms\Actions\ApplyEntryDraftTransition;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\Menus\SaveMenu;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
+use App\Modules\Cms\Actions\SaveEntryDraft;
 use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
 use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
@@ -57,9 +64,13 @@ use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\CategoryScopes;
+use App\Modules\Forms\Actions\StoreLeadFile;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
+use App\Modules\Forms\Support\LeadRetention;
+use App\Modules\Forms\Support\LeadTrash;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\UserPreferences;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Provisioning\Actions\ProvisionSite;
@@ -84,11 +95,13 @@ use App\Modules\Theme\Theming\AiCrawlerCheck;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -195,6 +208,17 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         file_put_contents($dir.'/'.$name.'.html', $html);
     }
 
+    // The Tùy chọn tab with the owner's own high contrast on: <html data-contrast="high"> from the
+    // server, the switch on. Taken off again so every other screen renders with the defaults.
+    UserPreferences::set($owner, ['theme', 'contrast'], 'high');
+    UserPreferences::reload($owner);
+    app('livewire')->flushState();
+    $html = (string) $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/account?tab=prefs')->assertOk()->getContent();
+    expect($html)->toContain('data-contrast="high"');
+    file_put_contents($dir.'/account-prefs-hc.html', $html);
+    UserPreferences::forget($owner, ['theme', 'contrast']);
+    UserPreferences::reload($owner);
+
     // The Trang list as a page tree three levels deep (each row with its grip and the move items), and
     // the same list searched, where a drag and «Chuyển lên / xuống» are locked with their reason.
     app(Tenancy::class)->enter(1, function () use ($owner): void {
@@ -246,15 +270,25 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
             ['key' => 'service', 'type' => 'select', 'label' => ['vi' => 'Nhu cầu'], 'sort_order' => 4,
                 'options' => ['choices' => [['value' => 'cnc', 'label' => ['vi' => 'Gia công CNC']]]]],
             ['key' => 'details', 'type' => 'textarea', 'label' => ['vi' => 'Nội dung cần báo giá'], 'sort_order' => 5],
-            ['key' => 'consent', 'type' => 'checkbox', 'label' => ['vi' => 'Tôi đồng ý cho website lưu thông tin liên hệ.'], 'is_required' => true, 'sort_order' => 6],
+            ['key' => 'drawing', 'type' => 'file', 'label' => ['vi' => 'Bản vẽ kèm theo'], 'sort_order' => 6,
+                'options' => ['accept' => 'cad'], 'validation' => ['max_files' => 3]],
+            ['key' => 'consent', 'type' => 'checkbox', 'label' => ['vi' => 'Tôi đồng ý cho website lưu thông tin liên hệ.'], 'is_required' => true, 'sort_order' => 7],
         ]);
         $form->submissions()->create(['data' => ['name' => 'Trần Minh Khoa', 'phone' => '0903 112 233'], 'name' => 'Trần Minh Khoa', 'phone' => '0903 112 233', 'status' => 'new']);
         $form->submissions()->create(['data' => ['name' => 'Nhận vay nhanh', 'details' => 'Vay tiền trực tuyến duyệt trong 5 phút.'], 'name' => 'Nhận vay nhanh', 'email' => 'vaynhanh247@mail.ru', 'status' => 'spam', 'is_spam' => true]);
 
-        return $form->submissions()->create(['status' => 'read', 'name' => 'Phạm Thị Lan', 'phone' => '0915 668 383', 'source_url' => 'https://'.ADMIN_PREVIEW_HOST.'/lien-he', 'data' => [
+        $lead = $form->submissions()->create(['status' => 'read', 'name' => 'Phạm Thị Lan', 'phone' => '0915 668 383', 'source_url' => 'https://'.ADMIN_PREVIEW_HOST.'/lien-he', 'data' => [
             'name' => 'Phạm Thị Lan', 'phone' => '0915 668 383', 'company' => 'Công ty TNHH Cơ khí Bình Minh', 'service' => 'cnc',
             'details' => "Trục inox 304, 40 cái.\nCần giao trong tháng 12.", 'consent' => 'Tôi đồng ý cho website lưu thông tin liên hệ.',
         ]]);
+        // «Tệp đính kèm»: two drawings kept and a file whose bytes are not what its name says
+        Storage::fake('leads');
+        $store = app(StoreLeadFile::class);
+        $store->handle($lead, 'drawing', 'cad', UploadedFile::fake()->createWithContent('truc-inox-304.step', "ISO-10303-21;\n".str_repeat('x', 2_500_000)));
+        $store->handle($lead, 'drawing', 'cad', UploadedFile::fake()->createWithContent('ban-ve-lap-rap.pdf', "%PDF-1.4\n".str_repeat('x', 880_000)));
+        $store->handle($lead, 'drawing', 'cad', UploadedFile::fake()->createWithContent('bang-gia.dwg', 'MZ'));
+
+        return $lead;
     });
     foreach (['leads' => '/admin/forms', 'lead-detail' => '/admin/forms/'.$lead->ulid, 'leads-spam' => '/admin/forms?status=spam'] as $name => $path) {
         $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.$path)->assertOk()->getContent();
@@ -265,7 +299,23 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $erase = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(Inbox::class, ['ulid' => $lead->ulid])
         ->call('askErase', $lead->ulid)->assertSet('eraseOpen', true)->html());
     expect($erase)->toContain('role="alertdialog"', e(__('leads.erase_title', ['name' => 'Phạm Thị Lan'])));
+    expect($leadPage)->toContain(e(__('leads.files_title', ['n' => 3])), 'truc-inox-304.step', e(__('leads.file_bad')), e(__('leads.file_download')));
     file_put_contents($dir.'/lead-erase.html', str_replace('</body>', $erase.'</body>', $leadPage));
+    // «Chuyển vào Thùng rác» on the lead being read: the message with «Hoàn tác»; then the Trash tab
+    // (each row with its days left) and a lead in it, with its band and «Khôi phục».
+    $moved = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(Inbox::class, ['ulid' => $lead->ulid])
+        ->call('moveToTrash', $lead->ulid)->assertSet('toastMsg', __('leads.toast_trashed'))->html());
+    file_put_contents($dir.'/lead-trashed-toast.html', str_replace('</body>', $moved.'</body>', (string) file_get_contents($dir.'/leads.html')));
+    app(Tenancy::class)->enter(1, function () use ($lead): void {
+        $lead->form->submissions()->create(['status' => 'archived', 'name' => 'Lê Văn Tùng', 'email' => 'tung.le@example.test', 'data' => ['name' => 'Lê Văn Tùng', 'details' => 'Hỏi giá bánh răng côn.']])
+            ->forceFill(['deleted_at' => now()->subDays(12)])->save();
+    });
+    foreach (['leads-trash' => '/admin/forms?status=trash', 'lead-trash-detail' => '/admin/forms?status=trash&lead='.$lead->ulid] as $name => $path) {
+        $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.$path)->assertOk()->getContent();
+        expect($html)->toContain(e(__('leads.st_trash')));
+        file_put_contents($dir.'/'.$name.'.html', $html);
+    }
+    app(Tenancy::class)->enter(1, fn () => FormSubmission::query()->whereKey($lead->id)->update(['deleted_at' => null]));
 
     // Biểu mẫu: the list (the quote form above, with its leads and one recipient), its editor and a
     // new form from the «Đăng ký tư vấn» starting point.
@@ -279,6 +329,11 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.$path)->assertOk()->getContent();
         file_put_contents($dir.'/'.$name.'.html', $html);
     }
+    // A file field open in the editor: its kinds, its number of files and the size note.
+    $fileField = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(FormEditor::class, ['ulid' => $quote->ulid])
+        ->call('addField', 'file')->html());
+    expect($fileField)->toContain(e(__('form_builder.file_accept')), e(__('form_builder.file_bigger')));
+    file_put_contents($dir.'/form-builder-file.html', str_replace('</body>', $fileField.'</body>', (string) file_get_contents($dir.'/form-builder-edit.html')));
     // «Xóa» on the quote form: the question with its leads and «Tắt biểu mẫu» instead.
     $formsPage = (string) file_get_contents($dir.'/form-builder.html');
     $ask = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(FormList::class)
@@ -507,6 +562,101 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('Xác minh &amp; Công cụ', 'wire:model.live.blur="tokens.google"');
     file_put_contents($dir.'/integrations.html', $html);
 
+    // "Bảo mật & Nâng cao": maintenance on with words in both languages and a reopen time ahead, as
+    // the owner sees it; then the same page «Chỉ xem» for the website's admin.
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'storefront', 'key' => 'maintenance'], ['value' => [
+        'on' => true,
+        'messages' => ['vi' => 'Chúng tôi đang cập nhật chuyên mục sản phẩm để phục vụ bạn tốt hơn.', 'en' => 'We are updating our product pages to serve you better.'],
+        'reopens_at' => now()->addDays(2)->startOfHour()->utc()->toIso8601ZuluString(),
+    ]]));
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/advanced')->assertOk()->getContent();
+    expect($html)->toContain('Chế độ bảo trì', 'wire:model.live.blur="messages.en"', 'Website đang bảo trì');
+    file_put_contents($dir.'/advanced.html', $html);
+    // the storefront's maintenance page, as «Xem trang khách sẽ thấy» opens it
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/advanced/preview')->assertOk()->getContent();
+    expect($html)->toContain('Website đang bảo trì', 'Chúng tôi đang cập nhật chuyên mục sản phẩm', 'sf-404__when');
+    file_put_contents($dir.'/advanced-visitor.html', $html);
+    // «Mã nhúng thêm»: the question before the first save that turns code on, then the code saved and
+    // running (the four boxes, the chip «Đang chạy trên website»), which the admin then sees «Chỉ xem».
+    $asking = app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($owner)->test(AdvancedSettings::class)
+        ->call('toggleCode')->set('code.foot', '<script async src="https://chat.example.vn/widget.js"></script>')
+        ->call('save')->assertSet('askCode', true));
+    // the harness leaves the snapshot off the root once an action ran: put it back so the browser boots
+    // the component, and swap it for the page's own root (from the div carrying its snapshot to the div closing it)
+    $advancedWith = function (mixed $lw) use ($owner): string {
+        $snapshot = (fn () => $this->lastState->getSnapshot())->call($lw);
+        $root = (string) preg_replace('/^<div wire:id="([^"]+)"/', '<div wire:snapshot="'.e(is_string($snapshot) ? $snapshot : (string) json_encode($snapshot)).'" wire:effects="[]" wire:id="$1"', $lw->html(), 1);
+        expect($root)->toContain('wire:snapshot=');
+        $page = (string) $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/advanced')->assertOk()->getContent();
+        expect(preg_match('/<div (?:wire:key="[^"]*" )?wire:snapshot="[^"]*advanced-settings/', $page, $found, PREG_OFFSET_CAPTURE))->toBe(1);
+        $from = $found[0][1];
+        preg_match_all('~<div\b|</div>~', $page, $tags, PREG_OFFSET_CAPTURE, $from);
+        $depth = 0;
+        $to = null;
+        foreach ($tags[0] as [$tag, $at]) {
+            $depth += $tag === '</div>' ? -1 : 1;
+            if ($depth === 0) {
+                $to = $at + 6;
+                break;
+            }
+        }
+        expect($to)->not->toBeNull();
+
+        return substr($page, 0, $from).$root.substr($page, (int) $to);
+    };
+    $ask = $advancedWith($asking);
+    expect($ask)->toContain('role="alertdialog"', 'Bật mã nhúng thêm cho website?', 'data-adv-ask-ok');
+    file_put_contents($dir.'/advanced-code-ask.html', $ask);
+    // «Giới hạn nơi được vào trang quản trị»: a row left with a wrong address, then a save refused
+    // because the list would lock the owner out (the preview's requests come from 127.0.0.1)
+    $html = $advancedWith(app(Tenancy::class)->enter(1, function () use ($owner): mixed {
+        $lw = Livewire::actingAs($owner)->test(AdvancedSettings::class)->call('toggleIp')->call('addIpRow');
+        $id = $lw->get('ips.1.id');
+
+        return $lw->set('ips.1.address', '113.161.42')->set('ips.1.note', 'Văn phòng Đà Nẵng')->call('touchIp', $id);
+    }));
+    expect($html)->toContain('chưa đúng dạng địa chỉ mạng', 'Có địa chỉ bạn đang dùng');
+    file_put_contents($dir.'/advanced-ip-bad.html', $html);
+    $html = $advancedWith(app(Tenancy::class)->enter(1, fn (): mixed => Livewire::actingAs($owner)->test(AdvancedSettings::class)
+        ->call('toggleIp')->set('ips.0.address', '198.51.100.0/24')->set('ips.0.note', 'Văn phòng Đà Nẵng')->call('save')));
+    expect($html)->toContain('Chưa lưu: danh sách này sẽ chặn chính bạn.', 'Thêm địa chỉ đang dùng');
+    file_put_contents($dir.'/advanced-ip-lock.html', $html);
+    // saved and on (127.0.0.1 listed, so the preview itself still gets in): advanced-code and
+    // advanced-ro below show it as the owner and, «Chỉ xem», as the website's admin
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'admin_access', 'key' => 'ip_limit'], ['value' => [
+        'on' => true,
+        'entries' => [
+            ['address' => '203.0.113.0/24', 'note' => 'Văn phòng Đà Nẵng'],
+            ['address' => '127.0.0.1', 'note' => 'Máy bạn đang dùng'],
+            ['address' => '2001:db8:1234:5678::/64', 'note' => 'Mạng IPv6 của văn phòng'],
+        ],
+    ]]));
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'storefront', 'key' => 'embed_code'], ['value' => [
+        'on' => true,
+        'code' => [
+            'head' => '',
+            'body_top' => '<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-ABC123" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>',
+            'body_end' => '',
+            'foot' => "<script async src=\"https://chat.example.vn/widget.js\"></script>\n<script>window.chatId = 'av-01';</script>",
+        ],
+        'acknowledged_at' => now()->subDay()->utc()->toIso8601ZuluString(),
+        'acknowledged_by' => $owner->id,
+    ]]));
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/advanced')->assertOk()->getContent();
+    expect($html)->toContain('Đang chạy trên website', 'data-adv-code-box="head"', 'data-adv-code-box="foot"', 'Khuyên dùng', 'Đang giới hạn', 'data-adv-ip-row="3"')
+        ->not->toContain('<script>window.chatId');
+    file_put_contents($dir.'/advanced-code.html', $html);
+    $siteAdmin = blockLibraryUser(1, 'admin');
+    $this->flushSession();
+    $html = $this->actingAs($siteAdmin)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/advanced')->assertOk()->getContent();
+    expect($html)->toContain('Chỉ xem', 'nên chỉ xem được', 'data-adv-code-box="foot"', 'readonly', 'data-adv-ip-row="3"')->not->toContain('data-adv-ip-remove');
+    file_put_contents($dir.'/advanced-ro.html', $html);
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('group_name', 'admin_access')->first()?->delete());
+    app(Tenancy::class)->enter(1, fn () => $siteAdmin->removeRole('admin')); // the members screens below list the site's own people only
+    $this->flushSession();
+
     // "Chuyển hướng": rows the system made and rows added by hand, a temporary one, a loop pair and a
     // long address; the add dialog open with a field error; and the Trash with one row.
     app(Tenancy::class)->enter(1, function (): void {
@@ -653,6 +803,16 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$post->ulid.'/edit')->assertOk()->getContent();
     expect($html)->toContain('data-seo-fields', 'wire:model="excerpt"', 'id="entry-cover-alt"');
     file_put_contents($dir.'/post-editor.html', $html);
+    // The language bar (board 07) on the English version: written in part (title, link and short
+    // description), Japanese not written yet (switched on above: the test's app keeps the site's
+    // languages read before that), Vietnamese the source.
+    app(Tenancy::class)->enter(1, fn () => app(App\Modules\Tenancy\Context\SiteLocale::class)->forget());
+    app(Tenancy::class)->enter(1, fn () => $post->translations()->create(['locale' => 'en', 'title' => 'New precision machining plant opens in Phu Nghia Industrial Park',
+        'slug' => 'new-precision-plant', 'status' => 'draft', 'excerpt' => 'A 5,000 m² plant with 5-axis CNC lines halves delivery times.', 'body' => ['blocks' => []]]));
+    $en = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$post->ulid.'/edit?locale=en')->assertOk()->getContent();
+    file_put_contents($dir.'/post-editor-en.html', $en);
+    expect($html)->toContain('data-lang-bar', 'data-lb-pill="en"')
+        ->and($en)->toContain('data-lang-bar', 'data-current="en"', 'data-lb-pill="ja" data-k="empty"', 'data-lb-pill="en" data-k="partial"');
     // «Ảnh đại diện» (board 07): «Đổi ảnh» opens the shared «Chọn ảnh» dialog for one picture, and
     // «Bỏ ảnh» says «Đã gỡ ảnh đại diện» with «Hoàn tác».
     expect($html)->toContain('aria-controls="entry-cover-where"', e(__('entries.ed.cover_change')));
@@ -684,7 +844,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     });
     $this->flushSession();
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/taxonomies?section=posts')->assertOk()->getContent();
-    expect($html)->toContain('data-bs-lazy="bsCategories"', 'Gia công CNC');
+    expect($html)->toContain('data-bs-lazy="bsCategories"', 'Gia công CNC', 'data-cover-filled', e(__('categories.ui_drop_cover_title')));
     file_put_contents($dir.'/categories.html', $html);
     // The same tree while support staff are signed in for the owner: it only looks.
     $staff = User::factory()->create(['name' => 'Lê Hoàng Phúc']);
@@ -792,6 +952,13 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog/'.$product->ulid.'/edit')->assertOk()->getContent();
     expect($html)->toContain('data-seo-fields')->not->toContain('wire:model="excerpt"');
     file_put_contents($dir.'/product-editor.html', $html);
+    // The language bar (board 09) on the English version: the name and link written, Japanese not yet,
+    // Vietnamese the source; the product's own cards locked with «Chung».
+    app(Tenancy::class)->enter(1, fn () => $product->translations()->create(['locale' => 'en', 'name' => '5-axis CNC workholding fixture', 'slug' => 'cnc-5-axis-fixture']));
+    $en = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog/'.$product->ulid.'/edit?locale=en')->assertOk()->getContent();
+    file_put_contents($dir.'/product-editor-en.html', $en);
+    expect($html)->toContain('data-lang-bar', 'data-lb-pill="en"')->not->toContain('data-shared-chip')
+        ->and($en)->toContain('data-lang-bar', 'data-current="en"', 'data-lb-pill="ja" data-k="empty"', 'data-lb-pill="en" data-k="partial"', 'data-shared-chip');
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog/create')->assertOk()->getContent();
     expect($html)->toContain('data-child-screen', 'ped-child-mi')->not->toContain('wire:click="trash"');
     file_put_contents($dir.'/product-new.html', $html);
@@ -881,8 +1048,8 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         return (string) preg_replace('/^<div wire:id="([^"]+)"/', '<div wire:snapshot="'.e(is_string($snapshot) ? $snapshot : json_encode($snapshot)).'" wire:effects="[]" wire:id="$1"', $test->html(), 1);
     };
     $swap = function (string $page, string $component, string $name = 'admin\\.catalog\\.index'): string {
-        // the list's own root: the div that carries its snapshot, up to the div that closes it
-        expect(preg_match('/<div wire:snapshot="[^"]*'.$name.'/', $page, $m, PREG_OFFSET_CAPTURE))->toBe(1);
+        // the list's own root: the div that carries its snapshot (after its key, when it is a child), up to the div that closes it
+        expect(preg_match('/<div (?:wire:key="[^"]*" )?wire:snapshot="[^"]*'.$name.'/', $page, $m, PREG_OFFSET_CAPTURE))->toBe(1);
         $from = $m[0][1];
         preg_match_all('#<div\b|</div>#', $page, $tags, PREG_OFFSET_CAPTURE, $from);
         $depth = 0;
@@ -1098,6 +1265,45 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($invitations)->toContain('tam.ngo@', __('admin.members.inv_resend_note', ['days' => InviteMember::VALID_DAYS]));
     file_put_contents($dir.'/members-invitations.html', $invitations);
 
+    // The roles screen (board «Nhóm quyền»): the system roles of the team above and one of the website's own,
+    // then one role read-only and «Nhóm này làm được gì?» in the side panel.
+    app(Tenancy::class)->enter(1, function (): void {
+        $own = Role::findOrCreate('Duyệt tin tức và sự kiện của công ty', PermissionRegistry::GUARD);
+        $own->forceFill(['level' => 40, 'is_system' => false])->save();
+        $own->syncPermissions(['entries.view', 'entries.review', 'entries.approve', 'forms.view']);
+    });
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/roles')->assertOk()->getContent();
+    expect($html)->toContain(e('Duyệt tin tức và sự kiện của công ty'), __('admin.roles.chip_cust'));
+    file_put_contents($dir.'/roles.html', $html);
+    $this->flushSession();
+    $view = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/roles?nhom=editor&che=xem')->assertOk()->getContent();
+    expect($view)->toContain(e(__('admin.roles.ro_title', ['role' => __('rbac.role.editor')])), e(__('admin.roles.ro_system')));
+    file_put_contents($dir.'/roles-view.html', $view);
+    $rolesExplain = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($owner)->test(RolesIndex::class)->call('openExplain', 'author')));
+    expect($rolesExplain)->toContain(e(__('admin.members.x_title', ['role' => __('rbac.role.author')])));
+    file_put_contents($dir.'/roles-explain.html', $swap($html, $rolesExplain, 'admin\\.roles\\.index'));
+
+    // The write side: the editor of the website's own role, a new role started from «Biên tập» (with
+    // custom roles in the plan), and the list just after a delete, «Hoàn tác» in its message.
+    $ownName = 'Duyệt tin tức và sự kiện của công ty';
+    $this->flushSession();
+    $edit = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/roles?'.http_build_query(['nhom' => $ownName, 'che' => 'sua']))->assertOk()->getContent();
+    expect($edit)->toContain(e(__('admin.roles.edit_title', ['role' => $ownName])), e(__('admin.roles.pv_title')), e(__('admin.roles.save')));
+    file_put_contents($dir.'/roles-edit.html', $edit);
+    app(Tenancy::class)->enter(1, fn () => SiteFeature::query()->updateOrCreate(['feature_key' => 'rbac.custom_roles'], ['value' => true]));
+    $this->flushSession();
+    $new = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/roles?nhom=editor&che=moi')->assertOk()->getContent();
+    expect($new)->toContain(e(__('admin.roles.from', ['role' => __('rbac.role.editor')])), e(__('admin.roles.save_new')));
+    file_put_contents($dir.'/roles-new.html', $new);
+    $rolesDeleted = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($owner)->test(RolesIndex::class)->call('askDelete', $ownName)));
+    expect($rolesDeleted)->toContain(e(__('admin.roles.deleted', ['role' => $ownName])), __('admin.undo'));
+    file_put_contents($dir.'/roles-deleted.html', $swap($html, $rolesDeleted, 'admin\\.roles\\.index'));
+    app(Tenancy::class)->enter(1, function () use ($ownName): void {
+        Role::onlyTrashed()->where('site_id', 1)->where('name', $ownName)->restore();
+        SiteFeature::query()->where('feature_key', 'rbac.custom_roles')->delete();
+    });
+
     // The admin's error pages (design board 25): in the frame for a member — no permission, not
     // found, a fault with its reference, too many requests — and on a page of their own: the
     // session that ended, a website that is not open. Faults come from preview-only routes.
@@ -1141,6 +1347,15 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->get('http://'.ADMIN_PREVIEW_HOST.'/admin/login')->assertForbidden()->getContent();
     expect($html)->toContain('data-te-page="suspended"');
     file_put_contents($dir.'/error-suspended.html', $html);
+    // the website's admin limited to an office network, opened from elsewhere: the page on its own
+    DB::connection('pgsql_admin')->table('sites')->where('id', 1)->update(['status' => 'active']);
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'admin_access', 'key' => 'ip_limit'], ['value' => ['on' => true, 'entries' => [['address' => '203.0.113.0/24', 'note' => '']]]]));
+    $html = $this->withServerVariables(['REMOTE_ADDR' => '198.51.100.8'])->get('http://'.ADMIN_PREVIEW_HOST.'/admin/login')->assertForbidden()->getContent();
+    expect($html)->toContain('data-te-page="ipblock"')->not->toContain('203.0.113');
+    file_put_contents($dir.'/error-ipblock.html', $html);
+    $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1']);
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('group_name', 'admin_access')->first()?->delete());
+    DB::connection('pgsql_admin')->table('sites')->where('id', 1)->update(['status' => 'suspended']);
 
     // The media library's folder column (design board 12): three folders and a sub-folder, the open one
     // with its ⋮ menu, the same folder being renamed in place, the question asked before deleting a
@@ -1221,7 +1436,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         foreach ([['Lắp đặt dây chuyền CNC cho nhà máy Bình Dương', 'lap-dat-cnc'], ['Bảo trì hệ thống khí nén', 'bao-tri-khi-nen'], ['Gia công khuôn ép nhựa', 'gia-cong-khuon']] as [$title, $slug]) {
             $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $writer->id]);
             $entry->translations()->create(['locale' => 'vi', 'title' => $title, 'slug' => $slug, 'status' => 'draft',
-                'body' => ['blocks' => [['type' => 'richtext', 'props' => ['body' => 'Dự án hoàn thành đúng tiến độ, bàn giao cho khách trong tháng 10.']]]]]);
+                'body' => ['blocks' => [['type' => 'richtext', 'props' => ['paragraphs' => ['Dự án hoàn thành đúng tiến độ, bàn giao cho khách trong tháng 10.']]]]]]);
             $entry->assignCategories([$categoryId]);
             app(ApplyEntryWorkflowTransition::class)->handle($entry->fresh(), 'vi', $writer->fresh(), 'submit');
             $ulids[] = (string) $entry->ulid;
@@ -1229,12 +1444,17 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
 
         return $ulids;
     });
+    // the inbox opens on «Giao cho tôi»: hand the three posts to the owner so that tab holds them
+    app(Tenancy::class)->enter(1, fn () => Entry::query()->whereIn('ulid', $waiting)->update(['assigned_to' => $owner->id]));
     $this->flushSession();
     app('livewire')->flushState();
     $inboxPage = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/review')->assertOk()->getContent();
     expect($inboxPage)->toContain('Bảo trì hệ thống khí nén', 'data-inbox-pick');
     file_put_contents($dir.'/review-inbox.html', $inboxPage);
     $reviewInbox = 'review-inbox';
+    $reading = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($owner)->test(ReviewInbox::class)->call('open', $waiting[0])));
+    expect($reading)->toContain('data-inbox-track', 'data-inbox-progress');
+    file_put_contents($dir.'/review-inbox-reading.html', $swap($inboxPage, $reading, $reviewInbox));
     $picked = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($owner)->test(ReviewInbox::class)
         ->call('togglePick', $waiting[0])->call('togglePick', $waiting[1])));
     expect($picked)->toContain(e(__('admin.inbox.picked', ['count' => 2])), e(__('admin.inbox.bulk_ok', ['count' => 2])));
@@ -1254,5 +1474,102 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($failed)->toContain(e(__('admin.inbox.err_load_title')));
     file_put_contents($dir.'/review-inbox-error.html', $swap($inboxPage, $failed, $reviewInbox));
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 105);
+    // «Trình sửa bài/trang» (design board 07) on a live post of «Dự án», whose edits wait in a pending
+    // change: the writer's band before sending (with «Gửi duyệt thay đổi»), the question before
+    // «Bỏ thay đổi»; then, once sent, the reviewer's band (approve / return, discard locked with its
+    // reason), «So sánh», the question before «Duyệt đăng thay đổi» and the note of «Trả lại».
+    $livePost = app(Tenancy::class)->enter(1, function () use ($owner, $writer, $waiting): Entry {
+        $entry = Entry::query()->where('ulid', $waiting[2])->firstOrFail();
+        app(ApplyEntryWorkflowTransition::class)->handle($entry, 'vi', $owner, 'approve');
+        app(SaveEntryDraft::class)->handle($entry->fresh(), $writer->fresh(), 'vi', [
+            'title' => 'Gia công khuôn ép nhựa cho ngành ô tô',
+            'excerpt' => 'Khuôn 2 tầng, bàn giao tháng 11.',
+            'body' => ['blocks' => [['type' => 'richtext', 'props' => ['paragraphs' => ['Dự án hoàn thành sớm một tuần, khách nhận khuôn trong tháng 11.']]]]],
+        ]);
+
+        return $entry->fresh();
+    });
+    $this->flushSession();
+    $html = $this->actingAs($writer->fresh())->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$livePost->ulid.'/edit')->assertOk()->getContent();
+    expect($html)->toContain('data-change-band', 'wire:click="submitChange"');
+    file_put_contents($dir.'/editor-change-draft.html', $html);
+    $discardAsk = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($writer->fresh())
+        ->test(App\Modules\Admin\Livewire\Entries\Editor::class, ['ulid' => $livePost->ulid])->call('askDiscardChange')));
+    expect($discardAsk)->toContain(e(__('entries.chg.discard_title')));
+    file_put_contents($dir.'/editor-change-discard.html', $swap($html, $discardAsk, 'admin\\.entries\\.editor'));
+    app(Tenancy::class)->enter(1, function () use ($livePost, $writer): void {
+        $change = EntryDraft::query()->where('entry_id', $livePost->id)->sole();
+        app(ApplyEntryDraftTransition::class)->handle($livePost->fresh(), 'vi', $writer->fresh(), 'submit', $change->version());
+    });
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$livePost->ulid.'/edit')->assertOk()->getContent();
+    expect($html)->toContain('data-change-band', e(__('entries.change_err_change_pending')));
+    file_put_contents($dir.'/editor-change-sent.html', $html);
+    $review = fn () => Livewire::actingAs($owner)->test(App\Modules\Admin\Livewire\Entries\Editor::class, ['ulid' => $livePost->ulid]);
+    foreach ([
+        'editor-change-diff' => fn () => $review()->call('openChangeDiff'),
+        'editor-change-apply' => fn () => $review()->call('askApplyChange'),
+        'editor-change-return' => fn () => $review()->call('openChangeReturn')->call('returnChange'),
+    ] as $name => $state) {
+        $part = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($state()));
+        file_put_contents($dir.'/'.$name.'.html', $swap($html, $part, 'admin\\.entries\\.editor'));
+    }
+    expect(file_get_contents($dir.'/editor-change-diff.html'))->toContain('data-change-diff')
+        ->and(file_get_contents($dir.'/editor-change-return.html'))->toContain(e(__('entries.chg.return_err')));
+
+    // Hộp duyệt (design board 17) once that change is sent: «Thay đổi của bài đang đăng» above the
+    // posts waiting, with «So sánh», the question before «Duyệt đăng thay đổi» and the note of «Trả lại»
+    // left empty.
+    $this->flushSession();
+    app('livewire')->flushState();
+    $inboxPage = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/review')->assertOk()->getContent();
+    expect($inboxPage)->toContain('data-chg-card', 'Gia công khuôn ép nhựa cho ngành ô tô', 'data-inbox-pick');
+    file_put_contents($dir.'/review-inbox-changes.html', $inboxPage);
+    $changes = fn () => Livewire::actingAs($owner)->test(ReviewChanges::class);
+    foreach ([
+        'review-inbox-changes-diff' => fn () => $changes()->call('openChange', $livePost->ulid, 'view'),
+        'review-inbox-changes-approve' => fn () => $changes()->call('openChange', $livePost->ulid, 'approve'),
+        'review-inbox-changes-return' => fn () => $changes()->call('openChange', $livePost->ulid, 'return')->call('confirmChange'),
+    ] as $name => $state) {
+        $part = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($state()));
+        file_put_contents($dir.'/'.$name.'.html', $swap($inboxPage, $part, 'admin\\.entries\\.review-changes'));
+    }
+    expect(file_get_contents($dir.'/review-inbox-changes-diff.html'))->toContain('data-change-diff')
+        ->and(file_get_contents($dir.'/review-inbox-changes-approve.html'))->toContain(e(__('entries.chg.ask_now')))
+        ->and(file_get_contents($dir.'/review-inbox-changes-return.html'))->toContain(e(__('entries.chg.return_err')));
+
+    // «Tải danh sách về máy» from the leads list's ⋮: the dialog asking for the password, the same
+    // dialog after a wrong one, and the message naming the file once the password is right.
+    $leadsPage = (string) file_get_contents($dir.'/leads.html');
+    $inbox = fn () => Livewire::actingAs($owner)->test(Inbox::class)->call('openExport')->assertSet('exportOpen', true);
+    foreach ([
+        'leads-export' => fn () => $inbox(),
+        'leads-export-error' => fn () => $inbox()->call('confirmExport', 'chua-dung')->assertSet('exportError', __('leads.export_pw_wrong')),
+        'leads-export-done' => fn () => $inbox()->call('confirmExport', 'a-strong-password')->assertSet('exportOpen', false)->assertDispatched('leads-export-ready'),
+    ] as $name => $state) {
+        $part = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($state()));
+        file_put_contents($dir.'/'.$name.'.html', $swap($leadsPage, $part, 'app\\.modules\\.admin\\.livewire\\.forms\\.inbox'));
+    }
+    // «Thời hạn lưu giữ liên hệ» from the same ⋮: the dialog on the 24 months of a website that never
+    // chose, the same with «Không tự xóa» picked (the law warning), and the message once saved.
+    $retention = fn () => Livewire::actingAs($owner)->test(Inbox::class)->call('openRetention')->assertSet('retentionOpen', true);
+    foreach ([
+        'leads-retention' => fn () => $retention()->assertSet('retentionPick', '24'),
+        'leads-retention-none' => fn () => $retention()->set('retentionPick', 'none'),
+        'leads-retention-saved' => fn () => $retention()->set('retentionPick', '36')->call('saveRetention')->assertSet('retentionOpen', false),
+    ] as $name => $state) {
+        $part = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($state()));
+        file_put_contents($dir.'/'.$name.'.html', $swap($leadsPage, $part, 'app\\.modules\\.admin\\.livewire\\.forms\\.inbox'));
+    }
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('group_name', LeadRetention::GROUP)->where('key', LeadRetention::KEY)->delete());
+    expect(file_get_contents($dir.'/leads-retention.html'))->toContain('id="lr-opt-24"', e(__('leads.ret_spam')))
+        ->and(file_get_contents($dir.'/leads-retention-none.html'))->toContain(e(__('leads.ret_none_warn_1')))
+        ->and(file_get_contents($dir.'/leads-retention-saved.html'))->toContain(e(__('leads.ret_saved', ['months' => 36])));
+    expect(file_get_contents($dir.'/leads-export.html'))->toContain('id="lx-pw"', e(__('leads.export_pw_hint')))
+        ->and(file_get_contents($dir.'/leads-export-error.html'))->toContain('aria-invalid="true"', e(__('leads.export_pw_wrong')))
+        ->and(file_get_contents($dir.'/leads-export-done.html'))->toContain('data-tone="success"');
+    expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
+        ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
+        ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 143);
 });

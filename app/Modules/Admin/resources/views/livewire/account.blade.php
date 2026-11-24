@@ -1,7 +1,7 @@
 {{--
     My account (Tài khoản của tôi) — ported 1:1 from design board 23 and its linked-accounts child.
     Sections: profile, security (password + two-factor), signed-in devices, linked sign-in accounts, preferences
-    (language, light/dark, text size, motion, notifications). Layout and type: resources/css/admin-account.css,
+    (language, light/dark, text size, motion, high contrast, notifications). Layout and type: resources/css/admin-account.css,
     its own Vite entry linked below (@assets puts it in the head once, on a full load and after wire:navigate).
     During a support session every control is disabled and the server refuses each change.
     The signed-in devices list leaves a support session out: its "Nhân viên hỗ trợ" row and end
@@ -463,7 +463,7 @@
                         <section class="ac-card" aria-labelledby="ac-h-ui">
                             <div class="ac-ch">
                                 <h2 class="ac-h3" id="ac-h-ui">{{ $t('ui_title') }}</h2>
-                                <x-bs-admin::saved-note wire:loading.class="invisible" wire:target="setScheme, setTextSize, resetTextSize, setMotion">{{ $savedNote === 'ui' ? $t('applied') : '' }}</x-bs-admin::saved-note>
+                                <x-bs-admin::saved-note wire:loading.class="invisible" wire:target="setScheme, setTextSize, resetTextSize, setMotion, setContrast">{{ $savedNote === 'ui' ? $t('applied') : '' }}</x-bs-admin::saved-note>
                             </div>
                             <div class="ac-cb">
                                 <p class="ac-rule">{{ $t('ui_intro') }}</p>
@@ -521,6 +521,24 @@
                                             @endforeach
                                         </div>
                                         <p class="ac-hint m-0" id="ac-mo-h">{{ $t('motion_hint') }}</p>
+                                    </div>
+                                    {{-- High contrast: the switch shows what <html data-contrast> paints, which theme-boot
+                                         may have set from the device (no choice yet), so its state lives in the browser and
+                                         follows every change of that attribute; the server only saves the choice. --}}
+                                    <div class="flex min-w-0 flex-col gap-2">
+                                        <div class="ac-sw flex items-center justify-between gap-3" wire:ignore
+                                             x-data="{ hc: {{ $prefs['contrast'] === 'high' ? 'true' : 'false' }}, watch: null,
+                                                       read() { this.hc = document.documentElement.getAttribute('data-contrast') === 'high' },
+                                                       init() { this.read(); this.watch = new MutationObserver(() => this.read()); this.watch.observe(document.documentElement, { attributes: true, attributeFilter: ['data-contrast'] }) },
+                                                       destroy() { this.watch?.disconnect() } }">
+                                            <span class="min-w-0">
+                                                <span class="ac-lab" id="ac-l-hc">{{ $t('contrast') }} · <span x-text="hc ? @js($t('contrast_on')) : @js($t('contrast_off'))">{{ $prefs['contrast'] === 'high' ? $t('contrast_on') : $t('contrast_off') }}</span></span>
+                                                <span class="ac-hint">{{ $t('contrast_hint') }}</span>
+                                            </span>
+                                            <button type="button" class="switch hit-area" role="switch" aria-checked="{{ $prefs['contrast'] === 'high' ? 'true' : 'false' }}"
+                                                    x-bind:aria-checked="hc ? 'true' : 'false'" aria-labelledby="ac-l-hc"
+                                                    x-on:click="hc = ! hc; $wire.setContrast(hc ? 'high' : 'normal').catch(() => read())" @disabled($readOnly)></button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

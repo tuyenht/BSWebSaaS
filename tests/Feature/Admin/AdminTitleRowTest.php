@@ -49,6 +49,12 @@ it('draws a button\'s short word with the full label kept as its name, and the l
     expect((string) $this->blade('<x-bs-admin::button>Lưu</x-bs-admin::button>'))->toContain('>Lưu</button>')->not->toContain('<span');
 });
 
+it('reads a short word that is not in the label too, so the name on a phone holds what is seen, and draws the end slot last', function (): void {
+    $html = (string) $this->blade('<x-bs-admin::button label="Tạo nhóm" short="Thêm"><svg aria-hidden="true"></svg><x-slot:end><i data-caret></i></x-slot:end></x-bs-admin::button>');
+    expect($html)->toContain('<svg aria-hidden="true"></svg><span class="md:hidden">Thêm</span><span class="max-md:sr-only">Tạo nhóm</span><i data-caret></i></button>')
+        ->not->toContain('aria-hidden="true">Thêm');
+});
+
 it('puts the (?) and the main button in one group at the end of the row, the (?) first and printed once', function (): void {
     $row = (string) $this->blade(
         '<x-bs-admin::title-row title="Tin &amp; tức" title-id="t1"><x-slot:help><button data-q>?</button></x-slot:help><a data-add>+</a></x-bs-admin::title-row>'

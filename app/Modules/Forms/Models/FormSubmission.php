@@ -8,6 +8,8 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * A captured lead. Tenant table (site_id + RLS) — a submission for site A is never
@@ -20,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $form_id
  * @property string $status
  * @property bool $is_spam
+ * @property Carbon|null $deleted_at set while the lead sits in the Trash (LeadTrash); read through LeadListQuery::leads()
  */
 final class FormSubmission extends Model
 {
@@ -51,6 +54,7 @@ final class FormSubmission extends Model
         return [
             'data' => 'array',
             'is_spam' => 'boolean',
+            'deleted_at' => 'datetime',
         ];
     }
 
@@ -58,6 +62,17 @@ final class FormSubmission extends Model
     public function form(): BelongsTo
     {
         return $this->belongsTo(Form::class);
+    }
+
+    /**
+     * The files the visitor sent with this lead, kept and refused, in the order they came
+     * (form_submission_files_submission_idx).
+     *
+     * @return HasMany<FormSubmissionFile, $this>
+     */
+    public function files(): HasMany
+    {
+        return $this->hasMany(FormSubmissionFile::class, 'form_submission_id')->orderBy('id');
     }
 
     private static function writeTerms(self $lead): void

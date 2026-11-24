@@ -51,7 +51,7 @@
 .mp-up[data-st='run'] .mp-ups { color: var(--color-text-muted); }
 .mp-up[data-st='done'] .mp-ups { color: var(--color-success-text); }
 .mp-up[data-st='err'] .mp-ups { color: var(--color-danger-text); }
-.mp-upbar { height: 5px; margin-top: 6px; overflow: hidden; border-radius: 5px; background: var(--color-border); }
+.mp-upbar { height: 5px; margin-top: 6px; overflow: hidden; border-radius: 5px; background: var(--color-track); }
 .mp-upbar > span { display: block; height: 100%; border-radius: 5px; background: var(--color-primary); transition: width 0.2s; }
 .mp-upmsg {
     margin: 4px 0 0;

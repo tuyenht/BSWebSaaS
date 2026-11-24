@@ -16,6 +16,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Notifications\Models\SiteNotification;
@@ -71,7 +72,7 @@ function laterPost(int $categoryId, User $author, string $slug = 'ban-tin'): Ent
     $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $author->id]);
     $entry->translations()->create([
         'locale' => 'vi', 'title' => 'Bản tin hẹn giờ', 'slug' => $slug, 'status' => 'draft',
-        'body' => ['blocks' => [['type' => 'richtext', 'props' => ['body' => 'Nội dung bài']]]],
+        'body' => ['blocks' => [['type' => 'richtext', 'props' => ['paragraphs' => ['Nội dung bài']]]]],
     ]);
     $entry->assignCategories([$categoryId]);
     app(ApplyEntryWorkflowTransition::class)->handle($entry->fresh(), 'vi', $author->fresh(), 'submit');
@@ -121,7 +122,7 @@ it('approves a post for a later time without moving its stage, and the sweep pub
         $logBefore = WorkflowLog::query()->where('entry_id', $post->id)->count();
         $at = laterAt();
 
-        Livewire::actingAs($approver)->test(ReviewInbox::class)
+        Livewire::actingAs($approver)->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('open', $post->ulid)
             ->assertSeeHtml('data-inbox-ap')
             ->assertSee(__('admin.inbox.ap_group'))
@@ -172,7 +173,7 @@ it('refuses a missing or past time with the field error and changes nothing', fu
         $post = laterPost($categoryId, $author);
         $past = app(SiteTime::class)->now()->subHour()->format('Y-m-d\TH:i');
 
-        Livewire::actingAs($approver)->test(ReviewInbox::class)
+        Livewire::actingAs($approver)->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('open', $post->ulid)
             ->call('approveLater', 'approve', '')->assertReturned(__('entries.sched_err_empty'))
             ->call('approveLater', 'approve', $past)->assertReturned(__('entries.sched_err_past'))
@@ -193,16 +194,17 @@ it('refuses a tampered move or post, and a reviewer without the right to publish
         $post = laterPost($categoryId, $author);
 
         // A move that does not publish (and asks a reason), and one that does not exist.
-        Livewire::actingAs($approver)->test(ReviewInbox::class)
+        Livewire::actingAs($approver)->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('open', $post->ulid)
             ->call('approveLater', 'reject', laterAt())->assertHasErrors('inbox')
             ->call('approveLater', 'nope', laterAt())->assertHasErrors('inbox');
-        // A post that is not open in this inbox.
-        Livewire::actingAs($approver)->test(ReviewInbox::class)
+        // No post open in this inbox (nothing is handed to the approver, so «Giao cho tôi» is empty).
+        Livewire::actingAs($approver)->test(ReviewInbox::class)->set('tab', 'mine')
             ->call('open', '01JUNKUNKNOWNULID000000000')
+            ->assertSet('current', null)
             ->call('approveLater', 'approve', laterAt())->assertHasErrors('inbox');
         // Seeing the post is not approving it.
-        Livewire::actingAs($reviewer->fresh())->test(ReviewInbox::class)
+        Livewire::actingAs($reviewer->fresh())->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('open', $post->ulid)
             ->assertDontSeeHtml('data-inbox-ap')
             ->call('approveLater', 'approve', laterAt())->assertHasErrors('inbox');
@@ -241,7 +243,7 @@ it('keeps the post offline and back in the queue when the approver loses the rig
         // back where someone who may approve it sees it
         $other = User::factory()->create();
         grantRole($other, 'approver', ['entries.review', 'entries.approve']);
-        Livewire::actingAs($other->fresh())->test(ReviewInbox::class)->assertSee('Bản tin hẹn giờ');
+        Livewire::actingAs($other->fresh())->test(ReviewInbox::class)->set('tab', 'queue')->assertSee('Bản tin hẹn giờ');
     });
     expect(laterNotices(1, $author))->toBe(['approved', 'failed_right'])
         ->and(laterNotices(1, $approver))->toBe(['failed_right']);
@@ -273,6 +275,49 @@ it('keeps the post offline when the flow changes before the time', function (str
     });
     expect(laterNotices(1, $author))->toBe(['approved', 'failed_flow']);
 })->with(['move removed', 'move asks a reason']);
+
+it('sends a post approved for later back to review when its address was taken before its time, and tells its author and approver once', function (): void {
+    [$author, $approver] = laterPeople();
+    $categoryId = laterSection();
+
+    [$post, $path] = app(Tenancy::class)->enter(1, function () use ($author, $approver, $categoryId): array {
+        $post = laterPost($categoryId, $author);
+        app(ApproveEntryForLater::class)->approve($post, 'vi', $approver, 'approve', now()->addHour());
+        // before its time, a live page takes the address the post would go live at
+        $path = app(PathBuilder::class)->forEntry($post->fresh(), 'vi', 'ban-tin');
+        $other = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()->subDay()]);
+        $other->translations()->create(['locale' => 'vi', 'title' => 'Trang khác', 'slug' => 'trang-khac', 'status' => 'published', 'body' => ['blocks' => []]]);
+        SiteRoute::query()->create(['locale' => 'vi', 'path' => $path, 'entry_id' => $other->id]);
+
+        return [$post, $path];
+    });
+
+    $this->travel(2)->hours();
+    $this->artisan('entries:publish-due')
+        ->expectsOutput(laterSweepSays(published: 0, held: 0))
+        ->expectsOutput('1 entr(y/ies) not published because an address they need is already in use: taken off the schedule, their author and scheduler told.')
+        ->assertSuccessful();
+
+    app(Tenancy::class)->enter(1, function () use ($post): void {
+        $fresh = $post->fresh();
+        // waiting at the stage it was approved from, back in the review inbox, never put live
+        expect($fresh->status)->toBe('pending')
+            ->and($fresh->workflow_state)->toBe('pending')
+            ->and($fresh->scheduled_by)->toBeNull()
+            ->and($fresh->published_at)->toBeNull()
+            ->and(SiteRoute::query()->where('entry_id', $post->id)->exists())->toBeFalse();
+    });
+    $sent = fn (User $user): array => app(Tenancy::class)->enter(1, fn (): array => SiteNotification::query()
+        ->where('user_id', $user->id)->where('kind', 'workflow.scheduled')->where('data->sentence', 'failed_address_review')
+        ->pluck('data')->map(fn (array $data): string => (string) ($data['path'] ?? ''))->all());
+    expect(laterNotices(1, $author))->toBe(['approved', 'failed_address_review'])
+        ->and(laterNotices(1, $approver))->toBe(['failed_address_review'])
+        ->and($sent($author))->toBe([$path]);
+
+    // told once: the next run finds nothing due
+    $this->artisan('entries:publish-due')->expectsOutput(laterSweepSays(published: 0, held: 0))->assertSuccessful();
+    expect(laterNotices(1, $approver))->toBe(['failed_address_review']);
+});
 
 it('publishes at its time, like any scheduled post, a post approved for later whose flow was switched off since', function (bool $approverGone): void {
     [$author, $approver] = laterPeople();
@@ -329,7 +374,7 @@ it('cancels an approval for later back to waiting, without a stage move, only fo
             ->and($fresh->scheduled_by)->toBeNull()
             ->and($fresh->published_at)->toBeNull()
             ->and(WorkflowLog::query()->where('entry_id', $post->id)->count())->toBe($logBefore);
-        Livewire::actingAs($approver)->test(ReviewInbox::class)->assertSee('Bản tin hẹn giờ');
+        Livewire::actingAs($approver)->test(ReviewInbox::class)->set('tab', 'queue')->assertSee('Bản tin hẹn giờ');
     });
     expect(laterNotices(1, $author))->toBe(['approved', 'cancelled']);
 });
@@ -352,7 +397,7 @@ it('holds back a post whose approver account is gone while the flow is on: back 
             ->and($post->fresh()->approvedForLater())->toBeFalse();
         $other = User::factory()->create();
         grantRole($other, 'approver', ['entries.review', 'entries.approve']);
-        Livewire::actingAs($other->fresh())->test(ReviewInbox::class)->assertSee('Bản tin hẹn giờ');
+        Livewire::actingAs($other->fresh())->test(ReviewInbox::class)->set('tab', 'queue')->assertSee('Bản tin hẹn giờ');
         expect(app(ApproveEntryForLater::class)->mayCancel($post->fresh(), $other->fresh()))->toBeFalse();
     });
 
@@ -389,15 +434,20 @@ it('judges each site on its own: an approval, its rights and its sweep stay insi
     });
 
     app(Tenancy::class)->enter(1, function () use ($author, $approver, $categoryA, $postB): void {
-        laterPost($categoryA, $author);
-        // site B's post is not in site A's inbox, so it cannot be approved from there
-        Livewire::actingAs($approver)->test(ReviewInbox::class)
+        $postA = laterPost($categoryA, $author);
+        // site B's post is not in site A's inbox, so it never opens there: the reader keeps site A's own post
+        Livewire::actingAs($approver)->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('open', (string) $postB->ulid)
-            ->call('approveLater', 'approve', laterAt())->assertHasErrors('inbox');
+            ->assertSet('current', (string) $postA->ulid)
+            ->assertSet('detail', false)
+            // and «Duyệt và hẹn giờ đăng» acts on that post, the only one it can reach
+            ->call('approveLater', 'approve', laterAt())->assertHasNoErrors();
+        expect($postA->fresh()?->approvedForLater())->toBeTrue();
     });
 
     // Site A's approver holds no role on site B: approving there is refused, judged in B's team.
     app(Tenancy::class)->enter(2, function () use ($approver, $postB): void {
+        expect($postB->fresh()?->approvedForLater())->toBeFalse();
         app(TeamContext::class)->forget();
         expect(fn () => app(ApproveEntryForLater::class)->approve($postB->fresh(), 'vi', $approver->fresh(), 'approve', now()->addHour()))
             ->toThrow(AuthorizationException::class);
@@ -431,7 +481,7 @@ it('locks the editor on a post approved for later, and «Duyệt đăng N bài»
             ->assertHasErrors('workflow');
         expect($later->fresh()->translationFor('vi')?->title)->toBe('Bản tin hẹn giờ');
 
-        Livewire::actingAs($approver)->test(ReviewInbox::class)
+        Livewire::actingAs($approver)->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('togglePick', (string) $now->ulid)
             ->call('togglePick', (string) $later->ulid)
             ->call('approvePicked');
@@ -798,7 +848,7 @@ it('lets another approver approve for later again a post whose approver account 
         expect($post->fresh()->status)->toBe('scheduled')
             ->and($post->fresh()->scheduled_by)->toBeNull();
         $at = laterAt(10);
-        Livewire::actingAs($other->fresh())->test(ReviewInbox::class)
+        Livewire::actingAs($other->fresh())->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('open', $post->ulid)
             ->call('approveLater', 'approve', $at)
             ->assertReturned(null)
@@ -843,7 +893,7 @@ it('clears the approved stage when a post approved for later is published at onc
         // the flow back on: the live post stands at its published stage, waiting for nobody
         $workflow->update(['is_active' => true]);
         expect(EntryWorkflowResolver::originIn($workflow->fresh(), $post->fresh()))->toBe('published');
-        Livewire::actingAs($approver)->test(ReviewInbox::class)->assertDontSee('Bản tin hẹn giờ');
+        Livewire::actingAs($approver)->test(ReviewInbox::class)->set('tab', 'queue')->assertDontSee('Bản tin hẹn giờ');
     });
 });
 

@@ -25,6 +25,7 @@ const PARTS = {
     bsMenus: () => import('./admin-menus.js'),
     bsEditorSave: () => import('./admin-editor.js'),
     bsUnsaved: () => import('./admin-unsaved.js'),
+    bsLangBar: () => import('./admin-lang-bar.js'),
     bsSaveBar: () => import('./admin-save-bar.js'),
     bsBell: () => import('./admin-bell.js'),
     bsNotifications: () => import('./admin-notifications.js'),
@@ -61,6 +62,9 @@ export function makeLazy({ parts, alpine, reload }) {
     return {
         start,
         scan(doc) {
+            if (doc.nodeType === 1 && doc.matches('[data-bs-lazy][x-ignore]')) {
+                start(doc);
+            }
             doc.querySelectorAll('[data-bs-lazy][x-ignore]').forEach((el) => start(el));
         },
         // Livewire's morph.updating: a started root (x-ignore gone) takes the server's root without
@@ -88,7 +92,15 @@ if (typeof document !== 'undefined' && typeof window !== 'undefined' && window.d
     document.addEventListener('alpine:initialized', () => lazy.scan(document));
     document.addEventListener('livewire:navigated', () => lazy.scan(document));
     document.addEventListener('click', (e) => lazy.click(e));
-    const hook = () => window.Livewire.hook('morph.updating', ({ el, toEl }) => lazy.keepStarted(el, toEl));
+    const hook = () => {
+        window.Livewire.hook('morph.updating', ({ el, toEl }) => lazy.keepStarted(el, toEl));
+        // a part a redraw adds (the language bar after a new entry's first save) starts like one on a page
+        window.Livewire.hook('morph.added', ({ el }) => {
+            if (el && el.nodeType === 1) {
+                lazy.scan(el);
+            }
+        });
+    };
     if (window.Livewire?.hook) {
         hook();
     } else {

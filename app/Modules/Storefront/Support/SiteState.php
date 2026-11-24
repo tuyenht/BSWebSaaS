@@ -10,12 +10,16 @@ namespace App\Modules\Storefront\Support;
  * HTTP status (503 while the closure is temporary, so search engines come back; 410 once the site
  * is closed for good), how long to wait before asking again, its icon and its words. The words
  * never give the reason (unpaid, breach, …): the page only says the site is not open.
+ *
+ * Maintenance is no lifecycle status: the owner closes an active site for a while (SiteMaintenance),
+ * with words of their own; it is never read from `sites.status` (ShowSiteStatePage).
  */
 enum SiteState: string
 {
     case Provisioning = 'provisioning';
     case Suspended = 'suspended';
     case Archived = 'archived';
+    case Maintenance = 'maintenance';
 
     public function httpStatus(): int
     {
@@ -27,7 +31,7 @@ enum SiteState: string
     {
         return match ($this) {
             self::Provisioning => 300,
-            self::Suspended => 3600,
+            self::Suspended, self::Maintenance => SiteMaintenance::DEFAULT_RETRY_AFTER,
             self::Archived => null,
         };
     }
@@ -39,6 +43,7 @@ enum SiteState: string
             self::Provisioning => 'rocket',
             self::Suspended => 'pause',
             self::Archived => 'archive',
+            self::Maintenance => 'tools',
         };
     }
 
@@ -55,9 +60,9 @@ enum SiteState: string
             : __('storefront.site_state.'.$this->value.'_text');
     }
 
-    /** A site being set up offers to reload; a suspended or closed one offers its public email (none without one). */
+    /** A site being set up or under maintenance offers to reload; a suspended or closed one offers its public email (none without one). */
     public function offersReload(): bool
     {
-        return $this === self::Provisioning;
+        return $this === self::Provisioning || $this === self::Maintenance;
     }
 }

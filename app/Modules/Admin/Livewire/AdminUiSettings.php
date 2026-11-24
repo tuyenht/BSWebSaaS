@@ -6,6 +6,7 @@ use App\Modules\Admin\Livewire\Concerns\TracksSavedState;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Admin\Theme\AdminChromeResolver;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -62,14 +63,14 @@ final class AdminUiSettings extends Component
     public function save(): bool
     {
         $rules = [];
-        foreach (AdminChromeResolver::FIELDS as $field => $allowed) {
+        foreach (AdminChromeResolver::siteFields() as $field => $allowed) {
             $rules[$field] = ['nullable', 'string', Rule::in(['', ...$allowed])];
         }
         $this->validate($rules);
 
         // Persist only the pinned axes; '' (inherit) drops the key entirely.
         $config = [];
-        foreach (array_keys(AdminChromeResolver::FIELDS) as $field) {
+        foreach (array_keys(AdminChromeResolver::siteFields()) as $field) {
             if ($this->{$field} !== '') {
                 $config[$field] = $this->{$field};
             }
@@ -111,8 +112,8 @@ final class AdminUiSettings extends Component
     protected function trackedState(): array
     {
         $state = [];
-        foreach (array_keys(AdminChromeResolver::FIELDS) as $field) {
-            $state[$field] = (string) $this->{$field};
+        foreach (array_keys(AdminChromeResolver::siteFields()) as $field) {
+            $state[$field] = Cast::string($this->{$field});
         }
 
         return $state;
@@ -122,7 +123,7 @@ final class AdminUiSettings extends Component
     {
         $config = app(SettingsRepository::class)->get('admin_theme') ?? [];
 
-        foreach (array_keys(AdminChromeResolver::FIELDS) as $field) {
+        foreach (array_keys(AdminChromeResolver::siteFields()) as $field) {
             $value = $config[$field] ?? null;
             $this->{$field} = is_string($value) && in_array($value, AdminChromeResolver::FIELDS[$field], true)
                 ? $value
