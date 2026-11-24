@@ -118,10 +118,13 @@
             @endif
         </section>
     @else
-        <div class="flex min-w-0 items-start gap-4">
-            {{-- Folder column (from 900px) --}}
+        {{-- Board 12: the folder column shows while the screen is at least 48rem wide (its own width, so a shown
+             sidebar counts), and from there the column and the files are one surface split by a line. --}}
+        <div class="@container/tv">
+        <div class="flex min-w-0 items-start gap-4 @min-[48rem]/tv:gap-0 @min-[48rem]/tv:rounded-md @min-[48rem]/tv:border @min-[48rem]/tv:border-border @min-[48rem]/tv:bg-surface @min-[48rem]/tv:shadow-card">
+            {{-- Folder column (screen from 48rem) --}}
             {{-- shut: the top-level folders whose sub-folders are folded away (opening a folder unfolds it) --}}
-            <nav class="sticky top-4 hidden w-60 shrink-0 flex-col gap-0.5 rounded-md border border-border bg-surface p-2 shadow-card min-[900px]:flex" aria-label="{{ __('media.lib.folders') }}"
+            <nav class="sticky top-4 hidden w-[16.5rem] shrink-0 flex-col gap-0.5 rounded-md border border-border bg-surface p-2 shadow-card @min-[48rem]/tv:flex @min-[48rem]/tv:rounded-none @min-[48rem]/tv:border-0 @min-[48rem]/tv:bg-transparent @min-[48rem]/tv:px-2 @min-[48rem]/tv:py-3 @min-[48rem]/tv:shadow-none @min-[93.75rem]/tv:w-72" aria-label="{{ __('media.lib.folders') }}"
                  x-data="{ shut: {} }" x-on:media-folder-open.window="shut[$event.detail.slug] = false">
                 <div class="flex items-center gap-2 px-2.5 pt-1 pb-2 text-small font-semibold text-text-muted"><x-bs-admin::icon name="ri-folder-3" class="size-4" /><span>{{ __('media.lib.folders') }}</span></div>
                 <button type="button" class="{{ $folderBtn }}" aria-current="{{ ! $trash && $folder === '' ? 'true' : 'false' }}" wire:click="setFolder('')">
@@ -180,9 +183,9 @@
                 @endif
             </nav>
 
-            <section class="flex min-w-0 flex-1 flex-col rounded-md border border-border bg-surface shadow-card" aria-label="{{ $placeName }}">
-                {{-- Folder select (below 900px) --}}
-                <div class="flex items-end gap-2 px-4 pt-4 min-[900px]:hidden">
+            <section class="flex min-w-0 flex-1 flex-col self-stretch rounded-md border border-border bg-surface shadow-card @min-[48rem]/tv:rounded-none @min-[48rem]/tv:border-y-0 @min-[48rem]/tv:border-e-0 @min-[48rem]/tv:bg-transparent @min-[48rem]/tv:shadow-none" aria-label="{{ $placeName }}">
+                {{-- Folder select (screen below 48rem) --}}
+                <div class="flex items-end gap-2 px-4 pt-4 @min-[48rem]/tv:hidden">
                     <div class="min-w-0 flex-1">
                         <label for="media-fsel" class="mb-1 block text-small font-medium text-text">{{ __('media.lib.folders') }}</label>
                         <select id="media-fsel" class="field w-full rounded-md border border-border-strong bg-surface px-3 text-text" wire:change="setFolder($event.target.value)">
@@ -201,40 +204,54 @@
                     @endif
                 </div>
                 @if ($newFolderOpen && $canFolders)
-                    <div class="px-4 pt-3 min-[900px]:hidden">@include('admin::livewire.media.library-new-folder', ['fid' => 'media-newf-n'])</div>
+                    <div class="px-4 pt-3 @min-[48rem]/tv:hidden">@include('admin::livewire.media.library-new-folder', ['fid' => 'media-newf-n'])</div>
                 @endif
                 @if ($renaming !== '' && $canFolders && $folders->contains(fn ($f) => (string) $f->slug === $renaming))
-                    <div class="px-4 pt-3 min-[900px]:hidden">@include('admin::livewire.media.library-rename-folder', ['fid' => 'media-ren-n', 'label' => __('media.lib.rename_label_narrow')])</div>
+                    <div class="px-4 pt-3 @min-[48rem]/tv:hidden">@include('admin::livewire.media.library-rename-folder', ['fid' => 'media-ren-n', 'label' => __('media.lib.rename_label_narrow')])</div>
                 @endif
 
-                {{-- Tools row --}}
-                <div class="flex flex-wrap items-center gap-3 px-4 pt-4 pb-3">
-                    <div class="min-w-0 flex-[1_1_14rem] text-body min-[900px]:max-w-[30em]">
-                        <x-bs-admin::search id="media-search" :label="__('media.lib.search_label')" :placeholder="__('media.lib.search_hint')"
-                            :clear-label="__('media.lib.search_clear')" clear-action="clearSearch" :clear-on="$searching"
-                            maxlength="{{ Dir::SEARCH_MAX }}" wire:model.live.debounce.300ms="search" />
+                {{-- Tools (board 12): from 900, row 1 = Chọn tất cả · search · Sắp xếp · grid / list, row 2 = the filter buttons;
+                     below 900, row 1 = search · grid / list, row 2 = Chọn tất cả … Lọc · Sắp xếp. Chọn tất cả and Sắp xếp have
+                     one copy per layout (the other is hidden), so the Tab order follows what is seen. --}}
+                @php
+                    $selAll = $canPick && $pageUlids !== [] && $view === 'grid';
+                @endphp
+                <div class="flex flex-col gap-3 border-b border-border px-4 pt-4 pb-3 min-[900px]:gap-2">
+                    <div class="flex min-w-0 items-center gap-3">
+                        @if ($selAll)
+                            <div class="hidden shrink-0 whitespace-nowrap min-[900px]:block">
+                                <x-bs-admin::list.check :checked="$allOn" :label="__('media.lib.sel_all')" :aria-label="__('media.lib.sel_all_aria')" visible wire:click="{{ $selectCall }}" />
+                            </div>
+                        @endif
+                        <div class="min-w-0 flex-1 text-body">
+                            <x-bs-admin::search id="media-search" :label="__('media.lib.search_label')" :placeholder="__('media.lib.search_hint')"
+                                :clear-label="__('media.lib.search_clear')" clear-action="clearSearch" :clear-on="$searching"
+                                maxlength="{{ Dir::SEARCH_MAX }}" wire:model.live.debounce.300ms="search" />
+                        </div>
+                        <x-bs-admin::sort-menu class="hidden min-[900px]:block" copy="wide" :options="$sortOptions" :active="$sort" :lit="$sort !== 'new'" set="setSort" />
+                        <div class="inline-flex shrink-0 gap-3 rounded-full bg-primary/7 p-0.5" role="radiogroup" aria-label="{{ __('media.lib.view_label') }}">
+                            <button type="button" role="radio" aria-checked="{{ $view === 'grid' ? 'true' : 'false' }}" aria-label="{{ __('media.lib.view_grid') }}" title="{{ __('media.lib.view_grid') }}" wire:click="setView('grid')"
+                                    class="flex size-control items-center justify-center rounded-full text-text-muted transition-colors hover:bg-primary/12 aria-checked:bg-primary/16 aria-checked:text-primary-text aria-checked:shadow-[inset_0_0_0_1px_currentColor] any-pointer-coarse:size-hit"><x-bs-admin::icon name="ri-grid" class="size-4" /></button>
+                            <button type="button" role="radio" aria-checked="{{ $view === 'list' ? 'true' : 'false' }}" aria-label="{{ __('media.lib.view_list') }}" title="{{ __('media.lib.view_list') }}" wire:click="setView('list')"
+                                    class="flex size-control items-center justify-center rounded-full text-text-muted transition-colors hover:bg-primary/12 aria-checked:bg-primary/16 aria-checked:text-primary-text aria-checked:shadow-[inset_0_0_0_1px_currentColor] any-pointer-coarse:size-hit"><x-bs-admin::icon name="ri-list-check" class="size-4" /></button>
+                        </div>
                     </div>
-                    <x-bs-admin::filter-panel class="shrink-0 flex-nowrap" :sections="$sections" :label="__('admin.list.filter')"
-                        :active="$conditions + ($trash ? 1 : 0)" :results="__('media.lib.f_see', ['n' => $num($totals['n'])])" clear="clearFilters" />
-                    <x-bs-admin::sort-menu :options="$sortOptions" :active="$sort" :lit="$sort !== 'new'" set="setSort" />
-                    <div class="inline-flex shrink-0 rounded-md border border-border-strong p-0.5" role="radiogroup" aria-label="{{ __('media.lib.view_label') }}">
-                        <button type="button" role="radio" aria-checked="{{ $view === 'grid' ? 'true' : 'false' }}" aria-label="{{ __('media.lib.view_grid') }}" title="{{ __('media.lib.view_grid') }}" wire:click="setView('grid')"
-                                class="flex size-control items-center justify-center rounded text-text-muted aria-checked:bg-primary/12 aria-checked:text-primary-text any-pointer-coarse:size-hit"><x-bs-admin::icon name="ri-grid" class="size-4" /></button>
-                        <button type="button" role="radio" aria-checked="{{ $view === 'list' ? 'true' : 'false' }}" aria-label="{{ __('media.lib.view_list') }}" title="{{ __('media.lib.view_list') }}" wire:click="setView('list')"
-                                class="flex size-control items-center justify-center rounded text-text-muted aria-checked:bg-primary/12 aria-checked:text-primary-text any-pointer-coarse:size-hit"><x-bs-admin::icon name="ri-list-check" class="size-4" /></button>
-                    </div>
+                    <x-bs-admin::tool-row class="gap-3 min-[900px]:flex-wrap">
+                        @if ($selAll)
+                            <div class="min-[900px]:hidden">
+                                <x-bs-admin::list.check :checked="$allOn" :label="__('media.lib.sel_all')" :aria-label="__('media.lib.sel_all_aria')" visible wire:click="{{ $selectCall }}" />
+                            </div>
+                        @endif
+                        <x-bs-admin::filter-panel class="ms-auto shrink-0 flex-nowrap min-[900px]:ms-0 min-[900px]:shrink min-[900px]:flex-wrap min-[900px]:gap-3" :sections="$sections" :label="__('admin.list.filter')"
+                            :active="$conditions + ($trash ? 1 : 0)" :results="__('media.lib.f_see', ['n' => $num($totals['n'])])" clear="clearFilters" />
+                        <x-bs-admin::sort-menu class="min-[900px]:hidden" :options="$sortOptions" :active="$sort" :lit="$sort !== 'new'" set="setSort" />
+                    </x-bs-admin::tool-row>
                 </div>
 
                 <x-bs-admin::filter-status class="mx-1 mb-2"
                     :group="$trash ? __('media.lib.trash') : null"
                     :summary="$filtering ? __('media.lib.match_of', ['n' => $num($totals['n']), 'm' => $num($baseN)]) : null"
                     :chips="$chips" :clear="$filtering ? 'clearFilters' : null" />
-
-                @if ($canPick && $pageUlids !== [] && $view === 'grid')
-                    <div class="px-4 pb-2">
-                        <x-bs-admin::list.check :checked="$allOn" :label="__('media.lib.sel_all')" :aria-label="__('media.lib.sel_all_aria')" visible wire:click="{{ $selectCall }}" />
-                    </div>
-                @endif
 
                 @if ($picked !== [] && $canPick)
                     @php
@@ -412,6 +429,7 @@
                     </div>
                 @endif
             </section>
+        </div>
         </div>
     @endif
 
