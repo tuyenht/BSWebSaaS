@@ -128,3 +128,25 @@ it('lists the library on a flat query budget (no N+1 across rows)', function ():
     // trash count, formats). An N+1 over the 10 rows would blow well past this.
     expect($count)->toBeLessThanOrEqual(30);
 });
+
+it('lays the tools out as board 12 draws them: select-all, search, Sort and the view switch on one row, the filters below', function (): void {
+    $manager = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($manager, 'admin', ['media.view', 'media.delete.any']));
+    seedMediaAsset(1, ['original_filename' => 'xuong.png']);
+
+    $html = $this->actingAs($manager)->get('http://a.test/admin/media')->assertOk()->getContent();
+
+    // Two layouts, one copy each of «Chọn tất cả» and Sắp xếp: the wide row first, then the narrow one.
+    preg_match_all('/aria-controls="(sm-[0-9a-f]{8}(?:-wide)?)"/', $html, $sorts);
+    expect(array_values(array_unique($sorts[1])))->toHaveCount(2)
+        ->and($sorts[1][0])->toEndWith('-wide')
+        ->and(substr_count($html, e(__('media.lib.sel_all_aria'))))->toBe(2);
+
+    // Row 1 in the order seen (the Tab order): select-all, search, Sort, grid / list; the filter buttons come after it.
+    $at = fn (string $needle): int|false => strpos($html, $needle);
+    $wide = $at('-wide"');
+    expect($at(e(__('media.lib.sel_all_aria'))))->toBeLessThan($at('id="media-search"'))
+        ->and($at('id="media-search"'))->toBeLessThan($wide)
+        ->and($wide)->toBeLessThan($at('aria-label="'.e(__('media.lib.view_label')).'"'))
+        ->and($at('aria-label="'.e(__('media.lib.view_label')).'"'))->toBeLessThan($at('data-fsec="kinds"'));
+});
