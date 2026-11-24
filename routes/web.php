@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Http\Controllers\AccessRequestController;
+use App\Modules\Admin\Http\Controllers\FacebookDataDeletionController;
 use App\Modules\Admin\Http\Controllers\HintPreferenceController;
 use App\Modules\Admin\Http\Controllers\LeadExportController;
 use App\Modules\Admin\Http\Controllers\LeadFileDownloadController;
@@ -412,6 +413,17 @@ Route::prefix(config('admin.prefix', 'admin'))
 Route::get('/oauth/callback', [OAuthController::class, 'callback'])
     ->middleware('web')
     ->name('oauth.callback');
+
+// Meta's data-deletion callback for the platform's shared Facebook app (no tenant context, like the
+// callback above). Posted by Meta's servers: no session token, so it is exempt from CSRF in
+// bootstrap/app.php and proven by its signature instead. The status page shows the confirmation code.
+Route::post('/oauth/facebook/data-deletion', [FacebookDataDeletionController::class, 'request'])
+    ->middleware(['web', 'throttle:60,1'])
+    ->name('oauth.facebook.deletion');
+Route::get('/oauth/facebook/data-deletion/{code}', [FacebookDataDeletionController::class, 'status'])
+    ->where('code', '[a-z0-9]{32}')
+    ->middleware(['web', 'throttle:60,1'])
+    ->name('oauth.facebook.deletion.status');
 
 // ── Auth + 2FA-setup redirect targets (stubs until P1 UIs; precede the catch-all) ─
 Route::get('/login', fn () => response()->json(['message' => 'Authentication required.'], 401))
