@@ -3,6 +3,7 @@
     'active',
     'lit' => false,
     'set',
+    'copy' => '',
 ])
 @php
     // The Sort button of a record list's tools row (canvas .ql-sort, K69): "⇅ Sắp xếp" opens a menu headed
@@ -13,6 +14,7 @@
     //
     // $options: list<array{key: string, label: string, icon?: string|null}>. $active: the key in force.
     // $set: the host's public method a choice calls with the key, e.g. "setSort" — a fixed name, never input.
+    // $copy: names a second Sort button on the same page (one per layout, the other hidden), so the menus' ids differ.
     //
     // Opens with Enter, Space or ↓ (focus goes to the order in force); ↑ ↓ move through it, Home / End jump to
     // the first / last; Esc or Tab closes it and focus returns to the button. One item at a time is in the
@@ -20,7 +22,7 @@
     $current = collect($options)->firstWhere('key', $active)['label'] ?? '';
     $anyOn = in_array($active, array_column($options, 'key'), true);
     $name = __('admin.list.sort_named', ['name' => $current]);
-    $menuId = 'sm-'.substr(md5($set.'|'.implode(',', array_column($options, 'key'))), 0, 8);
+    $menuId = 'sm-'.substr(md5($set.'|'.implode(',', array_column($options, 'key'))), 0, 8).($copy !== '' ? '-'.$copy : '');
     $pill = 'hit-area group inline-flex min-h-control shrink-0 items-center justify-center gap-1.5 rounded-full border px-3.5 text-body font-medium transition-colors any-pointer-coarse:min-h-hit aria-expanded:border-primary-text aria-expanded:bg-primary/12 aria-expanded:text-primary-text';
     $state = $lit ? 'border-primary-text bg-primary/12 text-primary-text' : 'border-transparent bg-primary/7 text-text hover:bg-primary/12';
 @endphp
