@@ -48,6 +48,9 @@ final class Media extends Model
      */
     public const int ALT_MAX_LENGTH = 188;
 
+    /** The longest picture title (one locale) an admin may save (design board 12 «Tiêu đề ảnh»). */
+    public const int TITLE_MAX_LENGTH = 120;
+
     /** Sniffed mime → the extension label the library groups/badges by ("Định dạng" filter). */
     public const array MIME_EXT_LABELS = [
         'image/jpeg' => 'jpg',
