@@ -980,6 +980,17 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain('\u0022productsTab\u0022:{\u0022note\u0022:true');
     file_put_contents($dir.'/menus-shop.html', $html);
 
+    // The same screen while support staff are signed in for the owner: it only looks (banner, locked notes,
+    // greyed changes), signed in by the same support staff member as the categories render above.
+    $this->flushSession();
+    $html = $this->withSession(['support_session' => [
+        'staff_id' => $staff->id, 'staff_label' => 'Lê Hoàng Phúc', 'member_id' => $owner->id, 'reason' => 'Khách nhờ sửa trình đơn',
+        'site_id' => 1, 'expires_at' => now()->addMinutes(30)->getTimestamp(), 'session_ulid' => null,
+    ]])->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/menus')->assertOk()->getContent();
+    expect($html)->toContain(__('menus.ui_support_banner'));
+    file_put_contents($dir.'/menus-support.html', $html);
+    $this->flushSession();
+
     // The products list on a selling site, with a realistic set: two languages, short and very long names, every
     // price shape (none, plain, one thousand million, on sale with an end date), every stock kind, labels, a
     // three-level category and some products without the English translation. GET-only, like the other screens.
@@ -1571,5 +1582,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 143);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 144);
 });

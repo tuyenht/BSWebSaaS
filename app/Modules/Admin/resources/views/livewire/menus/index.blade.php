@@ -22,7 +22,10 @@
         'checkOk', 'checkTips', 'checkBad', 'checkAndTips', 'trashKids', 'trashDays', 'restoreNeedsSave', 'restored',
         'iconHits', 'iconTipDone', 'descTaken', 'goneTitle', 'goneBody', 'goneKids', 'goneOk', 'goneRemoved',
     ])->mapWithKeys(fn (string $k): array => [$k => $u($k)])->all();
+    // support staff signed in for a member: every change says why instead of happening (the server refuses it too)
+    $supWhy = __('menus.reason_support_session');
     $texts += [
+        'supWhy' => $supWhy,
         'undone' => __('admin.tree.undone'),
         'redone' => __('admin.tree.redone'),
         'tooDeep' => __('admin.tree.too_deep'),
@@ -37,7 +40,9 @@
         'iconAuto' => $u('icon_auto'), 'iconPick' => $u('icon_pick'), 'iconOff' => $u('icon_off'), 'iconOffTip' => $u('icon_off_tip'),
         'iconChange' => $u('icon_change'), 'iconChangeTip' => $u('icon_change_tip'), 'iconAutoTip' => $u('icon_auto_tip'),
     ];
-    $config = ['initial' => $initial, 'main' => $main, 'icons' => $icons, 'kinds' => $kinds, 'texts' => $texts, 'edit' => $edit];
+    $config = ['initial' => $initial, 'main' => $main, 'icons' => $icons, 'kinds' => $kinds, 'texts' => $texts, 'edit' => $edit, 'support' => $support];
+    // The line a locked part of the screen carries during a support session.
+    $supNote = 'flex items-start gap-1.5 text-caption leading-normal text-text-muted';
 
     // The few looks this screen shares between its own parts (sizes and colours are the shared tokens).
     $head = 'hit-area -mx-4 -my-3 flex min-w-0 flex-1 items-center gap-2 px-4 py-3 text-left';
@@ -65,8 +70,8 @@
                 <x-bs-admin::button variant="outline" color="secondary" :href="$siteUrl" :navigate="false" target="_blank" rel="noopener">
                     <x-bs-admin::icon name="ri-external-link" class="size-4" />{{ $u('open_site') }}
                 </x-bs-admin::button>
-                <x-bs-admin::button disabled x-on:click="save()" x-bind:disabled="!dirty().n || saveBusy || screen !== 'data'"
-                    x-bind:title="dirty().n ? dirty().text : {{ $j($u('nothing_to_save')) }}">
+                <x-bs-admin::button disabled x-on:click="save()" x-bind:disabled="!dirty().n || saveBusy || screen !== 'data' || support"
+                    x-bind:title="support ? {{ $j($supWhy) }} : (dirty().n ? dirty().text : {{ $j($u('nothing_to_save')) }})">
                     <x-bs-admin::icon name="ri-save-3" class="size-4" /><span x-text="saveBusy ? {{ $j($u('saving')) }} : saveLabel">{{ $u('save') }}</span>
                 </x-bs-admin::button>
             </x-slot:actions>
@@ -115,6 +120,10 @@
 
         <template x-if="screen === 'data'">
         <div class="flex flex-col gap-4">
+            @if ($support)
+                <x-bs-admin::alert color="warning" icon="ri-lock" role="note">{{ $u('support_banner') }}</x-bs-admin::alert>
+            @endif
+
             {{-- Saving failed --}}
             <x-bs-admin::alert color="danger" icon="ri-error-warning" x-show="saveErr">
                 <div class="flex flex-wrap items-center gap-2.5">
@@ -187,9 +196,14 @@
                             <template x-if="q.item && item(q.item)">
                                 <span class="flex flex-wrap gap-2">
                                     <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="goIssue(q)"><x-bs-admin::icon name="ri-focus-3" class="size-4" />{{ $u('see_item') }}</x-bs-admin::button>
-                                    <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="remove(q.item)"><x-bs-admin::icon name="ri-delete-bin" class="size-4" />{{ $u('remove') }}</x-bs-admin::button>
+                                    <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="remove(q.item)" :disabled="$support" :title="$support ? $supWhy : null"><x-bs-admin::icon name="ri-delete-bin" class="size-4" />{{ $u('remove') }}</x-bs-admin::button>
                                 </span>
                             </template>
+                            @if ($support)
+                                <template x-if="q.item && item(q.item)">
+                                    <span class="{{ $supNote }} flex-[1_1_100%]"><x-bs-admin::icon name="ri-lock" class="mt-0.5 size-3.5 shrink-0" />{{ $supWhy }}</span>
+                                </template>
+                            @endif
                         </div>
                     </template>
                     <div x-show="issues.length > 3" class="border-t border-border-soft px-4 py-2">
@@ -440,7 +454,7 @@
                         <div x-show="filtering" class="flex flex-wrap items-center gap-2 border-b border-border bg-surface-muted px-3.5 py-2">
                             <span class="text-text-muted"><x-bs-admin::icon name="ri-filter-3" class="size-4" /></span>
                             <span class="min-w-0 flex-[1_1_220px] text-caption leading-normal text-text-muted" x-text="@js($u('filter_note')).replace(':n', rows().length)"></span>
-                            <x-bs-admin::button size="sm" variant="outline" color="secondary" x-show="filter === 'issue' && goneKeys.length >= 2" x-on:click="removeGone()" title="{{ $u('gone_bulk_tip') }}">
+                            <x-bs-admin::button size="sm" variant="outline" color="secondary" x-show="filter === 'issue' && goneKeys.length >= 2" x-on:click="removeGone()" :disabled="$support" title="{{ $support ? $supWhy : $u('gone_bulk_tip') }}">
                                 <x-bs-admin::icon name="ri-delete-bin" class="size-4" /><span x-text="@js($u('gone_bulk')).replace(':n', goneKeys.length)"></span>
                             </x-bs-admin::button>
                             <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="q = ''; filter = 'all'">{{ $u('clear_filter') }}</x-bs-admin::button>
@@ -454,7 +468,7 @@
                         {{-- The rows: the shared tree, drawn from the draft --}}
                         <x-bs-admin::tree id="mn-tree" local move="treeMove" :label="$u('tree_label')" x-bind:data-max-depth="maxDepth" x-init="treeOn++">
                             <template x-for="r in rows()" :key="r.k">
-                                <x-bs-admin::tree.row row="r" drag-off="filtering || sel === r.k" x-bind:class="sel === r.k && '!bg-primary-soft'">
+                                <x-bs-admin::tree.row row="r" drag-off="support || filtering || sel === r.k" x-bind:class="sel === r.k && '!bg-primary-soft'">
                                     <span class="flex min-w-0 items-center gap-2">
                                     <span class="shrink-0 self-center text-text-muted">
                                         <template x-if="ico(r.it)"><svg class="size-4" aria-hidden="true"><use :href="'#mn-ic-' + ico(r.it)"></use></svg></template>
@@ -485,25 +499,32 @@
                                     </span>
                                     <x-slot:actions>
                                         <span class="whitespace-nowrap text-caption text-text-muted @max-[26.875rem]:hidden" x-text="r.src"></span>
-                                        <x-bs-admin::button size="sm" variant="ghost" color="primary" icon x-on:click="moveUp(r.k)" x-bind:disabled="filtering"
+                                        <x-bs-admin::button size="sm" variant="ghost" color="primary" icon x-on:click="moveUp(r.k)" x-bind:disabled="filtering || support"
                                             x-bind:title="{{ $j(__('admin.tree.move_up').' (Alt ↑)') }}" x-bind:aria-label="{{ $j(__('admin.tree.move_up')) }} + ' — ' + r.name"><x-bs-admin::icon name="ri-arrow-up-s" class="size-5" /></x-bs-admin::button>
-                                        <x-bs-admin::button size="sm" variant="ghost" color="primary" icon x-on:click="moveDown(r.k)" x-bind:disabled="filtering"
+                                        <x-bs-admin::button size="sm" variant="ghost" color="primary" icon x-on:click="moveDown(r.k)" x-bind:disabled="filtering || support"
                                             x-bind:title="{{ $j(__('admin.tree.move_down').' (Alt ↓)') }}" x-bind:aria-label="{{ $j(__('admin.tree.move_down')) }} + ' — ' + r.name"><x-bs-admin::icon name="ri-arrow-down-s" class="size-5" /></x-bs-admin::button>
                                         <x-bs-admin::list.actions name="" name-bind="r.name" :title="$u('more_actions')">
                                             <x-slot:menu>
-                                                <x-bs-admin::list.menu-item icon="ri-pencil" x-on:click="pick(r.k)">{{ $u('edit') }}</x-bs-admin::list.menu-item>
+                                                <x-bs-admin::list.menu-item icon="ri-pencil" x-on:click="pick(r.k)" :off="$support">{{ $u('edit') }}</x-bs-admin::list.menu-item>
                                                 <template x-if="srcEdit(r.it)">
                                                     <a role="menuitem" class="list-mi" x-bind:href="srcEdit(r.it)"><x-bs-admin::icon name="ri-external-link" class="list-mi-i" /><span x-text="{{ $j($u('src_open')) }}.replace(':kind', kindName(r.it).toLowerCase())"></span></a>
                                                 </template>
-                                                <x-bs-admin::list.menu-item icon="ri-eye-off" x-on:click="toggleHide(r.k)"><span x-text="r.it.options.hidden ? {{ $j($u('show')) }} : {{ $j($u('hide')) }}"></span></x-bs-admin::list.menu-item>
+                                                <x-bs-admin::list.menu-item icon="ri-eye-off" x-on:click="toggleHide(r.k)" :off="$support"><span x-text="r.it.options.hidden ? {{ $j($u('show')) }} : {{ $j($u('hide')) }}"></span></x-bs-admin::list.menu-item>
                                                 <x-bs-admin::list.menu-sep />
-                                                <x-bs-admin::tree.move-menu row="r" />
-                                                <x-bs-admin::list.menu-item icon="ri-drag-move-2" x-on:click="mvOpen(r.k)" x-bind:aria-disabled="filtering ? 'true' : null">{{ $u('move_to') }}</x-bs-admin::list.menu-item>
-                                                <x-bs-admin::list.menu-item icon="ri-file-copy" x-on:click="r.k.startsWith('new:') || copy(r.k)" x-bind:aria-disabled="r.k.startsWith('new:') ? 'true' : null">{{ $u('dup') }}</x-bs-admin::list.menu-item>
+                                                @if ($support)
+                                                    {{-- every move greyed, the reason said once under them --}}
+                                                    <x-bs-admin::tree.move-menu :row="['pos' => 2, 'size' => 3, 'level' => 2]" :reason="$supWhy" />
+                                                    <x-bs-admin::list.menu-item icon="ri-drag-move-2" x-on:click="mvOpen(r.k)" off>{{ $u('move_to') }}</x-bs-admin::list.menu-item>
+                                                    <x-bs-admin::list.menu-item icon="ri-file-copy" x-on:click="copy(r.k)" off>{{ $u('dup') }}</x-bs-admin::list.menu-item>
+                                                @else
+                                                    <x-bs-admin::tree.move-menu row="r" />
+                                                    <x-bs-admin::list.menu-item icon="ri-drag-move-2" x-on:click="mvOpen(r.k)" x-bind:aria-disabled="filtering ? 'true' : null">{{ $u('move_to') }}</x-bs-admin::list.menu-item>
+                                                    <x-bs-admin::list.menu-item icon="ri-file-copy" x-on:click="r.k.startsWith('new:') || copy(r.k)" x-bind:aria-disabled="r.k.startsWith('new:') ? 'true' : null">{{ $u('dup') }}</x-bs-admin::list.menu-item>
+                                                @endif
                                                 <x-bs-admin::list.menu-sep />
                                                 <x-bs-admin::list.menu-item icon="ri-history" x-on:click="(r.unsaved && !r.k.startsWith('new:')) && revert(r.k)" x-bind:aria-disabled="!r.unsaved || r.k.startsWith('new:') ? 'true' : null">{{ $u('revert') }}</x-bs-admin::list.menu-item>
                                                 <x-bs-admin::list.menu-sep />
-                                                <x-bs-admin::list.menu-item icon="ri-delete-bin" danger x-on:click="remove(r.k)">{{ $u('remove') }}</x-bs-admin::list.menu-item>
+                                                <x-bs-admin::list.menu-item icon="ri-delete-bin" danger x-on:click="remove(r.k)" :off="$support">{{ $u('remove') }}</x-bs-admin::list.menu-item>
                                             </x-slot:menu>
                                         </x-bs-admin::list.actions>
                                     </x-slot:actions>
@@ -530,17 +551,21 @@
                                             </div>
                                             <div class="mt-3.5 grid grid-cols-2 gap-3.5 @max-[37.5rem]:grid-cols-1">
                                                 <div class="flex min-w-0 flex-col gap-1.5">
+                                                    {{-- n: the length as typed (the count follows each key; the draft takes the text when the field is left) --}}
+                                                    <div class="contents" x-data="{ n: null }" x-effect="desc(r.it); n = null">
                                                     <label class="flex min-w-0 flex-col gap-1.5">
                                                         <span class="flex items-center gap-1.5 text-caption font-semibold text-text">{{ $u('f_desc') }}<x-bs-admin::badge soft pill color="secondary"><span x-text="loc.toUpperCase()"></span></x-bs-admin::badge>
-                                                            <span class="ml-auto font-normal" :class="desc(r.it).length > descMax(r.it) ? 'text-warning-text' : 'text-text-muted'" x-text="desc(r.it).length + '/' + descMax(r.it)"></span></span>
-                                                        <textarea rows="3" maxlength="500" class="field w-full rounded border border-border-input bg-surface px-3 text-text-strong disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted leading-relaxed" :value="desc(r.it)" x-on:change="setDesc(r.k, $event.target.value.trim())"
-                                                                  :placeholder="@js($u('f_desc_ph'))"></textarea>
+                                                            <span class="ml-auto text-right font-normal" :class="(n ?? desc(r.it).length) > descMax(r.it) ? 'text-warning-text' : 'text-text-muted'"
+                                                                  x-text="((n ?? desc(r.it).length) > descMax(r.it) ? @js($u('f_desc_count_over')) : @js($u('f_desc_count'))).replace(':n', n ?? desc(r.it).length).replace(':max', descMax(r.it))"></span></span>
+                                                        <textarea rows="3" maxlength="500" class="field w-full rounded border border-border-input bg-surface px-3 text-text-strong disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted leading-relaxed" :value="desc(r.it)" x-on:input="n = $event.target.value.trim().length" x-on:change="setDesc(r.k, $event.target.value.trim())"
+                                                                  :placeholder="descTop(r.it) ? @js($u('f_desc_ph_group')) : @js($u('f_desc_ph'))"></textarea>
                                                     </label>
                                                     <span class="flex flex-wrap items-center gap-2">
                                                         <span class="min-w-0 flex-[1_1_160px] text-caption leading-normal text-text-muted"
-                                                              x-text="desc(r.it).length > descMax(r.it) ? @js($u('f_desc_long')).replace(':n', descMax(r.it)) : (r.it.options.mega ? @js($u('f_desc_mega')) : @js($u('f_desc_hint')))"></span>
+                                                              x-text="(n ?? desc(r.it).length) > descMax(r.it) ? @js($u('f_desc_long')).replace(':n', descMax(r.it)) : (descTop(r.it) ? @js($u('f_desc_mega')) : @js($u('f_desc_hint')))"></span>
                                                         <x-bs-admin::button size="sm" variant="outline" color="secondary" x-show="descSrc(r.it)" x-on:click="descFromSource(r.k)" title="{{ $u('desc_src_tip') }}"><x-bs-admin::icon name="ri-magic" class="size-4" />{{ $u('desc_src') }}</x-bs-admin::button>
                                                     </span>
+                                                    </div>
                                                 </div>
                                                 <div class="flex min-w-0 flex-col gap-1.5">
                                                     <span class="flex items-center gap-1.5 text-caption font-semibold text-text">{{ $u('f_icon') }}<span class="font-normal text-text-muted">{{ $u('optional') }}</span></span>
@@ -749,6 +774,9 @@
                             </button>
                         </x-slot:header>
                         <div x-show="!fold2.add">
+                            @if ($support)
+                                <p class="{{ $supNote }} px-3 pt-2" role="note"><x-bs-admin::icon name="ri-lock" class="mt-0.5 size-3.5 shrink-0" /><span>{{ $supWhy }}</span></p>
+                            @endif
                             <div class="flex flex-wrap gap-1.5 px-3 py-2.5" role="group" aria-label="{{ $u('add') }}">
                                 @foreach (['page' => 'tab_page', 'category' => 'tab_category', 'product' => 'tab_product', 'special' => 'tab_special', 'url' => 'tab_url'] as $k => $lbl)
                                     <x-bs-admin::button size="sm" variant="outline" color="secondary" x-bind:aria-pressed="tab === '{{ $k }}'" x-on:click="setTab('{{ $k }}')">{{ $u($lbl) }}</x-bs-admin::button>
@@ -766,7 +794,7 @@
                                 <x-bs-admin::input id="mn-new-url" :label="$u('f_address')" x-model="newUrl" inputmode="url" autocomplete="url" placeholder="{{ $u('new_url_ph') }}" aria-describedby="mn-url-hint" />
                                 <span id="mn-url-hint" class="text-caption leading-normal" :class="newUrl.trim() && !url.ok ? 'text-danger-text' : 'text-text-muted'"
                                       x-text="!newUrl.trim() ? @js($u('url_empty')) : (url.ok ? @js($u('url_will')).replace(':url', url.url) + (url.note ? ' — ' + url.note : '') : url.msg)"></span>
-                                <x-bs-admin::button variant="outline" color="secondary" x-on:click="addUrl()" x-bind:disabled="!newLabel.trim() || !url.ok"><x-bs-admin::icon name="ri-add" class="size-4" />{{ $u('add_link') }}</x-bs-admin::button>
+                                <x-bs-admin::button variant="outline" color="secondary" x-on:click="addUrl()" x-bind:disabled="support || !newLabel.trim() || !url.ok"><x-bs-admin::icon name="ri-add" class="size-4" />{{ $u('add_link') }}</x-bs-admin::button>
                             </div>
 
                             <div x-show="tab !== 'url'">
@@ -792,7 +820,7 @@
                                     <p x-show="searching && !srcRows().length" role="status" class="px-3.5 py-5 text-center text-caption text-text-muted">{{ $u('searching') }}</p>
                                 </div>
                                 <div class="border-t border-border px-3 py-2.5">
-                                    <x-bs-admin::button variant="outline" color="secondary" class="w-full" x-on:click="addPicked()" x-bind:disabled="!pickedN">
+                                    <x-bs-admin::button variant="outline" color="secondary" class="w-full" x-on:click="addPicked()" x-bind:disabled="support || !pickedN">
                                         <x-bs-admin::icon name="ri-add" class="size-4" /><span x-text="pickedN ? {{ $j($u('add_n')) }}.replace(':n', pickedN) : {{ $j($u('pick_first')) }}"></span>
                                     </x-bs-admin::button>
                                 </div>
