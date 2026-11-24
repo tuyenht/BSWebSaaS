@@ -213,6 +213,10 @@
     "resources/js/admin-guide.js": {
       "js": 8952,
       "css": 1945
+    },
+    "resources/js/admin-social.js": {
+      "js": 1311,
+      "css": 0
     }
   }
 }

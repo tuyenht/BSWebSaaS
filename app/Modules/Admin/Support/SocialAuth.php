@@ -84,6 +84,25 @@ final readonly class SocialAuth
         return self::ownComplete($this->siteRow($provider));
     }
 
+    /**
+     * The website's whole choice for this provider from one read of each tier, for the settings
+     * screen: its switch, whether it chose its own app, whether that app is complete, and whether
+     * the platform's shared app is ready.
+     *
+     * @return array{on: bool, own: bool, own_ready: bool, shared_ready: bool}
+     */
+    public function siteChoice(string $provider): array
+    {
+        $site = $this->siteRow($provider);
+
+        return [
+            'on' => self::switchedOn($site),
+            'own' => self::choosesOwn($site),
+            'own_ready' => self::ownComplete($site),
+            'shared_ready' => $this->sharedReady($provider),
+        ];
+    }
+
     /** How many accounts have linked this provider (across the platform). */
     public function usersCount(string $provider): int
     {
