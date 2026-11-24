@@ -14,15 +14,19 @@ use Illuminate\Console\Command;
 
 /**
  * Checks the platform's shared social-login apps against their providers and records the result on
- * each app's row (platform_settings group 'oauth_social'): keys accepted → status 'ok'; keys refused
- * → status 'error', which hides that provider's button on every website using the shared app (the
- * password still works); no clear answer → the old status stays, so a network fault never hides a
- * button. `checked_at` is written whenever the provider answered clearly; a changed status leaves an
+ * each app's row (platform_settings group 'oauth_social'): keys accepted → status 'ok' and the
+ * refusal count back to zero; keys refused twice in a row → status 'error', which hides that
+ * provider's button on every website using the shared app (the password still works), while a
+ * first refusal only counts (`fails`, tied to the keys it was for by `fails_for`) and keeps the
+ * status; no clear answer → nothing changes, so a network fault never hides a button. `checked_at` is written whenever the provider answered clearly; a changed status leaves an
  * audit row. Only apps with both a client id and a secret are checked; websites' own apps are not.
  */
 class CheckSocialApps extends Command
 {
     private const string GROUP = 'oauth_social';
+
+    /** Refusals in a row, for the same keys, before an app is marked broken. */
+    private const int FAILS_TO_ERROR = 2;
 
     #[\Override]
     protected $signature = 'social:check-apps';
@@ -63,15 +67,26 @@ class CheckSocialApps extends Command
             // The keys may have been replaced while the provider answered: never stamp a verdict on
             // keys that were not the ones checked. The re-read and the write share one row lock, so
             // a save of new keys cannot land between them.
-            $new = $verdict === SocialAppVerdict::Valid ? 'ok' : 'error';
+            $fingerprint = hash('sha256', $clientId."\0".$stored);
             $old = null;
-            $written = $platform->change(self::GROUP, $provider, function (?array $row) use ($clientId, $stored, $new, &$old): ?array {
+            $new = null;
+            $written = $platform->change(self::GROUP, $provider, function (?array $row) use ($clientId, $stored, $verdict, $fingerprint, &$old, &$new): ?array {
                 if ($row === null || ($row['client_id'] ?? null) !== $clientId || ($row['client_secret'] ?? null) !== $stored) {
                     return null;
                 }
 
                 $old = Cast::stringOrNull($row['status'] ?? null);
+                if ($verdict === SocialAppVerdict::Valid) {
+                    $fails = 0;
+                    $new = 'ok';
+                } else {
+                    // Only refusals of these same keys count: new keys start again from zero.
+                    $fails = (($row['fails_for'] ?? null) === $fingerprint ? Cast::int($row['fails'] ?? null) : 0) + 1;
+                    $new = $fails >= self::FAILS_TO_ERROR ? 'error' : $old;
+                }
                 $row['status'] = $new;
+                $row['fails'] = $fails;
+                $row['fails_for'] = $fails > 0 ? $fingerprint : null;
                 $row['checked_at'] = now()->toIso8601String();
 
                 return $row;
@@ -89,7 +104,9 @@ class CheckSocialApps extends Command
                 ]);
             }
 
-            $this->line("{$provider}: {$new}.");
+            $this->line($verdict === SocialAppVerdict::Invalid && $new !== 'error'
+                ? "{$provider}: keys refused once; status kept until a second refusal."
+                : "{$provider}: ".Cast::string($new).'.');
         }
 
         return self::SUCCESS;

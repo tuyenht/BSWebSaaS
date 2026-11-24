@@ -11,7 +11,8 @@ use App\Modules\Tenancy\Context\CurrentSite;
  * Resolves which social-login (Google/Facebook/…) OAuth app a sign-in uses, from two tiers:
  *
  *  - the platform's shared app (platform_settings group 'oauth_social', key = provider):
- *    {client_id, client_secret, enabled (master switch), status ('ok'|'error'|null), checked_at};
+ *    {client_id, client_secret, enabled (master switch), status ('ok'|'error'|null), checked_at,
+ *    fails/fails_for (refusals in a row, see CheckSocialApps)};
  *  - the website's own choice (site_settings group 'oauth_social', key = provider):
  *    {on (the site's switch), own (use its own app), client_id, client_secret}.
  *

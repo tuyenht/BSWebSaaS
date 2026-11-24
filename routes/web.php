@@ -416,13 +416,15 @@ Route::get('/oauth/callback', [OAuthController::class, 'callback'])
 
 // Meta's data-deletion callback for the platform's shared Facebook app (no tenant context, like the
 // callback above). Posted by Meta's servers: no session token, so it is exempt from CSRF in
-// bootstrap/app.php and proven by its signature instead. The status page shows the confirmation code.
+// bootstrap/app.php and proven by its signature instead; it starts no session and sets no cookie.
+// The status page shows the confirmation code. Both share one per-IP limit.
 Route::post('/oauth/facebook/data-deletion', [FacebookDataDeletionController::class, 'request'])
-    ->middleware(['web', 'throttle:60,1'])
+    ->withoutMiddleware([StartSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class])
+    ->middleware('throttle:'.FacebookDataDeletionController::LIMITER)
     ->name('oauth.facebook.deletion');
 Route::get('/oauth/facebook/data-deletion/{code}', [FacebookDataDeletionController::class, 'status'])
     ->where('code', '[a-z0-9]{32}')
-    ->middleware(['web', 'throttle:60,1'])
+    ->middleware(['web', 'throttle:'.FacebookDataDeletionController::LIMITER])
     ->name('oauth.facebook.deletion.status');
 
 // ── Auth + 2FA-setup redirect targets (stubs until P1 UIs; precede the catch-all) ─

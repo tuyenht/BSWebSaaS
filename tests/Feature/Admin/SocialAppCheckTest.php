@@ -115,6 +115,8 @@ it('marks each shared app by the provider\'s answer', function (): void {
         'graph.facebook.com/*' => Http::response(['error' => ['message' => 'Invalid Client ID', 'code' => 101]], 400),
     ]);
 
+    // Refused keys are marked broken on the second refusal in a row.
+    $this->artisan('social:check-apps')->assertSuccessful();
     $this->artisan('social:check-apps')->assertSuccessful();
 
     $google = sharedSocialRow('google');
@@ -183,6 +185,55 @@ it('brings a broken app back once its keys are accepted', function (): void {
 
     expect(sharedSocialRow('facebook')['status'])->toBe('ok')
         ->and(socialStatusAudits())->toBe(1);
+});
+
+it('marks an app broken only on the second refusal in a row', function (): void {
+    sharedSocialApp('google', ['status' => 'ok', 'checked_at' => '2026-11-01T00:00:00+00:00']);
+    Http::fake(['oauth2.googleapis.com/*' => Http::response(['error' => 'invalid_client'], 401)]);
+
+    $this->artisan('social:check-apps')->assertSuccessful();
+    $once = sharedSocialRow('google');
+    expect($once['status'])->toBe('ok')
+        ->and($once['fails'])->toBe(1)
+        ->and($once['checked_at'])->not->toBe('2026-11-01T00:00:00+00:00')
+        ->and(socialStatusAudits())->toBe(0);
+
+    $this->artisan('social:check-apps')->assertSuccessful();
+    expect(sharedSocialRow('google'))->toMatchArray(['status' => 'error', 'fails' => 2])
+        ->and(socialStatusAudits())->toBe(1);
+});
+
+it('starts the refusal count again after an accepted check, and never counts a no-answer', function (): void {
+    sharedSocialApp('google', ['status' => 'ok']);
+    Http::fakeSequence('oauth2.googleapis.com/*')
+        ->push(['error' => 'invalid_client'], 401)
+        ->pushFailedConnection()
+        ->push(['error' => 'invalid_grant'], 400)
+        ->push(['error' => 'invalid_client'], 401);
+
+    $this->artisan('social:check-apps')->assertSuccessful();
+    $this->artisan('social:check-apps')->assertSuccessful();   // no answer: the count stays at one
+    expect(sharedSocialRow('google'))->toMatchArray(['status' => 'ok', 'fails' => 1]);
+
+    $this->artisan('social:check-apps')->assertSuccessful();   // accepted: back to zero
+    expect(sharedSocialRow('google'))->toMatchArray(['status' => 'ok', 'fails' => 0, 'fails_for' => null]);
+
+    $this->artisan('social:check-apps')->assertSuccessful();   // a refusal after that is a first one again
+    expect(sharedSocialRow('google'))->toMatchArray(['status' => 'ok', 'fails' => 1])
+        ->and(socialStatusAudits())->toBe(0);
+});
+
+it('does not carry a refusal over to new keys', function (): void {
+    sharedSocialApp('google', ['status' => 'ok']);
+    Http::fake(['oauth2.googleapis.com/*' => Http::response(['error' => 'invalid_client'], 401)]);
+    $this->artisan('social:check-apps')->assertSuccessful();
+
+    // New keys saved over the row, the old count left in it.
+    app(PlatformSettings::class)->put('oauth_social', 'google', [...sharedSocialRow('google'), 'client_secret' => SecretCipher::encrypt('new-secret')]);
+    $this->artisan('social:check-apps')->assertSuccessful();
+
+    expect(sharedSocialRow('google'))->toMatchArray(['status' => 'ok', 'fails' => 1])
+        ->and(socialStatusAudits())->toBe(0);
 });
 
 it('checks only shared apps with both keys', function (): void {

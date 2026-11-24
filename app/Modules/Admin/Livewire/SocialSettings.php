@@ -6,6 +6,7 @@ use App\Modules\Admin\Livewire\Concerns\TracksSavedState;
 use App\Modules\Admin\Support\OAuthFlow;
 use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\SettingsRepository;
+use App\Modules\Admin\Support\SocialAuth;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Shared\Support\Cast;
 use Illuminate\Support\Facades\Gate;
@@ -21,6 +22,10 @@ use Livewire\Component;
  *
  * Client secrets are write-only (a "stored" flag is shown; blank-on-save keeps the value)
  * and persist AES-256-GCM encrypted via SecretCipher.
+ *
+ * A save also writes the website's switch (`on`, the checkbox) and whether it uses its own app
+ * (`own`: a client id is filled), so an unticked save turns the provider off even when the
+ * platform's shared app could serve it; the checkbox shows that switch as SocialAuth reads it.
  */
 #[Layout('admin::layouts.app')]
 final class SocialSettings extends Component
@@ -99,13 +104,14 @@ final class SocialSettings extends Component
     private function load(): void
     {
         $repo = app(SettingsRepository::class);
+        $social = app(SocialAuth::class);
 
         foreach ($this->providers as $provider) {
             $cfg = $repo->get('oauth_social', $provider) ?? [];
             $this->forms[$provider] = [
                 'client_id' => Cast::string($cfg['client_id'] ?? null),
                 'client_secret' => '',
-                'enabled' => (bool) ($cfg['enabled'] ?? false),
+                'enabled' => $social->siteOn($provider),
             ];
             $this->secretSet[$provider] = ! empty($cfg['client_secret']);
         }
@@ -123,10 +129,14 @@ final class SocialSettings extends Component
             ? SecretCipher::encrypt($newSecret)
             : ($existing['client_secret'] ?? null);
 
+        $clientId = (string) ($form['client_id'] ?? '');
+        $enabled = (bool) ($form['enabled'] ?? false);
         $repo->put('oauth_social', $provider, [
-            'client_id' => (string) ($form['client_id'] ?? ''),
+            'on' => $enabled,
+            'own' => $clientId !== '',
+            'client_id' => $clientId,
             'client_secret' => $secret,
-            'enabled' => (bool) ($form['enabled'] ?? false),
+            'enabled' => $enabled,
         ]);
 
         $this->forms[$provider]['client_secret'] = '';
