@@ -79,24 +79,8 @@
                     $visible = array_values(array_filter($fields, fn (array $f): bool => $f[1] !== 'note' && ($f[0] !== 'moitUrl' || $form['moitOn'] === true)));
                     $bodyId = 'gs-g-'.$group;
                 @endphp
-                <div class="overflow-hidden rounded-[9px] border bg-surface"
-                     x-bind:class="open === {{ Js::from($group) }} ? 'border-primary-text/25 shadow-card' : 'border-border'">
-                    <h2>
-                        <button type="button" class="flex min-h-control-row w-full items-center gap-2.5 px-4 py-3 text-start hover:bg-surface-hover"
-                                x-bind:class="open === {{ Js::from($group) }} && 'bg-primary-soft/60'"
-                                x-on:click="open = open === {{ Js::from($group) }} ? null : {{ Js::from($group) }}"
-                                x-bind:aria-expanded="open === {{ Js::from($group) }} ? 'true' : 'false'" aria-controls="{{ $bodyId }}">
-                            <span class="inline-flex shrink-0 text-text-muted" x-show="open !== {{ Js::from($group) }}"><x-bs-admin::icon name="ri-add" :class="$glyph" /></span>
-                            <span class="inline-flex shrink-0 text-primary-text" x-show="open === {{ Js::from($group) }}" x-cloak><x-bs-admin::icon name="ri-subtract" :class="$glyph" /></span>
-                            <span class="min-w-0 flex-1 text-[calc(0.875rem+var(--user-text-boost))] font-semibold text-text-strong">{{ __('admin.gs.g.'.$group) }}</span>
-                            @if (($groupErrors[$group] ?? 0) > 0)
-                                <span class="shrink-0 rounded-full bg-danger-soft px-2 py-0.5 text-caption font-bold whitespace-nowrap text-danger-text">{{ __('admin.gs.errs', ['count' => $groupErrors[$group]]) }}</span>
-                            @endif
-                            <span class="shrink-0 text-caption whitespace-nowrap text-text-muted">{{ __('admin.gs.items', ['count' => count($visible)]) }}</span>
-                        </button>
-                    </h2>
-                    <div id="{{ $bodyId }}" x-show="open === {{ Js::from($group) }}" @if ($group !== $groupKeys[0]) x-cloak @endif
-                         class="grid items-start gap-x-5 gap-y-4 border-t border-border px-4 pt-4 pb-[18px] @min-[45rem]/gs:grid-cols-2">
+                <x-bs-admin::settings-group :key="$group" :id="$bodyId" :title="__('admin.gs.g.'.$group)" :count="count($visible)" :bad="$groupErrors[$group] ?? 0"
+                                            :first="$group === $groupKeys[0]" class="grid items-start gap-x-5 gap-y-4 @min-[45rem]/gs:grid-cols-2">
                         @foreach ($fields as [$key, $kind, $perLang, $required])
                             @continue($key === 'moitUrl' && $form['moitOn'] !== true)
                             @php
@@ -232,8 +216,7 @@
                                 @enderror
                             </div>
                         @endforeach
-                    </div>
-                </div>
+                </x-bs-admin::settings-group>
             @endforeach
         </div>
 
