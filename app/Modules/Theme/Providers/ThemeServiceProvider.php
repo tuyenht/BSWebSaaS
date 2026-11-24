@@ -141,13 +141,16 @@ final class ThemeServiceProvider extends ServiceProvider
             'url' => ['type' => 'url', 'action' => 'title'],
         ],
         // The consult box of a side column: a small line, a heading, a line of text and one button; the hotline and
-        // the email come from the site's contact settings.
+        // the email come from the site's contact settings unless the box names its own (phone, email).
         'consult' => [
             'eyebrow' => ['type' => 'text'],
             'heading' => ['type' => 'text'],
             'text' => ['type' => 'textarea'],
             'button_label' => ['type' => 'text'],
             'button_url' => ['type' => 'url', 'action' => 'button_label'],
+            // Typed as the contact block types them, so a pack or an editor checks each as a number or an address.
+            'phone' => ['type' => 'url'],
+            'email' => ['type' => 'url'],
         ],
         // The title band of an inner page: it carries the page's single h1 (the layout skips its
         // own when this block leads the page). Title defaults to the page title; overlay is the
