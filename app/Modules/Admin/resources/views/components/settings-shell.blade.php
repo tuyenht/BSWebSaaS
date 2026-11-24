@@ -109,7 +109,7 @@
     // and app.js keeps it in step across wire:navigate through [data-set-shell]. Per request only.
     request()->attributes->set('admin.sidebar_fold', true);
 @endphp
-<div class="mx-auto max-w-5xl" data-set-shell>
+<div data-set-shell>
     {{-- ⌂ › Cài đặt › section. Below 768px the section row carries the way back instead. --}}
     @if ($sectionName !== '' && $items !== [])
         <x-bs-admin::breadcrumb class="mb-2 max-md:hidden" :items="[
