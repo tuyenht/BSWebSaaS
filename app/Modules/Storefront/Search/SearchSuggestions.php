@@ -6,6 +6,7 @@ namespace App\Modules\Storefront\Search;
 
 use App\Modules\Cms\Routing\CategoryDependents;
 use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Cms\Support\DisplayDate;
 use App\Modules\Cms\Taxonomy\CategoryTemplates;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\Cast;
@@ -127,7 +128,7 @@ final readonly class SearchSuggestions
                 'icon' => $cards === 'project' ? 'briefcase' : 'doc',
                 'url' => $this->paths->publicUrl($entry['path'], $locale),
                 'thumb' => $this->thumb($entry['image']),
-                'meta' => $dated && $entry['at'] !== null ? $this->time->day(CarbonImmutable::parse($entry['at']), $locale) : '',
+                'meta' => $dated ? $this->shownDay($entry['day'], $entry['at'], $locale) : '',
             ]];
         }
         // newest first, never-dated last (each list came in that order: a stable sort keeps it on a tie)
@@ -328,5 +329,13 @@ final readonly class SearchSuggestions
         }
 
         return $out;
+    }
+
+    /** The day a post shows as published (its display day, else the real one) as the results page prints it; '' for none. */
+    private function shownDay(?string $day, ?string $at, string $locale): string
+    {
+        $shown = DisplayDate::shown([DisplayDate::KEY => $day], $at !== null ? $this->time->forDisplay(CarbonImmutable::parse($at)) : null, $this->time->zone());
+
+        return $shown !== null ? SiteTime::formatDay($shown, $this->time->dateFormat(), $locale) : '';
     }
 }
