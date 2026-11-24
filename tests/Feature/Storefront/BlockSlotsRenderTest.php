@@ -672,8 +672,9 @@ it('adds exactly the expected queries to a page for its filled slots, and stays 
     expect($with - $base)->toBe($delta)->and($with)->toBeLessThanOrEqual($ceiling);
 })->with([
     // The slot settings are read in one go; pages and files named by buttons are looked up once per kind;
-    // "category_list" reads the branch and the names of its categories.
-    'a post' => ['/tin-tuc/ong-dang-doc', ['post_aside' => [['type' => 'recent_posts', 'props' => []], ['type' => 'category_list', 'props' => []], ['type' => 'consult', 'props' => ['button_label' => 'Gửi', 'button_url' => '/lien-he']]], 'after_post' => [['type' => 'cta', 'props' => ['heading' => 'Báo giá', 'button_label' => 'Gửi', 'button_url' => '/lien-he']]]], 2, 22],
+    // "category_list" reads the branch and the names of its categories. A post's ceiling includes the
+    // one read of its tags (the chips under the post).
+    'a post' => ['/tin-tuc/ong-dang-doc', ['post_aside' => [['type' => 'recent_posts', 'props' => []], ['type' => 'category_list', 'props' => []], ['type' => 'consult', 'props' => ['button_label' => 'Gửi', 'button_url' => '/lien-he']]], 'after_post' => [['type' => 'cta', 'props' => ['heading' => 'Báo giá', 'button_label' => 'Gửi', 'button_url' => '/lien-he']]]], 2, 23],
     'a product' => ['/do-ga-kiem', ['after_product' => [['type' => 'cta', 'props' => ['heading' => 'Báo giá', 'button_label' => 'Gửi', 'button_url' => '/lien-he']]]], 0, 23],
     'a product, every slot' => ['/do-ga-kiem', [
         'product_before_action' => [['type' => 'richtext_html', 'props' => ['html' => '<p>Giá theo bản vẽ.</p>']]],
@@ -681,8 +682,8 @@ it('adds exactly the expected queries to a page for its filled slots, and stays 
         'product_tabs' => [['type' => 'richtext_html', 'props' => ['html' => '<h2>Bảo hành</h2><p>12 tháng.</p>']], ['type' => 'faq', 'props' => ['heading' => 'Hỏi đáp', 'items' => [['q' => 'Có?', 'a' => 'Có.']]]]],
         'after_product' => [['type' => 'cta', 'props' => ['heading' => 'Báo giá', 'button_label' => 'Gửi', 'button_url' => '/lien-he']]],
     ], 0, 23],
-    'a post, categories with counts' => ['/tin-tuc/ong-dang-doc', ['post_aside' => [['type' => 'category_list', 'props' => ['counts' => 'show']]]], 3, 23],
-    'a post, posts of its category' => ['/tin-tuc/ong-dang-doc', ['post_aside' => [['type' => 'category_list', 'props' => ['source' => 'posts']]]], 3, 24],
+    'a post, categories with counts' => ['/tin-tuc/ong-dang-doc', ['post_aside' => [['type' => 'category_list', 'props' => ['counts' => 'show']]]], 3, 24],
+    'a post, posts of its category' => ['/tin-tuc/ong-dang-doc', ['post_aside' => [['type' => 'category_list', 'props' => ['source' => 'posts']]]], 3, 25],
     'a category list' => ['/tin-tuc', ['after_list' => [['type' => 'cta', 'props' => ['heading' => 'Báo giá', 'button_label' => 'Gửi', 'button_url' => '/lien-he']]]], 0, 17],
 ]);
 

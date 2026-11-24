@@ -146,6 +146,15 @@
 @endif
 @endif
             <div class="post__body sf-prose sf-prose--article">{!! $sections !!}</div>
+@if (! $sfPlain && ! empty($tags))
+            <nav class="post-tags" aria-label="{{ __('storefront.post_tags') }}">
+                <ul class="post-tags__list">
+@foreach ($tags as $tag)
+                    <li><a class="post-tags__tag" href="{{ $tag['url'] }}">{{ $tag['name'] }}</a></li>
+@endforeach
+                </ul>
+            </nav>
+@endif
 @if ($sfRail)
             @include('theme::partials.post-share', ['url' => $sfShareUrl, 'rail' => false])
 @endif

@@ -10,6 +10,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RedirectRules;
@@ -17,6 +18,7 @@ use App\Modules\Cms\Routing\ResolvedCategory;
 use App\Modules\Cms\Routing\ResolvedContent;
 use App\Modules\Cms\Routing\ResolvedProduct;
 use App\Modules\Cms\Routing\RouteResolver;
+use App\Modules\Cms\Support\EntryTags;
 use App\Modules\Cms\Support\JobFacts;
 use App\Modules\Cms\Taxonomy\CategoryTemplates;
 use App\Modules\Media\Models\Media;
@@ -329,6 +331,9 @@ final readonly class StorefrontController
             // a layout of the wrong role, or one the theme lacks, falls back like null.
             $categoryTemplate = $category !== null ? $this->categoryTemplates->detail($category) : null;
             $extra['post'] = $this->posts->band($entry, $content->translation, $locale);
+            // its tags named in this language, each linking to the tag's page
+            // resolved per request: it reads the current site, which a controller kept between requests must not hold
+            $extra['tags'] = app(EntryTags::class)->links($entry, $locale);
 
             // A post on a job layout carries its deadline state and the JobPosting data for the head.
             $own = $entry->template_override;
@@ -437,6 +442,9 @@ final readonly class StorefrontController
         // working through the post→product migration (posts until products land, products after).
         // A category below the catalog root lists the products filed under it, on the same terms.
         $taxonomy = $resolved->taxonomy;
+        if ($taxonomy->vocabulary === Taxonomy::TAG) {
+            return $this->renderTag($resolved, $locale, $path, $chrome);
+        }
         // The real list layout, with "follow the parent" already turned into a layout name or null.
         $listTemplate = $this->categoryTemplates->list($taxonomy);
         // Asked through ProductIndexLink, which remembers both for the request: a page showing the
@@ -498,6 +506,39 @@ final readonly class StorefrontController
         }
 
         return $this->listResponse($resolved, $locale, $path, $position, $more, ListPage::ulidOf($rows->last()), $posts, $extra, $listTemplate);
+    }
+
+    /**
+     * A tag's page: the published posts filed under the tag (a facet term, any pivot position from
+     * Entry::FACET_POSITION_BASE up) whose version in this language is published, newest first, as
+     * news cards with keyset paging like every list. While the tag has fewer than two such posts the
+     * page is `noindex,follow` (a thin page; the sitemap leaves it out too, SitemapRoutes): the
+     * first page holds every post then, so it decides without a count.
+     *
+     * @param  array<string, mixed>  $chrome  page chrome (menu, lang, hreflang)
+     */
+    private function renderTag(ResolvedCategory $resolved, string $locale, string $path, array $chrome): Response
+    {
+        $position = $this->lists->position(request());
+        $query = Entry::query()
+            ->select('entries.*')
+            ->join('entry_taxonomies as tagged', fn (JoinClause $join) => $join->on('tagged.entry_id', '=', 'entries.id')
+                ->where('tagged.taxonomy_id', $resolved->taxonomy->id)->where('tagged.position', '>=', Entry::FACET_POSITION_BASE))
+            ->where('entries.type', 'post')
+            ->where('entries.status', 'published')
+            ->whereHas('translations', fn (Builder $query) => $query->where('locale', $locale)->where('status', 'published'))
+            ->with(['translations', 'routes']);
+        ['rows' => $rows, 'more' => $more] = $this->lists->window($query, Entry::class, $position);
+
+        $extra = $chrome;
+        $extra['cards'] = $this->lists->postCards($rows, $locale, [], true);
+        $extra['chips'] = [];
+        $extra['band'] = $this->listBand($resolved);
+        if ($position['after'] === null && $position['page'] === 1 && ! $more && $rows->count() < 2) {
+            $extra['robots'] = 'noindex,follow';
+        }
+
+        return $this->listResponse($resolved, $locale, $path, $position, $more, ListPage::ulidOf($rows->last()), [], $extra, 'grid-news');
     }
 
     /**
@@ -570,7 +611,10 @@ final readonly class StorefrontController
         $extra['canonical'] = $canonical;
         $extra['ogType'] = 'website';
         // Home → the categories above → this one (its own entry keeps the page's canonical address).
-        $trail = $this->crumbs->category($resolved->taxonomy, $locale, $resolved->translation->name, $resolved->translation->slug);
+        // a tag stands alone under Home, at its own address
+        $trail = $resolved->taxonomy->vocabulary === Taxonomy::TAG
+            ? [$this->crumbs->crumb($resolved->translation->name, $this->paths->forTag($resolved->translation->slug))]
+            : $this->crumbs->category($resolved->taxonomy, $locale, $resolved->translation->name, $resolved->translation->slug);
         $parentName = count($trail) >= 2 ? $trail[count($trail) - 2]['name'] : null;
         $lastLevel = count($trail) - 1;
         $trail = array_map(

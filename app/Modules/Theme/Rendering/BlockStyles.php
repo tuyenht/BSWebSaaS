@@ -34,7 +34,7 @@ final class BlockStyles
         'resources/css/sf-blocks.css' => ['sf-branch', 'sf-branches', 'sf-faq', 'sf-qlinks', 'sf-quote', 'sf-quotes', 'sf-team', 'sf-member', 'sf-step', 'sf-steps', 'sf-plan', 'sf-plans'],
         'resources/css/sf-rail.css' => ['partners', 'sf-rail'],
         'resources/css/sf-prose.css' => ['sf-prose', 'sf-table', 'richtext', 'sf-doc'],
-        'resources/css/sf-post.css' => ['post', 'post-aside', 'post-band', 'post-columns', 'post-cover', 'post-nav', 'post-page', 'post-progress', 'post-related', 'post-share', 'post-toc', 'post-toc-phone', 'slot-categories', 'slot-consult', 'slot-file', 'slot-recent', 'slot-title'],
+        'resources/css/sf-post.css' => ['post', 'post-aside', 'post-band', 'post-columns', 'post-cover', 'post-nav', 'post-page', 'post-progress', 'post-tags', 'post-related', 'post-share', 'post-toc', 'post-toc-phone', 'slot-categories', 'slot-consult', 'slot-file', 'slot-recent', 'slot-title'],
         'resources/css/sf-product.css' => ['product', 'product-band', 'product-page', 'product-toc', 'sf-preview'],
         'resources/css/sf-form.css' => ['lead-form', 'contact', 'sf-contact-card', 'sf-contact-cards', 'sf-map', 'sf-bmap', 'cf-turnstile'],
         'resources/css/sf-media.css' => ['sf-gallery', 'sf-video', 'sf-video-block', 'sf-viewer'],

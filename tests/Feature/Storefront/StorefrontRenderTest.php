@@ -121,8 +121,8 @@ it('renders a published post at its category path within budget', function (): v
     });
 
     // Home budget (10) + category lookup (2) + the resolved nav menu (4) + the previous, next and
-    // related posts of its category (one read) with their titles and addresses (two).
-    expect($count)->toBeLessThanOrEqual(18);
+    // related posts of its category (one read) with their titles and addresses (two) + its tags (one).
+    expect($count)->toBeLessThanOrEqual(19);
 });
 
 it('renders a category list page of its published posts within budget', function (): void {

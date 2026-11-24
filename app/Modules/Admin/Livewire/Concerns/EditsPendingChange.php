@@ -16,6 +16,7 @@ use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Support\DisplayDate;
+use App\Modules\Cms\Support\EntryTags;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Support\Cast;
@@ -146,6 +147,20 @@ trait EditsPendingChange
             sort($kept);
             if ($others !== $kept) {
                 $this->addError('categoryIds', Cast::string(__('entries.ed.change_cats')));
+
+                return false;
+            }
+            // «Thẻ» goes straight to the website, so a held-back save cannot change it (the card says so)
+            $typed = [];
+            foreach ($this->tags as $name) {
+                $typed[] = EntryTags::slugOf($name, $this->locale);
+            }
+            $stored = [];
+            foreach (app(EntryTags::class)->names($entry, $this->locale) as $name) {
+                $stored[] = EntryTags::slugOf($name, $this->locale);
+            }
+            if (array_values(array_unique($typed)) !== $stored) {
+                $this->addError('tagDraft', Cast::string(__('entries.ed.tag_held')));
 
                 return false;
             }
