@@ -54,7 +54,7 @@
              x-on:keydown.escape="if (secInfo) { secInfo = false; $refs.secInfoBtn.focus() }">
             <div class="flex min-w-0 items-start gap-x-0.5">
                 {{-- Below 768px: «‹» back to the list of sections. --}}
-                <a href="{{ $listHash }}" data-set-back class="max-md:[[data-set-list]_&]:hidden hit-area -ms-3 inline-flex size-hit shrink-0 items-center justify-center rounded-md text-accent transition-colors hover:bg-surface-hover md:hidden"
+                <a href="{{ $listHash }}" data-set-back class="max-md:[[data-set-list]_&]:hidden hit-area -ms-3 inline-flex size-hit shrink-0 items-center justify-center rounded-md text-primary-text transition-colors hover:bg-surface-hover md:hidden"
                    title="{{ __('admin.set.back_aria', ['name' => $root]) }}" aria-label="{{ __('admin.set.back_aria', ['name' => $root]) }}">
                     <x-bs-admin::icon name="ri-arrow-left-s" class="size-[min(1.75rem,calc(1.5rem+var(--user-text-boost)))]" />
                 </a>
@@ -136,10 +136,10 @@
                                     <a href="{{ route($item['route']) }}" @if ($on) aria-current="page" x-on:click="openCurrent($event)" @else wire:navigate @endif
                                        @class([
                                            'flex min-h-menu-row items-center gap-[11px] rounded-md px-3 py-[9px] text-[calc(0.8125rem+var(--user-text-boost))] transition-colors any-pointer-coarse:min-h-menu-row-touch',
-                                           'bg-admin-primary/10 font-semibold text-accent' => $on,
-                                           'font-medium text-body-text hover:bg-admin-primary/[0.07]' => ! $on,
+                                           'bg-primary/10 font-semibold text-primary-text' => $on,
+                                           'font-medium text-text hover:bg-primary/[0.07]' => ! $on,
                                        ])>
-                                        <x-bs-admin::icon :name="$item['icon']" @class(['size-[calc(1.0625rem+var(--user-text-boost))] shrink-0', 'text-accent' => $on, 'text-body-muted' => ! $on]) />
+                                        <x-bs-admin::icon :name="$item['icon']" @class(['size-[calc(1.0625rem+var(--user-text-boost))] shrink-0', 'text-primary-text' => $on, 'text-text-muted' => ! $on]) />
                                         <span class="min-w-0 flex-1 [overflow-wrap:break-word]">{{ $item['label'] }}</span>
                                     </a>
                                 </li>
