@@ -14,12 +14,15 @@ use Illuminate\Notifications\Notification;
  * Notifies the form's recipients (forms.notify_emails) that a new lead arrived. Sent via the
  * resolved tenant mailer (SubmitForm applies it before dispatch) in the site's locale. The
  * lead's answers are listed under the form's field labels (LeadAnswers); spam is never sent.
+ * Files the visitor sent are only counted («N tệp đính kèm»): never attached, never linked — they
+ * are opened in the lead's page, behind its permission.
  */
 final class NewLeadNotification extends Notification
 {
     public function __construct(
         private readonly FormSubmission $submission,
         private readonly Form $form,
+        private readonly int $files = 0,
     ) {}
 
     /**
@@ -50,6 +53,10 @@ final class NewLeadNotification extends Notification
             // What a visitor typed is shown as typed — never as a link, an image or a heading; a site's
             // field label is the site's own text, so it is kept plain too.
             $mail->line('**'.MailText::plain($line['label']).':** '.MailText::plain($line['value']));
+        }
+
+        if ($this->files > 0) {
+            $mail->line(trans_choice('forms.lead_email_files', $this->files, ['count' => $this->files]));
         }
 
         return $mail->line(__('forms.lead_email_outro'));

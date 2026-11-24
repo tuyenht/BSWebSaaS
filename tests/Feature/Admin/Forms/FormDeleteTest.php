@@ -121,6 +121,24 @@ it('asks first, naming the leads that go too and offering to switch the form off
     expect(formRowsLeft($form))->toBe(['forms' => 1, 'fields' => 2, 'leads' => 4]);
 });
 
+it('counts the leads in the Trash in the question, since they go with the form too', function (): void {
+    $manager = blockLibraryUser(1, 'admin');
+    $form = deletableForm(1, 'bao-gia', 'Yêu cầu báo giá', leads: 3);
+    $trashed = FormSubmission::on('pgsql_admin')->withoutGlobalScopes()->where('form_id', $form->id)->orderBy('id')->firstOrFail();
+    DB::connection('pgsql_admin')->table('form_submissions')->where('id', $trashed->id)->update(['deleted_at' => now()]);
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $form): void {
+        Livewire::actingAs($manager)->test(FormList::class)
+            ->call('askDelete', $form->ulid)
+            ->assertSet('deleting.leads', 3)
+            ->call('confirmDelete')
+            ->assertSet('confirmOpen', false)
+            ->assertSet('toastTone', 'success');
+    });
+
+    expect(formRowsLeft($form))->toBe(['forms' => 0, 'fields' => 0, 'leads' => 0]);
+});
+
 it('offers no switch-off for a form that is off or has no leads', function (string $status, int $leads): void {
     $manager = blockLibraryUser(1, 'admin');
     $form = deletableForm(1, 'bao-gia', 'Yêu cầu báo giá', leads: $leads, status: $status);

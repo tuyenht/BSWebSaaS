@@ -3,6 +3,7 @@
 use App\Modules\Admin\Http\Controllers\AccessRequestController;
 use App\Modules\Admin\Http\Controllers\HintPreferenceController;
 use App\Modules\Admin\Http\Controllers\LeadExportController;
+use App\Modules\Admin\Http\Controllers\LeadFileDownloadController;
 use App\Modules\Admin\Http\Controllers\OAuthController;
 use App\Modules\Admin\Http\Controllers\SessionController;
 use App\Modules\Admin\Http\Controllers\SupportSignInController;
@@ -366,6 +367,13 @@ Route::prefix(config('admin.prefix', 'admin'))
             ->where('token', LeadExportTicket::PATTERN)
             ->middleware('throttle:20,1')
             ->name('admin.forms.export');
+        // «Tải về» of a file a visitor sent with a lead: by the file's ulid (D2), for a member given
+        // forms.files, never in a support session; audited, then a 60-second signed link to the
+        // private disk that the browser saves (LeadFileDownloadController).
+        Route::get('/forms/files/{ulid}', LeadFileDownloadController::class)
+            ->where('ulid', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')
+            ->middleware('throttle:60,1')
+            ->name('admin.forms.file');
         Route::get('/forms/{ulid}', FormsInbox::class)->name('admin.forms.show');
         // Biểu mẫu (the forms themselves, contacts module): no `can:` here either — the screens show
         // the plan and no-permission cards themselves and ask FormPolicy on every request and write.

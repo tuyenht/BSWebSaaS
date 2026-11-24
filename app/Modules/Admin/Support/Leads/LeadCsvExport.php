@@ -46,9 +46,17 @@ final readonly class LeadCsvExport
         return Cast::string(__('leads.export_file', ['date' => $time->now()->format('d-m-Y')])).'.csv';
     }
 
-    /** A cell as a spreadsheet must take it: text, never a formula. */
+    /**
+     * A cell as a spreadsheet must take it: text, never a formula. A value of digits that starts
+     * with 0 (a phone number) would become a number and lose its zero, so it goes out as a
+     * constant text formula, ="0912345678", which Excel, Sheets and LibreOffice show as the text.
+     */
     public static function cell(string $value): string
     {
+        if (preg_match('/^0\d+$/D', $value) === 1) {
+            return '="'.$value.'"';
+        }
+
         return $value !== '' && in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true) ? "'".$value : $value;
     }
 

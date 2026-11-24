@@ -1,8 +1,12 @@
 <?php
 
 use App\Modules\Forms\Models\Form;
+use App\Modules\Forms\Models\FormField;
+use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Exceptions;
 
 /*
  * forms:sync-contact-fields brings the contact form of sites provisioned earlier up to the current
@@ -95,4 +99,26 @@ it('leaves a site without a contact form alone', function (): void {
     $this->artisan('forms:sync-contact-fields')->assertSuccessful();
 
     expect(app(Tenancy::class)->enter(2, fn () => Form::query()->count()))->toBe(0);
+});
+
+it('keeps syncing the websites after one that fails, then exits with a failure', function (): void {
+    foreach ([1, 2] as $site) {
+        app(Tenancy::class)->enter($site, fn () => Form::query()->create(['key' => 'contact', 'name' => ['vi' => 'Liên hệ'], 'status' => 'active']));
+    }
+    Exceptions::fake();
+    Event::listen('eloquent.creating: '.FormField::class, function (): void {
+        if (app(CurrentSite::class)->id() === 1) {
+            throw new RuntimeException('field store is down');
+        }
+    });
+
+    $this->artisan('forms:sync-contact-fields')
+        ->expectsOutputToContain('Contact forms checked: 1.')
+        ->expectsOutputToContain('1 website(s) could not be processed')
+        ->assertFailed();
+
+    $keys = fn (int $site): array => app(Tenancy::class)->enter($site, fn (): array => Form::query()->where('key', 'contact')->firstOrFail()->fields()->pluck('key')->all());
+    expect($keys(1))->toBe([])
+        ->and($keys(2))->toContain('consent');
+    Exceptions::assertReported(fn (RuntimeException $e): bool => $e->getMessage() === 'field store is down');
 });

@@ -10,6 +10,7 @@ use App\Modules\Forms\Actions\DeleteForm;
 use App\Modules\Forms\Actions\SetFormStatus;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Support\FormDraft;
+use App\Modules\Forms\Support\FormFieldTypes;
 use App\Modules\Forms\Support\FormTemplates;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Shared\Support\Cast;
@@ -109,7 +110,8 @@ final class FormList extends Component
         $this->deleting = [
             'ulid' => $form->ulid,
             'name' => $this->nameOf($form),
-            'leads' => $this->leadCounts([$form->id])[$form->id] ?? 0,
+            // the Trash goes with the form too, so the question counts it (DeleteForm does)
+            'leads' => $this->leadCounts([$form->id], withTrash: true)[$form->id] ?? 0,
             'active' => $form->status === 'active',
         ];
         $this->confirmOpen = true;
@@ -285,14 +287,20 @@ final class FormList extends Component
      */
     private function purposes(string $locale): array
     {
-        return array_map(fn (string $p): array => [
-            'key' => $p,
-            'label' => __('form_builder.purpose.'.$p),
-            'desc' => __('form_builder.purpose_desc.'.$p),
-            'icon' => FormTemplates::ICONS[$p],
-            'n' => count(FormTemplates::fields($p, $locale)) + 1,
-            'href' => route('admin.form-builder.create', ['purpose' => $p]),
-        ], FormTemplates::PURPOSES);
+        return array_map(function (string $p) use ($locale): array {
+            $fields = FormTemplates::fields($p, $locale);
+            // a purpose that brings an attachment field says so (one the platform holds back does not)
+            $withFile = in_array(FormFieldTypes::FILE, array_column($fields, 'type'), true);
+
+            return [
+                'key' => $p,
+                'label' => __('form_builder.purpose.'.$p),
+                'desc' => __('form_builder.purpose_desc.'.$p.($withFile ? '_file' : '')),
+                'icon' => FormTemplates::ICONS[$p],
+                'n' => count($fields) + 1,
+                'href' => route('admin.form-builder.create', ['purpose' => $p]),
+            ];
+        }, FormTemplates::PURPOSES);
     }
 
     /**
@@ -302,7 +310,7 @@ final class FormList extends Component
      * @param  list<int>  $ids
      * @return array<int, int>
      */
-    private function leadCounts(array $ids): array
+    private function leadCounts(array $ids, bool $withTrash = false): array
     {
         if ($ids === []) {
             return [];
@@ -310,7 +318,7 @@ final class FormList extends Component
         $site = app(CurrentSite::class)->id();
         $marks = implode(',', array_fill(0, count($ids), '?'));
         $rows = DB::select(
-            'select f.id, (select count(*) from (select 1 from form_submissions s where s.site_id = ? and s.form_id = f.id and s.status <> \'spam\' limit '.(self::LEAD_CAP + 1).') x) as n
+            'select f.id, (select count(*) from (select 1 from form_submissions s where s.site_id = ? and s.form_id = f.id and s.status <> \'spam\''.($withTrash ? '' : ' and s.deleted_at is null').' limit '.(self::LEAD_CAP + 1).') x) as n
              from forms f where f.site_id = ? and f.id in ('.$marks.')',
             [$site, $site, ...$ids],
         );

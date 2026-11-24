@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AddSecurityHeaders;
+use App\Http\Middleware\ValidatePostSize;
 use App\Modules\Admin\Errors\AdminErrorPages;
 use App\Modules\Admin\Errors\ErrorReference;
 use App\Modules\Identity\Http\Middleware\EnsureTwoFactorEnabled;
@@ -44,6 +45,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // ride along on edge/full-page-cacheable storefront HTML. Exempt it so the public form
         // submits cleanly; every authenticated admin/platform POST keeps CSRF protection.
         $middleware->validateCsrfTokens(except: ['forms/*']);
+
+        // A lead whose attached files add up past post_max_size comes back to its form with a plain
+        // message (StoreLeadRequest) rather than Laravel's 413 page; every other POST keeps it.
+        $middleware->replace(Illuminate\Http\Middleware\ValidatePostSize::class, ValidatePostSize::class);
 
         // Defense layer #1 (entitlement). Apply after SetCurrentSite has resolved
         // the tenant: 'site.active' gates lifecycle, 'module:<key>' gates modules.

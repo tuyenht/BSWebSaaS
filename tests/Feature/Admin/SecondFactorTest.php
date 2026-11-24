@@ -118,7 +118,7 @@ it('logs the user in after a valid TOTP code', function (): void {
     $service = app(TwoFactorService::class);
     $secret = $service->generateSecret();
     $user = User::factory()->create();
-    $service->enable($user, $secret, (new Google2FA)->getCurrentOtp($secret));
+    $service->enable($user, $secret, totpCode($secret, -1));
     session(['2fa.user_id' => $user->getAuthIdentifier()]);
 
     Livewire::test(TwoFactorChallenge::class)
@@ -135,7 +135,7 @@ it('logs the user in with a single-use recovery code', function (): void {
     $service = app(TwoFactorService::class);
     $secret = $service->generateSecret();
     $user = User::factory()->create();
-    $service->enable($user, $secret, (new Google2FA)->getCurrentOtp($secret));
+    $service->enable($user, $secret, totpCode($secret, -1));
     $recovery = $user->refresh()->two_factor_recovery_codes[0];
     session(['2fa.user_id' => $user->getAuthIdentifier()]);
 
@@ -149,17 +149,54 @@ it('logs the user in with a single-use recovery code', function (): void {
     $this->assertAuthenticatedAs($user);
 });
 
+it('logs the user in with a recovery code typed in capitals, as the email change step takes it', function (): void {
+    $service = app(TwoFactorService::class);
+    $secret = $service->generateSecret();
+    $user = User::factory()->create();
+    $service->enable($user, $secret, totpCode($secret, -1));
+    $recovery = $user->refresh()->two_factor_recovery_codes[0];
+    session(['2fa.user_id' => $user->getAuthIdentifier()]);
+
+    Livewire::test(TwoFactorChallenge::class)
+        ->set('useRecovery', true)
+        ->set('code', strtoupper($recovery))
+        ->call('verify')
+        ->assertHasNoErrors()
+        ->assertRedirect(route('admin.dashboard'));
+
+    $this->assertAuthenticatedAs($user);
+});
+
 it('rejects an invalid TOTP code and stays guest', function (): void {
     $service = app(TwoFactorService::class);
     $secret = $service->generateSecret();
     $user = User::factory()->create();
-    $service->enable($user, $secret, (new Google2FA)->getCurrentOtp($secret));
+    $service->enable($user, $secret, totpCode($secret, -1));
     session(['2fa.user_id' => $user->getAuthIdentifier()]);
 
     Livewire::test(TwoFactorChallenge::class)
         ->set('code', '000000')
         ->call('verify')
-        ->assertHasErrors('code');
+        ->assertHasErrors('code')
+        ->assertSee(__('admin.account.tfa_code_wrong'));
+
+    $this->assertGuest();
+});
+
+it('words a wrong recovery code without the app hint', function (): void {
+    $service = app(TwoFactorService::class);
+    $secret = $service->generateSecret();
+    $user = User::factory()->create();
+    $service->enable($user, $secret, totpCode($secret, -1));
+    session(['2fa.user_id' => $user->getAuthIdentifier()]);
+
+    Livewire::test(TwoFactorChallenge::class)
+        ->set('useRecovery', true)
+        ->set('code', 'aaaaa-bbbbb')
+        ->call('verify')
+        ->assertHasErrors('code')
+        ->assertSee(__('auth.two_factor_invalid'))
+        ->assertDontSee(__('admin.account.tfa_code_wrong'));
 
     $this->assertGuest();
 });

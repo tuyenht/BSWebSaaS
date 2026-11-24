@@ -9,6 +9,7 @@ use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormField;
 use App\Modules\Forms\Support\FormDraft;
 use App\Modules\Forms\Support\FormFieldTypes;
+use App\Modules\Forms\Support\LeadFileKinds;
 use App\Modules\Shared\Support\Cast;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +28,11 @@ use InvalidArgumentException;
  * A new form gets a key from its name (unique on the site); the key is what pages and the visitor's
  * browser use to send a lead, so it never changes afterwards.
  *
+ * A file field keeps its kind in options.accept and its most files in validation.max_files; a kind
+ * held back by config('forms.file_kinds') is refused unless the field already had it.
+ *
  * @phpstan-import-type Draft from FormDraft
+ * @phpstan-import-type DraftField from FormDraft
  */
 final readonly class SaveForm
 {
@@ -77,7 +82,7 @@ final readonly class SaveForm
     }
 
     /**
-     * @param  list<array{key: string, type: string, label: string, required: bool, choices: string}>  $fields
+     * @param  list<DraftField>  $fields
      */
     private function saveFields(Form $form, array $fields, string $locale): void
     {
@@ -87,16 +92,30 @@ final readonly class SaveForm
         foreach ($fields as $i => $draft) {
             $field = $existing[$draft['key']] ?? new FormField(['form_id' => $form->id, 'key' => $draft['key'], 'label' => [], 'options' => [], 'validation' => []]);
             $options = Cast::arr($field->options);
+            $validation = Cast::arr($field->validation);
             if (FormFieldTypes::isChoice($draft['type'])) {
                 $options['choices'] = FormDraft::choicesFrom($draft['choices'], $locale, FormFieldTypes::choices($field));
             } else {
                 unset($options['choices']);
+            }
+            if ($draft['type'] === FormFieldTypes::FILE) {
+                // a kind the platform holds back (forms.file_kinds) may stay on a field that has it,
+                // never be newly picked
+                $kept = $field->exists && $field->type === FormFieldTypes::FILE && FormFieldTypes::fileKind($field) === $draft['accept'];
+                if (! $kept && ! in_array($draft['accept'], FormFieldTypes::fileKinds(), true)) {
+                    throw new InvalidArgumentException('That kind of file is not taken.');
+                }
+                $options['accept'] = $draft['accept'];
+                $validation['max_files'] = $draft['max_files'];
+            } else {
+                unset($options['accept'], $validation['max_files']);
             }
             $field->fill([
                 'type' => $draft['type'],
                 'label' => [...Cast::arr($field->label), $locale => $draft['label']],
                 'is_required' => $draft['required'],
                 'options' => $options,
+                'validation' => $validation,
                 'sort_order' => $i + 1,
             ]);
             $field->save();
@@ -135,7 +154,9 @@ final readonly class SaveForm
                 || isset($keys[$field['key']])
                 || trim($field['label']) === '' || mb_strlen($field['label']) > FormDraft::MAX_NAME
                 || count(FormDraft::lines($field['choices'])) > FormDraft::MAX_CHOICES
-                || array_filter(FormDraft::lines($field['choices']), fn (string $c): bool => mb_strlen($c) > FormDraft::MAX_NAME) !== []) {
+                || array_filter(FormDraft::lines($field['choices']), fn (string $c): bool => mb_strlen($c) > FormDraft::MAX_NAME) !== []
+                || ($field['type'] === FormFieldTypes::FILE && (! array_key_exists($field['accept'], LeadFileKinds::KINDS)
+                    || $field['max_files'] < 1 || $field['max_files'] > FormFieldTypes::MAX_FILES))) {
                 throw new InvalidArgumentException('A field cannot be stored.');
             }
             $keys[$field['key']] = true;

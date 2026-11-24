@@ -8,6 +8,8 @@ use App\Modules\Forms\Actions\EnsureContactForm;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Brings the contact form of every site up to the current defaults through EnsureContactForm, which
@@ -33,22 +35,40 @@ final class SyncContactFieldsCommand extends Command
         $refreshConsent = (bool) $this->option('refresh-consent');
         $synced = 0;
         $refreshed = 0;
+        $failed = 0;
 
-        $tenancy->eachSite(function () use ($ensure, $refreshConsent, &$synced, &$refreshed): void {
-            if (! Form::query()->where('key', 'contact')->exists()) {
-                return;
-            }
+        foreach ($tenancy->siteIds() as $siteId) {
+            try {
+                // counted only once the site's transaction has committed
+                $result = $tenancy->enter($siteId, function () use ($ensure, $refreshConsent): ?bool {
+                    if (! Form::query()->where('key', 'contact')->exists()) {
+                        return null;
+                    }
 
-            $form = $ensure->handle([]);
-            $synced++;
-            if ($refreshConsent && $ensure->refreshConsentLabel($form)) {
-                $refreshed++;
+                    $form = $ensure->handle([]);
+
+                    return $refreshConsent && $ensure->refreshConsentLabel($form);
+                });
+                if ($result !== null) {
+                    $synced++;
+                    $refreshed += $result ? 1 : 0;
+                }
+            } catch (Throwable $e) {
+                $failed++;
+                Log::error('forms:sync-contact-fields could not process a website.', ['site_id' => $siteId]);
+                report($e);
             }
-        });
+        }
 
         $this->info("Contact forms checked: {$synced}.");
         if ($refreshConsent) {
             $this->info("Consent sentences rewritten: {$refreshed}.");
+        }
+
+        if ($failed > 0) {
+            $this->error("{$failed} website(s) could not be processed (see the error log).");
+
+            return self::FAILURE;
         }
 
         return self::SUCCESS;
