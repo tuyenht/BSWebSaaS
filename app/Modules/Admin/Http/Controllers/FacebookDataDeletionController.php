@@ -69,7 +69,9 @@ final readonly class FacebookDataDeletionController
             return response('', 400);
         }
 
-        $seenKey = self::SEEN_PREFIX.hash('sha256', $signed);
+        // Keyed on the payload part: the signature part has several accepted spellings (padding, either
+        // base64 alphabet) for the same bytes, while the payload is the exact string the HMAC covers.
+        $seenKey = self::SEEN_PREFIX.hash('sha256', substr($signed, (int) strpos($signed, '.') + 1));
         $seen = Cache::get($seenKey);
         if (is_array($seen)) {
             return response()->json($seen);

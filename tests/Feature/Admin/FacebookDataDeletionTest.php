@@ -181,6 +181,22 @@ it('answers the same signed request sent again with the first answer and deletes
         ->and(fbDeletionAudits())->toHaveCount(1);
 });
 
+it('treats another spelling of the same signature as the same request', function (): void {
+    fbLink('facebook', '1234567890');
+    $signed = fbSignedRequest(['algorithm' => 'HMAC-SHA256', 'issued_at' => time(), 'user_id' => '1234567890']);
+    [$signature, $payload] = explode('.', $signed, 2);
+    $respelled = strtr($signature, '-_', '+/').'='.'.'.$payload;
+    $url = 'http://platform.bswebsaas.test/oauth/facebook/data-deletion';
+
+    $first = $this->post($url, ['signed_request' => $signed])->assertOk();
+    $relinked = fbLink('facebook', '1234567890');
+    $again = $this->post($url, ['signed_request' => $respelled])->assertOk();
+
+    expect($again->json())->toBe($first->json())
+        ->and(SocialIdentity::query()->whereKey($relinked->getKey())->exists())->toBeTrue()
+        ->and(fbDeletionAudits())->toHaveCount(1);
+});
+
 it('refuses a body not shaped like a signed request before reading any setting', function (string $body): void {
     $queries = [];
     DB::listen(function (QueryExecuted $query) use (&$queries): void {
