@@ -148,8 +148,9 @@ final class ThemeServiceProvider extends ServiceProvider
             'text' => ['type' => 'textarea'],
             'button_label' => ['type' => 'text'],
             'button_url' => ['type' => 'url', 'action' => 'button_label'],
-            'phone' => ['type' => 'text'],
-            'email' => ['type' => 'text'],
+            // Typed as the contact block types them, so a pack or an editor checks each as a number or an address.
+            'phone' => ['type' => 'url'],
+            'email' => ['type' => 'url'],
         ],
         // The title band of an inner page: it carries the page's single h1 (the layout skips its
         // own when this block leads the page). Title defaults to the page title; overlay is the
