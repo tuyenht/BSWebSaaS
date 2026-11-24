@@ -73,7 +73,7 @@ it('opens at /admin/account and sends the old addresses there', function (): voi
     $this->actingAs($user)->get('http://a.test/admin/account')->assertOk()
         ->assertSee('Tài khoản của tôi')
         ->assertSee('Hồ sơ')->assertSee('Bảo mật')->assertSee('Tài khoản liên kết')->assertSee('Tùy chọn');
-    $this->actingAs($user)->get('http://a.test/admin/settings')->assertRedirect('/admin/account');
+    $this->actingAs($user)->get('http://a.test/admin/settings')->assertRedirect('/admin/account?tab=security');
     $this->actingAs($user)->get('http://a.test/admin/settings/security')->assertRedirect('/admin/account?tab=security');
 });
 

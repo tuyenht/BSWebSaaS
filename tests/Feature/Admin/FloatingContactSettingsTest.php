@@ -859,8 +859,10 @@ it('hides the measuring switch, the “Kết nối” row and “Dịch bằng A
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         $lw = Livewire::actingAs($admin)->test(FloatingContactSettings::class)
-            ->assertDontSee('Dịch bằng AI')->assertDontSee('Kết nối')->assertDontSee('Chi tiết kỹ thuật')
+            ->assertDontSee('Dịch bằng AI')->assertDontSee('Chi tiết kỹ thuật')
             ->assertDontSee('đo lường')->assertDontSeeHtml('toggleTrack');
+        // The row's own label; the settings menu's «Tiếp thị & Kết nối» heading is not that row.
+        expect($lw->html())->not->toMatch('/>\s*Kết nối\s*</u');
         $lw->call('save')->assertHasNoErrors();
     });
     expect(fcsStored(1)['track'] ?? null)->toBeFalse();

@@ -46,20 +46,20 @@ it('marks the current page link, and only it, as the current page', function ():
 });
 
 it('marks a page inside a group on its own link, and the group row by shape only', function (): void {
-    $sidebar = sidebarOf((string) $this->actingAs(sidebarOwner())->get('http://demo.platform.test/admin/account')->assertOk()->getContent());
+    $sidebar = sidebarOf((string) $this->actingAs(sidebarOwner())->get('http://demo.platform.test/admin/content?section=posts')->assertOk()->getContent());
 
     expect(substr_count($sidebar, 'aria-current="page"'))->toBe(1)
-        ->and($sidebar)->toMatch('/<a href="[^"]*\/admin\/account\?tab=security"\s+wire:navigate\s+aria-current="page"/')
+        ->and($sidebar)->toMatch('/<a href="[^"]*\/admin\/content\?section=posts"\s+wire:navigate\s+aria-current="page"/')
         // The group row is a disclosure button, not a page: it never claims aria-current.
         ->and($sidebar)->not->toMatch('/<button[^>]*aria-current/');
 });
 
 it('marks only the child row while its group is open, and the group row once the group closes', function (): void {
-    $sidebar = sidebarOf((string) $this->actingAs(sidebarOwner())->get('http://demo.platform.test/admin/account')->assertOk()->getContent());
+    $sidebar = sidebarOf((string) $this->actingAs(sidebarOwner())->get('http://demo.platform.test/admin/content?section=posts')->assertOk()->getContent());
     $mark = 'bg-sidebar-active shadow-[inset_3px_0_0_var(--color-sidebar-fg-active)]';
 
     preg_match('/<button\b[^>]*\bis-trail\b[^>]*>/s', $sidebar, $group);
-    preg_match('/<a href="[^"]*\/admin\/account\?tab=security"[^>]*>/s', $sidebar, $child);
+    preg_match('/<a href="[^"]*\/admin\/content\?section=posts"[^>]*>/s', $sidebar, $child);
 
     expect($group)->not->toBeEmpty()
         // First paint = the group open: the group row is bold and bright, without the bar and fill…
