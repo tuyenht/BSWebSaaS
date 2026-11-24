@@ -84,6 +84,10 @@ it('builds the title: own title, the home default, the template elsewhere, the d
     expect($this->get('http://a.test/gioi-thieu')->getContent())->toContain('<title>Giới thiệu | Cơ Khí A</title>');
     ssSet(['template' => '%tieu-de%']);
     expect($this->get('http://a.test/gioi-thieu')->getContent())->toContain('<title>Giới thiệu</title>');
+    // A page named after the website does not repeat the name.
+    ssPage('/ve-chung-toi', 'Cơ Khí A');
+    ssSet(['template' => '']);
+    expect($this->get('http://a.test/ve-chung-toi')->getContent())->toContain('<title>Cơ Khí A</title>');
 
     // A site without a name drops the dangling separator.
     ssBrand('');

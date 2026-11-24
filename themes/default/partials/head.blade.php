@@ -53,11 +53,11 @@
 
     // The share image's size is known only for the site's own library share image (BrandImages); the
     // page's featured image and the logo carry none, so no size is printed for them. The alt text is the
-    // page's title for its own image, else the business name.
+    // page's title for its own image (the heading, not the Google title with the brand after it), else the business name.
     $ogSharesBrand = empty($passedOgImage) && ! empty(data_get($brand ?? null, 'og_image'));
     $ogWidth = $ogSharesBrand ? (int) data_get($brand ?? null, 'og_image_width', 0) : 0;
     $ogHeight = $ogSharesBrand ? (int) data_get($brand ?? null, 'og_image_height', 0) : 0;
-    $ogAlt = ! empty($passedOgImage) ? (string) $seoTitle : (string) data_get($brand ?? null, 'name', '');
+    $ogAlt = ! empty($passedOgImage) ? (is_string($title ?? null) && trim($title) !== '' ? $title : (string) $seoTitle) : (string) data_get($brand ?? null, 'name', '');
 
     // The other languages this page is published in (the chrome's language list, empty on a one-language
     // site; an entry that only leads to another language's home page is not this page).

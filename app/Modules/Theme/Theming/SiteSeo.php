@@ -119,6 +119,10 @@ final class SiteSeo
         if ($home && $default !== '') {
             return $default;
         }
+        // A page named after the website ("An Vinh" on An Vinh's home) keeps its title rather than repeating the name.
+        if ($settings['template'] === '' && mb_strtolower(trim($pageTitle)) === mb_strtolower(trim($siteName))) {
+            return $pageTitle;
+        }
         $template = $settings['template'] !== '' ? $settings['template'] : self::DEFAULT_TEMPLATE;
         // strtr replaces each placeholder once: a page title holding "%ten-website%" stays text.
         $title = strtr($template, ['%tieu-de%' => $pageTitle, '%ten-website%' => $siteName]);
