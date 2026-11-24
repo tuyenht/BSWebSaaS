@@ -22,6 +22,7 @@ final readonly class PackReader
     private const array FILES = [
         'settings.json' => 'setting',
         'taxonomies.json' => 'taxonomy',
+        'sections.json' => 'section',
         'products.json' => 'product',
         'posts.json' => 'post',
         'pages.json' => 'page',

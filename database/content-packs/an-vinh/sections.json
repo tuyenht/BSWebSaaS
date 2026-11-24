@@ -1,0 +1,12 @@
+{
+ "items": [
+  {
+   "key": "section:careers",
+   "label": "Tuyển dụng",
+   "entry_type": "post",
+   "category": "tax:post_cat/tuyen-dung",
+   "icon": "ri-user-search",
+   "sort_order": 1
+  }
+ ]
+}

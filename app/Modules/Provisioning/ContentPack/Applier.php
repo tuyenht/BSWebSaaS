@@ -36,6 +36,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Storefront\Support\ThankYouPages;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\PermalinkConfig;
+use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Rendering\LayoutSlots;
@@ -44,7 +45,7 @@ use Illuminate\Support\Carbon;
 
 /**
  * Writes a plan's create / update / adopt items, in kind order (settings → profile → categories →
- * products → posts → pages → forms → menus → redirects), inside the caller's tenant transaction. It writes
+ * content sections → products → posts → pages → forms → menus → redirects), inside the caller's tenant transaction. It writes
  * exactly the plan's `desired` state through the platform's own writers: RouteSync for every
  * address (301 + chain collapse), CategoryRelinker after a category rename, assignCategories() for
  * filing, RecordEntryRevision before and after an entry write (staff can restore the earlier text
@@ -98,6 +99,7 @@ final class Applier
                 'setting' => $this->setting($planned),
                 'profile' => $this->profile($planned),
                 'taxonomy' => $this->taxonomy($planned, $planner),
+                'section' => $this->section($planned),
                 'product' => $this->product($planned),
                 'post', 'page' => $this->entry($planned, $planner),
                 'form' => $this->form($planned, $planner),
@@ -245,6 +247,37 @@ final class Applier
             }
             $this->relinker->relink($branch, ...$changes);
         }
+    }
+
+    /**
+     * A content section, as provisioning makes one: a post section on its category, with the entries
+     * permissions every provisioned section uses (roles reach it through entries.*; there is no
+     * per-section grant). An adopted section keeps its key, kind, category and permissions; only its
+     * label, icon and place in the menu change. The section memo is dropped so the posts written next
+     * are addressed under it.
+     */
+    private function section(PlanItem $planned): void
+    {
+        $desired = $planned->desired;
+        $attributes = [
+            'label' => Cast::string($desired['label'] ?? null),
+            'icon' => Cast::stringOrNull($desired['icon'] ?? null),
+            'sort_order' => Cast::int($desired['sort_order'] ?? null),
+        ];
+
+        if ($planned->recordId === null) {
+            $section = ContentSection::query()->create($attributes + [
+                'key' => $planned->item->anchor(),
+                'entry_type' => 'post',
+                'taxonomy_id' => $this->id(Cast::string($desired['category'] ?? null)),
+                'permission_prefix' => 'entries',
+            ]);
+        } else {
+            $section = ContentSection::query()->findOrFail($planned->recordId);
+            $section->update($attributes);
+        }
+        $this->ids[$planned->item->key] = $section->id;
+        $this->sections->flush();
     }
 
     /**
