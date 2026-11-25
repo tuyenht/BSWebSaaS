@@ -254,7 +254,7 @@ it('says so in words when the category left every section after the screen opene
 });
 
 it('opens the builder on a flat query budget, whatever the number of blocks in the band', function (): void {
-    $open = function (int $blocks): int {
+    $open = function (int $blocks): array {
         beIn(1, fn () => Taxonomy::query()->whereKey($this->jobs->id)->update(['meta' => ['layout_blocks' => ['after_list' => [
             'vi' => ['blocks' => array_map(fn (int $i): array => ['type' => 'cta', 'props' => ['heading' => 'Khối '.$i]], range(1, $blocks))],
         ]]]]));
