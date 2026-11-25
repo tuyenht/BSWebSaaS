@@ -357,6 +357,21 @@ it('draws the Xem button as the website link on a published row and as the previ
     });
 });
 
+it('prints the menu divider before the website items as one whole attribute, so the menu script can read it', function (): void {
+    $manager = rowManager();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $live = rowProduct('Đang bán', 'dang-ban', 'published');
+        $live->forceFill(['status' => 'published'])->save();
+
+        $html = Livewire::actingAs($manager)->test(Index::class)->html();
+
+        // a published row has an address, so the divider shows on the narrow card and whenever the Xem button is hidden
+        expect($html)->toContain('x-show="mode === &#039;card&#039; || ! xvVis"')
+            ->and($html)->not->toMatch('/x-show="mode === &#039;card&#039;"[^>]*\|\|/');
+    });
+});
+
 it('does nothing and says so when a status or a label is already what the member asked for', function (): void {
     $manager = rowManager();
 
