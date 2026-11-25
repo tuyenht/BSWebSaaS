@@ -4,8 +4,10 @@ namespace App\Modules\Admin\Livewire\Entries;
 
 use App\Modules\Admin\Livewire\Concerns\EditsBlockList;
 use App\Modules\Admin\Livewire\Concerns\EditsButtonActions;
+use App\Modules\Admin\Livewire\Concerns\EditsPageOrder;
 use App\Modules\Admin\Livewire\Concerns\EditsPendingChange;
 use App\Modules\Admin\Livewire\Concerns\ShowsEntryRevisions;
+use App\Modules\Admin\Livewire\Concerns\StartsPageFromTemplate;
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\Categories\CategorySections;
 use App\Modules\Admin\Support\Entries\EntryLangStates;
@@ -124,8 +126,10 @@ final class Editor extends Component
     use AuthorizesRequests;
     use EditsBlockList;
     use EditsButtonActions;
+    use EditsPageOrder;
     use EditsPendingChange;
     use ShowsEntryRevisions;
+    use StartsPageFromTemplate;
     use WithMediaLibraryPicker;
 
     /** How many trail rows the block shows before "Xem thêm" (design: 3, +3 per load). */
@@ -146,7 +150,7 @@ final class Editor extends Component
      * The fields the save state and the leave dialog count against the saved entry. The block list
      * is counted apart (blocksChanged): the browser cannot write it the way the server does.
      */
-    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryIds', 'coverImageKey', 'coverAlt', 'parentUlid', 'scheduleAt', 'statusTo', 'templateKey', 'displayDate'];
+    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryIds', 'coverImageKey', 'coverAlt', 'parentUlid', 'pageOrder', 'scheduleAt', 'statusTo', 'templateKey', 'displayDate'];
 
     /** Which entry is being edited — server-resolved (mount/persist); never client-set. */
     #[Locked]
@@ -515,6 +519,7 @@ final class Editor extends Component
             // «Thêm trang con»: the parent named by the list (?parent=<ulid>), when it may hold one more level
             if ($this->type === 'page') {
                 $this->presetParent($parent ?? request()->query('parent'));
+                $this->placePageOrder($this->parentUlid === null ? null : $this->findPage($this->parentUlid)?->id);
             }
             $this->slugFresh = true;
             $this->saved = $this->tracked();
@@ -2626,6 +2631,7 @@ final class Editor extends Component
         $this->parentUlid = $parent?->ulid;
         $this->parentName = $parent instanceof Entry ? $this->pageTitle($parent) : '';
         $this->address = $this->previewAddress($this->placedDraft($parent));
+        $this->placePageOrder($parent?->id);
     }
 
     /**
@@ -2676,6 +2682,7 @@ final class Editor extends Component
         $this->parentUlid = $parent?->ulid;
         $this->parentLoaded = $parent?->ulid;
         $this->parentName = $parent instanceof Entry ? $this->pageTitle($parent) : '';
+        $this->loadPageOrder($entry);
     }
 
     /** A live page of this website by its ulid (the website's scope: another website's is never found). */
@@ -3381,13 +3388,17 @@ final class Editor extends Component
             }
             $this->ulid = $entry->ulid;
             $this->status = $entry->status;
+            // a place typed in «Thứ tự»: the new page goes there now (a refusal is said; the page is made)
+            if ($this->type === 'page') {
+                $this->applyPageOrder($entry, true);
+            }
         } else {
             $entry = $this->resolveOrFail($this->ulid);
             $this->authorize('update', $entry);
             // A new «Trang cha» moves the page in the site's page tree: that tree's lock comes before any
             // row lock, as every writer of the tree takes it (MovePage), so the two can never wait on each other.
             $reparent = $this->reparenting();
-            if ($reparent) {
+            if ($reparent || $this->reordering()) {
                 PageRules::lock(app(CurrentSite::class)->id());
                 $this->lockMoveRows($entry);
             }
@@ -3452,12 +3463,18 @@ final class Editor extends Component
                 return null;
             }
             if ($held) {
-                return $this->persistHeld($entry, $stored['translation'], $proseBody ?? $layoutBody ?? $this->blocks, $reparent, $filled);
+                $saved = $this->persistHeld($entry, $stored['translation'], $proseBody ?? $layoutBody ?? $this->blocks, $reparent, $filled);
+                // its place among the pages beside it is the tree's, as the Trang list moves it: never held in the change
+                if ($saved instanceof Entry && $this->type === 'page') {
+                    $this->applyPageOrder($saved, false);
+                }
+
+                return $saved;
             }
             // not held back: no change is open (one put on the website in another tab is gone from the bar too)
             $this->changeSeen = null;
             // the move before anything is written: a refused one leaves the page as it was and the form as typed
-            if ($reparent && ! $this->moveToParent($entry)) {
+            if (($reparent && ! $this->moveToParent($entry)) || ($this->type === 'page' && ! $this->applyPageOrder($entry, $reparent))) {
                 if ($filled) {
                     $this->slug = '';
                 }
