@@ -52,7 +52,8 @@ use Illuminate\Support\Carbon;
  * address (301 + chain collapse), CategoryRelinker after a category rename, assignCategories() for
  * filing, RecordEntryRevision before and after an entry write (staff can restore the earlier text
  * from the editor's history), the media reconciler after a body write. Any exception rolls the
- * whole load back. The loader writes no person: actor null, no audit row per item.
+ * whole load back. The loader writes no person: actor null, no audit row per item, except the dates it
+ * changes (publish time, end time, display day: the model records each, as the content pack's).
  */
 final class Applier
 {
@@ -375,13 +376,19 @@ final class Applier
                 $entry->restore();   // a forced re-create of an item staff put in the trash
             }
             $this->recordRevisions($entry);
+            // Past its end time («Gỡ khỏi website lúc») a reload never puts it back up: it keeps the status
+            // it has (the sweep takes a still-live one down) and its dates, so no pack date crosses the end.
+            $expired = $entry->expires_at !== null && $entry->expires_at <= now();
+            if ($expired && $status === 'published') {
+                $status = $entry->status;
+            }
             $meta = $isPost ? $this->postMeta($entry->meta, $desired) : $entry->meta;
             $entry->fill(['status' => $status, 'meta' => $meta] + $parent);
-            if ($status === 'published' && $entry->published_at === null) {
+            if ($status === 'published' && ! $expired && $entry->published_at === null) {
                 $entry->published_at = $this->publishedAt($planned->item, $status);
             }
             // a date the pack item states wins over the live one (an item without a date keeps it)
-            if ($status === 'published' && is_string($desired['published_at'] ?? null)
+            if ($status === 'published' && ! $expired && is_string($desired['published_at'] ?? null)
                 && $entry->published_at?->copy()->utc()->format('Y-m-d') !== $desired['published_at']) {
                 $entry->published_at = $this->publishedAt($planned->item, $status);
             }
@@ -508,12 +515,18 @@ final class Applier
             $product = Product::query()->findOrFail($planned->recordId);
             // the product row before its translations, like every write of a name or a SKU
             ProductSearchWords::lock($product->site_id, $product->id);
+            // Past its end time a reload never puts it back on sale: it keeps the status it has (the
+            // sweep takes a still-live one down) and its dates, so no pack date crosses the end.
+            $expired = $product->expires_at !== null && $product->expires_at <= now();
+            if ($expired && $status === 'published') {
+                $status = $product->status;
+            }
             $product->fill(['status' => $status] + $featured);
-            if ($status === 'published' && $product->published_at === null) {
+            if ($status === 'published' && ! $expired && $product->published_at === null) {
                 $product->published_at = $this->publishedAt($planned->item, $status);
             }
             // a date the pack item states wins over the live one (an item without a date keeps it)
-            if ($status === 'published' && is_string($desired['published_at'] ?? null)
+            if ($status === 'published' && ! $expired && is_string($desired['published_at'] ?? null)
                 && $product->published_at?->copy()->utc()->format('Y-m-d') !== $desired['published_at']) {
                 $product->published_at = $this->publishedAt($planned->item, $status);
             }

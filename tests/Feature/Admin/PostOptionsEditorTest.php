@@ -1,6 +1,8 @@
 <?php
 
 use App\Modules\Admin\Livewire\Entries\Editor;
+use App\Modules\Admin\Livewire\Entries\Index;
+use App\Modules\Admin\Support\Entries\ScheduleInput;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
 use App\Modules\Cms\Actions\RestoreEntryRevision;
@@ -15,10 +17,13 @@ use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\SiteLocale as SiteLanguages;
+use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteLocale as SiteLocaleRow;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Workflow\Actions\InstantiateWorkflow;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Livewire\Mechanisms\HandleComponents\Checksum;
@@ -293,3 +298,64 @@ it('reads only real days written as YYYY-MM-DD', function (mixed $value, bool $o
     [20260915, false],
     [null, false],
 ]);
+
+it('lets a stored shown day after today through a save that keeps it, and refuses one this save moves there', function (): void {
+    $user = poEditor();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $zone = app(SiteTime::class)->zone();
+        $later = CarbonImmutable::now()->addDays(5)->setTimezone($zone)->format('Y-m-d');
+        $other = CarbonImmutable::now()->addDays(6)->setTimezone($zone)->format('Y-m-d');
+        $post = poPost(poCollection(), meta: ['display_date' => $later]);
+
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid])
+            ->assertSet('storedDisplayDate', $later)
+            ->set('title', 'Máy phay mới về')
+            ->call('save')
+            ->assertHasNoErrors('displayDate')
+            ->set('displayDate', $other)
+            ->call('save')
+            ->assertHasErrors('displayDate');
+        expect($post->fresh()->meta)->toMatchArray(['display_date' => $later]);
+    });
+});
+
+it('says a post past its end time cannot go live, from «Đăng», a schedule and the list\'s bulk «Đăng»', function (string $road): void {
+    $user = poEditor();
+    app(Tenancy::class)->enter(1, function () use ($user, $road): void {
+        $post = poPost(poCollection());
+        $why = __('entries.expired_publish_why');
+        $post->forceFill(['expires_at' => $road === 'schedule' ? now()->addHour() : now()->subMinute()])->save();
+
+        match ($road) {
+            'publish' => expect(Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid])
+                ->call('publish')
+                ->assertHasErrors('workflow')
+                ->errors()->first('workflow'))->toBe($why),
+            'schedule' => expect(Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid])
+                ->set('statusTo', 'scheduled')
+                ->set('scheduleAt', ScheduleInput::tomorrowEight())
+                ->call('save')
+                ->errors()->all())->toContain($why),
+            'bulk' => Livewire::actingAs($user)->test(Index::class)
+                ->set('selected', [$post->ulid])
+                ->call('bulkPublish')
+                ->assertDispatched('bs-toast', text: __('entries.bulk_published', ['count' => 0]).' '.__('entries.bulk_expired', ['count' => 1])),
+        };
+        expect($post->fresh()->status)->toBe('draft');
+    });
+})->with(['publish', 'schedule', 'bulk']);
+
+it('says an approver\'s publish move past the end time is refused for that reason, not as a missing right', function (): void {
+    $approver = poEditor(['entries.view', 'entries.edit.any', 'entries.review', 'entries.approve']);
+    app(Tenancy::class)->enter(1, function () use ($approver): void {
+        $post = poPost(poCollection());
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+        $post->forceFill(['status' => 'pending', 'workflow_state' => 'pending', 'expires_at' => now()->subMinute()])->save();
+
+        expect(Livewire::actingAs($approver)->test(Editor::class, ['ulid' => $post->ulid])
+            ->call('applyTransition', 'approve')
+            ->assertHasErrors('workflow')
+            ->errors()->first('workflow'))->toBe(__('entries.expired_publish_why'))
+            ->and($post->fresh()->status)->toBe('pending');
+    });
+});

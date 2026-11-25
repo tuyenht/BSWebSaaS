@@ -2,7 +2,9 @@
 
 namespace App\Modules\Cms\Models;
 
+use App\Modules\Audit\Support\DateChangeAudit;
 use App\Modules\Cms\Concerns\HasCategoryTaxonomies;
+use App\Modules\Cms\Support\DisplayDate;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Concerns\HasUlidColumn;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
@@ -28,6 +30,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $cover_media_id
  * @property int|null $author_id
  * @property Carbon|null $published_at
+ * @property Carbon|null $expires_at when it leaves the website by itself («Gỡ khỏi website lúc»); null = it stays
  * @property int $position
  * @property int $view_count
  * @property string|null $workflow_state the stage of the section's approval workflow, null until it joins one
@@ -41,6 +44,9 @@ class Entry extends Model
     use HasCategoryTaxonomies;
     use HasUlidColumn;
     use SoftDeletes;
+
+    /** The audit action of a change to one of the dates a reader sees or that decide when it is public (DateChangeAudit). */
+    public const string DATES_CHANGED = 'cms.entry.dates_changed';
 
     #[\Override]
     protected $guarded = [];
@@ -60,6 +66,23 @@ class Entry extends Model
         static::saved(static function (Entry $entry): void {
             if ($entry->wasChanged('meta') && self::coverOf($entry->getOriginal('meta')) !== self::coverOf($entry->meta)) {
                 self::markContentChanged([$entry->id]);
+            }
+        });
+
+        // The publish time, the end time and the day shown as published: each change leaves its
+        // audit row in the same transaction, whichever road made it (DateChangeAudit).
+        static::updated(static function (Entry $entry): void {
+            $changes = [];
+            foreach (['published_at', 'expires_at'] as $field) {
+                if ($entry->wasChanged($field)) {
+                    $changes[$field] = [$entry->getOriginal($field), $entry->getAttribute($field)];
+                }
+            }
+            if ($entry->wasChanged('meta')) {
+                $changes[DisplayDate::KEY] = [DisplayDate::of($entry->getOriginal('meta')), DisplayDate::of($entry->meta)];
+            }
+            if ($changes !== []) {
+                app(DateChangeAudit::class)->record($entry, self::DATES_CHANGED, $changes, $entry->ulid);
             }
         });
     }
@@ -196,6 +219,7 @@ class Entry extends Model
     {
         return [
             'published_at' => 'datetime',
+            'expires_at' => 'datetime',
             'position' => 'integer',
             'author_id' => 'integer',
             'scheduled_by' => 'integer',

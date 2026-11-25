@@ -34,6 +34,7 @@ use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\EntryDraftRejectedException;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
+use App\Modules\Cms\Exceptions\ExpiredContentException;
 use App\Modules\Cms\Exceptions\HomePageLockedException;
 use App\Modules\Cms\Exceptions\PageMoveRejectedException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
@@ -58,6 +59,7 @@ use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Cms\Support\HomePages;
 use App\Modules\Cms\Support\PageRules;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
+use App\Modules\Cms\Validation\DisplayDateNotAfterToday;
 use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
@@ -249,6 +251,10 @@ final class Editor extends Component
      * its page and its cards; '' = the real publish day (DisplayDate). One value for every language.
      */
     public string $displayDate = '';
+
+    /** The shown day as stored when the form opened: a save that leaves it as it is never has it refused. */
+    #[Locked]
+    public string $storedDisplayDate = '';
 
     /**
      * «Thẻ» (board 07): the post's tags named in this language, in order (EntryTags). Added with
@@ -577,7 +583,7 @@ final class Editor extends Component
         $this->coverImageKey = is_string($cover) ? $cover : '';
         if ($this->type === 'post') {
             $this->templateKey = TemplateCatalog::variant($entry->template_override) ?? '';
-            $this->displayDate = DisplayDate::of($entry->meta);
+            $this->displayDate = $this->storedDisplayDate = DisplayDate::of($entry->meta);
             $this->tags = app(EntryTags::class)->names($entry, $this->locale);
             $this->tagsLoaded = $this->tags;
         }
@@ -1545,6 +1551,9 @@ final class Editor extends Component
             });
         } catch (RouteConflictException $e) {
             $this->addressTaken($e, $entry);
+        } catch (ExpiredContentException $refused) {
+            // past its end time: saved, not put back up; the end time is moved or cleared first
+            $this->addError('workflow', $refused->getMessage());
         } catch (WorkflowGovernedException) {
             // A tab that still shows the tier-1 button after the flow was switched on: the
             // draft is saved, and the next render swaps in the approval block.
@@ -1625,6 +1634,10 @@ final class Editor extends Component
         } catch (InvalidTransitionException) {
             // Another tab moved the post first, or the flow was reconfigured under this one.
             $this->addError('workflow', __('admin.wfb.err_stale'));
+
+            return;
+        } catch (ExpiredContentException $refused) {
+            $this->addError('workflow', $refused->getMessage());   // a step that publishes, past the end time
 
             return;
         } catch (AuthorizationException) {
@@ -2150,7 +2163,7 @@ final class Editor extends Component
         $this->saveFailed = false;
         // A language with no saved version yet loads nothing back: start from an empty form.
         $preset = $this->ulid === null ? $this->parentLoaded : null;
-        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'coverAlt', 'templateKey', 'displayDate', 'tags', 'tagsLoaded', 'tagDraft', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
+        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'coverAlt', 'templateKey', 'displayDate', 'storedDisplayDate', 'tags', 'tagsLoaded', 'tagDraft', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
             'transitionNote', 'assignTo', 'showImagePicker', 'blockImagePickerPath', 'coverToast', 'coverUndo', 'stale', 'overwrite',
             'parentUlid', 'parentLoaded', 'parentName', 'pageHome', 'scheduleAt', 'scheduleLoaded', 'statusTo', 'autoSaved', 'slugFresh', 'slugTouched');
         $this->mount($this->ulid, $this->sectionKey, $this->locale, $preset);
@@ -3173,7 +3186,7 @@ final class Editor extends Component
                 if (is_string($value) && $value !== '' && ! DisplayDate::valid($value)) {
                     $fail(Cast::string(__('entries.ed.pd_invalid')));
                 }
-            }];
+            }, new DisplayDateNotAfterToday(app(SiteTime::class)->zone(), $this->storedDisplayDate)];
         }
 
         return $rules;
@@ -3823,7 +3836,7 @@ final class Editor extends Component
             $why = Cast::string(__('entries.sched_err_past'));   // the time passed while the save waited
         } catch (WorkflowGovernedException) {
             $why = Cast::string(__('entries.workflow_governed'));
-        } catch (HomePageLockedException $refused) {
+        } catch (HomePageLockedException|ExpiredContentException $refused) {
             $why = $refused->getMessage();
         } catch (AuthorizationException) {
             $why = EntryRefusal::for($this->user(), $entry, 'status');
@@ -3972,7 +3985,7 @@ final class Editor extends Component
             $why = Cast::string(__('entries.sched_err_past'));   // the time passed while the save waited
         } catch (WorkflowGovernedException) {
             $why = Cast::string(__('entries.workflow_governed'));
-        } catch (HomePageLockedException $refused) {
+        } catch (HomePageLockedException|ExpiredContentException $refused) {
             $why = $refused->getMessage();
         } catch (EntryDraftRejectedException $refused) {
             $why = $refused->userMessage();   // a schedule while a pending change is open

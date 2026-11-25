@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Admin\Livewire\Catalog\Index;
 use App\Modules\Catalog\Actions\ChangeProductMainCategory;
 use App\Modules\Catalog\Models\Product;
@@ -663,7 +664,8 @@ it('keeps its query count flat for any number of ticked rows', function (): void
             ->and([$restore2, $restore6])->toBe([19, 27])
             ->and([$purge2, $purge6])->toBe([17, 25])
             ->and([$archive2, $archive6])->toBe([21, 25])
-            ->and([$publish2, $publish6])->toBe([28, 48])
+            // a first publish also writes its publish time's date-change audit row: one more per row
+            ->and([$publish2, $publish6])->toBe([30, 54])
             ->and([$open2, $open6])->toBe([16, 16])
             ->and([$move2, $move6, $move10])->toBe([35, 59, 83])
             ->and([$moveLive2, $moveLive6, $moveLive10])->toBe([41, 73, 105])
@@ -671,5 +673,47 @@ it('keeps its query count flat for any number of ticked rows', function (): void
             ->and([$undoTrash2, $undoTrash6])->toBe([19, 27])
             ->and([$undoMove2, $undoMove6, $undoMove10])->toBe([35, 59, 83])
             ->and([$undoMoveLive2, $undoMoveLive6])->toBe([41, 73]);
+    });
+});
+
+it('counts a product past its end time under its own reason and still publishes the rest', function (): void {
+    $manager = bulkManager();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $expired = bulkProduct('Máy cũ', 'may-cu');
+        $expired->forceFill(['expires_at' => now()->subMinute()])->save();
+        $free = bulkProduct('Khuôn đúc', 'khuon-duc');
+
+        $test = Livewire::actingAs($manager)->test(Index::class)->call('toggleSelect', [$expired->ulid, $free->ulid])->call('bulkPublish');
+
+        expect($test->get('toastMsg'))->toBe(__('catalog.toast_status_published', ['name' => 'Khuôn đúc']).' '.__('catalog.bulk_failed_expired', ['count' => 1]))
+            ->and($expired->fresh()->status)->toBe('draft')->and($free->fresh()->status)->toBe('published');
+
+        $none = Livewire::actingAs($manager)->test(Index::class)->call('toggleSelect', [$expired->ulid])->call('bulkPublish');
+        expect($none->get('toastMsg'))->toBe(__('catalog.bulk_failed_expired', ['count' => 1]))->and($none->get('toastTone'))->toBe('error');
+    });
+});
+
+it('refuses in the editor to put a product past its end time live, and still saves one that is live in the minute before the sweep', function (): void {
+    $manager = bulkManager();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $draft = bulkProduct('Máy cũ', 'may-cu');
+        $draft->forceFill(['expires_at' => now()->subMinute()])->save();
+
+        Livewire::actingAs($manager)->test(Editor::class, ['ulid' => $draft->ulid])
+            ->call('publish')
+            ->assertDispatched('bs-toast', text: __('catalog.expired_publish_why'));
+        expect($draft->fresh()->status)->toBe('draft');
+
+        $live = bulkProduct('Khuôn đúc', 'khuon-duc', 'published');
+        $live->forceFill(['published_at' => now()->subDay(), 'expires_at' => now()->subSeconds(10)])->save();
+
+        Livewire::actingAs($manager)->test(Editor::class, ['ulid' => $live->ulid])
+            ->set('name', 'Khuôn đúc mới')
+            ->call('publish')
+            ->assertNotDispatched('bs-toast', text: __('catalog.expired_publish_why'))
+            ->assertHasNoErrors();
+        expect($live->fresh()->status)->toBe('published');
     });
 });

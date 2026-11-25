@@ -14,6 +14,10 @@ use App\Modules\Theme\Rendering\TemplateCatalog;
  * What the job layout of a post needs from the core: the deadline state and the `JobPosting`
  * structured data for the page head (printed like a product's). Both exist only for a post whose
  * layout belongs to the job set; any other post, and any theme without one, gets nothing.
+ *
+ * `validThrough` is the application deadline («Hạn nộp», the end of that day in the site's zone);
+ * a post with none but with an end time («Gỡ khỏi website lúc») gives that time instead. The two mean
+ * different things (applications close ≠ the post leaves the website) and are never merged.
  */
 final readonly class JobPosting
 {
@@ -60,7 +64,8 @@ final readonly class JobPosting
                 'title' => $translation->title,
                 'description' => $description,
                 'datePosted' => $post->published_at?->toIso8601String(),
-                'validThrough' => $deadline?->endOfDay()->toIso8601String(),
+                // the last day applications are taken («Hạn nộp»), else the moment the post leaves the website
+                'validThrough' => $deadline?->endOfDay()->toIso8601String() ?? $post->expires_at?->toIso8601String(),
                 'url' => $url,
                 'hiringOrganization' => ['@type' => 'Organization', 'name' => $organization],
                 'jobLocation' => ['@type' => 'Place', 'address' => $address],

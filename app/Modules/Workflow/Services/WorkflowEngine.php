@@ -36,6 +36,12 @@ final readonly class WorkflowEngine
     public const string TARGET_CHANGE = 'change';
 
     /**
+     * The trail's transition key when the system takes a subject off the website and the flow has no
+     * move for it from where it stands (withdrawAsSystem): never a key of a flow's own transitions.
+     */
+    public const string SYSTEM_WITHDRAW = 'system_withdraw';
+
+    /**
      * The ACTIVE workflow governing a content type, or null when the site never opted in (or
      * disabled it) — null is the signal to fall back to tier-1, never an error.
      */
@@ -142,5 +148,61 @@ final readonly class WorkflowEngine
         ]);
 
         return $destination;
+    }
+
+    /**
+     * The system's own road off the website, for a subject whose end time came (entries:unpublish-due):
+     * nobody acts, so no permission is asked; the person who set the end time had the right to edit
+     * it, and taking content down only ever shows less. It still goes through the flow and its trail:
+     *
+     *   - the flow's own move from $fromState to a stage that is not public (one that ends the line
+     *     first, like «Lưu trữ»): applied and logged as that move, with no actor, its note saying why;
+     *   - no such move: the subject leaves anyway (forced), to the flow's end-of-line stage that is not
+     *     public, else its initial one, logged under SYSTEM_WITHDRAW, so a reviewer sees what happened.
+     *
+     * The caller persists the returned stage on its subject, in its own transaction, as with apply().
+     *
+     * @return array{0: WorkflowState, 1: bool} the destination, and whether the move was forced
+     *
+     * @throws InvalidTransitionException the flow has no stage that is not public to put it in
+     */
+    public function withdrawAsSystem(Workflow $workflow, string $fromState, int $entryId, ?string $locale, string $note): array
+    {
+        /** @var \Illuminate\Support\Collection<string, WorkflowState> $states */
+        $states = $workflow->states()->orderBy('sort_order')->orderBy('id')->get()->keyBy('key');
+        $offline = $states->filter(fn (WorkflowState $state): bool => ! $state->is_published);
+
+        $transition = $workflow->transitions()->where('from_state', $fromState)->orderBy('id')->get()
+            ->filter(fn (WorkflowTransition $move): bool => $offline->has($move->to_state))
+            ->sortBy(fn (WorkflowTransition $move): int => $offline->get($move->to_state)?->is_terminal === true ? 0 : 1)
+            ->first();
+
+        $destination = $transition instanceof WorkflowTransition
+            ? $offline->get($transition->to_state)
+            : ($offline->first(fn (WorkflowState $state): bool => $state->is_terminal) ?? $offline->first(fn (WorkflowState $state): bool => $state->is_initial));
+
+        if (! $destination instanceof WorkflowState) {
+            throw InvalidTransitionException::notDefined(self::SYSTEM_WITHDRAW);
+        }
+
+        WorkflowLog::query()->create([
+            'workflow_id' => $workflow->id,
+            'entry_id' => $entryId,
+            'locale' => $locale,
+            'target' => self::TARGET_ENTRY,
+            'transition_key' => $transition instanceof WorkflowTransition ? $transition->key : self::SYSTEM_WITHDRAW,
+            'from_state' => $fromState,
+            'to_state' => $destination->key,
+            'labels' => [
+                'transition' => $transition instanceof WorkflowTransition ? $transition->label : (string) __('workflow.action_system_withdraw'),
+                'from' => $states->get($fromState)?->label,
+                'to' => $destination->label,
+            ],
+            'actor_id' => null,
+            'assigned_to' => null,
+            'note' => trim($note) !== '' ? trim($note) : null,
+        ]);
+
+        return [$destination, ! $transition instanceof WorkflowTransition];
     }
 }

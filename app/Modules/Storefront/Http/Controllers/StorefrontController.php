@@ -26,6 +26,7 @@ use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\PreviewMode;
 use App\Modules\Shared\Support\SafeLink;
+use App\Modules\Storefront\EdgeCache\PageEndTime;
 use App\Modules\Storefront\Support\ArticleData;
 use App\Modules\Storefront\Support\Breadcrumbs;
 use App\Modules\Storefront\Support\JobPosting;
@@ -298,6 +299,10 @@ final readonly class StorefrontController
     private function renderEntry(ResolvedContent $content, string $locale, string $path, array $chrome, bool $preview = false): Response
     {
         $entry = $content->entry;
+        // the edge keeps the page no longer than the item stays on the website (a preview is never kept)
+        if (! $preview) {
+            app(PageEndTime::class)->until($entry->expires_at);
+        }
 
         $categoryTemplate = null;
         $extra = $chrome;
@@ -684,6 +689,7 @@ final readonly class StorefrontController
 
         $translation = $product->translationFor($locale);
         abort_if($translation === null, 404);
+        app(PageEndTime::class)->until($product->expires_at);
 
         return response($this->productPage->render($product, $translation, $locale, $path, $chrome));
     }

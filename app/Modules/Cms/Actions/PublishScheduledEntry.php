@@ -75,7 +75,9 @@ final readonly class PublishScheduledEntry
         $due = $entry->status === 'scheduled'
             && ! $entry->trashed()
             && $entry->published_at !== null
-            && $entry->published_at <= now();
+            && $entry->published_at <= now()
+            // past its end time it never goes live: entries:publish-due archives it instead
+            && ! UnpublishExpiredEntry::isPast($entry);
 
         if (! $due) {
             return false;

@@ -4,6 +4,7 @@ namespace App\Modules\Cms\Actions;
 
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
+use App\Modules\Cms\Exceptions\ExpiredContentException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Support\CategoryPublicCounts;
@@ -102,6 +103,10 @@ final readonly class ApplyEntryWorkflowTransition
             $destination = $this->engine->apply(
                 $workflow, $transitionKey, $fromState, $actor, $entry->id, $locale, $note, $assignTo,
             );
+            // not live past its end time (the move and its trail row roll back with the refusal)
+            if ($destination->is_published) {
+                ExpiredContentException::guard($entry->expires_at);
+            }
 
             // Map the workflow stage onto the public lifecycle: live only when the stage says so;
             // back at the start = a draft again; anywhere in between = in the pipeline, not public.

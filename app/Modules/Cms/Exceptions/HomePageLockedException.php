@@ -14,7 +14,7 @@ use Illuminate\Auth\Access\AuthorizationException;
  */
 final class HomePageLockedException extends AuthorizationException
 {
-    /** @param  'entries.home_trash_why'|'entries.home_sched_why'|'entries.home_offline_why'  $reason  the lang key of the sentence */
+    /** @param  'entries.home_trash_why'|'entries.home_sched_why'|'entries.home_offline_why'|'entries.home_expiry_why'  $reason  the lang key of the sentence */
     public function __construct(string $reason = 'entries.home_trash_why')
     {
         parent::__construct(__($reason));
