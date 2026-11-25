@@ -7,9 +7,11 @@ use App\Modules\Admin\Support\Settings\BranchList;
 use App\Modules\Admin\Support\Settings\FloatingContactInput;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductImage;
+use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\BlockMediaUsage;
+use App\Modules\Cms\Support\ContentBlockMediaReconciler;
 use App\Modules\Cms\Support\EntryCoverUsage;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Media\Models\Media;
@@ -52,7 +54,7 @@ final readonly class MediaUsageLocator
      * Every place this media is used, tagged by role for the grouped detail panel: `gallery` (a
      * product image list), `cover` (an entry's featured/OG image, or a category's picture), `content`
      * (a block image, or a block button's file to download, inside an entry body, the site's block
-     * slots or a category's own slot blocks). An entry that uses the media in two roles appears once
+     * slots, a category's own slot blocks or a shared block's body). An entry that uses the media in two roles appears once
      * per role.
      * `url` is the screen the thing is changed on; null when no admin screen changes it yet (the
      * site's own block slots and its branch list are written by the content-pack loader only).
@@ -113,8 +115,8 @@ final readonly class MediaUsageLocator
 
         // Content — a block image or a button's file (materialized into mediables on save): in an
         // entry body, in the site's block slots (around posts, lists and products) or in a
-        // category's own blocks for those slots.
-        $owners = ['entry' => [], 'site_setting' => [], 'taxonomy' => []];
+        // category's own blocks for those slots, or in a shared block's body.
+        $owners = ['entry' => [], 'site_setting' => [], 'taxonomy' => [], ContentBlockMediaReconciler::OWNER => []];
         $branch = false;
         $floating = false;
         $rows = Mediable::query()
@@ -177,6 +179,19 @@ final readonly class MediaUsageLocator
             }
         }
 
+        if ($owners[ContentBlockMediaReconciler::OWNER] !== []) {
+            $blocks = ContentBlock::query()->whereIn('id', array_unique($owners[ContentBlockMediaReconciler::OWNER]))
+                ->orderBy('name')->orderBy('id')->get(['id', 'ulid', 'name']);
+            foreach ($blocks as $block) {
+                $usages[] = [
+                    'kind' => 'block',
+                    'role' => 'content',
+                    'label' => __('media.usage_block', ['name' => $block->name]),
+                    'url' => route('admin.blocks.edit', ['ulid' => $block->ulid]),
+                ];
+            }
+        }
+
         return $usages;
     }
 
@@ -213,12 +228,15 @@ final readonly class MediaUsageLocator
             Mediable::query()->toBase()->whereIn('media_id', $ids)->where('collection', EntryCoverUsage::COLLECTION)->where('mediable_type', 'entry')
                 ->whereIn('mediable_id', Entry::query()->select('id'))
                 ->groupBy('media_id')->selectRaw('media_id as k, count(distinct mediable_id) as n'),
-            // a block image or a button's file: one place per entry, per category, and one for the site's own slots
+            // a block image or a button's file: one place per entry, per category, per shared block, and one for the site's own slots
             Mediable::query()->toBase()->whereIn('media_id', $ids)->where('collection', $content)->where('mediable_type', 'entry')
                 ->whereIn('mediable_id', Entry::query()->select('id'))
                 ->groupBy('media_id')->selectRaw('media_id as k, count(distinct mediable_id) as n'),
             Mediable::query()->toBase()->whereIn('media_id', $ids)->where('collection', $content)->where('mediable_type', 'taxonomy')
                 ->whereIn('mediable_id', Taxonomy::query()->select('id'))
+                ->groupBy('media_id')->selectRaw('media_id as k, count(distinct mediable_id) as n'),
+            Mediable::query()->toBase()->whereIn('media_id', $ids)->where('collection', $content)->where('mediable_type', ContentBlockMediaReconciler::OWNER)
+                ->whereIn('mediable_id', ContentBlock::query()->select('id'))
                 ->groupBy('media_id')->selectRaw('media_id as k, count(distinct mediable_id) as n'),
             // the site's own block slots, its branch list and the floating contact: one place each
             Mediable::query()->toBase()->whereIn('media_id', $ids)->whereIn('collection', self::COLLECTIONS)->where('mediable_type', 'site_setting')
@@ -308,7 +326,7 @@ final readonly class MediaUsageLocator
 
     /**
      * Constrain a media query to used (true) / unused (false): used = in a product gallery, an entry
-     * cover, an entry body or block slot, a branch or factory, a category's picture or one of the
+     * cover, an entry body, a block slot or a shared block's body, a branch or factory, a category's picture or one of the
      * site's brand images. The sub-selects are themselves site-scoped, so this never leaks across
      * tenants.
      *
@@ -339,6 +357,8 @@ final readonly class MediaUsageLocator
                 ->whereIn('mediable_id', Entry::query()->select('id'))->select('media_id')
                 ->unionAll(Mediable::query()->where('collection', BlockMediaUsage::COLLECTION)->where('mediable_type', 'taxonomy')
                     ->whereIn('mediable_id', Taxonomy::query()->select('id'))->select('media_id'))
+                ->unionAll(Mediable::query()->where('collection', BlockMediaUsage::COLLECTION)->where('mediable_type', ContentBlockMediaReconciler::OWNER)
+                    ->whereIn('mediable_id', ContentBlock::query()->select('id'))->select('media_id'))
                 ->unionAll(Mediable::query()->whereIn('collection', self::COLLECTIONS)->where('mediable_type', 'site_setting')->select('media_id'))
             : Mediable::query()->whereIn('collection', [...self::COLLECTIONS, EntryCoverUsage::COLLECTION])->select('media_id');
         // NOT IN with a NULL in the list matches nothing, so categories without a picture stay out.
