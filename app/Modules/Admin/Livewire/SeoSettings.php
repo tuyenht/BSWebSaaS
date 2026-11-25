@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Livewire\Concerns\RestoresSettingsSection;
+use App\Modules\Admin\Livewire\Concerns\ShowsSettingsToast;
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Admin\Support\Settings\SetBrandImages;
@@ -57,10 +59,16 @@ use Livewire\Component;
  * It also says whether AI bots reach the website (AiCrawlerCheck, run off the request by
  * CheckAiCrawlers): opening the page starts a check when the kept result is missing or older than
  * a day, and "Kiểm tra lại" starts one at most once a minute per site.
+ *
+ * Above the fields, when the section was last saved; «Khôi phục mặc định» puts back the title
+ * template, the two switches and the robots lines (the titles, descriptions and share image stay
+ * as written), with «Hoàn tác».
  */
 #[Layout('admin::layouts.app')]
 final class SeoSettings extends Component
 {
+    use RestoresSettingsSection;
+    use ShowsSettingsToast;
     use WithMediaLibraryPicker {
         openImagePicker as private openLibrary;
         togglePickerItem as private toggleLibraryItem;
@@ -113,12 +121,6 @@ final class SeoSettings extends Component
      */
     #[Locked]
     public array $saved = ['i18n' => [], 'shared' => ['template' => '', 'indexable' => true, 'sitemap' => true, 'robots' => ''], 'image' => ''];
-
-    public string $toast = '';
-
-    public string $toastTone = 'success';
-
-    public int $toastSeq = 0;
 
     /** The address the AI check looks at, read once per request ('' = not read yet). */
     private ?string $aiHost = '';
@@ -342,14 +344,6 @@ final class SeoSettings extends Component
         $this->notify(__('admin.gs.toast_reset'));
     }
 
-    #[Authorize('settings.manage')]
-    public function dismissToast(?int $seq = null): void
-    {
-        if ($seq === null || $seq === $this->toastSeq) {
-            $this->toast = '';
-        }
-    }
-
     public function render(): View
     {
         $siteLocale = app(SiteLocale::class);
@@ -388,6 +382,7 @@ final class SeoSettings extends Component
             'defaultLocale' => $siteLocale->default(),
             'locales' => $this->locales(),
             'changes' => $this->changeCount(),
+            'stamp' => $this->stampText(),
             'previewConfig' => SeoFields::clientConfig(
                 ['title' => "i18n.{$this->lang}.title", 'description' => "i18n.{$this->lang}.description"],
                 ['base' => $home, 'home' => $home, 'homeSlug' => ''],
@@ -854,10 +849,28 @@ final class SeoSettings extends Component
         return $errors;
     }
 
-    private function notify(string $message, string $tone = 'success'): void
+    protected function settingsSection(): string
     {
-        $this->toast = $message;
-        $this->toastTone = $tone;
-        $this->toastSeq++;
+        return 'seo';
+    }
+
+    protected function restoreSection(): string
+    {
+        return 'seo_rules';
+    }
+
+    /** After «Khôi phục mặc định» or «Hoàn tác»: the stored template, switches and robots lines; the texts and image drafts stay as typed. */
+    protected function reloadSaved(): void
+    {
+        $shared = $this->load()['shared'];
+        if ($shared !== $this->saved['shared']) {
+            $this->forgetAiCheck();   // what the AI check looked at changed
+        }
+        $this->form = $shared;
+        $this->saved['shared'] = $shared;
+        $this->confirmHide = false;
+        foreach (array_keys($shared) as $key) {
+            $this->resetErrorBag('form.'.$key);
+        }
     }
 }

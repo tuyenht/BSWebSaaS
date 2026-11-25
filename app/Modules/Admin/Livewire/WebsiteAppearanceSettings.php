@@ -4,18 +4,17 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Livewire\Concerns\RestoresSettingsSection;
+use App\Modules\Admin\Livewire\Concerns\ShowsSettingsToast;
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
-use App\Modules\Admin\Support\Settings\ResetSettingsSection;
 use App\Modules\Admin\Support\Settings\SetBrandImages;
 use App\Modules\Admin\Support\Settings\SetPhoneMenuStyle;
 use App\Modules\Admin\Support\Settings\SettingsChangeRejected;
-use App\Modules\Admin\Support\Settings\SettingsStamp;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
-use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Chrome\StorefrontChrome;
@@ -54,6 +53,8 @@ use Livewire\Component;
 #[Layout('admin::layouts.app')]
 final class WebsiteAppearanceSettings extends Component
 {
+    use RestoresSettingsSection;
+    use ShowsSettingsToast;
     use WithMediaLibraryPicker {
         openImagePicker as private openLibrary;
         togglePickerItem as private toggleLibraryItem;
@@ -119,20 +120,6 @@ final class WebsiteAppearanceSettings extends Component
      */
     #[Locked]
     public array $stale = [];
-
-    /**
-     * What "Khôi phục mặc định" removed, for "Hoàn tác" (kept on the server side of the component).
-     *
-     * @var array<array-key, mixed>|null
-     */
-    #[Locked]
-    public ?array $undo = null;
-
-    public string $toast = '';
-
-    public string $toastTone = 'success';
-
-    public int $toastSeq = 0;
 
     public function boot(): void
     {
@@ -281,60 +268,6 @@ final class WebsiteAppearanceSettings extends Component
         $this->apply($this->load());
         $this->resetErrorBag();
         $this->notify(__('admin.gs.toast_reset'));
-    }
-
-    /** "Khôi phục mặc định": the three images are emptied at once; the message offers "Hoàn tác". */
-    #[Authorize('settings.manage')]
-    public function restoreDefaults(): void
-    {
-        try {
-            $undo = app(ResetSettingsSection::class)->reset('appearance');
-        } catch (SettingsChangeRejected $e) {
-            if ($e->reason !== 'busy') {
-                throw $e;
-            }
-            $this->notify(__('admin.settings.busy'), 'error');
-
-            return;
-        }
-
-        $this->apply($this->load());
-        $this->resetErrorBag();
-        $this->notify(__('admin.set.restored'));
-        $this->undo = $undo;
-    }
-
-    /** "Hoàn tác" after "Khôi phục mặc định": the images come back (one since purged stays empty). */
-    #[Authorize('settings.manage')]
-    public function undoRestore(): void
-    {
-        if ($this->undo === null) {
-            return;
-        }
-        try {
-            app(ResetSettingsSection::class)->undo($this->undo);
-        } catch (SettingsChangeRejected $e) {
-            if ($e->reason !== 'busy') {
-                throw $e;
-            }
-            $payload = $this->undo;
-            $this->notify(__('admin.settings.busy'), 'error');
-            $this->undo = $payload;   // still offered: the next try may find the lock free
-
-            return;
-        }
-
-        $this->apply($this->load());
-        $this->notify(__('admin.set.undone'));
-    }
-
-    #[Authorize('settings.manage')]
-    public function dismissToast(?int $seq = null): void
-    {
-        if ($seq === null || $seq === $this->toastSeq) {
-            $this->toast = '';
-            $this->undo = null;
-        }
     }
 
     public function render(): View
@@ -538,30 +471,15 @@ final class WebsiteAppearanceSettings extends Component
         return preg_match('/\A#[0-9a-f]{6}\z/i', $primary) === 1 ? $primary : 'var(--color-primary)';
     }
 
-    /**
-     * "Cập nhật lần cuối 14:05 · Ngọc Anh" (today) or "… 12/11/2026 · …" (another day, in the site's
-     * date format and time zone); null when nothing of the section was ever saved.
-     */
-    private function stampText(): ?string
+    protected function settingsSection(): string
     {
-        $stamp = app(SettingsStamp::class)->forSection('appearance');
-        if ($stamp === null) {
-            return null;
-        }
-        $time = app(SiteTime::class);
-        $local = $time->forDisplay($stamp['at']);
-        $when = $local !== null && $local->isSameDay($time->now()) ? $local->format('H:i') : $time->day($stamp['at'], app()->getLocale());
-
-        return $stamp['by'] !== null
-            ? Cast::string(__('admin.set.stamp', ['when' => $when, 'name' => $stamp['by']]))
-            : Cast::string(__('admin.set.stamp_anon', ['when' => $when]));
+        return 'appearance';
     }
 
-    private function notify(string $message, string $tone = 'success'): void
+    /** After «Khôi phục mặc định» or «Hoàn tác»: the images as now stored (one since purged stays empty). */
+    protected function reloadSaved(): void
     {
-        $this->toast = $message;
-        $this->toastTone = $tone;
-        $this->toastSeq++;
-        $this->undo = null;
+        $this->apply($this->load());
+        $this->resetErrorBag();
     }
 }

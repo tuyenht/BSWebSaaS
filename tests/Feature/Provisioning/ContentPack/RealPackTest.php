@@ -295,7 +295,7 @@ it('plans the real pack on a fresh site with no conflict, and every internal lin
     $this->get('http://'.ContentPacks::HOST.'/tuyen-dung')->assertOk()->assertSee('Kế toán nội bộ')->assertSee('Kỹ sư cơ khí')
         ->assertSee('<title>Tuyển dụng – Gia nhập đội ngũ | Cơ Khí An Vinh</title>', false)
         ->assertSee('<meta name="description" content="Việc làm tại 3 nhà máy', false)
-        ->assertSee('Gia nhập đội ngũ An Vinh</h1>', false);
+        ->assertSee('Tuyển dụng</h1>', false);
     $home = $this->get('http://'.ContentPacks::HOST.'/')->getContent();
     foreach (['/thiet-ke-lap-trinh' => 'Thiết kế Jig &amp; Đồ gá', '/gia-cong-phay-tien-cnc' => 'Gia công Phay &amp; Tiện CNC', '/han-lap-rap-co-khi' => 'Hàn &amp; Lắp ráp cơ khí', '/nang-luc' => 'Sản xuất chi tiết máy &amp; OEM'] as $href => $title) {
         expect($home)->toContain('<a class="sf-card__link" href="'.$href.'">'.$title.'</a>');
@@ -494,7 +494,7 @@ it('lists the five capabilities in the board order, names the list pages like th
         ->and($items['tax:post_cat/san-pham']->data['name']['vi'])->toBe('Sản phẩm của chúng tôi')
         ->and($items['tax:post_cat/du-an']->data['name']['vi'])->toBe('Dự án tiêu biểu')
         ->and($items['tax:post_cat/tin-tuc']->data['name']['vi'])->toBe('Tin tức & sự kiện')
-        ->and($items['tax:post_cat/tuyen-dung']->data['name']['vi'])->toBe('Gia nhập đội ngũ An Vinh');
+        ->and($items['tax:post_cat/tuyen-dung']->data['name']['vi'])->toBe('Tuyển dụng');
 
     $footer = collect($items['menu:footer']->data['items'][0]['children'])->pluck('label.vi')->all();
     expect($footer)->toBe(['Về công ty', 'Dự án', 'Nhà xưởng & máy móc', 'Hồ sơ năng lực', 'Chứng chỉ & thành tựu', 'Tin tức', 'Tuyển dụng', 'Liên hệ', 'Chính sách bảo mật']);
