@@ -78,9 +78,16 @@ function expPublisher(int $siteId, array $permissions = ['entries.view', 'entrie
     return $user->fresh() ?? $user;
 }
 
+/**
+ * A new request's state: the scoped instances forgotten, and so the controllers the router keeps from
+ * an earlier request (the sitemap's holds the current site it was built with) built again with them.
+ */
 function expFresh(): void
 {
     app()->forgetScopedInstances();
+    foreach (app('router')->getRoutes()->getRoutes() as $route) {
+        $route->flushController();
+    }
     app(TeamContext::class)->forget();
 }
 
