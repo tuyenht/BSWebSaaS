@@ -1,4 +1,4 @@
-@props(['active' => '', 'unsaved' => null, 'save' => 'save', 'discard' => 'resetChanges', 'hints' => [], 'head' => true, 'invalid' => 0, 'liveErrors' => false, 'firstError' => null, 'firstErrorDetail' => []])
+@props(['active' => '', 'unsaved' => null, 'save' => 'save', 'discard' => 'resetChanges', 'hints' => [], 'head' => true, 'invalid' => 0, 'liveErrors' => false, 'firstError' => null, 'firstErrorDetail' => [], 'card' => 'normal'])
 @php
     // The section's title row: its name, then an (i) button stuck to it (the same button and in-place
     // note as a field's explanation) that opens "Về mục <name>" right under the row, with the full
@@ -18,6 +18,11 @@
     // `liveErrors` says it checks them as they are left, and `firstError` / `firstErrorDetail` name
     // its window event that opens the group of the first one. A section that passes nothing (one
     // with nothing to save) has no bar and leaves freely.
+    // The section's content sits in one card (the board's section card: the card colour, a border,
+    // 8px corners, the soft card shadow) with its groups stacked inside; below 768px the card drops
+    // its frame and padding, so the groups run edge to edge with the page. `card` sets its inner
+    // padding: 'normal' (22px), 'snug' (16px) and 'tight' (12px) for a section whose one panel
+    // brings its own frame close to the edge, 'none' for a section drawn as separate cards of its own.
     // The section menu, in the design board's groups (Navigation\SettingsMenu), each item with its icon.
     $groups = \App\Modules\Admin\Navigation\SettingsMenu::groups($active);
     $items = array_merge([], ...array_column($groups, 'items'));
@@ -33,6 +38,8 @@
     $learned = array_values(array_filter((array) $hints, static fn (mixed $text, mixed $key): bool => is_string($key) && \App\Modules\Admin\Support\FirstHints::dismissed($key) && is_string($text) && $text !== '', ARRAY_FILTER_USE_BOTH));
     $hasInfo = $full !== '' || $learned !== [];
     $infoGlyph = 'size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))]';
+    $cardPads = ['normal' => 'p-[1.375rem]', 'snug' => 'p-4', 'tight' => 'p-3', 'none' => null];
+    $cardPad = array_key_exists($card, $cardPads) ? $cardPads[$card] : $cardPads['normal'];
     // A page with this column folds the main menu to its icon rail so the column and the section
     // get the room: the layout prints data-sidebar-fold on <html> (the shell renders before it),
     // and app.js keeps it in step across wire:navigate through [data-set-shell]. Per request only.
@@ -152,7 +159,14 @@
 
         {{-- Section content --}}
         <div class="min-w-0 flex-1 max-md:[[data-set-list]_&]:hidden" data-set-main>
-            <div class="space-y-6">{{ $slot }}</div>
+            {{-- The blocks of the section stand 24px apart. A toast or a dialog sits in the slot too but
+                 takes no room: a fixed one is no flex item, and a wrapper whose children are all fixed layers
+                 is dissolved (display: contents), so the card's padding stays even at the bottom. --}}
+            <div @class([
+                'flex flex-col gap-6 [&>:has(>.fixed):not(:has(>:not(.fixed)))]:contents',
+                'rounded-lg border border-border bg-surface shadow-card max-md:rounded-none max-md:border-0 max-md:bg-transparent max-md:p-0 max-md:shadow-none' => $cardPad !== null,
+                $cardPad => $cardPad !== null,
+            ]) @if ($cardPad !== null) data-set-card @endif>{{ $slot }}</div>
         </div>
     </div>
 

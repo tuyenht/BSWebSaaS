@@ -630,7 +630,9 @@ it('opens inside the settings frame for the website\'s owner, the add button on 
         ->and(trim((string) $shell->querySelector('nav[data-set-nav] a[aria-current="page"]')?->textContent))->toBe('Tên miền')
         ->and(substr_count($html, 'wire:click="openAdd"'))->toBe(1)
         ->and($shell->querySelector('[data-set-main] [wire\\:click="openAdd"]'))->toBeNull()
-        ->and($shell->querySelector('[data-set-savebar]'))->toBeNull();
+        ->and($shell->querySelector('[data-set-savebar]'))->toBeNull()
+        // the «Tên miền của website» card sits 16px inside the section card, as the board draws it
+        ->and(explode(' ', (string) $shell->querySelector('[data-set-main] > [data-set-card]')?->getAttribute('class')))->toContain('p-4')->not->toContain('p-[1.375rem]');
 });
 
 it('keeps the console\'s own title and the add button on the card, outside the settings frame', function (): void {
