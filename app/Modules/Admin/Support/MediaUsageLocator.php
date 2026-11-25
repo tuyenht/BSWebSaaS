@@ -331,8 +331,9 @@ final readonly class MediaUsageLocator
         }
         // An entry's featured picture: its "in use" row (collection cover) for a live entry. Without
         // $liveOwners the meta keys are read too, so a cover set by a road that skipped the model (a
-        // raw import before the next reconcile) still keeps its file out of the Trash.
-        $coverKeys = $liveOwners ? null : Entry::query()->whereNotNull('meta->image_url')->select(DB::raw("meta->>'image_url'"));
+        // raw import before the next reconcile) still keeps its file out of the Trash, the meta of a
+        // post in the Trash too, so restoring it still finds its picture.
+        $coverKeys = $liveOwners ? null : Entry::withTrashed()->whereNotNull('meta->image_url')->select(DB::raw("meta->>'image_url'"));
         $blockMediaIds = $liveOwners
             ? Mediable::query()->whereIn('collection', [BlockMediaUsage::COLLECTION, EntryCoverUsage::COLLECTION])->where('mediable_type', 'entry')
                 ->whereIn('mediable_id', Entry::query()->select('id'))->select('media_id')

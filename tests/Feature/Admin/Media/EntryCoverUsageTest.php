@@ -1,12 +1,18 @@
 <?php
 
+use App\Modules\Admin\Livewire\Media\Library;
 use App\Modules\Admin\Support\MediaUsageLocator;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Support\EntryCoverUsage;
+use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
+use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 
 /*
  * An entry's featured / share picture is named by its storage key inside entries.meta, which no
@@ -126,4 +132,111 @@ it('rebuilds the featured pictures’ rows of content written past the model, an
     app(Tenancy::class)->enter(1, function () use ($quiet, $gone, $cover): void {
         expect(coverRows($quiet))->toBe([$cover->id])->and(coverRows($gone))->toBe([]);
     });
+});
+
+/** @return list<int> the ids of every cover row of site 1, to tell a kept row from a rewritten one */
+function coverRowIds(): array
+{
+    return array_map('intval', DB::connection('pgsql_admin')->table('mediables')->where('site_id', 1)
+        ->where('collection', EntryCoverUsage::COLLECTION)->orderBy('id')->pluck('id')->all());
+}
+
+it('rebuilds the cover rows of posts in the Trash too, idempotently, and the Trash question then calls their picture used', function (): void {
+    truncateRbac();
+    seedTenancy();
+    $this->artisan('rbac:sync')->assertSuccessful();
+    app(TeamContext::class)->forget();
+    Storage::fake('r2');
+    app()->setLocale('vi');
+
+    $cover = coverMedia('cover');
+    $other = coverMedia('other');
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['media.view', 'media.upload', 'media.delete.any']));
+
+    [$trashed, $live] = app(Tenancy::class)->enter(1, function () use ($cover, $other): array {
+        // a post that sat in the Trash before the cover rows existed: written past the model
+        $trashed = Entry::query()->create(['type' => 'post', 'status' => 'published', 'meta' => []]);
+        Entry::query()->whereKey($trashed->id)->update(['meta' => json_encode(['image_url' => $cover->storage_key]), 'deleted_at' => now()]);
+        $live = Entry::query()->create(['type' => 'post', 'status' => 'published', 'meta' => ['image_url' => $cover->storage_key]]);
+        // drift on the live post: a stale row naming another file and a purged file's NULL row
+        Mediable::query()->where('mediable_id', $live->id)->where('collection', EntryCoverUsage::COLLECTION)->delete();
+        foreach ([$other->id, null] as $media) {
+            DB::table('mediables')->insert(['media_id' => $media, 'mediable_type' => 'entry', 'mediable_id' => $live->id,
+                'site_id' => 1, 'collection' => EntryCoverUsage::COLLECTION, 'sort_order' => 0, 'created_at' => now(), 'updated_at' => now()]);
+        }
+
+        return [$trashed, $live];
+    });
+
+    $this->artisan('media:reconcile-content-usage')->assertSuccessful();
+    $after = coverRowIds();
+    app(Tenancy::class)->enter(1, function () use ($trashed, $live, $cover): void {
+        expect(coverRows($trashed))->toBe([$cover->id])->and(coverRows($live))->toBe([$cover->id]);
+    });
+
+    // a second run changes nothing: the same rows, none rewritten
+    $this->artisan('media:reconcile-content-usage')->assertSuccessful();
+    expect(coverRowIds())->toBe($after)->and($after)->toHaveCount(2);
+
+    app(Tenancy::class)->enter(1, function () use ($user, $cover, $live): void {
+        $live->forceDelete(); // only the post in the Trash uses the picture now
+
+        Livewire::actingAs($user)->test(Library::class)
+            ->call('openDetail', $cover->ulid)
+            ->call('trashDetail')
+            ->assertSet('askTrashOpen', true);
+
+        // without its row the Trash question still reads the trashed post's meta
+        Mediable::query()->where('collection', EntryCoverUsage::COLLECTION)->delete();
+        $used = Media::query()->whereKey($cover->id);
+        app(MediaUsageLocator::class)->constrain($used, true);
+        expect($used->exists())->toBeTrue();
+    });
+});
+
+it('keeps the cover row of a post back from the Trash, and makes it match a picture changed while it was there', function (): void {
+    $a = coverMedia('a');
+    $b = coverMedia('b');
+
+    app(Tenancy::class)->enter(1, function () use ($a, $b): void {
+        $post = Entry::query()->create(['type' => 'post', 'status' => 'published', 'meta' => ['image_url' => $a->storage_key]]);
+        $post->delete();
+        expect(coverRows($post))->toBe([$a->id]);
+        $post->restore();
+        expect(coverRows($post))->toBe([$a->id]);
+
+        $post->delete();
+        Entry::withTrashed()->whereKey($post->id)->update(['meta' => json_encode(['image_url' => $b->storage_key])]); // past the model
+        $post = Entry::withTrashed()->findOrFail($post->id);
+        $post->restore();
+        expect(coverRows($post))->toBe([$b->id]);
+    });
+});
+
+it('never undoes a cover change that commits while the rebuild runs', function (): void {
+    $a = coverMedia('a');
+    $b = coverMedia('b');
+
+    $post = app(Tenancy::class)->enter(1, fn (): Entry => Entry::query()->create(['type' => 'post', 'status' => 'published', 'meta' => ['image_url' => $a->storage_key]]));
+
+    // between the rebuild's INSERT and its DELETE another session saves the post with picture B
+    // and commits, its rows swapped as the observer swaps them
+    $fired = false;
+    DB::listen(function (QueryExecuted $query) use (&$fired, $post, $a, $b): void {
+        if ($fired || $query->connectionName === 'pgsql_admin' || ! str_contains($query->sql, 'INSERT INTO mediables')) {
+            return;
+        }
+        $fired = true;
+        $other = DB::connection('pgsql_admin');
+        $other->table('entries')->where('id', $post->id)->update(['meta' => json_encode(['image_url' => $b->storage_key])]);
+        $other->table('mediables')->where('mediable_id', $post->id)->where('collection', EntryCoverUsage::COLLECTION)->where('media_id', $a->id)->delete();
+        $other->table('mediables')->insert(['media_id' => $b->id, 'mediable_type' => 'entry', 'mediable_id' => $post->id,
+            'site_id' => 1, 'collection' => EntryCoverUsage::COLLECTION, 'sort_order' => 0, 'created_at' => now(), 'updated_at' => now()]);
+    });
+
+    app(Tenancy::class)->enter(1, fn () => EntryCoverUsage::reconcileSite(1));
+
+    expect($fired)->toBeTrue();
+    app(Tenancy::class)->enter(1, fn () => expect(coverRows($post))->toBe([$b->id]));
 });

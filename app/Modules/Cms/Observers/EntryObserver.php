@@ -12,8 +12,8 @@ use App\Modules\Media\Models\Mediable;
 
 /**
  * Keeps the library's "in use" row of an entry's featured picture (EntryCoverUsage) in step with
- * its meta: written when an entry is created with a picture or its picture changes, in that save's
- * transaction, whichever path saved it.
+ * its meta: written when an entry is created with a picture, its picture changes or it is restored
+ * from the Trash, in that save's transaction, whichever path saved it.
  *
  * Cleans an entry's block image and featured picture usage rows when the entry is PERMANENTLY
  * deleted. `mediables` is a polymorphic soft-attachment (no FK back to entries), so a force-delete
@@ -53,6 +53,12 @@ final class EntryObserver
     }
 
     /** A move to the Trash (a soft delete) of the Home page is refused; a purge from the Trash is not. */
+    /** Back from the Trash: its cover row is made to match its meta (a no-op when it already does). */
+    public function restored(Entry $entry): void
+    {
+        EntryCoverUsage::sync($entry);
+    }
+
     public function deleting(Entry $entry): void
     {
         if (! $entry->isForceDeleting() && HomePages::is($entry)) {

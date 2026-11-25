@@ -23,8 +23,8 @@ use Illuminate\Console\Command;
  * for those slots; and the site's branch and factory pictures (collection 'branch', owner the
  * `storefront.footer` setting row, BranchList) and the floating contact's own icon pictures
  * (collection 'contact_icon', owner the `storefront.floating_contact` row), and each entry's
- * featured picture (collection 'cover', EntryCoverUsage), dropping the cover rows of entries that
- * no longer exist. Every save reconciles, so this covers content that never passed through a save —
+ * featured picture (collection 'cover', EntryCoverUsage::reconcileSite, set-based, entries in the
+ * Trash included), dropping the cover rows of entries that no longer exist. Every save reconciles, so this covers content that never passed through a save —
  * seeded pages, a fresh deploy, or self-healing after a drift — and drops the rows of a slot owner
  * that no longer holds slot blocks (a setting or category deleted, or emptied, by a road that
  * skipped the save). Idempotent (it upserts/prunes to match the current content), so it is safe to
@@ -52,15 +52,13 @@ class ReconcileContentUsage extends Command
             if (! is_int($siteId)) {
                 continue;
             }
-            $tenancy->enter($siteId, function () use ($reconciler, $usage, &$reconciled, &$slotOwners): void {
-                Mediable::query()->where('mediable_type', 'entry')->where('collection', EntryCoverUsage::COLLECTION)
-                    ->whereNotIn('mediable_id', Entry::withTrashed()->select('id'))
-                    ->delete();
-                foreach (Entry::query()->cursor() as $entry) {
+            $tenancy->enter($siteId, function () use ($siteId, $reconciler, $usage, &$reconciled, &$slotOwners): void {
+                // the Trash included: a trashed post still reserves its pictures until it is purged
+                foreach (Entry::withTrashed()->cursor() as $entry) {
                     $reconciler->reconcile($entry);
-                    EntryCoverUsage::sync($entry);
                     $reconciled++;
                 }
+                EntryCoverUsage::reconcileSite($siteId);
                 $slotOwners += $this->slotOwners($usage);
             });
         }
