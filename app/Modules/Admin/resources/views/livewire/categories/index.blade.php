@@ -360,6 +360,9 @@
                                         @if ($c === $main)<span class="lb-star" title="{{ __('admin.lb.source_tip') }}"><x-bs-admin::icon name="ri-star-fill" class="!size-[calc(0.8125rem+var(--user-text-boost))]" /></span>@else<span></span>@endif
                                     </button>
                                 @endforeach
+                                @if (count($locales) >= 6)
+                                    <p class="lb-none" role="status" x-show="! langAnyHit()" x-cloak>{{ __('admin.lb.no_result') }}</p>
+                                @endif
                                 @if ($langManage !== null)
                                     <div class="my-1 h-px bg-border" aria-hidden="true"></div>
                                     <a href="{{ $langManage }}" data-cm-lang-manage wire:navigate class="flex min-h-menu-row items-center gap-2 rounded px-2.5 text-text no-underline hover:bg-surface-hover any-pointer-coarse:min-h-menu-row-touch">

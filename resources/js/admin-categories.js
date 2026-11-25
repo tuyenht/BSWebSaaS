@@ -732,6 +732,9 @@ window.Alpine.data('bsCategories', (cfg) => {
             const q = fold(this.langQ.trim());
             return q === '' || fold(cfg.langNames[c] || c).includes(q) || c.includes(q);
         },
+        langAnyHit() {
+            return cfg.locales.some((c) => this.langHit(c));
+        },
         langToggle() {
             if (this.langOpen) {
                 this.langClose(false);

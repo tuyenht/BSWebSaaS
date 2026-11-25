@@ -181,6 +181,10 @@ test('the drawer shows the source and the open version as pills; «+N» lists ev
     assert.deepEqual(langs.locales.filter((l) => c.langHit(l)), ['zh'], 'by name, without its accents');
     c.langQ = 'JA';
     assert.deepEqual(langs.locales.filter((l) => c.langHit(l)), ['ja'], 'or by code');
+    assert.equal(c.langAnyHit(), true, 'a match keeps the panel without the empty message');
+    c.langQ = 'khong co';
+    assert.equal(c.langAnyHit(), false, 'nothing matches: the panel shows the shared no-result message');
+    c.langQ = 'JA';
     c.langGo('zh');
     assert.equal(c.langOpen, false);
     assert.equal(c.langQ, '', 'the search starts empty next time');
