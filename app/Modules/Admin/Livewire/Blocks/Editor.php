@@ -8,6 +8,7 @@ use App\Modules\Admin\Livewire\Blocks\Concerns\GatesBlockScreens;
 use App\Modules\Admin\Livewire\Concerns\EditsBlockList;
 use App\Modules\Admin\Livewire\Concerns\EditsButtonActions;
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
+use App\Modules\Cms\Queries\ContentBlockUsages;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Cms\Actions\ContentBlocks\PublishContentBlock;
 use App\Modules\Cms\Actions\ContentBlocks\SaveContentBlockBody;
@@ -189,13 +190,7 @@ final class Editor extends Component
             if ($e->reason === 'body_invalid') {
                 $this->addError('blocks', $e->getMessage() !== '' ? $e->getMessage() : __('blocks.err_body'));
             }
-            $this->toast(__(match ($e->reason) {
-                'version_stale' => 'blocks.err_stale_body',
-                'locale_invalid' => 'blocks.err_lang_off',
-                'body_invalid' => 'blocks.err_body',
-                'block_missing' => 'blocks.toast_gone',
-                default => 'blocks.err_generic',
-            }), 'error');
+            $this->toast(__(self::refusalKey($e->reason)), 'error');
 
             return false;
         } catch (AuthorizationException) {
@@ -219,7 +214,7 @@ final class Editor extends Component
         try {
             app(PublishContentBlock::class)->handle($this->actingUser(), $this->block(), true);
         } catch (ContentBlockChangeRejectedException $e) {
-            $this->toast(__('blocks.err_generic'), 'error');
+            $this->toast(__(self::refusalKey($e->reason)), 'error');
 
             return;
         } catch (AuthorizationException) {
@@ -228,7 +223,11 @@ final class Editor extends Component
             return;
         }
         $this->isDraft = false;
-        session()->flash(Library::FLASH, __('blocks.toast_published_back', ['name' => $this->blockName]));
+        $block = $this->block();
+        $places = app(ContentBlockUsages::class)->countsFor([$block->id])[$block->id] ?? 0;
+        session()->flash(Library::FLASH, $places > 0
+            ? __('blocks.toast_published', ['name' => $this->blockName, 'places' => trans_choice('blocks.n_places', $places, ['n' => $places])])
+            : __('blocks.toast_published_none', ['name' => $this->blockName]));
         $this->redirectRoute('admin.blocks.index', navigate: true);
     }
 
@@ -247,6 +246,18 @@ final class Editor extends Component
     {
         $this->authorizeEditing();
         $this->load($this->block());
+    }
+
+    /** The message for a block change the action refused, by its reason. */
+    private static function refusalKey(string $reason): string
+    {
+        return match ($reason) {
+            'version_stale' => 'blocks.err_stale_body',
+            'locale_invalid' => 'blocks.err_lang_off',
+            'body_invalid' => 'blocks.err_body',
+            'block_missing' => 'blocks.toast_gone',
+            default => 'blocks.err_generic',
+        };
     }
 
     public function closeToast(int $seq = 0): void

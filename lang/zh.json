@@ -4031,7 +4031,6 @@
     "blocks.unpub_ok": "改为草稿",
     "blocks.editor_band_note_draft": "——此区块是草稿：发布前访客看不到。",
     "blocks.editor_save_publish": "保存并发布",
-    "blocks.toast_published_back": "已发布区块“:name”——访客会在所有使用它的地方看到它",
     "blocks.unit": "共享区块",
     "blocks.editor_title": "编辑区块“:name”",
     "blocks.editor_band": "正在编辑共享区块 · :name",

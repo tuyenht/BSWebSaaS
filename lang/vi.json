@@ -4031,7 +4031,6 @@
     "blocks.unpub_ok": "Đưa về nháp",
     "blocks.editor_band_note_draft": " — khối còn nháp: khách chưa thấy cho tới khi bạn xuất bản.",
     "blocks.editor_save_publish": "Lưu & xuất bản",
-    "blocks.toast_published_back": "Đã xuất bản khối “:name” — khách thấy ở mọi nơi đang dùng",
     "blocks.unit": "khối dùng chung",
     "blocks.editor_title": "Sửa khối “:name”",
     "blocks.editor_band": "Đang sửa khối dùng chung · :name",

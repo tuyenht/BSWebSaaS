@@ -6,9 +6,13 @@ use App\Modules\Cms\Models\BlockUsage;
 use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Rbac\Models\Role;
+use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
+use Spatie\Permission\PermissionRegistrar;
 
 /*
  * «Xuất bản» / «Đưa về nháp» in a block row's «⋯» (Khối dùng chung) and «Lưu & xuất bản» in the block
@@ -76,13 +80,18 @@ it('asks before taking a used block back to draft, in the delete question\'s dia
     placeBlock($block);
 
     app(Tenancy::class)->enter(1, function () use ($editor, $block): void {
+        // the bin is drawn on the rows' «Xóa» items too: the delete question's button adds one, this question's does not
+        preg_match('/ d="([^"]+)"/', Blade::render('<x-bs-admin::icon name="ri-delete-bin-6" />'), $bin);
+        $binsWhenDeleting = substr_count(Livewire::actingAs($editor)->test(Library::class)->call('askDelete', $block->ulid)->html(), $bin[1] ?? 'no-bin-path');
         $page = Livewire::actingAs($editor)->test(Library::class)->call('askUnpublish', $block->ulid)
             ->assertSet('confirmOpen', true)->assertSet('asking', 'draft')
             ->assertSet('deleting.places', 1)->assertSet('deleting.menu', true)
             ->assertSee(__('blocks.unpub_title'))->assertSee(__('blocks.unpub_menu'));
         // as the board draws it: a warning-tinted icon box, and no bin on the «Đưa về nháp» button
-        expect($page->html())->toContain('bg-warning-soft text-warning-text')
-            ->and($page->html())->not->toContain('ri-delete-bin-6')
+        // the icon component prints only the path, so count the bin's path itself
+        expect($bin[1] ?? '')->not->toBe('')
+            ->and($page->html())->toContain('bg-warning-soft text-warning-text')
+            ->and(substr_count($page->html(), $bin[1] ?? 'no-bin-path'))->toBe($binsWhenDeleting - 1)
             ->and($block->fresh()->status)->toBe(ContentBlock::PUBLISHED);
 
         // «Ở lại» leaves it published and the dialog goes back to being the delete question
@@ -106,6 +115,45 @@ it('refuses publishing and taking back to draft to a member who may not manage b
         Livewire::actingAs($viewer)->test(Library::class)->assertForbidden();
         Livewire::actingAs($viewer)->test(BlockEditor::class, ['ulid' => $draft->ulid])->assertForbidden();
         expect($draft->fresh()->status)->toBe(ContentBlock::DRAFT)->and($live->fresh()->status)->toBe(ContentBlock::PUBLISHED);
+    });
+});
+
+it('refuses every new publish method once the member\'s right is taken away from an open screen', function (): void {
+    $editor = blockLibraryUser(1, 'editor');
+    $draft = statusBlock('a', 'draft');
+    $live = statusBlock('b', 'published', 'menu');
+    placeBlock($live);
+
+    app(Tenancy::class)->enter(1, function () use ($editor, $draft, $live): void {
+        $library = Livewire::actingAs($editor)->test(Library::class)->call('askUnpublish', $live->ulid)->assertSet('asking', 'draft');
+        $editorScreen = Livewire::actingAs($editor)->test(BlockEditor::class, ['ulid' => $draft->ulid]);
+
+        // the same open screens, the member's role taken away meanwhile
+        Role::findByName('editor', PermissionRegistry::GUARD)->syncPermissions([]);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $library->call('publish', $draft->ulid);
+        $library->call('confirmUnpublish');
+        $library->call('askUnpublish', $live->ulid);
+        $editorScreen->call('saveAndPublish');
+
+        expect($draft->fresh()->status)->toBe(ContentBlock::DRAFT)
+            ->and($live->fresh()->status)->toBe(ContentBlock::PUBLISHED);
+    });
+});
+
+it('does not delete when the open question is «Đưa về nháp», nor take to draft when it is the delete question', function (): void {
+    $editor = blockLibraryUser(1, 'editor');
+    $live = statusBlock('c', 'published', 'menu');
+    placeBlock($live);
+
+    app(Tenancy::class)->enter(1, function () use ($editor, $live): void {
+        Livewire::actingAs($editor)->test(Library::class)->call('askUnpublish', $live->ulid)->call('confirmDelete');
+        expect(ContentBlock::query()->whereKey($live->id)->exists())->toBeTrue()
+            ->and($live->fresh()->status)->toBe(ContentBlock::PUBLISHED);
+
+        Livewire::actingAs($editor)->test(Library::class)->call('askDelete', $live->ulid)->call('confirmUnpublish');
+        expect($live->fresh()->status)->toBe(ContentBlock::PUBLISHED);
     });
 });
 
@@ -135,6 +183,6 @@ it('offers «Lưu & xuất bản» in the block editor only while the block is a
             ->call('addBlock', 'richtext')->call('saveAndPublish')
             ->assertRedirect(route('admin.blocks.index'));
         expect($draft->fresh()->status)->toBe(ContentBlock::PUBLISHED)
-            ->and(session(Library::FLASH))->toBe(__('blocks.toast_published_back', ['name' => $draft->name]));
+            ->and(session(Library::FLASH))->toBe(__('blocks.toast_published_none', ['name' => $draft->name]));
     });
 });

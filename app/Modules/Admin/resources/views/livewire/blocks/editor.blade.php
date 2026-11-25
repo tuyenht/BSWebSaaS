@@ -23,7 +23,7 @@
             <x-bs-admin::icon name="ri-stack" class="mt-0.5 size-4 shrink-0" />
             <span class="min-w-0 [overflow-wrap:anywhere]">{{ __('blocks.editor_band', ['name' => $blockName]) }}{{ $isDraft ? __('blocks.editor_band_note_draft') : __('blocks.editor_band_note') }}</span>
         </span>
-        <span class="ms-auto flex flex-wrap gap-2">
+        <span class="ms-auto flex flex-wrap justify-end gap-2">
             <x-bs-admin::button variant="outline" color="primary" :href="route('admin.blocks.index')" wire:navigate title="{{ __('blocks.editor_back') }}">
                 <x-bs-admin::icon name="ri-arrow-left" class="size-4" /> {{ __('blocks.editor_back') }}
             </x-bs-admin::button>

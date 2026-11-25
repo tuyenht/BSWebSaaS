@@ -340,7 +340,7 @@ final class Library extends Component
     /** The dialog's «Đưa về nháp»: the website stops showing the block; its content and places stay. */
     public function confirmUnpublish(): void
     {
-        $asked = $this->deleting;
+        $asked = $this->asking === 'draft' ? $this->deleting : null;
         $this->cancelDelete();
         $block = $asked === null ? null : $this->writable($asked['ulid'], 'publish');
         if ($block !== null) {
@@ -380,7 +380,7 @@ final class Library extends Component
     /** The dialog's «Vẫn xóa»: the block, its languages and where it was used go for good. */
     public function confirmDelete(): void
     {
-        $asked = $this->deleting;
+        $asked = $this->asking === 'delete' ? $this->deleting : null;
         $this->cancelDelete();
         $block = $asked === null ? null : $this->writable($asked['ulid'], 'delete');
         if ($asked === null || $block === null) {

@@ -4031,7 +4031,6 @@
     "blocks.unpub_ok": "Move to draft",
     "blocks.editor_band_note_draft": " — this block is a draft: visitors do not see it until you publish it.",
     "blocks.editor_save_publish": "Save & publish",
-    "blocks.toast_published_back": "Published the block “:name” — visitors see it everywhere it is used",
     "blocks.unit": "shared block",
     "blocks.editor_title": "Edit the block “:name”",
     "blocks.editor_band": "Editing a shared block · :name",
