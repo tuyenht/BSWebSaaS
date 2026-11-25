@@ -5271,6 +5271,7 @@
     "admin.set.sd.redirects": "古いアドレスから新しいアドレスへ訪問者を転送します。",
     "admin.set.sd.domains": "訪問者がウェブサイトにアクセスするためのアドレス。",
     "admin.set.sd.email": "ウェブサイトのメール送信方法。",
+    "admin.set.unconfigured": "未設定",
     "admin.set.sd.social": "GoogleやFacebookでのログイン。",
     "admin.set.sd.security": "パスワード、2段階認証、デバイス。",
     "admin.set.sd.workflow": "コンテンツの種類ごとに承認を有効にします。",

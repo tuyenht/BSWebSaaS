@@ -355,6 +355,7 @@ it('lists a page of redirects on a flat query budget, whatever they lead to', fu
     $seed(3, 8);
     $many = $render();
 
-    // 10: the page, its counts and its names, plus the website's switch for redirects to another website
-    expect($many)->toBe($few)->and($many)->toBeLessThanOrEqual(10);
+    // 11: the page, its counts and its names, plus the website's switch for redirects to another website,
+    // plus the settings menu's read of whether Email and Tích hợp are set up (its «Chưa cấu hình» dot; measured +1 here)
+    expect($many)->toBe($few)->and($many)->toBeLessThanOrEqual(11);
 });
