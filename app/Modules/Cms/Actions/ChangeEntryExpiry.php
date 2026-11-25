@@ -55,7 +55,7 @@ final readonly class ChangeEntryExpiry
                 throw new AuthorizationException(__('entries.err_status_forbidden'));
             }
 
-            $at = $expiresAt !== null ? CarbonImmutable::instance($expiresAt) : null;
+            $at = $expiresAt !== null ? CarbonImmutable::instance($expiresAt)->utc() : null; // stored in UTC: a write prints the time without its zone
             if ($at !== null && HomePages::is($entry)) {
                 throw new HomePageLockedException('entries.home_expiry_why');
             }
