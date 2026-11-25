@@ -104,6 +104,8 @@ it('puts a place past the end at the end, and keeps the place shown for what is 
     app(Tenancy::class)->enter(1, function () use ($writer): void {
         $a = poPage('a', position: 0);
         poPage('b', position: 1);
+        $moves = fn (): int => AuditLog::query()->where('site_id', 1)->where('action', 'cms.page.moved')->count();
+        $before = $moves();
 
         Livewire::actingAs($writer)->test(Editor::class, ['ulid' => $a->ulid])
             ->set('pageOrder', '99')
@@ -114,8 +116,7 @@ it('puts a place past the end at the end, and keeps the place shown for what is 
             ->set('pageOrder', '1.5')->assertSet('pageOrder', '2')
             ->set('pageOrder', '')->assertSet('pageOrder', '2')
             ->call('save')->assertHasNoErrors();
-        expect(poOrder())->toBe(['b', 'a'])
-            ->and(AuditLog::query()->where('site_id', 1)->where('action', 'cms.page.moved')->count())->toBe(1);
+        expect(poOrder())->toBe(['b', 'a'])->and($moves())->toBe($before + 1);
     });
 });
 
@@ -125,11 +126,12 @@ it('leaves the page where it is when the place is not changed', function (): voi
     app(Tenancy::class)->enter(1, function () use ($writer): void {
         poPage('a', position: 0);
         $b = poPage('b', position: 5);
+        $moves = fn (): int => AuditLog::query()->where('site_id', 1)->where('action', 'cms.page.moved')->count();
+        $before = $moves();
 
         Livewire::actingAs($writer)->test(Editor::class, ['ulid' => $b->ulid])
             ->set('title', 'Mới')->call('save')->assertHasNoErrors();
-        expect($b->fresh()?->position)->toBe(5)
-            ->and(AuditLog::query()->where('site_id', 1)->where('action', 'cms.page.moved')->exists())->toBeFalse();
+        expect($b->fresh()?->position)->toBe(5)->and($moves())->toBe($before);
     });
 });
 
@@ -270,6 +272,7 @@ it('writes nothing for «Trang trống», and offers no start once the body has 
     $writer = poWriter();
 
     app(Tenancy::class)->enter(1, function () use ($writer): void {
+        SiteLocale::query()->create(['locale' => 'en', 'is_default' => false, 'enabled' => true]);
         Livewire::actingAs($writer)->test(Editor::class)
             ->call('pickStartTemplate', 'blank')
             ->assertSet('title', '')->assertSet('bodyHtml', '')->assertSet('startDone', true)
@@ -283,8 +286,7 @@ it('writes nothing for «Trang trống», and offers no start once the body has 
 
         Livewire::actingAs($writer)->test(Editor::class)->call('pickStartTemplate', 'nope')->assertSet('startDone', false)->assertSet('bodyHtml', '');
 
-        SiteLocale::query()->create(['locale' => 'en', 'is_default' => false, 'enabled' => true]);
-        Livewire::actingAs($writer)->test(Editor::class, ['locale' => 'en'])->assertDontSeeHtml('data-page-start')
+        Livewire::actingAs($writer)->test(Editor::class, ['locale' => 'en'])->assertSet('locale', 'en')->assertDontSeeHtml('data-page-start')
             ->call('pickStartTemplate', 'about')->assertSet('bodyHtml', '');
     });
 });
