@@ -23,6 +23,9 @@ final readonly class PlanItem
 
     public const string ADOPT = 'adopt';
 
+    /** A content section the pack lists under `remove`: deleted, with its row backed up first. */
+    public const string REMOVE = 'remove';
+
     public const string UNCHANGED = 'unchanged';
 
     public const string SKIP_EDITED = 'skip:edited';
@@ -34,7 +37,7 @@ final readonly class PlanItem
     public const string CONFLICT = 'conflict';
 
     /** Verdicts that write. */
-    public const array WRITES = [self::CREATE, self::UPDATE, self::ADOPT];
+    public const array WRITES = [self::CREATE, self::UPDATE, self::ADOPT, self::REMOVE];
 
     /**
      * @param  array<string, mixed>|null  $current

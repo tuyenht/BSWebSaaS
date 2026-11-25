@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Provisioning\ContentPack;
 
+use App\Modules\Admin\Support\Entries\SectionListViews;
 use App\Modules\Admin\Support\Settings\BranchList;
 use App\Modules\Admin\Support\Settings\FloatingContactInput;
 use App\Modules\Catalog\Models\Product;
@@ -258,6 +259,11 @@ final class Applier
      */
     private function section(PlanItem $planned): void
     {
+        if ($planned->verdict === PlanItem::REMOVE) {
+            $this->removeSection($planned);
+
+            return;
+        }
         $desired = $planned->desired;
         $attributes = [
             'label' => Cast::string($desired['label'] ?? null),
@@ -277,6 +283,21 @@ final class Applier
             $section->update($attributes);
         }
         $this->ids[$planned->item->key] = $section->id;
+        $this->sections->flush();
+    }
+
+    /**
+     * A section the pack removes, as planned (the backup holds its row and the saved views): the row
+     * goes, and with it every member's saved view of its post list. Its posts belong from now on to
+     * the section above their category, which composes their addresses as it did (the plan's
+     * condition), so no route changes. A workflow keyed to it stays as it is: switched off (the plan
+     * refuses an active one), it governs nothing.
+     */
+    private function removeSection(PlanItem $planned): void
+    {
+        $section = ContentSection::query()->findOrFail($planned->recordId);
+        SectionListViews::prune(Cast::int($section->site_id), $section->key);
+        $section->delete();
         $this->sections->flush();
     }
 

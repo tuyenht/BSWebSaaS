@@ -12,6 +12,9 @@ use App\Modules\Shared\Support\Cast;
  */
 final readonly class PackItem
 {
+    /** The data flag of a section the pack removes (sections.json `remove`). */
+    public const string REMOVE = 'remove';
+
     /**
      * @param  array<string, mixed>  $data
      */
@@ -38,6 +41,12 @@ final readonly class PackItem
         }
 
         return null;
+    }
+
+    /** Whether the item removes a content section instead of writing one. */
+    public function removes(): bool
+    {
+        return $this->kind === 'section' && ($this->data[self::REMOVE] ?? false) === true;
     }
 
     /** The default-locale slug or path the key carries (`post:a-b` → `a-b`, `page:/x` → `/x`). */

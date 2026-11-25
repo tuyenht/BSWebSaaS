@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Provisioning\ContentPack;
 
+use App\Modules\Admin\Support\Entries\SectionListViews;
 use App\Modules\Admin\Support\Settings\BranchList;
 use App\Modules\Admin\Support\Settings\FloatingContactInput;
 use App\Modules\Admin\Support\Settings\HeadingDecorInput;
@@ -546,7 +547,7 @@ final class Planner
      * since the last load is never taken for the loader's own write.
      *
      * @param  array<string, mixed>  $current
-     * @param  array{hash: string, ref: string, parent?: string|null}  $ledger
+     * @param  array{hash: string, ref: string, parent?: string|null, created?: bool}  $ledger
      * @return list<string>
      */
     private static function ledgerHashes(array $current, array $ledger): array
@@ -646,6 +647,17 @@ final class Planner
                     if (! in_array($id, $this->matchedOf($pack->ofKind('taxonomy')), true) && $row['vocabulary'] === $chain['vocabulary'] && $row['parent_id'] === $parentId && ($row['tr'][$this->locale]['slug'] ?? null) === $name) {
                         $found = $id;
                         break 2;
+                    }
+                }
+            }
+            // A category the pack moves under another parent: the live one still at its earlier key.
+            $from = Cast::stringOrNull($item->data['moved_from'] ?? null);
+            if ($found === null && $from !== null) {
+                $claimed = $this->matchedOf($pack->ofKind('taxonomy'));
+                foreach (array_keys($this->taxonomies) as $id) {
+                    if (! in_array($id, $claimed, true) && $this->derivedTaxonomyKey($id) === $from) {
+                        $found = $id;
+                        break;
                     }
                 }
             }
@@ -835,7 +847,7 @@ final class Planner
 
         $live = [];
         $keys = array_map(fn (PackItem $item): string => $item->anchor(), $items);
-        foreach ($this->locked(ContentSection::query()->whereIn('key', $keys))->get(['id', 'key', 'label', 'icon', 'sort_order', 'entry_type', 'taxonomy_id', 'permission_prefix']) as $row) {
+        foreach ($this->locked(ContentSection::query()->whereIn('key', $keys))->get(['id', 'key', 'label', 'icon', 'sort_order', 'entry_type', 'taxonomy_id', 'permission_prefix', 'list_template', 'detail_template', 'meta']) as $row) {
             $live[$row->key] = $row;
         }
         $bound = [];   // category id → the section built on it (the first by display order)
@@ -858,6 +870,11 @@ final class Planner
         $planned = [];
         foreach ($items as $item) {
             $key = $item->anchor();
+            if ($item->removes()) {
+                $planned[$item->key] = $this->sectionRemoval($context, $item, $live[$key] ?? null, $waiting[$key] ?? null);
+
+                continue;
+            }
             $categoryKey = Cast::string($item->data['category'] ?? null);
             $categoryId = $this->matched[$categoryKey] ?? null;
             $row = $live[$key] ?? null;
@@ -892,6 +909,137 @@ final class Planner
         }
 
         return $planned;
+    }
+
+    /**
+     * The line of a section the pack removes. Only a section this loader created and nobody changed
+     * since may go: one the pack's ledger records as created here (a line written before lines
+     * recorded that counts as created: until then the loader took over only a site's section that
+     * already matched the pack, and no pack held one), whose label, icon and menu place still hash as
+     * the ledger recorded, whose kind and permissions are the loader's, and on which staff set no
+     * layout or setting of their own. Refused while an active workflow uses its key (its posts would
+     * leave that workflow). Not on the site: nothing to remove. Where its posts go, and whether any
+     * address moves, is decided once the category tree is planned (sectionRemovals).
+     */
+    private function sectionRemoval(PlanContext $context, PackItem $item, ?ContentSection $row, ?string $workflow): PlanItem
+    {
+        $key = $item->anchor();
+        $desired = [PackItem::REMOVE => true];
+        if ($row === null) {
+            return new PlanItem($item, PlanItem::UNCHANGED, null, $desired, null, null, ['not on the site; nothing to remove']);
+        }
+        $current = $this->sectionState($row);
+        $ledger = $context->ledger[$item->key] ?? null;
+        // The ledger names the section's category by the key it had then: this load may be moving it.
+        $hashes = $ledger === null ? [] : self::ledgerHashes($current, $ledger);
+        if ($ledger !== null && $row->taxonomy_id !== null) {
+            $hashes = [...$hashes, ...self::ledgerHashes(['category' => $this->derivedTaxonomyKey(Cast::int($row->taxonomy_id))] + $current, $ledger)];
+        }
+        $conflict = match (true) {
+            $ledger === null => "the site's section «{$key}» was not created by this pack's loads (no ledger line); a pack removes only a section it created",
+            ($ledger['created'] ?? true) !== true => "the loader took the section «{$key}» over from the site; a pack removes only a section it created",
+            ! in_array($ledger['hash'], $hashes, true) => "the section «{$key}» was edited by staff since the last load (label, icon or menu place); the loader removes only a section exactly as it wrote it",
+            $row->entry_type !== 'post' || ! in_array($row->permission_prefix, [null, '', 'entries'], true) => "the section «{$key}» no longer has the kind or permissions the loader gave it; the loader removes only a section exactly as it wrote it",
+            $row->list_template !== null || $row->detail_template !== null || Cast::arr($row->meta) !== [] => "staff gave the section «{$key}» layouts or settings of its own; the loader removes only a section exactly as it wrote it",
+            $workflow !== null => "the workflow «{$workflow}» is active on the section «{$key}»; removing the section would take its posts out of it: switch that workflow off first",
+            default => null,
+        };
+        if ($conflict !== null) {
+            return new PlanItem($item, PlanItem::CONFLICT, $current, $desired, $key, $row->id, [$conflict]);
+        }
+
+        return new PlanItem($item, PlanItem::REMOVE, $current, $desired, $key, $row->id);
+    }
+
+    /**
+     * What removing each section does once the tree is planned: the posts of its branch then belong
+     * to the nearest section above its category (in the tree the load leaves), which must exist, or
+     * they would show in no admin list; and no post address may move (a post's address follows its
+     * section's permalink). A removal that passes leaves $bindings without the section, so every
+     * address this load composes is the one the site has after it; the line says where the posts go,
+     * which workflow then governs them, and how many saved list views go with the section.
+     *
+     * @param  list<PlanItem>  $items
+     * @param  array<string, array{id: int|null, parent: string|null, slugs: array<string, string>}>  $tree
+     * @param  array<int, array{key: string, type: string}>  $bindings  the live bindings; a removal that passes is taken out
+     * @return array<string, array{0: string|null, 1: string}> pack key → [conflict, note]
+     */
+    private function sectionRemovals(array $items, array $tree, array &$bindings): array
+    {
+        $lines = [];
+        foreach ($items as $planned) {
+            if ($planned->verdict !== PlanItem::REMOVE || $planned->recordId === null) {
+                continue;
+            }
+            $key = $planned->item->anchor();
+            $categoryId = array_search($key, array_map(fn (array $bound): string => $bound['key'], $bindings), true);
+            if (! is_int($categoryId)) {
+                // Built on no category, or not the one its category's posts follow: none of them belong to it.
+                $lines[$planned->item->key] = [null, "removes the section «{$key}»; no post belongs to it; 0 post addresses move".$this->savedViewsNote($key)];
+
+                continue;
+            }
+            $categoryKey = $this->taxonomyKey($categoryId);
+            $without = $bindings;
+            unset($without[$categoryId]);
+            $receiver = $this->nearestSection($categoryKey, $tree, $without);
+            if ($receiver === null) {
+                $lines[$planned->item->key] = ["without the section «{$key}», {$categoryKey} would belong to no section and its posts would show in no admin list; the loader removes a section only when its category sits under another section (move the category there first)", ''];
+
+                continue;
+            }
+
+            $moves = [];
+            $before = $this->permalinkOf(['key' => $key, 'type' => 'posts']);
+            $changed = [];
+            foreach ($tree as $node => $place) {
+                if ($place['id'] === null || ($this->nearestSection($node, $tree, $bindings)['key'] ?? null) !== $key) {
+                    continue;
+                }
+                if ($this->permalinkOf($this->nearestSection($node, $tree, $without)) !== $before) {
+                    $changed[] = $place['id'];
+                }
+            }
+            foreach (array_chunk($changed, 1000) as $chunk) {
+                $query = $this->branchItems('post', $chunk, published: false)->orderBy('it.id')->orderBy('r.locale');
+                if ($this->lock) {
+                    $query->lock(self::LOCK);
+                }
+                foreach ($query->get(['pv.taxonomy_id', 'r.locale', 'r.path', 'tr.slug']) as $row) {
+                    $path = Cast::string($row->path);
+                    $new = $this->itemPath('post', $this->taxonomyKey(Cast::int($row->taxonomy_id)), $tree, $without, Cast::string($row->locale), Cast::string($row->slug));
+                    if ($new !== $path) {
+                        $moves[] = "{$path} → {$new}";
+                    }
+                }
+            }
+            if ($moves !== []) {
+                $count = count($moves);
+                $lines[$planned->item->key] = [
+                    "{$count} post address".($count === 1 ? '' : 'es').' under '.$categoryKey." would move without the section «{$key}» (".implode(', ', array_slice($moves, 0, 3)).($count > 3 ? ', …' : '')
+                        ."); the loader never moves addresses for a section: give «{$receiver['key']}» the permalink these posts have now first",
+                    '',
+                ];
+
+                continue;
+            }
+
+            $bindings = $without;
+            $workflow = $this->locked(Workflow::query()->where('applies_to_type', $receiver['key'])->where('is_active', true))->value('name');
+            $lines[$planned->item->key] = [null, "removes the section «{$key}» (built on {$categoryKey}); its posts join «{$receiver['key']}»"
+                .(is_string($workflow) ? " and its workflow «{$workflow}»" : '')
+                .'; 0 post addresses move; the row is backed up first'.$this->savedViewsNote($key)];
+        }
+
+        return $lines;
+    }
+
+    /** How many of the site's members keep a saved view of the section's post list (pruned with it). */
+    private function savedViewsNote(string $key): string
+    {
+        $count = SectionListViews::members($this->site->id(), $key)->count();
+
+        return $count === 0 ? '' : "; {$count} saved list view".($count === 1 ? '' : 's').' of it pruned';
     }
 
     /**
@@ -2563,8 +2711,9 @@ final class Planner
     {
         $tree = $this->plannedTree($items);
         $bindings = $this->sectionBindings();
-        // Before any address is composed: a new section whose binding would move a post drops out here.
-        $sectionLines = $this->sectionMoves($items, $tree, $bindings);
+        // Before any address is composed: a new section whose binding would move a post drops out here,
+        // and a section the load removes leaves the bindings (when its removal holds).
+        $sectionLines = $this->sectionMoves($items, $tree, $bindings) + $this->sectionRemovals($items, $tree, $bindings);
         $writing = array_values(array_filter($items, fn (PlanItem $planned): bool => $planned->writes()));
 
         $routed = $this->routedLocales($writing);

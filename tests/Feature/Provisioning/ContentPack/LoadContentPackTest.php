@@ -100,7 +100,7 @@ it('is idempotent: the second dry run is all unchanged and the second apply writ
 
     [$exit, $output] = ContentPacks::run();
     $count = count(app(PackReader::class)->read('demo-co')->items);
-    expect($exit)->toBe(0)->and($output)->toContain("create 0 · update 0 · adopt 0 · unchanged {$count} · skip 0 · conflict 0");
+    expect($exit)->toBe(0)->and($output)->toContain("create 0 · update 0 · adopt 0 · remove 0 · unchanged {$count} · skip 0 · conflict 0");
 
     $writes = ContentPacks::writes(function () use ($output, &$exit): void {
         [$exit] = ContentPacks::run('demo-co', ['--apply' => true, '--plan' => ContentPacks::fingerprint($output)]);
@@ -406,7 +406,7 @@ it('puts a page under the parent page it names, at its own address, with the par
 
     [$exit, $output] = ContentPacks::run();
     $count = count(app(PackReader::class)->read('demo-co')->items);
-    expect($exit)->toBe(0)->and($output)->toContain("create 0 · update 0 · adopt 0 · unchanged {$count} · skip 0 · conflict 0");
+    expect($exit)->toBe(0)->and($output)->toContain("create 0 · update 0 · adopt 0 · remove 0 · unchanged {$count} · skip 0 · conflict 0");
 });
 
 it('gives a page loaded before parents were managed its parent as an update, leaves it when the item names none, and clears it on null', function (): void {
