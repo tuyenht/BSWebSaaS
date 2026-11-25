@@ -107,9 +107,9 @@ it('makes the news section cover the job category beside its own and removes «c
     // The job page: same address, its own trail (no «Tin tức» in it), the JobPosting stays.
     $job = $this->get('http://'.ContentPacks::HOST.'/ke-toan-noi-bo')->assertOk()->getContent();
     expect(ldNode($job, 'JobPosting'))->not->toBeNull()
-        ->and(array_column(ldNode($job, 'BreadcrumbList')['itemListElement'] ?? [], 'name'))->toBe(['Trang chủ', 'Gia nhập đội ngũ An Vinh', 'Kế toán nội bộ – hợp đồng, ngân hàng, công nợ']);
+        ->and(array_column(ldNode($job, 'BreadcrumbList')['itemListElement'] ?? [], 'name'))->toBe(['Trang chủ', 'Tuyển dụng', 'Kế toán nội bộ – hợp đồng, ngân hàng, công nợ']);
     $careers = $this->get('http://'.ContentPacks::HOST.'/tuyen-dung')->assertOk()->assertSee('Kế toán nội bộ')->assertSee('Kỹ sư cơ khí')->getContent();
-    expect(array_column(ldNode($careers, 'BreadcrumbList')['itemListElement'] ?? [], 'name'))->toBe(['Trang chủ', 'Gia nhập đội ngũ An Vinh']);
+    expect(array_column(ldNode($careers, 'BreadcrumbList')['itemListElement'] ?? [], 'name'))->toBe(['Trang chủ', 'Tuyển dụng']);
     $this->get('http://'.ContentPacks::HOST.'/ky-su-thiet-ke-co-khi-do-ga')->assertOk();
     // The news list on the website: no job offer.
     $this->get('http://'.ContentPacks::HOST.'/tin-tuc')->assertOk()
@@ -129,7 +129,7 @@ it('makes the news section cover the job category beside its own and removes «c
     );
     // Its category filter: the job category at the top beside the news categories, the news root not a choice.
     $options = collect($test->viewData('catOptions'));
-    expect($options->firstWhere('label', 'Gia nhập đội ngũ An Vinh')['depth'] ?? null)->toBe(0)
+    expect($options->firstWhere('label', 'Tuyển dụng')['depth'] ?? null)->toBe(0)
         ->and($options->pluck('label')->all())->not->toContain('Tin tức & sự kiện');
 
     [$exit, $output] = ContentPacks::run('an-vinh');

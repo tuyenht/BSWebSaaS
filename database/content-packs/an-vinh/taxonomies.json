@@ -610,7 +610,7 @@
   {
    "key": "tax:post_cat/tuyen-dung",
    "name": {
-    "vi": "Gia nhập đội ngũ An Vinh"
+    "vi": "Tuyển dụng"
    },
    "list_template": "grid-job",
    "detail_template": "job",
