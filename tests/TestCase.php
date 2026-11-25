@@ -98,5 +98,28 @@ abstract class TestCase extends BaseTestCase
 
         self::$suiteLock = $pdo;
         putenv(self::LOCK_HELD_ENV.'=1');
+
+        self::freezeLegacyTestFolders($pdo);
+    }
+
+    /**
+     * Many tests write media rows under hand-picked first folders (`s/library/…`) — the key layout from
+     * before website codes, which the database still accepts only under frozen folders. On a real
+     * database the site-code migration records the folders its existing keys use; a fresh test
+     * database has none, so the folders these tests use are recorded here as seeded folders (open to
+     * any website, never to two at once), once per run. Idempotent; skipped before that migration ran.
+     */
+    private static function freezeLegacyTestFolders(PDO $pdo): void
+    {
+        $exists = $pdo->query("select (to_regclass('public.reserved_site_codes') is not null)::int");
+        if ($exists === false || (int) $exists->fetchColumn() !== 1) {
+            return;
+        }
+
+        $pdo->exec(
+            "INSERT INTO public.reserved_site_codes (code, reason) SELECT folder, 'seed_folder' FROM unnest(ARRAY["
+            ."'a', 'b', 's', 's1', 's2', 's3', 'tenant', 'cu', 'a-vinh', 'khac', 'demo'"
+            .']) AS folder WHERE NOT EXISTS (SELECT 1 FROM public.reserved_site_codes r WHERE r.code = folder) ON CONFLICT DO NOTHING'
+        );
     }
 }

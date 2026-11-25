@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Media\Exceptions\MediaKeyRejectedException;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\EnsureMediaFromKey;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -52,3 +53,28 @@ it('never overwrites an existing master for the key', function (): void {
         expect($got->id)->toBe($existing->id)->and($got->size)->toBe(4242);   // untouched
     });
 });
+
+it('reads a key under the site\'s own code: collection library, the short hash dropped from the slug', function (): void {
+    $media = app(Tenancy::class)->enter(1, fn (): Media => app(EnsureMediaFromKey::class)->handle(siteCode(1).'/2026/04/bang-gia-ab12.pdf'));
+
+    expect($media->collection)->toBe('library')
+        ->and($media->slug)->toBe('bang-gia')
+        ->and($media->mime)->toBe('application/pdf');
+});
+
+it('knows AVIF images', function (): void {
+    $media = app(Tenancy::class)->enter(1, fn (): Media => app(EnsureMediaFromKey::class)->handle(siteCode(1).'/anh-ab12.avif'));
+
+    expect($media->mime)->toBe('image/avif');
+});
+
+it('refuses a key under another site\'s code before writing anything', function (): void {
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => app(EnsureMediaFromKey::class)->handle(siteCode(2).'/anh-ab12.png')))
+        ->toThrow(MediaKeyRejectedException::class);
+    expect(app(Tenancy::class)->enter(1, fn () => Media::query()->count()))->toBe(0);
+});
+
+it('refuses a key that is not a clean relative path', function (string $key): void {
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => app(EnsureMediaFromKey::class)->handle(withSiteCodes($key))))
+        ->toThrow(MediaKeyRejectedException::class);
+})->with(uncleanMediaKeys());

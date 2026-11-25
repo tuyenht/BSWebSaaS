@@ -113,3 +113,14 @@ it('keyFromUrl: null for a URL this resolver would never mint', function (): voi
     config(['media.driver' => 'imgproxy']);
     expect(mediaKeyFromUrl(mediaUrl('an-vinh/content/logo-abc123.webp', 640)))->toBeNull();
 });
+
+it('resolves a key under a website code and an old-layout key the same way, and reads both back', function (string $key): void {
+    config(['media.driver' => 'cloudflare', 'media.widths' => [320, 640, 960, 1280, 1600, 2048]]);
+
+    expect(mediaUrl($key))->toBe("https://files.test/{$key}")
+        ->and(mediaKeyFromUrl(mediaUrl($key, 640)))->toBe($key);
+})->with([
+    'website code' => 'k3m9xq/bang-gia-ab12.webp',
+    'website code with year and month' => 'k3m9xq/2026/04/bang-gia-ab12.webp',
+    'old layout' => 'co-khi-chinh-xac-an-vinh/library/bang-gia-7ca90eafe212.webp',
+]);
