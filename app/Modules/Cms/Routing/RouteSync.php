@@ -157,7 +157,8 @@ final readonly class RouteSync
      */
     public function syncTaxonomy(Taxonomy $taxonomy, string $locale, string $slug): string
     {
-        $path = $this->paths->forTaxonomy($slug);
+        // a tag sits under its own segment (PathBuilder::forTag); a category at its flat path
+        $path = $taxonomy->vocabulary === Taxonomy::TAG ? $this->paths->forTag($slug) : $this->paths->forTaxonomy($slug);
 
         $this->assertPathAvailable($locale, $path, 'taxonomy_id', $taxonomy->id);
 

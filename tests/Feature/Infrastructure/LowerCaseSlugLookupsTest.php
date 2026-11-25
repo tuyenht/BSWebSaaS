@@ -97,17 +97,21 @@ function lclGenericPlan(string $sql, array $bindings): string
  *
  * @return list<array{string, string}>
  */
-function lclScans(string $json): array
+function lclScans(string $json, ?string $relation = null): array
 {
     $scans = [];
-    $walk = function (array $node) use (&$walk, &$scans): void {
-        if (($node['Node Type'] ?? '') === 'Seq Scan') {
-            $scans[] = ['Seq Scan', ''];
-        } elseif (isset($node['Index Name'])) {
-            $scans[] = [(string) $node['Index Name'], (string) ($node['Index Cond'] ?? '')];
+    // a Bitmap Index Scan names no table: it reads the one its parent Bitmap Heap Scan names
+    $walk = function (array $node, ?string $table = null) use (&$walk, &$scans, $relation): void {
+        $table = $node['Relation Name'] ?? $table;
+        if ($relation === null || $table === null || $table === $relation) {
+            if (($node['Node Type'] ?? '') === 'Seq Scan') {
+                $scans[] = ['Seq Scan', ''];
+            } elseif (isset($node['Index Name'])) {
+                $scans[] = [(string) $node['Index Name'], (string) ($node['Index Cond'] ?? '')];
+            }
         }
         foreach ($node['Plans'] ?? [] as $child) {
-            $walk($child);
+            $walk($child, $table);
         }
     };
     $walk(json_decode($json, true)[0]['Plan']);
@@ -216,7 +220,9 @@ it('plans the category slug-taken check on the category slug index, generic plan
 
     expect($bindings)->toContain('muc-moi');
 
-    $scans = lclScans(lclGenericPlan($sql, $bindings));
+    // The tag exclusion reads `taxonomies` (a different table, by its own index); the slug lookup is
+    // what is planned here, on taxonomy_translations.
+    $scans = lclScans(lclGenericPlan($sql, $bindings), 'taxonomy_translations');
     expect($scans)->toHaveCount(1)
         ->and($scans[0][0])->toBe('taxonomy_translations_site_id_locale_slug_text_index')
         ->and($scans[0][1])->toContain('(slug)::text = $');
