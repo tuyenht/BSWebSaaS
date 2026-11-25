@@ -472,6 +472,60 @@ it('answers an unknown console address with "not found" for a guest and "no perm
     $this->actingAs(User::factory()->create())->get($platform.'/khong-co')->assertForbidden();
 });
 
+it('sends the website admin address typed on the console host to the console', function (): void {
+    $operator = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));
+    $platform = 'http://'.config('tenancy.platform_host');
+
+    // The console host carries no website, so «/admin» there means the console: signed in it opens
+    // the console, a guest signs in and then lands on the console (not on a "not found" page).
+    foreach (['/admin', '/admin/'] as $path) {
+        $this->actingAs($operator)->get($platform.$path)->assertRedirect(route('platform.dashboard'));
+    }
+    // A deeper «/admin/…» there is an unknown console address: back to the console with a notice.
+    foreach (['/admin/content', '/admin/login'] as $path) {
+        $this->actingAs($operator)->withHeaders(navigation())->get($platform.$path)
+            ->assertRedirect(route('platform.tenants.index'))
+            ->assertSessionHas('admin.notice', __('errors.unknown_address'));
+    }
+    $this->flushHeaders();
+
+    auth()->logout();
+    $this->flushSession();
+    $this->get($platform.'/admin')->assertRedirect(route('platform.dashboard'));
+    $this->get(route('platform.dashboard'))->assertRedirect(route('platform.login'));
+    expect(session('url.intended'))->toBe(route('platform.dashboard'));
+    // …and a guest's deeper address is "not found", with no sign-in asked for.
+    $this->flushSession();
+    $this->withHeaders(navigation())->get($platform.'/admin/content')->assertNotFound();
+    expect(session('url.intended'))->toBeNull();
+    $this->flushHeaders();
+
+    // A website's own /admin is untouched.
+    $this->flushSession();
+    $this->get('http://a.test/admin')->assertRedirect('http://a.test/admin/login');
+    $this->get('http://a.test/admin/login')->assertOk();
+});
+
+it('speaks Vietnamese on an admin error page that has no website and no chosen language', function (): void {
+    config(['app.locale' => 'en']);
+    $vi = json_decode((string) file_get_contents(lang_path('vi.json')), true);
+
+    // A signed-in admin address on a host that is no website: the fault comes before any language
+    // was set (the console showed this page in English while the app's own default was 'en').
+    $html = $this->actingAs(User::factory()->create())->withHeaders(navigation())->get('http://no-such-site.test/admin/content')
+        ->assertNotFound()->getContent();
+
+    expect($html)->toContain(e($vi['errors.notfound.title']));
+
+    // The member's own saved language still wins over that default.
+    $en = json_decode((string) file_get_contents(lang_path('en.json')), true);
+    $html = $this->actingAs(User::factory()->create(['preferences' => ['locale' => 'en']]))->withHeaders(navigation())
+        ->get('http://no-such-site.test/admin/content')->assertNotFound()->getContent();
+
+    expect($html)->toContain(e($en['errors.notfound.title']));
+});
+
 it('keeps no page to come back to that walks out of the admin or into the sign-in pages', function (): void {
     foreach (['/admin/../tin-tuc', '/admin/./../tin-tuc', '/admin/%2e%2e/tin-tuc', '/admin/%2E%2E/tin-tuc', '/admin/%6cogin',
         '/admin/content/%2e%2e/%2e%2e/tin-tuc', '/admin/%2flogin', '/admin/%5cposts', '/admin/%2fposts', '/admin/%2e/posts'] as $to) {
