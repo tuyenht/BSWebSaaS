@@ -1,12 +1,17 @@
 {
  "items": [
   {
-   "key": "section:careers",
-   "label": "Tuyển dụng",
+   "key": "section:posts",
+   "label": "Tin tức",
    "entry_type": "post",
-   "category": "tax:post_cat/tuyen-dung",
-   "icon": "ri-user-search",
+   "categories": [
+    "tax:post_cat/tin-tuc",
+    "tax:post_cat/tuyen-dung"
+   ],
    "sort_order": 1
   }
+ ],
+ "remove": [
+  "section:careers"
  ]
 }

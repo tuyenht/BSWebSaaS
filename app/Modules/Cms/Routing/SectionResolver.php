@@ -16,9 +16,10 @@ use Illuminate\Database\Query\JoinClause;
 /**
  * Resolves which permalink SECTION a post belongs to — the (key, type) pair PermalinkConfig is
  * keyed on. A post carries no stored section (there is no content_section_id yet); membership is
- * derived from its PRIMARY category (pivot position 0) matched to a ContentSection's bound
- * `taxonomy_id`, going up the category's ancestors (nearest first) so a post filed under a
- * sub-category still resolves to its section. The ancestors come from the stored ltree path when
+ * derived from its PRIMARY category (pivot position 0) matched to the section that covers it
+ * (content_section_categories: a section may cover several categories side by side, a category
+ * belongs to one section at most), going up the category's ancestors (nearest first) so a post
+ * filed under a sub-category still resolves to its section. The ancestors come from the stored ltree path when
  * it agrees with parent_id, else from the parent chain; prime() resolves a whole list at once. Returns null when the post has no category or none binds it — the caller
  * then falls back to the flat default.
  *
@@ -197,9 +198,9 @@ final class SectionResolver
     /**
      * Narrow a query of entries (`entries`) to those sitting on one of the given stages of their own
      * section — the SQL form of "forEntry()['key'] is S and workflow_state is one of S's stages", so
-     * a capped list is capped AFTER the filter. A post's section is the nearest category on its
-     * primary category's ltree path that a section is built on (the first by display order when
-     * several are), as resolveMany() reads it. A post whose primary category has no usable path
+     * a capped list is capped AFTER the filter. A post's section is the one covering the nearest
+     * category on its primary category's ltree path (content_section_categories: one section per
+     * category), as resolveMany() reads it. A post whose primary category has no usable path
      * (older rows) is kept, for the caller's own forEntry() check to decide.
      *
      * A post's pending change stands at a stage of its own (entry_drafts.workflow_state): a query of
@@ -235,8 +236,10 @@ final class SectionResolver
         $usable = "coalesce(ltree2text(cat.path) ~ '^[0-9]+(\\.[0-9]+)*$' and ltree2text(subpath(cat.path, -1)) = cat.id::text"
             .' and case when nlevel(cat.path) = 1 then cat.parent_id is null else ltree2text(subpath(cat.path, -2, 1)) = cat.parent_id::text end, false)';
         $ids = 'string_to_array(ltree2text(cat.path), \'.\')::bigint[]';
-        $section = "case when {$usable} then (select cs.key from content_sections as cs where cs.site_id = ? and cs.taxonomy_id = any({$ids})"
-            ." order by array_position({$ids}, cs.taxonomy_id) desc, cs.sort_order, cs.id limit 1) end";
+        $section = "case when {$usable} then (select cs.key from content_section_categories as csc"
+            .' join content_sections as cs on cs.id = csc.content_section_id and cs.site_id = csc.site_id'
+            ." where csc.site_id = ? and csc.taxonomy_id = any({$ids})"
+            ." order by array_position({$ids}, csc.taxonomy_id) desc limit 1) end";
 
         $entries->whereExists(fn (QueryBuilder $primary) => $primary->selectRaw('1')
             ->from('entry_taxonomies as et')

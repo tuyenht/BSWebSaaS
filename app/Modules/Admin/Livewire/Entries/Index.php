@@ -12,6 +12,7 @@ use App\Modules\Admin\Support\Entries\ListGroup;
 use App\Modules\Admin\Support\Entries\PageMoveWords;
 use App\Modules\Admin\Support\Entries\PostRoleNote;
 use App\Modules\Admin\Support\Entries\ScheduleInput;
+use App\Modules\Admin\Support\Entries\SectionListViews;
 use App\Modules\Admin\Support\FirstHints;
 use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Admin\Support\TreeRows;
@@ -360,7 +361,7 @@ final class Index extends Component
 
         $section = $this->resolveSection();
         $this->entryType = $section instanceof ContentSection && $section->entry_type === 'post' ? 'post' : 'page';
-        $this->viewKey = $this->entryType === 'post' && $section instanceof ContentSection ? 'entries.post.'.$section->key : 'entries.page';
+        $this->viewKey = $this->entryType === 'post' && $section instanceof ContentSection ? SectionListViews::key($section->key) : 'entries.page';
         $lists = Cast::arr(Cast::arr($this->actingUser()->preferences)['lists'] ?? null);
         $view = Cast::arr($lists[$this->viewKey] ?? null);
         $cols = $this->colsHere();
@@ -2848,12 +2849,23 @@ final class Index extends Component
             + ($this->when !== '' ? 1 : 0);
     }
 
+    /**
+     * The section the list files posts for, when it covers categories (its id): a post section that
+     * covers none, or a page list, holds every post or page (null).
+     */
+    private function coveringSectionId(): ?int
+    {
+        $section = $this->resolveSection();
+
+        return $section instanceof ContentSection && $section->taxonomy_id !== null ? (int) $section->id : null;
+    }
+
     /** The section's categories, read once per request (an empty tree for a page list). */
     private function categoryTree(): CategoryTree
     {
         if ($this->catTree === null) {
             $this->catTree = $this->entryType === 'post'
-                ? CategoryTree::postSection(app(CurrentSite::class)->id(), app(SiteLocale::class)->default(), $this->resolveSection()?->taxonomy_id)
+                ? CategoryTree::postSection(app(CurrentSite::class)->id(), app(SiteLocale::class)->default(), $this->coveringSectionId(), $this->resolveSection()?->taxonomy_id)
                 : CategoryTree::none();
         }
 
@@ -2918,7 +2930,7 @@ final class Index extends Component
         $scopeOn = $type === 'post' && in_array(self::CAT_SCOPE, $this->catF, true) && $scopes->isLimited($user);
         $catKeys = $tree->known($this->catF);
         $this->catF = [...($scopeOn ? [self::CAT_SCOPE] : []), ...$catKeys];
-        $filter = new EntryListFilter($type === 'post' ? 'post' : 'page', $this->tab, $section?->taxonomy_id, $this->search, $this->langF, $this->creatorF,
+        $filter = new EntryListFilter($type === 'post' ? 'post' : 'page', $this->tab, $this->coveringSectionId(), $this->search, $this->langF, $this->creatorF,
             $this->templateF, $this->transF, $locales, $locale, $from, $until, $tree->idsUnder($catKeys),
             $scopeOn ? ($scopes->allowedTaxonomyIds($user) ?? []) : null,
             // the Trash: everyone's for who may remove any record, only their own for who may remove only theirs, none otherwise

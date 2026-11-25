@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Provisioning\ContentPack;
 
+use App\Modules\Admin\Support\Entries\SectionListViews;
 use App\Modules\Admin\Support\Settings\BranchList;
 use App\Modules\Admin\Support\Settings\FloatingContactInput;
 use App\Modules\Catalog\Models\Product;
@@ -37,6 +38,7 @@ use App\Modules\Storefront\Support\ThankYouPages;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Tenancy\Models\ContentSectionCategory;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Rendering\LayoutSlots;
@@ -259,6 +261,11 @@ final class Applier
      */
     private function section(PlanItem $planned): void
     {
+        if ($planned->verdict === PlanItem::REMOVE) {
+            $this->removeSection($planned);
+
+            return;
+        }
         $desired = $planned->desired;
         $attributes = [
             'label' => Cast::string($desired['label'] ?? null),
@@ -277,7 +284,42 @@ final class Applier
             $section = ContentSection::query()->findOrFail($planned->recordId);
             $section->update($attributes);
         }
+        // The other categories it covers beside its first one (the saved hook keeps that one). Only
+        // added: the plan refuses a pack that would take one off. A category the load's removed
+        // section held is free by now: removals are applied first. One the section already covers is
+        // left as it is (a rerun); one another section took meanwhile stops the load, never in silence.
+        foreach (Cast::strings($desired['more_categories'] ?? []) as $more) {
+            $categoryId = $this->id($more);
+            ContentSectionCategory::query()->insertOrIgnore([
+                'site_id' => Cast::int($section->site_id),
+                'content_section_id' => $section->id,
+                'taxonomy_id' => $categoryId,
+            ]);
+            $owner = ContentSectionCategory::query()->where('taxonomy_id', $categoryId)->value('content_section_id');
+            if ($owner === null || Cast::int($owner) !== $section->id) {
+                throw new PackRejected("Refused: plan changed, run the dry run again ({$more} was given to another section while the load ran; nothing was changed).");
+            }
+        }
         $this->ids[$planned->item->key] = $section->id;
+        $this->sections->flush();
+    }
+
+    /**
+     * A section the pack removes, as planned (the backup holds its row and the saved views): the row
+     * goes, and with it every member's saved view of its post list. Its posts belong from now on to
+     * the section above their category, which composes their addresses as it did (the plan's
+     * condition), so no route changes. A workflow keyed to it stays as it is: switched off (the plan
+     * refuses an active one), it governs nothing.
+     */
+    private function removeSection(PlanItem $planned): void
+    {
+        $section = ContentSection::query()->findOrFail($planned->recordId);
+        SectionListViews::prune(Cast::int($section->site_id), $section->key);
+        // Its permalink setting goes with it (backed up), so a later section under the key starts
+        // from the default; its categories go with the row (content_section_categories cascades).
+        SiteSetting::query()->where('group_name', 'permalinks')->where('key', $section->key)->delete();
+        $section->delete();
+        $this->permalinks->flush();
         $this->sections->flush();
     }
 

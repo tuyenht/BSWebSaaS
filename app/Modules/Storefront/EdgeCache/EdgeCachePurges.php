@@ -28,7 +28,7 @@ final class EdgeCachePurges
      */
     public const array TABLES = [
         'content_block_translations', 'content_blocks',
-        'content_sections', 'entries', 'entry_search_words', 'entry_taxonomies', 'entry_translations', 'form_fields', 'forms',
+        'content_section_categories', 'content_sections', 'entries', 'entry_search_words', 'entry_taxonomies', 'entry_translations', 'form_fields', 'forms',
         'media', 'mediables', 'menu_assignments', 'menu_item_translations', 'menu_items', 'menus',
         'product_images', 'product_site_words', 'product_taxonomies', 'product_translations', 'products', 'redirects', 'routes',
         'site_features', 'site_locales', 'site_modules', 'site_profile_translations', 'site_profiles',
