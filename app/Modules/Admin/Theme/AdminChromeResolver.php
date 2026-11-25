@@ -25,7 +25,7 @@ use App\Modules\Shared\Support\Cast;
  * PLATFORM_FIELDS axes: the scheme, plus the sidebar size the console's menu button
  * toggles (one per-user preference shared with the tenant admin).
  */
-final readonly class AdminChromeResolver
+final class AdminChromeResolver
 {
     /** Allowed values per axis; the first entry is the app default (today's look). */
     public const array FIELDS = [
@@ -66,10 +66,11 @@ final readonly class AdminChromeResolver
     ];
 
     /**
-     * A member's own "follow the device" scheme (My account → Theo máy). Stored as
-     * preferences.theme.scheme = 'auto' and accepted from the user tier only: the server
-     * still renders the site's scheme into data-bs-theme and adds this flag, and theme-boot
-     * swaps in the device's light/dark before paint.
+     * "Follow the device" for light/dark (Theo máy). Stored as scheme = 'auto' on the member's
+     * own preferences (My account) or on the site default (Giao diện trang quản trị); never a
+     * resolved value: the server still renders a light/dark scheme into data-bs-theme and adds
+     * this flag, and theme-boot swaps in the device's light/dark before paint. A member's own
+     * light or dark pick wins over a site's 'auto'.
      */
     public const string SCHEME_AUTO = 'auto';
 
@@ -96,7 +97,20 @@ final readonly class AdminChromeResolver
      */
     public const array PLATFORM_FIELDS = ['scheme', 'sidebar_size', 'text_size', 'motion', 'contrast'];
 
-    public function __construct(private SettingsRepository $settings) {}
+    /** @var array<array-key, mixed>|null the site tier, read once per instance (built per use, never shared across requests) */
+    private ?array $site = null;
+
+    public function __construct(private readonly SettingsRepository $settings) {}
+
+    /**
+     * The site default as stored (site_settings `admin_theme`), unfiltered.
+     *
+     * @return array<array-key, mixed>
+     */
+    public function siteDefaults(): array
+    {
+        return $this->site ??= Cast::arr($this->settings->get('admin_theme'));
+    }
 
     /**
      * The axes the current plane renders onto <html> (and theme-boot re-applies).
@@ -116,7 +130,10 @@ final readonly class AdminChromeResolver
      */
     public static function siteFields(): array
     {
-        return array_diff_key(self::FIELDS, array_flip(self::USER_ONLY_FIELDS));
+        $fields = array_diff_key(self::FIELDS, array_flip(self::USER_ONLY_FIELDS));
+        $fields['scheme'][] = self::SCHEME_AUTO;
+
+        return $fields;
     }
 
     /**
@@ -127,8 +144,7 @@ final readonly class AdminChromeResolver
         $resolved = array_map(fn (array $allowed): string => $allowed[0], self::FIELDS);
 
         if (! AdminPlane::isPlatform()) {
-            $site = Cast::arr($this->settings->get('admin_theme'));
-            $resolved = $this->overlay($resolved, array_diff_key($site, array_flip(self::USER_ONLY_FIELDS)));
+            $resolved = $this->overlay($resolved, array_diff_key($this->siteDefaults(), array_flip(self::USER_ONLY_FIELDS)));
         }
 
         return $this->overlay($resolved, Cast::arr($user?->preferences['theme'] ?? null));
@@ -148,7 +164,7 @@ final readonly class AdminChromeResolver
         foreach (self::planeFields() as $field) {
             $attributes[self::ATTRIBUTES[$field]] = $resolved[$field];
         }
-        if (self::followsDevice($user)) {
+        if ($this->followsDeviceFor($user)) {
             $attributes[self::SCHEME_AUTO_ATTRIBUTE] = 'true';
         }
         if (! self::choseContrast($user)) {
@@ -164,7 +180,25 @@ final readonly class AdminChromeResolver
         return in_array(Cast::arr($user?->preferences['theme'] ?? null)['contrast'] ?? null, self::FIELDS['contrast'], true);
     }
 
-    /** Whether the member chose "follow the device" for light/dark. */
+    /**
+     * Whether light/dark follows the device for this member: their own 'auto', or, when they
+     * pinned neither light nor dark, the site default's 'auto' (tenant admin only: the platform
+     * console has no site tier).
+     */
+    public function followsDeviceFor(?User $user): bool
+    {
+        $own = Cast::arr($user?->preferences['theme'] ?? null)['scheme'] ?? null;
+        if ($own === self::SCHEME_AUTO) {
+            return true;
+        }
+        if (in_array($own, self::FIELDS['scheme'], true) || AdminPlane::isPlatform()) {
+            return false;
+        }
+
+        return ($this->siteDefaults()['scheme'] ?? null) === self::SCHEME_AUTO;
+    }
+
+    /** Whether the member chose "follow the device" for light/dark themselves. */
     public static function followsDevice(?User $user): bool
     {
         return (Cast::arr($user?->preferences['theme'] ?? null)['scheme'] ?? null) === self::SCHEME_AUTO;
