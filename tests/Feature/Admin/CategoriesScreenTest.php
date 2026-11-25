@@ -832,6 +832,19 @@ it('draws the chosen-picture state of the drawer like the post editor\'s cover c
         ->not->toContain('size-16');
 });
 
+/**
+ * The settings the screen hands its script (`bsCategories(@js($config))`, a JSON.parse of a JS string).
+ *
+ * @return array<string, mixed>
+ */
+function cxConfig(string $html): array
+{
+    preg_match('/bsCategories\(JSON\.parse\(\'(.*?)\'\)\)/s', html_entity_decode($html), $m);
+    $json = json_decode('"'.($m[1] ?? '').'"');
+
+    return is_string($json) ? (json_decode($json, true) ?? []) : [];
+}
+
 /** A category's stored bands, read past RLS. */
 function cxBands(Taxonomy $category): array
 {
@@ -935,9 +948,12 @@ it('draws the drawer\'s bands as the board does and hands the screen the website
         ->getContent();
 
     expect($html)->toContain('id="cm-bands"', 'data-cm-band="before_list"', 'data-cm-band="after_list"', 'x-model="pan.d.bands[\'after_list\']"')
-        ->and(html_entity_decode($html))->toContain('"open":"'.$jobs->ulid.'"', '"flash":"Đã lưu ở"', '"bandSite":{"before_list":[],"after_list":{"vi":[{"name":"Chưa thấy vị trí phù hợp?"')
-        ->toContain(str_replace('/', '\/', '/admin/taxonomies/__key__/bands/__slot__'));
+        ->and(cxConfig($html))->toMatchArray([
+            'open' => $jobs->ulid, 'flash' => 'Đã lưu ở',
+            'bandSite' => ['before_list' => [], 'after_list' => ['vi' => [['name' => 'Chưa thấy vị trí phù hợp?', 'kind' => __('entries.block.cta')]]]],
+            'bandUrl' => 'http://a.test/admin/taxonomies/__key__/bands/__slot__',
+        ]);
 
     // a key that is not one is never handed on
-    $this->get('http://a.test/admin/taxonomies?section=tin-tuc&open=../x')->assertOk()->assertDontSee('"open":"../x"', false);
+    expect(cxConfig($this->get('http://a.test/admin/taxonomies?section=tin-tuc&open=../x')->assertOk()->getContent())['open'])->toBe('');
 });

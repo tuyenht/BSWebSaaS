@@ -212,3 +212,74 @@ test('the rows are read from the document, so a read made from inside the drawer
     assert.deepEqual(c.all().map((n) => n.key), ['01R', '01A']);
     c.destroy();
 });
+
+// ---- «Khối trên / dưới danh sách» --------------------------------------------------------------
+const bands = {
+    before_list: { mode: 'own', own: { vi: [{ name: 'Vì sao chọn An Vinh?', kind: 'Tính năng' }, { name: 'Kêu gọi', kind: 'Kêu gọi' }] } },
+    after_list: { mode: 'default', own: {} },
+};
+const site = { before_list: {}, after_list: { vi: [{ name: 'Chưa thấy vị trí phù hợp?', kind: 'Kêu gọi' }] } };
+const J = node('01J', '01R', 'Tuyển dụng', { bands });
+const bandCfg = { bandSite: site, bandUrl: 'https://web.vn/admin/taxonomies/__key__/bands/__slot__' };
+
+test('each band says what it shows now and where it comes from, and warns before its own blocks are dropped', () => {
+    const { c } = screen([[R, 1], [J, 2]], {}, bandCfg);
+    c.openEdit('01J');
+    const top = c.bandView('before_list');
+    assert.deepEqual([top.kind, top.nowTitle, top.list, top.canEdit, top.editHint, top.dropWarn], ['own', 'bandOwnT', ['Vì sao chọn An Vinh? · Tính năng', 'Kêu gọi · Kêu gọi'], true, 'bandHintOwnHas', false]);
+    const bot = c.bandView('after_list');
+    assert.deepEqual([bot.kind, bot.nowSub, bot.list, bot.editHint, bot.defSub], ['default', 'bandDefS', ['Chưa thấy vị trí phù hợp? · Kêu gọi'], 'bandHintDef', 'bandOptDefHas']);
+
+    c.pan.d.bands.before_list = 'none';
+    const hidden = c.bandView('before_list');
+    assert.deepEqual([hidden.kind, hidden.canEdit, hidden.list, hidden.dropWarn, hidden.short], ['none', false, [], true, 'bandShortNone']);
+    c.pan.d.bands.before_list = 'default';
+    assert.deepEqual([c.bandView('before_list').kind, c.bandView('before_list').nowTitle, c.bandView('before_list').defSub], ['empty', 'bandEmptyDef', 'bandOptDefNone']);
+    c.pan.d.bands.after_list = 'own';
+    assert.deepEqual([c.bandView('after_list').kind, c.bandView('after_list').nowTitle, c.bandView('after_list').editHint], ['empty', 'bandEmptyOwn', 'bandHintOwnEmpty']);
+});
+
+test('Save sends each band\'s mode; a new category starts on the website\'s default', async () => {
+    const { c, calls } = screen([[R, 1], [J, 2]], {}, bandCfg);
+    c.openEdit('01J');
+    c.pan.d.bands.after_list = 'none';
+    await c.save();
+    assert.deepEqual(calls.find((x) => x[0] === 'save')[4].bands, { before_list: 'own', after_list: 'none' });
+    c.openAdd('01R');
+    assert.deepEqual(c.pan.d.bands, { before_list: 'default', after_list: 'default' });
+});
+
+test('«Sửa trong Trình dựng trang» opens the band in the drawer\'s language; a new category is saved first, unsaved changes are asked about', async () => {
+    went.length = 0;
+    const { c, calls } = screen([[R, 1], [J, 2]], { save: () => ({ ok: true, key: '01N' }) }, bandCfg);
+    c.openEdit('01J');
+    c.editBand('after_list');
+    assert.deepEqual(went, ['https://web.vn/admin/taxonomies/01J/bands/after_list?locale=vi']);
+    assert.equal(c.toast.text, 'bandOpening');
+
+    c.openEdit('01J');
+    c.fName = 'Tuyển dụng mới';
+    c.editBand('before_list');
+    assert.equal(c.ask.title, 'unsavedTitle');
+    c.askOk();
+    assert.equal(c.pan, null);
+    assert.equal(went.at(-1), 'https://web.vn/admin/taxonomies/01J/bands/before_list?locale=vi');
+    assert.equal(calls.filter((x) => x[0] === 'save').length, 0, 'leaving without saving saves nothing');
+
+    c.openAdd('01R');
+    c.fName = 'Dự án';
+    c.editBand('after_list');
+    await wait(0);
+    assert.equal(calls.filter((x) => x[0] === 'save').length, 1);
+    assert.equal(went.at(-1), 'https://web.vn/admin/taxonomies/01N/bands/after_list?locale=vi');
+    c.destroy();
+});
+
+test('back from the builder, the category\'s drawer opens again at the bands with the message', () => {
+    const { c } = screen([[R, 1], [J, 2]], {}, { ...bandCfg, open: '01J', flash: 'Đã lưu' });
+    assert.equal(c.pan.key, '01J');
+    assert.equal(c.pan.more, true);
+    assert.deepEqual([c.toast.text, c.toast.tone], ['Đã lưu', 'success']);
+    const none = screen([[R, 1]], {}, { ...bandCfg, open: '01X', flash: 'Đã lưu' }).c;
+    assert.equal(none.pan, null, 'a category gone meanwhile opens nothing');
+});
