@@ -48,7 +48,7 @@
             <h2 class="text-[15px] font-semibold text-body-text">{{ __('admin.email_settings') }}</h2>
             {{-- A website's own sender; the console's page says what it is in the warning above. --}}
             @if ($scope !== 'platform')
-                <p class="mt-0.5 text-xs text-body-muted">{{ __('admin.email_settings_desc') }}</p>
+                <p class="mt-0.5 text-xs text-text-muted">{{ __('admin.email_settings_desc') }}</p>
             @endif
         </div>
         <div class="space-y-5 p-5">
