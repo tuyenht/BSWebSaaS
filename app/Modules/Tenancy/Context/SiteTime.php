@@ -134,6 +134,20 @@ final class SiteTime
         return CarbonImmutable::now($this->zone());
     }
 
+    /** The website's offset from UTC now, as «GMT+7» (the label beside a time typed in the website's clock). */
+    public function offsetLabel(): string
+    {
+        return self::offsetName($this->now()->getOffset());
+    }
+
+    /** An offset from UTC in seconds as «GMT+7», «GMT+5:30», «GMT+0» or «GMT-3». */
+    public static function offsetName(int $seconds): string
+    {
+        $minutes = intdiv(abs($seconds), 60);
+
+        return 'GMT'.($seconds < 0 ? '-' : '+').intdiv($minutes, 60).($minutes % 60 !== 0 ? ':'.str_pad((string) ($minutes % 60), 2, '0', STR_PAD_LEFT) : '');
+    }
+
     /** Zone and day format in one read, memoized for the request. */
     private function load(): void
     {

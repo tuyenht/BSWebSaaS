@@ -438,6 +438,9 @@
                         $whenFull = $when ? \App\Modules\Admin\Support\EditedWhen::full($when) : null;
                         // a trashed row says when it goes for good («Tự xóa vĩnh viễn sau N ngày») instead of its last edit
                         $purgeText = null;
+                        // taken down at its end time (board 05): the date line says «Hết hạn dd/mm/yyyy»; the pill stays «Gỡ khỏi website»
+                        $expiredText = $entry->trashed() || $entry->status !== 'archived' || $entry->expires_at === null || $entry->expires_at->isFuture()
+                            ? null : __('entries.list_expired', ['date' => $siteTime->forDisplay($entry->expires_at)?->format('d/m/Y')]);
                         if ($trashed && $entry->deleted_at !== null) {
                             $daysLeft = \App\Modules\Cms\Support\EntryTrash::daysLeft($entry->deleted_at, $nowAt);
                             $purgeText = $daysLeft > 0 ? __('entries.trash_days_left', ['n' => $num($daysLeft)]) : __('entries.trash_goes_today');
@@ -567,7 +570,9 @@
                                     @if ($purgeText)
                                         <span class="list-m" data-for="when" data-guide="row-purge">{{ $purgeText }}</span>
                                     @endif
-                                    @if ($whenText)
+                                    @if ($expiredText)
+                                        <span class="list-m" data-for="when" data-expired>{{ $expiredText }}</span>
+                                    @elseif ($whenText)
                                         <span class="list-m" data-for="when"><x-bs-admin::list.when :at="$when" :text="$whenText" :full="$whenFull" :exact="$isScheduled" /></span>
                                     @endif
                                 </x-bs-admin::list.meta>
@@ -718,6 +723,10 @@
                                 </div>
                             @elseif ($out !== null)
                                 <div class="list-lk" data-guide="row-lock"><x-bs-admin::icon name="ri-lock" class="size-3 shrink-0" /><span>{{ $out }}</span></div>
+                            @elseif ($expiredText)
+                                <div class="list-st-meta" data-expired>
+                                    <span>{{ $expiredText }}</span>
+                                </div>
                             @elseif ($whenText)
                                 <div class="list-st-meta">
                                     <x-bs-admin::icon :name="$isScheduled ? 'ri-time' : 'ri-history'" class="size-3 shrink-0" />

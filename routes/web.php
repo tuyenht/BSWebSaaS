@@ -145,6 +145,22 @@ Route::domain((string) config('tenancy.platform_host'))
 
             return back(fallback: route('platform.login'));
         })->name('platform.locale');
+
+        // A website's admin address typed on the console host. This host carries no website, so the
+        // tenant admin routes would answer "not found": «/admin» means the console's first page (a
+        // guest signs in on the way and lands there after).
+        Route::get('/'.config('admin.prefix', 'admin'), fn () => redirect()->route('platform.dashboard'))
+            ->name('platform.admin-address');
+    });
+
+// …and any deeper «/admin/…» address there is an unknown console address (the same answer as the
+// fallback below: back to the console with a notice for a signed-in member who opened it, "not
+// found" otherwise). Registered here, ahead of the tenant admin routes, which would otherwise take it.
+Route::domain((string) config('tenancy.platform_host'))
+    ->middleware(['web', 'auth.session', SetLocale::class])
+    ->group(function (): void {
+        Route::get('/'.config('admin.prefix', 'admin').'/{any}', [SessionController::class, 'unknownOnPlatform'])
+            ->where('any', '.*')->name('platform.admin-unknown');
     });
 
 // Protected: platform operators only (EnsurePlatformAccess). 2FA is enforced at login

@@ -8,6 +8,7 @@ use App\Modules\Admin\Support\CategoryTree;
 use App\Modules\Admin\Support\Guide\EditorGuide;
 use App\Modules\Admin\Support\LangBar;
 use App\Modules\Admin\Support\SeoFields;
+use App\Modules\Catalog\Actions\ChangeProductExpiry;
 use App\Modules\Catalog\Actions\ChangeProductSlug;
 use App\Modules\Catalog\Actions\ChangeProductStatus;
 use App\Modules\Catalog\Actions\FlagProduct;
@@ -27,6 +28,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Support\CategoryScopes;
+use App\Modules\Cms\Validation\ExpiryTime;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -110,7 +112,7 @@ final class Editor extends Component
     private const array AS_TYPED = ['name', 'slug', 'summary', 'price', 'salePrice', 'stock', 'seoTitle', 'seoDescription', 'sku'];
 
     /** The fields counted as changes, in the order the form shows them. */
-    public const array TRACKED = ['name', 'slug', 'summary', 'imageMediaIds', 'price', 'stock', 'salePrice', 'saleStartsAt', 'saleEndsAt', 'description', 'seoTitle', 'seoDescription', 'categoryIds', 'sku', 'featured', 'bestseller'];
+    public const array TRACKED = ['name', 'slug', 'summary', 'imageMediaIds', 'price', 'stock', 'salePrice', 'saleStartsAt', 'saleEndsAt', 'description', 'seoTitle', 'seoDescription', 'categoryIds', 'sku', 'featured', 'bestseller', 'expiresAt'];
 
     /** A sale's start or end as the site's wall clock, the way a datetime-local field gives it. */
     private const string MOMENT = 'Y-m-d\\TH:i';
@@ -239,6 +241,13 @@ final class Editor extends Component
     public ?string $saleStartsAt = '';
 
     public ?string $saleEndsAt = '';
+
+    /** «Gỡ khỏi website lúc» (board 09, the «Đăng» card): the end time in the site's wall clock (MOMENT); '' = it stays. */
+    public ?string $expiresAt = '';
+
+    /** The end time «Bỏ giờ gỡ» emptied, which «Hoàn tác» puts back. */
+    #[Locked]
+    public string $undoExpiry = '';
 
     /** Blank = the stock is not tracked; 0 = sold out. */
     public ?string $stock = null;
@@ -458,9 +467,15 @@ final class Editor extends Component
         abort_unless($this->canEdit, 403);
         $undo = $this->undo;
         $image = $this->undoImage;
+        $expiry = $this->undoExpiry;
         $this->clearToast();
         if ($undo === 'trash' && $this->screen === 'trash') {
             $this->bringBack(asDraft: false);
+        } elseif ($undo === 'expiry' && $this->screen === 'form') {
+            $this->authorizeEdit();
+            if (! $this->sharedRefused()) {
+                $this->expiresAt = $expiry;
+            }
         } elseif ($undo === 'image' && $image !== null && $this->screen === 'form') {
             $this->authorizeEdit();
             if ($this->sharedRefused()) {
@@ -524,6 +539,7 @@ final class Editor extends Component
         $this->toastMsg = '';
         $this->undo = null;
         $this->undoImage = null;
+        $this->undoExpiry = '';
     }
 
     /**
@@ -666,7 +682,7 @@ final class Editor extends Component
         $saved = $this->saved[$field] ?? '';
         $this->{$field} = match ($field) {
             'featured', 'bestseller' => $saved === '1',
-            'saleStartsAt', 'saleEndsAt' => $saved,
+            'saleStartsAt', 'saleEndsAt', 'expiresAt' => $saved,
             'imageMediaIds' => $this->normalizeIds((array) json_decode($saved !== '' ? $saved : '[]', true)),
             default => $saved !== '' ? $saved : null,
         };
@@ -840,6 +856,31 @@ final class Editor extends Component
         }
         $this->saleStartsAt ??= '';
         $this->recheck('saleStartsAt', ...($this->saleEndsAt !== '' ? ['saleEndsAt'] : []));
+    }
+
+    /** «Gỡ khỏi website lúc», as the field is left: a changed time must still be to come (the reason stays under it). */
+    public function updatedExpiresAt(): void
+    {
+        $this->authorizeEdit();
+        if ($this->keepShared('expiresAt')) {
+            return;
+        }
+        $this->expiresAt ??= '';
+        $this->recheck('expiresAt');
+    }
+
+    /** «Bỏ giờ gỡ»: the field empties (saved with the next save) and the message offers «Hoàn tác». */
+    public function clearExpiry(): void
+    {
+        $this->authorizeEdit();
+        if ($this->keepShared('expiresAt') || ($this->expiresAt ?? '') === '') {
+            return;
+        }
+        $old = (string) $this->expiresAt;
+        $this->expiresAt = '';
+        $this->resetErrorBag('expiresAt');
+        $this->say(Cast::string(__('catalog.ed.exp_cleared')), 'expiry');
+        $this->undoExpiry = $old;
     }
 
     public function updatedSaleEndsAt(): void
@@ -1072,7 +1113,7 @@ final class Editor extends Component
         $this->saveFailed = false;
 
         if ($this->ulid === null) {
-            $this->reset('name', 'slug', 'description', 'summary', 'seoTitle', 'seoDescription', 'categoryId', 'categoryIds', 'price', 'salePrice', 'saleStartsAt', 'saleEndsAt', 'stock', 'featured', 'bestseller', 'sku', 'imageMediaIds', 'summaryStored', 'summaryShown');
+            $this->reset('name', 'slug', 'description', 'summary', 'seoTitle', 'seoDescription', 'categoryId', 'categoryIds', 'price', 'salePrice', 'saleStartsAt', 'saleEndsAt', 'expiresAt', 'stock', 'featured', 'bestseller', 'sku', 'imageMediaIds', 'summaryStored', 'summaryShown');
             $this->address = $this->previewAddress(null);
             $this->saved = $this->tracked();
 
@@ -1248,6 +1289,7 @@ final class Editor extends Component
             'note' => $this->saveNote(),
             'leave' => $this->leaveWords(),
             'publishCard' => $this->publishCard($selling),
+            'zoneName' => app(SiteTime::class)->offsetLabel(),
             'summaryWarning' => $this->summaryWarning(),
             'changes' => $this->changeCount(),
             'roRole' => ! $this->canEdit && $user instanceof User ? RoleLabel::topOf($user) : null,
@@ -1315,6 +1357,10 @@ final class Editor extends Component
             'salePrice' => ['nullable', 'string', $this->amountReads(...), $this->saleIsBelowPrice(...)],
             'saleStartsAt' => ['string', $this->momentReads(...)],
             'saleEndsAt' => ['string', $this->momentReads(...), $this->saleEndsAfterStart(...)],
+            // judged only when changed here: a product taken down at its end time keeps a past one
+            'expiresAt' => ($this->expiresAt ?? '') !== ($this->saved['expiresAt'] ?? '')
+                ? ['string', new ExpiryTime(app(SiteTime::class)->zone())]
+                : ['string'],
             'stock' => ['nullable', 'string', $this->stockReads(...)],
             'featured' => ['boolean'],
             'bestseller' => ['boolean'],
@@ -1452,6 +1498,7 @@ final class Editor extends Component
         $time = app(SiteTime::class);
         $this->saleStartsAt = $time->forDisplay($product->sale_starts_at)?->format(self::MOMENT) ?? '';
         $this->saleEndsAt = $time->forDisplay($product->sale_ends_at)?->format(self::MOMENT) ?? '';
+        $this->expiresAt = $time->forDisplay($product->expires_at)?->format(self::MOMENT) ?? '';
         $this->stock = $product->stock !== null ? (string) $product->stock : null;
         $this->featured = $product->is_featured;
         $this->bestseller = $product->is_bestseller;
@@ -1749,6 +1796,9 @@ final class Editor extends Component
         $updated = $when($this->savedAt);
 
         $seen = __('catalog.ed.seen_no');
+        $end = ExpiryTime::parse($this->saved['expiresAt'] ?? '', $time->zone());
+        $endShown = $end?->format('d/m/Y H:i') ?? '';
+        $endPast = $end !== null && $end <= CarbonImmutable::now();
         if ($this->status === 'published') {
             $price = ProductPrice::parse($this->saved['price'] ?? null);
             $sale = ProductPrice::parse($this->saved['salePrice'] ?? null);
@@ -1765,7 +1815,16 @@ final class Editor extends Component
             'chip' => __('catalog.ed.chip_'.$this->status),
             'published' => $published !== null ? __('catalog.ed.pub_first', ['date' => $published]) : __('catalog.ed.pub_never'),
             'updated' => $updated ?? __('catalog.ed.sv_never'),
-            'seen' => $seen,
+            'seen' => match (true) {
+                $this->status === 'published' && $end !== null && ! $endPast => __('catalog.ed.seen_until', ['seen' => $seen, 'time' => $endShown]),
+                $this->status === 'archived' && $endPast => __('catalog.ed.seen_expired', ['time' => $endShown]),
+                default => $seen,
+            },
+            'expHint' => match (true) {
+                $end === null || ($endPast && $this->status !== 'archived') => __('catalog.ed.exp_hint'),
+                $endPast => __('catalog.ed.exp_hint_done'),
+                default => __('catalog.ed.exp_hint_at', ['time' => $endShown]),
+            },
         ];
     }
 
@@ -2031,6 +2090,12 @@ final class Editor extends Component
             }
             $product->update($this->publishing ? $attributes + ['status' => $this->status] : $attributes);
         }
+        // «Gỡ khỏi website lúc» through its own action (the policy, the time still to come, the audit row), before
+        // the going-live effects below, which refuse an end time already past
+        if (($this->expiresAt ?? '') !== ($this->saved['expiresAt'] ?? '') && ! $this->sharedRefused()) {
+            app(ChangeProductExpiry::class)->handle($product, ExpiryTime::parse($this->expiresAt, app(SiteTime::class)->zone()));
+        }
+        $this->expiresAt = app(SiteTime::class)->forDisplay($product->expires_at)?->format(self::MOMENT) ?? '';
 
         $summary = $keepSummary ? $this->summaryStored : $this->summary;
         $product->translations()->updateOrCreate(
