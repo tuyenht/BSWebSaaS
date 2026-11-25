@@ -55,7 +55,8 @@ function mfFile(int $site, string $name, array $attrs = [], ?CarbonImmutable $at
             'height' => 600,
         ], $attrs));
         if ($at !== null) {
-            Media::query()->whereKey($file->id)->update(['created_at' => $at]);
+            // in UTC: a query-builder write prints the time without its zone, so a site-zone time would land 7 hours late
+            Media::query()->whereKey($file->id)->update(['created_at' => $at->utc()]);
         }
 
         return $file;
