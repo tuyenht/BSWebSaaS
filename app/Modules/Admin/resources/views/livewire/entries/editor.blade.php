@@ -263,6 +263,27 @@
                             </div>
                         @else
                             <div class="px-5 py-4">
+                                @if ($isPage && $ulid === null && $proseBlank && ! $startDone && ! $sharedLock)
+                                    {{-- «Bắt đầu từ mẫu» (design 07): a new page's empty body, in the website's default language --}}
+                                    <div class="mb-3.5 flex flex-col gap-2.5 rounded-md border border-dashed border-border-input px-4 py-3.5" data-page-start>
+                                        <div class="flex flex-col gap-0.5">
+                                            <span class="text-body font-semibold text-text-strong">{{ __('entries.ed.start_title') }}</span>
+                                            <span class="text-caption text-text-muted">{{ __('entries.ed.start_hint') }}</span>
+                                        </div>
+                                        <div class="grid grid-cols-[repeat(auto-fit,minmax(min(200px,100%),1fr))] gap-2.5" role="group" aria-label="{{ __('entries.ed.start_group') }}">
+                                            @foreach (\App\Modules\Admin\Support\Entries\PageStartTemplates::options() as $start)
+                                                <button type="button" wire:click="pickStartTemplate(@js($start['key']))" wire:loading.attr="aria-busy" wire:target="pickStartTemplate"
+                                                        class="flex min-h-16 min-w-0 items-start gap-2.5 rounded-md border border-border-strong bg-surface p-3 text-left transition-colors hover:border-primary-text hover:bg-[color-mix(in_srgb,var(--color-primary-text)_5%,var(--color-surface))]">
+                                                    <x-bs-admin::icon :name="$start['icon']" class="size-5 shrink-0 text-primary-text" />
+                                                    <span class="min-w-0">
+                                                        <b class="block text-body text-text-strong">{{ $start['label'] }}</b>
+                                                        <small class="block text-small leading-[1.45] text-text-muted">{{ $start['desc'] }}</small>
+                                                    </span>
+                                                </button>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
                                 <x-bs-admin::rich-editor target="bodyHtml" :value="$bodyHtml" rows="14" :placeholder="$bodyPlaceholder"
                                                          aria-label="{{ __('entries.ed.body_label') }}" />
                                 @error('bodyHtml') <p class="{{ $error }}">{{ $message }}</p> @enderror
@@ -607,7 +628,7 @@
                     @endif
                 </section>
 
-                @if ($isPage && ! $pageHome)
+                @if ($isPage)
                     <button type="button" x-on:click="setMore(! more)" x-bind:aria-expanded="more ? 'true' : 'false'" aria-expanded="false" aria-controls="entry-props"
                             aria-label="{{ __('catalog.ed.more') }} — {{ __('entries.ed.more_sub_page') }}"
                             x-bind:aria-label="more ? @js(__('catalog.ed.less').' — '.__('catalog.ed.less_sub')) : @js(__('catalog.ed.more').' — '.__('entries.ed.more_sub_page'))"
@@ -621,8 +642,9 @@
                             <span class="ped-ms-s" x-text="more ? @js(__('catalog.ed.less_sub_s')) : @js(__('entries.ed.more_sub_page'))">{{ __('entries.ed.more_sub_page') }}</span>
                         </span>
                     </button>
-                    @error('parentUlid') <span hidden x-init="more = true"></span> @enderror
-                    {{-- «Thuộc tính trang» (design 07): where the page sits in the website's page tree, shared by every language --}}
+                    @if ($errors->has('parentUlid') || $errors->has('pageOrder')) <span hidden x-init="more = true"></span> @endif
+                    {{-- «Thuộc tính trang» (design 07): where the page sits in the website's page tree, shared by every language:
+                         «Trang cha» (never on the Home page) and «Thứ tự» among the pages beside it (EditsPageOrder) --}}
                     <section id="entry-props" class="{{ $card }}" aria-labelledby="entry-props-h" data-page-props x-show="more" x-cloak>
                         <div class="{{ $cardHead }}">
                             <h2 id="entry-props-h" class="{{ $cardTitle }}">{{ __('entries.ed.card_page_props') }}</h2>
@@ -630,8 +652,18 @@
                                 <x-bs-admin::shared-chip />
                             @endif
                         </div>
-                        <div class="p-4">
-                            @include('admin::livewire.entries.partials.parent-picker')
+                        <div class="flex flex-col gap-3 p-4">
+                            @unless ($pageHome)
+                                @include('admin::livewire.entries.partials.parent-picker')
+                            @endunless
+                            <div class="flex flex-col gap-1.5">
+                                <label for="entry-ord" class="{{ $label }}">{{ __('entries.ed.ord_label') }}</label>
+                                <input type="number" id="entry-ord" min="1" step="1" inputmode="numeric" wire:model.live.blur="pageOrder"
+                                       @readonly($sharedLock) @if ($sharedLock) aria-readonly="true" title="{{ $sharedWhy }}" @endif
+                                       @error('pageOrder') aria-describedby="entry-ord-e" aria-invalid="true" @enderror
+                                       class="field {{ $fieldLook }} max-w-[100px]">
+                                @error('pageOrder') <x-bs-admin::field-error id="entry-ord-e">{{ $message }}</x-bs-admin::field-error> @enderror
+                            </div>
                         </div>
                     </section>
                 @endif
