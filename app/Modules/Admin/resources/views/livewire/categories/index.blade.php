@@ -336,7 +336,7 @@
                                     ])>
                                     <span class="lb-dot" x-bind:data-k="pan && langSt('{{ $c }}') === 'full' ? null : (pan && langSt('{{ $c }}') === 'empty' ? 'empty' : 'partial')" aria-hidden="true"></span>
                                     <span class="@max-[18.75rem]:hidden">{{ $langNames[$c] }}</span><span class="hidden @max-[18.75rem]:inline">{{ strtoupper($c) }}</span>
-                                    @if ($c === $main)<span class="lb-star" title="{{ __('admin.lb.source_tip') }}"><x-bs-admin::icon name="ri-star-fill" class="size-3.5" /></span>@endif
+                                    @if ($c === $main)<span class="lb-star" title="{{ __('admin.lb.source_tip') }}"><x-bs-admin::icon name="ri-star-fill" class="!size-[calc(0.8125rem+var(--user-text-boost))]" /></span>@endif
                                 </button>
                             @endforeach
                             <button type="button" data-cm-lang-more x-show="langMore > 0" x-on:click="langToggle()" aria-haspopup="dialog" x-bind:aria-expanded="langOpen.toString()"
@@ -357,7 +357,7 @@
                                         class="grid min-h-hit w-full cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded px-2.5 py-1.5 text-start text-text hover:bg-surface-hover aria-[current=true]:bg-primary-soft">
                                         <span class="lb-dot" x-bind:data-k="pan && langSt('{{ $c }}') === 'full' ? null : (pan && langSt('{{ $c }}') === 'empty' ? 'empty' : 'partial')" aria-hidden="true"></span>
                                         <span class="min-w-0"><b class="font-semibold text-text-strong [overflow-wrap:anywhere]">{{ $langNames[$c] }}</b><small class="block text-caption text-text-muted" x-text="langState('{{ $c }}'){{ $c === $main ? ' + '.$j(' · '.$u('st_src')) : '' }}"></small></span>
-                                        @if ($c === $main)<span class="lb-star" title="{{ __('admin.lb.source_tip') }}"><x-bs-admin::icon name="ri-star-fill" class="size-3.5" /></span>@else<span></span>@endif
+                                        @if ($c === $main)<span class="lb-star" title="{{ __('admin.lb.source_tip') }}"><x-bs-admin::icon name="ri-star-fill" class="!size-[calc(0.8125rem+var(--user-text-boost))]" /></span>@else<span></span>@endif
                                     </button>
                                 @endforeach
                                 @if ($langManage !== null)
