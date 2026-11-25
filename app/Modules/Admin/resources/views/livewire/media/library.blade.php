@@ -336,7 +336,7 @@
                                 @php $name = $m->original_filename ?: $m->slug ?: $extOf($m); @endphp
                                 @php $dot = strrpos($name, '.'); @endphp
                                 <div wire:key="mt-{{ $m->ulid }}" role="listitem" @class(['relative min-w-0 rounded-md border bg-surface', 'border-primary-text ring-2 ring-primary/30' => $on, 'border-border' => ! $on])>
-                                    <button type="button" class="flex w-full min-w-0 flex-col text-start" wire:click="openDetail({{ Js::from($m->ulid) }})" aria-label="{{ __('media.lib.open', ['name' => $name]) }}" title="{{ $name }}">
+                                    <button type="button" class="flex w-full min-w-0 flex-col text-start" id="mopen-{{ $m->ulid }}" wire:click="openDetail({{ Js::from($m->ulid) }})" aria-label="{{ __('media.lib.open', ['name' => $name]) }}" title="{{ $name }}">
                                         <span class="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-t-md bg-surface-muted">
                                             @if (str_starts_with($m->mime, 'image/'))
                                                 <img src="{{ $urls->url($m->storage_key, 320) }}" alt="" loading="lazy" decoding="async" @if ($m->width) width="{{ $m->width }}" height="{{ $m->height }}" @endif class="size-full object-cover">
@@ -401,7 +401,7 @@
                                                 </button>
                                             </td>
                                             <td class="max-w-0 py-1.5 pe-3">
-                                                <button type="button" class="block max-w-full truncate text-start font-medium text-text hover:text-primary-text" wire:click="openDetail({{ Js::from($m->ulid) }})" title="{{ $name }}">{{ $name }}</button>
+                                                <button type="button" id="mopen-{{ $m->ulid }}" class="block max-w-full truncate text-start font-medium text-text hover:text-primary-text" wire:click="openDetail({{ Js::from($m->ulid) }})" title="{{ $name }}">{{ $name }}</button>
                                                 <span class="block truncate text-small text-text-muted min-[1100px]:hidden">{{ $extOf($m) }} · {{ $dims($m) }} · {{ Library::bytes((int) $m->size) }}@if ($trash) · {{ __('media.lib.days_left', ['n' => $leftDays($m)]) }}@endif</span>
                                             </td>
                                             <td class="hidden py-1.5 min-[900px]:table-cell">{{ $extOf($m) }}</td>
@@ -433,16 +433,14 @@
         </div>
     @endif
 
-    @if ($mp['detail'] ?? null)
-        <div class="fixed inset-y-0 right-0 z-40 flex">
-            @include('admin::partials.media-picker-detail-panel', ['mp' => $mp])
-        </div>
+    @if ($drawer !== null)
+        @include('admin::partials.media-library-drawer', ['d' => $drawer])
     @endif
 
     @if ($canUpload)
-        <x-bs-admin::modal model="moveOpen" :title="__('media.lib.move_title', ['n' => $num(count($picked))])" :close-label="__('media.lib.cancel')">
+        <x-bs-admin::modal model="moveOpen" :title="__('media.lib.move_title', ['n' => $num($targetN)])" :close-label="__('media.lib.cancel')">
             <fieldset class="m-0 flex flex-col gap-1 border-0 p-0">
-                <legend class="sr-only">{{ __('media.lib.move_title', ['n' => $num(count($picked))]) }}</legend>
+                <legend class="sr-only">{{ __('media.lib.move_title', ['n' => $num($targetN)]) }}</legend>
                 @foreach ($folders as $f)
                     <label wire:key="mv-{{ $f->slug }}" @class(['flex min-h-hit cursor-pointer items-center gap-3 rounded-md px-2 text-body text-text hover:bg-surface-muted', 'ml-7' => $f->parent_id !== null])>
                         <input type="radio" name="media-move" value="{{ $f->slug }}" wire:model.live="moveTo" class="size-5 accent-primary">
@@ -459,7 +457,7 @@
                 <x-bs-admin::button variant="outline" color="secondary" wire:click="cancelMove">{{ __('media.lib.cancel') }}</x-bs-admin::button>
                 @php $moveName = $moveTo === '-' ? __('media.lib.unfiled') : $folders->firstWhere('slug', $moveTo)?->name; @endphp
                 <x-bs-admin::button color="primary" aria-disabled="{{ $moveTo === '' ? 'true' : 'false' }}" class="aria-disabled:opacity-60" wire:click="confirmMove">
-                    <x-bs-admin::icon name="ri-folder-transfer" class="size-4" />{{ $moveTo === '' || $moveName === null ? __('media.lib.move_pick') : __('media.lib.move_ok', ['n' => $num(count($picked)), 'folder' => $moveName]) }}
+                    <x-bs-admin::icon name="ri-folder-transfer" class="size-4" />{{ $moveTo === '' || $moveName === null ? __('media.lib.move_pick') : __('media.lib.move_ok', ['n' => $num($targetN), 'folder' => $moveName]) }}
                 </x-bs-admin::button>
             </x-slot:footer>
         </x-bs-admin::modal>
@@ -558,7 +556,7 @@
             <x-bs-admin::confirm-line icon="ri-arrow-go-back">{{ __('media.lib.ask_trash_l2', ['days' => $retention]) }}</x-bs-admin::confirm-line>
         </x-bs-admin::confirm-dialog>
     @elseif ($canDelete)
-        <x-bs-admin::confirm-dialog model="askTrashOpen" :title="__('media.lib.ask_trash_title', ['n' => $num(count($picked))])" icon="ri-error-warning"
+        <x-bs-admin::confirm-dialog model="askTrashOpen" :title="__('media.lib.ask_trash_title', ['n' => $num($targetN)])" icon="ri-error-warning"
             :ok="__('media.lib.ask_trash_ok')" confirm="confirmTrash" cancel="cancelTrash">
             <x-bs-admin::confirm-line icon="ri-links">{{ __('media.lib.ask_trash_l1') }}</x-bs-admin::confirm-line>
             <x-bs-admin::confirm-line icon="ri-arrow-go-back">{{ __('media.lib.ask_trash_l2', ['days' => $retention]) }}</x-bs-admin::confirm-line>

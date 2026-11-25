@@ -150,8 +150,10 @@ export function fitFoot(foot) {
 }
 
 /**
- * @param {{ save: string, discard: string, sections: string[] }} cfg the page's save and discard
- *   methods, and the paths of the settings sections ("sang mục khác" instead of "rời đi").
+ * @param {{ save: string, discard: string, sections: string[], scope?: string|null }} cfg the page's
+ *   save and discard methods, the paths of the settings sections ("sang mục khác" instead of "rời
+ *   đi"), and, for a dialog that guards only part of the page, the selector of that part: text typed
+ *   elsewhere in the component is then not counted.
  */
 export function unsavedDialog(cfg) {
     let off = null;
@@ -187,7 +189,8 @@ export function unsavedDialog(cfg) {
     // field only sends when it is left, so it stays changed while it holds the focus.
     const onInput = (e) => {
         const m = modelOf(e.target);
-        if (!m) {
+        // a dialog scoped to part of the page (a drawer's words) counts only the fields typed in there
+        if (!m || (cfg.scope && !(e.target.closest && e.target.closest(cfg.scope)))) {
             return;
         }
         seq += 1;
@@ -347,6 +350,14 @@ export function unsavedDialog(cfg) {
             const stay = foot.querySelector('[data-ud="s"]');
             if (stay) {
                 stay.focus();
+                // asked from a timer (a drawer's close), the dialog may not be drawn yet on this tick
+                if (document.activeElement !== stay) {
+                    window.requestAnimationFrame(() => {
+                        if (this.open) {
+                            stay.focus();
+                        }
+                    });
+                }
             }
         },
 

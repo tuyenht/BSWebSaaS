@@ -2,11 +2,11 @@
 
 namespace App\Modules\Admin\Livewire\Media;
 
+use App\Modules\Admin\Livewire\Concerns\WithMediaDetailDrawer;
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\MediaDeleteRights;
 use App\Modules\Admin\Support\MediaLibraryDirectory;
 use App\Modules\Admin\Support\MediaUsageLocator;
-use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Media\Jobs\DeleteLargeMediaFolder;
 use App\Modules\Media\Models\Media;
@@ -38,11 +38,13 @@ use Throwable;
  * folder needs media.folders and deleting for good needs media.purge (both the website admin's),
  * moving files into a folder stays with media.upload and the Trash with media.delete.own / .any
  * (MediaDeleteRights: «own» = only this person's own uploads that nobody uses). The upload
- * panes and the detail panel are the shared picker's (WithMediaLibraryPicker in manage mode).
+ * panes are the shared picker's (WithMediaLibraryPicker in manage mode); a file opens in the
+ * library's own detail drawer (WithMediaDetailDrawer).
  */
 #[Layout('admin::layouts.app')]
 final class Library extends Component
 {
+    use WithMediaDetailDrawer;
     use WithMediaLibraryPicker;
 
     /** '' = all files, '-' = files in no folder, else a folder slug. */
@@ -190,6 +192,9 @@ final class Library extends Component
         }
         if ($name === 'newFolderName') {
             $this->resetErrorBag('newFolderName');
+        }
+        if (in_array($name, ['moveOpen', 'askTrashOpen', 'askPurgeOpen'], true) && $this->{$name} === false) {
+            $this->single = false; // a dialog closed by Esc or its backdrop: the open file's turn ends
         }
     }
 
@@ -773,6 +778,7 @@ final class Library extends Component
     {
         abort_unless(Gate::allows('media.upload'), 403);
 
+        $this->single = false;
         $this->moveTo = '';
         $this->moveOpen = $this->picked !== [];
     }
@@ -781,6 +787,7 @@ final class Library extends Component
     {
         $this->moveOpen = false;
         $this->moveTo = '';
+        $this->single = false;
     }
 
     public function confirmMove(): void
@@ -800,8 +807,8 @@ final class Library extends Component
             }
         }
 
-        $n = Media::query()->whereIn('ulid', $this->picked)->update(['folder_id' => $target?->id]);
-        $this->picked = [];
+        $n = Media::query()->whereIn('ulid', $this->targets())->update(['folder_id' => $target?->id]);
+        $this->doneWithTargets();
         $this->cancelMove();
         $this->say(__('media.lib.moved', ['n' => $n, 'folder' => $target !== null ? $target->name : __('media.lib.unfiled')]));
     }
@@ -814,28 +821,8 @@ final class Library extends Component
     {
         abort_unless(MediaDeleteRights::some(), 403);
 
-        $chosen = Media::query()->whereIn('ulid', $this->picked)->count();
-        $mine = app(MediaDeleteRights::class)->trashable(Media::query()->whereIn('ulid', $this->picked))->count();
-        if ($mine === 0) {
-            if ($chosen === 0 || MediaDeleteRights::any()) {
-                $this->picked = []; // the chosen files are gone meanwhile: nothing left to send
-
-                return;
-            }
-            $this->say(__('media.lib.trash_none_mine'), 'error');
-
-            return;
-        }
-        $this->trashKept = $chosen - $mine;
-        $this->trashGo = $mine;
-        $used = Media::query()->whereIn('ulid', $this->picked);
-        app(MediaUsageLocator::class)->constrain($used, true);
-        if ($this->trashKept > 0 || $used->exists()) {
-            $this->askTrashOpen = true;
-
-            return;
-        }
-        $this->confirmTrash();
+        $this->single = false;
+        $this->askTrash();
     }
 
     public function confirmTrash(): void
@@ -843,9 +830,14 @@ final class Library extends Component
         abort_unless(MediaDeleteRights::some(), 403);
 
         // only what this person may send: someone else's file (or one in use, for «own») stays
-        $rows = app(MediaDeleteRights::class)->trashable(Media::query()->whereIn('ulid', $this->picked))->get();
+        $rows = app(MediaDeleteRights::class)->trashable(Media::query()->whereIn('ulid', $this->targets()))->get();
         $rows->each->delete(); // one by one, so the observers fire
-        $this->picked = [];
+        // the open file went to the Trash: its drawer goes with it, and the chosen files stay chosen
+        if ($this->single) {
+            $this->closeDetail();
+        } else {
+            $this->picked = [];
+        }
         $this->askTrashOpen = false;
         $this->trashKept = 0;
         $this->trashGo = 0;
@@ -858,6 +850,35 @@ final class Library extends Component
         $this->askTrashOpen = false;
         $this->trashKept = 0;
         $this->trashGo = 0;
+        $this->single = false;
+    }
+
+    /** The Trash question for targets(), or the move itself when there is nothing to ask. */
+    private function askTrash(): void
+    {
+        $chosen = Media::query()->whereIn('ulid', $this->targets())->count();
+        $mine = app(MediaDeleteRights::class)->trashable(Media::query()->whereIn('ulid', $this->targets()))->count();
+        if ($mine === 0) {
+            if ($chosen === 0 || MediaDeleteRights::any()) {
+                $this->doneWithTargets(); // the chosen files are gone meanwhile: nothing left to send
+
+                return;
+            }
+            $this->single = false;
+            $this->say(__('media.lib.trash_none_mine'), 'error');
+
+            return;
+        }
+        $this->trashKept = $chosen - $mine;
+        $this->trashGo = $mine;
+        $used = Media::query()->whereIn('ulid', $this->targets());
+        app(MediaUsageLocator::class)->constrain($used, true);
+        if ($this->trashKept > 0 || $used->exists()) {
+            $this->askTrashOpen = true;
+
+            return;
+        }
+        $this->confirmTrash();
     }
 
     /** "Hoàn tác" on the toast after a move to Trash. */
@@ -889,6 +910,7 @@ final class Library extends Component
         abort_unless(Gate::allows('media.purge'), 403);
         app(SupportSession::class)->forbid();
 
+        $this->single = false;
         $this->purgeAll = $all;
         $this->askPurgeOpen = $all || $this->picked !== [];
     }
@@ -897,6 +919,7 @@ final class Library extends Component
     {
         $this->askPurgeOpen = false;
         $this->purgeAll = false;
+        $this->single = false;
     }
 
     public function confirmPurge(): void
@@ -904,18 +927,37 @@ final class Library extends Component
         abort_unless(Gate::allows('media.purge'), 403);
         app(SupportSession::class)->forbid();
 
-        $query = $this->purgeAll ? Media::onlyTrashed() : Media::onlyTrashed()->whereIn('ulid', $this->picked);
+        $query = $this->purgeAll ? Media::onlyTrashed() : Media::onlyTrashed()->whereIn('ulid', $this->targets());
         $rows = $query->get();
         $bytes = Cast::int($rows->sum('size'));
         $rows->each->forceDelete(); // one by one, so the observer drops attachments and the stored file
-        $this->picked = [];
+        if ($this->single) {
+            $this->closeDetail(); // the open file is gone for good
+        } else {
+            $this->picked = [];
+        }
         $this->cancelPurge();
         $this->say(__('media.lib.purged', ['n' => $rows->count(), 'size' => self::bytes($bytes)]));
     }
 
-    public function openDetail(string $ulid): void
+    /*
+    | The shared picker's detail panel is the editors'; this page opens a file in its own drawer
+    | (WithMediaDetailDrawer), which saves every language at once.
+    */
+
+    public function openPickerDetail(string $ulid): void
     {
-        $this->openPickerDetail($ulid);
+        $this->openDetail($ulid);
+    }
+
+    public function closePickerDetail(): void
+    {
+        $this->closeDetail();
+    }
+
+    public function savePickerDetailAlt(): void
+    {
+        abort(403);
     }
 
     /*
@@ -1048,15 +1090,10 @@ final class Library extends Component
 
         $purge = ['n' => 0, 'bytes' => 0];
         if ($this->askPurgeOpen && $canPurge && ! $failed) {
-            $purge = $directory->totals($this->purgeAll ? Media::onlyTrashed() : Media::onlyTrashed()->whereIn('ulid', $this->picked));
+            $purge = $directory->totals($this->purgeAll ? Media::onlyTrashed() : Media::onlyTrashed()->whereIn('ulid', $this->targets()));
         }
 
-        $detail = $this->pickerDetailMedia($this->pickerDetailUlid, withFolder: true);
-        $uploader = null;
-        if ($detail?->created_by !== null) {
-            $name = User::query()->whereKey($detail->created_by)->value('name');
-            $uploader = is_string($name) ? $name : null;
-        }
+        $drawer = $failed ? null : $this->detailView();
 
         // a folder's count holds its sub-folders' files, as its list does
         $treeN = [];
@@ -1093,12 +1130,9 @@ final class Library extends Component
             'urls' => app(MediaUrlResolver::class),
             'purge' => $purge,
             'retention' => Cast::int(config('media.trash_retention_days', 30), 30),
-            'mp' => [
-                'detail' => $detail,
-                'detailUsages' => $detail === null ? [] : app(MediaUsageLocator::class)->usagesFor($detail, $this->pickerContentLocale()),
-                'detailUploader' => $uploader,
-                'urls' => app(MediaUrlResolver::class),
-            ],
+            // how many files the move / Trash dialog acts on: the open file alone, or the chosen ones
+            'targetN' => count($this->targets()),
+            'drawer' => $drawer,
         ]);
         $view->title(__('media.lib.title'));
 

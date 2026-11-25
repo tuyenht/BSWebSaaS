@@ -406,12 +406,26 @@ trait WithMediaLibraryPicker
             return;
         }
 
-        // Per-locale JSONB — only this locale's key changes; other locales' alt survive.
-        $alt = $media->alt;
-        $alt[$this->pickerContentLocale()] = $text;
-        $media->update(['alt' => $alt]);
+        // Per-locale JSONB — only this locale's key changes; other locales' alt survive, read again
+        // under a row lock so a save of another language meanwhile (the library drawer) is kept.
+        $locale = $this->pickerContentLocale();
+        // The file can go to the Trash between the read above and the lock: then nothing is written
+        // and nothing is said to be saved.
+        $saved = DB::transaction(function () use ($media, $locale, $text): bool {
+            $locked = Media::query()->whereKey($media->id)->lockForUpdate()->first();
+            if ($locked === null) {
+                return false;
+            }
+            $alt = $locked->alt;
+            $alt[$locale] = $text;
+            $locked->update(['alt' => $alt]);
 
-        session()->flash('media-status', __('media.picker_detail_saved'));
+            return true;
+        });
+
+        if ($saved) {
+            session()->flash('media-status', __('media.picker_detail_saved'));
+        }
     }
 
     /** The live media of this site the detail panel shows, by ulid (null when it does not resolve). */

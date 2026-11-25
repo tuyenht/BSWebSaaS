@@ -2,7 +2,7 @@
   "entries": {
     "resources/css/app.css": {
       "js": 0,
-      "css": 52194
+      "css": 53824
     },
     "resources/css/admin-account.css": {
       "js": 0,
@@ -163,7 +163,7 @@
       "css": 0
     },
     "resources/js/admin-categories.js": {
-      "js": 26894,
+      "js": 26899,
       "css": 0
     },
     "resources/js/admin-rich-editor.js": {
@@ -171,7 +171,7 @@
       "css": 36159
     },
     "resources/js/admin-unsaved.js": {
-      "js": 2772,
+      "js": 2816,
       "css": 0
     },
     "resources/js/admin-save-bar.js": {
@@ -194,8 +194,12 @@
       "js": 1739,
       "css": 0
     },
+    "resources/js/admin-media-drawer.js": {
+      "js": 1128,
+      "css": 0
+    },
     "resources/js/admin-menus.js": {
-      "js": 29578,
+      "js": 29584,
       "css": 0
     },
     "resources/js/admin-bell.js": {

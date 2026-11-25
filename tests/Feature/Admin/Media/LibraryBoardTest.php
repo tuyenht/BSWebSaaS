@@ -278,7 +278,7 @@ it('opens the detail by ulid and keeps the bigint id out of the wire data', func
         $page = Livewire::actingAs($user)->test(Library::class)
             ->call('openDetail', $file->ulid)
             ->assertSet('pickerDetailUlid', $file->ulid)
-            ->assertSet('pickerDetailAlt', 'Máy tiện')
+            ->assertSet('detailAlt', ['vi' => 'Máy tiện'])
             ->assertSee('chi-tiet.png');
 
         $data = $page->getData();
@@ -293,7 +293,7 @@ it('opens the detail by ulid and keeps the bigint id out of the wire data', func
             ->call('closePickerDetail')
             ->call('openDetail', $theirs->ulid)->assertSet('pickerDetailUlid', null)
             ->call('openDetail', 'khong-phai-ulid')->assertSet('pickerDetailUlid', null)
-            ->call('savePickerDetailAlt');
+            ->call('saveDetail');
 
         expect(fn () => Livewire::actingAs($user)->test(Library::class)->set('pickerDetailUlid', $theirs->ulid))
             ->toThrow(CannotUpdateLockedPropertyException::class);
@@ -317,6 +317,7 @@ it('closes the shared picker\'s bigint-id endpoints on this page', function (str
     'empty trash' => ['emptyPickerTrash', []],
     'create folder' => ['createPickerFolder', []],
     'insert' => ['insertPicked', []],
+    'save alt by picker' => ['savePickerDetailAlt', []],
 ]);
 
 it('starts again at page 1 when the cursor file is gone or forged', function (): void {
