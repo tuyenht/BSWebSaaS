@@ -37,6 +37,7 @@ use App\Modules\Storefront\Support\ProductPage;
 use App\Modules\Storefront\Support\SlotContext;
 use App\Modules\Storefront\Support\ThankYouPages;
 use App\Modules\Storefront\Support\TitleDisambiguator;
+use App\Modules\Tenancy\Context\ContentSections;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
@@ -512,13 +513,18 @@ final readonly class StorefrontController
     /**
      * A tag's page: the published posts filed under the tag (a facet term, any pivot position from
      * Entry::FACET_POSITION_BASE up) whose version in this language is published, newest first, as
-     * news cards with keyset paging like every list. While the tag has fewer than two such posts the
-     * page is `noindex,follow` (a thin page; the sitemap leaves it out too, SitemapRoutes): the
-     * first page holds every post then, so it decides without a count.
+     * news cards with keyset paging like every list. Its title is "Tag: name" (the h1, the crumb and
+     * the head's title), under a fixed sentence naming the site, on the plain dark band with its
+     * pattern (a tag has no cover). While the tag has fewer than two such posts the page is
+     * `noindex,follow` (a thin page; the sitemap leaves it out too, SitemapRoutes): the first page
+     * holds every post then, so it decides without a count.
      *
-     * A tag with no such post has no page (404): a tag is made by any save of a member who may edit a
-     * post, a draft's too, so its name reaches visitors only once a post carrying it went live, through
-     * publishing and so through approval where a workflow asks for one.
+     * A tag whose posts are all unpublished (a draft's, one waiting for approval, one in the trash)
+     * has no page (404): a tag is made by any save of a member who may edit a post, so its name reaches
+     * visitors only once a post carrying it went live, through publishing and so through approval
+     * where a workflow asks for one. A tag no post carries any more (taken off its last post) keeps a
+     * `noindex,follow` page that says so and leads to the site's news list, so a visitor with an old
+     * link is not left on an empty page. A page past the last post answers 404.
      *
      * @param  array<string, mixed>  $chrome  page chrome (menu, lang, hreflang)
      */
@@ -527,29 +533,58 @@ final readonly class StorefrontController
         $position = $this->lists->position(request());
         // resolved per request: the controller is kept between requests, the current site is not
         $siteId = app(CurrentSite::class)->id();
-        $live = fn (): Builder => Entry::query()
+        $tagged = fn (Builder $query): Builder => $query
             ->join('entry_taxonomies as tagged', fn (JoinClause $join) => $join->on('tagged.entry_id', '=', 'entries.id')
                 ->where('tagged.site_id', $siteId)
-                ->where('tagged.taxonomy_id', $resolved->taxonomy->id)->where('tagged.position', '>=', Entry::FACET_POSITION_BASE))
+                ->where('tagged.taxonomy_id', $resolved->taxonomy->id)->where('tagged.position', '>=', Entry::FACET_POSITION_BASE));
+        $live = $tagged(Entry::query())
             ->where('entries.type', 'post')
             ->where('entries.status', 'published')
             ->whereHas('translations', fn (Builder $query) => $query->where('locale', $locale)->where('status', 'published'));
-        ['rows' => $rows, 'more' => $more] = $this->lists->window($live()->select('entries.*')->with(['translations', 'routes']), Entry::class, $position);
-        // no live post carries the tag: no page (a later page past the last post asks once more)
+        ['rows' => $rows, 'more' => $more] = $this->lists->window($live->select('entries.*')->with(['translations', 'routes']), Entry::class, $position);
         $first = $position['after'] === null && $position['page'] === 1;
-        if ($rows->isEmpty() && ($first || ! $live()->exists())) {
-            abort(404);
-        }
+        $site = trim(Cast::string(data_get($chrome, 'brand.name')));
 
         $extra = $chrome;
-        $extra['cards'] = $this->lists->postCards($rows, $locale, [], true);
         $extra['chips'] = [];
-        $extra['band'] = $this->listBand($resolved);
+        $extra['band'] = [
+            'subtitle' => $site !== '' ? __('storefront.tag_intro', ['site' => $site]) : __('storefront.tag_intro_plain'),
+            'image' => null,
+            'srcset' => null,
+            'pattern' => true,
+        ];
+        if ($rows->isEmpty()) {
+            // past the last post, or a post that is not live still carries the tag (trashed ones too)
+            abort_if(! $first || $tagged(Entry::withTrashed())->exists(), 404);
+            $extra['emptyBox'] = $this->tagEmptyBox($locale, $site);
+        }
+        $extra['cards'] = $this->lists->postCards($rows, $locale, [], true);
         if ($first && ! $more && $rows->count() < 2) {
             $extra['robots'] = 'noindex,follow';
         }
+        $title = __('storefront.tag_title', ['name' => $resolved->translation->name]);
 
-        return $this->listResponse($resolved, $locale, $path, $position, $more, ListPage::ulidOf($rows->last()), [], $extra, 'grid-news');
+        return $this->listResponse($resolved, $locale, $path, $position, $more, ListPage::ulidOf($rows->last()), [], $extra, 'grid-news', $title);
+    }
+
+    /**
+     * What a tag page with no post says: that no post carries the tag, and a button to the site's
+     * news list (the category the posts section is built on, at its address in this language) with a
+     * line inviting the visitor there. A site with no such list gets the first sentence only.
+     *
+     * @return array{title: string, text: string, button: array{url: string, label: string}|null}
+     */
+    private function tagEmptyBox(string $locale, string $site): array
+    {
+        $news = app(ContentSections::class)->taxonomyIdOf('posts');
+        $path = $news !== null ? SiteRoute::query()->where('taxonomy_id', $news)->where('locale', $locale)->value('path') : null;
+        $url = is_string($path) && $path !== '' ? $this->paths->publicUrl($path, $locale) : null;
+
+        return [
+            'title' => __('storefront.tag_empty'),
+            'text' => $url === null ? '' : ($site !== '' ? __('storefront.tag_empty_hint', ['site' => $site]) : __('storefront.tag_empty_hint_plain')),
+            'button' => $url === null ? null : ['url' => $url, 'label' => __('storefront.all_news')],
+        ];
     }
 
     /**
@@ -607,8 +642,10 @@ final readonly class StorefrontController
      * @param  list<array{title: string, url: string}>  $titles
      * @param  array<string, mixed>  $extra
      */
-    private function listResponse(ResolvedCategory $resolved, string $locale, string $path, array $position, bool $more, ?string $lastUlid, array $titles, array $extra, ?string $listTemplate): Response
+    private function listResponse(ResolvedCategory $resolved, string $locale, string $path, array $position, bool $more, ?string $lastUlid, array $titles, array $extra, ?string $listTemplate, ?string $title = null): Response
     {
+        // the page's title (h1, last crumb, head): the category's name unless the caller words it
+        $title ??= $resolved->translation->name;
         // Each paginated page self-canonicals (with ?page=N) — rel=prev/next signals the series;
         // canonicaling page-N→page-1 would drop the deeper pages from the index.
         $base = url($this->paths->publicUrl($path, $locale));
@@ -624,7 +661,7 @@ final readonly class StorefrontController
         // Home → the categories above → this one (its own entry keeps the page's canonical address).
         // a tag stands alone under Home, at its own address
         $trail = $resolved->taxonomy->vocabulary === Taxonomy::TAG
-            ? [$this->crumbs->crumb($resolved->translation->name, $this->paths->publicUrl($this->paths->forTag($resolved->translation->slug), $locale))]
+            ? [$this->crumbs->crumb($title, $this->paths->publicUrl($this->paths->forTag($resolved->translation->slug), $locale))]
             : $this->crumbs->category($resolved->taxonomy, $locale, $resolved->translation->name, $resolved->translation->slug);
         $parentName = count($trail) >= 2 ? $trail[count($trail) - 2]['name'] : null;
         $lastLevel = count($trail) - 1;
@@ -641,7 +678,7 @@ final readonly class StorefrontController
 
         $html = $this->renderer->renderCategory(
             $listTemplate,
-            $resolved->translation->name,
+            $title,
             $titles,
             $this->lists->links(request()->url(), $position, $more, $lastUlid),
             self::categorySeo($resolved->translation, $parentName, Cast::string(data_get($extra, 'brand.name'))) + $this->categoryTitleSeo($resolved, $locale, $parentName),

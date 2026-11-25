@@ -8,6 +8,8 @@
     stand two to a row on a phone; news and project cards there are compact rows. On the first page
     of a news list with more than three posts, the newest is the wide featured card above the grid.
     `cards` and `chips` are built by the controller from stored routes; no id reaches the markup.
+    `band.pattern` gives the plain band its diagonal pattern (a tag's page); `emptyBox` words an empty
+    list's box (a title, a line, a button), else it says `emptyKey`.
 --}}
 @php
     $sfKind = in_array($kind ?? 'news', ['product', 'project', 'news', 'job'], true) ? $kind : 'news';
@@ -38,7 +40,7 @@
     @include('theme::partials.header', ['menu' => $menu ?? [], 'brand' => $brand ?? null])
     <main class="sf-list sf-list--{{ $sfKind }}" id="noi-dung" tabindex="-1">
         @include('theme::sections.page_header', [
-            'props' => ['title' => $title, 'subtitle' => $band['subtitle'] ?? '', 'image_url' => $band['image'] ?? null, '_lead' => true, '_high' => true, '_crumbs' => $breadcrumb ?? []],
+            'props' => ['title' => $title, 'subtitle' => $band['subtitle'] ?? '', 'image_url' => $band['image'] ?? null, 'pattern' => ! empty($band['pattern']) ? 'on' : 'off', '_lead' => true, '_high' => true, '_crumbs' => $breadcrumb ?? []],
             'listSrcset' => $band['srcset'] ?? null,
         ])
 @if (trim((string) (($slotHtml ?? [])['before_list'] ?? '')) !== '')
@@ -95,6 +97,16 @@
 @endif
 @if ($sfAll !== null && $sfAll['all'] && ! $sfAll['current'])
                 <a class="sf-empty-box__link" href="{{ $sfAll['url'] }}">{{ $sfAll['name'] }}</a>
+@endif
+            </div>
+@elseif (is_array($emptyBox ?? null))
+            <div class="sf-empty-box">
+                <p class="sf-empty-box__title">{{ $emptyBox['title'] }}</p>
+@if (($emptyBox['text'] ?? '') !== '')
+                <p class="sf-empty-box__text">{{ $emptyBox['text'] }}</p>
+@endif
+@if (! empty($emptyBox['button']))
+                <a class="sf-empty-box__button" href="{{ $emptyBox['button']['url'] }}">{{ $emptyBox['button']['label'] }}</a>
 @endif
             </div>
 @else

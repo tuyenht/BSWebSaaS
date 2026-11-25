@@ -220,12 +220,21 @@
     }
 }
 
-/* Previous / next: two plain links, older on the left, newer on the right. */
-/* The post's tags: rounded links in a wrapping row under the text, each to the tag's page. */
+/* The post's tags: a row under the text, set off by a line, its visible label above rounded links
+   on the light tint like the share buttons (no outline to fall under 3:1), each to the tag's page.
+   Alone it lines up with the 48rem text column; in the columns layout it takes the column's width. */
 .post-tags {
-    max-width: 48rem;
+    width: min(45rem, calc(100% - 3rem));
     margin: 0 auto 2rem;
-    padding-inline: 1.5rem;
+    padding-top: 2rem;
+    border-top: 1px solid color-mix(in srgb, var(--color-text) 14%, transparent);
+}
+
+.post-tags__label {
+    margin: 0 0 0.75rem;
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+    font-weight: 600;
 }
 
 .post-tags__list {
@@ -237,25 +246,54 @@
     list-style: none;
 }
 
+.post-tags__list > li {
+    max-width: 100%;
+}
+
 .post-tags__tag {
     display: inline-flex;
     align-items: center;
+    max-width: 100%;
     min-height: 2.75rem;
     padding: 0.5rem 1rem;
-    border: 1px solid color-mix(in srgb, var(--color-text) 25%, transparent);
     border-radius: 9999px;
+    background: var(--color-surface-tint, color-mix(in srgb, var(--color-surface) 94%, var(--color-dark)));
     color: var(--color-text);
     font-size: 0.875rem;
-    font-weight: 500;
+    font-weight: 600;
+    line-height: 1.375;
     overflow-wrap: anywhere;
-    transition: border-color 0.2s, color 0.2s;
+    transition: background-color 0.2s, color 0.2s;
 }
 
 .post-tags__tag:hover {
-    border-color: var(--color-primary);
-    color: var(--color-primary-text);
+    background: color-mix(in srgb, var(--color-surface) 88%, var(--color-dark));
+    color: var(--color-text-strong);
 }
 
+.post-tags__tag:focus-visible {
+    outline: 2px solid var(--color-primary-text, var(--color-text-strong));
+    outline-offset: 2px;
+}
+
+@media (min-width: 1024px) {
+    .post-tags {
+        width: min(44rem, calc(100% - 4rem));
+    }
+}
+
+.post-columns__main .post-tags {
+    width: auto;
+    margin: 2.5rem 0 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .post-tags__tag {
+        transition: none;
+    }
+}
+
+/* Previous / next: two plain links, older on the left, newer on the right. */
 .post-nav {
     display: grid;
     gap: 1rem;
