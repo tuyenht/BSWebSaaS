@@ -61,7 +61,7 @@ it('shows a place that follows its parent on the job card list', function (): vo
         ->and(jobPage('/tin-tuyen-dung'))->toContain('sf-card--job');
 });
 
-it('prints JobPosting data for a post on a job layout, with no deadline until posts have one', function (): void {
+it('prints JobPosting data for a post on a job layout, with no deadline when the post has no deadline chip', function (): void {
     jobSite();
     $html = jobPage('/ha-noi/tho-tien-cnc');
 
@@ -69,6 +69,16 @@ it('prints JobPosting data for a post on a job layout, with no deadline until po
         ->toContain('"title":"Thợ tiện CNC"')
         ->not->toContain('validThrough')
         ->not->toContain('"@type":"Article"');
+});
+
+it('prints validThrough as the end of the day named by the Hạn nộp chip', function (): void {
+    $siteId = jobSite();
+    app(Tenancy::class)->enter($siteId, function (): void {
+        Entry::query()->whereHas('translations', fn ($q) => $q->where('slug', 'tho-tien-cnc'))->firstOrFail()
+            ->forceFill(['meta' => ['facts' => [['text' => ['vi' => 'Hạn nộp: 5/12/2026'], 'tone' => 'plain']]]])->save();
+    });
+
+    expect(jobLd(jobPage('/ha-noi/tho-tien-cnc'))['validThrough'])->toBe('2026-12-05T23:59:59+07:00');
 });
 
 /** The JobPosting object printed in the page head, or null when the page carries none. */
