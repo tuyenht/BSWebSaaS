@@ -186,10 +186,16 @@ it('follows the parent picked: the last place there, a typed place kept and appl
     });
 });
 
-/** The «cms.page.moved» audit rows of $page. */
-function poMoves(Entry $page): int
+/** The «cms.page.moved» audit rows of $page written after the row $after (the log outlives a test: ids come again). */
+function poMoves(Entry $page, int $after): int
 {
-    return AuditLog::query()->where('site_id', 1)->where('action', 'cms.page.moved')->where('auditable_id', $page->id)->count();
+    return AuditLog::query()->where('site_id', 1)->where('action', 'cms.page.moved')->where('auditable_id', $page->id)->where('id', '>', $after)->count();
+}
+
+/** The last audit row's id now. */
+function poAuditMark(): int
+{
+    return (int) AuditLog::query()->max('id');
 }
 
 /** More pages under $parent (the top ones when null) than a move renumbers: MovePage refuses (siblings_too_many). */
@@ -210,12 +216,13 @@ it('moves a page to a new parent and the place typed in one move, one audit row'
         $b = poPage('b', position: 1);
         poPage('a1', $a, 0);
         poPage('a2', $a, 1);
+        $mark = poAuditMark();
 
         Livewire::actingAs($writer)->test(Editor::class, ['ulid' => $b->ulid])
             ->set('parentUlid', $a->ulid)->set('pageOrder', '2')
             ->call('save')->assertHasNoErrors()->assertSet('pageOrder', '2')->assertSet('pageOrderLoaded', '2');
 
-        $audit = AuditLog::query()->where('site_id', 1)->where('action', 'cms.page.moved')->where('auditable_id', $b->id)->sole();
+        $audit = AuditLog::query()->where('site_id', 1)->where('action', 'cms.page.moved')->where('auditable_id', $b->id)->where('id', '>', $mark)->sole();
         expect(poOrder($a))->toBe(['a1', 'b', 'a2'])
             ->and($audit->meta['parent'] ?? null)->toBe($a->id)->and($audit->meta['position'] ?? null)->toBe(1);
     });
@@ -252,6 +259,7 @@ it('moves a held member\'s live page to the place typed, the change holding the 
         poPage('b', position: 1);
         poPage('c', position: 2);
         app(PublishEntry::class)->handle($a, 'vi', $publisher);
+        $mark = poAuditMark();
 
         $editor = Livewire::actingAs($writer)->test(Editor::class, ['ulid' => $a->ulid])
             ->set('title', 'Bản của người viết')->set('pageOrder', '99')
@@ -260,7 +268,7 @@ it('moves a held member\'s live page to the place typed, the change holding the 
             ->assertViewHas('changes', 0);
 
         expect($editor->get('saved')['pageOrder'])->toBe('3')
-            ->and(poOrder())->toBe(['b', 'c', 'a'])->and(poMoves($a))->toBe(1)
+            ->and(poOrder())->toBe(['b', 'c', 'a'])->and(poMoves($a, $mark))->toBe(1)
             ->and(EntryDraft::query()->where('entry_id', $a->id)->count())->toBe(1)
             ->and($a->fresh()?->translationFor('vi')?->title)->toBe('T a');
     });
@@ -274,6 +282,7 @@ it('writes nothing of a held member\'s save when the place typed is refused, and
         $a = poPage('a', position: 0);
         app(PublishEntry::class)->handle($a, 'vi', $publisher);
         poCrowd();
+        $mark = poAuditMark();
 
         $editor = Livewire::actingAs($writer)->test(Editor::class, ['ulid' => $a->ulid])->assertSet('pageOrder', '1')
             ->set('title', 'Bản của người viết')->set('pageOrder', '3')
@@ -283,7 +292,7 @@ it('writes nothing of a held member\'s save when the place typed is refused, and
             ->assertNotDispatched('bs-toast', text: __('entries.chg.t_saved'));
 
         expect($editor->get('saved')['pageOrder'])->toBe('1')
-            ->and($a->fresh()?->position)->toBe(0)->and(poMoves($a))->toBe(0)
+            ->and($a->fresh()?->position)->toBe(0)->and(poMoves($a, $mark))->toBe(0)
             ->and(EntryDraft::query()->where('entry_id', $a->id)->exists())->toBeFalse();
     });
 });
@@ -295,6 +304,7 @@ it('makes a new page whose typed place is refused at the end of the list, the sa
         $parent = poPage('cha', position: 0);
         poCrowd($parent);
         $last = (string) (MovePage::SIBLINGS_MAX + 2);
+        $mark = poAuditMark();
 
         $editor = Livewire::actingAs($writer)->test(Editor::class, ['parent' => $parent->ulid])->assertSet('pageOrder', $last)
             ->set('title', 'Con')->set('slug', 'con')->set('pageOrder', '1')
@@ -303,7 +313,7 @@ it('makes a new page whose typed place is refused at the end of the list, the sa
 
         $made = Entry::query()->where('ulid', $editor->get('ulid'))->sole();
         expect($editor->get('saved')['pageOrder'])->toBe($last)
-            ->and($made->parent_id)->toBe($parent->id)->and(poMoves($made))->toBe(0)
+            ->and($made->parent_id)->toBe($parent->id)->and(poMoves($made, $mark))->toBe(0)
             ->and($made->translationFor('vi')?->title)->toBe('Con');
     });
 });
