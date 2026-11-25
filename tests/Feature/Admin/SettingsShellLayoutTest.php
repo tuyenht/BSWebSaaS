@@ -120,3 +120,26 @@ it('turns the open section into a same-page row: no wire:navigate, so the phone 
         ->and($on?->getAttribute('x-on:click'))->toBe('openCurrent($event)')
         ->and($menu?->querySelector('a[href="'.route('admin.settings.general').'"]')?->hasAttribute('wire:navigate'))->toBeTrue();
 });
+
+it('puts the section in one card, framed from 768px and frameless below; «Bảo mật & Nâng cao» keeps its own cards', function (): void {
+    $owner = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($owner, 'owner', ['settings.manage', 'entries.view']));
+    $page = function (string $section) use ($owner): HTMLDocument {
+        $html = (string) $this->actingAs($owner)->get('http://a.test/admin/settings/'.$section)->assertOk()->getContent();
+
+        return HTMLDocument::createFromString($html, LIBXML_NOERROR);
+    };
+
+    $card = $page('general')->querySelector('[data-set-shell] [data-set-main] > [data-set-card]');
+    $classes = explode(' ', (string) $card?->getAttribute('class'));
+    expect($card)->not->toBeNull()
+        ->and($classes)->toContain('rounded-lg', 'border', 'border-border', 'bg-surface', 'shadow-card', 'p-[1.375rem]')
+        ->and($classes)->toContain('max-md:border-0', 'max-md:bg-transparent', 'max-md:shadow-none', 'max-md:p-0', 'max-md:rounded-none')
+        // the section's groups sit inside it, and the save bar stays outside
+        ->and($card?->querySelector('[data-set-form]'))->not->toBeNull()
+        ->and($card?->querySelector('[data-set-save]'))->toBeNull();
+
+    $advanced = $page('advanced');
+    expect($advanced->querySelector('[data-set-main] [data-adv]'))->not->toBeNull()
+        ->and($advanced->querySelector('[data-set-card]'))->toBeNull();
+});

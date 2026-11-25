@@ -13,8 +13,9 @@
     // inside it, never the buttons. Long text wraps, never clips.
     //
     // $group: the chosen group's label, or null for "all". $summary: e.g. "1 website".
-    // $chips: list<array{label: string, remove: string, icon?: string, aria?: string}> — remove is the host's Livewire call;
-    //         icon sits before the label; aria names the ✕ in full ("Bỏ lọc chuyên mục “Dao phay”"), else the label names it.
+    // $chips: list<array{label: string, remove: string, icon?: string, aria?: string, class?: string}> — remove is the host's Livewire call;
+    //         icon sits before the label; aria names the ✕ in full ("Bỏ lọc chuyên mục “Dao phay”"), else the label names it;
+    //         class shows the chip only at some widths (the media library's folder, while its folder column is hidden).
     // $clear: the host's public method that resets the group and every condition.
     // $alone: the line also shows with only a summary (no group, no chip), for a list whose board draws just
     //         "Tìm thấy N trong M · Bỏ lọc"; the host passes the summary only while something is filtered.
@@ -40,7 +41,7 @@
                     class="inline-flex min-h-control items-center px-1 text-primary-text underline any-pointer-coarse:min-h-hit">{{ __('admin.list.clear_filters') }}</button>
         @endif
         @foreach ($chips as $chip)
-            <span class="inline-flex min-h-8 min-w-0 max-w-full items-center gap-1 rounded-full border border-border-input bg-surface ps-2.5 text-small">
+            <span class="inline-flex min-h-8 min-w-0 max-w-full items-center gap-1 rounded-full border border-border-input bg-surface ps-2.5 text-small {{ $chip['class'] ?? '' }}">
                 @if ($chip['icon'] ?? null)
                     <x-bs-admin::icon :name="$chip['icon']" class="size-3.5 shrink-0 text-text-muted" />
                 @endif
