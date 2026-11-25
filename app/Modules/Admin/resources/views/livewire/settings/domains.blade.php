@@ -38,7 +38,7 @@
         $addLocked = $full || ($inFrame && ! ($failed ?? false) && $locked);
     @endphp
     @if ($inFrame)
-        <x-bs-admin::settings-shell active="domains">
+        <x-bs-admin::settings-shell active="domains" card="snug">
             @if (! ($failed ?? false) && $manage && $limit > 0)
                 <x-slot:aside>
                     <x-bs-admin::button wire:click="openAdd" class="shrink-0" :label="__('admin.domains_add')" :short="__('admin.domains_add_short')"
