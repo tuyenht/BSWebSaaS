@@ -33,7 +33,7 @@ final readonly class JobPosting
             return null;
         }
 
-        $deadline = $this->deadline->deadlineOf($post);
+        $deadline = $this->deadline->deadlineOf($post, $this->time->zone());
         $state = $this->deadline->state($deadline, $this->time->now());
         $organization = $this->text($brand['name'] ?? null);
         $address = $this->address($brand ?? []);
