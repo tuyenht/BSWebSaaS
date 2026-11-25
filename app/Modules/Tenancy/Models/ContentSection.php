@@ -53,10 +53,12 @@ class ContentSection extends Model
     protected static function booted(): void
     {
         static::saved(static function (ContentSection $section): void {
-            if (! $section->wasRecentlyCreated && ! $section->wasChanged('taxonomy_id')) {
+            // 'saved' fires before the model takes this save as its original: dirty = what this save wrote
+            // (every column on an insert, whose original is empty), the original = the row before it.
+            if (! $section->isDirty('taxonomy_id')) {
                 return;
             }
-            $before = $section->wasRecentlyCreated ? null : $section->getOriginal('taxonomy_id');
+            $before = $section->getOriginal('taxonomy_id');
             $now = $section->taxonomy_id === null ? null : Cast::int($section->taxonomy_id);
             if ($before !== null && Cast::int($before) !== $now) {
                 ContentSectionCategory::query()->where('content_section_id', $section->id)->where('taxonomy_id', Cast::int($before))->delete();

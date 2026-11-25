@@ -341,8 +341,8 @@ describe('removing a section the loader created', function (): void {
         srFlat($this->siteId);
         srLoadServices($this->siteId, $this->folder);
 
-        // Dịch vụ stays the services section's: the news section may not take it.
-        srSections($this->folder, ['items' => [srServices(), srNews()]]);
+        // Dịch vụ stays the services section's (the pack does not remove it): the news section may not take it.
+        srSections($this->folder, ['items' => [srNews()]]);
         [$exit, $output] = ContentPacks::run();
         expect($exit)->toBe(1, $output)
             ->and(ContentPacks::verdict($output, 'section:posts'))->toBe('conflict')

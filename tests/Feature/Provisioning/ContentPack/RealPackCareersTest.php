@@ -6,6 +6,7 @@ use App\Modules\Admin\Navigation\NavItem;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Identity\Models\User;
@@ -100,7 +101,7 @@ it('makes the news section cover the job category beside its own and removes «c
         ->and(rcSectionOf($this->siteId, 'ke-toan-noi-bo'))->toBe('posts')
         ->and(ContentPacks::in($this->siteId, fn () => ContentSection::query()->where('key', 'careers')->exists()))->toBeFalse();
     // The job category stays at the top of the tree.
-    $jobs = ContentPacks::in($this->siteId, fn () => TaxonomyTranslation::query()->where('locale', 'vi')->where('slug', 'tuyen-dung')->firstOrFail()->taxonomy);
+    $jobs = ContentPacks::in($this->siteId, fn () => Taxonomy::query()->findOrFail(TaxonomyTranslation::query()->where('locale', 'vi')->where('slug', 'tuyen-dung')->value('taxonomy_id')));
     expect($jobs->parent_id)->toBeNull();
 
     // The job page: same address, its own trail (no «Tin tức» in it), the JobPosting stays.
