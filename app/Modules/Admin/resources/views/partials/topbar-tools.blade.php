@@ -49,11 +49,14 @@
     </div>
 </div>
 
-{{-- Fullscreen --}}
-<button type="button" x-data="{ full: false }"
+{{-- Fullscreen — only where the browser can (not on an iPhone); pressed while on, its name says how to leave. --}}
+<button type="button" x-data="{ full: false, can: !! document.fullscreenEnabled }" x-show="can" x-cloak
         @fullscreenchange.document="full = !! document.fullscreenElement"
         @click="document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()"
-        aria-label="{{ __('admin.fullscreen') }}"
+        aria-label="{{ __('admin.fullscreen') }}" title="{{ __('admin.fullscreen') }}" aria-pressed="false"
+        :aria-label="full ? @js(__('admin.fullscreen_exit')) : @js(__('admin.fullscreen'))"
+        :title="full ? @js(__('admin.fullscreen_exit')) : @js(__('admin.fullscreen'))"
+        :aria-pressed="full ? 'true' : 'false'"
         class="hidden size-control place-items-center rounded text-topbar-fg any-pointer-coarse:size-hit transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg md:grid">
     <x-bs-admin::icon name="fullscreen" class="size-5" x-show="! full" />
     <x-bs-admin::icon name="minimize" class="size-5" x-show="full" x-cloak />
