@@ -80,7 +80,10 @@ it('asks before taking a used block back to draft, in the delete question\'s dia
             ->assertSet('confirmOpen', true)->assertSet('asking', 'draft')
             ->assertSet('deleting.places', 1)->assertSet('deleting.menu', true)
             ->assertSee(__('blocks.unpub_title'))->assertSee(__('blocks.unpub_menu'));
-        expect($block->fresh()->status)->toBe(ContentBlock::PUBLISHED);
+        // as the board draws it: a warning-tinted icon box, and no bin on the «Đưa về nháp» button
+        expect($page->html())->toContain('bg-warning-soft text-warning-text')
+            ->and($page->html())->not->toContain('ri-delete-bin-6')
+            ->and($block->fresh()->status)->toBe(ContentBlock::PUBLISHED);
 
         // «Ở lại» leaves it published and the dialog goes back to being the delete question
         $page->call('cancelDelete')->assertSet('confirmOpen', false)->assertSet('asking', 'delete');

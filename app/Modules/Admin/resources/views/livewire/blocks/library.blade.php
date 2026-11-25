@@ -314,7 +314,7 @@
         $placesText = fn (): string => '<b class="font-semibold text-text-strong">'.e(trans_choice('blocks.n_places', $delPlaces, ['n' => $num($delPlaces)])).'</b>';
         $nameText = $del === null ? '' : '<b class="font-semibold text-text-strong">'.e($del['name']).'</b>';
     @endphp
-    <x-bs-admin::confirm-dialog model="confirmOpen" :danger="! $toDraft" :icon="$toDraft ? 'ri-draft' : 'ri-alert'" ok-icon="ri-delete-bin-6"
+    <x-bs-admin::confirm-dialog model="confirmOpen" :danger="! $toDraft" :warning="$toDraft" :icon="$toDraft ? 'ri-draft' : 'ri-alert'" :ok-icon="$toDraft ? 'ri-draft' : 'ri-delete-bin-6'"
         :title="$toDraft ? __('blocks.unpub_title') : __('blocks.del_title')" :ok="$toDraft ? __('blocks.unpub_ok') : __('blocks.del_ok')" :cancel-label="__('blocks.del_stay')"
         :confirm="$toDraft ? 'confirmUnpublish' : 'confirmDelete'" cancel="cancelDelete">
         @if ($del !== null)
