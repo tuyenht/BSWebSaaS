@@ -509,7 +509,7 @@
                                     @endforeach
                                 </fieldset>
                                 <template x-if="pan && bandView('{{ $bandSlot }}').dropWarn">
-                                    <x-bs-admin::alert color="warning"><span role="status" x-text="bandView('{{ $bandSlot }}').dropText"></span></x-bs-admin::alert>
+                                    <x-bs-admin::alert color="warning" role="status"><span x-text="bandView('{{ $bandSlot }}').dropText"></span></x-bs-admin::alert>
                                 </template>
                             </div>
                         @endforeach
