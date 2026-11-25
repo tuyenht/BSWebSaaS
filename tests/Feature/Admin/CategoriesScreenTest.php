@@ -632,6 +632,29 @@ it('draws the screen: the header, the theme\'s templates and each row carrying i
         ->not->toMatch('/&quot;(id|parent_id|taxonomy_id|cover_media_id)&quot;:\d/');
 });
 
+it('draws the drawer\'s languages as the board does: pills, «+N» with the panel of every version, and the languages settings only for who may change them', function (): void {
+    $url = 'http://a.test/admin/taxonomies?section=tin-tuc';
+    $html = $this->actingAs($this->editor->fresh())->get($url)->assertOk()->getContent();
+    expect($html)->not->toContain(e(__('categories.ui_lang_panel')), 'one language: no languages row at all');
+
+    cxIn(1, function (): void {
+        SiteLocale::query()->create(['locale' => 'en', 'is_default' => false, 'enabled' => true, 'is_public' => true]);
+        SiteLocale::query()->create(['locale' => 'ja', 'is_default' => false, 'enabled' => true, 'is_public' => false]);
+        app(SiteLocaleContext::class)->forget();
+    });
+    $html = $this->actingAs($this->editor->fresh())->get($url)->assertOk()->getContent();
+    expect($html)->toContain('aria-label="'.e(__('categories.ui_lang_panel')).'"')
+        ->toContain('data-cm-lang-more')
+        ->toContain(e(__('categories.ui_lang_ja')))
+        ->not->toContain('data-cm-lang-manage', 'a member who may not change the languages is not sent there')
+        ->not->toContain(e(__('categories.ui_lang_search_ph')), 'the search starts at six languages');
+
+    $owner = cxUser(['taxonomies.manage', 'entries.view', 'settings.manage']);
+    $this->actingAs($owner)->get($url)->assertOk()
+        ->assertSee('/admin/settings/languages" data-cm-lang-manage', false)
+        ->assertSee(__('admin.lb.manage'));
+});
+
 it('tells a member which categories they work in, and stands in a notice for a section they cannot open', function (): void {
     $member = cxUser(['taxonomies.manage', 'entries.view']);
     cxIn(1, function () use ($member): void {

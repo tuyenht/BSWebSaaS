@@ -2,7 +2,7 @@
   "entries": {
     "resources/css/app.css": {
       "js": 0,
-      "css": 53824
+      "css": 53865
     },
     "resources/css/admin-account.css": {
       "js": 0,
@@ -163,7 +163,7 @@
       "css": 0
     },
     "resources/js/admin-categories.js": {
-      "js": 26899,
+      "js": 27201,
       "css": 0
     },
     "resources/js/admin-rich-editor.js": {

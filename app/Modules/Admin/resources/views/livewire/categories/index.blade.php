@@ -58,7 +58,7 @@
             'movedItems', 'movedItemsTo', 'detachedItems', 'tooDeepAdd', 'editTitle', 'addChildTitle', 'addTitle', 'lineSrc',
             'lineFull', 'lineEmpty', 'slugPage', 'slugAuto', 'slugKeep', 'slugWarn', 'outerOpt', 'unsavedTitle', 'unsavedText',
             'unsavedDrop', 'unsavedSave', 'saved', 'added', 'copied', 'example', 'tplGone', 'lockedOpt', 'onSave', 'saveMove',
-            'cxSaveTitle', 'save',
+            'cxSaveTitle', 'save', 'stFull', 'stEmpty', 'stMiss', 'langProg',
         ])->mapWithKeys(fn (string $k): array => [$k => $u(\Illuminate\Support\Str::snake($k))])->all();
         $config = [
             'section' => $screen['section']['key'], 'label' => $label, 'main' => $main, 'locales' => $locales, 'langNames' => $langNames,
@@ -322,19 +322,57 @@
                     </x-bs-admin::alert>
                 </template>
                 @if ($multi)
+                    {{-- the languages (board 10): the source and the version open as pills, the others behind «+N» --}}
                     <div class="flex flex-col gap-2">
-                        <div class="flex flex-wrap items-center gap-2" role="group" aria-label="{{ $u('langs') }}">
-                            <x-bs-admin::icon name="ri-translate-2" class="size-5 text-text-muted" />
+                        <div class="relative flex flex-wrap items-center gap-1.5 rounded-md border border-border bg-surface px-2 py-1.5" role="group" aria-label="{{ $u('langs') }}"
+                            x-on:click.outside="langClose(false)" x-on:keydown.escape="if (langOpen) { $event.stopPropagation(); langClose(true) }">
+                            <span class="inline-flex px-0.5 text-text-muted" title="{{ $u('langs') }}"><x-bs-admin::icon name="ri-translate-2" class="size-5" /></span>
                             @foreach ($locales as $c)
-                                <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="pickLang('{{ $c }}')" x-bind:aria-pressed="(cur === '{{ $c }}').toString()"
-                                    x-bind:title="{{ $j($langNames[$c]) }} + (pan && langSt('{{ $c }}') !== 'full' ? ' — ' + {{ $j($u('lang_none')) }} : '') {{ $c === $main ? '+ '.$j(' · '.$u('lang_src_short')) : '' }}">
-                                    <span class="size-2 rounded-full" x-bind:class="pan && langSt('{{ $c }}') === 'full' ? 'bg-success-text' : 'bg-warning-text'" aria-hidden="true"></span>
-                                    {{ $langNames[$c] }} <span class="text-caption text-text-muted">{{ strtoupper($c) }}</span>
-                                    @if ($c === $main)<x-bs-admin::icon name="ri-star-fill" class="size-3.5 text-warning-text" />@endif
-                                </x-bs-admin::button>
+                                <button type="button" x-show="langShown('{{ $c }}')" x-on:click="langClose(false); pickLang('{{ $c }}')" x-bind:aria-pressed="(cur === '{{ $c }}').toString()"
+                                    x-bind:title="{{ $j($langNames[$c]) }} + ' — ' + langState('{{ $c }}'){{ $c === $main ? ' + '.$j(' · '.$u('lang_src_short')) : '' }}"
+                                    @class([
+                                        'inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-border-strong bg-surface px-3 text-small whitespace-nowrap text-text hover:bg-surface-hover any-pointer-coarse:min-h-hit',
+                                        'aria-pressed:border-primary-text aria-pressed:bg-primary-soft aria-pressed:font-semibold aria-pressed:text-primary-text',
+                                    ])>
+                                    <span class="lb-dot" x-bind:data-k="pan && langSt('{{ $c }}') === 'full' ? null : (pan && langSt('{{ $c }}') === 'empty' ? 'empty' : 'partial')" aria-hidden="true"></span>
+                                    <span class="@max-[18.75rem]:hidden">{{ $langNames[$c] }}</span><span class="hidden @max-[18.75rem]:inline">{{ strtoupper($c) }}</span>
+                                    @if ($c === $main)<span class="lb-star" title="{{ __('admin.lb.source_tip') }}"><x-bs-admin::icon name="ri-star-fill" class="size-3.5" /></span>@endif
+                                </button>
                             @endforeach
+                            <button type="button" data-cm-lang-more x-show="langMore > 0" x-on:click="langToggle()" aria-haspopup="dialog" x-bind:aria-expanded="langOpen.toString()"
+                                x-bind:aria-label="fill({{ $j($u('lang_more')) }}, { n: langMore })"
+                                class="inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-1 rounded-full border border-border-strong bg-surface px-3 text-small whitespace-nowrap text-text hover:bg-surface-hover any-pointer-coarse:min-h-hit">
+                                <span x-text="'+' + langMore"></span><x-bs-admin::icon name="ri-arrow-down-s" class="size-4" />
+                            </button>
+                            <div x-show="langOpen" x-cloak role="dialog" aria-label="{{ $u('lang_panel') }}"
+                                class="absolute start-0 top-[calc(100%+0.25rem)] z-30 w-[min(17.5rem,calc(100cqw-1rem))] rounded-md border border-border bg-surface p-1.5 text-body shadow-card">
+                                <p class="mx-2 mb-1.5 mt-0.5 text-caption text-text-muted" x-text="langProg"></p>
+                                @if (count($locales) >= 6)
+                                    <div class="mx-1 mb-1.5">
+                                        <x-bs-admin::search :label="__('admin.lb.search_aria')" :placeholder="$u('lang_search_ph')" x-model="langQ" data-cm-lang-q />
+                                    </div>
+                                @endif
+                                @foreach ($locales as $c)
+                                    <button type="button" data-cm-lang-row x-show="langHit('{{ $c }}')" x-on:click="langGo('{{ $c }}')" x-bind:aria-current="(cur === '{{ $c }}').toString()"
+                                        class="grid min-h-hit w-full cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded px-2.5 py-1.5 text-start text-text hover:bg-surface-hover aria-[current=true]:bg-primary-soft">
+                                        <span class="lb-dot" x-bind:data-k="pan && langSt('{{ $c }}') === 'full' ? null : (pan && langSt('{{ $c }}') === 'empty' ? 'empty' : 'partial')" aria-hidden="true"></span>
+                                        <span class="min-w-0"><b class="font-semibold text-text-strong [overflow-wrap:anywhere]">{{ $langNames[$c] }}</b><small class="block text-caption text-text-muted" x-text="langState('{{ $c }}'){{ $c === $main ? ' + '.$j(' · '.$u('st_src')) : '' }}"></small></span>
+                                        @if ($c === $main)<span class="lb-star" title="{{ __('admin.lb.source_tip') }}"><x-bs-admin::icon name="ri-star-fill" class="size-3.5" /></span>@else<span></span>@endif
+                                    </button>
+                                @endforeach
+                                @if ($langManage !== null)
+                                    <div class="my-1 h-px bg-border" aria-hidden="true"></div>
+                                    <a href="{{ $langManage }}" data-cm-lang-manage wire:navigate class="flex min-h-menu-row items-center gap-2 rounded px-2.5 text-text no-underline hover:bg-surface-hover any-pointer-coarse:min-h-menu-row-touch">
+                                        <x-bs-admin::icon name="ri-settings-3" class="size-4 shrink-0 text-text-muted" /><span>{{ __('admin.lb.manage') }}</span>
+                                    </a>
+                                @endif
+                            </div>
                         </div>
-                        <p class="flex items-start gap-2 text-small text-text-muted"><x-bs-admin::icon name="ri-information" class="mt-0.5 size-4 shrink-0" /><span x-text="pan ? lineText : ''"></span></p>
+                        <p class="flex items-start gap-2 rounded px-3 py-2 text-small leading-normal" x-bind:class="lineWarn ? 'bg-warning-soft text-warning-text' : 'border border-border bg-surface-muted text-text'">
+                            <span x-show="!lineWarn"><x-bs-admin::icon name="ri-information" class="mt-0.5 size-4 shrink-0" /></span>
+                            <span x-show="lineWarn" x-cloak><x-bs-admin::icon name="ri-error-warning" class="mt-0.5 size-4 shrink-0" /></span>
+                            <span x-text="pan ? lineText : ''"></span>
+                        </p>
                     </div>
                 @endif
 
