@@ -6,6 +6,8 @@ use App\Modules\Admin\Support\EntryProseBody;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Cms\Actions\MovePage;
 use App\Modules\Cms\Actions\PublishEntry;
+use App\Modules\Cms\Actions\SaveEntryDraft;
+use App\Modules\Cms\Exceptions\EntryDraftRejectedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryTranslation;
@@ -344,14 +346,22 @@ it('takes a held member\'s move back when the change is refused after it, and ke
 
     app(Tenancy::class)->enter(1, function () use ($publisher, $writer): void {
         $a = poPage('a', position: 0);
-        $b = poPage('b', position: 1);
+        poPage('b', position: 1);
         app(PublishEntry::class)->handle($a, 'vi', $publisher);
-        app(PublishEntry::class)->handle($b, 'vi', $publisher);
         $mark = poAuditMark();
 
         $editor = Livewire::actingAs($writer)->test(Editor::class, ['ulid' => $a->ulid])->assertSet('pageOrder', '1')
-            ->set('slug', 'b')->set('pageOrder', '2')
-            ->call('save')->assertHasErrors('slug')
+            ->set('title', 'Bản của người viết')->set('pageOrder', '2');
+        // the change refused after the move, as one another member locked meanwhile: SaveEntryDraft answers as
+        // itself everywhere but where the save writes the change (saveIntoChange), which it refuses
+        $real = app(SaveEntryDraft::class);
+        app()->bind(SaveEntryDraft::class, static function () use ($real): SaveEntryDraft {
+            $writing = in_array('saveIntoChange', array_column(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), 'function'), true);
+
+            return $writing ? throw new EntryDraftRejectedException('change_locked') : $real;
+        });
+
+        $editor->call('save')->assertHasErrors('workflow')
             ->assertSet('saveFailed', true)->assertSet('pageOrder', '2')->assertSet('pageOrderLoaded', '1');
 
         expect($editor->get('saved')['pageOrder'])->toBe('1')
