@@ -134,7 +134,7 @@
      "label": {
       "vi": "Tuyển dụng"
      },
-     "target": "tax:post_cat/tuyen-dung"
+     "target": "tax:post_cat/tin-tuc/tuyen-dung"
     },
     {
      "label": {
@@ -194,7 +194,7 @@
        "label": {
         "vi": "Tuyển dụng"
        },
-       "target": "tax:post_cat/tuyen-dung"
+       "target": "tax:post_cat/tin-tuc/tuyen-dung"
       },
       {
        "label": {

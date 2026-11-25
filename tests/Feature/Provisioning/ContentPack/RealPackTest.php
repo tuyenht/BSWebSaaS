@@ -71,7 +71,7 @@ it('validates the real pack: schema, bodies, slots, content published but job of
     foreach ($pack->items as $item) {
         if (preg_match('/\A(page|post|product):/', $item->key) === 1) {
             $content++;
-            if (in_array('tax:post_cat/tuyen-dung', $item->data['categories'] ?? [], true)) {
+            if (in_array('tax:post_cat/tin-tuc/tuyen-dung', $item->data['categories'] ?? [], true)) {
                 // A job offer goes live only once the company has sent it; the ones written ahead of that stay
                 // unverified drafts that list their claims for the confirmation sheet.
                 $jobs[] = $item->key;
@@ -494,7 +494,7 @@ it('lists the five capabilities in the board order, names the list pages like th
         ->and($items['tax:post_cat/san-pham']->data['name']['vi'])->toBe('Sản phẩm của chúng tôi')
         ->and($items['tax:post_cat/du-an']->data['name']['vi'])->toBe('Dự án tiêu biểu')
         ->and($items['tax:post_cat/tin-tuc']->data['name']['vi'])->toBe('Tin tức & sự kiện')
-        ->and($items['tax:post_cat/tuyen-dung']->data['name']['vi'])->toBe('Gia nhập đội ngũ An Vinh');
+        ->and($items['tax:post_cat/tin-tuc/tuyen-dung']->data['name']['vi'])->toBe('Gia nhập đội ngũ An Vinh');
 
     $footer = collect($items['menu:footer']->data['items'][0]['children'])->pluck('label.vi')->all();
     expect($footer)->toBe(['Về công ty', 'Dự án', 'Nhà xưởng & máy móc', 'Hồ sơ năng lực', 'Chứng chỉ & thành tựu', 'Tin tức', 'Tuyển dụng', 'Liên hệ', 'Chính sách bảo mật']);

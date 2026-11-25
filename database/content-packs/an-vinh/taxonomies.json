@@ -608,7 +608,10 @@
    }
   },
   {
-   "key": "tax:post_cat/tuyen-dung",
+   "key": "tax:post_cat/tin-tuc/tuyen-dung",
+   "parent": "tax:post_cat/tin-tuc",
+   "moved_from": "tax:post_cat/tuyen-dung",
+   "position": 3,
    "name": {
     "vi": "Gia nhập đội ngũ An Vinh"
    },

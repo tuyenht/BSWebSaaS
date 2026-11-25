@@ -297,7 +297,7 @@
    "verified": false,
    "status": "draft",
    "categories": [
-    "tax:post_cat/tuyen-dung"
+    "tax:post_cat/tin-tuc/tuyen-dung"
    ],
    "image": {
     "media": "cnc-1"
@@ -367,7 +367,7 @@
    "status": "published",
    "published_at": "2026-11-24",
    "categories": [
-    "tax:post_cat/tuyen-dung"
+    "tax:post_cat/tin-tuc/tuyen-dung"
    ],
    "image": {
     "media": "cad-1"
@@ -427,7 +427,7 @@
    "status": "published",
    "published_at": "2026-11-24",
    "categories": [
-    "tax:post_cat/tuyen-dung"
+    "tax:post_cat/tin-tuc/tuyen-dung"
    ],
    "image": {
     "media": "contact-header"
@@ -480,7 +480,7 @@
    "verified": false,
    "status": "draft",
    "categories": [
-    "tax:post_cat/tuyen-dung"
+    "tax:post_cat/tin-tuc/tuyen-dung"
    ],
    "image": {
     "media": "inspect-1"
