@@ -632,6 +632,7 @@
     "admin.aui.o.sidebar_size.sm": "コンパクト",
     "admin.aui.o.scheme.light": "ライト",
     "admin.aui.o.scheme.dark": "ダーク",
+    "admin.aui.o.scheme.auto": "端末に合わせる",
     "admin.aui.o.topbar.auto": "自動",
     "admin.aui.o.topbar.light": "ライト",
     "admin.aui.o.topbar.dark": "ダーク",

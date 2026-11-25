@@ -632,6 +632,7 @@
     "admin.aui.o.sidebar_size.sm": "Compact",
     "admin.aui.o.scheme.light": "Light",
     "admin.aui.o.scheme.dark": "Dark",
+    "admin.aui.o.scheme.auto": "Like my device",
     "admin.aui.o.topbar.auto": "Automatic",
     "admin.aui.o.topbar.light": "Light",
     "admin.aui.o.topbar.dark": "Dark",

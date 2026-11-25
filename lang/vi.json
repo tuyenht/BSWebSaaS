@@ -632,6 +632,7 @@
     "admin.aui.o.sidebar_size.sm": "Gọn",
     "admin.aui.o.scheme.light": "Sáng",
     "admin.aui.o.scheme.dark": "Tối",
+    "admin.aui.o.scheme.auto": "Theo máy",
     "admin.aui.o.topbar.auto": "Tự động",
     "admin.aui.o.topbar.light": "Sáng",
     "admin.aui.o.topbar.dark": "Đậm",
