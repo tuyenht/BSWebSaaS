@@ -124,6 +124,20 @@ it('still refuses /tim-kiem to a new item and to a slug change onto it', functio
     });
 });
 
+it('refuses the tags\' segment /the to a new page and a new category, and leaves the tag pages under it alone', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $sync = app(RouteSync::class);
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
+        $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
+        $tag = Taxonomy::query()->create(['vocabulary' => Taxonomy::TAG, 'position' => 0]);
+
+        expect(fn () => $sync->sync($page, 'vi', 'the'))->toThrow(RouteConflictException::class)
+            ->and(fn () => $sync->syncTaxonomy($category, 'vi', 'the'))->toThrow(RouteConflictException::class)
+            ->and($sync->syncTaxonomy($tag, 'vi', 'cnc'))->toBe('/the/cnc')
+            ->and(SiteRoute::query()->where('path', '/the')->exists())->toBeFalse();
+    });
+});
+
 it('lets a category already at /tim-kiem be saved again, and refuses the address to a new category', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         $sync = app(RouteSync::class);

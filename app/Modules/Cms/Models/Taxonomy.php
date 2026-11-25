@@ -37,6 +37,12 @@ class Taxonomy extends Model
     use BelongsToSite;
     use HasUlidColumn;
 
+    /**
+     * The vocabulary of a post's tags: flat terms filed on an entry as facet terms (pivot position
+     * from Entry::FACET_POSITION_BASE up), each with its own page under PathBuilder::TAG_PREFIX.
+     */
+    public const string TAG = 'tag';
+
     #[\Override]
     protected $guarded = [];
 

@@ -20,6 +20,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\Slugger;
 use App\Modules\Theme\Rendering\TemplateCatalog;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
@@ -184,7 +185,8 @@ trait EditsTaxonomyTree
 
         return Slugger::free($base, fn (string $candidate): array => [
             ...Slugger::takenAmong(
-                TaxonomyTranslation::query()->where('locale', $locale)->when($ownId !== null, fn ($query) => $query->where('taxonomy_id', '!=', $ownId)),
+                // a tag's slug never gives a category's address (tags sit under PathBuilder::TAG_PREFIX)
+                TaxonomyTranslation::query()->where('locale', $locale)->whereNotIn('taxonomy_id', self::tagIds())->when($ownId !== null, fn ($query) => $query->where('taxonomy_id', '!=', $ownId)),
                 'slug',
                 $candidate,
             ),
@@ -256,6 +258,16 @@ trait EditsTaxonomyTree
     }
 
     /**
+     * The site's tags, as a subquery: their slugs never clash with a category's.
+     *
+     * @return Builder<Taxonomy>
+     */
+    private static function tagIds(): Builder
+    {
+        return Taxonomy::query()->select('id')->where('vocabulary', Taxonomy::TAG);
+    }
+
+    /**
      * Save the names and slugs and give each language its category page at `/{slug}` — moved with a
      * 301 when the slug changed. Another category using the slug in that language, or anything else
      * already at the path, is refused as slug_taken (a slug the system made from the name was already given a free suffix). Returns the languages whose slug changed.
@@ -281,6 +293,8 @@ trait EditsTaxonomyTree
                 ->where('locale', $locale)
                 ->whereRaw('slug::text = ?', [mb_strtolower($translation['slug'])])
                 ->where('taxonomy_id', '!=', $taxonomy->id)
+                // a tag of the same slug lives under its own segment (PathBuilder::forTag): no clash
+                ->whereNotIn('taxonomy_id', self::tagIds())
                 ->exists();
             if ($taken) {
                 throw new TaxonomyChangeRejectedException('slug_taken');
