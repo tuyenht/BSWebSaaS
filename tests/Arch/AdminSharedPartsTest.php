@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\File;
  * those carry the focus trap and the way back, the timing and the "Hoàn tác" offer, the sizes and
  * every state, and change in one place. A Livewire view that builds its own copy keeps the old
  * look and behaviour when the shared part moves on. This test counts, per view under
- * app/Modules/Admin/resources/views/livewire/, the hand-built ones:
+ * app/Modules/Admin/resources/views/livewire/ (plus the few components listed in
+ * ADMIN_SCANNED_COMPONENTS, which hold a part that moved out of a Livewire view), the hand-built ones:
  *  - dialogs: an element with role="dialog" / role="alertdialog" or aria-modal;
  *  - message boxes: an element with role="status", role="alert" or aria-live (a plain live line
  *    and an error line count too: <x-bs-admin::alert> draws the box, the shared toast the message);
@@ -27,8 +28,9 @@ const ADMIN_HAND_BUILT_PARTS = [
     'accept-invitation.blade.php' => [0, 3, 0],
     // error lines under the inline name and slug fields
     'catalog/index.blade.php' => [0, 2, 0],
-    // error lines under the panel's fields, the tree's error state, lines read out inside a shared alert, and the drawer's «+N» language panel (a popover on the drawer's own Alpine state, with its «no result» line; the shared bar's panel is bound to its own links)
-    'categories/index.blade.php' => [1, 6, 0],
+    // error lines under the panel's fields, the tree's error state and lines read out inside a shared alert
+    // (its «+N» language panel moved into components/lang-panel.blade.php, counted on its own line below)
+    'categories/index.blade.php' => [0, 5, 0],
     // a dashboard card's error line above its "Thử lại"
     'dashboard/card-error.blade.php' => [0, 1, 0],
     // error lines under the button editor's fields
@@ -72,7 +74,16 @@ const ADMIN_HAND_BUILT_PARTS = [
     'users/invitations.blade.php' => [0, 1, 0],
     // + the screen's error state
     'workflow-settings.blade.php' => [4, 2, 0],
+    // the «+N» language panel of the shared language bar and of the categories drawer: a popover on
+    // each caller's own Alpine state (neither the modal nor the drawer), with its «no result» line
+    'components/lang-panel.blade.php' => [1, 1, 0],
 ];
+
+/**
+ * Components (relative to the admin views folder) scanned with the Livewire views: each holds a part
+ * a Livewire view used to draw itself, so moving it there must not drop it from the count.
+ */
+const ADMIN_SCANNED_COMPONENTS = ['components/lang-panel.blade.php'];
 
 /** The fill colours of components/button.blade.php (its solid tones; the soft and outline tones fill with them on hover). */
 const ADMIN_BUTTON_FILLS = '/(?<![\w-])bg-admin-(?:primary|secondary-solid|success-solid|info-solid|warning|danger-solid|dark|light)(?![\w\/-])/';
@@ -132,6 +143,12 @@ it('builds no more dialogs, message boxes or buttons by hand than the views alre
             if ($counts !== [0, 0, 0]) {
                 $found[str_replace('\\', '/', $file->getRelativePathname())] = $counts;
             }
+        }
+    }
+    foreach (ADMIN_SCANNED_COMPONENTS as $component) {
+        $counts = adminHandBuiltParts(File::get(base_path('app/Modules/Admin/resources/views/'.$component)));
+        if ($counts !== [0, 0, 0]) {
+            $found[$component] = $counts;
         }
     }
     $problems = [];
