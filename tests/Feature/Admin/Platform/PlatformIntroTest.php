@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Identity\Models\User;
+use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
 
 /*
@@ -11,6 +12,8 @@ use App\Modules\Rbac\Support\PlatformAccess;
 beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
+    $this->artisan('rbac:sync')->assertSuccessful();
+    app(TeamContext::class)->forget();
 });
 
 it('shows a visitor the public intro instead of the sign-in page', function (): void {

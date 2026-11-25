@@ -69,13 +69,14 @@ it('serves the admin shell to a site member in tenant context', function (): voi
 
 // ── Platform ────────────────────────────────────────────────────────────────────
 it('redirects an unauthenticated visitor on the platform plane to login', function (): void {
-    $this->get('http://platform.bswebsaas.test/')->assertRedirect('http://platform.bswebsaas.test/login');
+    // the host's front page is the public intro; the console behind it needs a sign-in
+    $this->get('http://platform.bswebsaas.test/tenants')->assertRedirect('http://platform.bswebsaas.test/login');
 });
 
 it('forbids a non-operator on the platform plane', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->getJson('http://platform.bswebsaas.test/')->assertForbidden();
+    $this->actingAs($user)->getJson('http://platform.bswebsaas.test/tenants')->assertForbidden();
 });
 
 it('refuses a non-operator at login on the platform plane, before any session', function (): void {
