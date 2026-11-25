@@ -142,6 +142,20 @@ it('refuses every new publish method once the member\'s right is taken away from
     });
 });
 
+it('says how many places show the block when «Lưu & xuất bản» publishes one that is already placed', function (): void {
+    $editor = blockLibraryUser(1, 'editor');
+    $draft = statusBlock('dat-cho', 'draft');
+    placeBlock($draft);
+
+    app(Tenancy::class)->enter(1, function () use ($editor, $draft): void {
+        Livewire::actingAs($editor)->test(BlockEditor::class, ['ulid' => $draft->ulid])
+            ->call('addBlock', 'richtext')->call('saveAndPublish')
+            ->assertRedirect(route('admin.blocks.index'));
+        expect($draft->fresh()->status)->toBe(ContentBlock::PUBLISHED)
+            ->and(session(Library::FLASH))->toBe(__('blocks.toast_published', ['name' => $draft->name, 'places' => trans_choice('blocks.n_places', 1, ['n' => 1])]));
+    });
+});
+
 it('does not delete when the open question is «Đưa về nháp», nor take to draft when it is the delete question', function (): void {
     $editor = blockLibraryUser(1, 'editor');
     $live = statusBlock('c', 'published', 'menu');
