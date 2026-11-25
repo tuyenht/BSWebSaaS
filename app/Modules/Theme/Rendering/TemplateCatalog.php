@@ -193,16 +193,6 @@ final class TemplateCatalog
         return "(case {$column} ".implode(' ', $cases).' end)';
     }
 
-    /**
-     * The list layouts of a look set: the categories that head that set's groups.
-     *
-     * @return list<string>
-     */
-    public static function listsOf(string $set): array
-    {
-        return array_keys(array_filter(self::ENTRIES, fn (array $entry): bool => $entry['role'] === self::ROLE_LIST && $entry['set'] === $set));
-    }
-
     /** Whether a layout belongs to the job set (its posts carry an application deadline). */
     public static function isJob(?string $name): bool
     {

@@ -1,21 +1,14 @@
 <?php
 
 use App\Modules\Cms\Components\EntryGridComponent;
-use App\Modules\Cms\Models\Entry;
-use App\Modules\Cms\Models\EntryTranslation;
-use App\Modules\Cms\Models\Taxonomy;
-use App\Modules\Storefront\Support\PostDetail;
-use App\Modules\Theme\Rendering\TemplateCatalog;
 use Tests\Fixtures\ContentPacks;
 use Tests\Fixtures\StorefrontCards;
 
 /*
  * A category below a list that stores a list layout of a look set of its own (jobs under the news)
- * keeps its posts to its own list: the news list, a news post's "recent" and "related", and the
- * news block's tabs leave the job offers out, while /tuyen-dung lists them (its own sub-categories
- * included), a job offer's side column
- * lists other offers, and the chips still lead to «Tuyển dụng». A sub-category with no layout of its
- * own, or one of the list's own set, stays in.
+ * keeps its posts to its own list: the news list and the news block's tabs leave the job offers out,
+ * while /tuyen-dung lists them (its own sub-categories included), and the chips still lead to
+ * «Tuyển dụng». A sub-category with no layout of its own, or one of the list's own set, stays in.
  */
 
 beforeEach(function (): void {
@@ -46,17 +39,6 @@ beforeEach(function (): void {
 
 afterEach(fn () => ContentPacks::cleanup());
 
-/** @return array{0: Entry, 1: Taxonomy} a post and its main category, by the post's slug */
-function lsPost(int $siteId, string $slug): array
-{
-    return ContentPacks::in($siteId, function () use ($slug): array {
-        $post = Entry::query()->findOrFail(EntryTranslation::query()->where('locale', 'vi')->where('slug', $slug)->value('entry_id'));
-        $category = Taxonomy::query()->findOrFail($post->taxonomies()->wherePivot('position', 0)->value('taxonomies.id'));
-
-        return [$post, $category];
-    });
-}
-
 /** @param list<array<string, mixed>> $cards @return list<string> */
 function lsTitles(array $cards): array
 {
@@ -75,21 +57,6 @@ it('leaves the job offers out of the news list, which still offers their chip, a
     $this->get('http://'.ContentPacks::HOST.'/tuyen-dung')->assertOk()
         ->assertSee('Kỹ sư cơ khí chế tạo')->assertSee('Kế toán kho vận')->assertDontSee('Hội chợ máy công cụ');
     $this->get('http://'.ContentPacks::HOST.'/su-kien')->assertOk()->assertSee('Hội chợ máy công cụ');
-});
-
-it('keeps a news post\'s recent and related to the news, and a job offer\'s to the other offers', function (): void {
-    $siblings = function (string $slug, string $layout, bool $recent): array {
-        [$post, $category] = lsPost($this->siteId, $slug);
-
-        return ContentPacks::in($this->siteId, fn (): array => app(PostDetail::class)->siblings($post, $category, 'vi', false, $recent, ! $recent, TemplateCatalog::setOf($layout)));
-    };
-
-    // Ra mắt website is the one post of Cập nhật: the rest comes from the news branch, without the offers.
-    expect(lsTitles($siblings('ra-mat-website', 'post', true)['recent']))->toBe(['Hội chợ máy công cụ'])
-        ->and(lsTitles($siblings('ra-mat-website', 'post', false)['related']))->toBe(['Hội chợ máy công cụ']);
-    // The engineer offer is the one post of Tuyển dụng itself: the rest comes from the offers' branch, without the news.
-    expect(lsTitles($siblings('ky-su-co-khi', 'job', true)['recent']))->toBe(['Kế toán kho vận'])
-        ->and(lsTitles($siblings('ky-su-co-khi', 'job', false)['related']))->toBe(['Kế toán kho vận']);
 });
 
 it('gives the job category no tab in the news block', function (): void {

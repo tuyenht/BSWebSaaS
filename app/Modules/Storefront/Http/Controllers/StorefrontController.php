@@ -30,6 +30,7 @@ use App\Modules\Storefront\Support\ArticleData;
 use App\Modules\Storefront\Support\Breadcrumbs;
 use App\Modules\Storefront\Support\JobPosting;
 use App\Modules\Storefront\Support\ListPage;
+use App\Modules\Storefront\Support\LookBranch;
 use App\Modules\Storefront\Support\NotFoundPage;
 use App\Modules\Storefront\Support\PageChrome;
 use App\Modules\Storefront\Support\PostDetail;
@@ -464,11 +465,12 @@ final readonly class StorefrontController
         $cards = $this->templates->listShape($listTemplate) === 'cards';
 
         if ($cards) {
-            // Posts whose PRIMARY category (pivot position 0) is this one or any below it.
+            // Posts whose PRIMARY category (pivot position 0) is this one or any below it, but a group
+            // below with a look of its own (jobs under the news) keeps to its own list.
             $query = Entry::query()
                 ->select('entries.*', 'entry_taxonomies.taxonomy_id as primary_taxonomy_id')
                 ->join('entry_taxonomies', fn (JoinClause $join) => $join->on('entry_taxonomies.entry_id', '=', 'entries.id')->where('entry_taxonomies.position', 0))
-                ->whereIn('entry_taxonomies.taxonomy_id', $this->lists->subtree($taxonomy));
+                ->whereIn('entry_taxonomies.taxonomy_id', LookBranch::ids($taxonomy->id, TemplateCatalog::setOf($listTemplate)));
         } else {
             // Posts whose PRIMARY category (pivot position 0) is this one.
             $query = $taxonomy->entries()->where('entry_taxonomies.position', 0);
