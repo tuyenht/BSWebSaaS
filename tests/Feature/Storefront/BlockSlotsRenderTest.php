@@ -277,8 +277,8 @@ it('never shows another site\'s posts in the recent list, with two sites interle
     foreach (range(1, 2) as $_) {
         $mine = slotsHtml('/tin-tuc/ong-dang-doc', 'mau.platform.test');
         $theirs = slotsHtml('/tin-tuc/ong-dang-doc', 'khac.platform.test');
-        expect($mine)->toContain('Bản tin con số 3 mới')->not->toContain('Khác Bản')
-            ->and($theirs)->toContain('Khác Bản tin con số 3 mới')->not->toContain('>Bản tin con số 3 mới<');
+        expect($mine)->toContain('Bản tin gốc số 3 mới')->not->toContain('Khác Bản')
+            ->and($theirs)->toContain('Khác Bản tin gốc số 3 mới')->not->toContain('>Bản tin gốc số 3 mới<');
     }
 });
 
