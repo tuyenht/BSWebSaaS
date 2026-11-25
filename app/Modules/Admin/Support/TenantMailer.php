@@ -62,6 +62,17 @@ final readonly class TenantMailer implements TenantMailConfigurator
         return $this->resolve() !== null;
     }
 
+    /**
+     * Whether mail can leave with this site's own sender as read by the caller (null = none), else
+     * with the platform's: the same order as resolve(), for a caller that already read the site row.
+     *
+     * @param  array<string, mixed>|null  $own
+     */
+    public function canSendWith(?array $own): bool
+    {
+        return $this->usable($own) || $this->usable($this->platform->get('email'));
+    }
+
     public function apply(): bool
     {
         // Purge cached transports FIRST so a warmed Octane worker cannot reuse the previous
