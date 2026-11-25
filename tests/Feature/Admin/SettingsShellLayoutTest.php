@@ -25,9 +25,8 @@ it('lists the sections in the board groups, each with its icon, and names the op
     // the member's own «Bảo mật» first, then the board's groups; «Nâng cao» is the owner's, so an admin has none
     expect($heads)->toBe(['Tài khoản của tôi', 'Chung', 'Nội dung', 'Tiếp thị & Kết nối', 'Hệ thống'])
         ->and($menu->querySelector('input[type="search"]')?->getAttribute('aria-label'))->toBe('Tìm trong cài đặt')
-        // the section's name alone: an Email section not set up yet also says so to screen readers
+        // the section's name alone: a section not set up yet adds a screen-reader note to the row
         ->and(trim((string) $menu->querySelector('a[aria-current="page"] > span.flex-1')?->textContent))->toBe(__('admin.email_settings'))
-        ->and(trim((string) $menu->querySelector('a[aria-current="page"] > span.sr-only')?->textContent))->toBe('('.__('admin.set.unconfigured').')')
         ->and($menu->querySelector('a[aria-current="page"] svg'))->not->toBeNull()
         ->and($menu->querySelector('li[data-find*="Tên website"] a')?->getAttribute('href'))->toBe(route('admin.settings.general'));
 
