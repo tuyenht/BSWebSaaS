@@ -596,9 +596,10 @@ it('reads the screen on a flat query budget and never asks DNS while drawing it'
     $four = countQueries(fn () => $this->actingAs($owner)->get('http://a.test/admin/settings/domains')->assertOk()->assertSee('bon.vn'));
 
     // One read of the names, one yes/no on names served elsewhere, the notices, the site's
-    // entitlement (2, remembered for the request: the page and the admin nav share it) — never
-    // one per name.
-    expect($one)->toBeLessThanOrEqual(12)
+    // entitlement (2, remembered for the request: the page and the admin nav share it), the settings
+    // menu's read of whether Email and Tích hợp are set up (its «Chưa cấu hình» dot; measured +1 here) —
+    // never one per name.
+    expect($one)->toBeLessThanOrEqual(13)
         ->and($four)->toBe($one)
         ->and($this->dns->lookups)->toBe(0);
 });

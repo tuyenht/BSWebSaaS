@@ -5252,6 +5252,7 @@
     "admin.set.sd.redirects": "将访客从旧地址转到新地址。",
     "admin.set.sd.domains": "访客访问网站时输入的地址。",
     "admin.set.sd.email": "网站发送邮件的方式。",
+    "admin.set.unconfigured": "尚未设置",
     "admin.set.sd.social": "使用 Google、Facebook 登录。",
     "admin.set.sd.security": "您的密码、两步验证和设备。",
     "admin.set.sd.workflow": "按内容类型开启审核。",

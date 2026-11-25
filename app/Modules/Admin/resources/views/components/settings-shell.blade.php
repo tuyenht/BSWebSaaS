@@ -140,7 +140,7 @@
                                     $fullDesc = \Illuminate\Support\Facades\Lang::has('admin.set.desc.'.$item['key']) ? __('admin.set.desc.'.$item['key']) : '';
                                 @endphp
                                 <li x-show="hit($el.dataset.find)" data-find="{{ trim($item['label'].' '.$item['desc'].' '.$fullDesc) }}">
-                                    <a href="{{ route($item['route']) }}" @if ($on) aria-current="page" x-on:click="openCurrent($event)" @else wire:navigate @endif
+                                    <a href="{{ route($item['route']) }}" data-set-item="{{ $item['key'] }}" @if ($on) aria-current="page" x-on:click="openCurrent($event)" @else wire:navigate @endif
                                        @class([
                                            'flex min-h-menu-row items-center gap-[11px] rounded-md px-3 py-[9px] text-[calc(0.8125rem+var(--user-text-boost))] transition-colors any-pointer-coarse:min-h-menu-row-touch',
                                            'bg-primary/10 font-semibold text-primary-text' => $on,
@@ -148,6 +148,11 @@
                                        ])>
                                         <x-bs-admin::icon :name="$item['icon']" @class(['size-[calc(1.0625rem+var(--user-text-boost))] shrink-0', 'text-primary-text' => $on, 'text-text-muted' => ! $on]) />
                                         <span class="min-w-0 flex-1 [overflow-wrap:break-word]">{{ $item['label'] }}</span>
+                                        @if ($item['dot'])
+                                            {{-- the board's orange dot: a section that still needs setting up, said in words for screen readers --}}
+                                            <span data-set-dot class="size-[0.4375rem] shrink-0 rounded-full bg-warning-base" title="{{ __('admin.set.unconfigured') }}" aria-hidden="true"></span>
+                                            <span class="sr-only">({{ __('admin.set.unconfigured') }})</span>
+                                        @endif
                                     </a>
                                 </li>
                             @endforeach
