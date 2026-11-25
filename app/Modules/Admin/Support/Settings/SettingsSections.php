@@ -49,9 +49,16 @@ final class SettingsSections
             'brand_keys' => ['logo', 'favicon'],
         ],
         'seo' => ['settings' => [['seo', 'config']]],
+        // «Khôi phục mặc định» on «Thông tin chung» and «SEO» puts back only the choices that have a real
+        // default (time zone and date format; the title pattern, the two switches and the robots lines):
+        // the site's name, contact, page titles, descriptions and share image are what the customer wrote
+        // about the business, and a reset never erases them.
+        'general_region' => ['settings' => [['general', 'timezone'], ['general', 'date_format']]],
+        'seo_rules' => ['keys' => [['seo', 'config', ['template', 'indexable', 'sitemap', 'robots']]]],
         'floating_contact' => ['settings' => [['storefront', 'floating_contact']]],
         'verification' => ['settings' => [['storefront', 'verification']]],
-        'catalog' => ['settings' => [['catalog', 'mode']]],
+        // The mode, and the phone menu's products tab (one key of the header setting) saved on the same page.
+        'catalog' => ['settings' => [['catalog', 'mode']], 'keys' => [['storefront', 'header', ['drawer_products']]]],
         'admin_theme' => ['settings' => [['admin_theme', 'config']]],
     ];
 
