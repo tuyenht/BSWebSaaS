@@ -267,7 +267,7 @@ it('shows the filter chips of a job list from two child categories', function ()
     expect(jobPage('/tin-tuyen-dung'))->toContain('sf-chips__chip')->toContain('Ứng viên mới')->toContain('Thạch Thất');
 });
 
-it('draws the job band of a post: open tag, badge, title and the facts as chips, with the chip's deadline in the data', function (): void {
+it('draws the job band of a post: open tag, badge, title and the facts as chips, with the deadline of its chip in the data', function (): void {
     jobSite();
     jobFacts();
     $html = jobPage('/ha-noi/tho-tien-cnc');
