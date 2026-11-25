@@ -499,3 +499,18 @@ it('reads the due posts batch after batch until none is left', function (): void
 
     app(Tenancy::class)->enter($siteId, fn () => expect(Entry::query()->where('status', 'published')->whereNotNull('expires_at')->count())->toBe(0));
 });
+
+it('stores an end time given in the site\'s own zone as the same instant', function (): void {
+    [$siteId, $entry] = expSite(null);
+    $member = expPublisher($siteId);
+    // 23:30 on 1/12 in Hà Nội is 16:30 UTC; written without its zone it would read 23:30 UTC, 7 hours late
+    $local = CarbonImmutable::parse('2026-12-01 23:30:00', 'Asia/Ho_Chi_Minh');
+
+    Auth::login($member);
+    app(Tenancy::class)->enter($siteId, function () use ($entry, $member, $local): void {
+        app(ChangeEntryExpiry::class)->handle($entry, $local, $member);
+
+        expect($entry->fresh()->expires_at->utc()->toIso8601String())->toBe('2026-12-01T16:30:00+00:00')
+            ->and(DB::selectOne("SELECT to_char(expires_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI') AS at FROM entries WHERE id = ?", [$entry->id])->at)->toBe('2026-12-01 16:30');
+    });
+});

@@ -43,7 +43,7 @@ final readonly class ChangeProductExpiry
             $product->setRawAttributes($locked->getAttributes(), true);
             $this->authorizeCatalog('update', $product);   // again on the row as it is now (its categories may have moved)
 
-            $at = $expiresAt !== null ? CarbonImmutable::instance($expiresAt) : null;
+            $at = $expiresAt !== null ? CarbonImmutable::instance($expiresAt)->utc() : null; // stored in UTC: a write prints the time without its zone
             $publishAt = $product->published_at !== null && $product->published_at > now() ? $product->published_at : null;
             $error = ExpiryTime::error($at, $publishAt, $this->time->zone());
             if ($error !== null) {

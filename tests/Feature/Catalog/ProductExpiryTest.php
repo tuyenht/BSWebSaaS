@@ -193,3 +193,17 @@ it('reads the due products batch after batch until none is left', function (): v
 
     app(Tenancy::class)->enter($siteId, fn () => expect(Product::query()->where('status', 'published')->count())->toBe(0));
 });
+
+it('stores an end time given in the site\'s own zone as the same instant', function (): void {
+    [$siteId, $product] = pexpSite(null);
+    $manager = pexpManager($siteId);
+    // 23:30 on 1/12 in Hà Nội is 16:30 UTC; written without its zone it would read 23:30 UTC, 7 hours late
+    $local = CarbonImmutable::parse('2026-12-01 23:30:00', 'Asia/Ho_Chi_Minh');
+
+    Auth::login($manager);
+    app(Tenancy::class)->enter($siteId, function () use ($product, $local): void {
+        app(ChangeProductExpiry::class)->handle($product, $local);
+
+        expect(DB::selectOne("SELECT to_char(expires_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI') AS at FROM products WHERE id = ?", [$product->id])->at)->toBe('2026-12-01 16:30');
+    });
+});
