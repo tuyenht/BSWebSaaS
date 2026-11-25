@@ -658,10 +658,25 @@ it('draws the drawer\'s languages as the board does: pills, «+N» with the pane
     expect(substr_count($html, 'data-lang-chip'))->toBe(6)
         ->and(substr_count($html, 'x-text="String(cur).toUpperCase()"'))->toBe(6);
 
+    // before Alpine starts, each chip already reads the drawer's first language (the main one)
+    expect(preg_match_all('/x-text="String\(cur\)\.toUpperCase\(\)"\s*>VI<\/span>/', $html))->toBe(6)
+        ->and($html)->not->toContain(e(__('admin.lb.no_result')), 'no search below six languages, so no «no result» line');
+
     $owner = cxUser(['taxonomies.manage', 'entries.view', 'settings.manage']);
     $this->actingAs($owner)->get($url)->assertOk()
         ->assertSee('/admin/settings/languages" data-cm-lang-manage', false)
         ->assertSee(__('admin.lb.manage'));
+
+    // from six languages the panel has its search, and says so when it finds no language
+    cxIn(1, function (): void {
+        foreach (['zh', 'ko', 'fr', 'de'] as $locale) {
+            SiteLocale::query()->create(['locale' => $locale, 'is_default' => false, 'enabled' => true, 'is_public' => false]);
+        }
+        app(SiteLocaleContext::class)->forget();
+    });
+    expect($this->actingAs($this->editor->fresh())->get($url)->assertOk()->getContent())
+        ->toContain(e(__('categories.ui_lang_search_ph')))
+        ->toMatch('/<p class="lb-none" role="status" x-show="! langAnyHit\(\)" x-cloak>'.preg_quote(e(__('admin.lb.no_result')), '/').'<\/p>/');
 });
 
 it('tells a member which categories they work in, and stands in a notice for a section they cannot open', function (): void {
@@ -1008,4 +1023,26 @@ it('names each band block with how many items it holds, 0 for a block without a 
     ];
 
     expect(array_column(CategoryBands::names($blocks), 'items'))->toBe([4, 0, 0]);
+});
+
+it('counts the items of the list each block kind\'s schema names, whatever that list is called', function (): void {
+    $logo = ['image_url' => '', 'name' => 'Đối tác'];
+    $blocks = [
+        // a gallery's pictures and a partners strip's logos sit under their own keys, not `items`
+        ['type' => 'gallery', 'props' => ['images' => [['image_url' => 'a'], ['image_url' => 'b'], ['image_url' => 'c']]]],
+        ['type' => 'partners', 'props' => ['heading' => 'Đối tác', 'logos' => [$logo, $logo]]],
+        ['type' => 'team', 'props' => ['members' => [['name' => 'An']]]],
+        // a text block's paragraphs are its text, not items; an «about» block counts its shortcut links, not its paragraphs
+        ['type' => 'richtext', 'props' => ['paragraphs' => ['Một', 'Hai']]],
+        ['type' => 'about', 'props' => ['paragraphs' => ['Một', 'Hai', 'Ba'], 'links' => [['label' => 'Liên hệ']]]],
+        // a key → value map is no list, and entries that are not records are not counted
+        ['type' => 'partners', 'props' => ['logos' => ['a' => $logo, 'b' => $logo]]],
+        ['type' => 'gallery', 'props' => ['images' => [['image_url' => 'a'], 'x', 3, null]]],
+        // a prop named `items` on a kind whose schema has no such list says nothing
+        ['type' => 'cta', 'props' => ['items' => [['title' => 'a']]]],
+        // a kind the registry does not know
+        ['type' => 'unknown_kind', 'props' => ['items' => [['title' => 'a']]]],
+    ];
+
+    expect(array_column(CategoryBands::names($blocks), 'items'))->toBe([3, 2, 1, 0, 1, 0, 1, 0, 0]);
 });

@@ -5765,6 +5765,7 @@
     "categories.ui_band_page": "「:name」",
     "categories.ui_band_page_any": "カテゴリー",
     "categories.ui_band_short_none": "非表示",
+    "categories.ui_band_item": ":n項目",
     "categories.ui_band_items": ":n項目",
     "categories.ui_band_short_own_n": "専用 · :n個のブロック",
     "categories.ui_band_short_own_empty": "専用 · 空",

@@ -5765,6 +5765,7 @@
     "categories.ui_band_page": "“:name”",
     "categories.ui_band_page_any": "category",
     "categories.ui_band_short_none": "Hidden",
+    "categories.ui_band_item": ":n item",
     "categories.ui_band_items": ":n items",
     "categories.ui_band_short_own_n": "Own · :n blocks",
     "categories.ui_band_short_own_empty": "Own · empty",

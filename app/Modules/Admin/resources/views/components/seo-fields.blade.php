@@ -103,7 +103,7 @@
         <div id="{{ $id }}-body" x-show="open" x-cloak role="region" aria-labelledby="{{ $id }}-head" class="flex flex-col gap-4 px-5 pt-1 pb-5">
             <div>
                 <div class="{{ $labelRow }}">
-                    <label for="{{ $id }}-title" class="{{ $label }} text-text">{{ __('admin.seo.title_label') }}@if ($labelChip !== null) <x-bs-admin::lang-chip :x="$labelChip" />@endif</label>
+                    <label for="{{ $id }}-title" class="{{ $label }} text-text">{{ __('admin.seo.title_label') }}@if ($multiLocale && $labelChip !== null) <x-bs-admin::lang-chip :code="$locale" :x="$labelChip" />@endif</label>
                     <span id="{{ $id }}-title-c" class="seo-count" :data-b="titleMeter.band" data-b="empty">
                         @foreach ($bandIcons as $band => $icon)
                             <x-bs-admin::icon :name="$icon" x-show="titleMeter.band === '{{ $band }}'" x-cloak />
@@ -124,7 +124,7 @@
 
             <div>
                 <div class="{{ $labelRow }}">
-                    <label for="{{ $id }}-description" class="{{ $label }} text-text">{{ __('admin.seo.description_label') }}@if ($labelChip !== null) <x-bs-admin::lang-chip :x="$labelChip" />@endif</label>
+                    <label for="{{ $id }}-description" class="{{ $label }} text-text">{{ __('admin.seo.description_label') }}@if ($multiLocale && $labelChip !== null) <x-bs-admin::lang-chip :code="$locale" :x="$labelChip" />@endif</label>
                     <span id="{{ $id }}-description-c" class="seo-count" :data-b="descriptionMeter.band" data-b="empty">
                         @foreach ($bandIcons as $band => $icon)
                             <x-bs-admin::icon :name="$icon" x-show="descriptionMeter.band === '{{ $band }}'" x-cloak />

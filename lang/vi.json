@@ -5765,6 +5765,7 @@
     "categories.ui_band_page": "«:name»",
     "categories.ui_band_page_any": "chuyên mục",
     "categories.ui_band_short_none": "Ẩn",
+    "categories.ui_band_item": ":n ô",
     "categories.ui_band_items": ":n ô",
     "categories.ui_band_short_own_n": "Riêng · :n khối",
     "categories.ui_band_short_own_empty": "Riêng · trống",

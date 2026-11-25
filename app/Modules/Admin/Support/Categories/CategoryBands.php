@@ -8,6 +8,7 @@ use App\Modules\Admin\Support\BlockKinds;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteLocale;
+use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Rendering\LayoutSlots;
 use App\Modules\Theme\Theming\StorefrontSettings;
 
@@ -145,6 +146,7 @@ final readonly class CategoryBands
      */
     public static function names(array $blocks): array
     {
+        $registry = app(ComponentRegistry::class);
         $out = [];
         foreach ($blocks as $block) {
             if (! is_array($block) || ! is_string($block['type'] ?? null)) {
@@ -153,12 +155,40 @@ final readonly class CategoryBands
             $kind = BlockKinds::of($block['type'])['label'];
             $props = Cast::arr($block['props'] ?? null);
             $name = BlockKinds::preview($props);
-            // how many items the block holds (a feature grid's cards, a gallery's pictures): 0 for a block without a list
-            $items = is_array($props['items'] ?? null) ? count($props['items']) : 0;
+            $items = self::itemCount($registry, $block['type'], $props);
             $out[] = ['name' => $name !== '' ? $name : $kind, 'kind' => $kind, 'items' => $items];
         }
 
         return $out;
+    }
+
+    /**
+     * How many items a block holds (a feature grid's cards, a gallery's pictures, a team's members),
+     * read from the block's registered schema rather than a fixed prop name: the list it counts is
+     * the kind's first `list` prop whose items are records (`of` is a field map). A list of single
+     * values (`of` carries its own `type`, such as the paragraphs of a text block or the look's
+     * extra styles) is the block's text or styling, not items, so it is skipped; that is how an
+     * «Giới thiệu» block counts its shortcut links and not its paragraphs. Only a real list counts,
+     * and only its record entries: a key→value map, a scalar or a stray non-array entry gives
+     * nothing. 0 for a kind with no such list or one that is not registered.
+     *
+     * @param  array<array-key, mixed>  $props
+     */
+    private static function itemCount(ComponentRegistry $registry, string $type, array $props): int
+    {
+        if (! $registry->has($type)) {
+            return 0;
+        }
+        foreach ($registry->schemaFor($type) as $prop => $spec) {
+            if (($spec['type'] ?? null) !== 'list' || ! is_array($spec['of'] ?? null) || isset($spec['of']['type'])) {
+                continue;
+            }
+            $value = $props[$prop] ?? null;
+
+            return is_array($value) && array_is_list($value) ? count(array_filter($value, is_array(...))) : 0;
+        }
+
+        return 0;
     }
 
     /**

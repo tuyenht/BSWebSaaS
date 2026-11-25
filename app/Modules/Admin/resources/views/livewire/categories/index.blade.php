@@ -62,7 +62,7 @@
             'bandTop', 'bandBot', 'bandShortNone', 'bandShortOwnN', 'bandShortOwnEmpty', 'bandShortDefN', 'bandShortDefEmpty',
             'bandNoneT', 'bandNoneS', 'bandEmptyOwn', 'bandEmptyDef', 'bandEmptyS', 'bandOwnT', 'bandOwnS', 'bandDefT', 'bandDefS',
             'bandHintOwnHas', 'bandHintOwnEmpty', 'bandHintDef', 'bandOptDefHas', 'bandOptDefNone', 'bandDrop', 'bandPage', 'bandPageAny',
-            'bandOpening', 'bandMapAria', 'bandItems',
+            'bandOpening', 'bandMapAria', 'bandItem', 'bandItems',
         ])->mapWithKeys(fn (string $k): array => [$k => $u(\Illuminate\Support\Str::snake($k))])->all();
         $config = [
             'section' => $screen['section']['key'], 'label' => $label, 'main' => $main, 'locales' => $locales, 'langNames' => $langNames,
@@ -384,7 +384,7 @@
                 @endif
 
                 <div class="flex flex-col gap-1.5">
-                    <label for="cm-name" class="text-small font-semibold text-text-strong">{{ $u('f_name') }} <span class="text-danger-text" aria-hidden="true">*</span>@if ($multi) <x-bs-admin::lang-chip x="cur" />@endif</label>
+                    <label for="cm-name" class="text-small font-semibold text-text-strong">{{ $u('f_name') }} <span class="text-danger-text" aria-hidden="true">*</span>@if ($multi) <x-bs-admin::lang-chip :code="$main" x="cur" />@endif</label>
                     <x-bs-admin::input id="cm-name" maxlength="{{ $screen['limits']['name'] }}" aria-required="true" aria-describedby="cm-name-m" x-model="fName"
                         x-bind:dir="'ltr'" x-on:blur="pan && cur === {{ $j($main) }} && (pan.touched = true)" x-bind:aria-invalid="pan && nameBad ? 'true' : null" placeholder="{{ $namePh }}" />
                     <p id="cm-name-m" x-show="pan && nameBad" role="alert" class="text-small text-danger-text">{{ __('categories.reason_name_invalid') }}</p>
@@ -392,7 +392,7 @@
                 </div>
 
                 <div class="flex flex-col gap-1.5">
-                    <label for="cm-slug" class="text-small font-semibold text-text-strong">{{ $u('f_slug') }}@if ($multi) <x-bs-admin::lang-chip x="cur" />@endif</label>
+                    <label for="cm-slug" class="text-small font-semibold text-text-strong">{{ $u('f_slug') }}@if ($multi) <x-bs-admin::lang-chip :code="$main" x="cur" />@endif</label>
                     <div class="flex min-w-0 items-stretch overflow-hidden rounded border border-border-input bg-surface-muted focus-ring-within">
                         <span class="flex min-w-0 max-w-[50%] items-center border-r border-border-input px-2 font-mono text-caption text-text-muted [overflow-wrap:anywhere]" x-text="(@js($bases)[cur] || '')" x-bind:title="(@js($bases)[cur] || '')"></span>
                         <input id="cm-slug" type="text" dir="ltr" inputmode="url" autocapitalize="off" spellcheck="false" maxlength="{{ $screen['limits']['slug'] }}" placeholder="tin-cong-ty"
@@ -459,7 +459,7 @@
                     <section id="cm-bands" class="flex min-w-0 flex-col gap-3 border-t border-border pt-4" aria-labelledby="cm-bands-t">
                         <div class="flex flex-wrap items-center gap-2">
                             <h3 id="cm-bands-t" class="m-0 text-body font-semibold text-text-strong [overflow-wrap:anywhere]">{{ $u('bands_title') }}</h3>
-                            @if ($multi)<x-bs-admin::lang-chip x="cur" />@endif
+                            @if ($multi)<x-bs-admin::lang-chip :code="$main" x="cur" />@endif
                         </div>
                         <p class="m-0 text-small text-text-muted">{{ $u('bands_lead') }}</p>
                         <ol class="m-0 flex list-none flex-col gap-1 rounded-md bg-surface-muted p-2" x-bind:aria-label="pan ? bandMapLabel : ''">
@@ -514,7 +514,7 @@
                         @endforeach
                     </section>
                     <div class="flex flex-col gap-1.5">
-                        <label for="cm-desc" class="text-small font-semibold text-text-strong">{{ $u('f_desc') }}@if ($multi) <x-bs-admin::lang-chip x="cur" />@endif</label>
+                        <label for="cm-desc" class="text-small font-semibold text-text-strong">{{ $u('f_desc') }}@if ($multi) <x-bs-admin::lang-chip :code="$main" x="cur" />@endif</label>
                         <textarea id="cm-desc" rows="3" maxlength="{{ $screen['limits']['description'] }}" x-model="pan.d.descriptions[cur]" placeholder="{{ $products ? $u('desc_ph_products') : $u('desc_ph_posts') }}"
                             class="field w-full rounded border border-border-input bg-surface-muted px-3"></textarea>
                         <p class="text-small text-text-muted">{{ $u('f_desc_hint') }}</p>

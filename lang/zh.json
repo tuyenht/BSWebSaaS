@@ -5765,6 +5765,7 @@
     "categories.ui_band_page": "“:name”",
     "categories.ui_band_page_any": "分类",
     "categories.ui_band_short_none": "隐藏",
+    "categories.ui_band_item": ":n 项",
     "categories.ui_band_items": ":n 项",
     "categories.ui_band_short_own_n": "专属 · :n 个区块",
     "categories.ui_band_short_own_empty": "专属 · 空",
