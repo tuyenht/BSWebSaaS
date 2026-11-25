@@ -397,6 +397,9 @@ JS, ['@ULID@' => (string) Js::from($product->ulid)]) : '{}';
                         $whenText = $stampText === null ? null : ($trashed ? __('catalog.trash_days_left', ['n' => \App\Modules\Catalog\Support\ProductTrash::daysLeft($stamp, $nowAt)]) : __('catalog.updated_at', ['date' => $stampText]));
                         $whenTitle = $stampText === null ? null : ($trashed ? __('catalog.trashed_at_title', ['date' => $stampText]) : __('catalog.updated_full', ['date' => $stampText]));
                         $whenCard = $trashed || $stamp === null ? $whenText : $editedShort($stamp);
+                        // taken down at its end time (board 08): «Hết hạn dd/mm/yyyy» under the pill and in the card's line; the pill stays
+                        $expiredText = $trashed || $product->status !== 'archived' || $product->expires_at === null || $product->expires_at->isFuture()
+                            ? null : __('catalog.list_expired', ['date' => app(\App\Modules\Tenancy\Context\SiteTime::class)->forDisplay($product->expires_at)?->format('d/m/Y')]);
                     @endphp
                     <x-bs-admin::list.row wire:key="{{ $rowKey }}" data-row-ulid="{{ $product->ulid }}" :selected="in_array($product->ulid, $picked, true)" :data-name="$quickEdit ? $name : null" :data-slug="$quickEdit ? ($slugLeaf ?? '') : null" x-data="{{ $rowX }}">
                         @if ($canManage)
@@ -472,6 +475,9 @@ JS, ['@ULID@' => (string) Js::from($product->ulid)]) : '{}';
                                         @if ($tags !== [])
                                             <span class="list-m" data-for="badge" x-show="vBadge">{{ collect($tags)->pluck('l')->implode(', ') }}</span>
                                         @endif
+                                        @if ($expiredText)
+                                            <span class="list-m" data-for="when" data-expired>{{ $expiredText }}</span>
+                                        @endif
                                         @if ($whenCard)
                                             <span class="list-m" data-for="when">{{ $whenCard }}</span>
                                         @endif
@@ -537,6 +543,11 @@ JS, ['@ULID@' => (string) Js::from($product->ulid)]) : '{}';
                                 <div class="list-st-meta" title="{{ $whenTitle }}">
                                     <x-bs-admin::icon name="ri-history" class="size-3 shrink-0" />
                                     <span>{{ $whenText }}</span>
+                                </div>
+                            @endif
+                            @if ($expiredText)
+                                <div class="list-st-meta" data-expired>
+                                    <span>{{ $expiredText }}</span>
                                 </div>
                             @endif
                         </x-bs-admin::list.cell>
