@@ -359,23 +359,23 @@ final class BandEditor extends Component
      * What the band holds before this language is written in: its own blocks when it has them;
      * when it followed the site (or was hidden), what every language showed then — the site's
      * blocks of that language (nothing for a hidden band) — so saving one language changes no other.
-     * A language turned off for the website since is dropped: it is never written again, and the
-     * slot checks refuse a language that is not on.
+     * A language turned off for the website since keeps its own blocks exactly as stored (the slot
+     * checks carry them over unchecked), so they are there again when the language comes back on;
+     * only languages that are on are written.
      *
      * @return array<string, array{blocks: list<mixed>}>
      */
     private function startingValue(Taxonomy $category): array
     {
-        $enabled = app(SiteLocale::class)->enabled();
         $stored = $this->stored($category);
         if (is_array($stored)) {
             /** @var array<string, array{blocks: list<mixed>}> $stored */
-            return array_intersect_key($stored, array_flip($enabled));
+            return $stored;
         }
 
         $value = [];
         $resolver = app(LayoutSlotBlocks::class);
-        foreach ($enabled as $locale) {
+        foreach (app(SiteLocale::class)->enabled() as $locale) {
             $value[$locale] = ['blocks' => $stored === LayoutSlots::NONE ? [] : $resolver->blocks($this->slotName, $locale)];
         }
 

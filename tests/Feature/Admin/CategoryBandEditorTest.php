@@ -2,7 +2,9 @@
 
 use App\Modules\Admin\Livewire\Categories\BandEditor;
 use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
+use App\Modules\Cms\Actions\Taxonomies\SetCategoryLayoutBlocks;
 use App\Modules\Cms\Data\TaxonomyData;
+use App\Modules\Cms\Exceptions\TaxonomyChangeRejectedException;
 use App\Modules\Cms\Models\MemberCategoryScope;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\CategoryScopes;
@@ -150,25 +152,51 @@ it('opens a hidden band empty, and saving it gives the category blocks of its ow
         ->and($stored['en'])->toBe(['blocks' => []]);
 });
 
-it('still saves a band whose own blocks were in a language turned off since, and drops that language', function (): void {
+it('saves a band whose own blocks are also in a language turned off since, keeping that language as stored until it is back on', function (): void {
     beEnglish();
-    beIn(1, function (): void {
+    $english = ['blocks' => [['type' => 'cta', 'props' => ['heading' => 'Send your CV']]]];
+    beIn(1, function () use ($english): void {
         Taxonomy::query()->whereKey($this->jobs->id)->update(['meta' => ['layout_blocks' => ['after_list' => [
             'vi' => ['blocks' => [['type' => 'cta', 'props' => ['heading' => 'Gửi CV']]]],
-            'en' => ['blocks' => [['type' => 'cta', 'props' => ['heading' => 'Send your CV']]]],
+            'en' => $english,
         ]]]]);
         SiteLocale::query()->where('locale', 'en')->update(['enabled' => false, 'is_public' => false]);
         app(SiteLocaleContext::class)->forget();
     });
+    $before = beStored($this->jobs, 'after_list');
 
     beIn(1, function (): void {
         Livewire::actingAs($this->editor)->test(BandEditor::class, ['ulid' => $this->jobs->ulid, 'slot' => 'after_list'])
+            ->assertSet('locale', 'vi')
             ->call('addBlock', 'richtext')->call('save')->assertHasNoErrors()->assertSet('toastTone', 'success');
     });
 
     $stored = beStored($this->jobs, 'after_list');
-    expect(array_keys($stored))->toBe(['vi'])
-        ->and(array_column($stored['vi']['blocks'], 'type'))->toBe(['cta', 'richtext']);
+    expect(array_keys($stored))->toEqualCanonicalizing(['vi', 'en'])
+        ->and(array_column($stored['vi']['blocks'], 'type'))->toBe(['cta', 'richtext'])
+        ->and($stored['en'])->toBe($before['en'])
+        ->and($stored['en']['blocks'][0]['props']['heading'])->toBe('Send your CV');
+
+    // a changed value for the language that is off is still refused, and nothing is written
+    beIn(1, function () use ($stored): void {
+        $sent = $stored;
+        $sent['en'] = ['blocks' => [['type' => 'cta', 'props' => ['heading' => 'Changed while off']]]];
+        $category = Taxonomy::query()->findOrFail($this->jobs->id);
+        $this->actingAs($this->editor);
+        expect(fn () => app(SetCategoryLayoutBlocks::class)->handle($category, ['after_list' => $sent]))
+            ->toThrow(fn (TaxonomyChangeRejectedException $e) => expect($e->reason)->toBe('locale_invalid'));
+    });
+    expect(beStored($this->jobs, 'after_list'))->toBe($stored);
+
+    // English back on: the editor opens on its own blocks again
+    beIn(1, function (): void {
+        SiteLocale::query()->where('locale', 'en')->update(['enabled' => true, 'is_public' => true]);
+        app(SiteLocaleContext::class)->forget();
+    });
+    beIn(1, function (): void {
+        Livewire::withQueryParams(['locale' => 'en'])->actingAs($this->editor)->test(BandEditor::class, ['ulid' => $this->jobs->ulid, 'slot' => 'after_list'])
+            ->assertSet('locale', 'en')->assertSet('blocks.0.type', 'cta')->assertSet('blocks.0.props.heading', 'Send your CV');
+    });
 });
 
 it('opens a product category\'s band for whoever may see the catalogue, and returns to the catalogue\'s categories', function (): void {

@@ -29,7 +29,8 @@ use Illuminate\Support\Facades\Gate;
  * call does not name keep what they have. Only post and product categories carry slots.
  *
  * Every value is checked as a page body is (LayoutSlotInput: a known slot, the site's languages,
- * ValidPageJson in the site's context, the slot's block limit); a refusal is a
+ * ValidPageJson in the site's context, the slot's block limit), under the lock against the row as
+ * stored, so a language turned off for the website is kept only when handed back unchanged; a refusal is a
  * TaxonomyChangeRejectedException whose previous exception names the slot and the plain-language
  * text. Only `meta.layout_blocks` is written (a JSON path update), so every other key of `meta`
  * stays as it is, and the other category writers never touch `meta`, so they keep this one.
@@ -73,18 +74,19 @@ final readonly class SetCategoryLayoutBlocks
             return $taxonomy;
         }
 
-        try {
-            $checked = $this->input->check($slots, allowNone: true);
-        } catch (LayoutBlocksRejectedException $e) {
-            throw new TaxonomyChangeRejectedException($e->reason, $e);
-        }
-
-        return DB::transaction(function () use ($taxonomy, $checked): Taxonomy {
+        return DB::transaction(function () use ($taxonomy, $slots): Taxonomy {
             $this->lockTree($this->site->id());
             $taxonomy = $this->reload($taxonomy, 'taxonomy_invalid');
             $this->limits->change($taxonomy);
 
             $layout = Cast::arr(Cast::arr($taxonomy->meta)[LayoutSlots::META_KEY] ?? null);
+            // checked against the row read under the lock: a language turned off keeps exactly what it holds
+            try {
+                $checked = $this->input->check($slots, allowNone: true, current: $layout);
+            } catch (LayoutBlocksRejectedException $e) {
+                throw new TaxonomyChangeRejectedException($e->reason, $e);
+            }
+
             foreach ($checked as $slot => $value) {
                 if ($value === null) {
                     unset($layout[$slot]);
