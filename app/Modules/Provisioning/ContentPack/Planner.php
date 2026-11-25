@@ -40,6 +40,7 @@ use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Components\ButtonLink;
 use App\Modules\Theme\Rendering\LayoutSlots;
 use App\Modules\Workflow\Models\Workflow;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -1179,6 +1180,9 @@ final class Planner
             $current = $id === null ? null : ($states[$id]['state'] ?? null);
             $desired = $this->desiredEntry($item, $current);
             $notes = [];
+            if ($current !== null && ($states[$id]['expired'] ?? false)) {
+                $desired = self::keepExpired($current, $desired, $notes);
+            }
             if ($item->kind === 'page' && $current !== null) {
                 $notes[] = $this->blockSummary($current, $desired);
             }
@@ -1223,7 +1227,7 @@ final class Planner
      * @param  list<int>  $ids
      * @param  list<int>  $dated
      * @param  list<int>  $parented
-     * @return array<int, array{ulid: string, state: array<string, mixed>}>
+     * @return array<int, array{ulid: string, expired: bool, state: array<string, mixed>}>
      */
     public function entryStates(array $ids, array $dated = [], array $parented = []): array
     {
@@ -1231,7 +1235,7 @@ final class Planner
             return [];
         }
 
-        $entries = $this->locked(Entry::query()->whereIn('id', $ids))->get(['id', 'ulid', 'type', 'status', 'published_at', 'meta', 'parent_id']);
+        $entries = $this->locked(Entry::query()->whereIn('id', $ids))->get(['id', 'ulid', 'type', 'status', 'published_at', 'expires_at', 'meta', 'parent_id']);
         $parentIds = [];
         foreach ($entries as $entry) {
             if ($entry->type === 'page' && $entry->parent_id !== null) {
@@ -1297,7 +1301,7 @@ final class Planner
             foreach ($this->locales as $locale) {
                 $state['translations'][$locale] = $byLocale[$locale] ?? null;
             }
-            $states[$entry->id] = ['ulid' => $entry->ulid, 'state' => $state];
+            $states[$entry->id] = ['ulid' => $entry->ulid, 'expired' => self::pastEnd($entry->expires_at), 'state' => $state];
         }
 
         return $states;
@@ -1405,6 +1409,35 @@ final class Planner
         return Cast::string($item->data['status'] ?? null, 'draft') === 'published' ? Cast::stringOrNull($item->data['published_at'] ?? null) : null;
     }
 
+    /** Whether a stored end time («Gỡ khỏi website lúc») has passed. */
+    private static function pastEnd(?CarbonInterface $expiresAt): bool
+    {
+        return $expiresAt !== null && $expiresAt <= now();
+    }
+
+    /**
+     * An item past its end time keeps the status and the dates it has: a reload never puts it back on
+     * the website (the Applier holds the same line), so the plan names what the load will write.
+     *
+     * @param  array<string, mixed>  $current
+     * @param  array<string, mixed>  $desired
+     * @param  list<string>  $notes
+     * @return array<string, mixed>
+     */
+    private static function keepExpired(array $current, array $desired, array &$notes): array
+    {
+        $kept = $desired;
+        $kept['status'] = $current['status'] ?? $desired['status'];
+        if (array_key_exists('published_at', $desired)) {
+            $kept['published_at'] = $current['published_at'] ?? null;
+        }
+        if ($kept !== $desired) {
+            $notes[] = 'past its end time: keeps its status ('.Cast::string($kept['status']).') and its dates, not the pack\'s';
+        }
+
+        return $kept;
+    }
+
     /** @param array<string, mixed> $data */
     private static function text(array $data, string $field, string $locale): ?string
     {
@@ -1498,13 +1531,19 @@ final class Planner
         foreach ($items as $item) {
             $id = $ids[$item->key] ?? null;
             $current = $id === null ? null : ($states[$id]['state'] ?? null);
+            $desired = $this->desiredProduct($item, $current);
+            $notes = [];
+            if ($current !== null && ($states[$id]['expired'] ?? false)) {
+                $desired = self::keepExpired($current, $desired, $notes);
+            }
             $planned[$item->key] = $this->decide(
                 $context,
                 $item,
                 $current,
-                $this->desiredProduct($item, $current),
+                $desired,
                 $id === null ? null : ($states[$id]['ulid'] ?? null),
                 $id,
+                $notes,
                 evidence: 'catalog edits leave no history, so a product the loader has not written before counts as edited',
             );
         }
@@ -1521,7 +1560,7 @@ final class Planner
      * @param  list<int>  $ids
      * @param  list<int>  $dated
      * @param  list<int>  $flagged
-     * @return array<int, array{ulid: string, state: array<string, mixed>}>
+     * @return array<int, array{ulid: string, expired: bool, state: array<string, mixed>}>
      */
     public function productStates(array $ids, array $dated = [], array $flagged = []): array
     {
@@ -1529,7 +1568,7 @@ final class Planner
             return [];
         }
 
-        $products = $this->locked(Product::query()->whereIn('id', $ids))->get(['id', 'ulid', 'status', 'published_at', 'is_featured']);
+        $products = $this->locked(Product::query()->whereIn('id', $ids))->get(['id', 'ulid', 'status', 'published_at', 'expires_at', 'is_featured']);
         $translations = $this->locked(ProductTranslation::query()->whereIn('product_id', $ids)->whereIn('locale', $this->locales))
             ->get(['product_id', 'locale', 'name', 'slug', 'summary', 'description', 'seo_title', 'seo_description']);
         $byProduct = [];
@@ -1577,7 +1616,7 @@ final class Planner
             foreach ($this->locales as $locale) {
                 $state['translations'][$locale] = $byLocale[$locale] ?? null;
             }
-            $states[$product->id] = ['ulid' => $product->ulid, 'state' => $state];
+            $states[$product->id] = ['ulid' => $product->ulid, 'expired' => self::pastEnd($product->expires_at), 'state' => $state];
         }
 
         return $states;
