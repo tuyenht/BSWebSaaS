@@ -541,7 +541,7 @@
             </div>
             <x-slot:footer>
                 <x-bs-admin::button variant="outline" color="secondary" x-on:click="panClose()">{{ __('admin.cancel') }}</x-bs-admin::button>
-                <span x-show="pan && pan.mode === 'add'"><x-bs-admin::button variant="outline" color="secondary" x-on:click="save(true)" x-bind:aria-disabled="pan && pan.saving ? 'true' : null"><x-bs-admin::icon name="ri-add" class="size-4" /> {{ $u('save_new') }}</x-bs-admin::button></span>
+                <span x-show="pan && pan.mode === 'add'" class="max-[599.98px]:*:w-full"><x-bs-admin::button variant="outline" color="secondary" x-on:click="save(true)" x-bind:aria-disabled="pan && pan.saving ? 'true' : null"><x-bs-admin::icon name="ri-add" class="size-4" /> {{ $u('save_new') }}</x-bs-admin::button></span>
                 <x-bs-admin::button x-on:click="save()" x-bind:aria-disabled="(pan && pan.saving) || {{ $support ? 'true' : 'false' }} ? 'true' : null" :title="$support ? $supWhy : null">
                     <x-bs-admin::icon name="ri-save-3" class="size-4" /> <span x-text="pan && pan.saving ? {{ $j($u('saving')) }} : (pan ? saveText : {{ $j($u('save')) }})">{{ $u('save') }}</span>
                 </x-bs-admin::button>
