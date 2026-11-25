@@ -640,7 +640,7 @@
                     </div>
                 </div>
                 @endif
-                <div class="flex flex-wrap justify-end gap-2 border-t border-border-soft pt-3 max-[599.98px]:*:flex-[1_1_100%]">
+                <div class="flex flex-wrap justify-end gap-2 border-t border-border-soft pt-3 max-[599.98px]:flex-col-reverse max-[599.98px]:*:w-full">
                     <x-bs-admin::button color="light" autofocus wire:click="closeNote">{{ __('admin.cancel') }}</x-bs-admin::button>
                     <x-bs-admin::button :color="$noteDialog['live'] ? 'primary' : 'danger'" :variant="$noteDialog['live'] ? 'solid' : 'outline'" wire:loading.attr="disabled" wire:target="apply" data-inbox-note-ok
                                         x-on:click="if (! String($wire.note ?? '').trim()) { bad = true; $refs.note.focus(); return; } $wire.apply({{ $Js::from($noteDialog['key']) }})">{{ $noteDialog['label'] }}</x-bs-admin::button>
