@@ -25,7 +25,7 @@ use Illuminate\Database\Query\JoinClause;
  * reads on the category's posts (one row, one row, three rows), selecting only the columns a link
  * or card needs, then one batched load of their titles and one of their addresses in the page's
  * language. When the side column asks for it, a fourth part of the same read brings the newest posts of
- * the whole root branch of the category (leaving out the post and the related ones). Every
+ * the same category (leaving out the post and the related ones). Every
  * read runs under the site's row-level security and the models' site scope, so another site's
  * posts never appear.
  *
@@ -93,11 +93,10 @@ final readonly class PostDetail
     /**
      * The neighbours and related posts of a post in its main category.
      *
-     * @param  bool  $withRecent  also read the newest posts of the category's root branch (one more part of the same read)
-     * @param  bool  $fillRelated  when the category has fewer than RELATED other posts, fill the row with the newest posts of its root branch (same-category posts stay first)
+     * @param  bool  $withRecent  also read the newest posts of the same category (one more part of the same read)
      * @return array{previous: Link|null, next: Link|null, related: list<array<string, mixed>>, recent: list<array<string, mixed>>}
      */
-    public function siblings(Entry $post, Taxonomy $category, string $locale, bool $withDates, bool $withRecent = false, bool $fillRelated = false): array
+    public function siblings(Entry $post, Taxonomy $category, string $locale, bool $withDates, bool $withRecent = false): array
     {
         // One read for all three: the related posts, then (when the post has a publish time) the
         // one just older and the one just newer, each part ordered and limited on its own.
@@ -118,17 +117,11 @@ final readonly class PostDetail
                 ->limit(1));
         }
         if ($withRecent) {
-            // The newest of the whole root branch: fetch the related count extra, then leave those out.
+            // The newest of the same category: fetch the related count extra, then leave those out.
             // The seam for posts past their end date goes here when that column exists.
-            $query->unionAll($this->inRootBranch($post, $category, $locale)
+            $query->unionAll($this->inCategory($post, $category, $locale, 'recent')
                 ->orderByRaw('entries.published_at DESC NULLS LAST, entries.id DESC')
                 ->limit(self::RECENT + self::RELATED));
-        }
-        if ($fillRelated) {
-            // The row's top-up: the newest of the root branch, used only for the places the category's own posts leave empty.
-            $query->unionAll($this->inRootBranch($post, $category, $locale, 'fill')
-                ->orderByRaw('entries.published_at DESC NULLS LAST, entries.id DESC')
-                ->limit(self::RELATED + 1));
         }
         $rows = $query->get();
         $rows->load([
@@ -145,18 +138,6 @@ final readonly class PostDetail
                 fn (Entry $a, Entry $b): int => $b->id <=> $a->id,
             ])
             ->values();
-
-        if ($fillRelated && $related->count() < self::RELATED) {
-            $own = $related->pluck('id')->all();
-            $related = $related->concat(
-                $rows->filter(fn (Entry $row): bool => $row->getAttribute('slot') === 'fill' && ! in_array($row->id, $own, true))
-                    ->sortBy([
-                        fn (Entry $a, Entry $b): int => ($b->published_at?->getTimestamp() ?? PHP_INT_MIN) <=> ($a->published_at?->getTimestamp() ?? PHP_INT_MIN),
-                        fn (Entry $a, Entry $b): int => $b->id <=> $a->id,
-                    ])
-                    ->take(self::RELATED - $related->count())
-            )->values();
-        }
 
         $relatedIds = $related->pluck('id')->all();
         $recent = $rows->filter(fn (Entry $row): bool => $row->getAttribute('slot') === 'recent' && ! in_array($row->id, $relatedIds, true))
@@ -179,7 +160,7 @@ final readonly class PostDetail
      * The other published posts whose main category is this one and that are published in this
      * language — only the columns a card or a link reads.
      *
-     * @param  'related'|'previous'|'next'  $slot
+     * @param  'related'|'previous'|'next'|'recent'  $slot
      * @return Builder<Entry>
      */
     private function inCategory(Entry $post, Taxonomy $category, string $locale, string $slot): Builder
@@ -191,33 +172,10 @@ final readonly class PostDetail
     }
 
     /**
-     * The other published posts whose main category is this category's root or any category below
-     * it (filtered on the category tree), published in this language.
-     *
-     * @param  'recent'|'fill'  $slot
-     * @return Builder<Entry>
-     */
-    private function inRootBranch(Entry $post, Taxonomy $category, string $locale, string $slot = 'recent'): Builder
-    {
-        // The ltree path holds the ids from the root down; a category whose path was never written is its own root.
-        $first = explode('.', (string) $category->path)[0];
-        $rootId = ctype_digit($first) ? (int) $first : $category->id;
-
-        return $this->published($post, $locale, $slot)
-            ->join('entry_taxonomies', fn (JoinClause $join) => $join->on('entry_taxonomies.entry_id', '=', 'entries.id')
-                ->where('entry_taxonomies.position', 0))
-            ->whereIn('entry_taxonomies.taxonomy_id', Taxonomy::query()
-                ->select('taxonomies.id')
-                ->where(fn (Builder $ids) => $ids
-                    ->whereKey($rootId)
-                    ->orWhereRaw('taxonomies.path <@ (select root.path from taxonomies root where root.id = ?)', [$rootId])));
-    }
-
-    /**
      * The published posts other than $post with a published translation in $locale — only the
      * columns a card or a link reads, tagged with the part of the union they belong to.
      *
-     * @param  'related'|'previous'|'next'|'recent'|'fill'  $slot
+     * @param  'related'|'previous'|'next'|'recent'  $slot
      * @return Builder<Entry>
      */
     private function published(Entry $post, string $locale, string $slot): Builder
@@ -226,7 +184,7 @@ final readonly class PostDetail
             ->select(['entries.id', 'entries.site_id', 'entries.type', 'entries.published_at'])
             // Cards read only the image link and the shown day from meta; do not carry the rest of the document.
             ->selectRaw("jsonb_strip_nulls(jsonb_build_object('image_url', entries.meta->'image_url', 'display_date', entries.meta->'display_date')) as meta")
-            // Which part of the union a row came from; $slot is one of this class's four literals.
+            // Which part of the union a row came from; $slot is one of this class's literals.
             ->selectRaw("'{$slot}'::text as slot")
             ->where('entries.type', 'post')
             ->where('entries.status', 'published')

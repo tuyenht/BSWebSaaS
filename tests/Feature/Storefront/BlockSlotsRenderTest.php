@@ -22,7 +22,7 @@ use Tests\Fixtures\StorefrontCss;
 
 /*
  * The blocks a site puts around its posts, lists and products (the block slots): the side column of
- * a post (the table of contents the layout builds, the newest posts of the root branch, the
+ * a post (the table of contents the layout builds, the newest posts of the post's own category, the
  * categories, the consult box) and the bands at the end of a post, a list and a product. With no
  * slot set a page is the page it always was; an override beats the site's default, "none" hides, a
  * language without blocks takes the default language's; and every block is drawn in the page's one
@@ -207,7 +207,7 @@ it('keeps the post one column with no side blocks and fewer than two headings, a
     expect(slotsHtml('/tin-tuc/ong-dang-doc'))->toContain('post-columns')->toContain('<aside class="post-aside"')->toContain('slot-recent');
 });
 
-it('lists the newest posts of the root branch in the side column, never the one being read or its related posts', function (): void {
+it('lists the newest posts of the post\'s own category in the side column, never the one being read, its related posts or another category\'s', function (): void {
     slotsSite();
     $id = slotsSiteId();
     slotsDefault($id, 'post_aside', [['type' => 'recent_posts', 'props' => ['heading' => 'Bài mới đăng']]]);
@@ -217,19 +217,20 @@ it('lists the newest posts of the root branch in the side column, never the one 
     $recent = $match[0] ?? '';
 
     expect($recent)->toContain('Bài mới đăng')
-        // the newest four of the root branch that are not the related three: the child category's posts and the older root ones
-        ->and($recent)->toContain('Bản tin con số 3 mới')->toContain('Bản tin con số 2 mới')->toContain('Bản tin con số 1 mới')
+        // the posts of the same category that are not the related three: the three older ones, and none of the child category's
+        ->and($recent)->toContain('Bản tin gốc số 3 mới')->toContain('Bản tin gốc số 2 mới')->toContain('Bản tin gốc số 1 mới')
+        ->and($recent)->not->toContain('Bản tin con số')
         ->and($recent)->not->toContain('Ống đang đọc')
         ->and($recent)->not->toContain('Việc làm kỹ sư');
     // The related posts (the three newest of the same category: the root's sixth, fifth and fourth) are in the page's related section, not twice.
     foreach (['Bản tin gốc số 6 mới', 'Bản tin gốc số 5 mới', 'Bản tin gốc số 4 mới'] as $related) {
         expect($recent)->not->toContain($related);
     }
-    expect(substr_count($recent, '<li>'))->toBe(4);
+    expect(substr_count($recent, '<li>'))->toBe(3);
 });
 
-it('stays in the root branch when the post is in a child category', function (): void {
-    $site = slotsSite();
+it('stays in the post\'s own category when it is in a child category, never taking the root\'s or a sibling\'s posts', function (): void {
+    slotsSite();
     $id = slotsSiteId();
     slotsDefault($id, 'post_aside', [['type' => 'recent_posts', 'props' => []]]);
 
@@ -237,9 +238,9 @@ it('stays in the root branch when the post is in a child category', function ():
     preg_match('#<section class="slot-recent".*?</section>#s', $html, $match);
     $recent = $match[0] ?? '';
 
-    // The root's own posts count too (the whole branch), the other branch's never.
-    expect($recent)->toContain('Ống đang đọc')->not->toContain('Việc làm kỹ sư')->not->toContain('Bản tin con số 1 mới');
-    expect($site['jobs']->id)->not->toBe($site['news']->id);
+    // The two other posts of the child category are the related ones, so nothing is left for the block, and none of the root's posts fill it.
+    expect($recent)->toBe('')
+        ->and($html)->not->toContain('Ống đang đọc')->not->toContain('Bản tin gốc số')->not->toContain('Việc làm kỹ sư');
 });
 
 it('reads the recent posts with the related posts: no extra query', function (): void {
@@ -276,8 +277,8 @@ it('never shows another site\'s posts in the recent list, with two sites interle
     foreach (range(1, 2) as $_) {
         $mine = slotsHtml('/tin-tuc/ong-dang-doc', 'mau.platform.test');
         $theirs = slotsHtml('/tin-tuc/ong-dang-doc', 'khac.platform.test');
-        expect($mine)->toContain('Bản tin con số 3 mới')->not->toContain('Khác Bản')
-            ->and($theirs)->toContain('Khác Bản tin con số 3 mới')->not->toContain('>Bản tin con số 3 mới<');
+        expect($mine)->toContain('Bản tin gốc số 3 mới')->not->toContain('Khác Bản')
+            ->and($theirs)->toContain('Khác Bản tin gốc số 3 mới')->not->toContain('>Bản tin gốc số 3 mới<');
     }
 });
 
