@@ -4,8 +4,10 @@ namespace App\Modules\Admin\Livewire\Entries;
 
 use App\Modules\Admin\Livewire\Concerns\EditsBlockList;
 use App\Modules\Admin\Livewire\Concerns\EditsButtonActions;
+use App\Modules\Admin\Livewire\Concerns\EditsPageOrder;
 use App\Modules\Admin\Livewire\Concerns\EditsPendingChange;
 use App\Modules\Admin\Livewire\Concerns\ShowsEntryRevisions;
+use App\Modules\Admin\Livewire\Concerns\StartsPageFromTemplate;
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\Categories\CategorySections;
 use App\Modules\Admin\Support\Entries\EntryLangStates;
@@ -98,6 +100,7 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
+use Throwable;
 
 /**
  * The content editor for both entry types — a `page` (flat URL) and a `post` (URL prefixed by
@@ -125,8 +128,10 @@ final class Editor extends Component
     use AuthorizesRequests;
     use EditsBlockList;
     use EditsButtonActions;
+    use EditsPageOrder;
     use EditsPendingChange;
     use ShowsEntryRevisions;
+    use StartsPageFromTemplate;
     use WithMediaLibraryPicker;
 
     /** How many trail rows the block shows before "Xem thêm" (design: 3, +3 per load). */
@@ -147,7 +152,7 @@ final class Editor extends Component
      * The fields the save state and the leave dialog count against the saved entry. The block list
      * is counted apart (blocksChanged): the browser cannot write it the way the server does.
      */
-    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryIds', 'coverImageKey', 'coverAlt', 'parentUlid', 'scheduleAt', 'statusTo', 'templateKey', 'displayDate', 'tags'];
+    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryIds', 'coverImageKey', 'coverAlt', 'parentUlid', 'pageOrder', 'scheduleAt', 'statusTo', 'templateKey', 'displayDate', 'tags'];
 
     /** Which entry is being edited — server-resolved (mount/persist); never client-set. */
     #[Locked]
@@ -538,6 +543,7 @@ final class Editor extends Component
             // «Thêm trang con»: the parent named by the list (?parent=<ulid>), when it may hold one more level
             if ($this->type === 'page') {
                 $this->presetParent($parent ?? request()->query('parent'));
+                $this->placePageOrder($this->parentUlid === null ? null : $this->findPage($this->parentUlid)?->id);
             }
             $this->slugFresh = true;
             $this->saved = $this->tracked();
@@ -546,7 +552,10 @@ final class Editor extends Component
             return;
         }
 
-        $entry = $this->resolveOrFail($ulid);
+        $entry = $this->openEntry($ulid);
+        $placeBefore = $entry->getAttribute('page_place_before');
+        // read with the entry as the form opens (openEntry), never written back with it
+        $entry->offsetUnset('page_place_before');
         $this->authorize('update', $entry);
 
         $this->ulid = $entry->ulid;
@@ -605,7 +614,7 @@ final class Editor extends Component
         $this->frameRights($entry);
         $this->liveAddress = $this->routedAddress($entry->id);
         if ($this->type === 'page') {
-            $this->loadParent($entry, $translation);
+            $this->loadParent($entry, $translation, is_numeric($placeBefore) ? (int) $placeBefore : null);
         }
         // a language not written yet takes its link from its title, as a new entry does (never the Home page);
         // one the pending change holds text for is written
@@ -1473,6 +1482,10 @@ final class Editor extends Component
             return;
         }
         $this->autoSaved = false;
+        if ($this->saveFailed) {
+            // made, but a part was refused (a new page's typed place): the form says so, never a success
+            return;
+        }
         if ($this->heldSave !== null && $to === null) {
             // into the pending change: visitors keep the live version
             $this->dispatch('bs-toast', text: $this->heldToast($this->governingWorkflow()));
@@ -1506,7 +1519,8 @@ final class Editor extends Component
     public function publish(): void
     {
         $entry = $this->persist('publish');
-        if (! $entry instanceof Entry) {
+        if (! $entry instanceof Entry || $this->saveFailed) {
+            // nothing put on the website after a save refused in part (a new page's typed place)
             return;
         }
         if ($this->heldSave !== null) {
@@ -2653,6 +2667,7 @@ final class Editor extends Component
         $this->parentUlid = $parent?->ulid;
         $this->parentName = $parent instanceof Entry ? $this->pageTitle($parent) : '';
         $this->address = $this->previewAddress($this->placedDraft($parent));
+        $this->placePageOrder($parent?->id);
     }
 
     /**
@@ -2691,7 +2706,8 @@ final class Editor extends Component
      * that language is not written yet: a page that is the Home page in another written language only still
      * has its move refused on save (MovePage).
      */
-    private function loadParent(Entry $entry, ?EntryTranslation $translation): void
+    /** @param  ?int  $placeBefore  the live pages before it, as the open read them (openEntry) */
+    private function loadParent(Entry $entry, ?EntryTranslation $translation, ?int $placeBefore = null): void
     {
         $this->pageHome = match (true) {
             $this->mayTrash => $this->isHome,
@@ -2703,6 +2719,7 @@ final class Editor extends Component
         $this->parentUlid = $parent?->ulid;
         $this->parentLoaded = $parent?->ulid;
         $this->parentName = $parent instanceof Entry ? $this->pageTitle($parent) : '';
+        $this->loadPageOrder($entry, $placeBefore);
     }
 
     /** A live page of this website by its ulid (the website's scope: another website's is never found). */
@@ -2798,11 +2815,12 @@ final class Editor extends Component
     }
 
     /**
-     * Move the page, with its sub-pages, to the end of the picked parent's sub-pages (null: the top
-     * level) through MovePage — the one definition of a move: the tree's rules, the addresses and their
-     * 301s, the audit. False, with the reason shown, when it refuses.
+     * Move the page, with its sub-pages, under the picked parent (null: the top level) through MovePage —
+     * the one definition of a move: the tree's rules, the addresses and their 301s, the audit — at the
+     * place typed in «Thứ tự» ($at, from 0), else at the end of its sub-pages; «Thứ tự» then shows the
+     * place it took. False, with the reason shown, when it refuses.
      */
-    private function moveToParent(Entry $entry): bool
+    private function moveToParent(Entry $entry, ?int $at = null): bool
     {
         $parent = null;
         if ($this->parentUlid !== null) {
@@ -2814,7 +2832,7 @@ final class Editor extends Component
             }
         }
         try {
-            $moved = app(MovePage::class)->into($entry, $parent);
+            $moved = $at === null ? app(MovePage::class)->into($entry, $parent) : app(MovePage::class)->handle($entry, $parent, $at);
             $entry->setRawAttributes(['parent_id' => $moved['parent'], 'position' => $moved['position']] + $entry->getAttributes(), true);
             $entry->unsetRelation('parent');
         } catch (PageMoveRejectedException $refused) {
@@ -2824,6 +2842,7 @@ final class Editor extends Component
                 return false;
             }
         }
+        $this->loadPageOrder($entry);
         $this->parentLoaded = $this->parentUlid;
         $this->liveAddress = $this->routedAddress($entry->id);
 
@@ -3392,6 +3411,7 @@ final class Editor extends Component
         $wasNew = $this->ulid === null;
         $current = null;
         $filing = $this->categoryIds;
+        $orderRefused = false;
 
         if ($this->ulid === null) {
             $this->authorize('create', Entry::class);
@@ -3416,13 +3436,16 @@ final class Editor extends Component
             }
             $this->ulid = $entry->ulid;
             $this->status = $entry->status;
+            // a place typed in «Thứ tự»: the new page goes there now; a refusal is said, and the page is
+            // still made, at the end of the list, the typed place kept unsaved (keepRefusedPageOrder below)
+            $orderRefused = $this->type === 'page' && ! $this->applyPageOrder($entry, true);
         } else {
             $entry = $this->resolveOrFail($this->ulid);
             $this->authorize('update', $entry);
             // A new «Trang cha» moves the page in the site's page tree: that tree's lock comes before any
             // row lock, as every writer of the tree takes it (MovePage), so the two can never wait on each other.
             $reparent = $this->reparenting();
-            if ($reparent) {
+            if ($reparent || $this->reordering()) {
                 PageRules::lock(app(CurrentSite::class)->id());
                 $this->lockMoveRows($entry);
             }
@@ -3491,8 +3514,10 @@ final class Editor extends Component
             }
             // not held back: no change is open (one put on the website in another tab is gone from the bar too)
             $this->changeSeen = null;
-            // the move before anything is written: a refused one leaves the page as it was and the form as typed
-            if ($reparent && ! $this->moveToParent($entry)) {
+            // the move before anything is written, in one MovePage call (a new «Trang cha» at the place typed
+            // in «Thứ tự», or the typed place alone): a refused one leaves the page as it was and the form as typed
+            $placed = $reparent ? $this->moveToParent($entry, $this->typedPageIndex()) : ($this->type !== 'page' || $this->applyPageOrder($entry, false));
+            if (! $placed) {
                 if ($filled) {
                     $this->slug = '';
                 }
@@ -3610,6 +3635,9 @@ final class Editor extends Component
         $this->saved['scheduleAt'] = $this->scheduleLoaded;
         // so is a status picked: only the move after the save takes it (an autosave never does), so it still counts
         $this->saved['statusTo'] = '';
+        if ($orderRefused) {
+            $this->keepRefusedPageOrder($entry);
+        }
 
         if ($wasNew) {
             // The address becomes this entry's edit address, so a reload (or reopening it from the
@@ -3644,19 +3672,39 @@ final class Editor extends Component
 
             return $refused();
         }
+        // its place among the pages beside it is the tree's, as the Trang list moves it: never held in the
+        // change. Moved before the change is written and before the saved values are taken (resetSave), so
+        // the field shows the place the page took. The move, the filing and the change are one transaction:
+        // a change refused after the move (a link taken…) takes the move and its audit row back with it,
+        // and the form shows the place as it was, the typed one still unsaved.
+        $db = $entry->getConnection();
+        $order = [$this->pageOrder, $this->pageOrderLoaded];
+        $place = $entry->getAttributes();
+        $undo = function () use ($db, $entry, $order, $place): void {
+            $db->rollBack();
+            [$this->pageOrder, $this->pageOrderLoaded] = $order;
+            $entry->setRawAttributes($place, true);
+        };
+        $db->beginTransaction();
         try {
-            $filing = $this->filedUnder($entry);
-        } catch (ValidationException $e) {
-            $refused();
-            $this->saveFailed = true;
+            $through = $this->type !== 'page' || $this->applyPageOrder($entry, false);
+            $through = $through && $this->saveIntoChange($entry, $live, $blocks, $this->filedUnder($entry));
+        } catch (Throwable $e) {
+            $undo();
+            if ($e instanceof ValidationException) {
+                $refused();
+                $this->saveFailed = true;
+            }
 
             throw $e;
         }
-        if (! $this->saveIntoChange($entry, $live, $blocks, $filing)) {
+        if (! $through) {
+            $undo();
             $this->saveFailed = true;
 
             return $refused();
         }
+        $db->commit();
 
         $this->overwrite = null;
         $this->stale = null;
@@ -4171,6 +4219,20 @@ final class Editor extends Component
         } else {
             $this->authorize('update', $this->resolveOrFail($this->ulid));
         }
+    }
+
+    /**
+     * The entry the form opens, read with its place among the live pages beside it (loadParent): a page's
+     * «Thứ tự» costs the open no query of its own. Counted in the database for a page only (a post's is null).
+     */
+    private function openEntry(string $ulid): Entry
+    {
+        return Entry::query()->where('ulid', $ulid)->select('entries.*')->selectRaw(
+            "(select count(*) from entries as beside where entries.type = 'page' and beside.site_id = entries.site_id"
+            .' and beside.deleted_at is null and beside.type = \'page\''
+            .' and (beside.parent_id = entries.parent_id or (beside.parent_id is null and entries.parent_id is null))'
+            .' and (beside.position < entries.position or (beside.position = entries.position and beside.id < entries.id))) as page_place_before'
+        )->firstOrFail();
     }
 
     private function resolveOrFail(string $ulid): Entry

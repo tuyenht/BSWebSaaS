@@ -44,6 +44,8 @@ window.Alpine.data('bsCategories', (cfg) => {
         del: null,
         ask: null,
         copyUrl: null,
+        langOpen: false, // the drawer's «+N» panel of every language version
+        langQ: '',
 
         init() {
             this.$watch('q', () => this.search());
@@ -77,7 +79,7 @@ window.Alpine.data('bsCategories', (cfg) => {
         // ---- the rows as the server drew them ---------------------------------------------------
         all() {
             if (!cache) {
-                cache = Array.from(this.$root.querySelectorAll('[data-tree-row][data-node]')).map((el) => {
+                cache = Array.from(document.querySelectorAll('[data-tree-row][data-node]')).map((el) => {
                     try {
                         return Object.assign(JSON.parse(el.dataset.node), { lv: Number(el.dataset.lv) });
                     } catch {
@@ -112,7 +114,7 @@ window.Alpine.data('bsCategories', (cfg) => {
             return n ? Math.max(...this.branch(k).map((b) => this.node(b).lv)) - n.lv + 1 : 1;
         },
         treeEl() {
-            return this.$root.querySelector('.tree-w');
+            return document.querySelector('.tree-w');
         },
         tree() {
             // null until the tree's own part has started (before that $data is this screen's)
@@ -212,7 +214,7 @@ window.Alpine.data('bsCategories', (cfg) => {
             this.q = '';
             this.chip = 'all';
             this.fOpen = false;
-            this.$nextTick(() => this.$root.querySelector('[data-cm-q]')?.focus());
+            this.$nextTick(() => document.querySelector('[data-cm-q]')?.focus());
         },
         toggleChips() {
             if (this.fOpen || this.chip !== 'all') {
@@ -323,7 +325,7 @@ window.Alpine.data('bsCategories', (cfg) => {
                 text = to ? fill(to.locked ? t.movedUnder : t.movedInto, { name: n.name, parent: to.name }) : fill(t.movedOut, { name: n.name });
             }
             this.say(text, 'success', { undo: !!r.undo });
-            this.$nextTick(() => this.$root.querySelector(`[data-tree-row][data-k="${k}"] [data-tree-name]`)?.focus());
+            this.$nextTick(() => document.querySelector(`[data-tree-row][data-k="${k}"] [data-tree-name]`)?.focus());
             return null;
         },
         async undo() {
@@ -679,6 +681,8 @@ window.Alpine.data('bsCategories', (cfg) => {
                 o.d.seoDescriptions[c] = String(o.d.seoDescriptions[c] ?? '');
             });
             this.pan = Object.assign({ lang: cfg.main, more: false, touched: false, saving: false, err: null }, o, { lang: o.lang || cfg.main });
+            this.langOpen = false;
+            this.langQ = '';
             this.pushSeo();
             this.pullSeo();
             this.pan.base = JSON.stringify(this.pan.d);
@@ -705,6 +709,64 @@ window.Alpine.data('bsCategories', (cfg) => {
                 return c === cfg.main ? 'miss' : 'empty';
             }
             return d.slugs[c] ? 'full' : 'miss';
+        },
+        // The drawer's language pills: the source and the version open; the others are counted on
+        // «+N», whose panel lists every version with its state, a search from six languages, and
+        // the way to the site's languages.
+        langShown(c) {
+            return c === cfg.main || c === this.cur;
+        },
+        get langMore() {
+            return cfg.locales.filter((c) => !this.langShown(c)).length;
+        },
+        get langProg() {
+            return fill(t.langProg, { done: this.pan ? cfg.locales.filter((c) => this.langSt(c) === 'full').length : 0, total: cfg.locales.length });
+        },
+        langState(c) {
+            if (!this.pan) {
+                return '';
+            }
+            return { full: t.stFull, empty: t.stEmpty, miss: t.stMiss }[this.langSt(c)];
+        },
+        langHit(c) {
+            const q = fold(this.langQ.trim());
+            return q === '' || fold(cfg.langNames[c] || c).includes(q) || c.includes(q);
+        },
+        langAnyHit() {
+            return cfg.locales.some((c) => this.langHit(c));
+        },
+        langToggle() {
+            if (this.langOpen) {
+                this.langClose(false);
+                return;
+            }
+            this.langOpen = true;
+            this.$nextTick(() => (document.querySelector('[data-cm-lang-q]') || document.querySelector('[data-cm-lang-row][aria-current="true"]'))?.focus());
+        },
+        langClose(back) {
+            if (!this.langOpen) {
+                return;
+            }
+            this.langOpen = false;
+            this.langQ = '';
+            if (back) {
+                this.$nextTick(() => document.querySelector('[data-cm-lang-more]')?.focus());
+            }
+        },
+        // focus moving out of the group (past the last row or the settings link) shuts the panel
+        langLeave(e) {
+            const to = e.relatedTarget;
+            if (this.langOpen && to && !e.currentTarget.contains(to)) {
+                this.langClose(false);
+            }
+        },
+        langGo(c) {
+            this.langClose(false);
+            this.pickLang(c);
+        },
+        // the line under the pills: the source's, or a warning while the open version lacks its name or link
+        get lineWarn() {
+            return !!this.pan && this.cur !== cfg.main && this.langSt(this.cur) !== 'full';
         },
         get lineText() {
             const c = this.cur;

@@ -1173,6 +1173,11 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$planned[1]->ulid.'/edit')->assertOk()->getContent();
     expect($html)->toContain(e(__('entries.ed.slug_home_hint')));
     file_put_contents($dir.'/editor-home.html', $html);
+    // A new page: «Bắt đầu từ mẫu» over its empty body, and «Thứ tự» (the last place) in «Thuộc tính trang».
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/create')->assertOk()->getContent();
+    expect($html)->toContain('data-page-start', e(__('entries.ed.start_title')), 'id="entry-ord"');
+    file_put_contents($dir.'/editor-new-page.html', $html);
 
     // «Lịch sử phiên bản» on a live page with a few versions (published, edited, restored, one older than
     // history): the card's region, the full list, one version beside the form, the question before a
