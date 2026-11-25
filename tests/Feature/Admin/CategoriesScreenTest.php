@@ -936,7 +936,10 @@ it('draws the drawer\'s bands as the board does and hands the screen the website
             'after_list' => ['vi' => ['blocks' => [['type' => 'cta', 'props' => ['heading' => 'Chưa thấy vị trí phù hợp?']]]]],
         ]]);
 
-        return cxCreate('Tuyển dụng', $this->root);
+        $jobs = cxCreate('Tuyển dụng', $this->root);
+        Taxonomy::query()->whereKey($jobs->id)->update(['meta' => ['layout_blocks' => ['before_list' => ['vi' => ['blocks' => [['type' => 'cta', 'props' => ['heading' => 'Vì sao chọn An Vinh?']]]]]]]]);
+
+        return $jobs;
     });
 
     $html = $this->actingAs($this->editor->fresh())->withSession([BandEditor::FLASH => 'Đã lưu ở'])
@@ -953,6 +956,11 @@ it('draws the drawer\'s bands as the board does and hands the screen the website
             'bandSite' => ['before_list' => [], 'after_list' => ['vi' => [['name' => 'Chưa thấy vị trí phù hợp?', 'kind' => __('entries.block.cta')]]]],
             'bandUrl' => 'http://a.test/admin/taxonomies/__key__/bands/__slot__',
         ]);
+
+    // the row the drawer opens from carries the category's bands
+    preg_match('/data-node="([^"]*'.$jobs->ulid.'[^"]*)"/', $html, $row);
+    expect(json_decode(html_entity_decode($row[1] ?? ''), true)['bands']['before_list'] ?? null)
+        ->toBe(['mode' => 'own', 'own' => ['vi' => [['name' => 'Vì sao chọn An Vinh?', 'kind' => __('entries.block.cta')]]]]);
 
     // a key that is not one is never handed on
     expect(cxConfig($this->get('http://a.test/admin/taxonomies?section=tin-tuc&open=../x')->assertOk()->getContent())['open'])->toBe('');

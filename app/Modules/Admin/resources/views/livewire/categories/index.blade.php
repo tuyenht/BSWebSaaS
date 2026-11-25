@@ -213,7 +213,7 @@
                                 $slug = '/'.($n['slugs'][$main] ?? '');
                                 $tpl = $layoutName($n['listTemplate']);
                                 $lockWhy = ! $isRoot && ! $n['movable'] ? __('categories.reason_outside_category_limits') : null;
-                                $data = collect($n)->only(['key', 'parent', 'name', 'names', 'slugs', 'descriptions', 'seoTitles', 'seoDescriptions', 'trail', 'listTemplate', 'detailTemplate', 'cover', 'items', 'locked', 'editable', 'movable'])->all();
+                                $data = collect($n)->only(['key', 'parent', 'name', 'names', 'slugs', 'descriptions', 'seoTitles', 'seoDescriptions', 'trail', 'listTemplate', 'detailTemplate', 'cover', 'items', 'locked', 'editable', 'movable', 'bands'])->all();
                                 $canChild = $canManage && ! $support && $r['level'] < $depth;
                                 $changeOff = $lockWhy !== null || ! $canManage || $support;
                                 $changeWhy = $lockWhy ?? ($support ? $supWhy : null);
