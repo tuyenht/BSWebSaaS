@@ -36,3 +36,25 @@ it('draws the footers the way the confirm dialog already does', function (): voi
 
     expect($confirm)->toContain('max-[599.98px]:flex-col-reverse max-[599.98px]:*:w-full');
 });
+
+it('stacks the footers that dialogs build inside their own body the same way', function (string $view): void {
+    $source = (string) file_get_contents(base_path('app/Modules/Admin/resources/views/livewire/'.$view));
+
+    expect($source)->toContain('max-[599.98px]:flex-col-reverse max-[599.98px]:*:w-full')
+        ->and($source)->not->toContain('max-[599.98px]:*:flex-[1_1_100%]');
+})->with([
+    'move to another category' => ['catalog/category-dialog.blade.php'],
+    'review note' => ['entries/review-inbox.blade.php'],
+]);
+
+it('keeps the file-library link of the file picker at its own width, not stretched like a button', function (): void {
+    $source = (string) file_get_contents(base_path('app/Modules/Admin/resources/views/livewire/entries/partials/block-pickers.blade.php'));
+
+    expect($source)->toContain('btn-act__lib me-auto max-[599.98px]:w-auto! max-[599.98px]:self-start');
+});
+
+it('stretches the «Lưu và thêm» button of the categories drawer, whose wrapper is the footer item', function (): void {
+    $source = (string) file_get_contents(base_path('app/Modules/Admin/resources/views/livewire/categories/index.blade.php'));
+
+    expect($source)->toMatch('/<span x-show="pan && pan.mode === \'add\'" class="max-\[599\.98px\]:\*:w-full">/');
+});
