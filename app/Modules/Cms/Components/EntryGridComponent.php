@@ -15,6 +15,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Theme\Components\ListDisplay;
 use App\Modules\Theme\Components\SectionProps;
+use App\Modules\Theme\Rendering\TemplateCatalog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -168,15 +169,22 @@ final readonly class EntryGridComponent implements Component
 
     /**
      * The named sub-categories of a category, in their own order. A row of tabs or filter buttons is a
-     * handful of names; the read is bounded even when a category has many children.
+     * handful of names; the read is bounded even when a category has many children. A sub-category
+     * that stores a list layout of a look set of its own, other than the category's (jobs under the
+     * news), gets no tab: its posts keep to their own list, as on the category's page.
      *
      * @return Collection<int, TaxonomyTranslation>
      */
     private function children(int $taxonomyId, string $locale): Collection
     {
+        $childSet = TemplateCatalog::listSetSql('taxonomies.list_template');
+        $parentSet = TemplateCatalog::listSetSql('parent.list_template');
+
         return TaxonomyTranslation::query()
             ->join('taxonomies', 'taxonomies.id', '=', 'taxonomy_translations.taxonomy_id')
+            ->join('taxonomies as parent', 'parent.id', '=', 'taxonomies.parent_id')
             ->where('taxonomies.parent_id', $taxonomyId)
+            ->whereRaw("({$childSet} is null or {$childSet} is not distinct from {$parentSet})")
             ->where('taxonomy_translations.locale', $locale)
             ->orderBy('taxonomies.position')
             ->orderBy('taxonomies.id')
