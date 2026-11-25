@@ -30,6 +30,8 @@
         .intro-cta{margin-top:24px;min-height:48px;text-decoration:none}
         .intro-links{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 20px;margin-top:16px}
         .intro-links a{display:inline-flex;align-items:center;min-height:44px;font-size:14px;font-weight:500;color:#1d4ed8;text-decoration:underline}
+        .intro-main .auth-footer{color:rgba(255,255,255,.92);font-size:14px}
+        .intro-main .auth-footer a{text-decoration:underline}
     </style>
 </head>
 <body>
