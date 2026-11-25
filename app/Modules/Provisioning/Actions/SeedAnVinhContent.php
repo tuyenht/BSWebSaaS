@@ -31,12 +31,15 @@ use App\Modules\Tenancy\Models\SiteSetting;
  *
  * Idempotent — anchored on localized slug (taxonomies/entries) or route path (pages).
  * Runs INSIDE the tenant context (caller enters it) so site_id is stamped and RLS-scoped.
- * card image_url = raw R2 key (EntryGridComponent resolves at render); page-section block
+ * card image_url = the storage key of the website's own copy of a seed file (EntryGridComponent
+ * resolves it at render); page-section block
  * images reference a media_id (BlockRenderer resolves it at render via MediaLibraryUrls).
  */
 final readonly class SeedAnVinhContent
 {
-    // R2 storage keys (from key-map.json — verbatim paths, never hard-coded base URLs)
+    // Seed files in the media bucket (from key-map.json — verbatim paths, never hard-coded base
+    // URLs). Every one is filed for the seeded website under its own code first
+    // (EnsureMediaFromKey::fromSeedSource), so no key outside the website's folder is ever written.
     private const string KEY_ABOUT = 'an-vinh/content/about-doi-ngu-a7b78a0a6ff7.jpg';
 
     private const string KEY_HERO = 'an-vinh/hero/hero-home-7ca90eafe212.jpg';
@@ -415,8 +418,8 @@ final readonly class SeedAnVinhContent
     {
         // Page-section images reference a media_id (BlockRenderer resolves + snaps width at render);
         // materialize the library row for each fixed brand key so there is an id to point at.
-        $aboutId = $this->ensureMedia->handle(self::KEY_ABOUT)->id;
-        $heroId = $this->ensureMedia->handle(self::KEY_HERO)->id;
+        $aboutId = $this->ensureMedia->fromSeedSource(self::KEY_ABOUT)->id;
+        $heroId = $this->ensureMedia->fromSeedSource(self::KEY_HERO)->id;
 
         $blocks = [
             ['type' => 'hero', 'props' => [
@@ -509,7 +512,7 @@ final readonly class SeedAnVinhContent
      */
     private function createGioiThieuPage(string $locale): void
     {
-        $aboutId = $this->ensureMedia->handle(self::KEY_ABOUT)->id;
+        $aboutId = $this->ensureMedia->fromSeedSource(self::KEY_ABOUT)->id;
 
         $blocks = [
             ['type' => 'about', 'props' => [
@@ -626,17 +629,19 @@ final readonly class SeedAnVinhContent
         // - og_image: fallback og:image; per-entry images override this in StorefrontController
         // - address/phone/email/license: NAP for the footer; conditional — tenants without
         //   these keys get a minimal footer so no An Vinh content leaks to other tenants
+        $logo = $this->ensureMedia->fromSeedSource(self::KEY_LOGO)->storage_key;
+        $about = $this->ensureMedia->fromSeedSource(self::KEY_ABOUT)->storage_key;
         SiteSetting::query()->updateOrCreate(
             ['group_name' => 'general', 'key' => 'brand'],
             ['value' => [
                 'name' => 'Cơ Khí Chính Xác An Vinh',
                 'legal_name' => 'Công ty TNHH TM & DV Thiết Kế Gia Công Cơ Khí An Vinh',
-                'logo' => $this->media->url(self::KEY_LOGO),
+                'logo' => $this->media->url($logo),
                 // Browser-tab icon (PNG is fine). Interim: a small cut of the logo until An Vinh
                 // supplies a dedicated favicon file — still beats showing the platform's icon.
-                'favicon' => $this->media->url(self::KEY_LOGO, 64),
+                'favicon' => $this->media->url($logo, 64),
                 'description' => 'Dẫn đầu về giải pháp cơ khí chính xác, chuyên thiết kế, gia công đồ gá, jig, và khuôn mẫu chất lượng cao tại Việt Nam.',
-                'og_image' => $this->media->url(self::KEY_ABOUT, 1280),
+                'og_image' => $this->media->url($about, 1280),
                 // Combined address string — used by the footer display and as fallback streetAddress
                 // for tenants that haven't been re-seeded with the split NAP fields below.
                 'address' => 'Thôn Xuân Sơn, Xã Trung Giã, TP Hà Nội',
@@ -670,7 +675,8 @@ final readonly class SeedAnVinhContent
     /**
      * Create a published post (product / project / service / news) under the given categories.
      * The first category ID is the primary one (drives routing). If $blocks is empty, falls back
-     * to a single richtext block from $excerpt. Card image: raw R2 key stored in meta['image_url']
+     * to a single richtext block from $excerpt. Card image: a seed file's key (filed for the website
+     * under its code first) stored in meta['image_url'], or a glyph name without a slash
      * (EntryGridComponent resolves it at render time via MediaUrlResolver).
      *
      * @param  list<int>  $categoryIds  first = primary category (prefix for routing)
@@ -685,6 +691,10 @@ final readonly class SeedAnVinhContent
         array $categoryIds,
         array $blocks = [],
     ): void {
+        if (str_contains($image, '/')) {
+            $image = $this->ensureMedia->fromSeedSource($image)->storage_key;
+        }
+
         $existing = EntryTranslation::query()->where('locale', $locale)->where('slug', $slug)->first();
         if ($existing !== null) {
             // Re-seed: the post's text is admin-owned, but the featured image is canonical here — so

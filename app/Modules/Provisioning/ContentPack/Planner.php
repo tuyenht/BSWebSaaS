@@ -31,6 +31,7 @@ use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormField;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Media\Support\MediaKeyPrefix;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\PermalinkConfig;
@@ -65,7 +66,8 @@ use Illuminate\Support\Facades\DB;
  * against the routes before anything is written (addresses()).
  *
  * Images: a slot resolves to the site's media row holding the slot's own file (same collection, same
- * sha256 — what the image step, `--media`, uploads), else to the row its `legacy_key` names. A block
+ * sha256 — what the image step, `--media`, uploads), else to the row its `legacy_key` names (or that
+ * file under the site's own code, where media:rekey-site and the seeders file it). A block
  * image prop whose slot does not resolve is left out; a card image, a product gallery or a setting
  * whose slot does not resolve keeps its live value. Rows in the Trash never resolve.
  */
@@ -140,6 +142,7 @@ final class Planner
         private readonly PathBuilder $paths,
         private readonly PermalinkConfig $permalinks,
         private readonly CategoryRelinker $relinker,
+        private readonly MediaKeyPrefix $prefix,
     ) {}
 
     /**
@@ -379,22 +382,31 @@ final class Planner
             }
         }
 
+        // A legacy key names a file filed before website codes; media:rekey-site and the seeders file
+        // it as `{code}/{file name}`, so that key is looked for as well (the old one first).
         $keys = [];
+        $folder = null;
         foreach ($pack->slots as $name => $slot) {
             $legacy = $slot['legacy_key'] ?? null;
             if ($this->slots[$name] === null && is_string($legacy) && $legacy !== '') {
-                $keys[$name] = $legacy;
+                $folder ??= $this->prefix->forNewObject('library');
+                $keys[$name] = [$legacy, $folder.basename($legacy)];
             }
         }
         if ($keys === []) {
             return;
         }
 
-        $media = Media::query()->whereIn('storage_key', array_values($keys))->get(['id', 'storage_key', 'mime', 'size'])->keyBy('storage_key');
-        foreach ($keys as $name => $key) {
-            $row = $media->get($key);
-            if ($row instanceof Media) {
-                $this->slots[$name] = ['id' => $row->id, 'key' => $row->storage_key, 'mime' => $row->mime, 'size' => $row->size];
+        $media = Media::query()->whereIn('storage_key', array_values(array_unique(array_merge(...array_values($keys)))))
+            ->get(['id', 'storage_key', 'mime', 'size'])->keyBy('storage_key');
+        foreach ($keys as $name => $candidates) {
+            foreach ($candidates as $key) {
+                $row = $media->get($key);
+                if ($row instanceof Media) {
+                    $this->slots[$name] = ['id' => $row->id, 'key' => $row->storage_key, 'mime' => $row->mime, 'size' => $row->size];
+
+                    break;
+                }
             }
         }
     }

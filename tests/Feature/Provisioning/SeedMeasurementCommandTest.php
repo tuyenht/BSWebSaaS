@@ -47,7 +47,7 @@ it('seeds the measurement page and the news card grid', function (): void {
     $page = $this->get('http://cwv.platform.test/do-kiem')->assertOk()->getContent();
     expect($page)->toContain('data-sf-slider')
         ->and(substr_count($page, 'role="group" aria-roledescription="slide"'))->toBe(3)
-        ->and($page)->toContain('src="http://cwv.platform.test/cwv-media/cwv/library/slide-1.webp"')
+        ->and($page)->toContain('src="http://cwv.platform.test/cwv-media/'.siteCode($siteId).'/slide-1.webp"')
         ->and($page)->toContain('sf-cards--icon')
         ->and($page)->toContain('sf-cards--product-overlay')
         ->and($page)->toContain('sf-features')
@@ -76,13 +76,23 @@ it('points every photo row at a fixture file the CI job copies', function (): vo
     $this->artisan('site:seed-measurement', ['--host' => 'cwv.platform.test'])->assertSuccessful();
 
     $keys = app(Tenancy::class)->enter($siteId, fn () => Media::query()->orderBy('storage_key')->pluck('storage_key')->all());
-    $files = array_map(fn (string $name): string => SeedMeasurementSite::KEY_PREFIX.$name.'.webp', array_keys(SeedMeasurementSite::PHOTOS));
+    $files = array_map(fn (string $name): string => siteCode($siteId).'/'.$name.'.webp', array_keys(SeedMeasurementSite::PHOTOS));
     sort($files);
 
     expect($keys)->toBe($files);
     foreach (array_keys(SeedMeasurementSite::PHOTOS) as $name) {
         expect(base_path("tests/Fixtures/cwv/{$name}.webp"))->toBeFile();
     }
+});
+
+it('prints the folder of the photos\' keys for the CI job, and seeds nothing then', function (): void {
+    $siteId = StorefrontCards::site('Đo tốc độ', 'cwv.platform.test');
+
+    $this->artisan('site:seed-measurement', ['--host' => 'cwv.platform.test', '--photo-folder' => true])
+        ->expectsOutput(siteCode($siteId).'/')
+        ->assertSuccessful();
+
+    expect(measurementCounts($siteId)['media'])->toBe(0);
 });
 
 it('changes nothing when run again', function (): void {

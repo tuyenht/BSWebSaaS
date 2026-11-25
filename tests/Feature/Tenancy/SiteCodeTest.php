@@ -116,7 +116,7 @@ it('never issues a folder of old storage keys as a code', function (): void {
 
     try {
         expect(siteCodeState(fn () => insertSite(['code' => 'c0k4ac'])))->toBe('23514')
-            ->and(DB::table('reserved_site_codes')->where('code', 'an-vinh')->value('reason'))->toBe('seed_folder');
+            ->and(DB::table('reserved_site_codes')->where('code', 'an-vinh')->value('reason'))->toBe('legacy_key');   // closed once the seeders filed under codes
     } finally {
         $admin->table('reserved_site_codes')->where('code', 'c0k4ac')->delete();
     }

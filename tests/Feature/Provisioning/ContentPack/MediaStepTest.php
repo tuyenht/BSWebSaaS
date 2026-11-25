@@ -126,9 +126,7 @@ it('files the images under the site\'s own code when another website\'s name gav
 });
 
 it('files the images under their collection in single-site mode', function (): void {
-    config(['media.tenant_prefix' => false]);
-
-    [$exit, $output] = mediaLoad();
+    [$exit, $output] = inSingleSiteMode(fn (): array => mediaLoad());
 
     expect($exit)->toBe(0, $output)
         ->and(packMedia($this->siteId)['header.png'] ?? '')->toMatch('#^library/header-[0-9a-f]{4}\.png$#');
@@ -429,6 +427,26 @@ it('leaves the download button out, with a warning, while its document is not up
     [$exit, $output] = ContentPacks::load();
     expect($exit)->toBe(0, $output)
         ->and(aboutLastBlock($this->siteId))->toMatchArray(['button_label' => 'Tải hồ sơ'])->not->toHaveKey('button_url_do');
+});
+
+it('finds a legacy_key\'s file under the site\'s own code, where media:rekey-site and the seeders file it', function (): void {
+    profileButton($this->folder);
+    $moved = siteCode($this->siteId).'/ho-so-ab12cd.pdf';
+    ContentPacks::in($this->siteId, fn () => Media::query()->create([
+        'collection' => 'library', 'slug' => 'ho-so', 'hash' => hash('sha256', 'ho-so'),
+        'storage_key' => $moved, 'mime' => 'application/pdf', 'size' => 2048,
+    ]));
+    ContentPacks::edit($this->folder, 'media.json', function (array $media): array {
+        $media['slots'] = array_map(fn (array $slot): array => $slot['slot'] === 'profile'
+            ? ['slot' => 'profile', 'kind' => 'document', 'legacy_key' => 'an-vinh/tai-lieu/ho-so-ab12cd.pdf']
+            : $slot, $media['slots']);
+
+        return $media;
+    });
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)
+        ->and(aboutLastBlock($this->siteId))->toMatchArray(['button_url_do' => ['k' => 'file', 'file' => $moved]]);
 });
 
 it('leaves the download button out when its document slot names an existing image', function (): void {

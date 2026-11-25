@@ -17,6 +17,7 @@ use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\EnsureMediaFromKey;
+use App\Modules\Media\Support\MediaKeyPrefix;
 use App\Modules\Provisioning\Support\FirstOwner;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteSetting;
@@ -39,9 +40,6 @@ use Carbon\CarbonImmutable;
  */
 final readonly class SeedMeasurementSite
 {
-    /** Where the CI job copies the fixture photos, under the static media base. */
-    public const string KEY_PREFIX = 'cwv/library/';
-
     /** @var array<string, array{0: int, 1: int}> photo name => master width, height */
     public const array PHOTOS = [
         'slide-1' => [640, 360], 'slide-2' => [640, 360], 'slide-3' => [640, 360],
@@ -68,7 +66,17 @@ final readonly class SeedMeasurementSite
         private TaxonomyPaths $paths,
         private EnsureMediaFromKey $media,
         private FirstOwner $owner,
+        private MediaKeyPrefix $prefix,
     ) {}
+
+    /**
+     * The folder of the photos' keys (`{code}/`, the website's own, like every upload): the CI job
+     * copies the fixture photos there, under the static media base. Inside the site's tenant context.
+     */
+    public function photoFolder(): string
+    {
+        return $this->prefix->forNewObject('library');
+    }
 
     public function handle(): void
     {
@@ -300,8 +308,9 @@ final readonly class SeedMeasurementSite
     private function seedPhotos(): array
     {
         $photos = [];
+        $folder = $this->photoFolder();
         foreach (self::PHOTOS as $name => [$width, $height]) {
-            $photos[$name] = $this->media->handle(self::KEY_PREFIX.$name.'.webp', ['width' => $width, 'height' => $height]);
+            $photos[$name] = $this->media->handle($folder.$name.'.webp', ['width' => $width, 'height' => $height]);
         }
 
         return $photos;

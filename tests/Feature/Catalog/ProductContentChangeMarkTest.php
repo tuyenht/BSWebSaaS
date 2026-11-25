@@ -340,7 +340,7 @@ it('moves the mark when the An Vinh promotion gives an existing product its cove
         $jigs = Taxonomy::query()->create(['vocabulary' => 'product_cat', 'parent_id' => $sanPham->id, 'position' => 0]);
         $jigs->translations()->create(['locale' => 'vi', 'name' => 'Đồ gá', 'slug' => 'do-ga']);
 
-        $post = Entry::query()->create(['type' => 'post', 'status' => 'published', 'published_at' => now(), 'meta' => ['image_url' => 'an-vinh/san-pham/sp-jig-1-abc123def456.jpg']]);
+        $post = Entry::query()->create(['type' => 'post', 'status' => 'published', 'published_at' => now(), 'meta' => ['image_url' => 'a-vinh/san-pham/sp-jig-1-abc123def456.jpg']]);
         $post->translations()->create([
             'locale' => 'vi', 'title' => 'Ấn bản đồ gá kiểm về phố', 'slug' => 'jig-kiem-1', 'status' => 'published',
             'body' => ['blocks' => [['type' => 'richtext', 'props' => ['heading' => 'Đồ gá kiểm', 'paragraphs' => ['Độ chính xác cao ở']]]]],

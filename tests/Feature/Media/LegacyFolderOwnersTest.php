@@ -174,11 +174,11 @@ it('registers a key under the website\'s own old folder, a seeded folder and a s
     ownLegacyFolder('cu-a', 1);
     ownLegacyFolder('trung-ten', 1);
     ownLegacyFolder('trung-ten', 2);
-    DB::connection('pgsql_admin')->table('reserved_site_codes')->insertOrIgnore(['code' => 'cwv', 'reason' => 'seed_folder']);
+    DB::connection('pgsql_admin')->table('reserved_site_codes')->insertOrIgnore(['code' => 'mau-cwv', 'reason' => 'seed_folder']);
 
     $rows = app(Tenancy::class)->enter(1, fn (): array => array_map(
         fn (string $key): bool => app(EnsureMediaFromKey::class)->handle($key)->exists,
-        ['cu-a/library/logo-ab12cd.png', 'cwv/library/logo-ab12cd.png', 'trung-ten/library/logo-ab12cd.png'],
+        ['cu-a/library/logo-ab12cd.png', 'mau-cwv/library/logo-ab12cd.png', 'trung-ten/library/logo-ab12cd.png'],
     ));
 
     expect($rows)->toBe([true, true, true]);
