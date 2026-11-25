@@ -391,23 +391,26 @@
                             @endforeach
                         </div>
                     @else
-                        <div class="overflow-x-auto px-4 pb-3">
+                        {{-- the columns follow the files area's own width (board 12): below 600 the name carries «type · size ·
+                             dimensions · where used»; from 600 the type, size and «Nơi dùng» columns show and the name carries the
+                             dimensions and upload day; from 900 every column shows --}}
+                        <div class="@container/tvm overflow-x-auto px-4 pb-3">
                             <table class="w-full border-collapse text-body text-text">
                                 <caption class="sr-only">{{ $placeName }}</caption>
                                 <thead>
-                                    <tr class="border-b border-border text-start text-small text-text-muted">
+                                    <tr class="border-b border-border text-start text-small whitespace-nowrap text-text-muted">
                                         <th scope="col" class="w-11 py-2">
                                             @if ($canPick && $pageUlids !== [])
                                                 <input type="checkbox" class="size-5 rounded border-border-strong accent-primary" @checked($allOn) wire:click="{{ $selectCall }}" aria-label="{{ __('media.lib.sel_all_aria') }}">
                                             @endif
                                         </th>
                                         <th scope="col" class="w-14 py-2"><span class="sr-only">{{ __('media.lib.col_thumb') }}</span></th>
-                                        <th scope="col" class="py-2 text-start font-medium">{{ __('media.lib.col_name') }}</th>
-                                        <th scope="col" class="hidden py-2 text-start font-medium min-[900px]:table-cell">{{ __('media.lib.col_type') }}</th>
-                                        <th scope="col" class="hidden py-2 text-start font-medium min-[1100px]:table-cell">{{ __('media.lib.col_dims') }}</th>
-                                        <th scope="col" class="hidden py-2 text-end font-medium min-[600px]:table-cell">{{ __('media.lib.col_size') }}</th>
-                                        <th scope="col" class="hidden py-2 ps-3 text-start font-medium min-[600px]:table-cell">{{ __('media.lib.col_use') }}</th>
-                                        <th scope="col" class="hidden py-2 text-start font-medium min-[1100px]:table-cell">{{ __('media.lib.col_date') }}</th>
+                                        <th scope="col" class="w-full py-2 text-start font-medium">{{ __('media.lib.col_name') }}</th>
+                                        <th scope="col" class="hidden py-2 ps-3 text-start font-medium @min-[37.5rem]/tvm:table-cell">{{ __('media.lib.col_type') }}</th>
+                                        <th scope="col" class="hidden py-2 text-start font-medium @min-[56.25rem]/tvm:table-cell">{{ __('media.lib.col_dims') }}</th>
+                                        <th scope="col" class="hidden py-2 ps-3 text-end font-medium @min-[37.5rem]/tvm:table-cell">{{ __('media.lib.col_size') }}</th>
+                                        <th scope="col" class="hidden py-2 ps-3 text-start font-medium @min-[37.5rem]/tvm:table-cell">{{ __('media.lib.col_use') }}</th>
+                                        <th scope="col" class="hidden py-2 text-start font-medium @min-[56.25rem]/tvm:table-cell">{{ __('media.lib.col_date') }}</th>
                                         <th scope="col" class="py-2"><span class="sr-only">{{ __('admin.actions') }}</span></th>
                                     </tr>
                                 </thead>
@@ -417,12 +420,12 @@
                                         @php $name = $m->original_filename ?: $m->slug ?: $extOf($m); @endphp
                                         @php $chip = $useChip($m); @endphp
                                         <tr wire:key="ml-{{ $m->ulid }}" @class(['border-b border-border', 'bg-primary/7' => $on])>
-                                            <td class="py-1.5">
+                                            <td class="py-1.5 pe-3">
                                                 @if ($canPick)
                                                     <input type="checkbox" class="size-5 rounded border-border-strong accent-primary" @checked($on) wire:click="togglePick({{ Js::from($m->ulid) }})" aria-label="{{ __($on ? 'media.lib.unpick_one' : 'media.lib.pick_one', ['name' => $name]) }}">
                                                 @endif
                                             </td>
-                                            <td class="py-1.5">
+                                            <td class="py-1.5 pe-3">
                                                 <button type="button" class="flex size-11 items-center justify-center overflow-hidden rounded bg-surface-muted" wire:click="openDetail({{ Js::from($m->ulid) }})" aria-label="{{ __('media.lib.open', ['name' => $name]) }}">
                                                     @if (str_starts_with($m->mime, 'image/'))
                                                         <img src="{{ $urls->url($m->storage_key, 96) }}" alt="" loading="lazy" class="size-full object-cover">
@@ -433,14 +436,16 @@
                                             </td>
                                             <td class="max-w-0 py-1.5 pe-3">
                                                 <button type="button" id="mopen-{{ $m->ulid }}" class="block max-w-full truncate text-start font-medium text-text hover:text-primary-text" wire:click="openDetail({{ Js::from($m->ulid) }})" title="{{ $name }}">{{ $name }}</button>
-                                                <span class="block truncate text-small text-text-muted min-[1100px]:hidden">{{ $extOf($m) }} · {{ $dims($m) }} · {{ Library::bytes((int) $m->size) }}<span class="min-[600px]:hidden"> · {{ $chip['text'] }}</span></span>
+                                                @php $upDay = $m->created_at?->timezone(config('app.timezone'))->format('d/m/Y'); @endphp
+                                                <span class="block truncate text-small text-text-muted @min-[37.5rem]/tvm:hidden">{{ $extOf($m) }} · {{ $dims($m) }} · {{ Library::bytes((int) $m->size) }} · {{ $chip['text'] }}</span>
+                                                <span class="hidden truncate text-small text-text-muted @min-[37.5rem]/tvm:block @min-[56.25rem]/tvm:hidden">{{ $dims($m) }} · {{ $upDay }}</span>
                                             </td>
-                                            <td class="hidden py-1.5 min-[900px]:table-cell">{{ $extOf($m) }}</td>
-                                            <td class="hidden py-1.5 whitespace-nowrap min-[1100px]:table-cell">{{ $dims($m) }}</td>
-                                            <td class="hidden py-1.5 text-end whitespace-nowrap min-[600px]:table-cell">{{ Library::bytes((int) $m->size) }}</td>
-                                            <td class="hidden py-1.5 ps-3 min-[600px]:table-cell"><span data-use="{{ $chip['tone'] }}" class="inline-flex min-h-6 max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-caption font-semibold leading-[1.4] [overflow-wrap:anywhere] {{ $chipFill[$chip['tone']] }} {{ $chipInk[$chip['tone']] }}"><x-bs-admin::icon :name="$chip['icon']" class="size-[1.1em] shrink-0" />{{ $chip['text'] }}</span></td>
-                                            <td class="hidden py-1.5 whitespace-nowrap min-[1100px]:table-cell">{{ $m->created_at?->timezone(config('app.timezone'))->format('d/m/Y') }}</td>
-                                            <td class="py-1.5 text-end"><x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="openDetail({{ Js::from($m->ulid) }})">{{ __('media.lib.details') }}</x-bs-admin::button></td>
+                                            <td class="hidden py-1.5 ps-3 @min-[37.5rem]/tvm:table-cell">{{ $extOf($m) }}</td>
+                                            <td class="hidden py-1.5 whitespace-nowrap @min-[56.25rem]/tvm:table-cell">{{ $dims($m) }}</td>
+                                            <td class="hidden py-1.5 ps-3 text-end whitespace-nowrap @min-[37.5rem]/tvm:table-cell">{{ Library::bytes((int) $m->size) }}</td>
+                                            <td class="hidden py-1.5 ps-3 @min-[37.5rem]/tvm:table-cell"><span data-use="{{ $chip['tone'] }}" class="inline-flex min-h-6 max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-caption font-semibold leading-[1.4] [overflow-wrap:anywhere] @min-[48rem]/tv:whitespace-nowrap {{ $chipFill[$chip['tone']] }} {{ $chipInk[$chip['tone']] }}"><x-bs-admin::icon :name="$chip['icon']" class="size-[1.1em] shrink-0" />{{ $chip['text'] }}</span></td>
+                                            <td class="hidden py-1.5 whitespace-nowrap @min-[56.25rem]/tvm:table-cell">{{ $upDay }}</td>
+                                            <td class="py-1.5 ps-3 text-end whitespace-nowrap"><x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="openDetail({{ Js::from($m->ulid) }})">{{ __('media.lib.details') }}</x-bs-admin::button></td>
                                         </tr>
                                     @endforeach
                                 </tbody>
