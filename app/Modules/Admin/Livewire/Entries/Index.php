@@ -28,6 +28,7 @@ use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\EntryDraftRejectedException;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
+use App\Modules\Cms\Exceptions\ExpiredContentException;
 use App\Modules\Cms\Exceptions\HomePageLockedException;
 use App\Modules\Cms\Exceptions\PageMoveRejectedException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
@@ -695,6 +696,10 @@ final class Index extends Component
             $this->refuse($refused->getMessage());   // the live Home page: the menu hides the move, the action refuses it
 
             return;
+        } catch (ExpiredContentException $refused) {
+            $this->refuse($refused->getMessage());   // past its end time: the end time is moved or cleared first
+
+            return;
         } catch (AuthorizationException) {
             $this->refuse($this->refusalFor($entry, 'status'));
 
@@ -746,6 +751,10 @@ final class Index extends Component
             $this->move($entry, $key, $note);
         } catch (InvalidTransitionException) {
             $this->toast(__('admin.wfb.err_stale'));   // moved on elsewhere meanwhile, or the flow changed
+
+            return;
+        } catch (ExpiredContentException $refused) {
+            $this->refuse($refused->getMessage());   // past its end time: the end time is moved or cleared first
 
             return;
         } catch (AuthorizationException) {
@@ -841,6 +850,10 @@ final class Index extends Component
             $this->refuse($refused->getMessage());   // the live Home page: the menu hides the item, the action refuses it
 
             return null;
+        } catch (ExpiredContentException $refused) {
+            $this->refuse($refused->getMessage());   // past its end time: the end time is moved or cleared first
+
+            return null;
         } catch (AuthorizationException) {
             $this->refuse($this->refusalFor($entry, 'status'));
 
@@ -870,6 +883,10 @@ final class Index extends Component
             $moved = app(TransitionEntryStatus::class)->unschedule($entry, $this->actingUser());
         } catch (ModelNotFoundException) {
             $this->toastStaleRow();
+
+            return;
+        } catch (ExpiredContentException $refused) {
+            $this->refuse($refused->getMessage());   // past its end time: the end time is moved or cleared first
 
             return;
         } catch (AuthorizationException) {
@@ -2022,7 +2039,7 @@ final class Index extends Component
             return null;
         }
 
-        $tally = [$doneKey => 0, $skippedKey => 0, 'entries.bulk_governed' => 0, 'entries.bulk_path_taken' => 0, 'entries.bulk_failed' => 0];
+        $tally = [$doneKey => 0, $skippedKey => 0, 'entries.bulk_governed' => 0, 'entries.bulk_path_taken' => 0, 'entries.bulk_expired' => 0, 'entries.bulk_failed' => 0];
         $done = [];
         $counts = app(CategoryItemCounts::class);
 
@@ -2074,7 +2091,7 @@ final class Index extends Component
     {
         $tally = $run['tally'];
         $parts = [Cast::string(__($doneKey, ['count' => $tally[$doneKey]] + $replace))];
-        foreach ([$skippedKey, 'entries.bulk_governed', 'entries.bulk_path_taken', 'entries.bulk_failed'] as $key) {
+        foreach ([$skippedKey, 'entries.bulk_governed', 'entries.bulk_path_taken', 'entries.bulk_expired', 'entries.bulk_failed'] as $key) {
             if ($tally[$key] > 0) {
                 $parts[] = Cast::string(__($key, ['count' => $tally[$key]]));
             }
@@ -2260,6 +2277,8 @@ final class Index extends Component
             return $counts->batch(fn (): bool => DB::transaction(fn (): bool => $action($entry))) ? $doneKey : $skippedKey;
         } catch (WorkflowGovernedException) {
             return 'entries.bulk_governed';   // left as is: only the editor's approval block may move it
+        } catch (ExpiredContentException) {
+            return 'entries.bulk_expired';    // past its end time: it would come down again at once
         } catch (AuthorizationException) {
             return $skippedKey;               // not theirs to change: an expected answer, not a fault
         } catch (RouteConflictException) {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Provisioning\Console;
 
 use App\Modules\Audit\Facades\Audit;
+use App\Modules\Audit\Support\DateChangeAudit;
 use App\Modules\Cms\Support\PageRules;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Provisioning\ContentPack\Applier;
@@ -159,7 +160,8 @@ final class LoadContentPackCommand extends Command
                 // again here, under the transaction, against the backup taken before it opened.
                 $backup->assertRemovalsUnchanged($plan, $snapshot);
 
-                $written = app(Applier::class)->apply($plan, $planner);
+                // every date the load changes (publish time, end time, display day) is audited as the pack's
+                $written = app(DateChangeAudit::class)->during(DateChangeAudit::VIA_CONTENT_PACK, fn (): int => app(Applier::class)->apply($plan, $planner));
                 $this->recordLedger($plan, $planner);
 
                 if ($written > 0) {

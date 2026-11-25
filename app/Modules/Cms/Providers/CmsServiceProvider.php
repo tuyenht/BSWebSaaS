@@ -19,6 +19,7 @@ use App\Modules\Cms\Console\ReconcileFormPlacements;
 use App\Modules\Cms\Console\ResanitizePageBodies;
 use App\Modules\Cms\Console\RetirePrivateEntryStatus;
 use App\Modules\Cms\Console\SnapshotPublishedEntries;
+use App\Modules\Cms\Console\UnpublishDueEntries;
 use App\Modules\Cms\Events\EntryPublished;
 use App\Modules\Cms\Jobs\PlaceNewForm;
 use App\Modules\Cms\Listeners\AddPublishedPageToMenu;
@@ -152,6 +153,7 @@ final class CmsServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 PublishDueEntries::class,
+                UnpublishDueEntries::class,
                 FlushEntryViews::class,
                 RebuildTaxonomyPaths::class,
                 SnapshotPublishedEntries::class,

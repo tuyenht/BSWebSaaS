@@ -4,6 +4,7 @@ namespace App\Modules\Cms\Actions;
 
 use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Exceptions\EntryDraftRejectedException;
+use App\Modules\Cms\Exceptions\ExpiredContentException;
 use App\Modules\Cms\Exceptions\HomePageLockedException;
 use App\Modules\Cms\Exceptions\SchedulePastException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
@@ -182,6 +183,7 @@ final readonly class TransitionEntryStatus
             if ($publishAt === null || $publishAt <= now()) {
                 throw new SchedulePastException;
             }
+            ExpiredContentException::guard($entry->expires_at, $publishAt);
 
             if ($governed) {
                 throw new WorkflowGovernedException;

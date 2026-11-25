@@ -19,6 +19,7 @@ use App\Modules\Catalog\Models\ProductImage;
 use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Catalog\Support\CatalogMode;
 use App\Modules\Catalog\Support\UniqueViolation;
+use App\Modules\Cms\Exceptions\ExpiredContentException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\PathBuilder;
@@ -953,10 +954,10 @@ final class Index extends Component
     {
         $this->guardWrite('update');
         $label = __($to === 'published' ? 'catalog.bulk_publish' : 'catalog.bulk_archive');
-        $done = $skipped = $failed = 0;
+        $done = $skipped = $failed = $expired = 0;
         $undo = [];
         $last = null;
-        if (! $this->atomic(function () use ($to, &$done, &$skipped, &$failed, &$undo, &$last): void {
+        if (! $this->atomic(function () use ($to, &$done, &$skipped, &$failed, &$expired, &$undo, &$last): void {
             foreach ($this->pickRows($this->selected, false) as $product) {
                 // "Đăng" is for what is not live yet; "Gỡ khỏi website" only for what is live
                 if (($to === 'published') === ($product->status === 'published')) {
@@ -968,7 +969,11 @@ final class Index extends Component
                 try {
                     app(ChangeProductStatus::class)->handle($product, $to);
                 } catch (RouteConflictException) {
-                    $failed++;
+                    $failed++;   // an address taken: this row only
+
+                    continue;
+                } catch (ExpiredContentException) {
+                    $expired++;   // past its end time (it would come down again at once): this row only
 
                     continue;
                 } catch (UniqueConstraintViolationException $e) {
@@ -986,9 +991,16 @@ final class Index extends Component
         }
 
         $why = __($to === 'published' ? 'catalog.bulk_why_published' : 'catalog.bulk_why_unpublished', ['count' => $skipped]);
+        $refused = [];
+        if ($failed > 0) {
+            $refused[] = __('catalog.bulk_failed_route', ['count' => $failed]);
+        }
+        if ($expired > 0) {
+            $refused[] = __('catalog.bulk_failed_expired', ['count' => $expired]);
+        }
         if ($done === 0) {
-            if ($failed > 0) {
-                $this->say(__('catalog.bulk_failed_route', ['count' => $failed]), 'error');
+            if ($refused !== []) {
+                $this->say(implode(' ', $refused), 'error');
             } elseif ($skipped > 0) {
                 $this->say(__('catalog.bulk_none_can', ['label' => $label, 'why' => $why]), 'info');
             } else {
@@ -1000,10 +1012,7 @@ final class Index extends Component
         $parts = [$done === 1 && $last !== null
             ? __('catalog.toast_status_'.$to, ['name' => $this->loadedName($last)])
             : __('catalog.bulk_status_'.$to, ['count' => $done])];
-        if ($failed > 0) {
-            $parts[] = __('catalog.bulk_failed_route', ['count' => $failed]);
-        }
-        $this->say(implode(' ', $parts), 'success', ['kind' => 'bulk_status', 'items' => $undo]);
+        $this->say(implode(' ', [...$parts, ...$refused]), 'success', ['kind' => 'bulk_status', 'items' => $undo]);
     }
 
     /**

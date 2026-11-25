@@ -4,6 +4,7 @@ namespace App\Modules\Catalog\Actions;
 
 use App\Modules\Catalog\Actions\Concerns\AuthorizesCatalogChange;
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Exceptions\ExpiredContentException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Routing\RouteSync;
 use Illuminate\Support\Facades\DB;
@@ -47,11 +48,19 @@ final class ChangeProductStatus
      * storefront orders by it) and its address. With a locale and slug only that language is
      * written (the editor's save); without them every language the product has.
      *
+     * $goingLive is false for a save of a product that was already live: one past its end time in
+     * the minute before the sweep takes it down still saves (it is not being put online again).
+     *
      * @throws RouteConflictException
+     * @throws ExpiredContentException going live at or after its end time
      */
-    public function publishEffects(Product $product, ?string $locale = null, ?string $slug = null): void
+    public function publishEffects(Product $product, ?string $locale = null, ?string $slug = null, bool $goingLive = true): void
     {
         $this->authorizeCatalog('update', $product);
+        // past its end time it would be taken down again at once: the end time is moved or cleared first
+        if ($goingLive) {
+            ExpiredContentException::guard($product->expires_at);
+        }
         if ($product->published_at === null) {
             $product->forceFill(['published_at' => now()])->save();
         }

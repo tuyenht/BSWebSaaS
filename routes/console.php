@@ -103,6 +103,12 @@ Schedule::command('forms:resume-deletes')->hourly()->withoutOverlapping();
 // Runs on the `scheduler` container (docker compose schedule:work).
 Schedule::command('entries:publish-due')->everyMinute()->withoutOverlapping();
 
+// Take off the website the posts, pages and products whose end time has come (status=published,
+// expires_at<=now → archived, «Gỡ khỏi website»). Their detail pages already answer 404 from that
+// moment; the sweep is what takes them out of the lists, the sitemap and search, and purges the edge.
+Schedule::command('entries:unpublish-due')->everyMinute()->withoutOverlapping();
+Schedule::command('products:unpublish-due')->everyMinute()->withoutOverlapping();
+
 // Drain each site's Valkey-buffered storefront views into entries.view_count.
 Schedule::command('entries:flush-views')->everyFiveMinutes()->withoutOverlapping();
 
