@@ -59,11 +59,16 @@
             'lineFull', 'lineEmpty', 'slugPage', 'slugAuto', 'slugKeep', 'slugWarn', 'outerOpt', 'unsavedTitle', 'unsavedText',
             'unsavedDrop', 'unsavedSave', 'saved', 'added', 'copied', 'example', 'tplGone', 'lockedOpt', 'onSave', 'saveMove',
             'cxSaveTitle', 'save', 'stFull', 'stEmpty', 'stMiss', 'langProg',
+            'bandTop', 'bandBot', 'bandShortNone', 'bandShortOwnN', 'bandShortOwnEmpty', 'bandShortDefN', 'bandShortDefEmpty',
+            'bandNoneT', 'bandNoneS', 'bandEmptyOwn', 'bandEmptyDef', 'bandEmptyS', 'bandOwnT', 'bandOwnS', 'bandDefT', 'bandDefS',
+            'bandHintOwnHas', 'bandHintOwnEmpty', 'bandHintDef', 'bandOptDefHas', 'bandOptDefNone', 'bandDrop', 'bandPage', 'bandPageAny',
+            'bandOpening', 'bandMapAria',
         ])->mapWithKeys(fn (string $k): array => [$k => $u(\Illuminate\Support\Str::snake($k))])->all();
         $config = [
             'section' => $screen['section']['key'], 'label' => $label, 'main' => $main, 'locales' => $locales, 'langNames' => $langNames,
             'bases' => $bases, 'layouts' => $layouts, 'detailLayouts' => $detailLayouts, 'products' => $products, 'canManage' => $canManage, 'limits' => $screen['limits'], 'texts' => $texts,
             'support' => $support, 'supportWhy' => $supWhy,
+            'bandSite' => $bandSite, 'bandUrl' => $bandUrl, 'open' => $open, 'flash' => $flash,
         ];
         // a few names to start from, for the standard sections (a section of the website's own has none)
         $exampleSet = ['posts' => 'n', 'services' => 's', 'projects' => 'j', 'catalog' => 'p'][$screen['section']['key']] ?? null;
@@ -208,7 +213,7 @@
                                 $slug = '/'.($n['slugs'][$main] ?? '');
                                 $tpl = $layoutName($n['listTemplate']);
                                 $lockWhy = ! $isRoot && ! $n['movable'] ? __('categories.reason_outside_category_limits') : null;
-                                $data = collect($n)->only(['key', 'parent', 'name', 'names', 'slugs', 'descriptions', 'seoTitles', 'seoDescriptions', 'trail', 'listTemplate', 'detailTemplate', 'cover', 'items', 'locked', 'editable', 'movable'])->all();
+                                $data = collect($n)->only(['key', 'parent', 'name', 'names', 'slugs', 'descriptions', 'seoTitles', 'seoDescriptions', 'trail', 'listTemplate', 'detailTemplate', 'cover', 'items', 'locked', 'editable', 'movable', 'bands'])->all();
                                 $canChild = $canManage && ! $support && $r['level'] < $depth;
                                 $changeOff = $lockWhy !== null || ! $canManage || $support;
                                 $changeWhy = $lockWhy ?? ($support ? $supWhy : null);
@@ -449,6 +454,66 @@
                             @if ($hint)<p class="text-small text-text-muted">{{ $hint }}</p>@endif
                         </div>
                     @endforeach
+                    {{-- «Khối trên danh sách / Khối dưới danh sách» (board 10 .cm-bands): the page in three parts, then each
+                         band in its own box — what it shows now in the drawer's language, «Sửa trong Trình dựng trang» (the
+                         band's blocks in the builder, BandEditor) and where it takes its blocks from. Saved with the drawer. --}}
+                    <section id="cm-bands" class="flex min-w-0 flex-col gap-3 border-t border-border pt-4" aria-labelledby="cm-bands-t">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h3 id="cm-bands-t" class="m-0 text-body font-semibold text-text-strong [overflow-wrap:anywhere]">{{ $u('bands_title') }}</h3>
+                            @if ($multi)<span class="text-caption text-text-muted" x-text="cur.toUpperCase()"></span>@endif
+                        </div>
+                        <p class="m-0 text-small text-text-muted">{{ $u('bands_lead') }}</p>
+                        <ol class="m-0 flex list-none flex-col gap-1 rounded-md bg-surface-muted p-2" x-bind:aria-label="pan ? bandMapLabel : ''">
+                            @foreach (['before_list' => null, 'list' => $u('band_list'), 'after_list' => null] as $part => $text)
+                                <li @class([
+                                    'flex flex-wrap items-center justify-between gap-x-2 rounded border px-3 py-1 text-small',
+                                    'border-dashed border-border-input bg-surface text-text' => $text === null,
+                                    'border-border bg-transparent text-text-muted' => $text !== null,
+                                ])>
+                                    <span>{{ $text ?? ($part === 'before_list' ? $u('band_top') : $u('band_bot')) }}</span>
+                                    <small class="text-caption font-semibold text-text-muted" @if ($text === null) x-text="pan ? bandView('{{ $part }}').short : ''" @endif>{{ $text !== null ? $u('band_auto') : '' }}</small>
+                                </li>
+                            @endforeach
+                        </ol>
+                        @foreach (\App\Modules\Admin\Support\Categories\CategoryBands::SLOTS as $bandSlot)
+                            <div class="flex min-w-0 flex-col gap-3 rounded-md border border-border-strong px-4 pt-3 pb-4" role="group" aria-labelledby="cm-b-{{ $bandSlot }}-t" data-cm-band="{{ $bandSlot }}">
+                                <h4 id="cm-b-{{ $bandSlot }}-t" class="m-0 text-small font-semibold text-text-strong">{{ $bandSlot === 'before_list' ? $u('band_top') : $u('band_bot') }}</h4>
+                                <div class="flex min-w-0 items-start gap-3 rounded bg-surface-muted p-3 text-small text-text" x-bind:data-k="pan ? bandView('{{ $bandSlot }}').kind : ''">
+                                    <span class="shrink-0" x-bind:class="pan && ['empty', 'none'].includes(bandView('{{ $bandSlot }}').kind) ? 'text-text-muted' : 'text-primary-text'" aria-hidden="true">
+                                        <span x-show="pan && bandView('{{ $bandSlot }}').kind === 'none'"><x-bs-admin::icon name="ri-eye-off" class="size-5" /></span>
+                                        <span x-show="pan && bandView('{{ $bandSlot }}').kind === 'empty'"><x-bs-admin::icon name="ri-inbox" class="size-5" /></span>
+                                        <span x-show="pan && ['own', 'default'].includes(bandView('{{ $bandSlot }}').kind)"><x-bs-admin::icon name="{{ $bandSlot === 'before_list' ? 'ri-layout-top' : 'ri-layout-bottom' }}" class="size-5" /></span>
+                                    </span>
+                                    <div class="min-w-0 [overflow-wrap:anywhere]">
+                                        <b class="block font-semibold text-text-strong" x-text="pan ? bandView('{{ $bandSlot }}').nowTitle : ''"></b>
+                                        <template x-if="pan && bandView('{{ $bandSlot }}').list.length">
+                                            <ul class="my-1 list-disc ps-5"><template x-for="(x, i) in bandView('{{ $bandSlot }}').list" :key="i"><li x-text="x"></li></template></ul>
+                                        </template>
+                                        <span class="block text-small text-text-muted" x-text="pan ? bandView('{{ $bandSlot }}').nowSub : ''"></span>
+                                    </div>
+                                </div>
+                                <template x-if="pan && bandView('{{ $bandSlot }}').canEdit">
+                                    <div class="flex flex-col gap-1.5">
+                                        <span><x-bs-admin::button size="sm" variant="outline" color="neutral" class="max-w-full" aria-describedby="cm-b-{{ $bandSlot }}-h" x-on:click="editBand('{{ $bandSlot }}')"
+                                            aria-disabled="{{ $off }}" :title="$offWhy"><x-bs-admin::icon name="ri-layout-masonry" class="size-4" /> {{ $u('band_edit') }}</x-bs-admin::button></span>
+                                        <p id="cm-b-{{ $bandSlot }}-h" class="m-0 text-small text-text-muted" x-text="bandView('{{ $bandSlot }}').editHint"></p>
+                                    </div>
+                                </template>
+                                <fieldset class="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
+                                    <legend class="mb-1.5 p-0 text-small font-semibold text-text-strong">{{ $u('band_from') }}</legend>
+                                    @foreach (['default' => [$u('band_opt_def'), null], 'own' => [$u('band_opt_own'), $u('band_opt_own_s')], 'none' => [$u('band_opt_none'), $u('band_opt_none_s')]] as $mode => [$label, $sub])
+                                        <label class="flex min-h-hit cursor-pointer items-start gap-2.5 rounded border border-border-strong px-3 py-2.5 has-[:checked]:border-primary-text has-[:checked]:bg-[color-mix(in_srgb,var(--color-primary-text)_6%,transparent)]">
+                                            <input type="radio" name="cm-b-{{ $bandSlot }}" value="{{ $mode }}" class="mt-0.5 size-4.5 shrink-0 accent-primary-text" x-model="pan.d.bands['{{ $bandSlot }}']" />
+                                            <span class="min-w-0 text-body text-text [overflow-wrap:anywhere]">{{ $label }}<span class="block text-small text-text-muted" @if ($sub === null) x-text="pan ? bandView('{{ $bandSlot }}').defSub : ''" @endif>{{ $sub }}</span></span>
+                                        </label>
+                                    @endforeach
+                                </fieldset>
+                                <template x-if="pan && bandView('{{ $bandSlot }}').dropWarn">
+                                    <x-bs-admin::alert color="warning" role="status"><span x-text="bandView('{{ $bandSlot }}').dropText"></span></x-bs-admin::alert>
+                                </template>
+                            </div>
+                        @endforeach
+                    </section>
                     <div class="flex flex-col gap-1.5">
                         <label for="cm-desc" class="text-small font-semibold text-text-strong">{{ $u('f_desc') }}@if ($multi) <span class="text-caption text-text-muted" x-text="cur.toUpperCase()"></span>@endif</label>
                         <textarea id="cm-desc" rows="3" maxlength="{{ $screen['limits']['description'] }}" x-model="pan.d.descriptions[cur]" placeholder="{{ $products ? $u('desc_ph_products') : $u('desc_ph_posts') }}"
