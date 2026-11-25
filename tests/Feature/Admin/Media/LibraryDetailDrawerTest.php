@@ -620,6 +620,6 @@ it('opens the drawer on a flat query budget, however many places use the file', 
         // the page's own redraw (with the page's use chips, one statement; the filter groups' counts wait
         // for the filters to open) plus the file, its folder, its uses and its people: measured BUDGET
         expect($page->viewData('manyUploaders'))->toBeTrue()
-            ->and($b)->toBe($a)->toBeLessThanOrEqual(99);
+            ->and($b)->toBe($a)->toBeLessThanOrEqual(1);
     });
 });

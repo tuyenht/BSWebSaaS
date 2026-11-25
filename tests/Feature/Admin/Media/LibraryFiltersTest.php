@@ -318,7 +318,8 @@ it('counts the use chips from the page’s own media ids, never reading the entr
     app(Tenancy::class)->enter(1, fn () => Entry::query()->create(['type' => 'post', 'status' => 'published', 'meta' => ['image_url' => $file->storage_key]]));
 
     app(Tenancy::class)->enter(1, function () use ($me, $file): void {
-        $sql = mfSql(fn () => app(MediaUsageLocator::class)->countsFor(Media::query()->whereKey($file->id)->get()));
+        $files = Media::query()->whereKey($file->id)->get();
+        $sql = mfSql(fn () => app(MediaUsageLocator::class)->countsFor($files));
         expect($sql)->toHaveCount(1)
             ->and($sql[0])->not->toContain('image_url')->not->toContain('"entries"."meta"');
 
