@@ -67,6 +67,7 @@ use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\BlockMediaUsage;
 use App\Modules\Cms\Support\CategoryScopes;
+use App\Modules\Cms\Support\EntryTags;
 use App\Modules\Forms\Actions\StoreLeadFile;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
@@ -818,11 +819,13 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
             'seo_description' => 'Nhà xưởng mới rộng 5.000 m² với dây chuyền CNC 5 trục, rút ngắn thời gian giao hàng còn một nửa cho khách hàng trong nước và xuất khẩu sang Nhật Bản, Hàn Quốc.',
             'cover_alt' => 'Thợ đứng máy phay CNC 5 trục trong nhà xưởng mới',
             'body' => ['blocks' => []]]);
+        // «Thẻ» (board 07): two tags, so «Thêm tùy chọn» opens on its cards
+        app(EntryTags::class)->assign($entry, 'vi', ['Máy phay 5 trục', 'CNC']);
 
         return $entry;
     });
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$post->ulid.'/edit')->assertOk()->getContent();
-    expect($html)->toContain('data-seo-fields', 'wire:model="excerpt"', 'id="entry-cover-alt"');
+    expect($html)->toContain('data-seo-fields', 'wire:model="excerpt"', 'id="entry-cover-alt"', 'data-post-tags', 'Bỏ thẻ CNC');
     file_put_contents($dir.'/post-editor.html', $html);
     // The language bar (board 07) on the English version: written in part (title, link and short
     // description), Japanese not written yet (switched on above: the test's app keeps the site's

@@ -440,7 +440,8 @@ describe('query budget', function (): void {
 
         // The section is found from the category's tree path: no query per level above it. 24 when
         // written: the member, the site and its settings, the post with its category, the live route.
+        // 25 with the post's tags, read in one query whatever their number.
         expect($deep)->toBe($middle)
-            ->and($middle)->toBeLessThanOrEqual(24);
+            ->and($middle)->toBeLessThanOrEqual(25);
     });
 });

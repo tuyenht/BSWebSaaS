@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Storefront\Support;
 
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -27,7 +29,8 @@ use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
  *  - an entry that is a form's thank-you page (noindex, see ThankYouPages) is left out;
  *  - an entry route: the entry is published (soft-deletes respected) AND its translation in the
  *    route's language is published;
- *  - a category route: the category has a translation in the route's language;
+ *  - a category route: the category has a translation in the route's language; a tag route also needs
+ *    two posts published in that language (the tag page is noindex until then);
  *  - a product route: the product is published (soft-deletes respected) and has a translation in
  *    the route's language. Cms's SiteRoute stays Catalog-agnostic (no product relation), so the
  *    Storefront matches product_id against a Catalog subquery here.
@@ -288,7 +291,17 @@ final readonly class SitemapRoutes
                         ->where('entry_translations.status', 'published')))
                     ->orWhereHas('taxonomy', fn (Builder $taxonomy) => $taxonomy
                         ->whereHas('translations', fn (Builder $translation) => $translation
-                            ->whereColumn('taxonomy_translations.locale', 'routes.locale')))
+                            ->whereColumn('taxonomy_translations.locale', 'routes.locale'))
+                        // a tag page is listed once it holds two posts published in the route's language
+                        // (it is noindex until then): at most two pivot rows read per tag, with no COUNT
+                        ->where(fn (Builder $kind) => $kind->where('taxonomies.vocabulary', '!=', Taxonomy::TAG)
+                            ->orWhereRaw('cardinality(array(select 1 from entry_taxonomies et
+                                join entries e on e.site_id = et.site_id and e.id = et.entry_id
+                                    and e.type = \'post\' and e.status = \'published\' and e.deleted_at is null
+                                where et.site_id = taxonomies.site_id and et.taxonomy_id = taxonomies.id and et.position >= ?
+                                    and exists (select 1 from entry_translations t where t.site_id = e.site_id and t.entry_id = e.id
+                                        and t.locale = routes.locale and t.status = \'published\')
+                                limit 2)) = 2', [Entry::FACET_POSITION_BASE])))
                     ->orWhereIn('product_id', Product::query()
                         ->select('products.id')
                         ->where('status', 'published')

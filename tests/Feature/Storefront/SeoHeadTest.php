@@ -99,7 +99,7 @@ it('emits canonical + OG article + BreadcrumbList on a post, no extra queries', 
             ->toContain('<nav class="sf-crumbs sf-crumbs--dark post-band__crumbs"');  // the visible trail
     });
 
-    expect($count)->toBeLessThanOrEqual(18);   // SEO reuses resolved data → no new queries (+2: previous, next, related)
+    expect($count)->toBeLessThanOrEqual(19);   // SEO reuses resolved data → no new queries (+2: previous, next, related; +1: the post's tags)
 });
 
 it('emits canonical + OG website + BreadcrumbList on a category list', function (): void {

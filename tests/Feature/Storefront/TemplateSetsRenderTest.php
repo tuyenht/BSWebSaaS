@@ -61,7 +61,7 @@ it('shows a place that follows its parent on the job card list', function (): vo
         ->and(jobPage('/tin-tuyen-dung'))->toContain('sf-card--job');
 });
 
-it('prints JobPosting data for a post on a job layout, with no deadline until posts have one', function (): void {
+it('prints JobPosting data for a post on a job layout, with no deadline when the post has no deadline chip', function (): void {
     jobSite();
     $html = jobPage('/ha-noi/tho-tien-cnc');
 
@@ -69,6 +69,16 @@ it('prints JobPosting data for a post on a job layout, with no deadline until po
         ->toContain('"title":"Thợ tiện CNC"')
         ->not->toContain('validThrough')
         ->not->toContain('"@type":"Article"');
+});
+
+it('prints validThrough as the end of the day named by the Hạn nộp chip', function (): void {
+    $siteId = jobSite();
+    app(Tenancy::class)->enter($siteId, function (): void {
+        Entry::query()->whereHas('translations', fn ($q) => $q->where('slug', 'tho-tien-cnc'))->firstOrFail()
+            ->forceFill(['meta' => ['facts' => [['text' => ['vi' => 'Hạn nộp: 5/12/2026'], 'tone' => 'plain']]]])->save();
+    });
+
+    expect(jobLd(jobPage('/ha-noi/tho-tien-cnc'))['validThrough'])->toBe('2026-12-05T23:59:59+07:00');
 });
 
 /** The JobPosting object printed in the page head, or null when the page carries none. */
@@ -267,7 +277,7 @@ it('shows the filter chips of a job list from two child categories', function ()
     expect(jobPage('/tin-tuyen-dung'))->toContain('sf-chips__chip')->toContain('Ứng viên mới')->toContain('Thạch Thất');
 });
 
-it('draws the job band of a post: open tag, badge, title and the facts as chips, with no deadline in the data', function (): void {
+it('draws the job band of a post: open tag, badge, title and the facts as chips, with the deadline of its chip in the data', function (): void {
     jobSite();
     jobFacts();
     $html = jobPage('/ha-noi/tho-tien-cnc');
@@ -278,7 +288,7 @@ it('draws the job band of a post: open tag, badge, title and the facts as chips,
         ->toContain('<li class="post-band__fact post-band__fact--accent">Lương: 9 – 14 triệu/tháng</li>')
         ->toContain('<li class="post-band__fact">Nhà máy 3 – Thạch Thất</li>')
         ->not->toContain('<script>x</script>')
-        ->not->toContain('validThrough');
+        ->toContain('"validThrough":"2026-12-15T23:59:59+07:00"');
 });
 
 it('keeps the standard post band for a post that is not on the job layout', function (): void {

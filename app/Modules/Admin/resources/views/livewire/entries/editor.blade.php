@@ -317,7 +317,7 @@
                  closed per browser as in the product editor (localStorage 'bs-editor'); a refused value opens it, and so does
                  a value already set (a page's parent, preset by «Thêm trang con» too; a post's own look or shown day), so it shows. --}}
             <div class="flex min-w-0 flex-[1_1_300px] flex-col gap-4"
-                 @if ($isPage || $type === 'post') @if (($isPage && $parentUlid !== null) || (! $isPage && ($templateKey !== '' || $displayDate !== ''))) data-more-open @endif x-data="{ more: false, init() { if ('moreOpen' in this.$el.dataset) { this.more = true; return } try { this.more = JSON.parse(localStorage.getItem('bs-editor') || '{}').more === true } catch (e) {} }, setMore(on) { this.more = on; try { const o = JSON.parse(localStorage.getItem('bs-editor') || '{}') || {}; o.more = on; localStorage.setItem('bs-editor', JSON.stringify(o)) } catch (e) {} } }" @endif>
+                 @if ($isPage || $type === 'post') @if (($isPage && $parentUlid !== null) || (! $isPage && ($templateKey !== '' || $displayDate !== '' || $tags !== []))) data-more-open @endif x-data="{ more: false, init() { if ('moreOpen' in this.$el.dataset) { this.more = true; return } try { this.more = JSON.parse(localStorage.getItem('bs-editor') || '{}').more === true } catch (e) {} }, setMore(on) { this.more = on; try { const o = JSON.parse(localStorage.getItem('bs-editor') || '{}') || {}; o.more = on; localStorage.setItem('bs-editor', JSON.stringify(o)) } catch (e) {} } }" @endif>
                 <section class="{{ $card }}" aria-labelledby="entry-pub-h">
                     <div class="flex items-center justify-between gap-2.5 border-b border-border px-4 py-3">
                         <h2 id="entry-pub-h" class="{{ $cardTitle }}">{{ __('entries.ed.card_publish') }}</h2>
@@ -650,7 +650,48 @@
                             <span class="ped-ms-s" x-text="more ? @js(__('catalog.ed.less_sub_s')) : @js(__('entries.ed.more_sub_post_s'))">{{ __('entries.ed.more_sub_post_s') }}</span>
                         </span>
                     </button>
-                    @if ($errors->has('templateKey') || $errors->has('displayDate')) <span hidden x-init="more = true"></span> @endif
+                    @if ($errors->has('templateKey') || $errors->has('displayDate') || $errors->has('tagDraft') || $errors->has('tags') || $errors->has('tags.*')) <span hidden x-init="more = true"></span> @endif
+                    {{-- «Thẻ» (design 07): the post's tags in this language, each with «Bỏ thẻ»; a name typed and added
+                         with Enter (or «Thêm», several split at commas) joins them, and makes a tag on save when none has
+                         it. Written to the website at once, so it stays as it is while this member's saves wait for
+                         approval (Editor::addTag, EntryTags). --}}
+                    @php($tagError = $errors->first('tagDraft') ?: ($errors->first('tags') ?: $errors->first('tags.*')))
+                    @php($tagDesc = 'entry-tag-h'.($tagsHeld ? ' entry-tag-ro' : '').($tagError !== '' ? ' entry-tag-e' : ''))
+                    <section id="entry-tags" class="{{ $card }}" aria-labelledby="entry-tags-h" data-post-tags x-show="more" x-cloak>
+                        <div class="{{ $cardHead }}">
+                            <h2 id="entry-tags-h" class="{{ $cardTitle }}">{{ __('entries.ed.card_tags') }}</h2>
+                        </div>
+                        <div class="flex flex-col gap-2.5 p-4">
+                            @if ($tags !== [])
+                                <ul class="m-0 flex list-none flex-wrap gap-1.5 p-0" aria-label="{{ __('entries.ed.card_tags') }}">
+                                    @foreach ($tags as $i => $tagName)
+                                        <li wire:key="tag-{{ $i }}-{{ md5($tagName) }}" class="inline-flex max-w-full items-center gap-1 rounded-full bg-surface-hover py-0.5 ps-2 pe-1 text-caption font-semibold text-text">
+                                            <span class="min-w-0 [overflow-wrap:anywhere]">{{ $tagName }}</span>
+                                            @unless ($tagsHeld)
+                                                <button type="button" wire:click="removeTag({{ $i }})" aria-label="{{ __('entries.ed.tag_remove', ['name' => $tagName]) }}" title="{{ __('entries.ed.tag_remove', ['name' => $tagName]) }}"
+                                                        class="inline-flex min-h-6 min-w-6 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface hover:text-text any-pointer-coarse:min-h-hit any-pointer-coarse:min-w-hit">
+                                                    <x-bs-admin::icon name="ri-close" :class="$glyph" />
+                                                </button>
+                                            @endunless
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                            <div class="flex gap-2">
+                                <input type="text" id="entry-tag-in" wire:model="tagDraft" wire:keydown.enter.prevent="addTag" x-on:keydown="if ($event.key === ',') { $event.preventDefault(); $wire.addTag() }"
+                                       maxlength="{{ \App\Modules\Cms\Support\EntryTags::NAME_MAX * 4 }}" autocomplete="off" placeholder="{{ __('entries.ed.tag_ph') }}"
+                                       aria-label="{{ __('entries.ed.tag_label') }}" aria-describedby="{{ $tagDesc }}" @readonly($tagsHeld) @if ($tagsHeld) aria-readonly="true" @endif
+                                       @if ($tagError !== '') aria-invalid="true" @endif
+                                       class="field min-w-0 flex-[1_1_auto] {{ $fieldLook }}">
+                                <x-bs-admin::button variant="outline" color="neutral" size="sm" wire:click="addTag" wire:loading.attr="disabled" wire:target="addTag" :disabled="$tagsHeld">
+                                    <x-bs-admin::icon name="ri-add" :class="$glyph" /> {{ __('entries.ed.tag_add') }}
+                                </x-bs-admin::button>
+                            </div>
+                            @if ($tagError !== '') <x-bs-admin::field-error id="entry-tag-e">{{ $tagError }}</x-bs-admin::field-error> @endif
+                            @if ($tagsHeld) <p id="entry-tag-ro" class="m-0 text-caption text-text-muted [overflow-wrap:anywhere]">{{ __('entries.ed.tag_held') }}</p> @endif
+                            <p id="entry-tag-h" class="m-0 text-caption text-text-muted [overflow-wrap:anywhere]">{{ __('entries.ed.tag_hint') }}</p>
+                        </div>
+                    </section>
                     {{-- «Thuộc tính bài» (design 07): the post's own look over its category's layout, and the day it shows as
                          published (empty = the real day). Both are every language's (Editor::$templateKey, $displayDate). --}}
                     <section id="entry-post-props" class="{{ $card }}" aria-labelledby="entry-post-props-h" data-post-props x-show="more" x-cloak>

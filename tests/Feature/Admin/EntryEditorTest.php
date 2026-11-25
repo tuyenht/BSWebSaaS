@@ -284,7 +284,7 @@ it('refuses the site search address for a page with a plain message that says wh
             ->test(Editor::class)
             ->set('title', 'Tìm kiếm')->set('slug', 'tim-kiem')->call('addBlock', 'hero')
             ->call('publish')->assertHasErrors('slug')
-            ->assertSee('Đường dẫn này dành cho trang tìm kiếm của website. Hãy chọn đường dẫn khác, ví dụ thêm vài chữ vào cuối.');
+            ->assertSee('Đường dẫn này dành cho một trang có sẵn của website (trang tìm kiếm hoặc trang thẻ). Hãy chọn đường dẫn khác, ví dụ thêm vài chữ vào cuối.');
 
         expect(SiteRoute::query()->where('path', '/tim-kiem')->exists())->toBeFalse();
     });
