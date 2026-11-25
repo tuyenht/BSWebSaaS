@@ -94,6 +94,8 @@ function seedTenancy(): void
     // A removed website's code stays reserved (never issued again); truncate removes none, but a test
     // that deleted site A or B would otherwise keep its code from the next seed.
     $admin->table('reserved_site_codes')->where('reason', 'deleted_site')->delete();
+    // Old media folders owned by a website: truncate fires no delete trigger, and the ids restart.
+    $admin->table('reserved_site_codes')->where('reason', 'legacy_key')->whereNotNull('site_id')->delete();
 
     $admin->table('tenants')->insert([
         'ulid' => 'TENANT0000000000000000001', 'name' => 'T1', 'settings' => '{}',

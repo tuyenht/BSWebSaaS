@@ -22,13 +22,9 @@ final readonly class MediaKeyPrefix
     public function forNewObject(string $collection): string
     {
         if (config('media.tenant_prefix', true) !== true) {
-            // A collection shaped like a website code could sit under a code issued later: the
-            // database refuses it, so it is refused here with the reason.
-            if (preg_match(MediaKey::CODE_PATTERN, $collection) === 1) {
-                throw MediaKeyRejectedException::malformed('single-site collection (it looks like a website code)', $collection);
-            }
-            if (MediaKey::isReservedFirstSegment($collection)) {
-                throw MediaKeyRejectedException::malformed('single-site collection (the folder is the platform\'s)', $collection);
+            // The database accepts a first folder that is a collection only for these names.
+            if (! in_array($collection, MediaKey::COLLECTIONS, true)) {
+                throw MediaKeyRejectedException::malformed('single-site collection (not one of '.implode(', ', MediaKey::COLLECTIONS).')', $collection);
             }
             $prefix = $collection.'/';
         } else {

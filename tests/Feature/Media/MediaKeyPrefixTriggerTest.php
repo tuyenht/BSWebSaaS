@@ -102,10 +102,11 @@ it('keeps the platform\'s sys folder out of every website, the single-site colle
         ->and(app(Tenancy::class)->enter(1, fn () => Media::query()->count()))->toBe(0);
 });
 
-it('reserves in the database the same platform folder the application names', function (): void {
-    $platform = DB::connection('pgsql_admin')->table('reserved_site_codes')->where('reason', 'platform')->pluck('code')->all();
+it('reserves in the database the same platform folder and collections the application names', function (): void {
+    $reserved = fn (string $reason): array => DB::connection('pgsql_admin')->table('reserved_site_codes')->where('reason', $reason)->orderBy('id')->pluck('code')->all();
 
-    expect($platform)->toBe([MediaKey::SYSTEM_SEGMENT])
+    expect($reserved('platform'))->toBe([MediaKey::SYSTEM_SEGMENT])
+        ->and($reserved('collection'))->toBe(MediaKey::COLLECTIONS)
         ->and(MediaKey::isReservedFirstSegment('sys'))->toBeTrue()
         ->and(MediaKey::isReservedFirstSegment('_incoming'))->toBeTrue()
         ->and(MediaKey::isReservedFirstSegment('_anything'))->toBeTrue()
@@ -113,19 +114,33 @@ it('reserves in the database the same platform folder the application names', fu
         ->and(MediaKey::isReservedFirstSegment('library'))->toBeFalse();
 });
 
-it('refuses a single-site collection that is a platform folder before writing anything', function (string $collection): void {
+it('refuses a single-site collection that is not one of the fixed collections before writing anything', function (string $collection): void {
     config(['media.tenant_prefix' => false]);
 
     app(Tenancy::class)->enter(1, fn () => app(MediaKeyPrefix::class)->forNewObject($collection));
-})->with(['sys', '_private'])->throws(MediaKeyRejectedException::class);
+})->with(['sys', '_private', 'hero', 'p3nd1n'])->throws(MediaKeyRejectedException::class);
 
-it('keeps old keys working under a frozen folder, and single-site keys under their collection', function (): void {
+it('gives a single-site upload its collection as the first folder', function (): void {
+    config(['media.tenant_prefix' => false]);
+
+    expect(app(Tenancy::class)->enter(1, fn () => app(MediaKeyPrefix::class)->forNewObject('cover')))->toBe('cover/');
+});
+
+it('keeps old keys working under a seeded folder, and single-site keys under a fixed collection', function (): void {
     $seeded = mediaRowFor(1, 'an-vinh/hero/hero-home-7ca90eafe212.jpg');
     $single = mediaRowFor(1, 'library/logo-ab12.png');
-    $hero = mediaRowFor(1, 'hero/banner-ab12.png', ['collection' => 'hero']);
+    $cover = mediaRowFor(1, 'cover/banner-ab12.png', ['collection' => 'cover']);
 
-    expect($seeded->exists)->toBeTrue()->and($single->exists)->toBeTrue()->and($hero->exists)->toBeTrue()
-        ->and(prefixRuleState(fn () => mediaRowFor(1, 'hero/khac-ab12.png')))->toBe('23514');   // collection library
+    expect($seeded->exists)->toBeTrue()->and($single->exists)->toBeTrue()->and($cover->exists)->toBeTrue()
+        ->and(prefixRuleState(fn () => mediaRowFor(1, 'cover/khac-ab12.png')))->toBe('23514')            // collection library
+        ->and(prefixRuleState(fn () => mediaRowFor(1, 'hero/banner-ab12.png', ['collection' => 'hero'])))->toBe('23514');   // not a fixed collection
+});
+
+it('refuses a single-site key that another website already holds', function (): void {
+    mediaRowFor(1, 'library/logo-ab12.png');
+
+    expect(prefixRuleState(fn () => mediaRowFor(2, 'library/logo-ab12.png')))->toBe('23514')
+        ->and(mediaRowFor(2, 'library/logo-cd34.png')->exists)->toBeTrue();
 });
 
 it('refuses an old key that another website already holds', function (): void {

@@ -40,6 +40,13 @@ final class MediaKey
     /** Files of website leads, on the `leads` disk when it shares the media bucket. */
     public const string PRIVATE_SEGMENT = '_private';
 
+    /**
+     * The collections of the single-site layout (`media.tenant_prefix` false), where the collection is
+     * the first folder (`library/logo-ab12.png`). The database accepts such a key only under one of
+     * these names (reserved_site_codes, reason `collection`), so no other first folder can pass for one.
+     */
+    public const array COLLECTIONS = ['library', 'cover', 'og', 'product'];
+
     /** The first segments that are never a website's: the one list (with every other `_…` segment). */
     public const array RESERVED_FIRST_SEGMENTS = [self::SYSTEM_SEGMENT, self::STAGING_SEGMENT, self::PRIVATE_SEGMENT];
 

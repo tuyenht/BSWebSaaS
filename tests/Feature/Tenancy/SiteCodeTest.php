@@ -111,10 +111,15 @@ it('reserves a removed website\'s code for good', function (): void {
 });
 
 it('never issues a folder of old storage keys as a code', function (): void {
-    DB::connection('pgsql_admin')->table('reserved_site_codes')->insertOrIgnore(['code' => 'c0k4ac', 'reason' => 'legacy_key']);
+    $admin = DB::connection('pgsql_admin');
+    $admin->table('reserved_site_codes')->insertOrIgnore(['code' => 'c0k4ac', 'reason' => 'legacy_key']);
 
-    expect(siteCodeState(fn () => insertSite(['code' => 'c0k4ac'])))->toBe('23514')
-        ->and(DB::table('reserved_site_codes')->where('code', 'an-vinh')->value('reason'))->toBe('legacy_key');
+    try {
+        expect(siteCodeState(fn () => insertSite(['code' => 'c0k4ac'])))->toBe('23514')
+            ->and(DB::table('reserved_site_codes')->where('code', 'an-vinh')->value('reason'))->toBe('seed_folder');
+    } finally {
+        $admin->table('reserved_site_codes')->where('code', 'c0k4ac')->delete();
+    }
 });
 
 it('keeps the reserved list read-only for the application', function (): void {

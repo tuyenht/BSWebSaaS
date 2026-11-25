@@ -55,7 +55,10 @@ runbook stays the reference for what each step does and why.
    docker exec bsweb_prod_pg sh -c 'psql -U "$POSTGRES_USER" -d bswebsaas -tAc "SELECT site_id, storage_key FROM media WHERE storage_key !~ '"'"'^[A-Za-z0-9][A-Za-z0-9._-]*(/[A-Za-z0-9][A-Za-z0-9._-]*)+$'"'"' OR split_part(storage_key, '"'"'/'"'"', 1) = '"'"'sys'"'"'"'
    docker exec bsweb_prod_pg sh -c 'psql -U "$POSTGRES_USER" -d bswebsaas -tAc "SELECT storage_key FROM media GROUP BY storage_key HAVING count(DISTINCT site_id) > 1"'
    ```
-   It freezes the first folder of every existing key (`reserved_site_codes`), so old pictures keep working and no code is drawn from them. Once an upload is filed under a website code, its rollback refuses to run: restore the pre-deploy dump instead.
+   It freezes old folders in `reserved_site_codes` (reason `legacy_key`, with the owning website in `site_id`), so old pictures keep working, no code is drawn from them, and no other website may write under them:
+   - the first folder of every existing key, owned by the website whose rows use it;
+   - the slug of every website's name (trashed ones too), owned by that website. Between the migration (step 2) and the new code going live, the running code still uploads as `{slug(name)}/{collection}/…`; these frozen folders are why those uploads are accepted in that window. Do not create a website between the migration and the new code going live: its name is not frozen, so the old code's uploads for it are refused.
+   Two websites with the same name own one folder together; there a key is accepted for one of them only. The migration runs in one transaction with `lock_timeout = 5s`: if it stops on a lock timeout, nothing changed; rerun it once traffic is quiet. Once an upload is filed under a website code, its rollback refuses to run: restore the pre-deploy dump instead.
 
 ## Deploy
 
