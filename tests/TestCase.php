@@ -8,6 +8,7 @@ use App\Modules\Shared\Http\SafeHttp;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Livewire\Features\SupportDisablingBackButtonCache\SupportDisablingBackButtonCache;
 use PDO;
 
 abstract class TestCase extends BaseTestCase
@@ -26,6 +27,11 @@ abstract class TestCase extends BaseTestCase
         parent::setUp();
 
         self::holdSharedDatabaseLock();
+
+        // Livewire turns this static flag on whenever a component boots and turns it off only when an
+        // HTTP response passes its middleware. A test that ends after Livewire::test leaves it on, and
+        // the next test's first request then gets Livewire's no-cache headers instead of its own.
+        SupportDisablingBackButtonCache::$disableBackButtonCache = false;
 
         // Admin views use @vite; under test there is no asset build (the pest CI job does
         // not run vite), so stub Vite to render nothing instead of throwing on a missing
