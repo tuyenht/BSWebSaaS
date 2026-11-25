@@ -750,8 +750,8 @@ final readonly class PackValidator
     }
 
     /**
-     * A content section (sections.json): a post section built on one of the pack's post categories,
-     * one section per category. Its key is the section's own key (stable, in the admin's links and
+     * A content section (sections.json): a post section over one or several of the pack's post
+     * categories (`category`, or `categories` side by side), a category in one section at most; or a section the pack removes (its `remove` list: the key alone). Its key is the section's own key (stable, in the admin's links and
      * the permalink settings), its label one line of text as the section stores it.
      *
      * @param  array<string, true>  $taxonomies  category keys seen so far (taxonomies come first)
@@ -768,6 +768,9 @@ final readonly class PackValidator
         if (in_array($m[1], self::PLATFORM_SECTIONS, true)) {
             $errors[] = "{$item->key}: «{$m[1]}» is the platform's own section; a pack does not write it.";
         }
+        if ($item->removes()) {
+            return;   // a removal names the section only; what may go is decided against the site (Planner)
+        }
         $label = $item->data['label'] ?? null;
         if (! is_string($label) || $label === '' || trim($label) !== $label || mb_strlen($label) > self::TEXT_MAX || preg_match('/[\x00-\x1F\x7F<>]/u', $label) === 1) {
             $errors[] = "{$item->key}: label must be one line of text (at most ".self::TEXT_MAX.' characters, no tags, no spaces at the ends).';
@@ -775,16 +778,35 @@ final readonly class PackValidator
         if (($item->data['entry_type'] ?? null) !== 'post') {
             $errors[] = "{$item->key}: entry_type must be post (a pack creates post sections only).";
         }
-        $category = $item->data['category'] ?? null;
-        $chain = is_string($category) ? self::taxonomyChain($category) : null;
-        if (! is_string($category) || $chain === null || $chain['vocabulary'] !== 'post_cat') {
-            $errors[] = "{$item->key}: category must be a post category key (tax:post_cat/…).";
-        } elseif (! isset($taxonomies[$category])) {
-            $errors[] = "{$item->key}: category {$category} is not in taxonomies.json.";
-        } elseif (isset($categories[$category])) {
-            $errors[] = "{$item->key}: another section of the pack is built on {$category}.";
+        // One category (`category`), or several side by side (`categories`, the first one first).
+        $named = array_key_exists('categories', $item->data) ? $item->data['categories'] : [$item->data['category'] ?? null];
+        if (array_key_exists('categories', $item->data) && array_key_exists('category', $item->data)) {
+            $errors[] = "{$item->key}: name either category or categories, not both.";
+        } elseif (! is_array($named) || ! array_is_list($named) || $named === [] || count($named) > 20) {
+            $errors[] = "{$item->key}: categories must list from 1 to 20 post category keys.";
         } else {
-            $categories[$category] = true;
+            $chains = [];
+            foreach ($named as $category) {
+                $chain = is_string($category) ? self::taxonomyChain($category) : null;
+                if (! is_string($category) || $chain === null || $chain['vocabulary'] !== 'post_cat') {
+                    $errors[] = "{$item->key}: category must be a post category key (tax:post_cat/…).";
+                } elseif (! isset($taxonomies[$category])) {
+                    $errors[] = "{$item->key}: category {$category} is not in taxonomies.json.";
+                } elseif (isset($categories[$category])) {
+                    $errors[] = "{$item->key}: another section of the pack is built on {$category}.";
+                } else {
+                    $categories[$category] = true;
+                    $chains[$category] = $chain['slugs'];
+                }
+            }
+            // A category below another one of the list is already covered through it.
+            foreach ($chains as $category => $slugs) {
+                foreach ($chains as $other => $above) {
+                    if ($other !== $category && count($above) < count($slugs) && array_slice($slugs, 0, count($above)) === $above) {
+                        $errors[] = "{$item->key}: {$category} sits under {$other}, which the section already covers.";
+                    }
+                }
+            }
         }
         $icon = $item->data['icon'] ?? null;
         if ($icon !== null && (! is_string($icon) || strlen($icon) > 64 || preg_match('/\Ari-[a-z0-9]+(?:-[a-z0-9]+)*\z/', $icon) !== 1)) {

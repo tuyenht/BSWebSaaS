@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\ReviewInbox;
+use App\Modules\Admin\Support\Entries\ReviewWaiting;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\SaveEntrySeo;
 use App\Modules\Cms\Models\Entry;
@@ -12,6 +13,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Tenancy\Models\ContentSectionCategory;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Workflow\Actions\InstantiateWorkflow;
 use App\Modules\Workflow\Models\Workflow;
@@ -133,6 +135,34 @@ it('shows only what is waiting for me — not drafts, not live posts, not anothe
             ->assertDontSee('Bài site khác');
 
         expect($waiting->fresh()->workflow_state)->toBe('pending');
+    });
+});
+
+it('queues the posts under a second category the section covers, at that section\'s stage', function (): void {
+    $author = User::factory()->create();
+    $reviewer = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $reviewer): void {
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
+        grantRole($reviewer, 'reviewer', ['entries.review', 'entries.approve']);
+        inboxCollection();
+        // «Tuyển dụng» sits at the top of the tree beside «Tin tức», and the «Tin tức» section covers it too
+        $jobs = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 1]);
+        $jobs->translations()->create(['locale' => 'vi', 'name' => 'Tuyển dụng', 'slug' => 'tuyen-dung']);
+        $section = ContentSection::query()->where('key', 'posts')->firstOrFail();
+        ContentSectionCategory::query()->create(['site_id' => 1, 'content_section_id' => $section->id, 'taxonomy_id' => $jobs->id]);
+        $hanoi = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'parent_id' => $jobs->id, 'position' => 1]);
+        $hanoi->translations()->create(['locale' => 'vi', 'name' => 'Hà Nội', 'slug' => 'ha-noi']);
+
+        $offer = submittedPost($jobs->id, $author, 'Kỹ sư cơ khí', 'ky-su-co-khi');
+        $below = submittedPost($hanoi->id, $author, 'Kế toán kho', 'ke-toan-kho');
+        expect($offer->workflow_state)->toBe('pending')->and($below->workflow_state)->toBe('pending');
+
+        $read = app(ReviewWaiting::class)->read($reviewer->fresh(), 10);
+        expect($read['entries']->pluck('id')->sort()->values()->all())->toBe(collect([$offer->id, $below->id])->sort()->values()->all());
+
+        Livewire::actingAs($reviewer->fresh())->test(ReviewInbox::class)->set('tab', 'queue')
+            ->assertSee('Kỹ sư cơ khí')->assertSee('Kế toán kho');
     });
 });
 

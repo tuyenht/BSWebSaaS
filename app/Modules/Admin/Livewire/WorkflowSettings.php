@@ -217,7 +217,7 @@ final class WorkflowSettings extends Component
         $rows = $sections->map(function (ContentSection $section) use ($workflows, $counts, $movable): array {
             /** @var Workflow|null $workflow */
             $workflow = $workflows->get($section->key);
-            $tally = $counts[(int) $section->taxonomy_id] ?? null;
+            $tally = $counts[$section->id] ?? null;
             $saved = $this->savedState($workflow);
 
             return [
@@ -227,7 +227,7 @@ final class WorkflowSettings extends Component
                 'total' => is_numeric($tally?->total) ? (int) $tally->total : 0,
                 'writers' => is_numeric($tally?->writers) ? (int) $tally->writers : 0,
                 'pending' => is_numeric($tally?->pending) ? (int) $tally->pending : 0,
-                'movable' => $movable[(int) $section->taxonomy_id] ?? 0,
+                'movable' => $movable[$section->id] ?? 0,
                 'template' => $saved['template'],
                 'workflow_name' => $saved['template'] !== null ? $workflow?->name : null,
                 'active' => $saved['active'],
@@ -446,45 +446,45 @@ final class WorkflowSettings extends Component
 
     /**
      * Total, writer and pending tallies per section in ONE grouped query (§6 flat, not per-row):
-     * a post belongs to the section whose category, or one below it (branchSql()), is its primary
-     * category (pivot position 0), mirroring the list screen's scope so both surfaces always
-     * report the same numbers.
+     * a post belongs to the section that covers its primary category (pivot position 0), or one
+     * above it (branchSql()), mirroring the list screen's scope so both surfaces always report the
+     * same numbers.
      *
      * @param  Collection<int, ContentSection>  $sections
-     * @return array<int|string, \stdClass> rows of {taxonomy_id, total, writers, pending} keyed by taxonomy_id
+     * @return array<int|string, \stdClass> rows of {section_id, total, writers, pending} keyed by the section's id
      */
     private function sectionCounts(Collection $sections): array
     {
-        $taxonomyIds = $sections->pluck('taxonomy_id')->all();
+        $sectionIds = array_values(array_map(static fn (ContentSection $section): int => $section->id, $sections->all()));
 
-        if ($taxonomyIds === []) {
+        if ($sectionIds === []) {
             return [];
         }
 
         $site = app(CurrentSite::class)->id();
-        [$branch, $bindings] = $this->branchSql(array_values(array_map(Cast::int(...), $taxonomyIds)));
+        [$branch, $bindings] = $this->branchSql($sectionIds);
 
         $rows = DB::select($branch.<<<'SQL'
-            SELECT branch.section_root AS taxonomy_id, count(*) AS total, count(distinct e.author_id) AS writers,
+            SELECT branch.section_id, count(*) AS total, count(distinct e.author_id) AS writers,
                    count(*) filter (where e.status = 'pending') AS pending
             FROM branch
             JOIN entry_taxonomies AS et ON et.site_id = ? AND et.taxonomy_id = branch.id AND et.position = 0
             JOIN entries AS e ON e.site_id = ? AND e.id = et.entry_id AND e.deleted_at IS NULL
             WHERE NOT branch.looped
-            GROUP BY branch.section_root
+            GROUP BY branch.section_id
             SQL, [...$bindings, $site, $site]);
 
         $counts = [];
         foreach ($rows as $row) {
             /** @var \stdClass $row */
-            $counts[Cast::int($row->taxonomy_id ?? null)] = $row;
+            $counts[Cast::int($row->section_id ?? null)] = $row;
         }
 
         return $counts;
     }
 
     /**
-     * How many posts each section's change would move, keyed by the section's taxonomy_id, in ONE
+     * How many posts each section's change would move, keyed by the section's id, in ONE
      * query for every section: the posts restartInFlightEntries() releases — those holding a stage
      * of their own, or whose pending change does — so a confirm never names fewer than it moves.
      *
@@ -493,28 +493,28 @@ final class WorkflowSettings extends Component
      */
     private function movableCounts(Collection $sections): array
     {
-        $rootIds = array_values(array_unique(array_map(Cast::int(...), $sections->pluck('taxonomy_id')->filter()->all())));
-        if ($rootIds === []) {
+        $sectionIds = array_values(array_map(static fn (ContentSection $section): int => $section->id, $sections->all()));
+        if ($sectionIds === []) {
             return [];
         }
 
         $site = app(CurrentSite::class)->id();
-        [$branch, $bindings] = $this->branchSql($rootIds);
+        [$branch, $bindings] = $this->branchSql($sectionIds);
 
         $rows = DB::select($branch.<<<'SQL'
-            SELECT branch.section_root, count(*) AS movable
+            SELECT branch.section_id, count(*) AS movable
             FROM branch
             JOIN entry_taxonomies AS et ON et.site_id = ? AND et.taxonomy_id = branch.id AND et.position = 0
             JOIN entries AS e ON e.site_id = ? AND e.id = et.entry_id AND e.deleted_at IS NULL
             LEFT JOIN entry_drafts AS d ON d.site_id = ? AND d.entry_id = e.id
             WHERE NOT branch.looped AND (e.workflow_state IS NOT NULL OR d.workflow_state IS NOT NULL)
-            GROUP BY branch.section_root
+            GROUP BY branch.section_id
             SQL, [...$bindings, $site, $site, $site]);
 
         $counts = [];
         foreach ($rows as $row) {
             $row = (array) $row;
-            $counts[Cast::int($row['section_root'] ?? null)] = Cast::int($row['movable'] ?? null);
+            $counts[Cast::int($row['section_id'] ?? null)] = Cast::int($row['movable'] ?? null);
         }
 
         return $counts;
@@ -534,7 +534,7 @@ final class WorkflowSettings extends Component
             return;
         }
 
-        [$branch, $bindings] = $this->branchSql([(int) $section->taxonomy_id]);
+        [$branch, $bindings] = $this->branchSql([$section->id]);
         $members = $branch.<<<'SQL'
             SELECT et.entry_id
             FROM branch
@@ -556,17 +556,17 @@ final class WorkflowSettings extends Component
     }
 
     /**
-     * The categories each section files posts under, as a recursive CTE `branch (section_root, id)`: a
-     * section's own category and every category below it, down the parent chain (the source of
-     * truth — the ltree path may not be written yet). Membership follows SectionResolver, where
-     * the NEAREST bound category wins, so the walk stops at a sub-category that another section is
-     * built on: its posts belong to that section. The CYCLE clause ends a parent loop.
+     * The categories each section files posts under, as a recursive CTE `branch (section_id, id)`:
+     * every category a section covers and every category below them, down the parent chain (the
+     * source of truth — the ltree path may not be written yet). Membership follows SectionResolver,
+     * where the NEAREST covered category wins, so the walk stops at a sub-category that another
+     * section covers: its posts belong to that section. The CYCLE clause ends a parent loop.
      *
-     * @param  non-empty-list<int>  $rootIds
+     * @param  non-empty-list<int>  $sectionIds
      * @return array{0: literal-string, 1: list<int>}
      */
-    private function branchSql(array $rootIds): array
+    private function branchSql(array $sectionIds): array
     {
-        return SectionBranch::with(app(CurrentSite::class)->id(), $rootIds);
+        return SectionBranch::ofSections(app(CurrentSite::class)->id(), $sectionIds);
     }
 }

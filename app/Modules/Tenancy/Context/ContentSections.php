@@ -6,10 +6,13 @@ namespace App\Modules\Tenancy\Context;
 
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Tenancy\Models\ContentSectionCategory;
+use Illuminate\Database\Query\JoinClause;
 
 /**
- * Read surface over the current site's content sections (content_sections: key, entry_type and the
- * category a section is built on) for feature modules, which must not reach into Tenancy\Models
+ * Read surface over the current site's content sections (content_sections: key, entry_type; and the
+ * categories each one covers, content_section_categories, a category belonging to one section at
+ * most) for feature modules, which must not reach into Tenancy\Models
  * (app/Modules/README.md). Read-only; each method is one query, scoped to the current site by
  * BelongsToSite with RLS underneath. Holds no state, so it is safe to inject anywhere under Octane.
  */
@@ -34,43 +37,32 @@ final readonly class ContentSections
     }
 
     /**
-     * The categories among $taxonomyIds that a section is built on.
+     * The categories among $taxonomyIds that a section covers.
      *
      * @param  list<int>  $taxonomyIds
      * @return list<int>
      */
     public function boundAmong(array $taxonomyIds): array
     {
-        $bound = ContentSection::query()->whereIn('taxonomy_id', $taxonomyIds)->pluck('taxonomy_id')->all();
+        $bound = ContentSectionCategory::query()->whereIn('taxonomy_id', $taxonomyIds)->pluck('taxonomy_id')->all();
 
         return array_values(array_map(static fn (mixed $id): int => Cast::int($id), $bound));
     }
 
     /**
-     * The section built directly on $taxonomyId (the first by display order when several are), or
-     * null. `entry_type` is `page`, `post` or null.
+     * The section that covers $taxonomyId itself (one at most), or null. `entry_type` is `page`,
+     * `post` or null.
      *
      * @return array{key: string, entry_type: string|null}|null
      */
     public function boundTo(int $taxonomyId): ?array
     {
-        $section = ContentSection::query()
-            ->whereNotNull('taxonomy_id')
-            ->where('taxonomy_id', $taxonomyId)
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->first(['key', 'entry_type']);
-
-        if (! $section instanceof ContentSection) {
-            return null;
-        }
-
-        return ['key' => $section->key, 'entry_type' => $section->entry_type];
+        return $this->boundToEach([$taxonomyId])[$taxonomyId] ?? null;
     }
 
     /**
-     * boundTo() for many categories in one query: for each of $taxonomyIds a section is built on,
-     * that section (the first by display order when several are), keyed by the category's id.
+     * boundTo() for many categories in one query: for each of $taxonomyIds a section covers, that
+     * section, keyed by the category's id.
      *
      * @param  list<int>  $taxonomyIds
      * @return array<int, array{key: string, entry_type: string|null}>
@@ -82,21 +74,24 @@ final readonly class ContentSections
         }
 
         $out = [];
-        $rows = ContentSection::query()
-            ->whereIn('taxonomy_id', array_values(array_unique($taxonomyIds)))
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get(['key', 'entry_type', 'taxonomy_id']);
-        foreach ($rows as $section) {
-            $out[Cast::int($section->taxonomy_id)] ??= ['key' => $section->key, 'entry_type' => $section->entry_type];
+        // The site scope sits on the root table; the join pins the section to the same site.
+        $rows = ContentSectionCategory::query()
+            ->join('content_sections as cs', fn (JoinClause $join) => $join->on('cs.id', '=', 'content_section_categories.content_section_id')
+                ->on('cs.site_id', '=', 'content_section_categories.site_id'))
+            ->whereIn('content_section_categories.taxonomy_id', array_values(array_unique($taxonomyIds)))
+            ->toBase()
+            ->get(['cs.key', 'cs.entry_type', 'content_section_categories.taxonomy_id']);
+        foreach ($rows as $row) {
+            $out[Cast::int($row->taxonomy_id)] = ['key' => Cast::string($row->key), 'entry_type' => Cast::stringOrNull($row->entry_type)];
         }
 
         return $out;
     }
 
     /**
-     * The category the section with $key is built on, or null when there is no such section or it
-     * is not built on one.
+     * The FIRST category the section with $key covers (content_sections.taxonomy_id: the one a
+     * single-category kind such as the catalog names), or null when there is no such section or it
+     * covers none.
      */
     public function taxonomyIdOf(string $key): ?int
     {

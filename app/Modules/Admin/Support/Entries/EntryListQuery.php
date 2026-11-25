@@ -98,13 +98,13 @@ final class EntryListQuery
     public function scoped(): Builder
     {
         $query = Entry::query()->whereRaw("entries.type = '{$this->type}'");
-        $taxonomyId = $this->filter->sectionTaxonomyId;
-        if ($taxonomyId !== null && $this->sectionSet) {
+        $sectionId = $this->filter->sectionId;
+        if ($sectionId !== null && $this->sectionSet) {
             $query->whereIn('entries.id', fn (QueryBuilder $set) => $set->select('sec.entry_id')->from('sec'));
-        } elseif ($taxonomyId !== null) {
-            // the section's posts: those whose PRIMARY category (pivot position 0) is the section's
-            // own or one below it (SectionBranch), as the storefront lists them
-            [$branch, $values] = SectionBranch::ids($this->siteId, $taxonomyId);
+        } elseif ($sectionId !== null) {
+            // the section's posts: those whose PRIMARY category (pivot position 0) is one the section
+            // covers or one below it (SectionBranch), as the storefront lists them
+            [$branch, $values] = SectionBranch::idsOfSection($this->siteId, $sectionId);
             $query->whereExists(fn (QueryBuilder $primary) => $primary->selectRaw('1')->from('entry_taxonomies')
                 ->where('entry_taxonomies.site_id', $this->siteId)
                 ->whereColumn('entry_taxonomies.entry_id', 'entries.id')
@@ -677,8 +677,8 @@ final class EntryListQuery
      */
     public function facets(bool $multilingual, bool $tabs = false, ?array $only = null, bool $gate = false, bool $people = false): array
     {
-        $taxonomyId = $this->filter->sectionTaxonomyId;
-        $this->sectionSet = $taxonomyId !== null;
+        $sectionId = $this->filter->sectionId;
+        $this->sectionSet = $sectionId !== null;
         try {
             $base = $only === null ? $this->base() : Entry::query()->withTrashed()->whereIn('entries.id', $only === [] ? [0] : $only);
             $size = $gate ? self::boundedSql($this->base()) : null;
@@ -689,8 +689,8 @@ final class EntryListQuery
 
         $heads = [];
         $headBindings = [];
-        if ($taxonomyId !== null) {
-            [$branch, $values] = SectionBranch::ids($this->siteId, $taxonomyId);
+        if ($sectionId !== null) {
+            [$branch, $values] = SectionBranch::idsOfSection($this->siteId, $sectionId);
             $heads[] = "sec as materialized (select entry_id from entry_taxonomies where site_id = ? and position = 0 and taxonomy_id in ({$branch}))";
             $headBindings = [$this->siteId, ...$values];
         }

@@ -269,7 +269,7 @@ final readonly class MediaUsageLocator
 
     /**
      * The key of the Chuyên mục screen section a category is edited in (CategorySections): the
-     * catalog for a product category, else the post section built on the category's root. Null when
+     * catalog for a product category, else the post section that covers the category's root. Null when
      * no section shows it (the screen then opens on its default).
      *
      * @param  array<int, int>  $roots  category id → its root id, from rootsOf()
@@ -282,7 +282,7 @@ final readonly class MediaUsageLocator
 
         $root = $roots[$category->id] ?? $category->id;
         foreach ($this->sections->postSections() as $section) {
-            if ($section['root'] === $root) {
+            if (in_array($root, $section['roots'], true)) {
                 return $section['key'];
             }
         }

@@ -9,6 +9,7 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Tenancy\Models\ContentSectionCategory;
 use App\Modules\Tenancy\Models\Plan;
 use App\Modules\Tenancy\Models\PlanFeature;
 use App\Modules\Tenancy\Models\SiteFeature;
@@ -520,6 +521,39 @@ it('warns with the posts a change will move: in-flight posts of the section and 
             ->and($nested->refresh()->workflow_state)->toBe('pending');
         $page->call('$refresh');
         expect(collect($page->viewData('rows'))->keyBy('key')['posts']['movable'])->toBe(0);
+    });
+});
+
+it('counts and moves the posts under a second category the section covers, side by side with its first', function (): void {
+    $operator = wfOperator();
+
+    app(Tenancy::class)->enter(1, function () use ($operator): void {
+        $news = wfSection('posts', 'Tin tức', 'tin-tuc');
+        // «Tuyển dụng» sits at the top of the tree beside «Tin tức», and «Tin tức» covers it too
+        $jobs = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 1]);
+        $jobs->translations()->create(['locale' => 'vi', 'name' => 'Tuyển dụng', 'slug' => 'tuyen-dung']);
+        ContentSectionCategory::query()->create(['site_id' => 1, 'content_section_id' => $news->id, 'taxonomy_id' => $jobs->id]);
+        $hanoi = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'parent_id' => $jobs->id, 'position' => 1]);
+        $hanoi->translations()->create(['locale' => 'vi', 'name' => 'Hà Nội', 'slug' => 'ha-noi']);
+
+        $page = Livewire::actingAs($operator->fresh())->test(WorkflowSettings::class);
+        $page->call('save', [wfChange('posts', 'admin_approval')])->assertReturned(true);
+
+        $atFirst = wfPost($news, 'pending', 'pending');
+        $atSecond = wfPost($news, 'pending', 'pending', category: $jobs->id);
+        $below = wfPost($news, 'pending', 'pending', category: $hanoi->id);
+        $change = wfPendingChange(wfPost($news, 'published', category: $jobs->id), 'pending');
+        wfPost($news, category: $jobs->id);
+
+        $page->call('$refresh');
+        expect(collect($page->viewData('rows'))->keyBy('key')['posts'])->toMatchArray(['total' => 5, 'pending' => 3, 'movable' => 4]);
+
+        $page->call('save', [wfChange('posts', null, false, 'admin_approval', true)])->assertReturned(true);
+
+        expect($atFirst->refresh()->workflow_state)->toBeNull()
+            ->and($atSecond->refresh()->workflow_state)->toBeNull()
+            ->and($below->refresh()->workflow_state)->toBeNull()
+            ->and($change->refresh()->workflow_state)->toBeNull();
     });
 });
 
