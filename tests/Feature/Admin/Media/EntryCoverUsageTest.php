@@ -86,7 +86,7 @@ it('counts a post’s featured picture on its tile, in the filter and in the dra
         $sql = strtolower(implode(' ', array_column(DB::getQueryLog(), 'query')));
         DB::disableQueryLog();
 
-        expect($counts)->toBe([$cover->id => 1, $unused->id => 0])
+        expect(collect($counts)->sortKeys()->all())->toBe([$cover->id => 1, $unused->id => 0])
             ->and($usedIds)->toBe([$cover->id])
             ->and($sql)->not->toContain('image_url')
             ->and(collect($locator->usagesFor($cover, 'vi'))->pluck('role')->all())->toBe(['cover']);

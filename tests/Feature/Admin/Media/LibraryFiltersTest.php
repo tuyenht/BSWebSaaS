@@ -225,7 +225,8 @@ it('says on each file where it is used, as its detail panel counts it, and nothi
         foreach ($files as $file) {
             expect($counts[$file->id])->toBe(count($locator->usagesFor($file, 'vi')), $file->original_filename);
         }
-        expect($counts)->toBe([$gallery->id => 2, $cover->id => 2, $brand->id => 2, $blocks->id => 3, $unused->id => 0])
+        // read by key: the order of the map follows the planner's rows, not the files'
+        expect(collect($counts)->sortKeys()->all())->toBe([$gallery->id => 2, $cover->id => 2, $brand->id => 2, $blocks->id => 3, $unused->id => 0])
             ->and(count($locator->usagesFor($cover, 'vi')))->toBe(2);
 
         $page = Livewire::actingAs($me)->test(Library::class);
@@ -347,7 +348,7 @@ it('says «Chưa dùng» on the tile, in the filter and in the drawer alike for 
 
     app(Tenancy::class)->enter(1, function () use ($me, $byProduct, $byPost, $live): void {
         $locator = app(MediaUsageLocator::class);
-        expect($locator->countsFor(Media::query()->whereIn('id', [$byProduct->id, $byPost->id, $live->id])->get()))
+        expect(collect($locator->countsFor(Media::query()->whereIn('id', [$byProduct->id, $byPost->id, $live->id])->get()))->sortKeys()->all())
             ->toBe([$byProduct->id => 0, $byPost->id => 0, $live->id => 1])
             ->and($locator->usagesFor($byProduct, 'vi'))->toBe([])
             ->and($locator->usagesFor($byPost, 'vi'))->toBe([]);
