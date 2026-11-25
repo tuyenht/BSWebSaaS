@@ -147,7 +147,7 @@ final class AdminUiSettings extends Component
 
         foreach (array_keys(AdminChromeResolver::siteFields()) as $field) {
             $value = $config[$field] ?? null;
-            $this->{$field} = is_string($value) && in_array($value, AdminChromeResolver::FIELDS[$field], true)
+            $this->{$field} = is_string($value) && in_array($value, AdminChromeResolver::siteFields()[$field], true)
                 ? $value
                 : '';
         }

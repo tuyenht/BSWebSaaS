@@ -33,7 +33,7 @@
                     @php
                         $fid = 'aui-'.$axis;
                         $labels = [];
-                        foreach (AdminChromeResolver::FIELDS[$axis] as $value) {
+                        foreach (AdminChromeResolver::siteFields()[$axis] as $value) {
                             $labels[$value] = $opt($axis, $value);
                         }
                     @endphp
@@ -42,7 +42,7 @@
                             <h3 id="{{ $fid }}" class="text-[calc(0.8125rem+var(--user-text-boost))] font-semibold text-text-strong">{{ __('admin.aui.f_'.$axis) }}</h3>
                             <p id="{{ $fid }}-d" class="text-caption text-text-muted">{{ __('admin.aui.d_'.$axis) }}</p>
                         </div>
-                        <x-bs-admin::pick-cards :axis="$axis" :values="AdminChromeResolver::FIELDS[$axis]" :labels="$labels" :labelledby="$fid"
+                        <x-bs-admin::pick-cards :axis="$axis" :values="AdminChromeResolver::siteFields()[$axis]" :labels="$labels" :labelledby="$fid"
                                                 :inherit="__('admin.aui.inherit_card')" aria-describedby="{{ $fid }}-d" />
                         @error($axis)
                             <x-bs-admin::field-error>{{ $message }}</x-bs-admin::field-error>

@@ -27,7 +27,7 @@
     $keptWhen = ['zone' => $siteZone, 'format' => $siteDateFormat, 'lang' => app()->getLocale()];
     // A new entry or a draft saves itself 2 seconds after the last change (Editor::autosave, board 07); content
     // on the website never does: its unsaved text is kept on this device until «Cập nhật».
-    $saveConfig = ['fields' => Editor::TRACKED, 'delay' => 2000, 'autosaveNew' => true, 'needs' => ['title'], 'noAuto' => ['statusTo', 'scheduleAt'], 'extra' => 'blocksChanged', 'keep' => $keptKey !== null ? ['key' => $keptKey] : null, 'words' => [
+    $saveConfig = ['fields' => Editor::TRACKED, 'delay' => 2000, 'autosaveNew' => true, 'needs' => ['title'], 'noAuto' => ['statusTo', 'scheduleAt', 'expiresAt'], 'extra' => 'blocksChanged', 'keep' => $keptKey !== null ? ['key' => $keptKey] : null, 'words' => [
         'dirty' => $dirty,
         'dirtyDraft' => __('entries.ed.sv_dirty_draft'),
         'dirtyLive' => __('entries.ed.sv_dirty_live'),
@@ -338,13 +338,13 @@
                  closed per browser as in the product editor (localStorage 'bs-editor'); a refused value opens it, and so does
                  a value already set (a page's parent, preset by «Thêm trang con» too; a post's own look or shown day), so it shows. --}}
             <div class="flex min-w-0 flex-[1_1_300px] flex-col gap-4"
-                 @if ($isPage || $type === 'post') @if (($isPage && $parentUlid !== null) || (! $isPage && ($templateKey !== '' || $displayDate !== '' || $tags !== []))) data-more-open @endif x-data="{ more: false, init() { if ('moreOpen' in this.$el.dataset) { this.more = true; return } try { this.more = JSON.parse(localStorage.getItem('bs-editor') || '{}').more === true } catch (e) {} }, setMore(on) { this.more = on; try { const o = JSON.parse(localStorage.getItem('bs-editor') || '{}') || {}; o.more = on; localStorage.setItem('bs-editor', JSON.stringify(o)) } catch (e) {} } }" @endif>
+                 @if ($isPage || $type === 'post') @if (($isPage && $parentUlid !== null) || (! $isPage && ($templateKey !== '' || $tags !== []))) data-more-open @endif x-data="{ more: false, init() { if ('moreOpen' in this.$el.dataset) { this.more = true; return } try { this.more = JSON.parse(localStorage.getItem('bs-editor') || '{}').more === true } catch (e) {} }, setMore(on) { this.more = on; try { const o = JSON.parse(localStorage.getItem('bs-editor') || '{}') || {}; o.more = on; localStorage.setItem('bs-editor', JSON.stringify(o)) } catch (e) {} } }" @endif>
                 <section class="{{ $card }}" aria-labelledby="entry-pub-h">
                     <div class="flex items-center justify-between gap-2.5 border-b border-border px-4 py-3">
                         <h2 id="entry-pub-h" class="{{ $cardTitle }}">{{ __('entries.ed.card_publish') }}</h2>
                         <x-bs-admin::status-pill :status="$pill['status']">{{ $pill['label'] }}</x-bs-admin::status-pill>
                     </div>
-                    @if ($statusPanel !== null || $schedule !== null || $workflow !== null || $revisions !== null)
+                    @if ($statusPanel !== null || $schedule !== null || $workflow !== null || $expiry !== null || $pdLine !== null || $revisions !== null)
                         <div class="flex flex-col gap-3.5 p-4">
                             @if ($statusPanel !== null)
                                 @include('admin::livewire.entries.partials.status-choice', ['panel' => $statusPanel])
@@ -372,8 +372,9 @@
                                 {{-- An active workflow governs this post: its steps and moves replace "Đăng". --}}
                                 <div>@include('admin::livewire.entries.partials.workflow-status')</div>
                             @endif
+                            @include('admin::livewire.entries.partials.publish-dates')
                             @if ($revisions !== null)
-                                @if ($statusPanel !== null || $schedule !== null || $workflow !== null)
+                                @if ($statusPanel !== null || $schedule !== null || $workflow !== null || $expiry !== null || $pdLine !== null)
                                     <div class="h-px bg-border" aria-hidden="true"></div>
                                 @endif
                                 @include('admin::livewire.entries.partials.revisions')
@@ -682,7 +683,7 @@
                             <span class="ped-ms-s" x-text="more ? @js(__('catalog.ed.less_sub_s')) : @js(__('entries.ed.more_sub_post_s'))">{{ __('entries.ed.more_sub_post_s') }}</span>
                         </span>
                     </button>
-                    @if ($errors->has('templateKey') || $errors->has('displayDate') || $errors->has('tagDraft') || $errors->has('tags') || $errors->has('tags.*')) <span hidden x-init="more = true"></span> @endif
+                    @if ($errors->has('templateKey') || $errors->has('tagDraft') || $errors->has('tags') || $errors->has('tags.*')) <span hidden x-init="more = true"></span> @endif
                     {{-- «Thẻ» (design 07): the post's tags in this language, each with «Bỏ thẻ»; a name typed and added
                          with Enter (or «Thêm», several split at commas) joins them, and makes a tag on save when none has
                          it. Written to the website at once, so it stays as it is while this member's saves wait for
@@ -744,14 +745,6 @@
                                     <option value="{{ \App\Modules\Theme\Rendering\TemplateCatalog::VARIANT_WIDE }}">{{ __('entries.ed.tpl_wide') }}</option>
                                 </select>
                                 @error('templateKey') <x-bs-admin::field-error id="entry-tpl-e">{{ $message }}</x-bs-admin::field-error> @enderror
-                            </div>
-                            <div class="flex flex-col gap-1.5">
-                                <label for="entry-pd" class="{{ $label }}">{{ __('entries.ed.pd_label', ['doc' => __('entries.ed.doc_post')]) }}</label>
-                                <input type="date" id="entry-pd" wire:model="displayDate" @readonly($sharedLock) @if ($sharedLock) aria-readonly="true" title="{{ $sharedWhy }}" @endif
-                                       aria-describedby="entry-pd-h @error('displayDate') entry-pd-e @enderror" @error('displayDate') aria-invalid="true" @enderror
-                                       class="field {{ $fieldLook }}">
-                                @error('displayDate') <x-bs-admin::field-error id="entry-pd-e">{{ $message }}</x-bs-admin::field-error> @enderror
-                                <p id="entry-pd-h" class="m-0 text-caption text-text-muted [overflow-wrap:anywhere]">{{ __('entries.ed.pd_hint') }}</p>
                             </div>
                         </div>
                     </section>
@@ -898,6 +891,7 @@
         @include('admin::partials.media-picker-modal', ['pickedIds' => [], 'editorLibraryOnly' => true])
     @endcan
     {{-- After a cover pick or «Bỏ ảnh» (design 07 notify): «Đã gỡ ảnh đại diện» carries «Hoàn tác». --}}
+     <x-bs-admin::toast :message="$formToast" :seq="$formToastSeq" dismiss="closeFormToast" :undo="$formUndo !== null ? 'undoFormClear' : null" :raised="true" />
     <x-bs-admin::toast :message="$coverToast" :seq="$coverToastSeq" dismiss="closeCoverToast" :undo="$coverUndo !== null ? 'undoCoverRemoval' : null" :raised="true" />
     @include('admin::partials.video-embed-modal')
 </div>

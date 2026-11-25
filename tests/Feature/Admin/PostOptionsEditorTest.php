@@ -88,7 +88,7 @@ it('shows «Thuộc tính bài» behind «Thêm tùy chọn» on a post, and not
             ->assertSeeHtml('x-data="{ more: false, init()')
             ->assertDontSeeHtml('x-data=""{')
             ->assertSee(__('entries.ed.more_sub_post'))
-            ->assertSee(__('entries.ed.pd_hint'))
+            ->assertSee(__('entries.ed.pd_hint_card', ['doc' => __('entries.ed.doc_post')]))
             ->assertSeeHtml('<option value="hero">')
             ->assertSeeHtml('<option value="wide">');
 

@@ -451,6 +451,23 @@
                             <dt class="text-text-muted">{{ __('catalog.ed.upd_label') }}</dt><dd class="m-0 text-text [overflow-wrap:anywhere]">{{ $publishCard['updated'] }}</dd>
                             <dt class="text-text-muted">{{ __('catalog.ed.seen_label') }}</dt><dd class="m-0 text-text [overflow-wrap:anywhere]">{{ $publishCard['seen'] }}</dd>
                         </dl>
+                        {{-- «Gỡ khỏi website lúc» (board 09): empty = the product stays; written by ChangeProductExpiry with the save.
+                             Every language's, so read only outside the website's own language. --}}
+                        <div class="flex flex-col gap-1.5" data-ped-exp>
+                            <label for="ped-exp" class="{{ $label }}">{{ __('entries.ed.exp_label') }} <span class="font-normal text-text-muted">{{ __('entries.ed.exp_zone', ['zone' => $zoneName]) }}</span></label>
+                            <input type="datetime-local" id="ped-exp" wire:model.blur="expiresAt" @disabled(! $editShared)
+                                   aria-describedby="@error('expiresAt') ped-exp-e @enderror ped-exp-h" @error('expiresAt') aria-invalid="true" @enderror
+                                   class="field block w-full rounded-md border border-border-input bg-surface-muted px-3 text-text placeholder:text-placeholder transition-colors focus:border-primary-text aria-invalid:border-danger-text">
+                            @error('expiresAt') <x-bs-admin::field-error id="ped-exp-e">{{ $message }}</x-bs-admin::field-error> @enderror
+                            <p id="ped-exp-h" class="{{ $hint }} mt-0">{{ $publishCard['expHint'] }}</p>
+                            @if (($expiresAt ?? '') !== '' && $editShared)
+                                <div>
+                                    <x-bs-admin::button variant="outline" color="secondary" size="sm" wire:click="clearExpiry" x-on:click="$nextTick(() => document.getElementById('ped-exp')?.focus())">
+                                        <x-bs-admin::icon name="ri-close" :class="$glyph" /> {{ __('entries.ed.exp_clear') }}
+                                    </x-bs-admin::button>
+                                </div>
+                            @endif
+                        </div>
                         @if ($liveUrl !== null)
                             <div>
                                 <x-bs-admin::button variant="outline" color="secondary" size="sm" :href="'//'.$liveUrl" :navigate="false" target="_blank" rel="noopener">

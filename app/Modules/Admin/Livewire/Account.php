@@ -7,7 +7,6 @@ namespace App\Modules\Admin\Livewire;
 use App\Modules\Admin\Notifications\TwoFactorDisabledNotification;
 use App\Modules\Admin\Support\EmailChange;
 use App\Modules\Admin\Support\Locales;
-use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Admin\Support\SignedInDevices;
 use App\Modules\Admin\Support\SocialAuth;
 use App\Modules\Admin\Theme\AdminChromeResolver;
@@ -843,7 +842,7 @@ final class Account extends Component
         $this->redirectRoute('admin.account', ['tab' => 'prefs']);
     }
 
-    /** Light, dark, or follow the device ('auto', the member's own choice only). */
+    /** Light, dark, or follow the device ('auto'); the member's own pick wins over the site default. */
     public function setScheme(string $scheme): void
     {
         $this->writable();
@@ -1368,13 +1367,14 @@ final class Account extends Component
     private function preferenceState(User $user): array
     {
         $own = Cast::arr($user->preferences['theme'] ?? null);
-        $resolved = app(AdminChromeResolver::class)->resolve($user);
-        $site = Cast::arr(app(SettingsRepository::class)->get('admin_theme'));
+        $chrome = app(AdminChromeResolver::class);
+        $resolved = $chrome->resolve($user);
+        $site = $chrome->siteDefaults();
         $siteSize = Cast::string($site['text_size'] ?? null);
 
         return [
             'locale' => app()->getLocale(),
-            'scheme' => AdminChromeResolver::followsDevice($user) ? AdminChromeResolver::SCHEME_AUTO : $resolved['scheme'],
+            'scheme' => $chrome->followsDeviceFor($user) ? AdminChromeResolver::SCHEME_AUTO : $resolved['scheme'],
             'textSize' => $resolved['text_size'],
             'ownTextSize' => in_array($own['text_size'] ?? null, AdminChromeResolver::FIELDS['text_size'], true),
             'siteTextSize' => in_array($siteSize, AdminChromeResolver::FIELDS['text_size'], true) ? $siteSize : 'md',
