@@ -64,6 +64,29 @@ never the object's stored metadata; every other extension and every key whose fi
 with `_` (uploads in flight) is a 404. Responses carry `X-Content-Type-Options: nosniff` and a
 sandbox CSP; a PDF is `Content-Disposition: attachment`.
 
+### Old folders of a moved website (`vars.LEGACY_PREFIXES` in `wrangler.jsonc`)
+Files a website filed before website codes (`an-vinh/…`, `co-khi-chinh-xac-an-vinh/library/…`) are
+copied under its code by `media:rekey-site` (`{code}/{file}`, the file = the old key's last segment);
+the old objects stay. The Worker then answers a request for an old key with **301** to
+`/{code}/{file}`, the query kept (`?w=640` too), but only when R2 holds that copy with the same bytes
+(ETag and size of the two HEADs match). Otherwise it serves the old object as before, so:
+- a shared demo seed file under `an-vinh/` (`media.seed_folders`) that no website copied keeps
+  answering 200 from its old key, never a 301 to a 404;
+- a file `media:rekey-site` had to give a longer hash (two old folders held the same name) keeps its
+  old address, because the same-named copy holds other bytes.
+The check is kept in the edge cache (Cache API, each data centre) five minutes, found or missing; the
+301 itself carries `Cache-Control: public, max-age=300`. So after a copied file is deleted (a seed file
+other websites still link to, say), its old address may still redirect for about ten minutes (edge
+five + browser five), then answers from the old object again. A made-up name under an old folder
+costs one R2 HEAD; an R2 fault during the check serves the old object. `_` first segments and the
+internal `/__origin/` path are never redirected, and a line whose old folder is itself a website code
+is ignored (it would loop or point into another website's folder).
+
+The map is config, one line per old folder (ending in `/`) → website code (six letters and digits;
+a line with anything else is ignored). Add a line only **after** that website's `media:rekey-site`
+ran on this bucket, then deploy (step 3). Taking a line out stops its redirects at once (a browser that
+kept a 301 asks again within five minutes).
+
 ## 4. Enable Image Transformations on the zone
 Dashboard → `baoson.net` → **Speed → Optimization → Image Transformations → Enable** (covers
 `cf.image`). Without it, `?w=` still works but returns the raw master (no resize).
@@ -93,6 +116,19 @@ curl -s -r 0-1 -D - -o range.bin https://files.baoson.net/sites/1/media/about-ba
 #   206 + "Content-Range: bytes 0-1/<size>" + "Accept-Ranges: bytes" — a background video needs this
 #   (Safari/iOS plays a <video> only from ranged answers); a range past the end answers 416
 ```
+
+Old folders (after a website's `media:rekey-site`; pick an old key from its `meta.moved_from` or
+`meta.seed_source`):
+```bash
+curl -sI "https://files.baoson.net/co-khi-chinh-xac-an-vinh/library/<file>?w=640" | grep -iE '^(HTTP|location|cache-control)'
+#   301, "location: /zpvjzx/<file>?w=640", "cache-control: public, max-age=300"
+curl -sI "https://files.baoson.net/zpvjzx/<file>?w=640" | head -1     # 200, the target answers
+curl -sI https://files.baoson.net/an-vinh/<seed file nobody copied> | head -1   # 200, no redirect
+```
+An old key that answers 200 where a 301 was expected: compare the ETag and size of the two objects
+(Dashboard → R2 → `baoson-media` → object). Different ETags (for example one of the two written as a
+multipart upload, whose ETag is not a plain MD5) mean no redirect by design; the old address keeps
+working.
 
 ## 6. Rollback
 ```bash
