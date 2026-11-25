@@ -615,7 +615,8 @@ it('opens the drawer on a flat query budget, however many places use the file', 
         $page->call('closeDetail');
         $b = countQueries(fn () => $page->call('openDetail', $many->ulid)->assertSet('pickerDetailUlid', $many->ulid));
 
-        // the page's own redraw plus the file, its folder, its uses and its people: measured 15
-        expect($b)->toBe($a)->toBeLessThanOrEqual(15);
+        // the page's own redraw (with its «Thời gian» counts and the page's use chips, one statement
+        // each) plus the file, its folder, its uses and its people: measured 17
+        expect($b)->toBe($a)->toBeLessThanOrEqual(17);
     });
 });
