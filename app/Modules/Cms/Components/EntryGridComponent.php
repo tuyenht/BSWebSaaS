@@ -174,37 +174,51 @@ final readonly class EntryGridComponent implements Component
      * handful of names; the read is bounded even when a category has many children. A sub-category
      * that stores a list layout of a look set of its own, other than the category's (jobs under the
      * news), gets no tab: its posts keep to their own list, as on the category's page. The category's
-     * set is read as its page reads it (LookBranch): the layout it really uses ("follow the parent"
-     * resolved) and the one it stores both keep a sub-category of their set in.
+     * set is read as its page reads it (LookBranch): the set it stores, and for a category that
+     * follows its parent's layout the set of the layout it really uses too. That one costs one read
+     * more (the parent chain), after the bounded read: the first TAB_CHILDREN_READ sub-categories are
+     * looked at, then the ones of another look are dropped.
      *
      * @return Collection<int, TaxonomyTranslation>
      */
     private function children(int $taxonomyId, string $locale): Collection
     {
-        $category = Taxonomy::query()->select(['id', 'site_id', 'parent_id', 'vocabulary', 'list_template'])->find($taxonomyId);
-        if ($category === null) {
-            return new Collection;
-        }
-        $stored = $category->list_template;
-        $sets = array_values(array_unique(array_filter(
-            [TemplateCatalog::setOf(is_string($stored) ? $stored : null), TemplateCatalog::setOf($this->categoryTemplates->list($category))],
-            static fn (?string $set): bool => $set !== null,
-        )));
         $childSet = TemplateCatalog::listSetSql('taxonomies.list_template');
-        /** @var literal-string $marks placeholders only; the set names go in the bindings */
-        $marks = implode(', ', array_fill(0, count($sets), '?'));
+        $parentSet = TemplateCatalog::listSetSql('parent.list_template');
 
-        return TaxonomyTranslation::query()
+        $children = TaxonomyTranslation::query()
             ->join('taxonomies', fn (JoinClause $join) => $join->on('taxonomies.id', '=', 'taxonomy_translations.taxonomy_id')->on('taxonomies.site_id', '=', 'taxonomy_translations.site_id'))
+            ->join('taxonomies as parent', fn (JoinClause $join) => $join->on('parent.id', '=', 'taxonomies.parent_id')->on('parent.site_id', '=', 'taxonomies.site_id'))
             ->where('taxonomies.parent_id', $taxonomyId)
-            ->where(fn (Builder $kept) => $sets === []
-                ? $kept->whereRaw("{$childSet} is null")
-                : $kept->whereRaw("{$childSet} is null")->orWhereRaw("{$childSet} in ({$marks})", $sets))
+            ->whereRaw("({$childSet} is null or {$childSet} is not distinct from {$parentSet} or parent.list_template = ?)", [TemplateCatalog::PARENT])
             ->where('taxonomy_translations.locale', $locale)
             ->orderBy('taxonomies.position')
             ->orderBy('taxonomies.id')
             ->limit(self::TAB_CHILDREN_READ)
-            ->get(['taxonomy_translations.taxonomy_id', 'taxonomy_translations.name']);
+            ->get([
+                'taxonomy_translations.taxonomy_id', 'taxonomy_translations.name', 'taxonomies.list_template as child_list_template',
+                'parent.site_id as parent_site_id', 'parent.parent_id as parent_parent_id', 'parent.vocabulary as parent_vocabulary', 'parent.list_template as parent_list_template',
+            ]);
+
+        $first = $children->first();
+        if ($first === null || $first->getAttribute('parent_list_template') !== TemplateCatalog::PARENT) {
+            return $children;
+        }
+        $category = (new Taxonomy)->forceFill([
+            'id' => $taxonomyId,
+            'site_id' => Cast::int($first->getAttribute('parent_site_id')),
+            'parent_id' => $first->getAttribute('parent_parent_id') === null ? null : Cast::int($first->getAttribute('parent_parent_id')),
+            'vocabulary' => Cast::string($first->getAttribute('parent_vocabulary')),
+            'list_template' => TemplateCatalog::PARENT,
+        ]);
+        $set = TemplateCatalog::setOf($this->categoryTemplates->list($category));
+
+        return $children->filter(function (TaxonomyTranslation $child) use ($set): bool {
+            $stored = $child->getAttribute('child_list_template');
+            $own = TemplateCatalog::setOf(is_string($stored) ? $stored : null);
+
+            return $own === null || $own === $set;
+        })->values();
     }
 
     /**
