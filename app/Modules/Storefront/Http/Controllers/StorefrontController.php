@@ -522,9 +522,9 @@ final readonly class StorefrontController
      * A tag whose posts are all unpublished (a draft's, one waiting for approval, one in the trash)
      * has no page (404): a tag is made by any save of a member who may edit a post, so its name reaches
      * visitors only once a post carrying it went live, through publishing and so through approval
-     * where a workflow asks for one. A tag no post carries any more (taken off its last post) keeps a
-     * `noindex,follow` page that says so and leads to the site's news list, so a visitor with an old
-     * link is not left on an empty page. A page past the last post answers 404.
+     * where a workflow asks for one. A tag no post carries any more (taken off its last post) answers
+     * 404 too, so a name typed on a draft and removed again never becomes public. So does a page past
+     * the last post.
      *
      * @param  array<string, mixed>  $chrome  page chrome (menu, lang, hreflang)
      */
@@ -553,11 +553,8 @@ final readonly class StorefrontController
             'srcset' => null,
             'pattern' => true,
         ];
-        if ($rows->isEmpty()) {
-            // past the last post, or a post that is not live still carries the tag (trashed ones too)
-            abort_if(! $first || $tagged(Entry::withTrashed())->exists(), 404);
-            $extra['emptyBox'] = $this->tagEmptyBox($locale, $site);
-        }
+        // no live post in this language carries the tag (or the page is past the last post): no page
+        abort_if($rows->isEmpty(), 404);
         $extra['cards'] = $this->lists->postCards($rows, $locale, [], true);
         if ($first && ! $more && $rows->count() < 2) {
             $extra['robots'] = 'noindex,follow';
@@ -565,26 +562,6 @@ final readonly class StorefrontController
         $title = __('storefront.tag_title', ['name' => $resolved->translation->name]);
 
         return $this->listResponse($resolved, $locale, $path, $position, $more, ListPage::ulidOf($rows->last()), [], $extra, 'grid-news', $title);
-    }
-
-    /**
-     * What a tag page with no post says: that no post carries the tag, and a button to the site's
-     * news list (the category the posts section is built on, at its address in this language) with a
-     * line inviting the visitor there. A site with no such list gets the first sentence only.
-     *
-     * @return array{title: string, text: string, button: array{url: string, label: string}|null}
-     */
-    private function tagEmptyBox(string $locale, string $site): array
-    {
-        $news = app(ContentSections::class)->taxonomyIdOf('posts');
-        $path = $news !== null ? SiteRoute::query()->where('taxonomy_id', $news)->where('locale', $locale)->value('path') : null;
-        $url = is_string($path) && $path !== '' ? $this->paths->publicUrl($path, $locale) : null;
-
-        return [
-            'title' => __('storefront.tag_empty'),
-            'text' => $url === null ? '' : ($site !== '' ? __('storefront.tag_empty_hint', ['site' => $site]) : __('storefront.tag_empty_hint_plain')),
-            'button' => $url === null ? null : ['url' => $url, 'label' => __('storefront.all_news')],
-        ];
     }
 
     /**

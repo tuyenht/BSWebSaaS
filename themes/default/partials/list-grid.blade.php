@@ -8,8 +8,7 @@
     stand two to a row on a phone; news and project cards there are compact rows. On the first page
     of a news list with more than three posts, the newest is the wide featured card above the grid.
     `cards` and `chips` are built by the controller from stored routes; no id reaches the markup.
-    `band.pattern` gives the plain band its diagonal pattern (a tag's page); `emptyBox` words an empty
-    list's box (a title, a line, a button), else it says `emptyKey`.
+    `band.pattern` gives the plain band its diagonal pattern (a tag's page).
 --}}
 @php
     $sfKind = in_array($kind ?? 'news', ['product', 'project', 'news', 'job'], true) ? $kind : 'news';
