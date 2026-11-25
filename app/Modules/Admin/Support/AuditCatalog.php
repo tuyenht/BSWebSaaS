@@ -36,6 +36,7 @@ final class AuditCatalog
         'content' => [
             'entries.status.changed', 'entries.change.applied', 'entries.change.discarded', 'entries.change.folded',
             'entries.revision.restored', 'entries.entry.purged', 'catalog.product.purged',
+            'cms.entry.dates_changed', 'catalog.product.dates_changed', 'catalog.product.status_changed',
             'cms.content_block.created', 'cms.content_block.updated', 'cms.content_block.body_saved',
             'cms.content_block.published', 'cms.content_block.unpublished', 'cms.content_block.duplicated',
             'cms.content_block.deleted', 'forms.lead.erased', 'forms.leads.exported', 'forms.leads.export_finished',

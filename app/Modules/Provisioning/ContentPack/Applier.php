@@ -50,7 +50,8 @@ use Illuminate\Support\Carbon;
  * address (301 + chain collapse), CategoryRelinker after a category rename, assignCategories() for
  * filing, RecordEntryRevision before and after an entry write (staff can restore the earlier text
  * from the editor's history), the media reconciler after a body write. Any exception rolls the
- * whole load back. The loader writes no person: actor null, no audit row per item.
+ * whole load back. The loader writes no person: actor null, no audit row per item, except the dates it
+ * changes (publish time, end time, display day: the model records each, as the content pack's).
  */
 final class Applier
 {

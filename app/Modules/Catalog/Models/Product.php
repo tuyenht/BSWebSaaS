@@ -2,6 +2,7 @@
 
 namespace App\Modules\Catalog\Models;
 
+use App\Modules\Audit\Support\DateChangeAudit;
 use App\Modules\Catalog\Support\ProductSearchWords;
 use App\Modules\Catalog\Support\ProductSiteWords;
 use App\Modules\Cms\Concerns\HasCategoryTaxonomies;
@@ -33,6 +34,7 @@ use Illuminate\Support\Carbon;
  * @property bool $is_bestseller
  * @property string $status
  * @property Carbon|null $published_at
+ * @property Carbon|null $expires_at when it leaves the website by itself («Gỡ khỏi website lúc»); null = it stays
  * @property array<string, mixed> $meta
  */
 class Product extends Model
@@ -41,6 +43,9 @@ class Product extends Model
     use HasCategoryTaxonomies;
     use HasUlidColumn;
     use SoftDeletes;
+
+    /** The audit action of a change to its publish or end time (DateChangeAudit). */
+    public const string DATES_CHANGED = 'catalog.product.dates_changed';
 
     #[\Override]
     protected $guarded = [];
@@ -62,6 +67,18 @@ class Product extends Model
             if ($product->wasChanged('sku')) {
                 ProductSearchWords::sync($product->site_id, $product->id);
                 ProductSiteWords::sync($product->site_id, $product->id);
+            }
+
+            // The publish time and the end time: each change leaves its audit row in the same
+            // transaction, whichever road made it (DateChangeAudit).
+            $changes = [];
+            foreach (['published_at', 'expires_at'] as $field) {
+                if ($product->wasChanged($field)) {
+                    $changes[$field] = [$product->getOriginal($field), $product->getAttribute($field)];
+                }
+            }
+            if ($changes !== []) {
+                app(DateChangeAudit::class)->record($product, self::DATES_CHANGED, $changes, $product->ulid);
             }
         });
     }
@@ -132,6 +149,7 @@ class Product extends Model
             'is_featured' => 'boolean',
             'is_bestseller' => 'boolean',
             'published_at' => 'datetime',
+            'expires_at' => 'datetime',
             'meta' => 'array',
         ];
     }

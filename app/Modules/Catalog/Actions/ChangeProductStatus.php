@@ -4,6 +4,7 @@ namespace App\Modules\Catalog\Actions;
 
 use App\Modules\Catalog\Actions\Concerns\AuthorizesCatalogChange;
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Exceptions\ExpiredContentException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Routing\RouteSync;
 use Illuminate\Support\Facades\DB;
@@ -52,6 +53,8 @@ final class ChangeProductStatus
     public function publishEffects(Product $product, ?string $locale = null, ?string $slug = null): void
     {
         $this->authorizeCatalog('update', $product);
+        // past its end time it would be taken down again at once: the end time is moved or cleared first
+        ExpiredContentException::guard($product->expires_at);
         if ($product->published_at === null) {
             $product->forceFill(['published_at' => now()])->save();
         }

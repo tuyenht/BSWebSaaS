@@ -58,6 +58,7 @@ use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Cms\Support\HomePages;
 use App\Modules\Cms\Support\PageRules;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
+use App\Modules\Cms\Validation\DisplayDateNotAfterToday;
 use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
@@ -3173,7 +3174,7 @@ final class Editor extends Component
                 if (is_string($value) && $value !== '' && ! DisplayDate::valid($value)) {
                     $fail(Cast::string(__('entries.ed.pd_invalid')));
                 }
-            }];
+            }, new DisplayDateNotAfterToday(app(SiteTime::class)->zone())];
         }
 
         return $rules;

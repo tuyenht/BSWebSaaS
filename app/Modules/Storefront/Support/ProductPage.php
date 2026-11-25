@@ -35,10 +35,16 @@ final readonly class ProductPage
         private StorefrontSettings $settings,
     ) {}
 
-    /** The published product a public route points at, with what its page shows; null when there is none. */
+    /**
+     * The published product a public route points at, with what its page shows; null when there is
+     * none, or when its end time («Gỡ khỏi website lúc») has come: products:unpublish-due archives it
+     * within a minute, and until then it already answers as not found (checked on the row in hand).
+     */
     public function published(int $id, string $locale): ?Product
     {
-        return $this->query($locale)->whereKey($id)->where('status', 'published')->first();
+        $product = $this->query($locale)->whereKey($id)->where('status', 'published')->first();
+
+        return $product !== null && ($product->expires_at === null || $product->expires_at > now()) ? $product : null;
     }
 
     /** Any product of the site by its ulid (draft, published or taken down), for the admin's preview; null when there is none. */

@@ -6,6 +6,7 @@ namespace App\Modules\Storefront\Http\Middleware;
 
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\PreviewMode;
+use App\Modules\Storefront\EdgeCache\PageEndTime;
 use App\Modules\Storefront\EdgeCache\PurgeSiteEdgeCache;
 use App\Modules\Storefront\Support\SiteEmbedCode;
 use App\Modules\Tenancy\Context\SiteTime;
@@ -40,7 +41,9 @@ use Symfony\Component\HttpFoundation\Response;
  * where no purge reaches: on a host outside the platform's zone (a customer's own domain, which our
  * purge cannot name) to `unpurged_s_maxage`, and on every host to the site's next midnight (at least
  * a minute), when what a page shows by date alone — a job's deadline state, "closing soon" — moves
- * with no write to purge it.
+ * with no write to purge it. A page whose item has an end time («Gỡ khỏi website lúc», PageEndTime)
+ * is kept only until then, with no stale window: the edge never shows it past its end, even when the
+ * purge of the sweep that takes it down fails.
  */
 final readonly class EdgeCacheHeaders
 {
@@ -72,7 +75,7 @@ final readonly class EdgeCacheHeaders
             // without asking first (no stale window), so a visitor who has signed in since gets the
             // page drawn for a session, without the code
             app(SiteEmbedCode::class)->printed() => sprintf('public, max-age=0, must-revalidate, s-maxage=%d', $lifetime()),
-            default => sprintf('public, max-age=0, s-maxage=%d, stale-while-revalidate=%d', $lifetime(), max(0, Cast::int(config($config.'.stale_while_revalidate'), 60))),
+            default => sprintf('public, max-age=0, s-maxage=%d, stale-while-revalidate=%d', $lifetime(), $rules === null && app(PageEndTime::class)->secondsLeft() !== null ? 0 : max(0, Cast::int(config($config.'.stale_while_revalidate'), 60))),
         });
 
         return $response;
@@ -91,7 +94,12 @@ final readonly class EdgeCacheHeaders
         $now = CarbonImmutable::now(SiteTime::zoneFrom($this->settings->get('general', 'timezone')));
         $midnight = $now->addDay()->startOfDay();
 
-        return min($seconds, max(self::MIDNIGHT_FLOOR, $midnight->getTimestamp() - $now->getTimestamp()));
+        $seconds = min($seconds, max(self::MIDNIGHT_FLOOR, $midnight->getTimestamp() - $now->getTimestamp()));
+
+        // the item leaves the website at its end time: never kept past it
+        $left = app(PageEndTime::class)->secondsLeft();
+
+        return $left !== null ? min($seconds, $left) : $seconds;
     }
 
     /** @param list<string> $queryAllow */

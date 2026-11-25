@@ -3,6 +3,7 @@
 namespace App\Modules\Cms\Actions;
 
 use App\Modules\Cms\Enums\RevisionKind;
+use App\Modules\Cms\Exceptions\ExpiredContentException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Routing\RouteSync;
@@ -100,6 +101,8 @@ final readonly class PublishEntry
         $from = $entry->status;
 
         if ($gate->allows('publish', $entry)) {
+            // past its end time it would be taken down again at once: the end time is moved or cleared first
+            ExpiredContentException::guard($entry->expires_at);
             $moved = $from !== 'published' || $translation->status !== 'published';
 
             // Atomic: a RouteConflictException from sync must roll back the status flip, or the

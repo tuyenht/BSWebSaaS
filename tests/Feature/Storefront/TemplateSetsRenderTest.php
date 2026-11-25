@@ -81,6 +81,19 @@ it('prints validThrough as the end of the day named by the Hạn nộp chip', fu
     expect(jobLd(jobPage('/ha-noi/tho-tien-cnc'))['validThrough'])->toBe('2026-12-05T23:59:59+07:00');
 });
 
+it('prints validThrough as the post\'s end time when it has no Hạn nộp chip, and the chip when it has both', function (): void {
+    $siteId = jobSite();
+    $post = fn (): Entry => Entry::query()->whereHas('translations', fn ($q) => $q->where('slug', 'tho-tien-cnc'))->firstOrFail();
+    app(Tenancy::class)->enter($siteId, fn () => $post()->forceFill(['expires_at' => CarbonImmutable::parse('2027-01-10 03:00', 'UTC')])->save());
+
+    expect(jobLd(jobPage('/ha-noi/tho-tien-cnc'))['validThrough'])->toBe('2027-01-10T03:00:00+00:00');
+
+    app(Tenancy::class)->enter($siteId, fn () => $post()->forceFill(['meta' => ['facts' => [['text' => ['vi' => 'Hạn nộp: 5/12/2026'], 'tone' => 'plain']]]])->save());
+    app()->forgetScopedInstances();
+
+    expect(jobLd(jobPage('/ha-noi/tho-tien-cnc'))['validThrough'])->toBe('2026-12-05T23:59:59+07:00');
+});
+
 /** The JobPosting object printed in the page head, or null when the page carries none. */
 function jobLd(string $html): ?array
 {

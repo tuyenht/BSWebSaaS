@@ -14,7 +14,11 @@ use Closure;
  * (all queries auto-scoped by BelongsToSite + RLS): a published entry (page/post) OR a
  * category (taxonomy) list page. Returns null when there is no route or the target is
  * not publishable — the caller then looks for a 301 (slug history) and otherwise 404s.
- * Entry visibility: entry.status=published AND translation.status=published.
+ * Entry visibility: entry.status=published AND translation.status=published, and its end time
+ * («Gỡ khỏi website lúc», expires_at) not yet come. entries:unpublish-due archives an item within a
+ * minute of that time; until it does, the item already answers as not found here, checked on the row
+ * in hand (no query). The website's Home page is the one exception: «/» never goes dark by itself.
+ * Staff preview (StorefrontController::preview) does not come through here and still shows it.
  */
 final class RouteResolver
 {
@@ -113,7 +117,7 @@ final class RouteResolver
             ->with('translations')
             ->first();
 
-        if ($entry === null) {
+        if ($entry === null || $this->expired($entry)) {
             return null;
         }
 
@@ -125,6 +129,17 @@ final class RouteResolver
         }
 
         return new ResolvedContent($entry, $translation);
+    }
+
+    /** Its end time has come, and it is not the Home page (read from the translations in hand). */
+    private function expired(Entry $entry): bool
+    {
+        if ($entry->expires_at === null || $entry->expires_at > now()) {
+            return false;
+        }
+
+        return $entry->type !== 'page'
+            || ! $entry->translations->contains(fn (EntryTranslation $translation): bool => in_array($translation->slug, [PathBuilder::HOME_SLUG, ''], true));
     }
 
     private function resolveCategory(int $taxonomyId, string $locale): ?ResolvedCategory

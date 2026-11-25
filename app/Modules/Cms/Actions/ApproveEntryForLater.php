@@ -7,6 +7,7 @@ namespace App\Modules\Cms\Actions;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
+use App\Modules\Cms\Exceptions\ExpiredContentException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Exceptions\SchedulePastException;
 use App\Modules\Cms\Models\Entry;
@@ -88,6 +89,7 @@ final readonly class ApproveEntryForLater
             if ($publishAt <= now()) {
                 throw new SchedulePastException;
             }
+            ExpiredContentException::guard($entry->expires_at, $publishAt);
             if (! $entry->translationFor($locale) instanceof EntryTranslation) {
                 throw InvalidTransitionException::notDefined($transitionKey);
             }

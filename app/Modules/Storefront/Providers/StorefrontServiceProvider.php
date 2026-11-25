@@ -14,6 +14,7 @@ use App\Modules\Storefront\Console\RebuildSiteSearchWords;
 use App\Modules\Storefront\EdgeCache\CloudflareEdgeCache;
 use App\Modules\Storefront\EdgeCache\EdgeCachePurges;
 use App\Modules\Storefront\EdgeCache\NullEdgeCache;
+use App\Modules\Storefront\EdgeCache\PageEndTime;
 use App\Modules\Storefront\EdgeCache\PurgeOnPublicChange;
 use App\Modules\Storefront\Support\DrawerProducts;
 use App\Modules\Storefront\Support\SiteEmbedCode;
@@ -51,6 +52,8 @@ final class StorefrontServiceProvider extends ServiceProvider
         $this->app->scoped(DrawerProducts::class);
         // Per request: whether this response printed the site's embed code (its CSP follows it).
         $this->app->scoped(SiteEmbedCode::class);
+        // Per request: the end time of the item the page shows, which caps how long the edge keeps it.
+        $this->app->scoped(PageEndTime::class);
     }
 
     public function boot(): void
