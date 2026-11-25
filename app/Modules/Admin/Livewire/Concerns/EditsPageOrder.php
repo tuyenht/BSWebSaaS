@@ -57,9 +57,14 @@ trait EditsPageOrder
         return (string) max(1, (int) $text);
     }
 
-    /** The page's place now among the live pages beside it (1: the first). */
-    private function loadPageOrder(Entry $page): void
+    /** The page's place now among the live pages beside it (1: the first); $before when the open read it already. */
+    private function loadPageOrder(Entry $page, ?int $before = null): void
     {
+        if ($before !== null) {
+            $this->pageOrder = $this->pageOrderLoaded = (string) ($before + 1);
+
+            return;
+        }
         $position = $page->position;
         $before = $this->besidePages($page->parent_id)
             ->where(fn (Builder $q) => $q->where('position', '<', $position)

@@ -14,6 +14,7 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -309,12 +310,54 @@ it('makes a new page whose typed place is refused at the end of the list, the sa
         $editor = Livewire::actingAs($writer)->test(Editor::class, ['parent' => $parent->ulid])->assertSet('pageOrder', $last)
             ->set('title', 'Con')->set('slug', 'con')->set('pageOrder', '1')
             ->call('save')->assertHasErrors('pageOrder')
-            ->assertSet('saveFailed', true)->assertSet('pageOrder', '1')->assertSet('pageOrderLoaded', $last);
+            ->assertSet('saveFailed', true)->assertSet('pageOrder', '1')->assertSet('pageOrderLoaded', $last)
+            ->assertNotDispatched('bs-toast', fn (string $name, array $params): bool => str_starts_with(
+                (string) ($params['text'] ?? ''), Str::before(__('entries.ed.toast_draft', ['time' => '§']), '§')));
 
         $made = Entry::query()->where('ulid', $editor->get('ulid'))->sole();
         expect($editor->get('saved')['pageOrder'])->toBe($last)
             ->and($made->parent_id)->toBe($parent->id)->and(poMoves($made, $mark))->toBe(0)
             ->and($made->translationFor('vi')?->title)->toBe('Con');
+    });
+});
+
+it('publishes nothing of a new page whose typed place is refused', function (): void {
+    $writer = poWriter();
+
+    app(Tenancy::class)->enter(1, function () use ($writer): void {
+        $parent = poPage('cha', position: 0);
+        poCrowd($parent);
+
+        $editor = Livewire::actingAs($writer)->test(Editor::class, ['parent' => $parent->ulid])
+            ->set('title', 'Con')->set('slug', 'con')->set('pageOrder', '1')
+            ->call('publish')->assertHasErrors('pageOrder')
+            ->assertSet('saveFailed', true)->assertSet('status', 'draft')
+            ->assertNotDispatched('bs-toast', text: __('entries.ed.toast_published', ['unit' => __('entries.noun_page')]));
+
+        expect(Entry::query()->where('ulid', $editor->get('ulid'))->sole()->status)->toBe('draft');
+    });
+});
+
+it('takes a held member\'s move back when the change is refused after it, and keeps the place typed', function (): void {
+    $publisher = poWriter();
+    $writer = poMember(['entries.view', 'entries.edit.any'], 'writer');
+
+    app(Tenancy::class)->enter(1, function () use ($publisher, $writer): void {
+        $a = poPage('a', position: 0);
+        $b = poPage('b', position: 1);
+        app(PublishEntry::class)->handle($a, 'vi', $publisher);
+        app(PublishEntry::class)->handle($b, 'vi', $publisher);
+        $mark = poAuditMark();
+
+        $editor = Livewire::actingAs($writer)->test(Editor::class, ['ulid' => $a->ulid])->assertSet('pageOrder', '1')
+            ->set('slug', 'b')->set('pageOrder', '2')
+            ->call('save')->assertHasErrors('slug')
+            ->assertSet('saveFailed', true)->assertSet('pageOrder', '2')->assertSet('pageOrderLoaded', '1');
+
+        expect($editor->get('saved')['pageOrder'])->toBe('1')
+            ->and(poOrder())->toBe(['a', 'b'])->and($a->fresh()?->position)->toBe(0)
+            ->and(poMoves($a, $mark))->toBe(0)
+            ->and(EntryDraft::query()->where('entry_id', $a->id)->exists())->toBeFalse();
     });
 });
 
