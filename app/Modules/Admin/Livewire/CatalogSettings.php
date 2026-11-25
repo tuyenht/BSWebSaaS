@@ -2,6 +2,8 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Livewire\Concerns\RestoresSettingsSection;
+use App\Modules\Admin\Livewire\Concerns\ShowsSettingsToast;
 use App\Modules\Admin\Livewire\Concerns\TracksSavedState;
 use App\Modules\Admin\Support\ProductsTabSwitch;
 use App\Modules\Admin\Support\SettingsRepository;
@@ -18,11 +20,14 @@ use Livewire\Component;
  * The storefront and admin both read the flag through CatalogMode, so the decision lives
  * in exactly one place. Writes are settings.manage-gated like every site-wide settings tab.
  * The page also holds the switch for the phone menu's products tab (storefront.header,
- * key drawer_products), saved with the same Lưu button.
+ * key drawer_products), saved with the same Lưu button. Above the fields, when the section was
+ * last saved and «Khôi phục mặc định» (both back to their defaults, with «Hoàn tác»).
  */
 #[Layout('admin::layouts.app')]
 final class CatalogSettings extends Component
 {
+    use RestoresSettingsSection;
+    use ShowsSettingsToast;
     use TracksSavedState;
 
     public string $mode = CatalogMode::BROCHURE;
@@ -70,6 +75,7 @@ final class CatalogSettings extends Component
         $view = view('admin::livewire.catalog-settings', [
             'productsTabAvailable' => app(ProductsTabSwitch::class)->available(),
             'changes' => $this->unsavedCount(),
+            'stamp' => $this->stampText(),
         ]);
         $view->title(__('admin.catalog_settings'));
 
@@ -80,6 +86,17 @@ final class CatalogSettings extends Component
     protected function trackedState(): array
     {
         return ['mode' => $this->mode, 'drawerProducts' => $this->drawerProducts];
+    }
+
+    protected function settingsSection(): string
+    {
+        return 'catalog';
+    }
+
+    protected function reloadSaved(): void
+    {
+        $this->load();
+        $this->resetErrorBag();
     }
 
     private function load(): void

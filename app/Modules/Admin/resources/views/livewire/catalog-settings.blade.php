@@ -6,11 +6,13 @@
     $modes = ['brochure', 'commerce'];
 @endphp
 <x-bs-admin::settings-shell active="catalog" :unsaved="$changes" :invalid="count($errors->keys())">
+    <x-slot:more><x-bs-admin::settings-restore-more :name="__('admin.catalog_settings')" /></x-slot:more>
     @if (session('status'))
         <x-bs-admin::alert color="success" icon="ri-checkbox-circle">{{ session('status') }}</x-bs-admin::alert>
     @endif
     {{-- Enter in a field is the save bar's "Lưu"; the form itself never submits, so the page never reloads --}}
-    <div x-data="{ open: 'view' }">
+    <div x-data="{ open: 'view' }" class="flex flex-col gap-4">
+    <x-bs-admin::settings-stamp :stamp="$stamp" />
     <form x-data x-on:submit.prevent class="flex flex-col gap-3">
         <x-bs-admin::settings-group key="view" id="cs-g-view" :title="__('catalog.g_view')" :count="1" :bad="$errors->has('mode') ? 1 : 0" :first="true"
                                     class="flex flex-col gap-3">
@@ -77,4 +79,5 @@
         @endif
     </form>
     </div>
+    <x-bs-admin::toast :message="$toast" :tone="$toastTone" dismiss="dismissToast" :seq="$toastSeq" :undo="$undo !== null ? 'undoRestore' : null" />
 </x-bs-admin::settings-shell>

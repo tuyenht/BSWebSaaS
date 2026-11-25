@@ -2,6 +2,8 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Livewire\Concerns\RestoresSettingsSection;
+use App\Modules\Admin\Livewire\Concerns\ShowsSettingsToast;
 use App\Modules\Admin\Livewire\Concerns\TracksSavedState;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Admin\Theme\AdminChromeResolver;
@@ -19,11 +21,14 @@ use Livewire\Component;
  * stored as site_settings group `admin_theme` (NEVER the public `theme` group). Each axis
  * may also stay '' = inherit the app default — only explicitly chosen axes are persisted,
  * matching the resolver's per-field merge. Members' own Customizer picks still win over
- * whatever is set here.
+ * whatever is set here. Above the fields, when the section was last saved and «Khôi phục mặc
+ * định» (every axis back to the platform's default, with «Hoàn tác»).
  */
 #[Layout('admin::layouts.app')]
 final class AdminUiSettings extends Component
 {
+    use RestoresSettingsSection;
+    use ShowsSettingsToast;
     use TracksSavedState;
 
     public string $scheme = '';
@@ -80,14 +85,7 @@ final class AdminUiSettings extends Component
 
         $this->saved = true;
         $this->rememberSaved();
-
-        // Let the shell repaint immediately for THIS admin too (their own override, if
-        // any, still wins inside the resolver).
-        $user = Auth::user();
-        $this->dispatch(
-            'admin-chrome-changed',
-            attributes: app(AdminChromeResolver::class)->attributes($user instanceof User ? $user : null),
-        );
+        $this->repaintChrome();
 
         return true;
     }
@@ -102,7 +100,7 @@ final class AdminUiSettings extends Component
 
     public function render(): View
     {
-        $view = view('admin::livewire.admin-ui-settings', ['changes' => $this->unsavedCount()]);
+        $view = view('admin::livewire.admin-ui-settings', ['changes' => $this->unsavedCount(), 'stamp' => $this->stampText()]);
         $view->title(__('admin.admin_ui'));
 
         return $view;
@@ -117,6 +115,30 @@ final class AdminUiSettings extends Component
         }
 
         return $state;
+    }
+
+    protected function settingsSection(): string
+    {
+        return 'admin_theme';
+    }
+
+    /** After «Khôi phục mặc định» or «Hoàn tác»: the stored look, painted at once. */
+    protected function reloadSaved(): void
+    {
+        $this->load();
+        $this->resetErrorBag();
+        $this->saved = false;
+        $this->repaintChrome();
+    }
+
+    /** Let the shell repaint immediately for THIS admin too (their own override, if any, still wins inside the resolver). */
+    private function repaintChrome(): void
+    {
+        $user = Auth::user();
+        $this->dispatch(
+            'admin-chrome-changed',
+            attributes: app(AdminChromeResolver::class)->attributes($user instanceof User ? $user : null),
+        );
     }
 
     private function load(): void

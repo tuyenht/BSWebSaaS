@@ -793,7 +793,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'storefront', 'key' => 'header'], ['value' => ['drawer_tone' => 'dark', 'drawer_accent' => 'brand']]));
     $this->flushSession();
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/appearance')->assertOk()->getContent();
-    expect($html)->toContain('data-look-slot="logo"', 'data-look-stamp', 'data-look-share', 'Cập nhật lần cuối', 'Màu nhấn của menu', 'data-look-search', 'Có tìm kiếm');
+    expect($html)->toContain('data-look-slot="logo"', 'data-set-stamp', 'data-look-share', 'Cập nhật lần cuối', 'Màu nhấn của menu', 'data-look-search', 'Có tìm kiếm');
     file_put_contents($dir.'/appearance.html', $html);
 
     // "Ngôn ngữ website": Vietnamese the default, English public, Japanese written but hidden (its

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Livewire\Concerns\RestoresSettingsSection;
+use App\Modules\Admin\Livewire\Concerns\ShowsSettingsToast;
 use App\Modules\Admin\Support\GeneralSettingsStore;
 use App\Modules\Admin\Support\Settings\SettingsChangeRejected;
 use App\Modules\Shared\Support\Cast;
@@ -28,11 +30,16 @@ use Livewire\Component;
  * ones in site_profile_translations (one row per language), the timezone and day format in
  * site_settings group general; GeneralSettingsStore reads and writes them. The page edits a
  * draft and saves it in one step; a field is checked when it is left and every field again on
- * save. Writes are settings.manage-gated like every site-wide settings tab.
+ * save. Writes are settings.manage-gated like every site-wide settings tab. Above the fields, when
+ * the section was last saved; «Khôi phục mặc định» puts back only the time zone and the day format
+ * (the name, legal details and contact stay as written), with «Hoàn tác».
  */
 #[Layout('admin::layouts.app')]
 final class GeneralSettings extends Component
 {
+    use RestoresSettingsSection;
+    use ShowsSettingsToast;
+
     /** Longest value a text column takes. */
     public const int MAX = 255;
 
@@ -75,12 +82,6 @@ final class GeneralSettings extends Component
      */
     #[Locked]
     public array $saved = ['i18n' => [], 'shared' => []];
-
-    public string $toast = '';
-
-    public string $toastTone = 'success';
-
-    public int $toastSeq = 0;
 
     public function boot(): void
     {
@@ -180,13 +181,6 @@ final class GeneralSettings extends Component
         $this->notify(__('admin.gs.toast_reset'));
     }
 
-    public function dismissToast(?int $seq = null): void
-    {
-        if ($seq === null || $seq === $this->toastSeq) {
-            $this->toast = '';
-        }
-    }
-
     public function render(): View
     {
         $siteLocale = app(SiteLocale::class);
@@ -224,6 +218,7 @@ final class GeneralSettings extends Component
             'province' => $province,
             'wards' => $wards,
             'zones' => $zones,
+            'stamp' => $this->stampText(),
         ]);
         $view->title(__('admin.gs.title'));
 
@@ -456,10 +451,25 @@ final class GeneralSettings extends Component
         return $this->form;
     }
 
-    private function notify(string $message, string $tone = 'success'): void
+    protected function settingsSection(): string
     {
-        $this->toast = $message;
-        $this->toastTone = $tone;
-        $this->toastSeq++;
+        return 'general';
+    }
+
+    protected function restoreSection(): string
+    {
+        return 'general_region';
+    }
+
+    /** After «Khôi phục mặc định» or «Hoàn tác»: the stored time zone and day format; every other draft stays as typed. */
+    protected function reloadSaved(): void
+    {
+        app(SiteTime::class)->forget();
+        $shared = app(GeneralSettingsStore::class)->load()['shared'];
+        foreach (['timezone', 'dateFormat'] as $key) {
+            $this->form[$key] = $shared[$key];
+            $this->saved['shared'][$key] = $shared[$key];
+            $this->resetErrorBag('form.'.$key);
+        }
     }
 }
