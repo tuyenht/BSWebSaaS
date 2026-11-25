@@ -369,6 +369,8 @@ final class Index extends Component
             // "Liên hệ hỗ trợ" on the locked state: the platform's support mailbox
             'supportMail' => $state === 'locked' ? (Cast::string(config('support.mailbox')) ?: Cast::string(config('mail.from.address'))) : '',
             'canManage' => Gate::allows('manage', Taxonomy::class),
+            // «Quản lý ngôn ngữ» in the drawer's language panel, for a member who may change the site's languages
+            'langManage' => count($locales->enabled()) > 1 && $actor->can('settings.manage') ? route('admin.settings.languages') : null,
             // support staff signed in for a member: everything reads, nothing changes (inSection refuses it too)
             'support' => app(SupportSession::class)->active(),
         ]);
