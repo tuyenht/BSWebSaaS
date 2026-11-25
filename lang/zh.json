@@ -614,6 +614,7 @@
     "admin.aui.o.sidebar_size.sm": "紧凑",
     "admin.aui.o.scheme.light": "浅色",
     "admin.aui.o.scheme.dark": "深色",
+    "admin.aui.o.scheme.auto": "跟随设备",
     "admin.aui.o.topbar.auto": "自动",
     "admin.aui.o.topbar.light": "浅色",
     "admin.aui.o.topbar.dark": "深色",

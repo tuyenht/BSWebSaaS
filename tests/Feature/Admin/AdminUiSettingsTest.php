@@ -177,3 +177,49 @@ it('saves a site-wide text size picked on its card', function (): void {
         expect(app(SettingsRepository::class)->get('admin_theme'))->toBe(['text_size' => 'xl']);
     });
 });
+
+it('lets the site follow each device for light or dark, unless a member pinned their own', function (): void {
+    $owner = User::factory()->create();
+    $pinned = User::factory()->create(['preferences' => ['theme' => ['scheme' => 'dark']]]);
+    app(Tenancy::class)->enter(1, function () use ($owner, $pinned): void {
+        grantRole($owner, 'owner', ['settings.manage', 'entries.view']);
+        grantRole($pinned, 'owner', ['settings.manage', 'entries.view']);
+
+        Livewire::actingAs($owner->fresh())->test(AdminUiSettings::class)
+            ->set('scheme', 'auto')
+            ->call('save')
+            ->assertHasNoErrors()
+            // the open page follows the device at once, without a reload
+            ->assertDispatched('admin-chrome-changed', fn (string $name, array $params): bool => ($params['attributes']['data-scheme-auto'] ?? null) === 'true');
+
+        expect(app(SettingsRepository::class)->get('admin_theme'))->toBe(['scheme' => 'auto']);
+        Livewire::actingAs($owner->fresh())->test(AdminUiSettings::class)->assertSet('scheme', 'auto');
+    });
+
+    $html = (string) $this->actingAs($owner->fresh())->get('http://a.test/admin/settings/admin-ui')->assertOk()->getContent();
+    $tag = (string) preg_replace('/>.*/s', '>', (string) strstr($html, '<html'));
+    $dom = HTMLDocument::createFromString($html, LIBXML_NOERROR);
+
+    // the device decides; the rendered scheme stays a real one for the first paint
+    expect($tag)->toContain('data-scheme-auto="true"')->toContain('data-bs-theme="light"')
+        ->and($dom->querySelector('input[name="pick-scheme"][value="auto"]'))->not->toBeNull()
+        ->and($dom->querySelectorAll('input[name="pick-scheme"]')->length)->toBe(4);
+
+    $own = (string) $this->actingAs($pinned->fresh())->get('http://a.test/admin/settings/admin-ui')->assertOk()->getContent();
+    $ownTag = (string) preg_replace('/>.*/s', '>', (string) strstr($own, '<html'));
+    expect($ownTag)->not->toContain('data-scheme-auto')->toContain('data-bs-theme="dark"');
+});
+
+it('keeps follow-the-device a light/dark choice only: other axes refuse auto from the site tier', function (): void {
+    $owner = User::factory()->create();
+    app(Tenancy::class)->enter(1, function () use ($owner): void {
+        grantRole($owner, 'owner', ['settings.manage', 'entries.view']);
+
+        Livewire::actingAs($owner->fresh())->test(AdminUiSettings::class)
+            ->set('position', 'auto')
+            ->call('save')
+            ->assertHasErrors(['position']);
+
+        expect(app(SettingsRepository::class)->get('admin_theme'))->toBeNull();
+    });
+});

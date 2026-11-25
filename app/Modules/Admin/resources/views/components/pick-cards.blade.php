@@ -21,7 +21,9 @@
     $default = $values[0] ?? '';
     $draw = static function (string $axis, string $v) use ($brand): array {
         $dark = $axis === 'scheme' && $v === 'dark';
-        $page = $dark ? '#0f1729' : '#ffffff';
+        // «Theo máy»: half the page light, half dark, cut on the diagonal (the board's drawing)
+        $split = $axis === 'scheme' && $v === 'auto';
+        $page = $split ? 'linear-gradient(135deg, #ffffff 50%, #0f1729 50%)' : ($dark ? '#0f1729' : '#ffffff');
         $line = $dark ? 'rgb(255 255 255 / 0.18)' : '#d3d9e4';
         $side = match (true) {
             $axis === 'sidebar' && $v === 'dark', $axis === 'sidebar_image' => "color-mix(in srgb, {$brand} 72%, #0b1d45)",
@@ -41,7 +43,7 @@
         };
 
         return [
-            'page' => $page, 'line' => $line, 'side' => $side, 'sideLine' => $sideLine, 'top' => $top,
+            'page' => $page, 'main' => $split ? 'transparent' : $page, 'line' => $line, 'side' => $side, 'sideLine' => $sideLine, 'top' => $top,
             'image' => $axis === 'sidebar_image' && $v !== 'none' ? "url(/images/admin/sidebar/{$v}.jpg)" : null,
             'narrow' => $axis === 'sidebar_size' && $v === 'sm',
             'boxed' => $axis === 'layout_width' && $v === 'boxed',
@@ -78,7 +80,7 @@
                         @unless ($d['scrolled'])
                             <span class="block h-[18%] shrink-0 border-b" style="background: {{ $d['top'] }}; border-color: {{ $d['line'] }}"></span>
                         @endunless
-                        <span class="flex flex-1 flex-col gap-1 p-1.5" style="background: {{ $d['page'] }}">
+                        <span class="flex flex-1 flex-col gap-1 p-1.5" style="background: {{ $d['main'] }}">
                             <span class="block h-1.5 w-3/4 rounded-full" style="background: {{ $d['line'] }}"></span>
                             <span class="block h-1 rounded-full" style="background: {{ $d['line'] }}"></span>
                             <span class="block h-1 w-5/6 rounded-full" style="background: {{ $d['line'] }}"></span>
