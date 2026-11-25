@@ -36,7 +36,8 @@ final readonly class DisplayDateNotAfterToday implements ValidationRule
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
         if (is_string($value) && $value !== $this->unchanged && self::isFuture($value, $this->zone)) {
-            $fail(Cast::string(__('entries.ed.pd_future')));
+            // the message names today on the website's clock, as the editor's board does
+            $fail(Cast::string(__('entries.ed.pd_future', ['date' => CarbonImmutable::now()->setTimezone($this->zone)->format('d/m/Y')])));
         }
     }
 }

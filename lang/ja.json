@@ -338,7 +338,7 @@
     "entries.ed.pd_label": ":docに表示する公開日",
     "entries.ed.pd_hint": "空欄なら実際の公開日を使います。",
     "entries.ed.pd_invalid": "この日付は存在しません。カレンダーから選び直すか、空欄にして実際の公開日を使ってください。",
-    "entries.ed.pd_future": "記事に表示する日付は今日より後にできません。今日以前の日を選ぶか、空欄にして実際の公開日を使ってください。",
+    "entries.ed.pd_future": "表示する日付は今日（:date）より後にできません。今日以前の日を選んでください。",
     "entries.ed.pd_real": "実際の公開日",
     "entries.ed.exp_label": "サイトから外す日時",
     "entries.ed.exp_zone": "（サイト時間 :zone）",

@@ -338,7 +338,7 @@
     "entries.ed.pd_label": ":doc上显示的发布日期",
     "entries.ed.pd_hint": "留空则使用实际发布日期。",
     "entries.ed.pd_invalid": "该日期不存在。请在日历上重新选择，或留空以使用实际发布日期。",
-    "entries.ed.pd_future": "文章上显示的日期不能晚于今天。请选择今天或更早的日期，或留空以使用实际发布日期。",
+    "entries.ed.pd_future": "显示的日期不能晚于今天（:date）。请选择今天或更早的日期。",
     "entries.ed.pd_real": "实际发布日期",
     "entries.ed.exp_label": "从网站下线时间",
     "entries.ed.exp_zone": "（网站时间 :zone）",

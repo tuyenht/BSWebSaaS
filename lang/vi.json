@@ -338,7 +338,7 @@
     "entries.ed.pd_label": "Ngày đăng hiện trên :doc",
     "entries.ed.pd_hint": "Để trống thì lấy ngày đăng thật.",
     "entries.ed.pd_invalid": "Ngày này không có thật. Chọn lại ngày trên lịch, hoặc để trống để lấy ngày đăng thật.",
-    "entries.ed.pd_future": "Ngày hiện trên bài không được sau hôm nay. Chọn hôm nay hoặc một ngày trước đó, hoặc để trống để lấy ngày đăng thật.",
+    "entries.ed.pd_future": "Ngày hiện không được sau hôm nay (:date). Chọn hôm nay hoặc một ngày trước đó.",
     "entries.ed.pd_real": "Ngày đăng thật",
     "entries.ed.exp_label": "Gỡ khỏi website lúc",
     "entries.ed.exp_zone": "(giờ website :zone)",

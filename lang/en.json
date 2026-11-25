@@ -338,7 +338,7 @@
     "entries.ed.pd_label": "Publish date shown on the :doc",
     "entries.ed.pd_hint": "Leave it empty to use the real publish date.",
     "entries.ed.pd_invalid": "This date does not exist. Pick a day on the calendar, or leave it empty to use the real publish date.",
-    "entries.ed.pd_future": "The date shown on the post cannot be later than today. Pick today or an earlier day, or leave it empty to use the real publish date.",
+    "entries.ed.pd_future": "The date shown cannot be later than today (:date). Pick today or an earlier day.",
     "entries.ed.pd_real": "The real publish date",
     "entries.ed.exp_label": "Take off the website at",
     "entries.ed.exp_zone": "(website time :zone)",

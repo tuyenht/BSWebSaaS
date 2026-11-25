@@ -285,6 +285,8 @@ it('takes «Ngày hiện trên bài» as today on the website clock just after i
             ->set('displayDate', '2026-11-26')
             ->call('save')
             ->assertHasErrors(['displayDate'])
+            ->assertSee(__('entries.ed.pd_future', ['date' => '25/11/2026']))
+            ->assertSee('(25/11/2026)')
             ->set('displayDate', '2026-11-25')
             ->call('save')
             ->assertHasNoErrors()
