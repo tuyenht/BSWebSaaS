@@ -4,9 +4,11 @@ namespace App\Modules\Admin\Console;
 
 use App\Modules\Admin\Support\Settings\BranchList;
 use App\Modules\Admin\Support\Settings\FloatingContactInput;
+use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\BlockMediaUsage;
+use App\Modules\Cms\Support\ContentBlockMediaReconciler;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Support\EntryCoverUsage;
 use App\Modules\Media\Models\Mediable;
@@ -20,8 +22,8 @@ use Illuminate\Console\Command;
 /**
  * Rebuilds the block image usage index (mediables collection='content') per site, for every owner
  * of blocks: each entry, the site's block slots setting and each category with blocks of its own
- * for those slots; and the site's branch and factory pictures (collection 'branch', owner the
- * `storefront.footer` setting row, BranchList) and the floating contact's own icon pictures
+ * for those slots, and each shared block (its body in every language); and the site's branch and
+ * factory pictures (collection 'branch', owner the `storefront.footer` setting row, BranchList) and the floating contact's own icon pictures
  * (collection 'contact_icon', owner the `storefront.floating_contact` row), and each entry's
  * featured picture (collection 'cover', EntryCoverUsage::reconcileSite, set-based, entries in the
  * Trash included), dropping the cover rows of entries that no longer exist. Every save reconciles, so this covers content that never passed through a save —
@@ -40,19 +42,20 @@ class ReconcileContentUsage extends Command
     protected $signature = 'media:reconcile-content-usage';
 
     #[\Override]
-    protected $description = 'Rebuild image usage (mediables) for every entry (blocks and featured picture), block slots setting and category, per site';
+    protected $description = 'Rebuild image usage (mediables) for every entry (blocks and featured picture), block slots setting, category and shared block, per site';
 
-    public function handle(Tenancy $tenancy, EntryBlockMediaReconciler $reconciler, BlockMediaUsage $usage): int
+    public function handle(Tenancy $tenancy, EntryBlockMediaReconciler $reconciler, BlockMediaUsage $usage, ContentBlockMediaReconciler $blocks): int
     {
         $reconciled = 0;
         $slotOwners = 0;
+        $sharedBlocks = 0;
 
         foreach (Site::query()->get() as $site) {
             $siteId = $site->getKey();
             if (! is_int($siteId)) {
                 continue;
             }
-            $tenancy->enter($siteId, function () use ($siteId, $reconciler, $usage, &$reconciled, &$slotOwners): void {
+            $tenancy->enter($siteId, function () use ($siteId, $reconciler, $usage, $blocks, &$reconciled, &$slotOwners, &$sharedBlocks): void {
                 // the Trash included: a trashed post still reserves its pictures until it is purged
                 foreach (Entry::withTrashed()->cursor() as $entry) {
                     $reconciler->reconcile($entry);
@@ -60,12 +63,29 @@ class ReconcileContentUsage extends Command
                 }
                 EntryCoverUsage::reconcileSite($siteId);
                 $slotOwners += $this->slotOwners($usage);
+                $sharedBlocks += $this->sharedBlocks($blocks);
             });
         }
 
-        $this->info("Reconciled block image usage for {$reconciled} entries and {$slotOwners} block slot owners.");
+        $this->info("Reconciled block image usage for {$reconciled} entries, {$slotOwners} block slot owners and {$sharedBlocks} shared blocks.");
 
         return self::SUCCESS;
+    }
+
+    /** The current site's shared blocks reconciled, after the rows of blocks that are gone are dropped. */
+    private function sharedBlocks(ContentBlockMediaReconciler $reconciler): int
+    {
+        Mediable::query()->where('mediable_type', ContentBlockMediaReconciler::OWNER)->where('collection', BlockMediaUsage::COLLECTION)
+            ->whereNotIn('mediable_id', ContentBlock::query()->select('id'))
+            ->delete();
+
+        $count = 0;
+        foreach (ContentBlock::query()->select(['id', 'site_id'])->cursor() as $block) {
+            $reconciler->reconcile($block);
+            $count++;
+        }
+
+        return $count;
     }
 
     /** The current site's slot owners reconciled, after their stale rows are dropped. */
