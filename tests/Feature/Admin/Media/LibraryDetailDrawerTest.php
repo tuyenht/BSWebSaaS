@@ -599,8 +599,10 @@ it('refuses a draft that is not text (null or a list), naming the field and writ
 
 it('opens the drawer on a flat query budget, however many places use the file', function (): void {
     $user = drwUser(['media.view', 'media.upload', 'media.delete.any']);
+    // two people uploaded here, so «Người tạo» is offered: its people and counts are still not read for a drawer
+    $colleague = User::factory()->create(['name' => 'Minh Châu']);
     $one = drwFile('mot-noi.png', ['created_by' => $user->id]);
-    $many = drwFile('nhieu-noi.png', ['created_by' => $user->id]);
+    $many = drwFile('nhieu-noi.png', ['created_by' => $colleague->id]);
 
     app(Tenancy::class)->enter(1, function () use ($user, $one, $many): void {
         drwEnglish();
@@ -615,7 +617,9 @@ it('opens the drawer on a flat query budget, however many places use the file', 
         $page->call('closeDetail');
         $b = countQueries(fn () => $page->call('openDetail', $many->ulid)->assertSet('pickerDetailUlid', $many->ulid));
 
-        // the page's own redraw plus the file, its folder, its uses and its people: measured 15
-        expect($b)->toBe($a)->toBeLessThanOrEqual(15);
+        // the page's own redraw (with the page's use chips, one statement; the filter groups' counts wait
+        // for the filters to open) plus the file, its folder, its uses and its people: measured 16
+        expect($page->viewData('manyUploaders'))->toBeTrue()
+            ->and($b)->toBe($a)->toBeLessThanOrEqual(16);
     });
 });

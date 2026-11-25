@@ -900,8 +900,8 @@ trait WithMediaLibraryPicker
             'video' => $query->where('mime', 'like', 'video/%'),
             'audio' => $query->where('mime', 'like', 'audio/%'),
             'doc' => $query->where('mime', 'like', 'application/%'),
-            'used' => app(MediaUsageLocator::class)->constrain($query, true),
-            'unused' => app(MediaUsageLocator::class)->constrain($query, false),
+            'used' => app(MediaUsageLocator::class)->constrain($query, true, liveOwners: true),
+            'unused' => app(MediaUsageLocator::class)->constrain($query, false, liveOwners: true),
             default => null,
         };
 

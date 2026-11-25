@@ -511,8 +511,10 @@ it('lets the author touch only their own files: someone else\'s stays put and ou
     $gone = libFile(1, 'da-xoa.png');
     app(Tenancy::class)->enter(1, fn () => $gone->delete());
 
+    // the Trash is offered (the «Trạng thái» group), and someone else's file is not in it
     $this->actingAs($user)->get('http://a.test/admin/media')->assertOk()
-        ->assertSee('value="~trash"', false)
+        ->assertSee('data-fsheet="status"', false)
+        ->assertSee('value="trash"', false)
         ->assertDontSee('da-xoa');
 
     app(Tenancy::class)->enter(1, function () use ($user, $live, $gone): void {
