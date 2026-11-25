@@ -169,7 +169,7 @@ it('lists a job category and shows a job post within a fixed number of reads', f
         ->and(budgetCount('/tin-tuc', 3, 4, 'grid-job', setup: $withFacts))->toBe($few)
         ->and($few)->toBeLessThanOrEqual(22)
         ->and(budgetCount('/tin-tuc/bai-1', 12, 1, 'grid-job', setup: $withFacts))->toBe($post)
-        ->and($post)->toBeLessThanOrEqual(24);
+        ->and($post)->toBeLessThanOrEqual(25); // + the post's tags (one read)
 });
 
 it('reads a job grid block in a fixed number of reads, however many posts it lists', function (): void {

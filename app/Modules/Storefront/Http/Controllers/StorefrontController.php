@@ -10,6 +10,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RedirectRules;
@@ -17,6 +18,7 @@ use App\Modules\Cms\Routing\ResolvedCategory;
 use App\Modules\Cms\Routing\ResolvedContent;
 use App\Modules\Cms\Routing\ResolvedProduct;
 use App\Modules\Cms\Routing\RouteResolver;
+use App\Modules\Cms\Support\EntryTags;
 use App\Modules\Cms\Support\JobFacts;
 use App\Modules\Cms\Taxonomy\CategoryTemplates;
 use App\Modules\Media\Models\Media;
@@ -35,6 +37,7 @@ use App\Modules\Storefront\Support\ProductPage;
 use App\Modules\Storefront\Support\SlotContext;
 use App\Modules\Storefront\Support\ThankYouPages;
 use App\Modules\Storefront\Support\TitleDisambiguator;
+use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Theme\Chrome\StorefrontCsp;
@@ -329,6 +332,9 @@ final readonly class StorefrontController
             // a layout of the wrong role, or one the theme lacks, falls back like null.
             $categoryTemplate = $category !== null ? $this->categoryTemplates->detail($category) : null;
             $extra['post'] = $this->posts->band($entry, $content->translation, $locale);
+            // its tags named in this language, each linking to the tag's page
+            // resolved per request: it reads the current site, which a controller kept between requests must not hold
+            $extra['tags'] = app(EntryTags::class)->links($entry, $locale);
 
             // A post on a job layout carries its deadline state and the JobPosting data for the head.
             $own = $entry->template_override;
@@ -352,7 +358,7 @@ final readonly class StorefrontController
             }
 
             // The blocks of the side column and of the band below the post; the newest posts of the
-            // category's root branch are read with the related posts only when a block asks for them.
+            // post's own category are read with the related posts only when a block asks for them.
             $slotBlocks = $this->slots->blocks(SlotContext::POST_SLOTS, $locale, $category);
             $extra['slotBlocks'] = $slotBlocks;
             $withRecent = SlotContext::has($slotBlocks, 'recent_posts');
@@ -372,7 +378,7 @@ final readonly class StorefrontController
                 $extra['crumbsShown'] = $this->crumbs->visible($extra['breadcrumb'], true);
                 // The capability layout draws neither neighbours nor related cards: read them only when a block needs the recent posts.
                 if ($postTemplate !== 'capability' || $withRecent) {
-                    $extra += $this->posts->siblings($entry, $category, $locale, true, $withRecent, $postTemplate === 'project');
+                    $extra += $this->posts->siblings($entry, $category, $locale, true, $withRecent);
                 }
             }
             $extra['slotContext'] = $this->slots->context($slotBlocks, $category, $locale, $brandData, is_array($extra['recent'] ?? null) ? $extra['recent'] : [], $entry->id);
@@ -437,6 +443,9 @@ final readonly class StorefrontController
         // working through the post→product migration (posts until products land, products after).
         // A category below the catalog root lists the products filed under it, on the same terms.
         $taxonomy = $resolved->taxonomy;
+        if ($taxonomy->vocabulary === Taxonomy::TAG) {
+            return $this->renderTag($resolved, $locale, $path, $chrome);
+        }
         // The real list layout, with "follow the parent" already turned into a layout name or null.
         $listTemplate = $this->categoryTemplates->list($taxonomy);
         // Asked through ProductIndexLink, which remembers both for the request: a page showing the
@@ -501,6 +510,60 @@ final readonly class StorefrontController
     }
 
     /**
+     * A tag's page: the published posts filed under the tag (a facet term, any pivot position from
+     * Entry::FACET_POSITION_BASE up) whose version in this language is published, newest first, as
+     * news cards with keyset paging like every list. Its title is "Tag: name" (the h1, the crumb and
+     * the head's title), under a fixed sentence naming the site, on the plain dark band with its
+     * pattern (a tag has no cover). While the tag has fewer than two such posts the page is
+     * `noindex,follow` (a thin page; the sitemap leaves it out too, SitemapRoutes): the first page
+     * holds every post then, so it decides without a count.
+     *
+     * A tag whose posts are all unpublished (a draft's, one waiting for approval, one in the trash)
+     * has no page (404): a tag is made by any save of a member who may edit a post, so its name reaches
+     * visitors only once a post carrying it went live, through publishing and so through approval
+     * where a workflow asks for one. A tag no post carries any more (taken off its last post) answers
+     * 404 too, so a name typed on a draft and removed again never becomes public. So does a page past
+     * the last post.
+     *
+     * @param  array<string, mixed>  $chrome  page chrome (menu, lang, hreflang)
+     */
+    private function renderTag(ResolvedCategory $resolved, string $locale, string $path, array $chrome): Response
+    {
+        $position = $this->lists->position(request());
+        // resolved per request: the controller is kept between requests, the current site is not
+        $siteId = app(CurrentSite::class)->id();
+        $tagged = fn (Builder $query): Builder => $query
+            ->join('entry_taxonomies as tagged', fn (JoinClause $join) => $join->on('tagged.entry_id', '=', 'entries.id')
+                ->where('tagged.site_id', $siteId)
+                ->where('tagged.taxonomy_id', $resolved->taxonomy->id)->where('tagged.position', '>=', Entry::FACET_POSITION_BASE));
+        $live = $tagged(Entry::query())
+            ->where('entries.type', 'post')
+            ->where('entries.status', 'published')
+            ->whereHas('translations', fn (Builder $query) => $query->where('locale', $locale)->where('status', 'published'));
+        ['rows' => $rows, 'more' => $more] = $this->lists->window($live->select('entries.*')->with(['translations', 'routes']), Entry::class, $position);
+        $first = $position['after'] === null && $position['page'] === 1;
+        $site = trim(Cast::string(data_get($chrome, 'brand.name')));
+
+        $extra = $chrome;
+        $extra['chips'] = [];
+        $extra['band'] = [
+            'subtitle' => $site !== '' ? __('storefront.tag_intro', ['site' => $site]) : __('storefront.tag_intro_plain'),
+            'image' => null,
+            'srcset' => null,
+            'pattern' => true,
+        ];
+        // no live post in this language carries the tag (or the page is past the last post): no page
+        abort_if($rows->isEmpty(), 404);
+        $extra['cards'] = $this->lists->postCards($rows, $locale, [], true);
+        if ($first && ! $more && $rows->count() < 2) {
+            $extra['robots'] = 'noindex,follow';
+        }
+        $title = __('storefront.tag_title', ['name' => $resolved->translation->name]);
+
+        return $this->listResponse($resolved, $locale, $path, $position, $more, ListPage::ulidOf($rows->last()), [], $extra, 'grid-news', $title);
+    }
+
+    /**
      * The catalog product index — the catalog section's category (e.g. /san-pham) lists published
      * products newest-first, each linking to its canonical product route; a category below it
      * lists the products filed under it (its own on the default layout, its whole subtree on a
@@ -555,8 +618,10 @@ final readonly class StorefrontController
      * @param  list<array{title: string, url: string}>  $titles
      * @param  array<string, mixed>  $extra
      */
-    private function listResponse(ResolvedCategory $resolved, string $locale, string $path, array $position, bool $more, ?string $lastUlid, array $titles, array $extra, ?string $listTemplate): Response
+    private function listResponse(ResolvedCategory $resolved, string $locale, string $path, array $position, bool $more, ?string $lastUlid, array $titles, array $extra, ?string $listTemplate, ?string $title = null): Response
     {
+        // the page's title (h1, last crumb, head): the category's name unless the caller words it
+        $title ??= $resolved->translation->name;
         // Each paginated page self-canonicals (with ?page=N) — rel=prev/next signals the series;
         // canonicaling page-N→page-1 would drop the deeper pages from the index.
         $base = url($this->paths->publicUrl($path, $locale));
@@ -570,7 +635,10 @@ final readonly class StorefrontController
         $extra['canonical'] = $canonical;
         $extra['ogType'] = 'website';
         // Home → the categories above → this one (its own entry keeps the page's canonical address).
-        $trail = $this->crumbs->category($resolved->taxonomy, $locale, $resolved->translation->name, $resolved->translation->slug);
+        // a tag stands alone under Home, at its own address
+        $trail = $resolved->taxonomy->vocabulary === Taxonomy::TAG
+            ? [$this->crumbs->crumb($title, $this->paths->publicUrl($this->paths->forTag($resolved->translation->slug), $locale))]
+            : $this->crumbs->category($resolved->taxonomy, $locale, $resolved->translation->name, $resolved->translation->slug);
         $parentName = count($trail) >= 2 ? $trail[count($trail) - 2]['name'] : null;
         $lastLevel = count($trail) - 1;
         $trail = array_map(
@@ -584,11 +652,17 @@ final readonly class StorefrontController
         $extra['slotBlocks'] = $this->slots->blocks(SlotContext::LIST_SLOTS, $locale, $resolved->taxonomy);
         $extra['slotContext'] = $this->slots->context($extra['slotBlocks'], $resolved->taxonomy, $locale, is_array($extra['brand'] ?? null) ? $extra['brand'] : null);
 
+        $links = $this->lists->links(request()->url(), $position, $more, $lastUlid);
+        // a tag's page from the second on also leads back to the first, beside "previous"
+        if ($resolved->taxonomy->vocabulary === Taxonomy::TAG && $position['after'] === null && $position['page'] > 1) {
+            $links['firstUrl'] = request()->url();
+        }
+
         $html = $this->renderer->renderCategory(
             $listTemplate,
-            $resolved->translation->name,
+            $title,
             $titles,
-            $this->lists->links(request()->url(), $position, $more, $lastUlid),
+            $links,
             self::categorySeo($resolved->translation, $parentName, Cast::string(data_get($extra, 'brand.name'))) + $this->categoryTitleSeo($resolved, $locale, $parentName),
             $extra,
         );

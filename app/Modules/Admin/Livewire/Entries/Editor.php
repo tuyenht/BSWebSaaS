@@ -53,6 +53,7 @@ use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\DisplayDate;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Support\EntryCategoryWriter;
+use App\Modules\Cms\Support\EntryTags;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Cms\Support\HomePages;
 use App\Modules\Cms\Support\PageRules;
@@ -150,7 +151,7 @@ final class Editor extends Component
      * The fields the save state and the leave dialog count against the saved entry. The block list
      * is counted apart (blocksChanged): the browser cannot write it the way the server does.
      */
-    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryIds', 'coverImageKey', 'coverAlt', 'parentUlid', 'pageOrder', 'scheduleAt', 'statusTo', 'templateKey', 'displayDate'];
+    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryIds', 'coverImageKey', 'coverAlt', 'parentUlid', 'pageOrder', 'scheduleAt', 'statusTo', 'templateKey', 'displayDate', 'tags'];
 
     /** Which entry is being edited — server-resolved (mount/persist); never client-set. */
     #[Locked]
@@ -247,6 +248,28 @@ final class Editor extends Component
      * its page and its cards; '' = the real publish day (DisplayDate). One value for every language.
      */
     public string $displayDate = '';
+
+    /**
+     * «Thẻ» (board 07): the post's tags named in this language, in order (EntryTags). Added with
+     * addTag() and taken out with removeTag(); a name no tag has yet makes a tag on save. The tags
+     * named in other languages only are not in the list and stay as they are.
+     *
+     * @var list<string>
+     */
+    public array $tags = [];
+
+    /**
+     * The post's tags in this language as this form last read them (mount, a save): what a save
+     * compares the form's tags with, so it files only the tags the member added or took out since
+     * (EntryTags::apply) and never undoes a tag another save filed meanwhile. Server-set only.
+     *
+     * @var list<string>
+     */
+    #[Locked]
+    public array $tagsLoaded = [];
+
+    /** What is typed in the «Thẻ» card's box, not added yet. */
+    public string $tagDraft = '';
 
     /**
      * Whether this form loaded «Mẫu hiển thị» and «Ngày đăng hiện trên bài» (set on every mount). A form
@@ -551,6 +574,8 @@ final class Editor extends Component
         if ($this->type === 'post') {
             $this->templateKey = TemplateCatalog::variant($entry->template_override) ?? '';
             $this->displayDate = DisplayDate::of($entry->meta);
+            $this->tags = app(EntryTags::class)->names($entry, $this->locale);
+            $this->tagsLoaded = $this->tags;
         }
 
         // one read for the post's categories in order, the main one (position 0) among them
@@ -2074,6 +2099,8 @@ final class Editor extends Component
             // the Home page's locked link: the website's root in this language
             'homePath' => app(PathBuilder::class)->publicUrl('/', $this->locale),
             // «Trang cha» is one value for every language: it is changed in the website's default language only
+            // «Thẻ» is written to the website at once: while this member's saves go into a change, it stays as it is
+            'tagsHeld' => $liveRow !== null,
             'sharedLock' => $this->locale !== app(SiteLocale::class)->default(),
             'sharedWhy' => Cast::string(__('entries.ed.shared_guard', ['lang' => Locales::label(app(SiteLocale::class)->default())])),
             // The writing area's hint: in another language it says that version is still empty.
@@ -2114,7 +2141,7 @@ final class Editor extends Component
         $this->saveFailed = false;
         // A language with no saved version yet loads nothing back: start from an empty form.
         $preset = $this->ulid === null ? $this->parentLoaded : null;
-        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'coverAlt', 'templateKey', 'displayDate', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
+        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'coverAlt', 'templateKey', 'displayDate', 'tags', 'tagsLoaded', 'tagDraft', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
             'transitionNote', 'assignTo', 'showImagePicker', 'blockImagePickerPath', 'coverToast', 'coverUndo', 'stale', 'overwrite',
             'parentUlid', 'parentLoaded', 'parentName', 'pageHome', 'scheduleAt', 'scheduleLoaded', 'statusTo', 'autoSaved', 'slugFresh', 'slugTouched');
         $this->mount($this->ulid, $this->sectionKey, $this->locale, $preset);
@@ -3124,6 +3151,13 @@ final class Editor extends Component
             $rules['categoryIds'] = ['array', 'max:'.(Entry::FACET_POSITION_BASE - 1), $this->arePostCategories(...)];
             $rules['categoryIds.*'] = ['integer', 'distinct'];
             // «Thuộc tính bài»: a look the theme draws for posts, a real calendar day
+            // «Thẻ»: names a tag can have (EntryTags::clean), at most the tags one post carries
+            $rules['tags'] = ['array', 'max:'.EntryTags::MAX_TAGS];
+            $rules['tags.*'] = ['string', function (string $attribute, mixed $value, Closure $fail): void {
+                if (! is_string($value) || EntryTags::clean($value, $this->locale) === null) {
+                    $fail(Cast::string(__('entries.ed.tag_invalid', ['max' => EntryTags::NAME_MAX])));
+                }
+            }];
             $rules['templateKey'] = ['string', Rule::in(TemplateCatalog::names(TemplateCatalog::ROLE_POST_VARIANT))];
             $rules['displayDate'] = ['nullable', 'string', 'date_format:Y-m-d', static function (string $attribute, mixed $value, Closure $fail): void {
                 if (is_string($value) && $value !== '' && ! DisplayDate::valid($value)) {
@@ -3216,6 +3250,7 @@ final class Editor extends Component
             'coverAlt.max' => __('entries.ed.cover_alt_too_long', ['max' => EntryContentRules::COVER_ALT_MAX]),
             'templateKey.in' => __('entries.ed.tpl_invalid'),
             'displayDate.date_format' => __('entries.ed.pd_invalid'),
+            'tags.max' => __('entries.ed.tag_full', ['max' => EntryTags::MAX_TAGS]),
         ];
     }
 
@@ -3552,6 +3587,9 @@ final class Editor extends Component
                 // a main category in another section moves the post there: its list and crumb follow
                 $this->placeInList($this->sectionOf($this->categoryId !== null ? Taxonomy::query()->find($this->categoryId) : null));
             }
+            // «Thẻ»: only what this form added or took out since it read the tags, filed onto the tags stored
+            // now; the card then shows them as stored (one another save added among them)
+            $this->fileTags($entry);
         }
 
         // A save on live content is what visitors now see: keep that version (skipped when unchanged).
@@ -4060,6 +4098,90 @@ final class Editor extends Component
         }
 
         return ContentSection::query()->where('key', $key)->first();
+    }
+
+    /**
+     * «Thêm» / Enter in the «Thẻ» card: the names typed (several at once, split at commas) join the
+     * post's tags, each once (one address, one tag). Stored on save; a name no tag has yet makes a
+     * tag then, which needs nothing beyond the right to edit the post.
+     */
+    public function addTag(): void
+    {
+        $this->authorizeEditing();
+        if ($this->type !== 'post') {
+            return;
+        }
+        $this->resetErrorBag(['tagDraft', 'tags', 'tags.*']);
+        $have = [];
+        foreach ($this->tags as $name) {
+            $have[EntryTags::slugOf($name, $this->locale)] = true;
+        }
+        $tags = app(EntryTags::class);
+        $added = $this->tags;
+        foreach (explode(',', $this->tagDraft) as $typed) {
+            if (trim($typed) === '') {
+                continue;
+            }
+            $name = EntryTags::clean($typed, $this->locale);
+            if ($name === null) {
+                $this->addError('tagDraft', Cast::string(__('entries.ed.tag_invalid', ['max' => EntryTags::NAME_MAX])));
+
+                return;
+            }
+            $slug = EntryTags::slugOf($name, $this->locale);
+            if (isset($have[$slug])) {
+                continue;
+            }
+            if (count($added) >= EntryTags::MAX_TAGS) {
+                $this->addError('tagDraft', Cast::string(__('entries.ed.tag_full', ['max' => EntryTags::MAX_TAGS])));
+
+                return;
+            }
+            if (! $tags->addressFree($name, $this->locale)) {
+                $this->addError('tagDraft', Cast::string(__('entries.ed.tag_taken', ['name' => $name])));
+
+                return;
+            }
+            $have[$slug] = true;
+            $added[] = $name;
+        }
+        $this->tags = $added;
+        $this->tagDraft = '';
+    }
+
+    /** The «Bỏ thẻ» button on a chip: the tag leaves the post on save (the tag itself stays). */
+    public function removeTag(int $index): void
+    {
+        $this->authorizeEditing();
+        if (! array_key_exists($index, $this->tags)) {
+            return;
+        }
+        $tags = $this->tags;
+        unset($tags[$index]);
+        $this->tags = array_values($tags);
+    }
+
+    /**
+     * The save's «Thẻ» write (EntryTags::apply). A name it could not file (its address became another
+     * page's, or the post reached its limit through another save) is not lost: it goes back into the
+     * card's box with the reason, and the rest of the save stands, so a save by itself does not try
+     * it again and again.
+     */
+    private function fileTags(Entry $entry): void
+    {
+        ['tags' => $stored, 'refused' => $refused] = app(EntryTags::class)->apply($entry, $this->locale, $this->tagsLoaded, $this->tags);
+        $this->tags = $stored;
+        $this->tagsLoaded = $stored;
+        if ($refused === []) {
+            return;
+        }
+        $names = array_column($refused, 'name');
+        $draft = trim($this->tagDraft);
+        $this->tagDraft = implode(', ', $draft === '' ? $names : [...$names, $draft]);
+        $first = $refused[0];
+        $this->addError('tagDraft', Cast::string($first['why'] === 'full'
+            ? __('entries.ed.tag_full', ['max' => EntryTags::MAX_TAGS])
+            : __('entries.ed.tag_taken', ['name' => $first['name']])));
     }
 
     /**

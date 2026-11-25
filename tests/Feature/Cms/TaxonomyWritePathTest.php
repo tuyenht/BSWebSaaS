@@ -216,9 +216,14 @@ it('refuses the site search address for a category, new or renamed, as its own r
 
         expect(twRefusal(fn () => twCreate('Tìm kiếm', slug: 'tim-kiem')))->toBe('slug_reserved')
             ->and(twRefusal(fn () => app(UpdateTaxonomy::class)->handle($news, new TaxonomyData(slugs: ['vi' => 'tim-kiem']))))->toBe('slug_reserved')
-            ->and(__('categories.reason_slug_reserved', [], 'vi'))->toBe('Đường dẫn này dành cho trang tìm kiếm của website — thử thêm vài chữ vào cuối.')
+            ->and(__('categories.reason_slug_reserved', [], 'vi'))->toBe('Đường dẫn này dành cho một trang có sẵn của website (tìm kiếm hoặc thẻ) — thử thêm vài chữ vào cuối.')
             ->and(twPage($news))->toBe('/tin-tuc')
             ->and(SiteRoute::query()->where('path', '/tim-kiem')->exists())->toBeFalse();
+
+        // the tags' segment too: a category «Thẻ» never stands at /the (its posts would sit among the tags)
+        expect(twRefusal(fn () => twCreate('Thẻ', slug: 'the')))->toBe('slug_reserved')
+            ->and(twCreate('Thẻ')->translationFor('vi')?->slug)->not->toBe('the')
+            ->and(SiteRoute::query()->where('path', '/the')->exists())->toBeFalse();
     });
 });
 

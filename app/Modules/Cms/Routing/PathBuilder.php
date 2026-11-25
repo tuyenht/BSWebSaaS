@@ -33,8 +33,14 @@ final readonly class PathBuilder
     /** The suggestions under a search box while the visitor types (JSON, its own route). */
     public const string SUGGEST_PATH = self::SEARCH_PATH.'/goi-y';
 
-    /** Unprefixed paths that belong to a page of the platform: no content may take one (RouteSync). */
-    public const array RESERVED_PATHS = [self::SEARCH_PATH, self::SUGGEST_PATH];
+    /** The segment every tag page sits under (forTag()). */
+    public const string TAG_PREFIX = '/the';
+
+    /**
+     * Unprefixed paths that belong to a page of the platform: no content may take one (RouteSync). The
+     * tags' segment is one: a category or page at `/the` would put its posts or sub-pages among the tags.
+     */
+    public const array RESERVED_PATHS = [self::SEARCH_PATH, self::SUGGEST_PATH, self::TAG_PREFIX];
 
     public function __construct(
         private SiteLocale $siteLocale,
@@ -211,6 +217,15 @@ final readonly class PathBuilder
     public function forTaxonomy(string $slug): string
     {
         return '/'.trim($slug, '/');
+    }
+
+    /**
+     * A tag's page: `/the/slug`, under one fixed segment in every language (like SEARCH_PATH), so a
+     * tag never takes a category's or a post's address and its slug is unique within the segment.
+     */
+    public function forTag(string $slug): string
+    {
+        return self::TAG_PREFIX.'/'.trim($slug, '/');
     }
 
     /** The `/primary-category` prefix (localized) for a routable's primary category, or '' when none. */
