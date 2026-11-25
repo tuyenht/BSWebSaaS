@@ -14,7 +14,7 @@ const went = [];
 window.Livewire = { navigate: (url) => went.push(url) };
 await import('../../resources/js/admin-categories.js');
 
-const texts = new Proxy({}, { get: (o, k) => (k === 'saveMove' ? 'Lưu và chuyển :n bài' : k === 'cxLine' ? ':n bài sẽ chuyển từ :from sang :section' : String(k)) });
+const texts = new Proxy({}, { get: (o, k) => (k === 'saveMove' ? 'Lưu và chuyển :n bài' : k === 'cxLine' ? ':n bài sẽ chuyển từ :from sang :section' : k === 'langProg' ? ':done/:total phiên bản đủ' : String(k)) });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const node = (key, parent, name, more = {}) => ({
     key, parent, name, names: { vi: name }, slugs: { vi: key.toLowerCase() }, descriptions: {}, seoTitles: {}, seoDescriptions: {}, trail: [],
@@ -160,12 +160,23 @@ test('the drawer shows the source and the open version as pills; «+N» lists ev
     c.openEdit('01M');
     assert.deepEqual(langs.locales.filter((l) => c.langShown(l)), ['vi'], 'the source alone while it is open');
     assert.equal(c.langMore, 3);
-    assert.equal(c.langProg, 'langProg', 'the line is the text with its numbers');
+    assert.equal(c.langProg, '2/4 phiên bản đủ', 'the line is the text with its numbers');
     assert.deepEqual(langs.locales.map((l) => c.langState(l)), ['stFull', 'stFull', 'stMiss', 'stEmpty'], 'a name without its link still lacks a field');
     assert.equal(c.lineWarn, false, 'the source never warns');
 
     c.langToggle();
     assert.equal(c.langOpen, true);
+    const group = document.createElement('div');
+    const inside = document.createElement('button');
+    group.append(inside);
+    document.body.append(group);
+    c.langLeave({ relatedTarget: inside, currentTarget: group });
+    assert.equal(c.langOpen, true, 'focus moving within the group keeps the panel');
+    c.langLeave({ relatedTarget: null, currentTarget: group });
+    assert.equal(c.langOpen, true, 'focus leaving the window keeps it too');
+    c.langLeave({ relatedTarget: document.body, currentTarget: group });
+    assert.equal(c.langOpen, false, 'focus moving out of the group shuts the panel');
+    c.langToggle();
     c.langQ = 'trung';
     assert.deepEqual(langs.locales.filter((l) => c.langHit(l)), ['zh'], 'by name, without its accents');
     c.langQ = 'JA';
@@ -187,5 +198,13 @@ test('the drawer shows the source and the open version as pills; «+N» lists ev
     c.pan = null;
     c.openEdit('01M');
     assert.equal(c.langOpen, false, 'a drawer opened again starts with the panel shut');
+    c.destroy();
+});
+
+test('the rows are read from the document, so a read made from inside the drawer (whose own root holds no rows) still finds them', () => {
+    const { c } = screen([[R, 1], [A, 2]]);
+    c.$root = document.createElement('div');
+    c.$el = c.$root;
+    assert.deepEqual(c.all().map((n) => n.key), ['01R', '01A']);
     c.destroy();
 });

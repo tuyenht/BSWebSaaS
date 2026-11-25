@@ -325,7 +325,7 @@
                     {{-- the languages (board 10): the source and the version open as pills, the others behind «+N» --}}
                     <div class="flex flex-col gap-2">
                         <div class="relative flex flex-wrap items-center gap-1.5 rounded-md border border-border bg-surface px-2 py-1.5" role="group" aria-label="{{ $u('langs') }}"
-                            x-on:click.outside="langClose(false)" x-on:keydown.escape="if (langOpen) { $event.stopPropagation(); langClose(true) }">
+                            x-on:click.outside="langClose(false)" x-on:focusout="langLeave($event)" x-on:keydown.escape="if (langOpen) { $event.stopPropagation(); langClose(true) }">
                             <span class="inline-flex px-0.5 text-text-muted" title="{{ $u('langs') }}"><x-bs-admin::icon name="ri-translate-2" class="size-5" /></span>
                             @foreach ($locales as $c)
                                 <button type="button" x-show="langShown('{{ $c }}')" x-on:click="langClose(false); pickLang('{{ $c }}')" x-bind:aria-pressed="(cur === '{{ $c }}').toString()"

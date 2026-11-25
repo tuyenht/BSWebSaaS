@@ -79,7 +79,7 @@ window.Alpine.data('bsCategories', (cfg) => {
         // ---- the rows as the server drew them ---------------------------------------------------
         all() {
             if (!cache) {
-                cache = Array.from(this.$root.querySelectorAll('[data-tree-row][data-node]')).map((el) => {
+                cache = Array.from(document.querySelectorAll('[data-tree-row][data-node]')).map((el) => {
                     try {
                         return Object.assign(JSON.parse(el.dataset.node), { lv: Number(el.dataset.lv) });
                     } catch {
@@ -748,6 +748,13 @@ window.Alpine.data('bsCategories', (cfg) => {
             this.langQ = '';
             if (back) {
                 this.$nextTick(() => document.querySelector('[data-cm-lang-more]')?.focus());
+            }
+        },
+        // focus moving out of the group (past the last row or the settings link) shuts the panel
+        langLeave(e) {
+            const to = e.relatedTarget;
+            if (this.langOpen && to && !e.currentTarget.contains(to)) {
+                this.langClose(false);
             }
         },
         langGo(c) {

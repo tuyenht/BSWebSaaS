@@ -645,6 +645,7 @@ it('draws the drawer\'s languages as the board does: pills, «+N» with the pane
     $html = $this->actingAs($this->editor->fresh())->get($url)->assertOk()->getContent();
     expect($html)->toContain('aria-label="'.e(__('categories.ui_lang_panel')).'"')
         ->toContain('data-cm-lang-more')
+        ->toContain('x-on:focusout="langLeave($event)"')
         ->toContain(e(__('categories.ui_lang_ja')))
         ->not->toContain('data-cm-lang-manage', 'a member who may not change the languages is not sent there')
         ->not->toContain(e(__('categories.ui_lang_search_ph')), 'the search starts at six languages');
