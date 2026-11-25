@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     @php
         $brandName = config('admin.brand.name');
-        $privacyUrl = config('admin.brand.privacy_url');
-        $termsUrl = config('admin.brand.terms_url');
+        $privacyUrl = config('oauth.legal.privacy_url');
+        $termsUrl = config('oauth.legal.terms_url');
     @endphp
     {{-- The console host's public front page: what this app is, for a visitor and for the Google /
          Facebook app reviews (an OAuth app's home page must explain the app without a sign-in).

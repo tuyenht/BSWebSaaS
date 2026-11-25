@@ -21,8 +21,8 @@ it('shows a visitor the public intro instead of the sign-in page', function (): 
         ->assertSee(__('intro.title', ['brand' => $brand]))
         ->assertSee(__('intro.signin_heading'))
         ->assertSee(route('platform.login'))
-        ->assertSee((string) config('admin.brand.privacy_url'))
-        ->assertSee((string) config('admin.brand.terms_url'))
+        ->assertSee((string) config('oauth.legal.privacy_url'))
+        ->assertSee((string) config('oauth.legal.terms_url'))
         ->assertDontSee('noindex');
 
     expect(session('url.intended'))->toBeNull();
@@ -31,12 +31,12 @@ it('shows a visitor the public intro instead of the sign-in page', function (): 
 it('leaves out a policy link whose address is not configured', function (): void {
     $host = 'http://'.config('tenancy.platform_host').'/';
 
-    config(['admin.brand.terms_url' => '']);
+    config(['oauth.legal.terms_url' => '']);
     $this->get($host)->assertOk()
         ->assertSee('class="intro-links"', false)
         ->assertDontSee('>'.__('intro.terms').'</a>', false);
 
-    config(['admin.brand.privacy_url' => '']);
+    config(['oauth.legal.privacy_url' => '']);
     $this->get($host)->assertOk()->assertDontSee('class="intro-links"', false);
 });
 

@@ -248,8 +248,9 @@ it('switches a provider off for every website with the save bar, after its quest
 
 it('shows the policy addresses to copy only once they are configured', function (): void {
     $operator = ssOperator();
+    config(['oauth.legal.privacy_url' => '', 'oauth.legal.terms_url' => '']);
     $html = Livewire::actingAs($operator)->test(SocialSettings::class, ['scope' => 'platform'])->html();
-    expect($html)->not->toContain('https://example.test/privacy');
+    expect($html)->not->toContain('chinh-sach-bao-mat')->not->toContain('dieu-khoan-va-dieu-kien');
 
     config(['oauth.legal.privacy_url' => 'https://example.test/privacy', 'oauth.legal.terms_url' => 'https://example.test/terms']);
     $html = Livewire::actingAs($operator)->test(SocialSettings::class, ['scope' => 'platform'])->html();

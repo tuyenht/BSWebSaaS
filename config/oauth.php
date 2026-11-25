@@ -91,11 +91,11 @@ return [
 
     /*
      | The platform's own policy pages, which Google's consent screen and Facebook's app settings
-     | ask for. The social sign-in settings offer them to copy only when they are set; the platform
-     | has no such pages of its own yet.
+     | ask for. The social sign-in settings offer them to copy and the console's front page links
+     | them, each only when it is set (an empty env value leaves it out).
      */
     'legal' => [
-        'privacy_url' => env('OAUTH_PRIVACY_URL'),
-        'terms_url' => env('OAUTH_TERMS_URL'),
+        'privacy_url' => env('OAUTH_PRIVACY_URL', 'https://baoson.net/chinh-sach-bao-mat/'),
+        'terms_url' => env('OAUTH_TERMS_URL', 'https://baoson.net/dieu-khoan-va-dieu-kien/'),
     ],
 ];

@@ -9,10 +9,6 @@ return [
         // Legal/company name + site shown in the copyright footer (the name links here).
         'company' => env('ADMIN_BRAND_COMPANY', 'BaoSon Ads'),
         'company_url' => env('ADMIN_BRAND_URL', 'https://baoson.net'),
-        // Public policy pages the console's front page links to (an OAuth app review reads them).
-        // Empty env → the link is left out.
-        'privacy_url' => env('ADMIN_BRAND_PRIVACY_URL', 'https://baoson.net/chinh-sach-bao-mat/'),
-        'terms_url' => env('ADMIN_BRAND_TERMS_URL', 'https://baoson.net/dieu-khoan-va-dieu-kien/'),
         // The admin framework the footer names ("Xây dựng trên nền tảng {kit} v{version}") and its page.
         'kit' => env('ADMIN_BRAND_KIT', 'SaaS Starter'),
         'kit_url' => env('ADMIN_BRAND_KIT_URL', env('ADMIN_BRAND_URL', 'https://baoson.net')),
