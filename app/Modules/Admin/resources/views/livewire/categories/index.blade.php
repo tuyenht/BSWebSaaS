@@ -487,7 +487,7 @@
                                     <div class="min-w-0 [overflow-wrap:anywhere]">
                                         <b class="block font-semibold text-text-strong" x-text="pan ? bandView('{{ $bandSlot }}').nowTitle : ''"></b>
                                         <template x-if="pan && bandView('{{ $bandSlot }}').list.length">
-                                            <ul class="my-1 ps-5"><template x-for="(x, i) in bandView('{{ $bandSlot }}').list" :key="i"><li x-text="x"></li></template></ul>
+                                            <ul class="my-1 list-disc ps-5"><template x-for="(x, i) in bandView('{{ $bandSlot }}').list" :key="i"><li x-text="x"></li></template></ul>
                                         </template>
                                         <span class="block text-small text-text-muted" x-text="pan ? bandView('{{ $bandSlot }}').nowSub : ''"></span>
                                     </div>
