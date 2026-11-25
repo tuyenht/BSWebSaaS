@@ -174,3 +174,16 @@ it('refuses moving a row to another site when its key keeps the old site\'s code
 
     expect(prefixRuleState($move))->toBe('23514');
 });
+
+it('runs the key guard as a role that sees every website\'s rows, which its lookup across websites needs', function (): void {
+    // The guard refuses a shared-folder key outright when its owner lacks this; here the owner has it.
+    $owner = DB::connection('pgsql_admin')->selectOne(
+        'SELECT r.rolname, (r.rolsuper OR r.rolbypassrls) AS sees_all, p.prosecdef FROM pg_proc p JOIN pg_roles r ON r.oid = p.proowner '.
+        "WHERE p.oid = 'public.media_storage_key_prefix_guard()'::regprocedure"
+    );
+
+    expect($owner)->not->toBeNull()
+        ->and($owner->sees_all)->toBeTrue()
+        ->and($owner->prosecdef)->toBeTrue()
+        ->and($owner->rolname)->not->toBe('app_user');
+});

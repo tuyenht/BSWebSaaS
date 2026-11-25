@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Media\Exceptions\MediaKeyRejectedException;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\EnsureMediaFromKey;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -78,7 +79,7 @@ it('lets only the owner write under its old folder: another website can neither 
     $register = fn () => app(Tenancy::class)->enter(2, fn () => app(EnsureMediaFromKey::class)->handle('cu-a/library/logo-ab12cd.png'));
 
     expect(legacyRowFor(1, 'cu-a/library/anh-ab12cd.png')->exists)->toBeTrue()
-        ->and(legacyFolderState($register))->toBe('23514')
+        ->and($register)->toThrow(MediaKeyRejectedException::class, 'old folder of another website')
         ->and(legacyFolderState(fn () => legacyRowFor(2, 'cu-a/library/khac-ab12cd.png')))->toBe('23514')
         ->and(app(Tenancy::class)->enter(2, fn () => Media::query()->count()))->toBe(0);
 });
@@ -141,4 +142,44 @@ it('keeps a removed website\'s old folder frozen but writable by nobody', functi
     expect($admin->table('reserved_site_codes')->where('code', 'chung-cu')->get(['reason', 'site_id'])->map(fn ($row): array => (array) $row)->all())
         ->toBe([['reason' => 'legacy_key', 'site_id' => null]])
         ->and(legacyFolderState(fn () => legacyRowFor(1, 'chung-cu/library/anh-ab12cd.png')))->toBe('23514');
+});
+
+it('refuses another website\'s or a removed website\'s old folder before writing, so the caller\'s transaction goes on', function (): void {
+    $admin = DB::connection('pgsql_admin');
+    $gone = (int) $admin->table('sites')->insertGetId([
+        'ulid' => (string) Str::ulid(), 'tenant_id' => 1, 'name' => 'G', 'status' => 'active', 'created_at' => now(), 'updated_at' => now(),
+    ]);
+    ownLegacyFolder('cu-a', 1);
+    ownLegacyFolder('cu-mat', $gone);
+    $admin->table('sites')->where('id', $gone)->delete();   // its folder stays frozen, without an owner
+
+    $result = app(Tenancy::class)->enter(2, function (): array {
+        $refused = [];
+        foreach (['cu-a/library/logo-ab12cd.png', 'cu-mat/library/logo-ab12cd.png'] as $key) {
+            try {
+                app(EnsureMediaFromKey::class)->handle($key);
+            } catch (MediaKeyRejectedException) {
+                $refused[] = $key;
+            }
+        }
+
+        // Nothing reached the database: the same transaction still takes writes.
+        return [$refused, app(EnsureMediaFromKey::class)->handle(siteCode(2).'/logo-ab12.png')->exists];
+    });
+
+    expect($result)->toBe([['cu-a/library/logo-ab12cd.png', 'cu-mat/library/logo-ab12cd.png'], true]);
+});
+
+it('registers a key under the website\'s own old folder, a seeded folder and a shared one', function (): void {
+    ownLegacyFolder('cu-a', 1);
+    ownLegacyFolder('trung-ten', 1);
+    ownLegacyFolder('trung-ten', 2);
+    DB::connection('pgsql_admin')->table('reserved_site_codes')->insertOrIgnore(['code' => 'cwv', 'reason' => 'seed_folder']);
+
+    $rows = app(Tenancy::class)->enter(1, fn (): array => array_map(
+        fn (string $key): bool => app(EnsureMediaFromKey::class)->handle($key)->exists,
+        ['cu-a/library/logo-ab12cd.png', 'cwv/library/logo-ab12cd.png', 'trung-ten/library/logo-ab12cd.png'],
+    ));
+
+    expect($rows)->toBe([true, true, true]);
 });

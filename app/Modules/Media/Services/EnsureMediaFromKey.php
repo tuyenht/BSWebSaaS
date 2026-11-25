@@ -17,10 +17,11 @@ use App\Modules\Tenancy\Context\SiteDirectory;
  * Metadata is DERIVED from the key: `{code}/[{yyyy}/{mm}/]{slug}-{hash}.{ext}` under the website's own
  * code (collection `library`), or the old layout `{folder}/{collection}/{slug}-{hash}.{ext}` of keys
  * written before website codes. A key that is not a clean relative path, or that starts with another
- * website's code, is refused before anything is written (the database refuses both too). The stored `hash` is
- * synthetic (sha256 of the key) because the original file bytes aren't at hand; it only needs to be
- * unique, which the storage_key already is. size is 0 (unknown without fetching the object). An
- * existing master for the key is returned untouched — a real upload is never clobbered.
+ * website's code or old folder, is refused before anything is written (the database refuses all three
+ * too, but its error would abort the caller's transaction). The stored `hash` is synthetic (sha256
+ * of the key) because the original file bytes aren't at hand; it only needs to be unique, which the
+ * storage_key already is. size is 0 (unknown without fetching the object). An existing master for
+ * the key is returned untouched — a real upload is never clobbered.
  */
 final readonly class EnsureMediaFromKey
 {
@@ -45,8 +46,12 @@ final readonly class EnsureMediaFromKey
     public function handle(string $storageKey, array $overrides = []): Media
     {
         MediaKey::assertCleanPath($storageKey);
-        if ($this->sites->isCodeOfAnotherSite($this->current, explode('/', $storageKey, 2)[0])) {
+        $folder = explode('/', $storageKey, 2)[0];
+        if ($this->sites->isCodeOfAnotherSite($this->current, $folder)) {
             throw MediaKeyRejectedException::notOwnCode($storageKey);
+        }
+        if ($this->sites->isOldFolderOfAnotherSite($this->current, $folder)) {
+            throw MediaKeyRejectedException::notOwnFolder($storageKey);
         }
 
         return Media::query()->firstOrCreate(

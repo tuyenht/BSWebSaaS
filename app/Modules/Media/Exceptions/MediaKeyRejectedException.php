@@ -22,4 +22,9 @@ final class MediaKeyRejectedException extends RuntimeException
     {
         return new self("Media storage key \"{$key}\" starts with a website code that is not the current website's.");
     }
+
+    public static function notOwnFolder(string $key): self
+    {
+        return new self("Media storage key \"{$key}\" is under an old folder of another website.");
+    }
 }

@@ -149,13 +149,27 @@ it('refuses to roll the migration back once media is filed under a website code'
     ]));
     $migration = require database_path('migrations/2097_01_01_000000_add_code_to_sites.php');
 
+    // The check down() runs first, never down() itself: a test runs no DDL on the shared database.
     // As the privileged role, as migrations run: it sees every website's media rows.
     $default = DB::getDefaultConnection();
     DB::setDefaultConnection('pgsql_admin');
     try {
-        expect(fn () => $migration->down())->toThrow(RuntimeException::class, 'filed under website codes');
+        expect(fn () => $migration->refuseIfCodedKeysExist())->toThrow(RuntimeException::class, 'filed under website codes');
     } finally {
         DB::setDefaultConnection($default);
     }
-    expect(DB::connection('pgsql_admin')->getSchemaBuilder()->hasColumn('sites', 'code'))->toBeTrue();
+});
+
+it('lets the rollback past its check while no media is filed under a website code', function (): void {
+    $migration = require database_path('migrations/2097_01_01_000000_add_code_to_sites.php');
+
+    $default = DB::getDefaultConnection();
+    DB::setDefaultConnection('pgsql_admin');
+    try {
+        $migration->refuseIfCodedKeysExist();
+    } finally {
+        DB::setDefaultConnection($default);
+    }
+
+    expect(DB::connection('pgsql_admin')->table('media')->count())->toBe(0);
 });

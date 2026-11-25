@@ -53,18 +53,20 @@ use Illuminate\Support\Str;
  *   on storage_key is added (ADR-18: media may be partitioned by site_id). Shared folders are expected
  *   to hold about no rows in production, so the probes almost never run there. The guard runs
  *   SECURITY DEFINER for that lookup across websites, which RLS hides from the application role; it
- *   reads only the key's existence.
+ *   reads only the key's existence, and refuses the key when its owner is neither a superuser nor a
+ *   BYPASSRLS role (RLS would hide the rows it looks for, and every key would pass).
  *
  * Pre-checks abort before anything changes: the migration role must see every row (superuser or
  * BYPASSRLS), every existing storage key must be a clean relative path, and no storage key may be
  * held by two websites or lie under the platform's `sys/` folder.
  *
  * Expand-only, one transaction with a 5-second lock timeout (it queues behind no long query on sites
- * or media; rerun once traffic is quiet). The list and the freeze come before the new column, the
- * unique index on the column before the backfill (each draw is an index probe; sites is small, so a
- * plain index build inside the transaction is fine). down() refuses once any media row is filed under
- * its website's code (a new code on the next up() would strand those files); otherwise it removes
- * everything up() added.
+ * or media; rerun once traffic is quiet). It first locks media against writes, then sites (the order
+ * an upload takes them), so no key commits between the pre-checks and the new trigger. The list and
+ * the freeze come before the new column, the unique index on the column before the backfill (each
+ * draw is an index probe; sites is small, so a plain index build inside the transaction is fine).
+ * down() refuses once any media row is filed under its website's code (a new code on the next up()
+ * would strand those files); otherwise it removes everything up() added.
  */
 return new class extends Migration
 {
@@ -235,7 +237,14 @@ return new class extends Migration
                 END IF;
 
                 -- A shared folder: judge two writers of the same key one after the other.
-                PERFORM pg_advisory_xact_lock(hashtext(NEW.storage_key));
+                PERFORM pg_advisory_xact_lock(hashtextextended('media_key:' || NEW.storage_key, 0));
+
+                -- The probes below must see every website's rows. Owned by a role that RLS filters,
+                -- they would find nothing and pass every key: refuse instead.
+                IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = current_user AND (rolsuper OR rolbypassrls)) THEN
+                    RAISE EXCEPTION 'media storage key guard: its owner "%" cannot read every website''s media rows', current_user
+                        USING ERRCODE = 'insufficient_privilege';
+                END IF;
 
                 IF is_mine AND NOT is_seeded AND NOT is_collection THEN
                     -- Only the folder's other owners can hold a key under it: one index probe each.
@@ -276,6 +285,10 @@ return new class extends Migration
         DB::transaction(function (): void {
             // Fail fast instead of queueing every request behind a long-running query on sites or media.
             DB::statement("SET LOCAL lock_timeout = '5s'");
+            // No upload commits between the checks below and the media trigger: media first, then sites,
+            // the order an upload takes them (it writes media, whose guard then reads sites).
+            DB::statement('LOCK TABLE public.media IN SHARE ROW EXCLUSIVE MODE');
+            DB::statement('LOCK TABLE public.sites IN ACCESS EXCLUSIVE MODE');
 
             $this->assertSeesEveryRow();
             $this->assertEveryKeyIsClean();
@@ -323,12 +336,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (DB::selectOne("SELECT 1 FROM media m JOIN sites s ON s.id = m.site_id WHERE split_part(m.storage_key, '/', 1) = s.code LIMIT 1") !== null) {
-            throw new RuntimeException(
-                'Media rows are filed under website codes; dropping sites.code would orphan them. '.
-                'Restore the pre-migration dump instead of rolling back.'
-            );
-        }
+        $this->refuseIfCodedKeysExist();
 
         DB::transaction(function (): void {
             DB::statement("SET LOCAL lock_timeout = '5s'");
@@ -343,6 +351,17 @@ return new class extends Migration
             DB::statement('DROP FUNCTION IF EXISTS public.issue_site_code()');
             DB::statement('DROP TABLE IF EXISTS public.reserved_site_codes');
         });
+    }
+
+    /** down() stops here once any media row is filed under its website's code: a new code on the next up() would strand those files. */
+    public function refuseIfCodedKeysExist(): void
+    {
+        if (DB::selectOne("SELECT 1 FROM media m JOIN sites s ON s.id = m.site_id WHERE split_part(m.storage_key, '/', 1) = s.code LIMIT 1") !== null) {
+            throw new RuntimeException(
+                'Media rows are filed under website codes; dropping sites.code would orphan them. '.
+                'Restore the pre-migration dump instead of rolling back.'
+            );
+        }
     }
 
     /** RLS would hide media rows from a restricted role, and every check below would pass on nothing. */
@@ -456,12 +475,15 @@ return new class extends Migration
         DB::statement('CREATE UNIQUE INDEX IF NOT EXISTS '.self::SITES_INDEX.' ON public.sites (code)');
     }
 
-    /** One draw per website without a code, in id order, soft-deleted ones included (each draw sees the ones before). */
+    /**
+     * One statement for every website without a code, soft-deleted ones included. issue_site_code() is
+     * VOLATILE, so each of its queries takes a fresh snapshot that sees the codes this statement has
+     * already set (checked on PostgreSQL 17: 1,000 rows drawn from 1,024 two-letter codes, no clash);
+     * the unique index would refuse a clash anyway.
+     */
     private function backfill(): void
     {
-        foreach (DB::select('SELECT id FROM public.sites WHERE code IS NULL ORDER BY id') as $site) {
-            DB::update('UPDATE public.sites SET code = public.issue_site_code() WHERE id = ?', [$this->int($site, 'id')]);
-        }
+        DB::update('UPDATE public.sites SET code = public.issue_site_code() WHERE code IS NULL');
     }
 
     /**

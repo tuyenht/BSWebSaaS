@@ -8,6 +8,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Models\Domain;
 use App\Modules\Tenancy\Models\Site;
 use Closure;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -66,6 +67,23 @@ final readonly class SiteDirectory
     {
         return Site::query()->withTrashed()->where('code', $segment)->whereKeyNot($current->id())->exists()
             || DB::table('reserved_site_codes')->where('code', $segment)->where('reason', 'deleted_site')->exists();
+    }
+
+    /**
+     * Whether $segment is an old media folder (a first folder of keys written before website codes)
+     * that the current website does not own: another website's, or a removed website's, which nobody
+     * may write under any more. Seeded folders and the single-site collections are open to every
+     * website, so they never count.
+     */
+    public function isOldFolderOfAnotherSite(CurrentSite $current, string $segment): bool
+    {
+        $folder = DB::table('reserved_site_codes')->where('code', $segment);
+
+        return (clone $folder)->where('reason', 'legacy_key')->exists()
+            && ! (clone $folder)->where(fn (Builder $open) => $open
+                ->whereIn('reason', ['seed_folder', 'collection'])
+                ->orWhere(fn (Builder $mine) => $mine->where('reason', 'legacy_key')->where('site_id', $current->id())))
+                ->exists();
     }
 
     /**
