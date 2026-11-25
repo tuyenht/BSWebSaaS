@@ -79,6 +79,7 @@ final readonly class ContentSections
             ->join('content_sections as cs', fn (JoinClause $join) => $join->on('cs.id', '=', 'content_section_categories.content_section_id')
                 ->on('cs.site_id', '=', 'content_section_categories.site_id'))
             ->whereIn('content_section_categories.taxonomy_id', array_values(array_unique($taxonomyIds)))
+            ->orderBy('content_section_categories.taxonomy_id') // one stable order, whatever plan the database picks
             ->toBase()
             ->get(['cs.key', 'cs.entry_type', 'content_section_categories.taxonomy_id']);
         foreach ($rows as $row) {
