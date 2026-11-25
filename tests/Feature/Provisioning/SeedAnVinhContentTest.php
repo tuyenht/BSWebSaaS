@@ -12,6 +12,7 @@ use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
+use App\Modules\Media\Support\MediaKey;
 use App\Modules\Provisioning\Actions\PromoteAnVinhProductPostsToCatalog;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Actions\SeedAnVinhContent;
@@ -22,6 +23,7 @@ use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /*
  * SeedAnVinhContent: Cơ Khí Chính Xác An Vinh content bootstrap (precision mechanical pivot).
@@ -40,6 +42,7 @@ beforeEach(function (): void {
          restart identity cascade'
     );
     truncateRbac();
+    Storage::fake(MediaKey::disk());
 });
 
 function seedPrecisionSite(): Site
@@ -55,7 +58,7 @@ function seedPrecisionSite(): Site
 it('seeds san-pham with 3 sub-categories and 6 products', function (): void {
     $site = seedPrecisionSite();
 
-    app(Tenancy::class)->enter($site->id, function (): void {
+    app(Tenancy::class)->enter($site->id, function () use ($site): void {
         app(SeedAnVinhContent::class)->handle();
 
         $sanPhamTranslation = TaxonomyTranslation::query()->where('slug', 'san-pham')->first();
@@ -79,7 +82,7 @@ it('seeds san-pham with 3 sub-categories and 6 products', function (): void {
             ->whereHas('translations', fn ($q) => $q->where('slug', 'truc-may-cnc'))
             ->first();
         expect($product)->not->toBeNull();
-        expect($product->meta['image_url'])->toStartWith('an-vinh/san-pham/sp-truc-may-cnc-');  // slug + content-hash; the hash changes when the photo is re-curated
+        expect($product->meta['image_url'])->toStartWith($site->code.'/sp-truc-may-cnc-');  // the website's own copy: slug + content-hash; the hash changes when the photo is re-curated
         $productTranslation = $product->translationFor('vi');
         expect($productTranslation)->not->toBeNull();
         $bodyBlocks = $productTranslation->body['blocks'] ?? [];
@@ -95,7 +98,7 @@ it('seeds san-pham with 3 sub-categories and 6 products', function (): void {
 it('seeds du-an with 6 projects, route, and no sectors', function (): void {
     $site = seedPrecisionSite();
 
-    app(Tenancy::class)->enter($site->id, function (): void {
+    app(Tenancy::class)->enter($site->id, function () use ($site): void {
         app(SeedAnVinhContent::class)->handle();
 
         $duAnTranslation = TaxonomyTranslation::query()->where('slug', 'du-an')->first();
@@ -116,7 +119,7 @@ it('seeds du-an with 6 projects, route, and no sectors', function (): void {
             ->whereHas('translations', fn ($q) => $q->where('slug', 'day-chuyen-lap-rap-tu-dong'))
             ->first();
         expect($project)->not->toBeNull();
-        expect($project->meta['image_url'])->toStartWith('an-vinh/du-an/da-day-chuyen-lap-rap-tu-dong-');
+        expect($project->meta['image_url'])->toStartWith($site->code.'/da-day-chuyen-lap-rap-tu-dong-');
 
         expect(ContentSection::query()->where('key', 'projects')->exists())->toBeTrue();
         expect(MenuItem::query()->where('routable_type', 'taxonomy')->where('routable_id', $duAn->id)->exists())->toBeTrue();
@@ -158,7 +161,7 @@ it('seeds dich-vu with 4 precision-mechanical services and glyph icons', functio
 it('seeds 6 tin-tuc news posts under the ProvisionSite news category', function (): void {
     $site = seedPrecisionSite();
 
-    app(Tenancy::class)->enter($site->id, function (): void {
+    app(Tenancy::class)->enter($site->id, function () use ($site): void {
         app(SeedAnVinhContent::class)->handle();
 
         // tin-tuc taxonomy already existed from ProvisionSite — not created again
@@ -175,14 +178,14 @@ it('seeds 6 tin-tuc news posts under the ProvisionSite news category', function 
             ->whereHas('translations', fn ($q) => $q->where('slug', 'an-vinh-to-chuc-team-building-2024'))
             ->first();
         expect($newsPost)->not->toBeNull();
-        expect($newsPost->meta['image_url'])->toStartWith('an-vinh/tin-tuc/tt-team-building-2024-');
+        expect($newsPost->meta['image_url'])->toStartWith($site->code.'/tt-team-building-2024-');
     });
 });
 
 it('seeds the home page body with 3 collection entry_grids and a featured-products product_grid', function (): void {
     $site = seedPrecisionSite();
 
-    app(Tenancy::class)->enter($site->id, function (): void {
+    app(Tenancy::class)->enter($site->id, function () use ($site): void {
         app(SeedAnVinhContent::class)->handle();
 
         $homeRoute = SiteRoute::query()->where('path', '/')->first();
@@ -211,7 +214,7 @@ it('seeds the home page body with 3 collection entry_grids and a featured-produc
 
         // Hero + about sections reference a media_id, never a baked URL: the seeder materialized the
         // library row for the fixed brand key (firstOrFail proves it) and the block points at its id.
-        $aboutMedia = Media::query()->where('storage_key', 'an-vinh/content/about-doi-ngu-a7b78a0a6ff7.jpg')->firstOrFail();
+        $aboutMedia = Media::query()->where('storage_key', $site->code.'/about-doi-ngu-a7b78a0a6ff7.jpg')->firstOrFail();
         expect($bodyJson)
             ->toContain('"image_url":'.$aboutMedia->id)
             ->not->toContain('"image_url":"http');
@@ -448,7 +451,7 @@ it('creates the contact page when the site predates /lien-he (prod av1 parity)',
 it('re-seed refreshes an existing post featured image (re-curated photo reaches live posts)', function (): void {
     $site = seedPrecisionSite();
 
-    app(Tenancy::class)->enter($site->id, function (): void {
+    app(Tenancy::class)->enter($site->id, function () use ($site): void {
         app(SeedAnVinhContent::class)->handle();
 
         // A post already exists with a stale image (the prod state before a re-curation re-seed).
@@ -459,7 +462,7 @@ it('re-seed refreshes an existing post featured image (re-curated photo reaches 
 
         // The featured image is refreshed to the canonical curated key (firstOrCreatePost updates it
         // on an existing post instead of skipping) — so a swapped photo actually reaches prod.
-        expect($product->fresh()->meta['image_url'])->toStartWith('an-vinh/san-pham/sp-truc-may-cnc-');
+        expect($product->fresh()->meta['image_url'])->toStartWith($site->code.'/sp-truc-may-cnc-');
     });
 });
 

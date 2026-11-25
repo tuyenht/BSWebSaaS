@@ -8,12 +8,8 @@ use App\Modules\Media\Support\MediaKey;
 use App\Modules\Media\Support\MediaKeyPrefix;
 use App\Modules\Tenancy\Context\CurrentSite;
 use finfo;
-use Illuminate\Contracts\Filesystem\Filesystem;
-use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
-use League\Flysystem\FilesystemException;
-use LogicException;
 
 /**
  * Finalizes a presigned direct-to-R2 upload (DAM P1). The browser PUT the bytes straight to R2 under
@@ -98,7 +94,7 @@ final readonly class RegisterMediaUpload
                 }
                 $existing->restore();
             }
-            if (! $disk->exists($existing->storage_key) && ! $this->copyAs($disk, $tempKey, $existing->storage_key, $mime)) {
+            if (! $disk->exists($existing->storage_key) && ! MediaKey::copyAs($disk, $tempKey, $existing->storage_key, $mime)) {
                 throw new MediaRejectedException('storage_failed');
             }
             $disk->delete($tempKey);
@@ -112,7 +108,7 @@ final readonly class RegisterMediaUpload
         $finalKey = MediaKey::unique($this->prefix->forNewObject($collection), $slug, $hash, $ext);
         // copy() returns bool on this disk ('throw' => false) — unchecked failure would persist
         // a row whose object never existed: an unrenderable orphan the picker shows as broken.
-        if (! $this->copyAs($disk, $tempKey, $finalKey, $mime)) {
+        if (! MediaKey::copyAs($disk, $tempKey, $finalKey, $mime)) {
             throw new MediaRejectedException('storage_failed');
         }
         $disk->delete($tempKey);
@@ -132,25 +128,5 @@ final readonly class RegisterMediaUpload
                 'created_by' => $createdBy,
             ],
         );
-    }
-
-    /**
-     * Server-side copy that REPLACES the object's metadata with headers derived from the sniffed
-     * MIME, so nothing the uploader set on the temporary object reaches the stored master. Returns
-     * false on failure, like the disk's own copy() on this ('throw' => false) disk.
-     */
-    private function copyAs(Filesystem $disk, string $from, string $to, string $mime): bool
-    {
-        if (! $disk instanceof FilesystemAdapter) {
-            throw new LogicException('Media storage must be a Flysystem-backed disk to replace object headers on copy.');
-        }
-
-        try {
-            $disk->getDriver()->copy($from, $to, MediaKey::objectOptions($mime) + ['MetadataDirective' => 'REPLACE']);
-        } catch (FilesystemException) {
-            return false; // the disk is configured not to report; the caller turns this into storage_failed
-        }
-
-        return true;
     }
 }

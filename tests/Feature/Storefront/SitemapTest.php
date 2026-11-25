@@ -4,6 +4,7 @@ use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Media\Models\Media;
+use App\Modules\Media\Support\MediaKey;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Actions\SeedAnVinhContent;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
@@ -12,6 +13,7 @@ use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /*
  * SitemapController + robots.txt dynamic route (§5 SEO bundle).
@@ -28,6 +30,7 @@ beforeEach(function (): void {
          restart identity cascade'
     );
     truncateRbac();
+    Storage::fake(MediaKey::disk());
 });
 
 /** Provision + fully seed the An Vinh site (same steps as seedAnVinhStorefront in ProjectsStorefrontTest). */

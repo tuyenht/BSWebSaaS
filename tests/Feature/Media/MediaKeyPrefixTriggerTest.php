@@ -104,9 +104,14 @@ it('keeps the platform\'s sys folder out of every website, the single-site colle
 
 it('reserves in the database the same platform folder and collections the application names', function (): void {
     $reserved = fn (string $reason): array => DB::connection('pgsql_admin')->table('reserved_site_codes')->where('reason', $reason)->orderBy('id')->pluck('code')->all();
+    $frozen = DB::connection('pgsql_admin')->table('reserved_site_codes')->whereIn('code', MediaKey::COLLECTIONS)->distinct()->orderBy('code')->pluck('code')->all();
+    $collections = MediaKey::COLLECTIONS;
+    sort($collections);
 
+    // A multi-site install: the collections stay reserved (never a website's code), closed to writes.
     expect($reserved('platform'))->toBe([MediaKey::SYSTEM_SEGMENT])
-        ->and($reserved('collection'))->toBe(MediaKey::COLLECTIONS)
+        ->and($reserved('collection'))->toBe([])
+        ->and($frozen)->toBe($collections)
         ->and(MediaKey::isReservedFirstSegment('sys'))->toBeTrue()
         ->and(MediaKey::isReservedFirstSegment('_incoming'))->toBeTrue()
         ->and(MediaKey::isReservedFirstSegment('_anything'))->toBeTrue()
@@ -127,24 +132,37 @@ it('gives a single-site upload its collection as the first folder', function ():
 });
 
 it('keeps old keys working under a seeded folder, and single-site keys under a fixed collection', function (): void {
-    $seeded = mediaRowFor(1, 'an-vinh/hero/hero-home-7ca90eafe212.jpg');
-    $single = mediaRowFor(1, 'library/logo-ab12.png');
-    $cover = mediaRowFor(1, 'cover/banner-ab12.png', ['collection' => 'cover']);
+    $seeded = mediaRowFor(1, 'a-vinh/hero/hero-home-7ca90eafe212.jpg');
+    [$single, $cover, $wrongCollection, $notFixed] = inSingleSiteMode(fn (): array => [
+        mediaRowFor(1, 'library/logo-ab12.png'),
+        mediaRowFor(1, 'cover/banner-ab12.png', ['collection' => 'cover']),
+        prefixRuleState(fn () => mediaRowFor(1, 'cover/khac-ab12.png')),            // collection library
+        prefixRuleState(fn () => mediaRowFor(1, 'hero/banner-ab12.png', ['collection' => 'hero'])),   // not a fixed collection
+    ]);
 
     expect($seeded->exists)->toBeTrue()->and($single->exists)->toBeTrue()->and($cover->exists)->toBeTrue()
-        ->and(prefixRuleState(fn () => mediaRowFor(1, 'cover/khac-ab12.png')))->toBe('23514')            // collection library
-        ->and(prefixRuleState(fn () => mediaRowFor(1, 'hero/banner-ab12.png', ['collection' => 'hero'])))->toBe('23514');   // not a fixed collection
+        ->and($wrongCollection)->toBe('23514')
+        ->and($notFixed)->toBe('23514');
 });
 
 it('refuses a single-site key that another website already holds', function (): void {
-    mediaRowFor(1, 'library/logo-ab12.png');
+    [$taken, $free] = inSingleSiteMode(function (): array {
+        mediaRowFor(1, 'library/logo-ab12.png');
 
-    expect(prefixRuleState(fn () => mediaRowFor(2, 'library/logo-ab12.png')))->toBe('23514')
-        ->and(mediaRowFor(2, 'library/logo-cd34.png')->exists)->toBeTrue();
+        return [prefixRuleState(fn () => mediaRowFor(2, 'library/logo-ab12.png')), mediaRowFor(2, 'library/logo-cd34.png')->exists];
+    });
+
+    expect($taken)->toBe('23514')->and($free)->toBeTrue();
+});
+
+it('refuses a key under a fixed collection on a multi-site install, where every upload goes under its code', function (): void {
+    expect(prefixRuleState(fn () => mediaRowFor(1, 'library/logo-ab12.png')))->toBe('23514')
+        ->and(prefixRuleState(fn () => mediaRowFor(1, 'cover/banner-ab12.png', ['collection' => 'cover'])))->toBe('23514')
+        ->and(app(Tenancy::class)->enter(1, fn () => Media::query()->count()))->toBe(0);
 });
 
 it('refuses an old key that another website already holds', function (): void {
-    $key = 'an-vinh/content/about-doi-ngu-a7b78a0a6ff7.jpg';
+    $key = 'a-vinh/content/about-doi-ngu-a7b78a0a6ff7.jpg';
     mediaRowFor(1, $key);
 
     expect(prefixRuleState(fn () => mediaRowFor(2, $key)))->toBe('23514')
@@ -152,7 +170,7 @@ it('refuses an old key that another website already holds', function (): void {
 });
 
 it('leaves a row alone when an update does not change its key', function (): void {
-    $legacy = mediaRowFor(1, 'an-vinh/brand/logo-e76d7cb1dfe4.png');
+    $legacy = mediaRowFor(1, 'a-vinh/brand/logo-e76d7cb1dfe4.png');
 
     $renamed = app(Tenancy::class)->enter(1, function () use ($legacy): string {
         $row = Media::query()->findOrFail($legacy->id);

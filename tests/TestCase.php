@@ -116,10 +116,13 @@ abstract class TestCase extends BaseTestCase
             return;
         }
 
+        $folders = "ARRAY['a', 'b', 's', 's1', 's2', 's3', 'tenant', 'cu', 'a-vinh', 'khac', 'demo']";
+        // The migration that closes the seeded folders turns these into old folders of whichever test
+        // website held rows there (or of none); the tests need them open again.
+        $pdo->exec("DELETE FROM public.reserved_site_codes WHERE reason = 'legacy_key' AND code = ANY ({$folders})");
         $pdo->exec(
-            "INSERT INTO public.reserved_site_codes (code, reason) SELECT folder, 'seed_folder' FROM unnest(ARRAY["
-            ."'a', 'b', 's', 's1', 's2', 's3', 'tenant', 'cu', 'a-vinh', 'khac', 'demo'"
-            .']) AS folder WHERE NOT EXISTS (SELECT 1 FROM public.reserved_site_codes r WHERE r.code = folder) ON CONFLICT DO NOTHING'
+            "INSERT INTO public.reserved_site_codes (code, reason) SELECT folder, 'seed_folder' FROM unnest({$folders}) AS folder "
+            .'WHERE NOT EXISTS (SELECT 1 FROM public.reserved_site_codes r WHERE r.code = folder) ON CONFLICT DO NOTHING'
         );
     }
 }

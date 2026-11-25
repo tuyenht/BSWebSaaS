@@ -80,7 +80,7 @@ function seedAnVinhProductPosts(string $hostname, int $count = 2, string $status
                 'type' => 'post',
                 'status' => $status,
                 'published_at' => $status === 'published' ? now() : null,
-                'meta' => ['image_url' => "an-vinh/san-pham/sp-jig-{$i}-abc123def456.jpg"],
+                'meta' => ['image_url' => "a-vinh/san-pham/sp-jig-{$i}-abc123def456.jpg"],
             ]);
 
             $entry->translations()->create([

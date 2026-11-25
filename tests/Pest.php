@@ -5,6 +5,7 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Support\MediaKey;
 use App\Modules\Monitoring\Jobs\SendErrorNotice;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Models\Permission;
@@ -159,6 +160,37 @@ function uncleanMediaKeys(): array
 function withSiteCodes(string $key): string
 {
     return str_replace(['{own}', '{other}'], [siteCode(1), siteCode(2)], $key);
+}
+
+/**
+ * Runs $run as a single-site install (`media.tenant_prefix` off). Such an install keeps its uploads
+ * under the fixed collections, which its database leaves open; the test database is a multi-site
+ * one, where those folders are closed, so they are opened for the run and closed again afterwards.
+ *
+ * @template T
+ *
+ * @param  Closure(): T  $run
+ * @return T
+ */
+function inSingleSiteMode(Closure $run): mixed
+{
+    $admin = DB::connection('pgsql_admin');
+    $closed = fn () => $admin->table('reserved_site_codes')->whereIn('code', MediaKey::COLLECTIONS)->whereNull('site_id');
+    $frozen = $closed()->where('reason', 'legacy_key')->pluck('code')->all();
+    $closed()->where('reason', 'legacy_key')->update(['reason' => 'collection']);
+    $added = array_values(array_diff(MediaKey::COLLECTIONS, $closed()->pluck('code')->all()));
+    foreach ($added as $code) {
+        $admin->table('reserved_site_codes')->insert(['code' => $code, 'reason' => 'collection']);
+    }
+    config(['media.tenant_prefix' => false]);
+
+    try {
+        return $run();
+    } finally {
+        config(['media.tenant_prefix' => true]);
+        $closed()->whereIn('code', $added)->where('reason', 'collection')->delete();
+        $closed()->whereIn('code', $frozen)->where('reason', 'collection')->update(['reason' => 'legacy_key']);
+    }
 }
 
 /**
