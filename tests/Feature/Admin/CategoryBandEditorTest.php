@@ -157,7 +157,7 @@ it('still saves a band whose own blocks were in a language turned off since, and
             'vi' => ['blocks' => [['type' => 'cta', 'props' => ['heading' => 'Gửi CV']]]],
             'en' => ['blocks' => [['type' => 'cta', 'props' => ['heading' => 'Send your CV']]]],
         ]]]]);
-        SiteLocale::query()->where('locale', 'en')->update(['enabled' => false]);
+        SiteLocale::query()->where('locale', 'en')->update(['enabled' => false, 'is_public' => false]);
         app(SiteLocaleContext::class)->forget();
     });
 
@@ -215,22 +215,25 @@ it('only lets support staff look: saving a band is refused during a support sess
 
 it('refuses every action once the member may no longer change the category or see its section, after the screen opened', function (): void {
     beIn(1, function (): void {
+        // one screen per action: a refused request leaves its screen with nothing to answer the next
         $limited = Livewire::actingAs($this->editor)->test(BandEditor::class, ['ulid' => $this->jobs->ulid, 'slot' => 'after_list']);
+        $saving = Livewire::actingAs($this->editor)->test(BandEditor::class, ['ulid' => $this->jobs->ulid, 'slot' => 'after_list'])->call('addBlock', 'cta');
         $other = app(CreateTaxonomy::class)->handle('post_cat', $this->root, new TaxonomyData(names: ['vi' => 'Khác']));
         MemberCategoryScope::query()->create(['user_id' => $this->editor->id, 'taxonomy_id' => $other->id]);
         app(CategoryScopes::class)->forget();
         $limited->call('addBlock', 'cta')->assertForbidden();
-        $limited->call('save')->assertForbidden();
+        $saving->call('save')->assertForbidden();
     });
     expect(beStored($this->jobs, 'after_list'))->toBeNull();
 
     $member = beUser(['taxonomies.manage', 'entries.view']);
     beIn(1, function () use ($member): void {
         $blind = Livewire::actingAs($member)->test(BandEditor::class, ['ulid' => $this->jobs->ulid, 'slot' => 'after_list']);
+        $saving = Livewire::actingAs($member)->test(BandEditor::class, ['ulid' => $this->jobs->ulid, 'slot' => 'after_list'])->call('addBlock', 'cta');
         // the section is now gated by an ability the member does not hold
         ContentSection::query()->where('key', 'tin-tuc')->update(['permission_prefix' => 'jobs']);
         $blind->call('addBlock', 'cta')->assertForbidden();
-        $blind->call('save')->assertForbidden();
+        $saving->call('save')->assertForbidden();
     });
     expect(beStored($this->jobs, 'after_list'))->toBeNull();
 });
@@ -256,12 +259,19 @@ it('opens the builder on a flat query budget, whatever the number of blocks in t
             'vi' => ['blocks' => array_map(fn (int $i): array => ['type' => 'cta', 'props' => ['heading' => 'Khối '.$i]], range(1, $blocks))],
         ]]]]));
 
-        return countQueries(fn () => $this->actingAs($this->editor)->get(beUrl($this->jobs))->assertOk()->assertSee('Khối 1'));
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->actingAs($this->editor)->get(beUrl($this->jobs))->assertOk()->assertSee('Khối 1');
+        $log = array_column(DB::getQueryLog(), 'query');
+        DB::disableQueryLog();
+        DB::flushQueryLog();
+
+        return $log;
     };
 
     $few = $open(1);
     $many = $open(8);
-    expect($many)->toBe($few)->and($few)->toBeLessThanOrEqual(1);
+    expect(count($many))->toBe(count($few), implode("\n", $many))->and(count($few))->toBeLessThanOrEqual(1, implode("\n", $few));
 });
 
 it('never overwrites a change made meanwhile, and refuses a block the band does not take', function (): void {

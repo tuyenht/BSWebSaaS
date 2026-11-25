@@ -921,7 +921,7 @@ it('refuses a drawer that read a band before it was changed elsewhere, and keeps
         ->and(cxRows(cxCall($this->editor, 'load', 'tin-tuc')))->toHaveKey('Tuyển dụng')->not->toHaveKey('Đổi tên');
 
     // the drawer read the band's own blocks; meanwhile another member put it back on the default
-    cxIn(1, fn () => Taxonomy::query()->whereKey($jobs->id)->update(['meta' => []]));
+    cxIn(1, fn () => Taxonomy::query()->whereKey($jobs->id)->update(['meta' => ['keep' => 1]]));
     expect(cxCall($this->editor, 'save', 'tin-tuc', $jobs->ulid, null, ['names' => ['vi' => 'Tuyển dụng'], 'bands' => ['after_list' => cxBand('none', 'own')]]))->toBe($refused)
         ->and(cxBands($jobs))->toBe([]);
 
