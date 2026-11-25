@@ -7,12 +7,14 @@ use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Cms\Support\EntryCoverUsage;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
+use App\Modules\Media\Services\EnsureMediaFromKey;
 use App\Modules\Media\Services\SiteMediaRekey;
 use App\Modules\Media\Support\MediaKey;
 use App\Modules\Media\Support\MediaKeyRewriter;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -23,7 +25,9 @@ use Illuminate\Support\Str;
  * run counts, --apply copies the objects (the old ones stay), moves the keys a chunk per transaction
  * with the references naming them (a bare key, or an address on the media host ending with one),
  * then repairs any reference to an old key of the website. Another website is never touched, and a
- * second run finds nothing, or repairs an old key written back meanwhile.
+ * second run finds nothing, or repairs an old key written back meanwhile. An address on another host
+ * ending with a moved key is reported, never rewritten; a key that cannot be moved is skipped and
+ * listed; a chunk that lost a lock conflict is retried; a permanent delete removes the old object too.
  */
 
 const REKEY_HERO = 'a-vinh/hero/hero-home-7ca90eafe212.jpg';
@@ -108,6 +112,8 @@ it('counts in a dry run and writes nothing', function (): void {
         ->and($output)->toMatch('/entry_revisions\.snapshot\s*\|\s*1\s*\|\s*1\s*\|/')   // the text only mentions the key
         ->and($output)->toMatch('/site_settings\.value\s*\|\s*1\s*\|\s*1\s*\|/')
         ->and($output)->toContain('unmatched in entries.meta: cu-rk/library/khong-co-1234.png')
+        ->and($output)->toMatch('/site_settings\.value\s*\|\s*1\s*\|\s*1\s*\|\s*0\s*\|\s*1\s*\|/')   // the logo on another host
+        ->and($output)->toContain('unmatched (other host) in site_settings.value: https://cdn.other.test/'.REKEY_LOGO.' (not rewritten)')
         ->and($output)->toContain('Nothing was written.')
         ->and(rekeyKeys(1))->toBe([REKEY_HERO, REKEY_LOGO, REKEY_GONE])
         ->and(Storage::disk(MediaKey::disk())->allFiles(siteCode(1)))->toBe([]);
@@ -126,8 +132,9 @@ it('copies the objects, moves the keys and rewrites every reference of the websi
         ->and($output)->toContain('Objects copied: 2, already there: 0, missing from storage: 1, new key grown past another object: 0.')
         ->and($output)->toContain('missing: '.REKEY_GONE)
         ->and($output)->toContain('Keys moved: 3 of 3.')
+        ->and($output)->toContain('unmatched (other host) in site_settings.value: https://cdn.other.test/'.REKEY_LOGO.' (not rewritten)')
         ->and(rekeyKeys(1))->toBe([$hero, $logo, "{$code}/mat-ef34.png"])
-        ->and(app(Tenancy::class)->enter(1, fn (): array => Media::query()->withTrashed()->orderBy('id')->get()->map(fn (Media $m) => $m->meta['previous_key'] ?? null)->all()))
+        ->and(app(Tenancy::class)->enter(1, fn (): array => Media::query()->withTrashed()->orderBy('id')->get()->map(fn (Media $m) => $m->meta['moved_from'] ?? null)->all()))
         ->toBe([REKEY_HERO, REKEY_LOGO, REKEY_GONE])
         ->and($disk->get($hero))->toBe('bytes of '.REKEY_HERO)
         ->and($disk->exists(REKEY_HERO))->toBeTrue()                       // the old object stays
@@ -314,6 +321,91 @@ it('takes the website by its code too, and refuses an unknown one', function ():
             fn ($exit) => $exit->toBe(1),
             fn ($output) => $output->toContain('No website with that id or code.'),
         );
+});
+
+it('reads a value that can be a code as a code first, then as an id', function (): void {
+    rekeyMedia(1, REKEY_LOGO);
+    DB::connection('pgsql_admin')->table('sites')->insert(['ulid' => 'SITEC000000000000000000001', 'tenant_id' => 1, 'code' => '000001', 'name' => 'C', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+    $third = (int) DB::connection('pgsql_admin')->table('sites')->where('code', '000001')->value('id');
+
+    expect(rekeyRun(site: '000001')[1])->toContain("website #{$third} (C)")->toContain('Files to move: 0.')
+        ->and(rekeyRun(site: '000002')[1])->toContain('website #2 (B)')     // no such code: the id
+        ->and(rekeyRun(site: '1')[1])->toContain('website #1 (A)')->toContain('Files to move: 1.');
+});
+
+it('skips and lists a key it cannot give a new one, and still moves the rest', function (): void {
+    rekeyMedia(1, REKEY_LOGO);
+    rekeyMedia(1, 'cu-rk/library/khong-duoi');
+    $logo = siteCode(1).'/logo-ab12cd.png';
+
+    [$exit, $output] = rekeyRun();
+    expect($exit)->toBe(0, $output)
+        ->and($output)->toContain('Files to move: 1.')
+        ->and($output)->toContain('Files skipped (move them by hand): 1.')
+        ->and($output)->toContain('skipped: cu-rk/library/khong-duoi (no file name with an extension; re-key it by hand)');
+
+    [$exit, $output] = rekeyRun(apply: true);
+    expect($exit)->toBe(0, $output)
+        ->and($output)->toContain('skipped: cu-rk/library/khong-duoi')
+        ->and($output)->toContain('Keys moved: 1 of 1.')
+        ->and(rekeyKeys(1))->toBe([$logo, 'cu-rk/library/khong-duoi']);
+});
+
+it('runs a chunk again whole when it lost a lock conflict, and gives up after the last try', function (string $state): void {
+    rekeyMedia(1, REKEY_LOGO);
+    $logo = siteCode(1).'/logo-ab12cd.png';
+    $tries = 0;
+    $failures = 1;
+    // The chunk's lock on the media rows is where a brand save (media, then settings) meets it.
+    DB::listen(function (QueryExecuted $query) use (&$tries, &$failures, $state): void {
+        $sql = strtolower($query->sql);
+        if ($query->connectionName === 'pgsql_admin' || ! str_contains($sql, 'from "media"') || ! str_contains($sql, 'for update')) {
+            return;
+        }
+        $tries++;
+        if ($tries <= $failures) {
+            $pdo = new PDOException($state === '40P01' ? 'deadlock detected' : 'canceling statement due to lock timeout');
+            $pdo->errorInfo = [$state, 7, $pdo->getMessage()];
+
+            throw new QueryException($query->connectionName, $query->sql, [], $pdo);
+        }
+    });
+
+    [$exit, $output] = rekeyRun(apply: true);
+    expect($exit)->toBe(0, $output)
+        ->and($tries)->toBe(2)
+        ->and(rekeyKeys(1))->toBe([$logo]);
+
+    // A conflict on every try: the chunk left nothing, and the run says so.
+    rekeyMedia(1, 'cu-rk/library/mat-ef34.png');
+    [$tries, $failures] = [0, SiteMediaRekey::MOVE_TRIES];
+    [$exit, $output] = rekeyRun(apply: true);
+    expect($exit)->toBe(1, $output)
+        ->and($tries)->toBe(SiteMediaRekey::MOVE_TRIES)
+        ->and($output)->toContain('Stopped after 0 of 1 keys')
+        ->and(rekeyKeys(1))->toBe([$logo, 'cu-rk/library/mat-ef34.png']);
+})->with(['deadlock' => '40P01', 'lock timeout' => '55P03']);
+
+it('removes the old object too when a moved file is deleted for good, but never a seed file', function (): void {
+    rekeyMedia(1, REKEY_LOGO);
+    $disk = Storage::disk(MediaKey::disk());
+    $seed = 'an-vinh/hero/hero-home-7ca90eafe212.jpg';
+    $disk->put($seed, 'seed bytes');
+    $seeded = app(Tenancy::class)->enter(1, fn (): Media => app(EnsureMediaFromKey::class)->fromSeedSource($seed));
+    expect($seeded->meta)->toBe(['seed_source' => $seed]);
+    expect(rekeyRun(apply: true)[0])->toBe(0);
+    $logo = siteCode(1).'/logo-ab12cd.png';
+    expect($disk->exists($logo))->toBeTrue()->and($disk->exists(REKEY_LOGO))->toBeTrue();
+
+    app(Tenancy::class)->enter(1, function () use ($logo, $seeded): void {
+        Media::query()->where('storage_key', $logo)->sole()->forceDelete();
+        Media::query()->findOrFail($seeded->id)->forceDelete();
+    });
+
+    expect($disk->exists($logo))->toBeFalse()
+        ->and($disk->exists(REKEY_LOGO))->toBeFalse()                      // its address before the move is gone too
+        ->and($disk->exists($seeded->storage_key))->toBeFalse()
+        ->and($disk->get($seed))->toBe('seed bytes');                       // shared by every seeded website
 });
 
 it('refuses a single-site install, whose files stay under their collections', function (): void {

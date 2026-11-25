@@ -429,11 +429,11 @@ it('leaves the download button out, with a warning, while its document is not up
         ->and(aboutLastBlock($this->siteId))->toMatchArray(['button_label' => 'Tải hồ sơ'])->not->toHaveKey('button_url_do');
 });
 
-it('finds a legacy_key\'s file by the old key its row records, never by its file name alone', function (): void {
+it('finds a legacy_key\'s file by the old key its row records, never by its file name alone', function (string $field): void {
     profileButton($this->folder);
     $legacy = 'an-vinh/tai-lieu/ho-so-ab12cd.pdf';
     $moved = siteCode($this->siteId).'/ho-so-ab12cdef.pdf';
-    ContentPacks::in($this->siteId, function () use ($legacy, $moved): void {
+    ContentPacks::in($this->siteId, function () use ($legacy, $moved, $field): void {
         // Same file name under the code, but it never held the legacy key: not the slot's file.
         Media::query()->create([
             'collection' => 'library', 'slug' => 'ho-so', 'hash' => hash('sha256', 'other'),
@@ -441,7 +441,7 @@ it('finds a legacy_key\'s file by the old key its row records, never by its file
         ]);
         Media::query()->create([
             'collection' => 'library', 'slug' => 'ho-so', 'hash' => hash('sha256', 'ho-so'),
-            'storage_key' => $moved, 'mime' => 'application/pdf', 'size' => 2048, 'meta' => ['previous_key' => $legacy],
+            'storage_key' => $moved, 'mime' => 'application/pdf', 'size' => 2048, 'meta' => [$field => $legacy],
         ]);
     });
     ContentPacks::edit($this->folder, 'media.json', function (array $media) use ($legacy): array {
@@ -455,7 +455,10 @@ it('finds a legacy_key\'s file by the old key its row records, never by its file
     [$exit, $output] = ContentPacks::load();
     expect($exit)->toBe(0, $output)
         ->and(aboutLastBlock($this->siteId))->toMatchArray(['button_url_do' => ['k' => 'file', 'file' => $moved]]);
-});
+})->with([
+    'moved by media:rekey-site' => 'moved_from',
+    'copied by a seeder' => 'seed_source',
+]);
 
 it('leaves the download button out when its document slot names an existing image', function (): void {
     profileButton($this->folder);

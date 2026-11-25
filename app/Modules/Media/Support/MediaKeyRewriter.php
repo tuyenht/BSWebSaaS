@@ -13,7 +13,9 @@ use stdClass;
  * the base path and the query kept); every other string is left as it is, so text that merely
  * mentions a key, or an address on another host that happens to end alike, never changes. Strings
  * that look like a key under one of the website's old folders but name no moved file are counted
- * as unmatched (the caller reports them), never guessed at.
+ * as unmatched (the caller reports them), never guessed at. An address on another host whose path
+ * ends with a moved key (or, when no media base is set, has an old folder in its path) is not
+ * rewritten either, but counted apart as unmatched on another host, so a dry run shows it.
  *
  * The media hosts are the host of the configured media base (hosts()), the only addresses the
  * application stores: MediaUrlResolver::url() always prefixes that base, and keys are otherwise
@@ -30,6 +32,9 @@ final class MediaKeyRewriter
 
     /** @var list<string> strings under an old folder that name no moved file, from the last call */
     public array $unmatched = [];
+
+    /** @var list<string> addresses on another host that look like a moved or old key, from the last call */
+    public array $otherHost = [];
 
     /** @var array<string, true> */
     private readonly array $folders;
@@ -80,6 +85,7 @@ final class MediaKeyRewriter
     {
         $this->rewritten = 0;
         $this->unmatched = [];
+        $this->otherHost = [];
 
         return $this->walk($document);
     }
@@ -120,6 +126,8 @@ final class MediaKeyRewriter
             }
             if ($this->underOldFolder($value)) {
                 $this->unmatched[] = $value;
+            } elseif ($this->onOtherHost($value)) {
+                $this->otherHost[] = $value;
             }
 
             return $value;
@@ -147,7 +155,7 @@ final class MediaKeyRewriter
      *
      * @return array{path: string, at: int}|null
      */
-    private function addressPath(string $value): ?array
+    private function addressPath(string $value, bool $mediaHost = true): ?array
     {
         if (! str_starts_with($value, '//') && preg_match('#\Ahttps?://#i', $value) !== 1) {
             return null;
@@ -156,7 +164,7 @@ final class MediaKeyRewriter
         $parts = parse_url($value);
         $host = is_array($parts) ? ($parts['host'] ?? null) : null;
         $path = is_array($parts) ? ($parts['path'] ?? null) : null;
-        if (! is_string($host) || ! isset($this->hosts[strtolower($host)]) || ! is_string($path) || ! str_starts_with($path, '/')) {
+        if (! is_string($host) || isset($this->hosts[strtolower($host)]) !== $mediaHost || ! is_string($path) || ! str_starts_with($path, '/')) {
             return null;
         }
 
@@ -165,7 +173,7 @@ final class MediaKeyRewriter
         return $at === false ? null : ['path' => $path, 'at' => $at];
     }
 
-    /** A bare key or an address whose path has a segment that is one of the old folders. */
+    /** A bare key or an address on a media host whose path has a segment that is one of the old folders. */
     private function underOldFolder(string $value): bool
     {
         if (preg_match(MediaKey::CLEAN_PATH_PATTERN, $value) === 1) {
@@ -173,11 +181,35 @@ final class MediaKeyRewriter
         }
 
         $path = $this->addressPath($value);
+
+        return $path !== null && $this->hasOldFolder($path['path']);
+    }
+
+    /**
+     * An address on a host that is not a media host whose path ends with a moved key, or, when no
+     * media host is known (the base is not set), whose path has one of the old folders.
+     */
+    private function onOtherHost(string $value): bool
+    {
+        $path = $this->addressPath($value, mediaHost: false);
         if ($path === null) {
             return false;
         }
 
-        $segments = explode('/', trim($path['path'], '/'));
+        $offset = 0;
+        while (($slash = strpos($path['path'], '/', $offset)) !== false) {
+            if (isset($this->moves[substr($path['path'], $slash + 1)])) {
+                return true;
+            }
+            $offset = $slash + 1;
+        }
+
+        return $this->hosts === [] && $this->hasOldFolder($path['path']);
+    }
+
+    private function hasOldFolder(string $path): bool
+    {
+        $segments = explode('/', trim($path, '/'));
         array_pop($segments); // the file name itself is never a folder
 
         return array_filter($segments, fn (string $segment): bool => isset($this->folders[$segment])) !== [];

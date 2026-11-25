@@ -88,6 +88,19 @@ it('closes the seeded folders and collections on a multi-site install, keeping t
         ->and(closeFoldersWriteState(1, 'mau-sd/hero/van-1234.jpg'))->toBe('');   // its owner keeps its old folder
 });
 
+it('makes every website holding rows in one seeded folder its owner, and refuses a third', function (): void {
+    DB::connection('pgsql_admin')->table('sites')->insert(['ulid' => 'SITEC000000000000000000001', 'tenant_id' => 1, 'code' => 'cccccc', 'name' => 'C', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+    $third = (int) DB::connection('pgsql_admin')->table('sites')->where('code', 'cccccc')->value('id');
+    closeFoldersMedia(2, 'mau-sd/hero/b-1234.jpg');   // site 1 already holds a row there
+
+    closeFoldersRun('up');
+
+    expect(closeFoldersRows('mau-sd'))->toBe(['legacy_key:1', 'legacy_key:2'])
+        ->and(closeFoldersWriteState(1, 'mau-sd/hero/moi-1234.jpg'))->toBe('')
+        ->and(closeFoldersWriteState(2, 'mau-sd/hero/moi-5678.jpg'))->toBe('')
+        ->and(closeFoldersWriteState($third, 'mau-sd/hero/moi-9abc.jpg'))->toBe('23514');
+});
+
 it('releases an owner row of a folder its website holds no file under, the folder staying frozen', function (): void {
     closeFoldersRun('up');
 

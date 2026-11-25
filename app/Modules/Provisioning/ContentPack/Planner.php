@@ -66,8 +66,8 @@ use Illuminate\Support\Facades\DB;
  *
  * Images: a slot resolves to the site's media row holding the slot's own file (same collection, same
  * sha256 — what the image step, `--media`, uploads), else to the row its `legacy_key` names: the row
- * holding that key, else the row that held it (`meta.previous_key`, written by media:rekey-site and
- * the seeders when they file it under the site's code). A block
+ * holding that key, else the row that held it (`meta.moved_from`, written by media:rekey-site), else
+ * the row copied from it (`meta.seed_source`, written by the seeders). A block
  * image prop whose slot does not resolve is left out; a card image, a product gallery or a setting
  * whose slot does not resolve keeps its live value. Rows in the Trash never resolve.
  */
@@ -381,9 +381,10 @@ final class Planner
             }
         }
 
-        // A legacy key names a file filed before website codes; media:rekey-site and the seeders
-        // file it under the site's code and record the old key in meta.previous_key. The row holding
-        // the key wins, else the oldest that held it.
+        // A legacy key names a file filed before website codes; media:rekey-site files it under the
+        // site's code and records the old key in meta.moved_from, the seeders copy it there and record
+        // it in meta.seed_source. The row holding the key wins, else the oldest moved row, else the
+        // oldest seeded one.
         $keys = [];
         foreach ($pack->slots as $name => $slot) {
             $legacy = $slot['legacy_key'] ?? null;
@@ -398,10 +399,12 @@ final class Planner
         $wanted = array_values(array_unique($keys));
         $byKey = Media::query()->whereIn('storage_key', $wanted)->get(['id', 'storage_key', 'mime', 'size'])->keyBy('storage_key');
         $byPrevious = [];
-        $previousRows = Media::query()->select(['id', 'storage_key', 'mime', 'size'])->selectRaw("meta->>'previous_key' AS previous_key")
-            ->whereIn(DB::raw("meta->>'previous_key'"), $wanted)->orderBy('id')->get();
-        foreach ($previousRows as $row) {
-            $byPrevious[Cast::string($row->getAttribute('previous_key'))] ??= $row;
+        foreach (['moved_from', 'seed_source'] as $field) {
+            $previousRows = Media::query()->select(['id', 'storage_key', 'mime', 'size'])->selectRaw("meta->>'{$field}' AS previous_key")
+                ->whereIn(DB::raw("meta->>'{$field}'"), $wanted)->orderBy('id')->get();
+            foreach ($previousRows as $row) {
+                $byPrevious[Cast::string($row->getAttribute('previous_key'))] ??= $row;
+            }
         }
         foreach ($keys as $name => $key) {
             $row = $byKey->get($key) ?? $byPrevious[$key] ?? null;

@@ -33,7 +33,9 @@ use Throwable;
  * is the same for all of them (MediaKeyRewriter): a string that is a moved key, or an address on the
  * media host whose path ends with one. Strings under the website's old folders that name no file of
  * its library are counted as unmatched and left as they are (their objects stay, so they keep
- * working).
+ * working); so are addresses on another host whose path ends with a moved key, counted apart as
+ * "unmatched (other host)". A key that cannot be given a new one (no extension) is listed as
+ * skipped and left for a person; the rest of the website still moves.
  *
  * Lives in Admin because it writes the content of several modules (Media depends on none of them);
  * the module list here is data, the work is in the Media module.
@@ -83,11 +85,17 @@ final class RekeySiteMedia extends Command
         $code = $site->code;
         $apply = $this->option('apply') === true;
 
-        $plan = $rekey->plan($siteId, $code);
+        ['moves' => $plan, 'skipped' => $skipped] = $rekey->plan($siteId, $code);
         $oldFolders = Cast::strings(DB::table('reserved_site_codes')->where('reason', 'legacy_key')->where('site_id', $siteId)->pluck('code')->all());
 
         $this->line(($apply ? 'Moving' : 'Dry run for')." the files of website #{$siteId} ({$site->name}) to {$code}/.");
         $this->line('Files to move: '.count($plan).'.');
+        if ($skipped !== []) {
+            $this->warn('Files skipped (move them by hand): '.count($skipped).'.');
+            foreach (array_slice($skipped, 0, 20) as $skip) {
+                $this->warn("  skipped: {$skip['key']} ({$skip['reason']})");
+            }
+        }
 
         if (! $apply) {
             $rewriter = new MediaKeyRewriter([...$rekey->previousKeys($siteId), ...array_column($plan, 'to', 'from')], $oldFolders);
@@ -146,46 +154,53 @@ final class RekeySiteMedia extends Command
      * Per-place sums of two reports; the unmatched strings come from $unmatchedFrom only (the pass
      * that knew every moved key), else they are kept from $sum.
      *
-     * @param  array<string, array{rows: int, references: int, unmatched: int, samples: list<string>}>  $sum
-     * @param  array<string, array{rows: int, references: int, unmatched: int, samples: list<string>}>  $more
-     * @param  array<string, array{rows: int, references: int, unmatched: int, samples: list<string>}>|null  $unmatchedFrom
-     * @return array<string, array{rows: int, references: int, unmatched: int, samples: list<string>}>
+     * @param  array<string, array{rows: int, references: int, unmatched: int, samples: list<string>, other_host: int, other_samples: list<string>}>  $sum
+     * @param  array<string, array{rows: int, references: int, unmatched: int, samples: list<string>, other_host: int, other_samples: list<string>}>  $more
+     * @param  array<string, array{rows: int, references: int, unmatched: int, samples: list<string>, other_host: int, other_samples: list<string>}>|null  $unmatchedFrom
+     * @return array<string, array{rows: int, references: int, unmatched: int, samples: list<string>, other_host: int, other_samples: list<string>}>
      */
     private static function add(array $sum, array $more, ?array $unmatchedFrom = null): array
     {
         foreach ($more as $place => $line) {
-            $old = $sum[$place] ?? ['rows' => 0, 'references' => 0, 'unmatched' => 0, 'samples' => []];
+            $old = $sum[$place] ?? ['rows' => 0, 'references' => 0, 'unmatched' => 0, 'samples' => [], 'other_host' => 0, 'other_samples' => []];
+            $from = $unmatchedFrom !== null ? ($unmatchedFrom[$place] ?? null) : $old;
             $sum[$place] = [
                 'rows' => $old['rows'] + $line['rows'],
                 'references' => $old['references'] + $line['references'],
-                'unmatched' => $unmatchedFrom !== null ? ($unmatchedFrom[$place]['unmatched'] ?? 0) : $old['unmatched'],
-                'samples' => $unmatchedFrom !== null ? ($unmatchedFrom[$place]['samples'] ?? []) : $old['samples'],
+                'unmatched' => $from['unmatched'] ?? 0,
+                'samples' => $from['samples'] ?? [],
+                'other_host' => $from['other_host'] ?? 0,
+                'other_samples' => $from['other_samples'] ?? [],
             ];
         }
 
         return $sum;
     }
 
-    /** The website named by its id or its code, the Trash excluded. */
+    /**
+     * The website named by its code or its id, the Trash excluded: a value that can be a code is
+     * looked up as one first (a code may be all digits), then as an id.
+     */
     private function site(string $given): ?Site
     {
-        $query = Site::query();
+        $byCode = preg_match(MediaKey::CODE_PATTERN, $given) === 1 ? Site::query()->where('code', $given)->first() : null;
 
-        return ctype_digit($given)
-            ? $query->whereKey((int) $given)->first()
-            : (preg_match(MediaKey::CODE_PATTERN, $given) === 1 ? $query->where('code', $given)->first() : null);
+        return $byCode ?? (ctype_digit($given) ? Site::query()->whereKey((int) $given)->first() : null);
     }
 
-    /** @param  array<string, array{rows: int, references: int, unmatched: int, samples: list<string>}>  $references */
+    /** @param  array<string, array{rows: int, references: int, unmatched: int, samples: list<string>, other_host: int, other_samples: list<string>}>  $references */
     private function report(array $references): void
     {
         $this->table(
-            ['Place', 'Rows', 'References', 'Unmatched'],
-            array_map(static fn (string $place, array $line): array => [$place, $line['rows'], $line['references'], $line['unmatched']], array_keys($references), $references),
+            ['Place', 'Rows', 'References', 'Unmatched', 'Unmatched (other host)'],
+            array_map(static fn (string $place, array $line): array => [$place, $line['rows'], $line['references'], $line['unmatched'], $line['other_host']], array_keys($references), $references),
         );
         foreach ($references as $place => $line) {
             foreach ($line['samples'] as $sample) {
                 $this->warn("  unmatched in {$place}: {$sample}");
+            }
+            foreach ($line['other_samples'] as $sample) {
+                $this->warn("  unmatched (other host) in {$place}: {$sample} (not rewritten)");
             }
         }
     }

@@ -6,7 +6,7 @@ use App\Modules\Media\Support\MediaKeyRewriter;
  * MediaKeyRewriter rewrites a stored document after media:rekey-site moved its files: a string that
  * is a moved key, or an address on a media host whose path ends with one, gets the new key (base
  * path and query kept); everything else stays, and strings under an old folder that name no moved
- * file are counted.
+ * file are counted, as are addresses on another host that look like a moved (or old) key.
  */
 
 function rekeyRewriter(): MediaKeyRewriter
@@ -53,4 +53,27 @@ it('walks a whole document, keeps empty objects as objects and counts what it re
 
     $again = $rewriter->rewrite($out);
     expect($rewriter->rewritten)->toBe(0)->and($again)->toEqual($out);
+});
+
+it('reports an address on another host that ends with a moved key, without rewriting it', function (): void {
+    $rewriter = rekeyRewriter();
+    $document = json_decode('{"a":"https://cdn.other.example/an-vinh/hero/x-ab12.jpg","b":"//cdn.other.example/x/ten-cu/library/logo-cd34.png?w=1","c":"https://cdn.other.example/khac-ab12.jpg"}', false);
+
+    $out = $rewriter->rewrite($document);
+
+    expect($out)->toEqual($document)
+        ->and($rewriter->rewritten)->toBe(0)
+        ->and($rewriter->unmatched)->toBe([])
+        ->and($rewriter->otherHost)->toBe(['https://cdn.other.example/an-vinh/hero/x-ab12.jpg', '//cdn.other.example/x/ten-cu/library/logo-cd34.png?w=1']);
+});
+
+it('reports every address under an old folder when no media host is known', function (): void {
+    $rewriter = new MediaKeyRewriter(['an-vinh/hero/x-ab12.jpg' => 'q7k2m9/x-ab12.jpg'], ['ten-cu'], []);
+    $document = json_decode('["https://files.example/an-vinh/hero/x-ab12.jpg","https://files.example/ten-cu/library/khong-co-1234.png","https://files.example/khac/y-1234.png","an-vinh/hero/x-ab12.jpg"]', false);
+
+    $out = $rewriter->rewrite($document);
+
+    expect($out)->toEqual(['https://files.example/an-vinh/hero/x-ab12.jpg', 'https://files.example/ten-cu/library/khong-co-1234.png', 'https://files.example/khac/y-1234.png', 'q7k2m9/x-ab12.jpg'])
+        ->and($rewriter->rewritten)->toBe(1)
+        ->and($rewriter->otherHost)->toBe(['https://files.example/an-vinh/hero/x-ab12.jpg', 'https://files.example/ten-cu/library/khong-co-1234.png']);
 });

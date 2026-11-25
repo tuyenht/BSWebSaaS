@@ -13,8 +13,9 @@ use Illuminate\Support\Facades\Storage;
 /*
  * media:rekey-site rewrites a post's meta while an editor may be saving the same post. Its rewrite
  * reads the row, then writes it back with the new key; a save committed in between would be lost.
- * So it locks each content row it rewrites (FOR UPDATE) in the transaction that writes it: a save
- * either commits before the lock (the rewrite then reads it) or waits until the rewrite commits.
+ * So it locks each content row it rewrites (FOR NO KEY UPDATE, which an UPDATE of the row still
+ * waits for) in the transaction that writes it: a save either commits before the lock (the rewrite
+ * then reads it) or waits until the rewrite commits.
  *
  * Staged on two real connections, like the other lock tests here: the rival save runs on pgsql_admin
  * with a short lock_timeout, from inside the run, right after the rekey has read the post's text

@@ -51,8 +51,9 @@ final readonly class EnsureMediaFromKey
      * to the website's own folder under the same file name (`{code}/hero-home-7ca90eafe212.jpg`)
      * unless a copy is there already, and the master for that key is ensured. So no seeder writes a
      * key outside the website's code, and re-seeding finds the same row. A new row records the seed
-     * key in `meta.previous_key`, as media:rekey-site does for a moved file, so a content pack's
-     * `legacy_key` and a stored reference to the seed key still find it. A source that is not in
+     * key in `meta.seed_source`, so a content pack's `legacy_key` and a stored reference to the seed
+     * key still find it. The seed file is shared by every seeded website: unlike `meta.moved_from`
+     * (a moved row's own old object), a permanent delete never removes it. A source that is not in
      * storage is logged and the row still made (as for any key whose object is missing).
      *
      * @param  array<string, mixed>  $overrides
@@ -77,7 +78,7 @@ final readonly class EnsureMediaFromKey
 
         if ($key !== $sourceKey) {
             $meta = $overrides['meta'] ?? [];
-            $overrides['meta'] = [...(is_array($meta) ? $meta : []), 'previous_key' => $sourceKey];
+            $overrides['meta'] = [...(is_array($meta) ? $meta : []), 'seed_source' => $sourceKey];
         }
 
         return $this->handle($key, $overrides);
