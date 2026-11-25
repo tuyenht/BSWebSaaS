@@ -1515,9 +1515,10 @@ final class Editor extends Component
             // made, but a part was refused (a new page's typed place): the form says so, never a success
             return;
         }
-        // «Gỡ khỏi website lúc» first; one before a schedule that this save moves earlier waits for the move
+        // «Gỡ khỏi website lúc» first; one before a schedule that this save moves earlier, or takes back to a
+        // draft, waits for the move
         $expiryWaits = false;
-        if (! $this->applyExpiry($entry, $schedulable || $to === EntryStatus::Scheduled->value, $expiryWaits)) {
+        if (! $this->applyExpiry($entry, $schedulable || $to === EntryStatus::Scheduled->value, $expiryWaits, $to)) {
             return;
         }
         if ($this->heldSave !== null && $to === null) {
@@ -1561,7 +1562,9 @@ final class Editor extends Component
             return;
         }
         if (! $this->applyExpiry($entry)) {
-            return;   // a cleared or moved end time comes before the publish, which refuses one already past
+            // a cleared or moved end time comes before the publish, which refuses one already past; the publish
+            // keeps a schedule's time, so an end time not after it is refused here, with nothing put up
+            return;
         }
         if ($this->heldSave !== null) {
             // into the pending change: visitors keep the live version
@@ -3897,14 +3900,6 @@ final class Editor extends Component
         return true;
     }
 
-    /** The website's offset from UTC as «GMT+7». */
-    private function zoneName(): string
-    {
-        $offset = intdiv(app(SiteTime::class)->now()->getOffset(), 60);
-
-        return 'GMT'.($offset < 0 ? '-' : '+').intdiv(abs($offset), 60).(abs($offset) % 60 !== 0 ? ':'.str_pad((string) (abs($offset) % 60), 2, '0', STR_PAD_LEFT) : '');
-    }
-
     /**
      * «Gỡ khỏi website lúc» (board 07, the «Đăng» card): none on the Home page (it takes no end time); read
      * only for a member who may not change the status, or in a language other than the website's own. The
@@ -3929,7 +3924,7 @@ final class Editor extends Component
         };
 
         return [
-            'zone' => Cast::string(__('entries.ed.exp_zone', ['zone' => $this->zoneName()])),
+            'zone' => Cast::string(__('entries.ed.exp_zone', ['zone' => app(SiteTime::class)->offsetLabel()])),
             'hint' => Cast::string($hint),
             'editable' => $this->expiryEditable(),
         ];
@@ -3964,7 +3959,7 @@ final class Editor extends Component
         if ($this->effectiveStatus() !== EntryStatus::Scheduled->value || ! $this->mayPublish || $workflow !== null) {
             return null;
         }
-        $zone = $this->zoneName();
+        $zone = app(SiteTime::class)->offsetLabel();
         $at = preg_match('/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/', $this->scheduleAt, $m) === 1
             ? $m[4].':'.$m[5].' '.$m[3].'/'.$m[2].'/'.$m[1]
             : Cast::string(__('entries.ed.sched_when_set'));
@@ -4321,10 +4316,6 @@ final class Editor extends Component
     }
 
     /**
-     * The gate of the save path, for an endpoint that changes the page being edited: `create` for a
-     * page not saved yet, else `update` on the entry.
-     */
-    /**
      * «Gỡ khỏi website lúc», as the field is left: the reason under it when the time is past or not after
      * the scheduled publish time; nothing for a time left as it was stored. A member who may not change
      * the entry's status, or a language other than the website's own (the end time is every language's),
@@ -4424,24 +4415,36 @@ final class Editor extends Component
         return $this->mayPublish && ! $this->sharedLocked() && ! $this->homePage;
     }
 
-    /** The publish time the end time must come after: the schedule picked in the form, when the entry is (or will be) scheduled. */
+    /**
+     * The publish time the end time must come after, as the entry will be after this save: the schedule picked
+     * in the form when it is (or will be) scheduled; none for a draft (taking a schedule back drops its time);
+     * the stored schedule for a scheduled entry put up now (PublishEntry keeps it).
+     */
     private function formPublishAt(): ?CarbonImmutable
     {
-        return $this->effectiveStatus() === EntryStatus::Scheduled->value ? ScheduleInput::parse($this->scheduleAt) : null;
+        return match (true) {
+            $this->effectiveStatus() === EntryStatus::Scheduled->value => ScheduleInput::parse($this->scheduleAt),
+            $this->effectiveStatus() === EntryStatus::Draft->value, $this->status !== EntryStatus::Scheduled->value => null,
+            default => ScheduleInput::parse($this->scheduleLoaded),
+        };
     }
 
     /**
      * Writes a changed «Gỡ khỏi website lúc» through ChangeEntryExpiry after the save; a refusal is said
-     * under the field and stops what follows. With $mayWait, a time not after the stored schedule that
-     * this save is about to move waits for the move ($waits), the caller calling again after it.
+     * under the field and stops what follows. A time still to come but not after the stored schedule waits
+     * for the move this save makes ($waits, the caller calling again after it) when that move frees it: a
+     * schedule moved ($mayWait), or a schedule taken back to a draft ($moveTo), which drops its time. «Công
+     * khai» keeps the stored publish time (PublishEntry), so the end time is judged against it before the
+     * publish (formPublishAt, then here): a pair still wrong after the move is refused before anything moves.
      */
-    private function applyExpiry(Entry $entry, bool $mayWait = false, bool &$waits = false): bool
+    private function applyExpiry(Entry $entry, bool $mayWait = false, bool &$waits = false, ?string $moveTo = null): bool
     {
         if ($this->expiresAt === $this->expiresLoaded || ! $this->expiryEditable()) {
             return true;
         }
         $at = ExpiryTime::parse($this->expiresAt, app(SiteTime::class)->zone());
-        if ($mayWait && $at !== null && $entry->published_at !== null && $entry->published_at > now() && $at <= $entry->published_at) {
+        $freed = $mayWait || ($moveTo === EntryStatus::Draft->value && $entry->status === EntryStatus::Scheduled->value);
+        if ($freed && $at !== null && $at > now() && $entry->published_at !== null && $entry->published_at > now() && $at <= $entry->published_at) {
             $waits = true;
 
             return true;
@@ -4467,6 +4470,10 @@ final class Editor extends Component
         return true;
     }
 
+    /**
+     * The gate of the save path, for an endpoint that changes the page being edited: `create` for a
+     * page not saved yet, else `update` on the entry.
+     */
     private function authorizeEditing(): void
     {
         if ($this->ulid === null) {

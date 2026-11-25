@@ -1289,7 +1289,7 @@ final class Editor extends Component
             'note' => $this->saveNote(),
             'leave' => $this->leaveWords(),
             'publishCard' => $this->publishCard($selling),
-            'zoneName' => 'GMT'.app(SiteTime::class)->now()->format('P') === 'GMT+07:00' ? 'GMT+7' : 'GMT'.rtrim(rtrim(app(SiteTime::class)->now()->format('P'), '0'), ':'),
+            'zoneName' => app(SiteTime::class)->offsetLabel(),
             'summaryWarning' => $this->summaryWarning(),
             'changes' => $this->changeCount(),
             'roRole' => ! $this->canEdit && $user instanceof User ? RoleLabel::topOf($user) : null,

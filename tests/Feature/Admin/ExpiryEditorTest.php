@@ -225,3 +225,69 @@ it('checks an end time against the schedule the same save moves, whichever is wr
     'schedule moved later, end time between the two' => ['2026-12-01T08:00', '2026-12-10T08:00', '2026-12-05T08:00', false],
     'schedule moved later, end time before both' => ['2026-12-10T08:00', '2026-12-20T08:00', '2026-12-05T08:00', false],
 ]);
+
+it('judges an end time against the publish time the post keeps after the status the save picks', function (string $pick, string $endAt, bool $valid, string $status): void {
+    $user = xpMember(XP_EDITOR);
+    app(Tenancy::class)->enter(1, function () use ($user, $pick, $endAt, $valid, $status): void {
+        // scheduled for tomorrow 20:00; now is 10:00 on the website's clock
+        $schedule = CarbonImmutable::parse(xpUtc('2026-11-26T20:00'), 'UTC');
+        $post = xpPost(['status' => 'scheduled', 'published_at' => $schedule]);
+        $c = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid])
+            ->set('statusTo', $pick)
+            ->assertSet('statusTo', $pick)
+            ->set('expiresAt', $endAt);
+        $valid ? $c->assertHasNoErrors('expiresAt') : $c->assertHasErrors('expiresAt');   // the field says so as it is left
+        $c->call('save');
+
+        $stored = $post->fresh();
+        expect($stored->status)->toBe($status);
+        if ($valid) {
+            $c->assertHasNoErrors();
+            expect($stored->expires_at?->utc()->format('Y-m-d H:i'))->toBe(xpUtc($endAt))
+                // a draft takes the schedule's time back; going up now keeps it (PublishEntry)
+                ->and($stored->published_at?->utc()->format('Y-m-d H:i'))->toBe($pick === 'draft' ? null : $schedule->format('Y-m-d H:i'));
+
+            return;
+        }
+        // refused before anything moved: still scheduled at its time, no end time written
+        $c->assertHasErrors('expiresAt');
+        expect($stored->expires_at)->toBeNull()
+            ->and($stored->published_at?->utc()->format('Y-m-d H:i'))->toBe($schedule->format('Y-m-d H:i'));
+    });
+})->with([
+    'draft, end tonight before the old schedule' => ['draft', '2026-11-25T18:00', true, 'draft'],
+    'draft, end already past' => ['draft', '2026-11-25T08:00', false, 'scheduled'],
+    '«Công khai», end after the kept schedule' => ['published', '2026-11-27T08:00', true, 'published'],
+    '«Công khai», end tonight before the kept schedule' => ['published', '2026-11-25T18:00', false, 'scheduled'],
+]);
+
+it('refuses an end time before the schedule on «Đăng» of a scheduled post, with nothing put up', function (): void {
+    $user = xpMember(XP_EDITOR);
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $post = xpPost(['status' => 'scheduled', 'published_at' => CarbonImmutable::parse(xpUtc('2026-11-26T20:00'), 'UTC')]);
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid])
+            ->set('expiresAt', '2026-11-25T18:00')
+            ->call('publish')
+            ->assertHasErrors('expiresAt');
+        expect($post->fresh()->status)->toBe('scheduled')
+            ->and($post->fresh()->expires_at)->toBeNull();
+    });
+});
+
+it('takes «Ngày hiện trên bài» as today on the website clock just after its midnight, and refuses the day after', function (): void {
+    // 17:30 UTC on 24/11 is 00:30 on 25/11 in Hà Nội
+    $this->travelTo(CarbonImmutable::parse('2026-11-24 17:30:00', 'UTC'));
+    $user = xpMember(XP_EDITOR);
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $post = xpPost();
+        expect(app(SiteTime::class)->zone())->toBe('Asia/Ho_Chi_Minh');
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid])
+            ->set('displayDate', '2026-11-26')
+            ->call('save')
+            ->assertHasErrors(['displayDate'])
+            ->set('displayDate', '2026-11-25')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertSee('25/11/2026');
+    });
+});
