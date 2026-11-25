@@ -107,7 +107,10 @@ it('pages a tag’s posts by keyset like every list, within a fixed number of qu
     preg_match_all('#href="/tin-tuc/bai-(\d+)"#', $second, $two);
     expect(array_unique(array_map('intval', $one[1])))->toHaveCount(12)
         ->and(array_values(array_unique(array_map('intval', $two[1]))))->toBe([2, 1])
-        ->and($first)->toContain('rel="next"')
+        ->and($first)->toContain('rel="next"')->not->toContain('pagination__first')
+        // the second page leads back to the first twice, as drawn: "first page" and "previous"
+        ->and($second)->toContain('<a class="pagination__first" href="'.POST_TAGS_HOST.'/the/cnc">'.e(__('storefront.back_to_first')).'</a>')
+        ->toContain('<a class="pagination__prev" rel="prev" href="'.POST_TAGS_HOST.'/the/cnc">')
         ->and($queries)->toBeLessThanOrEqual($categoryQueries);
 });
 

@@ -287,12 +287,6 @@
     margin: 2.5rem 0 0;
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .post-tags__tag {
-        transition: none;
-    }
-}
-
 /* Previous / next: two plain links, older on the left, newer on the right. */
 .post-nav {
     display: grid;

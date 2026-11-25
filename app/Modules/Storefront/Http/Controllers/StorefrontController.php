@@ -676,11 +676,17 @@ final readonly class StorefrontController
         $extra['slotBlocks'] = $this->slots->blocks(SlotContext::LIST_SLOTS, $locale, $resolved->taxonomy);
         $extra['slotContext'] = $this->slots->context($extra['slotBlocks'], $resolved->taxonomy, $locale, is_array($extra['brand'] ?? null) ? $extra['brand'] : null);
 
+        $links = $this->lists->links(request()->url(), $position, $more, $lastUlid);
+        // a tag's page from the second on also leads back to the first, beside "previous"
+        if ($resolved->taxonomy->vocabulary === Taxonomy::TAG && $position['after'] === null && $position['page'] > 1) {
+            $links['firstUrl'] = request()->url();
+        }
+
         $html = $this->renderer->renderCategory(
             $listTemplate,
             $title,
             $titles,
-            $this->lists->links(request()->url(), $position, $more, $lastUlid),
+            $links,
             self::categorySeo($resolved->translation, $parentName, Cast::string(data_get($extra, 'brand.name'))) + $this->categoryTitleSeo($resolved, $locale, $parentName),
             $extra,
         );
