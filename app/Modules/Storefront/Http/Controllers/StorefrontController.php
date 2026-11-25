@@ -358,7 +358,7 @@ final readonly class StorefrontController
             }
 
             // The blocks of the side column and of the band below the post; the newest posts of the
-            // category's root branch are read with the related posts only when a block asks for them.
+            // post's own category are read with the related posts only when a block asks for them.
             $slotBlocks = $this->slots->blocks(SlotContext::POST_SLOTS, $locale, $category);
             $extra['slotBlocks'] = $slotBlocks;
             $withRecent = SlotContext::has($slotBlocks, 'recent_posts');
@@ -378,7 +378,7 @@ final readonly class StorefrontController
                 $extra['crumbsShown'] = $this->crumbs->visible($extra['breadcrumb'], true);
                 // The capability layout draws neither neighbours nor related cards: read them only when a block needs the recent posts.
                 if ($postTemplate !== 'capability' || $withRecent) {
-                    $extra += $this->posts->siblings($entry, $category, $locale, true, $withRecent, $postTemplate === 'project');
+                    $extra += $this->posts->siblings($entry, $category, $locale, true, $withRecent);
                 }
             }
             $extra['slotContext'] = $this->slots->context($slotBlocks, $category, $locale, $brandData, is_array($extra['recent'] ?? null) ? $extra['recent'] : [], $entry->id);

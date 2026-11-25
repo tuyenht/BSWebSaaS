@@ -369,7 +369,7 @@ it('marks the menu item of the section a post sits in, in the desktop menu, the 
         ->toMatch('#<a class="sf-nav__link" href="/an-pham-so-hoa"\s+aria-current="page"#');
 });
 
-it('fills "other projects" to three: the category\'s own projects first, then the newest of its branch', function (): void {
+it('lists only the category\'s own projects under "other projects", never padding from its sibling categories', function (): void {
     $site = StorefrontCards::site();
     app(Tenancy::class)->enter($site, function (): void {
         $outer = StorefrontCards::category('Dự án các loại', 'du-an-cac-loai');
@@ -385,9 +385,10 @@ it('fills "other projects" to three: the category\'s own projects first, then th
     });
 
     $html = $this->get(BC_HOST.'/tu-dong-hoa-a/dang-xem')->assertOk()->getContent();
-    $links = array_values(array_filter(array_unique(bcLinks($html, '<section class="post-related', '</section>')), fn (string $href): bool => str_contains($href, '/o-to-') || str_contains($href, '/cung-muc')));
+    $links = array_values(array_unique(bcLinks($html, '<section class="post-related', '</section>')));
 
-    expect($links)->toBe(['/tu-dong-hoa-a/cung-muc', '/o-to-a/o-to-moi', '/o-to-a/o-to-cu'])
+    expect(array_values(array_filter($links, fn (string $href): bool => str_contains($href, '/cung-muc'))))->toBe(['/tu-dong-hoa-a/cung-muc'])
+        ->and(implode(' ', $links))->not->toContain('/o-to-')
         ->and($html)->not->toContain('href="/tu-dong-hoa-a/dang-xem"');
 });
 
