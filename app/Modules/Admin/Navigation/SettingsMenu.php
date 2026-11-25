@@ -6,7 +6,11 @@ namespace App\Modules\Admin\Navigation;
 
 use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Support\SiteOwner;
+use App\Modules\Admin\Support\TenantMailer;
 use App\Modules\Tenancy\Entitlement\Entitlement;
+use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Chrome\SiteVerification;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\Route;
@@ -29,13 +33,63 @@ final class SettingsMenu
      * the menu would leave it out, decided from the page and not from the request's route, which on
      * a Livewire round trip is the update endpoint.
      *
-     * @return list<array{key: string, label: string, fold: bool, items: list<array{key: string, route: string, label: string, icon: string, desc: string}>}>
+     * @return list<array{key: string, label: string, fold: bool, items: list<array{key: string, route: string, label: string, icon: string, desc: string, dot: bool}>}>
      */
     public static function groups(string $active = ''): array
     {
         $groups = AdminPlane::isPlatform() ? self::platform() : self::site($active);
 
-        return array_values(array_filter($groups, static fn (array $group): bool => $group['items'] !== []));
+        return self::markUnconfigured(array_values(array_filter($groups, static fn (array $group): bool => $group['items'] !== [])));
+    }
+
+    /**
+     * The board's orange dot («Chưa cấu hình») on a section that still needs setting up: Email while
+     * no mail can leave (no sender of the site's own and none from the platform), «Email hệ thống»
+     * while the platform has no sender, Tích hợp & Theo dõi while no service is on with a valid code.
+     * Each is read only when its item is in the menu.
+     *
+     * @param  list<array{key: string, label: string, fold: bool, items: list<array{key: string, route: string, label: string, icon: string, desc: string, dot: bool}>}>  $groups
+     * @return list<array{key: string, label: string, fold: bool, items: list<array{key: string, route: string, label: string, icon: string, desc: string, dot: bool}>}>
+     */
+    private static function markUnconfigured(array $groups): array
+    {
+        $shown = array_column(array_merge([], ...array_column($groups, 'items')), 'key');
+        $mailer = app(TenantMailer::class);
+        $pending = [];
+        if (in_array('system-email', $shown, true) && ! $mailer->canSendWith(null)) {
+            $pending[] = 'system-email';
+        }
+        $site = array_values(array_intersect(['email', 'integrations'], $shown));
+        if ($site !== []) {
+            // the site's two rows in one read; the platform's sender only when the site has none that works
+            $rows = SiteSetting::query()->select(['group_name', 'key', 'value'])
+                ->where(fn (Builder $q) => $q->where(fn (Builder $r) => $r->where('group_name', 'email')->where('key', 'config'))
+                    ->orWhere(fn (Builder $r) => $r->where('group_name', 'storefront')->where('key', 'verification')))
+                ->get()->keyBy('group_name');
+            /** @var mixed $stored */
+            $stored = $rows->get('email')?->getAttribute('value');
+            /** @var array<string, mixed>|null $own a stored scalar counts as nothing set up */
+            $own = is_array($stored) ? $stored : null;
+            if (in_array('email', $site, true) && ! $mailer->canSendWith($own)) {
+                $pending[] = 'email';
+            }
+            if (in_array('integrations', $site, true) && SiteVerification::tags($rows->get('storefront')?->value) === []) {
+                $pending[] = 'integrations';
+            }
+        }
+        if ($pending === []) {
+            return $groups;
+        }
+
+        foreach ($groups as &$group) {
+            foreach ($group['items'] as &$item) {
+                $item['dot'] = in_array($item['key'], $pending, true);
+            }
+            unset($item);
+        }
+        unset($group);
+
+        return $groups;
     }
 
     /**
@@ -65,7 +119,7 @@ final class SettingsMenu
     }
 
     /**
-     * @return list<array{key: string, label: string, fold: bool, items: list<array{key: string, route: string, label: string, icon: string, desc: string}>}>
+     * @return list<array{key: string, label: string, fold: bool, items: list<array{key: string, route: string, label: string, icon: string, desc: string, dot: bool}>}>
      */
     private static function platform(): array
     {
@@ -81,7 +135,7 @@ final class SettingsMenu
     }
 
     /**
-     * @return list<array{key: string, label: string, fold: bool, items: list<array{key: string, route: string, label: string, icon: string, desc: string}>}>
+     * @return list<array{key: string, label: string, fold: bool, items: list<array{key: string, route: string, label: string, icon: string, desc: string, dot: bool}>}>
      */
     private static function site(string $active): array
     {
@@ -130,8 +184,8 @@ final class SettingsMenu
     }
 
     /**
-     * @param  list<array{key: string, route: string, label: string, icon: string, desc: string}|null>  $items
-     * @return array{key: string, label: string, fold: bool, items: list<array{key: string, route: string, label: string, icon: string, desc: string}>}
+     * @param  list<array{key: string, route: string, label: string, icon: string, desc: string, dot: bool}|null>  $items
+     * @return array{key: string, label: string, fold: bool, items: list<array{key: string, route: string, label: string, icon: string, desc: string, dot: bool}>}
      */
     private static function group(string $key, array $items, bool $fold = false): array
     {
@@ -143,7 +197,7 @@ final class SettingsMenu
     /**
      * An item whose route exists (a section not built on this install is left out).
      *
-     * @return array{key: string, route: string, label: string, icon: string, desc: string}|null
+     * @return array{key: string, route: string, label: string, icon: string, desc: string, dot: bool}|null
      */
     private static function item(string $key, string $route, string $labelKey, string $icon): ?array
     {
@@ -157,6 +211,7 @@ final class SettingsMenu
             'label' => __($labelKey),
             'icon' => $icon,
             'desc' => Lang::has('admin.set.sd.'.$key) ? __('admin.set.sd.'.$key) : '',
+            'dot' => false,
         ];
     }
 }

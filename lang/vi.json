@@ -5271,6 +5271,7 @@
     "admin.set.sd.redirects": "Đưa khách từ địa chỉ cũ sang địa chỉ mới.",
     "admin.set.sd.domains": "Địa chỉ khách gõ để vào website.",
     "admin.set.sd.email": "Cách website gửi thư đi.",
+    "admin.set.unconfigured": "Chưa cấu hình",
     "admin.set.sd.social": "Đăng nhập bằng Google, Facebook.",
     "admin.set.sd.security": "Mật khẩu, đăng nhập hai bước và thiết bị của bạn.",
     "admin.set.sd.workflow": "Bật duyệt bài theo từng loại nội dung.",
