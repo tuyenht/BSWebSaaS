@@ -10,6 +10,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Notifications\Models\SiteNotification;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 
@@ -58,6 +59,30 @@ it('publishes straight through for an actor with entries.publish', function (): 
             ->and($page->fresh()->published_at)->not->toBeNull()
             ->and($page->translationFor('vi')->status)->toBe('published')
             ->and(SiteRoute::query()->where('path', '/gioi-thieu')->where('entry_id', $page->id)->exists())->toBeTrue();
+    });
+});
+
+it('puts a scheduled post up early as live now, and keeps a publish date already past', function (): void {
+    $this->travelTo(CarbonImmutable::parse('2026-11-25 03:00:00', 'UTC'));
+    $tenancy = app(Tenancy::class);
+    $editor = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish', 'entries.submit']);
+        // scheduled for tomorrow, put up now: dated now, never a day still to come
+        $early = makeDraftPage($editor, 'len-som');
+        $early->update(['status' => 'scheduled', 'published_at' => CarbonImmutable::parse('2026-11-26 13:00:00', 'UTC')]);
+        // taken down last month and put back up: keeps its first date
+        $back = makeDraftPage($editor, 'dang-lai');
+        $back->update(['status' => 'archived', 'published_at' => CarbonImmutable::parse('2026-10-01 02:00:00', 'UTC')]);
+
+        app(PublishEntry::class)->handle($early->fresh(), 'vi', $editor->fresh());
+        app(PublishEntry::class)->handle($back->fresh(), 'vi', $editor->fresh());
+
+        expect($early->fresh()->status)->toBe('published')
+            ->and($early->fresh()->published_at?->utc()->format('Y-m-d H:i:s'))->toBe('2026-11-25 03:00:00')
+            ->and($back->fresh()->status)->toBe('published')
+            ->and($back->fresh()->published_at?->utc()->format('Y-m-d H:i:s'))->toBe('2026-10-01 02:00:00');
     });
 });
 

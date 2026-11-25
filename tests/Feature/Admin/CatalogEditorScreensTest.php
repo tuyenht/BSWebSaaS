@@ -228,7 +228,7 @@ describe('the ⋮ status moves', function (): void {
             expect(Product::query()->whereKey($product->id)->value('status'))->toBe('archived')
                 ->and(DB::table('product_translations')->where('product_id', $product->id)->value('name'))->toBe('Đồ gá hàn mới');
 
-            $c->assertSee(__('catalog.ed.menu_to_draft_hint_archived'))->assertDontSee(__('catalog.ed.menu_unpublish'))
+            $c->assertSee(__('catalog.ed.menu_to_draft_hint_archived'))->assertDontSee(__('catalog.ed.menu_unpublish_hint')) // the menu's own line; «Gỡ khỏi website lúc» stays on the «Đăng» card
                 ->call('toDraft')->assertSet('status', 'draft')->assertDispatched('bs-toast', text: __('catalog.ed.toast_to_draft'));
             expect(Product::query()->whereKey($product->id)->value('status'))->toBe('draft');
 

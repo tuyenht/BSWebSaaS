@@ -5,6 +5,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Support\Facades\DB;
 
 /*
  * SSR of the resolved admin-chrome theme onto <html data-*> (P5 Customizer). The chain is
@@ -218,4 +219,60 @@ it('folds a wide menu to its icon rail on a settings page only, leaving the save
     $member->save();
     expect($htmlTag((string) $this->actingAs($member->fresh())->get('http://a.test/admin/settings/appearance')->assertOk()->getContent()))
         ->toContain('data-sidebar-size="sm"')->not->toContain('data-sidebar-fold');
+});
+
+/** The <html> tag a member's /admin/content page opens with. */
+function themeHtmlTag(User $user): string
+{
+    $html = (string) test()->actingAs($user)->get('http://a.test/admin/content')->assertOk()->getContent();
+
+    return (string) preg_replace('/>.*/s', '>', (string) strstr($html, '<html'));
+}
+
+it('follows the device from the site default only for members who pinned no light or dark of their own', function (?string $own, string $site, bool $follows, string $painted): void {
+    app(Tenancy::class)->enter(1, fn () => app(SettingsRepository::class)->put('admin_theme', 'config', ['scheme' => $site]));
+    $user = themeMember();
+    if ($own !== null) {
+        $user->preferences = ['theme' => ['scheme' => $own]];
+        $user->save();
+    }
+
+    $tag = themeHtmlTag($user->fresh());
+
+    expect(str_contains($tag, 'data-scheme-auto="true"'))->toBe($follows)
+        ->and($tag)->toContain('data-bs-theme="'.$painted.'"');
+})->with([
+    'no own pick, site auto' => [null, 'auto', true, 'light'],
+    'own light, site auto' => ['light', 'auto', false, 'light'],
+    'own dark, site auto' => ['dark', 'auto', false, 'dark'],
+    'own auto, site dark' => ['auto', 'dark', true, 'dark'],
+    'own garbage, site auto' => ['purple', 'auto', true, 'light'],
+    'no own pick, site dark' => [null, 'dark', false, 'dark'],
+]);
+
+it('reads the site default once per page, whatever the member pinned', function (): void {
+    app(Tenancy::class)->enter(1, fn () => app(SettingsRepository::class)->put('admin_theme', 'config', ['scheme' => 'auto']));
+    $user = themeMember();
+    themeHtmlTag($user);   // warm up (role cache)
+
+    $reads = 0;
+    DB::listen(function ($query) use (&$reads): void {
+        $reads += in_array('admin_theme', $query->bindings, true) ? 1 : 0;
+    });
+    themeHtmlTag($user->fresh());
+
+    expect($reads)->toBe(1);
+});
+
+it('keeps a site\'s follow-the-device off the platform console', function (): void {
+    app(Tenancy::class)->enter(1, fn () => app(SettingsRepository::class)->put('admin_theme', 'config', ['scheme' => 'auto']));
+    $host = (string) config('tenancy.platform_host');
+    $operator = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));
+    app(PlatformAccess::class)->forgetMemo();
+
+    $html = (string) $this->actingAs($operator->fresh())->get("http://{$host}/tenants")->assertOk()->getContent();
+    $tag = (string) preg_replace('/>.*/s', '>', (string) strstr($html, '<html'));
+
+    expect($tag)->toContain('data-bs-theme="light"')->not->toContain('data-scheme-auto');
 });

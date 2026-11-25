@@ -114,7 +114,11 @@ final readonly class PublishEntry
                 $languageWasLive = $translation->status === 'published';
                 $entry->update([
                     'status' => 'published',
-                    'published_at' => $entry->published_at ?? now(),
+                    // «Đăng» means live now: a past date is kept (a post taken down and put back up keeps
+                    // its date), but a schedule still to come becomes now — a post put up early must not
+                    // show a date to come, stay out of search until then, or sit on top of the lists.
+                    // The scheduler (PublishScheduledEntry) keeps the slot: it runs only once it is due.
+                    'published_at' => $entry->published_at !== null && $entry->published_at <= now() ? $entry->published_at : now(),
                     // a post approved for later under a flow since switched off: it is live now, and the
                     // stage it was approved at goes too, so a flow switched back on reads it at its
                     // published stage, not as waiting for review
