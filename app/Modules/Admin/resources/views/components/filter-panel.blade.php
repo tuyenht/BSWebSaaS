@@ -7,6 +7,7 @@
     'clearCloses' => false,
     'label' => null,
     'splitAt' => null,
+    'tally' => null,
 ])
 @php
     // The filters of a record list (canvas [data-lf] / .lf-* / .ql-pop, K69 + K46), two surfaces from one list of sections:
@@ -39,6 +40,10 @@
     //            and is named by the count of its width; its tint follows $active.
     // $splitAt: array{wide: string, narrow: string} — the classes that hide the wide / the narrow count, when the two
     //            part at another width than the 900px screen (the media library's folder column, a container width).
+    // $tally: the host's public bool that asks for the groups' own counts — a list whose counts cost a pass over its
+    //            rows reads them only while the Filter sheet or a section's panel is open (the media library). Opening
+    //            one turns it on (one request); once none is open it turns off with no request of its own, so the next
+    //            page turn or drawer reads no counts. Without it the counts come with every render, as before.
     // $results: the footer button text, e.g. "Xem 12 dòng" — filters apply as they change, so it only closes the sheet.
     // $clear: the host's public method that resets every filter (shown when $active > 0).
     // $clearCloses: also close the sheet on [Bỏ lọc] (off by default; the lists whose board closes it turn it on).
@@ -56,6 +61,10 @@
     // stable across renders: a live update that renamed the radio groups could drop the checked state and focus
     $uid = substr(md5(implode('|', array_map(fn (array $s): string => $s['key'].':'.$s['model'], $sections))), 0, 8);
     $panelId = 'lf-'.$uid;
+    // the JS of tally(on): on as a panel or the sheet opens; off once none of this list's is open (checked after the
+    // click that may open another one has run)
+    $tallyJs = $tally === null ? '' : "if (on) { if (! this.\$wire.{$tally}) this.\$wire.\$set('{$tally}', true); return; }"
+        ." setTimeout(() => { const host = this.\$root.closest('.list-filters'); if (host && ! [...host.querySelectorAll('[data-lf-host]')].some((el) => window.Alpine.\$data(el).open)) this.\$wire.\$set('{$tally}', false, false); });";
     $fmt = fn (int $n): string => \Illuminate\Support\Number::format($n, locale: app()->getLocale());
     $view = [];
     foreach ($sections as $section) {
@@ -95,11 +104,12 @@
 @endphp
 <div {{ $attributes->merge(['class' => 'list-filters flex min-w-0 shrink-0 flex-wrap items-center gap-2']) }}>
     @foreach (array_filter($view, fn (array $s): bool => ! ($s['sheet'] ?? false)) as $section)
-        <div class="relative hidden shrink-0 min-[900px]:block {{ $section['class'] ?? '' }}"
+        <div class="relative hidden shrink-0 min-[900px]:block {{ $section['class'] ?? '' }}" data-lf-host
              x-data="{
                  open: false,
-                 show() { this.open = true; this.whenShown(() => { this.place(); (this.$refs.panel.querySelector('input:checked') || this.$refs.panel.querySelector('input'))?.focus(); }); },
-                 hide(back = true) { if (! this.open) return; this.open = false; if (back) this.$refs.button.focus(); },
+                 tally(on) { {{ $tallyJs }} },
+                 show() { this.open = true; this.tally(true); this.whenShown(() => { this.place(); (this.$refs.panel.querySelector('input:checked') || this.$refs.panel.querySelector('input'))?.focus(); }); },
+                 hide(back = true) { if (! this.open) return; this.open = false; this.tally(false); if (back) this.$refs.button.focus(); },
                  // x-show reveals the panel a moment after open turns true, so wait until it is on screen
                  whenShown(fn, tries = 20) { this.$refs.panel.getClientRects().length || ! tries ? fn() : setTimeout(() => this.whenShown(fn, tries - 1), 16); },
                  place() { const p = this.$refs.panel; p.style.insetInlineStart = ''; const over = p.getBoundingClientRect().right - (window.innerWidth - 8); if (over > 0) p.style.insetInlineStart = -over + 'px'; },
@@ -136,13 +146,14 @@
         </div>
     @endforeach
 
-    <div class="relative shrink-0 min-[900px]:hidden" data-guide="filter-button"
+    <div class="relative shrink-0 min-[900px]:hidden" data-guide="filter-button" data-lf-host
          x-data="{
              open: false, cols: 1, cur: null, pin: null, prog: 0,
+             tally(on) { {{ $tallyJs }} },
              // two columns once the screen is at least 29 body-text widths wide; decided on opening and on resize only
              decide() { const fs = parseFloat(getComputedStyle(this.$refs.panel).fontSize) || 14; this.cols = window.innerWidth / fs >= 29 ? 2 : 1; },
-             show() { this.decide(); this.open = true; this.whenShown(() => { this.mark(); this.focusables().find((el) => this.$refs.scroll.contains(el))?.focus(); }); },
-             hide(back = true) { if (! this.open) return; this.open = false; if (back) this.$refs.button.focus(); },
+             show() { this.decide(); this.open = true; this.tally(true); this.whenShown(() => { this.mark(); this.focusables().find((el) => this.$refs.scroll.contains(el))?.focus(); }); },
+             hide(back = true) { if (! this.open) return; this.open = false; this.tally(false); if (back) this.$refs.button.focus(); },
              // x-show reveals the sheet a moment after open turns true, so wait until it is on screen
              whenShown(fn, tries = 20) { this.$refs.panel.getClientRects().length || ! tries ? fn() : setTimeout(() => this.whenShown(fn, tries - 1), 16); },
              // only the sections shown at this width (one may be hidden by its own class)

@@ -5,8 +5,11 @@
     use Illuminate\Support\Js;
     use App\Modules\Admin\Livewire\Media\Library;
     use App\Modules\Admin\Support\MediaLibraryDirectory as Dir;
+    use App\Modules\Tenancy\Context\SiteTime;
 
     $num = fn (int $n): string => number_format($n, 0, ',', '.');
+    // the upload day by the site's own calendar, as «Thời gian» reads it
+    $siteTime = app(SiteTime::class);
     $canPick = $trash ? $canDelete : ($canUpload || $canDelete);
     $placeName = $trash ? __('media.lib.trash') : ($folder === '-' ? __('media.lib.unfiled') : ($current?->name ?? __('media.lib.all')));
     $baseN = $trash ? $counts['trash'] : ($folder === '-' ? $counts['unfiled'] : ($current !== null ? ($treeN[$current->id] ?? 0) : $counts['all']));
@@ -44,8 +47,9 @@
         $sections[] = ['key' => 'uses', 'label' => __('media.lib.f_use'), 'model' => 'uses', 'multiple' => true, 'value' => $uses, 'reset' => 'clearUses',
             'options' => array_map(fn (string $u): array => ['value' => $u, 'label' => $useLabels[$u]], Dir::USES)];
     }
-    // «Người tạo»: offered once two people have uploaded files here (the member first)
-    if (count($uploaders) >= 2 || $by !== []) {
+    // «Người tạo»: offered once two people have uploaded files here (the member first); its options, like
+    // every group's counts, are read while the filters are open ($tally)
+    if ($manyUploaders || $by !== []) {
         $sections[] = ['key' => 'by', 'label' => __('media.lib.f_by'), 'model' => 'by', 'multiple' => true, 'value' => $by, 'reset' => 'clearBy', 'options' => $uploaders];
     }
     // «Thời gian» by upload day; «Tùy chọn» opens the two date fields
@@ -56,7 +60,7 @@
     $rangeText = __('entries.when_range', ['from' => $day($from), 'to' => $day($to)]);
     $sections[] = ['key' => 'when', 'label' => __('entries.f_when'), 'model' => 'when', 'value' => $when, 'default' => '', 'reset' => 'clearWhen',
         'note' => __('media.lib.when_note'),
-        'options' => array_map(fn (string $v): array => ['value' => $v, 'label' => $whenLabels[$v], 'count' => $whenCounts[$v] ?? 0], Dir::WHEN)]
+        'options' => array_map(fn (string $v): array => ['value' => $v, 'label' => $whenLabels[$v]] + (isset($whenCounts[$v]) ? ['count' => $whenCounts[$v]] : []), Dir::WHEN)]
         + ($when === Dir::RANGE ? ['on' => $whenOn,
             'range' => ['from' => 'from', 'to' => 'to', 'from_label' => __('entries.when_from'), 'to_label' => __('entries.when_to')]]
             + ($whenOn ? ['summary' => $rangeText, 'suffix' => ': '.$rangeText] : []) : []);
@@ -272,7 +276,7 @@
                             </div>
                         @endif
                         <x-bs-admin::filter-panel class="ms-auto shrink-0 flex-nowrap min-[900px]:ms-0 min-[900px]:shrink min-[900px]:flex-wrap min-[900px]:gap-3" :sections="$sections" :label="__('admin.list.filter')"
-                            :active="$conditions + ($trash ? 1 : 0)" :active-narrow="$conditions + ($trash ? 1 : 0) + ($folderChip ? 1 : 0)"
+                            :active="$conditions + ($trash ? 1 : 0)" tally="tally" :active-narrow="$conditions + ($trash ? 1 : 0) + ($folderChip ? 1 : 0)"
                             :split-at="['wide' => '@max-[47.99rem]/tv:hidden', 'narrow' => '@min-[48rem]/tv:hidden']"
                             :results="__('media.lib.f_see', ['n' => $num($totals['n'])])" clear="clearFilters" />
                         <x-bs-admin::sort-menu class="min-[900px]:hidden" :options="$sortOptions" :active="$sort" :lit="$sort !== 'new'" set="setSort" />
@@ -436,7 +440,7 @@
                                             </td>
                                             <td class="max-w-0 py-1.5 pe-3">
                                                 <button type="button" id="mopen-{{ $m->ulid }}" class="block max-w-full truncate text-start font-medium text-text hover:text-primary-text" wire:click="openDetail({{ Js::from($m->ulid) }})" title="{{ $name }}">{{ $name }}</button>
-                                                @php $upDay = $m->created_at?->timezone(config('app.timezone'))->format('d/m/Y'); @endphp
+                                                @php $upDay = $siteTime->forDisplay($m->created_at)?->format('d/m/Y'); @endphp
                                                 <span class="block truncate text-small text-text-muted @min-[37.5rem]/tvm:hidden">{{ $extOf($m) }} · {{ $dims($m) }} · {{ Library::bytes((int) $m->size) }} · {{ $chip['text'] }}</span>
                                                 <span class="hidden truncate text-small text-text-muted @min-[37.5rem]/tvm:block @min-[56.25rem]/tvm:hidden">{{ $dims($m) }} · {{ $upDay }}</span>
                                             </td>

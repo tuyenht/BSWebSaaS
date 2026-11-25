@@ -178,10 +178,12 @@ final readonly class MediaUsageLocator
 
     /**
      * How many places use each of a page of files (media id => count), counted as usagesFor() lists
-     * them — so a tile's «Dùng ở N nơi» and its drawer's «Đang dùng ở N nơi» always agree — in one
-     * statement for the whole page: each kind of use is one grouped part of a UNION ALL, its owners
-     * read through their own models (site scope, Trash scope), so a soft-deleted product or post no
-     * longer counts. A file no part names is used nowhere (count 0).
+     * them, in one statement for the whole page: each kind of use is one grouped part of a UNION ALL
+     * keyed by the page's media ids, its owners read through their own models (site scope, Trash
+     * scope), so a soft-deleted product or post no longer counts — as constrain() reads them.
+     * One kind is left to the drawer: an entry's featured / share image, which names the file by its
+     * storage key inside entries.meta. No index serves that key, so counting it here would read
+     * every entry of the site on every page of the library; the drawer reads it for the one file.
      *
      * @param  iterable<Media>  $files
      * @return array<int, int>
@@ -189,10 +191,8 @@ final readonly class MediaUsageLocator
     public function countsFor(iterable $files): array
     {
         $ids = [];
-        $byKey = [];
         foreach ($files as $file) {
             $ids[] = (int) $file->id;
-            $byKey[(string) $file->storage_key] = (int) $file->id;
         }
         if ($ids === []) {
             return [];
@@ -202,28 +202,25 @@ final readonly class MediaUsageLocator
         $parts = [
             // a product's image list: one place per product
             ProductImage::query()->toBase()->whereIn('media_id', $ids)->whereIn('product_id', Product::query()->select('id'))
-                ->groupBy('media_id')->selectRaw("'id' as kind, media_id::text as k, count(distinct product_id) as n"),
-            // an entry's featured / share image, by the file's storage key: one place per entry
-            Entry::query()->toBase()->whereIn('meta->image_url', array_keys($byKey))
-                ->groupByRaw("meta->>'image_url'")->selectRaw("'key' as kind, meta->>'image_url' as k, count(*) as n"),
+                ->groupBy('media_id')->selectRaw('media_id as k, count(distinct product_id) as n'),
             // a category's picture
             Taxonomy::query()->toBase()->whereIn('cover_media_id', $ids)
-                ->groupBy('cover_media_id')->selectRaw("'id' as kind, cover_media_id::text as k, count(*) as n"),
+                ->groupBy('cover_media_id')->selectRaw('cover_media_id as k, count(*) as n'),
             // a block image or a button's file: one place per entry, per category, and one for the site's own slots
             Mediable::query()->toBase()->whereIn('media_id', $ids)->where('collection', $content)->where('mediable_type', 'entry')
                 ->whereIn('mediable_id', Entry::query()->select('id'))
-                ->groupBy('media_id')->selectRaw("'id' as kind, media_id::text as k, count(distinct mediable_id) as n"),
+                ->groupBy('media_id')->selectRaw('media_id as k, count(distinct mediable_id) as n'),
             Mediable::query()->toBase()->whereIn('media_id', $ids)->where('collection', $content)->where('mediable_type', 'taxonomy')
                 ->whereIn('mediable_id', Taxonomy::query()->select('id'))
-                ->groupBy('media_id')->selectRaw("'id' as kind, media_id::text as k, count(distinct mediable_id) as n"),
+                ->groupBy('media_id')->selectRaw('media_id as k, count(distinct mediable_id) as n'),
             // the site's own block slots, its branch list and the floating contact: one place each
             Mediable::query()->toBase()->whereIn('media_id', $ids)->whereIn('collection', self::COLLECTIONS)->where('mediable_type', 'site_setting')
-                ->groupBy('media_id')->selectRaw("'id' as kind, media_id::text as k, count(distinct collection) as n"),
+                ->groupBy('media_id')->selectRaw('media_id as k, count(distinct collection) as n'),
         ];
         // the site's four brand images: one place per slot
         foreach (array_values(SiteProfile::IMAGE_COLUMNS) as $column) {
             $parts[] = SiteProfile::query()->toBase()->whereIn($column, $ids)
-                ->groupBy($column)->selectRaw("'id' as kind, {$column}::text as k, count(*) as n");
+                ->groupBy($column)->selectRaw("{$column} as k, count(*) as n");
         }
 
         $union = array_shift($parts);
@@ -233,8 +230,7 @@ final readonly class MediaUsageLocator
 
         $out = array_fill_keys($ids, 0);
         foreach ($union->get() as $row) {
-            $key = is_string($row->k) ? $row->k : '';
-            $id = $row->kind === 'key' ? ($byKey[$key] ?? null) : (ctype_digit($key) ? (int) $key : null);
+            $id = is_numeric($row->k) ? (int) $row->k : null;
             if ($id !== null && isset($out[$id])) {
                 $out[$id] += is_numeric($row->n) ? (int) $row->n : 0;
             }
@@ -306,16 +302,31 @@ final readonly class MediaUsageLocator
     /**
      * Constrain a media query to used (true) / unused (false): used = in a product gallery, an entry
      * cover, an entry body or block slot, a branch or factory, a category's picture or one of the
-     * site's brand images. The sub-selects are themselves site-scoped, so
-     * this never leaks across tenants.
+     * site's brand images. The sub-selects are themselves site-scoped, so this never leaks across
+     * tenants.
+     *
+     * $liveOwners (the library's «Dùng ở / Chưa dùng» filter): a use counts only while its owner is
+     * live and in the shape countsFor() and usagesFor() read it, so a file used only by a product or
+     * post in the Trash is «Chưa dùng» on its tile, in the filter and in its drawer alike. Without it
+     * (who may send a file to the Trash) any row naming the file keeps it, the owner in the Trash too:
+     * restoring that product or post still finds its picture.
      *
      * @param  Builder<Media>  $query
      */
-    public function constrain(Builder $query, bool $used): void
+    public function constrain(Builder $query, bool $used, bool $liveOwners = false): void
     {
         $galleryMediaIds = ProductImage::query()->select('media_id');
+        if ($liveOwners) {
+            $galleryMediaIds->whereIn('product_id', Product::query()->select('id'));
+        }
         $coverKeys = Entry::query()->whereNotNull('meta->image_url')->select(DB::raw("meta->>'image_url'"));
-        $blockMediaIds = Mediable::query()->whereIn('collection', self::COLLECTIONS)->select('media_id');
+        $blockMediaIds = $liveOwners
+            ? Mediable::query()->where('collection', BlockMediaUsage::COLLECTION)->where('mediable_type', 'entry')
+                ->whereIn('mediable_id', Entry::query()->select('id'))->select('media_id')
+                ->unionAll(Mediable::query()->where('collection', BlockMediaUsage::COLLECTION)->where('mediable_type', 'taxonomy')
+                    ->whereIn('mediable_id', Taxonomy::query()->select('id'))->select('media_id'))
+                ->unionAll(Mediable::query()->whereIn('collection', self::COLLECTIONS)->where('mediable_type', 'site_setting')->select('media_id'))
+            : Mediable::query()->whereIn('collection', self::COLLECTIONS)->select('media_id');
         // NOT IN with a NULL in the list matches nothing, so categories without a picture stay out.
         $categoryMediaIds = Taxonomy::query()->whereNotNull('cover_media_id')->select('cover_media_id');
         // The four brand image columns of the site's profile, as one list of ids (no NULLs).

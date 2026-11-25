@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Livewire\Media\Library;
+use App\Modules\Admin\Support\MediaLibraryDirectory;
 use App\Modules\Admin\Support\MediaUsageLocator;
 use App\Modules\Admin\Support\Settings\BranchList;
 use App\Modules\Catalog\Models\Product;
@@ -19,7 +20,9 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 
 /*
@@ -75,13 +78,20 @@ it('offers «Người tạo» from two uploaders on, the member first, and filte
     mfFile(1, 'cua-khang-1.png', ['created_by' => $other->id]);
     mfFile(1, 'cua-khang-2.png', ['created_by' => $other->id]);
 
+    // the page offers the group; its people and counts are read once the filters open
     $html = $this->actingAs($me)->get('http://a.test/admin/media')->assertOk()->getContent();
-    expect($html)->toContain(e(__('media.lib.f_by')), 'value="'.$other->ulid.'"', e(__('entries.f_mine', ['name' => 'Bảo Ngọc'])))
-        ->and($html)->not->toContain('value="'.$other->id.'"');
-    // the member comes first, then the others by name
-    expect(strpos($html, e(__('entries.f_mine', ['name' => 'Bảo Ngọc']))))->toBeLessThan(strpos($html, '>An Khang<'));
+    expect($html)->toContain(e(__('media.lib.f_by')), 'data-fsheet="by"')
+        ->and($html)->not->toContain('value="'.$other->ulid.'"');
 
     app(Tenancy::class)->enter(1, function () use ($me, $other): void {
+        $open = Livewire::actingAs($me)->test(Library::class)->set('tally', true);
+        $html = $open->html();
+        expect($html)->toContain('value="'.$other->ulid.'"', e(__('entries.f_mine', ['name' => 'Bảo Ngọc'])))
+            ->and($html)->not->toContain('value="'.$other->id.'"');
+        // the member comes first, then the others by name, each counted
+        expect(strpos($html, e(__('entries.f_mine', ['name' => 'Bảo Ngọc']))))->toBeLessThan(strpos($html, '>An Khang<'));
+        expect(array_column($open->viewData('uploaders'), 'count', 'value'))->toBe([$me->ulid => 1, $other->ulid => 2]);
+
         Livewire::actingAs($me)->test(Library::class)
             ->set('by', [$other->ulid])
             ->assertSee('cua-khang-1')->assertSee('cua-khang-2')->assertDontSee('cua-toi')
@@ -113,7 +123,9 @@ it('never lets another site’s member be chosen or counted as an uploader', fun
         // a ulid of no uploader here matches nothing rather than reaching the other site's files
         Livewire::actingAs($me)->test(Library::class)
             ->set('by', [$stranger->ulid])
+            ->assertSet('by', [])
             ->assertDontSee('cua-site-b')
+            ->assertDontSee('Người lạ')
             ->assertSee('cua-toi');
     });
 });
@@ -128,7 +140,7 @@ it('filters «Thời gian» by the upload day of the site, with each choice coun
     mfFile(1, 'nam-ngoai.png', [], $now->subDays(200));
 
     app(Tenancy::class)->enter(1, function () use ($me, $now): void {
-        $page = Livewire::actingAs($me)->test(Library::class);
+        $page = Livewire::actingAs($me)->test(Library::class)->set('tally', true);
         expect($page->viewData('whenCounts'))->toBe(['' => 4, 'today' => 1, '7' => 2, '30' => 2, '90' => 3, 'range' => 4]);
 
         $page->set('when', 'today')->assertSee('hom-nay')->assertDontSee('tuan-nay');
@@ -209,10 +221,14 @@ it('says on each file where it is used, as its detail panel counts it, and nothi
         $locator = app(MediaUsageLocator::class);
         $files = Media::query()->whereIn('id', [$gallery->id, $cover->id, $brand->id, $blocks->id, $unused->id])->get();
         $counts = $locator->countsFor($files);
+        // as the drawer lists them, but an entry's featured image, which the drawer alone reads (it names
+        // the file inside entries.meta, which no index serves): the cover counts its category only
         foreach ($files as $file) {
-            expect($counts[$file->id])->toBe(count($locator->usagesFor($file, 'vi')), $file->original_filename);
+            $drawer = array_filter($locator->usagesFor($file, 'vi'), fn (array $u): bool => ! ($u['role'] === 'cover' && in_array($u['kind'], ['post', 'page'], true)));
+            expect($counts[$file->id])->toBe(count($drawer), $file->original_filename);
         }
-        expect($counts)->toBe([$gallery->id => 2, $cover->id => 2, $brand->id => 2, $blocks->id => 3, $unused->id => 0]);
+        expect($counts)->toBe([$gallery->id => 2, $cover->id => 1, $brand->id => 2, $blocks->id => 3, $unused->id => 0])
+            ->and(count($locator->usagesFor($cover, 'vi')))->toBe(2);
 
         $page = Livewire::actingAs($me)->test(Library::class);
         $page->assertSee(__('media.lib.use_n', ['n' => 3]))->assertSee(__('media.lib.use_unused'));
@@ -228,6 +244,13 @@ it('keeps the filters and the use chips on a flat number of queries', function (
     app(Tenancy::class)->enter(1, fn () => Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0, 'cover_media_id' => $first->id]));
     $this->actingAs($me)->get('http://a.test/admin/media')->assertOk(); // warm the per-process caches first
     $one = countQueries(fn () => $this->actingAs($me)->get('http://a.test/admin/media')->assertOk());
+    // with the filters open: the uploaders, their counts and the «Thời gian» counts on top, one statement each
+    $openOf = fn (): int => app(Tenancy::class)->enter(1, function () use ($me): int {
+        $page = Livewire::actingAs($me)->test(Library::class);
+
+        return countQueries(fn () => $page->set('tally', true));
+    });
+    $openOne = $openOf();
 
     foreach (range(1, 20) as $i) {
         $file = mfFile(1, "them-{$i}.png", ['created_by' => $i % 2 === 0 ? $me->id : $other->id]);
@@ -235,5 +258,140 @@ it('keeps the filters and the use chips on a flat number of queries', function (
     }
     $many = countQueries(fn () => $this->actingAs($me)->get('http://a.test/admin/media')->assertOk());
 
-    expect($many)->toBe($one)->and($many)->toBeLessThanOrEqual(30);
+    expect($many)->toBe($one)->and($many)->toBeLessThanOrEqual(30)
+        ->and($openOf())->toBe($openOne);
+});
+
+/**
+ * The statements a callback runs, as SQL text.
+ *
+ * @return list<string>
+ */
+function mfSql(Closure $callback): array
+{
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+    try {
+        $callback();
+
+        return array_map(fn (array $q): string => strtolower((string) $q['query']), DB::getQueryLog());
+    } finally {
+        DB::disableQueryLog();
+        DB::flushQueryLog();
+    }
+}
+
+it('reads the groups’ own counts only while the filters are open, never on a page turn or a drawer', function (): void {
+    $me = mfMember('admin', 'Bảo Ngọc');
+    $other = mfMember('editor', 'An Khang');
+    foreach (range(1, 25) as $i) {
+        mfFile(1, "f-{$i}.png", ['created_by' => $i === 1 ? $me->id : $other->id]);
+    }
+    $groupCounts = fn (array $sql): array => array_values(array_filter($sql, fn (string $q): bool => str_contains($q, 'grouping(created_by)')
+        || str_contains($q, 'group by "created_by"') || str_contains($q, 'count(*) filter (where created_at')));
+
+    app(Tenancy::class)->enter(1, function () use ($me, $groupCounts): void {
+        $page = Livewire::actingAs($me)->test(Library::class);
+        // a page turn: «Người tạo» is still offered (the counts statement says two people uploaded), with no count read
+        expect($groupCounts(mfSql(fn () => $page->call('older', $page->viewData('olderUlid')))))->toBe([])
+            ->and($page->get('pageNo'))->toBe(2)
+            ->and($page->viewData('manyUploaders'))->toBeTrue()
+            ->and($page->viewData('whenCounts'))->toBe([])
+            ->and($page->html())->toContain('data-fsheet="by"');
+        $first = $page->viewData('rows')->first();
+        expect($groupCounts(mfSql(fn () => $page->call('openDetail', $first->ulid))))->toBe([]);
+        $page->call('closeDetail');
+
+        // the Filter sheet or a panel opens: the uploaders, their counts and the «Thời gian» counts, once each
+        $open = $groupCounts(mfSql(fn () => $page->set('tally', true)));
+        expect($open)->toHaveCount(3)
+            ->and(array_sum(array_column($page->viewData('uploaders'), 'count')))->toBe(25)
+            ->and($page->viewData('whenCounts')[''])->toBe(25);
+        // and closed again (the browser drops the flag with the next request): no count any more
+        expect($groupCounts(mfSql(fn () => $page->set('tally', false))))->toBe([]);
+    });
+});
+
+it('counts the use chips from the page’s own media ids, never reading the entries’ meta', function (): void {
+    $me = mfMember('admin', 'Bảo Ngọc');
+    $file = mfFile(1, 'anh.png');
+    app(Tenancy::class)->enter(1, fn () => Entry::query()->create(['type' => 'post', 'status' => 'published', 'meta' => ['image_url' => $file->storage_key]]));
+
+    app(Tenancy::class)->enter(1, function () use ($me, $file): void {
+        $sql = mfSql(fn () => app(MediaUsageLocator::class)->countsFor(Media::query()->whereKey($file->id)->get()));
+        expect($sql)->toHaveCount(1)
+            ->and($sql[0])->not->toContain('image_url')->not->toContain('"entries"."meta"');
+
+        $page = Livewire::actingAs($me)->test(Library::class);
+        expect(implode(' ', mfSql(fn () => $page->call('setSort', 'old'))))->not->toContain('image_url');
+        // the drawer still names the post that shows it
+        expect(count(app(MediaUsageLocator::class)->usagesFor($file, 'vi')))->toBe(1);
+    });
+});
+
+it('says «Chưa dùng» on the tile, in the filter and in the drawer alike for a file only used in the Trash', function (): void {
+    $me = mfMember('admin', 'Bảo Ngọc');
+    $byProduct = mfFile(1, 'cua-san-pham-da-xoa.png');
+    $byPost = mfFile(1, 'cua-bai-da-xoa.png');
+    $live = mfFile(1, 'dang-dung.png');
+
+    app(Tenancy::class)->enter(1, function () use ($byProduct, $byPost, $live): void {
+        $gone = Product::query()->create(['status' => 'published']);
+        ProductImage::query()->create(['product_id' => $gone->id, 'media_id' => $byProduct->id, 'position' => 0]);
+        $gone->delete();
+        $post = Entry::query()->create(['type' => 'post', 'status' => 'published', 'meta' => []]);
+        Mediable::query()->create(['media_id' => $byPost->id, 'mediable_type' => 'entry', 'mediable_id' => $post->id, 'collection' => BlockMediaUsage::COLLECTION]);
+        $post->delete();
+        $kept = Product::query()->create(['status' => 'published']);
+        ProductImage::query()->create(['product_id' => $kept->id, 'media_id' => $live->id, 'position' => 0]);
+    });
+
+    app(Tenancy::class)->enter(1, function () use ($me, $byProduct, $byPost, $live): void {
+        $locator = app(MediaUsageLocator::class);
+        expect($locator->countsFor(Media::query()->whereIn('id', [$byProduct->id, $byPost->id, $live->id])->get()))
+            ->toBe([$byProduct->id => 0, $byPost->id => 0, $live->id => 1])
+            ->and($locator->usagesFor($byProduct, 'vi'))->toBe([])
+            ->and($locator->usagesFor($byPost, 'vi'))->toBe([]);
+
+        Livewire::actingAs($me)->test(Library::class)
+            ->set('uses', ['unused'])->assertSee('cua-san-pham-da-xoa')->assertSee('cua-bai-da-xoa')->assertDontSee('dang-dung')
+            ->set('uses', ['used'])->assertDontSee('cua-san-pham-da-xoa')->assertDontSee('cua-bai-da-xoa')->assertSee('dang-dung');
+
+        // who may send a file to the Trash still reads it as used: restoring that product finds its picture
+        foreach ([$byProduct, $byPost] as $file) {
+            $kept = Media::query()->whereKey($file->id);
+            $locator->constrain($kept, false);
+            expect($kept->exists())->toBeFalse($file->original_filename);
+        }
+    });
+});
+
+it('drops a chosen uploader nobody here is, swaps a reversed range and shows the upload day by the site’s calendar', function (): void {
+    $me = mfMember('admin', 'Bảo Ngọc');
+    $other = mfMember('editor', 'An Khang');
+    $nobody = User::factory()->create(['name' => 'Chưa tải gì']);
+    // 20:30 UTC on 10/03 is already 11/03 in the site's own zone (Asia/Ho_Chi_Minh)
+    mfFile(1, 'dem-khuya.png', ['created_by' => $me->id], CarbonImmutable::parse('2026-03-10 20:30:00', 'UTC'));
+    mfFile(1, 'cua-khang.png', ['created_by' => $other->id], CarbonImmutable::parse('2026-03-01 08:00:00', 'UTC'));
+
+    app(Tenancy::class)->enter(1, function () use ($me, $nobody): void {
+        expect(app(SiteTime::class)->zone())->toBe('Asia/Ho_Chi_Minh');
+        $page = Livewire::actingAs($me)->test(Library::class)
+            // a member of no file here (and a made-up ulid) is no condition: no «Lọc 1», nothing hidden
+            ->set('by', [$nobody->ulid, (string) Str::ulid()])
+            ->assertSet('by', [])
+            ->assertSee('cua-khang')
+            ->assertDontSee('Chưa tải gì');
+        expect($page->html())->not->toContain('data-lf-count');
+
+        // the list shows the upload day in the site's calendar: 11/03, the day «Thời gian» files it under
+        $page->call('setView', 'list')->assertSee('11/03/2026')->assertDontSee('10/03/2026');
+        $page->set('when', 'range')->set('from', '2026-03-11')->set('to', '2026-03-11')->assertSee('dem-khuya')->assertDontSee('cua-khang');
+
+        // «Từ» after «Đến»: the two swap and the days between are listed
+        $page->set('to', '2026-03-01')
+            ->assertSet('from', '2026-03-01')->assertSet('to', '2026-03-11')
+            ->assertSee('dem-khuya')->assertSee('cua-khang');
+        expect(MediaLibraryDirectory::window('range', '2026-03-11', '2026-03-01'))->toEqual(MediaLibraryDirectory::window('range', '2026-03-01', '2026-03-11'));
+    });
 });
