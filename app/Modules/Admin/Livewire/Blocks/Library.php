@@ -29,7 +29,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
- * «Thư viện khối tái dùng» (board 28): the website's reusable blocks, newest change first, by
+ * «Khối dùng chung» (board 28): the website's reusable blocks, newest change first, by
  * status (Tất cả / Đã xuất bản / Nháp) and region, searched by name (Vietnamese marks ignored) or
  * reference code. A row names its region, its reference code (copied in the browser), the
  * languages it has content in (each opens the block editor in that language), how many places use
@@ -73,7 +73,7 @@ final class Library extends Component
     #[Locked]
     public int $pages = 1;
 
-    /** The «Tạo / Sửa khối tái dùng» dialog is open. */
+    /** The «Tạo / Sửa khối dùng chung» dialog is open. */
     public bool $formOpen = false;
 
     /** The block the dialog edits (null: a new one) and the version it read. */
@@ -94,7 +94,7 @@ final class Library extends Component
     #[Locked]
     public ?array $usage = null;
 
-    /** The «Xóa khối tái dùng?» question is open. */
+    /** The «Xóa khối dùng chung?» question is open. */
     public bool $confirmOpen = false;
 
     /** @var array{ulid: string, name: string, places: int, menu: bool}|null the block it asks about, read when it opened */

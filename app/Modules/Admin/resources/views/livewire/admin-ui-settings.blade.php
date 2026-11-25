@@ -12,11 +12,13 @@
     $bad = $errors->keys();
 @endphp
 <x-bs-admin::settings-shell active="admin-ui" :unsaved="$changes" :invalid="count($bad)">
+    <x-slot:more><x-bs-admin::settings-restore-more :name="__('admin.admin_ui')" /></x-slot:more>
     @if ($saved)
         <x-bs-admin::alert color="success" icon="ri-checkbox-circle">{{ __('admin.theme_saved_note') }}</x-bs-admin::alert>
     @endif
     {{-- Enter in a field is the save bar's "Lưu" (it waits while a save runs and does nothing with nothing to save); the form itself never submits, so the page never reloads --}}
-    <div x-data="{ open: 'layout' }">
+    <div x-data="{ open: 'layout' }" class="flex flex-col gap-4">
+    <x-bs-admin::settings-stamp :stamp="$stamp" />
     <form x-data x-on:submit.prevent class="flex flex-col gap-3">
         <p class="flex items-start gap-2 rounded-md border border-info-text/30 bg-info-soft px-3 py-2.5 text-caption leading-relaxed text-info-text" role="note">
             <x-bs-admin::icon name="ri-information" class="mt-px size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0" />
@@ -51,4 +53,5 @@
         @endforeach
     </form>
     </div>
+    <x-bs-admin::toast :message="$toast" :tone="$toastTone" dismiss="dismissToast" :seq="$toastSeq" :undo="$undo !== null ? 'undoRestore' : null" />
 </x-bs-admin::settings-shell>

@@ -25,34 +25,13 @@
     ];
 @endphp
 <x-bs-admin::settings-shell active="appearance" :unsaved="$changes" :invalid="$errorCount" live-errors first-error="look-first-error">
-    <x-slot:more>
-        <x-bs-admin::dropdown align="end">
-            <x-slot:trigger>
-                <button type="button" class="hit-area inline-flex size-control items-center justify-center rounded-md text-text-muted hover:bg-surface-hover hover:text-text-strong"
-                        title="{{ __('admin.set.more_aria', ['name' => __('admin.website_look')]) }}" aria-label="{{ __('admin.set.more_aria', ['name' => __('admin.website_look')]) }}" data-look-more>
-                    <x-bs-admin::icon name="ri-more-2-fill" :class="$glyph" />
-                </button>
-            </x-slot:trigger>
-            <button type="button" wire:click="restoreDefaults" x-on:click="open = false" class="w-full gap-2 px-3 text-start whitespace-nowrap text-text hover:bg-surface-hover">
-                <x-bs-admin::icon name="ri-restart" :class="$glyph.' text-text-muted'" /><span>{{ __('admin.set.restore') }}</span>
-            </button>
-        </x-bs-admin::dropdown>
-    </x-slot:more>
+    <x-slot:more><x-bs-admin::settings-restore-more :name="__('admin.website_look')" /></x-slot:more>
 
     <div class="@container/look flex flex-col gap-4" data-set-form
          x-data="{ open: 'brand', info: null }"
          x-on:look-first-error.window="open = {{ Js::from($errors->has('tone') || $errors->has('accent') ? 'menu' : 'brand') }}; $nextTick(() => $el.querySelector('[data-ferr-focus]')?.focus())">
 
-        {{-- When the section was last saved, and "Khôi phục mặc định" (in the "⋮" on phones). --}}
-        <div @class(['flex flex-wrap items-center justify-between gap-3.5 border-b border-border pb-3.5', 'max-md:hidden' => $stamp === null]) data-look-stamp>
-            <span class="inline-flex min-w-0 items-center gap-[7px] text-caption text-text-muted">
-                <x-bs-admin::icon name="ri-time" class="size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0" />
-                <span class="min-w-0 [overflow-wrap:anywhere]">{{ $stamp ?? __('admin.set.stamp_none') }}</span>
-            </span>
-            <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="restoreDefaults" wire:loading.attr="disabled" class="max-md:hidden" data-look-restore>
-                <x-bs-admin::icon name="ri-restart" class="size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0" /><span>{{ __('admin.set.restore') }}</span>
-            </x-bs-admin::button>
-        </div>
+        <x-bs-admin::settings-stamp :stamp="$stamp" />
 
         @if ($errorCount > 0)
             <x-bs-admin::alert color="danger" icon="ri-error-warning">{{ __('admin.gs.banner', ['count' => $errorCount]) }}</x-bs-admin::alert>
