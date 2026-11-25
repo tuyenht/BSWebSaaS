@@ -190,6 +190,18 @@ it('counts a picture used only inside a block as used in the media library', fun
             ->and($usages[0]['role'])->toBe('content')
             ->and($usages[0]['label'])->toContain('Chân trang')
             ->and($usages[0]['url'])->toBe(route('admin.blocks.edit', ['ulid' => $block->ulid]))
-            ->and($usages[0]['url'])->not->toContain('/'.$block->id.'/');
+            ->and($usages[0]['url'])->not->toMatch('~/'.$block->id.'(?:[/?#]|$)~')
+            // the picker's chip reads its text from media.picker_kind_{kind}: every kind needs that key
+            ->and(__('media.picker_kind_'.$usages[0]['kind']))->not->toBe('media.picker_kind_'.$usages[0]['kind']);
     });
+});
+
+it('has a picker chip text for every kind of place the usage list can name', function (): void {
+    $source = (string) file_get_contents(app_path('Modules/Admin/Support/MediaUsageLocator.php'));
+    preg_match_all("/'kind' => '([a-z_]+)'/", $source, $m);
+
+    expect($m[1])->not->toBeEmpty();
+    foreach (array_unique([...$m[1], 'page', 'post']) as $kind) {
+        expect(__('media.picker_kind_'.$kind))->not->toBe('media.picker_kind_'.$kind);
+    }
 });

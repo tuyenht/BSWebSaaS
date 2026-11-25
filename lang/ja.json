@@ -2314,6 +2314,7 @@
     "media.picker_kind_post": "投稿",
     "media.picker_kind_page": "ページ",
     "media.picker_kind_category": "カテゴリー",
+    "media.picker_kind_block": "共通ブロック",
     "media.picker_kind_site": "サイト",
     "media.usage_layout_slots": "右カラム / ページ末尾の呼びかけ",
     "media.usage_layout_slots_of": ":name · 右カラム / ページ末尾の呼びかけ",

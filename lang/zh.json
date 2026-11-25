@@ -2314,6 +2314,7 @@
     "media.picker_kind_post": "文章",
     "media.picker_kind_page": "页面",
     "media.picker_kind_category": "分类",
+    "media.picker_kind_block": "共享区块",
     "media.picker_kind_site": "网站",
     "media.usage_layout_slots": "右侧栏 / 页面底部号召",
     "media.usage_layout_slots_of": ":name · 右侧栏 / 页面底部号召",
