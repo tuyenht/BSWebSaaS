@@ -201,34 +201,55 @@ class SafeHttp
 
     private static function assertPublicIp(string $ip): void
     {
+        if (! self::isPublicIp($ip)) {
+            throw new SafeHttpException('private_address');
+        }
+    }
+
+    /** Whether a connection to the address stays on the public internet. */
+    public static function isPublicIp(string $ip): bool
+    {
         // An IPv6 address can carry an IPv4 one inside it — IPv4-mapped/compatible
-        // (::ffff:169.254.169.254, ::a.b.c.d) or NAT64 (64:ff9b::a.b.c.d) — and so smuggle a
-        // private IPv4 past an IPv6-only check: validate the embedded IPv4 too.
+        // (::ffff:169.254.169.254, ::a.b.c.d), SIIT (::ffff:0:a.b.c.d) or NAT64 (64:ff9b::a.b.c.d,
+        // local-use 64:ff9b:1::/48) — and so smuggle a private IPv4 past an IPv6-only check:
+        // validate the embedded IPv4 too.
         if (str_contains($ip, ':')) {
             $packed = @inet_pton($ip);
-            if ($packed !== false && strlen($packed) === 16
-                && (str_starts_with($packed, str_repeat("\x00", 10)."\xff\xff")
+            if ($packed !== false && strlen($packed) === 16) {
+                if (str_starts_with($packed, str_repeat("\x00", 10)."\xff\xff")
                     || str_starts_with($packed, str_repeat("\x00", 12))
-                    || str_starts_with($packed, "\x00\x64\xff\x9b".str_repeat("\x00", 8)))) {
-                $embedded = inet_ntop(substr($packed, 12));
-                if (is_string($embedded)) {
-                    self::rejectIfNotPublic($embedded);
+                    || str_starts_with($packed, str_repeat("\x00", 8)."\xff\xff\x00\x00")
+                    || str_starts_with($packed, "\x00\x64\xff\x9b".str_repeat("\x00", 8))
+                    || str_starts_with($packed, "\x00\x64\xff\x9b\x00\x01")) {
+                    $embedded = inet_ntop(substr($packed, 12));
+                    if (! is_string($embedded) || ! self::isGlobal($embedded)) {
+                        return false;
+                    }
+                }
+                // site-local (fec0::/10) and multicast (ff00::/8) pass PHP's flags yet are never a server
+                if ($packed[0] === "\xff" || ($packed[0] === "\xfe" && (ord($packed[1]) & 0xC0) === 0xC0)) {
+                    return false;
                 }
             }
         }
 
-        self::rejectIfNotPublic($ip);
+        return self::isGlobal($ip);
     }
 
-    private static function rejectIfNotPublic(string $ip): void
+    private static function isGlobal(string $ip): bool
     {
         // GLOBAL_RANGE adds the blocks that PHP counts as neither private nor reserved yet are
         // never public: carrier-grade NAT (100.64.0.0/10 — some clouds serve instance metadata
         // there), protocol, benchmark and documentation ranges, 6to4 and Teredo.
         $publicOnly = FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE | FILTER_FLAG_GLOBAL_RANGE;
         if (filter_var($ip, FILTER_VALIDATE_IP, $publicOnly) === false) {
-            throw new SafeHttpException('private_address');
+            return false;
         }
+
+        // IPv4 multicast (224.0.0.0/4) passes PHP's flags yet is never a server, like IPv6 ff00::/8.
+        $v4 = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4);
+
+        return $v4 === false || (ip2long($v4) & 0xF0000000) !== 0xE0000000;
     }
 
     /**

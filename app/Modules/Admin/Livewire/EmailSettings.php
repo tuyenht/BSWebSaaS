@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Livewire;
 
 use App\Modules\Admin\Livewire\Concerns\TracksSavedState;
+use App\Modules\Admin\Support\MailHostGuard;
 use App\Modules\Admin\Support\PlatformSettings;
 use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\SettingsRepository;
@@ -10,10 +11,12 @@ use App\Modules\Admin\Support\TenantMailer;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Shared\Support\Cast;
+use Closure;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -157,7 +160,7 @@ final class EmailSettings extends Component
             $this->method = 'smtp_password';
         }
 
-        $this->validate($this->rules());
+        $this->validate($this->rules(), ['smtpPort.in' => __('admin.smtp_port_mail_only', ['ports' => implode(', ', MailHostGuard::PORTS)])]);
 
         $repo = $this->configRepo();
         $existing = $repo->get('email') ?? [];
@@ -288,7 +291,7 @@ final class EmailSettings extends Component
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, mixed>
      */
     private function rules(): array
     {
@@ -298,9 +301,17 @@ final class EmailSettings extends Component
             // reply-to); SMTP is then all-or-nothing so a half-filled server can't be saved.
             $smtpRequired = $this->scope === 'platform';
 
+            // A site's server must be on the public internet (the platform's is the operator's).
+            $publicHost = function (string $attribute, mixed $value, Closure $fail): void {
+                $refusal = $this->scope !== 'platform' && is_string($value) ? app(MailHostGuard::class)->refusal($value) : null;
+                if ($refusal !== null) {
+                    $fail(__($refusal === MailHostGuard::UNRESOLVABLE ? 'admin.smtp_host_unresolvable' : 'admin.smtp_host_private'));
+                }
+            };
+
             return [
-                'smtpHost' => $smtpRequired ? 'required|string' : 'nullable|string|required_with:smtpUsername',
-                'smtpPort' => 'nullable|integer|min:1|max:65535',
+                'smtpHost' => [$smtpRequired ? 'required' : 'nullable', 'string', ...($smtpRequired ? [] : ['required_with:smtpUsername']), $publicHost],
+                'smtpPort' => ['nullable', 'integer', ...($smtpRequired ? ['min:1', 'max:65535'] : [Rule::in(MailHostGuard::PORTS)])],
                 'smtpUsername' => $smtpRequired ? 'required|string' : 'nullable|string|required_with:smtpHost',
                 'fromAddress' => 'nullable|email',
                 'replyTo' => 'nullable|email',
