@@ -44,7 +44,7 @@ return new class extends Migration
             $exists = DB::selectOne('SELECT 1 FROM pg_constraint WHERE conrelid = to_regclass(?) AND conname = ?', [$table, $name]);
             if ($exists === null) {
                 DB::transaction(function () use ($table, $name): void {
-                    DB::statement("SET LOCAL lock_timeout = '5s'");
+                    DB::statement("SET LOCAL lock_timeout = '2s'");
                     DB::statement("ALTER TABLE {$table} ADD CONSTRAINT {$name} UNIQUE USING INDEX {$name}");
                 });
             }
@@ -59,7 +59,7 @@ return new class extends Migration
 
         foreach (self::KEYS as $table => $name) {
             DB::transaction(function () use ($table, $name): void {
-                DB::statement("SET LOCAL lock_timeout = '5s'");
+                DB::statement("SET LOCAL lock_timeout = '2s'");
                 // dropping the constraint drops its index too
                 DB::statement("ALTER TABLE {$table} DROP CONSTRAINT IF EXISTS {$name}");
             });
