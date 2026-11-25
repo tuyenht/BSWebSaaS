@@ -32,7 +32,7 @@ beforeEach(fn () => Http::preventStrayRequests());
 it('refuses a host that resolves to a private or reserved address', function (string $ip): void {
     expect(guardRefusal(fn () => guardResolving($ip)->get('https://vi-du-đ.test/')))->toBe('private_address');
     Http::assertNothingSent();
-})->with(['10.0.0.5', '127.0.0.1', '169.254.169.254', '192.168.1.1', '100.64.0.1', '::1', 'fd00::1', 'fe80::1']);
+})->with(['10.0.0.5', '127.0.0.1', '169.254.169.254', '192.168.1.1', '100.64.0.1', '::1', 'fd00::1', 'fe80::1', 'fec0::1', 'ff02::1', '224.0.0.1']);
 
 it('refuses a host when even one of its addresses is private', function (): void {
     expect(guardRefusal(fn () => guardResolving('93.184.216.34', '10.0.0.5')->get('https://vi-du.test/')))->toBe('private_address');
@@ -41,7 +41,7 @@ it('refuses a host when even one of its addresses is private', function (): void
 it('refuses an IPv6 address that carries a private IPv4 inside', function (string $ip): void {
     expect(guardRefusal(fn () => guardResolving($ip)->get('https://vi-du.test/')))->toBe('private_address')
         ->and(guardRefusal(fn () => guardResolving()->get("https://[{$ip}]/")))->toBe('private_address');
-})->with(['::ffff:169.254.169.254', '::ffff:10.0.0.1', '::127.0.0.1', '64:ff9b::a00:1']);
+})->with(['::ffff:169.254.169.254', '::ffff:10.0.0.1', '::127.0.0.1', '64:ff9b::a00:1', '::7f00:1', '::ffff:0:7f00:1', '64:ff9b:1::7f00:1']);
 
 it('refuses a redirect to a private address, checked again at the new hop', function (): void {
     Http::fake([
