@@ -12,6 +12,7 @@ use App\Modules\Cms\Actions\RecordEntryRevision;
 use App\Modules\Cms\Actions\RestoreEntryRevision;
 use App\Modules\Cms\Actions\SaveEntryDraft;
 use App\Modules\Cms\Actions\TransitionEntryStatus;
+use App\Modules\Cms\Actions\UnpublishExpiredEntry;
 use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Cms\Support\EntryDraftApplier;
 use App\Modules\Cms\Support\EntryDraftFolder;
@@ -34,8 +35,9 @@ use Illuminate\Support\Facades\File;
 // The roads that change an entry's public status. TransitionEntryStatus only ever takes content
 // off the site (draft / archived / scheduled — publishing goes through PublishEntry).
 // ApproveEntryForLater never puts content live itself: it sets a waiting post to `scheduled` and back,
-// and at the time hands the publishing move to ApplyEntryWorkflowTransition.
-$statusRoads = [PublishEntry::class, PublishScheduledEntry::class, ApplyEntryWorkflowTransition::class, TransitionEntryStatus::class, ApproveEntryForLater::class];
+// and at the time hands the publishing move to ApplyEntryWorkflowTransition. UnpublishExpiredEntry only
+// takes a live post off at its end time.
+$statusRoads = [PublishEntry::class, PublishScheduledEntry::class, ApplyEntryWorkflowTransition::class, TransitionEntryStatus::class, ApproveEntryForLater::class, UnpublishExpiredEntry::class];
 $publishingRoads = [PublishEntry::class, PublishScheduledEntry::class, ApplyEntryWorkflowTransition::class];
 
 arch('entry status changes happen only on the known roads')

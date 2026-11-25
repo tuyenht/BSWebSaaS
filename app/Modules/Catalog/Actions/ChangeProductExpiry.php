@@ -35,11 +35,13 @@ final readonly class ChangeProductExpiry
      */
     public function handle(Product $product, ?DateTimeInterface $expiresAt): void
     {
+        $this->authorizeCatalog('update', $product);
+
         DB::transaction(function () use ($product, $expiresAt): void {
             $locked = Product::query()->whereKey($product->id)->lockForUpdate()->first()
                 ?? throw (new ModelNotFoundException)->setModel(Product::class, [$product->id]);
             $product->setRawAttributes($locked->getAttributes(), true);
-            $this->authorizeCatalog('update', $product);
+            $this->authorizeCatalog('update', $product);   // again on the row as it is now (its categories may have moved)
 
             $at = $expiresAt !== null ? CarbonImmutable::instance($expiresAt) : null;
             $publishAt = $product->published_at !== null && $product->published_at > now() ? $product->published_at : null;
