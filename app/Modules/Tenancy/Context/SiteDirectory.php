@@ -8,7 +8,9 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Models\Domain;
 use App\Modules\Tenancy\Models\Site;
 use Closure;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Public read surface over the GLOBAL site registry (sites + domains — D6, no RLS): by host for
@@ -38,13 +40,50 @@ final readonly class SiteDirectory
     }
 
     /**
-     * The stored name of the current site, exactly as saved ('' when unset) — media storage keys
-     * are prefixed with it, so it is never trimmed or replaced by a display name. Takes the context
-     * rather than an id: it reads the current site's own row.
+     * The stored name of the current site, exactly as saved ('' when unset) — the staging folder of
+     * a presigned upload still nests it, so it is never trimmed or replaced by a display name. Takes
+     * the context rather than an id: it reads the current site's own row.
      */
     public function nameOfCurrent(CurrentSite $current): string
     {
         return Cast::string(Site::query()->whereKey($current->id())->value('name'));
+    }
+
+    /**
+     * The current site's permanent code (sites.code), the first folder of every media key it
+     * writes ('' only when the row is gone). Read from the database each time: the model created in
+     * this request does not carry it, because the database issues it on insert.
+     */
+    public function codeOfCurrent(CurrentSite $current): string
+    {
+        return Cast::string(Site::query()->withTrashed()->whereKey($current->id())->value('code'));
+    }
+
+    /**
+     * Whether $segment is the code of a website other than the current one: a live, trashed or
+     * removed website (a removed website's code stays reserved and is never issued again).
+     */
+    public function isCodeOfAnotherSite(CurrentSite $current, string $segment): bool
+    {
+        return Site::query()->withTrashed()->where('code', $segment)->whereKeyNot($current->id())->exists()
+            || DB::table('reserved_site_codes')->where('code', $segment)->where('reason', 'deleted_site')->exists();
+    }
+
+    /**
+     * Whether $segment is an old media folder (a first folder of keys written before website codes)
+     * that the current website does not own: another website's, or a removed website's, which nobody
+     * may write under any more. Seeded folders and the single-site collections are open to every
+     * website, so they never count.
+     */
+    public function isOldFolderOfAnotherSite(CurrentSite $current, string $segment): bool
+    {
+        $folder = DB::table('reserved_site_codes')->where('code', $segment);
+
+        return (clone $folder)->where('reason', 'legacy_key')->exists()
+            && ! (clone $folder)->where(fn (Builder $open) => $open
+                ->whereIn('reason', ['seed_folder', 'collection'])
+                ->orWhere(fn (Builder $mine) => $mine->where('reason', 'legacy_key')->where('site_id', $current->id())))
+                ->exists();
     }
 
     /**

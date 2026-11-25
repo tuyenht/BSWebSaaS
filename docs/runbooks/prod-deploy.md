@@ -50,6 +50,15 @@ runbook stays the reference for what each step does and why.
    ```bash
    docker exec bsweb_prod_pg sh -c 'psql -U "$POSTGRES_USER" -d bswebsaas -tAc "SELECT count(*), min(created_at), max(created_at) FROM audit_logs"'
    ```
+7. The migration that gives every website its code (`2097_01_01_000000_add_code_to_sites`) aborts unless the admin role sees every row (superuser or BYPASSRLS), every media storage key is a clean relative path, no storage key is held by two websites, and no key lies under `sys/` (the platform's own folder). Before step 2 of the deploy, both lists must be empty (read-only):
+   ```bash
+   docker exec bsweb_prod_pg sh -c 'psql -U "$POSTGRES_USER" -d bswebsaas -tAc "SELECT site_id, storage_key FROM media WHERE storage_key !~ '"'"'^[A-Za-z0-9][A-Za-z0-9._-]*(/[A-Za-z0-9][A-Za-z0-9._-]*)+$'"'"' OR split_part(storage_key, '"'"'/'"'"', 1) = '"'"'sys'"'"'"'
+   docker exec bsweb_prod_pg sh -c 'psql -U "$POSTGRES_USER" -d bswebsaas -tAc "SELECT storage_key FROM media GROUP BY storage_key HAVING count(DISTINCT site_id) > 1"'
+   ```
+   It freezes old folders in `reserved_site_codes` (reason `legacy_key`, with the owning website in `site_id`), so old pictures keep working, no code is drawn from them, and no other website may write under them:
+   - the first folder of every existing key, owned by the website whose rows use it;
+   - the slug of every website's name (trashed ones too), owned by that website. Between the migration (step 2) and the new code going live, the running code still uploads as `{slug(name)}/{collection}/…`; these frozen folders are why those uploads are accepted in that window. Keep that window short, and in it do not create a website or rename one: the new name's slug is not frozen, so the old code's uploads for that website are refused. The same holds for any website whose name slugs to nothing (a name of symbols only: the old key would start with `/`, which is not a clean path) or to `sys` (the platform's folder): the old code's uploads for it are refused for the whole window. Look through the website names before step 2 (`SELECT id, name FROM sites`); for such a website, finish the deploy quickly or tell its owner that uploads pause for a few minutes.
+   Two websites with the same name own one folder together; there a key is accepted for one of them only. The migration runs in one transaction with `lock_timeout = 5s`; it first locks `media` against writes and then `sites` entirely (uploads and every page read of `sites` wait until it commits, usually well under a second). If it stops on a lock timeout, nothing changed; rerun it once traffic is quiet. Once an upload is filed under a website code, its rollback refuses to run: restore the pre-deploy dump instead.
 
 ## Deploy
 

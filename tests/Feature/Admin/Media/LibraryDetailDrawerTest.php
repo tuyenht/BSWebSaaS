@@ -327,7 +327,7 @@ it('moves only the open file from its menu', function (): void {
 
 it('links «Tải xuống» to the download route, which hands out a signed link saving the file under its name', function (): void {
     $user = drwUser(['media.view']);
-    $file = drwFile('Bản vẽ máy.png');
+    $file = drwFile('Bản vẽ máy.png', ['storage_key' => 's1/library/ban-ve-may-ab12.png']);   // a key is a clean ASCII path; the name the person sees is not
     $signed = new ArrayObject;
     Storage::disk('r2')->buildTemporaryUrlsUsing(function (string $path, DateTimeInterface $expires, array $options) use ($signed): string {
         $signed[] = ['path' => $path, 'seconds' => $expires->getTimestamp() - now()->getTimestamp(), 'options' => $options];
@@ -343,7 +343,7 @@ it('links «Tải xuống» to the download route, which hands out a signed link
     });
 
     $this->actingAs($user)->get('http://a.test/admin/media/files/'.$file->ulid.'/download')
-        ->assertRedirect('https://bucket.r2.example.test/s1/library/Bản vẽ máy.png?X-Amz-Expires=60')
+        ->assertRedirect('https://bucket.r2.example.test/s1/library/ban-ve-may-ab12.png?X-Amz-Expires=60')
         ->assertHeader('Cache-Control', 'no-store, private');
     expect($signed)->toHaveCount(1)
         ->and($signed[0]['seconds'])->toBe(60)

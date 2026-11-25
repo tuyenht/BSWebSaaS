@@ -5,9 +5,8 @@ namespace App\Modules\Media\Actions;
 use App\Modules\Media\Exceptions\MediaRejectedException;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Support\MediaKey;
-use App\Modules\Shared\Support\Slugger;
+use App\Modules\Media\Support\MediaKeyPrefix;
 use App\Modules\Tenancy\Context\CurrentSite;
-use App\Modules\Tenancy\Context\SiteDirectory;
 use finfo;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Filesystem\FilesystemAdapter;
@@ -29,7 +28,7 @@ final readonly class RegisterMediaUpload
 {
     public function __construct(
         private CurrentSite $current,
-        private SiteDirectory $sites,
+        private MediaKeyPrefix $prefix,
     ) {}
 
     /**
@@ -81,7 +80,6 @@ final readonly class RegisterMediaUpload
 
         // 5) Full SHA-256 — the dedup column (separate from the short cache-bust suffix in the key).
         $hash = hash('sha256', $contents);
-        $siteName = $this->sites->nameOfCurrent($this->current);
 
         // 6) Dedup within (site, collection, hash) — return the master, drop the temp object.
         // withTrashed: the UNIQUE(site,collection,hash) index doesn't know about soft-deletes,
@@ -108,10 +106,10 @@ final readonly class RegisterMediaUpload
             return $existing;
         }
 
-        // 7) Final opaque content-hash key (unique within the site) + R2-internal copy with the
+        // 7) Final opaque content-hash key under the website's code (unique within the website) + R2-internal copy with the
         // server's own headers (the client chose the temp object's Content-Type), drop temp.
-        $slug = Slugger::make(pathinfo($filename, PATHINFO_FILENAME)) ?: 'tep';
-        $finalKey = MediaKey::unique($siteName, $collection, $slug, $hash, $ext);
+        $slug = MediaKey::slugFromFilename($filename);
+        $finalKey = MediaKey::unique($this->prefix->forNewObject($collection), $slug, $hash, $ext);
         // copy() returns bool on this disk ('throw' => false) — unchecked failure would persist
         // a row whose object never existed: an unrenderable orphan the picker shows as broken.
         if (! $this->copyAs($disk, $tempKey, $finalKey, $mime)) {
