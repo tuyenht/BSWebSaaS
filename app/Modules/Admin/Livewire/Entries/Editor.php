@@ -23,6 +23,7 @@ use App\Modules\Admin\Support\Locales;
 use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\ApproveEntryForLater;
+use App\Modules\Cms\Actions\ChangeEntryExpiry;
 use App\Modules\Cms\Actions\MovePage;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
@@ -61,6 +62,7 @@ use App\Modules\Cms\Support\PageRules;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Cms\Validation\DisplayDateNotAfterToday;
 use App\Modules\Cms\Validation\EntryContentRules;
+use App\Modules\Cms\Validation\ExpiryTime;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -154,7 +156,7 @@ final class Editor extends Component
      * The fields the save state and the leave dialog count against the saved entry. The block list
      * is counted apart (blocksChanged): the browser cannot write it the way the server does.
      */
-    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryIds', 'coverImageKey', 'coverAlt', 'parentUlid', 'pageOrder', 'scheduleAt', 'statusTo', 'templateKey', 'displayDate', 'tags'];
+    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryIds', 'coverImageKey', 'coverAlt', 'parentUlid', 'pageOrder', 'scheduleAt', 'statusTo', 'templateKey', 'displayDate', 'tags', 'expiresAt'];
 
     /** Which entry is being edited — server-resolved (mount/persist); never client-set. */
     #[Locked]
@@ -255,6 +257,26 @@ final class Editor extends Component
     /** The shown day as stored when the form opened: a save that leaves it as it is never has it refused. */
     #[Locked]
     public string $storedDisplayDate = '';
+
+    /** «Gỡ khỏi website lúc» (board 07, the «Đăng» card): the end time in the website's clock (ExpiryTime::FORMAT); '' = it stays. */
+    public string $expiresAt = '';
+
+    /** The end time as stored when the form opened or last saved: an unchanged one is never judged again. */
+    #[Locked]
+    public string $expiresLoaded = '';
+
+    /** The real publish day (d/m/Y, the website's clock) for the «Ngày đăng» line of the «Đăng» card; '' before a first publish. */
+    #[Locked]
+    public string $publishedDay = '';
+
+    /** The «Đăng» card's own message («Đã bỏ giờ gỡ», «Đã dùng lại ngày đăng thật»); «Hoàn tác» puts formUndo back. */
+    public string $formToast = '';
+
+    public int $formToastSeq = 0;
+
+    /** @var array{field: string, value: string}|null */
+    #[Locked]
+    public ?array $formUndo = null;
 
     /**
      * «Thẻ» (board 07): the post's tags named in this language, in order (EntryTags). Added with
@@ -440,6 +462,9 @@ final class Editor extends Component
     /** The time the entry was scheduled for as the form opened, in the website's clock ('' when none): kept unchanged, it is not judged again. */
     #[Locked]
     public string $scheduleLoaded = '';
+
+    /** Set while «Đăng» validates its save (this request only): the entry goes live now, whatever its schedule. */
+    private bool $goingLive = false;
 
     /**
      * «Khi lưu, bài sẽ là» (board 07, the "Đăng" card when no approval workflow governs the entry): the status
@@ -635,6 +660,7 @@ final class Editor extends Component
         }
         $this->slugFresh = ! $written && ! $this->pageHome;
         $this->loadSchedule($entry);
+        $this->loadDates($entry);
         $this->saved = $this->tracked();
         $this->guideDue = true;
         $this->readLangBar($entry);
@@ -1492,6 +1518,12 @@ final class Editor extends Component
             // made, but a part was refused (a new page's typed place): the form says so, never a success
             return;
         }
+        // «Gỡ khỏi website lúc» first; one before a schedule that this save moves earlier, or takes back to a
+        // draft, waits for the move
+        $expiryWaits = false;
+        if (! $this->applyExpiry($entry, $schedulable || $to === EntryStatus::Scheduled->value, $expiryWaits, $to)) {
+            return;
+        }
         if ($this->heldSave !== null && $to === null) {
             // into the pending change: visitors keep the live version
             $this->dispatch('bs-toast', text: $this->heldToast($this->governingWorkflow()));
@@ -1499,7 +1531,7 @@ final class Editor extends Component
             return;
         }
         if ($to !== null) {
-            if ($this->moveStatus($entry, $to)) {
+            if ($this->moveStatus($entry, $to) && (! $expiryWaits || $this->applyExpiry($entry->refresh()))) {
                 $at = $to === EntryStatus::Scheduled->value ? ScheduleInput::parse($this->scheduleLoaded) : null;
                 $at = $at !== null ? app(SiteTime::class)->forDisplay($at) : null;
                 $this->dispatch('bs-toast', text: match (true) {
@@ -1512,6 +1544,9 @@ final class Editor extends Component
             return;
         }
         if ($schedulable && ! $this->moveSchedule($entry)) {
+            return;
+        }
+        if ($expiryWaits && ! $this->applyExpiry($entry->refresh())) {
             return;
         }
 
@@ -1529,6 +1564,12 @@ final class Editor extends Component
             // nothing put on the website after a save refused in part (a new page's typed place)
             return;
         }
+        // a cleared or moved end time comes before the publish, which refuses one already past; one before the
+        // schedule of a scheduled post waits for the publish, which puts it up now (PublishEntry)
+        $expiryWaits = false;
+        if (! $this->applyExpiry($entry, $entry->status === EntryStatus::Scheduled->value, $expiryWaits)) {
+            return;
+        }
         if ($this->heldSave !== null) {
             // into the pending change: visitors keep the live version
             $this->dispatch('bs-toast', text: $this->heldToast($this->governingWorkflow()));
@@ -1539,6 +1580,13 @@ final class Editor extends Component
 
         try {
             $this->status = app(PublishEntry::class)->handle($entry, $this->locale, $this->user());
+            // live now: the end time that waited is written; a refusal is said under its field, the input kept
+            $expiryRefused = $expiryWaits && ! $this->applyExpiry($entry->refresh());
+            $typed = $this->expiresAt;
+            $this->loadDates($entry);
+            if ($expiryRefused) {
+                $this->expiresAt = $typed;
+            }
             $this->autoSaved = false;
             $this->forgetChoice();
             $this->liveAddress = $this->routedAddress($entry->id);
@@ -1586,7 +1634,7 @@ final class Editor extends Component
         $this->resetErrorBag(['workflow', 'transitionNote', 'assignTo']);
 
         $entry = $this->persist('transition', $key);
-        if (! $entry instanceof Entry) {
+        if (! $entry instanceof Entry || ! $this->applyExpiry($entry)) {
             return;
         }
         $this->status = $entry->status;
@@ -2139,6 +2187,8 @@ final class Editor extends Component
             'schemeColours' => $this->schemeColours(),
             'workflow' => $workflow !== null ? $this->workflowPanel($workflow, $row) : null,
             'schedule' => $this->schedulePanel($workflow),
+            'expiry' => $this->expiryPanel(),
+            'pdLine' => $this->type === 'post' ? $this->pdLine() : null,
             'statusPanel' => $this->statusPanel(),
             'scheduleBand' => $this->scheduleBand($workflow, $row),
             'changeBand' => $this->changeBand($workflow, $liveRow),
@@ -2163,7 +2213,7 @@ final class Editor extends Component
         $this->saveFailed = false;
         // A language with no saved version yet loads nothing back: start from an empty form.
         $preset = $this->ulid === null ? $this->parentLoaded : null;
-        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'coverAlt', 'templateKey', 'displayDate', 'storedDisplayDate', 'tags', 'tagsLoaded', 'tagDraft', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
+        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'coverAlt', 'templateKey', 'displayDate', 'storedDisplayDate', 'expiresAt', 'expiresLoaded', 'publishedDay', 'formToast', 'formUndo', 'tags', 'tagsLoaded', 'tagDraft', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
             'transitionNote', 'assignTo', 'showImagePicker', 'blockImagePickerPath', 'coverToast', 'coverUndo', 'stale', 'overwrite',
             'parentUlid', 'parentLoaded', 'parentName', 'pageHome', 'scheduleAt', 'scheduleLoaded', 'statusTo', 'autoSaved', 'slugFresh', 'slugTouched');
         $this->mount($this->ulid, $this->sectionKey, $this->locale, $preset);
@@ -3186,8 +3236,12 @@ final class Editor extends Component
                 if (is_string($value) && $value !== '' && ! DisplayDate::valid($value)) {
                     $fail(Cast::string(__('entries.ed.pd_invalid')));
                 }
-            }, new DisplayDateNotAfterToday(app(SiteTime::class)->zone(), $this->storedDisplayDate)];
+            }, new DisplayDateNotAfterToday(app(SiteTime::class)->zone(), $this->storedDisplayDate, app(SiteTime::class)->dateFormat(), $this->locale)];
         }
+        // «Gỡ khỏi website lúc»: judged only when this save changes it (one already past on an entry taken down is normal)
+        $rules['expiresAt'] = $this->expiresAt !== $this->expiresLoaded
+            ? ['string', new ExpiryTime(app(SiteTime::class)->zone(), $this->formPublishAt())]
+            : ['string'];
 
         return $rules;
     }
@@ -3406,7 +3460,13 @@ final class Editor extends Component
             } else {
                 $layoutBody = $this->layoutForStorage();
             }
-            $this->validate();
+            // «Đăng» puts a scheduled entry up now: its end time is judged against now, not the old schedule
+            $this->goingLive = $action === 'publish';
+            try {
+                $this->validate();
+            } finally {
+                $this->goingLive = false;
+            }
         } catch (ValidationException $e) {
             // A link made for a save that failed must not stay behind: it would pin the old title.
             if ($filled) {
@@ -3646,6 +3706,8 @@ final class Editor extends Component
         $this->readLangBar($entry);
         // the save stores the text; «Hẹn giờ đăng» is moved after it (save → moveSchedule), so until then it is still unsaved
         $this->saved['scheduleAt'] = $this->scheduleLoaded;
+        // and so is «Gỡ khỏi website lúc»: ChangeEntryExpiry writes it after the save (applyExpiry)
+        $this->saved['expiresAt'] = $this->expiresLoaded;
         // so is a status picked: only the move after the save takes it (an autosave never does), so it still counts
         $this->saved['statusTo'] = '';
         if ($orderRefused) {
@@ -3855,6 +3917,55 @@ final class Editor extends Component
     }
 
     /**
+     * «Gỡ khỏi website lúc» (board 07, the «Đăng» card): none on the Home page (it takes no end time); read
+     * only for a member who may not change the status, or in a language other than the website's own. The
+     * sentence under it says what the time does, or that the entry came down at it.
+     *
+     * @return array{zone: string, hint: string, editable: bool}|null
+     */
+    private function expiryPanel(): ?array
+    {
+        if ($this->homePage) {
+            return null;
+        }
+        $time = app(SiteTime::class);
+        $at = ExpiryTime::parse($this->expiresAt, $time->zone());
+        $shown = $at !== null ? $at->setTimezone($time->zone())->format('H:i d/m/Y') : '';
+        $past = $at !== null && $at <= CarbonImmutable::now();
+        $doc = $this->docNoun();
+        $hint = match (true) {
+            $at === null || ($past && $this->status !== EntryStatus::Archived->value) => __('entries.ed.exp_hint', ['doc' => $doc]),
+            $past => __('entries.ed.exp_hint_done', ['doc' => $doc, 'time' => $shown]),
+            default => __('entries.ed.exp_hint_at', ['doc' => $doc, 'time' => $shown]),
+        };
+
+        return [
+            'zone' => Cast::string(__('entries.ed.exp_zone', ['zone' => app(SiteTime::class)->offsetLabel()])),
+            'hint' => Cast::string($hint),
+            'editable' => $this->expiryEditable(),
+        ];
+    }
+
+    /** The «Ngày đăng» line of a post's «Đăng» card: the shown day when one is set, the real (or scheduled) day beside it. */
+    private function pdLine(): string
+    {
+        $real = $this->publishedDay;
+        $scheduled = $real === '' && $this->effectiveStatus() === EntryStatus::Scheduled->value
+            ? (ScheduleInput::parse($this->scheduleAt) !== null ? substr($this->scheduleAt, 8, 2).'/'.substr($this->scheduleAt, 5, 2).'/'.substr($this->scheduleAt, 0, 4) : '')
+            : '';
+        $shown = DisplayDate::valid($this->displayDate) ? CarbonImmutable::createFromFormat('!Y-m-d', $this->displayDate)?->format('d/m/Y') ?? '' : '';
+        $doc = $this->docNoun();
+
+        return Cast::string(match (true) {
+            $shown !== '' && ($real !== '' || $scheduled !== '') => __('entries.ed.pd_line_shown_real', ['doc' => $doc, 'shown' => $shown, 'real' => $real !== '' ? $real : $scheduled]),
+            $shown !== '' => __('entries.ed.pd_line_shown', ['doc' => $doc, 'shown' => $shown]),
+            $real !== '' => __('entries.ed.pd_line_real', ['real' => $real]),
+            $scheduled !== '' => __('entries.ed.pd_line_sched', ['real' => $scheduled]),
+            default => __('entries.ed.pd_line_none'),
+        });
+    }
+
+    /**
      * The «Hẹn giờ đăng» field of the "Đăng" card, or null when the time cannot be changed here.
      *
      * @return array{zone: string, note: string}|null
@@ -3864,8 +3975,7 @@ final class Editor extends Component
         if ($this->effectiveStatus() !== EntryStatus::Scheduled->value || ! $this->mayPublish || $workflow !== null) {
             return null;
         }
-        $offset = intdiv(app(SiteTime::class)->now()->getOffset(), 60);
-        $zone = 'GMT'.($offset < 0 ? '-' : '+').intdiv(abs($offset), 60).(abs($offset) % 60 !== 0 ? ':'.str_pad((string) (abs($offset) % 60), 2, '0', STR_PAD_LEFT) : '');
+        $zone = app(SiteTime::class)->offsetLabel();
         $at = preg_match('/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/', $this->scheduleAt, $m) === 1
             ? $m[4].':'.$m[5].' '.$m[3].'/'.$m[2].'/'.$m[1]
             : Cast::string(__('entries.ed.sched_when_set'));
@@ -4219,6 +4329,158 @@ final class Editor extends Component
         $this->addError('tagDraft', Cast::string($first['why'] === 'full'
             ? __('entries.ed.tag_full', ['max' => EntryTags::MAX_TAGS])
             : __('entries.ed.tag_taken', ['name' => $first['name']])));
+    }
+
+    /**
+     * «Gỡ khỏi website lúc», as the field is left: the reason under it when the time is past or not after
+     * the scheduled publish time; nothing for a time left as it was stored. A member who may not change
+     * the entry's status, or a language other than the website's own (the end time is every language's),
+     * gets the stored time back.
+     */
+    public function updatedExpiresAt(): void
+    {
+        $this->authorizeEditing();
+        $this->resetErrorBag('expiresAt');
+        if (! $this->expiryEditable()) {
+            $this->expiresAt = $this->expiresLoaded;
+
+            return;
+        }
+        if ($this->expiresAt === $this->expiresLoaded) {
+            return;
+        }
+        $zone = app(SiteTime::class)->zone();
+        $at = ExpiryTime::parse($this->expiresAt, $zone);
+        $why = trim($this->expiresAt) === '' ? null
+            : ($at === null ? Cast::string(__('entries.expiry_invalid')) : ExpiryTime::error($at, $this->formPublishAt(), $zone));
+        if ($why !== null) {
+            $this->addError('expiresAt', $why);
+        }
+    }
+
+    /** «Bỏ giờ gỡ»: the field empties (saved with the next save) and the message offers «Hoàn tác». */
+    public function clearExpiry(): void
+    {
+        $this->authorizeEditing();
+        if (! $this->expiryEditable() || $this->expiresAt === '') {
+            return;
+        }
+        $this->resetErrorBag('expiresAt');
+        $this->formSay(Cast::string(__('entries.ed.exp_cleared', ['doc' => $this->docNoun()])), 'expiresAt', $this->expiresAt);
+        $this->expiresAt = '';
+    }
+
+    /** «Dùng ngày đăng thật»: the shown day empties (saved with the next save) and the message offers «Hoàn tác». */
+    public function useRealDate(): void
+    {
+        $this->authorizeEditing();
+        if ($this->type !== 'post' || $this->sharedLocked() || $this->displayDate === '') {
+            return;
+        }
+        $this->resetErrorBag('displayDate');
+        $this->formSay(Cast::string(__('entries.ed.pd_used_real')), 'displayDate', $this->displayDate);
+        $this->displayDate = '';
+    }
+
+    /** «Hoàn tác» on the «Đăng» card's message: the value it emptied comes back into the form. */
+    public function undoFormClear(): void
+    {
+        $this->authorizeEditing();
+        $undo = $this->formUndo;
+        $this->formToast = '';
+        $this->formUndo = null;
+        if ($undo === null) {
+            return;
+        }
+        if ($undo['field'] === 'expiresAt' && $this->expiryEditable()) {
+            $this->expiresAt = $undo['value'];
+        } elseif ($undo['field'] === 'displayDate' && $this->type === 'post' && ! $this->sharedLocked()) {
+            $this->displayDate = $undo['value'];
+        }
+    }
+
+    /** Close the «Đăng» card's message the member (or its timer) names; a newer one stays. */
+    public function closeFormToast(int $seq): void
+    {
+        $this->authorizeEditing();
+        if ($seq === $this->formToastSeq) {
+            $this->formToast = '';
+            $this->formUndo = null;
+        }
+    }
+
+    private function formSay(string $text, string $field, string $value): void
+    {
+        $this->formToast = $text;
+        $this->formToastSeq++;
+        $this->formUndo = ['field' => $field, 'value' => $value];
+    }
+
+    /** The end time and the real publish day as stored, in the website's clock. */
+    private function loadDates(Entry $entry): void
+    {
+        $time = app(SiteTime::class);
+        $this->expiresAt = $this->expiresLoaded = $time->forDisplay($entry->expires_at)?->format(ExpiryTime::FORMAT) ?? '';
+        $live = in_array($entry->status, [EntryStatus::Published->value, EntryStatus::Archived->value], true);
+        $this->publishedDay = $live ? ($time->forDisplay($entry->published_at)?->format('d/m/Y') ?? '') : '';
+    }
+
+    /** Whether this member may set the end time here: the right to change the status, in the website's own language, not on the Home page. */
+    private function expiryEditable(): bool
+    {
+        return $this->mayPublish && ! $this->sharedLocked() && ! $this->homePage;
+    }
+
+    /**
+     * The publish time the end time must come after, as the entry will be after this save: the schedule picked
+     * in the form when it is (or will be) scheduled; none for a draft (taking a schedule back drops its time)
+     * nor for a scheduled entry put up now, by «Công khai» or by «Đăng» ($goingLive): PublishEntry writes now
+     * for a schedule still to come, and the end time must come after now anyway.
+     */
+    private function formPublishAt(): ?CarbonImmutable
+    {
+        return ! $this->goingLive && $this->effectiveStatus() === EntryStatus::Scheduled->value ? ScheduleInput::parse($this->scheduleAt) : null;
+    }
+
+    /**
+     * Writes a changed «Gỡ khỏi website lúc» through ChangeEntryExpiry after the save; a refusal is said
+     * under the field and stops what follows. A time still to come but not after the stored schedule waits
+     * for the move this save makes ($waits, the caller calling again after it) when that move frees it: a
+     * schedule moved ($mayWait), a scheduled entry put up now ($mayWait: PublishEntry writes now for its
+     * schedule), or a schedule taken back to a draft ($moveTo), which drops its time. A pair still wrong
+     * after the move is refused before anything moves.
+     */
+    private function applyExpiry(Entry $entry, bool $mayWait = false, bool &$waits = false, ?string $moveTo = null): bool
+    {
+        if ($this->expiresAt === $this->expiresLoaded || ! $this->expiryEditable()) {
+            return true;
+        }
+        $at = ExpiryTime::parse($this->expiresAt, app(SiteTime::class)->zone());
+        $freed = $mayWait || ($moveTo === EntryStatus::Draft->value && $entry->status === EntryStatus::Scheduled->value);
+        if ($freed && $at !== null && $at > now() && $entry->published_at !== null && $entry->published_at > now() && $at <= $entry->published_at) {
+            $waits = true;
+
+            return true;
+        }
+        try {
+            app(ChangeEntryExpiry::class)->handle($entry, $at, $this->user());
+        } catch (ValidationException $e) {
+            $this->addError('expiresAt', Cast::string($e->validator->errors()->first('expiresAt')));
+
+            return false;
+        } catch (HomePageLockedException $refused) {
+            $this->addError('expiresAt', $refused->getMessage());
+
+            return false;
+        } catch (AuthorizationException) {
+            $this->addError('expiresAt', EntryRefusal::for($this->user(), $entry, 'status'));
+
+            return false;
+        }
+        $this->expiresLoaded = $this->expiresAt;
+        $this->saved['expiresAt'] = $this->expiresLoaded;
+
+        return true;
     }
 
     /**

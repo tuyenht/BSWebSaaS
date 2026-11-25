@@ -384,7 +384,10 @@ it('refuses a shown day after today on the site\'s clock, and lets today, a past
 
     $this->travelTo(CarbonImmutable::parse('2026-11-25 18:00:00', 'UTC')); // 01:00 on the 26th in Hà Nội
     expect($check('2026-11-26'))->toBeTrue()
-        ->and(Validator::make(['d' => '2026-11-27'], ['d' => [new DisplayDateNotAfterToday($zone)]])->errors()->first('d'))->toBe(__('entries.ed.pd_future'));
+        ->and(Validator::make(['d' => '2026-11-27'], ['d' => [new DisplayDateNotAfterToday($zone)]])->errors()->first('d'))->toBe(__('entries.ed.pd_future', ['date' => '26/11/2026']))   // today on the website's clock
+        // written as the website writes its dates
+        ->and(Validator::make(['d' => '2026-11-27'], ['d' => [new DisplayDateNotAfterToday($zone, '', 'iso')]])->errors()->first('d'))->toBe(__('entries.ed.pd_future', ['date' => '2026-11-26']))
+        ->and(Validator::make(['d' => '2026-11-27'], ['d' => [new DisplayDateNotAfterToday($zone, '', 'mdy')]])->errors()->first('d'))->toBe(__('entries.ed.pd_future', ['date' => '11/26/2026']));
 });
 
 it('reads an end time on the site\'s clock and names what is wrong with it', function (): void {
