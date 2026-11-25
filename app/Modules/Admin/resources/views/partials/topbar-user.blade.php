@@ -101,9 +101,13 @@
         </button>
 
         <div class="my-1 border-t border-border"></div>
+        {{-- Asks first (a slip of the finger would cost a sign-in); a dialog that cannot load signs out as before.
+             The menu closes and focus moves to the avatar first, so «Hủy» brings the keyboard back there.
+             The session dialog submits this form itself, without asking. --}}
         <form method="POST" action="{{ \App\Modules\Admin\Support\AdminPlane::route('logout') }}" role="none" data-bs-signout>
             @csrf
             <button type="submit" role="menuitem"
+                    x-on:click.prevent="userOpen = false; $refs.userButton.focus(); $bsConfirm({ icon: 'logout', title: @js(__('admin.logout_ask_title', ['name' => config('admin.brand.name')])), text: @js(__('admin.logout_ask_text')), confirm: @js(__('admin.logout')), cancel: @js(__('admin.cancel')) }).catch(() => true).then((ok) => ok && $el.form.requestSubmit())"
                     class="flex min-h-menu-row w-full items-center gap-2.5 px-4 py-2 text-body text-danger-text transition-colors hover:bg-surface-hover any-pointer-coarse:min-h-menu-row-touch">
                 <x-bs-admin::icon name="ri-logout-box-r" class="size-4" />
                 {{ __('admin.logout') }}
