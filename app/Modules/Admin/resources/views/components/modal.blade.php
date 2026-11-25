@@ -19,7 +19,8 @@
     // opens it, and every way of closing it sets the property back. A model dialog is the shared
     // form dialog (design .kh-dlg): centred, at most the screen's height less 32px with its body
     // scrolling between a fixed header and footer; below 600px a sheet from the bottom, full width,
-    // its footer buttons stacked full width. `subtitle` is one line under the title; `closeLabel`
+    // its footer buttons stacked full width with the main (last) button on top, like confirm-dialog; the markup
+    // and Tab order stay as written (Cancel first), only the drawing is reversed. `subtitle` is one line under the title; `closeLabel`
     // names the ✕ ("Đóng hộp Đổi gói").
     //
     // A screen that keeps its state in the browser passes `state` (an Alpine expression: the dialog
@@ -82,7 +83,7 @@
                 </div>
                 <div class="flex min-h-0 flex-1 flex-col gap-3.5 overflow-auto px-5 py-4">{{ $slot }}</div>
                 @isset($footer)
-                    <div class="flex flex-wrap justify-end gap-2 border-t border-border px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] max-[599.98px]:*:flex-[1_1_100%]">{{ $footer }}</div>
+                    <div class="flex flex-wrap justify-end gap-2 border-t border-border px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] max-[599.98px]:flex-col-reverse max-[599.98px]:*:w-full">{{ $footer }}</div>
                 @endisset
             </div>
         </div>
@@ -106,7 +107,7 @@
                 @endif
                 <div class="p-4">{{ $slot }}</div>
                 @isset($footer)
-                    <div class="flex justify-end gap-2 border-t border-border px-4 py-3">{{ $footer }}</div>
+                    <div class="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3 max-[599.98px]:flex-col-reverse max-[599.98px]:*:w-full">{{ $footer }}</div>
                 @endisset
             </div>
         </div>
