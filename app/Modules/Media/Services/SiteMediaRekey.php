@@ -39,8 +39,10 @@ use Throwable;
  *    old keys are locked (FOR NO KEY UPDATE, which still lets a usage row's foreign key check
  *    through), then the chunk's media rows (FOR UPDATE); each row still holding its planned key
  *    gets the new one and `meta.moved_from` (the old one, its own object, which a permanent delete
- *    then removes too), and the locked content rows are rewritten, all in one commit. A save that
- *    changes one of those content rows meanwhile either commits first (the rewrite then reads it)
+ *    then removes too; an old key under a demo seed source, `media.seed_folders`, is a shared seed
+ *    file instead and goes in `meta.seed_source`, which nothing deletes), and the locked content
+ *    rows are rewritten, all in one commit. A save that changes one of those content rows
+ *    meanwhile either commits first (the rewrite then reads it)
  *    or waits for the commit; it is never lost. Content before media is the order an entry save
  *    takes them (it writes the entry, then its usage rows, whose foreign key share-locks the media
  *    row). A brand save takes them the other way round (SetBrandImages locks the media rows, then
@@ -216,7 +218,8 @@ final readonly class SiteMediaRekey
     /**
      * One transaction for one chunk of moves (at most MOVE_CHUNK): locks the content rows naming
      * the chunk's old keys, then its media rows; moves each row still holding its planned key (one a
-     * person changed meanwhile waits for the next run), records the old key in `meta.moved_from`,
+     * person changed meanwhile waits for the next run), records the old key in `meta.moved_from`
+     * (`meta.seed_source` for a shared seed file, MediaKey::isSeedKey()),
      * and rewrites the locked content rows. A chunk that lost a lock conflict (a brand save takes
      * media before settings) left nothing and is run again whole, MOVE_TRIES times at most.
      *
@@ -303,15 +306,17 @@ final readonly class SiteMediaRekey
                 if (($held[$move['id']] ?? null) !== $move['from']) {
                     continue;
                 }
-                $values[] = '(?::bigint, ?::text, ?::text)';
-                array_push($bindings, $move['id'], $move['from'], $move['to']);
+                $values[] = '(?::bigint, ?::text, ?::text, ?::text)';
+                // A shared seed file is never this row's own object: recorded as its seed source, so
+                // a permanent delete leaves it for every later seeding.
+                array_push($bindings, $move['id'], $move['from'], $move['to'], MediaKey::isSeedKey($move['from']) ? 'seed_source' : 'moved_from');
                 $moved[$move['from']] = $move['to'];
             }
             if ($values !== []) {
                 DB::update(
                     'UPDATE media AS m SET storage_key = v.to_key, '.
-                    "meta = COALESCE(m.meta, '{}'::jsonb) || jsonb_build_object('moved_from', v.from_key) ".
-                    'FROM (VALUES '.implode(', ', $values).') AS v(id, from_key, to_key) '.
+                    "meta = COALESCE(m.meta, '{}'::jsonb) || jsonb_build_object(v.field, v.from_key) ".
+                    'FROM (VALUES '.implode(', ', $values).') AS v(id, from_key, to_key, field) '.
                     'WHERE m.site_id = ? AND m.id = v.id AND m.storage_key = v.from_key',
                     [...$bindings, $siteId],
                 );

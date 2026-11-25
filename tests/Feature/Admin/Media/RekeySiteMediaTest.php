@@ -408,6 +408,35 @@ it('removes the old object too when a moved file is deleted for good, but never 
         ->and($disk->get($seed))->toBe('seed bytes');                       // shared by every seeded website
 });
 
+it('records an old key under a seed folder as the seed source, so a permanent delete keeps the shared seed file', function (): void {
+    $disk = Storage::disk(MediaKey::disk());
+    $seed = 'an-vinh/hero/hero-home-7ca90eafe212.jpg';
+    // As on a website seeded before codes: the seed folder is recorded as its old folder.
+    DB::connection('pgsql_admin')->table('reserved_site_codes')->insert(['code' => 'an-vinh', 'reason' => 'legacy_key', 'site_id' => 1]);
+    rekeyMedia(1, $seed);                                                  // an older row pointing straight at the seed file
+    rekeyMedia(1, REKEY_LOGO);                                             // and one of the website's own old files
+    expect(rekeyRun(apply: true)[0])->toBe(0);
+
+    $code = siteCode(1);
+    [$hero, $logo] = app(Tenancy::class)->enter(1, fn (): array => [
+        Media::query()->where('storage_key', "{$code}/hero-home-7ca90eafe212.jpg")->sole(),
+        Media::query()->where('storage_key', "{$code}/logo-ab12cd.png")->sole(),
+    ]);
+    expect($hero->meta)->toBe(['seed_source' => $seed])
+        ->and($logo->meta)->toBe(['moved_from' => REKEY_LOGO])
+        ->and(app(SiteMediaRekey::class)->previousKeys(1))->toBe([$seed => $hero->storage_key, REKEY_LOGO => $logo->storage_key]);
+
+    app(Tenancy::class)->enter(1, function () use ($hero, $logo): void {
+        $hero->forceDelete();
+        $logo->forceDelete();
+    });
+
+    expect($disk->exists($hero->storage_key))->toBeFalse()                // the website's own copy is gone
+        ->and($disk->get($seed))->toBe("bytes of {$seed}")                  // the seed file stays for every later seeding
+        ->and($disk->exists($logo->storage_key))->toBeFalse()
+        ->and($disk->exists(REKEY_LOGO))->toBeFalse();                      // a moved row's own old object still goes
+});
+
 it('refuses a single-site install, whose files stay under their collections', function (): void {
     config(['media.tenant_prefix' => false]);
 

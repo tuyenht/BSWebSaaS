@@ -52,4 +52,10 @@ return [
     'folder_delete_inline_max_files' => (int) env('MEDIA_FOLDER_DELETE_INLINE_MAX_FILES', 20000),
     'folder_delete_batch_files' => (int) env('MEDIA_FOLDER_DELETE_BATCH_FILES', 2000),
 
+    // Demo seed sources: first folders of shared seed files the repository's seeders copy into
+    // whichever website they seed. No website may delete an object under one of them, whichever
+    // row or field names it (a permanent delete, or a moved row's old key), since every later
+    // seeding needs it. Listed here so Media code names no website.
+    'seed_folders' => ['an-vinh'],
+
 ];

@@ -151,6 +151,17 @@ final class MediaKey
         return in_array($segment, self::RESERVED_FIRST_SEGMENTS, true) || str_starts_with($segment, self::PRIVATE_MARK);
     }
 
+    /**
+     * Whether $key lies under a demo seed source (`media.seed_folders`): a shared seed file every
+     * seeded website copies from, which no website may delete.
+     */
+    public static function isSeedKey(string $key): bool
+    {
+        $folders = config('media.seed_folders', []);
+
+        return is_array($folders) && in_array(explode('/', $key, 2)[0], $folders, true);
+    }
+
     /** Refuses a storage key that is not a clean relative path (CLEAN_PATH_PATTERN). */
     public static function assertCleanPath(string $key): void
     {
