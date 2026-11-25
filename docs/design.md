@@ -403,7 +403,7 @@ model_has_permissions(...)                                     -- quyền trực
 ```sql
 site_modules(site_id, module_key, enabled, settings JSONB)
 content_sections(id, site_id, key, label, icon, sort_order, entry_type, taxonomy_id NULL, list_template NULL, detail_template NULL, permission_prefix, meta JSONB)
-content_section_categories(id, site_id, content_section_id, taxonomy_id, UNIQUE(site_id, taxonomy_id))   -- các chuyên mục một mục nội dung bao (ngang hàng, ví dụ «Tin tức» = tin-tuc + tuyen-dung); một chuyên mục thuộc tối đa một mục; bài thuộc mục của chuyên mục GẦN NHẤT được bao trên chuỗi cha; content_sections.taxonomy_id giữ chuyên mục đầu (expand-contract)
+content_section_categories(id, site_id, content_section_id, taxonomy_id, UNIQUE(site_id, taxonomy_id), FK (site_id, content_section_id) → content_sections(site_id, id), FK (site_id, taxonomy_id) → taxonomies(site_id, id))   -- các chuyên mục một mục nội dung bao (ngang hàng, ví dụ «Tin tức» = tin-tuc + tuyen-dung); một chuyên mục thuộc tối đa một mục; bài thuộc mục của chuyên mục GẦN NHẤT được bao trên chuỗi cha; content_sections.taxonomy_id giữ chuyên mục đầu (expand-contract)
 site_types(id BIGINT PK, key UNIQUE, label JSONB{vi,en,ja}, meta JSONB)   -- GLOBAL catalog platform-writable-only (KHÔNG site_id/RLS — D6); bộ module + role-template của loại nguồn ở CODE registry, tham chiếu qua key
 -- Migration EXPAND-SAFE + reversible: site_types tạo TRƯỚC; sites.site_type_id + roles.forked_from_role_id = nullable additive; backfill 2 site → corporate. down() drop 2 cột FK TRƯỚC rồi drop site_types (đúng thứ tự FK); KHÔNG backfill ngược type (cột mới, khác C6).
 ```

@@ -10,8 +10,7 @@ use Illuminate\Support\Facades\View;
  * The one list of layouts the default theme offers to categories, posts and pages: each has a
  * name, a role (a category's list page, a post's page, a plain page), the category kinds it fits
  * (post or product categories) and how its cards load. A group with its own look (jobs, projects)
- * is a pair in this list, a list layout and a post layout of the same set (a group of one set
- * below a list of another keeps out of that list: listsOutside()); nothing else in the
+ * is a pair in this list, a list layout and a post layout of the same set; nothing else in the
  * code names a layout. Pure data plus a view-exists check, so the Theme stays content-agnostic.
  */
 final class TemplateCatalog
@@ -48,12 +47,6 @@ final class TemplateCatalog
     /** The set whose posts carry an application deadline. */
     public const string SET_JOB = 'job';
 
-    /** The set of project write-ups (their cards and page show the client, the field, the result). */
-    public const string SET_PROJECT = 'project';
-
-    /** The set of capability pages (what the company can make, with its machines and numbers). */
-    public const string SET_CAPABILITY = 'capability';
-
     /**
      * @var array<string, array{role: string, kinds: list<string>, cards: string|null, set: string|null}>
      *
@@ -62,13 +55,13 @@ final class TemplateCatalog
     private const array ENTRIES = [
         'category' => ['role' => self::ROLE_LIST, 'kinds' => [self::KIND_POST, self::KIND_PRODUCT], 'cards' => null, 'set' => null],
         'grid-news' => ['role' => self::ROLE_LIST, 'kinds' => [self::KIND_POST], 'cards' => 'news', 'set' => null],
-        'grid-project' => ['role' => self::ROLE_LIST, 'kinds' => [self::KIND_POST], 'cards' => 'project', 'set' => self::SET_PROJECT],
+        'grid-project' => ['role' => self::ROLE_LIST, 'kinds' => [self::KIND_POST], 'cards' => 'project', 'set' => null],
         'grid-job' => ['role' => self::ROLE_LIST, 'kinds' => [self::KIND_POST], 'cards' => 'news', 'set' => self::SET_JOB],
-        'grid-capability' => ['role' => self::ROLE_LIST, 'kinds' => [self::KIND_POST], 'cards' => 'project', 'set' => self::SET_CAPABILITY],
+        'grid-capability' => ['role' => self::ROLE_LIST, 'kinds' => [self::KIND_POST], 'cards' => 'project', 'set' => null],
         'grid-product' => ['role' => self::ROLE_LIST, 'kinds' => [self::KIND_POST, self::KIND_PRODUCT], 'cards' => 'product', 'set' => null],
         'post' => ['role' => self::ROLE_POST, 'kinds' => [self::KIND_POST], 'cards' => null, 'set' => null],
-        'project' => ['role' => self::ROLE_POST, 'kinds' => [self::KIND_POST], 'cards' => null, 'set' => self::SET_PROJECT],
-        'capability' => ['role' => self::ROLE_POST, 'kinds' => [self::KIND_POST], 'cards' => null, 'set' => self::SET_CAPABILITY],
+        'project' => ['role' => self::ROLE_POST, 'kinds' => [self::KIND_POST], 'cards' => null, 'set' => null],
+        'capability' => ['role' => self::ROLE_POST, 'kinds' => [self::KIND_POST], 'cards' => null, 'set' => null],
         'job' => ['role' => self::ROLE_POST, 'kinds' => [self::KIND_POST], 'cards' => null, 'set' => self::SET_JOB],
         self::VARIANT_HERO => ['role' => self::ROLE_POST_VARIANT, 'kinds' => [self::KIND_POST], 'cards' => null, 'set' => null],
         self::VARIANT_WIDE => ['role' => self::ROLE_POST_VARIANT, 'kinds' => [self::KIND_POST], 'cards' => null, 'set' => null],
@@ -147,50 +140,6 @@ final class TemplateCatalog
     public static function cards(?string $name): ?string
     {
         return $name === null ? null : (self::ENTRIES[$name]['cards'] ?? null);
-    }
-
-    /** The look set a layout belongs to (job, project, capability), null for the plain ones. */
-    public static function setOf(?string $name): ?string
-    {
-        return $name === null ? null : (self::ENTRIES[$name]['set'] ?? null);
-    }
-
-    /**
-     * The list layouts of a look set of their own other than $set: a category below a list that
-     * stores one of them heads a group with its own look (jobs under news), whose posts that list
-     * and its posts' "recent" and "related" leave out. Plain layouts never head such a group.
-     *
-     * @return list<string>
-     */
-    public static function listsOutside(?string $set): array
-    {
-        $names = [];
-        foreach (self::ENTRIES as $name => $entry) {
-            if ($entry['role'] === self::ROLE_LIST && $entry['set'] !== null && $entry['set'] !== $set) {
-                $names[] = $name;
-            }
-        }
-
-        return $names;
-    }
-
-    /**
-     * SQL naming the look set of the list layout a column stores (null for a plain one, none, or
-     * "follow the parent"). The names are this class's own constants, so they go in as literals.
-     *
-     * @param  literal-string  $column
-     * @return literal-string
-     */
-    public static function listSetSql(string $column): string
-    {
-        $cases = [];
-        foreach (self::ENTRIES as $name => $entry) {
-            if ($entry['role'] === self::ROLE_LIST && $entry['set'] !== null) {
-                $cases[] = "when '{$name}' then '{$entry['set']}'";
-            }
-        }
-
-        return "(case {$column} ".implode(' ', $cases).' end)';
     }
 
     /** Whether a layout belongs to the job set (its posts carry an application deadline). */

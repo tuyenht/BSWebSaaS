@@ -167,6 +167,41 @@ it('fails closed: no rows without a site, none of another site\'s, and none writ
     expect(DB::connection('pgsql_admin')->table('content_section_categories')->count())->toBe(2);
 });
 
+it('refuses in the database a row naming another site\'s category or section, even written past row-level security', function (): void {
+    $tenancy = app(Tenancy::class);
+    [$sectionA, $categoryA] = $tenancy->enter(1, function (): array {
+        $category = cscatCategory();
+
+        return [cscatSection('posts', $category->id), $category];
+    });
+    [$sectionB, $categoryB] = $tenancy->enter(2, function (): array {
+        $category = cscatCategory();
+
+        return [cscatSection('posts', $category->id), $category];
+    });
+    $admin = DB::connection('pgsql_admin');
+    $before = $admin->table('content_section_categories')->count();
+
+    // the privileged role is not held by row-level security: only the same-site keys stop these
+    expect(fn () => $admin->transaction(fn () => $admin->table('content_section_categories')->insert([
+        'site_id' => 1, 'content_section_id' => $sectionA->id, 'taxonomy_id' => $categoryB->id,
+    ])))->toThrow(QueryException::class, 'content_section_categories_taxonomy_fk');
+    expect(fn () => $admin->transaction(fn () => $admin->table('content_section_categories')->insert([
+        'site_id' => 1, 'content_section_id' => $sectionB->id, 'taxonomy_id' => cscatOwnCategory($tenancy, 1),
+    ])))->toThrow(QueryException::class, 'content_section_categories_section_fk');
+    expect(fn () => $admin->transaction(fn () => $admin->table('content_section_categories')
+        ->where('content_section_id', $sectionA->id)->update(['taxonomy_id' => $categoryB->id])))
+        ->toThrow(QueryException::class, 'content_section_categories_taxonomy_fk');
+
+    expect($admin->table('content_section_categories')->count())->toBe($before)
+        ->and($admin->table('content_section_categories')->where('taxonomy_id', $categoryA->id)->value('site_id'))->toBe(1);
+});
+
+function cscatOwnCategory(Tenancy $tenancy, int $siteId): int
+{
+    return $tenancy->enter($siteId, fn (): int => cscatCategory()->id);
+}
+
 it('has RLS forced and a site policy on the table', function (): void {
     $row = DB::connection('pgsql_admin')->selectOne("select relrowsecurity and relforcerowsecurity as forced from pg_class where relname = 'content_section_categories'");
     $policies = DB::connection('pgsql_admin')->select("select polname from pg_policy where polrelid = 'content_section_categories'::regclass");
