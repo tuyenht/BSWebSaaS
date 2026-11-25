@@ -353,7 +353,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     file_put_contents($dir.'/leads-form-off.html', $html);
     app(Tenancy::class)->enter(1, fn () => $contact->update(['status' => 'active']));
 
-    // Thư viện khối tái dùng: three blocks in three regions, the block editor of the footer, and «Xóa» asked on it.
+    // Khối dùng chung: three blocks in three regions, the block editor of the footer, and «Xóa» asked on it.
     $footerBlock = app(Tenancy::class)->enter(1, function (): ContentBlock {
         ContentBlock::query()->create(['key' => 'cta-khuyen-mai', 'name' => 'CTA khuyến mãi tháng 12', 'region' => 'inline']);
         ContentBlock::query()->create(['key' => 'bang-lon-san-pham', 'name' => 'Bảng lớn sản phẩm', 'region' => 'menu']);

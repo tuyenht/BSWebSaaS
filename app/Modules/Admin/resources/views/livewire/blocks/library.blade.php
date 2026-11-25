@@ -1,4 +1,4 @@
-{{-- «Thư viện khối tái dùng» (board 28): the explainer, the «Quay lại …» band when the member came from
+{{-- «Khối dùng chung» (board 28): the explainer, the «Quay lại …» band when the member came from
      another screen, the status groups and region chips (from 900px; below that both live in the Filter
      sheet, with a summary line under the toolbar), the search, then one row per block. Region icons
      and tints come from the region (the board's per-block colours are mock data). --}}
@@ -225,7 +225,7 @@
         <span>{{ __('blocks.footer_note') }}</span>
     </p>
 
-    {{-- «Tạo / Sửa khối tái dùng»: the name and the region; the content is made in the block editor --}}
+    {{-- «Tạo / Sửa khối dùng chung»: the name and the region; the content is made in the block editor --}}
     <x-bs-admin::modal model="formOpen" :title="$editing === null ? __('blocks.form_title_new') : __('blocks.form_title_edit')" :close-label="__('blocks.close')">
         <form id="block-form" wire:submit="saveBlock" class="flex flex-col gap-4" novalidate>
             <x-bs-admin::input :label="__('blocks.f_name')" wire:model="name" id="block-name" maxlength="{{ ContentBlock::NAME_MAX }}"
@@ -301,7 +301,7 @@
         </x-slot:footer>
     </x-bs-admin::modal>
 
-    {{-- «Xóa khối tái dùng?»: no Trash, so the question says what uses the block --}}
+    {{-- «Xóa khối dùng chung?»: no Trash, so the question says what uses the block --}}
     @php
         $del = $deleting;
         $delPlaces = $del['places'] ?? 0;
