@@ -67,6 +67,15 @@ function beUrl(Taxonomy $category, string $slot = 'after_list', string $query = 
 }
 
 it('opens the band in the builder for whoever may change the category, and for no one else', function (): void {
+    // made before anyone signs in: the actions check the signed-in member
+    $foreign = beIn(2, fn (): Taxonomy => app(CreateTaxonomy::class)->handle('post_cat', null, new TaxonomyData(names: ['vi' => 'Của B'])));
+    $member = beUser(['taxonomies.manage', 'entries.view']);
+    beIn(1, function () use ($member): void {
+        $other = app(CreateTaxonomy::class)->handle('post_cat', $this->root, new TaxonomyData(names: ['vi' => 'Khác']));
+        MemberCategoryScope::query()->create(['user_id' => $member->id, 'taxonomy_id' => $other->id]);
+        app(CategoryScopes::class)->forget();
+    });
+
     $this->actingAs($this->editor)->get(beUrl($this->jobs))->assertOk()
         ->assertSeeText(__('categories.band_editor_band', ['band' => __('categories.ui_band_bot'), 'name' => 'Tuyển dụng']))
         ->assertSeeText(__('blocks.editor_save_back'))
@@ -74,19 +83,12 @@ it('opens the band in the builder for whoever may change the category, and for n
 
     // no slot of the drawer, no category of this site, or a page that is not a category
     $this->get(beUrl($this->jobs, 'post_aside'))->assertNotFound();
-    $foreign = beIn(2, fn (): Taxonomy => app(CreateTaxonomy::class)->handle('post_cat', null, new TaxonomyData(names: ['vi' => 'Của B'])));
     $this->get(beUrl($foreign))->assertNotFound();
 
     $writer = beUser(['entries.view', 'entries.create']);
     $this->actingAs($writer)->get(beUrl($this->jobs))->assertForbidden();
 
     // a member limited to other categories, or one who cannot see the section
-    $member = beUser(['taxonomies.manage', 'entries.view']);
-    beIn(1, function () use ($member): void {
-        $other = app(CreateTaxonomy::class)->handle('post_cat', $this->root, new TaxonomyData(names: ['vi' => 'Khác']));
-        MemberCategoryScope::query()->create(['user_id' => $member->id, 'taxonomy_id' => $other->id]);
-        app(CategoryScopes::class)->forget();
-    });
     $this->actingAs($member)->get(beUrl($this->jobs))->assertForbidden();
     $blind = beUser(['taxonomies.manage']);
     $this->actingAs($blind)->get(beUrl($this->jobs))->assertForbidden();

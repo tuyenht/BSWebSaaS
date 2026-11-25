@@ -934,7 +934,7 @@ it('draws the drawer\'s bands as the board does and hands the screen the website
         ->assertSee(__('categories.ui_band_opt_def'))->assertSee(__('categories.ui_band_opt_own'))->assertSee(__('categories.ui_band_opt_none_s'))
         ->getContent();
 
-    expect($html)->toContain('id="cm-bands"', 'data-cm-band="before_list"', 'data-cm-band="after_list"', 'x-model="pan.d.bands[&#039;after_list&#039;]"')
+    expect($html)->toContain('id="cm-bands"', 'data-cm-band="before_list"', 'data-cm-band="after_list"', 'x-model="pan.d.bands[\'after_list\']"')
         ->and(html_entity_decode($html))->toContain('"open":"'.$jobs->ulid.'"', '"flash":"Đã lưu ở"', '"bandSite":{"before_list":[],"after_list":{"vi":[{"name":"Chưa thấy vị trí phù hợp?"')
         ->toContain(str_replace('/', '\/', '/admin/taxonomies/__key__/bands/__slot__'));
 
