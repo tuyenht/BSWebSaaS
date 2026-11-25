@@ -15,8 +15,7 @@ use Tests\Fixtures\StorefrontCards;
  * A post's tags on the storefront: chips under the post, each linking to the tag's page at
  * /the/{slug}; the tag page lists the posts published in its language that carry the tag, newest
  * first, paged like every list; it is `noindex,follow` and left out of the sitemap while it holds
- * fewer than two such posts. A tag no post carries any more keeps a noindex page saying so, with a
- * button to the news list. A save in one language changes only the tags named in it.
+ * fewer than two such posts. A tag no live post carries (a draft's, or taken off its last post) answers 404. A save in one language changes only the tags named in it.
  */
 
 const POST_TAGS_HOST = 'http://mau.platform.test';
@@ -158,33 +157,16 @@ it('has no tag page while no live post carries the tag, and a noindex one once a
     $this->get(POST_TAGS_HOST.'/the/ten-la')->assertNotFound();
 });
 
-it('keeps a page saying so, with a button to the news list, for a tag taken off its last post', function (): void {
+it('answers 404 for a tag taken off its last post, on every page', function (): void {
     $siteId = StorefrontCards::site();
-    $post = app(Tenancy::class)->enter($siteId, function (): Entry {
-        SiteProfile::query()->updateOrCreate([], ['brand_name' => 'Cơ khí Mẫu']);
-
-        return StorefrontCards::post(StorefrontCards::news(), 'Bài', 'bai');
-    });
+    $post = app(Tenancy::class)->enter($siteId, fn (): Entry => StorefrontCards::post(StorefrontCards::news(), 'Bài', 'bai'));
     tagPost($siteId, $post, ['CNC']);
+    $this->get(POST_TAGS_HOST.'/the/cnc')->assertOk();
+
     tagPost($siteId, $post, []);
 
-    $page = $this->get(POST_TAGS_HOST.'/the/cnc')->assertOk()->getContent();
-    expect($page)->toContain('<h1 class="page-band__title">'.e(__('storefront.tag_title', ['name' => 'CNC'])).'</h1>')
-        ->toContain('<p class="page-band__subtitle">'.e(__('storefront.tag_intro', ['site' => 'Cơ khí Mẫu'])).'</p>')
-        ->toContain('<p class="sf-empty-box__title">'.e(__('storefront.tag_empty')).'</p>')
-        ->toContain('<p class="sf-empty-box__text">'.e(__('storefront.tag_empty_hint', ['site' => 'Cơ khí Mẫu'])).'</p>')
-        ->toContain('<a class="sf-empty-box__button" href="/tin-tuc">'.e(__('storefront.all_news')).'</a>')
-        ->toContain('<meta name="robots" content="noindex,follow">')
-        ->not->toContain('class="pagination"');
-    // past the first page there is nothing to show
+    $this->get(POST_TAGS_HOST.'/the/cnc')->assertNotFound()->assertDontSee('CNC');
     $this->get(POST_TAGS_HOST.'/the/cnc?page=2')->assertNotFound();
-
-    // a site whose news list has no address in this language: the sentence alone, no button
-    app(Tenancy::class)->enter($siteId, fn () => SiteRoute::query()->where('locale', 'vi')->where('path', '/tin-tuc')->delete());
-    $page = $this->get(POST_TAGS_HOST.'/the/cnc')->assertOk()->getContent();
-    expect($page)->toContain(e(__('storefront.tag_empty')))
-        ->not->toContain('sf-empty-box__button')
-        ->not->toContain(e(__('storefront.tag_empty_hint', ['site' => 'Cơ khí Mẫu'])));
 });
 
 it('answers 404 past a tag’s last page', function (): void {
