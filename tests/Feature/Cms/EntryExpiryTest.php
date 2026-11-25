@@ -17,8 +17,10 @@ use App\Modules\Cms\Validation\DisplayDateNotAfterToday;
 use App\Modules\Cms\Validation\ExpiryTime;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Tenancy\Models\ContentSectionCategory;
 use App\Modules\Workflow\Actions\InstantiateWorkflow;
 use App\Modules\Workflow\Models\WorkflowLog;
 use App\Modules\Workflow\Models\WorkflowState;
@@ -66,6 +68,21 @@ function expSite(?CarbonImmutable $expiresAt): array
     });
 
     return [$siteId, $entry];
+}
+
+/** The key of the content section that covers the news category, made when the site has none (a category belongs to one section only). */
+function expNewsSection(): string
+{
+    $news = StorefrontCards::news()->id;
+    $key = ContentSection::query()
+        ->whereIn('id', ContentSectionCategory::query()->where('taxonomy_id', $news)->select('content_section_id'))
+        ->value('key');
+    if ($key !== null) {
+        return Cast::string($key);
+    }
+    ContentSection::query()->create(['key' => 'tin-tuc', 'label' => 'Tin tức', 'entry_type' => 'post', 'taxonomy_id' => $news]);
+
+    return 'tin-tuc';
 }
 
 /** A member of $siteId who may change any entry's status. */
@@ -193,8 +210,7 @@ it('holds the Home page at the sweep and refuses an end time on it', function ()
 it('takes a governed post off through the flow\'s own move, logged with no person', function (): void {
     [$siteId, $entry] = expSite(CarbonImmutable::now()->addMinute());
     app(Tenancy::class)->enter($siteId, function (): void {
-        ContentSection::query()->firstOrCreate(['key' => 'tin-tuc'], ['label' => 'Tin tức', 'entry_type' => 'post', 'taxonomy_id' => StorefrontCards::news()->id]);
-        app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: true);
+        app(InstantiateWorkflow::class)->handle('admin_approval', expNewsSection(), active: true);
     });
     $this->travel(2)->minutes();
 
@@ -213,8 +229,7 @@ it('takes a governed post off through the flow\'s own move, logged with no perso
 it('forces a governed post off when its flow has no move off the website, and logs it as the system\'s', function (): void {
     [$siteId, $entry] = expSite(CarbonImmutable::now()->addMinute());
     app(Tenancy::class)->enter($siteId, function (): void {
-        ContentSection::query()->firstOrCreate(['key' => 'tin-tuc'], ['label' => 'Tin tức', 'entry_type' => 'post', 'taxonomy_id' => StorefrontCards::news()->id]);
-        app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: true);
+        app(InstantiateWorkflow::class)->handle('admin_approval', expNewsSection(), active: true);
         WorkflowTransition::query()->where('from_state', 'published')->delete();
     });
     $this->travel(2)->minutes();
@@ -252,8 +267,7 @@ it('refuses an approver\'s publish move past the end time under a workflow', fun
     [$siteId, $entry] = expSite(CarbonImmutable::now()->subMinute()->addSecond());
     $approver = expPublisher($siteId, ['entries.view', 'entries.edit.any', 'entries.review', 'entries.approve']);
     app(Tenancy::class)->enter($siteId, function () use ($entry): void {
-        ContentSection::query()->firstOrCreate(['key' => 'tin-tuc'], ['label' => 'Tin tức', 'entry_type' => 'post', 'taxonomy_id' => StorefrontCards::news()->id]);
-        app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: true);
+        app(InstantiateWorkflow::class)->handle('admin_approval', expNewsSection(), active: true);
         $entry->forceFill(['status' => 'pending', 'workflow_state' => 'pending'])->save();
     });
     $this->travel(1)->minutes();
@@ -389,8 +403,7 @@ it('reads an end time on the site\'s clock and names what is wrong with it', fun
 it('reads the stage a governed post is withdrawn to as a member\'s move does: a flow with no end of the line leaves it a draft', function (): void {
     [$siteId, $entry] = expSite(CarbonImmutable::now()->addMinute());
     app(Tenancy::class)->enter($siteId, function (): void {
-        ContentSection::query()->firstOrCreate(['key' => 'tin-tuc'], ['label' => 'Tin tức', 'entry_type' => 'post', 'taxonomy_id' => StorefrontCards::news()->id]);
-        app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: true);
+        app(InstantiateWorkflow::class)->handle('admin_approval', expNewsSection(), active: true);
         // no move off the website and no end of the line: the engine falls back to the flow's start
         WorkflowTransition::query()->where('from_state', 'published')->delete();
         WorkflowState::query()->update(['is_terminal' => false]);
@@ -429,8 +442,7 @@ it('never puts an approved-for-later post live past its end time, nor holds it a
     [$siteId, $entry] = expSite(null);
     $member = expPublisher($siteId);
     app(Tenancy::class)->enter($siteId, function () use ($entry, $member): void {
-        ContentSection::query()->firstOrCreate(['key' => 'tin-tuc'], ['label' => 'Tin tức', 'entry_type' => 'post', 'taxonomy_id' => StorefrontCards::news()->id]);
-        app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: true);
+        app(InstantiateWorkflow::class)->handle('admin_approval', expNewsSection(), active: true);
         $entry->forceFill(['status' => 'scheduled', 'scheduled_by' => $member->id, 'workflow_state' => 'pending', 'published_at' => now()->addMinutes(10), 'expires_at' => now()->addMinutes(30)])->save();
     });
     $this->travel(1)->hours();
@@ -457,8 +469,7 @@ it('judges the shown day only when this save changes it', function (): void {
 it('reads a stage in the middle of the flow as waiting for review when the flow\'s move off the website leads there', function (): void {
     [$siteId, $entry] = expSite(CarbonImmutable::now()->addMinute());
     app(Tenancy::class)->enter($siteId, function (): void {
-        ContentSection::query()->firstOrCreate(['key' => 'tin-tuc'], ['label' => 'Tin tức', 'entry_type' => 'post', 'taxonomy_id' => StorefrontCards::news()->id]);
-        app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: true);
+        app(InstantiateWorkflow::class)->handle('admin_approval', expNewsSection(), active: true);
         // the one move off the website goes back to review
         $moves = WorkflowTransition::query()->where('from_state', 'published')->orderBy('id')->get();
         $moves->skip(1)->each->delete();
