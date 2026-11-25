@@ -285,13 +285,19 @@ final class Applier
         }
         // The other categories it covers beside its first one (the saved hook keeps that one). Only
         // added: the plan refuses a pack that would take one off. A category the load's removed
-        // section held is free by now: removals are applied first.
+        // section held is free by now: removals are applied first. One the section already covers is
+        // left as it is (a rerun); one another section took meanwhile stops the load, never in silence.
         foreach (Cast::strings($desired['more_categories'] ?? []) as $more) {
+            $categoryId = $this->id($more);
             ContentSectionCategory::query()->insertOrIgnore([
                 'site_id' => Cast::int($section->site_id),
                 'content_section_id' => $section->id,
-                'taxonomy_id' => $this->id($more),
+                'taxonomy_id' => $categoryId,
             ]);
+            $owner = ContentSectionCategory::query()->where('taxonomy_id', $categoryId)->value('content_section_id');
+            if ($owner === null || Cast::int($owner) !== $section->id) {
+                throw new PackRejected("Refused: plan changed, run the dry run again ({$more} was given to another section while the load ran; nothing was changed).");
+            }
         }
         $this->ids[$planned->item->key] = $section->id;
         $this->sections->flush();

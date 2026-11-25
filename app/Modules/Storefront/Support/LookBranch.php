@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Storefront\Support;
 
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Theme\Rendering\TemplateCatalog;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -17,7 +18,7 @@ use Illuminate\Database\Eloquent\Builder;
  * still show the whole tree. (A post's "recent" and "related" read its own category only.)
  *
  * One subquery (no read of its own) over the ltree path, which holds the ids from the root down,
- * the category's own last; the site's row-level security and the model's site scope bound it.
+ * the category's own last; every read of taxonomies in it names the site, beside row-level security.
  */
 final class LookBranch
 {
@@ -38,12 +39,16 @@ final class LookBranch
      */
     private static function under(string $root, array $bindings, ?string $set): Builder
     {
-        $path = "(select root.path from taxonomies root where root.id = {$root})";
+        // Every read of the table names the site, beside its row-level security (the path probe can
+        // then use a site-led index).
+        $site = app(CurrentSite::class)->id();
+        $path = "(select root.path from taxonomies root where root.id = {$root} and root.site_id = ?)";
+        $pathBindings = [...$bindings, $site];
         $ids = Taxonomy::query()
             ->select('taxonomies.id')
             ->where(fn (Builder $ids) => $ids
                 ->whereRaw("taxonomies.id = {$root}", $bindings)
-                ->orWhereRaw("taxonomies.path <@ {$path}", $bindings));
+                ->orWhereRaw("taxonomies.path <@ {$path}", $pathBindings));
         $outside = TemplateCatalog::listsOutside($set);
         if ($outside === []) {
             return $ids;
@@ -56,10 +61,10 @@ final class LookBranch
         $rootSet = TemplateCatalog::listSetSql('root.list_template');
 
         return $ids->whereRaw(
-            "not exists (select 1 from taxonomies other where other.list_template in ({$marks}) and other.id <> {$root} and other.path <@ {$path}"
-                ." and {$otherSet} is distinct from (select {$rootSet} from taxonomies root where root.id = {$root})"
+            "not exists (select 1 from taxonomies other where other.site_id = ? and other.list_template in ({$marks}) and other.id <> {$root} and other.path <@ {$path}"
+                ." and {$otherSet} is distinct from (select {$rootSet} from taxonomies root where root.id = {$root} and root.site_id = ?)"
                 .' and taxonomies.path <@ other.path)',
-            [...$outside, ...$bindings, ...$bindings, ...$bindings],
+            [$site, ...$outside, ...$bindings, ...$pathBindings, ...$bindings, $site],
         );
     }
 }

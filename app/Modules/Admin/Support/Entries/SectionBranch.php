@@ -21,21 +21,6 @@ namespace App\Modules\Admin\Support\Entries;
 final class SectionBranch
 {
     /**
-     * A recursive CTE `branch (section_root, id)` from several categories at once (each one the root
-     * of its own walk); rows with `looped` set closed a parent loop and are not members.
-     *
-     * @param  non-empty-list<int>  $rootIds
-     * @return array{0: literal-string, 1: list<int>}
-     */
-    public static function with(int $siteId, array $rootIds): array
-    {
-        /** @var literal-string $marks placeholders only; the ids go in the bindings */
-        $marks = implode(', ', array_fill(0, count($rootIds), '?'));
-
-        return self::walk('section_root', "SELECT t.id, t.id FROM taxonomies AS t WHERE t.site_id = ? AND t.id IN ({$marks})", [$siteId, ...$rootIds], $siteId);
-    }
-
-    /**
      * A recursive CTE `branch (section_id, id)` for several sections at once: each section's covered
      * categories and what lies below them; rows with `looped` set are not members.
      *

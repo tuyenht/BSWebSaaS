@@ -8,6 +8,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Support\DisplayDate;
 use App\Modules\Cms\Support\JobFacts;
+use App\Modules\Cms\Taxonomy\CategoryTemplates;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Contracts\Component;
@@ -17,6 +18,7 @@ use App\Modules\Theme\Components\ListDisplay;
 use App\Modules\Theme\Components\SectionProps;
 use App\Modules\Theme\Rendering\TemplateCatalog;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\JoinClause;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -45,7 +47,7 @@ final readonly class EntryGridComponent implements Component
     /** How many sub-categories the tab read looks at. */
     private const int TAB_CHILDREN_READ = 12;
 
-    public function __construct(private MediaUrlResolver $media) {}
+    public function __construct(private MediaUrlResolver $media, private CategoryTemplates $categoryTemplates) {}
 
     public function view(): string
     {
@@ -171,20 +173,33 @@ final readonly class EntryGridComponent implements Component
      * The named sub-categories of a category, in their own order. A row of tabs or filter buttons is a
      * handful of names; the read is bounded even when a category has many children. A sub-category
      * that stores a list layout of a look set of its own, other than the category's (jobs under the
-     * news), gets no tab: its posts keep to their own list, as on the category's page.
+     * news), gets no tab: its posts keep to their own list, as on the category's page. The category's
+     * set is read as its page reads it (LookBranch): the layout it really uses ("follow the parent"
+     * resolved) and the one it stores both keep a sub-category of their set in.
      *
      * @return Collection<int, TaxonomyTranslation>
      */
     private function children(int $taxonomyId, string $locale): Collection
     {
+        $category = Taxonomy::query()->select(['id', 'site_id', 'parent_id', 'vocabulary', 'list_template'])->find($taxonomyId);
+        if ($category === null) {
+            return new Collection;
+        }
+        $stored = $category->list_template;
+        $sets = array_values(array_unique(array_filter(
+            [TemplateCatalog::setOf(is_string($stored) ? $stored : null), TemplateCatalog::setOf($this->categoryTemplates->list($category))],
+            static fn (?string $set): bool => $set !== null,
+        )));
         $childSet = TemplateCatalog::listSetSql('taxonomies.list_template');
-        $parentSet = TemplateCatalog::listSetSql('parent.list_template');
+        /** @var literal-string $marks placeholders only; the set names go in the bindings */
+        $marks = implode(', ', array_fill(0, count($sets), '?'));
 
         return TaxonomyTranslation::query()
-            ->join('taxonomies', 'taxonomies.id', '=', 'taxonomy_translations.taxonomy_id')
-            ->join('taxonomies as parent', 'parent.id', '=', 'taxonomies.parent_id')
+            ->join('taxonomies', fn (JoinClause $join) => $join->on('taxonomies.id', '=', 'taxonomy_translations.taxonomy_id')->on('taxonomies.site_id', '=', 'taxonomy_translations.site_id'))
             ->where('taxonomies.parent_id', $taxonomyId)
-            ->whereRaw("({$childSet} is null or {$childSet} is not distinct from {$parentSet})")
+            ->where(fn (Builder $kept) => $sets === []
+                ? $kept->whereRaw("{$childSet} is null")
+                : $kept->whereRaw("{$childSet} is null")->orWhereRaw("{$childSet} in ({$marks})", $sets))
             ->where('taxonomy_translations.locale', $locale)
             ->orderBy('taxonomies.position')
             ->orderBy('taxonomies.id')

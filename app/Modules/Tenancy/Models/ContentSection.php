@@ -17,7 +17,8 @@ use Illuminate\Support\Facades\Lang;
  * The categories a post section covers live in content_section_categories (several top-level ones
  * may sit side by side); `taxonomy_id` stays as the first of them (expand-contract). Every save that
  * sets or changes `taxonomy_id` keeps that category among the section's own (booted()), so a writer
- * of the column alone (provisioning, seeders) stays right.
+ * of the column alone (provisioning, seeders) stays right; a category another section covers is
+ * refused with a DomainException, never dropped in silence.
  *
  * @property int $site_id
  * @property string $key
@@ -52,6 +53,18 @@ class ContentSection extends Model
     #[\Override]
     protected static function booted(): void
     {
+        // A category covered by another section is refused before the row is written: the two tables
+        // never disagree on a section's first category (the readers would drop the section, the nav not).
+        static::saving(static function (ContentSection $section): void {
+            if (! $section->isDirty('taxonomy_id') || $section->taxonomy_id === null) {
+                return;
+            }
+            $owner = ContentSectionCategory::query()->where('taxonomy_id', Cast::int($section->taxonomy_id))->value('content_section_id');
+            if ($owner !== null && (! $section->exists || Cast::int($owner) !== $section->id)) {
+                throw new \DomainException("The category {$section->taxonomy_id} already belongs to another section; section '{$section->key}' cannot take it as its first category.");
+            }
+        });
+
         static::saved(static function (ContentSection $section): void {
             // 'saved' fires before the model takes this save as its original: dirty = what this save wrote
             // (every column on an insert, whose original is empty), the original = the row before it.
@@ -63,9 +76,9 @@ class ContentSection extends Model
             if ($before !== null && Cast::int($before) !== $now) {
                 ContentSectionCategory::query()->where('content_section_id', $section->id)->where('taxonomy_id', Cast::int($before))->delete();
             }
-            if ($now !== null) {
-                // A category another section already covers stays with that one (the first wins, as before).
-                ContentSectionCategory::query()->insertOrIgnore([
+            // saving() refused a category of another section, so the only row there can be is this one's own.
+            if ($now !== null && ! ContentSectionCategory::query()->where('content_section_id', $section->id)->where('taxonomy_id', $now)->exists()) {
+                ContentSectionCategory::query()->create([
                     'site_id' => Cast::int($section->site_id), 'content_section_id' => $section->id, 'taxonomy_id' => $now,
                 ]);
             }

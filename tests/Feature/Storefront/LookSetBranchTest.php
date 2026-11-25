@@ -65,6 +65,25 @@ it('gives the job category no tab in the news block', function (): void {
     expect(array_column($data['tabs'] ?? [], 'name'))->toBe(['Cập nhật', 'Sự kiện']);
 });
 
+it('reads a category that follows its parent\'s layout as its page does, in the block\'s tabs too', function (): void {
+    // Dự án (projects) › Nhà máy (follows the parent: projects) › Ô tô (projects), Điện tử (no layout).
+    ContentPacks::edit($this->folder, 'taxonomies.json', fn (array $data): array => ['items' => [...$data['items'],
+        ['key' => 'tax:post_cat/du-an', 'name' => ['vi' => 'Dự án'], 'list_template' => 'grid-project', 'detail_template' => 'project'],
+        ['key' => 'tax:post_cat/du-an/nha-may', 'parent' => 'tax:post_cat/du-an', 'name' => ['vi' => 'Nhà máy'], 'list_template' => '@parent', 'position' => 1],
+        ['key' => 'tax:post_cat/du-an/nha-may/o-to', 'parent' => 'tax:post_cat/du-an/nha-may', 'name' => ['vi' => 'Ô tô'], 'list_template' => 'grid-project', 'position' => 1],
+        ['key' => 'tax:post_cat/du-an/nha-may/dien-tu', 'parent' => 'tax:post_cat/du-an/nha-may', 'name' => ['vi' => 'Điện tử'], 'position' => 2],
+    ]] + $data);
+    ContentPacks::item($this->folder, 'posts.json', 'post:hoi-cho-may', fn (array $item): array => ['categories' => ['tax:post_cat/du-an/nha-may/o-to'], 'title' => ['vi' => 'Đồ gá dây chuyền ô tô']] + $item);
+    ContentPacks::item($this->folder, 'posts.json', 'post:ke-toan-kho', fn (array $item): array => ['categories' => ['tax:post_cat/du-an/nha-may/dien-tu'], 'title' => ['vi' => 'Dây chuyền bo mạch']] + $item);
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output);
+
+    // the page of «Nhà máy» lists the car projects, and its block gives them a tab
+    $this->get('http://'.ContentPacks::HOST.'/nha-may')->assertOk()->assertSee('Đồ gá dây chuyền ô tô')->assertSee('Dây chuyền bo mạch');
+    $data = ContentPacks::in($this->siteId, fn (): array => app(EntryGridComponent::class)->data(['taxonomy_slug' => 'nha-may', 'variant' => 'project-cards', 'tabs' => 'auto', 'limit' => 6]));
+    expect(array_column($data['tabs'] ?? [], 'name'))->toBe(['Ô tô', 'Điện tử']);
+});
+
 it('keeps a sub-category of the list\'s own look in it', function (): void {
     // Dự án (projects) › Ô tô (projects too): the projects list shows the car projects.
     ContentPacks::edit($this->folder, 'taxonomies.json', fn (array $data): array => ['items' => [...$data['items'],

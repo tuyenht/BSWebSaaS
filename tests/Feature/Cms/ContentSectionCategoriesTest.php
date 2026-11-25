@@ -119,6 +119,28 @@ it('lets a category belong to one section at most', function (): void {
     });
 });
 
+it('refuses a section whose first category another section covers, writing nothing, and lets one take its own', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $news = cscatCategory();
+        $jobs = cscatCategory();
+        $posts = cscatSection('posts', $news->id);
+        cscatCover($posts, $jobs->id);
+
+        // a new section on «posts»'s second category, and one moved onto its first: both refused
+        expect(fn () => cscatSection('careers', $jobs->id, 2))->toThrow(DomainException::class, 'already belongs to another section');
+        expect(ContentSection::query()->where('key', 'careers')->exists())->toBeFalse();
+        $careers = cscatSection('careers', cscatCategory()->id, 2);
+        expect(fn () => $careers->update(['taxonomy_id' => $news->id]))->toThrow(DomainException::class, 'already belongs to another section');
+        expect($careers->fresh()?->taxonomy_id)->not->toBe($news->id)
+            ->and(ContentSectionCategory::query()->where('taxonomy_id', $news->id)->value('content_section_id'))->toBe($posts->id);
+
+        // a section making one of its own categories its first keeps one row for it
+        $posts->update(['taxonomy_id' => $jobs->id]);
+        expect($posts->categoryIds())->toBe([$jobs->id])
+            ->and(ContentSectionCategory::query()->where('content_section_id', $posts->id)->count())->toBe(1);
+    });
+});
+
 it('fails closed: no rows without a site, none of another site\'s, and none written for another site', function (): void {
     $tenancy = app(Tenancy::class);
     [$section, $jobs] = $tenancy->enter(1, function (): array {
