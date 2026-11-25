@@ -6,6 +6,7 @@ namespace App\Modules\Cms\Validation;
 
 use App\Modules\Cms\Support\DisplayDate;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Context\SiteTime;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -20,8 +21,11 @@ use Illuminate\Contracts\Validation\ValidationRule;
  */
 final readonly class DisplayDateNotAfterToday implements ValidationRule
 {
-    /** @param  string  $unchanged  the day as stored; a value equal to it passes */
-    public function __construct(private string $zone, private string $unchanged = '') {}
+    /**
+     * @param  string  $unchanged  the day as stored; a value equal to it passes
+     * @param  string  $format  the website's day format (SiteTime::DATE_FORMATS), for the day the message names
+     */
+    public function __construct(private string $zone, private string $unchanged = '', private string $format = 'auto', private string $locale = 'vi') {}
 
     /** Whether $day (Y-m-d) is after today in $zone; false for an empty or unreadable day. */
     public static function isFuture(string $day, string $zone, ?CarbonImmutable $now = null): bool
@@ -36,8 +40,9 @@ final readonly class DisplayDateNotAfterToday implements ValidationRule
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
         if (is_string($value) && $value !== $this->unchanged && self::isFuture($value, $this->zone)) {
-            // the message names today on the website's clock, as the editor's board does
-            $fail(Cast::string(__('entries.ed.pd_future', ['date' => CarbonImmutable::now()->setTimezone($this->zone)->format('d/m/Y')])));
+            // the message names today on the website's clock, written as the website writes its dates
+            $today = SiteTime::formatDay(CarbonImmutable::now()->setTimezone($this->zone), $this->format, $this->locale);
+            $fail(Cast::string(__('entries.ed.pd_future', ['date' => $today])));
         }
     }
 }

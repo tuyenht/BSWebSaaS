@@ -463,6 +463,9 @@ final class Editor extends Component
     #[Locked]
     public string $scheduleLoaded = '';
 
+    /** Set while «Đăng» validates its save (this request only): the entry goes live now, whatever its schedule. */
+    private bool $goingLive = false;
+
     /**
      * «Khi lưu, bài sẽ là» (board 07, the "Đăng" card when no approval workflow governs the entry): the status
      * the next save moves the entry to, '' for the saved one. Client-set; judged when it is picked
@@ -1561,9 +1564,10 @@ final class Editor extends Component
             // nothing put on the website after a save refused in part (a new page's typed place)
             return;
         }
-        if (! $this->applyExpiry($entry)) {
-            // a cleared or moved end time comes before the publish, which refuses one already past; the publish
-            // keeps a schedule's time, so an end time not after it is refused here, with nothing put up
+        // a cleared or moved end time comes before the publish, which refuses one already past; one before the
+        // schedule of a scheduled post waits for the publish, which puts it up now (PublishEntry)
+        $expiryWaits = false;
+        if (! $this->applyExpiry($entry, $entry->status === EntryStatus::Scheduled->value, $expiryWaits)) {
             return;
         }
         if ($this->heldSave !== null) {
@@ -1576,7 +1580,13 @@ final class Editor extends Component
 
         try {
             $this->status = app(PublishEntry::class)->handle($entry, $this->locale, $this->user());
+            // live now: the end time that waited is written; a refusal is said under its field, the input kept
+            $expiryRefused = $expiryWaits && ! $this->applyExpiry($entry->refresh());
+            $typed = $this->expiresAt;
             $this->loadDates($entry);
+            if ($expiryRefused) {
+                $this->expiresAt = $typed;
+            }
             $this->autoSaved = false;
             $this->forgetChoice();
             $this->liveAddress = $this->routedAddress($entry->id);
@@ -3226,7 +3236,7 @@ final class Editor extends Component
                 if (is_string($value) && $value !== '' && ! DisplayDate::valid($value)) {
                     $fail(Cast::string(__('entries.ed.pd_invalid')));
                 }
-            }, new DisplayDateNotAfterToday(app(SiteTime::class)->zone(), $this->storedDisplayDate)];
+            }, new DisplayDateNotAfterToday(app(SiteTime::class)->zone(), $this->storedDisplayDate, app(SiteTime::class)->dateFormat(), $this->locale)];
         }
         // «Gỡ khỏi website lúc»: judged only when this save changes it (one already past on an entry taken down is normal)
         $rules['expiresAt'] = $this->expiresAt !== $this->expiresLoaded
@@ -3450,7 +3460,13 @@ final class Editor extends Component
             } else {
                 $layoutBody = $this->layoutForStorage();
             }
-            $this->validate();
+            // «Đăng» puts a scheduled entry up now: its end time is judged against now, not the old schedule
+            $this->goingLive = $action === 'publish';
+            try {
+                $this->validate();
+            } finally {
+                $this->goingLive = false;
+            }
         } catch (ValidationException $e) {
             // A link made for a save that failed must not stay behind: it would pin the old title.
             if ($filled) {
@@ -4417,25 +4433,22 @@ final class Editor extends Component
 
     /**
      * The publish time the end time must come after, as the entry will be after this save: the schedule picked
-     * in the form when it is (or will be) scheduled; none for a draft (taking a schedule back drops its time);
-     * the stored schedule for a scheduled entry put up now (PublishEntry keeps it).
+     * in the form when it is (or will be) scheduled; none for a draft (taking a schedule back drops its time)
+     * nor for a scheduled entry put up now, by «Công khai» or by «Đăng» ($goingLive): PublishEntry writes now
+     * for a schedule still to come, and the end time must come after now anyway.
      */
     private function formPublishAt(): ?CarbonImmutable
     {
-        return match (true) {
-            $this->effectiveStatus() === EntryStatus::Scheduled->value => ScheduleInput::parse($this->scheduleAt),
-            $this->effectiveStatus() === EntryStatus::Draft->value, $this->status !== EntryStatus::Scheduled->value => null,
-            default => ScheduleInput::parse($this->scheduleLoaded),
-        };
+        return ! $this->goingLive && $this->effectiveStatus() === EntryStatus::Scheduled->value ? ScheduleInput::parse($this->scheduleAt) : null;
     }
 
     /**
      * Writes a changed «Gỡ khỏi website lúc» through ChangeEntryExpiry after the save; a refusal is said
      * under the field and stops what follows. A time still to come but not after the stored schedule waits
      * for the move this save makes ($waits, the caller calling again after it) when that move frees it: a
-     * schedule moved ($mayWait), or a schedule taken back to a draft ($moveTo), which drops its time. «Công
-     * khai» keeps the stored publish time (PublishEntry), so the end time is judged against it before the
-     * publish (formPublishAt, then here): a pair still wrong after the move is refused before anything moves.
+     * schedule moved ($mayWait), a scheduled entry put up now ($mayWait: PublishEntry writes now for its
+     * schedule), or a schedule taken back to a draft ($moveTo), which drops its time. A pair still wrong
+     * after the move is refused before anything moves.
      */
     private function applyExpiry(Entry $entry, bool $mayWait = false, bool &$waits = false, ?string $moveTo = null): bool
     {
