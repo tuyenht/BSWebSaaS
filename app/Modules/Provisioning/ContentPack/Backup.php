@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Provisioning\ContentPack;
 
+use App\Modules\Admin\Support\Entries\SectionListViews;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Menu;
@@ -161,7 +162,7 @@ final readonly class Backup
             'page', 'post' => $this->entryRows((int) $id),
             'product' => $this->productRows((int) $id),
             'taxonomy' => $this->taxonomyRows((int) $id, $planned->item->key, $planner),
-            'section' => ['section' => ContentSection::query()->findOrFail($id)->attributesToArray()],
+            'section' => $this->sectionRows((int) $id, $planned->verdict === PlanItem::REMOVE),
             'menu' => $this->menuRows($id, $planned->item->anchor(), $planner->defaultLocale()),
             'form' => $this->formRows((int) $id),
             'setting' => $this->settingRows($planned->item->anchor()),
@@ -169,6 +170,22 @@ final readonly class Backup
             'redirect' => $this->redirectRows($planned->item->anchor()),
             default => [],
         } + ['default_locale' => $planner->defaultLocale()];
+    }
+
+    /**
+     * A section's row; one the load removes also keeps its members' saved views of its post list.
+     *
+     * @return array<string, mixed>
+     */
+    private function sectionRows(int $id, bool $removed): array
+    {
+        $section = ContentSection::query()->findOrFail($id);
+        $rows = ['section' => $section->attributesToArray()];
+        if ($removed) {
+            $rows['saved_list_views'] = SectionListViews::saved(Cast::int($section->site_id), $section->key);
+        }
+
+        return $rows;
     }
 
     /** @return array<string, mixed> */

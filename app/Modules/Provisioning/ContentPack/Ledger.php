@@ -11,7 +11,8 @@ use App\Modules\Tenancy\Models\SiteSetting;
  * What the loader last wrote to a site, per pack: one `site_settings` row (`content_pack`, <pack code>)
  * holding, per item key, the canonical hash of the item's managed fields as read back right after
  * the write, and the record's ulid or slug (never a bigint id); a page's line also records its
- * parent page's key at that moment (null at the top). A record whose hash still equals
+ * parent page's key at that moment (null at the top), and a content section's line whether the
+ * loader created the section (true) or took over the site's own (false). A record whose hash still equals
  * the ledger's is untouched since the last load and may be updated; one that differs was edited by
  * staff and is kept. An existing tenant table with RLS: no schema change. Callers run inside the
  * site's tenant context.
@@ -22,7 +23,7 @@ final class Ledger
 
     /**
      * @param  bool  $lock  read the row FOR NO KEY UPDATE (inside the --apply transaction), like the Planner's rows
-     * @return array{pack_version: int, loaded_at: string, items: array<string, array{hash: string, ref: string, parent?: string|null}>}|null
+     * @return array{pack_version: int, loaded_at: string, items: array<string, array{hash: string, ref: string, parent?: string|null, created?: bool}>}|null
      */
     public static function read(string $code, bool $lock = false): ?array
     {
@@ -44,6 +45,9 @@ final class Ledger
             if (array_key_exists('parent', $entry)) {
                 $line['parent'] = Cast::stringOrNull($entry['parent']);
             }
+            if (is_bool($entry['created'] ?? null)) {
+                $line['created'] = $entry['created'];
+            }
             $items[(string) $key] = $line;
         }
 
@@ -63,8 +67,8 @@ final class Ledger
     /**
      * Store the ledger; returns false (and writes nothing) when its items and version are unchanged.
      *
-     * @param  array<string, array{hash: string, ref: string, parent?: string|null}>  $items
-     * @param  array{pack_version: int, loaded_at: string, items: array<string, array{hash: string, ref: string, parent?: string|null}>}|null  $previous
+     * @param  array<string, array{hash: string, ref: string, parent?: string|null, created?: bool}>  $items
+     * @param  array{pack_version: int, loaded_at: string, items: array<string, array{hash: string, ref: string, parent?: string|null, created?: bool}>}|null  $previous
      */
     public static function write(string $code, int $version, array $items, ?array $previous): bool
     {

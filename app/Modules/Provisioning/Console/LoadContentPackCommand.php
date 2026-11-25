@@ -204,6 +204,16 @@ final class LoadContentPackCommand extends Command
                 continue;
             }
             $hash = $readBack->currentHash();
+            if ($readBack->item->removes()) {
+                // A removed section leaves the ledger with its row; one still on the site did not go as planned.
+                if ($before->verdict === PlanItem::REMOVE && $readBack->recordId !== null) {
+                    $drift[] = $key.' (still on the site)';
+                } elseif ($before->verdict !== PlanItem::REMOVE && $before->verdict !== PlanItem::UNCHANGED && isset($previous[$key])) {
+                    $items[$key] = $previous[$key];   // refused or skipped: the line stays for the next load
+                }
+
+                continue;
+            }
             if ($before->writes() || $before->verdict === PlanItem::UNCHANGED) {
                 if ($hash === null || $hash !== $before->desiredHash()) {
                     $diff = new PlanItem($readBack->item, $readBack->verdict, $readBack->current ?? [], $before->desired, null, null);
@@ -217,6 +227,18 @@ final class LoadContentPackCommand extends Command
                     $line['parent'] = ! array_key_exists('parent', $readBack->item->data) && isset($previous[$key]) && array_key_exists('parent', $previous[$key])
                         ? $previous[$key]['parent']
                         : $parents[$readBack->recordId];
+                }
+                if ($readBack->item->kind === 'section') {
+                    // Whether the loader made the section: only one it made may a later pack remove. A
+                    // line written before lines recorded it keeps counting as made (no flag).
+                    $created = match (true) {
+                        $before->verdict === PlanItem::CREATE => true,
+                        ! isset($previous[$key]) => false,
+                        default => $previous[$key]['created'] ?? null,
+                    };
+                    if ($created !== null) {
+                        $line['created'] = $created;
+                    }
                 }
                 $items[$key] = $line;
             } elseif (isset($previous[$key])) {

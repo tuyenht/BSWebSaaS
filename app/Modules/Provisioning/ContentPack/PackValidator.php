@@ -699,6 +699,16 @@ final readonly class PackValidator
                 $errors[] = "{$item->key}: was must list earlier slugs.";
             }
         }
+        // A category the pack moves under another parent names the key it had before (its place in the tree then).
+        if (array_key_exists('moved_from', $item->data)) {
+            $from = $item->data['moved_from'];
+            $fromChain = is_string($from) ? self::taxonomyChain($from) : null;
+            if ($fromChain === null || $fromChain['vocabulary'] !== $chain['vocabulary'] || array_slice($fromChain['slugs'], 0, -1) === array_slice($chain['slugs'], 0, -1)) {
+                $errors[] = "{$item->key}: moved_from must be the category's earlier key, under another parent.";
+            } elseif ($pack->item((string) $from) !== null) {
+                $errors[] = "{$item->key}: moved_from {$from} is still an item of the pack.";
+            }
+        }
         // The intro under the name (plain text per language) and the intro picture: the same checks a category edit makes.
         if (array_key_exists('description', $item->data)) {
             $this->localeMap($pack, $item->key, $item->data, 'description', false, TaxonomyRules::DESCRIPTION_MAX, $errors, true);
@@ -751,7 +761,7 @@ final readonly class PackValidator
 
     /**
      * A content section (sections.json): a post section built on one of the pack's post categories,
-     * one section per category. Its key is the section's own key (stable, in the admin's links and
+     * one section per category; or a section the pack removes (its `remove` list: the key alone). Its key is the section's own key (stable, in the admin's links and
      * the permalink settings), its label one line of text as the section stores it.
      *
      * @param  array<string, true>  $taxonomies  category keys seen so far (taxonomies come first)
@@ -767,6 +777,9 @@ final readonly class PackValidator
         }
         if (in_array($m[1], self::PLATFORM_SECTIONS, true)) {
             $errors[] = "{$item->key}: «{$m[1]}» is the platform's own section; a pack does not write it.";
+        }
+        if ($item->removes()) {
+            return;   // a removal names the section only; what may go is decided against the site (Planner)
         }
         $label = $item->data['label'] ?? null;
         if (! is_string($label) || $label === '' || trim($label) !== $label || mb_strlen($label) > self::TEXT_MAX || preg_match('/[\x00-\x1F\x7F<>]/u', $label) === 1) {

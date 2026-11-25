@@ -772,9 +772,9 @@ it('relinks every permalink preset a category write affects when its slug and pa
     ContentPacks::in($this->siteId, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'permalinks', 'key' => 'products'], ['value' => ['pattern' => 'category']]));
     ContentPacks::load();
 
-    // The pack renames the category (so the Planner carries its products along); a pack cannot give
-    // a category a new parent (its parent is the chain of its key, and it is matched under that
-    // parent), so the move is added to the Applier's plan line.
+    // The pack renames the category (so the Planner carries its products along); a category matched
+    // under its parent keeps it (a pack moves one only by naming its earlier key, moved_from), so the
+    // move is added to the Applier's plan line.
     ContentPacks::item($this->folder, 'taxonomies.json', 'tax:post_cat/san-pham', fn (array $item): array => ['key' => 'tax:post_cat/may-moc', 'was' => ['san-pham'], 'name' => ['vi' => 'Máy móc']] + $item);
     ContentPacks::edit($this->folder, 'products.json', fn (array $data): array => ['items' => array_map(
         fn (array $item): array => ['categories' => array_map(fn (string $key): string => $key === 'tax:post_cat/san-pham' ? 'tax:post_cat/may-moc' : $key, $item['categories'])] + $item,

@@ -12,6 +12,7 @@ use App\Modules\Admin\Support\Entries\ListGroup;
 use App\Modules\Admin\Support\Entries\PageMoveWords;
 use App\Modules\Admin\Support\Entries\PostRoleNote;
 use App\Modules\Admin\Support\Entries\ScheduleInput;
+use App\Modules\Admin\Support\Entries\SectionListViews;
 use App\Modules\Admin\Support\FirstHints;
 use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Admin\Support\TreeRows;
@@ -359,7 +360,7 @@ final class Index extends Component
 
         $section = $this->resolveSection();
         $this->entryType = $section instanceof ContentSection && $section->entry_type === 'post' ? 'post' : 'page';
-        $this->viewKey = $this->entryType === 'post' && $section instanceof ContentSection ? 'entries.post.'.$section->key : 'entries.page';
+        $this->viewKey = $this->entryType === 'post' && $section instanceof ContentSection ? SectionListViews::key($section->key) : 'entries.page';
         $lists = Cast::arr(Cast::arr($this->actingUser()->preferences)['lists'] ?? null);
         $view = Cast::arr($lists[$this->viewKey] ?? null);
         $cols = $this->colsHere();
