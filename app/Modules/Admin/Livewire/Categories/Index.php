@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Livewire\Categories;
 
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
+use App\Modules\Admin\Support\Categories\CategoryBands;
 use App\Modules\Admin\Support\Categories\CategoryDeletePreview;
 use App\Modules\Admin\Support\Categories\CategoryMoveTargets;
 use App\Modules\Admin\Support\Categories\CategoryScreen;
@@ -14,6 +15,7 @@ use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
 use App\Modules\Cms\Actions\Taxonomies\DeleteTaxonomy;
 use App\Modules\Cms\Actions\Taxonomies\MergeTaxonomy;
 use App\Modules\Cms\Actions\Taxonomies\MoveTaxonomy;
+use App\Modules\Cms\Actions\Taxonomies\SetCategoryLayoutBlocks;
 use App\Modules\Cms\Actions\Taxonomies\UndoTaxonomyMove;
 use App\Modules\Cms\Actions\Taxonomies\UpdateTaxonomy;
 use App\Modules\Cms\Data\TaxonomyData;
@@ -79,9 +81,22 @@ final class Index extends Component
     /** The fields "save" accepts in its data, each a string or null. */
     private const array STRINGS = ['listTemplate', 'detailTemplate', 'cover'];
 
+    /** The field "save" takes for the two bands around the list: slot → mode (CategoryBands). */
+    private const string BANDS = 'bands';
+
     /** The section the page was opened on, for its title; every method names its own section. */
     #[Locked]
     public string $section = '';
+
+    /**
+     * The category whose drawer opens with the page (`?open=`, a key), back from «Trình dựng trang»
+     * on one of its bands, with what that screen said (BandEditor::FLASH); '' for none.
+     */
+    #[Locked]
+    public string $open = '';
+
+    #[Locked]
+    public string $flash = '';
 
     /**
      * The drawer's language in view, mirrored for the shared Google preview (<x-bs-admin::seo-fields>
@@ -113,6 +128,9 @@ final class Index extends Component
     public function mount(): void
     {
         $this->section = Cast::string(request()->query('section'));
+        $open = request()->query('open');
+        $this->open = $this->isUlid($open) ? $open : '';
+        $this->flash = Cast::string(session(BandEditor::FLASH));
     }
 
     /**
@@ -134,19 +152,24 @@ final class Index extends Component
      * under the section's root when $parent is null — else the category $key. $data is the whole
      * drawer: names, slugs, descriptions, seoTitles, seoDescriptions (language → text),
      * listTemplate, detailTemplate (a layout name or null for the theme's default; left out, the
-     * category keeps its own) and cover (a media key, '' for none, null to keep). Returns the
-     * category's key and the new tree version.
+     * category keeps its own), cover (a media key, '' for none, null to keep) and bands (slot →
+     * {mode, read}: the mode picked for a band around the list, CategoryBands, and the mode the
+     * drawer read when it opened; only the bands whose choice moved are sent. A band left out, or
+     * already in that mode, keeps what it has — own blocks are only ever changed in «Trình dựng
+     * trang» — and one changed elsewhere since the drawer read it refuses the whole save as
+     * version_stale). Returns the category's key and the new tree version.
      *
      * @return array<string, mixed>
      */
     public function save(mixed $section, mixed $key, mixed $parent, mixed $data): array
     {
         $fields = $this->data($data);
-        if (($key !== null && ! $this->isUlid($key)) || ($parent !== null && ! $this->isUlid($parent)) || $fields === null) {
+        $bands = $this->bands($data);
+        if (($key !== null && ! $this->isUlid($key)) || ($parent !== null && ! $this->isUlid($parent)) || $fields === null || $bands === null) {
             return $this->invalid();
         }
 
-        return $this->inSection($section, function (array $found) use ($key, $parent, $fields, $data): array {
+        return $this->inSection($section, function (array $found) use ($key, $parent, $fields, $data, $bands): array {
             if ($key === null) {
                 Gate::authorize('create', Taxonomy::class);
                 $under = $parent === null ? $this->root($found) : $this->place($found, $parent, 'parent_invalid');
@@ -156,6 +179,7 @@ final class Index extends Component
                 $this->ensure('update', $category);
                 $saved = app(UpdateTaxonomy::class)->handle($category, $this->keepTemplates($fields, is_array($data) ? $data : [], $category));
             }
+            $this->saveBands($saved, $bands);
 
             return ['ok' => true, 'key' => $saved->ulid, 'version' => TaxonomyTree::version($found['vocabulary'])];
         }, write: true);
@@ -371,6 +395,9 @@ final class Index extends Component
             'canManage' => Gate::allows('manage', Taxonomy::class),
             // «Quản lý ngôn ngữ» in the drawer's language panel, for a member who may change the site's languages
             'langManage' => count($locales->enabled()) > 1 && $actor->can('settings.manage') ? route('admin.settings.languages') : null,
+            // «Khối trên / dưới danh sách»: the site's default blocks of each band per language, and where «Sửa trong Trình dựng trang» goes
+            'bandSite' => $found === null ? [] : app(CategoryBands::class)->site(),
+            'bandUrl' => route('admin.taxonomies.band', ['ulid' => '__key__', 'slot' => '__slot__']),
             // support staff signed in for a member: everything reads, nothing changes (inSection refuses it too)
             'support' => app(SupportSession::class)->active(),
         ]);
@@ -610,7 +637,7 @@ final class Index extends Component
      */
     private function data(mixed $data): ?TaxonomyData
     {
-        if (! is_array($data) || array_diff(array_keys($data), [...self::TEXT_MAPS, ...self::STRINGS]) !== []) {
+        if (! is_array($data) || array_diff(array_keys($data), [...self::TEXT_MAPS, ...self::STRINGS, self::BANDS]) !== []) {
             return null;
         }
 
@@ -644,6 +671,68 @@ final class Index extends Component
             seoDescriptions: $maps['seoDescriptions'],
             cover: is_string($data['cover'] ?? null) ? $data['cover'] : null,
         );
+    }
+
+    /**
+     * The drawer's bands (slot → {mode, read}), [] when it sends none, or null when they have the
+     * wrong shape: only the two list bands, each mode one of CategoryBands::MODES.
+     *
+     * @return array<string, array{mode: string, read: string}>|null
+     */
+    private function bands(mixed $data): ?array
+    {
+        $bands = is_array($data) ? ($data[self::BANDS] ?? []) : [];
+        if (! is_array($bands)) {
+            return null;
+        }
+        $out = [];
+        foreach ($bands as $slot => $band) {
+            $mode = is_array($band) ? ($band['mode'] ?? null) : null;
+            $read = is_array($band) ? ($band['read'] ?? null) : null;
+            if (! in_array($slot, CategoryBands::SLOTS, true) || ! in_array($mode, CategoryBands::MODES, true) || ! in_array($read, CategoryBands::MODES, true)) {
+                return null;
+            }
+            /** @var string $mode */
+            /** @var string $read */
+            $out[$slot] = ['mode' => $mode, 'read' => $read];
+        }
+
+        return $out;
+    }
+
+    /**
+     * The bands the drawer moved to another mode, through SetCategoryLayoutBlocks (which asks the
+     * category policy again and checks every value), in the save's own transaction: a refusal
+     * undoes the whole save. A band already in its mode is left alone, so its own blocks stay; one
+     * no longer in the mode the drawer read was changed elsewhere meanwhile (blocks saved in «Trình
+     * dựng trang» from another tab, say), so the save is refused rather than drop what the drawer
+     * never showed.
+     *
+     * @param  array<string, array{mode: string, read: string}>  $bands
+     *
+     * @throws TaxonomyChangeRejectedException
+     */
+    private function saveBands(Taxonomy $category, array $bands): void
+    {
+        if ($bands === []) {
+            return;
+        }
+        $values = [];
+        $helper = app(CategoryBands::class);
+        $category = $category->fresh() ?? $category; // its meta as it is now, under the tree lock
+        foreach ($bands as $slot => $band) {
+            $now = CategoryBands::modeOf($category, $slot);
+            if ($now === $band['mode']) {
+                continue;
+            }
+            if ($now !== $band['read']) {
+                throw new TaxonomyChangeRejectedException('version_stale');
+            }
+            $values[$slot] = $helper->valueFor($band['mode']);
+        }
+        if ($values !== []) {
+            app(SetCategoryLayoutBlocks::class)->handle($category, $values);
+        }
     }
 
     /**

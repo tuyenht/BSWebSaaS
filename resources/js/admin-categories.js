@@ -17,7 +17,9 @@ function slugify(text, max) {
     return fold(text).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, max).replace(/-+$/g, '');
 }
 
-const blank = () => ({ names: {}, slugs: {}, auto: {}, descriptions: {}, seoTitles: {}, seoDescriptions: {}, parent: '', listTemplate: '', detailTemplate: '', cover: null, coverChanged: false });
+// The two bands around a category's list (CategoryBands), each 'default' | 'own' | 'none'.
+const BANDS = ['before_list', 'after_list'];
+const blank = () => ({ names: {}, slugs: {}, auto: {}, descriptions: {}, seoTitles: {}, seoDescriptions: {}, parent: '', listTemplate: '', detailTemplate: '', cover: null, coverChanged: false, bands: { before_list: 'default', after_list: 'default' } });
 
 window.Alpine.data('bsCategories', (cfg) => {
     const t = cfg.texts;
@@ -53,6 +55,28 @@ window.Alpine.data('bsCategories', (cfg) => {
             // unsaved work in the drawer: closing the tab asks the browser's question, a link inside
             // the admin asks the screen's own (leave without saving, or save)
             offLeave = guardLeave({ dirty: () => this.panDirty, ask: (go) => this.askUnsaved(go) });
+            // back from «Trình dựng trang» on one of a category's bands: its drawer opens again at the bands
+            if (cfg.open) {
+                this.reopen(cfg.open);
+            }
+        },
+        reopen(key) {
+            try {
+                const u = new URL(window.location.href);
+                u.searchParams.delete('open');
+                window.history.replaceState(window.history.state, '', u);
+            } catch {
+                // an address the browser will not rewrite stays as it is
+            }
+            if (!this.node(key)) {
+                return;
+            }
+            this.openEdit(key);
+            this.pan.more = true;
+            if (cfg.flash) {
+                this.say(cfg.flash, 'success');
+            }
+            this.$nextTick(() => document.getElementById('cm-bands')?.scrollIntoView({ block: 'start' }));
         },
         destroy() {
             clearTimeout(searchTimer);
@@ -670,6 +694,9 @@ window.Alpine.data('bsCategories', (cfg) => {
             d.listTemplate = n.listTemplate || '';
             d.detailTemplate = n.detailTemplate || '';
             d.cover = n.cover;
+            BANDS.forEach((b) => {
+                d.bands[b] = (n.bands && n.bands[b] && n.bands[b].mode) || 'default';
+            });
             this.panOpen({ mode: 'edit', key: k, child: false, d, node: n, lang });
         },
         panOpen(o) {
@@ -964,6 +991,76 @@ window.Alpine.data('bsCategories', (cfg) => {
                 go();
             }, () => this.save());
         },
+        // ---- «Khối trên / dưới danh sách» ------------------------------------------------------------
+        // What one band shows in the drawer's language: the mode picked, the blocks it has now (the
+        // category's own when it keeps them, else the site's default), the words of each part.
+        bandView(slot) {
+            const P = this.pan;
+            const top = slot === 'before_list';
+            const mode = P.d.bands[slot];
+            const node = (P.node && P.node.bands && P.node.bands[slot]) || { mode: 'default', own: {} };
+            const ownList = node.mode === 'own' ? node.own[this.cur] || node.own[cfg.main] || [] : [];
+            const siteList = ((cfg.bandSite || {})[slot] || {})[this.cur] || [];
+            const blocks = mode === 'own' ? ownList : mode === 'default' ? siteList : [];
+            const name = (P.d.names[cfg.main] || '').trim();
+            const page = name ? fill(t.bandPage, { name }) : t.bandPageAny;
+            let kind;
+            let nowTitle;
+            let nowSub;
+            if (mode === 'none') {
+                kind = 'none';
+                nowTitle = t.bandNoneT;
+                nowSub = fill(t.bandNoneS, { page });
+            } else if (!blocks.length) {
+                kind = 'empty';
+                nowTitle = mode === 'own' ? t.bandEmptyOwn : t.bandEmptyDef;
+                nowSub = t.bandEmptyS;
+            } else {
+                kind = mode;
+                nowTitle = fill(mode === 'own' ? t.bandOwnT : t.bandDefT, { n: blocks.length });
+                nowSub = mode === 'own' ? fill(t.bandOwnS, { page }) : t.bandDefS;
+            }
+            const editHint = mode === 'own' ? (ownList.length ? t.bandHintOwnHas : t.bandHintOwnEmpty) : mode === 'default' ? t.bandHintDef : '';
+            const drop = mode !== 'own' && ownList.length > 0;
+            const count = blocks.length;
+            const short = mode === 'none' ? t.bandShortNone
+                : mode === 'own' ? (count ? fill(t.bandShortOwnN, { n: count }) : t.bandShortOwnEmpty)
+                    : (count ? fill(t.bandShortDefN, { n: count }) : t.bandShortDefEmpty);
+            return {
+                top, kind, nowTitle, nowSub, list: blocks.map((b) => b.name + ' · ' + b.kind), canEdit: mode !== 'none', editHint, short,
+                defSub: siteList.length ? fill(t.bandOptDefHas, { list: siteList.map((b) => b.name).join(', ') }) : t.bandOptDefNone,
+                dropWarn: drop, dropText: drop ? fill(t.bandDrop, { n: ownList.length }) : '',
+            };
+        },
+        get bandMapLabel() {
+            const name = this.pan ? (this.pan.d.names[cfg.main] || '').trim() : '';
+            return fill(t.bandMapAria, { page: name ? fill(t.bandPage, { name }) : t.bandPageAny });
+        },
+        // «Sửa trong Trình dựng trang»: the band's blocks in the builder, in the drawer's language. A new
+        // category is saved first (the builder needs its key); unsaved changes are asked about first.
+        editBand(slot) {
+            const P = this.pan;
+            if (!P || this.supportOnly() || !cfg.canManage) {
+                return;
+            }
+            const go = (key) => {
+                const name = (P.d.names[cfg.main] || '').trim();
+                this.say(fill(t.bandOpening, { label: name + ' · ' + (slot === 'before_list' ? t.bandTop : t.bandBot) }), 'info');
+                window.Livewire.navigate(cfg.bandUrl.replace('__key__', encodeURIComponent(key)).replace('__slot__', slot) + '?locale=' + encodeURIComponent(P.lang || cfg.main));
+            };
+            if (P.mode === 'add') {
+                this.save(false, go);
+                return;
+            }
+            if (this.panDirty) {
+                this.askOpen({ title: t.unsavedTitle, lead: t.unsavedText, ok: t.unsavedDrop, alt: t.unsavedSave, danger: true }, () => {
+                    this.pan = null;
+                    go(P.key);
+                }, () => this.save(false, go));
+                return;
+            }
+            go(P.key);
+        },
         pickCover() {
             this.$wire.openImagePicker('single');
         },
@@ -979,7 +1076,23 @@ window.Alpine.data('bsCategories', (cfg) => {
             // the button that held focus is hidden now: focus moves on to the empty box's «Chọn ảnh»
             this.$nextTick(() => document.getElementById('cm-cover-pick')?.focus());
         },
-        async save(again = false) {
+        // `then`: called with the category's key once it is saved (and moved), instead of closing the
+        // drawer with a message — «Sửa trong Trình dựng trang» goes on to the builder.
+        // Only the bands whose choice moved, each with the mode the drawer read when it opened: the
+        // server refuses the change once the band was changed elsewhere meanwhile, so blocks nobody
+        // here saw are never dropped.
+        bandChanges() {
+            const P = this.pan;
+            const out = {};
+            BANDS.forEach((b) => {
+                const read = (P.node && P.node.bands && P.node.bands[b] && P.node.bands[b].mode) || 'default';
+                if (P.d.bands[b] !== read) {
+                    out[b] = { mode: P.d.bands[b], read };
+                }
+            });
+            return out;
+        },
+        async save(again = false, then = null) {
             const P = this.pan;
             if (!P || P.saving || this.supportOnly()) {
                 return;
@@ -998,7 +1111,7 @@ window.Alpine.data('bsCategories', (cfg) => {
                 // the posts change section: say so and ask first, as "Chuyển đến…" does
                 this.askOpen({ title: fill(t.cxSaveTitle, { section: cx.section }), lead: t.onSave, lines: this.panCxLines, ok: fill(t.saveMove, { n: cx.n }) }, () => {
                     P.confirmed = true;
-                    this.save(again);
+                    this.save(again, then);
                 });
                 return;
             }
@@ -1009,6 +1122,7 @@ window.Alpine.data('bsCategories', (cfg) => {
                 descriptions: pick(d.descriptions), seoTitles: pick(d.seoTitles), seoDescriptions: pick(d.seoDescriptions),
                 listTemplate: d.listTemplate || null, detailTemplate: d.detailTemplate || null,
                 cover: d.coverChanged ? (d.cover ? d.cover.key : '') : null,
+                bands: this.bandChanges(),
             };
             P.saving = true;
             P.err = null;
@@ -1034,9 +1148,16 @@ window.Alpine.data('bsCategories', (cfg) => {
                 this.pan = null;
                 await this.$nextTick();
                 const moved = await this.doMove(P.key, d.parent || null, pos, !!P.confirmed);
-                if (moved === null) {
+                if (then) {
+                    then(P.key);
+                } else if (moved === null) {
                     this.say(fill(t.saved, { name }), 'success', { undo: true });
                 }
+                return;
+            }
+            if (then) {
+                this.pan = null;
+                then(r.key);
                 return;
             }
             this.say(fill(P.mode === 'add' ? t.added : t.saved, { name }), 'success');

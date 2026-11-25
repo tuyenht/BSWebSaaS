@@ -21,13 +21,15 @@ use Illuminate\Support\Str;
  * the post categories under it, or every product category. Each row is keyed by its ulid (never a
  * raw id) and carries what the row and the editor drawer show — names, slugs, descriptions and
  * Google fields per language, the "Thuộc …" parent and the trail above it, the templates, the
- * picture, the item count (items_count) — plus what the viewer may do with it:
+ * picture, the item count (items_count), the two bands around its list (CategoryBands: mode and
+ * block names) — plus what the viewer may do with it:
  *  - locked: a section's root, which always stays at level 1 and is never moved, merged or deleted;
  *  - editable / movable: TaxonomyPolicy update / move, so a member limited to some categories sees
  *    which rows are theirs (and which one their limits name).
  *
  * A fixed number of queries whatever the size of the tree: the categories, their translations,
- * the pictures (when there are any), the sections and the tree version. Rows made before keys
+ * the pictures (when there are any), the bands of the categories that have their own, the sections
+ * and the tree version. Rows made before keys
  * existed (no ulid yet) are left out; their sub-categories show at the outer level.
  */
 final readonly class CategoryScreen
@@ -36,6 +38,7 @@ final readonly class CategoryScreen
         private CategorySections $sections,
         private SiteLocale $locales,
         private MediaUrlResolver $urls,
+        private CategoryBands $bands,
     ) {}
 
     /**
@@ -49,6 +52,7 @@ final readonly class CategoryScreen
         $main = $this->locales->default();
         $translations = $this->translations($ids);
         $covers = $this->covers($ids, $forest);
+        $bands = $this->bands->forCategories($ids);
         $shownSet = array_flip($ids);
 
         $nodes = [];
@@ -82,6 +86,7 @@ final readonly class CategoryScreen
                 'listTemplate' => $row->list_template,
                 'detailTemplate' => $row->detail_template,
                 'cover' => $covers[$id] ?? null,
+                'bands' => $bands[$id] ?? CategoryBands::blank(),
                 'items' => $row->items_count,
                 'locked' => $locked,
                 'editable' => Gate::forUser($viewer)->allows('update', $row),
