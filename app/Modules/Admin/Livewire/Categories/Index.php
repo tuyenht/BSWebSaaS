@@ -534,7 +534,9 @@ final class Index extends Component
 
         $roots = [];
         foreach (app(CategorySections::class)->postSections() as $post) {
-            $roots[$post['root']] = $post;
+            foreach ($post['roots'] as $root) {
+                $roots[$root] ??= $post;
+            }
         }
         foreach ([$category->id, ...array_reverse(TaxonomyTree::ancestorsOf($category->id))] as $at) {
             if (isset($roots[$at])) {
@@ -551,7 +553,7 @@ final class Index extends Component
     }
 
     /**
-     * The category $ulid of this section — the section's root or a category under it, or for
+     * The category $ulid of this section — a category the section covers or one under it, or for
      * product categories any of them; another site's key is never found (BelongsToSite, RLS).
      *
      * @param  array{key: string, label: string, vocabulary: string, root: int|null, prefix: string}  $section
@@ -561,8 +563,9 @@ final class Index extends Component
     private function category(array $section, string $ulid): Taxonomy
     {
         $category = $this->ofVocabulary($section, $ulid);
-        if ($category !== null && $section['root'] !== null && $category->id !== $section['root']
-            && ! in_array($section['root'], TaxonomyTree::ancestorsOf($category->id), true)) {
+        $roots = CategoryScreen::rootsOf($section);
+        if ($category !== null && $roots !== [] && ! in_array($category->id, $roots, true)
+            && array_intersect($roots, TaxonomyTree::ancestorsOf($category->id)) === []) {
             $category = null;
         }
 

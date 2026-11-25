@@ -69,11 +69,12 @@ it('finds the section built on a category, and which categories carry one', func
     });
 });
 
-it('picks the first section by display order, then id, when several share a category', function (): void {
+it('keeps a category to the section built on it first, refusing a second one, and lists sections by display order, then id', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         $shared = sectionOn('zeta', 'post', 5);
-        ContentSection::query()->create(['key' => 'beta', 'label' => 'Beta', 'entry_type' => 'page', 'taxonomy_id' => $shared->id, 'sort_order' => 5]);
-        ContentSection::query()->create(['key' => 'alpha', 'label' => 'Alpha', 'entry_type' => 'post', 'taxonomy_id' => $shared->id, 'sort_order' => 9]);
+        expect(fn () => ContentSection::query()->create(['key' => 'beta', 'label' => 'Beta', 'entry_type' => 'page', 'taxonomy_id' => $shared->id, 'sort_order' => 5]))
+            ->toThrow(DomainException::class, 'already belongs to another section');
+        sectionOn('alpha', 'post', 9);
         sectionOn('tied-later', 'post', 5);
 
         $sections = app(ContentSections::class);

@@ -32,7 +32,7 @@ final class CategoryTree
     /** @var array<string, int> ulid → id */
     private array $byUlid = [];
 
-    /** The section's own category (a posts list): its id and name; it is the list itself, not a choice. */
+    /** The section's first category (a posts list): its id and name; it is the list itself, not a choice. */
     private ?int $rootId = null;
 
     private string $rootName = '';
@@ -62,14 +62,20 @@ final class CategoryTree
     }
 
     /**
-     * The categories of a post section: its own category and everything the section files under it
-     * (SectionBranch — the same walk that decides which posts the list holds), one statement, at most
-     * LIMIT categories in menu order. The section's own category is not a choice: its children are the
-     * top of the tree. A section built on no category reads every post category of the website.
+     * The categories of a post section: every category it covers and everything the section files
+     * under them (SectionBranch — the same walk that decides which posts the list holds), one
+     * statement, at most LIMIT categories in menu order. The section's first category is not a
+     * choice: its children are the top of the tree. Any other category it covers sits at the top
+     * beside them, with its own sub-categories below it («Tin tức»: «Tin công ty», «Kiến thức kỹ
+     * thuật»… and «Tuyển dụng»). A section that covers no category reads every post category of the
+     * website.
+     *
+     * @param  int|null  $sectionId  the section, null when it covers no category
+     * @param  int|null  $firstId  its first category (content_sections.taxonomy_id)
      */
-    public static function postSection(int $siteId, string $locale, ?int $rootId): self
+    public static function postSection(int $siteId, string $locale, ?int $sectionId, ?int $firstId = null): self
     {
-        if ($rootId === null) {
+        if ($sectionId === null) {
             $rows = Taxonomy::query()
                 ->where('taxonomies.vocabulary', 'post_cat')
                 ->leftJoin('taxonomy_translations as tt', fn (JoinClause $join) => $join->on('tt.taxonomy_id', '=', 'taxonomies.id')
@@ -81,7 +87,7 @@ final class CategoryTree
             return self::fromRows($rows->all(), null);
         }
 
-        [$branch, $values] = SectionBranch::with($siteId, [$rootId]);
+        [$branch, $values] = SectionBranch::ofSections($siteId, [$sectionId]);
         $rows = DB::select($branch.<<<'SQL'
             SELECT t.id, t.ulid, t.parent_id, t.items_count, tt.name
             FROM branch
@@ -92,7 +98,7 @@ final class CategoryTree
             LIMIT ?
             SQL, [...$values, $siteId, $siteId, $locale, self::LIMIT]);
 
-        return self::fromRows($rows, $rootId);
+        return self::fromRows($rows, $firstId);
     }
 
     /**
@@ -120,6 +126,8 @@ final class CategoryTree
                 'own' => Cast::int($row['items_count'] ?? 0),
             ];
         }
+        /** @var array<int, int|null> $read each category's parent as read */
+        $read = array_map(static fn (array $node): ?int => $node['parent'], $tree->nodes);
         foreach ($tree->nodes as $id => $node) {
             // a parent outside the read (or itself, or the section's own category) leaves the category at the top
             $parent = $node['parent'] !== null && $node['parent'] !== $id && isset($tree->nodes[$node['parent']]) ? $node['parent'] : 0;
@@ -128,6 +136,19 @@ final class CategoryTree
             if ($node['ulid'] !== null) {
                 $tree->byUlid[$node['ulid']] = $id;
             }
+        }
+        // At the top: the first category's children, then the other categories the section covers.
+        if ($rootId !== null && isset($tree->children[0])) {
+            $first = [];
+            $beside = [];
+            foreach ($tree->children[0] as $id) {
+                if ($read[$id] === $rootId) {
+                    $first[] = $id;
+                } else {
+                    $beside[] = $id;
+                }
+            }
+            $tree->children[0] = [...$first, ...$beside];
         }
 
         return $tree;

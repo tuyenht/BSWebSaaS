@@ -19,7 +19,7 @@ final readonly class Plan
      * @param  list<string>  $forced
      * @param  list<string>  $orphans  ledger keys no longer in the pack (reported, never deleted)
      * @param  list<string>  $warnings
-     * @param  array{pack_version: int, loaded_at: string, items: array<string, array{hash: string, ref: string, parent?: string|null}>}|null  $ledger
+     * @param  array{pack_version: int, loaded_at: string, items: array<string, array{hash: string, ref: string, parent?: string|null, created?: bool}>}|null  $ledger
      * @param  array{slots: int, resolved: int, packed: int}  $media  slot counts: all, resolved, resolved to the pack's own file
      * @param  array<string, string>  $carried  pack key → the earlier ledger key it carries on (a renamed or moved category)
      */
@@ -67,7 +67,7 @@ final readonly class Plan
     /** @return array<string, int> verdict → count, in a fixed order */
     public function totals(): array
     {
-        $totals = array_fill_keys(['create', 'update', 'adopt', 'unchanged', 'skip', 'conflict'], 0);
+        $totals = array_fill_keys(['create', 'update', 'adopt', 'remove', 'unchanged', 'skip', 'conflict'], 0);
         foreach ($this->items as $item) {
             $bucket = str_starts_with($item->verdict, 'skip:') ? 'skip' : $item->verdict;
             $totals[$bucket]++;

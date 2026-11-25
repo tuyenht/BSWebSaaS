@@ -61,7 +61,7 @@ final readonly class CategoryScreen
             if (! $row instanceof Taxonomy || $row->ulid === null) {
                 continue;
             }
-            $parent = $id === $section['root'] ? null : $forest->parentOf($id);
+            $parent = in_array($id, self::rootsOf($section), true) ? null : $forest->parentOf($id);
             $parentRow = $parent === null ? null : $forest->get($parent);
             $own = $translations[$id] ?? [];
             $trail = [];
@@ -160,7 +160,9 @@ final readonly class CategoryScreen
         $roots = [];
         if ($section['vocabulary'] === CategorySections::POST_VOCABULARY) {
             foreach ($this->sections->postSections() as $post) {
-                $roots[$post['root']] = $post['key'];
+                foreach ($post['roots'] as $root) {
+                    $roots[$root] ??= $post['key'];
+                }
             }
         }
 
@@ -168,7 +170,8 @@ final readonly class CategoryScreen
     }
 
     /**
-     * The categories the section shows: the root and its branch, or the whole vocabulary.
+     * The categories the section shows: each category it covers with its branch (the first one
+     * first), or the whole vocabulary.
      *
      * @param  array{key: string, label: string, vocabulary: string, root: int|null, prefix: string}  $section
      * @return list<int>
@@ -179,7 +182,42 @@ final readonly class CategoryScreen
             return $this->drawingOrder($section, $forest);
         }
 
-        return $forest->has($section['root']) ? $forest->branch($section['root']) : [];
+        return self::branches(self::rootsOf($section), $forest);
+    }
+
+    /**
+     * The categories a post section covers, its first one first (the section's `root` alone when
+     * the shape names no others).
+     *
+     * @param  array{root: int|null, roots?: list<int>, ...}  $section
+     * @return list<int>
+     */
+    public static function rootsOf(array $section): array
+    {
+        if ($section['root'] === null) {
+            return [];
+        }
+
+        return array_values(array_unique([$section['root'], ...($section['roots'] ?? [])]));
+    }
+
+    /**
+     * Each root's branch, one after the other, a category listed once (a covered category below
+     * another one of the same section is drawn under it).
+     *
+     * @param  list<int>  $roots
+     * @return list<int>
+     */
+    private static function branches(array $roots, CategoryForest $forest): array
+    {
+        $out = [];
+        foreach ($roots as $root) {
+            if ($forest->has($root)) {
+                array_push($out, ...$forest->branch($root));
+            }
+        }
+
+        return array_values(array_unique($out));
     }
 
     /**
@@ -248,7 +286,7 @@ final readonly class CategoryScreen
             if (! $forest->has($post['root']) || ($post['key'] !== $section['key'] && ! Gate::forUser($viewer)->allows($post['prefix'].'.view'))) {
                 continue;
             }
-            $ids = array_values(array_filter($forest->branch($post['root']), static fn (int $id): bool => ! isset($excluded[$id])));
+            $ids = array_values(array_filter(self::branches(self::rootsOf($post), $forest), static fn (int $id): bool => ! isset($excluded[$id])));
             $groups[] = ['section' => $post['key'], 'label' => $post['label'], 'ids' => $ids];
         }
 
@@ -270,7 +308,7 @@ final readonly class CategoryScreen
     private function drawingOrder(array $section, CategoryForest $forest): array
     {
         if ($section['root'] !== null && $forest->has($section['root'])) {
-            return $forest->branch($section['root']);
+            return self::branches(self::rootsOf($section), $forest);
         }
 
         $out = [];

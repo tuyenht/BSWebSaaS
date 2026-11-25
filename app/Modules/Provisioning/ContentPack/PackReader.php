@@ -12,7 +12,8 @@ use SplFileInfo;
 
 /**
  * Reads a content pack folder (`database/content-packs/<code>/`) into a Pack: pack.json plus the
- * optional item files, each `{"items": [...]}` (media.json: `{"slots": [...]}`). Only the shape
+ * optional item files, each `{"items": [...]}` (media.json: `{"slots": [...]}`; sections.json may also
+ * hold `"remove": ["section:<key>", …]`). Only the shape
  * needed to sort items into kinds is checked here; PackValidator checks the rest. The content hash
  * covers every file in the folder, so any change to the pack changes the plan fingerprint.
  */
@@ -77,6 +78,24 @@ final readonly class PackReader
                 }
                 $itemKind = $kind === 'setting' && $key === 'profile' ? 'profile' : $kind;
                 $byKind[$itemKind][] = new PackItem($itemKind, $key, $data);
+            }
+            // sections.json may also list sections to remove, by key: each one is an item of its own
+            // (PackItem::removes()), planned and written in the sections' place, after the categories.
+            if ($kind === 'section' && array_key_exists('remove', $decoded)) {
+                $remove = $decoded['remove'];
+                if (! is_array($remove) || ! array_is_list($remove)) {
+                    $errors[] = "{$file}: \"remove\" must be a list of section keys.";
+
+                    continue;
+                }
+                foreach ($remove as $index => $key) {
+                    if (! is_string($key) || $key === '') {
+                        $errors[] = "{$file}: remove ".($index + 1).' is not a section key.';
+
+                        continue;
+                    }
+                    $byKind['section'][] = new PackItem('section', $key, [PackItem::REMOVE => true]);
+                }
             }
         }
 
