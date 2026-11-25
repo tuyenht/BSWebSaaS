@@ -6,7 +6,6 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\EntryTags;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
-use App\Modules\Tenancy\Models\SiteProfile;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Tests\Fixtures\StorefrontCards;

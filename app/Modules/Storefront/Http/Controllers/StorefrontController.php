@@ -37,7 +37,6 @@ use App\Modules\Storefront\Support\ProductPage;
 use App\Modules\Storefront\Support\SlotContext;
 use App\Modules\Storefront\Support\ThankYouPages;
 use App\Modules\Storefront\Support\TitleDisambiguator;
-use App\Modules\Tenancy\Context\ContentSections;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
