@@ -239,14 +239,21 @@ test('each band says what it shows now and where it comes from, and warns before
     assert.deepEqual([c.bandView('after_list').kind, c.bandView('after_list').nowTitle, c.bandView('after_list').editHint], ['empty', 'bandEmptyOwn', 'bandHintOwnEmpty']);
 });
 
-test('Save sends each band\'s mode; a new category starts on the website\'s default', async () => {
+test('Save sends only the bands whose choice moved, with the mode it read; a new category starts on the website\'s default', async () => {
     const { c, calls } = screen([[R, 1], [J, 2]], {}, bandCfg);
     c.openEdit('01J');
     c.pan.d.bands.after_list = 'none';
     await c.save();
-    assert.deepEqual(calls.find((x) => x[0] === 'save')[4].bands, { before_list: 'own', after_list: 'none' });
+    assert.deepEqual(calls.filter((x) => x[0] === 'save').at(-1)[4].bands, { after_list: { mode: 'none', read: 'default' } });
+    c.openEdit('01J');
+    await c.save();
+    assert.deepEqual(calls.filter((x) => x[0] === 'save').at(-1)[4].bands, {});
     c.openAdd('01R');
     assert.deepEqual(c.pan.d.bands, { before_list: 'default', after_list: 'default' });
+    c.pan.d.names.vi = 'Dự án mới';
+    c.pan.d.bands.before_list = 'none';
+    await c.save();
+    assert.deepEqual(calls.filter((x) => x[0] === 'save').at(-1)[4].bands, { before_list: { mode: 'none', read: 'default' } });
 });
 
 test('«Sửa trong Trình dựng trang» opens the band in the drawer\'s language; a new category is saved first, unsaved changes are asked about', async () => {

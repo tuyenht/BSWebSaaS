@@ -1078,6 +1078,20 @@ window.Alpine.data('bsCategories', (cfg) => {
         },
         // `then`: called with the category's key once it is saved (and moved), instead of closing the
         // drawer with a message — «Sửa trong Trình dựng trang» goes on to the builder.
+        // Only the bands whose choice moved, each with the mode the drawer read when it opened: the
+        // server refuses the change once the band was changed elsewhere meanwhile, so blocks nobody
+        // here saw are never dropped.
+        bandChanges() {
+            const P = this.pan;
+            const out = {};
+            BANDS.forEach((b) => {
+                const read = (P.node && P.node.bands && P.node.bands[b] && P.node.bands[b].mode) || 'default';
+                if (P.d.bands[b] !== read) {
+                    out[b] = { mode: P.d.bands[b], read };
+                }
+            });
+            return out;
+        },
         async save(again = false, then = null) {
             const P = this.pan;
             if (!P || P.saving || this.supportOnly()) {
@@ -1108,7 +1122,7 @@ window.Alpine.data('bsCategories', (cfg) => {
                 descriptions: pick(d.descriptions), seoTitles: pick(d.seoTitles), seoDescriptions: pick(d.seoDescriptions),
                 listTemplate: d.listTemplate || null, detailTemplate: d.detailTemplate || null,
                 cover: d.coverChanged ? (d.cover ? d.cover.key : '') : null,
-                bands: Object.assign({}, d.bands),
+                bands: this.bandChanges(),
             };
             P.saving = true;
             P.err = null;

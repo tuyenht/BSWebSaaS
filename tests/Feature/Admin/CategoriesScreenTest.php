@@ -854,6 +854,12 @@ function cxBands(Taxonomy $category): array
     return is_array($meta['layout_blocks'] ?? null) ? $meta['layout_blocks'] : [];
 }
 
+/** One band as the drawer sends it: the mode picked and the mode it read when it opened. */
+function cxBand(string $mode, string $read = 'default'): array
+{
+    return ['mode' => $mode, 'read' => $read];
+}
+
 it('carries each category\'s bands around its list: the mode and, per language, the names of its own blocks', function (): void {
     [$jobs, $news] = cxIn(1, function (): array {
         $jobs = cxCreate('Tuyển dụng', $this->root);
@@ -883,30 +889,51 @@ it('saves the bands with the drawer: hidden, own (empty until blocks are added, 
     $jobs = cxIn(1, fn (): Taxonomy => cxCreate('Tuyển dụng', $this->root));
     $names = ['names' => ['vi' => 'Tuyển dụng']];
 
-    expect(cxCall($this->editor, 'save', 'tin-tuc', $jobs->ulid, null, $names + ['bands' => ['before_list' => 'none', 'after_list' => 'own']]))->toMatchArray(['ok' => true])
+    expect(cxCall($this->editor, 'save', 'tin-tuc', $jobs->ulid, null, $names + ['bands' => ['before_list' => cxBand('none'), 'after_list' => cxBand('own')]]))->toMatchArray(['ok' => true])
         ->and(cxBands($jobs))->toBe(['after_list' => ['vi' => ['blocks' => []]], 'before_list' => 'none']);
 
-    // blocks added in «Trình dựng trang» stay when the drawer saves the band in the same mode
+    // blocks added in «Trình dựng trang» stay when a drawer moves the band to the mode it has now
     cxIn(1, fn () => Taxonomy::query()->whereKey($jobs->id)->update(['meta->layout_blocks->after_list' => ['vi' => ['blocks' => [['type' => 'cta', 'props' => ['heading' => 'Gửi CV ở']]]]]]));
-    expect(cxCall($this->editor, 'save', 'tin-tuc', $jobs->ulid, null, $names + ['bands' => ['before_list' => 'none', 'after_list' => 'own']]))->toMatchArray(['ok' => true])
+    expect(cxCall($this->editor, 'save', 'tin-tuc', $jobs->ulid, null, $names + ['bands' => ['after_list' => cxBand('own')]]))->toMatchArray(['ok' => true])
         ->and(cxBands($jobs)['after_list']['vi']['blocks'][0]['props']['heading'])->toBe('Gửi CV ở');
 
     // a save that names no bands, or the website's default for both, leaves nothing of the category's own
     expect(cxCall($this->editor, 'save', 'tin-tuc', $jobs->ulid, null, $names))->toMatchArray(['ok' => true])
         ->and(cxBands($jobs))->toHaveKeys(['before_list', 'after_list'])
-        ->and(cxCall($this->editor, 'save', 'tin-tuc', $jobs->ulid, null, $names + ['bands' => ['before_list' => 'default', 'after_list' => 'default']]))->toMatchArray(['ok' => true])
+        ->and(cxCall($this->editor, 'save', 'tin-tuc', $jobs->ulid, null, $names + ['bands' => ['before_list' => cxBand('default', 'none'), 'after_list' => cxBand('default', 'own')]]))->toMatchArray(['ok' => true])
         ->and(cxBands($jobs))->toBe([]);
 
     // a new category takes its bands in the same save
-    $made = cxCall($this->editor, 'save', 'tin-tuc', null, null, ['names' => ['vi' => 'Dự án mới'], 'bands' => ['after_list' => 'none']]);
+    $made = cxCall($this->editor, 'save', 'tin-tuc', null, null, ['names' => ['vi' => 'Dự án mới'], 'bands' => ['after_list' => cxBand('none')]]);
     $new = cxIn(1, fn (): Taxonomy => Taxonomy::query()->where('ulid', $made['key'])->firstOrFail());
     expect(cxBands($new))->toBe(['after_list' => 'none']);
+});
+
+it('refuses a drawer that read a band before it was changed elsewhere, and keeps the whole category as it is now', function (): void {
+    $jobs = cxIn(1, fn (): Taxonomy => cxCreate('Tuyển dụng', $this->root));
+    $refused = ['ok' => false, 'reason' => 'version_stale', 'message' => __('categories.reason_version_stale')];
+
+    // the drawer read «Mặc định»; meanwhile «Trình dựng trang» gave the band blocks of its own
+    $own = ['vi' => ['blocks' => [['type' => 'cta', 'props' => ['heading' => 'Gửi CV ở']]]]];
+    cxIn(1, fn () => Taxonomy::query()->whereKey($jobs->id)->update(['meta' => ['layout_blocks' => ['after_list' => $own]]]));
+    expect(cxCall($this->editor, 'save', 'tin-tuc', $jobs->ulid, null, ['names' => ['vi' => 'Đổi tên'], 'bands' => ['before_list' => cxBand('none'), 'after_list' => cxBand('none')]]))->toBe($refused)
+        ->and(cxBands($jobs))->toBe(['after_list' => $own])
+        ->and(cxRows(cxCall($this->editor, 'load', 'tin-tuc')))->toHaveKey('Tuyển dụng')->not->toHaveKey('Đổi tên');
+
+    // the drawer read the band's own blocks; meanwhile another member put it back on the default
+    cxIn(1, fn () => Taxonomy::query()->whereKey($jobs->id)->update(['meta' => []]));
+    expect(cxCall($this->editor, 'save', 'tin-tuc', $jobs->ulid, null, ['names' => ['vi' => 'Tuyển dụng'], 'bands' => ['after_list' => cxBand('none', 'own')]]))->toBe($refused)
+        ->and(cxBands($jobs))->toBe([]);
+
+    // a drawer that read the band as it is still saves it
+    expect(cxCall($this->editor, 'save', 'tin-tuc', $jobs->ulid, null, ['names' => ['vi' => 'Tuyển dụng'], 'bands' => ['after_list' => cxBand('none')]]))->toMatchArray(['ok' => true])
+        ->and(cxBands($jobs))->toBe(['after_list' => 'none']);
 });
 
 it('refuses bands of the wrong shape as input_invalid and keeps the category as it was', function (): void {
     $jobs = cxIn(1, fn (): Taxonomy => cxCreate('Tuyển dụng', $this->root));
 
-    foreach ([['post_aside' => 'none'], ['before_list' => 'mine'], ['before_list' => ['vi' => []]], 'none'] as $bands) {
+    foreach ([['post_aside' => cxBand('none')], ['before_list' => cxBand('mine')], ['before_list' => cxBand('none', 'mine')], ['before_list' => 'none'], ['before_list' => ['vi' => []]], 'none'] as $bands) {
         expect(cxCall($this->editor, 'save', 'tin-tuc', $jobs->ulid, null, ['names' => ['vi' => 'Đổi tên'], 'bands' => $bands]))->toMatchArray(['ok' => false, 'reason' => 'input_invalid']);
     }
     expect(cxBands($jobs))->toBe([])
@@ -924,9 +951,9 @@ it('keeps a limited member\'s bands inside their categories, the name and the ba
         return [$mine, $other];
     });
 
-    expect(cxCall($member, 'save', 'tin-tuc', $other->ulid, null, ['names' => ['vi' => 'Của người khác'], 'bands' => ['before_list' => 'none']]))->toMatchArray(['ok' => false, 'reason' => 'outside_category_limits'])
+    expect(cxCall($member, 'save', 'tin-tuc', $other->ulid, null, ['names' => ['vi' => 'Của người khác'], 'bands' => ['before_list' => cxBand('none')]]))->toMatchArray(['ok' => false, 'reason' => 'outside_category_limits'])
         ->and(cxBands($other))->toBe([])
-        ->and(cxCall($member, 'save', 'tin-tuc', $mine->ulid, null, ['names' => ['vi' => 'Của tôi'], 'bands' => ['before_list' => 'none']]))->toMatchArray(['ok' => true])
+        ->and(cxCall($member, 'save', 'tin-tuc', $mine->ulid, null, ['names' => ['vi' => 'Của tôi'], 'bands' => ['before_list' => cxBand('none')]]))->toMatchArray(['ok' => true])
         ->and(cxBands($mine))->toBe(['before_list' => 'none']);
 });
 

@@ -153,9 +153,11 @@ final class Index extends Component
      * drawer: names, slugs, descriptions, seoTitles, seoDescriptions (language → text),
      * listTemplate, detailTemplate (a layout name or null for the theme's default; left out, the
      * category keeps its own), cover (a media key, '' for none, null to keep) and bands (slot →
-     * default | own | none for the bands around the list, CategoryBands; a band left out, or
+     * {mode, read}: the mode picked for a band around the list, CategoryBands, and the mode the
+     * drawer read when it opened; only the bands whose choice moved are sent. A band left out, or
      * already in that mode, keeps what it has — own blocks are only ever changed in «Trình dựng
-     * trang»). Returns the category's key and the new tree version.
+     * trang» — and one changed elsewhere since the drawer read it refuses the whole save as
+     * version_stale). Returns the category's key and the new tree version.
      *
      * @return array<string, mixed>
      */
@@ -669,10 +671,10 @@ final class Index extends Component
     }
 
     /**
-     * The drawer's bands (slot → mode), [] when it sends none, or null when they have the wrong shape:
-     * only the two list bands, each one of CategoryBands::MODES.
+     * The drawer's bands (slot → {mode, read}), [] when it sends none, or null when they have the
+     * wrong shape: only the two list bands, each mode one of CategoryBands::MODES.
      *
-     * @return array<string, string>|null
+     * @return array<string, array{mode: string, read: string}>|null
      */
     private function bands(mixed $data): ?array
     {
@@ -681,11 +683,15 @@ final class Index extends Component
             return null;
         }
         $out = [];
-        foreach ($bands as $slot => $mode) {
-            if (! in_array($slot, CategoryBands::SLOTS, true) || ! in_array($mode, CategoryBands::MODES, true)) {
+        foreach ($bands as $slot => $band) {
+            $mode = is_array($band) ? ($band['mode'] ?? null) : null;
+            $read = is_array($band) ? ($band['read'] ?? null) : null;
+            if (! in_array($slot, CategoryBands::SLOTS, true) || ! in_array($mode, CategoryBands::MODES, true) || ! in_array($read, CategoryBands::MODES, true)) {
                 return null;
             }
-            $out[$slot] = $mode;
+            /** @var string $mode */
+            /** @var string $read */
+            $out[$slot] = ['mode' => $mode, 'read' => $read];
         }
 
         return $out;
@@ -694,9 +700,12 @@ final class Index extends Component
     /**
      * The bands the drawer moved to another mode, through SetCategoryLayoutBlocks (which asks the
      * category policy again and checks every value), in the save's own transaction: a refusal
-     * undoes the whole save. A band already in its mode is left alone, so its own blocks stay.
+     * undoes the whole save. A band already in its mode is left alone, so its own blocks stay; one
+     * no longer in the mode the drawer read was changed elsewhere meanwhile (blocks saved in «Trình
+     * dựng trang» from another tab, say), so the save is refused rather than drop what the drawer
+     * never showed.
      *
-     * @param  array<string, string>  $bands
+     * @param  array<string, array{mode: string, read: string}>  $bands
      *
      * @throws TaxonomyChangeRejectedException
      */
@@ -708,10 +717,15 @@ final class Index extends Component
         $values = [];
         $helper = app(CategoryBands::class);
         $category = $category->fresh() ?? $category; // its meta as it is now, under the tree lock
-        foreach ($bands as $slot => $mode) {
-            if (CategoryBands::modeOf($category, $slot) !== $mode) {
-                $values[$slot] = $helper->valueFor($mode);
+        foreach ($bands as $slot => $band) {
+            $now = CategoryBands::modeOf($category, $slot);
+            if ($now === $band['mode']) {
+                continue;
             }
+            if ($now !== $band['read']) {
+                throw new TaxonomyChangeRejectedException('version_stale');
+            }
+            $values[$slot] = $helper->valueFor($band['mode']);
         }
         if ($values !== []) {
             app(SetCategoryLayoutBlocks::class)->handle($category, $values);

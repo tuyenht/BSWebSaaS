@@ -104,13 +104,20 @@ final class BandEditor extends Component
     }
 
     /**
-     * After the screen opened, a category deleted elsewhere meanwhile gets words in a toast instead
-     * of an error page, and the layout on screen stays. Opening the screen still answers 404.
+     * After the screen opened, a category deleted elsewhere meanwhile, or moved out of every section,
+     * gets words in a toast instead of an error page, and the layout on screen stays. Opening the
+     * screen still answers 404.
      */
     public function exception(Throwable $e, callable $stopPropagation): void
     {
-        if ($this->version !== '' && $e instanceof ModelNotFoundException) {
+        if ($this->version === '') {
+            return;
+        }
+        if ($e instanceof ModelNotFoundException) {
             $this->toast(__('categories.band_gone'), 'error');
+            $stopPropagation();
+        } elseif ($e instanceof TaxonomyChangeRejectedException && $e->reason === 'section_invalid') {
+            $this->toast(__('categories.band_err_moved'), 'error');
             $stopPropagation();
         }
     }
@@ -214,6 +221,7 @@ final class BandEditor extends Component
             }
             $this->toast(__(match ($e->reason) {
                 'version_stale' => 'categories.band_err_stale',
+                'section_invalid' => 'categories.band_err_moved',
                 'locale_invalid' => 'categories.band_err_lang_off',
                 'blocks_invalid', 'blocks_too_many' => 'categories.band_err_body',
                 'outside_category_limits' => 'categories.reason_outside_category_limits',
@@ -302,14 +310,19 @@ final class BandEditor extends Component
     /**
      * This website's category (RLS and the site scope: another website's key is not found), of a
      * vocabulary with a list page, in a section the person may see (else 403: the Chuyên mục
-     * screen shows that section to no one else either).
+     * screen shows that section to no one else either). One outside every section is not found as
+     * the screen opens, and refused as section_invalid once it is open (moved there meanwhile).
+     *
+     * @throws TaxonomyChangeRejectedException section_invalid
      */
     private function category(): Taxonomy
     {
         $category = Taxonomy::query()->where('ulid', $this->ulid)->whereIn('vocabulary', [CategorySections::POST_VOCABULARY, CategorySections::PRODUCT_VOCABULARY])->firstOrFail();
         $section = $this->sectionOf($category);
         if ($section === null) {
-            throw new ModelNotFoundException;
+            abort_if($this->version === '', 404);
+
+            throw new TaxonomyChangeRejectedException('section_invalid');
         }
         abort_unless(Gate::allows($section['prefix'].'.view'), 403);
         $this->sectionKey = $section['key'];
@@ -346,20 +359,23 @@ final class BandEditor extends Component
      * What the band holds before this language is written in: its own blocks when it has them;
      * when it followed the site (or was hidden), what every language showed then — the site's
      * blocks of that language (nothing for a hidden band) — so saving one language changes no other.
+     * A language turned off for the website since is dropped: it is never written again, and the
+     * slot checks refuse a language that is not on.
      *
      * @return array<string, array{blocks: list<mixed>}>
      */
     private function startingValue(Taxonomy $category): array
     {
+        $enabled = app(SiteLocale::class)->enabled();
         $stored = $this->stored($category);
         if (is_array($stored)) {
             /** @var array<string, array{blocks: list<mixed>}> $stored */
-            return $stored;
+            return array_intersect_key($stored, array_flip($enabled));
         }
 
         $value = [];
         $resolver = app(LayoutSlotBlocks::class);
-        foreach (app(SiteLocale::class)->enabled() as $locale) {
+        foreach ($enabled as $locale) {
             $value[$locale] = ['blocks' => $stored === LayoutSlots::NONE ? [] : $resolver->blocks($this->slotName, $locale)];
         }
 

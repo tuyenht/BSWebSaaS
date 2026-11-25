@@ -7,12 +7,15 @@ use App\Modules\Cms\Models\MemberCategoryScope;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\SiteLocale as SiteLocaleContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteLocale;
+use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteSetting;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
@@ -120,7 +123,17 @@ it('starts from the website\'s default, saves this language as the category\'s o
     expect(beStored($this->jobs, 'before_list'))->toBeNull();
 });
 
+/** Turn English on for site 1 beside Vietnamese. */
+function beEnglish(): void
+{
+    beIn(1, function (): void {
+        SiteLocale::query()->create(['locale' => 'en', 'is_default' => false, 'enabled' => true, 'is_public' => true]);
+        app(SiteLocaleContext::class)->forget();
+    });
+}
+
 it('opens a hidden band empty, and saving it gives the category blocks of its own in that language only', function (): void {
+    beEnglish();
     beIn(1, fn () => Taxonomy::query()->whereKey($this->jobs->id)->update(['meta' => ['layout_blocks' => ['before_list' => 'none']]]));
 
     beIn(1, function (): void {
@@ -130,7 +143,125 @@ it('opens a hidden band empty, and saving it gives the category blocks of its ow
         expect(session(BandEditor::FLASH))->toBe(__('categories.band_saved_back', ['band' => __('categories.ui_band_top'), 'name' => 'Tuyển dụng']));
     });
 
-    expect(array_keys(beStored($this->jobs, 'before_list')))->toBe(['vi']);
+    // English showed nothing while the band was hidden, and still shows nothing
+    $stored = beStored($this->jobs, 'before_list');
+    expect(array_keys($stored))->toEqualCanonicalizing(['vi', 'en'])
+        ->and(array_column($stored['vi']['blocks'], 'type'))->toBe(['cta'])
+        ->and($stored['en'])->toBe(['blocks' => []]);
+});
+
+it('still saves a band whose own blocks were in a language turned off since, and drops that language', function (): void {
+    beEnglish();
+    beIn(1, function (): void {
+        Taxonomy::query()->whereKey($this->jobs->id)->update(['meta' => ['layout_blocks' => ['after_list' => [
+            'vi' => ['blocks' => [['type' => 'cta', 'props' => ['heading' => 'Gửi CV']]]],
+            'en' => ['blocks' => [['type' => 'cta', 'props' => ['heading' => 'Send your CV']]]],
+        ]]]]);
+        SiteLocale::query()->where('locale', 'en')->update(['enabled' => false]);
+        app(SiteLocaleContext::class)->forget();
+    });
+
+    beIn(1, function (): void {
+        Livewire::actingAs($this->editor)->test(BandEditor::class, ['ulid' => $this->jobs->ulid, 'slot' => 'after_list'])
+            ->call('addBlock', 'richtext')->call('save')->assertHasNoErrors()->assertSet('toastTone', 'success');
+    });
+
+    $stored = beStored($this->jobs, 'after_list');
+    expect(array_keys($stored))->toBe(['vi'])
+        ->and(array_column($stored['vi']['blocks'], 'type'))->toBe(['cta', 'richtext']);
+});
+
+it('opens a product category\'s band for whoever may see the catalogue, and returns to the catalogue\'s categories', function (): void {
+    $shelf = beIn(1, function (): Taxonomy {
+        SiteModule::create(['module_key' => 'catalog', 'enabled' => true]);
+
+        return app(CreateTaxonomy::class)->handle('product_cat', null, new TaxonomyData(names: ['vi' => 'Dao cắt']));
+    });
+    $shopper = beUser(['taxonomies.manage', 'catalog.view']);
+
+    $this->actingAs($shopper)->get(beUrl($shelf, 'before_list'))->assertOk()
+        ->assertSee('href="'.e(route('admin.taxonomies.index', ['section' => 'catalog', 'open' => $shelf->ulid])).'"', false);
+    // seeing posts is not seeing the catalogue
+    $this->actingAs($this->editor)->get(beUrl($shelf, 'before_list'))->assertForbidden();
+
+    beIn(1, function () use ($shopper, $shelf): void {
+        Livewire::actingAs($shopper)->test(BandEditor::class, ['ulid' => $shelf->ulid, 'slot' => 'before_list'])
+            ->call('addBlock', 'cta')->call('save')->assertHasNoErrors()->assertSet('toastTone', 'success');
+    });
+    expect(array_column(beStored($shelf, 'before_list')['vi']['blocks'], 'type'))->toBe(['cta']);
+});
+
+it('only lets support staff look: saving a band is refused during a support session', function (): void {
+    $editor = $this->editor->fresh();
+    $session = app('session')->driver();
+    request()->setLaravelSession($session);
+    auth()->login($editor);
+    app(SupportSession::class)->start($editor, $editor, 1, 'Kiểm tra', now()->addMinutes(30));
+    // Livewire's test requests skip the middleware: hand each one this session, as StartSession does.
+    app()->rebinding('request', function ($app, Request $request) use ($session): void {
+        if (! $request->hasSession()) {
+            $request->setLaravelSession($session);
+        }
+    });
+
+    beIn(1, function () use ($editor): void {
+        Livewire::actingAs($editor)->test(BandEditor::class, ['ulid' => $this->jobs->ulid, 'slot' => 'after_list'])
+            ->call('addBlock', 'cta')->call('save')
+            ->assertSet('toastTone', 'error')->assertSet('toastMsg', __('categories.reason_support_session'));
+    });
+
+    expect(beStored($this->jobs, 'after_list'))->toBeNull();
+});
+
+it('refuses every action once the member may no longer change the category or see its section, after the screen opened', function (): void {
+    beIn(1, function (): void {
+        $limited = Livewire::actingAs($this->editor)->test(BandEditor::class, ['ulid' => $this->jobs->ulid, 'slot' => 'after_list']);
+        $other = app(CreateTaxonomy::class)->handle('post_cat', $this->root, new TaxonomyData(names: ['vi' => 'Khác']));
+        MemberCategoryScope::query()->create(['user_id' => $this->editor->id, 'taxonomy_id' => $other->id]);
+        app(CategoryScopes::class)->forget();
+        $limited->call('addBlock', 'cta')->assertForbidden();
+        $limited->call('save')->assertForbidden();
+    });
+    expect(beStored($this->jobs, 'after_list'))->toBeNull();
+
+    $member = beUser(['taxonomies.manage', 'entries.view']);
+    beIn(1, function () use ($member): void {
+        $blind = Livewire::actingAs($member)->test(BandEditor::class, ['ulid' => $this->jobs->ulid, 'slot' => 'after_list']);
+        // the section is now gated by an ability the member does not hold
+        ContentSection::query()->where('key', 'tin-tuc')->update(['permission_prefix' => 'jobs']);
+        $blind->call('addBlock', 'cta')->assertForbidden();
+        $blind->call('save')->assertForbidden();
+    });
+    expect(beStored($this->jobs, 'after_list'))->toBeNull();
+});
+
+it('says so in words when the category left every section after the screen opened', function (): void {
+    beIn(1, function (): void {
+        $page = Livewire::actingAs($this->editor)->test(BandEditor::class, ['ulid' => $this->jobs->ulid, 'slot' => 'after_list'])
+            ->call('addBlock', 'cta');
+        ContentSection::query()->where('key', 'tin-tuc')->delete();
+        $page->call('save')->assertSet('toastTone', 'error')->assertSet('toastMsg', __('categories.band_err_moved'))
+            ->assertSet('blocks.0.type', 'cta');
+        $page->set('toastMsg', '')->call('removeBlock', 0)->assertSet('toastMsg', __('categories.band_err_moved'));
+    });
+    expect(beStored($this->jobs, 'after_list'))->toBeNull();
+
+    // opening it now answers as for any category not found
+    $this->actingAs($this->editor)->get(beUrl($this->jobs))->assertNotFound();
+});
+
+it('opens the builder on a flat query budget, whatever the number of blocks in the band', function (): void {
+    $open = function (int $blocks): int {
+        beIn(1, fn () => Taxonomy::query()->whereKey($this->jobs->id)->update(['meta' => ['layout_blocks' => ['after_list' => [
+            'vi' => ['blocks' => array_map(fn (int $i): array => ['type' => 'cta', 'props' => ['heading' => 'Khối '.$i]], range(1, $blocks))],
+        ]]]]));
+
+        return countQueries(fn () => $this->actingAs($this->editor)->get(beUrl($this->jobs))->assertOk()->assertSee('Khối 1'));
+    };
+
+    $few = $open(1);
+    $many = $open(8);
+    expect($many)->toBe($few)->and($few)->toBeLessThanOrEqual(1);
 });
 
 it('never overwrites a change made meanwhile, and refuses a block the band does not take', function (): void {
