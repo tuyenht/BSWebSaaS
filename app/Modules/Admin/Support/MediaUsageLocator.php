@@ -10,6 +10,7 @@ use App\Modules\Catalog\Models\ProductImage;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\BlockMediaUsage;
+use App\Modules\Cms\Support\EntryCoverUsage;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
@@ -21,7 +22,8 @@ use Illuminate\Support\Facades\DB;
  * Finds which content uses a media master, and constrains the library grid to used/unused. Media
  * usage is only partly centralised in `mediables` (the branch list is its one producer so far), so
  * this reads the real relations directly: a product's gallery (product_images.media_id), an entry's cover image
- * (entry.meta['image_url'] = the media's storage_key), a category's picture
+ * (named by storage key in entry.meta['image_url'], read through its "in use" row: mediables
+ * collection `cover`, EntryCoverUsage, written with every save of the entry), a category's picture
  * (taxonomies.cover_media_id) and the site's four brand images (site_profiles: logo, logo on a dark
  * background, favicon, share image; role `brand`, kind `site`) and the site's branch and factory
  * pictures (mediables collection `branch`, written with the branch list; role `content`, kind
@@ -76,8 +78,10 @@ final readonly class MediaUsageLocator
             ];
         }
 
-        // Cover — the entry's featured/OG image (storage_key in meta).
-        foreach (Entry::query()->with('translations')->where('meta->image_url', $media->storage_key)->get() as $entry) {
+        // Cover — the entry's featured/OG image (its "in use" row, kept with the entry's meta).
+        $covered = Mediable::query()->where('media_id', $media->id)->where('mediable_type', 'entry')
+            ->where('collection', EntryCoverUsage::COLLECTION)->select('mediable_id');
+        foreach (Entry::query()->with('translations')->whereIn('id', $covered)->get() as $entry) {
             $usages[] = $this->entryUsage($entry, 'cover', $locale);
         }
 
@@ -181,9 +185,8 @@ final readonly class MediaUsageLocator
      * them, in one statement for the whole page: each kind of use is one grouped part of a UNION ALL
      * keyed by the page's media ids, its owners read through their own models (site scope, Trash
      * scope), so a soft-deleted product or post no longer counts — as constrain() reads them.
-     * One kind is left to the drawer: an entry's featured / share image, which names the file by its
-     * storage key inside entries.meta. No index serves that key, so counting it here would read
-     * every entry of the site on every page of the library; the drawer reads it for the one file.
+     * An entry's featured / share image is counted from its "in use" row (EntryCoverUsage), never
+     * from entries.meta, which no index serves.
      *
      * @param  iterable<Media>  $files
      * @return array<int, int>
@@ -206,6 +209,10 @@ final readonly class MediaUsageLocator
             // a category's picture
             Taxonomy::query()->toBase()->whereIn('cover_media_id', $ids)
                 ->groupBy('cover_media_id')->selectRaw('cover_media_id as k, count(*) as n'),
+            // an entry's featured / share image: one place per entry
+            Mediable::query()->toBase()->whereIn('media_id', $ids)->where('collection', EntryCoverUsage::COLLECTION)->where('mediable_type', 'entry')
+                ->whereIn('mediable_id', Entry::query()->select('id'))
+                ->groupBy('media_id')->selectRaw('media_id as k, count(distinct mediable_id) as n'),
             // a block image or a button's file: one place per entry, per category, and one for the site's own slots
             Mediable::query()->toBase()->whereIn('media_id', $ids)->where('collection', $content)->where('mediable_type', 'entry')
                 ->whereIn('mediable_id', Entry::query()->select('id'))
@@ -311,6 +318,9 @@ final readonly class MediaUsageLocator
      * (who may send a file to the Trash) any row naming the file keeps it, the owner in the Trash too:
      * restoring that product or post still finds its picture.
      *
+     * An entry's featured picture is read from its "in use" row (EntryCoverUsage), so the filter
+     * scans no entry's meta; the protective reading (without $liveOwners) also reads the meta keys.
+     *
      * @param  Builder<Media>  $query
      */
     public function constrain(Builder $query, bool $used, bool $liveOwners = false): void
@@ -319,14 +329,17 @@ final readonly class MediaUsageLocator
         if ($liveOwners) {
             $galleryMediaIds->whereIn('product_id', Product::query()->select('id'));
         }
-        $coverKeys = Entry::query()->whereNotNull('meta->image_url')->select(DB::raw("meta->>'image_url'"));
+        // An entry's featured picture: its "in use" row (collection cover) for a live entry. Without
+        // $liveOwners the meta keys are read too, so a cover set by a road that skipped the model (a
+        // raw import before the next reconcile) still keeps its file out of the Trash.
+        $coverKeys = $liveOwners ? null : Entry::query()->whereNotNull('meta->image_url')->select(DB::raw("meta->>'image_url'"));
         $blockMediaIds = $liveOwners
-            ? Mediable::query()->where('collection', BlockMediaUsage::COLLECTION)->where('mediable_type', 'entry')
+            ? Mediable::query()->whereIn('collection', [BlockMediaUsage::COLLECTION, EntryCoverUsage::COLLECTION])->where('mediable_type', 'entry')
                 ->whereIn('mediable_id', Entry::query()->select('id'))->select('media_id')
                 ->unionAll(Mediable::query()->where('collection', BlockMediaUsage::COLLECTION)->where('mediable_type', 'taxonomy')
                     ->whereIn('mediable_id', Taxonomy::query()->select('id'))->select('media_id'))
                 ->unionAll(Mediable::query()->whereIn('collection', self::COLLECTIONS)->where('mediable_type', 'site_setting')->select('media_id'))
-            : Mediable::query()->whereIn('collection', self::COLLECTIONS)->select('media_id');
+            : Mediable::query()->whereIn('collection', [...self::COLLECTIONS, EntryCoverUsage::COLLECTION])->select('media_id');
         // NOT IN with a NULL in the list matches nothing, so categories without a picture stay out.
         $categoryMediaIds = Taxonomy::query()->whereNotNull('cover_media_id')->select('cover_media_id');
         // The four brand image columns of the site's profile, as one list of ids (no NULLs).
@@ -339,7 +352,7 @@ final readonly class MediaUsageLocator
         if ($used) {
             $query->where(function (Builder $q) use ($galleryMediaIds, $coverKeys, $blockMediaIds, $categoryMediaIds, $brandMediaIds): void {
                 $q->whereIn('id', $galleryMediaIds)
-                    ->orWhereIn('storage_key', $coverKeys)
+                    ->when($coverKeys !== null, fn (Builder $q) => $q->orWhereIn('storage_key', $coverKeys))
                     ->orWhereIn('id', $blockMediaIds)
                     ->orWhereIn('id', $categoryMediaIds)
                     ->orWhereIn('id', $brandMediaIds);
@@ -349,7 +362,7 @@ final readonly class MediaUsageLocator
         }
 
         $query->whereNotIn('id', $galleryMediaIds)
-            ->whereNotIn('storage_key', $coverKeys)
+            ->when($coverKeys !== null, fn (Builder $q) => $q->whereNotIn('storage_key', $coverKeys))
             ->whereNotIn('id', $blockMediaIds)
             ->whereNotIn('id', $categoryMediaIds)
             ->whereNotIn('id', $brandMediaIds);

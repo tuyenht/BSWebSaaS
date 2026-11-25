@@ -221,13 +221,11 @@ it('says on each file where it is used, as its detail panel counts it, and nothi
         $locator = app(MediaUsageLocator::class);
         $files = Media::query()->whereIn('id', [$gallery->id, $cover->id, $brand->id, $blocks->id, $unused->id])->get();
         $counts = $locator->countsFor($files);
-        // as the drawer lists them, but an entry's featured image, which the drawer alone reads (it names
-        // the file inside entries.meta, which no index serves): the cover counts its category only
+        // as the drawer lists them, the post's featured image too (read from its "in use" row)
         foreach ($files as $file) {
-            $drawer = array_filter($locator->usagesFor($file, 'vi'), fn (array $u): bool => ! ($u['role'] === 'cover' && in_array($u['kind'], ['post', 'page'], true)));
-            expect($counts[$file->id])->toBe(count($drawer), $file->original_filename);
+            expect($counts[$file->id])->toBe(count($locator->usagesFor($file, 'vi')), $file->original_filename);
         }
-        expect($counts)->toBe([$gallery->id => 2, $cover->id => 1, $brand->id => 2, $blocks->id => 3, $unused->id => 0])
+        expect($counts)->toBe([$gallery->id => 2, $cover->id => 2, $brand->id => 2, $blocks->id => 3, $unused->id => 0])
             ->and(count($locator->usagesFor($cover, 'vi')))->toBe(2);
 
         $page = Livewire::actingAs($me)->test(Library::class);
@@ -312,14 +310,14 @@ it('reads the groups’ own counts only while the filters are open, never on a p
     });
 });
 
-it('counts the use chips from the page’s own media ids, never reading the entries’ meta', function (): void {
+it('counts the use chips from the page’s own media ids, a featured image too, never reading the entries’ meta', function (): void {
     $me = mfMember('admin', 'Bảo Ngọc');
     $file = mfFile(1, 'anh.png');
     app(Tenancy::class)->enter(1, fn () => Entry::query()->create(['type' => 'post', 'status' => 'published', 'meta' => ['image_url' => $file->storage_key]]));
 
     app(Tenancy::class)->enter(1, function () use ($me, $file): void {
         $files = Media::query()->whereKey($file->id)->get();
-        $sql = mfSql(fn () => app(MediaUsageLocator::class)->countsFor($files));
+        $sql = mfSql(fn () => expect(app(MediaUsageLocator::class)->countsFor($files))->toBe([$file->id => 1]));
         expect($sql)->toHaveCount(1)
             ->and($sql[0])->not->toContain('image_url')->not->toContain('"entries"."meta"');
 
@@ -395,4 +393,34 @@ it('drops a chosen uploader nobody here is, swaps a reversed range and shows the
             ->assertSee('dem-khuya')->assertSee('cua-khang');
         expect(MediaLibraryDirectory::window('range', '2026-03-11', '2026-03-01'))->toEqual(MediaLibraryDirectory::window('range', '2026-03-01', '2026-03-11'));
     });
+});
+
+it('lays each list row out on two lines while the folder column sits beside a files area of 600–899, as board 12', function (): void {
+    $me = mfMember('admin', 'Bảo Ngọc');
+    mfFile(1, 'anh.png');
+    $band = '@min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:';
+
+    $html = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($me)->test(Library::class)->call('setView', 'list')->html());
+    $doc = new DOMDocument;
+    libxml_use_internal_errors(true);
+    $doc->loadHTML('<?xml encoding="utf-8"?>'.$html);
+    libxml_clear_errors();
+    $xpath = new DOMXPath($doc);
+
+    foreach (['//thead/tr/th', '//tbody/tr/td'] as $cells) {
+        $row = $xpath->query($cells.'/..')->item(0);
+        expect($row?->attributes?->getNamedItem('class')?->nodeValue)->toContain($band.'grid')
+            ->toContain($band.'grid-cols-[2.75rem_2.75rem_repeat(3,minmax(0,1fr))_max-content_minmax(0,1fr)_auto]');
+        $areas = [];
+        foreach ($xpath->query($cells) as $cell) {
+            preg_match('#'.preg_quote($band, '#').'\[grid-area:([0-9/]+)\]#', (string) $cell->attributes?->getNamedItem('class')?->nodeValue, $m);
+            $areas[] = $m[1] ?? '';
+        }
+        // tick, picture | the name across line 1 | type, dimensions, size, where used, upload day on line 2 | «Chi tiết»
+        expect($areas)->toBe(['1/1/3/2', '1/2/3/3', '1/3/2/8', '2/3/3/4', '2/4/3/5', '2/5/3/6', '2/6/3/7', '2/7/3/8', '1/8/3/9']);
+    }
+    // the dimensions and the upload day come back as columns there, so the name's sub line stops carrying them
+    $dims = $xpath->query('//tbody/tr/td')->item(4);
+    expect((string) $dims?->attributes?->getNamedItem('class')?->nodeValue)->toContain($band.'block')
+        ->and($html)->toContain('@min-[56.25rem]/tvm:hidden '.$band.'hidden!');
 });

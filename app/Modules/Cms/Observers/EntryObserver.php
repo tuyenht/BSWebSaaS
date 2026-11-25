@@ -5,13 +5,19 @@ namespace App\Modules\Cms\Observers;
 use App\Modules\Cms\Events\EntryPublished;
 use App\Modules\Cms\Exceptions\HomePageLockedException;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Support\BlockMediaUsage;
+use App\Modules\Cms\Support\EntryCoverUsage;
 use App\Modules\Cms\Support\HomePages;
 use App\Modules\Media\Models\Mediable;
 
 /**
- * Cleans an entry's block image usage index when the entry is PERMANENTLY deleted. `mediables` is a
- * polymorphic soft-attachment (no FK back to entries), so a force-delete would otherwise strand the
- * entry's content rows — leaving the media they referenced read as "used" by a gone entry forever
+ * Keeps the library's "in use" row of an entry's featured picture (EntryCoverUsage) in step with
+ * its meta: written when an entry is created with a picture or its picture changes, in that save's
+ * transaction, whichever path saved it.
+ *
+ * Cleans an entry's block image and featured picture usage rows when the entry is PERMANENTLY
+ * deleted. `mediables` is a polymorphic soft-attachment (no FK back to entries), so a force-delete
+ * would otherwise strand the entry's rows — leaving the media they referenced read as "used" by a gone entry forever
  * (a false "used" in the library filter).
  *
  * A soft delete deliberately KEEPS the rows: a trashed entry still reserves its media, so the media
@@ -27,6 +33,9 @@ final class EntryObserver
 {
     public function created(Entry $entry): void
     {
+        if (EntryCoverUsage::keyOf($entry->meta) !== null) {
+            EntryCoverUsage::sync($entry);
+        }
         if ($entry->status === 'published') {
             event(new EntryPublished($entry->id, $entry->type));
         }
@@ -34,6 +43,10 @@ final class EntryObserver
 
     public function updated(Entry $entry): void
     {
+        // getOriginal() still holds the stored meta while `updated` runs
+        if ($entry->wasChanged('meta') && EntryCoverUsage::keyOf($entry->getOriginal('meta')) !== EntryCoverUsage::keyOf($entry->meta)) {
+            EntryCoverUsage::sync($entry);
+        }
         if ($entry->wasChanged('status') && $entry->status === 'published') {
             event(new EntryPublished($entry->id, $entry->type));
         }
@@ -52,7 +65,7 @@ final class EntryObserver
         Mediable::query()
             ->where('mediable_type', 'entry')
             ->where('mediable_id', $entry->id)
-            ->where('collection', 'content')
+            ->whereIn('collection', [BlockMediaUsage::COLLECTION, EntryCoverUsage::COLLECTION])
             ->delete();
     }
 }
