@@ -18,7 +18,6 @@ use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Shared\Support\Cast;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
-use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
@@ -39,7 +38,6 @@ use Livewire\Component;
  * Secrets are write-only: typed in the browser, sent as an action's argument, stored encrypted
  * (SecretCipher), and never put in the page's state or HTML — only whether one is saved.
  */
-#[Layout('admin::layouts.app')]
 final class SocialSettings extends Component
 {
     use TracksSavedState;
