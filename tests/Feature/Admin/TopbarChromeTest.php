@@ -295,6 +295,48 @@ it('sizes the site menu labels by the text roles, so they follow the reader\'s t
         ->not->toContain('top: 2.35rem;');
 });
 
+it('names the fullscreen button for what it does now, and shows it only where the browser can', function (): void {
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
+
+    $dom = platformShellDom((string) $this->actingAs($user->fresh())->withSession(['locale' => 'vi'])->get('http://a.test/admin/content')->assertOk()->getContent());
+
+    $button = null;
+    foreach ($dom->querySelectorAll('header.admin-topbar button') as $candidate) {
+        if (str_contains((string) $candidate->getAttribute('@click'), 'requestFullscreen')) {
+            $button = $candidate;
+        }
+    }
+    expect($button)->not->toBeNull()
+        ->and($button->getAttribute('aria-label'))->toBe('Toàn màn hình')     // before Alpine: the name it starts with
+        ->and($button->getAttribute('title'))->toBe('Toàn màn hình')          // a tip for the icon-only button
+        ->and($button->getAttribute('aria-pressed'))->toBe('false')
+        ->and((string) $button->getAttribute(':aria-label'))->toContain('Thoát toàn màn hình')
+        ->and((string) $button->getAttribute(':title'))->toContain('Thoát toàn màn hình')
+        ->and((string) $button->getAttribute(':aria-pressed'))->toContain('full')
+        ->and($button->getAttribute('x-show'))->toBe('can')                   // hidden where fullscreen is not offered (iPhone)
+        ->and((string) $button->getAttribute('x-data'))->toContain('document.fullscreenEnabled');
+});
+
+it('asks before signing out, in plain words, and signs out only on «Đăng xuất»', function (): void {
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
+
+    $dom = platformShellDom((string) $this->actingAs($user->fresh())->withSession(['locale' => 'vi'])->get('http://a.test/admin/content')->assertOk()->getContent());
+
+    $ask = (string) platformShellOne($dom, 'form[data-bs-signout] button[type="submit"]')->getAttribute('x-on:click.prevent');
+    expect($ask)->toContain('$bsConfirm(')
+        ->toContain("icon: 'logout'")
+        ->toContain('Đăng xuất khỏi '.config('admin.brand.name').'?')
+        ->toContain('Bạn sẽ cần đăng nhập lại để tiếp tục chỉnh sửa. Mọi thay đổi đã lưu vẫn được giữ nguyên.')
+        ->toContain('userOpen = false; $refs.userButton.focus(); $bsConfirm(')   // «Hủy» returns focus to the avatar
+        ->toContain('.catch(() => true)')                 // a dialog that cannot load still lets the member out
+        ->toContain('ok && $el.form.requestSubmit()');   // the real submit, so the kept drafts are cleared too
+
+    // the session-expiry dialog signs out on its own button, without a second question
+    expect((string) file_get_contents(app_path('Modules/Admin/resources/views/partials/session-guard.blade.php')))->not->toContain('$bsConfirm');
+});
+
 it('gives the search box the long hint and its shorter forms, and no shortcut while it has nothing to search', function (): void {
     $user = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
