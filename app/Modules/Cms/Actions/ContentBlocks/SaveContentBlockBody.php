@@ -10,6 +10,7 @@ use App\Modules\Cms\ContentBlocks\ContentBlockVersion;
 use App\Modules\Cms\Exceptions\ContentBlockChangeRejectedException;
 use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\ContentBlockTranslation;
+use App\Modules\Cms\Support\ContentBlockMediaReconciler;
 use App\Modules\Cms\Validation\ValidPageJson;
 use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -23,7 +24,8 @@ use Illuminate\Support\Facades\Validator;
  * blocks, checked exactly as a page body is (ValidPageJson: registered types only, safe links, this
  * website's pages and files, the block count and size limits), stored as `{"blocks": […]}` through
  * the model so every formatted-text prop is cleaned (SanitizedPageBody). Saving moves the block's
- * "Cập nhật" date. $version is the token the screen read; a save made from an older state is refused
+ * "Cập nhật" date. The pictures and files the block's bodies use are recorded in the library's "in use"
+ * rows in the same transaction (ContentBlockMediaReconciler). $version is the token the screen read; a save made from an older state is refused
  * (version_stale). Returns the new token. Asks ContentBlockPolicy first; runs inside the tenant
  * context.
  */
@@ -32,6 +34,7 @@ final readonly class SaveContentBlockBody
     public function __construct(
         private ValidPageJson $pageJson,
         private SiteLocale $locales,
+        private ContentBlockMediaReconciler $media,
     ) {}
 
     /**
@@ -65,6 +68,7 @@ final readonly class SaveContentBlockBody
                 ->first() ?? new ContentBlockTranslation(['content_block_id' => $fresh->id, 'locale' => $locale]);
             $translation->body = ['blocks' => $blocks];
             $translation->save();
+            $this->media->reconcile($fresh);
 
             Audit::record('cms.content_block.body_saved', [
                 'auditable_type' => ContentBlock::class,
