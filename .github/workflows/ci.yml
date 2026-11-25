@@ -380,6 +380,11 @@ jobs:
       - name: JS unit tests (tree drag rule)
         run: node --test 'tests/js/*.test.mjs'
 
+      # The media Worker (deploy/media-worker/, deployed apart with wrangler): what the file host serves,
+      # its safety headers and the legacy-folder 301s. Pure Node, no deps.
+      - name: Media Worker unit tests
+        run: node --test deploy/media-worker/test/worker.test.js
+
       # The storefront slider's behaviour (rotation, pause, keys, reduced motion) in jsdom.
       - name: Storefront slider behaviour
         run: node scripts/storefront/slider-check.mjs
