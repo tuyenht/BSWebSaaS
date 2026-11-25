@@ -12,7 +12,7 @@ use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\DisplayDate;
-use App\Modules\Cms\Support\ScheduleInput;
+use App\Modules\Admin\Support\Entries\ScheduleInput;
 use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;

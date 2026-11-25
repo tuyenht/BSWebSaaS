@@ -22,7 +22,7 @@ beforeEach(function (): void {
 
 afterEach(fn () => ContentPacks::cleanup());
 
-it('keeps an item past its end time off the website at a forced reload, its dates untouched', function (string $key, string $file, string $model, string $translation, string $slug): void {
+it('never puts an item past its end time back on the website at a forced reload, its status and dates untouched', function (string $key, string $file, string $model, string $translation, string $slug): void {
     ContentPacks::load();
     $published = now()->subDays(5)->startOfSecond();
     $expires = now()->subDays(2)->startOfSecond();
@@ -33,7 +33,8 @@ it('keeps an item past its end time off the website at a forced reload, its date
 
     [$exit, $output] = ContentPacks::load('demo-co', [$key]);
 
-    expect($exit)->toBe(0, $output);
+    // the plan still names the pack's status and date, so the read-back refuses the load as a whole
+    expect($exit)->not->toBe(0)->and($output)->toContain('did not read back as planned');
     ContentPacks::in($this->siteId, function () use ($find, $published, $expires): void {
         $row = $find();
         expect($row->status)->toBe('archived')
