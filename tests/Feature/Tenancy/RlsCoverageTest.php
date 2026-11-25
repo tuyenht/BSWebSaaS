@@ -25,7 +25,10 @@ it('enforces RLS + FORCE on every table that has a site_id column', function ():
           --   • audit_logs — append-only platform trail; best-effort writes may have
           --     no tenant context, operators need cross-site visibility. Its monthly
           --     tables (partitions of it) are the same table.
-          and c.relname not in ('domains', 'roles', 'model_has_roles', 'model_has_permissions', 'audit_logs')
+          --   • reserved_site_codes — the platform's list of names no website code may be;
+          --     site_id only records which website owned an old media folder, read by the
+          --     media key trigger; the application role may only read it.
+          and c.relname not in ('domains', 'roles', 'model_has_roles', 'model_has_permissions', 'audit_logs', 'reserved_site_codes')
           and not exists (select 1 from pg_inherits i where i.inhrelid = c.oid and i.inhparent = to_regclass('public.audit_logs'))
           and exists (
             select 1 from information_schema.columns col
@@ -56,7 +59,10 @@ it('has at least one isolation policy on every tenant table', function (): void 
           --   • audit_logs — append-only platform trail; best-effort writes may have
           --     no tenant context, operators need cross-site visibility. Its monthly
           --     tables (partitions of it) are the same table.
-          and c.relname not in ('domains', 'roles', 'model_has_roles', 'model_has_permissions', 'audit_logs')
+          --   • reserved_site_codes — the platform's list of names no website code may be;
+          --     site_id only records which website owned an old media folder, read by the
+          --     media key trigger; the application role may only read it.
+          and c.relname not in ('domains', 'roles', 'model_has_roles', 'model_has_permissions', 'audit_logs', 'reserved_site_codes')
           and not exists (select 1 from pg_inherits i where i.inhrelid = c.oid and i.inhparent = to_regclass('public.audit_logs'))
           and exists (
             select 1 from information_schema.columns col
