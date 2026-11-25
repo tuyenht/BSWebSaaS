@@ -134,15 +134,16 @@ final class LoadContentPackCommand extends Command
         }
 
         $backupFile = null;
+        $backup = app(Backup::class);
+        $snapshot = [];
         if ($plan->writes() !== []) {
-            $backup = app(Backup::class);
             $snapshot = $tenancy->enter($siteId, fn (): array => $backup->snapshot($plan, $planner));
             $backupFile = $backup->write($plan, $snapshot);
             $this->line("Backup: {$backupFile}");
         }
 
         try {
-            $written = $tenancy->enter($siteId, function () use ($planner, $pack, $site, $host, $forced, $expected, $siteId, $backupFile): int {
+            $written = $tenancy->enter($siteId, function () use ($planner, $pack, $site, $host, $forced, $expected, $siteId, $backupFile, $backup, $snapshot): int {
                 TaxonomyTree::lock($siteId);
                 // The page tree's lock before plan() row-locks pages: a move in the admin takes it before its row
                 // locks too, so the two wait for each other instead of deadlocking.
@@ -154,6 +155,9 @@ final class LoadContentPackCommand extends Command
                 if (! hash_equals($plan->fingerprint, $expected)) {
                     throw new PackRejected('Refused: plan changed, run the dry run again.');
                 }
+                // What a removal deletes beyond its plan line (saved list views, its permalink) is read
+                // again here, under the transaction, against the backup taken before it opened.
+                $backup->assertRemovalsUnchanged($plan, $snapshot);
 
                 $written = app(Applier::class)->apply($plan, $planner);
                 $this->recordLedger($plan, $planner);

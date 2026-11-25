@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Support\Entries;
 
 /**
- * The categories a section files its posts under, as SQL: the section's own category and every
- * category below it, down the parent chain (the source of truth — the ltree path may not be
- * written yet). Membership follows SectionResolver, where the NEAREST bound category wins, so the
- * walk stops at a sub-category that another section is built on: its posts belong to that
- * section. The CYCLE clause ends a parent loop.
+ * The categories a section files its posts under, as SQL: every category the section covers
+ * (content_section_categories: one or several, side by side) and every category below each of them,
+ * down the parent chain (the source of truth — the ltree path may not be written yet). Membership
+ * follows SectionResolver, where the NEAREST covered category wins, so the walk stops at a
+ * sub-category that another section covers: its posts belong to that section. The CYCLE clause ends
+ * a parent loop.
  *
  * Every admin surface that lists or counts "a section's posts" (the posts list, its tabs and
  * facets, the dashboard, the approval settings) reads this one definition, so they agree with
@@ -20,8 +21,8 @@ namespace App\Modules\Admin\Support\Entries;
 final class SectionBranch
 {
     /**
-     * A recursive CTE `branch (section_root, id)` for several sections at once; rows with `looped` set
-     * closed a parent loop and are not members.
+     * A recursive CTE `branch (section_root, id)` from several categories at once (each one the root
+     * of its own walk); rows with `looped` set closed a parent loop and are not members.
      *
      * @param  non-empty-list<int>  $rootIds
      * @return array{0: literal-string, 1: list<int>}
@@ -31,19 +32,28 @@ final class SectionBranch
         /** @var literal-string $marks placeholders only; the ids go in the bindings */
         $marks = implode(', ', array_fill(0, count($rootIds), '?'));
 
-        $sql = <<<SQL
-            WITH RECURSIVE branch (section_root, id) AS (
-                SELECT t.id, t.id FROM taxonomies AS t WHERE t.site_id = ? AND t.id IN ({$marks})
-                UNION ALL
-                SELECT branch.section_root, child.id
-                FROM taxonomies AS child JOIN branch ON child.parent_id = branch.id
-                WHERE child.site_id = ?
-                  AND NOT EXISTS (SELECT 1 FROM content_sections AS cs WHERE cs.site_id = ? AND cs.taxonomy_id = child.id)
-            ) CYCLE id SET looped USING trail
+        return self::walk('section_root', "SELECT t.id, t.id FROM taxonomies AS t WHERE t.site_id = ? AND t.id IN ({$marks})", [$siteId, ...$rootIds], $siteId);
+    }
 
-            SQL;
+    /**
+     * A recursive CTE `branch (section_id, id)` for several sections at once: each section's covered
+     * categories and what lies below them; rows with `looped` set are not members.
+     *
+     * @param  non-empty-list<int>  $sectionIds
+     * @return array{0: literal-string, 1: list<int>}
+     */
+    public static function ofSections(int $siteId, array $sectionIds): array
+    {
+        /** @var literal-string $marks placeholders only; the ids go in the bindings */
+        $marks = implode(', ', array_fill(0, count($sectionIds), '?'));
 
-        return [$sql, [$siteId, ...$rootIds, $siteId, $siteId]];
+        return self::walk(
+            'section_id',
+            'SELECT csc.content_section_id, t.id FROM content_section_categories AS csc'
+                ." JOIN taxonomies AS t ON t.id = csc.taxonomy_id AND t.site_id = ? WHERE csc.site_id = ? AND csc.content_section_id IN ({$marks})",
+            [$siteId, $siteId, ...$sectionIds],
+            $siteId,
+        );
     }
 
     /**
@@ -51,10 +61,33 @@ final class SectionBranch
      *
      * @return array{0: literal-string, 1: list<int>}
      */
-    public static function ids(int $siteId, int $rootId): array
+    public static function idsOfSection(int $siteId, int $sectionId): array
     {
-        [$sql, $bindings] = self::with($siteId, [$rootId]);
+        [$sql, $bindings] = self::ofSections($siteId, [$sectionId]);
 
         return [$sql.'SELECT branch.id FROM branch WHERE NOT branch.looped', $bindings];
+    }
+
+    /**
+     * @param  literal-string  $column  the first column's name
+     * @param  literal-string  $anchor  the non-recursive term: (that column, a category id) rows
+     * @param  list<int>  $anchorBindings
+     * @return array{0: literal-string, 1: list<int>}
+     */
+    private static function walk(string $column, string $anchor, array $anchorBindings, int $siteId): array
+    {
+        $sql = <<<SQL
+            WITH RECURSIVE branch ({$column}, id) AS (
+                {$anchor}
+                UNION ALL
+                SELECT branch.{$column}, child.id
+                FROM taxonomies AS child JOIN branch ON child.parent_id = branch.id
+                WHERE child.site_id = ?
+                  AND NOT EXISTS (SELECT 1 FROM content_section_categories AS csc WHERE csc.site_id = ? AND csc.taxonomy_id = child.id)
+            ) CYCLE id SET looped USING trail
+
+            SQL;
+
+        return [$sql, [...$anchorBindings, $siteId, $siteId]];
     }
 }

@@ -43,6 +43,23 @@ final readonly class PackItem
         return null;
     }
 
+    /**
+     * The categories a section item covers, its first one first: `categories` (a list, for a
+     * section over several categories side by side) or `category` (one). Not validated here.
+     *
+     * @return list<string>
+     */
+    public function sectionCategories(): array
+    {
+        $list = $this->data['categories'] ?? null;
+        if (is_array($list)) {
+            return array_values(array_filter($list, is_string(...)));
+        }
+        $one = $this->data['category'] ?? null;
+
+        return is_string($one) ? [$one] : [];
+    }
+
     /** Whether the item removes a content section instead of writing one. */
     public function removes(): bool
     {

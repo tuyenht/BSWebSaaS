@@ -6,7 +6,7 @@ use Carbon\CarbonImmutable;
 
 /**
  * What the posts and pages list asks for, already cleaned by the screen: the type, the status group,
- * the section's category, the search words and the filter values (OR within a group, AND across).
+ * the section (its id, when it covers categories), the search words and the filter values (OR within a group, AND across).
  */
 final readonly class EntryListFilter
 {
@@ -35,7 +35,7 @@ final readonly class EntryListFilter
     public function __construct(
         public string $type,
         public string $tab,
-        public ?int $sectionTaxonomyId,
+        public ?int $sectionId,
         public string $search,
         public array $langs,
         public array $creators,

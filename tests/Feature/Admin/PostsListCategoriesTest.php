@@ -9,6 +9,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Tenancy\Models\ContentSectionCategory;
 use App\Modules\Workflow\Models\Workflow;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\DB;
@@ -298,6 +299,66 @@ it('refuses to remember the role card for a guest', function (): void {
     $before = DB::connection('pgsql_admin')->table('users')->whereRaw("preferences::text like '%posts-role%'")->count();
     $this->post('http://a.test/admin/hint-preference', ['key' => FirstHints::POSTS_ROLE])->assertRedirect();
     expect(DB::connection('pgsql_admin')->table('users')->whereRaw("preferences::text like '%posts-role%'")->count())->toBe($before);
+});
+
+it('lists the posts of a category the section covers beside its own, offering it at the top after the section\'s own categories', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $user = plcatEditor();
+        $t = plcatTree();
+        // «Việc làm» sits at the top of the tree, beside «Tin tức», and the news section covers it too.
+        $work = plcatCategory('Việc làm');
+        $engineers = plcatCategory('Kỹ sư', $work, 1);
+        $section = ContentSection::query()->where('key', 'posts')->firstOrFail();
+        ContentSectionCategory::query()->create(['site_id' => 1, 'content_section_id' => $section->id, 'taxonomy_id' => $work->id]);
+        plcatPost('Tin họp mặt', [$t['company']->id]);
+        plcatPost('Việc làm chung', [$work->id]);
+        plcatPost('Tuyển kỹ sư CNC', [$engineers->id]);
+        plcatPost('Dịch vụ phay', [$t['services']->id]);
+
+        $test = Livewire::actingAs($user)->test(Index::class, ['section' => 'posts']);
+        expect(plcatTitles($test))->toBe(['Tin họp mặt', 'Tuyển kỹ sư CNC', 'Việc làm chung']);
+        $options = collect($test->viewData('catOptions'))->map(fn (array $o): array => [$o['label'], $o['depth'], $o['count'] ?? null])->all();
+        expect($options)->toBe([
+            ['Tin công ty', 0, 1],
+            ['Tuyển dụng', 1, 0],
+            ['Kiến thức', 0, 0],
+            ['Gia công CNC', 1, 0],
+            ['Dung sai', 2, 0],
+            ['Việc làm', 0, 2],
+            ['Kỹ sư', 1, 1],
+        ]);
+        // each row names its category from the top of its own tree
+        expect(array_values($test->viewData('rowCategory')))->toContain('Việc làm', 'Việc làm › Kỹ sư');
+
+        $test->set('catF', [$work->ulid]);
+        expect(plcatTitles($test))->toBe(['Tuyển kỹ sư CNC', 'Việc làm chung']);
+    });
+});
+
+it('reads the list of a section covering two categories on the query budget of one covering one', function (): void {
+    $user = null;
+    $work = null;
+    app(Tenancy::class)->enter(1, function () use (&$user, &$work): void {
+        $user = plcatEditor();
+        $t = plcatTree();
+        $work = plcatCategory('Việc làm');
+        foreach (range(1, 6) as $i) {
+            plcatPost('Bài '.$i, [$i % 2 ? $t['company']->id : $work->id]);
+        }
+    });
+    $count = function () use ($user): int {
+        $this->actingAs($user)->get('http://a.test/admin/content?section=posts')->assertOk();
+
+        return countQueries(fn () => $this->actingAs($user)->get('http://a.test/admin/content?section=posts')->assertOk());
+    };
+
+    $one = $count();
+    app(Tenancy::class)->enter(1, fn () => ContentSectionCategory::query()->create([
+        'site_id' => 1, 'content_section_id' => ContentSection::query()->where('key', 'posts')->value('id'), 'taxonomy_id' => $work->id,
+    ]));
+    $two = $count();
+
+    expect($two)->toBe($one);
 });
 
 it('reads a categorised posts list on a flat query budget, whatever the number of rows', function (): void {

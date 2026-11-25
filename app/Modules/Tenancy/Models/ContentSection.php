@@ -4,13 +4,20 @@ declare(strict_types=1);
 
 namespace App\Modules\Tenancy\Models;
 
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Lang;
 
 /**
  * Dynamic content-type registry / admin nav section (page|post + templates). Seeded
  * per-site by ProvisionSite; drives which "kinds" of content a site manages.
+ *
+ * The categories a post section covers live in content_section_categories (several top-level ones
+ * may sit side by side); `taxonomy_id` stays as the first of them (expand-contract). Every save that
+ * sets or changes `taxonomy_id` keeps that category among the section's own (booted()), so a writer
+ * of the column alone (provisioning, seeders) stays right.
  *
  * @property int $site_id
  * @property string $key
@@ -40,6 +47,49 @@ class ContentSection extends Model
         return [
             'meta' => 'array',
         ];
+    }
+
+    #[\Override]
+    protected static function booted(): void
+    {
+        static::saved(static function (ContentSection $section): void {
+            if (! $section->wasRecentlyCreated && ! $section->wasChanged('taxonomy_id')) {
+                return;
+            }
+            $before = $section->wasRecentlyCreated ? null : $section->getOriginal('taxonomy_id');
+            $now = $section->taxonomy_id === null ? null : Cast::int($section->taxonomy_id);
+            if ($before !== null && Cast::int($before) !== $now) {
+                ContentSectionCategory::query()->where('content_section_id', $section->id)->where('taxonomy_id', Cast::int($before))->delete();
+            }
+            if ($now !== null) {
+                // A category another section already covers stays with that one (the first wins, as before).
+                ContentSectionCategory::query()->insertOrIgnore([
+                    'site_id' => Cast::int($section->site_id), 'content_section_id' => $section->id, 'taxonomy_id' => $now,
+                ]);
+            }
+        });
+    }
+
+    /** @return HasMany<ContentSectionCategory, $this> */
+    public function categories(): HasMany
+    {
+        return $this->hasMany(ContentSectionCategory::class, 'content_section_id');
+    }
+
+    /**
+     * The categories the section covers, its first one (`taxonomy_id`) first, the others by id. One query.
+     *
+     * @return list<int>
+     */
+    public function categoryIds(): array
+    {
+        $ids = array_map(Cast::int(...), $this->categories()->orderBy('taxonomy_id')->pluck('taxonomy_id')->all());
+        $first = $this->taxonomy_id === null ? null : Cast::int($this->taxonomy_id);
+        if ($first === null || ! in_array($first, $ids, true)) {
+            return array_values($ids);
+        }
+
+        return [$first, ...array_values(array_filter($ids, static fn (int $id): bool => $id !== $first))];
     }
 
     /**

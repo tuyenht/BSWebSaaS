@@ -38,6 +38,7 @@ use App\Modules\Storefront\Support\ThankYouPages;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Tenancy\Models\ContentSectionCategory;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Rendering\LayoutSlots;
@@ -282,6 +283,16 @@ final class Applier
             $section = ContentSection::query()->findOrFail($planned->recordId);
             $section->update($attributes);
         }
+        // The other categories it covers beside its first one (the saved hook keeps that one). Only
+        // added: the plan refuses a pack that would take one off. A category the load's removed
+        // section held is free by now: removals are applied first.
+        foreach (Cast::strings($desired['more_categories'] ?? []) as $more) {
+            ContentSectionCategory::query()->insertOrIgnore([
+                'site_id' => Cast::int($section->site_id),
+                'content_section_id' => $section->id,
+                'taxonomy_id' => $this->id($more),
+            ]);
+        }
         $this->ids[$planned->item->key] = $section->id;
         $this->sections->flush();
     }
@@ -297,7 +308,11 @@ final class Applier
     {
         $section = ContentSection::query()->findOrFail($planned->recordId);
         SectionListViews::prune(Cast::int($section->site_id), $section->key);
+        // Its permalink setting goes with it (backed up), so a later section under the key starts
+        // from the default; its categories go with the row (content_section_categories cascades).
+        SiteSetting::query()->where('group_name', 'permalinks')->where('key', $section->key)->delete();
         $section->delete();
+        $this->permalinks->flush();
         $this->sections->flush();
     }
 

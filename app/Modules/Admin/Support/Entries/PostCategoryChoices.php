@@ -35,10 +35,13 @@ final class PostCategoryChoices
     /** @var array<string, int> ulid → id */
     private array $byUlid = [];
 
-    /** @var array<int, string> section root id → section key */
+    /** @var array<int, string> every category a section covers → that section's key */
     private array $rootKey = [];
 
-    /** @var array<string, array{key: string, label: string, root: int}> section key → section, in menu order */
+    /** @var array<int, string> a section's first category (it is the section itself, not a row) → that section's key */
+    private array $homeRoot = [];
+
+    /** @var array<string, array{key: string, label: string, root: int, roots: list<int>}> section key → section, in menu order */
     private array $sections = [];
 
     /** @var array<int, string|null> memo: category id → its section key */
@@ -48,8 +51,11 @@ final class PostCategoryChoices
     {
         $choices = new self;
         foreach ($sections->postSections() as $section) {
-            $choices->sections[$section['key']] = ['key' => $section['key'], 'label' => $section['label'], 'root' => $section['root']];
-            $choices->rootKey[$section['root']] ??= $section['key'];
+            $choices->sections[$section['key']] = ['key' => $section['key'], 'label' => $section['label'], 'root' => $section['root'], 'roots' => $section['roots']];
+            foreach ($section['roots'] as $root) {
+                $choices->rootKey[$root] ??= $section['key'];
+            }
+            $choices->homeRoot[$section['root']] ??= $section['key'];
         }
 
         $rows = Taxonomy::query()
@@ -105,13 +111,16 @@ final class PostCategoryChoices
         return $this->nodes[$id]['name'] ?? null;
     }
 
-    /** Whether a section is built on this category (it is the section, not a row). */
+    /**
+     * Whether this is a section's first category (it is the section, not a row). Another category a
+     * section covers beside it («Tuyển dụng» in «Tin tức») is a row like any other.
+     */
     public function isSectionRoot(int $id): bool
     {
-        return isset($this->rootKey[$id]);
+        return isset($this->homeRoot[$id]);
     }
 
-    /** The category a section is built on, or null. */
+    /** A section's first category, or null. */
     public function rootOf(?string $sectionKey): ?int
     {
         return $sectionKey !== null ? ($this->sections[$sectionKey]['root'] ?? null) : null;
@@ -207,7 +216,7 @@ final class PostCategoryChoices
                 'ulid' => $ulid,
                 'label' => $this->nodes[$id]['name'],
                 'depth' => min(2, $depth),
-                'path' => $above === null || isset($this->rootKey[$above]) ? '' : $this->pathOf($above).' › ',
+                'path' => $above === null || isset($this->homeRoot[$above]) ? '' : $this->pathOf($above).' › ',
                 'on' => $ticked,
                 'main' => $id === $main,
                 'section' => $other ? $this->sectionLabel($section) : null,
@@ -243,6 +252,14 @@ final class PostCategoryChoices
             $root = $this->sections[$key]['root'];
             if ($this->rootKey[$root] === $key) {
                 $this->walk($root, 0, $out, $seen);
+            }
+            // the other categories it covers sit beside the first one's children, their own below them
+            foreach (array_slice($this->sections[$key]['roots'], 1) as $also) {
+                if (isset($this->nodes[$also]) && ! isset($seen[$also]) && $this->rootKey[$also] === $key) {
+                    $seen[$also] = true;
+                    $out[] = [$also, 0];
+                    $this->walk($also, 1, $out, $seen);
+                }
             }
         }
         // no section above: from the top of the tree, sections' own branches already listed
@@ -280,7 +297,7 @@ final class PostCategoryChoices
         $names = [];
         $at = $id;
         $seen = [];
-        while ($at !== null && isset($this->nodes[$at]) && ! isset($seen[$at]) && ! isset($this->rootKey[$at])) {
+        while ($at !== null && isset($this->nodes[$at]) && ! isset($seen[$at]) && ! isset($this->homeRoot[$at])) {
             $seen[$at] = true;
             array_unshift($names, $this->nodes[$at]['name']);
             $at = $this->nodes[$at]['parent'];

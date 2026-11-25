@@ -232,8 +232,9 @@ final class DashboardReader
     public function mine(User $user, bool $workflowOn): array
     {
         $statuses = $workflowOn ? ['draft', 'pending', 'scheduled', 'published'] : ['draft', 'scheduled', 'published'];
-        $listed = $this->postsSectionRow()?->taxonomy_id;
-        $listed = $listed === null ? null : Cast::int($listed);
+        // the linked list's section, when it covers categories (one that covers none lists every post)
+        $row = $this->postsSectionRow();
+        $listed = $row instanceof ContentSection && $row->taxonomy_id !== null ? (int) $row->id : null;
         $parts = [];
         foreach ($statuses as $status) {
             $parts[$status] = $this->inList($this->ownPosts($user)->where('status', $status), $listed);
@@ -347,7 +348,7 @@ final class DashboardReader
      * last move — a return when it brought the post back to the stage it is on, with a reason, by
      * someone else. A pending change to a published post that was turned down is not one: the
      * post stays published, and the board lists drafts only. `listed` counts the returned posts
-     * whose primary category is $listed or one below it (the set the draft tile counts; null: every post).
+     * whose primary category the section $listed (its id) covers or lies below one it covers (the set the draft tile counts; null: every post).
      *
      * @return array{rows: list<array<string, mixed>>, listed: int}
      */
@@ -380,7 +381,7 @@ final class DashboardReader
         // the categories the draft tile counts (inList(): the section's own and those below it)
         $branch = null;
         if ($listed !== null) {
-            [$sql, $values] = SectionBranch::ids(app(CurrentSite::class)->id(), $listed);
+            [$sql, $values] = SectionBranch::idsOfSection(app(CurrentSite::class)->id(), $listed);
             $branch = array_flip(array_map(fn (mixed $row): int => Cast::int(((array) $row)['id'] ?? 0), DB::select($sql, $values)));
         }
 
@@ -415,21 +416,21 @@ final class DashboardReader
     }
 
     /**
-     * Posts of the member that the posts list of the linked section shows: primary category
-     * $taxonomyId or one below it (the list's own test, EntryListQuery::scoped()), or every post
-     * when null.
+     * Posts of the member that the posts list of the linked section shows: primary category one
+     * the section $sectionId covers or one below it (the list's own test, EntryListQuery::scoped()),
+     * or every post when null.
      *
      * @param  Builder<Entry>  $query
      * @return Builder<Entry>
      */
-    private function inList(Builder $query, ?int $taxonomyId): Builder
+    private function inList(Builder $query, ?int $sectionId): Builder
     {
-        if ($taxonomyId === null) {
+        if ($sectionId === null) {
             return $query;
         }
         $site = app(CurrentSite::class)->id();
 
-        [$branch, $values] = SectionBranch::ids($site, $taxonomyId);
+        [$branch, $values] = SectionBranch::idsOfSection($site, $sectionId);
 
         return $query->whereExists(fn (QueryBuilder $primary) => $primary->selectRaw('1')->from('entry_taxonomies')
             ->where('entry_taxonomies.site_id', $site)

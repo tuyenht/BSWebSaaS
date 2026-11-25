@@ -699,16 +699,6 @@ final readonly class PackValidator
                 $errors[] = "{$item->key}: was must list earlier slugs.";
             }
         }
-        // A category the pack moves under another parent names the key it had before (its place in the tree then).
-        if (array_key_exists('moved_from', $item->data)) {
-            $from = $item->data['moved_from'];
-            $fromChain = is_string($from) ? self::taxonomyChain($from) : null;
-            if ($fromChain === null || $fromChain['vocabulary'] !== $chain['vocabulary'] || array_slice($fromChain['slugs'], 0, -1) === array_slice($chain['slugs'], 0, -1)) {
-                $errors[] = "{$item->key}: moved_from must be the category's earlier key, under another parent.";
-            } elseif ($pack->item((string) $from) !== null) {
-                $errors[] = "{$item->key}: moved_from {$from} is still an item of the pack.";
-            }
-        }
         // The intro under the name (plain text per language) and the intro picture: the same checks a category edit makes.
         if (array_key_exists('description', $item->data)) {
             $this->localeMap($pack, $item->key, $item->data, 'description', false, TaxonomyRules::DESCRIPTION_MAX, $errors, true);
@@ -760,8 +750,8 @@ final readonly class PackValidator
     }
 
     /**
-     * A content section (sections.json): a post section built on one of the pack's post categories,
-     * one section per category; or a section the pack removes (its `remove` list: the key alone). Its key is the section's own key (stable, in the admin's links and
+     * A content section (sections.json): a post section over one or several of the pack's post
+     * categories (`category`, or `categories` side by side), a category in one section at most; or a section the pack removes (its `remove` list: the key alone). Its key is the section's own key (stable, in the admin's links and
      * the permalink settings), its label one line of text as the section stores it.
      *
      * @param  array<string, true>  $taxonomies  category keys seen so far (taxonomies come first)
@@ -788,16 +778,35 @@ final readonly class PackValidator
         if (($item->data['entry_type'] ?? null) !== 'post') {
             $errors[] = "{$item->key}: entry_type must be post (a pack creates post sections only).";
         }
-        $category = $item->data['category'] ?? null;
-        $chain = is_string($category) ? self::taxonomyChain($category) : null;
-        if (! is_string($category) || $chain === null || $chain['vocabulary'] !== 'post_cat') {
-            $errors[] = "{$item->key}: category must be a post category key (tax:post_cat/…).";
-        } elseif (! isset($taxonomies[$category])) {
-            $errors[] = "{$item->key}: category {$category} is not in taxonomies.json.";
-        } elseif (isset($categories[$category])) {
-            $errors[] = "{$item->key}: another section of the pack is built on {$category}.";
+        // One category (`category`), or several side by side (`categories`, the first one first).
+        $named = array_key_exists('categories', $item->data) ? $item->data['categories'] : [$item->data['category'] ?? null];
+        if (array_key_exists('categories', $item->data) && array_key_exists('category', $item->data)) {
+            $errors[] = "{$item->key}: name either category or categories, not both.";
+        } elseif (! is_array($named) || ! array_is_list($named) || $named === [] || count($named) > 20) {
+            $errors[] = "{$item->key}: categories must list from 1 to 20 post category keys.";
         } else {
-            $categories[$category] = true;
+            $chains = [];
+            foreach ($named as $category) {
+                $chain = is_string($category) ? self::taxonomyChain($category) : null;
+                if (! is_string($category) || $chain === null || $chain['vocabulary'] !== 'post_cat') {
+                    $errors[] = "{$item->key}: category must be a post category key (tax:post_cat/…).";
+                } elseif (! isset($taxonomies[$category])) {
+                    $errors[] = "{$item->key}: category {$category} is not in taxonomies.json.";
+                } elseif (isset($categories[$category])) {
+                    $errors[] = "{$item->key}: another section of the pack is built on {$category}.";
+                } else {
+                    $categories[$category] = true;
+                    $chains[$category] = $chain['slugs'];
+                }
+            }
+            // A category below another one of the list is already covered through it.
+            foreach ($chains as $category => $slugs) {
+                foreach ($chains as $other => $above) {
+                    if ($other !== $category && count($above) < count($slugs) && array_slice($slugs, 0, count($above)) === $above) {
+                        $errors[] = "{$item->key}: {$category} sits under {$other}, which the section already covers.";
+                    }
+                }
+            }
         }
         $icon = $item->data['icon'] ?? null;
         if ($icon !== null && (! is_string($icon) || strlen($icon) > 64 || preg_match('/\Ari-[a-z0-9]+(?:-[a-z0-9]+)*\z/', $icon) !== 1)) {

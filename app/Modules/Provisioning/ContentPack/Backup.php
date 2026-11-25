@@ -173,19 +173,59 @@ final readonly class Backup
     }
 
     /**
-     * A section's row; one the load removes also keeps its members' saved views of its post list.
+     * A section's row and the categories it covers; one the load removes also keeps its permalink
+     * setting and its members' saved views of its post list.
      *
      * @return array<string, mixed>
      */
-    private function sectionRows(int $id, bool $removed): array
+    public function sectionRows(int $id, bool $removed): array
     {
         $section = ContentSection::query()->findOrFail($id);
-        $rows = ['section' => $section->attributesToArray()];
+        $rows = [
+            'section' => $section->attributesToArray(),
+            'categories' => array_values(DB::table('content_section_categories')->where('site_id', $this->site->id())->where('content_section_id', $id)
+                ->orderBy('id')->get()->map(fn (object $row): array => Cast::arr((array) $row))->all()),
+        ];
         if ($removed) {
+            $rows['permalinks'] = array_values(SiteSetting::query()->where('group_name', 'permalinks')->where('key', $section->key)->orderBy('id')->get()
+                ->map(fn (Model $row): array => $row->attributesToArray())->all());
             $rows['saved_list_views'] = SectionListViews::saved(Cast::int($section->site_id), $section->key);
         }
 
         return $rows;
+    }
+
+    /**
+     * Inside the write transaction, before anything is written: what the load removes must still be
+     * what the backup holds of it (a member may have saved a view of a removed section's list, or
+     * staff changed its permalink, after the backup was read and before the transaction opened).
+     * The members' rows are locked for the rest of the transaction.
+     *
+     * @param  array<string, mixed>  $snapshot
+     *
+     * @throws PackRejected the backup is stale
+     */
+    public function assertRemovalsUnchanged(Plan $plan, array $snapshot): void
+    {
+        $backedUp = [];
+        foreach (Cast::arr($snapshot['items'] ?? null) as $item) {
+            $item = Cast::arr($item);
+            $backedUp[Cast::string($item['key'] ?? null)] = Cast::arr($item['rows'] ?? null);
+        }
+        foreach ($plan->writes() as $planned) {
+            if ($planned->item->kind !== 'section' || $planned->verdict !== PlanItem::REMOVE || $planned->recordId === null) {
+                continue;
+            }
+            $key = Cast::string($planned->ref);
+            SectionListViews::members($this->site->id(), $key)->lockForUpdate()->pluck('id');
+            $now = $this->sectionRows($planned->recordId, true);
+            $then = $backedUp[$planned->item->key] ?? [];
+            foreach (['permalinks', 'saved_list_views', 'categories'] as $part) {
+                if (CanonicalHash::of(Cast::arr($now[$part] ?? null)) !== CanonicalHash::of(Cast::arr($then[$part] ?? null))) {
+                    throw new PackRejected("Refused: the section «{$key}» changed after the backup was taken; run the dry run and the apply again.");
+                }
+            }
+        }
     }
 
     /** @return array<string, mixed> */
