@@ -33,6 +33,7 @@ use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Navigation\MenuTargets;
 use App\Modules\Cms\Navigation\SpecialLinks;
+use App\Modules\Cms\Observers\ContentBlockObserver;
 use App\Modules\Cms\Observers\EntryObserver;
 use App\Modules\Cms\Observers\TaxonomyObserver;
 use App\Modules\Cms\Policies\ContentBlockPolicy;
@@ -116,6 +117,8 @@ final class CmsServiceProvider extends ServiceProvider
         Relation::morphMap([
             'entry' => Entry::class,
             'taxonomy' => Taxonomy::class,
+            // a shared block owns the library's "in use" rows of its body (mediables, D3)
+            'content_block' => ContentBlock::class,
         ]);
 
         $registry = $this->app->make(ComponentRegistry::class);
@@ -138,6 +141,8 @@ final class CmsServiceProvider extends ServiceProvider
         Entry::observe(EntryObserver::class);
         // Deleting a category drops its block slots' usage rows (polymorphic, no FK cascade).
         Taxonomy::observe(TaxonomyObserver::class);
+        // Deleting a shared block drops its body's usage rows (polymorphic, no FK cascade).
+        ContentBlock::observe(ContentBlockObserver::class);
 
         // A member's category limits on a site follow their roles there (left the site, or never limited).
         Event::listen(SiteMembershipChanged::class, ForgetMemberCategoryScopes::class);
