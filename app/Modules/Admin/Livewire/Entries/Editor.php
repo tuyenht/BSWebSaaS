@@ -34,6 +34,7 @@ use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\EntryDraftRejectedException;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
+use App\Modules\Cms\Exceptions\ExpiredContentException;
 use App\Modules\Cms\Exceptions\HomePageLockedException;
 use App\Modules\Cms\Exceptions\PageMoveRejectedException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
@@ -1550,6 +1551,9 @@ final class Editor extends Component
             });
         } catch (RouteConflictException $e) {
             $this->addressTaken($e, $entry);
+        } catch (ExpiredContentException $refused) {
+            // past its end time: saved, not put back up; the end time is moved or cleared first
+            $this->addError('workflow', $refused->getMessage());
         } catch (WorkflowGovernedException) {
             // A tab that still shows the tier-1 button after the flow was switched on: the
             // draft is saved, and the next render swaps in the approval block.
@@ -1630,6 +1634,10 @@ final class Editor extends Component
         } catch (InvalidTransitionException) {
             // Another tab moved the post first, or the flow was reconfigured under this one.
             $this->addError('workflow', __('admin.wfb.err_stale'));
+
+            return;
+        } catch (ExpiredContentException $refused) {
+            $this->addError('workflow', $refused->getMessage());   // a step that publishes, past the end time
 
             return;
         } catch (AuthorizationException) {
@@ -3828,7 +3836,7 @@ final class Editor extends Component
             $why = Cast::string(__('entries.sched_err_past'));   // the time passed while the save waited
         } catch (WorkflowGovernedException) {
             $why = Cast::string(__('entries.workflow_governed'));
-        } catch (HomePageLockedException $refused) {
+        } catch (HomePageLockedException|ExpiredContentException $refused) {
             $why = $refused->getMessage();
         } catch (AuthorizationException) {
             $why = EntryRefusal::for($this->user(), $entry, 'status');
@@ -3977,7 +3985,7 @@ final class Editor extends Component
             $why = Cast::string(__('entries.sched_err_past'));   // the time passed while the save waited
         } catch (WorkflowGovernedException) {
             $why = Cast::string(__('entries.workflow_governed'));
-        } catch (HomePageLockedException $refused) {
+        } catch (HomePageLockedException|ExpiredContentException $refused) {
             $why = $refused->getMessage();
         } catch (EntryDraftRejectedException $refused) {
             $why = $refused->userMessage();   // a schedule while a pending change is open

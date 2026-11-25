@@ -21,6 +21,7 @@ use App\Modules\Catalog\Support\ProductPrice;
 use App\Modules\Catalog\Support\ProductSearchWords;
 use App\Modules\Catalog\Support\SkuCode;
 use App\Modules\Catalog\Support\UniqueViolation;
+use App\Modules\Cms\Exceptions\ExpiredContentException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\PathBuilder;
@@ -1558,7 +1559,7 @@ final class Editor extends Component
 
         try {
             $product = DB::transaction(fn (): ?Product => $this->persist($quiet));
-        } catch (RouteConflictException|UniqueConstraintViolationException|ValidationException $e) {
+        } catch (ExpiredContentException|RouteConflictException|UniqueConstraintViolationException|ValidationException $e) {
             if ($wasNew) {
                 // Rolled back: the form is still a create form.
                 $this->ulid = null;
@@ -1576,6 +1577,12 @@ final class Editor extends Component
             $this->saveFailed = true;
             if ($e instanceof ValidationException) {
                 throw $e;
+            }
+            if ($e instanceof ExpiredContentException) {
+                // going live past its end time: nothing kept, the end time is moved or cleared first
+                $this->dispatch('bs-toast', text: Cast::string(__('catalog.expired_publish_why')), stay: true, close: Cast::string(__('admin.close')));
+
+                return false;
             }
             $refusal = $e instanceof UniqueConstraintViolationException
                 ? UniqueViolation::refusal($e)

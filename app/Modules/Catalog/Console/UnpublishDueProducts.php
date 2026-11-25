@@ -6,6 +6,7 @@ namespace App\Modules\Catalog\Console;
 
 use App\Modules\Catalog\Actions\UnpublishExpiredProduct;
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\ConcurrencyError;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Console\Command;
@@ -21,16 +22,15 @@ use Throwable;
 final class UnpublishDueProducts extends Command
 {
     #[\Override]
-    protected $signature = 'products:unpublish-due';
+    protected $signature = 'products:unpublish-due {--batch=200 : Due rows per batch}';
 
     #[\Override]
     protected $description = 'Take off the website the products whose end time has come';
 
-    /** Due rows per batch: each batch is its own short tenant transaction, so its row locks are brief. */
-    private const int BATCH = 200;
-
     public function handle(Tenancy $tenancy, UnpublishExpiredProduct $unpublisher): int
     {
+        // due rows per batch: each batch is its own short tenant transaction, so its row locks are brief
+        $size = max(1, Cast::int($this->option('batch'), 200));
         $done = 0;
         $failed = 0;
         $deferred = 0;
@@ -40,7 +40,7 @@ final class UnpublishDueProducts extends Command
             do {
                 try {
                     // one short transaction per batch, counted once it commits (see the entries sweep)
-                    [$batchDone, $batchFailed, $after, $more] = $tenancy->enter($siteId, fn (): array => $this->sweepBatch($unpublisher, $after));
+                    [$batchDone, $batchFailed, $after, $more] = $tenancy->enter($siteId, fn (): array => $this->sweepBatch($unpublisher, $after, $size));
                 } catch (Throwable $e) {
                     if (! ConcurrencyError::is($e)) {
                         throw $e;
@@ -67,7 +67,7 @@ final class UnpublishDueProducts extends Command
      *
      * @return array{0: int, 1: int, 2: int, 3: bool} taken down, failed, the last id read, whether a full batch was read
      */
-    private function sweepBatch(UnpublishExpiredProduct $unpublisher, int $after): array
+    private function sweepBatch(UnpublishExpiredProduct $unpublisher, int $after, int $size): array
     {
         $done = 0;
         $failed = 0;
@@ -79,7 +79,7 @@ final class UnpublishDueProducts extends Command
             ->where('expires_at', '<=', now())
             ->where('id', '>', $after)
             ->orderBy('id')
-            ->limit(self::BATCH)
+            ->limit($size)
             ->get();
 
         foreach ($due as $product) {
@@ -97,6 +97,6 @@ final class UnpublishDueProducts extends Command
             }
         }
 
-        return [$done, $failed, (int) ($due->last()->id ?? $after), $due->count() === self::BATCH];
+        return [$done, $failed, (int) ($due->last()->id ?? $after), $due->count() === $size];
     }
 }

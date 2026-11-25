@@ -453,3 +453,38 @@ it('judges the shown day only when this save changes it', function (): void {
         ->and(Validator::make(['d' => $other], ['d' => [new DisplayDateNotAfterToday($zone, $later)]])->passes())->toBeFalse()
         ->and(Validator::make(['d' => $later], ['d' => [new DisplayDateNotAfterToday($zone)]])->passes())->toBeFalse();
 });
+
+it('reads a stage in the middle of the flow as waiting for review when the flow\'s move off the website leads there', function (): void {
+    [$siteId, $entry] = expSite(CarbonImmutable::now()->addMinute());
+    app(Tenancy::class)->enter($siteId, function (): void {
+        ContentSection::query()->firstOrCreate(['key' => 'tin-tuc'], ['label' => 'Tin tức', 'entry_type' => 'post', 'taxonomy_id' => StorefrontCards::news()->id]);
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: true);
+        // the one move off the website goes back to review
+        $moves = WorkflowTransition::query()->where('from_state', 'published')->orderBy('id')->get();
+        $moves->skip(1)->each->delete();
+        $moves->first()->update(['to_state' => 'pending']);
+    });
+    $this->travel(2)->minutes();
+
+    $this->artisan('entries:unpublish-due')->assertSuccessful();
+
+    app(Tenancy::class)->enter($siteId, function () use ($entry): void {
+        expect($entry->fresh())->status->toBe('pending')->workflow_state->toBe('pending');
+        expect(AuditLog::query()->where('action', EntryStatusAudit::ACTION)->sole()->meta)->toMatchArray(['from' => 'published', 'to' => 'pending', 'workflow' => 'moved']);
+    });
+});
+
+it('reads the due posts batch after batch until none is left', function (): void {
+    [$siteId] = expSite(CarbonImmutable::now()->addMinute());
+    app(Tenancy::class)->enter($siteId, function (): void {
+        foreach (['tuyen-tho-tien', 'tuyen-tho-phay'] as $slug) {
+            StorefrontCards::post(StorefrontCards::news(), $slug, $slug, CarbonImmutable::now()->subDay(), [], 'Tuyển.')
+                ->forceFill(['expires_at' => CarbonImmutable::now()->addMinute()])->save();
+        }
+    });
+    $this->travel(2)->minutes();
+
+    $this->artisan('entries:unpublish-due', ['--batch' => 2])->assertSuccessful()->expectsOutputToContain('Took 3 entr(y/ies)');
+
+    app(Tenancy::class)->enter($siteId, fn () => expect(Entry::query()->where('status', 'published')->whereNotNull('expires_at')->count())->toBe(0));
+});

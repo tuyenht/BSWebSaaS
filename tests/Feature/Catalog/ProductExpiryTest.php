@@ -178,3 +178,18 @@ it('records a change of the publish time', function (): void {
             ->and($row->actor_label)->toBe('system');
     });
 });
+
+it('reads the due products batch after batch until none is left', function (): void {
+    [$siteId] = pexpSite(CarbonImmutable::now()->addMinute());
+    app(Tenancy::class)->enter($siteId, function (): void {
+        foreach (['may-han-mig', 'may-cat-plasma'] as $slug) {
+            $product = Product::query()->create(['status' => 'published', 'published_at' => now()->subDay(), 'expires_at' => now()->addMinute()]);
+            $product->translations()->create(['locale' => 'vi', 'name' => $slug, 'slug' => $slug]);
+        }
+    });
+    $this->travel(2)->minutes();
+
+    $this->artisan('products:unpublish-due', ['--batch' => 2])->assertSuccessful()->expectsOutputToContain('Took 3 product(s)');
+
+    app(Tenancy::class)->enter($siteId, fn () => expect(Product::query()->where('status', 'published')->count())->toBe(0));
+});
