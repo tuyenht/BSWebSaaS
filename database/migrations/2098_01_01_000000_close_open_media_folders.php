@@ -23,8 +23,13 @@ use Illuminate\Support\Facades\DB;
  * written while its folder's owners are being judged. The media scans are one hash join each, run
  * once (old folders hold few rows; new keys are all under codes). Re-runnable.
  *
- * down() reopens the seeded folders and the collections (multi-site installs); the owner rows that
- * up() released granted nothing that is still written, so they are not recreated.
+ * down() does nothing on a single-site install. On a multi-site one, in a transaction with the same
+ * lock timeout (it neither reads nor locks media):
+ * - every collection is open again (a `collection` row); its ownerless `legacy_key` row goes, but an
+ *   owner row up() gave a website stays, next to the open row;
+ * - a seeded folder no website owns is open again (`seed_folder`, its ownerless row replaced); one a
+ *   website owns stays owned and closed;
+ * - the owner rows up() released are not recreated (they granted nothing that is still written).
  */
 return new class extends Migration
 {

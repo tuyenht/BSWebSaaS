@@ -31,7 +31,6 @@ use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormField;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
-use App\Modules\Media\Support\MediaKeyPrefix;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\PermalinkConfig;
@@ -66,8 +65,9 @@ use Illuminate\Support\Facades\DB;
  * against the routes before anything is written (addresses()).
  *
  * Images: a slot resolves to the site's media row holding the slot's own file (same collection, same
- * sha256 — what the image step, `--media`, uploads), else to the row its `legacy_key` names (or that
- * file under the site's own code, where media:rekey-site and the seeders file it). A block
+ * sha256 — what the image step, `--media`, uploads), else to the row its `legacy_key` names: the row
+ * holding that key, else the row that held it (`meta.previous_key`, written by media:rekey-site and
+ * the seeders when they file it under the site's code). A block
  * image prop whose slot does not resolve is left out; a card image, a product gallery or a setting
  * whose slot does not resolve keeps its live value. Rows in the Trash never resolve.
  */
@@ -142,7 +142,6 @@ final class Planner
         private readonly PathBuilder $paths,
         private readonly PermalinkConfig $permalinks,
         private readonly CategoryRelinker $relinker,
-        private readonly MediaKeyPrefix $prefix,
     ) {}
 
     /**
@@ -382,31 +381,32 @@ final class Planner
             }
         }
 
-        // A legacy key names a file filed before website codes; media:rekey-site and the seeders file
-        // it as `{code}/{file name}`, so that key is looked for as well (the old one first).
+        // A legacy key names a file filed before website codes; media:rekey-site and the seeders
+        // file it under the site's code and record the old key in meta.previous_key. The row holding
+        // the key wins, else the oldest that held it.
         $keys = [];
-        $folder = null;
         foreach ($pack->slots as $name => $slot) {
             $legacy = $slot['legacy_key'] ?? null;
             if ($this->slots[$name] === null && is_string($legacy) && $legacy !== '') {
-                $folder ??= $this->prefix->forNewObject('library');
-                $keys[$name] = [$legacy, $folder.basename($legacy)];
+                $keys[$name] = $legacy;
             }
         }
         if ($keys === []) {
             return;
         }
 
-        $media = Media::query()->whereIn('storage_key', array_values(array_unique(array_merge(...array_values($keys)))))
-            ->get(['id', 'storage_key', 'mime', 'size'])->keyBy('storage_key');
-        foreach ($keys as $name => $candidates) {
-            foreach ($candidates as $key) {
-                $row = $media->get($key);
-                if ($row instanceof Media) {
-                    $this->slots[$name] = ['id' => $row->id, 'key' => $row->storage_key, 'mime' => $row->mime, 'size' => $row->size];
-
-                    break;
-                }
+        $wanted = array_values(array_unique($keys));
+        $byKey = Media::query()->whereIn('storage_key', $wanted)->get(['id', 'storage_key', 'mime', 'size'])->keyBy('storage_key');
+        $byPrevious = [];
+        $previousRows = Media::query()->select(['id', 'storage_key', 'mime', 'size'])->selectRaw("meta->>'previous_key' AS previous_key")
+            ->whereIn(DB::raw("meta->>'previous_key'"), $wanted)->orderBy('id')->get();
+        foreach ($previousRows as $row) {
+            $byPrevious[Cast::string($row->getAttribute('previous_key'))] ??= $row;
+        }
+        foreach ($keys as $name => $key) {
+            $row = $byKey->get($key) ?? $byPrevious[$key] ?? null;
+            if ($row instanceof Media) {
+                $this->slots[$name] = ['id' => $row->id, 'key' => $row->storage_key, 'mime' => $row->mime, 'size' => $row->size];
             }
         }
     }

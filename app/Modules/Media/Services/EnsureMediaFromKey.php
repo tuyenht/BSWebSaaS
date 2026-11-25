@@ -50,7 +50,9 @@ final readonly class EnsureMediaFromKey
      * file in the bucket, such as `an-vinh/hero/hero-home-7ca90eafe212.jpg`) is copied server-side
      * to the website's own folder under the same file name (`{code}/hero-home-7ca90eafe212.jpg`)
      * unless a copy is there already, and the master for that key is ensured. So no seeder writes a
-     * key outside the website's code, and re-seeding finds the same row. A source that is not in
+     * key outside the website's code, and re-seeding finds the same row. A new row records the seed
+     * key in `meta.previous_key`, as media:rekey-site does for a moved file, so a content pack's
+     * `legacy_key` and a stored reference to the seed key still find it. A source that is not in
      * storage is logged and the row still made (as for any key whose object is missing).
      *
      * @param  array<string, mixed>  $overrides
@@ -71,6 +73,11 @@ final readonly class EnsureMediaFromKey
             } else {
                 Log::warning('Seed file missing from media storage', ['source' => $sourceKey, 'key' => $key]);
             }
+        }
+
+        if ($key !== $sourceKey) {
+            $meta = $overrides['meta'] ?? [];
+            $overrides['meta'] = [...(is_array($meta) ? $meta : []), 'previous_key' => $sourceKey];
         }
 
         return $this->handle($key, $overrides);

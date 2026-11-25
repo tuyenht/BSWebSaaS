@@ -429,16 +429,24 @@ it('leaves the download button out, with a warning, while its document is not up
         ->and(aboutLastBlock($this->siteId))->toMatchArray(['button_label' => 'Tải hồ sơ'])->not->toHaveKey('button_url_do');
 });
 
-it('finds a legacy_key\'s file under the site\'s own code, where media:rekey-site and the seeders file it', function (): void {
+it('finds a legacy_key\'s file by the old key its row records, never by its file name alone', function (): void {
     profileButton($this->folder);
-    $moved = siteCode($this->siteId).'/ho-so-ab12cd.pdf';
-    ContentPacks::in($this->siteId, fn () => Media::query()->create([
-        'collection' => 'library', 'slug' => 'ho-so', 'hash' => hash('sha256', 'ho-so'),
-        'storage_key' => $moved, 'mime' => 'application/pdf', 'size' => 2048,
-    ]));
-    ContentPacks::edit($this->folder, 'media.json', function (array $media): array {
+    $legacy = 'an-vinh/tai-lieu/ho-so-ab12cd.pdf';
+    $moved = siteCode($this->siteId).'/ho-so-ab12cdef.pdf';
+    ContentPacks::in($this->siteId, function () use ($legacy, $moved): void {
+        // Same file name under the code, but it never held the legacy key: not the slot's file.
+        Media::query()->create([
+            'collection' => 'library', 'slug' => 'ho-so', 'hash' => hash('sha256', 'other'),
+            'storage_key' => siteCode($this->siteId).'/ho-so-ab12cd.pdf', 'mime' => 'application/pdf', 'size' => 1024,
+        ]);
+        Media::query()->create([
+            'collection' => 'library', 'slug' => 'ho-so', 'hash' => hash('sha256', 'ho-so'),
+            'storage_key' => $moved, 'mime' => 'application/pdf', 'size' => 2048, 'meta' => ['previous_key' => $legacy],
+        ]);
+    });
+    ContentPacks::edit($this->folder, 'media.json', function (array $media) use ($legacy): array {
         $media['slots'] = array_map(fn (array $slot): array => $slot['slot'] === 'profile'
-            ? ['slot' => 'profile', 'kind' => 'document', 'legacy_key' => 'an-vinh/tai-lieu/ho-so-ab12cd.pdf']
+            ? ['slot' => 'profile', 'kind' => 'document', 'legacy_key' => $legacy]
             : $slot, $media['slots']);
 
         return $media;

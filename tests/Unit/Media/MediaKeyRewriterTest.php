@@ -4,8 +4,9 @@ use App\Modules\Media\Support\MediaKeyRewriter;
 
 /*
  * MediaKeyRewriter rewrites a stored document after media:rekey-site moved its files: a string that
- * is a moved key, or an address whose path ends with one, gets the new key (base path and query
- * kept); everything else stays, and strings under an old folder that name no moved file are counted.
+ * is a moved key, or an address on a media host whose path ends with one, gets the new key (base
+ * path and query kept); everything else stays, and strings under an old folder that name no moved
+ * file are counted.
  */
 
 function rekeyRewriter(): MediaKeyRewriter
@@ -13,7 +14,7 @@ function rekeyRewriter(): MediaKeyRewriter
     return new MediaKeyRewriter([
         'an-vinh/hero/x-ab12.jpg' => 'q7k2m9/x-ab12.jpg',
         'ten-cu/library/logo-cd34.png' => 'q7k2m9/logo-cd34.png',
-    ], ['ten-cu', 'cu-khac']);
+    ], ['ten-cu', 'cu-khac'], ['files.example', 'f.example']);
 }
 
 it('rewrites a bare key and an address ending with one, keeping its base path and query', function (string $from, string $to): void {
@@ -22,8 +23,8 @@ it('rewrites a bare key and an address ending with one, keeping its base path an
     'bare key' => ['an-vinh/hero/x-ab12.jpg', 'q7k2m9/x-ab12.jpg'],
     'https address with a base path' => ['https://files.example/media/an-vinh/hero/x-ab12.jpg', 'https://files.example/media/q7k2m9/x-ab12.jpg'],
     'address with a width' => ['https://files.example/ten-cu/library/logo-cd34.png?w=64', 'https://files.example/q7k2m9/logo-cd34.png?w=64'],
-    'protocol-relative address' => ['//files.example/an-vinh/hero/x-ab12.jpg', '//files.example/q7k2m9/x-ab12.jpg'],
-    'site-relative address' => ['/cwv-media/an-vinh/hero/x-ab12.jpg#top', '/cwv-media/q7k2m9/x-ab12.jpg#top'],
+    'protocol-relative address' => ['//files.example/an-vinh/hero/x-ab12.jpg#top', '//files.example/q7k2m9/x-ab12.jpg#top'],
+    'host in capitals' => ['https://FILES.example/an-vinh/hero/x-ab12.jpg', 'https://FILES.example/q7k2m9/x-ab12.jpg'],
 ]);
 
 it('leaves alone a string that only mentions a key or names another file', function (string $value): void {
@@ -32,8 +33,11 @@ it('leaves alone a string that only mentions a key or names another file', funct
     'text around a key' => 'ảnh an-vinh/hero/x-ab12.jpg trong bài',
     'a key with a longer name' => 'an-vinh/hero/x-ab12.jpgx',
     'a key inside a query only' => 'https://files.example/khac.jpg?src=an-vinh/hero/x-ab12.jpg',
-    'another host path that only ends alike' => 'https://files.example/media/hero/x-ab12.jpg',
+    'a media-host path that only ends alike' => 'https://files.example/media/hero/x-ab12.jpg',
     'not an address' => 'mailto:an-vinh/hero/x-ab12.jpg',
+    'an address on another host' => 'https://cdn.other.example/an-vinh/hero/x-ab12.jpg',
+    'a host that only ends with a media host' => 'https://evilfiles.example/an-vinh/hero/x-ab12.jpg',
+    'a path without a host' => '/cwv-media/an-vinh/hero/x-ab12.jpg',
 ]);
 
 it('walks a whole document, keeps empty objects as objects and counts what it rewrote and what it could not', function (): void {

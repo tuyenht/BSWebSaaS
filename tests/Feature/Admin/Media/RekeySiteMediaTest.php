@@ -1,22 +1,29 @@
 <?php
 
+use App\Modules\Admin\Console\RekeySiteMedia;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryRevision;
+use App\Modules\Cms\Support\EntryCoverUsage;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
+use App\Modules\Media\Services\SiteMediaRekey;
 use App\Modules\Media\Support\MediaKey;
+use App\Modules\Media\Support\MediaKeyRewriter;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteSetting;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /*
  * media:rekey-site moves one website's files filed before website codes to `{code}/{file}`: a dry
- * run counts, --apply copies the objects (the old ones stay) and, in one transaction, moves the keys
- * and rewrites every stored reference (a bare key, or an address ending with one). Another website is
- * never touched, and a second run finds nothing.
+ * run counts, --apply copies the objects (the old ones stay), moves the keys a chunk per transaction
+ * with the references naming them (a bare key, or an address on the media host ending with one),
+ * then repairs any reference to an old key of the website. Another website is never touched, and a
+ * second run finds nothing, or repairs an old key written back meanwhile.
  */
 
 const REKEY_HERO = 'a-vinh/hero/hero-home-7ca90eafe212.jpg';
@@ -27,6 +34,7 @@ const REKEY_OTHER = 'a-vinh/hero/khac-1234.jpg';
 beforeEach(function (): void {
     seedTenancy();
     Storage::fake(MediaKey::disk());
+    config(['media.cloudflare.base' => 'https://files.test/media']);
     DB::connection('pgsql_admin')->table('reserved_site_codes')->insert(['code' => 'cu-rk', 'reason' => 'legacy_key', 'site_id' => 1]);
 });
 
@@ -65,7 +73,7 @@ function rekeyContent(): array
         EntryRevision::query()->create(['entry_id' => $post->id, 'locale' => 'vi', 'kind' => RevisionKind::Edit,
             'snapshot' => ['v' => 1, 'meta' => ['image_url' => REKEY_HERO], 'text' => 'ảnh '.REKEY_HERO.' trong câu']]);
         SiteSetting::query()->create(['group_name' => 'general', 'key' => 'brand', 'value' => [
-            'logo' => 'https://files.test/media/'.REKEY_LOGO.'?w=64', 'name' => 'A',
+            'logo' => 'https://files.test/media/'.REKEY_LOGO.'?w=64', 'name' => 'A', 'elsewhere' => 'https://cdn.other.test/'.REKEY_LOGO,
         ]]);
 
         return $post;
@@ -115,10 +123,12 @@ it('copies the objects, moves the keys and rewrites every reference of the websi
 
     $disk = Storage::disk(MediaKey::disk());
     expect($exit)->toBe(0, $output)
-        ->and($output)->toContain('Objects copied: 2, already there: 0, missing from storage: 1.')
+        ->and($output)->toContain('Objects copied: 2, already there: 0, missing from storage: 1, new key grown past another object: 0.')
         ->and($output)->toContain('missing: '.REKEY_GONE)
         ->and($output)->toContain('Keys moved: 3 of 3.')
         ->and(rekeyKeys(1))->toBe([$hero, $logo, "{$code}/mat-ef34.png"])
+        ->and(app(Tenancy::class)->enter(1, fn (): array => Media::query()->withTrashed()->orderBy('id')->get()->map(fn (Media $m) => $m->meta['previous_key'] ?? null)->all()))
+        ->toBe([REKEY_HERO, REKEY_LOGO, REKEY_GONE])
         ->and($disk->get($hero))->toBe('bytes of '.REKEY_HERO)
         ->and($disk->exists(REKEY_HERO))->toBeTrue()                       // the old object stays
         ->and(rekeyKeys(2))->toBe([REKEY_OTHER]);
@@ -131,7 +141,7 @@ it('copies the objects, moves the keys and rewrites every reference of the websi
             ->and(DB::table('entry_translations')->where('entry_id', $post->id)->value('body'))->toContain('"style": {}')
             ->and(EntryRevision::query()->where('entry_id', $post->id)->sole()->snapshot)
             ->toEqual(['v' => 1, 'meta' => ['image_url' => $hero], 'text' => 'ảnh '.REKEY_HERO.' trong câu'])
-            ->and(SiteSetting::query()->where('key', 'brand')->sole()->value)->toEqual(['logo' => "https://files.test/media/{$logo}?w=64", 'name' => 'A'])
+            ->and(SiteSetting::query()->where('key', 'brand')->sole()->value)->toEqual(['logo' => "https://files.test/media/{$logo}?w=64", 'name' => 'A', 'elsewhere' => 'https://cdn.other.test/'.REKEY_LOGO])
             ->and(Mediable::query()->where('mediable_type', 'entry')->where('mediable_id', $post->id)->where('collection', 'cover')->pluck('media_id')->all())
             ->toBe([Media::query()->where('storage_key', $hero)->value('id')]);
     });
@@ -156,15 +166,144 @@ it('grows the hash when the file name is already taken under the code, whatever 
         ->and(rekeyKeys(1))->toBe(["{$code}/logo-ab12cd.webp", "{$code}/logo-ab12cd9.png", "{$code}/logo-{$third}.png"]);
 });
 
-it('stops before writing anything when another file already sits at a new key', function (): void {
+it('reuses a copy an interrupted run left at the new key, and grows the hash past any other object there', function (): void {
     rekeyContent();
-    Storage::disk(MediaKey::disk())->put(siteCode(1).'/logo-ab12cd.png', 'a different, longer file');
+    $code = siteCode(1);
+    $disk = Storage::disk(MediaKey::disk());
+    $disk->put("{$code}/hero-home-7ca90eafe212.jpg", 'bytes of '.REKEY_HERO);     // the same bytes: an earlier copy
+    $disk->put("{$code}/logo-ab12cd.png", 'a different file');                      // not this file
+    $disk->put("{$code}/mat-ef34.png", 'cannot be compared: the source is gone');
 
     [$exit, $output] = rekeyRun(apply: true);
 
-    expect($exit)->toBe(1)
-        ->and($output)->toContain('A different file already sits at')
-        ->and(rekeyKeys(1))->toBe([REKEY_HERO, REKEY_LOGO, REKEY_GONE]);
+    $keys = rekeyKeys(1);
+    expect($exit)->toBe(0, $output)
+        ->and($output)->toContain('Objects copied: 1, already there: 1, missing from storage: 1, new key grown past another object: 2.')
+        ->and($keys[0])->toBe("{$code}/hero-home-7ca90eafe212.jpg")
+        ->and($keys[1])->toMatch("#^{$code}/logo-ab12cd[0-9a-f]+\\.png$#")
+        ->and($keys[2])->toMatch("#^{$code}/mat-ef34[0-9a-f]+\\.png$#")
+        ->and($disk->get($keys[1]))->toBe('bytes of '.REKEY_LOGO)
+        ->and($disk->get("{$code}/logo-ab12cd.png"))->toBe('a different file')
+        ->and(app(Tenancy::class)->enter(1, fn () => DB::table('entry_translations')->value('body')))->toContain($keys[1]);
+});
+
+/**
+ * One row in every place the command rewrites, each naming the logo by its key or its address.
+ *
+ * @return array<string, int> place => row id
+ */
+function rekeyEveryPlace(): array
+{
+    $address = 'https://files.test/media/'.REKEY_LOGO;
+    $admin = DB::connection('pgsql_admin');
+    $row = fn (string $table, array $values): int => (int) $admin->table($table)->insertGetId(['site_id' => 1, ...$values]);
+    $ulid = fn (): string => strtolower((string) Str::ulid());
+
+    $entry = $row('entries', ['ulid' => $ulid(), 'type' => 'post', 'status' => 'draft', 'meta' => json_encode(['image_url' => REKEY_LOGO])]);
+    $block = $row('content_blocks', ['ulid' => $ulid(), 'key' => 'chan-trang', 'name' => 'Chân trang', 'region' => 'footer', 'status' => 'draft']);
+    $menu = $row('menus', ['ulid' => $ulid(), 'handle' => 'chinh', 'name' => 'Chính', 'meta' => json_encode(['icon' => REKEY_LOGO])]);
+    $profile = $admin->table('site_profiles')->where('site_id', 1)->value('id');
+    if ($profile === null) {
+        $profile = $row('site_profiles', ['meta' => '{}']);
+    }
+    $admin->table('site_profiles')->where('id', $profile)->update(['meta' => json_encode(['logo' => REKEY_LOGO])]);
+
+    return [
+        'entries.meta' => $entry,
+        'entry_translations.body' => $row('entry_translations', ['entry_id' => $entry, 'locale' => 'vi', 'title' => 'Bài', 'slug' => 'bai-moi', 'body' => json_encode(['blocks' => [['type' => 'image', 'props' => ['src' => $address]]]])]),
+        'entry_drafts.content' => $row('entry_drafts', ['entry_id' => $entry, 'content' => json_encode(['locales' => ['vi' => ['meta' => ['image_url' => REKEY_LOGO]]]])]),
+        'entry_revisions.snapshot' => $row('entry_revisions', ['ulid' => $ulid(), 'entry_id' => $entry, 'locale' => 'vi', 'kind' => 'edit', 'snapshot' => json_encode(['meta' => ['image_url' => REKEY_LOGO]])]),
+        'content_block_translations.body' => $row('content_block_translations', ['content_block_id' => $block, 'locale' => 'vi', 'body' => json_encode(['blocks' => [['type' => 'cta', 'props' => ['button_url_do' => ['k' => 'file', 'file' => REKEY_LOGO]]]]])]),
+        'site_settings.value' => $row('site_settings', ['group_name' => 'appearance', 'key' => 'heading_decor', 'value' => json_encode(['mask_media' => REKEY_LOGO])]),
+        'taxonomies.meta' => $row('taxonomies', ['vocabulary' => 'category', 'meta' => json_encode(['image_url' => REKEY_LOGO])]),
+        'products.meta' => $row('products', ['ulid' => $ulid(), 'meta' => json_encode(['images' => [REKEY_LOGO]])]),
+        'menus.meta' => $menu,
+        'menu_items.meta' => $row('menu_items', ['menu_id' => $menu, 'link_type' => 'url', 'url' => '/', 'meta' => json_encode(['image' => $address.'?w=64'])]),
+        'content_sections.meta' => $row('content_sections', ['key' => 'du-an', 'label' => 'Dự án', 'meta' => json_encode(['cover' => REKEY_LOGO])]),
+        'site_profiles.meta' => (int) $profile,
+        'forms.settings' => $row('forms', ['ulid' => $ulid(), 'key' => 'lien-he', 'settings' => json_encode(['attachment' => REKEY_LOGO])]),
+    ];
+}
+
+it('rewrites the reference in every place it lists', function (): void {
+    rekeyMedia(1, REKEY_LOGO);
+    $rows = rekeyEveryPlace();
+    $logo = siteCode(1).'/logo-ab12cd.png';
+    expect(array_keys($rows))->toEqualCanonicalizing(array_map(fn (array $place): string => implode('.', $place), RekeySiteMedia::PLACES));
+
+    [$exit, $output] = rekeyRun(apply: true);
+
+    expect($exit)->toBe(0, $output);
+    $left = [];
+    foreach ($rows as $place => $id) {
+        [$table, $column] = explode('.', $place);
+        $text = (string) DB::connection('pgsql_admin')->table($table)->where('id', $id)->value($column);
+        if (! str_contains($text, $logo) || str_contains($text, REKEY_LOGO) || preg_match('/'.preg_quote($place, '/').'\s*\|\s*1\s*\|\s*1\s*\|\s*0\s*\|/', $output) !== 1) {
+            $left[$place] = $text;
+        }
+    }
+    expect($left)->toBe([], $output);
+});
+
+it('repairs an old key written back after the run, counting it as a reference to rewrite, and the cover usage comes back', function (): void {
+    ['post' => $post] = rekeyContent();
+    $hero = siteCode(1).'/hero-home-7ca90eafe212.jpg';
+    expect(rekeyRun(apply: true)[0])->toBe(0);
+
+    // An editor opened before the run saves: the old key is back, and its save drops the cover row.
+    DB::connection('pgsql_admin')->table('entries')->where('id', $post->id)->update(['meta' => json_encode(['image_url' => REKEY_HERO])]);
+    $cover = fn (): array => app(Tenancy::class)->enter(1, fn (): array => Mediable::query()->where('mediable_type', 'entry')->where('mediable_id', $post->id)->where('collection', 'cover')->pluck('media_id')->all());
+    app(Tenancy::class)->enter(1, fn (): array => EntryCoverUsage::reconcileSite(1));
+    expect($cover())->toBe([]);
+
+    [$exit, $output] = rekeyRun();
+    expect($exit)->toBe(0, $output)
+        ->and($output)->toContain('Files to move: 0.')
+        ->and($output)->toMatch('/entries\.meta\s*\|\s*1\s*\|\s*1\s*\|\s*0/')
+        ->and($output)->not->toContain('unmatched in entries.meta');
+
+    [$exit, $output] = rekeyRun(apply: true);
+    expect($exit)->toBe(0, $output)
+        ->and(app(Tenancy::class)->enter(1, fn () => Entry::query()->findOrFail($post->id)->meta))->toBe(['image_url' => $hero])
+        ->and($cover())->toBe([app(Tenancy::class)->enter(1, fn () => Media::query()->where('storage_key', $hero)->value('id'))])
+        ->and(rekeyRun()[1])->toMatch('/entries\.meta\s*\|\s*0\s*\|\s*0\s*\|\s*0/');
+});
+
+it('keeps the finished chunks of a run that stops, and the next run moves the rest', function (): void {
+    $code = siteCode(1);
+    foreach (range(1, SiteMediaRekey::MOVE_CHUNK + 1) as $n) {
+        rekeyMedia(1, sprintf('cu-rk/library/anh-%03d-%04x.png', $n, $n), stored: false);
+    }
+    // The last row's new key is taken by an upload that lands after the plan: its chunk fails.
+    $failing = false;
+    DB::listen(function (QueryExecuted $query) use (&$failing, $code): void {
+        if (! $failing && $query->connectionName !== 'pgsql_admin' && str_contains(strtolower($query->sql), 'update media as m set storage_key') && str_contains(implode(' ', array_map(strval(...), $query->bindings)), sprintf('anh-%03d', SiteMediaRekey::MOVE_CHUNK))) {
+            $failing = true;
+            rekeyMedia(1, sprintf('%s/anh-%03d-%04x.png', $code, SiteMediaRekey::MOVE_CHUNK + 1, SiteMediaRekey::MOVE_CHUNK + 1), stored: false);
+        }
+    });
+
+    [$exit, $output] = rekeyRun(apply: true);
+    $under = fn (): int => count(array_filter(rekeyKeys(1), fn (string $key): bool => str_starts_with($key, "{$code}/")));
+    expect($exit)->toBe(1, $output)
+        ->and($output)->toContain('Stopped after '.SiteMediaRekey::MOVE_CHUNK.' of '.(SiteMediaRekey::MOVE_CHUNK + 1).' keys')
+        ->and($under())->toBe(SiteMediaRekey::MOVE_CHUNK + 1);   // the first chunk + the upload
+
+    [$exit, $output] = rekeyRun(apply: true);
+    expect($exit)->toBe(0, $output)->and($output)->toContain('Keys moved: 1 of 1.')
+        ->and($under())->toBe(SiteMediaRekey::MOVE_CHUNK + 2);
+});
+
+it('rewrites only addresses on the configured media host', function (): void {
+    config(['media.cloudflare.base' => 'https://Media.Example.test/cwv-media']);
+    $rewriter = new MediaKeyRewriter([REKEY_LOGO => 'q7k2m9/logo-ab12cd.png']);
+
+    expect(MediaKeyRewriter::hosts())->toBe(['media.example.test'])
+        ->and($rewriter->rewriteString('https://media.example.test/cwv-media/'.REKEY_LOGO))->toBe('https://media.example.test/cwv-media/q7k2m9/logo-ab12cd.png')
+        ->and($rewriter->rewriteString('https://files.test/media/'.REKEY_LOGO))->toBeNull();
+
+    config(['media.cloudflare.base' => null]);
+    expect(MediaKeyRewriter::hosts())->toBe([]);
 });
 
 it('takes the website by its code too, and refuses an unknown one', function (): void {

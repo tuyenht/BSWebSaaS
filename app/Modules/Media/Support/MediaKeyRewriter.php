@@ -8,11 +8,17 @@ use stdClass;
 
 /**
  * Rewrites the storage keys a stored JSON document names, after the files moved (media:rekey-site).
- * A string is rewritten when it IS a moved key (`an-vinh/hero/x-ab12.jpg`) or a full address whose
- * path ends with one (`https://files.example/an-vinh/hero/x-ab12.jpg?w=640`, the base path and the
- * query kept); every other string is left as it is, so text that merely mentions a key never
- * changes. Strings that look like a key under one of the website's old folders but name no moved
- * file are counted as unmatched (the caller reports them), never guessed at.
+ * A string is rewritten when it IS a moved key (`an-vinh/hero/x-ab12.jpg`) or a full address on one
+ * of the media hosts whose path ends with one (`https://files.example/an-vinh/hero/x-ab12.jpg?w=640`,
+ * the base path and the query kept); every other string is left as it is, so text that merely
+ * mentions a key, or an address on another host that happens to end alike, never changes. Strings
+ * that look like a key under one of the website's old folders but name no moved file are counted
+ * as unmatched (the caller reports them), never guessed at.
+ *
+ * The media hosts are the host of the configured media base (hosts()), the only addresses the
+ * application stores: MediaUrlResolver::url() always prefixes that base, and keys are otherwise
+ * stored bare. Paths without a host (`/…/{key}`) are never stored, so they are left alone; so is
+ * the imgproxy form, whose signature covers the path and could not be rewritten anyway.
  *
  * Works on the document as json_decode(…, false) returns it, so `{}` stays an object and `[]` a list.
  * Stateless apart from the counters of one rewrite() call; Octane-safe (made per run, never bound).
@@ -28,17 +34,36 @@ final class MediaKeyRewriter
     /** @var array<string, true> */
     private readonly array $folders;
 
+    /** @var array<string, true> */
+    private readonly array $hosts;
+
     /**
      * @param  array<string, string>  $moves  old storage key => new storage key
      * @param  list<string>  $oldFolders  the website's old first folders, for the unmatched count
+     * @param  list<string>|null  $hosts  the media hosts (lower case); null = hosts()
      */
-    public function __construct(private readonly array $moves, array $oldFolders = [])
+    public function __construct(private readonly array $moves, array $oldFolders = [], ?array $hosts = null)
     {
+        $this->hosts = array_fill_keys(array_map(strtolower(...), $hosts ?? self::hosts()), true);
         $folders = [];
         foreach ([...$oldFolders, ...array_map(static fn (string $key): string => explode('/', $key, 2)[0], array_keys($moves))] as $folder) {
             $folders[$folder] = true;
         }
         $this->folders = $folders;
+    }
+
+    /**
+     * The host of the configured media base (`media.cloudflare.base`), the one addresses are stored
+     * with; none when it is not set.
+     *
+     * @return list<string>
+     */
+    public static function hosts(): array
+    {
+        $base = config('media.cloudflare.base');
+        $host = is_string($base) ? parse_url($base, PHP_URL_HOST) : null;
+
+        return is_string($host) && $host !== '' ? [strtolower($host)] : [];
     }
 
     /**
@@ -117,24 +142,25 @@ final class MediaKeyRewriter
     }
 
     /**
-     * The path of a web address (`https://host/…`, `//host/…` or `/…`) and where it starts in the
-     * string, or null for anything else.
+     * The path of a web address on a media host (`https://host/…` or `//host/…`) and where it
+     * starts in the string, or null for anything else.
      *
      * @return array{path: string, at: int}|null
      */
     private function addressPath(string $value): ?array
     {
-        if (! str_starts_with($value, '/') && preg_match('#\Ahttps?://#i', $value) !== 1) {
+        if (! str_starts_with($value, '//') && preg_match('#\Ahttps?://#i', $value) !== 1) {
             return null;
         }
 
-        $path = parse_url($value, PHP_URL_PATH);
-        if (! is_string($path) || $path === '' || ! str_starts_with($path, '/')) {
+        $parts = parse_url($value);
+        $host = is_array($parts) ? ($parts['host'] ?? null) : null;
+        $path = is_array($parts) ? ($parts['path'] ?? null) : null;
+        if (! is_string($host) || ! isset($this->hosts[strtolower($host)]) || ! is_string($path) || ! str_starts_with($path, '/')) {
             return null;
         }
 
-        $after = str_starts_with($value, '//') || ! str_starts_with($value, '/') ? (int) strpos($value, '//') + 2 : 0;
-        $at = strpos($value, $path, $after);
+        $at = strpos($value, $path, (int) strpos($value, '//') + 2);
 
         return $at === false ? null : ['path' => $path, 'at' => $at];
     }
