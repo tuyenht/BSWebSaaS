@@ -408,6 +408,11 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($top)->get($platform.'/settings/social')->assertOk()->getContent();
     expect($html)->toContain(e(__('admin.sl.providers_platform')))->not->toContain('GOCSPX-preview-only');
     file_put_contents($dir.'/system-social.html', str_replace($platform, 'http://'.ADMIN_PREVIEW_HOST, $html));
+    // the console's «Email hệ thống»: the console frame, its own wording
+    $this->flushSession();
+    $html = $this->actingAs($top)->get($platform.'/settings/email')->assertOk()->getContent();
+    expect($html)->toContain('id="platform-sidebar"')->not->toContain('id="admin-sidebar"');
+    file_put_contents($dir.'/system-email.html', str_replace($platform, 'http://'.ADMIN_PREVIEW_HOST, $html));
     $this->flushSession();
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/social')->assertOk()->getContent();
     expect($html)->toContain(e(__('admin.sl.providers_site')));
@@ -1653,5 +1658,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 151);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 152);
 });
