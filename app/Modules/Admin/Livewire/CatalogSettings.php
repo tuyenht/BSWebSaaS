@@ -48,6 +48,7 @@ final class CatalogSettings extends Component
 
     public function save(): bool
     {
+        $this->dismissToast();   // a newer save makes the last «Hoàn tác» stale
         $this->validate([
             'mode' => ['required', Rule::in(CatalogMode::MODES)],
             'drawerProducts' => ['required', 'boolean'],
@@ -66,6 +67,7 @@ final class CatalogSettings extends Component
     /** Back to the saved choice (the save bar's "Bỏ thay đổi"). */
     public function resetChanges(): void
     {
+        $this->dismissToast();
         $this->load();
         $this->resetErrorBag();
     }

@@ -168,6 +168,23 @@ it('puts back the title pattern, the two switches and the robots lines on SEO, k
     expect(ssrSetting('seo', 'config'))->toMatchArray($stored);
 });
 
+it('drops «Hoàn tác» once the section is saved again, so an old undo never overwrites the newer save', function (string $component, string $field, string $restored, string $newer, string $group, string $key, array $stored): void {
+    $admin = ssrAdmin();
+    app(Tenancy::class)->enter(1, fn () => app(SettingsRepository::class)->put($group, $key, $stored));
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $component, $field, $restored, $newer): void {
+        Livewire::actingAs($admin)->test($component)
+            ->call('restoreDefaults')->assertSet($field, $restored)->assertNotSet('undo', null)
+            ->set($field, $newer)->call('save')->assertHasNoErrors()->assertSet('undo', null)
+            ->call('undoRestore')->assertSet($field, $newer);
+    });
+
+    expect(ssrSetting($group, $key))->toMatchArray($group === 'catalog' ? ['value' => 'commerce'] : ['scheme' => 'light']);
+})->with([
+    'catalog' => [CatalogSettings::class, 'mode', 'brochure', 'commerce', 'catalog', 'mode', ['value' => 'commerce']],
+    'admin look' => [AdminUiSettings::class, 'scheme', '', 'light', 'admin_theme', 'config', ['scheme' => 'dark']],
+]);
+
 it('is refused to a member who lost settings.manage, and resets nothing', function (string $component): void {
     $admin = ssrAdmin();
     app(Tenancy::class)->enter(1, fn () => app(SettingsRepository::class)->put('catalog', 'mode', ['value' => 'commerce']));

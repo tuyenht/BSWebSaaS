@@ -67,6 +67,7 @@ final class AdminUiSettings extends Component
 
     public function save(): bool
     {
+        $this->dismissToast();   // a newer save makes the last «Hoàn tác» stale
         $rules = [];
         foreach (AdminChromeResolver::siteFields() as $field => $allowed) {
             $rules[$field] = ['nullable', 'string', Rule::in(['', ...$allowed])];
@@ -93,6 +94,7 @@ final class AdminUiSettings extends Component
     /** Back to the saved look (the save bar's "Bỏ thay đổi"). */
     public function resetChanges(): void
     {
+        $this->dismissToast();
         $this->load();
         $this->saved = false;
         $this->resetErrorBag();
