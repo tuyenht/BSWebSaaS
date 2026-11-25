@@ -71,7 +71,8 @@ trait EditsPageOrder
     /**
      * The place shown once the parent is $parentId (a new page, or another «Trang cha» picked): where
      * the page is when that is its parent now, else the last place there. A place the member typed
-     * stays typed.
+     * stays typed. The place shown is not a change of its own: the saved values take it, so a pick of
+     * «Trang cha» counts once among the unsaved changes, and a typed place still counts.
      */
     private function placePageOrder(?int $parentId): void
     {
@@ -84,6 +85,7 @@ trait EditsPageOrder
             $others = $this->besidePages($parentId)->when($page instanceof Entry, fn (Builder $q) => $q->whereKeyNot($page?->id))->count();
             $this->pageOrder = $this->pageOrderLoaded = (string) ($others + 1);
         }
+        $this->saved['pageOrder'] = $this->pageOrderLoaded;
         if ($typed) {
             $this->pageOrder = $typedPlace;
         }
@@ -104,16 +106,22 @@ trait EditsPageOrder
             && $this->normalPageOrder($this->pageOrder) !== $this->pageOrderLoaded;
     }
 
+    /** The typed place as MovePage takes it (0: the first), or null when this save does not reorder the page. */
+    private function typedPageIndex(): ?int
+    {
+        return $this->reordering() ? (int) $this->normalPageOrder($this->pageOrder) - 1 : null;
+    }
+
     /**
-     * After the page's row is written (or made): the page goes to the typed place under the parent it
-     * has now, through MovePage, and the field shows the place it took. When the save moved it to another
-     * parent with no place typed ($moved), the field shows where that left it. False, with the reason
-     * under the field, when the tree refused the move.
+     * Before the page's text is written (a new page: once its row is made): the page goes to the typed
+     * place under the parent it has now, through MovePage, and the field shows the place it took. With no
+     * place typed, a new page ($made) shows where it was made. False, with the reason under the field,
+     * when the tree refused the move. A new «Trang cha» with a typed place is one move (moveToParent).
      */
-    private function applyPageOrder(Entry $page, bool $moved): bool
+    private function applyPageOrder(Entry $page, bool $made): bool
     {
         if (! $this->reordering()) {
-            if ($moved) {
+            if ($made) {
                 $this->loadPageOrder($page);
             }
 
@@ -128,7 +136,7 @@ trait EditsPageOrder
             }
         }
         try {
-            $place = app(MovePage::class)->handle($page, $parent, (int) $this->normalPageOrder($this->pageOrder) - 1);
+            $place = app(MovePage::class)->handle($page, $parent, (int) $this->typedPageIndex());
         } catch (PageMoveRejectedException $refused) {
             return $this->refusePageOrder($refused);
         }
@@ -136,6 +144,20 @@ trait EditsPageOrder
         $this->pageOrder = $this->pageOrderLoaded = (string) ($place['position'] + 1);
 
         return true;
+    }
+
+    /**
+     * A new page made, its typed place refused (applyPageOrder): the rest of the save stands, and the form
+     * says so as a refused save does — the error, the reason under the field kept, and the typed place
+     * still unsaved against the place the page was made at, so the next save asks for it again.
+     */
+    private function keepRefusedPageOrder(Entry $page): void
+    {
+        $typed = $this->pageOrder;
+        $this->loadPageOrder($page);
+        $this->saved['pageOrder'] = $this->pageOrderLoaded;
+        $this->pageOrder = $typed;
+        $this->saveFailed = true;
     }
 
     /** A refused «Thứ tự» on save: the reason under the field and in a message that stays. */

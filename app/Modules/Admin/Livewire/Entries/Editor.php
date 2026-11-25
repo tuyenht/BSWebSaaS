@@ -2778,11 +2778,12 @@ final class Editor extends Component
     }
 
     /**
-     * Move the page, with its sub-pages, to the end of the picked parent's sub-pages (null: the top
-     * level) through MovePage — the one definition of a move: the tree's rules, the addresses and their
-     * 301s, the audit. False, with the reason shown, when it refuses.
+     * Move the page, with its sub-pages, under the picked parent (null: the top level) through MovePage —
+     * the one definition of a move: the tree's rules, the addresses and their 301s, the audit — at the
+     * place typed in «Thứ tự» ($at, from 0), else at the end of its sub-pages; «Thứ tự» then shows the
+     * place it took. False, with the reason shown, when it refuses.
      */
-    private function moveToParent(Entry $entry): bool
+    private function moveToParent(Entry $entry, ?int $at = null): bool
     {
         $parent = null;
         if ($this->parentUlid !== null) {
@@ -2794,7 +2795,7 @@ final class Editor extends Component
             }
         }
         try {
-            $moved = app(MovePage::class)->into($entry, $parent);
+            $moved = $at === null ? app(MovePage::class)->into($entry, $parent) : app(MovePage::class)->handle($entry, $parent, $at);
             $entry->setRawAttributes(['parent_id' => $moved['parent'], 'position' => $moved['position']] + $entry->getAttributes(), true);
             $entry->unsetRelation('parent');
         } catch (PageMoveRejectedException $refused) {
@@ -2804,6 +2805,7 @@ final class Editor extends Component
                 return false;
             }
         }
+        $this->loadPageOrder($entry);
         $this->parentLoaded = $this->parentUlid;
         $this->liveAddress = $this->routedAddress($entry->id);
 
@@ -3364,6 +3366,7 @@ final class Editor extends Component
         $wasNew = $this->ulid === null;
         $current = null;
         $filing = $this->categoryIds;
+        $orderRefused = false;
 
         if ($this->ulid === null) {
             $this->authorize('create', Entry::class);
@@ -3388,10 +3391,9 @@ final class Editor extends Component
             }
             $this->ulid = $entry->ulid;
             $this->status = $entry->status;
-            // a place typed in «Thứ tự»: the new page goes there now (a refusal is said; the page is made)
-            if ($this->type === 'page') {
-                $this->applyPageOrder($entry, true);
-            }
+            // a place typed in «Thứ tự»: the new page goes there now; a refusal is said, and the page is
+            // still made, at the end of the list, the typed place kept unsaved (keepRefusedPageOrder below)
+            $orderRefused = $this->type === 'page' && ! $this->applyPageOrder($entry, true);
         } else {
             $entry = $this->resolveOrFail($this->ulid);
             $this->authorize('update', $entry);
@@ -3463,18 +3465,14 @@ final class Editor extends Component
                 return null;
             }
             if ($held) {
-                $saved = $this->persistHeld($entry, $stored['translation'], $proseBody ?? $layoutBody ?? $this->blocks, $reparent, $filled);
-                // its place among the pages beside it is the tree's, as the Trang list moves it: never held in the change
-                if ($saved instanceof Entry && $this->type === 'page') {
-                    $this->applyPageOrder($saved, false);
-                }
-
-                return $saved;
+                return $this->persistHeld($entry, $stored['translation'], $proseBody ?? $layoutBody ?? $this->blocks, $reparent, $filled);
             }
             // not held back: no change is open (one put on the website in another tab is gone from the bar too)
             $this->changeSeen = null;
-            // the move before anything is written: a refused one leaves the page as it was and the form as typed
-            if (($reparent && ! $this->moveToParent($entry)) || ($this->type === 'page' && ! $this->applyPageOrder($entry, $reparent))) {
+            // the move before anything is written, in one MovePage call (a new «Trang cha» at the place typed
+            // in «Thứ tự», or the typed place alone): a refused one leaves the page as it was and the form as typed
+            $placed = $reparent ? $this->moveToParent($entry, $this->typedPageIndex()) : ($this->type !== 'page' || $this->applyPageOrder($entry, false));
+            if (! $placed) {
                 if ($filled) {
                     $this->slug = '';
                 }
@@ -3589,6 +3587,9 @@ final class Editor extends Component
         $this->saved['scheduleAt'] = $this->scheduleLoaded;
         // so is a status picked: only the move after the save takes it (an autosave never does), so it still counts
         $this->saved['statusTo'] = '';
+        if ($orderRefused) {
+            $this->keepRefusedPageOrder($entry);
+        }
 
         if ($wasNew) {
             // The address becomes this entry's edit address, so a reload (or reopening it from the
@@ -3621,6 +3622,12 @@ final class Editor extends Component
         if ($reparent) {
             $this->addError('parentUlid', Cast::string(__('entries.ed.change_parent')));
 
+            return $refused();
+        }
+        // its place among the pages beside it is the tree's, as the Trang list moves it: never held in the
+        // change. Moved before the change is written and before the saved values are taken (resetSave), so
+        // the field shows the place the page took; a refused move writes nothing.
+        if ($this->type === 'page' && ! $this->applyPageOrder($entry, false)) {
             return $refused();
         }
         try {

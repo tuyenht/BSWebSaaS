@@ -4,13 +4,16 @@ use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Support\Entries\PageStartTemplates;
 use App\Modules\Admin\Support\EntryProseBody;
 use App\Modules\Audit\Models\AuditLog;
+use App\Modules\Cms\Actions\MovePage;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -180,6 +183,128 @@ it('follows the parent picked: the last place there, a typed place kept and appl
         Livewire::actingAs($writer)->test(Editor::class, ['ulid' => $b->ulid])
             ->set('parentUlid', null)->call('save')->assertHasNoErrors()->assertSet('pageOrder', '2');
         expect(poOrder())->toBe(['a', 'b']);
+    });
+});
+
+/** The «cms.page.moved» audit rows of $page. */
+function poMoves(Entry $page): int
+{
+    return AuditLog::query()->where('site_id', 1)->where('action', 'cms.page.moved')->where('auditable_id', $page->id)->count();
+}
+
+/** More pages under $parent (the top ones when null) than a move renumbers: MovePage refuses (siblings_too_many). */
+function poCrowd(?Entry $parent = null): void
+{
+    DB::statement(   // in the test's own transaction, so the parent it names is there
+        'insert into entries (ulid, site_id, type, status, parent_id, position, created_at, updated_at)
+         select lpad(g::text, 26, \'0\'), 1, \'page\', \'draft\', ?, 100 + g, now(), now() from generate_series(1, ?) g',
+        [$parent?->id, MovePage::SIBLINGS_MAX + 1],
+    );
+}
+
+it('moves a page to a new parent and the place typed in one move, one audit row', function (): void {
+    $writer = poWriter();
+
+    app(Tenancy::class)->enter(1, function () use ($writer): void {
+        $a = poPage('a', position: 0);
+        $b = poPage('b', position: 1);
+        poPage('a1', $a, 0);
+        poPage('a2', $a, 1);
+
+        Livewire::actingAs($writer)->test(Editor::class, ['ulid' => $b->ulid])
+            ->set('parentUlid', $a->ulid)->set('pageOrder', '2')
+            ->call('save')->assertHasNoErrors()->assertSet('pageOrder', '2')->assertSet('pageOrderLoaded', '2');
+
+        $audit = AuditLog::query()->where('site_id', 1)->where('action', 'cms.page.moved')->where('auditable_id', $b->id)->sole();
+        expect(poOrder($a))->toBe(['a1', 'b', 'a2'])
+            ->and($audit->meta['parent'] ?? null)->toBe($a->id)->and($audit->meta['position'] ?? null)->toBe(1);
+    });
+});
+
+it('counts a picked «Trang cha» once among the unsaved changes: the place it shows is not a change of its own', function (): void {
+    $writer = poWriter();
+
+    app(Tenancy::class)->enter(1, function () use ($writer): void {
+        $a = poPage('a', position: 0);
+        $b = poPage('b', position: 1);
+        poPage('a1', $a, 0);
+
+        $editor = Livewire::actingAs($writer)->test(Editor::class, ['ulid' => $b->ulid])->assertViewHas('changes', 0)
+            ->set('parentUlid', $a->ulid)->assertSet('pageOrder', '2')->assertViewHas('changes', 1);
+        expect($editor->get('saved')['pageOrder'])->toBe('2');
+
+        $editor->set('pageOrder', '1')->assertViewHas('changes', 2)
+            ->set('parentUlid', null)->assertSet('pageOrder', '1')->assertViewHas('changes', 1);
+        expect($editor->get('saved')['pageOrder'])->toBe('2');
+
+        // a new page under a parent picked from the form: no change until something is typed
+        Livewire::actingAs($writer)->test(Editor::class)->assertSet('pageOrder', '3')
+            ->set('parentUlid', $a->ulid)->assertSet('pageOrder', '2')->assertViewHas('changes', 1);
+    });
+});
+
+it('moves a held member\'s live page to the place typed, the change holding the text and the field saved where the page went', function (): void {
+    $publisher = poWriter();
+    $writer = poMember(['entries.view', 'entries.edit.any'], 'writer');
+
+    app(Tenancy::class)->enter(1, function () use ($publisher, $writer): void {
+        $a = poPage('a', position: 0);
+        poPage('b', position: 1);
+        poPage('c', position: 2);
+        app(PublishEntry::class)->handle($a, 'vi', $publisher);
+
+        $editor = Livewire::actingAs($writer)->test(Editor::class, ['ulid' => $a->ulid])
+            ->set('title', 'Bản của người viết')->set('pageOrder', '99')
+            ->call('save')->assertHasNoErrors()
+            ->assertSet('saveFailed', false)->assertSet('pageOrder', '3')->assertSet('pageOrderLoaded', '3')
+            ->assertViewHas('changes', 0);
+
+        expect($editor->get('saved')['pageOrder'])->toBe('3')
+            ->and(poOrder())->toBe(['b', 'c', 'a'])->and(poMoves($a))->toBe(1)
+            ->and(EntryDraft::query()->where('entry_id', $a->id)->count())->toBe(1)
+            ->and($a->fresh()?->translationFor('vi')?->title)->toBe('T a');
+    });
+});
+
+it('writes nothing of a held member\'s save when the place typed is refused, and keeps the form as typed', function (): void {
+    $publisher = poWriter();
+    $writer = poMember(['entries.view', 'entries.edit.any'], 'writer');
+
+    app(Tenancy::class)->enter(1, function () use ($publisher, $writer): void {
+        $a = poPage('a', position: 0);
+        app(PublishEntry::class)->handle($a, 'vi', $publisher);
+        poCrowd();
+
+        $editor = Livewire::actingAs($writer)->test(Editor::class, ['ulid' => $a->ulid])->assertSet('pageOrder', '1')
+            ->set('title', 'Bản của người viết')->set('pageOrder', '3')
+            ->call('save')->assertHasErrors('pageOrder')
+            ->assertSet('saveFailed', true)->assertSet('pageOrder', '3')->assertSet('pageOrderLoaded', '1')
+            ->assertViewHas('changes', 2)
+            ->assertNotDispatched('bs-toast', text: __('entries.chg.t_saved'));
+
+        expect($editor->get('saved')['pageOrder'])->toBe('1')
+            ->and($a->fresh()?->position)->toBe(0)->and(poMoves($a))->toBe(0)
+            ->and(EntryDraft::query()->where('entry_id', $a->id)->exists())->toBeFalse();
+    });
+});
+
+it('makes a new page whose typed place is refused at the end of the list, the save shown as failed and the place still unsaved', function (): void {
+    $writer = poWriter();
+
+    app(Tenancy::class)->enter(1, function () use ($writer): void {
+        $parent = poPage('cha', position: 0);
+        poCrowd($parent);
+        $last = (string) (MovePage::SIBLINGS_MAX + 2);
+
+        $editor = Livewire::actingAs($writer)->test(Editor::class, ['parent' => $parent->ulid])->assertSet('pageOrder', $last)
+            ->set('title', 'Con')->set('slug', 'con')->set('pageOrder', '1')
+            ->call('save')->assertHasErrors('pageOrder')
+            ->assertSet('saveFailed', true)->assertSet('pageOrder', '1')->assertSet('pageOrderLoaded', $last);
+
+        $made = Entry::query()->where('ulid', $editor->get('ulid'))->sole();
+        expect($editor->get('saved')['pageOrder'])->toBe($last)
+            ->and($made->parent_id)->toBe($parent->id)->and(poMoves($made))->toBe(0)
+            ->and($made->translationFor('vi')?->title)->toBe('Con');
     });
 });
 
