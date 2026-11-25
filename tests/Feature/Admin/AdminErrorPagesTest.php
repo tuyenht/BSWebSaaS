@@ -480,7 +480,7 @@ it('sends the website admin address typed on the console host to the console', f
     // The console host carries no website, so «/admin» there means the console: signed in it opens
     // the console, a guest signs in and then lands on the console (not on a "not found" page).
     foreach (['/admin', '/admin/'] as $path) {
-        $this->actingAs($operator)->get($platform.$path)->assertRedirect(route('platform.dashboard'));
+        $this->actingAs($operator)->get($platform.$path)->assertRedirect(route('platform.tenants.index'));
     }
     // A deeper «/admin/…» there is an unknown console address: back to the console with a notice.
     foreach (['/admin/content', '/admin/login'] as $path) {
@@ -492,9 +492,9 @@ it('sends the website admin address typed on the console host to the console', f
 
     auth()->logout();
     $this->flushSession();
-    $this->get($platform.'/admin')->assertRedirect(route('platform.dashboard'));
-    $this->get(route('platform.dashboard'))->assertRedirect(route('platform.login'));
-    expect(session('url.intended'))->toBe(route('platform.dashboard'));
+    $this->get($platform.'/admin')->assertRedirect(route('platform.tenants.index'));
+    $this->get(route('platform.tenants.index'))->assertRedirect(route('platform.login'));
+    expect(session('url.intended'))->toBe(route('platform.tenants.index'));
     // …and a guest's deeper address is "not found", with no sign-in asked for.
     $this->flushSession();
     $this->withHeaders(navigation())->get($platform.'/admin/content')->assertNotFound();

@@ -146,10 +146,20 @@ Route::domain((string) config('tenancy.platform_host'))
             return back(fallback: route('platform.login'));
         })->name('platform.locale');
 
+        // The console host's front page: a signed-in member goes on to the console; a visitor (and the
+        // Google/Facebook app reviews, which need a public page saying what the app is) gets the intro.
+        Route::get('/', function () {
+            if (Auth::check()) {
+                return redirect()->route('platform.tenants.index');
+            }
+
+            return view('admin::platform-intro');
+        })->name('platform.dashboard');
+
         // A website's admin address typed on the console host. This host carries no website, so the
         // tenant admin routes would answer "not found": «/admin» means the console's first page (a
         // guest signs in on the way and lands there after).
-        Route::get('/'.config('admin.prefix', 'admin'), fn () => redirect()->route('platform.dashboard'))
+        Route::get('/'.config('admin.prefix', 'admin'), fn () => redirect()->route('platform.tenants.index'))
             ->name('platform.admin-address');
     });
 
@@ -168,8 +178,6 @@ Route::domain((string) config('tenancy.platform_host'))
 Route::domain((string) config('tenancy.platform_host'))
     ->middleware([AddServerTiming::class, 'web', 'auth', 'auth.session', 'platform', SetLocale::class, TrackSignedInDevice::class])
     ->group(function (): void {
-        Route::get('/', fn () => redirect()->route('platform.tenants.index'))->name('platform.dashboard');
-
         // Operator tenant management (read-only). `tenants` is GLOBAL (D6) — queried with no
         // tenant context; addressed by ulid (D2, never the raw id).
         Route::get('/tenants', Index::class)->name('platform.tenants.index');
