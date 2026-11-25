@@ -91,14 +91,17 @@ function seedTenancy(): void
 {
     $admin = DB::connection('pgsql_admin');
     $admin->statement('truncate tenant_probes, domains, sites, tenants restart identity cascade');
+    // A removed website's code stays reserved (never issued again); truncate removes none, but a test
+    // that deleted site A or B would otherwise keep its code from the next seed.
+    $admin->table('reserved_site_codes')->where('reason', 'deleted_site')->delete();
 
     $admin->table('tenants')->insert([
         'ulid' => 'TENANT0000000000000000001', 'name' => 'T1', 'settings' => '{}',
         'created_at' => now(), 'updated_at' => now(),
     ]);
     $admin->table('sites')->insert([
-        ['ulid' => 'SITEA000000000000000000001', 'tenant_id' => 1, 'name' => 'A', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()],
-        ['ulid' => 'SITEB000000000000000000001', 'tenant_id' => 1, 'name' => 'B', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()],
+        ['ulid' => 'SITEA000000000000000000001', 'tenant_id' => 1, 'code' => 'aaaaaa', 'name' => 'A', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()],
+        ['ulid' => 'SITEB000000000000000000001', 'tenant_id' => 1, 'code' => 'bbbbbb', 'name' => 'B', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()],
     ]);
     $admin->table('domains')->insert([
         ['site_id' => 1, 'hostname' => 'a.test', 'kind' => 'subdomain', 'is_primary' => true, 'verified_at' => now(), 'created_at' => now(), 'updated_at' => now()],
@@ -110,6 +113,50 @@ function seedTenancy(): void
         ['site_id' => 1, 'locale' => 'vi', 'is_default' => true, 'enabled' => true, 'created_at' => now(), 'updated_at' => now()],
         ['site_id' => 2, 'locale' => 'vi', 'is_default' => true, 'enabled' => true, 'created_at' => now(), 'updated_at' => now()],
     ]);
+}
+
+/** The permanent code of a site, the first folder of its media keys (read on the privileged connection). */
+function siteCode(int $siteId): string
+{
+    $code = DB::connection('pgsql_admin')->table('sites')->where('id', $siteId)->value('code');
+
+    return is_string($code) ? $code : '';
+}
+
+/**
+ * Storage keys that are not clean relative paths ({own}/{other} = the codes of sites 1/2). Storage
+ * rewrites several of them to a path under site 2's code, so the database and the application must
+ * both refuse every one, whatever its first segment looks like.
+ *
+ * @return array<string, string>
+ */
+function uncleanMediaKeys(): array
+{
+    return [
+        'dot segment before another code' => './{other}/anh-abcd.png',
+        'backslash after another code' => '{other}\anh-abcd.png',
+        'parent segment' => 'a/../{other}/anh-abcd.png',
+        'parent segment after own code' => '{own}/../{other}/anh-abcd.png',
+        'dot segment' => '{own}/./anh-abcd.png',
+        'empty segment' => '{own}//anh-abcd.png',
+        'leading slash' => '/{own}/anh-abcd.png',
+        'trailing slash' => '{own}/anh-abcd.png/',
+        'bare code' => '{own}/',
+        'single segment' => 'anh-abcd.png',
+        'staging' => '_incoming/a/01abc.png',
+        'empty' => '',
+        'leading space' => ' {own}/anh-abcd.png',
+        'final newline' => "{own}/anh-abcd.png\n",
+        'tab' => "{own}/anh\tabcd.png",
+        'escape character' => "{own}/anh\x1babcd.png",
+        'non-ascii letter' => '{own}/ảnh-abcd.png',
+    ];
+}
+
+/** $key with {own}/{other} replaced by the codes of sites 1 and 2. */
+function withSiteCodes(string $key): string
+{
+    return str_replace(['{own}', '{other}'], [siteCode(1), siteCode(2)], $key);
 }
 
 /**

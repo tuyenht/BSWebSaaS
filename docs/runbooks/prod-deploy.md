@@ -50,6 +50,12 @@ runbook stays the reference for what each step does and why.
    ```bash
    docker exec bsweb_prod_pg sh -c 'psql -U "$POSTGRES_USER" -d bswebsaas -tAc "SELECT count(*), min(created_at), max(created_at) FROM audit_logs"'
    ```
+7. The migration that gives every website its code (`2097_01_01_000000_add_code_to_sites`) aborts unless the admin role sees every row (superuser or BYPASSRLS), every media storage key is a clean relative path, no storage key is held by two websites, and no key lies under `sys/` (the platform's own folder). Before step 2 of the deploy, both lists must be empty (read-only):
+   ```bash
+   docker exec bsweb_prod_pg sh -c 'psql -U "$POSTGRES_USER" -d bswebsaas -tAc "SELECT site_id, storage_key FROM media WHERE storage_key !~ '"'"'^[A-Za-z0-9][A-Za-z0-9._-]*(/[A-Za-z0-9][A-Za-z0-9._-]*)+$'"'"' OR split_part(storage_key, '"'"'/'"'"', 1) = '"'"'sys'"'"'"'
+   docker exec bsweb_prod_pg sh -c 'psql -U "$POSTGRES_USER" -d bswebsaas -tAc "SELECT storage_key FROM media GROUP BY storage_key HAVING count(DISTINCT site_id) > 1"'
+   ```
+   It freezes the first folder of every existing key (`reserved_site_codes`), so old pictures keep working and no code is drawn from them. Once an upload is filed under a website code, its rollback refuses to run: restore the pre-deploy dump instead.
 
 ## Deploy
 

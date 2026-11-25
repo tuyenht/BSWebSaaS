@@ -2,20 +2,71 @@
 
 namespace App\Modules\Media\Support;
 
+use App\Modules\Media\Exceptions\MediaKeyRejectedException;
 use App\Modules\Media\Models\Media;
-use Illuminate\Support\Str;
+use App\Modules\Shared\Support\Slugger;
 use RuntimeException;
 
 /**
- * Builds the opaque content-hash storage key (ADR-17): {tenant}/{collection}/{slug}-{hashN}.{ext}.
- * Media is public, so anti-enumeration is intentionally NOT a goal — the hash suffix is purely for
- * cache-busting (different content → different key → CDN serves fresh) and key uniqueness. It starts
- * short (config('media.url_hash_length'), default 4) and extends only on the rare same-site collision,
- * so URLs stay clean without ever overwriting another object. NOTE this is SEPARATE from the full
- * 64-hex media.hash column used for dedup — shortening this suffix never affects dedup.
+ * Builds the storage key of a new media object (ADR-17): {code}/{slug}-{hashN}.{ext}. {code} is the
+ * website's permanent code (sites.code: six random characters, unique over every website, never
+ * changed or issued again), so two websites never share a key, whatever their names; the database
+ * refuses a key under another website's code. The collection is a column, not part of the key. In
+ * single-site mode (`media.tenant_prefix` false) the prefix is the collection, as before. Keys
+ * written before website codes keep their old layout.
+ *
+ * First segments that are never a website's (RESERVED_FIRST_SEGMENTS is the one list; a website code is
+ * six characters with no `_`): `sys` holds public files of the platform itself; any segment that
+ * starts with `_` is private (the file server refuses it), such as upload staging and lead files.
+ * Folders of old keys frozen when codes arrived live in the database (`reserved_site_codes`).
+ *
+ * Media is public, so anti-enumeration is intentionally NOT a goal — the hash suffix is for
+ * cache-busting (different content → different key → the CDN serves fresh) and uniqueness. It starts
+ * at config('media.url_hash_length') (never below 4) and grows only when the stem {slug}-{hashN} is
+ * already taken in the website under ANY extension, so `x-ab12.jpg` and `x-ab12.png` never coexist.
+ * This is SEPARATE from the full 64-hex media.hash column used for dedup.
  */
 final class MediaKey
 {
+    /** Public files of the platform itself, which belong to no website (`sys/{slug}-{hash}.{ext}`). */
+    public const string SYSTEM_SEGMENT = 'sys';
+
+    /** A first segment that starts with this is private: the file server never serves it. */
+    public const string PRIVATE_MARK = '_';
+
+    /** Presigned and fetched uploads waiting to be registered (expired by one R2 lifecycle rule). */
+    public const string STAGING_SEGMENT = '_incoming';
+
+    /** Files of website leads, on the `leads` disk when it shares the media bucket. */
+    public const string PRIVATE_SEGMENT = '_private';
+
+    /** The first segments that are never a website's: the one list (with every other `_…` segment). */
+    public const array RESERVED_FIRST_SEGMENTS = [self::SYSTEM_SEGMENT, self::STAGING_SEGMENT, self::PRIVATE_SEGMENT];
+
+    /** A website code (sites.code; the database checks the same pattern). */
+    public const string CODE_PATTERN = '/^[0-9a-hjkmnp-tv-z]{6}$/D';
+
+    /** Extensions a new key may carry; the stem check looks for every one of them. */
+    public const array EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'pdf'];
+
+    /** The shortest hash suffix, whatever the configuration says. */
+    public const int MIN_HASH_LENGTH = 4;
+
+    /** What MediaKeyPrefix hands out: one or more clean segments, each followed by a slash. */
+    public const string PREFIX_PATTERN = '#^(?:[A-Za-z0-9][A-Za-z0-9._-]*/)+$#D';
+
+    /**
+     * A clean relative path: ASCII segments that start with a letter or digit, joined by single
+     * slashes — so no `.`/`..`/empty/`_` segment, no leading or trailing slash, no backslash, space
+     * or control character. Storage (Flysystem) rewrites any other path (`\` → `/`, `.` and empty
+     * segments dropped, `..` resolved), so only a clean key can be judged by its first segment. The
+     * trigger on media applies the same pattern (`D`: `$` must not match before a final newline).
+     */
+    public const string CLEAN_PATH_PATTERN = '#^[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)+$#D';
+
+    /** A link-path slug: lowercase ASCII words joined by single dashes — never a dot or a slash. */
+    public const string SLUG_PATTERN = '/^[a-z0-9]+(?:-[a-z0-9]+)*$/D';
+
     /** The configured media storage disk (filesystems.php), as a string (config() returns mixed). */
     public static function disk(): string
     {
@@ -63,34 +114,74 @@ final class MediaKey
         }
     }
 
-    public static function unique(string $siteName, string $collection, string $slug, string $hash, string $ext): string
+    /** Whether a first path segment belongs to the platform rather than to a website. */
+    public static function isReservedFirstSegment(string $segment): bool
     {
-        $configured = config('media.url_hash_length', 4);
-        // 0 = no suffix at all (clean {slug}.{ext}); collisions still extend up from there.
-        $start = is_int($configured) ? max(0, $configured) : 4;
+        return in_array($segment, self::RESERVED_FIRST_SEGMENTS, true) || str_starts_with($segment, self::PRIVATE_MARK);
+    }
 
-        for ($len = $start; $len <= 64; $len++) {
-            $key = self::compose($siteName, $collection, $slug, substr($hash, 0, $len), $ext);
+    /** Refuses a storage key that is not a clean relative path (CLEAN_PATH_PATTERN). */
+    public static function assertCleanPath(string $key): void
+    {
+        if (preg_match(self::CLEAN_PATH_PATTERN, $key) !== 1) {
+            throw MediaKeyRejectedException::malformed('storage key', $key);
+        }
+    }
 
-            // RLS scopes the lookup to the current site (storage_key is unique within a site).
-            if (! Media::query()->where('storage_key', $key)->exists()) {
+    /** The slug part of a new key, from the uploaded file's name ('tep' when nothing usable is left). */
+    public static function slugFromFilename(string $filename): string
+    {
+        $slug = Slugger::make(pathinfo($filename, PATHINFO_FILENAME));
+
+        return preg_match(self::SLUG_PATTERN, $slug) === 1 ? $slug : 'tep';
+    }
+
+    /**
+     * A key under $prefix (MediaKeyPrefix) whose stem ({prefix}{slug}-{hashN}) no row of the current
+     * website uses with any extension. RLS and the BelongsToSite scope keep the lookup inside the
+     * website; withTrashed, because a row in the trash still owns its key.
+     */
+    public static function unique(string $prefix, string $slug, string $hash, string $ext): string
+    {
+        if (preg_match(self::PREFIX_PATTERN, $prefix) !== 1) {
+            throw MediaKeyRejectedException::malformed('key prefix', $prefix);
+        }
+        if (preg_match(self::SLUG_PATTERN, $slug) !== 1) {
+            throw MediaKeyRejectedException::malformed('slug', $slug);
+        }
+        if (! in_array($ext, self::EXTENSIONS, true)) {
+            throw MediaKeyRejectedException::malformed('extension', $ext);
+        }
+        if (preg_match('/^[0-9a-f]{'.self::MIN_HASH_LENGTH.',64}$/D', $hash) !== 1) {
+            throw MediaKeyRejectedException::malformed('content hash', $hash);
+        }
+
+        $configured = config('media.url_hash_length', self::MIN_HASH_LENGTH);
+        $start = is_int($configured) ? max(self::MIN_HASH_LENGTH, $configured) : self::MIN_HASH_LENGTH;
+
+        for ($len = min($start, strlen($hash)); $len <= strlen($hash); $len++) {
+            $stem = $prefix.$slug.'-'.substr($hash, 0, $len);
+
+            if (! self::stemTaken($stem)) {
+                $key = "{$stem}.{$ext}";
+                self::assertCleanPath($key);
+
                 return $key;
             }
         }
 
-        // Unreachable in practice (the full 64-hex hash is already unique within the site).
-        return self::compose($siteName, $collection, $slug, $hash, $ext);
+        // Unreachable in practice: the full 64-hex content hash is already unique within the website.
+        throw new RuntimeException("No free media key for stem {$prefix}{$slug}.");
     }
 
     /**
-     * Compose the key. An empty hash part (length 0) → a clean {slug}.{ext} (no dash). The tenant
-     * prefix is dropped in standalone (non-SaaS) mode → {collection}/{slug}.{ext}.
+     * Exact keys over the closed extension list, not `LIKE '{stem}.%'`: the lookup stays on the
+     * unique (site_id, storage_key) index instead of scanning every key of the website.
      */
-    private static function compose(string $siteName, string $collection, string $slug, string $hashPart, string $ext): string
+    private static function stemTaken(string $stem): bool
     {
-        $suffix = $hashPart === '' ? '' : "-{$hashPart}";
-        $prefix = config('media.tenant_prefix', true) ? Str::slug($siteName).'/' : '';
+        $keys = array_map(fn (string $ext): string => "{$stem}.{$ext}", self::EXTENSIONS);
 
-        return "{$prefix}{$collection}/{$slug}{$suffix}.{$ext}";
+        return Media::query()->withTrashed()->whereIn('storage_key', $keys)->exists();
     }
 }

@@ -4,7 +4,7 @@ namespace App\Modules\Media\Services;
 
 /**
  * Derives the public URL for a stored media key from config('media.driver') — the single switch
- * point (ADR-17 L0). The storage key (content-hash {tenant}/{collection}/{slug}-{hash}.{ext}) is
+ * point (ADR-17 L0). The storage key (content-hash {code}/{slug}-{hash}.{ext}, or an older layout) is
  * the source of truth; URLs are NEVER stored on a row, so flipping the driver (one env) re-points
  * every image without a migration.
  */
