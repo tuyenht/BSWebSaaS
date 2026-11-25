@@ -57,8 +57,9 @@ final class MediaLibraryDirectory
      * the conditions. `folders` lists the folder and its sub-folders; null is every file. `by` names
      * the uploaders (user ids; none = anyone); `since` / `until` bound the upload time (until is the
      * first instant after the window). Each is a plain condition on the site's own rows and keeps the
-     * cursor pages. The (site_id, created_at) index serves the time window; no index leads with
-     * created_by yet, so «Người tạo» reads the site's rows in upload order and keeps that person's.
+     * cursor pages. The (site_id, created_at) index serves the time window; «Người tạo» on the live
+     * files reads (site_id, created_by, created_at DESC, ulid DESC), one range per chosen person in
+     * the list's own order (migration 2091).
      *
      * @param  array{folders: list<int>|null, unfiled: bool, trash: bool, search: string, kinds: list<string>, formats: list<string>, uses: list<string>, by?: list<int>, since?: CarbonImmutable|null, until?: CarbonImmutable|null}  $f
      * @return Builder<Media>
