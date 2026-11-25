@@ -1,6 +1,6 @@
-# Release file: prod a3aecf6b → e7ed9aa4 (main on 25/11). Data and one-off commands only; the
+# Release file: prod a3aecf6b → 928002dc (main on 25/11). Data and one-off commands only; the
 # engine (scripts/deploy/deploy.sh) does every generic step. Review this file and the printed plan:
-#     bash scripts/deploy/deploy.sh plan scripts/deploy/releases/a3aecf6b-e7ed9aa4.sh
+#     bash scripts/deploy/deploy.sh plan scripts/deploy/releases/a3aecf6b-928002dc.sh
 # Range:
 #   #961 the previous release file.
 #   #958 bands above and below a category's list: the category drawer shows and sets them, «Trình dựng trang»
@@ -13,11 +13,12 @@
 #   #957 an end time for posts, pages and products («Gỡ khỏi website lúc»): migration 2095 (expires_at +
 #        CHECK, then the due indexes CONCURRENTLY and the CHECK validated), two new every-minute schedules
 #        entries:unpublish-due and products:unpublish-due, and a lasting history of date changes (audit).
-# PR #962 (category language bits) was still open when this file was written: not in this range.
+#   #962 the categories drawer: a shared language chip on its fields, item counts in the bands («· N ô»), the
+#        shared language panel (views, lang files and admin-categories.js; no migration).
 # No new env key, no permission or sanitizer change, no composer or npm change.
 # shellcheck shell=bash disable=SC2034
 OLD=a3aecf6b295156b0a03cf497148ebb3df3c14c81
-TARGET=e7ed9aa4525037356e35aa1252f9b54c3554e0b0
+TARGET=928002dcf00cdbd1cdedfb74de04f786c3c72ac8
 HOST=av1.baoson.net
 PAGES=(/ /gioi-thieu /nha-xuong-may-moc /chung-chi-thanh-tuu /san-pham /jig-kiem-tap-lo-vf7 /du-an /tin-tuc /khanh-thanh-nha-may-so-3 /doi-tac /lien-he /cam-on /chinh-sach-bao-mat /nang-luc /ho-so-nang-luc /thiet-ke-lap-trinh /tuyen-dung /admin/login)
 
