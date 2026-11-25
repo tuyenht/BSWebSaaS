@@ -663,7 +663,8 @@ it('keeps its query count flat for any number of ticked rows', function (): void
             ->and([$restore2, $restore6])->toBe([19, 27])
             ->and([$purge2, $purge6])->toBe([17, 25])
             ->and([$archive2, $archive6])->toBe([21, 25])
-            ->and([$publish2, $publish6])->toBe([28, 48])
+            // a first publish also writes its publish time's date-change audit row: one more per row
+            ->and([$publish2, $publish6])->toBe([30, 54])
             ->and([$open2, $open6])->toBe([16, 16])
             ->and([$move2, $move6, $move10])->toBe([35, 59, 83])
             ->and([$moveLive2, $moveLive6, $moveLive10])->toBe([41, 73, 105])

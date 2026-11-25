@@ -26,6 +26,9 @@ final class UnpublishDueProducts extends Command
     #[\Override]
     protected $description = 'Take off the website the products whose end time has come';
 
+    /** Due rows per batch: each batch is its own short tenant transaction, so its row locks are brief. */
+    private const int BATCH = 200;
+
     public function handle(Tenancy $tenancy, UnpublishExpiredProduct $unpublisher): int
     {
         $done = 0;
@@ -33,21 +36,25 @@ final class UnpublishDueProducts extends Command
         $deferred = 0;
 
         foreach ($tenancy->siteIds() as $siteId) {
-            try {
-                [$siteDone, $siteFailed] = $tenancy->enter($siteId, fn (): array => $this->sweepSite($unpublisher));
-            } catch (Throwable $e) {
-                if (! ConcurrencyError::is($e)) {
-                    throw $e;
+            $after = 0;
+            do {
+                try {
+                    // one short transaction per batch, counted once it commits (see the entries sweep)
+                    [$batchDone, $batchFailed, $after, $more] = $tenancy->enter($siteId, fn (): array => $this->sweepBatch($unpublisher, $after));
+                } catch (Throwable $e) {
+                    if (! ConcurrencyError::is($e)) {
+                        throw $e;
+                    }
+
+                    report($e);
+                    $deferred++;
+
+                    continue 2;
                 }
 
-                report($e);
-                $deferred++;
-
-                continue;
-            }
-
-            $done += $siteDone;
-            $failed += $siteFailed;
+                $done += $batchDone;
+                $failed += $batchFailed;
+            } while ($more);
         }
 
         $this->info("Took {$done} product(s) off the website at their end time, {$failed} failed, {$deferred} site(s) left for the next run after a lock conflict.");
@@ -55,17 +62,24 @@ final class UnpublishDueProducts extends Command
         return self::SUCCESS;
     }
 
-    /** @return array{int, int} taken down, failed */
-    private function sweepSite(UnpublishExpiredProduct $unpublisher): array
+    /**
+     * The next batch of the site's due products after id $after (keyset), only their keys read.
+     *
+     * @return array{0: int, 1: int, 2: int, 3: bool} taken down, failed, the last id read, whether a full batch was read
+     */
+    private function sweepBatch(UnpublishExpiredProduct $unpublisher, int $after): array
     {
         $done = 0;
         $failed = 0;
 
         $due = Product::query()
+            ->select(['id', 'site_id'])
             ->where('status', 'published')
             ->whereNotNull('expires_at')
             ->where('expires_at', '<=', now())
+            ->where('id', '>', $after)
             ->orderBy('id')
+            ->limit(self::BATCH)
             ->get();
 
         foreach ($due as $product) {
@@ -83,6 +97,6 @@ final class UnpublishDueProducts extends Command
             }
         }
 
-        return [$done, $failed];
+        return [$done, $failed, (int) ($due->last()->id ?? $after), $due->count() === self::BATCH];
     }
 }

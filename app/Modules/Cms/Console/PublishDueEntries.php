@@ -4,6 +4,7 @@ namespace App\Modules\Cms\Console;
 
 use App\Modules\Cms\Actions\ApproveEntryForLater;
 use App\Modules\Cms\Actions\PublishScheduledEntry;
+use App\Modules\Cms\Actions\UnpublishExpiredEntry;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
@@ -60,13 +61,14 @@ class PublishDueEntries extends Command
         $failed = 0;
         $held = 0;
         $taken = 0;
+        $expired = 0;
         $deferred = 0;
 
         foreach ($tenancy->siteIds() as $siteId) {
             try {
                 // Counted per site and added only once the site commits: a site rolled back by a
                 // lock conflict published nothing.
-                [$sitePublished, $siteSkipped, $siteFailed, $siteHeld, $siteTaken] = $tenancy->enter($siteId, fn (): array => $this->sweepSite($publisher, $approved));
+                [$sitePublished, $siteSkipped, $siteFailed, $siteHeld, $siteTaken, $siteExpired] = $tenancy->enter($siteId, fn (): array => $this->sweepSite($publisher, $approved));
             } catch (Throwable $e) {
                 if (! ConcurrencyError::is($e)) {
                     throw $e;
@@ -83,10 +85,12 @@ class PublishDueEntries extends Command
             $failed += $siteFailed;
             $held += $siteHeld;
             $taken += $siteTaken;
+            $expired += $siteExpired;
         }
 
         $this->info("Published {$published} scheduled entr(y/ies), skipped {$skipped} governed by an approval workflow, {$failed} failed, {$deferred} site(s) left for the next run after a lock conflict. {$held} approved entr(y/ies) held back and waiting for review again.");
         $this->info("{$taken} entr(y/ies) not published because an address they need is already in use: taken off the schedule, their author and scheduler told.");
+        $this->info("{$expired} entr(y/ies) past their end time before they went live: archived, never published.");
 
         return self::SUCCESS;
     }
@@ -94,11 +98,11 @@ class PublishDueEntries extends Command
     /**
      * One site's due entries, inside its tenant transaction.
      *
-     * @return array{int, int, int, int, int} published, skipped, failed, held back, address taken
+     * @return array{int, int, int, int, int, int} published, skipped, failed, held back, address taken, past their end time
      */
     private function sweepSite(PublishScheduledEntry $publisher, ApproveEntryForLater $approved): array
     {
-        $counts = ['published' => 0, 'skipped' => 0, 'failed' => 0, 'held' => 0, 'taken' => 0];
+        $counts = ['published' => 0, 'skipped' => 0, 'failed' => 0, 'held' => 0, 'taken' => 0, 'expired' => 0];
 
         $due = Entry::query()
             ->where('status', 'scheduled')
@@ -129,12 +133,17 @@ class PublishDueEntries extends Command
             }
         }
 
-        return [$counts['published'], $counts['skipped'], $counts['failed'], $counts['held'], $counts['taken']];
+        return [$counts['published'], $counts['skipped'], $counts['failed'], $counts['held'], $counts['taken'], $counts['expired']];
     }
 
-    /** @return 'published'|'skipped'|'held'|'taken'|'not_due' */
+    /** @return 'published'|'skipped'|'held'|'taken'|'expired'|'not_due' */
     private function sweepEntry(Entry $entry, PublishScheduledEntry $publisher, ApproveEntryForLater $approved): string
     {
+        // its end time came before its publish run did: it never goes live, on either road
+        if (UnpublishExpiredEntry::isPast($entry)) {
+            return app(UnpublishExpiredEntry::class)->archiveScheduled($entry) ? 'expired' : 'not_due';
+        }
+
         try {
             if ($entry->scheduled_by === null && $entry->workflow_state === null) {
                 try {

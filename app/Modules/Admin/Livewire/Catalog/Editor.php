@@ -2061,7 +2061,7 @@ final class Editor extends Component
             // going live, or moving to another main category, gives every language it is written in its
             // address (the other versions' paths carry the category too); otherwise this language's.
             // This language first, so a link taken in it is said on its own field.
-            app(ChangeProductStatus::class)->publishEffects($product, $this->locale, $this->slug);
+            app(ChangeProductStatus::class)->publishEffects($product, $this->locale, $this->slug, goingLive: ! $wasPublished);
             if (! $wasPublished || $mainBefore !== ($filing[0] ?? null)) {
                 $this->syncOtherLanguages($product);
             }

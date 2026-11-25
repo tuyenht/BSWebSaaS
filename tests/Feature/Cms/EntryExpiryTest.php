@@ -21,6 +21,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Workflow\Actions\InstantiateWorkflow;
 use App\Modules\Workflow\Models\WorkflowLog;
+use App\Modules\Workflow\Models\WorkflowState;
 use App\Modules\Workflow\Models\WorkflowTransition;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -130,8 +131,8 @@ it('takes a due post down at the sweep: archived, out of the list, the sitemap a
 
     expFresh();
     expect((string) $this->get(EXP_HOST.'/tin-tuc')->getContent())->not->toContain('Tuyển thợ hàn')
-        ->and((string) $this->get(EXP_HOST.'/sitemap.xml')->getContent())->not->toContain('/tin-tuc/tuyen-tho-han')
-        ->and((string) $this->get(EXP_HOST.'/tim-kiem?q='.rawurlencode('thợ hàn'))->getContent())->not->toContain('Tuyển thợ hàn');
+        ->and((string) $this->get(EXP_HOST.'/sitemap.xml')->assertOk()->assertHeader('Content-Type', 'application/xml')->getContent())->not->toContain('/tin-tuc/tuyen-tho-han')
+        ->and((string) $this->get(EXP_HOST.'/tim-kiem?q='.rawurlencode('thợ hàn'))->assertOk()->getContent())->not->toContain('Tuyển thợ hàn');
     $this->get(EXP_HOST.'/tin-tuc/tuyen-tho-han')->assertNotFound();
 });
 
@@ -173,8 +174,11 @@ it('holds the Home page at the sweep and refuses an end time on it', function ()
     expFresh();
     $this->get(EXP_HOST.'/')->assertOk();
 
+    // held once: its end time is cleared, so the next minute does not pick it again
+    $this->artisan('entries:unpublish-due')->assertSuccessful()->expectsOutputToContain('0 held');
+
     app(Tenancy::class)->enter($siteId, function () use ($home, $member): void {
-        expect($home->fresh()->status)->toBe('published');
+        expect($home->fresh())->status->toBe('published')->expires_at->toBeNull();
         expect(fn () => app(ChangeEntryExpiry::class)->handle($home, now()->addDay(), $member))->toThrow(HomePageLockedException::class);
     });
 });
@@ -373,4 +377,72 @@ it('reads an end time on the site\'s clock and names what is wrong with it', fun
         ->and($check('hôm qua'))->toBe(__('entries.expiry_invalid'))
         ->and($check('2026-11-27T08:00', $publishAt))->toBe(__('entries.expiry_before_publish', ['time' => '08:00 27/11/2026']))
         ->and($check('2026-11-27T08:01', $publishAt))->toBe('');
+});
+
+it('reads the stage a governed post is withdrawn to as a member\'s move does: a flow with no end of the line leaves it a draft', function (): void {
+    [$siteId, $entry] = expSite(CarbonImmutable::now()->addMinute());
+    app(Tenancy::class)->enter($siteId, function (): void {
+        ContentSection::query()->firstOrCreate(['key' => 'tin-tuc'], ['label' => 'Tin tức', 'entry_type' => 'post', 'taxonomy_id' => StorefrontCards::news()->id]);
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: true);
+        // no move off the website and no end of the line: the engine falls back to the flow's start
+        WorkflowTransition::query()->where('from_state', 'published')->delete();
+        WorkflowState::query()->update(['is_terminal' => false]);
+    });
+    $this->travel(2)->minutes();
+
+    $this->artisan('entries:unpublish-due')->assertSuccessful();
+
+    app(Tenancy::class)->enter($siteId, function () use ($entry): void {
+        expect($entry->fresh())->status->toBe('draft')->workflow_state->toBe('draft');
+        expect(AuditLog::query()->where('action', EntryStatusAudit::ACTION)->sole()->meta)->toMatchArray(['from' => 'published', 'to' => 'draft']);
+    });
+});
+
+it('never publishes a scheduled post whose end time passed before its publish run: archived, with its audit row', function (): void {
+    [$siteId, $entry] = expSite(null);
+    app(Tenancy::class)->enter($siteId, function () use ($entry): void {
+        $entry->forceFill(['status' => 'scheduled', 'published_at' => now()->addMinutes(10), 'expires_at' => now()->addMinutes(30)])->save();
+    });
+    // the scheduler was down past both times
+    $this->travel(1)->hours();
+    expFresh();
+    $edge = edgeCacheRecorder();
+
+    $this->artisan('entries:publish-due')->assertSuccessful()->expectsOutputToContain('Published 0 scheduled')->expectsOutputToContain('1 entr(y/ies) past their end time');
+
+    app(Tenancy::class)->enter($siteId, function () use ($entry): void {
+        expect($entry->fresh())->status->toBe('archived')->scheduled_by->toBeNull();
+        expect(AuditLog::query()->where('action', EntryStatusAudit::ACTION)->where('auditable_id', $entry->id)->sole()->meta)
+            ->toMatchArray(['from' => 'scheduled', 'to' => 'archived', 'via' => 'scheduler', 'reason' => 'expired']);
+    });
+    $this->get(EXP_HOST.'/tin-tuc/tuyen-tho-han')->assertNotFound();
+});
+
+it('never puts an approved-for-later post live past its end time, nor holds it as a lost right', function (): void {
+    [$siteId, $entry] = expSite(null);
+    $member = expPublisher($siteId);
+    app(Tenancy::class)->enter($siteId, function () use ($entry, $member): void {
+        ContentSection::query()->firstOrCreate(['key' => 'tin-tuc'], ['label' => 'Tin tức', 'entry_type' => 'post', 'taxonomy_id' => StorefrontCards::news()->id]);
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: true);
+        $entry->forceFill(['status' => 'scheduled', 'scheduled_by' => $member->id, 'workflow_state' => 'pending', 'published_at' => now()->addMinutes(10), 'expires_at' => now()->addMinutes(30)])->save();
+    });
+    $this->travel(1)->hours();
+    expFresh();
+
+    $this->artisan('entries:publish-due')->assertSuccessful()->expectsOutputToContain('0 approved entr(y/ies) held back');
+
+    app(Tenancy::class)->enter($siteId, function () use ($entry): void {
+        expect($entry->fresh())->status->toBe('archived')->scheduled_by->toBeNull()->workflow_state->toBeNull();
+        expect(WorkflowLog::query()->where('entry_id', $entry->id)->exists())->toBeFalse();
+    });
+});
+
+it('judges the shown day only when this save changes it', function (): void {
+    $zone = 'Asia/Ho_Chi_Minh';
+    $later = CarbonImmutable::now()->addDays(5)->setTimezone($zone)->format('Y-m-d');
+    $other = CarbonImmutable::now()->addDays(6)->setTimezone($zone)->format('Y-m-d');
+
+    expect(Validator::make(['d' => $later], ['d' => [new DisplayDateNotAfterToday($zone, $later)]])->passes())->toBeTrue()
+        ->and(Validator::make(['d' => $other], ['d' => [new DisplayDateNotAfterToday($zone, $later)]])->passes())->toBeFalse()
+        ->and(Validator::make(['d' => $later], ['d' => [new DisplayDateNotAfterToday($zone)]])->passes())->toBeFalse();
 });

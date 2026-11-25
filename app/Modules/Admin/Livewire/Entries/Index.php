@@ -27,6 +27,7 @@ use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\EntryDraftRejectedException;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
+use App\Modules\Cms\Exceptions\ExpiredContentException;
 use App\Modules\Cms\Exceptions\HomePageLockedException;
 use App\Modules\Cms\Exceptions\PageMoveRejectedException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
@@ -694,6 +695,10 @@ final class Index extends Component
             $this->refuse($refused->getMessage());   // the live Home page: the menu hides the move, the action refuses it
 
             return;
+        } catch (ExpiredContentException $refused) {
+            $this->refuse($refused->getMessage());   // past its end time: the end time is moved or cleared first
+
+            return;
         } catch (AuthorizationException) {
             $this->refuse($this->refusalFor($entry, 'status'));
 
@@ -745,6 +750,10 @@ final class Index extends Component
             $this->move($entry, $key, $note);
         } catch (InvalidTransitionException) {
             $this->toast(__('admin.wfb.err_stale'));   // moved on elsewhere meanwhile, or the flow changed
+
+            return;
+        } catch (ExpiredContentException $refused) {
+            $this->refuse($refused->getMessage());   // past its end time: the end time is moved or cleared first
 
             return;
         } catch (AuthorizationException) {
@@ -840,6 +849,10 @@ final class Index extends Component
             $this->refuse($refused->getMessage());   // the live Home page: the menu hides the item, the action refuses it
 
             return null;
+        } catch (ExpiredContentException $refused) {
+            $this->refuse($refused->getMessage());   // past its end time: the end time is moved or cleared first
+
+            return null;
         } catch (AuthorizationException) {
             $this->refuse($this->refusalFor($entry, 'status'));
 
@@ -869,6 +882,10 @@ final class Index extends Component
             $moved = app(TransitionEntryStatus::class)->unschedule($entry, $this->actingUser());
         } catch (ModelNotFoundException) {
             $this->toastStaleRow();
+
+            return;
+        } catch (ExpiredContentException $refused) {
+            $this->refuse($refused->getMessage());   // past its end time: the end time is moved or cleared first
 
             return;
         } catch (AuthorizationException) {

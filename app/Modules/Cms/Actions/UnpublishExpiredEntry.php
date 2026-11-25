@@ -28,10 +28,13 @@ use Illuminate\Support\Facades\DB;
  * Under an approval workflow the move goes through the engine's system road (withdrawAsSystem): the
  * flow's own move off the website when it has one, else forced off anyway and logged as such, so a
  * reviewer sees it in the post's history. Either way the post ends `archived` and its stage is the one
- * the engine returned. A pending change to it is folded in, as when a member takes it down.
+ * the engine returned, its status read from that stage as a member's move reads it (the flow's start:
+ * a draft; its end of the line: archived; a stage in between: waiting for review). A pending change to
+ * it is folded in, as when a member takes it down.
  *
- * The website's Home page is never taken down by this (its «/» would answer 404): it is held, and the
- * end-time form refuses one on it in the first place.
+ * The website's Home page is never taken down by this (its «/» would answer 404): it is held once and
+ * its end time cleared (so the sweep does not pick it again every minute), and the end-time form
+ * refuses one on it in the first place.
  *
  * Every take-down writes its status audit row (actor «scheduler», the end time and the road in its
  * meta) in the same transaction: no take-down without its line.
@@ -65,6 +68,41 @@ final readonly class UnpublishExpiredEntry
         ));
     }
 
+    /**
+     * entries:publish-due found a post due to go live whose end time has passed meanwhile (the
+     * scheduler was down, or the site was deferred): it never goes live. It leaves the schedule
+     * archived, its approval (if any) and stage cleared as on any move off the website, with its
+     * status audit row (actor «scheduler», reason expired), so nobody is told it went live or that
+     * an approver lost a right. False when, re-read under the lock, it was no longer such a post.
+     */
+    public function archiveScheduled(Entry $entry): bool
+    {
+        return DB::transaction(function () use ($entry): bool {
+            if (Entry::withTrashed()->whereKey($entry->id)->lockForUpdate()->first() === null) {
+                return false;
+            }
+            $entry->refresh();
+
+            $expiresAt = $entry->expires_at;
+            if ($entry->status !== EntryStatus::Scheduled->value || $entry->trashed() || $expiresAt === null || $expiresAt > now()
+                || $entry->published_at === null || $entry->published_at > now()) {
+                return false;
+            }
+
+            $entry->update(['status' => EntryStatus::Archived->value, 'scheduled_by' => null, 'workflow_state' => null]);
+            EntryStatusAudit::record($entry, EntryStatus::Scheduled->value, EntryStatus::Archived->value, DateChangeAudit::VIA_SCHEDULER, null,
+                ['reason' => 'expired', 'expires_at' => $expiresAt->format(DATE_ATOM)], actorLabel: DateChangeAudit::VIA_SCHEDULER, strict: true);
+
+            return true;
+        });
+    }
+
+    /** True when the entry's end time has come: it must not go live (now or at its scheduled time). */
+    public static function isPast(Entry $entry): bool
+    {
+        return $entry->expires_at !== null && $entry->expires_at <= now();
+    }
+
     private function unpublishLocked(Entry $entry): string
     {
         // Lock FIRST, then read: every check below judges the row as it is now.
@@ -79,17 +117,27 @@ final readonly class UnpublishExpiredEntry
         }
 
         if (HomePages::is($entry)) {
+            // only a pack or a direct write can give it one: cleared, with its date audit row
+            $entry->update(['expires_at' => null]);
+
             return self::HELD;
         }
 
         $extra = ['reason' => 'expired', 'expires_at' => $expiresAt->format(DATE_ATOM)];
         $forced = false;
+        $to = EntryStatus::Archived->value;
         $workflow = $this->workflows->forEntry($entry);
         if ($workflow !== null) {
             [$stage, $forced] = $this->engine->withdrawAsSystem(
                 $workflow, $this->workflows->originFor($workflow, $entry), $entry->id, null, (string) __('workflow.note_expired'),
             );
-            $entry->update(['status' => EntryStatus::Archived->value, 'workflow_state' => $stage->key, 'scheduled_by' => null]);
+            // the same reading of a stage as ApplyEntryWorkflowTransition (the stage is never a public one)
+            $to = match (true) {
+                $stage->is_initial => EntryStatus::Draft->value,
+                $stage->is_terminal => EntryStatus::Archived->value,
+                default => EntryStatus::Pending->value,
+            };
+            $entry->update(['status' => $to, 'workflow_state' => $stage->key, 'scheduled_by' => null]);
             $extra['workflow'] = $forced ? self::FORCED : 'moved';
         } else {
             $entry->update(['status' => EntryStatus::Archived->value, 'scheduled_by' => null]);
@@ -98,7 +146,7 @@ final readonly class UnpublishExpiredEntry
         // nobody's pending work is lost, and nothing unapproved shows: the post is offline now
         $this->folder->fold($entry, null);
 
-        EntryStatusAudit::record($entry, EntryStatus::Published->value, EntryStatus::Archived->value, DateChangeAudit::VIA_SCHEDULER, null, $extra, actorLabel: DateChangeAudit::VIA_SCHEDULER, strict: true);
+        EntryStatusAudit::record($entry, EntryStatus::Published->value, $to, DateChangeAudit::VIA_SCHEDULER, null, $extra, actorLabel: DateChangeAudit::VIA_SCHEDULER, strict: true);
 
         return $forced ? self::FORCED : self::UNPUBLISHED;
     }

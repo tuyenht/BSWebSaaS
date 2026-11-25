@@ -265,7 +265,9 @@ final readonly class ApproveEntryForLater
             $due = $entry->status === EntryStatus::Scheduled->value
                 && ! $entry->trashed()
                 && $entry->published_at !== null
-                && $entry->published_at <= now();
+                && $entry->published_at <= now()
+                // past its end time it never goes live (entries:publish-due archives it): never a «lost right» hold
+                && ! UnpublishExpiredEntry::isPast($entry);
             if (! $due) {
                 return 'not_due';
             }

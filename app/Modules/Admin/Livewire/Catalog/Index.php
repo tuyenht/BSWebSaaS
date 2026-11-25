@@ -19,6 +19,7 @@ use App\Modules\Catalog\Models\ProductImage;
 use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Catalog\Support\CatalogMode;
 use App\Modules\Catalog\Support\UniqueViolation;
+use App\Modules\Cms\Exceptions\ExpiredContentException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\PathBuilder;
@@ -967,7 +968,8 @@ final class Index extends Component
                 $before = $product->status;
                 try {
                     app(ChangeProductStatus::class)->handle($product, $to);
-                } catch (RouteConflictException) {
+                } catch (RouteConflictException|ExpiredContentException) {
+                    // an address taken, or past its end time (it would come down again at once): this row only
                     $failed++;
 
                     continue;

@@ -334,13 +334,19 @@ final class Applier
                 $entry->restore();   // a forced re-create of an item staff put in the trash
             }
             $this->recordRevisions($entry);
+            // Past its end time («Gỡ khỏi website lúc») a reload never puts it back up: it keeps the status
+            // it has (the sweep takes a still-live one down) and its dates, so no pack date crosses the end.
+            $expired = $entry->expires_at !== null && $entry->expires_at <= now();
+            if ($expired && $status === 'published') {
+                $status = $entry->status;
+            }
             $meta = $isPost ? $this->postMeta($entry->meta, $desired) : $entry->meta;
             $entry->fill(['status' => $status, 'meta' => $meta] + $parent);
-            if ($status === 'published' && $entry->published_at === null) {
+            if ($status === 'published' && ! $expired && $entry->published_at === null) {
                 $entry->published_at = $this->publishedAt($planned->item, $status);
             }
             // a date the pack item states wins over the live one (an item without a date keeps it)
-            if ($status === 'published' && is_string($desired['published_at'] ?? null)
+            if ($status === 'published' && ! $expired && is_string($desired['published_at'] ?? null)
                 && $entry->published_at?->copy()->utc()->format('Y-m-d') !== $desired['published_at']) {
                 $entry->published_at = $this->publishedAt($planned->item, $status);
             }

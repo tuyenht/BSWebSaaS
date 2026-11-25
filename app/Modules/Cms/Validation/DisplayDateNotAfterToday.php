@@ -15,10 +15,13 @@ use Illuminate\Contracts\Validation\ValidationRule;
  * come: a post dated in the future misleads readers and gives search engines a datePublished that has
  * not happened. A past day is fine (an old article put back up under its first date). Empty passes:
  * it means the real publish day. A day that is not a real calendar day is DisplayDate's own error.
+ * Only a day changed in this save is judged: a post already stored with a later day (from before this
+ * rule) still saves while its day is left as it is.
  */
 final readonly class DisplayDateNotAfterToday implements ValidationRule
 {
-    public function __construct(private string $zone) {}
+    /** @param  string  $unchanged  the day as stored; a value equal to it passes */
+    public function __construct(private string $zone, private string $unchanged = '') {}
 
     /** Whether $day (Y-m-d) is after today in $zone; false for an empty or unreadable day. */
     public static function isFuture(string $day, string $zone, ?CarbonImmutable $now = null): bool
@@ -32,7 +35,7 @@ final readonly class DisplayDateNotAfterToday implements ValidationRule
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        if (is_string($value) && self::isFuture($value, $this->zone)) {
+        if (is_string($value) && $value !== $this->unchanged && self::isFuture($value, $this->zone)) {
             $fail(Cast::string(__('entries.ed.pd_future')));
         }
     }

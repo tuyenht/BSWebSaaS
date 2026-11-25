@@ -251,6 +251,10 @@ final class Editor extends Component
      */
     public string $displayDate = '';
 
+    /** The shown day as stored when the form opened: a save that leaves it as it is never has it refused. */
+    #[Locked]
+    public string $storedDisplayDate = '';
+
     /**
      * «Thẻ» (board 07): the post's tags named in this language, in order (EntryTags). Added with
      * addTag() and taken out with removeTag(); a name no tag has yet makes a tag on save. The tags
@@ -578,7 +582,7 @@ final class Editor extends Component
         $this->coverImageKey = is_string($cover) ? $cover : '';
         if ($this->type === 'post') {
             $this->templateKey = TemplateCatalog::variant($entry->template_override) ?? '';
-            $this->displayDate = DisplayDate::of($entry->meta);
+            $this->displayDate = $this->storedDisplayDate = DisplayDate::of($entry->meta);
             $this->tags = app(EntryTags::class)->names($entry, $this->locale);
             $this->tagsLoaded = $this->tags;
         }
@@ -2151,7 +2155,7 @@ final class Editor extends Component
         $this->saveFailed = false;
         // A language with no saved version yet loads nothing back: start from an empty form.
         $preset = $this->ulid === null ? $this->parentLoaded : null;
-        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'coverAlt', 'templateKey', 'displayDate', 'tags', 'tagsLoaded', 'tagDraft', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
+        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'coverAlt', 'templateKey', 'displayDate', 'storedDisplayDate', 'tags', 'tagsLoaded', 'tagDraft', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
             'transitionNote', 'assignTo', 'showImagePicker', 'blockImagePickerPath', 'coverToast', 'coverUndo', 'stale', 'overwrite',
             'parentUlid', 'parentLoaded', 'parentName', 'pageHome', 'scheduleAt', 'scheduleLoaded', 'statusTo', 'autoSaved', 'slugFresh', 'slugTouched');
         $this->mount($this->ulid, $this->sectionKey, $this->locale, $preset);
@@ -3174,7 +3178,7 @@ final class Editor extends Component
                 if (is_string($value) && $value !== '' && ! DisplayDate::valid($value)) {
                     $fail(Cast::string(__('entries.ed.pd_invalid')));
                 }
-            }, new DisplayDateNotAfterToday(app(SiteTime::class)->zone())];
+            }, new DisplayDateNotAfterToday(app(SiteTime::class)->zone(), $this->storedDisplayDate)];
         }
 
         return $rules;
