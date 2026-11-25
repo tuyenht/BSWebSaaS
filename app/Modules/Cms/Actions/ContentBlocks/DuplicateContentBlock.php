@@ -9,6 +9,7 @@ use App\Modules\Cms\ContentBlocks\ContentBlockRules;
 use App\Modules\Cms\Exceptions\ContentBlockChangeRejectedException;
 use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\ContentBlockTranslation;
+use App\Modules\Cms\Support\ContentBlockMediaReconciler;
 use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -18,13 +19,17 @@ use Illuminate\Support\Facades\Gate;
 /**
  * "Nhân bản" a block: a new draft named after it (":name (bản sao)"), in the same region, with a copy
  * of every language's content and a new reference code (the old one with "-2", "-3"…). The copy is
- * used nowhere yet. Each body is written through the model, so it is cleaned like any other. Counts
+ * used nowhere yet, and records the pictures and files its bodies use as its own. Each body is
+ * written through the model, so it is cleaned like any other. Counts
  * against `cms.blocks.max_per_site` (library_full). Returns the copy. Asks ContentBlockPolicy first;
  * runs inside the tenant context, under the library's per-site lock.
  */
 final readonly class DuplicateContentBlock
 {
-    public function __construct(private CurrentSite $site) {}
+    public function __construct(
+        private CurrentSite $site,
+        private ContentBlockMediaReconciler $media,
+    ) {}
 
     /**
      * @throws AuthorizationException
@@ -55,6 +60,7 @@ final readonly class DuplicateContentBlock
             foreach ($translations as $translation) {
                 $copy->translations()->create(['locale' => $translation->locale, 'body' => $translation->body]);
             }
+            $this->media->reconcile($copy);
 
             Audit::record('cms.content_block.duplicated', [
                 'auditable_type' => ContentBlock::class,
