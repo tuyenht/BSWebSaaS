@@ -9,6 +9,7 @@ use App\Modules\Admin\Livewire\Concerns\EditsBlockList;
 use App\Modules\Admin\Livewire\Concerns\EditsButtonActions;
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\Locales;
+use App\Modules\Cms\Actions\ContentBlocks\PublishContentBlock;
 use App\Modules\Cms\Actions\ContentBlocks\SaveContentBlockBody;
 use App\Modules\Cms\ContentBlocks\ContentBlockVersion;
 use App\Modules\Cms\Exceptions\ContentBlockChangeRejectedException;
@@ -71,6 +72,10 @@ final class Editor extends Component
 
     #[Locked]
     public string $blockName = '';
+
+    /** The block is still a draft: the website shows nothing of it, and the bar offers «Lưu & xuất bản». */
+    #[Locked]
+    public bool $isDraft = false;
 
     public string $toastMsg = '';
 
@@ -204,6 +209,29 @@ final class Editor extends Component
         return true;
     }
 
+    /** «Lưu & xuất bản» (a block still in draft): save this language's layout, publish the block, go back to the library. */
+    public function saveAndPublish(): void
+    {
+        $this->authorizeEditing();
+        if (! $this->save()) {
+            return;
+        }
+        try {
+            app(PublishContentBlock::class)->handle($this->actingUser(), $this->block(), true);
+        } catch (ContentBlockChangeRejectedException $e) {
+            $this->toast(__('blocks.err_generic'), 'error');
+
+            return;
+        } catch (AuthorizationException) {
+            $this->toast(__('blocks.toast_cannot'), 'error');
+
+            return;
+        }
+        $this->isDraft = false;
+        session()->flash(Library::FLASH, __('blocks.toast_published_back', ['name' => $this->blockName]));
+        $this->redirectRoute('admin.blocks.index', navigate: true);
+    }
+
     /** «Lưu & quay lại»: save, then the library says it was saved. */
     public function saveAndReturn(): void
     {
@@ -294,6 +322,7 @@ final class Editor extends Component
         $this->openBlock = null;
         $this->lookSplit = [];
         $this->blockName = $block->name;
+        $this->isDraft = $block->status !== ContentBlock::PUBLISHED;
         $this->version = ContentBlockVersion::current($block);
         $this->savedHash = $this->hash();
         $this->resetErrorBag();
