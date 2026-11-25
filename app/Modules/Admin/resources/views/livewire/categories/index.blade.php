@@ -494,7 +494,7 @@
                                 </div>
                                 <template x-if="pan && bandView('{{ $bandSlot }}').canEdit">
                                     <div class="flex flex-col gap-1.5">
-                                        <span><x-bs-admin::button size="sm" variant="outline" color="secondary" class="max-w-full" aria-describedby="cm-b-{{ $bandSlot }}-h" x-on:click="editBand('{{ $bandSlot }}')"
+                                        <span><x-bs-admin::button size="sm" variant="outline" color="neutral" class="max-w-full" aria-describedby="cm-b-{{ $bandSlot }}-h" x-on:click="editBand('{{ $bandSlot }}')"
                                             aria-disabled="{{ $off }}" :title="$offWhy"><x-bs-admin::icon name="ri-layout-masonry" class="size-4" /> {{ $u('band_edit') }}</x-bs-admin::button></span>
                                         <p id="cm-b-{{ $bandSlot }}-h" class="m-0 text-small text-text-muted" x-text="bandView('{{ $bandSlot }}').editHint"></p>
                                     </div>
