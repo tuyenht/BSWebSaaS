@@ -123,16 +123,23 @@ final class AdminErrorPages
 
     /**
      * The admin language of this request, as SetLocale picks it (that middleware may not have run
-     * yet when the fault happened): the member's own switch, else the site's default language.
-     * The session is read only when this request started one (not during maintenance).
+     * yet when the fault happened): the member's own switch, else their saved language, else the
+     * site's default language, or the admin's own default when there is no site (the console host,
+     * an unknown host) rather than the app's default, which may be another language. The session is
+     * read only when this request started one (not during maintenance); the saved language only
+     * when the member was already loaded (a database fault never loads them here).
      */
     private function applyLocale(Request $request): void
     {
         $locale = $request->hasSession() ? $request->session()->get('locale') : null;
         if (! is_string($locale) || ! in_array($locale, Locales::codes(), true)) {
-            $locale = app(CurrentSite::class)->hasId() ? app(SiteLocale::class)->default() : null;
+            $member = Auth::guard()->hasUser() ? Auth::user() : null;
+            $locale = $member instanceof User ? ($member->preferences['locale'] ?? null) : null;
         }
-        if (is_string($locale) && in_array($locale, Locales::codes(), true)) {
+        if (! is_string($locale) || ! in_array($locale, Locales::codes(), true)) {
+            $locale = app(SiteLocale::class)->default();
+        }
+        if (in_array($locale, Locales::codes(), true)) {
             app()->setLocale($locale);
         }
     }
