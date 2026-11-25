@@ -5271,6 +5271,7 @@
     "admin.set.sd.redirects": "Send visitors from an old address to the new one.",
     "admin.set.sd.domains": "The address visitors type to reach the website.",
     "admin.set.sd.email": "How the website sends email.",
+    "admin.set.unconfigured": "Not set up yet",
     "admin.set.sd.social": "Sign in with Google or Facebook.",
     "admin.set.sd.security": "Your password, two-step sign-in and devices.",
     "admin.set.sd.workflow": "Turn on approval for each content type.",

@@ -1002,7 +1002,9 @@ it('opens on a flat query budget, the taps read in one query', function (): void
         // Flat: the shell's cached nav and permissions, the top bar's notifications, the site's settings
         // and languages, and the one grouped read of the last 30 days' taps (an index on site_id, day leads it).
         // (a first visit with nothing saved also reads the footer's list once, for the map link the maps channel starts with.)
-        ->and($count)->toBeLessThanOrEqual(11);
+        // +2: the settings menu's «Chưa cấu hình» dot reads the site's sender and codes in one query, and the
+        // platform's sender when the site has none of its own (this site has none).
+        ->and($count)->toBeLessThanOrEqual(13);
 });
 
 it('says the bottom position is a phone position only while that position is chosen', function (): void {
