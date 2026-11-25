@@ -15,7 +15,6 @@ use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\View\View;
-use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Throwable;
@@ -31,7 +30,6 @@ use Throwable;
  * Secrets are write-only (a "stored" flag is shown; blank-on-save keeps the value) and
  * persist AES-256-GCM encrypted via SecretCipher.
  */
-#[Layout('admin::layouts.app')]
 final class EmailSettings extends Component
 {
     use TracksSavedState;
