@@ -98,16 +98,6 @@
                 <a class="sf-empty-box__link" href="{{ $sfAll['url'] }}">{{ $sfAll['name'] }}</a>
 @endif
             </div>
-@elseif (is_array($emptyBox ?? null))
-            <div class="sf-empty-box">
-                <p class="sf-empty-box__title">{{ $emptyBox['title'] }}</p>
-@if (($emptyBox['text'] ?? '') !== '')
-                <p class="sf-empty-box__text">{{ $emptyBox['text'] }}</p>
-@endif
-@if (! empty($emptyBox['button']))
-                <a class="sf-empty-box__button" href="{{ $emptyBox['button']['url'] }}">{{ $emptyBox['button']['label'] }}</a>
-@endif
-            </div>
 @else
             <div class="sf-empty-box">
                 <p>{{ __($emptyKey ?? 'storefront.no_posts') }}</p>
