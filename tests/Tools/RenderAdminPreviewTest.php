@@ -854,8 +854,9 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     file_put_contents($dir.'/post-new.html', $html);
 
     // "Chuyên mục" of the news section: a small tree as deep as it may go (three levels), one category translated,
-    // long enough names that a clipped name or a sideways scroll shows up.
-    app(Tenancy::class)->enter(1, function (): void {
+    // long enough names that a clipped name or a sideways scroll shows up. «Tin công ty» keeps blocks of its own
+    // above its list and the website has a default below every list (the drawer's «Khối trên / dưới danh sách»).
+    $company = app(Tenancy::class)->enter(1, function (): Taxonomy {
         $root = Taxonomy::query()->whereKey(ContentSection::query()->where('key', 'posts')->value('taxonomy_id'))->firstOrFail();
         $make = fn (string $name, ?Taxonomy $parent, array $names = []): Taxonomy => app(CreateTaxonomy::class)
             ->handle('post_cat', $parent, new TaxonomyData(names: ['vi' => $name] + $names));
@@ -865,11 +866,24 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         $know = $make('Kiến thức', $root);
         $make('Gia công CNC', $know);
         $make('Khuyến mãi', $root);
+        Taxonomy::query()->whereKey($company->id)->update(['meta' => ['layout_blocks' => ['before_list' => ['vi' => ['blocks' => [
+            ['type' => 'features', 'props' => ['heading' => 'Vì sao khách hàng chọn chúng tôi?']],
+            ['type' => 'cta', 'props' => ['heading' => 'Đăng ký nhận bản tin hằng tháng']],
+        ]]]]]]);
+        SiteSetting::query()->updateOrCreate(['group_name' => 'storefront', 'key' => 'layout_blocks'], ['value' => [
+            'after_list' => ['vi' => ['blocks' => [['type' => 'cta', 'props' => ['heading' => 'Cần tư vấn thêm? Gọi cho chúng tôi']]]]],
+        ]]);
+
+        return $company;
     });
     $this->flushSession();
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/taxonomies?section=posts')->assertOk()->getContent();
     expect($html)->toContain('data-bs-lazy="bsCategories"', 'Gia công CNC', 'data-cover-filled', e(__('categories.ui_drop_cover_title')));
     file_put_contents($dir.'/categories.html', $html);
+    // «Sửa trong Trình dựng trang» on its band above the list: the category's own blocks in the builder.
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/taxonomies/'.$company->ulid.'/bands/before_list')->assertOk()->getContent();
+    expect($html)->toContain('Vì sao khách hàng chọn chúng tôi?', e(__('blocks.editor_save_back')));
+    file_put_contents($dir.'/categories-band.html', $html);
     // The same tree while support staff are signed in for the owner: it only looks.
     $staff = User::factory()->create(['name' => 'Lê Hoàng Phúc']);
     app(PlatformAccess::class)->onPlatform(fn () => $staff->assignRole('support'));
@@ -1639,5 +1653,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 150);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 151);
 });

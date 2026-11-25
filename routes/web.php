@@ -24,6 +24,7 @@ use App\Modules\Admin\Livewire\Blocks\Library as BlockLibrary;
 use App\Modules\Admin\Livewire\Catalog\Editor as CatalogEditor;
 use App\Modules\Admin\Livewire\Catalog\Index as CatalogIndex;
 use App\Modules\Admin\Livewire\CatalogSettings;
+use App\Modules\Admin\Livewire\Categories\BandEditor as CategoryBandEditor;
 use App\Modules\Admin\Livewire\Categories\Index as CategoriesIndex;
 use App\Modules\Admin\Livewire\ComponentGallery;
 use App\Modules\Admin\Livewire\Dashboard;
@@ -355,6 +356,9 @@ Route::prefix(config('admin.prefix', 'admin'))
 
         // Chuyên mục (?section=…): the component re-checks taxonomies.manage on every request (boot) and per method.
         Route::get('/taxonomies', CategoriesIndex::class)->middleware('can:taxonomies.manage')->name('admin.taxonomies.index');
+        // «Sửa trong Trình dựng trang» of a band around a category's list: the component re-checks taxonomies.manage
+        // on every request (boot) and the category policy per method.
+        Route::get('/taxonomies/{ulid}/bands/{slot}', CategoryBandEditor::class)->middleware('can:taxonomies.manage')->name('admin.taxonomies.band');
         // Trình đơn: the component re-checks menus.manage on every request (boot) and per method.
         Route::get('/menus', MenusIndex::class)->middleware('can:menus.manage')->name('admin.menus.index');
         // Thư viện khối: both screens re-check the plan's module and ContentBlockPolicy on every request (boot).

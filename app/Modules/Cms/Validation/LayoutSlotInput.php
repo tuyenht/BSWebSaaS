@@ -21,7 +21,10 @@ use Illuminate\Support\Facades\Validator;
  *
  * A slot's value may be null (no value of its own: the site shows nothing there, a category follows
  * the site), and for a category LayoutSlots::NONE (hidden in every language). An empty language map
- * reads as null. Runs inside the tenant context; holds no state.
+ * reads as null. A language turned off for the website is refused, except when the caller hands
+ * back exactly what is stored for it now (`$current`): that is carried over untouched, unchecked,
+ * so the language finds its blocks again once it is back on. Runs inside the tenant context; holds
+ * no state.
  */
 final readonly class LayoutSlotInput
 {
@@ -32,11 +35,12 @@ final readonly class LayoutSlotInput
 
     /**
      * @param  array<array-key, mixed>  $slots  slot → value
+     * @param  array<array-key, mixed>  $current  slot → the value stored now (read under the writer's lock)
      * @return array<string, array<string, array{blocks: list<mixed>}>|string|null> slot → checked value
      *
      * @throws LayoutBlocksRejectedException
      */
-    public function check(array $slots, bool $allowNone): array
+    public function check(array $slots, bool $allowNone, array $current = []): array
     {
         $checked = [];
         foreach ($slots as $slot => $value) {
@@ -44,7 +48,7 @@ final readonly class LayoutSlotInput
             if (! LayoutSlots::has($slot)) {
                 throw new LayoutBlocksRejectedException('slot_invalid', $slot, null, __('layout_slots.err_slot_invalid'));
             }
-            $checked[$slot] = $this->one($slot, $value, $allowNone);
+            $checked[$slot] = $this->one($slot, $value, $allowNone, $current[$slot] ?? null);
         }
 
         return $checked;
@@ -55,7 +59,7 @@ final readonly class LayoutSlotInput
      *
      * @throws LayoutBlocksRejectedException
      */
-    private function one(string $slot, mixed $value, bool $allowNone): array|string|null
+    private function one(string $slot, mixed $value, bool $allowNone, mixed $stored): array|string|null
     {
         if ($value === null) {
             return null;
@@ -72,6 +76,13 @@ final readonly class LayoutSlotInput
         foreach ($value as $locale => $text) {
             $locale = (string) $locale;
             if (! in_array($locale, $enabled, true)) {
+                if (is_array($stored) && array_key_exists($locale, $stored) && $stored[$locale] === $text && is_array($text)) {
+                    /** @var array{blocks: list<mixed>} $text as stored, for a language that is off */
+                    $checked[$locale] = $text;
+
+                    continue;
+                }
+
                 throw new LayoutBlocksRejectedException('locale_invalid', $slot, $locale, __('layout_slots.err_locale_invalid'));
             }
 
