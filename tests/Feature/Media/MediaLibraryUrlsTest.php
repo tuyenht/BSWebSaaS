@@ -40,6 +40,7 @@ it('resolves many ids to URLs in ONE query, omitting ids that do not resolve', f
         DB::connection()->enableQueryLog();
         $urls = app(MediaLibraryUrls::class)->urlsForIds([$a->id, $b->id, 999_999]);
         $queries = DB::connection()->getQueryLog();
+        ksort($urls); // a map by id: the rows come in whatever order the planner reads them
 
         expect($urls)->toBe([
             $a->id => 'https://files.test/a/library/x-aaaaaaaaaaaa.png',

@@ -8,6 +8,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\BlockMediaUsage;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
+use App\Modules\Cms\Support\EntryCoverUsage;
 use App\Modules\Media\Models\Mediable;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -21,7 +22,9 @@ use Illuminate\Console\Command;
  * of blocks: each entry, the site's block slots setting and each category with blocks of its own
  * for those slots; and the site's branch and factory pictures (collection 'branch', owner the
  * `storefront.footer` setting row, BranchList) and the floating contact's own icon pictures
- * (collection 'contact_icon', owner the `storefront.floating_contact` row). Every save reconciles, so this covers content that never passed through a save —
+ * (collection 'contact_icon', owner the `storefront.floating_contact` row), and each entry's
+ * featured picture (collection 'cover', EntryCoverUsage::reconcileSite, set-based, entries in the
+ * Trash included), dropping the cover rows of entries that no longer exist. Every save reconciles, so this covers content that never passed through a save —
  * seeded pages, a fresh deploy, or self-healing after a drift — and drops the rows of a slot owner
  * that no longer holds slot blocks (a setting or category deleted, or emptied, by a road that
  * skipped the save). Idempotent (it upserts/prunes to match the current content), so it is safe to
@@ -37,7 +40,7 @@ class ReconcileContentUsage extends Command
     protected $signature = 'media:reconcile-content-usage';
 
     #[\Override]
-    protected $description = 'Rebuild block image usage (mediables) for every entry, block slots setting and category, per site';
+    protected $description = 'Rebuild image usage (mediables) for every entry (blocks and featured picture), block slots setting and category, per site';
 
     public function handle(Tenancy $tenancy, EntryBlockMediaReconciler $reconciler, BlockMediaUsage $usage): int
     {
@@ -49,11 +52,13 @@ class ReconcileContentUsage extends Command
             if (! is_int($siteId)) {
                 continue;
             }
-            $tenancy->enter($siteId, function () use ($reconciler, $usage, &$reconciled, &$slotOwners): void {
-                foreach (Entry::query()->cursor() as $entry) {
+            $tenancy->enter($siteId, function () use ($siteId, $reconciler, $usage, &$reconciled, &$slotOwners): void {
+                // the Trash included: a trashed post still reserves its pictures until it is purged
+                foreach (Entry::withTrashed()->cursor() as $entry) {
                     $reconciler->reconcile($entry);
                     $reconciled++;
                 }
+                EntryCoverUsage::reconcileSite($siteId);
                 $slotOwners += $this->slotOwners($usage);
             });
         }

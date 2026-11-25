@@ -7,6 +7,7 @@ use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\MediaDeleteRights;
 use App\Modules\Admin\Support\MediaLibraryDirectory;
 use App\Modules\Admin\Support\MediaUsageLocator;
+use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Media\Jobs\DeleteLargeMediaFolder;
 use App\Modules\Media\Models\Media;
@@ -14,9 +15,11 @@ use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -63,6 +66,30 @@ final class Library extends Component
 
     /** @var list<string> */
     public array $uses = [];
+
+    /** @var list<string> «Người tạo»: the chosen uploaders' ulids */
+    public array $by = [];
+
+    /** «Thời gian» by upload day: a MediaLibraryDirectory::WHEN choice ('' = every time). */
+    public string $when = '';
+
+    /** «Tùy chọn»: the first and last upload day (Y-m-d, either may be empty). */
+    public string $from = '';
+
+    public string $to = '';
+
+    /**
+     * The «Thư mục» choice of the Filter sheet while the folder column is hidden: '' = all files,
+     * '-' = files in no folder, a folder slug, or '~trash' while the Trash is open (no folder chosen).
+     */
+    public string $folderPick = '';
+
+    /**
+     * Whether the Filter sheet or one filter's panel is open: only then are the groups' own counts read
+     * (each «Thời gian» choice, each uploader, the list of uploaders). The browser turns it on as one
+     * opens and off, with no request of its own, once none is open; a page turn or a drawer never reads them.
+     */
+    public bool $tally = false;
 
     public string $sort = 'new';
 
@@ -167,7 +194,7 @@ final class Library extends Component
     public const int FOLDER_UNDO_MINUTES = 15;
 
     /** Properties that change which files are listed: the page and the selection start again. */
-    private const array LIST_PROPS = ['search', 'kinds', 'formats', 'uses', 'sort', 'per', 'status', 'folder'];
+    private const array LIST_PROPS = ['search', 'kinds', 'formats', 'uses', 'by', 'when', 'from', 'to', 'sort', 'per', 'status', 'folder'];
 
     public function mount(): void
     {
@@ -186,6 +213,17 @@ final class Library extends Component
     public function updated(string $property): void
     {
         $name = Str::before($property, '.');
+        if ($name === 'folderPick') {
+            $this->setFolder($this->folderPick);
+
+            return;
+        }
+        if ($name === 'when' && $this->when !== MediaLibraryDirectory::RANGE) {
+            $this->from = $this->to = '';
+        }
+        if ($name === 'from' || $name === 'to') {
+            $this->when = self::dayOr($this->from) !== '' || self::dayOr($this->to) !== '' ? MediaLibraryDirectory::RANGE : $this->when;
+        }
         $this->clean();
         if (in_array($name, self::LIST_PROPS, true)) {
             $this->restart();
@@ -238,7 +276,20 @@ final class Library extends Component
     public function clearFilters(): void
     {
         $this->search = '';
-        $this->kinds = $this->formats = $this->uses = [];
+        $this->kinds = $this->formats = $this->uses = $this->by = [];
+        $this->when = $this->from = $this->to = '';
+        $this->restart();
+    }
+
+    public function clearBy(): void
+    {
+        $this->by = [];
+        $this->restart();
+    }
+
+    public function clearWhen(): void
+    {
+        $this->when = $this->from = $this->to = '';
         $this->restart();
     }
 
@@ -1043,32 +1094,62 @@ final class Library extends Component
         $canPurge = Gate::allows('media.purge');
         $trash = $this->status === 'trash' && $canDelete;
         $directory = app(MediaLibraryDirectory::class);
+        // the Filter sheet's «Thư mục» group shows where the list is (no folder chosen in the Trash)
+        $this->folderPick = $trash ? '~trash' : $this->folder;
 
         $failed = false;
         $folders = new Collection;
-        $counts = ['byFolder' => [], 'unfiled' => 0, 'all' => 0, 'trash' => 0];
+        $counts = ['byFolder' => [], 'unfiled' => 0, 'all' => 0, 'trash' => 0, 'many' => false, 'uploaders' => []];
         $page = ['rows' => new Collection, 'older' => null, 'newer' => null, 'lost' => false];
         $totals = ['n' => 0, 'bytes' => 0];
         $current = null;
         $mineN = null;
         $chosenN = null;
+        $people = new Collection;
+        $byCounts = [];
+        $whenCounts = [];
+        $useCounts = [];
         try {
             // a savepoint inside the request's tenancy transaction: a failed read leaves it usable
-            DB::transaction(function () use ($directory, $canDelete, $canDeleteAny, $trash, &$folders, &$counts, &$page, &$totals, &$current, &$mineN, &$chosenN): void {
+            DB::transaction(function () use ($directory, $canDelete, $canDeleteAny, $trash, &$folders, &$counts, &$page, &$totals, &$current, &$mineN, &$chosenN, &$people, &$byCounts, &$whenCounts, &$useCounts): void {
                 $folders = MediaFolder::inTreeOrder(MediaFolder::query()->orderBy('position')->orderBy('name')->orderBy('id')
                     ->get(['id', 'name', 'slug', 'parent_id', 'position']));
                 $current = $this->currentFolder($folders);
-                $counts = $directory->counts($canDelete);
+                $counts = $directory->counts($canDelete, $this->tally);
                 if ($canDelete && ! $canDeleteAny) {
                     // «own»: the Trash holds only this person's own files
                     $counts['trash'] = MediaDeleteRights::visibleTrash(Media::onlyTrashed())->count();
                 }
-                $query = $directory->filtered($this->filters($current, $folders, $trash));
-                if ($trash) {
-                    MediaDeleteRights::visibleTrash($query);
+                // «Người tạo» (offered from two uploaders on): the site's uploaders while the filters are open,
+                // else the chosen ones alone, for their names; ulid only to the page
+                $uploaderIds = array_keys($counts['uploaders']);
+                if ($this->tally && count($uploaderIds) >= 2) {
+                    $people = User::query()->whereIn('id', $uploaderIds)->get(['id', 'ulid', 'name']);
+                } elseif ($this->by !== []) {
+                    $people = $directory->uploadersAmong($this->by);
                 }
+                // a ulid of nobody who uploaded here filters nothing, so it neither stays chosen nor counts on «Lọc»
+                $known = $people->pluck('ulid')->map(fn (mixed $u): string => Cast::string($u))->all();
+                $this->by = array_values(array_filter($this->by, fn (string $u): bool => in_array($u, $known, true)));
+                $filters = $this->filters($current, $folders, $trash, $people);
+                $visible = function (Builder $query) use ($trash): Builder {
+                    return $trash ? MediaDeleteRights::visibleTrash($query) : $query;
+                };
+                $query = $visible($directory->filtered($filters));
                 $page = $directory->page($query, $this->sort, $this->per, $this->after, $this->before);
                 $totals = $directory->totals($query);
+                // while the filters are open, each group's own counts, read with every other condition on as the
+                // board counts them (each one statement over the matching files)
+                if ($this->tally) {
+                    if (count($uploaderIds) >= 2) {
+                        $byCounts = $directory->uploaderCounts($visible($directory->filtered(['by' => []] + $filters)));
+                    }
+                    $whenCounts = $directory->whenCounts($visible($directory->filtered(['since' => null, 'until' => null] + $filters)), $this->from, $this->to);
+                }
+                if (! $trash) {
+                    // «Dùng ở N nơi» on each tile and list row: one statement for the page
+                    $useCounts = app(MediaUsageLocator::class)->countsFor($page['rows']);
+                }
                 if ($canDelete && ! $canDeleteAny && $this->picked !== []) {
                     // «own», with files chosen: how many of them the Trash button / Khôi phục acts on
                     $mineN = $trash
@@ -1133,6 +1214,10 @@ final class Library extends Component
             // how many files the move / Trash dialog acts on: the open file alone, or the chosen ones
             'targetN' => count($this->targets()),
             'drawer' => $drawer,
+            'uploaders' => $this->uploaderOptions($people, $this->tally ? $byCounts : null),
+            'manyUploaders' => $counts['many'],
+            'whenCounts' => $whenCounts,
+            'useCounts' => $useCounts,
         ]);
         $view->title(__('media.lib.title'));
 
@@ -1413,11 +1498,39 @@ final class Library extends Component
     }
 
     /**
-     * @param  Collection<int, MediaFolder>  $folders
-     * @return array{folders: list<int>|null, unfiled: bool, trash: bool, search: string, kinds: list<string>, formats: list<string>, uses: list<string>}
+     * The «Người tạo» options (board 12): the site's uploaders, the member first as «Của tôi (…)», the
+     * others by name; each with how many files match with every other condition on, while the filters
+     * are open ($counts null: no count, the options are then only the chosen people, for their names).
+     *
+     * @param  Collection<int, User>  $people
+     * @param  array<int, int>|null  $counts
+     * @return list<array{value: string, label: string, count?: int}>
      */
-    private function filters(?MediaFolder $current, Collection $folders, bool $trash): array
+    private function uploaderOptions(Collection $people, ?array $counts): array
     {
+        $me = Auth::id();
+        $sorted = $people->sort(fn (User $a, User $b): int => [$a->id !== $me, mb_strtolower((string) $a->name), (string) $a->ulid]
+            <=> [$b->id !== $me, mb_strtolower((string) $b->name), (string) $b->ulid]);
+        $out = [];
+        foreach ($sorted as $person) {
+            $out[] = [
+                'value' => (string) $person->ulid,
+                'label' => $person->id === $me ? Cast::string(__('entries.f_mine', ['name' => $person->name])) : (string) $person->name,
+            ] + ($counts === null ? [] : ['count' => $counts[$person->id] ?? 0]);
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  Collection<int, MediaFolder>  $folders
+     * @param  Collection<int, User>  $people  the site's uploaders read for «Người tạo» (a chosen ulid outside them is dropped)
+     * @return array{folders: list<int>|null, unfiled: bool, trash: bool, search: string, kinds: list<string>, formats: list<string>, uses: list<string>, by: list<int>, since: CarbonImmutable|null, until: CarbonImmutable|null}
+     */
+    private function filters(?MediaFolder $current, Collection $folders, bool $trash, Collection $people): array
+    {
+        [$since, $until] = MediaLibraryDirectory::window($this->when, $this->from, $this->to);
+
         return [
             // a folder shows its sub-folders' files too
             'folders' => $current === null ? null : array_values(array_merge([$current->id], $folders->where('parent_id', $current->id)->pluck('id')->map(fn (mixed $id): int => Cast::int($id))->all())),
@@ -1427,6 +1540,9 @@ final class Library extends Component
             'kinds' => $this->kinds,
             'formats' => $this->formats,
             'uses' => $trash ? [] : $this->uses,
+            'by' => array_values(array_map(fn (mixed $id): int => Cast::int($id), $people->whereIn('ulid', $this->by)->pluck('id')->all())),
+            'since' => $since,
+            'until' => $until,
         ];
     }
 
@@ -1436,6 +1552,19 @@ final class Library extends Component
         $this->kinds = array_values(array_intersect(array_filter($this->kinds, 'is_string'), MediaLibraryDirectory::KINDS));
         $this->formats = array_values(array_intersect(array_filter($this->formats, 'is_string'), array_keys(MediaLibraryDirectory::FORMATS)));
         $this->uses = array_values(array_intersect(array_filter($this->uses, 'is_string'), MediaLibraryDirectory::USES));
+        $this->by = array_values(array_unique(array_filter(Cast::strings($this->by), fn (string $u): bool => self::ulidOr($u) !== '')));
+        $this->from = self::dayOr($this->from);
+        $this->to = self::dayOr($this->to);
+        if (! in_array($this->when, MediaLibraryDirectory::WHEN, true)) {
+            $this->when = '';
+        }
+        if ($this->when !== MediaLibraryDirectory::RANGE) {
+            $this->from = $this->to = '';
+        }
+        if ($this->from !== '' && $this->to !== '' && $this->from > $this->to) {
+            // «Từ» after «Đến»: the two days swap, so the range lists what they span rather than nothing
+            [$this->from, $this->to] = [$this->to, $this->from];
+        }
         $this->picked = array_values(array_filter(Cast::strings($this->picked), fn (string $u): bool => self::ulidOr($u) !== ''));
         if (! array_key_exists($this->sort, MediaLibraryDirectory::SORTS)) {
             $this->sort = 'new';
@@ -1475,5 +1604,15 @@ final class Library extends Component
     private static function ulidOr(string $value): string
     {
         return Str::isUlid($value) ? $value : '';
+    }
+
+    /** A real calendar day as the date field sends it (Y-m-d), else ''. */
+    private static function dayOr(string $value): string
+    {
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $value, $m) !== 1) {
+            return '';
+        }
+
+        return checkdate((int) $m[2], (int) $m[3], (int) $m[1]) ? $value : '';
     }
 }

@@ -65,6 +65,7 @@ use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Support\BlockMediaUsage;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\EntryTags;
 use App\Modules\Forms\Actions\StoreLeadFile;
@@ -75,6 +76,7 @@ use App\Modules\Forms\Support\LeadTrash;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\UserPreferences;
 use App\Modules\Media\Models\Media;
+use App\Modules\Media\Models\Mediable;
 use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
@@ -1171,6 +1173,11 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$planned[1]->ulid.'/edit')->assertOk()->getContent();
     expect($html)->toContain(e(__('entries.ed.slug_home_hint')));
     file_put_contents($dir.'/editor-home.html', $html);
+    // A new page: «Bắt đầu từ mẫu» over its empty body, and «Thứ tự» (the last place) in «Thuộc tính trang».
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/create')->assertOk()->getContent();
+    expect($html)->toContain('data-page-start', e(__('entries.ed.start_title')), 'id="entry-ord"');
+    file_put_contents($dir.'/editor-new-page.html', $html);
 
     // «Lịch sử phiên bản» on a live page with a few versions (published, edited, restored, one older than
     // history): the card's region, the full list, one version beside the form, the question before a
@@ -1395,15 +1402,22 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     // folder that holds files and one that holds a sub-folder, «Thư mục con mới» and «Chuyển thư mục…». The component is put in place of the page's own root, as for the product list.
     $mediaConfig = config('media');
     config(['media.driver' => 'cloudflare', 'media.cloudflare.base' => 'http://'.ADMIN_PREVIEW_HOST]);
-    app(Tenancy::class)->enter(1, function (): void {
+    // two people uploaded them (so «Người tạo» shows) and the first product picture is used in the site's layout slots («Dùng ở 1 nơi»)
+    $colleague = User::factory()->create(['name' => 'Minh Châu']);
+    app(Tenancy::class)->enter(1, function () use ($owner, $colleague): void {
         DB::connection('pgsql_admin')->table('sites')->where('id', 1)->update(['status' => 'active']);
         foreach ([['Ảnh xưởng', 'anh-xuong', 4], ['Sản phẩm', 'san-pham', 2], ['Hồ sơ công ty', 'ho-so-cong-ty', 0]] as $i => [$name, $slug, $files]) {
             $folder = MediaFolder::query()->create(['name' => $name, 'slug' => $slug, 'position' => $i + 1]);
             for ($n = 1; $n <= $files; $n++) {
                 $hash = hash('sha256', $slug.$n);
-                Media::query()->create(['collection' => 'library', 'slug' => $slug.'-'.$n, 'hash' => $hash, 'folder_id' => $folder->id,
+                $file = Media::query()->create(['collection' => 'library', 'slug' => $slug.'-'.$n, 'hash' => $hash, 'folder_id' => $folder->id,
                     'original_filename' => $slug.'-'.$n.'.jpg', 'storage_key' => 's/library/'.$slug.'-'.$n.'-'.substr($hash, 0, 12).'.jpg',
-                    'mime' => 'image/jpeg', 'size' => 98_000, 'width' => 1200, 'height' => 800]);
+                    'mime' => 'image/jpeg', 'size' => 98_000, 'width' => 1200, 'height' => 800, 'created_by' => $n % 2 === 1 ? $owner->id : $colleague->id]);
+                $setting = SiteSetting::query()->value('id');
+                if ($i === 1 && $n === 1 && $setting !== null) {
+                    Mediable::query()->create(['media_id' => $file->id, 'mediable_type' => 'site_setting', 'mediable_id' => $setting,
+                        'collection' => BlockMediaUsage::COLLECTION]);
+                }
             }
         }
         $kid = MediaFolder::query()->create(['name' => 'Bao bì', 'slug' => 'bao-bi', 'position' => 1,
@@ -1420,6 +1434,10 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     file_put_contents($dir.'/media-folders.html', $html);
     $library = fn () => Livewire::actingAs($owner)->test(Library::class)->call('setFolder', 'anh-xuong');
     $media = 'app\\.modules\\.admin\\.livewire\\.media\\.library';
+    // the same page as a list, with its «Nơi dùng» column
+    $asList = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($owner)->test(Library::class)->call('setView', 'list')));
+    expect($asList)->toContain(e(__('media.lib.col_use')));
+    file_put_contents($dir.'/media-list.html', $swap($html, $asList, $media));
     $open = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($library()));
     expect($open)->toContain("openRename('anh-xuong')");
     file_put_contents($dir.'/media-folder-open.html', $swap($html, $open, $media));
@@ -1621,5 +1639,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 148);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 150);
 });

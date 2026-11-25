@@ -14,7 +14,7 @@ const went = [];
 window.Livewire = { navigate: (url) => went.push(url) };
 await import('../../resources/js/admin-categories.js');
 
-const texts = new Proxy({}, { get: (o, k) => (k === 'saveMove' ? 'Lưu và chuyển :n bài' : k === 'cxLine' ? ':n bài sẽ chuyển từ :from sang :section' : String(k)) });
+const texts = new Proxy({}, { get: (o, k) => (k === 'saveMove' ? 'Lưu và chuyển :n bài' : k === 'cxLine' ? ':n bài sẽ chuyển từ :from sang :section' : k === 'langProg' ? ':done/:total phiên bản đủ' : String(k)) });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const node = (key, parent, name, more = {}) => ({
     key, parent, name, names: { vi: name }, slugs: { vi: key.toLowerCase() }, descriptions: {}, seoTitles: {}, seoDescriptions: {}, trail: [],
@@ -22,7 +22,7 @@ const node = (key, parent, name, more = {}) => ({
 });
 
 // The screen over rows [node, level]; `wire` answers its server calls.
-function screen(rows, wire = {}) {
+function screen(rows, wire = {}, more = {}) {
     document.body.innerHTML = '';
     const root = document.createElement('div');
     rows.forEach(([n, lv]) => {
@@ -35,7 +35,7 @@ function screen(rows, wire = {}) {
     });
     document.body.append(root);
     const calls = [];
-    const c = factory({ section: 'posts', label: 'Tin tức', main: 'vi', locales: ['vi'], langNames: { vi: 'Tiếng Việt' }, bases: { vi: 'web.vn/' }, layouts: ['grid'], products: false, canManage: true, limits: { depth: 3, slug: 120, name: 120 }, texts });
+    const c = factory({ section: 'posts', label: 'Tin tức', main: 'vi', locales: ['vi'], langNames: { vi: 'Tiếng Việt' }, bases: { vi: 'web.vn/' }, layouts: ['grid'], products: false, canManage: true, limits: { depth: 3, slug: 120, name: 120 }, texts, ...more });
     const $wire = new Proxy({}, {
         get: (o, k) => (k in o ? o[k] : async (...a) => {
             calls.push([k, ...a]);
@@ -150,5 +150,65 @@ test('an emptied slug is made again from the name when the field is left; a name
     c.slugBlur();
     assert.equal(c.fSlug, '');
     assert.equal(c.slugBad, false);
+    c.destroy();
+});
+
+test('the drawer shows the source and the open version as pills; «+N» lists every version with its state, finds one by name or code and opens it', async () => {
+    const langs = { locales: ['vi', 'en', 'ja', 'zh'], langNames: { vi: 'Tiếng Việt', en: 'Tiếng Anh', ja: 'Tiếng Nhật', zh: 'Tiếng Trung' }, bases: { vi: 'web.vn/', en: 'web.vn/en/', ja: 'web.vn/ja/', zh: 'web.vn/zh/' } };
+    const both = node('01M', '01R', 'Tin công ty', { names: { vi: 'Tin công ty', en: 'Company news', ja: 'ニュース' }, slugs: { vi: 'tin-cong-ty', en: 'company-news' } });
+    const { c } = screen([[R, 1], [both, 2]], {}, langs);
+    c.openEdit('01M');
+    assert.deepEqual(langs.locales.filter((l) => c.langShown(l)), ['vi'], 'the source alone while it is open');
+    assert.equal(c.langMore, 3);
+    assert.equal(c.langProg, '2/4 phiên bản đủ', 'the line is the text with its numbers');
+    assert.deepEqual(langs.locales.map((l) => c.langState(l)), ['stFull', 'stFull', 'stMiss', 'stEmpty'], 'a name without its link still lacks a field');
+    assert.equal(c.lineWarn, false, 'the source never warns');
+
+    c.langToggle();
+    assert.equal(c.langOpen, true);
+    const group = document.createElement('div');
+    const inside = document.createElement('button');
+    group.append(inside);
+    document.body.append(group);
+    c.langLeave({ relatedTarget: inside, currentTarget: group });
+    assert.equal(c.langOpen, true, 'focus moving within the group keeps the panel');
+    c.langLeave({ relatedTarget: null, currentTarget: group });
+    assert.equal(c.langOpen, true, 'focus leaving the window keeps it too');
+    c.langLeave({ relatedTarget: document.body, currentTarget: group });
+    assert.equal(c.langOpen, false, 'focus moving out of the group shuts the panel');
+    c.langToggle();
+    c.langQ = 'trung';
+    assert.deepEqual(langs.locales.filter((l) => c.langHit(l)), ['zh'], 'by name, without its accents');
+    c.langQ = 'JA';
+    assert.deepEqual(langs.locales.filter((l) => c.langHit(l)), ['ja'], 'or by code');
+    assert.equal(c.langAnyHit(), true, 'a match keeps the panel without the empty message');
+    c.langQ = 'khong co';
+    assert.equal(c.langAnyHit(), false, 'nothing matches: the panel shows the shared no-result message');
+    c.langQ = 'JA';
+    c.langGo('zh');
+    assert.equal(c.langOpen, false);
+    assert.equal(c.langQ, '', 'the search starts empty next time');
+    assert.equal(c.cur, 'zh');
+    assert.deepEqual(langs.locales.filter((l) => c.langShown(l)), ['vi', 'zh'], 'the version opened joins the source');
+    assert.equal(c.langMore, 2);
+    assert.equal(c.lineWarn, true, 'a version without its name warns');
+    c.fName = 'Xin wen';
+    c.slugBlur();
+    assert.equal(c.langState('zh'), 'stFull');
+    assert.equal(c.lineWarn, false);
+
+    c.langToggle();
+    c.panClose();
+    c.pan = null;
+    c.openEdit('01M');
+    assert.equal(c.langOpen, false, 'a drawer opened again starts with the panel shut');
+    c.destroy();
+});
+
+test('the rows are read from the document, so a read made from inside the drawer (whose own root holds no rows) still finds them', () => {
+    const { c } = screen([[R, 1], [A, 2]]);
+    c.$root = document.createElement('div');
+    c.$el = c.$root;
+    assert.deepEqual(c.all().map((n) => n.key), ['01R', '01A']);
     c.destroy();
 });
