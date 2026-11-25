@@ -603,7 +603,11 @@ JS, ['@ULID@' => (string) Js::from($product->ulid)]) : '{}';
                                                 <x-bs-admin::list.menu-item icon="ri-file-copy" x-show="mode === 'card'" x-on:click="copy({{ Js::from($fullUrl) }})">{{ __('catalog.copy_path') }}</x-bs-admin::list.menu-item>
                                             @endif
                                             @if ($fullUrl !== null || $live || $previewUrl !== null)
-                                                <x-bs-admin::list.menu-sep x-show="{{ $fullUrl !== null ? "mode === 'card'".($live || $previewUrl !== null ? ' || ! xvVis' : '') : '! xvVis' }}" />
+                                                @php
+                                                    // built here: a double quote inside a component attribute's echo ends the attribute
+                                                    $sepShow = $fullUrl !== null ? 'mode === \'card\''.($live || $previewUrl !== null ? ' || ! xvVis' : '') : '! xvVis';
+                                                @endphp
+                                                <x-bs-admin::list.menu-sep x-show="{{ $sepShow }}" />
                                             @endif
                                             <x-bs-admin::list.menu-item icon="ri-star" wire:click="toggleFlag('{{ $product->ulid }}', 'featured', {{ $product->is_featured ? 'false' : 'true' }})">{{ __($product->is_featured ? 'catalog.flag_remove_featured' : 'catalog.flag_add_featured') }}</x-bs-admin::list.menu-item>
                                             <x-bs-admin::list.menu-item icon="ri-fire" wire:click="toggleFlag('{{ $product->ulid }}', 'best', {{ $product->is_bestseller ? 'false' : 'true' }})">{{ __($product->is_bestseller ? 'catalog.flag_remove_best' : 'catalog.flag_add_best') }}</x-bs-admin::list.menu-item>
