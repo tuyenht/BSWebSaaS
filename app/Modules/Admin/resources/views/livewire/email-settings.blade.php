@@ -46,7 +46,10 @@
     <form x-data x-on:submit.prevent class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
         <div class="border-b border-border px-5 py-3">
             <h2 class="text-[15px] font-semibold text-body-text">{{ __('admin.email_settings') }}</h2>
-            <p class="mt-0.5 text-xs text-body-muted">{{ __('admin.email_settings_desc') }}</p>
+            {{-- A website's own sender; the console's page says what it is in the warning above. --}}
+            @if ($scope !== 'platform')
+                <p class="mt-0.5 text-xs text-text-muted">{{ __('admin.email_settings_desc') }}</p>
+            @endif
         </div>
         <div class="space-y-5 p-5">
             @if ($scope !== 'platform')
