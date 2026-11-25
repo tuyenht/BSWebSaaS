@@ -8,6 +8,7 @@ use App\Modules\Admin\Support\BlockKinds;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteLocale;
+use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Rendering\LayoutSlots;
 use App\Modules\Theme\Theming\StorefrontSettings;
 
@@ -46,7 +47,7 @@ final readonly class CategoryBands
      * category left out of the answer follows the site's default in both bands (see blank()).
      *
      * @param  list<int>  $ids
-     * @return array<int, array<string, array{mode: string, own: array<string, list<array{name: string, kind: string}>>}>>
+     * @return array<int, array<string, array{mode: string, own: array<string, list<array{name: string, kind: string, items: int}>>}>>
      */
     public function forCategories(array $ids): array
     {
@@ -66,7 +67,7 @@ final readonly class CategoryBands
     /**
      * One category's two bands.
      *
-     * @return array<string, array{mode: string, own: array<string, list<array{name: string, kind: string}>>}>
+     * @return array<string, array{mode: string, own: array<string, list<array{name: string, kind: string, items: int}>>}>
      */
     public function of(Taxonomy $category): array
     {
@@ -87,7 +88,7 @@ final readonly class CategoryBands
     /**
      * Both bands of a category with no value of its own.
      *
-     * @return array<string, array{mode: string, own: array<string, list<array{name: string, kind: string}>>}>
+     * @return array<string, array{mode: string, own: array<string, list<array{name: string, kind: string, items: int}>>}>
      */
     public static function blank(): array
     {
@@ -106,7 +107,7 @@ final readonly class CategoryBands
      * The site's default blocks of each band, per language of the site (a language with none of its
      * own showing the default language's, as the storefront does).
      *
-     * @return array<string, array<string, list<array{name: string, kind: string}>>>
+     * @return array<string, array<string, list<array{name: string, kind: string, items: int}>>>
      */
     public function site(): array
     {
@@ -137,24 +138,57 @@ final readonly class CategoryBands
     }
 
     /**
-     * Each block of a list as the drawer names it: its heading or text when it has one, then its kind.
+     * Each block of a list as the drawer names it: its heading or text when it has one, then its kind
+     * and how many items it holds.
      *
      * @param  array<array-key, mixed>  $blocks
-     * @return list<array{name: string, kind: string}>
+     * @return list<array{name: string, kind: string, items: int}>
      */
     public static function names(array $blocks): array
     {
+        $registry = app(ComponentRegistry::class);
         $out = [];
         foreach ($blocks as $block) {
             if (! is_array($block) || ! is_string($block['type'] ?? null)) {
                 continue;
             }
             $kind = BlockKinds::of($block['type'])['label'];
-            $name = BlockKinds::preview(Cast::arr($block['props'] ?? null));
-            $out[] = ['name' => $name !== '' ? $name : $kind, 'kind' => $kind];
+            $props = Cast::arr($block['props'] ?? null);
+            $name = BlockKinds::preview($props);
+            $items = self::itemCount($registry, $block['type'], $props);
+            $out[] = ['name' => $name !== '' ? $name : $kind, 'kind' => $kind, 'items' => $items];
         }
 
         return $out;
+    }
+
+    /**
+     * How many items a block holds (a feature grid's cards, a gallery's pictures, a team's members),
+     * read from the block's registered schema rather than a fixed prop name: the list it counts is
+     * the kind's first `list` prop whose items are records (`of` is a field map). A list of single
+     * values (`of` carries its own `type`, such as the paragraphs of a text block or the look's
+     * extra styles) is the block's text or styling, not items, so it is skipped; that is how an
+     * «Giới thiệu» block counts its shortcut links and not its paragraphs. Only a real list counts,
+     * and only its record entries: a key→value map, a scalar or a stray non-array entry gives
+     * nothing. 0 for a kind with no such list or one that is not registered.
+     *
+     * @param  array<array-key, mixed>  $props
+     */
+    private static function itemCount(ComponentRegistry $registry, string $type, array $props): int
+    {
+        if (! $registry->has($type)) {
+            return 0;
+        }
+        foreach ($registry->schemaFor($type) as $prop => $spec) {
+            if (($spec['type'] ?? null) !== 'list' || ! is_array($spec['of'] ?? null) || isset($spec['of']['type'])) {
+                continue;
+            }
+            $value = $props[$prop] ?? null;
+
+            return is_array($value) && array_is_list($value) ? count(array_filter($value, is_array(...))) : 0;
+        }
+
+        return 0;
     }
 
     /**
@@ -162,7 +196,7 @@ final readonly class CategoryBands
      * gets an answer (its own, else the default language's); without, only the languages stored.
      *
      * @param  array<array-key, mixed>  $value
-     * @return array<string, list<array{name: string, kind: string}>>
+     * @return array<string, list<array{name: string, kind: string, items: int}>>
      */
     private function perLocale(array $value, bool $fill): array
     {

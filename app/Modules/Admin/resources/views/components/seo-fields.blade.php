@@ -14,6 +14,10 @@
     'address' => ['base' => '', 'home' => null, 'homeSlug' => 'home'],
     'locale' => 'vi',
     'multiLocale' => false,
+    // An Alpine expression giving the language the title and description are written in, for a form
+    // that switches between its language versions (the categories drawer): each of the two labels
+    // then carries the shared language chip, in place of the fixed chip on the card's head.
+    'labelChip' => null,
     'id' => 'seo',
     // all · excerpt · card: a screen whose board puts other cards between the short description
     // and the Google card draws the two parts apart (same `id`, each part keeps its own ids).
@@ -44,7 +48,7 @@
     $label = 'inline-flex min-w-0 max-w-full flex-wrap items-center gap-x-1.5 gap-y-1 text-small font-semibold';
     $labelRow = 'mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1';
     $error = 'mt-1 text-small text-danger-text';
-    $chip = $multiLocale ? strtoupper($locale) : null;
+    $chip = $multiLocale && $labelChip === null ? strtoupper($locale) : null;
 @endphp
 <div data-seo-fields class="flex flex-col gap-4" x-data="bsSeoFields({{ Js::from($config) }})">
     @if ($excerpt !== null && $part !== 'card')
@@ -99,7 +103,7 @@
         <div id="{{ $id }}-body" x-show="open" x-cloak role="region" aria-labelledby="{{ $id }}-head" class="flex flex-col gap-4 px-5 pt-1 pb-5">
             <div>
                 <div class="{{ $labelRow }}">
-                    <label for="{{ $id }}-title" class="{{ $label }} text-text">{{ __('admin.seo.title_label') }}</label>
+                    <label for="{{ $id }}-title" class="{{ $label }} text-text">{{ __('admin.seo.title_label') }}@if ($multiLocale && $labelChip !== null) <x-bs-admin::lang-chip :code="$locale" :x="$labelChip" />@endif</label>
                     <span id="{{ $id }}-title-c" class="seo-count" :data-b="titleMeter.band" data-b="empty">
                         @foreach ($bandIcons as $band => $icon)
                             <x-bs-admin::icon :name="$icon" x-show="titleMeter.band === '{{ $band }}'" x-cloak />
@@ -120,7 +124,7 @@
 
             <div>
                 <div class="{{ $labelRow }}">
-                    <label for="{{ $id }}-description" class="{{ $label }} text-text">{{ __('admin.seo.description_label') }}</label>
+                    <label for="{{ $id }}-description" class="{{ $label }} text-text">{{ __('admin.seo.description_label') }}@if ($multiLocale && $labelChip !== null) <x-bs-admin::lang-chip :code="$locale" :x="$labelChip" />@endif</label>
                     <span id="{{ $id }}-description-c" class="seo-count" :data-b="descriptionMeter.band" data-b="empty">
                         @foreach ($bandIcons as $band => $icon)
                             <x-bs-admin::icon :name="$icon" x-show="descriptionMeter.band === '{{ $band }}'" x-cloak />

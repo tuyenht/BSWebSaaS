@@ -14,7 +14,7 @@ const went = [];
 window.Livewire = { navigate: (url) => went.push(url) };
 await import('../../resources/js/admin-categories.js');
 
-const texts = new Proxy({}, { get: (o, k) => (k === 'saveMove' ? 'Lưu và chuyển :n bài' : k === 'cxLine' ? ':n bài sẽ chuyển từ :from sang :section' : k === 'langProg' ? ':done/:total phiên bản đủ' : String(k)) });
+const texts = new Proxy({}, { get: (o, k) => (k === 'saveMove' ? 'Lưu và chuyển :n bài' : k === 'cxLine' ? ':n bài sẽ chuyển từ :from sang :section' : k === 'langProg' ? ':done/:total phiên bản đủ' : k === 'bandItems' ? ':n ô' : k === 'bandItem' ? ':n ô (one)' : String(k)) });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const node = (key, parent, name, more = {}) => ({
     key, parent, name, names: { vi: name }, slugs: { vi: key.toLowerCase() }, descriptions: {}, seoTitles: {}, seoDescriptions: {}, trail: [],
@@ -215,7 +215,7 @@ test('the rows are read from the document, so a read made from inside the drawer
 
 // ---- «Khối trên / dưới danh sách» --------------------------------------------------------------
 const bands = {
-    before_list: { mode: 'own', own: { vi: [{ name: 'Vì sao chọn An Vinh?', kind: 'Tính năng' }, { name: 'Kêu gọi', kind: 'Kêu gọi' }] } },
+    before_list: { mode: 'own', own: { vi: [{ name: 'Vì sao chọn An Vinh?', kind: 'Tính năng', items: 4 }, { name: 'Kêu gọi', kind: 'Kêu gọi', items: 0 }, { name: 'Đối tác', kind: 'Đối tác', items: 1 }] } },
     after_list: { mode: 'default', own: {} },
 };
 const site = { before_list: {}, after_list: { vi: [{ name: 'Chưa thấy vị trí phù hợp?', kind: 'Kêu gọi' }] } };
@@ -226,7 +226,7 @@ test('each band says what it shows now and where it comes from, and warns before
     const { c } = screen([[R, 1], [J, 2]], {}, bandCfg);
     c.openEdit('01J');
     const top = c.bandView('before_list');
-    assert.deepEqual([top.kind, top.nowTitle, top.list, top.canEdit, top.editHint, top.dropWarn], ['own', 'bandOwnT', ['Vì sao chọn An Vinh? · Tính năng', 'Kêu gọi · Kêu gọi'], true, 'bandHintOwnHas', false]);
+    assert.deepEqual([top.kind, top.nowTitle, top.list, top.canEdit, top.editHint, top.dropWarn], ['own', 'bandOwnT', ['Vì sao chọn An Vinh? · Tính năng · 4 ô', 'Kêu gọi · Kêu gọi', 'Đối tác · Đối tác · 1 ô (one)'], true, 'bandHintOwnHas', false]);
     const bot = c.bandView('after_list');
     assert.deepEqual([bot.kind, bot.nowSub, bot.list, bot.editHint, bot.defSub], ['default', 'bandDefS', ['Chưa thấy vị trí phù hợp? · Kêu gọi'], 'bandHintDef', 'bandOptDefHas']);
 

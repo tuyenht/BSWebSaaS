@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Livewire\Categories\BandEditor;
 use App\Modules\Admin\Livewire\Categories\Index as CategoriesIndex;
+use App\Modules\Admin\Support\Categories\CategoryBands;
 use App\Modules\Admin\Support\Categories\CategoryDeletePreview;
 use App\Modules\Admin\Support\Categories\CategoryMoveTargets;
 use App\Modules\Admin\Support\Categories\CategoryScreen;
@@ -638,6 +639,7 @@ it('draws the drawer\'s languages as the board does: pills, «+N» with the pane
     $url = 'http://a.test/admin/taxonomies?section=tin-tuc';
     $html = $this->actingAs($this->editor->fresh())->get($url)->assertOk()->getContent();
     expect($html)->not->toContain(e(__('categories.ui_lang_panel')), 'one language: no languages row at all');
+    expect($html)->not->toContain('data-lang-chip', 'one language: no language chip beside the fields');
 
     cxIn(1, function (): void {
         SiteLocale::query()->create(['locale' => 'en', 'is_default' => false, 'enabled' => true, 'is_public' => true]);
@@ -651,11 +653,30 @@ it('draws the drawer\'s languages as the board does: pills, «+N» with the pane
         ->toContain(e(__('categories.ui_lang_ja')))
         ->not->toContain('data-cm-lang-manage', 'a member who may not change the languages is not sent there')
         ->not->toContain(e(__('categories.ui_lang_search_ph')), 'the search starts at six languages');
+    // the shared language chip (board 10 .lc) beside the six fields written per language — name, address,
+    // the bands' heading, description and the two Google fields — each following the drawer's language
+    expect(substr_count($html, 'data-lang-chip'))->toBe(6)
+        ->and(substr_count($html, 'x-text="String(cur).toUpperCase()"'))->toBe(6);
+
+    // before Alpine starts, each chip already reads the drawer's first language (the main one)
+    expect(preg_match_all('/x-text="String\(cur\)\.toUpperCase\(\)"\s*>VI<\/span>/', $html))->toBe(6)
+        ->and($html)->not->toContain(e(__('admin.lb.no_result')), 'no search below six languages, so no «no result» line');
 
     $owner = cxUser(['taxonomies.manage', 'entries.view', 'settings.manage']);
     $this->actingAs($owner)->get($url)->assertOk()
         ->assertSee('/admin/settings/languages" data-cm-lang-manage', false)
         ->assertSee(__('admin.lb.manage'));
+
+    // from six languages the panel has its search, and says so when it finds no language
+    cxIn(1, function (): void {
+        foreach (['zh', 'ko', 'fr', 'de'] as $locale) {
+            SiteLocale::query()->create(['locale' => $locale, 'is_default' => false, 'enabled' => true, 'is_public' => false]);
+        }
+        app(SiteLocaleContext::class)->forget();
+    });
+    expect($this->actingAs($this->editor->fresh())->get($url)->assertOk()->getContent())
+        ->toContain(e(__('categories.ui_lang_search_ph')))
+        ->toMatch('/<p class="lb-none" role="status" x-show="! langAnyHit\(\)" x-cloak>'.preg_quote(e(__('admin.lb.no_result')), '/').'<\/p>/');
 });
 
 it('tells a member which categories they work in, and stands in a notice for a section they cannot open', function (): void {
@@ -864,7 +885,7 @@ it('carries each category\'s bands around its list: the mode and, per language, 
     [$jobs, $news] = cxIn(1, function (): array {
         $jobs = cxCreate('Tuyển dụng', $this->root);
         Taxonomy::query()->whereKey($jobs->id)->update(['meta' => ['keep' => 1, 'layout_blocks' => [
-            'before_list' => ['vi' => ['blocks' => [['type' => 'features', 'props' => ['heading' => 'Vì sao chọn An Vinh?']], ['type' => 'cta', 'props' => []]]]],
+            'before_list' => ['vi' => ['blocks' => [['type' => 'features', 'props' => ['heading' => 'Vì sao chọn An Vinh?', 'items' => [['title' => 'Thu nhập'], ['title' => 'Đào tạo'], ['title' => 'Đời sống'], ['title' => 'Gần nhà']]]], ['type' => 'cta', 'props' => []]]]],
             'after_list' => 'none',
             'post_aside' => 'none',
         ]]]);
@@ -875,8 +896,8 @@ it('carries each category\'s bands around its list: the mode and, per language, 
     $rows = cxRows(cxCall($this->editor, 'load', 'tin-tuc'));
     expect($rows['Tuyển dụng']['bands'])->toBe([
         'before_list' => ['mode' => 'own', 'own' => ['vi' => [
-            ['name' => 'Vì sao chọn An Vinh?', 'kind' => __('entries.block.features')],
-            ['name' => __('entries.block.cta'), 'kind' => __('entries.block.cta')],
+            ['name' => 'Vì sao chọn An Vinh?', 'kind' => __('entries.block.features'), 'items' => 4],
+            ['name' => __('entries.block.cta'), 'kind' => __('entries.block.cta'), 'items' => 0],
         ]]],
         'after_list' => ['mode' => 'none', 'own' => []],
     ])->and($rows['Tin công ty']['bands'])->toBe([
@@ -980,15 +1001,48 @@ it('draws the drawer\'s bands as the board does and hands the screen the website
     expect($html)->toContain('id="cm-bands"', 'data-cm-band="before_list"', 'data-cm-band="after_list"', 'x-model="pan.d.bands[\'after_list\']"')
         ->and(cxConfig($html))->toMatchArray([
             'open' => $jobs->ulid, 'flash' => 'Đã lưu ở',
-            'bandSite' => ['before_list' => [], 'after_list' => ['vi' => [['name' => 'Chưa thấy vị trí phù hợp?', 'kind' => __('entries.block.cta')]]]],
+            'bandSite' => ['before_list' => [], 'after_list' => ['vi' => [['name' => 'Chưa thấy vị trí phù hợp?', 'kind' => __('entries.block.cta'), 'items' => 0]]]],
             'bandUrl' => 'http://a.test/admin/taxonomies/__key__/bands/__slot__',
         ]);
 
     // the row the drawer opens from carries the category's bands
     preg_match('/data-node="([^"]*'.$jobs->ulid.'[^"]*)"/', $html, $row);
     expect(json_decode(html_entity_decode($row[1] ?? ''), true)['bands']['before_list'] ?? null)
-        ->toBe(['mode' => 'own', 'own' => ['vi' => [['name' => 'Vì sao chọn An Vinh?', 'kind' => __('entries.block.cta')]]]]);
+        ->toBe(['mode' => 'own', 'own' => ['vi' => [['name' => 'Vì sao chọn An Vinh?', 'kind' => __('entries.block.cta'), 'items' => 0]]]]);
 
     // a key that is not one is never handed on
     expect(cxConfig($this->get('http://a.test/admin/taxonomies?section=tin-tuc&open=../x')->assertOk()->getContent())['open'])->toBe('');
+});
+
+it('names each band block with how many items it holds, 0 for a block without a list', function (): void {
+    $blocks = [
+        ['type' => 'features', 'props' => ['heading' => 'Vì sao chọn An Vinh?', 'items' => [['title' => 'a'], ['title' => 'b'], ['title' => 'c'], ['title' => 'd']]]],
+        ['type' => 'cta', 'props' => ['heading' => 'Chưa thấy vị trí phù hợp?']],
+        ['type' => 'features', 'props' => ['heading' => 'Lạ', 'items' => 'not a list']],
+        'not a block',
+    ];
+
+    expect(array_column(CategoryBands::names($blocks), 'items'))->toBe([4, 0, 0]);
+});
+
+it('counts the items of the list each block kind\'s schema names, whatever that list is called', function (): void {
+    $logo = ['image_url' => '', 'name' => 'Đối tác'];
+    $blocks = [
+        // a gallery's pictures and a partners strip's logos sit under their own keys, not `items`
+        ['type' => 'gallery', 'props' => ['images' => [['image_url' => 'a'], ['image_url' => 'b'], ['image_url' => 'c']]]],
+        ['type' => 'partners', 'props' => ['heading' => 'Đối tác', 'logos' => [$logo, $logo]]],
+        ['type' => 'team', 'props' => ['members' => [['name' => 'An']]]],
+        // a text block's paragraphs are its text, not items; an «about» block counts its shortcut links, not its paragraphs
+        ['type' => 'richtext', 'props' => ['paragraphs' => ['Một', 'Hai']]],
+        ['type' => 'about', 'props' => ['paragraphs' => ['Một', 'Hai', 'Ba'], 'links' => [['label' => 'Liên hệ']]]],
+        // a key → value map is no list, and entries that are not records are not counted
+        ['type' => 'partners', 'props' => ['logos' => ['a' => $logo, 'b' => $logo]]],
+        ['type' => 'gallery', 'props' => ['images' => [['image_url' => 'a'], 'x', 3, null]]],
+        // a prop named `items` on a kind whose schema has no such list says nothing
+        ['type' => 'cta', 'props' => ['items' => [['title' => 'a']]]],
+        // a kind the registry does not know
+        ['type' => 'unknown_kind', 'props' => ['items' => [['title' => 'a']]]],
+    ];
+
+    expect(array_column(CategoryBands::names($blocks), 'items'))->toBe([3, 2, 1, 0, 1, 0, 1, 0, 0]);
 });

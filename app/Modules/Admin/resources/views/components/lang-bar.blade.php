@@ -96,7 +96,7 @@
                     <span x-text="'+' + over"></span>
                     <x-bs-admin::icon name="ri-arrow-down-s" class="{{ $glyph }} lb-chev" />
                 </button>
-                <div class="lb-panel" id="lb-panel" role="dialog" aria-label="{{ __('admin.lb.panel') }}" x-ref="panel" x-show="open" x-cloak>
+                <x-bs-admin::lang-panel class="lb-panel" id="lb-panel" :label="__('admin.lb.panel')" x-ref="panel" x-show="open" x-cloak :none="$search ? '! anyHit()' : null">
                     <div class="lb-ph">
                         <span class="lb-ph-t">{{ __('admin.lb.panel_head') }}</span>
                         <span class="lb-ph-n">{{ __('admin.lb.panel_full', ['done' => $full, 'total' => count($langs)]) }}</span>
@@ -126,18 +126,17 @@
                             </a>
                         @endforeach
                     </div>
-                    @if ($search)
-                        <p class="lb-none" role="status" x-show="! anyHit()" x-cloak>{{ __('admin.lb.no_result') }}</p>
-                    @endif
                     @if ($manage !== null)
-                        <div class="lb-pf">
-                            <a href="{{ $manage }}" wire:navigate class="lb-manage">
-                                <x-bs-admin::icon name="ri-settings-3" class="{{ $glyph }}" />
-                                <span>{{ __('admin.lb.manage') }}</span>
-                            </a>
-                        </div>
+                        <x-slot:foot>
+                            <div class="lb-pf">
+                                <a href="{{ $manage }}" wire:navigate class="lb-manage">
+                                    <x-bs-admin::icon name="ri-settings-3" class="{{ $glyph }}" />
+                                    <span>{{ __('admin.lb.manage') }}</span>
+                                </a>
+                            </div>
+                        </x-slot:foot>
                     @endif
-                </div>
+                </x-bs-admin::lang-panel>
             </div>
             <span class="lb-chip" data-k="{{ $cur['kind'] }}"><span class="lb-dot" data-k="{{ $cur['kind'] }}" aria-hidden="true"></span>{{ $state($cur) }}</span>
             <span class="lb-gap" aria-hidden="true"></span>

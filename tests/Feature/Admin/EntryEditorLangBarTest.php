@@ -210,7 +210,9 @@ it('draws the selector alone, with a search box, past ten languages', function (
         lbLanguages('en', 'ja', 'zh', 'ko', 'fr', 'de', 'th', 'es', 'it', 'pt');
         $html = Livewire::actingAs($editor)->test(Editor::class, ['ulid' => lbPost()->ulid])->html();
         expect(substr_count($html, 'data-lb-row='))->toBe(11)
-            ->and($html)->toMatch('/class="lb"[^>]*data-compact/')->toContain('aria-label="'.e(__('admin.lb.search_aria')).'"');
+            ->and($html)->toMatch('/class="lb"[^>]*data-compact/')->toContain('aria-label="'.e(__('admin.lb.search_aria')).'"')
+            // the shared language panel says so when the search finds no language, read out as it appears
+            ->and($html)->toMatch('/<p class="lb-none" role="status" x-show="! anyHit\(\)" x-cloak>'.preg_quote(e(__('admin.lb.no_result')), '/').'<\/p>/');
     });
 });
 
