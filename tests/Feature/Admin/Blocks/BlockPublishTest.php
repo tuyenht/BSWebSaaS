@@ -125,16 +125,19 @@ it('refuses every new publish method once the member\'s right is taken away from
     placeBlock($live);
 
     app(Tenancy::class)->enter(1, function () use ($editor, $draft, $live): void {
-        $library = Livewire::actingAs($editor)->test(Library::class)->call('askUnpublish', $live->ulid)->assertSet('asking', 'draft');
+        // one screen per method: a refused call leaves its screen unusable for the next one
+        $toPublish = Livewire::actingAs($editor)->test(Library::class);
+        $asked = Livewire::actingAs($editor)->test(Library::class)->call('askUnpublish', $live->ulid)->assertSet('asking', 'draft');
+        $toAsk = Livewire::actingAs($editor)->test(Library::class);
         $editorScreen = Livewire::actingAs($editor)->test(BlockEditor::class, ['ulid' => $draft->ulid]);
 
         // the same open screens, the member's role taken away meanwhile
         Role::findByName('editor', PermissionRegistry::GUARD)->syncPermissions([]);
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        $library->call('publish', $draft->ulid);
-        $library->call('confirmUnpublish');
-        $library->call('askUnpublish', $live->ulid);
+        $toPublish->call('publish', $draft->ulid);
+        $asked->call('confirmUnpublish');
+        $toAsk->call('askUnpublish', $live->ulid);
         $editorScreen->call('saveAndPublish');
 
         expect($draft->fresh()->status)->toBe(ContentBlock::DRAFT)
