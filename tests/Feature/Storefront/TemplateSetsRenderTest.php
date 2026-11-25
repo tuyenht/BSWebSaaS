@@ -267,7 +267,7 @@ it('shows the filter chips of a job list from two child categories', function ()
     expect(jobPage('/tin-tuyen-dung'))->toContain('sf-chips__chip')->toContain('Ứng viên mới')->toContain('Thạch Thất');
 });
 
-it('draws the job band of a post: open tag, badge, title and the facts as chips, with no deadline in the data', function (): void {
+it('draws the job band of a post: open tag, badge, title and the facts as chips, with the chip's deadline in the data', function (): void {
     jobSite();
     jobFacts();
     $html = jobPage('/ha-noi/tho-tien-cnc');
@@ -278,7 +278,7 @@ it('draws the job band of a post: open tag, badge, title and the facts as chips,
         ->toContain('<li class="post-band__fact post-band__fact--accent">Lương: 9 – 14 triệu/tháng</li>')
         ->toContain('<li class="post-band__fact">Nhà máy 3 – Thạch Thất</li>')
         ->not->toContain('<script>x</script>')
-        ->not->toContain('validThrough');
+        ->toContain('"validThrough":"2026-12-15T23:59:59+07:00"');
 });
 
 it('keeps the standard post band for a post that is not on the job layout', function (): void {
