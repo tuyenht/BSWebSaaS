@@ -36,7 +36,7 @@ final class ProductListQuery
 
     /** What a row of the list reads (no meta). */
     public const array COLUMNS = ['id', 'ulid', 'site_id', 'sku', 'price', 'sale_price', 'sale_ends_at', 'stock', 'is_featured', 'is_bestseller',
-        'status', 'published_at', 'created_at', 'updated_at', 'deleted_at'];
+        'status', 'published_at', 'expires_at', 'created_at', 'updated_at', 'deleted_at'];
 
     /** The status groups that map to one status; "all" is every live row and "trash" every deleted one. */
     public const array STATUS_TABS = ['published', 'draft', 'archived'];

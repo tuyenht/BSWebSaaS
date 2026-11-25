@@ -51,7 +51,7 @@ function xpPost(array $fields = []): Entry
         'permission_prefix' => 'entries', 'sort_order' => 1,
     ]);
     SiteSetting::query()->create(['group_name' => 'permalinks', 'key' => 'posts', 'value' => ['pattern' => 'category']]);
-    $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'meta' => []] + $fields);
+    $entry = Entry::query()->create($fields + ['type' => 'post', 'status' => 'draft', 'meta' => []]);
     $entry->translations()->create(['locale' => 'vi', 'title' => 'Tuyển kỹ sư', 'slug' => 'tuyen-ky-su', 'status' => 'draft', 'body' => ['blocks' => []]]);
     $entry->assignCategories([$category->id]);
 
@@ -194,3 +194,34 @@ it('saves a product end time in UTC, refuses a past one, and forbids it to a mem
         expect($product->fresh()->expires_at)->not->toBeNull();
     });
 });
+
+it('checks an end time against the schedule the same save moves, whichever is written first', function (string $oldAt, string $newAt, string $endAt, bool $valid): void {
+    $user = xpMember(XP_EDITOR);
+    app(Tenancy::class)->enter(1, function () use ($user, $oldAt, $newAt, $endAt, $valid): void {
+        $post = xpPost(['status' => 'scheduled', 'published_at' => CarbonImmutable::parse(xpUtc($oldAt), 'UTC')]);
+        $c = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid])
+            ->assertSet('scheduleAt', $oldAt)
+            ->set('scheduleAt', $newAt)
+            ->set('expiresAt', $endAt);
+        $valid ? $c->assertHasNoErrors('expiresAt') : $c->assertHasErrors('expiresAt');   // the field checks the new schedule at once
+        $c->call('save');
+
+        $stored = $post->fresh();
+        if ($valid) {
+            $c->assertHasNoErrors();
+            expect($stored->published_at->utc()->format('Y-m-d H:i'))->toBe(xpUtc($newAt))
+                ->and($stored->expires_at?->utc()->format('Y-m-d H:i'))->toBe(xpUtc($endAt));
+
+            return;
+        }
+        expect($c->errors()->has('expiresAt') || $c->errors()->has('scheduleAt'))->toBeTrue()
+            // never stored as the pair asked for, and what is stored still ends after it starts
+            ->and($stored->published_at->utc()->format('Y-m-d H:i') === xpUtc($newAt) && $stored->expires_at?->utc()->format('Y-m-d H:i') === xpUtc($endAt))->toBeFalse()
+            ->and($stored->expires_at === null || $stored->expires_at > $stored->published_at)->toBeTrue();
+    });
+})->with([
+    'schedule moved earlier, end time between the two' => ['2026-12-10T08:00', '2026-12-01T08:00', '2026-12-05T08:00', true],
+    'schedule moved later, end time after both' => ['2026-12-01T08:00', '2026-12-10T08:00', '2026-12-20T08:00', true],
+    'schedule moved later, end time between the two' => ['2026-12-01T08:00', '2026-12-10T08:00', '2026-12-05T08:00', false],
+    'schedule moved later, end time before both' => ['2026-12-10T08:00', '2026-12-20T08:00', '2026-12-05T08:00', false],
+]);

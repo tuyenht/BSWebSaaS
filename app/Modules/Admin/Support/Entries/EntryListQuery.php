@@ -34,7 +34,7 @@ final class EntryListQuery
 
     /** What a row of the list reads (no meta, no body). */
     public const array COLUMNS = ['id', 'ulid', 'site_id', 'type', 'status', 'parent_id', 'template_override', 'author_id',
-        'published_at', 'position', 'created_at', 'updated_at', 'deleted_at', 'view_count', 'workflow_state', 'scheduled_by'];
+        'published_at', 'expires_at', 'position', 'created_at', 'updated_at', 'deleted_at', 'view_count', 'workflow_state', 'scheduled_by'];
 
     /**
      * The status order (A to Z): live first, then waiting, then not shown. The retired `private` stays

@@ -23,6 +23,7 @@ use App\Modules\Admin\Support\Locales;
 use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\ApproveEntryForLater;
+use App\Modules\Cms\Actions\ChangeEntryExpiry;
 use App\Modules\Cms\Actions\MovePage;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
@@ -60,9 +61,8 @@ use App\Modules\Cms\Support\HomePages;
 use App\Modules\Cms\Support\PageRules;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Cms\Validation\DisplayDateNotAfterToday;
-use App\Modules\Cms\Validation\ExpiryTime;
-use App\Modules\Cms\Actions\ChangeEntryExpiry;
 use App\Modules\Cms\Validation\EntryContentRules;
+use App\Modules\Cms\Validation\ExpiryTime;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -3897,11 +3897,6 @@ final class Editor extends Component
         return true;
     }
 
-    /**
-     * The «Hẹn giờ đăng» field of the "Đăng" card, or null when the time cannot be changed here.
-     *
-     * @return array{zone: string, note: string}|null
-     */
     /** The website's offset from UTC as «GMT+7». */
     private function zoneName(): string
     {
@@ -3959,6 +3954,11 @@ final class Editor extends Component
         });
     }
 
+    /**
+     * The «Hẹn giờ đăng» field of the "Đăng" card, or null when the time cannot be changed here.
+     *
+     * @return array{zone: string, note: string}|null
+     */
     private function schedulePanel(?Workflow $workflow): ?array
     {
         if ($this->effectiveStatus() !== EntryStatus::Scheduled->value || ! $this->mayPublish || $workflow !== null) {
