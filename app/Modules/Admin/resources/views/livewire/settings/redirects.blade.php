@@ -37,7 +37,7 @@
     @else
     {{-- Inside the settings frame (design board «Khung quản trị», section «Chuyển hướng»): the frame draws the
          section's name, note and short description, and the add button ends its title row. --}}
-    <x-bs-admin::settings-shell active="redirects">
+    <x-bs-admin::settings-shell active="redirects" card="tight">
         @if (! $failed)
             <x-slot:aside>
                 <x-bs-admin::button color="primary" id="rd-add" class="shrink-0" wire:click="openAdd" :label="__('admin.rd.add')" :short="__('admin.rd.add_short')"

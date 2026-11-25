@@ -121,7 +121,9 @@ it('opens inside the settings frame, its add button ending the frame\'s title ro
         ->and($shell->querySelector('[data-set-main] #rd-add'))->toBeNull()
         // the frame's short description replaces the page's own heading block; no save bar (nothing to save)
         ->and($html)->toContain('Đưa khách từ địa chỉ cũ sang địa chỉ mới.')
-        ->and($shell->querySelector('[data-set-savebar]'))->toBeNull();
+        ->and($shell->querySelector('[data-set-savebar]'))->toBeNull()
+        // the list's own frame sits 12px inside the section card, as the board draws it
+        ->and(explode(' ', (string) $shell->querySelector('[data-set-main] > [data-set-card]')?->getAttribute('class')))->toContain('p-3')->not->toContain('p-[1.375rem]');
 });
 
 it('never shows nor touches another website’s redirects', function (): void {
