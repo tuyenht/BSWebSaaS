@@ -24,12 +24,12 @@ beforeEach(function (): void {
     seedTenancy();
 });
 
-function csCategory(?int $parentId = null): Taxonomy
+function cscatCategory(?int $parentId = null): Taxonomy
 {
     return Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0, 'parent_id' => $parentId]);
 }
 
-function csPost(int $categoryId): Entry
+function cscatPost(int $categoryId): Entry
 {
     $post = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => User::factory()->create()->id]);
     $post->assignCategories([$categoryId]);
@@ -37,25 +37,25 @@ function csPost(int $categoryId): Entry
     return $post->fresh();
 }
 
-function csSection(string $key, int $taxonomyId, int $sortOrder = 1): ContentSection
+function cscatSection(string $key, int $taxonomyId, int $sortOrder = 1): ContentSection
 {
     return ContentSection::query()->create(['key' => $key, 'label' => ucfirst($key), 'entry_type' => 'post', 'taxonomy_id' => $taxonomyId, 'permission_prefix' => 'entries', 'sort_order' => $sortOrder]);
 }
 
-function csCover(ContentSection $section, int $taxonomyId): void
+function cscatCover(ContentSection $section, int $taxonomyId): void
 {
     ContentSectionCategory::query()->create(['site_id' => $section->site_id, 'content_section_id' => $section->id, 'taxonomy_id' => $taxonomyId]);
 }
 
 it('keeps a section\'s first category in the table, moving it with the section and listing it first', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
-        $news = csCategory();
-        $other = csCategory();
-        $jobs = csCategory();
-        $section = csSection('posts', $news->id);
+        $news = cscatCategory();
+        $other = cscatCategory();
+        $jobs = cscatCategory();
+        $section = cscatSection('posts', $news->id);
         expect($section->categoryIds())->toBe([$news->id]);
 
-        csCover($section, $jobs->id);
+        cscatCover($section, $jobs->id);
         expect($section->categoryIds())->toBe([$news->id, $jobs->id]);
 
         // a new first category takes the old one's place; the others stay
@@ -71,19 +71,19 @@ it('keeps a section\'s first category in the table, moving it with the section a
 
 it('files posts of every category a section covers, and of the categories below them, under it', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
-        $news = csCategory();
-        $company = csCategory($news->id);
-        $jobs = csCategory();
-        $engineers = csCategory($jobs->id);
-        $alone = csCategory();
-        $section = csSection('posts', $news->id);
-        csCover($section, $jobs->id);
+        $news = cscatCategory();
+        $company = cscatCategory($news->id);
+        $jobs = cscatCategory();
+        $engineers = cscatCategory($jobs->id);
+        $alone = cscatCategory();
+        $section = cscatSection('posts', $news->id);
+        cscatCover($section, $jobs->id);
         $resolver = app(SectionResolver::class);
 
-        expect($resolver->forEntry(csPost($company->id)))->toBe(['key' => 'posts', 'type' => 'posts'])
-            ->and($resolver->forEntry(csPost($jobs->id)))->toBe(['key' => 'posts', 'type' => 'posts'])
-            ->and($resolver->forEntry(csPost($engineers->id)))->toBe(['key' => 'posts', 'type' => 'posts'])
-            ->and($resolver->forEntry(csPost($alone->id)))->toBeNull()
+        expect($resolver->forEntry(cscatPost($company->id)))->toBe(['key' => 'posts', 'type' => 'posts'])
+            ->and($resolver->forEntry(cscatPost($jobs->id)))->toBe(['key' => 'posts', 'type' => 'posts'])
+            ->and($resolver->forEntry(cscatPost($engineers->id)))->toBe(['key' => 'posts', 'type' => 'posts'])
+            ->and($resolver->forEntry(cscatPost($alone->id)))->toBeNull()
             ->and(app(ContentSections::class)->boundToEach([$news->id, $jobs->id, $company->id]))->toBe([
                 $news->id => ['key' => 'posts', 'entry_type' => 'post'],
                 $jobs->id => ['key' => 'posts', 'entry_type' => 'post'],
@@ -93,28 +93,28 @@ it('files posts of every category a section covers, and of the categories below 
 
 it('gives a post to the section of the nearest covered category up its chain', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
-        $news = csCategory();
-        $jobs = csCategory($news->id);
-        $engineers = csCategory($jobs->id);
-        csSection('posts', $news->id);
-        csSection('careers', $jobs->id, 2);
+        $news = cscatCategory();
+        $jobs = cscatCategory($news->id);
+        $engineers = cscatCategory($jobs->id);
+        cscatSection('posts', $news->id);
+        cscatSection('careers', $jobs->id, 2);
         $resolver = app(SectionResolver::class);
 
-        expect($resolver->forEntry(csPost($engineers->id))['key'] ?? null)->toBe('careers')
-            ->and($resolver->forEntry(csPost($jobs->id))['key'] ?? null)->toBe('careers')
-            ->and($resolver->forEntry(csPost($news->id))['key'] ?? null)->toBe('posts');
+        expect($resolver->forEntry(cscatPost($engineers->id))['key'] ?? null)->toBe('careers')
+            ->and($resolver->forEntry(cscatPost($jobs->id))['key'] ?? null)->toBe('careers')
+            ->and($resolver->forEntry(cscatPost($news->id))['key'] ?? null)->toBe('posts');
     });
 });
 
 it('lets a category belong to one section at most', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
-        $news = csCategory();
-        $jobs = csCategory();
-        $posts = csSection('posts', $news->id);
-        csCover($posts, $jobs->id);
-        $careers = csSection('careers', csCategory()->id, 2);
+        $news = cscatCategory();
+        $jobs = cscatCategory();
+        $posts = cscatSection('posts', $news->id);
+        cscatCover($posts, $jobs->id);
+        $careers = cscatSection('careers', cscatCategory()->id, 2);
 
-        expect(fn () => DB::transaction(fn () => csCover($careers, $jobs->id)))->toThrow(QueryException::class, 'content_section_categories_site_taxonomy_unique');
+        expect(fn () => DB::transaction(fn () => cscatCover($careers, $jobs->id)))->toThrow(QueryException::class, 'content_section_categories_site_taxonomy_unique');
         expect(app(ContentSections::class)->boundTo($jobs->id))->toBe(['key' => 'posts', 'entry_type' => 'post']);
     });
 });
@@ -122,9 +122,9 @@ it('lets a category belong to one section at most', function (): void {
 it('fails closed: no rows without a site, none of another site\'s, and none written for another site', function (): void {
     $tenancy = app(Tenancy::class);
     [$section, $jobs] = $tenancy->enter(1, function (): array {
-        $section = csSection('posts', csCategory()->id);
-        $jobs = csCategory();
-        csCover($section, $jobs->id);
+        $section = cscatSection('posts', cscatCategory()->id);
+        $jobs = cscatCategory();
+        cscatCover($section, $jobs->id);
 
         return [$section, $jobs];
     });
@@ -136,7 +136,7 @@ it('fails closed: no rows without a site, none of another site\'s, and none writ
     $tenancy->enter(2, function () use ($section, $jobs): void {
         expect(DB::table('content_section_categories')->count())->toBe(0)
             ->and(app(ContentSections::class)->boundToEach([$jobs->id]))->toBe([])
-            ->and(app(SectionResolver::class)->forEntry(csPost(csCategory()->id)))->toBeNull();
+            ->and(app(SectionResolver::class)->forEntry(cscatPost(cscatCategory()->id)))->toBeNull();
         expect(fn () => DB::transaction(fn () => DB::table('content_section_categories')->insert([
             'site_id' => 1, 'content_section_id' => $section->id, 'taxonomy_id' => $jobs->id,
         ])))->toThrow(QueryException::class);
