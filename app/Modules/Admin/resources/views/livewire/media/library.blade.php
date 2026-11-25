@@ -397,39 +397,41 @@
                     @else
                         {{-- the columns follow the files area's own width (board 12): below 600 the name carries «type · size ·
                              dimensions · where used»; from 600 the type, size and «Nơi dùng» columns show and the name carries the
-                             dimensions and upload day; from 900 every column shows --}}
+                             dimensions and upload day; from 900 every column shows. With the folder column beside it (screen from
+                             48rem) and the files area 600–899, each row is two lines: the name across line 1, the five columns
+                             (type, dimensions, size, where used, upload day) on line 2, the tick, picture and «Chi tiết» beside both --}}
                         <div class="@container/tvm overflow-x-auto px-4 pb-3">
-                            <table class="w-full border-collapse text-body text-text">
+                            <table class="w-full border-collapse text-body text-text @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:block">
                                 <caption class="sr-only">{{ $placeName }}</caption>
-                                <thead>
-                                    <tr class="border-b border-border text-start text-small whitespace-nowrap text-text-muted">
-                                        <th scope="col" class="w-11 py-2">
+                                <thead class="@min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:block">
+                                    <tr class="border-b border-border text-start text-small whitespace-nowrap text-text-muted @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:grid @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:grid-cols-[2.75rem_2.75rem_repeat(3,minmax(0,1fr))_max-content_minmax(0,1fr)_auto] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:items-center @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:gap-x-3 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:gap-y-1 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:whitespace-normal">
+                                        <th scope="col" class="w-11 py-2 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:1/1/3/2]">
                                             @if ($canPick && $pageUlids !== [])
                                                 <input type="checkbox" class="size-5 rounded border-border-strong accent-primary" @checked($allOn) wire:click="{{ $selectCall }}" aria-label="{{ __('media.lib.sel_all_aria') }}">
                                             @endif
                                         </th>
-                                        <th scope="col" class="w-14 py-2"><span class="sr-only">{{ __('media.lib.col_thumb') }}</span></th>
-                                        <th scope="col" class="w-full py-2 text-start font-medium">{{ __('media.lib.col_name') }}</th>
-                                        <th scope="col" class="hidden py-2 ps-3 text-start font-medium @min-[37.5rem]/tvm:table-cell">{{ __('media.lib.col_type') }}</th>
-                                        <th scope="col" class="hidden py-2 text-start font-medium @min-[56.25rem]/tvm:table-cell">{{ __('media.lib.col_dims') }}</th>
-                                        <th scope="col" class="hidden py-2 ps-3 text-end font-medium @min-[37.5rem]/tvm:table-cell">{{ __('media.lib.col_size') }}</th>
-                                        <th scope="col" class="hidden py-2 ps-3 text-start font-medium @min-[37.5rem]/tvm:table-cell">{{ __('media.lib.col_use') }}</th>
-                                        <th scope="col" class="hidden py-2 text-start font-medium @min-[56.25rem]/tvm:table-cell">{{ __('media.lib.col_date') }}</th>
-                                        <th scope="col" class="py-2"><span class="sr-only">{{ __('admin.actions') }}</span></th>
+                                        <th scope="col" class="w-14 py-2 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:1/2/3/3] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:w-auto"><span class="sr-only">{{ __('media.lib.col_thumb') }}</span></th>
+                                        <th scope="col" class="w-full py-2 text-start font-medium @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:1/3/2/8] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:w-auto @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pb-0">{{ __('media.lib.col_name') }}</th>
+                                        <th scope="col" class="hidden py-2 ps-3 text-start font-medium @min-[37.5rem]/tvm:table-cell @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:2/3/3/4] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:ps-0 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pt-0">{{ __('media.lib.col_type') }}</th>
+                                        <th scope="col" class="hidden py-2 text-start font-medium @min-[56.25rem]/tvm:table-cell @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:block @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:2/4/3/5] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pt-0">{{ __('media.lib.col_dims') }}</th>
+                                        <th scope="col" class="hidden py-2 ps-3 text-end font-medium @min-[37.5rem]/tvm:table-cell @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:2/5/3/6] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:ps-0 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pt-0 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:text-start">{{ __('media.lib.col_size') }}</th>
+                                        <th scope="col" class="hidden py-2 ps-3 text-start font-medium @min-[37.5rem]/tvm:table-cell @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:2/6/3/7] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:ps-0 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pt-0">{{ __('media.lib.col_use') }}</th>
+                                        <th scope="col" class="hidden py-2 text-start font-medium @min-[56.25rem]/tvm:table-cell @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:block @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:2/7/3/8] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pt-0">{{ __('media.lib.col_date') }}</th>
+                                        <th scope="col" class="py-2 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:1/8/3/9]"><span class="sr-only">{{ __('admin.actions') }}</span></th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody class="@min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:block">
                                     @foreach ($rows as $m)
                                         @php $on = in_array($m->ulid, $picked, true); @endphp
                                         @php $name = $m->original_filename ?: $m->slug ?: $extOf($m); @endphp
                                         @php $chip = $useChip($m); @endphp
-                                        <tr wire:key="ml-{{ $m->ulid }}" @class(['border-b border-border', 'bg-primary/7' => $on])>
-                                            <td class="py-1.5 pe-3">
+                                        <tr wire:key="ml-{{ $m->ulid }}" @class(['border-b border-border @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:grid @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:grid-cols-[2.75rem_2.75rem_repeat(3,minmax(0,1fr))_max-content_minmax(0,1fr)_auto] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:items-center @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:gap-x-3 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:gap-y-1', 'bg-primary/7' => $on])>
+                                            <td class="py-1.5 pe-3 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:1/1/3/2] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pe-0">
                                                 @if ($canPick)
                                                     <input type="checkbox" class="size-5 rounded border-border-strong accent-primary" @checked($on) wire:click="togglePick({{ Js::from($m->ulid) }})" aria-label="{{ __($on ? 'media.lib.unpick_one' : 'media.lib.pick_one', ['name' => $name]) }}">
                                                 @endif
                                             </td>
-                                            <td class="py-1.5 pe-3">
+                                            <td class="py-1.5 pe-3 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:1/2/3/3] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pe-0">
                                                 <button type="button" class="flex size-11 items-center justify-center overflow-hidden rounded bg-surface-muted" wire:click="openDetail({{ Js::from($m->ulid) }})" aria-label="{{ __('media.lib.open', ['name' => $name]) }}">
                                                     @if (str_starts_with($m->mime, 'image/'))
                                                         <img src="{{ $urls->url($m->storage_key, 96) }}" alt="" loading="lazy" class="size-full object-cover">
@@ -438,18 +440,18 @@
                                                     @endif
                                                 </button>
                                             </td>
-                                            <td class="max-w-0 py-1.5 pe-3">
+                                            <td class="max-w-0 py-1.5 pe-3 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:1/3/2/8] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:max-w-none @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pe-0 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pb-0">
                                                 <button type="button" id="mopen-{{ $m->ulid }}" class="block max-w-full truncate text-start font-medium text-text hover:text-primary-text" wire:click="openDetail({{ Js::from($m->ulid) }})" title="{{ $name }}">{{ $name }}</button>
                                                 @php $upDay = $siteTime->forDisplay($m->created_at)?->format('d/m/Y'); @endphp
                                                 <span class="block truncate text-small text-text-muted @min-[37.5rem]/tvm:hidden">{{ $extOf($m) }} · {{ $dims($m) }} · {{ Library::bytes((int) $m->size) }} · {{ $chip['text'] }}</span>
-                                                <span class="hidden truncate text-small text-text-muted @min-[37.5rem]/tvm:block @min-[56.25rem]/tvm:hidden">{{ $dims($m) }} · {{ $upDay }}</span>
+                                                <span class="hidden truncate text-small text-text-muted @min-[37.5rem]/tvm:block @min-[56.25rem]/tvm:hidden @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:hidden!">{{ $dims($m) }} · {{ $upDay }}</span>
                                             </td>
-                                            <td class="hidden py-1.5 ps-3 @min-[37.5rem]/tvm:table-cell">{{ $extOf($m) }}</td>
-                                            <td class="hidden py-1.5 whitespace-nowrap @min-[56.25rem]/tvm:table-cell">{{ $dims($m) }}</td>
-                                            <td class="hidden py-1.5 ps-3 text-end whitespace-nowrap @min-[37.5rem]/tvm:table-cell">{{ Library::bytes((int) $m->size) }}</td>
-                                            <td class="hidden py-1.5 ps-3 @min-[37.5rem]/tvm:table-cell"><span data-use="{{ $chip['tone'] }}" class="inline-flex min-h-6 max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-caption font-semibold leading-[1.4] [overflow-wrap:anywhere] @min-[48rem]/tv:whitespace-nowrap {{ $chipFill[$chip['tone']] }} {{ $chipInk[$chip['tone']] }}"><x-bs-admin::icon :name="$chip['icon']" class="size-[1.1em] shrink-0" />{{ $chip['text'] }}</span></td>
-                                            <td class="hidden py-1.5 whitespace-nowrap @min-[56.25rem]/tvm:table-cell">{{ $upDay }}</td>
-                                            <td class="py-1.5 ps-3 text-end whitespace-nowrap"><x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="openDetail({{ Js::from($m->ulid) }})">{{ __('media.lib.details') }}</x-bs-admin::button></td>
+                                            <td class="hidden py-1.5 ps-3 @min-[37.5rem]/tvm:table-cell @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:2/3/3/4] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:ps-0 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pt-0 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[overflow-wrap:anywhere]">{{ $extOf($m) }}</td>
+                                            <td class="hidden py-1.5 whitespace-nowrap @min-[56.25rem]/tvm:table-cell @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:block @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:2/4/3/5] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pt-0 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:whitespace-normal @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[overflow-wrap:anywhere]">{{ $dims($m) }}</td>
+                                            <td class="hidden py-1.5 ps-3 text-end whitespace-nowrap @min-[37.5rem]/tvm:table-cell @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:2/5/3/6] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:ps-0 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pt-0 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:text-start @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:whitespace-normal @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[overflow-wrap:anywhere]">{{ Library::bytes((int) $m->size) }}</td>
+                                            <td class="hidden py-1.5 ps-3 @min-[37.5rem]/tvm:table-cell @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:2/6/3/7] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:ps-0 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pt-0"><span data-use="{{ $chip['tone'] }}" class="inline-flex min-h-6 max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-caption font-semibold leading-[1.4] [overflow-wrap:anywhere] @min-[48rem]/tv:whitespace-nowrap {{ $chipFill[$chip['tone']] }} {{ $chipInk[$chip['tone']] }}"><x-bs-admin::icon :name="$chip['icon']" class="size-[1.1em] shrink-0" />{{ $chip['text'] }}</span></td>
+                                            <td class="hidden py-1.5 whitespace-nowrap @min-[56.25rem]/tvm:table-cell @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:block @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:2/7/3/8] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pt-0 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:whitespace-normal @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[overflow-wrap:anywhere]">{{ $upDay }}</td>
+                                            <td class="py-1.5 ps-3 text-end whitespace-nowrap @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:1/8/3/9] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:ps-0"><x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="openDetail({{ Js::from($m->ulid) }})">{{ __('media.lib.details') }}</x-bs-admin::button></td>
                                         </tr>
                                     @endforeach
                                 </tbody>
