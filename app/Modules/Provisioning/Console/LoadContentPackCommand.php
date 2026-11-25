@@ -268,8 +268,6 @@ final class LoadContentPackCommand extends Command
 
     /**
      * The image step: plan every slot with a file, print it (dry run), or upload exactly that plan.
-     * Refused before anything is read from the site's media when another website shares its
-     * storage folder.
      *
      * @param  list<string>  $forced
      */
@@ -283,7 +281,6 @@ final class LoadContentPackCommand extends Command
         }
 
         $step = app(MediaStep::class);
-        $step->assertFolderNotShared($site);
         $lines = $tenancy->enter($site->id, fn (): array => $step->plan($pack, $site, $forced));
         $fingerprint = MediaStep::fingerprint($pack, $site->ulid, $forced, $lines);
 

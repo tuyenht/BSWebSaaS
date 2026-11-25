@@ -59,7 +59,7 @@ class ExternalImageFetcher
 
         // Same staging shape + ownership guard as the presigned flow (PresignMediaUpload):
         // `_incoming/` stays the left-anchored prefix so one lifecycle rule expires abandons.
-        $tempKey = '_incoming/'.Str::slug($siteName).'/url-'.Str::ulid().'.'.$ext;
+        $tempKey = MediaKey::STAGING_SEGMENT.'/'.Str::slug($siteName).'/url-'.Str::ulid().'.'.$ext;
         if (! Storage::disk(MediaKey::disk())->put($tempKey, $bytes)) {
             throw new MediaRejectedException('storage_failed');
         }

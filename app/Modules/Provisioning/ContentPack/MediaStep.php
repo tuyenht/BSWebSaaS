@@ -7,12 +7,11 @@ namespace App\Modules\Provisioning\ContentPack;
 use App\Modules\Media\Actions\UploadMedia;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Support\MediaKey;
+use App\Modules\Media\Support\MediaKeyPrefix;
 use App\Modules\Shared\Support\Cast;
-use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Models\Site;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
@@ -26,13 +25,12 @@ use RuntimeException;
  * A slot of `"kind": "document"` holds a PDF and takes the same path (the library stores a PDF as a
  * download); an image slot holds only a JPEG, PNG or WebP image.
  *
- * Storage keys: new keys are prefixed with the slug of the site's name (MediaKey), so two websites
- * whose names give the same slug would file images in the same folder and could overwrite each
- * other. The step therefore refuses, before planning anything, when another website's name gives
- * this site's folder; it refuses a planned key that does not start with that folder, and a new key
- * whose object already exists (no row of this site owns it, so it is someone else's). A refusal
- * never names the other website. A live row whose object went missing is repaired (the upload's
- * own self-heal puts the bytes back under the row's key).
+ * Storage keys: new keys start with the site's permanent code (MediaKeyPrefix), which no other
+ * website ever has, so the step refuses a planned new key outside that folder, and a new key whose
+ * object already exists unless it holds these very bytes (no row of this site owns it). A restore or
+ * a repair writes only under the key of the site's own row, which the database never lets another
+ * website hold. A refusal never names another website. A live row whose object
+ * went missing is repaired (the upload's own self-heal puts the bytes back under the row's key).
  *
  * R2 writes are not transactional, so the step runs on its own, before any content load: a failed
  * run leaves at most an object the next run reuses by hash. A dry run reads only.
@@ -55,40 +53,7 @@ final readonly class MediaStep
     /** Forced keys of this step: `media:<slot>`. */
     public const string KEY_PREFIX = 'media:';
 
-    public function __construct(private UploadMedia $upload) {}
-
-    /**
-     * The folder this site's new media keys start with under the current key layout.
-     *
-     * @throws PackRejected the site's name gives no folder
-     */
-    public function folder(Site $site): string
-    {
-        $slug = Str::slug($site->name);
-        if ($slug === '') {
-            throw new PackRejected('Refused: this site\'s name gives no storage folder for its images; nothing was uploaded.');
-        }
-
-        return $slug.'/';
-    }
-
-    /**
-     * Refuses when any other website — in the Trash too, its images stay in storage — has a name
-     * that gives the same folder. A platform-level read of names only (the sites registry has no
-     * RLS), streamed in id order; nothing about the other website is printed.
-     *
-     * @throws PackRejected
-     */
-    public function assertFolderNotShared(Site $site): void
-    {
-        $folder = $this->folder($site);
-        $others = Site::query()->withTrashed()->whereKeyNot($site->id)->select(['id', 'name'])->lazyById(1000);
-        foreach ($others as $other) {
-            if (Str::slug($other->name).'/' === $folder) {
-                throw new PackRejected("Refused: another website files its images under the same storage folder ('{$folder}') as this site, so their images could overwrite each other. Nothing was uploaded; the image step can run once every website has its own storage folder.");
-            }
-        }
-    }
+    public function __construct(private UploadMedia $upload, private MediaKeyPrefix $prefix) {}
 
     /**
      * What each slot with a file would do, in media.json order. Runs in the site's tenant context
@@ -98,12 +63,11 @@ final readonly class MediaStep
      * @param  list<string>  $forced  `media:<slot>` keys
      * @return list<array{key: string, slot: string, file: string, size: int, collection: string, hash: string, verdict: string, forced: bool, storage_key: string}>
      *
-     * @throws PackRejected a planned key lands outside the site's folder, would overwrite an object no
-     *                      row of the site owns, or is planned twice
+     * @throws PackRejected a planned new key lands outside the site's folder, would overwrite an object
+     *                      no row of the site owns, or is planned twice
      */
     public function plan(Pack $pack, Site $site, array $forced): array
     {
-        $folder = $this->folder($site);
         $slots = [];
         foreach ($pack->slots as $name => $slot) {
             $file = $slot['file'] ?? null;
@@ -162,22 +126,22 @@ final readonly class MediaStep
                 $verdict = $disk->exists($storageKey) ? self::REUSE : self::REPAIR;
             } else {
                 $verdict = self::UPLOAD;
-                $storageKey = $this->newKey($site, $slot['collection'], $slot['path'], $slot['hash'], $slot['document']);
+                $storageKey = $this->newKey($slot['collection'], $slot['path'], $slot['hash'], $slot['document']);
                 if (isset($newKeys[$storageKey])) {
                     throw new PackRejected("Refused: {$key} and another slot would both be stored under '{$storageKey}'; rename one of the two files. Nothing was uploaded.");
                 }
                 // No row of this site holds the key, so an object already there is not this site's to
-                // overwrite (left by a site that once had this site's folder name, for one) — unless
-                // it holds these very bytes: what a run that failed after the put leaves behind.
+                // overwrite — unless it holds these very bytes: what a run that failed after the put
+                // leaves behind.
                 if ($disk->exists($storageKey) && hash('sha256', (string) $disk->get($storageKey)) !== $slot['hash']) {
                     throw new PackRejected("Refused: the image for {$key} would overwrite an object at '{$storageKey}' that no image of this site owns. Nothing was uploaded.");
                 }
                 $newKeys[$storageKey] = true;
             }
 
-            // An upload, a restore and a repair can write an object (a restore puts the bytes back
-            // when its object is gone); each must stay inside this site's folder.
-            if (in_array($verdict, self::WRITES, true) && ! str_starts_with($storageKey, $folder)) {
+            // A new upload must land inside this site's folder; a restore and a repair write under
+            // the key of the site's own row, which no other website can hold.
+            if ($verdict === self::UPLOAD && ! str_starts_with($storageKey, $folder = $this->prefix->forNewObject($slot['collection']))) {
                 throw new PackRejected("Refused: the image for {$key} would be stored under '{$storageKey}', outside this site's storage folder '{$folder}'. Nothing was uploaded.");
             }
             $planned[$at] ??= ['key' => $storageKey, 'verdict' => $verdict];
@@ -233,13 +197,12 @@ final readonly class MediaStep
 
         $media = $this->upload->handle(
             file: $file,
-            siteName: $site->name,
             collection: Cast::string($slot['collection'] ?? 'library'),
             createdBy: null,
             mayRestore: $line['verdict'] === self::RESTORE,
         );
 
-        if ($media->storage_key !== $line['storage_key'] || ! str_starts_with($media->storage_key, $this->folder($site))) {
+        if ($media->storage_key !== $line['storage_key']) {
             throw new RuntimeException("{$line['key']} was stored under an unplanned key.");
         }
 
@@ -258,15 +221,14 @@ final readonly class MediaStep
     }
 
     /** The key UploadMedia gives these bytes: its slug from the file name, its extension from the sniffed type. */
-    private function newKey(Site $site, string $collection, string $path, string $hash, bool $document): string
+    private function newKey(string $collection, string $path, string $hash, bool $document): string
     {
         $mime = PackValidator::mime($path, $document);
         $ext = $mime === null ? null : (UploadMedia::MIME_EXT[$mime] ?? null);
         if ($ext === null) {
             throw new PackRejected('Refused: '.basename($path).' is not '.($document ? 'a PDF document' : 'an image').' the media library accepts.');
         }
-        $slug = Slugger::make(pathinfo(basename($path), PATHINFO_FILENAME)) ?: 'tep';
 
-        return MediaKey::unique($site->name, $collection, $slug, $hash, $ext);
+        return MediaKey::unique($this->prefix->forNewObject($collection), MediaKey::slugFromFilename(basename($path)), $hash, $ext);
     }
 }
