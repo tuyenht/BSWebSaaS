@@ -177,6 +177,73 @@ final readonly class MediaUsageLocator
     }
 
     /**
+     * How many places use each of a page of files (media id => count), counted as usagesFor() lists
+     * them — so a tile's «Dùng ở N nơi» and its drawer's «Đang dùng ở N nơi» always agree — in one
+     * statement for the whole page: each kind of use is one grouped part of a UNION ALL, its owners
+     * read through their own models (site scope, Trash scope), so a soft-deleted product or post no
+     * longer counts. A file no part names is used nowhere (count 0).
+     *
+     * @param  iterable<Media>  $files
+     * @return array<int, int>
+     */
+    public function countsFor(iterable $files): array
+    {
+        $ids = [];
+        $byKey = [];
+        foreach ($files as $file) {
+            $ids[] = (int) $file->id;
+            $byKey[(string) $file->storage_key] = (int) $file->id;
+        }
+        if ($ids === []) {
+            return [];
+        }
+
+        $content = BlockMediaUsage::COLLECTION;
+        $parts = [
+            // a product's image list: one place per product
+            ProductImage::query()->toBase()->whereIn('media_id', $ids)->whereIn('product_id', Product::query()->select('id'))
+                ->groupBy('media_id')->selectRaw("'id' as kind, media_id::text as k, count(distinct product_id) as n"),
+            // an entry's featured / share image, by the file's storage key: one place per entry
+            Entry::query()->toBase()->whereIn('meta->image_url', array_keys($byKey))
+                ->groupByRaw("meta->>'image_url'")->selectRaw("'key' as kind, meta->>'image_url' as k, count(*) as n"),
+            // a category's picture
+            Taxonomy::query()->toBase()->whereIn('cover_media_id', $ids)
+                ->groupBy('cover_media_id')->selectRaw("'id' as kind, cover_media_id::text as k, count(*) as n"),
+            // a block image or a button's file: one place per entry, per category, and one for the site's own slots
+            Mediable::query()->toBase()->whereIn('media_id', $ids)->where('collection', $content)->where('mediable_type', 'entry')
+                ->whereIn('mediable_id', Entry::query()->select('id'))
+                ->groupBy('media_id')->selectRaw("'id' as kind, media_id::text as k, count(distinct mediable_id) as n"),
+            Mediable::query()->toBase()->whereIn('media_id', $ids)->where('collection', $content)->where('mediable_type', 'taxonomy')
+                ->whereIn('mediable_id', Taxonomy::query()->select('id'))
+                ->groupBy('media_id')->selectRaw("'id' as kind, media_id::text as k, count(distinct mediable_id) as n"),
+            // the site's own block slots, its branch list and the floating contact: one place each
+            Mediable::query()->toBase()->whereIn('media_id', $ids)->whereIn('collection', self::COLLECTIONS)->where('mediable_type', 'site_setting')
+                ->groupBy('media_id')->selectRaw("'id' as kind, media_id::text as k, count(distinct collection) as n"),
+        ];
+        // the site's four brand images: one place per slot
+        foreach (array_values(SiteProfile::IMAGE_COLUMNS) as $column) {
+            $parts[] = SiteProfile::query()->toBase()->whereIn($column, $ids)
+                ->groupBy($column)->selectRaw("'id' as kind, {$column}::text as k, count(*) as n");
+        }
+
+        $union = array_shift($parts);
+        foreach ($parts as $part) {
+            $union->unionAll($part);
+        }
+
+        $out = array_fill_keys($ids, 0);
+        foreach ($union->get() as $row) {
+            $key = is_string($row->k) ? $row->k : '';
+            $id = $row->kind === 'key' ? ($byKey[$key] ?? null) : (ctype_digit($key) ? (int) $key : null);
+            if ($id !== null && isset($out[$id])) {
+                $out[$id] += is_numeric($row->n) ? (int) $row->n : 0;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * The root of each post category without a query per level: the first label of the stored
      * ltree path (ids from the root down), else the parent chain for a row that carries no path.
      *

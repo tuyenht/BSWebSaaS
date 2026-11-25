@@ -13,7 +13,10 @@
     // the folders of one parent in their order, and the top-level ones (a folder goes in one of those)
     $siblings = fn ($f) => $folders->where('parent_id', $f->parent_id)->values();
     $tops = $folders->whereNull('parent_id')->values();
-    $conditions = count($kinds) + count($formats) + ($trash ? 0 : count($uses));
+    // «Thời gian»: «Tùy chọn» filters (and counts) only once a day is given
+    $day = fn (string $date): string => $date === '' ? '…' : implode('/', array_reverse(explode('-', $date)));
+    $whenOn = $when === Dir::RANGE ? ($from !== '' || $to !== '') : $when !== '';
+    $conditions = count($kinds) + count($formats) + ($trash ? 0 : count($uses)) + count($by) + ($whenOn ? 1 : 0);
     $searching = trim($search) !== '';
     $filtering = $conditions > 0 || $searching;
     $kindLabels = ['img' => __('media.lib.kind_img'), 'pdf' => __('media.lib.kind_pdf')];
@@ -23,6 +26,16 @@
         $sections[] = ['key' => 'status', 'label' => __('media.lib.f_status'), 'model' => 'status', 'value' => $status, 'reset' => 'clearStatus',
             'options' => [['value' => 'live', 'label' => __('media.lib.f_live'), 'count' => $counts['all']], ['value' => 'trash', 'label' => __('media.lib.trash'), 'count' => $counts['trash']]]];
     }
+    // «Thư mục» (board 12): while the folder column is hidden, the folders are chosen here, with «Quản lý thư mục»
+    $folderOptions = [['value' => '', 'label' => __('media.lib.all'), 'count' => $counts['all']]];
+    foreach ($folders as $f) {
+        $folderOptions[] = ['value' => (string) $f->slug, 'label' => $f->name, 'count' => $treeN[$f->id] ?? 0, 'depth' => $f->parent_id !== null ? 1 : 0];
+    }
+    $folderOptions[] = ['value' => '-', 'label' => __('media.lib.unfiled'), 'count' => $counts['unfiled']];
+    $sections[] = ['key' => 'folder', 'label' => __('media.lib.folders'), 'model' => 'folderPick', 'value' => $folderPick, 'default' => '',
+        'class' => '@min-[48rem]/tv:hidden', 'options' => $folderOptions]
+        + ($trash ? ['on' => false, 'summary' => '', 'suffix' => ''] : [])
+        + ($canFolders ? ['action' => ['label' => __('media.lib.manage_folders'), 'icon' => 'ri-folder-settings', 'call' => 'openFolderSheet']] : []);
     $sections[] = ['key' => 'kinds', 'label' => __('media.lib.f_kind'), 'model' => 'kinds', 'multiple' => true, 'value' => $kinds, 'reset' => 'clearKinds',
         'options' => array_map(fn (string $k): array => ['value' => $k, 'label' => $kindLabels[$k]], Dir::KINDS)];
     $sections[] = ['key' => 'formats', 'label' => __('media.lib.f_format'), 'model' => 'formats', 'multiple' => true, 'value' => $formats, 'reset' => 'clearFormats',
@@ -31,7 +44,28 @@
         $sections[] = ['key' => 'uses', 'label' => __('media.lib.f_use'), 'model' => 'uses', 'multiple' => true, 'value' => $uses, 'reset' => 'clearUses',
             'options' => array_map(fn (string $u): array => ['value' => $u, 'label' => $useLabels[$u]], Dir::USES)];
     }
+    // «Người tạo»: offered once two people have uploaded files here (the member first)
+    if (count($uploaders) >= 2 || $by !== []) {
+        $sections[] = ['key' => 'by', 'label' => __('media.lib.f_by'), 'model' => 'by', 'multiple' => true, 'value' => $by, 'reset' => 'clearBy', 'options' => $uploaders];
+    }
+    // «Thời gian» by upload day; «Tùy chọn» opens the two date fields
+    $whenLabels = ['' => __('entries.when_all'), 'today' => __('entries.when_today'), Dir::RANGE => __('media.lib.when_custom')];
+    foreach (['7', '30', '90'] as $n) {
+        $whenLabels[$n] = __('entries.when_days', ['n' => $n]);
+    }
+    $rangeText = __('entries.when_range', ['from' => $day($from), 'to' => $day($to)]);
+    $sections[] = ['key' => 'when', 'label' => __('entries.f_when'), 'model' => 'when', 'value' => $when, 'default' => '', 'reset' => 'clearWhen',
+        'note' => __('media.lib.when_note'),
+        'options' => array_map(fn (string $v): array => ['value' => $v, 'label' => $whenLabels[$v], 'count' => $whenCounts[$v] ?? 0], Dir::WHEN)]
+        + ($when === Dir::RANGE ? ['on' => $whenOn,
+            'range' => ['from' => 'from', 'to' => 'to', 'from_label' => __('entries.when_from'), 'to_label' => __('entries.when_to')]]
+            + ($whenOn ? ['summary' => $rangeText, 'suffix' => ': '.$rangeText] : []) : []);
     $chips = [];
+    // while the folder column is hidden, the folder being looked at is a chip too (board 12)
+    $folderChip = ! $trash && $folder !== '';
+    if ($folderChip) {
+        $chips[] = ['label' => $placeName, 'icon' => 'ri-folder-3', 'remove' => "setFolder('')", 'aria' => __('media.lib.chip_rm_folder', ['name' => $placeName]), 'class' => '@min-[48rem]/tv:hidden'];
+    }
     foreach ($kinds as $k) {
         $chips[] = ['label' => $kindLabels[$k], 'icon' => 'ri-filter-3', 'remove' => 'removeCondition('.Js::from('kinds').', '.Js::from($k).')', 'aria' => __('media.lib.chip_rm', ['name' => $kindLabels[$k]])];
     }
@@ -46,15 +80,28 @@
     $pageUlids = $rows->pluck('ulid')->map(fn ($u): string => (string) $u)->all();
     $allOn = $pageUlids !== [] && array_diff($pageUlids, $picked) === [];
     $selectCall = 'togglePage('.Js::from($pageUlids).')';
-    $from = ($pageNo - 1) * $per + 1;
+    $firstN = ($pageNo - 1) * $per + 1;
     $foot = $totals['n'] > $rows->count()
-        ? __('media.lib.foot_range', ['from' => $num($from), 'to' => $num($from + $rows->count() - 1), 'n' => $num($totals['n'])])
+        ? __('media.lib.foot_range', ['from' => $num($firstN), 'to' => $num($firstN + $rows->count() - 1), 'n' => $num($totals['n'])])
         : __('media.lib.foot_n', ['n' => $num($totals['n'])]);
     $foot .= ($trash ? __('media.lib.foot_in_trash') : '').' · '.Library::bytes($totals['bytes']);
     $extOf = fn ($m): string => strtoupper(match ($m->mime) { 'image/jpeg' => 'jpg', 'application/pdf' => 'pdf', default => \Illuminate\Support\Str::after($m->mime, '/') });
     $dims = fn ($m): string => $m->width ? $m->width.' × '.$m->height : '—';
     $leftDays = fn ($m): int => max(0, $retention - (int) floor($m->deleted_at->diffInDays(now())));
-    $listTargets = 'search,kinds,formats,uses,status,sort,per,older,newer,setFolder,setSort,clearFilters,clearSearch,removeCondition,clearKinds,clearFormats,clearUses,clearStatus';
+    // the chip of a tile and of the «Nơi dùng» column (board 12): days left in the Trash, else where the file is used
+    $useChip = function ($m) use ($trash, $leftDays, $useCounts): array {
+        if ($trash) {
+            $left = $leftDays($m);
+
+            return ['text' => __('media.lib.days_left', ['n' => $left]), 'tone' => $left <= 2 ? 'danger' : 'warn', 'icon' => 'ri-time'];
+        }
+        $n = $useCounts[$m->id] ?? 0;
+
+        return $n > 0 ? ['text' => __('media.lib.use_n', ['n' => $n]), 'tone' => 'ok', 'icon' => 'ri-links'] : ['text' => __('media.lib.use_unused'), 'tone' => 'neutral', 'icon' => 'ri-subtract'];
+    };
+    $chipInk = ['ok' => 'text-success-text', 'warn' => 'text-warning-text', 'danger' => 'text-danger-text', 'neutral' => 'text-text'];
+    $chipFill = ['ok' => 'bg-success/12', 'warn' => 'bg-warning/20', 'danger' => 'bg-danger/12', 'neutral' => 'bg-surface-hover'];
+    $listTargets = 'search,kinds,formats,uses,by,when,from,to,folderPick,status,sort,per,older,newer,setFolder,setSort,clearFilters,clearSearch,removeCondition,clearKinds,clearFormats,clearUses,clearStatus,clearBy,clearWhen';
     $folderBtn = 'flex min-h-control w-full items-center gap-2 rounded-md px-2.5 text-start text-body text-text hover:bg-surface-muted aria-[current=true]:bg-primary/12 aria-[current=true]:font-semibold aria-[current=true]:text-primary-text any-pointer-coarse:min-h-hit';
 @endphp
 <div class="flex min-w-0 flex-col gap-4" x-data
@@ -184,25 +231,7 @@
             </nav>
 
             <section class="flex min-w-0 flex-1 flex-col self-stretch rounded-md border border-border bg-surface shadow-card @min-[48rem]/tv:rounded-none @min-[48rem]/tv:border-y-0 @min-[48rem]/tv:border-e-0 @min-[48rem]/tv:bg-transparent @min-[48rem]/tv:shadow-none" aria-label="{{ $placeName }}">
-                {{-- Folder select (screen below 48rem) --}}
-                <div class="flex items-end gap-2 px-4 pt-4 @min-[48rem]/tv:hidden">
-                    <div class="min-w-0 flex-1">
-                        <label for="media-fsel" class="mb-1 block text-small font-medium text-text">{{ __('media.lib.folders') }}</label>
-                        <select id="media-fsel" class="field w-full rounded-md border border-border-strong bg-surface px-3 text-text" wire:change="setFolder($event.target.value)">
-                            <option value="" @selected(! $trash && $folder === '')>{{ __('media.lib.all') }} ({{ $num($counts['all']) }})</option>
-                            @foreach ($folders as $f)
-                                <option value="{{ $f->slug }}" @selected(! $trash && $current?->id === $f->id)>{{ $f->parent_id !== null ? "\u{00A0}\u{00A0}\u{00A0}\u{00A0}" : '' }}{{ $f->name }} ({{ $num($treeN[$f->id] ?? 0) }})</option>
-                            @endforeach
-                            <option value="-" @selected(! $trash && $folder === '-')>{{ __('media.lib.unfiled') }} ({{ $num($counts['unfiled']) }})</option>
-                            @if ($canDelete)
-                                <option value="~trash" @selected($trash)>{{ __('media.lib.trash') }} ({{ $num($counts['trash']) }})</option>
-                            @endif
-                        </select>
-                    </div>
-                    @if ($canFolders)
-                        <x-bs-admin::button variant="outline" color="secondary" icon :aria-label="__('media.lib.folder_more')" :title="__('media.lib.more')" wire:click="openFolderSheet"><x-bs-admin::icon name="ri-more-2-fill" class="size-4" /></x-bs-admin::button>
-                    @endif
-                </div>
+                {{-- below 48rem the folders are chosen in the Filter sheet («Thư mục», board 12) --}}
                 @if ($newFolderOpen && $canFolders)
                     <div class="px-4 pt-3 @min-[48rem]/tv:hidden">@include('admin::livewire.media.library-new-folder', ['fid' => 'media-newf-n'])</div>
                 @endif
@@ -243,12 +272,14 @@
                             </div>
                         @endif
                         <x-bs-admin::filter-panel class="ms-auto shrink-0 flex-nowrap min-[900px]:ms-0 min-[900px]:shrink min-[900px]:flex-wrap min-[900px]:gap-3" :sections="$sections" :label="__('admin.list.filter')"
-                            :active="$conditions + ($trash ? 1 : 0)" :results="__('media.lib.f_see', ['n' => $num($totals['n'])])" clear="clearFilters" />
+                            :active="$conditions + ($trash ? 1 : 0)" :active-narrow="$conditions + ($trash ? 1 : 0) + ($folderChip ? 1 : 0)"
+                            :split-at="['wide' => '@max-[47.99rem]/tv:hidden', 'narrow' => '@min-[48rem]/tv:hidden']"
+                            :results="__('media.lib.f_see', ['n' => $num($totals['n'])])" clear="clearFilters" />
                         <x-bs-admin::sort-menu class="min-[900px]:hidden" :options="$sortOptions" :active="$sort" :lit="$sort !== 'new'" set="setSort" />
                     </x-bs-admin::tool-row>
                 </div>
 
-                <x-bs-admin::filter-status class="mx-1 mb-2"
+                <x-bs-admin::filter-status class="mx-1 mb-2 {{ $folderChip && count($chips) === 1 && ! $filtering ? '@min-[48rem]/tv:hidden' : '' }}"
                     :group="$trash ? __('media.lib.trash') : null"
                     :summary="$filtering ? __('media.lib.match_of', ['n' => $num($totals['n']), 'm' => $num($baseN)]) : null"
                     :chips="$chips" :clear="$filtering ? 'clearFilters' : null" />
@@ -343,11 +374,9 @@
                                             @else
                                                 <span class="flex flex-col items-center gap-1 text-small font-semibold text-text-muted"><x-bs-admin::icon :name="$m->mime === 'application/pdf' ? 'ri-file-pdf-2' : 'ri-file'" class="size-8" />{{ $extOf($m) }}</span>
                                             @endif
-                                            @if ($trash)
-                                                @php $left = $leftDays($m); @endphp
-                                                <span @class(['absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-small font-medium', 'bg-danger-text text-on-primary' => $left <= 2, 'bg-warning text-on-warning' => $left > 2])><x-bs-admin::icon name="ri-time" class="size-3.5" />{{ __('media.lib.days_left', ['n' => $left]) }}</span>
-                                            @endif
                                         </span>
+                                        @php $chip = $useChip($m); @endphp
+                                        <span data-use="{{ $chip['tone'] }}" class="mx-2.5 mt-2 flex min-w-0 items-start gap-1 text-start text-[calc(0.875rem+var(--user-text-boost))] leading-[1.4] font-medium text-balance [overflow-wrap:anywhere] {{ $chipInk[$chip['tone']] }}"><x-bs-admin::icon :name="$chip['icon']" class="mt-[0.1em] size-[1.1em] shrink-0" /><span class="min-w-0">{{ $chip['text'] }}</span></span>
                                         <span class="flex min-w-0 flex-col gap-0.5 px-2.5 py-2">
                                             <span class="flex min-w-0 text-body font-medium text-text"><span class="truncate">{{ $dot ? substr($name, 0, $dot) : $name }}</span><span class="shrink-0">{{ $dot ? substr($name, $dot) : '' }}</span></span>
                                             <span class="truncate text-small text-text-muted">{{ $dims($m) }} · {{ Library::bytes((int) $m->size) }}</span>
@@ -377,6 +406,7 @@
                                         <th scope="col" class="hidden py-2 text-start font-medium min-[900px]:table-cell">{{ __('media.lib.col_type') }}</th>
                                         <th scope="col" class="hidden py-2 text-start font-medium min-[1100px]:table-cell">{{ __('media.lib.col_dims') }}</th>
                                         <th scope="col" class="hidden py-2 text-end font-medium min-[600px]:table-cell">{{ __('media.lib.col_size') }}</th>
+                                        <th scope="col" class="hidden py-2 ps-3 text-start font-medium min-[600px]:table-cell">{{ __('media.lib.col_use') }}</th>
                                         <th scope="col" class="hidden py-2 text-start font-medium min-[1100px]:table-cell">{{ __('media.lib.col_date') }}</th>
                                         <th scope="col" class="py-2"><span class="sr-only">{{ __('admin.actions') }}</span></th>
                                     </tr>
@@ -385,6 +415,7 @@
                                     @foreach ($rows as $m)
                                         @php $on = in_array($m->ulid, $picked, true); @endphp
                                         @php $name = $m->original_filename ?: $m->slug ?: $extOf($m); @endphp
+                                        @php $chip = $useChip($m); @endphp
                                         <tr wire:key="ml-{{ $m->ulid }}" @class(['border-b border-border', 'bg-primary/7' => $on])>
                                             <td class="py-1.5">
                                                 @if ($canPick)
@@ -402,11 +433,12 @@
                                             </td>
                                             <td class="max-w-0 py-1.5 pe-3">
                                                 <button type="button" id="mopen-{{ $m->ulid }}" class="block max-w-full truncate text-start font-medium text-text hover:text-primary-text" wire:click="openDetail({{ Js::from($m->ulid) }})" title="{{ $name }}">{{ $name }}</button>
-                                                <span class="block truncate text-small text-text-muted min-[1100px]:hidden">{{ $extOf($m) }} · {{ $dims($m) }} · {{ Library::bytes((int) $m->size) }}@if ($trash) · {{ __('media.lib.days_left', ['n' => $leftDays($m)]) }}@endif</span>
+                                                <span class="block truncate text-small text-text-muted min-[1100px]:hidden">{{ $extOf($m) }} · {{ $dims($m) }} · {{ Library::bytes((int) $m->size) }}<span class="min-[600px]:hidden"> · {{ $chip['text'] }}</span></span>
                                             </td>
                                             <td class="hidden py-1.5 min-[900px]:table-cell">{{ $extOf($m) }}</td>
                                             <td class="hidden py-1.5 whitespace-nowrap min-[1100px]:table-cell">{{ $dims($m) }}</td>
                                             <td class="hidden py-1.5 text-end whitespace-nowrap min-[600px]:table-cell">{{ Library::bytes((int) $m->size) }}</td>
+                                            <td class="hidden py-1.5 ps-3 min-[600px]:table-cell"><span data-use="{{ $chip['tone'] }}" class="inline-flex min-h-6 max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-caption font-semibold leading-[1.4] [overflow-wrap:anywhere] {{ $chipFill[$chip['tone']] }} {{ $chipInk[$chip['tone']] }}"><x-bs-admin::icon :name="$chip['icon']" class="size-[1.1em] shrink-0" />{{ $chip['text'] }}</span></td>
                                             <td class="hidden py-1.5 whitespace-nowrap min-[1100px]:table-cell">{{ $m->created_at?->timezone(config('app.timezone'))->format('d/m/Y') }}</td>
                                             <td class="py-1.5 text-end"><x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="openDetail({{ Js::from($m->ulid) }})">{{ __('media.lib.details') }}</x-bs-admin::button></td>
                                         </tr>

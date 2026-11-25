@@ -6,6 +6,7 @@
     'clear' => null,
     'clearCloses' => false,
     'label' => null,
+    'splitAt' => null,
 ])
 @php
     // The filters of a record list (canvas [data-lf] / .lf-* / .ql-pop, K69 + K46), two surfaces from one list of sections:
@@ -25,13 +26,19 @@
     //            filters when its value differs from default (its first option unless given).
     //            sheet: the section lives in the Filter sheet only, never as a button of its own (the status groups,
     //            which have their own row from 900px; "Hiện trên thẻ"). class: added to the section and its jump
-    //            button in the sheet, to show it only at some widths (the groups: `min-[900px]:hidden`).
+    //            button in the sheet, and to its own button from 900px, to show it only at some widths (the groups:
+    //            `min-[900px]:hidden`; the media library's «Thư mục» while its folder column is hidden).
+    //            action: array{label: string, icon: string, call: string} — one row under the section's options in the
+    //            sheet only, in the accent colour, that closes the sheet and runs the host's public method `call` (the
+    //            media library's «Quản lý thư mục»).
     //            reset: the host's public method that clears this section alone. It adds a footer to the section's own panel
     //            from 900px: [Bỏ chọn] [$results], so the panel closes with the count of what it found.
     // $active: how many conditions are on (shown on the Lọc button and in its name).
     // $activeNarrow: the count below 900px when it differs — a list whose status groups have their own row from 900
     //            and live in the sheet below adds a chosen group there only (canvas fN / fNm). The button shows
     //            and is named by the count of its width; its tint follows $active.
+    // $splitAt: array{wide: string, narrow: string} — the classes that hide the wide / the narrow count, when the two
+    //            part at another width than the 900px screen (the media library's folder column, a container width).
     // $results: the footer button text, e.g. "Xem 12 dòng" — filters apply as they change, so it only closes the sheet.
     // $clear: the host's public method that resets every filter (shown when $active > 0).
     // $clearCloses: also close the sheet on [Bỏ lọc] (off by default; the lists whose board closes it turn it on).
@@ -43,6 +50,8 @@
     $narrow = $activeNarrow ?? $active;
     $nameNarrow = $narrow > 0 ? __('admin.list.filter_active', ['n' => $narrow]) : $label;
     $split = $narrow !== $active;
+    $hideWide = $splitAt['wide'] ?? 'max-[899.98px]:hidden';
+    $hideNarrow = $splitAt['narrow'] ?? 'min-[900px]:hidden';
     $badge = 'inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-caption font-bold leading-5 text-white';
     // stable across renders: a live update that renamed the radio groups could drop the checked state and focus
     $uid = substr(md5(implode('|', array_map(fn (array $s): string => $s['key'].':'.$s['model'], $sections))), 0, 8);
@@ -86,7 +95,7 @@
 @endphp
 <div {{ $attributes->merge(['class' => 'list-filters flex min-w-0 shrink-0 flex-wrap items-center gap-2']) }}>
     @foreach (array_filter($view, fn (array $s): bool => ! ($s['sheet'] ?? false)) as $section)
-        <div class="relative hidden shrink-0 min-[900px]:block"
+        <div class="relative hidden shrink-0 min-[900px]:block {{ $section['class'] ?? '' }}"
              x-data="{
                  open: false,
                  show() { this.open = true; this.whenShown(() => { this.place(); (this.$refs.panel.querySelector('input:checked') || this.$refs.panel.querySelector('input'))?.focus(); }); },
@@ -161,13 +170,13 @@
             @else
                 {{-- two counts: the name is the hidden text of the width in force (one of the two is display: none) --}}
                 <span data-lf-text aria-hidden="true">{{ $label }}</span>
-                <span class="sr-only max-[899.98px]:hidden">{{ $name }}</span>
-                <span class="sr-only min-[900px]:hidden">{{ $nameNarrow }}</span>
+                <span class="sr-only {{ $hideWide }}">{{ $name }}</span>
+                <span class="sr-only {{ $hideNarrow }}">{{ $nameNarrow }}</span>
                 @if ($active > 0)
-                    <span data-lf-count class="{{ $badge }} max-[899.98px]:hidden" aria-hidden="true">{{ $active }}</span>
+                    <span data-lf-count class="{{ $badge }} {{ $hideWide }}" aria-hidden="true">{{ $active }}</span>
                 @endif
                 @if ($narrow > 0)
-                    <span data-lf-count-narrow class="{{ $badge }} min-[900px]:hidden" aria-hidden="true">{{ $narrow }}</span>
+                    <span data-lf-count-narrow class="{{ $badge }} {{ $hideNarrow }}" aria-hidden="true">{{ $narrow }}</span>
                 @endif
             @endunless
         </button>
@@ -218,6 +227,12 @@
                                 <span class="font-normal text-text-muted">{{ __($section['multiple'] ? 'admin.list.choose_many' : 'admin.list.choose_one') }}</span>
                             </legend>
                             <x-bs-admin::filter-options :section="$section" :name="$panelId.'-'.$section['key']" />
+                            @if ($section['action'] ?? null)
+                                <button type="button" wire:click="{{ $section['action']['call'] }}" @click="hide(false)"
+                                        class="mt-1 flex min-h-menu-row w-full cursor-pointer items-center gap-2.5 border-t border-border ps-4 pe-4 text-start text-body font-semibold text-primary-text hover:bg-surface-hover any-pointer-coarse:min-h-menu-row-touch">
+                                    <x-bs-admin::icon :name="$section['action']['icon']" class="size-4.5 shrink-0" /><span class="min-w-0 [overflow-wrap:anywhere]">{{ $section['action']['label'] }}</span>
+                                </button>
+                            @endif
                         </fieldset>
                         </div>
                     @endforeach

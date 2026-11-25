@@ -5,6 +5,8 @@ namespace App\Modules\Admin\Support;
 use App\Modules\Media\Models\Media;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
+use App\Modules\Tenancy\Context\SiteTime;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -40,15 +42,23 @@ final class MediaLibraryDirectory
 
     public const array USES = ['used', 'unused'];
 
+    /** «Thời gian» by upload day: every time, today, the last 7 / 30 / 90 days, or RANGE (the two dates decide). */
+    public const array WHEN = ['', 'today', '7', '30', '90', self::RANGE];
+
+    public const string RANGE = 'range';
+
     public const int SEARCH_MAX = 100;
 
     public function __construct(private MediaUsageLocator $usage) {}
 
     /**
      * The files of one place (all, unfiled, one folder with its sub-folders, or the Trash) matching
-     * the conditions. `folders` lists the folder and its sub-folders; null is every file.
+     * the conditions. `folders` lists the folder and its sub-folders; null is every file. `by` names
+     * the uploaders (user ids; none = anyone); `since` / `until` bound the upload time (until is the
+     * first instant after the window). Each is a plain condition on the site's own rows, so the cursor
+     * pages and the (site_id, created_at) index serve every combination.
      *
-     * @param  array{folders: list<int>|null, unfiled: bool, trash: bool, search: string, kinds: list<string>, formats: list<string>, uses: list<string>}  $f
+     * @param  array{folders: list<int>|null, unfiled: bool, trash: bool, search: string, kinds: list<string>, formats: list<string>, uses: list<string>, by?: list<int>, since?: CarbonImmutable|null, until?: CarbonImmutable|null}  $f
      * @return Builder<Media>
      */
     public function filtered(array $f): Builder
@@ -81,6 +91,16 @@ final class MediaLibraryDirectory
         $uses = array_values(array_intersect($f['uses'], self::USES));
         if (! $f['trash'] && count($uses) === 1) {
             $this->usage->constrain($query, $uses[0] === 'used');
+        }
+
+        if (($f['by'] ?? []) !== []) {
+            $query->whereIn('created_by', $f['by']);
+        }
+        if (($f['since'] ?? null) !== null) {
+            $query->where('created_at', '>=', $f['since']);
+        }
+        if (($f['until'] ?? null) !== null) {
+            $query->where('created_at', '<', $f['until']);
         }
 
         $term = mb_substr(trim($f['search']), 0, self::SEARCH_MAX);
@@ -154,21 +174,104 @@ final class MediaLibraryDirectory
     }
 
     /**
-     * Live files per folder (null key = unfiled) and the Trash total, in one statement.
+     * The upload-time window of a «Thời gian» choice by the site's own calendar (as the post list
+     * reads it): today from its midnight, the last N days counting today, a range from the start of
+     * its first day to the end of its last. [since, until) — either end null when open.
      *
-     * @return array{byFolder: array<int, int>, unfiled: int, all: int, trash: int}
+     * @return array{0: CarbonImmutable|null, 1: CarbonImmutable|null}
+     */
+    public static function window(string $when, string $from = '', string $to = ''): array
+    {
+        $zone = app(SiteTime::class)->zone();
+        $today = CarbonImmutable::now($zone)->startOfDay();
+        if ($when === self::RANGE) {
+            $day = fn (string $date): ?CarbonImmutable => $date === '' ? null : CarbonImmutable::parse($date, $zone)->startOfDay();
+
+            return [$day($from)?->utc(), $day($to)?->addDay()->utc()];
+        }
+        if ($when === '' || ! in_array($when, self::WHEN, true)) {
+            return [null, null];
+        }
+        $start = $when === 'today' ? $today : $today->subDays(Cast::int($when) - 1);
+
+        return [$start->utc(), $today->addDay()->utc()];
+    }
+
+    /**
+     * How many of a query's files each uploader sent (user id => count), in one statement: the
+     * «Người tạo» counts, read with every condition but that one.
+     *
+     * @param  Builder<Media>  $query
+     * @return array<int, int>
+     */
+    public function uploaderCounts(Builder $query): array
+    {
+        $out = [];
+        foreach ((clone $query)->toBase()->whereNotNull('created_by')->groupBy('created_by')->get(['created_by', DB::raw('count(*) as n')]) as $row) {
+            $out[Cast::int($row->created_by)] = Cast::int($row->n);
+        }
+
+        return $out;
+    }
+
+    /**
+     * How many of a query's files each «Thời gian» choice holds, in one statement (RANGE: the dates
+     * given, every file while none is): read with every condition but that one.
+     *
+     * @param  Builder<Media>  $query
+     * @return array<int|string, int> keyed by the WHEN choice (PHP keeps '7' / '30' / '90' as int keys)
+     */
+    public function whenCounts(Builder $query, string $from, string $to): array
+    {
+        $select = [];
+        $bindings = [];
+        foreach (self::WHEN as $i => $when) {
+            [$since, $until] = self::window($when, $from, $to);
+            $parts = [];
+            if ($since !== null) {
+                $parts[] = 'created_at >= ?';
+                $bindings[] = $since;
+            }
+            if ($until !== null) {
+                $parts[] = 'created_at < ?';
+                $bindings[] = $until;
+            }
+            $select[] = $parts === [] ? "count(*) as w{$i}" : 'count(*) filter (where '.implode(' and ', $parts).") as w{$i}";
+        }
+        $row = (clone $query)->toBase()->selectRaw(implode(', ', $select), $bindings)->first();
+        $out = [];
+        foreach (self::WHEN as $i => $when) {
+            $out[$when] = Cast::int($row->{"w{$i}"} ?? 0);
+        }
+
+        return $out;
+    }
+
+    /**
+     * Live files per folder (null key = unfiled), the Trash total and how many files (live and in
+     * the Trash) each uploader sent, in one statement.
+     *
+     * @return array{byFolder: array<int, int>, unfiled: int, all: int, trash: int, uploaders: array<int, int>}
      */
     public function counts(bool $withTrash): array
     {
         $rows = DB::table('media')
             ->where('site_id', app(CurrentSite::class)->id())
-            ->groupByRaw('grouping sets ((folder_id, deleted_at is null), (deleted_at is null))')
-            ->get([DB::raw('folder_id'), DB::raw('deleted_at is null as live'), DB::raw('grouping(folder_id) as g'), DB::raw('count(*) as n')]);
+            ->groupByRaw('grouping sets ((folder_id, deleted_at is null), (deleted_at is null), (created_by))')
+            ->get([DB::raw('folder_id'), DB::raw('created_by'), DB::raw('deleted_at is null as live'), DB::raw('grouping(folder_id) as g'), DB::raw('grouping(created_by) as gc'), DB::raw('count(*) as n')]);
 
         $byFolder = [];
+        $uploaders = [];
         $unfiled = $all = $trash = 0;
         foreach ($rows as $row) {
             $n = Cast::int($row->n);
+            if (Cast::int($row->gc) === 0) {
+                if ($row->created_by !== null) {
+                    $uploaders[Cast::int($row->created_by)] = $n;
+                }
+
+                continue;
+            }
             if (Cast::int($row->g) === 1) {
                 $row->live ? $all = $n : $trash = $n;
 
@@ -180,6 +283,6 @@ final class MediaLibraryDirectory
             $row->folder_id === null ? $unfiled = $n : $byFolder[Cast::int($row->folder_id)] = $n;
         }
 
-        return ['byFolder' => $byFolder, 'unfiled' => $unfiled, 'all' => $all, 'trash' => $withTrash ? $trash : 0];
+        return ['byFolder' => $byFolder, 'unfiled' => $unfiled, 'all' => $all, 'trash' => $withTrash ? $trash : 0, 'uploaders' => $uploaders];
     }
 }
