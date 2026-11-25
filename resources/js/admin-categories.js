@@ -1027,7 +1027,7 @@ window.Alpine.data('bsCategories', (cfg) => {
                 : mode === 'own' ? (count ? fill(t.bandShortOwnN, { n: count }) : t.bandShortOwnEmpty)
                     : (count ? fill(t.bandShortDefN, { n: count }) : t.bandShortDefEmpty);
             return {
-                top, kind, nowTitle, nowSub, list: blocks.map((b) => b.name + ' · ' + b.kind), canEdit: mode !== 'none', editHint, short,
+                top, kind, nowTitle, nowSub, list: blocks.map((b) => b.name + ' · ' + b.kind + (b.items > 0 ? ' · ' + fill(t.bandItems, { n: b.items }) : '')), canEdit: mode !== 'none', editHint, short,
                 defSub: siteList.length ? fill(t.bandOptDefHas, { list: siteList.map((b) => b.name).join(', ') }) : t.bandOptDefNone,
                 dropWarn: drop, dropText: drop ? fill(t.bandDrop, { n: ownList.length }) : '',
             };

@@ -46,7 +46,7 @@ final readonly class CategoryBands
      * category left out of the answer follows the site's default in both bands (see blank()).
      *
      * @param  list<int>  $ids
-     * @return array<int, array<string, array{mode: string, own: array<string, list<array{name: string, kind: string}>>}>>
+     * @return array<int, array<string, array{mode: string, own: array<string, list<array{name: string, kind: string, items: int}>>}>>
      */
     public function forCategories(array $ids): array
     {
@@ -66,7 +66,7 @@ final readonly class CategoryBands
     /**
      * One category's two bands.
      *
-     * @return array<string, array{mode: string, own: array<string, list<array{name: string, kind: string}>>}>
+     * @return array<string, array{mode: string, own: array<string, list<array{name: string, kind: string, items: int}>>}>
      */
     public function of(Taxonomy $category): array
     {
@@ -87,7 +87,7 @@ final readonly class CategoryBands
     /**
      * Both bands of a category with no value of its own.
      *
-     * @return array<string, array{mode: string, own: array<string, list<array{name: string, kind: string}>>}>
+     * @return array<string, array{mode: string, own: array<string, list<array{name: string, kind: string, items: int}>>}>
      */
     public static function blank(): array
     {
@@ -106,7 +106,7 @@ final readonly class CategoryBands
      * The site's default blocks of each band, per language of the site (a language with none of its
      * own showing the default language's, as the storefront does).
      *
-     * @return array<string, array<string, list<array{name: string, kind: string}>>>
+     * @return array<string, array<string, list<array{name: string, kind: string, items: int}>>>
      */
     public function site(): array
     {
@@ -137,10 +137,11 @@ final readonly class CategoryBands
     }
 
     /**
-     * Each block of a list as the drawer names it: its heading or text when it has one, then its kind.
+     * Each block of a list as the drawer names it: its heading or text when it has one, then its kind
+     * and how many items it holds.
      *
      * @param  array<array-key, mixed>  $blocks
-     * @return list<array{name: string, kind: string}>
+     * @return list<array{name: string, kind: string, items: int}>
      */
     public static function names(array $blocks): array
     {
@@ -150,8 +151,11 @@ final readonly class CategoryBands
                 continue;
             }
             $kind = BlockKinds::of($block['type'])['label'];
-            $name = BlockKinds::preview(Cast::arr($block['props'] ?? null));
-            $out[] = ['name' => $name !== '' ? $name : $kind, 'kind' => $kind];
+            $props = Cast::arr($block['props'] ?? null);
+            $name = BlockKinds::preview($props);
+            // how many items the block holds (a feature grid's cards, a gallery's pictures): 0 for a block without a list
+            $items = is_array($props['items'] ?? null) ? count($props['items']) : 0;
+            $out[] = ['name' => $name !== '' ? $name : $kind, 'kind' => $kind, 'items' => $items];
         }
 
         return $out;
@@ -162,7 +166,7 @@ final readonly class CategoryBands
      * gets an answer (its own, else the default language's); without, only the languages stored.
      *
      * @param  array<array-key, mixed>  $value
-     * @return array<string, list<array{name: string, kind: string}>>
+     * @return array<string, list<array{name: string, kind: string, items: int}>>
      */
     private function perLocale(array $value, bool $fill): array
     {

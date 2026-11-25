@@ -27,8 +27,8 @@ const ADMIN_HAND_BUILT_PARTS = [
     'accept-invitation.blade.php' => [0, 3, 0],
     // error lines under the inline name and slug fields
     'catalog/index.blade.php' => [0, 2, 0],
-    // error lines under the panel's fields, the tree's error state, lines read out inside a shared alert, and the drawer's «+N» language panel (a popover on the drawer's own Alpine state, with its «no result» line; the shared bar's panel is bound to its own links)
-    'categories/index.blade.php' => [1, 6, 0],
+    // error lines under the panel's fields, the tree's error state and lines read out inside a shared alert
+    'categories/index.blade.php' => [0, 5, 0],
     // a dashboard card's error line above its "Thử lại"
     'dashboard/card-error.blade.php' => [0, 1, 0],
     // error lines under the button editor's fields

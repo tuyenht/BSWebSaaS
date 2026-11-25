@@ -62,7 +62,7 @@
             'bandTop', 'bandBot', 'bandShortNone', 'bandShortOwnN', 'bandShortOwnEmpty', 'bandShortDefN', 'bandShortDefEmpty',
             'bandNoneT', 'bandNoneS', 'bandEmptyOwn', 'bandEmptyDef', 'bandEmptyS', 'bandOwnT', 'bandOwnS', 'bandDefT', 'bandDefS',
             'bandHintOwnHas', 'bandHintOwnEmpty', 'bandHintDef', 'bandOptDefHas', 'bandOptDefNone', 'bandDrop', 'bandPage', 'bandPageAny',
-            'bandOpening', 'bandMapAria',
+            'bandOpening', 'bandMapAria', 'bandItems',
         ])->mapWithKeys(fn (string $k): array => [$k => $u(\Illuminate\Support\Str::snake($k))])->all();
         $config = [
             'section' => $screen['section']['key'], 'label' => $label, 'main' => $main, 'locales' => $locales, 'langNames' => $langNames,
@@ -349,7 +349,7 @@
                                 class="inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-1 rounded-full border border-border-strong bg-surface px-3 text-small whitespace-nowrap text-text hover:bg-surface-hover any-pointer-coarse:min-h-hit">
                                 <span x-text="'+' + langMore"></span><x-bs-admin::icon name="ri-arrow-down-s" class="size-4" />
                             </button>
-                            <div x-show="langOpen" x-cloak role="dialog" aria-label="{{ $u('lang_panel') }}"
+                            <x-bs-admin::lang-panel :label="$u('lang_panel')" x-show="langOpen" x-cloak :none="count($locales) >= 6 ? '! langAnyHit()' : null"
                                 class="absolute start-0 top-[calc(100%+0.25rem)] z-30 w-[min(17.5rem,calc(100cqw-1rem))] rounded-md border border-border bg-surface p-1.5 text-body shadow-card">
                                 <p class="mx-2 mb-1.5 mt-0.5 text-caption text-text-muted" x-text="langProg"></p>
                                 @if (count($locales) >= 6)
@@ -365,16 +365,15 @@
                                         @if ($c === $main)<span class="lb-star" title="{{ __('admin.lb.source_tip') }}"><x-bs-admin::icon name="ri-star-fill" class="!size-[calc(0.8125rem+var(--user-text-boost))]" /></span>@else<span></span>@endif
                                     </button>
                                 @endforeach
-                                @if (count($locales) >= 6)
-                                    <p class="lb-none" role="status" x-show="! langAnyHit()" x-cloak>{{ __('admin.lb.no_result') }}</p>
-                                @endif
                                 @if ($langManage !== null)
-                                    <div class="my-1 h-px bg-border" aria-hidden="true"></div>
-                                    <a href="{{ $langManage }}" data-cm-lang-manage wire:navigate class="flex min-h-menu-row items-center gap-2 rounded px-2.5 text-text no-underline hover:bg-surface-hover any-pointer-coarse:min-h-menu-row-touch">
-                                        <x-bs-admin::icon name="ri-settings-3" class="size-4 shrink-0 text-text-muted" /><span>{{ __('admin.lb.manage') }}</span>
-                                    </a>
+                                    <x-slot:foot>
+                                        <div class="my-1 h-px bg-border" aria-hidden="true"></div>
+                                        <a href="{{ $langManage }}" data-cm-lang-manage wire:navigate class="flex min-h-menu-row items-center gap-2 rounded px-2.5 text-text no-underline hover:bg-surface-hover any-pointer-coarse:min-h-menu-row-touch">
+                                            <x-bs-admin::icon name="ri-settings-3" class="size-4 shrink-0 text-text-muted" /><span>{{ __('admin.lb.manage') }}</span>
+                                        </a>
+                                    </x-slot:foot>
                                 @endif
-                            </div>
+                            </x-bs-admin::lang-panel>
                         </div>
                         <p class="flex items-start gap-2 rounded px-3 py-2 text-small leading-normal" x-bind:class="lineWarn ? 'bg-warning-soft text-warning-text' : 'border border-border bg-surface-muted text-text'">
                             <span x-show="!lineWarn"><x-bs-admin::icon name="ri-information" class="mt-0.5 size-4 shrink-0" /></span>
@@ -385,7 +384,7 @@
                 @endif
 
                 <div class="flex flex-col gap-1.5">
-                    <label for="cm-name" class="text-small font-semibold text-text-strong">{{ $u('f_name') }} <span class="text-danger-text" aria-hidden="true">*</span>@if ($multi) <span class="text-caption text-text-muted" x-text="cur.toUpperCase()"></span>@endif</label>
+                    <label for="cm-name" class="text-small font-semibold text-text-strong">{{ $u('f_name') }} <span class="text-danger-text" aria-hidden="true">*</span>@if ($multi) <x-bs-admin::lang-chip x="cur" />@endif</label>
                     <x-bs-admin::input id="cm-name" maxlength="{{ $screen['limits']['name'] }}" aria-required="true" aria-describedby="cm-name-m" x-model="fName"
                         x-bind:dir="'ltr'" x-on:blur="pan && cur === {{ $j($main) }} && (pan.touched = true)" x-bind:aria-invalid="pan && nameBad ? 'true' : null" placeholder="{{ $namePh }}" />
                     <p id="cm-name-m" x-show="pan && nameBad" role="alert" class="text-small text-danger-text">{{ __('categories.reason_name_invalid') }}</p>
@@ -393,7 +392,7 @@
                 </div>
 
                 <div class="flex flex-col gap-1.5">
-                    <label for="cm-slug" class="text-small font-semibold text-text-strong">{{ $u('f_slug') }}@if ($multi) <span class="text-caption text-text-muted" x-text="cur.toUpperCase()"></span>@endif</label>
+                    <label for="cm-slug" class="text-small font-semibold text-text-strong">{{ $u('f_slug') }}@if ($multi) <x-bs-admin::lang-chip x="cur" />@endif</label>
                     <div class="flex min-w-0 items-stretch overflow-hidden rounded border border-border-input bg-surface-muted focus-ring-within">
                         <span class="flex min-w-0 max-w-[50%] items-center border-r border-border-input px-2 font-mono text-caption text-text-muted [overflow-wrap:anywhere]" x-text="(@js($bases)[cur] || '')" x-bind:title="(@js($bases)[cur] || '')"></span>
                         <input id="cm-slug" type="text" dir="ltr" inputmode="url" autocapitalize="off" spellcheck="false" maxlength="{{ $screen['limits']['slug'] }}" placeholder="tin-cong-ty"
@@ -460,7 +459,7 @@
                     <section id="cm-bands" class="flex min-w-0 flex-col gap-3 border-t border-border pt-4" aria-labelledby="cm-bands-t">
                         <div class="flex flex-wrap items-center gap-2">
                             <h3 id="cm-bands-t" class="m-0 text-body font-semibold text-text-strong [overflow-wrap:anywhere]">{{ $u('bands_title') }}</h3>
-                            @if ($multi)<span class="text-caption text-text-muted" x-text="cur.toUpperCase()"></span>@endif
+                            @if ($multi)<x-bs-admin::lang-chip x="cur" />@endif
                         </div>
                         <p class="m-0 text-small text-text-muted">{{ $u('bands_lead') }}</p>
                         <ol class="m-0 flex list-none flex-col gap-1 rounded-md bg-surface-muted p-2" x-bind:aria-label="pan ? bandMapLabel : ''">
@@ -515,7 +514,7 @@
                         @endforeach
                     </section>
                     <div class="flex flex-col gap-1.5">
-                        <label for="cm-desc" class="text-small font-semibold text-text-strong">{{ $u('f_desc') }}@if ($multi) <span class="text-caption text-text-muted" x-text="cur.toUpperCase()"></span>@endif</label>
+                        <label for="cm-desc" class="text-small font-semibold text-text-strong">{{ $u('f_desc') }}@if ($multi) <x-bs-admin::lang-chip x="cur" />@endif</label>
                         <textarea id="cm-desc" rows="3" maxlength="{{ $screen['limits']['description'] }}" x-model="pan.d.descriptions[cur]" placeholder="{{ $products ? $u('desc_ph_products') : $u('desc_ph_posts') }}"
                             class="field w-full rounded border border-border-input bg-surface-muted px-3"></textarea>
                         <p class="text-small text-text-muted">{{ $u('f_desc_hint') }}</p>
@@ -537,7 +536,7 @@
                         </div>
                     </div>
                     <x-bs-admin::seo-fields title-model="seoTitle" description-model="seoDescription" page-title-model="seoName" slug-model="seoSlug"
-                        :kind="$products ? 'product' : 'post'" :address="['base' => $bases[$main] ?? '', 'home' => null, 'homeSlug' => 'home']" :locale="$main" :multi-locale="$multi" id="cm-seo" />
+                        :kind="$products ? 'product' : 'post'" :address="['base' => $bases[$main] ?? '', 'home' => null, 'homeSlug' => 'home']" :locale="$main" :multi-locale="$multi" :label-chip="$multi ? 'cur' : null" id="cm-seo" />
                 </div>
             </div>
             <x-slot:footer>
