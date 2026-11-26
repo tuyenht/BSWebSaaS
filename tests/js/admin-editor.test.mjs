@@ -87,6 +87,7 @@ test('values are compared the way the server writes them', () => {
     assert.equal(valueText(undefined), '');
     assert.equal(valueText(12), '12');
     assert.equal(valueText(['3', 3, '5']), '[3,5]');
+    assert.equal(valueText([{ key: 'f0', text: 'Lương: 9 triệu', accent: true }]), '[{"key":"f0","text":"Lương: 9 triệu","accent":true}]');
     assert.equal(countChanges(['a', 'b', 'c'], (f) => ({ a: 'x', b: '', c: [1] })[f], { a: 'x', b: 'y', c: '[1]' }), 1);
 });
 
