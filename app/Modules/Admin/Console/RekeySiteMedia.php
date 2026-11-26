@@ -13,6 +13,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\Site;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use League\Flysystem\FilesystemException;
 use Throwable;
 
 /**
@@ -42,9 +43,11 @@ use Throwable;
  * its seed source, as the seeder does today, then rewritten with the rest. The dry run lists these
  * as "to adopt" and counts their references. History (HISTORY) is never a reason to adopt; a seed
  * file missing from storage is never given a row; a website never takes in a file under another
- * website's old folder; two seed files with one name give one row; all of these stay unmatched and
- * are listed as "not adopted", in the dry run too. A seed whose copy fails is listed the same way
- * and the run goes on (the reference pass and the featured-picture usage still run).
+ * website's old folder, nor one under a folder several websites own; two seed files with one name
+ * give one row; all of these stay unmatched and are listed as "not adopted", in the dry run too. A
+ * seed whose copy fails, or whose key another writer took, is listed the same way and the run goes
+ * on (the reference pass and the featured-picture usage still run), then ends with a failure exit
+ * so a release step stops; any other error stops the run at once.
  *
  * Lives in Admin because it writes the content of several modules (Media depends on none of them);
  * the module list here is data, the work is in the Media module.
@@ -167,7 +170,10 @@ final class RekeySiteMedia extends Command
             $this->warn('Some files changed while this ran and were left as they are; run the command again.');
         }
         if ($seedsFailed) {
-            $this->warn('Some seed files could not be adopted and were left as they are; run the command again.');
+            // A failure exit, so a release step that runs this command stops here.
+            $this->error('Some seed files could not be adopted and were left as they are; run the command again.');
+
+            return self::FAILURE;
         }
 
         return self::SUCCESS;
@@ -175,9 +181,11 @@ final class RekeySiteMedia extends Command
 
     /**
      * Adopts the seed files the website's live places name (after the keys moved, before the
-     * reference pass), reporting each one. Its failures are its own: a seed that fails is reported
-     * and the rest still go, and a failure of the whole step is reported without stopping the run,
-     * so the reference pass and the featured-picture usage still run. Returns false when any failed.
+     * reference pass), reporting each one. A seed whose copy fails or whose key another writer took
+     * is reported and the rest still go; a storage error of the whole step is reported without
+     * stopping the run, so the reference pass and the featured-picture usage still run. Returns false
+     * when any of those failed (the command then ends with a failure exit). Any other error (a tenancy
+     * assertion among them) is thrown on and stops the run.
      *
      * @param  array<string, string>  $moves  old key => the key it moved to
      */
@@ -186,8 +194,8 @@ final class RekeySiteMedia extends Command
         try {
             $seeds = $rekey->seedAdoptions($siteId, $code, self::livePlaces(), [...$rekey->previousKeys($siteId), ...$moves], array_values($moves));
             $adoption = $rekey->adoptSeedFiles($siteId, $seeds['adopt']);
-        } catch (Throwable $e) {
-            $this->error('Seed files not adopted: '.$e->getMessage());
+        } catch (FilesystemException $e) {
+            $this->error('Seed files not adopted (storage error): '.$e->getMessage());
 
             return false;
         }

@@ -17,6 +17,7 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -563,6 +564,64 @@ it('never takes in a seed file under another website\'s old folder, and adopts i
         ->and(rekeyBrandLogo(1))->toBe("https://files.test/media/{$logo}");
 });
 
+it('adopts a seed file under a folder whose only row has no owner, as a hard-deleted owner leaves it', function (): void {
+    $admin = DB::connection('pgsql_admin');
+    $admin->table('reserved_site_codes')->where('code', 'an-vinh')->where('reason', 'legacy_key')->whereNotNull('site_id')->delete();
+    // The ownerless row the sites AFTER DELETE trigger leaves (or the freeze, where nobody held a row).
+    $inserted = $admin->table('reserved_site_codes')->insertOrIgnore(['code' => 'an-vinh', 'reason' => 'legacy_key', 'site_id' => null]) === 1;
+    try {
+        expect($admin->table('reserved_site_codes')->where('code', 'an-vinh')->where('reason', 'legacy_key')->pluck('site_id')->all())->toBe([null]);
+        Storage::disk(MediaKey::disk())->put(REKEY_SEED_LOGO, 'seed logo');
+        rekeyBrand(1, 'https://files.test/media/'.REKEY_SEED_LOGO);
+        $logo = siteCode(1).'/logo-e76d7cb1dfe4.png';
+
+        [$exit, $output] = rekeyRun(apply: true);
+
+        expect($exit)->toBe(0, $output)->and($output)->toContain('Seed files adopted: 1 of 1.')
+            ->and(rekeyKeys(1))->toBe([$logo])
+            ->and(rekeyBrandLogo(1))->toBe("https://files.test/media/{$logo}");
+    } finally {
+        if ($inserted) {
+            $admin->table('reserved_site_codes')->where('code', 'an-vinh')->where('reason', 'legacy_key')->whereNull('site_id')->delete();
+        }
+    }
+});
+
+it('never adopts a seed file under a folder several websites own, even for one of them', function (): void {
+    $admin = DB::connection('pgsql_admin');
+    $admin->table('reserved_site_codes')->insert([
+        ['code' => 'an-vinh', 'reason' => 'legacy_key', 'site_id' => 1],
+        ['code' => 'an-vinh', 'reason' => 'legacy_key', 'site_id' => 2],
+    ]);
+    $disk = Storage::disk(MediaKey::disk());
+    $disk->put(REKEY_SEED_LOGO, 'seed logo');
+    $address = 'https://files.test/media/'.REKEY_SEED_LOGO;
+    rekeyBrand(1, $address);
+    $line = 'not adopted: '.REKEY_SEED_LOGO.' (shared folder; left unmatched)';
+
+    [$exit, $output] = rekeyRun();
+    expect($exit)->toBe(0, $output)->and($output)->toContain('Seed files to adopt: 0.')->and($output)->toContain($line);
+    [$exit, $output] = rekeyRun(apply: true);
+    expect($exit)->toBe(0, $output)->and($output)->toContain('Seed files adopted: 0 of 0.')->and($output)->toContain($line)
+        ->and(rekeyKeys(1))->toBe([])
+        ->and($disk->allFiles(siteCode(1)))->toBe([])
+        ->and(rekeyBrandLogo(1))->toBe($address);
+});
+
+it('adopts a seed file under a folder whose only owner is the website itself', function (): void {
+    DB::connection('pgsql_admin')->table('reserved_site_codes')->insert(['code' => 'an-vinh', 'reason' => 'legacy_key', 'site_id' => 1]);
+    Storage::disk(MediaKey::disk())->put(REKEY_SEED_LOGO, 'seed logo');
+    rekeyBrand(1, 'https://files.test/media/'.REKEY_SEED_LOGO);
+    $logo = siteCode(1).'/logo-e76d7cb1dfe4.png';
+
+    [$exit, $output] = rekeyRun();
+    expect($exit)->toBe(0, $output)->and($output)->toContain('to adopt: '.REKEY_SEED_LOGO." -> {$logo}");
+    [$exit, $output] = rekeyRun(apply: true);
+    expect($exit)->toBe(0, $output)->and($output)->toContain('Seed files adopted: 1 of 1.')
+        ->and(rekeyKeys(1))->toBe([$logo])
+        ->and(rekeyBrandLogo(1))->toBe("https://files.test/media/{$logo}");
+});
+
 it('shows a seed file whose name a planned move takes as not adopted in the dry run too', function (): void {
     rekeyMedia(1, REKEY_LOGO);                                              // moves to {code}/logo-ab12cd.png
     $seed = 'an-vinh/brand/logo-ab12cd.jpg';                                // the same stem under another extension
@@ -650,7 +709,7 @@ it('reports a seed file whose copy fails, tries the next one, and still finishes
 
     [$exit, $output] = rekeyRun(apply: true);
 
-    expect($exit)->toBe(0, $output)
+    expect($exit)->toBe(1, $output)                                         // so the release step stops
         ->and($output)->toContain('Seed files adopted: 0 of 2.')
         ->and($output)->toContain('not adopted: '.REKEY_SEED_HERO.' (copy failed: ')
         ->and($output)->toContain('not adopted: '.REKEY_SEED_LOGO.' (copy failed: ')
@@ -659,6 +718,53 @@ it('reports a seed file whose copy fails, tries the next one, and still finishes
         ->and($output)->not->toContain('Stopped after')
         ->and(rekeyKeys(1))->toBe(["{$code}/logo-ab12cd.png"])
         ->and(rekeyBrandLogo(1))->toBe('https://files.test/media/'.REKEY_SEED_LOGO);
+});
+
+/** Two seed files site 1's live places name (logo first in the adoption order), with their objects. */
+function rekeyTwoSeeds(): void
+{
+    $disk = Storage::disk(MediaKey::disk());
+    $disk->put(REKEY_SEED_LOGO, 'seed logo');
+    $disk->put(REKEY_SEED_HERO, 'seed hero');
+    rekeyBrand(1, 'https://files.test/media/'.REKEY_SEED_LOGO);
+    app(Tenancy::class)->enter(1, fn (): Entry => Entry::query()->create(['type' => 'post', 'status' => 'draft', 'meta' => ['image_url' => REKEY_SEED_HERO]]));
+}
+
+it('reports a seed whose key another writer took (a unique violation), adopts the next one and ends with a failure exit', function (): void {
+    rekeyTwoSeeds();
+    $code = siteCode(1);
+    $creates = 0;
+    Event::listen('eloquent.creating: '.Media::class, function () use (&$creates): void {
+        if (++$creates === 1) {
+            $pdo = new PDOException('duplicate key value violates unique constraint');
+            $pdo->errorInfo = ['23505', 7, 'duplicate key value violates unique constraint'];
+
+            throw new QueryException('pgsql', 'insert into "media"', [], $pdo);
+        }
+    });
+
+    [$exit, $output] = rekeyRun(apply: true);
+
+    expect($exit)->toBe(1, $output)
+        ->and($output)->toContain('Seed files adopted: 1 of 2.')
+        ->and($output)->toContain('not adopted: '.REKEY_SEED_LOGO." ({$code}/logo-e76d7cb1dfe4.png was taken meanwhile; left unmatched)")
+        ->and($output)->toContain('Some seed files could not be adopted')
+        ->and($output)->not->toContain('Stopped after')
+        ->and(rekeyKeys(1))->toBe(["{$code}/hero-home-7ca90eafe212.jpg"]);
+});
+
+it('stops the run on any other error while adopting a seed, a tenancy assertion among them', function (): void {
+    rekeyTwoSeeds();
+    Event::listen('eloquent.creating: '.Media::class, function (): void {
+        throw new RuntimeException('Tenant isolation assertion failed: a test stand-in.');
+    });
+
+    [$exit, $output] = rekeyRun(apply: true);
+
+    expect($exit)->toBe(1, $output)
+        ->and($output)->toContain('Stopped after 0 of 0 keys: Tenant isolation assertion failed: a test stand-in.')
+        ->and($output)->not->toContain('not adopted:')                     // never taken for a failed seed
+        ->and(rekeyKeys(1))->toBe([]);                                      // and the next seed was not tried
 });
 
 it('refuses a single-site install, whose files stay under their collections', function (): void {
