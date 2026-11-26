@@ -10,6 +10,7 @@ use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
@@ -654,6 +655,8 @@ it('offers «Tải ảnh lên vào đây» in the open folder’s menu and opens
 });
 
 it('says new files go to «Tất cả ảnh (Chưa phân loại)» outside a folder, in the Trash too', function (string $place): void {
+    // the bracket never breaks inside (non-breaking spaces), the whole phrase wraps when space runs out
+    expect(__('media.lib.up_to_all'))->toBe("Tất cả ảnh (Chưa\u{00A0}phân\u{00A0}loại)");
     $user = fdUser('admin');
     fdFolder(1, 'Công trình', 'cong-trinh', 1);
     fdFile(1, 'a.png');
@@ -681,6 +684,64 @@ it('lets an uploader without the folder rights upload into a folder, and refuses
 
         Livewire::actingAs($viewer)->test(Library::class)->call('uploadInto', 'cong-trinh')->assertForbidden();
         Livewire::actingAs($viewer)->test(Library::class)->call('openUpload', 'device')->assertForbidden();
+    });
+});
+
+it('never offers a folder being deleted in the background as where new files go', function (): void {
+    Queue::fake();
+    $user = fdUser('admin');
+    $leaving = fdFolder(1, 'Đang xóa', 'dang-xoa', 1);
+    fdFile(1, 'a.png', $leaving);
+    DeleteLargeMediaFolder::markPending(1, $leaving->id);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        // its menu item: the panel does not open, and the person is told why
+        Livewire::actingAs($user)->test(Library::class)->call('uploadInto', 'dang-xoa')
+            ->assertSet('folder', '')
+            ->assertSet('uploadOpen', false)
+            ->assertNotDispatched('media-upload-opened')
+            ->assertSet('toastTone', 'info')
+            ->assertSet('toast', __('media.lib.folder_deleting', ['name' => 'Đang xóa']));
+
+        // already open (it began deleting meanwhile): the panel and the drop cover name «Tất cả ảnh», as the endpoints file it
+        Livewire::actingAs($user)->test(Library::class)->call('setFolder', 'dang-xoa')->call('openUpload')
+            ->assertSeeHtml('data-upload-folder=""')
+            ->assertSeeHtml(e(__('media.lib.up_to_all')))
+            ->assertDontSeeHtml(e(__('media.lib.up_to_folder', ['name' => 'Đang xóa'])))
+            ->assertDontSeeHtml(e(__('media.lib.drop_to_folder', ['name' => 'Đang xóa'])));
+    });
+});
+
+it('saves a picture from «Từ đường link» into the folder in view, under the upload right', function (): void {
+    $user = fdUser('admin');
+    $folder = fdFolder(1, 'Công trình', 'cong-trinh', 1);
+    fdFile(1, 'a.png');
+    Http::fake(['https://93.184.216.34/xuong.png' => Http::response((string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', true), 200)]);
+
+    app(Tenancy::class)->enter(1, function () use ($user, $folder): void {
+        $page = Livewire::actingAs($user)->test(Library::class)->call('setFolder', 'cong-trinh')->call('openUpload')
+            ->set('pickerUrlInput', 'https://93.184.216.34/xuong.png')->call('previewPickerUrl')
+            ->assertHasNoErrors()
+            ->assertSet('pickerSource', 'url')
+            ->assertSeeHtml('wire:click="insertPicked"')
+            ->assertSee(__('media.picker_insert_count', ['count' => 1]));
+
+        $page->call('insertPicked')
+            ->assertHasNoErrors()
+            ->assertSet('pickerUrlPreview', null)
+            ->assertSet('pickerUrlInput', '')
+            ->assertSet('pickerSource', null)
+            ->assertSet('uploadOpen', true)
+            ->assertSet('toast', __('media.upload_success'))
+            ->assertDontSeeHtml('wire:click="insertPicked"');
+
+        $saved = Media::query()->latest('id')->firstOrFail();
+        expect($saved->folder_id)->toBe($folder->id)
+            ->and($saved->created_by)->toBe($user->id)
+            ->and($saved->collection)->toBe('library');
+
+        // with no preview (or the panel shut) the picker's insert stays closed here
+        $page->call('insertPicked')->assertForbidden();
     });
 });
 

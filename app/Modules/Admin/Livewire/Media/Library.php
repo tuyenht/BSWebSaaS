@@ -9,6 +9,8 @@ use App\Modules\Admin\Support\MediaLibraryDirectory;
 use App\Modules\Admin\Support\MediaUsageLocator;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
+use App\Modules\Media\Actions\RegisterMediaUpload;
+use App\Modules\Media\Exceptions\MediaRejectedException;
 use App\Modules\Media\Jobs\DeleteLargeMediaFolder;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\MediaFolder;
@@ -30,6 +32,7 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use LogicException;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -394,6 +397,12 @@ final class Library extends Component
         $folder = self::folderBySlug($slug);
         if ($folder === null) {
             return; // gone meanwhile, or never this site's
+        }
+        if (self::deleting($folder)) {
+            // being emptied in the background: the upload endpoints would leave a new file unsorted
+            $this->say(__('media.lib.folder_deleting', ['name' => $folder->name]), 'info');
+
+            return;
         }
         $this->setFolder((string) $folder->slug);
         if ($folder->parent_id !== null) {
@@ -1062,9 +1071,40 @@ final class Library extends Component
         abort(403);
     }
 
+    /**
+     * «Từ đường link» on the upload panel: the previewed picture is copied into the library, into the
+     * folder the panel names, under the same right as the device pane (media.upload). The shared
+     * picker's other insert, its bigint-id selection, stays closed on this page.
+     */
     public function insertPicked(): void
     {
-        abort(403);
+        abort_unless($this->uploadOpen && $this->hasUrlPick() && Gate::allows('media.upload'), 403);
+
+        $preview = $this->pickerUrlPreview ?? throw new LogicException('checked above');
+        try {
+            app(RegisterMediaUpload::class)->handle(
+                $preview['tempKey'],
+                $preview['filename'],
+                is_int(Auth::id()) ? Auth::id() : null,
+                mayRestore: Gate::allows('media.delete.any'),
+                folderId: $this->uploadFolder()?->id,
+            );
+        } catch (MediaRejectedException $e) {
+            $this->discardStagedUrlPreview(); // register may have dropped the staged bytes: a new preview is needed
+            $this->addError('pickerUrlInput', $e->userMessage());
+
+            return;
+        } catch (RuntimeException $e) {
+            report($e);
+            $this->discardStagedUrlPreview();
+            $this->addError('pickerUrlInput', __('media.err_unexpected'));
+
+            return;
+        }
+        $this->reset('pickerUrlInput', 'pickerUrlPreview', 'pickerUrlSaveCopy');
+        $this->pickerSource = null; // back to the sources, ready for the next file
+        $this->onPickerMediaUploaded();
+        $this->say(__('media.upload_success'));
     }
 
     public function pickerBulkDelete(): void
@@ -1220,6 +1260,9 @@ final class Library extends Component
             'treeN' => $treeN,
             'kidsOf' => $folders->whereNotNull('parent_id')->countBy('parent_id')->all(),
             'current' => $current,
+            // where a file added now goes (the upload panel, the drop cover): none in the Trash, outside
+            // a folder, or in a folder being deleted, as the upload endpoints decide
+            'upFolder' => $trash || $current === null || self::deleting($current) ? null : $current,
             'counts' => $counts,
             'rows' => $page['rows'],
             'olderUlid' => $page['older'],
@@ -1302,6 +1345,21 @@ final class Library extends Component
     {
         return Media::withTrashed()->whereIn('folder_id', $folderIds)
             ->offset(Cast::int(config('media.folder_undo_max_files', 100000)))->exists();
+    }
+
+    /**
+     * The folder a file added now goes into, as the upload panel names it: the one in view, unless
+     * that is the Trash, all files, the unsorted ones or a folder being deleted (the upload endpoints
+     * leave a file unsorted then too).
+     */
+    private function uploadFolder(): ?MediaFolder
+    {
+        if (($this->status === 'trash' && MediaDeleteRights::some()) || $this->folder === '' || $this->folder === '-') {
+            return null;
+        }
+        $folder = self::folderBySlug($this->folder);
+
+        return $folder !== null && ! self::deleting($folder) ? $folder : null;
     }
 
     /** Whether a queued job is deleting this folder: nothing new goes under it. */

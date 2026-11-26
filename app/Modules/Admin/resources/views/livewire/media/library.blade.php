@@ -12,8 +12,6 @@
     $siteTime = app(SiteTime::class);
     $canPick = $trash ? $canDelete : ($canUpload || $canDelete);
     $placeName = $trash ? __('media.lib.trash') : ($folder === '-' ? __('media.lib.unfiled') : ($current?->name ?? __('media.lib.all')));
-    // a new file goes into the folder in view (none in the Trash, «Tất cả ảnh» or «Chưa phân loại»)
-    $upFolder = $trash ? null : $current;
     $baseN = $trash ? $counts['trash'] : ($folder === '-' ? $counts['unfiled'] : ($current !== null ? ($treeN[$current->id] ?? 0) : $counts['all']));
     // the folders of one parent in their order, and the top-level ones (a folder goes in one of those)
     $siblings = fn ($f) => $folders->where('parent_id', $f->parent_id)->values();
@@ -112,24 +110,52 @@
 @endphp
 {{-- Files dragged onto the page (board 12): while they are over it, «Thả tệp vào đây» covers the screen; dropped, the
      upload panel opens on the device pane with them (handed over in the browser: a file cannot ride a Livewire request).
-     Only while uploading is possible here and the upload panel, with its own drop area, is shut. --}}
+     The whole window is the drop area, as the cover shows (listeners on the document while this page is mounted, gone
+     when it is left), so a file dropped on the side menu or the top bar never opens in the tab instead. Only file drags
+     count: a text or link drag, or one that starts on the page, is left alone, and a drop area of its own on the page
+     (the upload panel's) takes its drops first. Where uploading is not possible, a dropped file does nothing.
+     The cover cannot stay up: it goes when the drag leaves the window, on drop, dragend, Escape, window blur, a re-render,
+     and when no dragover has come for a second (browsers send one at least every 350ms while a drag is over the page). --}}
 <div class="flex min-w-0 flex-col gap-4" data-drop-ok="{{ $canUpload && ! $failed && ! $uploadOpen ? 'true' : 'false' }}"
      x-data="{
-         over: false, depth: 0,
-         files(e) { return this.$root.dataset.dropOk === 'true' && [...(e.dataTransfer?.types ?? [])].includes('Files') },
-         enter(e) { if (! this.files(e)) return; e.preventDefault(); this.depth++; this.over = true },
-         leave() { if (! this.over) return; this.depth = Math.max(0, this.depth - 1); if (this.depth === 0) this.over = false },
-         drop(e) {
-             const ok = this.files(e);
-             this.over = false; this.depth = 0;
-             if (! ok) return;
+         over: false, inner: false, timer: 0, off: null,
+         init() {
+             const on = (target, name, fn) => { target.addEventListener(name, fn); return () => target.removeEventListener(name, fn) };
+             const offs = [
+                 on(document, 'dragstart', () => { this.inner = true }),
+                 on(document, 'dragend', () => { this.inner = false; this.hide() }),
+                 on(document, 'dragenter', (e) => this.drag(e)),
+                 on(document, 'dragover', (e) => this.drag(e)),
+                 on(document, 'dragleave', (e) => { if (this.over && ! e.relatedTarget) this.later(100) }),
+                 on(document, 'drop', (e) => this.drop(e)),
+                 on(document, 'keydown', (e) => { if (e.key === 'Escape') this.hide() }),
+                 on(window, 'blur', () => this.hide()),
+             ];
+             this.$wire.$hook('morphed', () => this.hide());
+             this.off = () => offs.forEach((undo) => undo());
+         },
+         destroy() { this.off?.(); this.hide() },
+         files(e) { return ! this.inner && [...(e.dataTransfer?.types ?? [])].includes('Files') },
+         ok() { return this.$root.dataset.dropOk === 'true' },
+         later(ms) { clearTimeout(this.timer); this.timer = setTimeout(() => this.hide(), ms) },
+         hide() { clearTimeout(this.timer); this.over = false },
+         drag(e) {
+             if (e.defaultPrevented || ! this.files(e)) return;
              e.preventDefault();
+             if (! this.ok()) { e.dataTransfer.dropEffect = 'none'; this.hide(); return }
+             e.dataTransfer.dropEffect = 'copy';
+             this.over = true;
+             this.later(1000);
+         },
+         drop(e) {
+             this.hide();
+             if (e.defaultPrevented || ! this.files(e)) return;
+             e.preventDefault();
+             if (! this.ok()) return;
              const list = [...(e.dataTransfer?.files ?? [])];
              if (list.length) { window.__pendingPickerFiles = list; this.$wire.openUpload('device') }
          },
      }"
-     x-on:dragenter="enter($event)" x-on:dragover="if (files($event)) $event.preventDefault()" x-on:dragleave="leave()" x-on:drop="drop($event)"
-     x-on:drop.window="over = false; depth = 0"
      x-on:media-upload-opened.window="$nextTick(() => document.getElementById('media-up-h')?.focus())"
      x-on:keydown.slash.window="if (! ['INPUT','TEXTAREA','SELECT'].includes($event.target.tagName) && ! $event.target.isContentEditable) { $event.preventDefault(); document.getElementById('media-search')?.focus() }">
 
@@ -156,6 +182,12 @@
             <div class="min-h-[320px] overflow-hidden rounded-md border border-border">
                 @if ($pickerSource === 'url')
                     @include('admin::partials.media-picker-url-pane')
+                    {{-- the picker's footer button (board 13) for the previewed picture: it is copied into the library --}}
+                    @if ($this->hasUrlPick())
+                        <div class="flex justify-end border-t border-border px-[18px] py-3">
+                            <x-bs-admin::button color="primary" wire:click="insertPicked"><x-bs-admin::icon name="ri-check" class="size-4" />{{ __('media.picker_insert_count', ['count' => 1]) }}</x-bs-admin::button>
+                        </div>
+                    @endif
                 @elseif ($pickerSource === 'device')
                     @include('admin::partials.media-picker-device-pane')
                 @else
