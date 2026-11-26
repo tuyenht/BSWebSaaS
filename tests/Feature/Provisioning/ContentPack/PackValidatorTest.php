@@ -382,6 +382,19 @@ it('refuses a download button that names an image slot or a slot media.json does
         ->toContain("page:/gioi-thieu: document slot 'brochure' is not in media.json.");
 });
 
+it('refuses a page button that names a library file by its row or its key instead of a document slot', function (array $do): void {
+    ContentPacks::item($this->folder, 'pages.json', 'page:/gioi-thieu', function (array $page) use ($do): array {
+        $page['body']['vi'][] = ['type' => 'cta', 'props' => ['heading' => 'Hồ sơ năng lực', 'button_label' => 'Tải hồ sơ', 'button_url_do' => $do]];
+
+        return $page;
+    });
+
+    expect(implode("\n", cpProblems()))->toContain('page:/gioi-thieu: body (vi): A button points to a file that is not in this website’s library.');
+})->with([
+    'by its row' => [['k' => 'file', 'media' => '01JD6Q5Z8R3W4X2Y1V0T9S8R7Q']],
+    'by its key' => [['k' => 'file', 'file' => 's/library/brochure.pdf']],
+]);
+
 it('refuses a download button outside a page or post body', function (): void {
     cpAddSlot($this->folder, ['slot' => 'profile', 'kind' => 'document'], 'media/profile.pdf', "%PDF-1.4\n%%EOF\n");
     cpAddSetting($this->folder, 'setting:storefront.layout_blocks', ['post_aside' => ['vi' => ['blocks' => [['type' => 'consult', 'props' => [
