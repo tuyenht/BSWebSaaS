@@ -9,6 +9,7 @@ use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Admin\Support\SocialAuth;
 use App\Modules\Admin\Support\TenantMailer;
+use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\SocialIdentity;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
@@ -184,6 +185,11 @@ final readonly class OAuthController
 
         Auth::login($user);
         $request->session()->regenerate();
+        Audit::record('auth.login.succeeded', [
+            'actor_id' => $user->getAuthIdentifier(),
+            'actor_label' => $user->email,
+            'meta' => ['factor' => 'social', 'provider' => Cast::string($data['provider'] ?? null)],
+        ]);
 
         return redirect()->intended(route('admin.dashboard'))->withCookie($forget);
     }
@@ -230,13 +236,15 @@ final readonly class OAuthController
         // Fast path: a previously-established (provider, sub) link. The link was created by an
         // AUTHENTICATED connect (or an earlier verified-email login), so it is itself the proof
         // of ownership — no email_verified needed, which is what lets Facebook/MS/Yahoo work.
+        $linkedElsewhere = false;
         if ($sub !== '') {
             $linked = SocialIdentity::query()->where('provider', $provider)->where('sub', $sub)->first();
             if ($linked !== null) {
                 $user = User::find($linked->user_id);
                 if ($user instanceof User && $this->memberOfOrigin($user)) {
-                    return $this->bounceLogin($origin, $user, $nonceHash);
+                    return $this->bounceLogin($origin, $user, $nonceHash, $provider);
                 }
+                $linkedElsewhere = $user instanceof User;
             }
         }
 
@@ -245,7 +253,10 @@ final readonly class OAuthController
         $field = Cast::string(config("oauth.providers.$provider.email_field"), 'email');
         $email = $info[$field] ?? null;
         if (! is_string($email) || $email === '' || ($info['email_verified'] ?? false) !== true) {
-            return $this->failTo($origin, 'login', OAuthError::Failed);
+            // Nothing proves which account this is: say how to link it, not "try again" (retrying
+            // never helps — Facebook never asserts a verified email). A linked account that is
+            // simply not a member of this website is told so.
+            return $this->failTo($origin, 'login', $linkedElsewhere ? OAuthError::NotMember : OAuthError::NotLinked);
         }
 
         $user = User::query()->where('email', $email)->first();
@@ -266,7 +277,7 @@ final readonly class OAuthController
             );
         }
 
-        return $this->bounceLogin($origin, $user, $nonceHash);
+        return $this->bounceLogin($origin, $user, $nonceHash, $provider);
     }
 
     /**
@@ -325,6 +336,12 @@ final readonly class OAuthController
             ['user_id' => $user->getKey(), 'provider' => $provider],
             ['sub' => $sub, 'email' => Cast::stringOrNull($info['email'] ?? null)],
         );
+        Audit::record('auth.social.linked', [
+            'actor_id' => $user->getKey(),
+            'actor_label' => $user->email,
+            // The provider only, as the unlink row: the provider's email must not outlive the link.
+            'meta' => ['provider' => $provider],
+        ]);
 
         return redirect()->away($this->originPath($origin, 'account').'?tab=linked&oauth=connected');
     }
@@ -344,12 +361,13 @@ final readonly class OAuthController
      * The session lives on the origin host — bounce there with a single-use login token. The token
      * payload carries the nonce hash so finish() can verify the same browser that began the flow.
      */
-    private function bounceLogin(string $origin, User $user, string $nonceHash): RedirectResponse
+    private function bounceLogin(string $origin, User $user, string $nonceHash, string $provider): RedirectResponse
     {
         $token = Str::random(48);
         Cache::put('oauth-login:'.$token, [
             'uid' => $user->getAuthIdentifier(),
             'nonce' => $nonceHash,
+            'provider' => $provider,
         ], self::LOGIN_TTL);
 
         return redirect()->away($this->originPath($origin, 'oauth/finish').'?token='.$token);

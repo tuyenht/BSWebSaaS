@@ -19,6 +19,7 @@ enum OAuthError: string
     case NoRefreshToken = 'no_refresh_token';
     case NoAccount = 'no_account';
     case NotMember = 'not_member';
+    case NotLinked = 'not_linked';
     case AlreadyLinked = 'already_linked';
 
     public function message(): string
@@ -29,6 +30,7 @@ enum OAuthError: string
             self::NoRefreshToken => 'admin.oauth_no_refresh_token',
             self::NoAccount => 'admin.oauth_login_no_account',
             self::NotMember => 'admin.oauth_login_not_member',
+            self::NotLinked => 'admin.oauth_login_not_linked',
             self::AlreadyLinked => 'admin.social_already_linked',
         });
     }
