@@ -144,6 +144,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Markdown Mail Settings
+    |--------------------------------------------------------------------------
+    |
+    | The shared mail frame's own components (a website's logo, button colour
+    | and signature — Admin\Support\MailBrand) live in views/vendor/mail, in
+    | an html/ and a text/ copy, beside the framework's.
+    |
+    */
+
+    'markdown' => [
+        'theme' => 'default',
+        'paths' => [
+            dirname(__DIR__).'/resources/views/vendor/mail',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Daily limit of the platform's shared outbox
     |--------------------------------------------------------------------------
     |
