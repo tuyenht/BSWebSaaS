@@ -2391,7 +2391,7 @@ final class Planner
         $live = $row === null ? null : Cast::arr($row->value);
         $managed = $item->managedKeys();
         if ($item->key === self::BRAND_ITEM && $live !== null) {
-            $live = $this->brandImagesFromProfile($live, array_map('strval', array_keys(Cast::arr($item->data['value'] ?? null))));
+            $live = $this->brandImagesFromProfile($live, self::brandImagesOwned($managed));
         }
 
         $current = $live === null ? null : self::settingState($live, $managed);
@@ -2419,24 +2419,37 @@ final class Planner
     }
 
     /**
-     * The brand setting with each image the pack item names (logo, favicon, share image) that the
+     * The brand images (logo, favicon, share image) a brand item owns: every one for an item that
+     * owns the whole value, only its managed ones otherwise. The item decides each of them: one its
+     * value leaves out or states null ends with no image (Applier::brandImages clears the picture).
+     *
+     * @param  list<string>|null  $managed
+     * @return list<string>
+     */
+    public static function brandImagesOwned(?array $managed): array
+    {
+        return $managed === null ? self::BRAND_IMAGES : array_values(array_intersect(self::BRAND_IMAGES, $managed));
+    }
+
+    /**
+     * The brand setting with each image the pack item owns (logo, favicon, share image) that the
      * setting no longer holds read from the site profile's picture, in the address form the plan
      * writes: the loader (and the settings screen) store a brand image as the profile's picture and
-     * take its address out of the setting, so a brand image moved to the profile hashes as it did.
-     * An image the item does not name is never added (the item would plan to remove it). One read of
-     * the profile and one of its pictures (this website's, outside the Trash, pictures only), none when
-     * the setting still holds every named image.
+     * take its address out of the setting, so a brand image moved to the profile hashes as it did,
+     * and one the item no longer names shows as there, to be removed. An image the item does not own
+     * is never added. One read of the profile and one of its pictures (this website's, outside the
+     * Trash, pictures only), none when the setting still holds every owned image.
      *
      * @param  array<array-key, mixed>  $live
-     * @param  list<string>  $named  the keys the pack item's value names
+     * @param  list<string>  $owned  the brand images the pack item owns (brandImagesOwned)
      * @return array<array-key, mixed>
      */
-    private function brandImagesFromProfile(array $live, array $named): array
+    private function brandImagesFromProfile(array $live, array $owned): array
     {
         $columns = [];
-        foreach (self::BRAND_IMAGES as $slot) {
+        foreach ($owned as $slot) {
             $held = $live[$slot] ?? null;
-            if (in_array($slot, $named, true) && ! (is_string($held) && $held !== '')) {
+            if (! (is_string($held) && $held !== '')) {
                 $columns[$slot] = SiteProfile::IMAGE_COLUMNS[$slot];
             }
         }

@@ -227,26 +227,41 @@ final class Applier
      * The brand setting with each image the pack writes (logo, favicon, share image) moved to the
      * site profile as its picture, the way the settings screen stores one (SetBrandImages): the
      * profile column names the row and the address leaves the setting. Only an address the plan
-     * wrote for a picture of this website moves; any other value stays as it is.
+     * wrote for a picture of this website moves; any other value stays as it is. An image the item
+     * owns (Planner::brandImagesOwned) that its value leaves out or states null ends with none: the
+     * profile stops naming a picture there, as the address left the setting before brand images
+     * moved to the profile (the picture itself stays in the library). An image the item does not
+     * own is never touched.
      *
      * @param  array<array-key, mixed>  $value
      * @param  array<string, mixed>  $desired
+     * @param  list<string>|null  $managed
      * @return array<array-key, mixed>
      */
-    private function brandImages(array $value, array $desired, Planner $planner): array
+    private function brandImages(array $value, array $desired, ?array $managed, Planner $planner): array
     {
         $ids = [];
-        foreach (Planner::BRAND_IMAGES as $slot) {
-            $key = $planner->mintedKey($desired[$slot] ?? null);
+        foreach (Planner::brandImagesOwned($managed) as $slot) {
+            if (($desired[$slot] ?? null) === null) {
+                $ids[SiteProfile::IMAGE_COLUMNS[$slot]] = null;
+
+                continue;
+            }
+            $key = $planner->mintedKey($desired[$slot]);
             $row = $key === null ? null : ($this->media[$key] ?? null);
             if ($row !== null && str_starts_with($row->mime, 'image/')) {
                 $ids[SiteProfile::IMAGE_COLUMNS[$slot]] = $row->id;
                 unset($value[$slot]);
             }
         }
-        if ($ids !== []) {
-            SiteProfile::query()->firstOrCreate([], [])->fill($ids)->save();
+        if ($ids === []) {
+            return $value;
         }
+        $profile = SiteProfile::query()->first();
+        if ($profile === null && array_filter($ids) !== []) {
+            $profile = new SiteProfile;
+        }
+        $profile?->fill($ids)->save();
 
         return $value;
     }
@@ -279,7 +294,7 @@ final class Applier
             }
         }
         if ($planned->item->key === Planner::BRAND_ITEM) {
-            $value = $this->brandImages($value, $planned->desired, $planner);
+            $value = $this->brandImages($value, $planned->desired, $managed, $planner);
         }
 
         $saved = SiteSetting::query()->updateOrCreate(['group_name' => $group, 'key' => $name], ['value' => $value]);

@@ -548,15 +548,27 @@ it('reads every file a load writes in one locked query, whatever the number of i
     [$exit, $output] = ContentPacks::run();
     expect($exit)->toBe(0, $output);
 
-    $lookups = 0;
+    // every read of the library the writers make themselves to turn the pack's keys into rows (the
+    // loader, and the cover helper it once called per post); the usage bookkeeping the saves trigger
+    // (cover, gallery and block usage) reads by the rows already chosen and is not counted
+    $lookups = [];
     DB::listen(function (QueryExecuted $query) use (&$lookups): void {
-        $sql = strtolower($query->sql);
-        if (str_contains($sql, 'from "media"') && str_contains($sql, 'for key share')) {
-            $lookups++;
+        if (! str_contains(strtolower($query->sql), 'from "media"')) {
+            return;
+        }
+        $frames = array_values(array_filter(
+            array_map(fn (array $frame): string => (string) ($frame['file'] ?? ''), debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS)),
+            fn (string $file): bool => str_contains($file, '/app/Modules/'),
+        ));
+        $writer = $frames !== [] && in_array(basename($frames[0]), ['Applier.php', 'EntryCover.php'], true);
+        if ($writer && array_filter($frames, fn (string $file): bool => str_ends_with($file, '/ContentPack/Applier.php')) !== []) {
+            $lookups[] = $query->sql;
         }
     });
     [$exit, $output] = ContentPacks::run(options: ['--apply' => true, '--plan' => ContentPacks::fingerprint($output)]);
-    expect($exit)->toBe(0, $output)->and($lookups)->toBe(1);
+    expect($exit)->toBe(0, $output)
+        ->and($lookups)->toHaveCount(1)
+        ->and(strtolower($lookups[0]))->toContain('for key share');
 
     ContentPacks::in($this->siteId, function (): void {
         $header = Media::query()->where('original_filename', 'header.png')->value('id');
