@@ -392,6 +392,7 @@
     "entries.ed.job_badge_ph": "急募",
     "entries.ed.job_badge_hint": "任意。求人カードの隅に表示されます。例：「急募」。",
     "entries.ed.job_badge_long": "カードのラベルが:max文字を超えています。短くしてください。",
+    "entries.ed.job_badge_others": "他の言語でこのカードにラベルがあります。この欄が空のままカードの変更を保存すると、すべての言語でラベルが削除されます。",
     "entries.ed.job_invalid": "求人情報を保存できませんでした。項目を確認してください。",
     "entries.ed.pd_hint": "空欄なら実際の公開日を使います。",
     "entries.ed.pd_invalid": "この日付は存在しません。カレンダーから選び直すか、空欄にして実際の公開日を使ってください。",
