@@ -675,9 +675,9 @@
          action for the keyboard and screen readers, so the cover itself is hidden from them --}}
     @if ($canUpload)
         <div x-show="over" x-cloak aria-hidden="true" data-drop-cover
-             class="pointer-events-none fixed inset-0 z-[90] flex items-center justify-center bg-[color-mix(in_srgb,var(--color-admin-primary)_18%,rgb(15_18_30/0.45))] p-6">
-            <div class="flex flex-col items-center gap-2.5 rounded-lg border-[3px] border-dashed border-accent bg-surface px-10 py-8 text-center text-[calc(1rem+var(--user-text-boost))] font-semibold text-text-strong">
-                <x-bs-admin::icon name="ri-upload-cloud-2" class="size-10 text-accent" />
+             class="pointer-events-none fixed inset-0 z-[90] flex items-center justify-center bg-[color-mix(in_srgb,var(--color-primary)_18%,rgb(15_18_30/0.45))] p-6">
+            <div class="flex flex-col items-center gap-2.5 rounded-lg border-[3px] border-dashed border-primary-text bg-surface px-10 py-8 text-center text-[calc(1rem+var(--user-text-boost))] font-semibold text-text-strong">
+                <x-bs-admin::icon name="ri-upload-cloud-2" class="size-10 text-primary-text" />
                 <span>{{ __('media.lib.drop_title') }}</span>
                 <span class="text-[calc(0.875rem+var(--user-text-boost))] font-medium text-text-muted">{{ $upFolder !== null ? __('media.lib.drop_to_folder', ['name' => $upFolder->name]) : __('media.lib.drop_to_all') }}</span>
             </div>
