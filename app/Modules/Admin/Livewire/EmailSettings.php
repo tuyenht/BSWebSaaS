@@ -279,6 +279,9 @@ final class EmailSettings extends Component
         }
 
         $repo->put('email', 'config', $cfg);
+        if ($this->scope !== 'platform') {
+            app(TenantMailer::class)->forgetOwnOutboxFailing();
+        }
 
         $this->reset('smtpPassword', 'oauthClientSecret');
         $this->loadConfig($this->scope);
@@ -332,7 +335,7 @@ final class EmailSettings extends Component
             return;
         }
 
-        if (! app(TenantMailer::class)->apply()) {
+        if (! app(TenantMailer::class)->apply(fallback: false)) {
             $this->testResult = 'error';
 
             return;
@@ -435,6 +438,10 @@ final class EmailSettings extends Component
             'other' => $this->smtpHost !== '' && $this->smtpUsername !== '' && $this->smtpPasswordSet,
             default => $this->oauthConnectedProvider === $this->provider,
         };
+        // Set up but failing on its last send: mail is going out through the shared outbox meanwhile.
+        if ($ok && $this->provider !== 'platform' && $this->provider === $this->storedProvider && app(TenantMailer::class)->ownOutboxFailing()) {
+            $ok = false;
+        }
 
         return ['ok' => $ok, 'outbox' => $this->provider, 'fallback' => ! $ok && $this->provider !== 'platform' && $this->platformConfigured];
     }

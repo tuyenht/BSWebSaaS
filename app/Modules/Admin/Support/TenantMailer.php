@@ -34,6 +34,8 @@ use Throwable;
  */
 final readonly class TenantMailer implements TenantMailConfigurator
 {
+    private const string OWN_FAILING_KEY = 'mail-own-outbox-failing:';
+
     public function __construct(
         private SettingsRepository $tenant,
         private PlatformSettings $platform,
@@ -83,7 +85,13 @@ final readonly class TenantMailer implements TenantMailConfigurator
         return $this->usable($own) || $this->usable($this->platform->get('email'));
     }
 
-    public function apply(): bool
+    /**
+     * When the site's own outbox is picked but cannot send (a revoked or expired sign-in, a key that
+     * no longer decrypts), mail leaves through the platform's shared outbox instead of being lost,
+     * and the «Email» page is told the own outbox is failing. A test send passes $fallback = false:
+     * it must report the outbox the site picked, not whichever one happened to work.
+     */
+    public function apply(bool $fallback = true): bool
     {
         // Purge cached transports FIRST so a warmed Octane worker cannot reuse the previous
         // request/tenant's live transport object regardless of what we configure below.
@@ -100,17 +108,66 @@ final readonly class TenantMailer implements TenantMailConfigurator
             return false;
         }
 
-        $applied = match ($cfg['method'] ?? 'smtp_password') {
+        $applied = $this->applyConfig($cfg, $siteOwn);
+
+        if ($siteOwn) {
+            $this->noteOwnOutbox($applied);
+            $platform = $this->platform->get('email');
+            if (! $applied && $fallback && is_array($platform) && $this->usable($platform)) {
+                $applied = $this->applyConfig($platform, false);
+            }
+        }
+
+        if (! $applied) {
+            // A sender that could not be set up may return before writing any config: never leave
+            // the previous request's live mailer (another site's server) in place in this worker.
+            config(['mail.default' => 'log']);
+
+            return false;
+        }
+
+        $this->applyTenantIdentity();
+
+        return true;
+    }
+
+    /** @param array<string, mixed> $cfg */
+    private function applyConfig(array $cfg, bool $siteOwn): bool
+    {
+        return match ($cfg['method'] ?? 'smtp_password') {
             'smtp_password' => $this->applySmtpPassword($cfg, $siteOwn),
             'oauth2' => $this->applyOAuth2($cfg),
             default => false,
         };
+    }
 
-        if ($applied) {
-            $this->applyTenantIdentity();
+    /** Whether the site's own outbox failed on its last send (cleared by its next good one). */
+    public function ownOutboxFailing(): bool
+    {
+        $current = app(CurrentSite::class);
+
+        return $current->hasId() && Cache::has(self::OWN_FAILING_KEY.$current->id());
+    }
+
+    /** The website just set up or reconnected its own outbox: judge it again on its next send. */
+    public function forgetOwnOutboxFailing(): void
+    {
+        $this->noteOwnOutbox(true);
+    }
+
+    private function noteOwnOutbox(bool $ok): void
+    {
+        $current = app(CurrentSite::class);
+        if (! $current->hasId()) {
+            return;
         }
 
-        return $applied;
+        $key = self::OWN_FAILING_KEY.$current->id();
+        if ($ok) {
+            Cache::forget($key);
+        } else {
+            Cache::put($key, true, now()->addDays(7));
+        }
     }
 
     /**
@@ -196,6 +253,12 @@ final readonly class TenantMailer implements TenantMailConfigurator
 
                 return false;
             }
+        }
+
+        // A stored password that no longer decrypts (a rotated key) reads as ''; sending would fail
+        // at the server, so count the sender as not set up and let apply() fall back.
+        if (is_string($smtp['password'] ?? null) && $smtp['password'] !== '' && SecretCipher::decrypt($smtp['password']) === '') {
+            return false;
         }
 
         config([
