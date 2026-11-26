@@ -312,24 +312,42 @@ it('never follows a state value that this app did not sign', function (string $s
 })->with([
     'garbage' => ['bogus'],
     'empty' => [''],
-    'three empty parts' => ['..'],
+    'four empty parts' => ['...'],
     'signature changed' => [function (): string {
-        [$random, $origin] = explode('.', OAuthState::mint('http://b.test'));
+        [$random, $origin, $issued] = explode('.', OAuthState::mint('http://b.test'));
 
-        return $random.'.'.$origin.'.'.rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
+        return $random.'.'.$origin.'.'.$issued.'.'.rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
     }],
     'host swapped, signature kept' => [function (): string {
-        [$random, , $signature] = explode('.', OAuthState::mint('http://a.test'));
+        [$random, , $issued, $signature] = explode('.', OAuthState::mint('http://a.test'));
 
-        return $random.'.'.rtrim(strtr(base64_encode('http://b.test'), '+/', '-_'), '=').'.'.$signature;
+        return $random.'.'.rtrim(strtr(base64_encode('http://b.test'), '+/', '-_'), '=').'.'.$issued.'.'.$signature;
+    }],
+    'issued time moved, signature kept' => [function (): string {
+        [$random, $origin, $issued, $signature] = explode('.', OAuthState::mint('http://b.test'));
+
+        return $random.'.'.$origin.'.'.((int) $issued + 1).'.'.$signature;
     }],
     'signed with another key' => [function (): string {
         $random = 'r';
         $origin = rtrim(strtr(base64_encode('http://b.test'), '+/', '-_'), '=');
+        $issued = (string) now()->getTimestamp();
 
-        return $random.'.'.$origin.'.'.rtrim(strtr(base64_encode(hash_hmac('sha256', 'oauth-state|'.$random.'|'.$origin, 'not-the-app-key', true)), '+/', '-_'), '=');
+        return $random.'.'.$origin.'.'.$issued.'.'.rtrim(strtr(base64_encode(hash_hmac('sha256', 'oauth-state|'.$random.'|'.$origin.'|'.$issued, 'not-the-app-key', true)), '+/', '-_'), '=');
     }],
 ]);
+
+it('names no origin from a signed state older than an hour, or with no app key set', function (): void {
+    $state = OAuthState::mint('http://b.test');
+    expect(OAuthState::origin($state))->toBe('http://b.test');
+
+    $this->travel(61)->minutes();
+    expect(OAuthState::origin($state))->toBeNull();
+    $this->travelBack();
+
+    config(['app.key' => '']);
+    expect(OAuthState::origin($state))->toBeNull();
+});
 
 it('lands on the console sign-in page for a signed state whose host is no verified site domain', function (string $origin): void {
     DB::connection('pgsql_admin')->table('domains')->insert([
