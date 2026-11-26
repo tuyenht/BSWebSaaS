@@ -3098,13 +3098,9 @@ final class Index extends Component
                 $primary = $entry->relationLoaded('taxonomies') ? $entry->taxonomies->first() : null;
                 $rowCategory[$entry->ulid] = $tree->label($primary instanceof Taxonomy ? $primary->id : null);
                 // an old cover value may be a glyph name or an outside address: only a storage key is a
-                // file of ours to resize, an https address is shown as it is, a glyph name is no picture
+                // picture of ours (the same test the storefront uses)
                 $key = $entry->getAttribute('cover_value');
-                $rowCover[$entry->ulid] = match (true) {
-                    is_string($key) && MediaRefs::looksLikeKey($key) => $urls->url($key, 96),
-                    is_string($key) && str_starts_with($key, 'https://') => $key,
-                    default => null,
-                };
+                $rowCover[$entry->ulid] = is_string($key) && MediaRefs::looksLikeKey($key) ? $urls->url($key, 96) : null;
             }
         }
 

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Admin\Livewire\Entries\Index;
+use App\Modules\Admin\Livewire\Entries\ReviewInbox;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
@@ -12,8 +13,8 @@ use Livewire\Livewire;
 
 /*
  * An old cover value may be a storage key, a glyph name or an outside address. The list's small
- * picture is drawn only for a picture: a glyph name asked the media host for a file that does not
- * exist, one failed request per row.
+ * picture is drawn only for a file of ours: a glyph name asked the media host for a file that does
+ * not exist, one failed request per row, and an outside address is not fetched by an admin's browser.
  */
 
 beforeEach(function (): void {
@@ -23,7 +24,7 @@ beforeEach(function (): void {
     app(TeamContext::class)->forget();
 });
 
-it('draws the row picture for a stored file or an https address, never for a glyph name', function (): void {
+it('draws the row picture for a stored file only, never for a glyph name or an outside address', function (): void {
     $user = User::factory()->create();
     app()->setLocale('vi');
 
@@ -38,13 +39,20 @@ it('draws the row picture for a stored file or an https address, never for a gly
         $html = Livewire::withQueryParams(['section' => 'posts'])->actingAs($user->fresh())->test(Index::class, ['section' => 'posts'])->assertOk()->html();
 
         preg_match_all('/<span class="list-th" title="[^"]*"><img src="([^"]*)"/', $html, $pictures);
-        $outside = array_values(array_filter($pictures[1], fn (string $src): bool => $src === 'https://example.com/a.jpg'));
-        $stored = array_values(array_filter($pictures[1], fn (string $src): bool => str_contains($src, 'an-vinh/posts/may-han-0123456789ab.webp')));
-
-        expect($pictures[1])->toHaveCount(2)
-            ->and($outside)->toHaveCount(1)
-            ->and($stored)->toHaveCount(1)
+        expect($pictures[1])->toHaveCount(1)
+            ->and($pictures[1][0])->toContain('an-vinh/posts/may-han-0123456789ab.webp')
+            ->and($html)->not->toContain('example.com')
             ->and($html)->not->toContain('/shield')
-            ->and(substr_count($html, 'class="list-th" data-img="0"'))->toBe(2);
+            ->and(substr_count($html, 'class="list-th" data-img="0"'))->toBe(3);
     });
+});
+
+it('gives the review inbox a cover address for a stored file only', function (): void {
+    $address = new ReflectionMethod(ReviewInbox::class, 'coverUrl');
+    $inbox = new ReviewInbox;
+
+    expect($address->invoke($inbox, 'an-vinh/posts/may-han-0123456789ab.webp'))->toContain('an-vinh/posts/may-han-0123456789ab.webp')
+        ->and($address->invoke($inbox, 'shield'))->toBeNull()
+        ->and($address->invoke($inbox, 'https://example.com/a.jpg'))->toBeNull()
+        ->and($address->invoke($inbox, ''))->toBeNull();
 });
