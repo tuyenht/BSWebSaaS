@@ -20,6 +20,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -211,11 +212,13 @@ it('says on each file where it is used, as its detail panel counts it, and nothi
         Mediable::query()->create(['media_id' => $blocks->id, 'mediable_type' => 'site_setting', 'mediable_id' => $setting->id, 'collection' => BlockMediaUsage::COLLECTION]);
         Mediable::query()->create(['media_id' => $blocks->id, 'mediable_type' => 'site_setting', 'mediable_id' => $setting->id, 'collection' => BranchList::COLLECTION]);
     });
-    // the other site uses its own file, and names this site's id: neither counts here
+    // the other site uses its own file, which does not count here; it cannot name this site's id
+    // (the same-site key refuses it)
     app(Tenancy::class)->enter(2, function () use ($theirs, $gallery): void {
         $product = Product::query()->create(['status' => 'published']);
         ProductImage::query()->create(['product_id' => $product->id, 'media_id' => $theirs->id, 'position' => 0]);
-        Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0, 'cover_media_id' => $gallery->id]);
+        expect(fn () => DB::transaction(fn () => Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0, 'cover_media_id' => $gallery->id])))
+            ->toThrow(QueryException::class, 'taxonomies_cover_media_id_same_site_foreign');
     });
 
     app(Tenancy::class)->enter(1, function () use ($me, $gallery, $cover, $brand, $blocks, $unused): void {

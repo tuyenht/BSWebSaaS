@@ -5,6 +5,7 @@ use App\Modules\Cms\Support\EntryTags;
 use App\Modules\Media\Models\Media;
 use App\Modules\Tenancy\Context\Tenancy;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Tests\Fixtures\StorefrontCards;
 
@@ -140,7 +141,14 @@ it('draws a cover whose id names a trashed file or another website’s as no cov
     });
     $none = coverPages();
 
-    app(Tenancy::class)->enter($site, fn () => DB::table('entries')->where('id', $posts[1])->update(['cover_media_id' => $file->id]));
+    $write = fn () => DB::table('entries')->where('id', $posts[1])->update(['cover_media_id' => $file->id]);
+    if ($case === 'another website’s file') {
+        // the same-site key refuses the id outright, so nothing can draw it
+        app(Tenancy::class)->enter($site, fn () => expect(fn () => DB::transaction($write))
+            ->toThrow(QueryException::class, 'entries_cover_media_id_same_site_foreign'));
+    } else {
+        app(Tenancy::class)->enter($site, $write);
+    }
     $pages = coverPages();
 
     foreach ($none as $path => $html) {
