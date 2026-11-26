@@ -7,6 +7,7 @@ namespace App\Modules\Cms\Validation;
 use App\Modules\Cms\Casts\SanitizedPageBody;
 use App\Modules\Cms\Exceptions\LayoutBlocksRejectedException;
 use App\Modules\Tenancy\Context\SiteLocale;
+use App\Modules\Theme\Components\BlockReference;
 use App\Modules\Theme\Rendering\LayoutSlots;
 use Illuminate\Support\Facades\Validator;
 
@@ -15,7 +16,8 @@ use Illuminate\Support\Facades\Validator;
  * own choice): every slot named is one of LayoutSlots, every language key is one of the site's
  * languages, and each language's `{"blocks": […]}` passes the same check as a page body, plus the
  * block types only a slot may hold (ValidPageJson::forSlots), in the current site's context, so a
- * button to another site's page or file is refused, within the slot's own block limit. What passes comes back cleaned the way a page body is
+ * button to another site's page or file is refused, within the slot's own block limit (a shared block is
+ * not taken where LayoutSlots::NO_REFERENCES says). What passes comes back cleaned the way a page body is
  * stored (every formatted-text prop through the sanitizer, SanitizedPageBody) and reduced to
  * `{locale: {"blocks": […]}}` — nothing else the caller sent is kept.
  *
@@ -104,7 +106,10 @@ final readonly class LayoutSlotInput
             foreach ($blocks as $block) {
                 $type = is_array($block) ? ($block['type'] ?? null) : null;
                 if (is_string($type) && ! LayoutSlots::accepts($slot, $type)) {
-                    throw new LayoutBlocksRejectedException('blocks_invalid', $slot, $locale, __('layout_slots.err_type_slot', ['block' => __('storefront.'.$type)]));
+                    $message = $type === BlockReference::TYPE
+                        ? __('layout_slots.err_ref_slot')
+                        : __('layout_slots.err_type_slot', ['block' => __('storefront.'.$type)]);
+                    throw new LayoutBlocksRejectedException('blocks_invalid', $slot, $locale, $message);
                 }
             }
 

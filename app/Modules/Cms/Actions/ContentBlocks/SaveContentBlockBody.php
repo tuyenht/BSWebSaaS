@@ -22,7 +22,8 @@ use Illuminate\Support\Facades\Validator;
 /**
  * Save a block's content in one language (adding that language when it had none): a list of
  * blocks, checked exactly as a page body is (ValidPageJson: registered types only, safe links, this
- * website's pages and files, the block count and size limits), stored as `{"blocks": […]}` through
+ * website's pages and files, the block count and size limits), except that it may place no other
+ * shared block (ValidPageJson::forBlockBody: one level only), stored as `{"blocks": […]}` through
  * the model so every formatted-text prop is cleaned (SanitizedPageBody). Saving moves the block's
  * "Cập nhật" date. The pictures and files the block's bodies use are recorded in the library's "in use"
  * rows in the same transaction (ContentBlockMediaReconciler). $version is the token the screen read; a save made from an older state is refused
@@ -53,7 +54,7 @@ final readonly class SaveContentBlockBody
         if (! array_is_list($blocks)) {
             throw new ContentBlockChangeRejectedException('body_invalid', __('entries.err_blocks_invalid'));
         }
-        $validator = Validator::make(['blocks' => $blocks], ['blocks' => [$this->pageJson]]);
+        $validator = Validator::make(['blocks' => $blocks], ['blocks' => [$this->pageJson->forBlockBody()]]);
         if ($validator->fails()) {
             throw new ContentBlockChangeRejectedException('body_invalid', (string) $validator->errors()->first('blocks'));
         }
