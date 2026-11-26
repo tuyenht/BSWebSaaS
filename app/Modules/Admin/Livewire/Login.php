@@ -176,6 +176,7 @@ final class Login extends Component
         // one-time code emailed to the (verified) address. The user is NOT authenticated
         // here — Auth::login happens only after the challenge passes.
         session()->put('2fa.user_id', $user->getAuthIdentifier());
+        session()->forget('2fa.via');
 
         if ($user->two_factor_confirmed_at !== null) {
             return $this->redirectRoute(AdminPlane::prefix().'.two-factor.challenge', navigate: false);

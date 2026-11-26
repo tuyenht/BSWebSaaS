@@ -194,3 +194,17 @@ it('renders the hidden field and the send hook that hand the bot-check token to 
         ->assertSeeHtml('input[name="cf-turnstile-response"]')
         ->assertSeeHtml("document.addEventListener('submit', function (e) {");
 });
+
+it('forgets an abandoned Google or Facebook step when the person signs in with a password', function (): void {
+    Notification::fake();
+    $user = User::factory()->create(['email_verified_at' => now(), 'password' => 'correct-horse']);
+    session(['2fa.via' => 'google']);
+
+    Livewire::test(Login::class)
+        ->set('email', $user->email)
+        ->set('password', 'correct-horse')
+        ->call('login');
+
+    expect(session('2fa.user_id'))->toBe($user->getKey())
+        ->and(session()->has('2fa.via'))->toBeFalse();
+});

@@ -8,6 +8,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Notification;
 use Spatie\Permission\PermissionRegistrar;
 
 /*
@@ -115,13 +116,28 @@ it('sets a browser-bound nonce cookie when starting social login', function (): 
 it('completes oauth finish when the browser nonce matches the login token', function (): void {
     $user = User::factory()->create();
     $nonce = 'the-initiating-browser-nonce';
-    Cache::put('oauth-login:tok-ok', ['uid' => $user->getKey(), 'nonce' => hash('sha256', $nonce)], 120);
+    Cache::put('oauth-login:tok-ok', ['uid' => $user->getKey(), 'nonce' => hash('sha256', $nonce), 'trusted' => true], 120);
 
     $this->withCookie('oauth_login_nonce', $nonce)
         ->get('http://a.test/admin/oauth/finish?token=tok-ok')
         ->assertRedirect('http://a.test/admin');
 
     $this->assertAuthenticatedAs($user->fresh());
+});
+
+it('asks a login token that does not vouch for the mailbox for the emailed code', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    $nonce = 'the-initiating-browser-nonce';
+    // e.g. a token written before this rule: no 'trusted' flag at all means no shortcut.
+    Cache::put('oauth-login:tok-plain', ['uid' => $user->getKey(), 'nonce' => hash('sha256', $nonce), 'provider' => 'facebook'], 120);
+
+    $this->withCookie('oauth_login_nonce', $nonce)
+        ->get('http://a.test/admin/oauth/finish?token=tok-plain')
+        ->assertRedirect(route('admin.otp.challenge'));
+
+    $this->assertGuest();
+    expect(session('2fa.user_id'))->toBe($user->getKey());
 });
 
 it('refuses oauth finish when the browser presents no nonce cookie', function (): void {
