@@ -44,6 +44,7 @@ use App\Modules\Admin\Support\PlatformPlans;
 use App\Modules\Admin\Support\PlatformSettings;
 use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\Settings\SetBrandImages;
+use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Support\ProductIndexLink;
@@ -428,6 +429,21 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/social')->assertOk()->getContent();
     expect($html)->toContain(e(__('admin.sl.providers_site')));
     file_put_contents($dir.'/social.html', $html);
+    // «Email» → «Nhà cung cấp khác»: «Chọn dịch vụ» on SendGrid not set up yet, then Amazon SES with
+    // its key saved and checked
+    foreach ([
+        'email-other' => ['provider' => 'other', 'method' => 'smtp_password', 'relay' => 'sendgrid'],
+        'email-other-saved' => ['provider' => 'other', 'method' => 'smtp_password', 'relay' => 'ses', 'relay_region' => 'eu-west-1',
+            'send_domain' => 'congtydemo.vn', 'checked_at' => now()->toIso8601String(),
+            'smtp' => ['host' => 'email-smtp.eu-west-1.amazonaws.com', 'port' => 587, 'encryption' => 'tls', 'username' => 'AKIAPREVIEWONLY00000', 'password' => SecretCipher::encrypt('preview-only')]],
+    ] as $shot => $cfg) {
+        app(Tenancy::class)->enter(1, fn () => app(SettingsRepository::class)->put('email', 'config', $cfg));
+        $this->flushSession();
+        $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/email')->assertOk()->getContent();
+        expect($html)->toContain(e(__('admin.em_prov_title')))->not->toContain('preview-only');
+        file_put_contents($dir.'/'.$shot.'.html', $html);
+    }
+    DB::connection('pgsql_admin')->table('site_settings')->where('group_name', 'email')->delete();
     DB::connection('pgsql_admin')->table('platform_settings')->where('group_name', 'oauth_social')->delete();
     $this->flushSession();
 
@@ -1701,5 +1717,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 154);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 156);
 });

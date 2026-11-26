@@ -237,11 +237,10 @@ final readonly class TenantMailer implements TenantMailConfigurator
         }
 
         if (($cfg['method'] ?? 'smtp_password') === 'smtp_password') {
-            $smtp = Cast::arr($cfg['smtp'] ?? null);
-
             // A blank password is not a usable credential — fall through (tenant → platform → log)
             // rather than attempting SMTP auth (or decrypting an empty payload) and failing the send.
-            return ! empty($smtp['host']) && ! empty($smtp['username']) && ! empty($smtp['password']);
+            // A mail service's server comes from the relay table, its login from it or its own field.
+            return MailRelay::ready($cfg);
         }
 
         $oauth = Cast::arr($cfg['oauth'] ?? null);
@@ -254,8 +253,11 @@ final readonly class TenantMailer implements TenantMailConfigurator
      */
     private function applySmtpPassword(array $cfg, bool $siteOwn): bool
     {
-        $smtp = Cast::arr($cfg['smtp'] ?? null);
-        $from = $cfg['from_address'] ?? ($smtp['username'] ?? null);
+        // A mail service sends through its own relay, its server taken from the relay table, never
+        // from what is stored; «Email khác» through the server the website typed in.
+        $smtp = MailRelay::smtpOf($cfg);
+        $from = $cfg['from_address'] ?? MailRelay::defaultFrom($cfg);
+        $password = is_string($smtp['password'] ?? null) ? SecretCipher::decrypt($smtp['password']) : null;
         $port = Cast::int($smtp['port'] ?? null, 587);
         $encryption = is_string($smtp['encryption'] ?? null) ? $smtp['encryption'] : 'tls';
 
@@ -280,7 +282,7 @@ final readonly class TenantMailer implements TenantMailConfigurator
 
         // A stored password that no longer decrypts (a rotated key) reads as ''; sending would fail
         // at the server, so count the sender as not set up and let apply() fall back.
-        if (is_string($smtp['password'] ?? null) && $smtp['password'] !== '' && SecretCipher::decrypt($smtp['password']) === '') {
+        if (is_string($smtp['password'] ?? null) && $smtp['password'] !== '' && $password === '') {
             return false;
         }
 
@@ -295,8 +297,9 @@ final readonly class TenantMailer implements TenantMailConfigurator
             // value throws UnsupportedSchemeException. SSL or port 465 → smtps; otherwise smtp.
             'mail.mailers.smtp.scheme' => ($encryption === 'ssl' || $port === 465) ? 'smtps' : 'smtp',
             'mail.mailers.smtp.encryption' => $encryption,
-            'mail.mailers.smtp.username' => $smtp['username'] ?? null,
-            'mail.mailers.smtp.password' => is_string($smtp['password'] ?? null) ? SecretCipher::decrypt($smtp['password']) : null,
+            // Postmark's login is its key (never stored in the clear).
+            'mail.mailers.smtp.username' => MailRelay::loginIsKey(MailRelay::of($cfg)) ? $password : ($smtp['username'] ?? null),
+            'mail.mailers.smtp.password' => $password,
             'mail.from.address' => $from,
             'mail.from.name' => $cfg['from_name'] ?? config('admin.brand.name'),
         ]);

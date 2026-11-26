@@ -188,8 +188,11 @@ it('shows the sign-in box under a picked mailbox, and the mail-server form only 
             ->assertSee(__('admin.client_id'))->assertSee('Kết nối Microsoft')
             ->assertDontSee(__('admin.smtp_host'));
 
+        // «Nhà cung cấp khác» starts on the board's first service; «Email khác» shows the server fields
         $page->set('provider', 'other')
             ->assertSet('method', 'smtp_password')
+            ->assertSee('Chọn dịch vụ')->assertDontSee(__('admin.smtp_host'))->assertDontSee(__('admin.client_id'));
+        $page->call('pickRelay', 'smtp')
             ->assertSee(__('admin.smtp_host'))->assertDontSee(__('admin.client_id'));
     });
 });

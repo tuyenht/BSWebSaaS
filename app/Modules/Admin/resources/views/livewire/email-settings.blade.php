@@ -55,7 +55,7 @@
                 'platform' => ['icon' => null, 'meta' => $platformFrom, 'badge' => __('admin.em_default'), 'tip' => null],
                 'google' => ['icon' => 'ri-google-fill', 'color' => 'text-[#ea4335]', 'meta' => __('admin.em_meta_google'), 'tip' => __('admin.em_tip_fast')],
                 'microsoft' => ['icon' => 'ri-microsoft-fill', 'color' => 'text-[#0078d4]', 'meta' => __('admin.em_meta_microsoft'), 'tip' => null],
-                'other' => ['icon' => 'ri-server', 'color' => 'text-primary-text', 'meta' => $status['outbox'] === 'other' && $status['ok'] ? __('admin.em_meta_other_saved') : __('admin.em_meta_other'), 'tip' => __('admin.em_tip_bulk')],
+                'other' => ['icon' => 'ri-server', 'color' => 'text-primary-text', 'meta' => $status['outbox'] === 'other' && $status['ok'] ? __('admin.em_meta_other_saved', ['name' => $storedRelay === 'smtp' ? __('admin.em_meta_other_smtp') : __('admin.em_rl_'.$storedRelay)]) : __('admin.em_meta_other'), 'tip' => __('admin.em_tip_bulk')],
             ];
             if ($this->yahooKept()) {
                 $rows['yahoo'] = ['icon' => 'ri-mail', 'color' => 'text-[#6001d2]', 'meta' => __('admin.em_meta_yahoo'), 'tip' => null];
@@ -233,17 +233,21 @@
                 @endforeach
             </div>
         </div>
+
+        @if ($provider === 'other')
+            @include('admin::livewire.email-settings-relay')
+        @endif
     @endif
 
     {{-- Configuration form (a website's page: the end of «Gửi thư») --}}
     {{-- Enter in a field is the save bar's "Lưu" (it waits while a save runs and does nothing with nothing to save); the form itself never submits, so the page never reloads --}}
     <form x-data x-on:submit.prevent class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
         <div class="border-b border-border px-5 py-3">
-            {{-- The console's page says what it is in the warning above; a website's names what it holds now: its own server, or who the mail is from. --}}
-            <h2 class="text-[15px] font-semibold text-text-strong">{{ $scope === 'platform' ? __('admin.email_settings') : ($provider === 'other' ? __('admin.em_info_other_t') : __('admin.em_sender_title')) }}</h2>
+            {{-- The console's page says what it is in the warning above; a website's is who the mail is from (its own service is set up in «Chọn dịch vụ»). --}}
+            <h2 class="text-[15px] font-semibold text-text-strong">{{ $scope === 'platform' ? __('admin.email_settings') : __('admin.em_sender_title') }}</h2>
         </div>
         <div class="space-y-5 p-5">
-            @if ($scope === 'platform' || $provider === 'other')
+            @if ($scope === 'platform')
                 <div class="grid gap-4 sm:grid-cols-2">
                     <x-bs-admin::input :label="__('admin.smtp_host')" wire:model.live.blur="smtpHost" placeholder="smtp.gmail.com" />
                     <x-bs-admin::input :label="__('admin.smtp_port')" type="number" wire:model.live.blur="smtpPort" placeholder="587" />
