@@ -12,7 +12,7 @@
         'brevo' => ['Br', '#0b996e', '#000000'],
         'resend' => ['Re', '#111827', '#ffffff'],
         'mailtrap' => ['Mt', '#0d9488', '#000000'],
-        'smtp' => ['SM', 'var(--color-admin-primary)', 'var(--color-on-solid, #ffffff)'],
+        'smtp' => ['SM', 'var(--color-primary)', 'var(--color-on-primary, #ffffff)'],
     ];
     $isSmtp = $relay === 'smtp';
     $saved = $keySaved;
@@ -101,7 +101,7 @@
             <div class="grid grid-cols-2 gap-x-[18px]">
                 <x-bs-admin::input id="em-f-port" :label="__('admin.smtp_port')" type="number" wire:model.live.blur="smtpPort" placeholder="587" />
                 <div>
-                    <label for="em-f-enc" class="mb-1.5 block text-sm font-medium text-body-text">{{ __('admin.smtp_encryption') }}</label>
+                    <label for="em-f-enc" class="mb-1.5 block text-sm font-medium text-text">{{ __('admin.smtp_encryption') }}</label>
                     <select id="em-f-enc" wire:model.live="smtpEncryption" class="field block w-full rounded border border-border-input bg-surface px-3 text-text focus:border-primary-text">
                         <option value="tls">{{ __('admin.encryption_tls') }}</option>
                         <option value="ssl">{{ __('admin.encryption_ssl') }}</option>
