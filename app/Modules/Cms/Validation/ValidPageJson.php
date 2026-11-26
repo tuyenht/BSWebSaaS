@@ -2,9 +2,12 @@
 
 namespace App\Modules\Cms\Validation;
 
+use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Media\Models\Media;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\VideoEmbed;
+use App\Modules\Theme\Components\BlockReference;
 use App\Modules\Theme\Components\ButtonLink;
 use App\Modules\Theme\Components\ComponentRegistry;
 use Closure;
@@ -25,6 +28,12 @@ use Illuminate\Contracts\Validation\ValidationRule;
  * schema marks `action` is a button link: its typed value (`<prop>_do`, ButtonLink) must be well
  * formed, an older plain address in it may not point at another host (`//`, `/\`), and the pages and
  * library files the body's buttons name must be this site's (one query each, only when named).
+ *
+ * A place that shows a shared block (BlockReference, `reusable_ref`) holds only the block's ulid,
+ * and a block new to the place must be this site's (one query for all of them, a draft counts; one
+ * the place already stores stays allowed once it is gone, keeping); a list holds at
+ * most BlockReference::LIST_MAX of them. A shared block's own body holds none (forBlockBody): a
+ * shared block is never placed inside another.
  */
 final readonly class ValidPageJson implements ValidationRule
 {
@@ -47,12 +56,39 @@ final readonly class ValidPageJson implements ValidationRule
      */
     public const int MAX_HTML_CHARS = 100_000;
 
-    public function __construct(private ComponentRegistry $registry, private bool $slots = false) {}
+    /**
+     * @param  list<string>|Closure(): list<string>  $kept  the shared blocks the place stores now (keeping)
+     */
+    public function __construct(
+        private ComponentRegistry $registry,
+        private bool $slots = false,
+        private bool $blockBody = false,
+        private array|Closure $kept = [],
+    ) {}
 
     /** The same guard for a block slot, which also accepts the types only a slot may hold. */
     public function forSlots(): self
     {
-        return new self($this->registry, true);
+        return new self($this->registry, true, false, $this->kept);
+    }
+
+    /** The same guard for a shared block's own body, which may not place another shared block. */
+    public function forBlockBody(): self
+    {
+        return new self($this->registry, false, true);
+    }
+
+    /**
+     * The same guard for a place that stores these shared blocks now (their ulids, or a closure that
+     * reads them, called only when a placed block is not found): one of them that is gone since is
+     * kept, the storefront draws nothing for it, so a page is not locked out of every save by a
+     * deleted block. Only a block NEW to the place must be this site's.
+     *
+     * @param  list<string>|Closure(): list<string>  $stored
+     */
+    public function keeping(array|Closure $stored): self
+    {
+        return new self($this->registry, $this->slots, $this->blockBody, $stored);
     }
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
@@ -83,6 +119,12 @@ final readonly class ValidPageJson implements ValidationRule
             return;
         }
 
+        if (count(array_filter($value, BlockReference::is(...))) > BlockReference::LIST_MAX) {
+            $fail(__('entries.err_block_refs_too_many', ['max' => BlockReference::LIST_MAX]));
+
+            return;
+        }
+
         foreach (array_values($value) as $index => $block) {
             $position = $index + 1;
 
@@ -98,6 +140,17 @@ final readonly class ValidPageJson implements ValidationRule
                 $fail(__('entries.err_block_unsupported', ['type' => $shown]));
 
                 return;
+            }
+
+            if ($type === BlockReference::TYPE) {
+                $refused = $this->referenceViolation($block, $position);
+                if ($refused !== null) {
+                    $fail($refused);
+
+                    return;
+                }
+
+                continue;
             }
 
             if (! array_key_exists('props', $block)) {
@@ -156,10 +209,64 @@ final readonly class ValidPageJson implements ValidationRule
             }
         }
 
-        $missing = $this->missingButtonTarget($value);
+        $missing = $this->missingButtonTarget($value) ?? $this->missingSharedBlock($value);
         if ($missing !== null) {
             $fail($missing);
         }
+    }
+
+    /**
+     * Why a shared block's place is refused, or null: inside a shared block's own body, or with
+     * anything but a well-formed ulid in `block` (no other prop: the shared block keeps its own look).
+     *
+     * @param  array<array-key, mixed>  $block
+     */
+    private function referenceViolation(array $block, int $position): ?string
+    {
+        if ($this->blockBody) {
+            return __('entries.err_block_ref_nested');
+        }
+        $props = $block['props'] ?? null;
+        if (! is_array($props) || array_keys($props) !== [BlockReference::PROP] || BlockReference::ulid($block) === null) {
+            return __('entries.err_block_ref_invalid', ['position' => $position]);
+        }
+
+        return null;
+    }
+
+    /**
+     * The message for a place that names a shared block this site does not have (another site's, one
+     * deleted, a code never issued), or null. A draft counts: it is placed now and shown once
+     * published; a block the place already stores is kept even when it is gone (keeping). One
+     * site-scoped query (BelongsToSite + RLS), only when the body places any; what the place stores
+     * is read only when a block is not found.
+     *
+     * @param  array<array-key, mixed>  $blocks
+     */
+    private function missingSharedBlock(array $blocks): ?string
+    {
+        $ulids = BlockReference::ulids($blocks);
+        if ($ulids === []) {
+            return null;
+        }
+        $found = ContentBlock::query()->whereIn('ulid', $ulids)->pluck('ulid')->all();
+        $missing = array_diff($ulids, array_map(strtoupper(...), array_map(Cast::string(...), $found)));
+        if ($missing === []) {
+            return null;
+        }
+        $kept = $this->kept instanceof Closure ? ($this->kept)() : $this->kept;
+        $new = array_flip(array_diff($missing, array_map(strtoupper(...), $kept)));
+        if ($new === []) {
+            return null;
+        }
+        foreach (array_values($blocks) as $index => $block) {
+            $ulid = is_array($block) ? BlockReference::ulid($block) : null;
+            if ($ulid !== null && isset($new[$ulid])) {
+                return __('entries.err_block_ref_missing', ['position' => $index + 1]);
+            }
+        }
+
+        return __('entries.err_block_ref_missing', ['position' => 1]);
     }
 
     /**

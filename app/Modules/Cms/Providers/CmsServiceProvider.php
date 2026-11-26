@@ -49,6 +49,7 @@ use App\Modules\Cms\Support\CategoryPublicCounts;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\EntryReviewReach;
 use App\Modules\Cms\Support\LayoutSlotBlocks;
+use App\Modules\Cms\Support\ReusableBlockExpander;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Rbac\Events\CustomRolePermissionsAdding;
 use App\Modules\Rbac\Events\InvitationAccepted;
@@ -91,6 +92,10 @@ final class CmsServiceProvider extends ServiceProvider
         // The blocks of the slots around posts, lists and products: reads the request's settings memo
         // and the request's locales, so it is scoped with them and never outlives a request.
         $this->app->scoped(LayoutSlotBlocks::class);
+
+        // The shared blocks a page places, read once per request (its memo of what it read must never
+        // reach the next Octane request): scoped.
+        $this->app->scoped(ReusableBlockExpander::class);
 
         // Menu link kinds other modules register at boot (Catalog → `product`). Boot-time closures
         // only, no request state — shared across Octane requests like the ComponentRegistry.

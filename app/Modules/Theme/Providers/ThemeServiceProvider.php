@@ -4,6 +4,7 @@ namespace App\Modules\Theme\Providers;
 
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Components\BlockReference;
 use App\Modules\Theme\Components\BranchesComponent;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SectionComponent;
@@ -298,6 +299,11 @@ final class ThemeServiceProvider extends ServiceProvider
 
             // The branches list reads the site's settings, so it is data-bound like the product grid.
             $registry->register('branches', new BranchesComponent, headed: true);
+
+            // A place that shows one of the website's shared blocks: the storefront puts the block's own
+            // blocks in its place before drawing (ReusableBlockExpander), so its view draws nothing.
+            // Not offered in the builder's add list until the builder's chooser is designed.
+            $registry->register(BlockReference::TYPE, new SectionComponent('theme::sections.'.BlockReference::TYPE, BlockReference::SCHEMA), listed: false);
 
             return $registry;
         });

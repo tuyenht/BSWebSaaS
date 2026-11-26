@@ -2,7 +2,10 @@
 
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
+use App\Modules\Cms\Models\ContentBlock;
+use App\Modules\Cms\Models\ContentBlockTranslation;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
@@ -23,6 +26,7 @@ use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Components\BlockReference;
 use App\Modules\Workflow\Actions\InstantiateWorkflow;
 use Illuminate\Support\Facades\View;
 
@@ -41,6 +45,26 @@ it('renders the storefront home within its query budget', function (): void {
     $budget = 11; // + nav: one assignment lookup (miss → empty menu) on top of the page resolve
 
     $count = countQueries(fn () => $this->get('http://a.test/')->assertOk());
+
+    expect($count)->toBeLessThanOrEqual($budget);
+});
+
+it('renders the storefront home placing three shared blocks within the budget plus one', function (): void {
+    // One query reads every shared block a page places (body and slots together), however many.
+    $budget = 12;
+    app(Tenancy::class)->enter(1, function (): void {
+        $refs = [];
+        foreach (['mot', 'hai', 'ba'] as $key) {
+            $block = ContentBlock::query()->create(['key' => $key, 'name' => 'Khối '.$key, 'region' => 'inline', 'status' => 'published']);
+            ContentBlockTranslation::query()->create(['content_block_id' => $block->id, 'locale' => 'vi', 'body' => ['blocks' => [
+                ['type' => 'cta', 'props' => ['heading' => 'Khối dùng chung '.$key]],
+            ]]]);
+            $refs[] = ['type' => BlockReference::TYPE, 'props' => [BlockReference::PROP => $block->ulid]];
+        }
+        EntryTranslation::query()->update(['body' => json_encode(['blocks' => $refs])]);
+    });
+
+    $count = countQueries(fn () => $this->get('http://a.test/')->assertOk()->assertSee('Khối dùng chung ba'));
 
     expect($count)->toBeLessThanOrEqual($budget);
 });
