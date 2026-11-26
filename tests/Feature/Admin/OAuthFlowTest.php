@@ -326,7 +326,7 @@ it('never follows a state value that this app did not sign', function (string $s
     'issued time moved, signature kept' => [function (): string {
         [$random, $origin, $issued, $signature] = explode('.', OAuthState::mint('http://b.test'));
 
-        return $random.'.'.$origin.'.'.((int) $issued + 1).'.'.$signature;
+        return $random.'.'.$origin.'.'.((int) $issued - 1).'.'.$signature;   // still inside the hour: only the signature refuses it
     }],
     'signed with another key' => [function (): string {
         $random = 'r';
@@ -344,6 +344,11 @@ it('names no origin from a signed state older than an hour, or with no app key s
     $this->travel(61)->minutes();
     expect(OAuthState::origin($state))->toBeNull();
     $this->travelBack();
+
+    $this->travel(5)->minutes();
+    $ahead = OAuthState::mint('http://b.test');
+    $this->travelBack();
+    expect(OAuthState::origin($ahead))->toBeNull();
 
     config(['app.key' => '']);
     expect(OAuthState::origin($state))->toBeNull();
