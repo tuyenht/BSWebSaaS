@@ -1,21 +1,29 @@
 <?php
 
+use App\Modules\Admin\Console\RekeySiteMedia;
 use App\Modules\Admin\Support\MediaBackfill\MediaRefsBackfill;
 use App\Modules\Admin\Support\Settings\HeadingDecorInput;
+use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\ContentBlockTranslation;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryRevision;
+use App\Modules\Cms\Models\EntryTranslation;
+use App\Modules\Cms\Models\Menu;
+use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\BlockMediaUsage;
 use App\Modules\Cms\Support\EntryCoverUsage;
+use App\Modules\Forms\Models\Form;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
+use App\Modules\Shared\Support\RichTextSanitizer;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -298,4 +306,245 @@ it('reads, looks up and writes a batch in a fixed number of queries, plus one sa
     // every place is one read, one media lookup and one write per batch; only a page body is saved
     // through its model (its sanitizing cast), one statement per rewritten body
     expect($many - $few)->toBe(12 - 2);
+});
+
+it('walks or counts every place media:rekey-site rewrites keys in', function (): void {
+    $walked = [['entries', 'meta'], ...array_map(static fn (array $doc): array => [$doc[0], $doc[1]], array_values(MediaRefsBackfill::DOCS)), ...array_values(MediaRefsBackfill::COUNTED)];
+
+    foreach (RekeySiteMedia::PLACES as $place) {
+        expect($walked)->toContain($place);
+    }
+    foreach (array_column($walked, 0) as $table) {
+        expect(MediaRefsBackfill::WALKS)->toHaveKey($table);
+    }
+});
+
+it('counts the file addresses of the places it only reads, and writes nothing there', function (): void {
+    $hero = backfillMedia(1, 'hero-1a2b.jpg', 'image/jpeg');
+    $logo = backfillMedia(1, 'logo-2b3c.png', 'image/png');
+    $tables = ['products', 'menus', 'menu_items', 'content_sections', 'site_profiles', 'forms', 'site_settings'];
+    $made = app(Tenancy::class)->enter(1, function () use ($logo): array {
+        $menu = Menu::query()->create(['name' => 'Chính', 'handle' => 'primary']);
+
+        return [
+            'product' => Product::query()->create(['status' => 'published', 'published_at' => now()]),
+            'item' => MenuItem::query()->create(['menu_id' => $menu->id, 'link_type' => 'url', 'url' => '/lien-he', 'position' => 0]),
+            'form' => Form::query()->create(['key' => 'contact', 'name' => ['vi' => 'Liên hệ'], 'status' => 'active']),
+            'brand' => SiteSetting::query()->create(['group_name' => 'general', 'key' => 'brand', 'value' => ['logo' => 'https://files.test/media/'.$logo->storage_key.'?w=256', 'name' => 'A', 'og_image' => 'https://cdn.other.test/og.jpg']]),
+        ];
+    });
+    backfillWrite('products', $made['product']->id, 'meta', ['old_image' => $hero->storage_key, 'note' => '26/11/2026']);
+    backfillWrite('menu_items', $made['item']->id, 'meta', ['picture' => 'https://files.test/media/'.$hero->storage_key.'?w=320', 'icon' => 'phone']);
+    backfillWrite('forms', $made['form']->id, 'settings', ['banner' => siteCode(1).'/khong-co-9z9z.jpg', 'edited' => true]);
+    $hash = fn (): array => array_map(static fn (string $table): string => (string) DB::connection('pgsql_admin')->selectOne("SELECT md5(coalesce(string_agg(t::text, '|' ORDER BY t.id), '')) AS h FROM {$table} t")->h, $tables);
+    $before = $hash();
+
+    [$exit, $output, $report] = backfillRun();
+    $lines = $report['sites'][1]['lines'];
+    expect($exit)->toBe(0, $output)
+        ->and($lines['products address'])->toMatchArray(['found' => 1, 'unmatched' => 0])
+        ->and($lines['menu_items address'])->toMatchArray(['found' => 1, 'unmatched' => 0])
+        ->and($lines['forms address'])->toMatchArray(['found' => 0, 'unmatched' => 1])
+        ->and($lines['forms address']['samples'])->toBe([siteCode(1).'/khong-co-9z9z.jpg'])
+        // the brand setting stays for its own step, counted meanwhile; an outside address is no file
+        ->and($lines['site_settings general.brand'])->toMatchArray(['found' => 1, 'unmatched' => 0])
+        ->and($report['totals'])->toMatchArray(['found' => 3, 'unmatched' => 1, 'converted' => 0])
+        ->and($output)->toContain('in site_settings general.brand: names a file by address: https://files.test/media/'.$logo->storage_key.'?w=256');
+
+    [$exit, $output, $report] = backfillRun(apply: true);
+    expect($exit)->toBe(0, $output)
+        ->and($report['totals']['found'])->toBe(3)
+        ->and($hash())->toBe($before);
+});
+
+it('counts an old key kept beside the new shape and a block of an unknown type, and converts a mask whose ulid the page ignores', function (): void {
+    $hero = backfillMedia(1, 'hero-1a2b.jpg', 'image/jpeg');
+    $mask = backfillMedia(1, 'mask-5e6f.png', 'image/png');
+    $theirMask = backfillMedia(2, 'mask-7a8b.png', 'image/png');
+    $made = app(Tenancy::class)->enter(1, function () use ($hero, $mask): array {
+        $post = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'cover_media_id' => $hero->id, 'meta' => []]);
+        $text = $post->translations()->create(['locale' => 'vi', 'title' => 'Bài', 'slug' => 'bai', 'status' => 'draft', 'body' => ['blocks' => []]]);
+        SiteSetting::query()->create(['group_name' => 'theme', 'key' => 'heading_decor', 'value' => ['style' => 'bar', 'mask_ulid' => strtoupper($mask->ulid), 'mask_media' => $mask->storage_key]]);
+
+        return compact('post', 'text');
+    });
+    $decor2 = app(Tenancy::class)->enter(2, fn (): SiteSetting => SiteSetting::query()->create(['group_name' => 'theme', 'key' => 'heading_decor', 'value' => ['style' => 'bar', 'mask_ulid' => 'not-a-ulid', 'mask_media' => $theirMask->storage_key]]));
+    // a cover id with the old key still beside it (written past the editor, which never keeps both)
+    DB::connection('pgsql_admin')->table('entries')->where('id', $made['post']->id)->update(['meta' => json_encode(['image_url' => $hero->storage_key])]);
+    backfillWrite('entry_translations', $made['text']->id, 'body', ['blocks' => [['type' => 'gone_block', 'props' => ['image_url' => $hero->storage_key]]]]);
+
+    [$exit, $output, $report] = backfillRun('all', apply: true);
+    $lines = $report['sites'][1]['lines'];
+    expect($exit)->toBe(0, $output)
+        ->and($lines['entries cover'])->toMatchArray(['stale' => 1, 'already' => 0, 'converted' => 0])
+        ->and($lines['entries cover']['notes'])->toBe(['key beside the cover id: '.$hero->storage_key])
+        ->and($lines['site_settings mask'])->toMatchArray(['stale' => 1, 'already' => 0])
+        ->and($lines['entry_translations block'])->toMatchArray(['skipped' => 1])
+        ->and($lines['entry_translations block']['notes'])->toBe(['block type gone_block'])
+        ->and($report['totals'])->toMatchArray(['stale' => 2, 'skipped' => 1])
+        // the old key is left for the contract, never dropped here
+        ->and(backfillJson('entries', $made['post']->id, 'meta'))->toBe(['image_url' => $hero->storage_key])
+        // site 2: the page ignores a mask_ulid that is no ulid and shows mask_media, so that one is converted
+        ->and($report['sites'][2]['lines']['site_settings mask'])->toMatchArray(['converted' => 1, 'stale' => 0])
+        ->and(backfillJson('site_settings', $decor2->id, 'value'))->toEqual(['style' => 'bar', 'mask_ulid' => strtoupper($theirMask->ulid)]);
+});
+
+it('changes only the media references of a body: html props, lists, empty objects and decimals stay as stored', function (): void {
+    $hero = backfillMedia(1, 'hero-1a2b.jpg', 'image/jpeg');
+    $doc = backfillMedia(1, 'bang-gia-3c4d.pdf', 'application/pdf');
+    $clean = app(RichTextSanitizer::class)->cms('<p>Xin chào <strong>An Vinh</strong> &amp; <a href="https://a.test/x">đối tác</a></p>');
+    $dirty = '<p onclick="steal()">Cũ</p>';
+    $made = app(Tenancy::class)->enter(1, function (): array {
+        $post = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'meta' => []]);
+
+        return [
+            'text' => $post->translations()->create(['locale' => 'vi', 'title' => 'Bài', 'slug' => 'bai', 'status' => 'draft', 'body' => ['blocks' => []]]),
+            'revision' => EntryRevision::query()->create(['entry_id' => $post->id, 'locale' => 'vi', 'kind' => RevisionKind::Edit, 'snapshot' => ['v' => 1]]),
+        ];
+    });
+    $blocks = static fn (mixed $image, mixed $file, string $dirtyHtml): string => '[{"type":"richtext_html","props":{"html":'.json_encode($clean, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE).'}},'
+        .'{"type":"richtext_html","props":{"html":'.json_encode($dirtyHtml, JSON_UNESCAPED_SLASHES).'}},'
+        .'{"type":"partners","props":{"heading":"Đối tác","style":{},"scale":1.0,"logos":['
+        .'{"image_url":'.json_encode($image, JSON_UNESCAPED_SLASHES).',"name":"A","url_do":'.json_encode($file, JSON_UNESCAPED_SLASHES).',"extra":{}},'
+        .'{"image_url":'.$hero->id.',"name":"B","tags":[]}]}}]';
+    $old = $blocks($hero->storage_key, ['k' => 'file', 'file' => $doc->storage_key], $dirty);
+    $admin = DB::connection('pgsql_admin');
+    $admin->update('UPDATE entry_translations SET body = ?::jsonb WHERE id = ?', ['{"blocks":'.$old.'}', $made['text']->id]);
+    $admin->update('UPDATE entry_revisions SET snapshot = ?::jsonb WHERE id = ?', ['{"v":1,"note":{},"body":{"blocks":'.$old.'}}', $made['revision']->id]);
+
+    [$exit, $output] = backfillRun(apply: true);
+    expect($exit)->toBe(0, $output);
+
+    $converted = ['k' => 'file', 'media' => strtoupper($doc->ulid)];
+    // compared as jsonb text, which tells {} from [] and 1.0 from 1 (jsonb equality does not tell the last two apart)
+    $same = static fn (string $table, string $column, int $id, string $expected): bool => (bool) $admin->selectOne("SELECT {$column}::text = (?::jsonb)::text AS same FROM {$table} WHERE id = ?", [$expected, $id])->same;
+    // a place written past the model (a revision): every byte but the two references
+    expect($same('entry_revisions', 'snapshot', $made['revision']->id, '{"v":1,"note":{},"body":{"blocks":'.$blocks($hero->id, $converted, $dirty).'}}'))->toBeTrue();
+    // a page body is saved through its model, whose cast does what every editor save does: the
+    // html props go through RichTextSanitizer::cms (HTML already clean is unchanged, the old unsafe
+    // attribute goes), and the JSON is decoded to PHP arrays, so an empty object is stored as [] and 1.0 as 1
+    $throughCast = str_replace(['"style":{}', '"scale":1.0', '"extra":{}'], ['"style":[]', '"scale":1', '"extra":[]'], $blocks($hero->id, $converted, app(RichTextSanitizer::class)->cms($dirty)));
+    expect(app(RichTextSanitizer::class)->cms($clean))->toBe($clean)
+        ->and($same('entry_translations', 'body', $made['text']->id, '{"blocks":'.$throughCast.'}'))->toBeTrue();
+});
+
+it('holds the rows of a batch locked from read to write, with lock_timeout set, so a save in between waits', function (): void {
+    $hero = backfillMedia(1, 'hero-1a2b.jpg', 'image/jpeg');
+    $text = app(Tenancy::class)->enter(1, function (): EntryTranslation {
+        $post = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'meta' => []]);
+
+        return $post->translations()->create(['locale' => 'vi', 'title' => 'Bài', 'slug' => 'bai', 'status' => 'draft', 'body' => ['blocks' => []]]);
+    });
+    backfillWrite('entry_translations', $text->id, 'body', ['blocks' => [['type' => 'hero', 'props' => ['heading' => 'A', 'image_url' => $hero->storage_key]]]]);
+
+    $seen = [];
+    $previous = '';
+    $busy = false;
+    DB::listen(function (QueryExecuted $query) use (&$seen, &$previous, &$busy, $text): void {
+        if ($busy || $query->connectionName === 'pgsql_admin') {
+            return;
+        }
+        // between the batch's read of the bodies and its write: the media lookup
+        if (str_contains($previous, 'FROM entry_translations') && str_contains($query->sql, 'for key share') && $seen === []) {
+            $busy = true;
+            $seen['lock_timeout'] = DB::selectOne("SELECT current_setting('lock_timeout') AS v")->v;
+            try {
+                // a staff save from another connection: it has to wait for the batch's row lock
+                DB::connection('pgsql_admin')->transaction(function () use ($text): void {
+                    DB::connection('pgsql_admin')->statement("SET LOCAL lock_timeout = '200ms'");
+                    DB::connection('pgsql_admin')->update("UPDATE entry_translations SET title = 'Sửa' WHERE id = ?", [$text->id]);
+                });
+                $seen['save'] = 'went through';
+            } catch (QueryException $e) {
+                $seen['save'] = $e->errorInfo[0] ?? 'error';
+            }
+            $busy = false;
+        }
+        $previous = $query->sql;
+    });
+
+    [$exit, $output] = backfillRun(apply: true);
+
+    expect($exit)->toBe(0, $output)
+        ->and($seen)->toBe(['lock_timeout' => MediaRefsBackfill::LOCK_TIMEOUT, 'save' => '55P03'])
+        ->and(backfillJson('entry_translations', $text->id, 'body')['blocks'][0]['props']['image_url'])->toBe($hero->id);
+});
+
+it('never overwrites a row that changed after it was read: it is left, counted, and converted on the next run', function (): void {
+    $hero = backfillMedia(1, 'hero-1a2b.jpg', 'image/jpeg');
+    $logo = backfillMedia(1, 'logo-2b3c.png', 'image/png');
+    $text = app(Tenancy::class)->enter(1, function (): EntryTranslation {
+        $post = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'meta' => []]);
+
+        return $post->translations()->create(['locale' => 'vi', 'title' => 'Bài', 'slug' => 'bai', 'status' => 'draft', 'body' => ['blocks' => []]]);
+    });
+    backfillWrite('entry_translations', $text->id, 'body', ['blocks' => [['type' => 'hero', 'props' => ['heading' => 'A', 'image_url' => $hero->storage_key]]]]);
+    $staff = ['blocks' => [['type' => 'hero', 'props' => ['heading' => 'Bản của người sửa', 'image_url' => $logo->storage_key]]]];
+
+    $previous = '';
+    $done = false;
+    DB::listen(function (QueryExecuted $query) use (&$previous, &$done, $text, $staff): void {
+        if ($done || $query->connectionName === 'pgsql_admin') {
+            return;
+        }
+        if (str_contains($previous, 'FROM entry_translations') && str_contains($query->sql, 'for key share')) {
+            // the save the row lock rules out, made in the batch's own transaction to stand for it
+            $done = true;
+            EntryTranslation::query()->whereKey($text->id)->firstOrFail()->update(['body' => $staff]);
+        }
+        $previous = $query->sql;
+    });
+
+    [$exit, $output, $report] = backfillRun(apply: true);
+    expect($exit)->toBe(0, $output)
+        ->and(backfillJson('entry_translations', $text->id, 'body'))->toBe($staff)
+        ->and($report['sites'][1]['rows'])->toMatchArray(['entry_translations' => 0, 'entry_translations changed since read, left for the next run' => 1]);
+
+    [, , $again] = backfillRun(apply: true);
+    expect($again['sites'][1]['rows']['entry_translations'])->toBe(1)
+        ->and(backfillJson('entry_translations', $text->id, 'body')['blocks'][0]['props'])->toBe(['heading' => 'Bản của người sửa', 'image_url' => $logo->id]);
+});
+
+it('walks every segment of a table: the Trash, pages, rows with no updated_at, and a full batch of equal titles', function (): void {
+    $hero = backfillMedia(1, 'hero-1a2b.jpg', 'image/jpeg');
+    $admin = DB::connection('pgsql_admin');
+    $entry = static fn (array $values): int => (int) $admin->table('entries')->insertGetId($values + [
+        'ulid' => (string) Str::ulid(), 'site_id' => 1, 'type' => 'post', 'status' => 'draft', 'meta' => json_encode(['image_url' => $hero->storage_key]), 'created_at' => now(), 'updated_at' => now(),
+    ]);
+    $ids = [
+        $entry(['deleted_at' => now()]),
+        $entry(['deleted_at' => now(), 'updated_at' => null]),
+        $entry(['type' => 'page', 'status' => 'published']),
+        $entry(['type' => 'page', 'status' => 'draft', 'deleted_at' => now()]),
+        $entry(['updated_at' => null]),
+    ];
+    $body = json_encode(['blocks' => [['type' => 'hero', 'props' => ['heading' => 'A', 'image_url' => $hero->storage_key]]]], JSON_UNESCAPED_SLASHES);
+    $posts = array_map(static fn (int $i): int => $entry(['meta' => '{}']), range(1, MediaRefsBackfill::BATCH + 1));
+    foreach (array_chunk($posts, 200) as $chunk) {
+        $admin->table('entry_translations')->insert(array_map(static fn (int $id): array => [
+            'site_id' => 1, 'entry_id' => $id, 'locale' => 'vi', 'title' => 'Cùng một tên', 'slug' => "bai-{$id}", 'status' => 'draft', 'body' => $body, 'created_at' => now(), 'updated_at' => now(),
+        ], $chunk));
+    }
+
+    // revisions of two entries in two languages, more than a batch, many sharing one created_at
+    $snapshot = json_encode(['v' => 1, 'meta' => ['image_url' => $hero->storage_key]], JSON_UNESCAPED_SLASHES);
+    $at = now()->subDay();
+    $revisions = [];
+    foreach ([$posts[0], $posts[1]] as $n => $entryId) {
+        foreach (range(1, 260) as $i) {
+            $revisions[] = ['ulid' => (string) Str::ulid(), 'site_id' => 1, 'entry_id' => $entryId, 'locale' => $i % 2 === 0 ? 'vi' : 'en', 'kind' => 'edit', 'snapshot' => $snapshot, 'created_at' => $i % 3 === 0 ? $at->copy()->addMinutes($i) : $at];
+        }
+    }
+    foreach (array_chunk($revisions, 200) as $chunk) {
+        $admin->table('entry_revisions')->insert($chunk);
+    }
+
+    [$exit, $output, $report] = backfillRun(apply: true);
+    expect($exit)->toBe(0, $output)
+        ->and($report['sites'][1]['lines']['entry_revisions cover']['converted'])->toBe(count($revisions))
+        ->and($admin->table('entry_revisions')->whereRaw("jsonb_exists(snapshot->'meta', 'image_url')")->count())->toBe(0)
+        ->and($report['sites'][1]['lines']['entries cover']['converted'])->toBe(count($ids))
+        ->and($admin->table('entries')->whereIn('id', $ids)->whereNull('cover_media_id')->count())->toBe(0)
+        ->and($report['sites'][1]['lines']['entry_translations image']['converted'])->toBe(MediaRefsBackfill::BATCH + 1)
+        ->and($admin->table('entry_translations')->whereRaw("body->'blocks'->0->'props'->>'image_url' = ?", [(string) $hero->id])->count())->toBe(MediaRefsBackfill::BATCH + 1);
 });

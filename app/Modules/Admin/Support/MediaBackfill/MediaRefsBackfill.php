@@ -5,9 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Support\MediaBackfill;
 
 use App\Modules\Admin\Support\Settings\HeadingDecorInput;
-use App\Modules\Cms\Models\ContentBlockTranslation;
-use App\Modules\Cms\Models\EntryDraft;
-use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Support\BlockMediaUsage;
 use App\Modules\Cms\Support\EntryCoverUsage;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -34,23 +31,34 @@ use Throwable;
  * props and covers become the bigint id (typed columns and the image-prop contract, which never
  * reach the browser as such), buttons and the mask the row ulid.
  *
+ * The other places media:rekey-site rewrites keys in (COUNTED, and every other setting of the
+ * website, general.brand among them) are read too but only counted: no reader resolves a file
+ * address from them but the brand's, whose URLs the brand step removes. Every file address found
+ * there is a line of the report, so the contract sees it.
+ *
  * Every lookup goes through MediaRefs (one query per batch, the Trash included and FOR KEY SHARE
  * when writing). A file in the Trash is converted like any other (so a picture in the Trash stops
  * showing, as block pictures already do) and counted apart, so the owner can be told before the
  * first real run. A value already in the new shape is never touched; one that names no file of
  * the website, or a file of another type, is left as it is and counted as unmatched.
  *
- * Per place, BATCH rows by id (keyset) per tenant transaction: in a real run the rows are locked
- * FOR NO KEY UPDATE, then the media rows FOR KEY SHARE (the order an entry save takes them), and a
- * batch that lost a lock conflict is run again whole, TRIES times at most (as SiteMediaRekey). A
- * dry run reads without locks and writes nothing. Writes skip the model events (no updated_at, no
- * revision, no content mark: the page shows the same picture): a page body through a quiet save of
- * its model, so its sanitizing cast still runs, the other places one statement per batch. A real run keeps the usage index
- * in the same transaction (a block picture now named by id is recorded as used, BlockMediaUsage's
- * collection; the mask's row through HeadingDecorInput), then rebuilds the cover usage of the
- * website (EntryCoverUsage::reconcileSite). Running it again converts nothing.
+ * Rows are read BATCH at a time per tenant transaction, in the order of an index that leads with
+ * site_id (WALKS), so a batch reads about BATCH rows of the website, not all of them. In a real run
+ * the rows of a converted place are locked FOR NO KEY UPDATE, then the media rows FOR KEY SHARE (the
+ * order an entry save takes them), with lock_timeout set, and a batch that lost a lock conflict is
+ * run again whole, TRIES times at most (as SiteMediaRekey). A dry run reads without locks and
+ * writes nothing. A row is written only while it still holds what was read (a save in between, which
+ * the lock rules out, leaves it for the next run, counted). Writes skip the model events (no
+ * updated_at, no revision, no content mark: the page shows the same picture): a page body through a
+ * quiet save of its model, so its sanitizing cast still runs, the other places one statement per
+ * batch. A real run keeps the usage index in the same transaction (a block picture now named by id
+ * is recorded as used, BlockMediaUsage's collection; the mask's row through HeadingDecorInput), then
+ * rebuilds the cover usage of the website (EntryCoverUsage::reconcileSite). Running it again
+ * converts nothing.
  *
  * Stateless (a pass object per batch), so it is Octane-safe.
+ *
+ * @phpstan-import-type Line from BackfillPass
  */
 final readonly class MediaRefsBackfill
 {
@@ -60,7 +68,10 @@ final readonly class MediaRefsBackfill
     /** Tries of one batch that lost a lock conflict, the first included. */
     public const int TRIES = 3;
 
-    /** The JSON places: report name => [table, jsonb column, owner morph alias for the usage index, owner id column]. */
+    /** How long a batch waits for a row lock before it gives up and is tried again (SET LOCAL lock_timeout). */
+    public const string LOCK_TIMEOUT = '3s';
+
+    /** The converted JSON places: report name => [table, jsonb column, owner morph alias for the usage index, owner id column]. */
     public const array DOCS = [
         'entry_drafts' => ['entry_drafts', 'content', null, null],
         'entry_revisions' => ['entry_revisions', 'snapshot', null, null],
@@ -68,6 +79,72 @@ final readonly class MediaRefsBackfill
         'content_block_translations' => ['content_block_translations', 'body', 'content_block', 'content_block_id'],
         'taxonomies' => ['taxonomies', 'meta', 'taxonomy', 'id'],
         'site_settings' => ['site_settings', 'value', 'site_setting', 'id'],
+    ];
+
+    /**
+     * The places only counted: no reader resolves a file address from them (products.meta holds
+     * notes of its own, the pictures are product_images rows; a menu's and a menu item's meta hold
+     * flags, a glyph name and a block ulid; a content section's and a profile's meta are read by no
+     * page; a form's settings hold flags and an entry ulid). Report name => [table, jsonb column].
+     */
+    public const array COUNTED = [
+        'products' => ['products', 'meta'],
+        'menus' => ['menus', 'meta'],
+        'menu_items' => ['menu_items', 'meta'],
+        'content_sections' => ['content_sections', 'meta'],
+        'site_profiles' => ['site_profiles', 'meta'],
+        'forms' => ['forms', 'settings'],
+    ];
+
+    /**
+     * How each table is read: segments that together hold every row of a website, each walked in the
+     * order of an index that leads with site_id, keyset on its columns (an id tie-break where the
+     * index ends without one). [segment condition, keys: list of [column, ORDER BY term]]; a term
+     * ending in DESC walks that column down, as its index stores it.
+     *
+     * A key a save can change (updated_at, a title, a page's status) lets a row saved during the run
+     * move behind the walk; such a row is the new shape already when the save wrote it, and anything
+     * left is what the second dry run is for. updated_at only grows, so it moves a row ahead (read again).
+     */
+    public const array WALKS = [
+        'entries' => [
+            // live posts: entries_post_updated_idx (site_id, updated_at NULLS FIRST, id)
+            ["type = 'post' AND deleted_at IS NULL AND updated_at IS NOT NULL", [['updated_at', 'updated_at NULLS FIRST'], ['id', 'id']]],
+            ["type = 'post' AND deleted_at IS NULL AND updated_at IS NULL", [['id', 'id']]],
+            // the Trash: entries_trash_idx (site_id, type, updated_at NULLS FIRST, id)
+            ['deleted_at IS NOT NULL AND updated_at IS NOT NULL', [['type', 'type'], ['updated_at', 'updated_at NULLS FIRST'], ['id', 'id']]],
+            ['deleted_at IS NOT NULL AND updated_at IS NULL', [['type', 'type'], ['id', 'id']]],
+            // live pages: entries_site_id_type_status_index (site_id, type, status); no index holds
+            // their id, so a batch sorts the rest of one status (a website has few pages)
+            ["type = 'page' AND deleted_at IS NULL", [['status', 'status'], ['id', 'id']]],
+        ],
+        // entry_drafts_queue (site_id, workflow_state) holds no id: a batch sorts the website's
+        // drafts (a row lives only while a change is open, so they are few)
+        'entry_drafts' => [['', [['id', 'id']]]],
+        // entry_revisions_history (site_id, entry_id, locale, created_at DESC, id DESC), in its own
+        // order: walked by (entry_id, id), the planner took entry_revisions_entry_id_index and read
+        // every other website's revisions before this one's first
+        'entry_revisions' => [['', [['entry_id', 'entry_id'], ['locale', 'locale'], ['created_at', 'created_at DESC'], ['id', 'id DESC']]]],
+        // entry_translations_title_icu_idx (site_id, locale, title COLLATE "vi-VN-x-icu", entry_id)
+        'entry_translations' => [['', [['locale', 'locale'], ['title COLLATE "vi-VN-x-icu"', 'title COLLATE "vi-VN-x-icu"'], ['entry_id', 'entry_id']]]],
+        // content_block_translations_block_locale_unique (site_id, content_block_id, locale)
+        'content_block_translations' => [['', [['content_block_id', 'content_block_id'], ['locale', 'locale']]]],
+        // taxonomies_site_id_id_unique
+        'taxonomies' => [['', [['id', 'id']]]],
+        // site_settings_site_id_group_name_key_unique
+        'site_settings' => [['', [['group_name', 'group_name'], ['key', 'key']]]],
+        // products_live_updated_idx (site_id, updated_at NULLS FIRST, id), products_trash_idx (site_id, deleted_at NULLS FIRST, id)
+        'products' => [
+            ['deleted_at IS NULL AND updated_at IS NOT NULL', [['updated_at', 'updated_at NULLS FIRST'], ['id', 'id']]],
+            ['deleted_at IS NULL AND updated_at IS NULL', [['id', 'id']]],
+            ['deleted_at IS NOT NULL', [['deleted_at', 'deleted_at NULLS FIRST'], ['id', 'id']]],
+        ],
+        // the (site_id, id) unique index of each; site_profiles_site_id_unique (one row)
+        'menus' => [['', [['id', 'id']]]],
+        'menu_items' => [['', [['id', 'id']]]],
+        'content_sections' => [['', [['id', 'id']]]],
+        'forms' => [['', [['id', 'id']]]],
+        'site_profiles' => [['', [['id', 'id']]]],
     ];
 
     /** The places a visitor sees: a picture of these in the Trash stops showing once converted. */
@@ -78,7 +155,7 @@ final readonly class MediaRefsBackfill
     /**
      * Converts (or with $apply false only counts) the website's places.
      *
-     * @return array{lines: array<string, array{converted: int, already: int, kept: int, unmatched: int, trashed: int, samples: list<string>, trashed_samples: list<string>}>, rows: array<string, int>, covers: array{inserted: int, deleted: int}|null}
+     * @return array{lines: array<string, Line>, rows: array<string, int>, covers: array{inserted: int, deleted: int}|null}
      */
     public function site(int $siteId, bool $apply): array
     {
@@ -87,6 +164,9 @@ final readonly class MediaRefsBackfill
         $this->entries($siteId, $apply, $lines, $rows);
         foreach (self::DOCS as $place => [$table, $column, $owner, $ownerColumn]) {
             $this->docs($siteId, $apply, $place, $table, $column, $owner, $ownerColumn, $lines, $rows);
+        }
+        foreach (self::COUNTED as $place => [$table, $column]) {
+            $this->docs($siteId, false, $place, $table, $column, null, null, $lines, $rows);
         }
         $covers = $apply ? $this->tenancy->enter($siteId, static fn (): array => EntryCoverUsage::reconcileSite($siteId)) : null;
 
@@ -100,59 +180,54 @@ final readonly class MediaRefsBackfill
      * meta in the same statement (writers never keep one beside an id). Only entries with a cover
      * are read; the Trash included.
      *
-     * @param  array<string, array{converted: int, already: int, kept: int, unmatched: int, trashed: int, samples: list<string>, trashed_samples: list<string>}>  $lines
+     * @param  array<string, Line>  $lines
      * @param  array<string, int>  $rows
      */
     private function entries(int $siteId, bool $apply, array &$lines, array &$rows): void
     {
-        $lastId = 0;
-        do {
-            [$count, $lastId, $pass, $written] = $this->batch($siteId, function () use ($siteId, $apply, $lastId): array {
-                $found = self::objects(DB::select(
-                    "SELECT id, cover_media_id, meta->'image_url' AS cover FROM entries WHERE site_id = ? AND id > ? AND (cover_media_id IS NOT NULL OR meta->'image_url' IS NOT NULL) ORDER BY id LIMIT ".self::BATCH.($apply ? ' FOR NO KEY UPDATE' : ''),
-                    [$siteId, $lastId],
-                ));
-                $pass = new BackfillPass($this->urls);
-                $read = static function (stdClass $row) use ($pass): ?int {
-                    $cover = isset($row->cover) ? json_decode(Cast::string($row->cover), true) : null;
+        $select = "id, cover_media_id, meta->'image_url' AS cover";
+        $filter = "cover_media_id IS NOT NULL OR meta->'image_url' IS NOT NULL";
+        $this->walk($siteId, 'entries', $select, $filter, [], $apply, function (array $found) use ($siteId, $apply): array {
+            $pass = new BackfillPass($this->urls);
+            $read = static function (stdClass $row) use ($pass): ?int {
+                $cover = isset($row->cover) ? json_decode(Cast::string($row->cover), true) : null;
 
-                    return $pass->cover('entries cover', $row->cover_media_id ?? null, $cover);
-                };
-                foreach ($found as $row) {
-                    $read($row);
-                }
-                $pass->resolve($this->lookup($pass, $apply));
+                return $pass->cover('entries cover', $row->cover_media_id ?? null, $cover);
+            };
+            foreach ($found as $row) {
+                $read($row);
+            }
+            $pass->resolve($this->lookup($pass, $apply));
 
-                $values = [];
-                $bindings = [];
-                $last = $lastId;
-                foreach ($found as $row) {
-                    $last = Cast::int($row->id);
-                    $id = $read($row);
-                    if ($id !== null) {
-                        $values[] = '(?::bigint, ?::bigint)';
-                        array_push($bindings, $last, $id);
-                    }
+            $values = [];
+            $bindings = [];
+            foreach ($found as $row) {
+                $id = $read($row);
+                if ($id !== null) {
+                    $values[] = '(?::bigint, ?::bigint, ?::jsonb)';
+                    array_push($bindings, Cast::int($row->id), $id, Cast::string($row->cover));
                 }
-                if ($apply && $values !== []) {
-                    DB::update(
-                        "UPDATE entries AS e SET cover_media_id = v.media_id, meta = e.meta - 'image_url' FROM (VALUES ".implode(', ', $values).') AS v(id, media_id) '.
-                        'WHERE e.site_id = ? AND e.id = v.id AND e.cover_media_id IS NULL',
-                        [...$bindings, $siteId],
-                    );
-                }
+            }
+            $written = 0;
+            if ($apply && $values !== []) {
+                // only while the row still holds what was read (the lock keeps it so)
+                $written = DB::update(
+                    "UPDATE entries AS e SET cover_media_id = v.media_id, meta = e.meta - 'image_url' FROM (VALUES ".implode(', ', $values).') AS v(id, media_id, cover) '.
+                    "WHERE e.site_id = ? AND e.id = v.id AND e.cover_media_id IS NULL AND e.meta->'image_url' = v.cover",
+                    [...$bindings, $siteId],
+                );
+            }
 
-                return [count($found), $last, $pass, count($values)];
-            });
-            $lines = self::merge($lines, $pass->lines);
-            $rows['entries'] = ($rows['entries'] ?? 0) + $written;
-        } while ($count === self::BATCH);
+            return [$pass, $apply ? $written : count($values), $apply ? count($values) - $written : 0];
+        }, $lines, $rows, 'entries');
     }
 
     /**
      * One JSON place: each row's document walked, rewritten whole when anything in it was converted.
+     * A COUNTED place ($owner null and not in DOCS) and the settings rows that hold no blocks or mask
+     * are only read for the file addresses they name.
      *
-     * @param  array<string, array{converted: int, already: int, kept: int, unmatched: int, trashed: int, samples: list<string>, trashed_samples: list<string>}>  $lines
+     * @param  array<string, Line>  $lines
      * @param  array<string, int>  $rows
      */
     private function docs(int $siteId, bool $apply, string $place, string $table, string $column, ?string $owner, ?string $ownerColumn, array &$lines, array &$rows): void
@@ -163,132 +238,209 @@ final readonly class MediaRefsBackfill
             'site_settings' => ', group_name, key',
             default => '',
         };
-        [$filter, $filterBindings] = match ($table) {
-            'taxonomies' => [" AND meta->'".LayoutSlots::META_KEY."' IS NOT NULL", []],
-            'site_settings' => [' AND ((group_name = ? AND key = ?) OR (group_name = ? AND key = ?))', [LayoutSlots::SETTING_GROUP, LayoutSlots::SETTING_KEY, 'theme', 'heading_decor']],
-            default => ['', []],
+        $filter = match ($table) {
+            'taxonomies' => "meta->'".LayoutSlots::META_KEY."' IS NOT NULL",
+            // a file address has a slash: a document without one names none
+            'products', 'menus', 'menu_items', 'content_sections', 'site_profiles', 'forms' => "{$column}::text LIKE '%/%'",
+            default => '',
         };
+        $counted = isset(self::COUNTED[$place]);
 
-        $lastId = 0;
-        do {
-            [$count, $lastId, $pass, $written] = $this->batch($siteId, function () use ($siteId, $apply, $place, $table, $column, $owner, $ownerColumn, $extra, $filter, $filterBindings, $lastId): array {
-                $found = self::objects(DB::select(
-                    "SELECT id, {$column}::text AS doc{$extra} FROM {$table} WHERE site_id = ? AND id > ?{$filter} ORDER BY id LIMIT ".self::BATCH.($apply ? ' FOR NO KEY UPDATE' : ''),
-                    [$siteId, $lastId, ...$filterBindings],
-                ));
-                $pass = new BackfillPass($this->urls);
-                foreach ($found as $row) {
-                    $doc = self::decode($row);
-                    if ($doc !== null) {
-                        $this->visit($place, $doc, $row, $pass);
+        $this->walk($siteId, $table, "id, {$column}::text AS doc{$extra}", $filter, [], $apply && ! $counted, function (array $found) use ($siteId, $apply, $place, $table, $owner, $ownerColumn, $counted): array {
+            $pass = new BackfillPass($this->urls);
+            foreach ($found as $row) {
+                $this->visit($place, $counted, $row, $pass);
+            }
+            $pass->resolve($this->lookup($pass, $apply && ! $counted));
+
+            $docs = [];
+            $usage = [];
+            $masks = [];
+            foreach ($found as $row) {
+                $pass->row();
+                $doc = $this->visit($place, $counted, $row, $pass);
+                if ($pass->changed === 0 || ! $doc instanceof stdClass) {
+                    continue;
+                }
+                $id = Cast::int($row->id);
+                $docs[$id] = [json_encode($doc, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR), Cast::string($row->doc)];
+                if (self::isDecor($row)) {
+                    $masks[$id] = $doc;
+                } elseif ($owner !== null && $ownerColumn !== null) {
+                    $ownerId = Cast::int($row->{$ownerColumn});
+                    foreach ($pass->named as $mediaId) {
+                        $usage["{$mediaId}|{$ownerId}"] = [
+                            'media_id' => $mediaId, 'mediable_type' => $owner, 'mediable_id' => $ownerId, 'site_id' => $siteId,
+                            'collection' => BlockMediaUsage::COLLECTION, 'sort_order' => 0, 'created_at' => now(), 'updated_at' => now(),
+                        ];
                     }
                 }
-                $pass->resolve($this->lookup($pass, $apply));
-
-                $docs = [];
-                $usage = [];
-                $masks = [];
-                $last = $lastId;
-                foreach ($found as $row) {
-                    $last = Cast::int($row->id);
-                    $doc = self::decode($row);
-                    if ($doc === null) {
-                        continue;
-                    }
-                    $pass->row();
-                    $this->visit($place, $doc, $row, $pass);
-                    if ($pass->changed === 0) {
-                        continue;
-                    }
-                    $docs[$last] = json_encode($doc, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR);
-                    if (self::isDecor($row)) {
-                        $masks[$last] = $doc;
-                    } elseif ($owner !== null && $ownerColumn !== null) {
-                        $ownerId = Cast::int($row->{$ownerColumn});
-                        foreach ($pass->named as $mediaId) {
-                            $usage["{$mediaId}|{$ownerId}"] = [
-                                'media_id' => $mediaId, 'mediable_type' => $owner, 'mediable_id' => $ownerId, 'site_id' => $siteId,
-                                'collection' => BlockMediaUsage::COLLECTION, 'sort_order' => 0, 'created_at' => now(), 'updated_at' => now(),
-                            ];
-                        }
-                    }
+            }
+            if (! $apply || $docs === []) {
+                return [$pass, count($docs), 0];
+            }
+            $written = self::write($siteId, $table, $docs);
+            if ($usage !== []) {
+                DB::table('mediables')->insertOrIgnore(array_values($usage));
+            }
+            foreach ($masks as $settingId => $doc) {
+                if (in_array($settingId, $written, true)) {
+                    HeadingDecorInput::syncMaskUsage($settingId, json_decode(Cast::string(json_encode($doc)), true));
                 }
-                if ($apply && $docs !== []) {
-                    self::write($siteId, $table, $docs);
-                    if ($usage !== []) {
-                        DB::table('mediables')->insertOrIgnore(array_values($usage));
-                    }
-                    foreach ($masks as $settingId => $doc) {
-                        HeadingDecorInput::syncMaskUsage($settingId, json_decode(Cast::string(json_encode($doc)), true));
-                    }
-                }
+            }
 
-                return [count($found), $last, $pass, count($docs)];
-            });
-            $lines = self::merge($lines, $pass->lines);
-            $rows[$place] = ($rows[$place] ?? 0) + $written;
-        } while ($count === self::BATCH);
+            return [$pass, count($written), count($docs) - count($written)];
+        }, $lines, $rows, $place);
     }
 
     /**
-     * Writes a batch's rewritten documents. A page body (a post's, a pending change's, a shared
-     * block's) goes through its model, so its sanitizing cast runs as on every body write: a quiet
-     * save with timestamps off, one per row (ResanitizePageBodies' road). The other places take one
-     * statement per batch.
+     * Walks one table's rows of the website, segment by segment (WALKS), BATCH rows per tenant
+     * transaction: $handle gets a batch's rows that match $filter and returns its pass, the rows it
+     * wrote (or would write) and the rows it left because they changed since they were read.
      *
-     * @param  array<int, string>  $docs  row id => the document as JSON
+     * $filter is computed per row (`hit`), not put in the WHERE: there it would make a batch scan
+     * the index until BATCH rows match, the whole website when few do. So every batch reads at most
+     * BATCH index entries, and also locks the rows of it that do not match, for that batch's time.
+     *
+     * @param  list<mixed>  $filterBindings
+     * @param  Closure(list<stdClass>): array{0: BackfillPass, 1: int, 2: int}  $handle
+     * @param  array<string, Line>  $lines
+     * @param  array<string, int>  $rows
      */
-    private static function write(int $siteId, string $table, array $docs): void
+    private function walk(int $siteId, string $table, string $select, string $filter, array $filterBindings, bool $lock, Closure $handle, array &$lines, array &$rows, string $place): void
     {
-        $model = match ($table) {
-            'entry_translations' => EntryTranslation::class,
-            'entry_drafts' => EntryDraft::class,
-            'content_block_translations' => ContentBlockTranslation::class,
-            default => null,
-        };
-        if ($model !== null) {
-            $column = $table === 'entry_drafts' ? 'content' : 'body';
-            // only the id and the body are read, so only the body is written (the title and excerpt,
-            // whose storefront search words the model events keep, are never touched)
-            foreach ($model::query()->whereKey(array_keys($docs))->get(['id', $column]) as $row) {
-                $row->setAttribute($column, json_decode($docs[Cast::int($row->getKey())], true, 512, JSON_THROW_ON_ERROR));
-                $row->timestamps = false;
-                $row->saveQuietly();
-            }
+        $walks = self::WALKS[$table] ?? throw new InvalidArgumentException("Not a place: {$table}.");
+        foreach ($walks as [$segment, $keys]) {
+            $cursor = null;
+            do {
+                [$count, $cursor, $pass, $written, $left] = $this->batch($siteId, function () use ($siteId, $table, $select, $segment, $keys, $filter, $filterBindings, $lock, $handle, $cursor): array {
+                    [$sql, $bindings] = self::page($siteId, $table, $select, $segment, $keys, $filter, $filterBindings, $cursor, $lock);
+                    $found = self::objects(DB::select($sql, $bindings));
+                    [$pass, $written, $left] = $handle(array_values(array_filter($found, static fn (stdClass $row): bool => Cast::int($row->hit) === 1)));
+                    $last = $found === [] ? $cursor : array_map(static fn (int $i): mixed => $found[count($found) - 1]->{"k{$i}"}, array_keys($keys));
 
-            return;
+                    return [count($found), $last, $pass, $written, $left];
+                });
+                $lines = self::merge($lines, $pass->lines);
+                if (! isset(self::COUNTED[$place])) {
+                    $rows[$place] = ($rows[$place] ?? 0) + $written;
+                }
+                if ($left > 0) {
+                    $rows["{$place} changed since read, left for the next run"] = ($rows["{$place} changed since read, left for the next run"] ?? 0) + $left;
+                }
+            } while ($count === self::BATCH);
+        }
+    }
+
+    /**
+     * The query of one batch: up to BATCH rows of the website after $cursor, in the keys' order.
+     * The first key's bound is also given alone, so an index whose next column is not the second
+     * key still starts at the cursor.
+     *
+     * @param  list<array{0: string, 1: string}>  $keys
+     * @param  list<mixed>  $filterBindings
+     * @param  list<mixed>|null  $cursor
+     * @return array{0: string, 1: list<mixed>}
+     */
+    public static function page(int $siteId, string $table, string $select, string $segment, array $keys, string $filter, array $filterBindings, ?array $cursor, bool $lock): array
+    {
+        $columns = implode(', ', array_map(static fn (array $key, int $i): string => "{$key[0]} AS k{$i}", $keys, array_keys($keys)));
+        $hit = $filter === '' ? '1' : "CASE WHEN {$filter} THEN 1 ELSE 0 END";
+        $sql = "SELECT {$select}, {$hit} AS hit, {$columns} FROM {$table} WHERE site_id = ?".($segment !== '' ? " AND {$segment}" : '');
+        $bindings = [...$filterBindings, $siteId];
+        if ($cursor !== null) {
+            if (count($keys) > 1) {
+                $sql .= " AND {$keys[0][0]} >= ?";
+                $bindings[] = $cursor[0];
+            }
+            $down = array_map(static fn (array $key): bool => str_ends_with($key[1], ' DESC'), $keys);
+            if (! in_array(true, $down, true)) {
+                $sql .= ' AND ('.implode(', ', array_column($keys, 0)).') > ('.implode(', ', array_fill(0, count($keys), '?')).')';
+                array_push($bindings, ...$cursor);
+            } else {
+                // mixed directions: (k0 > c0) OR (k0 = c0 AND k1 > c1) OR …, < for a DESC key
+                $or = [];
+                foreach ($keys as $i => $key) {
+                    $and = [];
+                    foreach (array_slice($keys, 0, $i) as $j => $before) {
+                        $and[] = "{$before[0]} = ?";
+                        $bindings[] = $cursor[$j];
+                    }
+                    $and[] = $key[0].($down[$i] ? ' < ?' : ' > ?');
+                    $bindings[] = $cursor[$i];
+                    $or[] = '('.implode(' AND ', $and).')';
+                }
+                $sql .= ' AND ('.implode(' OR ', $or).')';
+            }
+        }
+        $sql .= ' ORDER BY '.implode(', ', array_column($keys, 1)).' LIMIT '.self::BATCH.($lock ? ' FOR NO KEY UPDATE' : '');
+
+        return [$sql, $bindings];
+    }
+
+    /**
+     * Writes a batch's rewritten documents, each only while its row still holds the document that
+     * was read (under the row lock it always does). A page body goes through its model
+     * (PageBodyWriter); the other places take one statement per batch.
+     *
+     * @param  array<int, array{0: string, 1: string}>  $docs  row id => [the new document, the one read] as JSON
+     * @return list<int> the ids written
+     */
+    private static function write(int $siteId, string $table, array $docs): array
+    {
+        if (in_array($table, PageBodyWriter::TABLES, true)) {
+            return PageBodyWriter::write($table, $docs);
         }
 
-        $values = implode(', ', array_fill(0, count($docs), '(?::bigint, ?::text)'));
+        $values = implode(', ', array_fill(0, count($docs), '(?::bigint, ?::text, ?::text)'));
         $bindings = [];
-        foreach ($docs as $id => $doc) {
-            array_push($bindings, $id, $doc);
+        foreach ($docs as $id => [$new, $old]) {
+            array_push($bindings, $id, $new, md5($old));
         }
         $bindings[] = $siteId;
-        match ($table) {
-            'entry_revisions' => DB::update("UPDATE entry_revisions AS t SET snapshot = v.doc::jsonb FROM (VALUES {$values}) AS v(id, doc) WHERE t.site_id = ? AND t.id = v.id", $bindings),
-            'taxonomies' => DB::update("UPDATE taxonomies AS t SET meta = v.doc::jsonb FROM (VALUES {$values}) AS v(id, doc) WHERE t.site_id = ? AND t.id = v.id", $bindings),
-            'site_settings' => DB::update("UPDATE site_settings AS t SET value = v.doc::jsonb FROM (VALUES {$values}) AS v(id, doc) WHERE t.site_id = ? AND t.id = v.id", $bindings),
+        $sql = match ($table) {
+            'entry_revisions' => "UPDATE entry_revisions AS t SET snapshot = v.doc::jsonb FROM (VALUES {$values}) AS v(id, doc, old) WHERE t.site_id = ? AND t.id = v.id AND md5(t.snapshot::text) = v.old RETURNING t.id",
+            'taxonomies' => "UPDATE taxonomies AS t SET meta = v.doc::jsonb FROM (VALUES {$values}) AS v(id, doc, old) WHERE t.site_id = ? AND t.id = v.id AND md5(t.meta::text) = v.old RETURNING t.id",
+            'site_settings' => "UPDATE site_settings AS t SET value = v.doc::jsonb FROM (VALUES {$values}) AS v(id, doc, old) WHERE t.site_id = ? AND t.id = v.id AND md5(t.value::text) = v.old RETURNING t.id",
             default => throw new InvalidArgumentException("Not a place: {$table}."),
         };
+
+        return array_map(static fn (stdClass $row): int => Cast::int($row->id), self::objects(DB::selectFromWriteConnection($sql, $bindings)));
     }
 
     /** The batch's one lookup: every key it names, the Trash included, FOR KEY SHARE when writing. */
-    private function lookup(BackfillPass $pass, bool $apply): MediaRefs
+    private function lookup(BackfillPass $pass, bool $lock): MediaRefs
     {
-        return MediaRefs::rows([], [], array_keys($pass->keys), ['deleted_at'], withTrashed: true, lock: $apply);
+        return MediaRefs::rows([], [], array_keys($pass->keys), ['deleted_at'], withTrashed: true, lock: $lock);
     }
 
-    /** Walks the places of one stored document that can name a file. */
-    private function visit(string $place, stdClass $doc, object $row, BackfillPass $pass): void
+    /**
+     * Walks the places of one stored row that can name a file: the document (decoded afresh, so the
+     * second walk starts from what was read), or null when the row holds none to rewrite.
+     */
+    private function visit(string $place, bool $counted, stdClass $row, BackfillPass $pass): ?stdClass
     {
+        $value = isset($row->doc) ? json_decode(Cast::string($row->doc), false, 512, JSON_THROW_ON_ERROR) : null;
+        if ($counted) {
+            $this->addresses("{$place} address", $value, $pass);
+
+            return null;
+        }
+        if ($place === 'site_settings' && ! self::isDecor($row) && ! self::isSlots($row)) {
+            $this->addresses('site_settings '.Cast::string($row->group_name ?? '').'.'.Cast::string($row->key ?? ''), $value, $pass);
+
+            return null;
+        }
+        if (! $value instanceof stdClass) {
+            return null;
+        }
         switch ($place) {
             case 'entry_drafts':
                 // {v, shared: {cover_media_id, meta, …}, locales: {<locale>: {body, …}}}
-                if (($doc->shared ?? null) instanceof stdClass) {
-                    $this->cover($place, $doc->shared, $pass);
+                if (($value->shared ?? null) instanceof stdClass) {
+                    $this->cover($place, $value->shared, $pass);
                 }
-                foreach (self::props($doc->locales ?? null) as $text) {
+                foreach (self::props($value->locales ?? null) as $text) {
                     if ($text instanceof stdClass && ($text->body ?? null) instanceof stdClass) {
                         $this->blocks($place, $text->body, $pass);
                     }
@@ -296,25 +448,39 @@ final readonly class MediaRefsBackfill
                 break;
             case 'entry_revisions':
                 // {v, cover_media_id, meta, body, …}
-                $this->cover($place, $doc, $pass);
-                if (($doc->body ?? null) instanceof stdClass) {
-                    $this->blocks($place, $doc->body, $pass);
+                $this->cover($place, $value, $pass);
+                if (($value->body ?? null) instanceof stdClass) {
+                    $this->blocks($place, $value->body, $pass);
                 }
                 break;
             case 'entry_translations':
             case 'content_block_translations':
-                $this->blocks($place, $doc, $pass);
+                $this->blocks($place, $value, $pass);
                 break;
             case 'taxonomies':
-                $this->slots($place, $doc->{LayoutSlots::META_KEY} ?? null, $pass);
+                $this->slots($place, $value->{LayoutSlots::META_KEY} ?? null, $pass);
                 break;
             case 'site_settings':
                 if (self::isDecor($row)) {
-                    $pass->mask("{$place} mask", $doc);
+                    $pass->mask("{$place} mask", $value);
                 } else {
-                    $this->slots($place, $doc, $pass);
+                    $this->slots($place, $value, $pass);
                 }
                 break;
+        }
+
+        return $value;
+    }
+
+    /** Every string of a counted document, through BackfillPass::address(). */
+    private function addresses(string $place, mixed $value, BackfillPass $pass): void
+    {
+        if (is_string($value)) {
+            $pass->address($place, $value);
+        } elseif ($value instanceof stdClass || is_array($value)) {
+            foreach (self::props($value) as $item) {
+                $this->addresses($place, $item, $pass);
+            }
         }
     }
 
@@ -341,7 +507,11 @@ final readonly class MediaRefsBackfill
         }
     }
 
-    /** A Page-JSON body {"blocks": [{type, props}, …]}: each known block's image props and buttons. */
+    /**
+     * A Page-JSON body {"blocks": [{type, props}, …]}: each known block's image props and buttons.
+     * Only the converted values change: the rest of the props is put back as it was read (an empty
+     * object stays one, 1.0 stays 1.0). A block of a type the registry does not know is counted.
+     */
     private function blocks(string $place, stdClass $body, BackfillPass $pass): void
     {
         $blocks = $body->blocks ?? null;
@@ -349,7 +519,12 @@ final readonly class MediaRefsBackfill
             return;
         }
         foreach ($blocks as $block) {
-            if (! $block instanceof stdClass || ! is_string($block->type ?? null) || ! $this->registry->has($block->type)) {
+            if (! $block instanceof stdClass || ! is_string($block->type ?? null)) {
+                continue;
+            }
+            if (! $this->registry->has($block->type)) {
+                $pass->skipped("{$place} block", $block->type);
+
                 continue;
             }
             $stored = $block->props ?? null;
@@ -357,17 +532,44 @@ final readonly class MediaRefsBackfill
                 continue;
             }
             $schema = $this->registry->schemaFor($block->type);
-            $props = Cast::arr(json_decode(Cast::string(json_encode($stored)), true));
+            $props = Cast::arr(json_decode(Cast::string(json_encode($stored, JSON_PRESERVE_ZERO_FRACTION)), true));
             $new = ButtonLink::walk($props, $schema, static fn (array $do): array => $pass->file("{$place} file", $do));
             $new = SchemaImages::mapImages($new, $schema, static fn (mixed $value): mixed => $pass->image("{$place} image", $value));
             if ($new !== $props) {
-                $block->props = $new;
+                $block->props = self::patch($stored, $new);
             }
         }
     }
 
     /**
-     * Runs one batch in its own tenant transaction, again whole after a lost lock conflict.
+     * $new (an array decoded from $old and partly converted) laid over $old as it was read: objects
+     * stay objects and lists stay lists, even empty ones, so only the values that changed differ.
+     */
+    private static function patch(mixed $old, mixed $new): mixed
+    {
+        if (! is_array($new) || (! $old instanceof stdClass && ! is_array($old))) {
+            return $new;
+        }
+        $before = self::props($old);
+        if ($old instanceof stdClass) {
+            $out = new stdClass;
+            foreach ($new as $key => $value) {
+                $out->{$key} = array_key_exists($key, $before) ? self::patch($before[$key], $value) : $value;
+            }
+
+            return $out;
+        }
+        $out = [];
+        foreach ($new as $key => $value) {
+            $out[$key] = array_key_exists($key, $before) ? self::patch($before[$key], $value) : $value;
+        }
+
+        return $out;
+    }
+
+    /**
+     * Runs one batch in its own tenant transaction (with lock_timeout set, so a lock wait ends in a
+     * conflict), again whole after a lost lock conflict.
      *
      * @template T
      *
@@ -378,7 +580,11 @@ final readonly class MediaRefsBackfill
     {
         for ($try = 1; ; $try++) {
             try {
-                return $this->tenancy->enter($siteId, $work);
+                return $this->tenancy->enter($siteId, static function () use ($work): mixed {
+                    DB::statement("SET LOCAL lock_timeout = '".self::LOCK_TIMEOUT."'");
+
+                    return $work();
+                });
             } catch (Throwable $e) {
                 if ($try >= self::TRIES || DB::transactionLevel() > 0 || ! SiteMediaRekey::lostLockConflict($e)) {
                     throw $e;
@@ -409,12 +615,9 @@ final readonly class MediaRefsBackfill
         return ($row->group_name ?? null) === 'theme' && ($row->key ?? null) === 'heading_decor';
     }
 
-    /** A row's document as objects (an empty JSON object stays one), null when it is not an object. */
-    private static function decode(object $row): ?stdClass
+    private static function isSlots(object $row): bool
     {
-        $doc = isset($row->doc) ? json_decode(Cast::string($row->doc), false, 512, JSON_THROW_ON_ERROR) : null;
-
-        return $doc instanceof stdClass ? $doc : null;
+        return ($row->group_name ?? null) === LayoutSlots::SETTING_GROUP && ($row->key ?? null) === LayoutSlots::SETTING_KEY;
     }
 
     /** @return array<array-key, mixed> the values of a JSON object or list ([] for anything else) */
@@ -424,23 +627,21 @@ final readonly class MediaRefsBackfill
     }
 
     /**
-     * @param  array<string, array{converted: int, already: int, kept: int, unmatched: int, trashed: int, samples: list<string>, trashed_samples: list<string>}>  $sum
-     * @param  array<string, array{converted: int, already: int, kept: int, unmatched: int, trashed: int, samples: list<string>, trashed_samples: list<string>}>  $more
-     * @return array<string, array{converted: int, already: int, kept: int, unmatched: int, trashed: int, samples: list<string>, trashed_samples: list<string>}>
+     * @param  array<string, Line>  $sum
+     * @param  array<string, Line>  $more
+     * @return array<string, Line>
      */
     public static function merge(array $sum, array $more): array
     {
         foreach ($more as $place => $line) {
             $old = $sum[$place] ?? BackfillPass::emptyLine();
-            $sum[$place] = [
-                'converted' => $old['converted'] + $line['converted'],
-                'already' => $old['already'] + $line['already'],
-                'kept' => $old['kept'] + $line['kept'],
-                'unmatched' => $old['unmatched'] + $line['unmatched'],
-                'trashed' => $old['trashed'] + $line['trashed'],
-                'samples' => array_slice(array_values(array_unique([...$old['samples'], ...$line['samples']])), 0, 5),
-                'trashed_samples' => array_slice(array_values(array_unique([...$old['trashed_samples'], ...$line['trashed_samples']])), 0, 5),
-            ];
+            foreach (BackfillPass::COUNTERS as $counter) {
+                $old[$counter] += $line[$counter];
+            }
+            foreach (['samples', 'trashed_samples', 'notes'] as $list) {
+                $old[$list] = array_slice(array_values(array_unique([...$old[$list], ...$line[$list]])), 0, 5);
+            }
+            $sum[$place] = $old;
         }
 
         return $sum;

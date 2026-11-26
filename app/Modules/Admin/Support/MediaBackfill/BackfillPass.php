@@ -6,6 +6,7 @@ namespace App\Modules\Admin\Support\MediaBackfill;
 
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Media\Support\MediaKey;
 use App\Modules\Media\Support\MediaRefs;
 use App\Modules\Theme\Components\ButtonLink;
 use App\Modules\Theme\Theming\HeadingDecor;
@@ -22,10 +23,20 @@ use stdClass;
  * the page froze, MediaUrlResolver::keyFromUrl, query string dropped). A glyph name or an outside
  * address is no file and is kept.
  *
+ * Beside the counts of what it converts, a line counts what the contract must still see: an old key
+ * kept beside the new shape (stale: a cover id set and a key still in meta.image_url, a mask with a
+ * ulid and a key), a block of a type the registry does not know (skipped, its values unread), and,
+ * in the places no reader resolves an address from (address()), every file address found there.
+ *
  * Built per batch, so it is Octane-safe.
+ *
+ * @phpstan-type Line array{converted: int, already: int, kept: int, unmatched: int, trashed: int, found: int, stale: int, skipped: int, samples: list<string>, trashed_samples: list<string>, notes: list<string>}
  */
 final class BackfillPass
 {
+    /** The counters of a line (Line without its sample lists). */
+    public const array COUNTERS = ['converted', 'already', 'kept', 'unmatched', 'trashed', 'found', 'stale', 'skipped'];
+
     /** @var array<string, true> the storage keys the old shapes name (collect) */
     public array $keys = [];
 
@@ -35,7 +46,7 @@ final class BackfillPass
     /** Values the current row had converted (resolve). */
     public int $changed = 0;
 
-    /** @var array<string, array{converted: int, already: int, kept: int, unmatched: int, trashed: int, samples: list<string>, trashed_samples: list<string>}> */
+    /** @var array<string, Line> */
     public array $lines = [];
 
     private ?MediaRefs $refs = null;
@@ -58,12 +69,17 @@ final class BackfillPass
 
     /**
      * A cover (entries, a draft's shared fields, a revision snapshot): the media id it now names, or
-     * null to leave it. $coverId set means the new shape: counted, never touched.
+     * null to leave it. $coverId set means the new shape: counted, never touched; an old key still
+     * beside it is counted as stale (the readers take the id; the key is left for the contract).
      */
     public function cover(string $place, mixed $coverId, mixed $value): ?int
     {
         if ($coverId !== null && $coverId !== '') {
-            $this->tally($place, 'already');
+            if (is_string($value) && $this->keyOf($value) !== null) {
+                $this->tally($place, 'stale', "key beside the cover id: {$value}");
+            } else {
+                $this->tally($place, 'already');
+            }
 
             return null;
         }
@@ -127,17 +143,30 @@ final class BackfillPass
         return $do;
     }
 
-    /** The heading decoration's mask: `mask_media` (a key) becomes `mask_ulid`, only for a MASK_MIMES file. */
+    /**
+     * The heading decoration's mask: `mask_media` (a key) becomes `mask_ulid`, only for a MASK_MIMES
+     * file. A well-formed `mask_ulid` is the new shape (a key still beside it is stale); one that is
+     * not a ulid is what the page ignores (HeadingDecor::clean), so the key is converted over it, and
+     * with no key to convert it is counted as stale.
+     */
     public function mask(string $place, stdClass $value): void
     {
         $ulid = $value->mask_ulid ?? null;
-        if (is_string($ulid) && trim($ulid) !== '') {
-            $this->tally($place, 'already');
-
-            return;
-        }
         $key = $value->mask_media ?? null;
-        if (! is_string($key) || $key === '') {
+        $hasKey = is_string($key) && $key !== '';
+        if (is_string($ulid) && trim($ulid) !== '') {
+            if (preg_match(ButtonLink::ULID_PATTERN, trim($ulid)) === 1) {
+                $hasKey ? $this->tally($place, 'stale', "key beside the mask ulid: {$key}") : $this->tally($place, 'already');
+
+                return;
+            }
+            if (! $hasKey) {
+                $this->tally($place, 'stale', "not a ulid: {$ulid}");
+
+                return;
+            }
+        }
+        if (! $hasKey) {
             return;
         }
         $row = $this->find($place, $key, HeadingDecor::MASK_MIMES);
@@ -146,6 +175,33 @@ final class BackfillPass
         }
         unset($value->mask_media);
         $value->mask_ulid = strtoupper($row->ulid);
+    }
+
+    /** A block of a type the registry does not know: its values are not read, so it is counted. */
+    public function skipped(string $place, string $type): void
+    {
+        $this->tally($place, 'skipped', "block type {$type}");
+    }
+
+    /**
+     * A string of a place no reader resolves a media address from (counted only, never written):
+     * a bare storage key with a file name, or an address on the media host, is counted as found
+     * when it names a file of the website (the Trash included) and as unmatched when it does not.
+     */
+    public function address(string $place, string $value): void
+    {
+        $key = $this->addressKey($value);
+        if ($key === null) {
+            return;
+        }
+        if ($this->refs === null) {
+            $this->keys[$key] = true;
+
+            return;
+        }
+        $this->refs->byKey($key) === null
+            ? $this->tally($place, 'unmatched', $value)
+            : $this->tally($place, 'found', "names a file by address: {$value}");
     }
 
     /**
@@ -196,15 +252,29 @@ final class BackfillPass
         return $key !== null && MediaRefs::looksLikeKey($key) ? $key : null;
     }
 
-    /** @param  'converted'|'already'|'kept'|'unmatched'|'trashed'  $what */
+    /**
+     * The storage key a free string names, stricter than keyOf() because these places hold any text:
+     * a clean key path whose last part has an extension, or an address on the media host whose path is one.
+     */
+    private function addressKey(string $value): ?string
+    {
+        $key = str_contains($value, '://') ? $this->urls->keyFromUrl($value) : $value;
+
+        return $key !== null && preg_match(MediaKey::CLEAN_PATH_PATTERN, $key) === 1 && preg_match('/\.[A-Za-z0-9]+\z/D', $key) === 1 ? $key : null;
+    }
+
+    /** @param  'converted'|'already'|'kept'|'unmatched'|'trashed'|'found'|'stale'|'skipped'  $what */
     private function tally(string $place, string $what, ?string $sample = null): void
     {
         $line = $this->lines[$place] ?? self::emptyLine();
         $line[$what]++;
-        if ($sample !== null && $what === 'trashed') {
-            $line['trashed_samples'] = self::sampled($line['trashed_samples'], $sample);
-        } elseif ($sample !== null) {
-            $line['samples'] = self::sampled($line['samples'], $sample);
+        if ($sample !== null) {
+            $list = match ($what) {
+                'unmatched' => 'samples',
+                'trashed' => 'trashed_samples',
+                default => 'notes',
+            };
+            $line[$list] = self::sampled($line[$list], $sample);
         }
         $this->lines[$place] = $line;
     }
@@ -222,9 +292,9 @@ final class BackfillPass
         return $samples;
     }
 
-    /** @return array{converted: int, already: int, kept: int, unmatched: int, trashed: int, samples: list<string>, trashed_samples: list<string>} */
+    /** @return Line */
     public static function emptyLine(): array
     {
-        return ['converted' => 0, 'already' => 0, 'kept' => 0, 'unmatched' => 0, 'trashed' => 0, 'samples' => [], 'trashed_samples' => []];
+        return ['converted' => 0, 'already' => 0, 'kept' => 0, 'unmatched' => 0, 'trashed' => 0, 'found' => 0, 'stale' => 0, 'skipped' => 0, 'samples' => [], 'trashed_samples' => [], 'notes' => []];
     }
 }
