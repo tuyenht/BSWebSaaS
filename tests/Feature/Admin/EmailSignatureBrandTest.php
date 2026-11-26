@@ -271,6 +271,18 @@ it('fills a variable into a link only as a checked address, never as an unchecke
         ->toContain('href="mailto:lienhe@anvinh.test"');
 });
 
+it('fills the email and the phone into a link address, and leaves other braces alone', function (): void {
+    esbIdentity(['brand_name' => 'An Vinh', 'email' => 'lienhe@anvinh.test', 'hotline' => '1900 1234 (8h-17h)']);
+    app(Tenancy::class)->enter(1, fn () => app(SettingsRepository::class)->put('email', 'signature', [
+        'layout' => 'text',
+        'html' => '<p><a href="mailto:{contact_email}">Thư</a> <a href="{hotline}">Gọi</a> <a href="https://shop.vn/?utm={x}&amp;q=a%26b">Shop</a></p>',
+    ]));
+
+    expect(esbMail())->toContain('href="mailto:lienhe@anvinh.test"')
+        ->toContain('href="tel:19001234"')
+        ->toContain('q=a%26b');
+});
+
 it('takes a layout with an over-long signature as shown, and refuses it on save', function (): void {
     $admin = esbAdmin();
 
@@ -286,16 +298,18 @@ it('takes a layout with an over-long signature as shown, and refuses it on save'
     });
 });
 
-it('writes only the part that changed, so a colour from an older page keeps a newer signature', function (): void {
+it('writes only the part that changed, so a colour from an older page keeps a newer logo and signature', function (): void {
     $admin = esbAdmin();
+    $logo = esbLogo();
 
-    app(Tenancy::class)->enter(1, function () use ($admin): void {
+    app(Tenancy::class)->enter(1, function () use ($admin, $logo): void {
         $older = Livewire::actingAs($admin)->test(EmailSettings::class);
         app(SettingsRepository::class)->put('email', 'signature', ['layout' => 'top', 'html' => '<p>Mới hơn</p>']);
+        app(SettingsRepository::class)->put('email', 'brand', ['logo_media_id' => $logo->id, 'color' => null]);
 
         $older->call('pickBrandColor', '#15803d')->call('save')->assertHasNoErrors();
 
         expect(app(SettingsRepository::class)->get('email', 'signature'))->toEqual(['layout' => 'top', 'html' => '<p>Mới hơn</p>'])
-            ->and(app(SettingsRepository::class)->get('email', 'brand')['color'])->toBe('#15803d');
+            ->and(app(SettingsRepository::class)->get('email', 'brand'))->toEqual(['logo_media_id' => $logo->id, 'color' => '#15803d']);
     });
 });

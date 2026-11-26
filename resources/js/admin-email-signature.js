@@ -11,6 +11,7 @@
 // (names, addresses) are only ever set as text.
 
 const VAR_RE = /\{(site_name|site_tagline|hotline|contact_email|address|site_url)\}/g;
+const BLOCKS = ['P', 'DIV', 'UL', 'OL', 'LI', 'HR', 'TABLE', 'BLOCKQUOTE', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'];
 const KEEP = ['B', 'STRONG', 'I', 'EM', 'U', 'A', 'BR', 'P', 'UL', 'OL', 'LI', 'SPAN', 'DIV'];
 
 window.Alpine.data('bsEmailSig', (cfg) => ({
@@ -24,12 +25,17 @@ window.Alpine.data('bsEmailSig', (cfg) => ({
     sendTimer: null,
 
     init() {
-        // New lines and aligned text as <p> (a <div>'s alignment would not survive the server's cleaning).
-        try {
-            document.execCommand('defaultParagraphSeparator', false, 'p');
-        } catch (e) {
-            // see cmd()
-        }
+        // New lines as <p> while this editor has the focus (a <div>'s alignment would not survive the
+        // server's cleaning); the browser's own setting is put back for other editors when it leaves.
+        const sep = (value) => {
+            try {
+                document.execCommand('defaultParagraphSeparator', false, value);
+            } catch (e) {
+                // see cmd()
+            }
+        };
+        this.$refs.ed.addEventListener('focus', () => sep('p'));
+        this.$refs.ed.addEventListener('blur', () => sep('div'));
         this.fill(cfg.html);
         // The editor is wire:ignore: its error state follows the message Livewire draws below it.
         this.aria();
@@ -54,7 +60,7 @@ window.Alpine.data('bsEmailSig', (cfg) => ({
             const img = document.createElement('img');
             img.src = d.url;
             img.alt = typeof d.alt === 'string' ? d.alt : '';
-            img.setAttribute('width', '200');
+            img.setAttribute('width', String(Number.isInteger(d.width) && d.width > 0 ? Math.min(d.width, 200) : 200));
             this.insert(img.outerHTML);
         });
     },
@@ -114,10 +120,22 @@ window.Alpine.data('bsEmailSig', (cfg) => ({
     serialize() {
         const d = this.$refs.ed.cloneNode(true);
         d.querySelectorAll('.em-var').forEach((s) => s.replaceWith(document.createTextNode(s.dataset.v ?? '')));
+        // Innermost first: a div of inline content becomes a <p>; one holding blocks is unwrapped, its
+        // alignment handed to the paragraphs inside that have none of their own.
         [...d.querySelectorAll('div')].reverse().forEach((div) => {
+            const align = div.style.textAlign;
+            if ([...div.children].some((c) => BLOCKS.includes(c.tagName))) {
+                [...div.children].forEach((c) => {
+                    if (align && c.tagName === 'P' && !c.style.textAlign) {
+                        c.style.textAlign = align;
+                    }
+                });
+                div.replaceWith(...div.childNodes);
+                return;
+            }
             const p = document.createElement('p');
-            if (div.style.textAlign) {
-                p.style.textAlign = div.style.textAlign;
+            if (align) {
+                p.style.textAlign = align;
             }
             p.append(...div.childNodes);
             div.replaceWith(p);
@@ -184,7 +202,6 @@ window.Alpine.data('bsEmailSig', (cfg) => ({
     cmd(name) {
         this.restore();
         try {
-            document.execCommand('defaultParagraphSeparator', false, 'p');
             document.execCommand(name, false, null);
         } catch (e) {
             // An old browser without the command: nothing changes.

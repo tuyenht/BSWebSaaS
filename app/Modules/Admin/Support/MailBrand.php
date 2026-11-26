@@ -362,25 +362,37 @@ final readonly class MailBrand
     }
 
     /**
-     * A link's or picture's address with variables in it: the website's address, its email (as
-     * mailto:) or its hotline (as tel:) when the address is just that variable; anything else that
-     * still holds a variable, or ends up with a scheme other than https/http/mailto/tel, is dropped.
+     * A link's or picture's address with the website's variables in it (stored percent-encoded):
+     * {site_url} becomes the website's address, {contact_email} its email and {hotline} its phone
+     * number (a bare one becomes mailto: / tel:). An address that would carry another variable, a
+     * blank one, or a scheme other than https/http/mailto/tel is dropped. Other braces are left alone.
      *
      * @param  array<string, string>  $values
      */
     private static function fillAddress(DOMElement $el, string $attribute, array $values): void
     {
-        $raw = rawurldecode(trim($el->getAttribute($attribute)));
-        if (! str_contains($raw, '{')) {
+        $raw = trim($el->getAttribute($attribute));
+        $named = (string) preg_replace_callback('/%7B([a-z_]+)%7D/i', fn (array $m): string => '{'.strtolower($m[1]).'}', $raw);
+        if (! array_any(self::VARIABLES, fn (string $token): bool => str_contains($named, $token))) {
             return;
         }
-        $phone = (string) preg_replace('/[^0-9+]/', '', $values['{hotline}'] ?? '');
-        $address = match (true) {
-            $raw === '{contact_email}' => ($values['{contact_email}'] ?? '') !== '' ? 'mailto:'.$values['{contact_email}'] : '',
-            $raw === '{hotline}' => $phone !== '' ? 'tel:'.$phone : '',
-            default => strtr($raw, ['{site_url}' => $values['{site_url}'] ?? '']),
+        $phone = preg_match('/\+?[0-9][0-9 .\-]{5,}[0-9]/', $values['{hotline}'] ?? '', $m) === 1 ? (string) preg_replace('/[^0-9+]/', '', $m[0]) : '';
+        $email = $values['{contact_email}'] ?? '';
+        $email = filter_var($email, FILTER_VALIDATE_EMAIL) !== false ? $email : '';
+        $address = match ($named) {
+            '{contact_email}' => $email !== '' ? 'mailto:'.$email : '',
+            '{hotline}' => $phone !== '' ? 'tel:'.$phone : '',
+            default => strtr($named, [
+                '{site_url}' => $values['{site_url}'] ?? '',
+                '{contact_email}' => $email,
+                '{hotline}' => $phone,
+            ]),
         };
-        if ($address === '' || str_contains($address, '{') || preg_match('~^(?:https?://|mailto:|tel:)~i', $address) !== 1) {
+        $blank = ($values['{site_url}'] ?? '') === '' && str_contains($named, '{site_url}')
+            || $email === '' && str_contains($named, '{contact_email}')
+            || $phone === '' && str_contains($named, '{hotline}');
+        if ($blank || $address === '' || array_any(self::VARIABLES, fn (string $token): bool => str_contains($address, $token))
+            || preg_match('~^(?:https?://|mailto:|tel:)~i', $address) !== 1) {
             $el->removeAttribute($attribute);
 
             return;

@@ -416,11 +416,11 @@ final class EmailSettings extends Component
     /** Writes «Chữ ký & thương hiệu»; false (with the error under the logo) when its picture left the library. */
     private function saveBrand(): bool
     {
-        // Only the rows whose fields changed: a colour saved from an older page leaves a newer signature be.
-        $changed = $this->unsavedFields();
-        $brandRow = array_intersect(['brandColor', 'logoKey'], $changed) !== [];
+        // Only the fields that changed are written over what is stored: a colour saved from an older
+        // page leaves a newer logo or signature be.
+        $changed = array_flip($this->unsavedFields());
         $logoId = null;
-        if ($brandRow && $this->logoKey !== '') {
+        if (isset($changed['logoKey']) && $this->logoKey !== '') {
             $logoId = Media::query()->where('storage_key', $this->logoKey)->where('mime', 'like', 'image/%')->value('id');
             if (! is_int($logoId)) {
                 $this->addError('logoKey', __('admin.em_logo_gone'));
@@ -430,11 +430,19 @@ final class EmailSettings extends Component
         }
 
         $repo = app(SettingsRepository::class);
-        if ($brandRow) {
-            $repo->put('email', 'brand', ['logo_media_id' => $logoId, 'color' => $this->brandColor !== '' ? $this->brandColor : null]);
+        $stored = app(MailBrand::class)->stored();
+        if (isset($changed['logoKey']) || isset($changed['brandColor'])) {
+            $repo->put('email', 'brand', [
+                'logo_media_id' => isset($changed['logoKey']) ? $logoId : $stored['logo_media_id'],
+                'color' => isset($changed['brandColor']) ? ($this->brandColor !== '' ? $this->brandColor : null) : $stored['color'],
+            ]);
         }
-        if (array_intersect(['sigLayout', 'sigHtml'], $changed) !== []) {
-            $repo->put('email', 'signature', ['layout' => $this->sigLayout, 'html' => app(MailBrand::class)->clean($this->sigHtml, $this->sigLayout)]);
+        if (isset($changed['sigLayout']) || isset($changed['sigHtml'])) {
+            $layout = isset($changed['sigLayout']) ? $this->sigLayout : $stored['layout'];
+            $repo->put('email', 'signature', [
+                'layout' => $layout,
+                'html' => isset($changed['sigHtml']) ? app(MailBrand::class)->clean($this->sigHtml, $layout) : $stored['html'],
+            ]);
         }
 
         return true;
@@ -567,8 +575,10 @@ final class EmailSettings extends Component
             $this->logoKey = $media->storage_key;
             $this->resetErrorBag('logoKey');
         } elseif ($this->pickerFor === 'sig') {
+            // At most 200px across in the signature, never wider than the picture itself.
+            $width = is_int($media->width) && $media->width > 0 ? min(200, $media->width) : 200;
             $this->dispatch('email-signature-image', url: app(MediaUrlResolver::class)->url($media->storage_key, 600),
-                alt: Cast::string($media->alt[app()->getLocale()] ?? null));
+                alt: Cast::string($media->alt[app()->getLocale()] ?? null), width: $width);
         }
         $this->pickerFor = '';
     }
