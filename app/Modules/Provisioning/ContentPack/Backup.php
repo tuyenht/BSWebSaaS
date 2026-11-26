@@ -319,8 +319,13 @@ final readonly class Backup
     private function settingRows(string $anchor): array
     {
         [$group, $key] = explode('.', $anchor, 2);
+        $rows = ['setting' => SiteSetting::query()->where('group_name', $group)->where('key', $key)->first()?->attributesToArray()];
+        // the brand images the load writes land on the profile (its picture columns), so its row is kept too
+        if ('setting:'.$anchor === Planner::BRAND_ITEM) {
+            $rows['profile'] = SiteProfile::query()->first()?->attributesToArray();
+        }
 
-        return ['setting' => SiteSetting::query()->where('group_name', $group)->where('key', $key)->first()?->attributesToArray()];
+        return $rows;
     }
 
     /** @return array<string, mixed> */

@@ -11,11 +11,13 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Media\Models\Media;
+use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Provisioning\ContentPack\CanonicalHash;
 use App\Modules\Provisioning\ContentPack\Ledger;
 use App\Modules\Provisioning\ContentPack\PackReader;
 use App\Modules\Provisioning\ContentPack\Planner;
 use App\Modules\Provisioning\Support\FirstOwner;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
@@ -673,6 +675,43 @@ it('writes a category\'s intro picture and text, plans a change as an update, an
 
     [, $settled] = ContentPacks::run();
     expect(ContentPacks::verdict($settled, 'tax:post_cat/tin-tuc'))->toBe('unchanged');
+});
+
+it('stores the pack\'s brand logo as the site profile\'s picture, and plans it unchanged whether the profile or an older address holds it', function (): void {
+    $logo = ContentPacks::in($this->siteId, fn () => StorefrontCards::media('logo'));
+    $brand = fn (): array => ContentPacks::in($this->siteId, fn (): array => [
+        Cast::arr(SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->first()?->value),
+        SiteProfile::query()->value('logo_media_id'),
+    ]);
+
+    [$exit, $output] = ContentPacks::load();
+    [$setting, $profileLogo] = $brand();
+    expect($exit)->toBe(0, $output)
+        ->and($setting)->toMatchArray(['name' => 'Công ty Mẫu'])->not->toHaveKey('logo')
+        ->and($profileLogo)->toBe($logo->id);
+    $this->get('http://'.ContentPacks::HOST.'/gioi-thieu')->assertOk()->assertSee($logo->storage_key, false);
+
+    [, $again] = ContentPacks::run();
+    expect(ContentPacks::verdict($again, 'setting:general.brand'))->toBe('unchanged');
+
+    // a site loaded before brand images moved to the profile: the address in the setting, which the ledger hashes the same
+    ContentPacks::in($this->siteId, function () use ($logo): void {
+        $row = SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->firstOrFail();
+        $row->update(['value' => Cast::arr($row->value) + ['logo' => app(MediaUrlResolver::class)->url($logo->storage_key)]]);
+        SiteProfile::query()->update(['logo_media_id' => null]);
+    });
+    [, $older] = ContentPacks::run();
+    expect(ContentPacks::verdict($older, 'setting:general.brand'))->toBe('unchanged');
+
+    // a member picks another logo on the settings screen (the profile names it, the address leaves the setting): their edit
+    $other = ContentPacks::in($this->siteId, fn () => StorefrontCards::media('logo-moi'));
+    ContentPacks::in($this->siteId, function () use ($other): void {
+        $row = SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->firstOrFail();
+        $row->update(['value' => array_diff_key(Cast::arr($row->value), ['logo' => true])]);
+        SiteProfile::query()->update(['logo_media_id' => $other->id]);
+    });
+    [, $edited] = ContentPacks::run();
+    expect(ContentPacks::verdict($edited, 'setting:general.brand'))->toBe('skip:edited');
 });
 
 it('clears a category\'s intro when the pack states it empty or null, and then plans nothing', function (mixed $empty): void {

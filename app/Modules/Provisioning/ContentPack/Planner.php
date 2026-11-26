@@ -32,6 +32,7 @@ use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormField;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Media\Support\MediaRefs;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\PermalinkConfig;
@@ -76,6 +77,11 @@ final class Planner
 {
     private const int FACET_BASE = 1000;
 
+    /** The brand setting, and the images in it that the site profile now holds (as the settings screen's SetBrandImages moves them). */
+    public const string BRAND_ITEM = 'setting:general.brand';
+
+    public const array BRAND_IMAGES = ['logo', 'favicon', 'og_image'];
+
     private string $locale = '';
 
     /** @var list<string> */
@@ -104,6 +110,9 @@ final class Planner
 
     /** @var array<string, true> slots that name a file in the pack */
     private array $slotFiles = [];
+
+    /** @var array<string, string> each media address the plan wrote into a setting → the storage key it names */
+    private array $minted = [];
 
     /** @var list<string> */
     private array $warnings = [];
@@ -308,6 +317,7 @@ final class Planner
         $this->slots = [];
         $this->packed = 0;
         $this->slotFiles = [];
+        $this->minted = [];
         $this->warnings = [];
         $this->matched = [];
         $this->carried = [];
@@ -1504,6 +1514,7 @@ final class Planner
             $byEntry[$translation->entry_id][] = $translation;
         }
         $categories = $this->categoryKeys('entry_taxonomies', 'entry_id', $ids);
+        $fileKeys = self::fileKeysByRow($translations->pluck('body')->all());
 
         $states = [];
         foreach ($entries as $entry) {
@@ -1512,7 +1523,7 @@ final class Planner
                 $row = [
                     'title' => $translation->title,
                     'excerpt' => $translation->excerpt,
-                    'body' => $translation->body,
+                    'body' => $fileKeys === [] ? $translation->body : self::filesByKey($translation->body, $fileKeys),
                     'seo_title' => $translation->seo_title,
                     'seo_description' => $translation->seo_description,
                     'status' => $translation->status,
@@ -1560,6 +1571,69 @@ final class Planner
         }
 
         return $states;
+    }
+
+    /**
+     * The storage key of every file a download button names by its library row (`do.media`, the
+     * file's ulid) in these bodies, by upper-case ulid: one read for them all, none when no button
+     * names a file by its row. The Trash counts (the same file, as its key named it).
+     *
+     * @param  array<array-key, mixed>  $bodies
+     * @return array<string, string> upper-case ulid → storage key
+     */
+    private static function fileKeysByRow(array $bodies): array
+    {
+        $ulids = [];
+        $collect = static function (mixed $value) use (&$collect, &$ulids): void {
+            if (! is_array($value)) {
+                return;
+            }
+            if (($value['k'] ?? null) === 'file' && isset(ButtonLink::fileRef($value)['media'])) {
+                $ulids[ButtonLink::fileRef($value)['media']] = true;
+
+                return;
+            }
+            foreach ($value as $child) {
+                $collect($child);
+            }
+        };
+        $collect($bodies);
+        if ($ulids === []) {
+            return [];
+        }
+
+        $keys = [];
+        foreach (Media::withTrashed()->whereIn('ulid', array_map('strval', array_keys($ulids)))->get(['ulid', 'storage_key']) as $row) {
+            $keys[strtoupper($row->ulid)] = $row->storage_key;
+        }
+
+        return $keys;
+    }
+
+    /**
+     * A body with every download button that names its file by row written in the key form the plan
+     * writes (`{"k": "file", "file": <storage key>}`), so a body the loader stored by row (or a member
+     * saved since) hashes as the ledger recorded it. A row not found is left as it is (it reads as a
+     * change).
+     *
+     * @param  array<string, string>  $keys  upper-case ulid → storage key
+     */
+    private static function filesByKey(mixed $value, array $keys): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+        if (($value['k'] ?? null) === 'file') {
+            $ulid = ButtonLink::fileRef($value)['media'] ?? null;
+            if ($ulid !== null && isset($keys[$ulid])) {
+                unset($value['media']);
+                $value['file'] = $keys[$ulid];
+            }
+
+            return $value;
+        }
+
+        return array_map(static fn (mixed $child): mixed => self::filesByKey($child, $keys), $value);
     }
 
     /**
@@ -2316,6 +2390,9 @@ final class Planner
         $row = $this->locked(SiteSetting::query()->where('group_name', $group)->where('key', $name))->first(['group_name', 'key', 'value']);
         $live = $row === null ? null : Cast::arr($row->value);
         $managed = $item->managedKeys();
+        if ($item->key === self::BRAND_ITEM && $live !== null) {
+            $live = $this->brandImagesFromProfile($live, array_map('strval', array_keys(Cast::arr($item->data['value'] ?? null))));
+        }
 
         $current = $live === null ? null : self::settingState($live, $managed);
         $desired = [];
@@ -2333,12 +2410,65 @@ final class Planner
 
                     continue;
                 }
-                $value = $this->urls->url($slot['key']);
+                $value = $this->mintedUrl($slot['key']);
             }
             $desired[$key] = $value;
         }
 
         return $this->decide($context, $item, $current, $this->asTheAdminStores($item, $desired, $managed, $live), $current === null ? null : $item->anchor(), null);
+    }
+
+    /**
+     * The brand setting with each image the pack item names (logo, favicon, share image) that the
+     * setting no longer holds read from the site profile's picture, in the address form the plan
+     * writes: the loader (and the settings screen) store a brand image as the profile's picture and
+     * take its address out of the setting, so a brand image moved to the profile hashes as it did.
+     * An image the item does not name is never added (the item would plan to remove it). One read of
+     * the profile and one of its pictures (this website's, outside the Trash, pictures only), none when
+     * the setting still holds every named image.
+     *
+     * @param  array<array-key, mixed>  $live
+     * @param  list<string>  $named  the keys the pack item's value names
+     * @return array<array-key, mixed>
+     */
+    private function brandImagesFromProfile(array $live, array $named): array
+    {
+        $columns = [];
+        foreach (self::BRAND_IMAGES as $slot) {
+            $held = $live[$slot] ?? null;
+            if (in_array($slot, $named, true) && ! (is_string($held) && $held !== '')) {
+                $columns[$slot] = SiteProfile::IMAGE_COLUMNS[$slot];
+            }
+        }
+        $profile = $columns === [] ? null : $this->locked(SiteProfile::query())->first(array_values($columns));
+        if ($profile === null) {
+            return $live;
+        }
+        $ids = array_filter(array_map(fn (string $column): ?int => MediaRefs::id($profile->getAttribute($column)), $columns));
+        $keys = $ids === [] ? collect() : Media::query()->whereIn('id', array_values(array_unique($ids)))->where('mime', 'like', 'image/%')->pluck('storage_key', 'id');
+        foreach ($ids as $slot => $id) {
+            $key = $keys->get($id);
+            if (is_string($key)) {
+                $live[$slot] = $this->mintedUrl($key);
+            }
+        }
+
+        return $live;
+    }
+
+    /** A file's media address as the plan writes it into a setting, remembered so the loader can tell which file it names. */
+    private function mintedUrl(string $key): string
+    {
+        $url = $this->urls->url($key);
+        $this->minted[$url] = $key;
+
+        return $url;
+    }
+
+    /** The storage key of the file behind a media address this plan wrote into a setting, null for any other value. */
+    public function mintedKey(mixed $url): ?string
+    {
+        return is_string($url) ? ($this->minted[$url] ?? null) : null;
     }
 
     /**
