@@ -48,7 +48,7 @@ use Livewire\Attributes\Locked;
  * @property string $excerpt
  * @property string $seoTitle
  * @property string $seoDescription
- * @property string $coverImageKey
+ * @property string $coverUlid
  * @property string $coverAlt
  */
 trait ShowsEntryRevisions
@@ -376,7 +376,7 @@ trait ShowsEntryRevisions
         // names no live file), else, with no id, the meta's key
         $cover = EntryCover::resolve($snap['cover_media_id'] ?? null, $snap['meta'] ?? null, MediaRefs::rows([$snap['cover_media_id'] ?? null]));
         $noCover = Cast::string(__('entries.rev.no_cover'));
-        $coverNow = $this->coverImageKey !== '' ? $this->revisionCoverName($this->coverImageKey) : $noCover;
+        $coverNow = $this->coverUlid !== '' ? $this->revisionCoverName($this->coverKey()) : $noCover;
         $coverThen = $cover !== '' ? $this->revisionCoverName($cover) : $noCover;
 
         $fields = [];
@@ -444,7 +444,7 @@ trait ShowsEntryRevisions
         $missing = 0;
         $shared = false;
         if ($content !== null) {
-            [$content, $missing] = $writer->withoutMissingMedia($content);
+            [$content, $missing] = $writer->withoutMissingMedia($content, lock: false);
             // the job card as the restore writes it: this language's words onto the card as it is (in the
             // pending change, when there is one: a restore held back goes there)
             $held = EntryDraft::query()->where('entry_id', $entry->id)->first()?->content['shared'] ?? null;

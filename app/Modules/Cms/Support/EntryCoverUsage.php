@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Cms\Support;
 
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
 use App\Modules\Media\Support\MediaRefs;
@@ -130,6 +131,37 @@ final class EntryCoverUsage
             SQL, [$siteId, self::COLLECTION]);
 
         return ['inserted' => $inserted, 'deleted' => $deleted];
+    }
+
+    /**
+     * A file deleted for good (the Trash purge, «Xóa vĩnh viễn»): the entries of its website that name it
+     * as their cover by id (entries.cover_media_id, which has no foreign key: a D3 soft reference) lose
+     * the id, in the purge's transaction. They are found through the file's `cover` usage rows, the
+     * mediables UNIQUE (media_id, mediable_type, mediable_id, collection) index, then the entries
+     * primary key: no scan of the site's entries. Runs at `forceDeleting`, before MediaObserver drops
+     * those rows (CmsServiceProvider boots before MediaServiceProvider).
+     *
+     * The file's row is locked first (FOR UPDATE): a save that names it as a cover takes it FOR KEY
+     * SHARE (EntryCover::stored, the editor), so either that save commits first and its usage row is
+     * seen here, or it waits and then finds the file gone. Written past the model: no updated_at, no
+     * revision, no content mark (a file in the Trash already showed as no cover). The entry is left with
+     * no cover at all: meta.image_url goes in the same statement (writers never keep one beside an id).
+     */
+    public static function purging(Media $media): void
+    {
+        // support staff never delete a file for good (MediaObserver refuses it too, after this runs)
+        app(SupportSession::class)->forbid();
+        Media::withTrashed()->whereKey($media->id)->lockForUpdate()->value('id');
+        $users = Mediable::query()
+            ->select('mediable_id')
+            ->where('media_id', $media->id)
+            ->where('mediable_type', 'entry')
+            ->where('collection', self::COLLECTION);
+        Entry::withTrashed()->toBase()
+            ->where('cover_media_id', $media->id)
+            ->whereIn('id', $users)
+            // an old key beside the id would name the same gone file: dropped too, so no reader falls back to it
+            ->update(['cover_media_id' => null, 'meta' => DB::raw("meta - 'image_url'")]);
     }
 
     /** The picture's storage key in an entry's meta, null when it has none. */

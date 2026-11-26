@@ -5,6 +5,7 @@ namespace App\Modules\Cms\Models;
 use App\Modules\Audit\Support\DateChangeAudit;
 use App\Modules\Cms\Concerns\HasCategoryTaxonomies;
 use App\Modules\Cms\Support\DisplayDate;
+use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Concerns\HasUlidColumn;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
@@ -60,11 +61,13 @@ class Entry extends Model
     #[\Override]
     protected static function booted(): void
     {
-        // The cover photo is the one part of `meta` the page shows (the picture at the top, the
-        // share image, the Article image): a new one changes every language's content. Nothing else
-        // in `meta` does. getOriginal() still holds the stored value at `saved`.
+        // The cover photo (cover_media_id, or the old key in `meta`) is the one part of `meta` the page
+        // shows (the picture at the top, the share image, the Article image): a new one changes every
+        // language's content. Nothing else in `meta` does, nor a cover moved from its key to its row
+        // (EntryCover::same). getOriginal() still holds the stored value at `saved`.
         static::saved(static function (Entry $entry): void {
-            if ($entry->wasChanged('meta') && self::coverOf($entry->getOriginal('meta')) !== self::coverOf($entry->meta)) {
+            if (($entry->wasChanged('meta') || $entry->wasChanged('cover_media_id'))
+                && ! EntryCover::same($entry->getOriginal('cover_media_id'), $entry->getOriginal('meta'), $entry->cover_media_id, $entry->meta)) {
                 self::markContentChanged([$entry->id]);
             }
         });
@@ -98,11 +101,6 @@ class Entry extends Model
         if ($ids !== []) {
             EntryTranslation::query()->whereIn('entry_id', $ids)->update(['content_changed_at' => now()]);
         }
-    }
-
-    private static function coverOf(mixed $meta): mixed
-    {
-        return is_array($meta) ? ($meta['image_url'] ?? null) : null;
     }
 
     /**

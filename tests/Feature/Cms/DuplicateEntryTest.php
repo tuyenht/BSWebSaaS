@@ -5,6 +5,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -138,5 +139,51 @@ it('refuses to copy an entry that is in the Trash', function (): void {
             ->toThrow(AuthorizationException::class, __('entries.err_duplicate_trashed'));
 
         expect(Entry::withTrashed()->where('type', 'page')->count())->toBe(1);
+    });
+});
+
+it('carries the cover as its row: an id stays, an old key of a library picture becomes its id, a glyph stays in meta', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.create', 'entries.edit.any']);
+        $media = Media::query()->create([
+            'collection' => 'library', 'slug' => 'bia', 'hash' => str_repeat('b', 64),
+            'storage_key' => 'a/library/bia-bbbbbbbbbbbb.png', 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1024,
+        ]);
+        $copyOf = function (array $cover, string $slug) use ($editor): Entry {
+            $page = Entry::query()->create(['type' => 'page', 'status' => 'draft'] + $cover);
+            $page->translations()->create(['locale' => 'vi', 'title' => 'Trang', 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);
+
+            return app(DuplicateEntry::class)->handle($page->fresh(), $editor->fresh());
+        };
+
+        $byId = $copyOf(['cover_media_id' => $media->id, 'meta' => ['subtitle' => 'Phụ']], 'theo-ma');
+        $byKey = $copyOf(['meta' => ['image_url' => $media->storage_key]], 'theo-khoa');
+        $glyph = $copyOf(['meta' => ['image_url' => 'gear']], 'bieu-tuong');
+
+        expect($byId->cover_media_id)->toBe($media->id)
+            ->and($byId->meta)->toBe(['subtitle' => 'Phụ'])
+            ->and($byKey->cover_media_id)->toBe($media->id)
+            ->and($byKey->meta)->not->toHaveKey('image_url')
+            ->and($glyph->cover_media_id)->toBeNull()
+            ->and($glyph->meta)->toBe(['image_url' => 'gear']);
+    });
+});
+
+it('gives the copy no cover when the original names a file that is no longer there', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.create', 'entries.edit.any']);
+        // an id no file of this website has (purged past the model): nothing stops the column holding it today
+        $dangling = (int) Media::withTrashed()->max('id') + 1000;
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'cover_media_id' => $dangling, 'meta' => ['image_url' => 'a/library/cu-cccccccccccc.png']]);
+        $page->translations()->create(['locale' => 'vi', 'title' => 'Trang', 'slug' => 'mat-anh', 'status' => 'draft', 'body' => ['blocks' => []]]);
+
+        $copy = app(DuplicateEntry::class)->handle($page->fresh(), $editor->fresh());
+
+        expect($copy->fresh()->cover_media_id)->toBeNull()
+            ->and($copy->fresh()->meta)->not->toHaveKey('image_url');
     });
 });
