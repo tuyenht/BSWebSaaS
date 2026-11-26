@@ -21,13 +21,13 @@
      question is on its way, nor in a field; Enter stays with a button, a link or another post's row that has the
      focus; with the move out of sight (a phone showing the list) Enter opens the marked post instead; a held Enter
      never repeats it; a key held with Ctrl, Alt or ⌘ stays the browser's; ↑ on the first post and ↓ on the last
-     stay the page's scroll. --}}
+     stay the page's scroll. An open dialog is found by its role (aria-modal is valid only on one). --}}
 <div class="space-y-4" x-data="{
         inboxAsking: false,
         inboxStepping: false,
         key(e) {
             if (e.defaultPrevented || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || this.inboxAsking || ! ['ArrowDown', 'ArrowUp', 'Enter'].includes(e.key)) { return }
-            if ([...document.querySelectorAll('[role=dialog], [role=alertdialog], [aria-modal=true], [role=menu]')].some((d) => ! d.matches('[data-inbox-reader]') && d.getClientRects().length > 0)) { return }
+            if ([...document.querySelectorAll('[role=dialog], [role=alertdialog], [role=menu]')].some((d) => ! d.matches('[data-inbox-reader]') && d.getClientRects().length > 0)) { return }
             const t = e.target instanceof Element ? e.target : null;
             if (t && t !== document.body && t !== document.documentElement && ! $root.contains(t)) { return }
             if (t?.closest('input, textarea, select, [contenteditable]:not([contenteditable=false])')) { return }
