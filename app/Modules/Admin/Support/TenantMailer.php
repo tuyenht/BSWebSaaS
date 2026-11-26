@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Support;
 
+use App\Modules\Admin\Support\Mail\MailSendContext;
 use App\Modules\Shared\Contracts\TenantMailConfigurator;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
@@ -98,23 +99,30 @@ final readonly class TenantMailer implements TenantMailConfigurator
         Mail::purge('smtp');
         Mail::purge('admin_xoauth2');
 
+        // What is set up below is noted for the mail log and the daily limit (MailSendContext).
+        $context = app(MailSendContext::class);
+        $context->begin();
+
         [$cfg, $siteOwn] = $this->pick();
         if ($cfg === null) {
             // No email override found anywhere in the resolution chain. Force the global
             // config to a safe no-op mailer so a previous request's SMTP config cannot
             // bleed through in the same Octane worker.
             config(['mail.default' => 'log']);
+            $context->applied('platform', 'log', 'config');
 
             return false;
         }
 
         $applied = $this->applyConfig($cfg, $siteOwn);
+        $via = $siteOwn ? 'own' : 'platform';
 
         if ($siteOwn) {
             $this->noteOwnOutbox($applied);
             $platform = $this->platform->get('email');
             if (! $applied && $fallback && is_array($platform) && $this->usable($platform)) {
                 $applied = $this->applyConfig($platform, false);
+                $via = 'platform';
             }
         }
 
@@ -122,13 +130,27 @@ final readonly class TenantMailer implements TenantMailConfigurator
             // A sender that could not be set up may return before writing any config: never leave
             // the previous request's live mailer (another site's server) in place in this worker.
             config(['mail.default' => 'log']);
+            $context->applied($via, 'log', $context->hostRefused ? 'refused_host' : 'config');
 
             return false;
         }
 
         $this->applyTenantIdentity();
+        $context->applied($via, Cast::string(config('mail.default')));
 
         return true;
+    }
+
+    /**
+     * The outbox the website's next mail would try first: its own when one is set up and did not
+     * fail on its last send, else the platform's. For a record made after the send's own context is
+     * gone (a queued mail that failed for good); the send itself is told by apply().
+     *
+     * @return 'own'|'platform'
+     */
+    public function outbox(): string
+    {
+        return $this->pick()[1] && ! $this->ownOutboxFailing() ? 'own' : 'platform';
     }
 
     /** @param array<string, mixed> $cfg */
@@ -248,6 +270,7 @@ final readonly class TenantMailer implements TenantMailConfigurator
             // it fails there and the queued mail is tried again, instead of going to the log for good.
             if ($refusal !== null && $refusal !== MailHostGuard::UNRESOLVABLE) {
                 config(['mail.default' => 'log']);
+                app(MailSendContext::class)->hostRefused = true;
                 // Mail is held back, so it must not vanish unseen (lead notices, password resets).
                 report(new MailHostRefused($host, $port, $refusal, app(CurrentSite::class)->hasId() ? app(CurrentSite::class)->id() : null));
 

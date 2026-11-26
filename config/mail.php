@@ -142,4 +142,22 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Daily limit of the platform's shared outbox
+    |--------------------------------------------------------------------------
+    |
+    | Each website's daily limit is the plan feature `mail.platform_daily`. Its ordinary mails
+    | (invitations, domain notices) wait for the next day only past abuse_multiplier times that
+    | limit. platform_daily_cap is the ceiling of all websites together per UTC day (the
+    | provider's own limit); a value saved in the platform settings (email / daily_cap) wins.
+    | Unset = no platform ceiling.
+    |
+    */
+
+    'quota' => [
+        'abuse_multiplier' => 10,
+        'platform_daily_cap' => env('MAIL_PLATFORM_DAILY_CAP'),
+    ],
+
 ];

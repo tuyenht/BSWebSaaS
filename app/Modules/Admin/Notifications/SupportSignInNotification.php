@@ -48,6 +48,7 @@ final class SupportSignInNotification extends Notification implements ShouldQueu
         Audit::record('support.session.notice_failed', [
             'meta' => ['site_id' => $this->tenantSiteId, 'error' => $e::class],
         ]);
+        $this->recordMailFailure($e);
     }
 
     /**

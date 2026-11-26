@@ -50,6 +50,7 @@ final class EmailChangeCodeNotification extends Notification implements ShouldQu
             'actor_id' => $this->actorId,
             'meta' => ['site_id' => $this->tenantSiteId, 'error' => $e::class, 'to' => $this->toNewAddress ? 'new' : 'current'],
         ]);
+        $this->recordMailFailure($e);
     }
 
     /**
