@@ -190,6 +190,8 @@ final readonly class OAuthController
         // person turned it on; otherwise the emailed code, unless the provider itself vouched for the
         // account's own mailbox (a code sent there would reach whoever already holds that inbox).
         // Not authenticated until the challenge passes; the provider rides along for the log.
+        // Unlike the password path, an account email not yet verified is no refusal here: the
+        // vouching provider verified that very address, and the emailed code proves the inbox.
         if ($user->two_factor_confirmed_at !== null || ($data['trusted'] ?? false) !== true) {
             $request->session()->put('2fa.user_id', $user->getAuthIdentifier());
             $request->session()->put('2fa.via', $provider);

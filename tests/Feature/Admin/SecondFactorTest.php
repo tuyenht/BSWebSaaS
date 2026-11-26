@@ -327,3 +327,44 @@ it('accepts an emailed code pasted or typed with spaces in it', function (): voi
         expect($otp->verify($user, ' '.substr((string) $code, 0, 3).' '.substr((string) $code, 3)."\t"))->toBeTrue();
     });
 });
+
+// ── the authenticator app, once on, is the only second factor ─────────────────────────
+// The emailed code is the fallback for people WITHOUT the app. Someone who reached the code step
+// for an account that has the app on (from a password or a Google/Facebook sign-in) must not
+// trade it for a code mailed to the inbox — that inbox may be exactly what was stolen.
+
+it('sends a person with the authenticator app on from the emailed-code step to the app step', function (): void {
+    $user = User::factory()->create(['two_factor_secret' => 'JBSWY3DPEHPK3PXP', 'two_factor_confirmed_at' => now()]);
+    session(['2fa.user_id' => $user->getAuthIdentifier()]);
+
+    Livewire::test(EmailOtpChallenge::class)->assertRedirect(route('admin.two-factor.challenge'));
+
+    expect(session('2fa.user_id'))->toBe($user->getAuthIdentifier());
+});
+
+it('never signs a person with the authenticator app on in with an emailed code, nor mails one', function (): void {
+    seedTenancy();
+    Notification::fake();
+    $user = User::factory()->create(['two_factor_secret' => 'JBSWY3DPEHPK3PXP', 'two_factor_confirmed_at' => now()]);
+
+    // A code that would be valid for this account (e.g. sent before the app was turned on).
+    $code = app(Tenancy::class)->enter(1, function () use ($user): string {
+        app(EmailOtp::class)->send($user);
+        $code = null;
+        Notification::assertSentTo($user, EmailOtpNotification::class, function (EmailOtpNotification $note) use (&$code): bool {
+            $code = (new ReflectionProperty($note, 'code'))->getValue($note);
+
+            return true;
+        });
+
+        return (string) $code;
+    });
+    session(['2fa.user_id' => $user->getAuthIdentifier()]);
+    Notification::fake();
+
+    // Straight at the component's endpoints, as a crafted request would, past its first redirect.
+    Livewire::test(EmailOtpChallenge::class)->set('code', $code)->call('verify')->call('resend');
+
+    $this->assertGuest();
+    Notification::assertNothingSent();
+});
