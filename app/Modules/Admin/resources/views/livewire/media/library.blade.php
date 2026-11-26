@@ -332,7 +332,7 @@
                 @endif
 
                 {{-- Loading (a list request in flight). Grid and skeleton start 16px below the tools line (4px in a narrow frame), as on board 12 --}}
-                <div wire:loading.delay.flex wire:target="{{ $listTargets }}" class="hidden flex-col gap-3 px-4 pt-1 pb-4 @min-[48rem]/tv:pt-4" aria-busy="true">
+                <div wire:loading.delay.flex wire:target="{{ $listTargets }}" class="hidden flex-col gap-3 px-4 pt-3 pb-4 @min-[48rem]/tv:pt-4" aria-busy="true">
                     <div class="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3">
                         @for ($i = 0; $i < 8; $i++)
                             <div class="flex flex-col gap-2"><span class="aspect-[4/3] w-full animate-pulse rounded-md bg-surface-muted motion-reduce:animate-none"></span><span class="h-3.5 w-4/5 animate-pulse rounded bg-surface-muted motion-reduce:animate-none"></span><span class="h-3 w-1/2 animate-pulse rounded bg-surface-muted motion-reduce:animate-none"></span></div>
@@ -365,7 +365,7 @@
                             @endif
                         </div>
                     @elseif ($view === 'grid')
-                        <div class="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3 px-4 pt-1 pb-3 @min-[48rem]/tv:pt-4" role="list" aria-label="{{ $placeName }}">
+                        <div class="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3 px-4 pt-3 pb-3 @min-[48rem]/tv:pt-4" role="list" aria-label="{{ $placeName }}">
                             @foreach ($rows as $m)
                                 @php $on = in_array($m->ulid, $picked, true); @endphp
                                 @php $name = $m->original_filename ?: $m->slug ?: $extOf($m); @endphp
