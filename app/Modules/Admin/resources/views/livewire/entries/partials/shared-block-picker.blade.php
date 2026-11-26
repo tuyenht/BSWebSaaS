@@ -3,7 +3,10 @@
      sharedBlockChoices), grouped by region, published blocks before drafts; the search runs over
      what was read, by name or code, without diacritics. A row places its block at the end of this
      language's layout (insertSharedBlock), then the focus goes to the placed block. When the layout
-     already holds the most shared blocks, every row says so instead of «Chèn». The host gives
+     already holds the most shared blocks, every row says so instead of «Chèn». While a row is being
+     placed it says so and the others dim; when the server places nothing (the block deleted meanwhile,
+     the layout full) the dialog stays open, says so and reads the list again. One polite live region
+     reads out the state and the number of matches. The host gives
      $sharedPicker (the library link, or null) and $localeLabel. --}}
 @php
     $refOrder = ['inline', 'header', 'footer', 'sidebar', 'menu'];
@@ -16,10 +19,19 @@
     $refLibrary = $sharedPicker['library'] ?? null;
 @endphp
 <div x-data="{
-        rp: false, mode: 'loading', rows: [], cap: false, q: '', busy: false,
+        rp: false, mode: 'loading', rows: [], cap: false, q: '', busy: false, pick: null, insErr: false,
+        say: @js([
+            'loading' => __('entries.ref.loading'),
+            'error' => __('entries.ref.err_title'),
+            'empty' => __('entries.ref.empty_title'),
+            'cap' => __('entries.ref.cap', ['max' => \App\Modules\Theme\Components\BlockReference::LIST_MAX]),
+            'insErr' => __('entries.ref.ins_err'),
+            'none' => __('entries.ref.none_title'),
+            'hits' => __('entries.ref.hits'),
+        ]),
         order: @js($refOrder), labels: @js($refLabels), tints: @js($refTints),
         fold(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').trim(); },
-        open() { this.q = ''; this.rows = []; this.cap = false; this.rp = true; this.load(); },
+        open() { this.q = ''; this.rows = []; this.cap = false; this.insErr = false; this.rp = true; this.load(); },
         async load() {
             this.mode = 'loading';
             try {
@@ -31,35 +43,49 @@
         },
         get hits() { const q = this.fold(this.q); return q === '' ? this.rows : this.rows.filter((r) => this.fold(r.name).includes(q) || this.fold(r.key).includes(q)); },
         get groups() { const hits = this.hits; return this.order.map((k) => { const items = hits.filter((r) => r.region === k); return { k, label: this.labels[k] + ' · ' + items.length, items }; }).filter((g) => g.items.length > 0); },
+        get live() {
+            if (this.mode === 'loading') { return this.say.loading; }
+            if (this.mode === 'error') { return this.say.error; }
+            if (this.rows.length === 0) { return this.say.empty; }
+            const n = this.hits.length;
+            const parts = [];
+            if (this.insErr) { parts.push(this.say.insErr); }
+            if (this.cap) { parts.push(this.say.cap); }
+            parts.push(n === 0 ? this.say.none.replace(':q', this.q.trim()) : this.say.hits.replace(':n', n));
+            return parts.join(' ');
+        },
         clearQ() { this.q = ''; this.$nextTick(() => document.getElementById('ref-pick-q')?.focus()); },
         async insert(r) {
             if (this.cap || this.busy) { return; }
-            this.busy = true;
+            this.busy = true; this.pick = r.ulid; this.insErr = false;
             let at = null;
-            try { at = await $wire.insertSharedBlock(r.ulid); } catch (e) { at = null; } finally { this.busy = false; }
-            this.rp = false;
-            if (typeof at === 'number') {
-                window.dispatchEvent(new CustomEvent('bs-ref-placed'));
-                requestAnimationFrame(() => requestAnimationFrame(() => { const el = document.getElementById('block-ref-' + at); if (el) { el.focus({ preventScroll: true }); el.scrollIntoView({ block: 'center' }); } }));
+            try { at = await $wire.insertSharedBlock(r.ulid); } catch (e) { at = null; } finally { this.busy = false; this.pick = null; }
+            if (typeof at !== 'number') {
+                this.insErr = true;
+                await this.load();
+                return;
             }
+            this.rp = false;
+            window.dispatchEvent(new CustomEvent('bs-ref-placed'));
+            requestAnimationFrame(() => requestAnimationFrame(() => { const el = document.getElementById('block-ref-' + at); if (el) { el.focus({ preventScroll: true }); el.scrollIntoView({ block: 'center' }); } }));
         },
      }" x-on:bs-ref-pick.window="open()" data-ref-picker>
     <x-bs-admin::modal state="rp" close="rp = false" :title="__('entries.ref.title')" :subtitle="__('entries.ref.sub', ['lang' => $localeLabel])" :close-label="__('entries.ref.close')">
         <div class="sticky -top-4 z-1 -mt-4 bg-surface pt-4" x-show="mode === 'loading' || rows.length > 0">
             <x-bs-admin::search id="ref-pick-q" :label="__('entries.ref.search_label')" :placeholder="__('entries.ref.search_ph')" x-model="q" x-bind:disabled="mode === 'loading'" />
         </div>
+        <x-bs-admin::sr-live x-text="rp ? live : ''" />
         <div class="flex flex-col gap-2" x-bind:aria-busy="mode === 'loading' ? 'true' : 'false'">
             <template x-if="mode === 'loading'">
                 <div class="flex flex-col gap-2">
                     <p class="m-0 text-small text-text-muted" aria-hidden="true">{{ __('entries.ref.loading') }}</p>
-                    <x-bs-admin::sr-live>{{ __('entries.ref.loading') }}</x-bs-admin::sr-live>
                     @for ($k = 0; $k < 3; $k++)
                         <div class="h-14 shrink-0 animate-pulse rounded-[0.625rem] bg-surface-hover motion-reduce:animate-none" aria-hidden="true"></div>
                     @endfor
                 </div>
             </template>
             <template x-if="mode === 'error'">
-                <x-bs-admin::alert color="danger" role="alert" icon="ri-wifi-off" data-ref-error>
+                <x-bs-admin::alert color="danger" role="none" icon="ri-wifi-off" data-ref-error>
                     <b class="block">{{ __('entries.ref.err_title') }}</b>
                     <span class="block text-small">{{ __('entries.ref.err_how') }}</span>
                     <x-bs-admin::button id="ref-pick-retry" variant="outline" color="secondary" size="sm" class="mt-2" x-on:click="load()">
@@ -76,8 +102,11 @@
                     @endif
                 </div>
             </template>
+            <template x-if="mode === 'list' && insErr">
+                <x-bs-admin::alert color="danger" role="none" icon="ri-error-warning" data-ref-ins-err>{{ __('entries.ref.ins_err') }}</x-bs-admin::alert>
+            </template>
             <template x-if="mode === 'list' && rows.length > 0 && cap">
-                <x-bs-admin::alert color="warning" role="status" icon="ri-error-warning" data-ref-cap>{{ __('entries.ref.cap', ['max' => \App\Modules\Theme\Components\BlockReference::LIST_MAX]) }}</x-bs-admin::alert>
+                <x-bs-admin::alert color="warning" role="none" icon="ri-error-warning" data-ref-cap>{{ __('entries.ref.cap', ['max' => \App\Modules\Theme\Components\BlockReference::LIST_MAX]) }}</x-bs-admin::alert>
             </template>
             <template x-if="mode === 'list' && rows.length > 0 && groups.length === 0">
                 <div class="btn-act__docs-empty">
@@ -92,7 +121,7 @@
                         <div class="flex flex-col gap-2">
                             <h3 class="ref-pick__gh" x-text="g.label"></h3>
                             <template x-for="r in g.items" :key="r.ulid">
-                                <button type="button" class="btn-act__doc ref-pick__row" x-bind:aria-disabled="cap ? 'true' : 'false'" x-bind:data-ref-row="r.key" x-on:click="insert(r)">
+                                <button type="button" class="btn-act__doc ref-pick__row" x-bind:aria-disabled="cap ? 'true' : 'false'" x-bind:aria-busy="pick === r.ulid ? 'true' : 'false'" x-bind:class="busy && pick !== r.ulid ? 'opacity-60' : ''" x-bind:data-ref-row="r.key" x-on:click="insert(r)">
                                     <span class="btn-act__ic ref-pick__ic" x-bind:class="tints[r.region]" aria-hidden="true">
                                         @foreach ($refIcons as $region => $icon)
                                             <x-bs-admin::icon :name="$icon" class="btn-act__ic-glyph" x-show="r.region === '{{ $region }}'" />
@@ -113,7 +142,7 @@
                                             <span class="ref-pick__line ref-pick__line--warn"><x-bs-admin::icon name="ri-translate-2" class="btn-act__btn-ic" /><span x-text="r.loc"></span></span>
                                         </template>
                                     </span>
-                                    <span class="ref-pick__go" aria-hidden="true" x-text="cap ? @js(__('entries.ref.go_cap', ['max' => \App\Modules\Theme\Components\BlockReference::LIST_MAX])) : @js(__('entries.ref.go'))"></span>
+                                    <span class="ref-pick__go" aria-hidden="true" x-text="cap ? @js(__('entries.ref.go_cap', ['max' => \App\Modules\Theme\Components\BlockReference::LIST_MAX])) : (pick === r.ulid ? @js(__('entries.ref.going')) : @js(__('entries.ref.go')))"></span>
                                 </button>
                             </template>
                         </div>

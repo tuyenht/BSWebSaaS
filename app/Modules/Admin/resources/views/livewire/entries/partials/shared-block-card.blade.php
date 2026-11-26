@@ -49,11 +49,11 @@
         <p class="{{ $refWarn }}" data-k="loc"><x-bs-admin::icon name="ri-translate-2" :class="$refGlyph" />{{ $ref['loc'] }}</p>
     @endif
     @if ($ref === null)
-        <x-bs-admin::button variant="outline" color="danger" size="sm" class="self-start" wire:click="removeBlock({{ $i }})" data-ref-remove>
+        <x-bs-admin::button variant="outline" color="danger" size="sm" class="self-start" wire:click="removeBlock({{ $i }})" data-ref-remove aria-label="{{ __('entries.ref.remove_named', ['name' => $refName]) }}">
             <x-bs-admin::icon name="ri-delete-bin" class="size-4" />{{ __('entries.ref.remove') }}
         </x-bs-admin::button>
     @elseif ($refOpen !== null)
-        <a class="ref-card__open" href="{{ $refOpen }}" target="_blank" rel="noopener" data-ref-open-block>
+        <a class="ref-card__open" href="{{ $refOpen }}" target="_blank" rel="noopener" data-ref-open-block aria-label="{{ __('entries.ref.open_named', ['name' => $refName]) }}">
             <x-bs-admin::icon name="ri-external-link" :class="$refGlyph" />{{ __('entries.ref.open') }}<span class="sr-only"> {{ __('entries.btn_new_tab') }}</span>
         </a>
     @endif

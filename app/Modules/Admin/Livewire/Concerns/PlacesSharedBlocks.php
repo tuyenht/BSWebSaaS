@@ -130,7 +130,7 @@ trait PlacesSharedBlocks
             return [];
         }
         $picker = app(SharedBlockPicker::class);
-        $canOpen = Gate::allows('create', ContentBlock::class);
+        $canOpen = $this->sharedBlocksOffered() && Gate::allows('create', ContentBlock::class);
         $default = app(SiteLocale::class)->default();
         $out = [];
         foreach ($picker->placed($ulids) as $ulid => $row) {

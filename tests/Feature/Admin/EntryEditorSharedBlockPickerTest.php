@@ -67,11 +67,11 @@ function sbpBlock(int $site, string $key, string $name, string $status = 'publis
 }
 
 /** A page of site 1 whose vi body is $blocks (an empty body is written text). */
-function sbpPage(User $by, array $blocks = [], string $status = 'draft'): Entry
+function sbpPage(User $by, array $blocks = [], string $status = 'draft', string $slug = 'gioi-thieu'): Entry
 {
-    return app(Tenancy::class)->enter(1, function () use ($by, $blocks, $status): Entry {
+    return app(Tenancy::class)->enter(1, function () use ($by, $blocks, $status, $slug): Entry {
         $entry = Entry::query()->create(['type' => 'page', 'status' => $status, 'author_id' => $by->id, 'meta' => []] + ($status === 'published' ? ['published_at' => now()] : []));
-        $entry->translations()->create(['locale' => 'vi', 'title' => 'Giới thiệu', 'slug' => 'gioi-thieu', 'status' => $status, 'body' => ['blocks' => $blocks]]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Giới thiệu', 'slug' => $slug, 'status' => $status, 'body' => ['blocks' => $blocks]]);
 
         return $entry;
     });
@@ -142,6 +142,12 @@ it('offers «Khối dùng chung» in «+ Thêm khối» and its dialog only wher
             ->assertDontSeeHtml('data-ref-open')
             ->assertDontSeeHtml('data-ref-picker')
             ->call('sharedBlockChoices')->assertForbidden();
+    });
+    $block = sbpBlock(1, 'thong-tin-lien-he', 'Thông tin liên hệ');
+    app(Tenancy::class)->enter(1, function () use ($user, $entry, $block): void {
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $entry->ulid])
+            ->call('insertSharedBlock', $block->ulid)->assertForbidden();
+        expect(EntryTranslation::query()->where('entry_id', $entry->id)->firstOrFail()->body['blocks'])->toBe([sbpCta('Đầu trang')]);
     });
 });
 
@@ -362,4 +368,54 @@ it('places a draft block that the website shows only once the block is published
 
     app(Tenancy::class)->enter(1, fn () => $block->fresh()?->update(['status' => ContentBlock::PUBLISHED]));
     expect($page())->toContain('Ưu đãi tháng mười một');
+});
+
+it('says a visitor sees nothing of a block that has neither the page\'s language nor the website\'s default', function (): void {
+    DB::connection('pgsql_admin')->table('site_locales')->insert([
+        'site_id' => 1, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'created_at' => now(), 'updated_at' => now(),
+    ]);
+    $user = sbpMember(SBP_EDITOR);
+    $enOnly = sbpBlock(1, 'chi-tieng-anh', 'Chỉ tiếng Anh', 'published', 'inline', ['en']);
+    $jaOnly = sbpBlock(1, 'chi-tieng-nhat', 'Chỉ tiếng Nhật', 'published', 'inline', ['ja']);
+    $entry = sbpPage($user, [sbpRef(strtoupper($enOnly->ulid))]);
+    app(Tenancy::class)->enter(1, fn () => $entry->translations()->create(['locale' => 'en', 'title' => 'About', 'slug' => 'about', 'status' => 'draft', 'body' => ['blocks' => [sbpRef(strtoupper($jaOnly->ulid))]]]));
+
+    app(Tenancy::class)->enter(1, function () use ($user, $entry): void {
+        // the page in the default language, the block without it: nothing shows
+        $vi = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $entry->ulid])
+            ->assertSee('Khối chưa có bản Tiếng Việt nên khách xem trang này không thấy phần này.');
+        $rows = collect(sbpChoices($vi)['rows'])->keyBy('key');
+        expect($rows['chi-tieng-anh']['loc'])->toBe('Chưa có bản Tiếng Việt — khách xem trang Tiếng Việt không thấy khối này');
+
+        // the page in English, the block with neither English nor Vietnamese: nothing shows either
+        $en = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $entry->ulid, 'locale' => 'en'])
+            ->assertSee('Khối chưa có bản English nên khách xem trang này không thấy phần này.');
+        $rows = collect(sbpChoices($en)['rows'])->keyBy('key');
+        expect($rows['chi-tieng-nhat']['loc'])->toBe('Chưa có bản English — khách xem trang English không thấy khối này')
+            ->and($rows['chi-tieng-anh']['loc'])->toBeNull();
+    });
+})->skip(fn (): bool => ! class_exists(Locale::class), 'needs intl for language names');
+
+it('draws the cards of the placed blocks in the same few queries however many the layout places', function (): void {
+    $user = sbpMember(SBP_EDITOR);
+    $blocks = [];
+    foreach (range(1, 15) as $n) {
+        $blocks[] = sbpBlock(1, 'k-'.$n, 'Khối '.$n, $n % 2 === 0 ? 'published' : 'draft', 'inline', ['vi', 'en']);
+    }
+    $count = function (array $placed) use ($user): int {
+        $entry = sbpPage($user, array_map(fn (ContentBlock $b): array => sbpRef(strtoupper($b->ulid)), $placed), 'draft', 'trang-'.count($placed));
+
+        return app(Tenancy::class)->enter(1, function () use ($user, $entry): int {
+            $c = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $entry->ulid]);
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $c->call('setLook', 0, 'scheme', 'dark')->assertSeeHtml('data-ref-card=');
+            $n = count(DB::getQueryLog());
+            DB::disableQueryLog();
+
+            return $n;
+        });
+    };
+
+    expect($count($blocks))->toBe($count([$blocks[0]]));
 });
