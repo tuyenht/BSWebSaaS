@@ -240,3 +240,53 @@ it('never undoes a cover change that commits while the rebuild runs', function (
     expect($fired)->toBeTrue();
     app(Tenancy::class)->enter(1, fn () => expect(coverRows($post))->toBe([$b->id]));
 });
+
+it('reads a cover named by id alone, the old key only without an id, in the row, the rebuild and the Trash question', function (): void {
+    $byId = coverMedia('by-id');
+    $byKey = coverMedia('by-key');
+    $theirs = coverMedia('theirs', 2);
+    $trashed = coverMedia('trashed');
+
+    app(Tenancy::class)->enter(1, function () use ($byId, $byKey, $theirs, $trashed): void {
+        // a new id on a post still holding an old key: the id wins
+        $post = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'meta' => ['image_url' => $byKey->storage_key]]);
+        expect(coverRows($post))->toBe([$byKey->id]);
+        $post->update(['cover_media_id' => $byId->id]);
+        expect(coverRows($post))->toBe([$byId->id]);
+
+        // an id that names no file of this site (another site's) is no picture: the old key is not read
+        $post->update(['cover_media_id' => $theirs->id]);
+        expect(coverRows($post))->toBe([]);
+
+        // an id naming a file in the Trash beside the old key of a live one: the id's file keeps its use
+        $trashed->delete();
+        $held = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'meta' => ['image_url' => $byKey->storage_key]]);
+        $held->update(['cover_media_id' => $trashed->id]);
+        expect(coverRows($held))->toBe([$trashed->id]);
+
+        // by id alone, written past the model, then rebuilt from the id
+        $quiet = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'meta' => []]);
+        Entry::query()->whereKey($quiet->id)->update(['cover_media_id' => $byId->id]);
+        expect(coverRows($quiet))->toBe([]);
+        EntryCoverUsage::reconcileSite(1);
+        expect(coverRows($quiet))->toBe([$byId->id])
+            ->and(coverRows($post))->toBe([])
+            ->and(coverRows($held))->toBe([$trashed->id]);
+
+        // the rebuild writes the same rows from nothing
+        Mediable::query()->where('collection', EntryCoverUsage::COLLECTION)->delete();
+        DB::table('mediables')->insert(['media_id' => $byKey->id, 'mediable_type' => 'entry', 'mediable_id' => $held->id, 'site_id' => 1, 'collection' => EntryCoverUsage::COLLECTION, 'sort_order' => 0, 'created_at' => now(), 'updated_at' => now()]);
+        EntryCoverUsage::reconcileSite(1);
+        expect(coverRows($held))->toBe([$trashed->id])
+            ->and(coverRows($post))->toBe([])
+            ->and(coverRows($quiet))->toBe([$byId->id]);
+
+        // the protective reading keeps a file named only by an id out of the Trash, without its row
+        Mediable::query()->where('collection', EntryCoverUsage::COLLECTION)->delete();
+        $used = Media::query()->whereKey($byId->id);
+        app(MediaUsageLocator::class)->constrain($used, true);
+        $unused = Media::query()->whereKey($byId->id);
+        app(MediaUsageLocator::class)->constrain($unused, false);
+        expect($used->exists())->toBeTrue()->and($unused->exists())->toBeFalse();
+    });
+});

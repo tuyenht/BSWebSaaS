@@ -11,6 +11,7 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Support\DisplayDate;
+use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Cms\Support\JobFacts;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Tenancy\Context\SiteTime;
@@ -255,7 +256,8 @@ final readonly class ListPage
             }
             $route = $post->routes->firstWhere('locale', $locale);
             $unprefixed = $route !== null ? $route->path : $this->paths->forEntry($post, $locale, trim((string) $translation->slug, '/'));
-            $image = is_string($post->meta['image_url'] ?? null) ? $post->meta['image_url'] : '';
+            // the cover's key from the EntryCover::KEY subselect of the caller's query, else the old meta value
+            $image = EntryCover::value($post);
             $primary = $post->getAttribute('primary_taxonomy_id');
             $published = $time !== null ? DisplayDate::shown($post->meta, $time->forDisplay($post->published_at), $time->zone()) : null;
 

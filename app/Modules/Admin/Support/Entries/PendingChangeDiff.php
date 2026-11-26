@@ -8,6 +8,8 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Support\DisplayDate;
+use App\Modules\Cms\Support\EntryCover;
+use App\Modules\Media\Support\MediaRefs;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Theme\Rendering\TemplateCatalog;
@@ -36,9 +38,10 @@ final readonly class PendingChangeDiff
      * @param  int|null  $livePrimary  the post's main category as stored (null for a page)
      * @param  Closure(list<int>): array<array-key, string>  $categoryNames  category id => name, for the ids asked
      * @param  list<string>  $order  the website's languages in their order
+     * @param  MediaRefs  $covers  the files the covers name by id (coverRefs, read once for a list of changes)
      * @return array{rows: list<array{code: string|null, label: string, now: string, seen: string}>, drafts: list<string>}
      */
-    public function between(Entry $entry, EntryDraft $change, Collection $live, ?int $livePrimary, Closure $categoryNames, array $order): array
+    public function between(Entry $entry, EntryDraft $change, Collection $live, ?int $livePrimary, Closure $categoryNames, array $order, MediaRefs $covers): array
     {
         $locales = array_map(strval(...), array_keys($change->content['locales']));
         $empty = Cast::string(__('entries.chg.diff_empty'));
@@ -70,11 +73,16 @@ final readonly class PendingChangeDiff
         }
 
         $shared = $change->content['shared'] ?? [];
-        $cover = array_key_exists('meta', $shared) ? data_get($shared['meta'], 'image_url') : data_get($entry->meta, 'image_url');
-        $liveCover = data_get($entry->meta, 'image_url');
+        // each cover as the file its cover_media_id names (from $covers; none when it names no live
+        // file), else, with no id, the meta's key
+        $changed = array_key_exists('meta', $shared) || EntryCover::named($shared['cover_media_id'] ?? null);
+        $cover = $changed
+            ? EntryCover::resolve($shared['cover_media_id'] ?? null, $shared['meta'] ?? null, $covers)
+            : EntryCover::value($entry, $covers);
+        $liveCover = EntryCover::value($entry, $covers);
         if ($cover !== $liveCover) {
             $rows[] = ['code' => null, 'label' => Cast::string(__('entries.chg.f_cover')),
-                'now' => is_string($cover) ? Cast::string(__('entries.chg.cover_other')) : $empty, 'seen' => is_string($liveCover) ? Cast::string(__('entries.chg.cover_other')) : $empty];
+                'now' => $cover !== '' ? Cast::string(__('entries.chg.cover_other')) : $empty, 'seen' => $liveCover !== '' ? Cast::string(__('entries.chg.cover_other')) : $empty];
         }
         if ($entry->type === 'post') {
             // «Thuộc tính bài»: the post's own look and the day it shows as published
@@ -97,6 +105,26 @@ final readonly class PendingChangeDiff
         }
 
         return ['rows' => $rows, 'drafts' => $drafts];
+    }
+
+    /**
+     * The files the covers of these changes and of their live entries name by id, in one read (none
+     * while no cover is named by id), for between().
+     *
+     * @param  iterable<EntryDraft>  $changes  with their entry loaded
+     */
+    public static function coverRefs(iterable $changes): MediaRefs
+    {
+        $ids = [];
+        foreach ($changes as $change) {
+            $ids[] = $change->content['shared']['cover_media_id'] ?? null;
+            $entry = $change->entry;
+            if ($entry instanceof Entry) {
+                $ids[] = $entry->cover_media_id;
+            }
+        }
+
+        return MediaRefs::rows($ids);
     }
 
     /** A display day (Y-m-d) written as the website writes days, or «the real day» for none. */

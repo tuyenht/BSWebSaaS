@@ -44,6 +44,7 @@ use App\Modules\Cms\Support\BlankEntrySlug;
 use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
+use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Cms\Support\EntryReviewReach;
 use App\Modules\Cms\Support\EntryTrash;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
@@ -2941,7 +2942,7 @@ final class Index extends Component
         $list = new EntryListQuery($filter, app(CurrentSite::class)->id(), function (Builder $rows) use ($scopes, $user, $type): void {
             $scopes->selectHasLimits($rows, $user, EntryListQuery::COLUMNS);
             if ($type === 'post') {
-                $rows->selectRaw("entries.meta->>'image_url' as cover_key");
+                $rows->selectRaw(EntryCover::valueSql('entries').' as cover_value');
             }
         });
 
@@ -3095,7 +3096,7 @@ final class Index extends Component
                 $entry = $item['entry'];
                 $primary = $entry->relationLoaded('taxonomies') ? $entry->taxonomies->first() : null;
                 $rowCategory[$entry->ulid] = $tree->label($primary instanceof Taxonomy ? $primary->id : null);
-                $key = $entry->getAttribute('cover_key');
+                $key = $entry->getAttribute('cover_value');
                 $rowCover[$entry->ulid] = is_string($key) && $key !== '' ? $urls->url($key, 96) : null;
             }
         }

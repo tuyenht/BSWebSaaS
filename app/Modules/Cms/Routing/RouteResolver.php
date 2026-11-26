@@ -7,6 +7,7 @@ use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Support\EntryCover;
 use Closure;
 
 /**
@@ -114,6 +115,8 @@ final class RouteResolver
         $entry = Entry::query()
             ->whereKey($entryId)
             ->where('status', 'published')
+            // the cover's file named by id rides this read (og:image, the post's cover: EntryCover)
+            ->addSelect([EntryCover::KEY => EntryCover::keySubquery()])
             ->with('translations')
             ->first();
 

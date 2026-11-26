@@ -931,7 +931,8 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     // The news list (Tin tức): posts in the categories above, with cover pictures, several statuses
     // and two authors, as the posts variant of the list board shows them. A cover is the picture's
     // key in the post's meta; here it names an image the preview server has, and one post in three
-    // has none (the placeholder).
+    // has none (the placeholder). No cover_media_id: the list reads that id first, and these library
+    // rows' files do not exist on the preview server.
     $mediaConfig = config('media');
     config(['media.driver' => 'cloudflare', 'media.cloudflare.base' => 'http://'.ADMIN_PREVIEW_HOST]);
     app(Tenancy::class)->enter(1, function () use ($owner): void {
@@ -948,11 +949,11 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         ];
         foreach ($rows as $i => [$title, $slug, $status, $category, $byWriter]) {
             $hash = hash('sha256', $slug);
-            $media = Media::query()->create(['collection' => 'library', 'slug' => 'anh-'.$slug, 'hash' => $hash,
+            Media::query()->create(['collection' => 'library', 'slug' => 'anh-'.$slug, 'hash' => $hash,
                 'original_filename' => 'anh-'.$slug.'.jpg', 'storage_key' => 's/library/anh-'.$slug.'-'.substr($hash, 0, 12).'.jpg',
                 'mime' => 'image/jpeg', 'size' => 120_000, 'width' => 1200, 'height' => 800]);
             $entry = Entry::query()->create(['type' => 'post', 'status' => $status, 'author_id' => $byWriter ? $writer->id : $owner->id,
-                'cover_media_id' => $media->id, 'view_count' => [1240, 860, 0, 0, 35, 410][$i],
+                'view_count' => [1240, 860, 0, 0, 35, 410][$i],
                 'meta' => $i % 3 === 2 ? [] : ['image_url' => $i % 2 === 0 ? 'images/admin/logo-sm.png' : 'images/admin/logo-light.png'],
                 'published_at' => $status === 'scheduled' ? now()->addDays(20) : ($status === 'draft' ? null : now()->subDays($i + 1))]);
             $entry->translations()->create(['locale' => 'vi', 'title' => $title, 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);

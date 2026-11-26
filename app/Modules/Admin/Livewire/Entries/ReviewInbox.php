@@ -17,6 +17,7 @@ use App\Modules\Cms\Exceptions\SchedulePastException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Routing\SectionResolver;
+use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Cms\Support\JobFacts;
 use App\Modules\Cms\Validation\EntryContentRules;
@@ -1184,6 +1185,7 @@ final class ReviewInbox extends Component
         $seoTitle = $translation?->seo_title;
         $seoDescription = $translation?->seo_description;
         $mayEdit = $actor->can('update', $entry);
+        $cover = $this->coverUrl($entry);
 
         return [
             'ulid' => (string) $entry->ulid,
@@ -1191,7 +1193,7 @@ final class ReviewInbox extends Component
             'section' => $this->sectionLabel($entry),
             'author' => $this->authorName($entry),
             'sent_at' => $this->waitedAt($entry),
-            'cover' => $this->coverUrl($entry),
+            'cover' => $cover,
             'body' => $body,
             'excerpt' => $translation?->excerpt,
             'seo_title' => $seoTitle,
@@ -1204,7 +1206,7 @@ final class ReviewInbox extends Component
             'fields' => $this->mainFields($entry, $locale),
             // «Bài này còn thiếu …» (board 17): what a reader of the card or of Google will miss
             'missing' => array_values(array_filter([
-                $this->coverUrl($entry) === null ? (string) __('admin.inbox.missing_cover') : null,
+                $cover === null ? (string) __('admin.inbox.missing_cover') : null,
                 ($translation->excerpt ?? '') === '' ? (string) __('admin.inbox.missing_excerpt') : null,
                 ($seoTitle ?? '') === '' ? (string) __('admin.inbox.missing_seo_title') : null,
                 ($seoDescription ?? '') === '' ? (string) __('admin.inbox.missing_seo_description') : null,
@@ -1292,11 +1294,12 @@ final class ReviewInbox extends Component
         return ['at' => ScheduleInput::tomorrowEight(), 'offset' => $offset, 'zone' => $zone];
     }
 
+    /** The cover: the file its cover_media_id names (one read, only when it names one), else the meta's key. */
     private function coverUrl(Entry $entry): ?string
     {
-        $key = data_get($entry->meta, 'image_url');
+        $key = EntryCover::value($entry, EntryCover::refs([$entry], keys: false));
 
-        return is_string($key) && $key !== '' ? app(MediaUrlResolver::class)->url($key, 640) : null;
+        return $key !== '' ? app(MediaUrlResolver::class)->url($key, 640) : null;
     }
 
     /**
