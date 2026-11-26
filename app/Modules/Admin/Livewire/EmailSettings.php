@@ -28,6 +28,7 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -70,6 +71,9 @@ final class EmailSettings extends Component
 
     /** The fields of «Chữ ký & thương hiệu» (the signature is compared as it would be stored). */
     private const array BRAND_TRACKED = ['brandColor', 'logoKey', 'sigLayout', 'sigHtml'];
+
+    /** Test sends a member may start per minute on one website («Kiểm tra & lưu kết nối» and «Gửi thử» together). */
+    private const int TEST_SENDS_PER_MINUTE = 5;
 
     /** The tabs of a website's page, in the board's order («Mẫu thư» comes with the mail templates). */
     public const array TABS = ['send', 'sign'];
@@ -248,7 +252,7 @@ final class EmailSettings extends Component
             $this->relayRegion = in_array($region, MailRelay::regions($this->relay), true) ? $region : MailRelay::defaultRegion($this->relay);
             $this->sendDomain = Cast::string($cfg['send_domain'] ?? null);
             $this->ownReady = MailRelay::ready($cfg);
-            // a passed check stops counting once a send through it fails
+            // a passed check stops counting while the mailer marks this outbox failing (a send could not set it up)
             $this->relayChecked = $this->ownReady && isset($cfg['checked_at']) && ! app(TenantMailer::class)->ownOutboxFailing();
         }
 
@@ -375,6 +379,10 @@ final class EmailSettings extends Component
     public function checkRelay(): void
     {
         if ($this->scope !== 'site' || $this->provider !== 'other') {
+            return;
+        }
+        // refused before saving: the member waits, then saves and checks in one go
+        if ($this->testSendThrottled()) {
             return;
         }
         $this->relayChecked = false;
@@ -787,9 +795,11 @@ final class EmailSettings extends Component
         $this->testResult = null;
         $to = auth()->user()?->email;
 
-        if (! $to) {
+        if (! $to || $this->testSendThrottled()) {
             return;
         }
+        // each test opens a connection to a server the member typed in or picked: a few a minute at most
+        RateLimiter::hit($this->testLimitKey(), 60);
 
         if (! app(TenantMailer::class)->apply(fallback: false)) {
             $this->testResult = 'error';
@@ -812,6 +822,32 @@ final class EmailSettings extends Component
             report($e);
             $this->testResult = 'error';
         }
+    }
+
+    /** One count per member and website, shared by «Kiểm tra & lưu kết nối» and «Gửi thử». */
+    private function testLimitKey(): string
+    {
+        $current = app(CurrentSite::class);
+
+        return 'mail-test-send:'.($this->scope === 'site' && $current->hasId() ? $current->id() : 'platform').':'.Cast::int(auth()->id());
+    }
+
+    /** True (with a message that says how long to wait) once this member used up this minute's test sends. */
+    private function testSendThrottled(): bool
+    {
+        $key = $this->testLimitKey();
+        if (! RateLimiter::tooManyAttempts($key, self::TEST_SENDS_PER_MINUTE)) {
+            return false;
+        }
+        $message = __('admin.em_test_wait', ['seconds' => max(1, RateLimiter::availableIn($key))]);
+        $this->testResult = null;
+        if ($this->scope === 'site' && $this->provider === 'other') {
+            // under the service tiles, where «Kiểm tra & lưu kết nối» was pressed
+            $this->addError('relay', $message);
+        }
+        $this->notify($message, 'error');
+
+        return true;
     }
 
     /** @return array<string, mixed> */
@@ -884,8 +920,9 @@ final class EmailSettings extends Component
                 ...$outbox,
                 ...($this->scope === 'site' ? [
                     'relay' => ['required', 'string', Rule::in(MailRelay::KEYS)],
-                    // a server needs its password: the stored one, or one pasted now
-                    'smtpPassword' => [Rule::requiredIf(fn (): bool => trim($this->smtpHost) !== '' && ! $this->keySaved())],
+                    // a server needs its password: the stored one, or one pasted now; a switch from a
+                    // service with a saved key asks for one too, so that key never vanishes unnoticed
+                    'smtpPassword' => [Rule::requiredIf(fn (): bool => ! $this->keySaved() && (trim($this->smtpHost) !== '' || $this->smtpPasswordSet))],
                 ] : []),
                 'smtpHost' => [$smtpRequired ? 'required' : 'nullable', 'string', ...($smtpRequired ? [] : ['required_with:smtpUsername']), $publicHost],
                 'smtpPort' => ['nullable', 'integer', ...($smtpRequired ? ['min:1', 'max:65535'] : [Rule::in(MailHostGuard::PORTS)])],
@@ -919,8 +956,10 @@ final class EmailSettings extends Component
             'relay' => ['required', 'string', Rule::in(MailRelay::KEYS), function (string $attribute, mixed $value, Closure $fail) use ($relay): void {
                 $server = MailRelay::server($relay, $this->relayRegion);
                 $refusal = $server !== null ? app(MailHostGuard::class)->refusal($server['host']) : null;
-                if ($refusal !== null) {
-                    $fail(__($refusal === MailHostGuard::UNRESOLVABLE ? 'admin.smtp_host_unresolvable' : 'admin.smtp_host_private'));
+                // The table's own name not resolving right now is a passing DNS fault: the send path
+                // takes it the same way (TenantMailer); a private address still stops the save.
+                if ($refusal !== null && $refusal !== MailHostGuard::UNRESOLVABLE) {
+                    $fail(__('admin.smtp_host_private'));
                 }
             }],
             'smtpPassword' => [Rule::requiredIf(fn (): bool => ! $this->keySaved()), 'nullable', 'string', 'max:1024'],
@@ -931,7 +970,7 @@ final class EmailSettings extends Component
     }
 
     /** Whether the stored key (or password) belongs to the service picked now, so a blank field keeps it. */
-    public function keySaved(): bool
+    private function keySaved(): bool
     {
         return $this->smtpPasswordSet && $this->relay === $this->storedRelay;
     }
@@ -1040,6 +1079,7 @@ final class EmailSettings extends Component
             'platformFrom' => $platform ? '' : $this->platformFrom(),
             'siteName' => $platform ? '' : $this->siteName(),
             'sign' => $platform ? null : $this->signTab(),
+            'keySaved' => ! $platform && $this->keySaved(),
         ]);
         $view->layout($platform ? 'admin::layouts.platform' : 'admin::layouts.app');
         $view->title($platform ? __('admin.system_email') : __('admin.email_settings'));

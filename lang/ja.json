@@ -885,6 +885,7 @@
     "admin.em_rl_err_login": "プロバイダーで取得した SMTP ログイン名を入力してください。",
     "admin.em_rl_err_region": "アカウントのリージョンを選んでください。",
     "admin.em_rl_err_relay": "一覧からサービスを選んでください。",
+    "admin.em_test_wait": "短い間に何度も送信を試しました。:seconds 秒待ってからもう一度お試しください。",
     "admin.em_meta_other_smtp": "独自のメールサーバー",
     "admin.em_connect_with": ":name に接続",
     "admin.em_resend_test": "テストメールを再送",

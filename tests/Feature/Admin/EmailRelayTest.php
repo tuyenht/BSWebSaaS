@@ -389,3 +389,139 @@ it('refuses every action of «Chọn dịch vụ» to a member who lost the sett
         expect(erlStored())->toBe([]);
     });
 })->with(['pickRelay', 'checkRelay', 'save', 'relay']);
+
+it('drops a passed check and says so when the test mail cannot be sent', function (): void {
+    erlStore(['provider' => 'other', 'method' => 'smtp_password', 'relay' => 'sendgrid', 'send_domain' => 'congty.vn', 'checked_at' => now()->utc()->toIso8601String(),
+        'smtp' => ['host' => 'smtp.sendgrid.net', 'port' => 587, 'encryption' => 'tls', 'username' => 'apikey', 'password' => SecretCipher::encrypt('SG.cu')]]);
+    $admin = erlAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Mail::partialMock()->shouldReceive('send')->once()->andThrow(new RuntimeException('550 the relay refused the login'));
+
+        Livewire::actingAs($admin)->test(EmailSettings::class)
+            ->assertSet('relayChecked', true)
+            ->call('checkRelay')
+            ->assertHasNoErrors()
+            ->assertSet('testResult', 'error')
+            ->assertSet('relayChecked', false)
+            ->assertSee('Không gửi được email thử.')
+            ->assertSee('Chưa kiểm tra');
+        expect(erlStored()['relay'])->toBe('sendgrid')
+            ->and(erlStored())->not->toHaveKey('checked_at');
+
+        // opened again: still not checked
+        Livewire::actingAs($admin)->test(EmailSettings::class)->assertSet('relayChecked', false);
+    });
+});
+
+it('refuses a service whose server leads to the private network, and saves nothing', function (): void {
+    app()->instance(MailHostGuard::class, new MailHostGuard(fn (string $host): array => $host === 'smtp.postmarkapp.com' ? ['10.0.0.5'] : ['93.184.216.34']));
+    $admin = erlAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Livewire::actingAs($admin)->test(EmailSettings::class)
+            ->set('provider', 'other')
+            ->call('pickRelay', 'postmark')
+            ->set('smtpPassword', 'pm-khoa')->set('sendDomain', 'congty.vn')
+            ->call('save')
+            ->assertHasErrors(['relay'])
+            ->assertSee('Máy chủ này nằm trong mạng nội bộ');
+        expect(erlStored())->toBe([]);
+    });
+});
+
+it('saves a service while its server name does not resolve for a moment, and still refuses «Email khác» there', function (): void {
+    app()->instance(MailHostGuard::class, new MailHostGuard(fn (string $host): array => []));
+    $admin = erlAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $page = Livewire::actingAs($admin)->test(EmailSettings::class)
+            ->set('provider', 'other')
+            ->set('smtpPassword', 'SG.moi')->set('sendDomain', 'congty.vn')
+            ->call('save')
+            ->assertHasNoErrors();
+        expect(erlStored()['relay'])->toBe('sendgrid');
+
+        // a server the member typed in is checked as before
+        $page->call('pickRelay', 'smtp')
+            ->set('smtpHost', 'mail.khong-co.test')->set('smtpUsername', 'chu@congty.vn')->set('smtpPassword', 'mat-khau')
+            ->call('save')
+            ->assertHasErrors(['smtpHost'])
+            ->assertSee('Không tìm thấy máy chủ này.');
+        expect(erlStored()['relay'])->toBe('sendgrid');
+    });
+});
+
+it('never reuses a saved key for a service set without its tile', function (string $to, string $message): void {
+    erlSendgrid('SG.cu');
+    $admin = erlAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $to, $message): void {
+        Livewire::actingAs($admin)->test(EmailSettings::class)
+            ->set('relay', $to)->set('sendDomain', 'congty.vn')->set('smtpUsername', 'chu')
+            ->call('save')
+            ->assertHasErrors(['smtpPassword'])
+            ->assertSee($message);
+
+        expect(erlStored()['relay'])->toBe('sendgrid')
+            ->and(SecretCipher::decrypt(erlStored()['smtp']['password']))->toBe('SG.cu');
+    });
+})->with([
+    'to Postmark' => ['postmark', 'Hãy dán khóa lấy từ nhà cung cấp.'],
+    'to «Email khác»' => ['smtp', 'Hãy dán mật khẩu ứng dụng.'],
+]);
+
+it('asks for the app password when a service with a saved key moves to «Email khác» with no server, and never drops the key unseen', function (): void {
+    erlSendgrid('SG.cu');
+    $admin = erlAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $page = Livewire::actingAs($admin)->test(EmailSettings::class)
+            ->call('pickRelay', 'smtp')
+            ->call('save')
+            ->assertHasErrors(['smtpPassword'])
+            ->assertSee('Hãy dán mật khẩu ứng dụng.');
+        expect(erlStored()['relay'])->toBe('sendgrid')
+            ->and(SecretCipher::decrypt(erlStored()['smtp']['password']))->toBe('SG.cu');
+
+        // the platform's outbox keeps what is stored and needs nothing pasted
+        $page->set('provider', 'platform')->call('save')->assertHasNoErrors();
+        expect(erlStored()['provider'])->toBe('platform')
+            ->and(erlStored()['relay'])->toBe('sendgrid')
+            ->and(SecretCipher::decrypt(erlStored()['smtp']['password']))->toBe('SG.cu');
+    });
+});
+
+it('lets a member start five test sends a minute, then says how long to wait', function (): void {
+    $this->freezeTime();
+    erlSendgrid('SG.cu');
+    $admin = erlAdmin();
+    $other = erlAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $other): void {
+        // the five, one more by another member, one more a minute later: each opens one connection
+        Mail::partialMock()->shouldReceive('send')->times(7);
+
+        $page = Livewire::actingAs($admin)->test(EmailSettings::class);
+        foreach (range(1, 5) as $i) {
+            $page->call('sendTest')->assertSet('testResult', 'ok');
+        }
+        $page->call('sendTest')
+            ->assertSet('testResult', null)
+            ->assertSet('toast', 'Bạn vừa thử gửi nhiều lần. Hãy đợi 60 giây rồi thử lại.')
+            ->assertSet('toastTone', 'error');
+
+        // «Kiểm tra & lưu kết nối» shares the count, and is refused before anything is saved
+        $page->set('sendDomain', 'moi.vn')
+            ->call('checkRelay')
+            ->assertHasErrors(['relay'])
+            ->assertSee('Bạn vừa thử gửi nhiều lần. Hãy đợi 60 giây rồi thử lại.');
+        expect(erlStored()['send_domain'])->toBe('congty.vn');
+
+        // another member of the website has a count of their own
+        Livewire::actingAs($other)->test(EmailSettings::class)->call('sendTest')->assertSet('testResult', 'ok');
+
+        $this->travel(61)->seconds();
+        Livewire::actingAs($admin)->test(EmailSettings::class)->call('sendTest')->assertSet('testResult', 'ok');
+    });
+});

@@ -885,6 +885,7 @@
     "admin.em_rl_err_login": "Enter the SMTP login from your provider.",
     "admin.em_rl_err_region": "Choose your account's region.",
     "admin.em_rl_err_relay": "Choose one of the services listed.",
+    "admin.em_test_wait": "You have tried sending several times just now. Wait :seconds seconds, then try again.",
     "admin.em_meta_other_smtp": "your own mail server",
     "admin.em_connect_with": "Connect :name",
     "admin.em_resend_test": "Send the test again",

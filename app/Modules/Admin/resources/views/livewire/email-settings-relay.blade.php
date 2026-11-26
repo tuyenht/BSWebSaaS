@@ -15,7 +15,7 @@
         'smtp' => ['SM', 'var(--color-admin-primary)', 'var(--color-on-solid, #ffffff)'],
     ];
     $isSmtp = $relay === 'smtp';
-    $saved = $this->keySaved();
+    $saved = $keySaved;
     $regions = MailRelay::regions($relay);
     $label = 'flex items-center gap-1.5 text-[calc(0.8125rem+var(--user-text-boost))] font-medium text-text-strong';
     $hint = 'text-caption leading-normal text-text-muted';
@@ -26,8 +26,9 @@
 @endphp
 <div class="@container rounded-md border border-border-strong bg-surface p-4 shadow-card">
     <h2 id="em-prov-title" class="mb-3 text-caption font-bold tracking-[.04em] text-text-muted uppercase">{{ __('admin.em_prov_title') }}</h2>
+    {{-- a radio group: the arrows move to the next service and pick it --}}
     <div role="radiogroup" aria-labelledby="em-prov-title" class="grid grid-cols-4 gap-2.5 @max-[51.25rem]:grid-cols-2"
-         x-data="{ step(el, by) { const r = [...$root.querySelectorAll('[role=radio]')]; r[(r.indexOf(el) + by + r.length) % r.length].focus() } }">
+         x-data="{ step(el, by) { const r = [...$root.querySelectorAll('[role=radio]')]; const to = r[(r.indexOf(el) + by + r.length) % r.length]; to.focus(); to.click() } }">
         @foreach (MailRelay::KEYS as $k)
             @php $on = $relay === $k; [$initials, $bg, $fg] = $badges[$k]; @endphp
             <button type="button" role="radio" aria-checked="{{ $on ? 'true' : 'false' }}" tabindex="{{ $on ? 0 : -1 }}" wire:key="rl-{{ $k }}"
@@ -57,7 +58,7 @@
         @if ($isSmtp)
             <div class="flex flex-col gap-1.5">
                 <label for="em-f-email" class="{{ $label }}">{{ __('admin.em_rl_email') }}{!! $star !!}</label>
-                <x-bs-admin::input id="em-f-email" type="email" wire:model.live.blur="smtpUsername" autocomplete="new-password" spellcheck="false" />
+                <x-bs-admin::input id="em-f-email" type="email" aria-required="true" wire:model.live.blur="smtpUsername" autocomplete="new-password" spellcheck="false" />
                 @unless ($errors->has('smtpUsername'))
                     <span class="{{ $hint }}">{{ $emailHint }}</span>
                 @endunless
@@ -86,7 +87,7 @@
                 </span>
             @else
                 <label for="em-f-key" class="{{ $label }}">{{ $keyLabel }}{!! $star !!}</label>
-                <x-bs-admin::input id="em-f-key" type="password" wire:model.live.blur="smtpPassword" autocomplete="new-password" spellcheck="false"
+                <x-bs-admin::input id="em-f-key" type="password" aria-required="true" wire:model.live.blur="smtpPassword" autocomplete="new-password" spellcheck="false"
                                    :placeholder="$isSmtp ? 'abcd efgh ijkl mnop' : ($relay === 'sendgrid' ? 'SG.xxxxxxxx' : '')" />
                 @unless ($errors->has('smtpPassword'))
                     <span class="{{ $hint }}">{{ $isSmtp ? __('admin.em_rl_apppass_hint') : __('admin.em_rl_key_hint', ['name' => $relayName]) }}</span>
@@ -111,7 +112,7 @@
         @else
             <div class="flex flex-col gap-1.5">
                 <label for="em-f-domain" class="{{ $label }}">{{ __('admin.em_rl_domain') }}{!! $star !!}</label>
-                <x-bs-admin::input id="em-f-domain" wire:model.live.blur="sendDomain" autocomplete="new-password" spellcheck="false" />
+                <x-bs-admin::input id="em-f-domain" aria-required="true" wire:model.live.blur="sendDomain" autocomplete="new-password" spellcheck="false" />
                 @unless ($errors->has('sendDomain'))
                     <span class="{{ $hint }}">{{ __('admin.em_rl_domain_hint') }}</span>
                 @endunless
@@ -119,7 +120,7 @@
             @if (MailRelay::hasOwnLogin($relay))
                 <div class="flex flex-col gap-1.5">
                     <label for="em-f-login" class="{{ $label }}">{{ __('admin.em_rl_login') }}{!! $star !!}</label>
-                    <x-bs-admin::input id="em-f-login" wire:model.live.blur="smtpUsername" autocomplete="new-password" spellcheck="false" />
+                    <x-bs-admin::input id="em-f-login" aria-required="true" wire:model.live.blur="smtpUsername" autocomplete="new-password" spellcheck="false" />
                     @unless ($errors->has('smtpUsername'))
                         <span class="{{ $hint }}">{{ __('admin.em_rl_login_hint_'.$relay) }}</span>
                     @endunless
@@ -128,7 +129,7 @@
             @if ($regions !== [])
                 <div class="flex flex-col gap-1.5">
                     <label for="em-f-region" class="{{ $label }}">{{ __('admin.em_rl_region') }}{!! $star !!}</label>
-                    <select id="em-f-region" wire:model.live="relayRegion" @error('relayRegion') aria-invalid="true" aria-describedby="em-f-region-error" @enderror
+                    <select id="em-f-region" aria-required="true" wire:model.live="relayRegion" @error('relayRegion') aria-invalid="true" aria-describedby="em-f-region-error" @enderror
                             class="field block w-full rounded border border-border-input bg-surface px-3 text-text focus:border-primary-text aria-invalid:border-danger-text">
                         @if ($relay === 'ses')
                             <option value="">{{ __('admin.em_rl_region_pick') }}</option>

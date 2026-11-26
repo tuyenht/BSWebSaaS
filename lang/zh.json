@@ -885,6 +885,7 @@
     "admin.em_rl_err_login": "请输入从服务商获取的 SMTP 登录名。",
     "admin.em_rl_err_region": "请选择账户所在区域。",
     "admin.em_rl_err_relay": "请从列表中选择一个服务。",
+    "admin.em_test_wait": "您刚才多次尝试发送。请等待 :seconds 秒后再试。",
     "admin.em_meta_other_smtp": "自有邮件服务器",
     "admin.em_connect_with": "连接 :name",
     "admin.em_resend_test": "重新发送测试邮件",

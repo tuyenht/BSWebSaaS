@@ -885,6 +885,7 @@
     "admin.em_rl_err_login": "Hãy nhập tên đăng nhập SMTP lấy từ nhà cung cấp.",
     "admin.em_rl_err_region": "Hãy chọn vùng của tài khoản.",
     "admin.em_rl_err_relay": "Hãy chọn một dịch vụ trong danh sách.",
+    "admin.em_test_wait": "Bạn vừa thử gửi nhiều lần. Hãy đợi :seconds giây rồi thử lại.",
     "admin.em_meta_other_smtp": "máy chủ gửi thư riêng",
     "admin.em_connect_with": "Kết nối :name",
     "admin.em_resend_test": "Gửi lại thư kiểm tra",
