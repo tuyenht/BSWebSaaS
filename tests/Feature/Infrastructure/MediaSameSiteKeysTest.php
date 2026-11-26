@@ -363,6 +363,10 @@ it('rolls both migrations back and forward, twice each, as after a half-finished
 
     sskAsMigrations(function () use ($expand, $contract, $after, $plain): void {
         try {
+            // rolled back alone, the first migration would leave the columns with no key: it refuses
+            expect(fn () => $expand->down())->toThrow(RuntimeException::class, 'roll back 2099_01_01_000100 first')
+                ->and(['keys' => sskKeys(), 'indexes' => sskIndexes()])->toBe($after);
+
             $contract->down();
             $contract->down();
             $both = [...$after['keys'], ...$plain];
@@ -432,19 +436,19 @@ it('stops on a lock held too long, at an index build, a new key or a validation,
         });
 
         // a write on media still open: the index build waits for it, gives up and leaves the index INVALID
-        $holding('LOCK TABLE media IN ROW EXCLUSIVE MODE', 'stopped while building the index media_site_id_id_unique: another transaction held the table for more than 300ms');
+        $holding('LOCK TABLE media IN ROW EXCLUSIVE MODE', 'lock timeout (55P03) while building the index media_site_id_id_unique: another transaction held the table for more than 300ms');
         expect($mediaIndex())->toBe([false])
             ->and($admin->scalar('SHOW lock_timeout'))->toBe($sessionWait);
 
         // the next run drops it and builds it again; then a lock on site_profiles stops it at that key
-        $holding('LOCK TABLE site_profiles IN SHARE UPDATE EXCLUSIVE MODE', 'stopped while adding the key on site_profiles.logo_media_id');
+        $holding('LOCK TABLE site_profiles IN SHARE UPDATE EXCLUSIVE MODE', 'lock timeout (55P03) while adding the key on site_profiles.logo_media_id');
         expect($mediaIndex())->toBe([true])
             ->and($key('taxonomies_cover_media_id_same_site_foreign'))->toHaveCount(1)
             ->and($key('taxonomies_cover_media_id_same_site_foreign')[0])->toContain(' NOT VALID ')
             ->and($key('site_profiles_logo_media_id_same_site_foreign'))->toBe([]);
 
         // the next run adds the rest; a lock on taxonomies stops it at that validation
-        $holding('LOCK TABLE taxonomies IN SHARE UPDATE EXCLUSIVE MODE', 'stopped while validating taxonomies_cover_media_id_same_site_foreign');
+        $holding('LOCK TABLE taxonomies IN SHARE UPDATE EXCLUSIVE MODE', 'lock timeout (55P03) while validating taxonomies_cover_media_id_same_site_foreign');
         expect($key('entries_cover_media_id_same_site_foreign')[0] ?? '')->toContain(' valid ')
             ->and($key('taxonomies_cover_media_id_same_site_foreign')[0] ?? '')->toContain(' NOT VALID ')
             ->and($key('product_images_media_id_same_site_foreign'))->toHaveCount(1)

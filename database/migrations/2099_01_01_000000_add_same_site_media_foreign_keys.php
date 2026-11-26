@@ -116,6 +116,13 @@ return new class extends Migration
             return;
         }
 
+        // Rolled back alone after 2099_01_01_000100, this would leave the columns with no key at all:
+        // that migration's down() puts the plain keys back first.
+        $plain = DB::scalar("SELECT count(*) FROM pg_constraint WHERE contype = 'f' AND confrelid = 'media'::regclass AND conname LIKE '%\_media\_id\_foreign' AND conname NOT LIKE '%\_same\_site\_foreign'");
+        if ((int) $plain < 7) {
+            throw new RuntimeException('Same-site media keys: roll back 2099_01_01_000100 first; it puts the plain media keys back, without which this rollback would leave the media columns with no foreign key.');
+        }
+
         // Dropping a foreign key drops its triggers on media too, which locks media against every
         // read for that step: each drop is its own short step.
         foreach ([...self::NULLABLE, ['product_images', 'media_id']] as [$table, $column]) {
@@ -338,7 +345,7 @@ return new class extends Migration
             }
 
             throw new RuntimeException(sprintf(
-                'Same-site media keys: stopped while %s: another transaction held the table for more than %s. '
+                'Same-site media keys: lock timeout (55P03) while %s: another transaction held the table for more than %s. '
                 .'The steps before it are kept and this one left nothing half-done (an index it had started is dropped and built again on the next run). '
                 .'Run the migration again when traffic is quieter; to see what held it: '
                 ."SELECT pid, state, xact_start, left(query, 80) FROM pg_stat_activity WHERE xact_start < now() - interval '5 seconds' ORDER BY xact_start.",
