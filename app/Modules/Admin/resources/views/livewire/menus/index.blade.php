@@ -350,7 +350,7 @@
                             </template>
                             <div class="flex flex-col gap-2 border-t border-border-soft px-3 pb-3 pt-2">
                                 <x-bs-admin::button size="sm" variant="outline" color="secondary" class="w-full" x-show="d.areas.some(a => a.advanced)" x-on:click="advOn = !advOn"
-                                    ><x-bs-admin::icon name="chevron-up" class="size-4" x-show="advOn" /><x-bs-admin::icon name="chevron-down" class="size-4" x-show="! advOn" /><span x-text="advOn ? {{ $j($u('adv_hide')) }} : {{ $j($u('adv_show')) }}.replace(':n', advCount)"></span></x-bs-admin::button>
+                                    ><x-bs-admin::icon name="ri-arrow-up-s" class="size-4" x-show="advOn" /><x-bs-admin::icon name="ri-arrow-down-s" class="size-4" x-show="! advOn" /><span x-text="advOn ? {{ $j($u('adv_hide')) }} : {{ $j($u('adv_show')) }}.replace(':n', advCount)"></span></x-bs-admin::button>
                                 <x-bs-admin::button size="sm" variant="outline" color="secondary" class="w-full" x-on:click="devOn = !devOn" title="{{ $u('dev_tip') }}">
                                     <x-bs-admin::icon name="ri-code-s-slash" class="size-4" /><span x-text="devOn ? {{ $j($u('dev_hide')) }} : {{ $j($u('dev_show')) }}"></span>
                                 </x-bs-admin::button>
