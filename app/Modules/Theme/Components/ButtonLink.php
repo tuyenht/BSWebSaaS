@@ -254,13 +254,13 @@ final class ButtonLink
      */
     public static function fileRef(array $do): ?array
     {
-        $media = $do['media'] ?? null;
-        if (is_string($media) && $media !== '') {
+        $media = is_string($do['media'] ?? null) ? strtoupper(trim($do['media'])) : '';
+        if ($media !== '') {
             return ['media' => $media];
         }
-        $file = $do['file'] ?? null;
+        $file = is_string($do['file'] ?? null) ? trim($do['file']) : '';
 
-        return is_string($file) && $file !== '' ? ['file' => $file] : null;
+        return $file !== '' ? ['file' => $file] : null;
     }
 
     /**

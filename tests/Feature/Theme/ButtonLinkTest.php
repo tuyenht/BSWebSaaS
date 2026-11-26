@@ -410,6 +410,13 @@ it("counts a button's file as in use in the library, named by its row or by the 
     });
 })->with(['row', 'key']);
 
+it('reads a file reference trimmed, its row ulid in capitals, and a blank one as none', function (): void {
+    expect(ButtonLink::fileRef(['k' => 'file', 'media' => '  ']))->toBeNull()
+        ->and(ButtonLink::fileRef(['k' => 'file', 'file' => ' ']))->toBeNull()
+        ->and(ButtonLink::fileRef(['k' => 'file', 'media' => ' 01hzzzzzzzzzzzzzzzzzzzzzzz ']))->toBe(['media' => '01HZZZZZZZZZZZZZZZZZZZZZZZ'])
+        ->and(ButtonLink::fileRef(['k' => 'file', 'file' => ' a/library/x.pdf ']))->toBe(['file' => 'a/library/x.pdf']);
+});
+
 describe('older plain addresses and mail headers', function (): void {
     it('never lets a mail address carry extra header fields, typed or older, saved or drawn', function (): void {
         foreach (['x?cc=evil@b.com', 'a&cc=x@b.com', 'a%0D%0Abcc=x@b.com', "a\r\nbcc=x@b.com"] as $email) {
