@@ -172,11 +172,13 @@ final class EntryCover
 
     /**
      * The shape a writer stores while covers move from an address to a row: with cover_media_id set,
-     * meta.image_url is removed (the id decides alone); with none, an old key that names a picture of
-     * this website outside the Trash becomes that file's id and leaves the meta. A glyph name, an outside
-     * address or a key with no live file stays in the meta as it is. One read on (site_id, storage_key),
-     * only in that last case; FOR KEY SHARE when $lock, so a purge of the file waits for the caller's
-     * transaction (and then finds the entry through its `cover` usage row).
+     * meta.image_url is removed (the id decides alone) and the id is kept only while it names a file of
+     * this website (the Trash included: the same file, which a restore from the Trash brings back), else
+     * the entry gets no cover; with none, an old key that names a picture of this website outside the
+     * Trash becomes that file's id and leaves the meta. A glyph name, an outside address or a key with
+     * no live file stays in the meta as it is. One read on the media primary key or on
+     * (site_id, storage_key), none for a glyph or an address; FOR KEY SHARE when $lock, so a purge of
+     * the file waits for the caller's transaction (and then finds the entry through its `cover` usage row).
      *
      * @param  array<array-key, mixed>  $meta
      * @return array{0: int|null, 1: array<array-key, mixed>}
@@ -185,8 +187,10 @@ final class EntryCover
     {
         if (self::named($coverMediaId)) {
             unset($meta['image_url']);
+            $id = MediaRefs::id($coverMediaId);
+            $found = $id === null ? null : Media::withTrashed()->whereKey($id)->when($lock, fn (Builder $query) => $query->lock('for key share'))->value('id');
 
-            return [MediaRefs::id($coverMediaId), $meta];
+            return [MediaRefs::id($found), $meta];
         }
         $key = self::metaValue($meta);
         if (! MediaRefs::looksLikeKey($key)) {

@@ -442,7 +442,7 @@ trait ShowsEntryRevisions
         $missing = 0;
         $shared = false;
         if ($content !== null) {
-            [$content, $missing] = $writer->withoutMissingMedia($content);
+            [$content, $missing] = $writer->withoutMissingMedia($content, lock: false);
             $shared = $writer->changesShared($entry, $content);
         }
         $status = $entry->status;

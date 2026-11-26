@@ -675,7 +675,7 @@ final class Editor extends Component
         // carries when it was last saved.
         $this->savedAt = self::iso($translation?->updated_at);
         // what visitors see, also while the form edits a pending change: the overwrite check compares the website
-        $this->storedPrint = self::printOf($translation, $entry->cover_media_id, $entry->meta, $liveCategories, $entry->template_override);
+        $this->storedPrint = self::printOf($translation, $this->coverPrint($entry->cover_media_id, $entry->meta), $entry->meta, $liveCategories, $entry->template_override);
         $this->loadedAt = self::iso(CarbonImmutable::now());
         $this->mayPublish = $this->user()->can('publish', $entry);
         $this->frameRights($entry);
@@ -2509,7 +2509,7 @@ final class Editor extends Component
         // The whole row: the save writes through this same model, so the check costs no extra read.
         $translation = $entry->translations()->where('locale', $this->locale)->first();
 
-        return ['print' => self::printOf($translation, $entry->cover_media_id, $entry->meta, $this->type === 'post' ? $this->storedCategories($entry) : [], $entry->template_override), 'translation' => $translation];
+        return ['print' => self::printOf($translation, $this->coverPrint($entry->cover_media_id, $entry->meta), $entry->meta, $this->type === 'post' ? $this->storedCategories($entry) : [], $entry->template_override), 'translation' => $translation];
     }
 
     /**
@@ -2519,7 +2519,7 @@ final class Editor extends Component
      * @param  list<int>  $categoryIds  a post's categories, the main one first (none for a page)
      * @return array<string, string>
      */
-    private static function printOf(?EntryTranslation $translation, mixed $coverMediaId, mixed $meta, array $categoryIds, ?string $template): array
+    private static function printOf(?EntryTranslation $translation, string $cover, mixed $meta, array $categoryIds, ?string $template): array
     {
         return [
             'title' => md5((string) $translation?->title),
@@ -2528,8 +2528,8 @@ final class Editor extends Component
             'excerpt' => md5((string) $translation?->excerpt),
             'seo_title' => md5((string) $translation?->seo_title),
             'seo_description' => md5((string) $translation?->seo_description),
-            // the picture its row names, else the old key: a form opened before covers had rows printed the key alone
-            'cover' => md5(EntryCover::identity($coverMediaId, $meta)),
+            // the file's key (coverPrint): a form opened before covers had rows printed the key alone
+            'cover' => md5($cover),
             'category' => implode(',', $categoryIds),
             // last: a form opened before the field existed holds a print without it (see save())
             'cover_alt' => md5((string) $translation?->cover_alt),
@@ -2540,6 +2540,26 @@ final class Editor extends Component
             // keys in a fixed order like the body's (the database hands the language maps back sorted)
             'job' => md5((string) json_encode(self::keysSorted(is_array($meta) ? [$meta['facts'] ?? null, $meta['badge'] ?? null] : [null, null]))),
         ];
+    }
+
+    /**
+     * The stored cover as the overwrite check compares it: the storage key of the file the pair names
+     * (by its id, the Trash included, else the old key in meta), so the same picture moved from its key
+     * to its row in another tab is no change; '#<id>' for an id that names no file of this website.
+     * The form's own cover row answers when it is that file, else one read on the media primary key.
+     */
+    private function coverPrint(mixed $coverMediaId, mixed $meta): string
+    {
+        $id = MediaRefs::id($coverMediaId);
+        if (! EntryCover::named($coverMediaId) || $id === null) {
+            return EntryCover::identity($coverMediaId, $meta);
+        }
+        if ($this->coverRow !== null && MediaRefs::id($this->coverRow->id) === $id) {
+            return $this->coverRow->storage_key;
+        }
+        $key = Media::withTrashed()->whereKey($id)->value('storage_key');
+
+        return is_string($key) ? $key : '#'.$id;
     }
 
     private static function keysSorted(mixed $value): mixed
@@ -3918,7 +3938,7 @@ final class Editor extends Component
         $this->loadedAt = $this->savedAt;
         // What this save stored is what the next one compares against (the written model holds it).
         // The main category just written is the form's own value, so it needs no second read.
-        $this->storedPrint = self::printOf($translation, $entry->cover_media_id, $entry->meta, $this->type === 'post' ? $this->categoryIds : [], $entry->template_override);
+        $this->storedPrint = self::printOf($translation, $this->coverPrint($entry->cover_media_id, $entry->meta), $entry->meta, $this->type === 'post' ? $this->categoryIds : [], $entry->template_override);
         $this->coverTouched = false;
         $this->jobSaved($entry->meta);
         $this->mayPublish = $this->user()->can('publish', $entry);

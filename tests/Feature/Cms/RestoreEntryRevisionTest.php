@@ -482,7 +482,18 @@ it('restores a cover named by its row, and a version whose cover file was purged
         expect($v1->snapshot['cover_media_id'] ?? null)->toBe($first->id);
 
         $page->update(['cover_media_id' => null]);
+        // the version's files are checked inside the restore's own transaction and held FOR KEY SHARE
+        // until it commits, so a purge meanwhile cannot leave the id naming nothing
+        $outer = DB::transactionLevel();
+        $held = [];
+        DB::listen(function ($query) use (&$held): void {
+            if (str_contains($query->sql, 'from "media"') && str_contains($query->sql, '"id" in') && str_contains($query->sql, 'for key share')) {
+                $held[] = DB::transactionLevel();
+            }
+        });
         expect(app(RestoreEntryRevision::class)->handle($v1, $actor))->toBe(0)
+            ->and($held)->not->toBeEmpty()
+            ->and(min($held))->toBeGreaterThan($outer)
             ->and($page->fresh()->cover_media_id)->toBe($first->id)
             ->and($page->fresh()->meta)->not->toHaveKey('image_url');
 

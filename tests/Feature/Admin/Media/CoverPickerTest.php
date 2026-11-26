@@ -452,6 +452,29 @@ describe('covers named by their row', function (): void {
         });
     });
 
+    it('asks nothing in a second tab when the first only moved the same picture from its old key to its row', function (): void {
+        $editor = User::factory()->create();
+
+        app(Tenancy::class)->enter(1, function () use ($editor): void {
+            grantRole($editor, 'editor', ['entries.create', 'entries.edit.any', 'media.view']);
+            $media = seedPickableMedia();
+            $page = coverPickerPage($media->storage_key);
+            $tabA = Livewire::actingAs($editor->fresh())->test(Editor::class, ['ulid' => $page->ulid]);
+            $tabB = Livewire::actingAs($editor->fresh())->test(Editor::class, ['ulid' => $page->ulid]);
+
+            $tabA->call('save')->assertHasNoErrors()->assertSet('stale', null);
+            expect(Entry::query()->find($page->id)?->cover_media_id)->toBe($media->id);
+
+            // tab B read the old key; the stored row names the same file: no «someone else saved» question
+            $tabB->set('excerpt', 'Tab B')->call('save')->assertHasNoErrors()->assertSet('stale', null);
+
+            $saved = Entry::query()->find($page->id);
+            expect($saved?->cover_media_id)->toBe($media->id)
+                ->and($saved?->meta)->not->toHaveKey('image_url')
+                ->and($saved?->translationFor('vi')?->excerpt)->toBe('Tab B');
+        });
+    });
+
     it('refuses to save a picked cover that left the library meanwhile, and says so', function (): void {
         $editor = User::factory()->create();
 

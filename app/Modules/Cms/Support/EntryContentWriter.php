@@ -19,6 +19,7 @@ use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SchemaImages;
 use App\Modules\Theme\Rendering\TemplateCatalog;
 use Closure;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -211,10 +212,15 @@ final readonly class EntryContentWriter
      * cleared (the block and its text stay).
      * Returns the content and how many references were dropped. Two queries at most.
      *
+     * The files kept are read FOR KEY SHARE (with $lock, every writer: call it inside the transaction
+     * that writes the content), so a purge of one of them waits for that write to commit and then finds
+     * the entry through its usage row; it never leaves an id naming a file that is gone. A preview of
+     * what a restore would do writes nothing and passes false.
+     *
      * @param  EntryContent  $content
      * @return array{0: EntryContent, 1: int}
      */
-    public function withoutMissingMedia(array $content): array
+    public function withoutMissingMedia(array $content, bool $lock = true): array
     {
         $blockIds = [];
         foreach ($content['blocks'] as $i => $block) {
@@ -231,7 +237,7 @@ final readonly class EntryContentWriter
 
         $existing = [];
         if ($referenced !== []) {
-            foreach (Media::query()->whereIn('id', $referenced)->pluck('id') as $id) {
+            foreach (Media::query()->whereIn('id', $referenced)->when($lock, fn (Builder $query) => $query->lock('for key share'))->pluck('id') as $id) {
                 if (is_numeric($id)) {
                     $existing[] = (int) $id;
                 }
@@ -264,7 +270,7 @@ final readonly class EntryContentWriter
             unset($content['meta']['image_url']);
         } elseif ($coverKey !== null) {
             $coverId = is_string($coverKey) && MediaRefs::looksLikeKey($coverKey)
-                ? MediaRefs::id(Media::query()->where('storage_key', $coverKey)->lock('for key share')->value('id'))
+                ? MediaRefs::id(Media::query()->where('storage_key', $coverKey)->when($lock, fn (Builder $query) => $query->lock('for key share'))->value('id'))
                 : null;
             unset($content['meta']['image_url']);
             if ($coverId !== null) {

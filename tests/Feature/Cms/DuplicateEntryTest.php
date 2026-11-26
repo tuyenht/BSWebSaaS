@@ -170,3 +170,20 @@ it('carries the cover as its row: an id stays, an old key of a library picture b
             ->and($glyph->meta)->toBe(['image_url' => 'gear']);
     });
 });
+
+it('gives the copy no cover when the original names a file that is no longer there', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.create', 'entries.edit.any']);
+        // an id no file of this website has (purged past the model): nothing stops the column holding it today
+        $dangling = (int) Media::withTrashed()->max('id') + 1000;
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'cover_media_id' => $dangling, 'meta' => ['image_url' => 'a/library/cu-cccccccccccc.png']]);
+        $page->translations()->create(['locale' => 'vi', 'title' => 'Trang', 'slug' => 'mat-anh', 'status' => 'draft', 'body' => ['blocks' => []]]);
+
+        $copy = app(DuplicateEntry::class)->handle($page->fresh(), $editor->fresh());
+
+        expect($copy->fresh()->cover_media_id)->toBeNull()
+            ->and($copy->fresh()->meta)->not->toHaveKey('image_url');
+    });
+});

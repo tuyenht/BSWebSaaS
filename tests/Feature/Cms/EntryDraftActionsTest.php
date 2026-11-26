@@ -921,8 +921,17 @@ it('names the picture of a change by its row, and the applied post too, with no 
         $change = app(SaveEntryDraft::class)->handle($entry, $author, 'vi', [], ['cover_media_id' => $media->id, 'meta' => ['image_url' => 'a/library/cu-000000000000.png']]);
         expect($change->content['shared']['cover_media_id'])->toBe($media->id)
             ->and($change->content['shared']['meta'])->not->toHaveKey('image_url');
+        // the change's files are read FOR KEY SHARE in the apply's transaction: a purge meanwhile waits for it
+        $held = [];
+        DB::listen(function ($query) use (&$held): void {
+            if (str_contains($query->sql, 'from "media"') && str_contains($query->sql, '"id" in') && str_contains($query->sql, 'for key share')) {
+                $held[] = $query->bindings;
+            }
+        });
         app(ApplyEntryDraft::class)->handle($entry->fresh(), $publisher, $change->version());
-        expect($entry->fresh()->cover_media_id)->toBe($media->id)
+        expect($held)->not->toBeEmpty()
+            ->and(in_array($media->id, array_merge(...$held), true))->toBeTrue()
+            ->and($entry->fresh()->cover_media_id)->toBe($media->id)
             ->and($entry->fresh()->meta)->not->toHaveKey('image_url');
 
         // a change held from before, naming the picture by its old key: applied as its row

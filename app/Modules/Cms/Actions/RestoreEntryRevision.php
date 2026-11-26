@@ -76,11 +76,11 @@ final readonly class RestoreEntryRevision
         [$snapshot, $droppedBlocks] = $this->writer->withoutMissingBlocks($revision->snapshot);
         $content = $this->writer->read($snapshot, $entry->type, null, true, EntryContentRules::storedRefs($entry->ulid))
             ?? throw new RevisionRestoreRejectedException('snapshot_incompatible');
-        [$content, $dropped] = $this->writer->withoutMissingMedia($content);
+        $dropped = 0;
 
         try {
             /** @var bool $held */
-            $held = DB::transaction(function () use ($entry, $revision, $content, $actor): bool {
+            $held = DB::transaction(function () use ($entry, $revision, $content, $actor, &$dropped): bool {
                 // The entry row first, as every entry action takes it, before its translation is
                 // written back (a check of the search words running meanwhile waits for it).
                 // A trash committed while this waited still refuses the restore.
@@ -93,6 +93,9 @@ final readonly class RestoreEntryRevision
                     throw new RevisionRestoreRejectedException('approved_later');
                 }
                 $entry->setRawAttributes($locked->getAttributes(), true);
+                // The pictures the version names, checked in this transaction: the files kept stay
+                // FOR KEY SHARE until it commits, so a purge meanwhile cannot leave an id naming nothing.
+                [$content, $dropped] = $this->writer->withoutMissingMedia($content);
 
                 // Live content this member's save would hold back goes into the pending change, as their save does.
                 if ($this->changes->holdsBack($entry, $actor)) {
