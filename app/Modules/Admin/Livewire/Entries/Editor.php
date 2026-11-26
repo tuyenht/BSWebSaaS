@@ -685,6 +685,7 @@ final class Editor extends Component
         if ($this->type === 'post') {
             $this->categoryIds = $this->categoryId !== null ? [$this->categoryId] : [];
             $this->address = $this->previewAddress();
+            $this->jobFollowCategory();
         }
     }
 
@@ -852,6 +853,7 @@ final class Editor extends Component
         $this->resetErrorBag(['categoryId', 'categoryIds', 'categoryIds.*']);
         if ($previous !== $this->categoryId) {
             $this->address = $this->previewAddress();
+            $this->jobFollowCategory();
         }
     }
 

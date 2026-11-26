@@ -6,6 +6,7 @@ namespace App\Modules\Admin\Livewire\Concerns;
 
 use App\Modules\Admin\Support\Entries\JobCardForm;
 use App\Modules\Admin\Support\Entries\JobFactText;
+use App\Modules\Admin\Support\Locales;
 use App\Modules\Cms\Support\JobFacts;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -20,6 +21,9 @@ use Livewire\Attributes\Locked;
  * accent tone; «Hạn nộp» is one more box («Hạn nộp: dd/mm/yyyy») and counts as one of the four;
  * the badge up to 24 characters. Saved with the post (or into its pending change) through the same
  * rule a revision restore and a content pack pass (JobFacts::errors), in plain words first.
+ * The card's shape (which boxes, their order and tone, the deadline, whether there is a label) is
+ * every language's: like the shown date it changes in the website's default language only, and
+ * another language edits only its own words (the save refuses a shape sent from there).
  */
 trait EditsJobCard
 {
@@ -46,7 +50,7 @@ trait EditsJobCard
      * as stored and the form's print. Empty: a form opened before the card existed, whose save
      * leaves the facts and the badge as stored. Server-set only.
      *
-     * @var array{others: array<string, array<string, string>>, badge: array<string, string>, deadlineDay: string, deadlineTexts: array<string, string>, seq: int, print: string}|array{}
+     * @var array{others: array<string, array<string, string>>, badge: array<string, string>, deadlineDay: string, deadlineTexts: array<string, string>, seq: int, print: string, form: array{facts: list<array{key: string, text: string, accent: bool}>, deadline: string, deadlineAccent: bool, badge: string}}|array{}
      */
     #[Locked]
     public array $jobStored = [];
@@ -68,7 +72,7 @@ trait EditsJobCard
     {
         $this->authorizeEditing();
         $suggestion = self::JOB_SUGGESTIONS[$kind] ?? null;
-        if ($suggestion === null || ! $this->jobOn()) {
+        if ($suggestion === null || ! $this->jobOn() || $this->jobShapeHeld()) {
             return;
         }
         $facts = $this->jobFactList();
@@ -94,7 +98,7 @@ trait EditsJobCard
     {
         $this->authorizeEditing();
         $facts = $this->jobFactList();
-        if (! $this->jobOn() || ! isset($facts[$index])) {
+        if (! $this->jobOn() || ! isset($facts[$index]) || $this->jobShapeHeld()) {
             return;
         }
         $before = $this->jobSnapshot();
@@ -111,7 +115,7 @@ trait EditsJobCard
     {
         $this->authorizeEditing();
         $facts = $this->jobFactList();
-        if (! $this->jobOn() || ! isset($facts[$index])) {
+        if (! $this->jobOn() || ! isset($facts[$index]) || $this->jobShapeHeld()) {
             return;
         }
         $facts[$index]['accent'] = ! $facts[$index]['accent'];
@@ -122,7 +126,7 @@ trait EditsJobCard
     public function toggleJobDeadlineAccent(): void
     {
         $this->authorizeEditing();
-        if ($this->jobOn() && $this->jobDeadline !== '') {
+        if ($this->jobOn() && $this->jobDeadline !== '' && ! $this->jobShapeHeld()) {
             $this->jobDeadlineAccent = ! $this->jobDeadlineAccent;
         }
     }
@@ -131,7 +135,7 @@ trait EditsJobCard
     public function clearJobDeadline(): void
     {
         $this->authorizeEditing();
-        if (! $this->jobOn() || $this->jobDeadline === '') {
+        if (! $this->jobOn() || $this->jobDeadline === '' || $this->jobShapeHeld()) {
             return;
         }
         $before = $this->jobSnapshot();
@@ -163,6 +167,12 @@ trait EditsJobCard
         $this->authorizeEditing();
         $this->resetErrorBag('jobDeadline');
         $day = is_string($value) ? trim($value) : '';
+        if ($this->jobStored !== [] && $this->sharedLocked()) {
+            // every language's: kept as it is outside the default language
+            $this->jobDeadline = $this->jobDeadlineWas;
+
+            return;
+        }
         if ($day !== '' && $this->jobDeadlineWas === '' && count($this->jobFactList()) >= JobFacts::FACTS_MAX) {
             $this->jobDeadline = '';
 
@@ -198,6 +208,43 @@ trait EditsJobCard
     private function jobOn(): bool
     {
         return $this->type === 'post' && $this->jobStored !== [] && $this->categoryId !== null && $this->choices()->isJobList($this->categoryId);
+    }
+
+    /**
+     * The card's shape is every language's: outside the website's default language a change to it
+     * is not made, and the editor says where to make it.
+     */
+    private function jobShapeHeld(): bool
+    {
+        if (! $this->sharedLocked()) {
+            return false;
+        }
+        $this->dispatch('bs-toast', text: $this->jobSharedWhy());
+
+        return true;
+    }
+
+    /** Why the shape stays: the words the shown date uses («… hãy sửa ở bản Tiếng Việt»). */
+    private function jobSharedWhy(): string
+    {
+        return Cast::string(__('entries.ed.shared_guard', ['lang' => Locales::label(app(SiteLocale::class)->default())]));
+    }
+
+    /**
+     * The main category moved to one that does not list jobs: the card goes, and its edits with it,
+     * back to what was read (they are not saved, so they do not count as unsaved either).
+     */
+    private function jobFollowCategory(): void
+    {
+        $stored = $this->jobStored;
+        if ($stored === [] || $this->jobOn()) {
+            return;
+        }
+        $this->jobFacts = $stored['form']['facts'];
+        $this->jobDeadline = $stored['form']['deadline'];
+        $this->jobDeadlineAccent = $stored['form']['deadlineAccent'];
+        $this->jobBadge = $stored['form']['badge'];
+        $this->resetErrorBag([...$this->jobErrorKeys(), 'jobDeadline', 'jobBadge']);
     }
 
     /**
@@ -250,12 +297,18 @@ trait EditsJobCard
 
                     return;
                 }
+                $facts = $this->jobFactList();
+                $stored = $this->jobStored;
+                if ($stored !== [] && $this->sharedLocked() && ! JobCardForm::sameShape($facts, $this->jobDeadline, $this->jobDeadlineAccent, $this->jobBadge, $stored)) {
+                    $fail($this->jobSharedWhy());
+
+                    return;
+                }
                 if ($this->jobUsed() > JobFacts::FACTS_MAX) {
                     $fail(Cast::string(__('entries.ed.job_full', ['max' => JobFacts::FACTS_MAX])));
 
                     return;
                 }
-                $facts = $this->jobFactList();
                 foreach ($facts as $index => $fact) {
                     if ($this->jobFactError($fact, $index) !== null) {
                         return;   // said on that box
@@ -265,7 +318,6 @@ trait EditsJobCard
                     return;   // said on that field
                 }
                 // the rule the stored meta must pass, whoever writes it
-                $stored = $this->jobStored;
                 if ($stored !== [] && JobFacts::errors(JobCardForm::into([], $facts, $this->jobDeadline, $this->jobDeadlineAccent, $this->jobBadge, ['print' => ''] + $stored, $this->locale, app(SiteLocale::class)->enabled())) !== []) {
                     $fail(Cast::string(__('entries.ed.job_invalid')));
                 }
@@ -381,6 +433,21 @@ trait EditsJobCard
         if ($this->jobStored === []) {
             return;
         }
+        if ($this->sharedLocked()) {
+            // another language: only its words come back, box by box (the shape is every language's)
+            $words = [];
+            foreach (is_array($kept['jobFacts'] ?? null) ? $kept['jobFacts'] : [] as $fact) {
+                if (is_array($fact) && is_string($fact['key'] ?? null) && is_string($fact['text'] ?? null)) {
+                    $words[$fact['key']] = $fact['text'];
+                }
+            }
+            $this->jobFacts = array_map(static fn (array $fact): array => ['text' => $words[$fact['key']] ?? $fact['text']] + $fact, $this->jobFactList());
+            if (is_string($kept['jobBadge'] ?? null) && ($this->jobStored['badge'] !== [] || JobCardForm::clean($this->jobStored['form']['badge']) !== '')) {
+                $this->jobBadge = $kept['jobBadge'];
+            }
+
+            return;
+        }
         if (is_array($kept['jobFacts'] ?? null)) {
             $this->jobFacts = array_values($kept['jobFacts']);
             $this->jobFacts = array_slice($this->jobFactList(), 0, JobFacts::FACTS_MAX);
@@ -437,6 +504,7 @@ trait EditsJobCard
             return null;
         }
         $default = app(SiteLocale::class)->default();
+        $stored = $this->jobStored;
         $facts = [];
         foreach ($this->jobFactList() as $index => $fact) {
             $source = $this->jobStored['others'][$fact['key']][$default] ?? null;
@@ -479,6 +547,10 @@ trait EditsJobCard
                 default => Cast::string(__('entries.ed.job_dl_hint', ['chip' => __('entries.ed.job_dl_hint_sample'), 'max' => JobFacts::FACTS_MAX])),
             },
             'set' => $facts !== [] || $this->jobDeadline !== '' || trim($this->jobBadge) !== '',
+            // another language than the default: only this language's words change (the shape is every language's)
+            'locked' => $this->sharedLocked(),
+            'badgeLocked' => $this->sharedLocked() && $stored !== [] && $stored['badge'] === [] && JobCardForm::clean($stored['form']['badge']) === '',
+            'why' => $this->jobSharedWhy(),
         ];
     }
 

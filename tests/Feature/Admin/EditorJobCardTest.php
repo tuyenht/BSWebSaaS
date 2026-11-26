@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Livewire\Entries\Editor;
+use App\Modules\Admin\Support\Locales;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\JobDeadline;
@@ -85,12 +86,19 @@ it('shows the card only for a post filed under a category that lists jobs, its o
         Livewire::actingAs($user)->test(Editor::class, ['ulid' => jcPost($child)->ulid])->assertSeeHtml('data-entry-job');
         Livewire::actingAs($user)->test(Editor::class, ['ulid' => jcPost($news)->ulid])->assertDontSeeHtml('data-entry-job');
 
-        // moved to a category that does not list jobs: the card goes, and its methods do nothing
-        $form = Livewire::actingAs($user)->test(Editor::class, ['ulid' => jcPost($jobs)->ulid])
+        // moved to a category that does not list jobs: the card goes, its edits go back to what was read
+        // (not saved, so not counted as unsaved), and its methods do nothing
+        $form = Livewire::actingAs($user)->test(Editor::class, ['ulid' => jcPost($jobs, ['facts' => [jcFact('Nhà máy 2')], 'badge' => ['vi' => 'Gấp']])->ulid])
+            ->set('jobFacts.0.text', 'Nhà máy 3')
+            ->call('addJobFact', 'place')
+            ->set('jobDeadline', '2026-12-15')
+            ->set('jobBadge', '')
             ->set('categoryId', $news->id)
             ->assertDontSeeHtml('data-entry-job')
+            ->assertSet('jobDeadline', '')
+            ->assertSet('jobBadge', 'Gấp')
             ->call('addJobFact', 'place');
-        expect($form->get('jobFacts'))->toBe([]);
+        expect($form->get('jobFacts'))->toBe([['key' => 'f0', 'text' => 'Nhà máy 2', 'accent' => false]]);
     });
 });
 
@@ -132,14 +140,13 @@ it('saves the boxes, the deadline and the label in this language, and leaves oth
             ->assertSeeHtml('placeholder="Nơi làm: Nhà máy 2 – Thạch Thất"')
             ->set('jobFacts.0.text', 'Location: Plant 2')
             ->set('jobBadge', 'Urgent')
-            ->call('toggleJobDeadlineAccent')
             ->call('save')
             ->assertHasNoErrors();
 
         $meta = $post->fresh()->meta;
         expect($meta['facts'][0])->toEqual(['text' => ['vi' => 'Nơi làm: Nhà máy 2 – Thạch Thất', 'en' => 'Location: Plant 2'], 'tone' => 'plain'])
             ->and($meta['facts'][1])->toBe(['text' => ['vi' => 'Lương: 9 – 14 triệu/tháng'], 'tone' => 'accent'])
-            ->and($meta['facts'][2])->toEqual(['text' => ['vi' => 'Hạn nộp: 15/12/2026', 'en' => 'Apply by: 15/12/2026'], 'tone' => 'accent'])
+            ->and($meta['facts'][2])->toEqual(['text' => ['vi' => 'Hạn nộp: 15/12/2026', 'en' => 'Apply by: 15/12/2026'], 'tone' => 'plain'])
             ->and($meta['badge'])->toEqual(['vi' => 'Tuyển gấp', 'en' => 'Urgent']);
 
         // saved again from the same form: what it wrote is not taken for someone else's save
@@ -261,6 +268,68 @@ it('removes a box or the deadline with «Hoàn tác», and toggles «Nổi bật
             ->assertHasNoErrors();
         expect($post->fresh()->meta['facts'])->toBe([jcFact('Toàn thời gian', 'accent'), jcFact('Hạn nộp: 15/12/2026')]);
         expect($form->get('jobFacts'))->toHaveCount(1);
+    });
+});
+
+it('changes the card\'s boxes, tone, deadline and label only in the default language; another language edits its own words', function (): void {
+    $user = jcUser();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        SiteLocaleRow::query()->updateOrCreate(['locale' => 'en'], ['is_default' => false, 'enabled' => true, 'is_public' => true]);
+        app(SiteLanguages::class)->forget();
+        [, $jobs] = jcCategories();
+        $stored = ['facts' => [jcFact('Nhà máy 2'), jcFact('Toàn thời gian'), ['text' => ['vi' => 'Hạn nộp: 15/12/2026', 'en' => 'Apply by: 15/12/2026'], 'tone' => 'plain']]];
+        $post = jcPost($jobs, $stored);
+        $post->translations()->create(['locale' => 'en', 'title' => 'CNC technician', 'slug' => 'cnc-technician', 'status' => 'draft', 'body' => ['blocks' => []]]);
+        $why = __('entries.ed.shared_guard', ['lang' => Locales::label('vi')]);
+
+        // English: the shape's buttons are not drawn, the reason is; asked anyway, nothing changes
+        $english = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid, 'locale' => 'en'])
+            ->assertSeeHtml('data-job-shared')
+            ->assertSee($why)
+            ->assertDontSeeHtml('wire:click="removeJobFact(0)"')
+            ->call('removeJobFact', 0)->assertDispatched('bs-toast')
+            ->call('toggleJobAccent', 1)
+            ->call('addJobFact', 'place')
+            ->call('clearJobDeadline')
+            ->call('toggleJobDeadlineAccent')
+            ->set('jobDeadline', '2026-12-31')
+            ->assertSet('jobDeadline', '2026-12-15')
+            ->assertSet('jobDeadlineAccent', false);
+        expect(array_column($english->get('jobFacts'), 'key'))->toBe(['f0', 'f1'])
+            ->and(array_column($english->get('jobFacts'), 'accent'))->toBe([false, false]);
+
+        // a box taken out by a crafted request: the save refuses it, nothing is stored
+        $english->set('jobFacts', [$english->get('jobFacts')[1]])->call('save')->assertHasErrors(['jobFacts'])->assertSee($why);
+        // a label turned on from English: refused too
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid, 'locale' => 'en'])
+            ->assertSeeHtml('id="entry-job-bd"')
+            ->set('jobBadge', 'Urgent')->call('save')->assertHasErrors(['jobFacts']);
+        expect($post->fresh()->meta)->toEqual($stored);
+
+        // English words save
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid, 'locale' => 'en'])
+            ->set('jobFacts.0.text', 'Plant 2')->set('jobFacts.1.text', 'Full time')->call('save')->assertHasNoErrors();
+        expect($post->fresh()->meta['facts'])->toEqual([
+            ['text' => ['vi' => 'Nhà máy 2', 'en' => 'Plant 2'], 'tone' => 'plain'],
+            ['text' => ['vi' => 'Toàn thời gian', 'en' => 'Full time'], 'tone' => 'plain'],
+            $stored['facts'][2],
+        ]);
+
+        // Vietnamese, the default: the shape changes and saves
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid])
+            ->assertDontSeeHtml('data-job-shared')
+            ->call('removeJobFact', 0)
+            ->call('toggleJobAccent', 0)
+            ->call('toggleJobDeadlineAccent')
+            ->set('jobBadge', 'Gấp')
+            ->call('save')->assertHasNoErrors();
+        expect($post->fresh()->meta)->toEqual([
+            'facts' => [
+                ['text' => ['vi' => 'Toàn thời gian', 'en' => 'Full time'], 'tone' => 'accent'],
+                ['text' => ['vi' => 'Hạn nộp: 15/12/2026', 'en' => 'Apply by: 15/12/2026'], 'tone' => 'accent'],
+            ],
+            'badge' => ['vi' => 'Gấp'],
+        ]);
     });
 });
 

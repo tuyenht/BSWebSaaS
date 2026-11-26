@@ -2,7 +2,9 @@
      (Editor::jobCard, EditsJobCard). The preview of the job card, the short boxes in this language (at most four with
      «Hạn nộp», 40 characters each, «Nổi bật» for the accent tone, «Bỏ ô» with «Hoàn tác»), the suggestion buttons,
      «Hạn nộp» as a day and «Nhãn trên thẻ» (24 characters). The words are sent with the next save; the counters and
-     the preview follow the typing in the browser, the boxes themselves come from the server. --}}
+     the preview follow the typing in the browser, the boxes themselves come from the server. In another language than
+     the website's default only the words change: the boxes, their tone, the deadline and whether there is a label are
+     every language's, so their buttons are not drawn and the fields read only, with the shown date's words why. --}}
 @php
     $jobCount = __('entries.ed.job_count', ['n' => '__N__', 'max' => \App\Modules\Cms\Support\JobFacts::FACT_TEXT_MAX]);
     $badgeCount = __('entries.ed.job_count', ['n' => '__N__', 'max' => \App\Modules\Cms\Support\JobFacts::BADGE_MAX]);
@@ -31,6 +33,9 @@
     </div>
     <div class="flex flex-col gap-3 p-4">
         <p class="{{ $hint }}">{{ __('entries.ed.job_hint', ['cat' => $jobCard['category'], 'max' => \App\Modules\Cms\Support\JobFacts::FACTS_MAX, 'chars' => \App\Modules\Cms\Support\JobFacts::FACT_TEXT_MAX]) }}</p>
+        @if ($jobCard['locked'])
+            <p class="{{ $hint }}" data-job-shared>{{ $jobCard['why'] }}</p>
+        @endif
 
         {{-- the card as the job list draws it: the title, the label in its corner, the boxes with words --}}
         <div class="flex min-w-0 flex-col gap-2 rounded-md border border-dashed border-border-input bg-surface-muted p-3" role="group" aria-label="{{ __('entries.ed.job_pv_aria') }}" data-job-preview>
@@ -78,6 +83,7 @@
                        x-on:blur="if ($el.value.trim() === '' || $el.getAttribute('aria-invalid') === 'true') { $wire.touchJobFact({{ $i }}) }"
                        class="field {{ $fieldLook }}">
                 @if ($factError !== '') <x-bs-admin::field-error id="entry-jf-{{ $i }}-e">{{ $factError }}</x-bs-admin::field-error> @endif
+                @unless ($jobCard['locked'])
                 <div class="flex flex-wrap items-center gap-2">
                     <x-bs-admin::button variant="outline" color="neutral" size="sm" wire:click="toggleJobAccent({{ $i }})" aria-pressed="{{ $fact['accent'] ? 'true' : 'false' }}"
                                         title="{{ $fact['accent'] ? __('entries.ed.job_accent_on_tip') : __('entries.ed.job_accent_off_tip') }}">
@@ -88,9 +94,11 @@
                         <x-bs-admin::icon name="ri-close" :class="$glyph" />{{ __('entries.ed.job_remove') }}
                     </x-bs-admin::button>
                 </div>
+                @endunless
             </div>
         @endforeach
 
+        @unless ($jobCard['locked'])
         <div class="flex flex-wrap items-center gap-2" role="group" aria-label="{{ __('entries.ed.job_add_aria') }}">
             <span class="text-caption text-text-muted">{{ __('entries.ed.job_add') }}</span>
             @foreach ($jobCard['suggestions'] as $suggestion)
@@ -109,16 +117,18 @@
         @if ($jobCard['full'])
             <p class="{{ $hint }}">{{ __('entries.ed.job_full', ['max' => \App\Modules\Cms\Support\JobFacts::FACTS_MAX]) }}</p>
         @endif
+        @endunless
 
         <div class="flex min-w-0 flex-col gap-1.5">
             <label for="entry-job-dl" class="{{ $label }}">{{ __('entries.ed.job_dl_label') }}</label>
             <input type="date" id="entry-job-dl" wire:model.live.change="jobDeadline"
-                   @readonly($jobCard['deadlineLocked']) @if ($jobCard['deadlineLocked']) aria-readonly="true" @endif
+                   @readonly($jobCard['deadlineLocked'] || $jobCard['locked']) @if ($jobCard['deadlineLocked'] || $jobCard['locked']) aria-readonly="true" @endif
+                   @if ($jobCard['locked']) title="{{ $jobCard['why'] }}" @endif
                    aria-describedby="@error('jobDeadline') entry-job-dl-e @enderror entry-job-dl-h" @error('jobDeadline') aria-invalid="true" @enderror
                    class="field {{ $fieldLook }}">
             @error('jobDeadline') <x-bs-admin::field-error id="entry-job-dl-e">{{ $message }}</x-bs-admin::field-error> @enderror
             <p id="entry-job-dl-h" class="{{ $hint }}">{{ $jobCard['deadlineHint'] }}</p>
-            @if ($jobCard['chip'] !== '')
+            @if ($jobCard['chip'] !== '' && ! $jobCard['locked'])
                 <div class="flex flex-wrap items-center gap-2">
                     <x-bs-admin::button variant="outline" color="neutral" size="sm" wire:click="toggleJobDeadlineAccent" aria-pressed="{{ $jobDeadlineAccent ? 'true' : 'false' }}"
                                         title="{{ $jobDeadlineAccent ? __('entries.ed.job_dl_accent_on_tip') : __('entries.ed.job_dl_accent_off_tip') }}">
@@ -134,6 +144,7 @@
         <div class="flex min-w-0 flex-col gap-1.5 border-t border-border pt-3">
             <label for="entry-job-bd" class="{{ $label }}">{{ __('entries.ed.job_badge_label') }}</label>
             <input type="text" id="entry-job-bd" wire:model="jobBadge" maxlength="{{ \App\Modules\Cms\Support\JobFacts::BADGE_MAX }}" placeholder="{{ __('entries.ed.job_badge_ph') }}"
+                   @readonly($jobCard['badgeLocked']) @if ($jobCard['badgeLocked']) aria-readonly="true" title="{{ $jobCard['why'] }}" @endif
                    aria-describedby="entry-job-bd-h entry-job-bd-c @error('jobBadge') entry-job-bd-e @enderror" @error('jobBadge') aria-invalid="true" @enderror
                    class="field {{ $fieldLook }}">
             @error('jobBadge') <x-bs-admin::field-error id="entry-job-bd-e">{{ $message }}</x-bs-admin::field-error> @enderror

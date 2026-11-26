@@ -24,7 +24,7 @@ final class JobCardForm
      * The form of $meta in $locale.
      *
      * @param  array<array-key, mixed>|null  $meta
-     * @return array{facts: list<array{key: string, text: string, accent: bool}>, deadline: string, deadlineAccent: bool, badge: string, stored: array{others: array<string, array<string, string>>, badge: array<string, string>, deadlineDay: string, deadlineTexts: array<string, string>, seq: int, print: string}}
+     * @return array{facts: list<array{key: string, text: string, accent: bool}>, deadline: string, deadlineAccent: bool, badge: string, stored: array{others: array<string, array<string, string>>, badge: array<string, string>, deadlineDay: string, deadlineTexts: array<string, string>, seq: int, print: string, form: array{facts: list<array{key: string, text: string, accent: bool}>, deadline: string, deadlineAccent: bool, badge: string}}}
      */
     public static function load(?array $meta, string $locale): array
     {
@@ -72,6 +72,7 @@ final class JobCardForm
             'deadlineTexts' => $deadlineTexts,
             'seq' => count($raw),
             'print' => self::print($form['facts'], $deadline, $deadlineAccent, $form['badge']),
+            'form' => $form,
         ]];
     }
 
@@ -80,7 +81,7 @@ final class JobCardForm
      *
      * @param  array<array-key, mixed>  $meta
      * @param  list<array{key: string, text: string, accent: bool}>  $facts
-     * @param  array{others: array<string, array<string, string>>, badge: array<string, string>, deadlineDay: string, deadlineTexts: array<string, string>, seq: int, print: string}  $stored
+     * @param  array{others: array<string, array<string, string>>, badge: array<string, string>, deadlineDay: string, deadlineTexts: array<string, string>, seq: int, print: string, form: array{facts: list<array{key: string, text: string, accent: bool}>, deadline: string, deadlineAccent: bool, badge: string}}  $stored
      * @param  list<string>  $locales  the website's languages (the deadline is written in each)
      * @return array<array-key, mixed>
      */
@@ -129,8 +130,8 @@ final class JobCardForm
      *
      * @param  array<array-key, mixed>  $meta  the meta the save wrote
      * @param  list<array{key: string, text: string, accent: bool}>  $facts
-     * @param  array{others: array<string, array<string, string>>, badge: array<string, string>, deadlineDay: string, deadlineTexts: array<string, string>, seq: int, print: string}  $stored
-     * @return array{others: array<string, array<string, string>>, badge: array<string, string>, deadlineDay: string, deadlineTexts: array<string, string>, seq: int, print: string}
+     * @param  array{others: array<string, array<string, string>>, badge: array<string, string>, deadlineDay: string, deadlineTexts: array<string, string>, seq: int, print: string, form: array{facts: list<array{key: string, text: string, accent: bool}>, deadline: string, deadlineAccent: bool, badge: string}}  $stored
+     * @return array{others: array<string, array<string, string>>, badge: array<string, string>, deadlineDay: string, deadlineTexts: array<string, string>, seq: int, print: string, form: array{facts: list<array{key: string, text: string, accent: bool}>, deadline: string, deadlineAccent: bool, badge: string}}
      */
     public static function saved(array $meta, array $facts, string $deadline, bool $deadlineAccent, string $badge, array $stored): array
     {
@@ -141,7 +142,45 @@ final class JobCardForm
             }
         }
 
-        return ['deadlineDay' => $deadline, 'deadlineTexts' => $deadline !== '' ? $texts : [], 'print' => self::print($facts, $deadline, $deadlineAccent, $badge)] + $stored;
+        return [
+            'deadlineDay' => $deadline,
+            'deadlineTexts' => $deadline !== '' ? $texts : [],
+            'print' => self::print($facts, $deadline, $deadlineAccent, $badge),
+            'form' => ['facts' => $facts, 'deadline' => $deadline, 'deadlineAccent' => $deadlineAccent, 'badge' => $badge],
+        ] + $stored;
+    }
+
+    /**
+     * Whether the form keeps the card's shape as stored: the same boxes in the same order with the
+     * same tone, the same deadline and its tone, and a label still there or still absent. The shape is
+     * every language's, so a language other than the website's default changes only its own words.
+     *
+     * @param  list<array{key: string, text: string, accent: bool}>  $facts
+     * @param  array{others: array<string, array<string, string>>, badge: array<string, string>, deadlineDay: string, deadlineTexts: array<string, string>, seq: int, print: string, form: array{facts: list<array{key: string, text: string, accent: bool}>, deadline: string, deadlineAccent: bool, badge: string}}  $stored
+     */
+    public static function sameShape(array $facts, string $deadline, bool $deadlineAccent, string $badge, array $stored): bool
+    {
+        $was = $stored['form'];
+        $badgeOn = static fn (string $text): bool => $stored['badge'] !== [] || self::clean($text) !== '';
+
+        return self::shapeOf($facts) === self::shapeOf($was['facts'])
+            && $deadline === $was['deadline']
+            && $deadlineAccent === $was['deadlineAccent']
+            && $badgeOn($badge) === $badgeOn($was['badge']);
+    }
+
+    /**
+     * @param  list<array{key: string, text: string, accent: bool}>  $facts
+     * @return list<array{string, bool}>
+     */
+    private static function shapeOf(array $facts): array
+    {
+        $shape = [];
+        foreach ($facts as $fact) {
+            $shape[] = [$fact['key'], $fact['accent']];
+        }
+
+        return $shape;
     }
 
     /** The deadline fact's text in one language: «Hạn nộp: dd/mm/yyyy». */
