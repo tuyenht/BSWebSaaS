@@ -10,7 +10,7 @@
     $previewAny = $jobCard['chip'] !== '' || collect($jobCard['facts'])->contains(static fn (array $fact): bool => $jobLen($fact['text']) > 0);
     $pill = 'inline-flex max-w-full items-center gap-1 rounded-full border px-2 text-[calc(0.75rem+var(--user-text-boost))] leading-[1.6] [overflow-wrap:anywhere]';
     $pillPlain = 'border-border-strong bg-surface text-text';
-    $pillAccent = 'border-accent bg-surface font-semibold text-accent';
+    $pillAccent = 'border-primary-text bg-surface font-semibold text-primary-text';
     $hint = 'm-0 text-caption text-text-muted [overflow-wrap:anywhere]';
     $boxLabel = 'text-[calc(0.75rem+var(--user-text-boost))] font-semibold text-text';
     $quiet = 'aria-disabled:cursor-not-allowed aria-disabled:opacity-60';
@@ -37,7 +37,7 @@
             <span class="text-[calc(0.75rem+var(--user-text-boost))] font-semibold text-text-muted" aria-hidden="true">{{ __('entries.ed.job_pv_label') }}</span>
             <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[calc(0.875rem+var(--user-text-boost))] leading-[1.4] text-text-strong [overflow-wrap:anywhere]">
                 <b x-text="String($wire.title ?? '').trim() || @js(__('entries.ed.job_title_fallback'))">{{ trim($title) !== '' ? trim($title) : __('entries.ed.job_title_fallback') }}</b>
-                <span class="inline-flex items-center rounded-full bg-admin-danger-solid px-2 text-[calc(0.75rem+var(--user-text-boost))] font-semibold leading-[1.6] text-white"
+                <span class="inline-flex items-center rounded-full bg-danger px-2 text-[calc(0.75rem+var(--user-text-boost))] font-semibold leading-[1.6] text-white"
                       x-text="badge()" x-bind:hidden="badge() === ''" @if ($jobLen($jobBadge) === 0) hidden @endif>{{ \App\Modules\Admin\Support\Entries\JobCardForm::clean($jobBadge) }}</span>
             </div>
             <ul class="m-0 flex list-none flex-wrap gap-x-2 gap-y-1 p-0" x-bind:hidden="! any()" @if (! $previewAny) hidden @endif>
