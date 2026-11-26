@@ -19,7 +19,9 @@ use Closure;
  *   tel    {phone}                       — tel: from the number (FloatingContact's phone rules)
  *   zalo   {phone: a number or a zalo.me link} — zalo.me (FloatingContact's Zalo rules)
  *   mail   {email, subject?}             — mailto:, the subject encoded
- *   file   {file: a media storage key}   — a document of the site's library, resolved at render
+ *   file   {media: a media ulid}         — a document of the site's library, resolved at render; a
+ *                                           body saved before files were named by row holds
+ *                                           {file: its storage key} instead, read the same way
  * An older body holds a plain address in the prop itself; it keeps working (legacy()). Every
  * button template reads its link through of(): one resolver, and a value that does not resolve
  * gives no link (never `#` or the raw text). A blank required field is allowed at save (the
@@ -49,6 +51,9 @@ final class ButtonLink
      */
     public const string RESOLVED = 'href';
 
+    /** A ulid as the editor stores it (an entry's or a media row's). */
+    public const string ULID_PATTERN = '/\A[0-9A-HJKMNP-TV-Z]{26}\z/i';
+
     /** The fields each kind holds besides `k`. */
     private const array FIELDS = [
         'page' => ['page'],
@@ -57,7 +62,7 @@ final class ButtonLink
         'tel' => ['phone'],
         'zalo' => ['phone'],
         'mail' => ['email', 'subject'],
-        'file' => ['file'],
+        'file' => ['media', 'file'],
     ];
 
     /** The label prop of a button link spec, or null when the spec is not one. */
@@ -91,7 +96,7 @@ final class ButtonLink
         $text = static fn (string $field): string => is_string($do[$field] ?? null) ? $do[$field] : '';
         $filled = static fn (string $field): bool => trim($text($field)) !== '';
         $valid = match ($kind) {
-            'page' => ! $filled('page') || preg_match('/\A[0-9A-HJKMNP-TV-Z]{26}\z/i', $text('page')) === 1,
+            'page' => ! $filled('page') || preg_match(self::ULID_PATTERN, $text('page')) === 1,
             'url' => ! $filled('url') || self::external($text('url')) !== null,
             'anchor' => ! $filled('anchor') || self::anchor($text('anchor')) !== null,
             'tel' => ! $filled('phone') || self::tel($text('phone')) !== null,
@@ -99,7 +104,10 @@ final class ButtonLink
             'mail' => (! $filled('email') || self::mail($text('email'), null) !== null)
                 && mb_strlen($text('subject')) <= self::SUBJECT_MAX
                 && preg_match('/\p{C}/u', $text('subject')) !== 1,
-            default => ! $filled('file') || self::isKey($text('file')),
+            // a file is named once: by its row, or (an older body) by its key, never both
+            default => $filled('media')
+                ? ! $filled('file') && preg_match(self::ULID_PATTERN, $text('media')) === 1
+                : ! $filled('file') || self::isKey($text('file')),
         };
 
         return $valid ? null : $kind;
@@ -208,26 +216,51 @@ final class ButtonLink
     }
 
     /**
-     * The page ulids and file keys the page's button links name, for one lookup each.
+     * The page ulids, file ulids (`media`) and older file keys (`file`) the page's button links
+     * name, for one lookup each.
      *
      * @param  array<array-key, mixed>  $props
      * @param  array<array-key, mixed>  $schema
-     * @return array{pages: list<string>, files: list<string>}
+     * @return array{pages: list<string>, files: list<string>, media: list<string>}
      */
     public static function refs(array $props, array $schema): array
     {
-        $refs = ['pages' => [], 'files' => []];
+        $refs = ['pages' => [], 'files' => [], 'media' => []];
         self::walk($props, $schema, function (array $do) use (&$refs): array {
             $kind = $do['k'] ?? null;
-            $ref = $kind === 'page' ? ($do['page'] ?? null) : ($kind === 'file' ? ($do['file'] ?? null) : null);
-            if (is_string($ref) && $ref !== '') {
-                $refs[$kind === 'page' ? 'pages' : 'files'][] = $ref;
+            $page = $do['page'] ?? null;
+            if ($kind === 'page' && is_string($page) && $page !== '') {
+                $refs['pages'][] = $page;
+            }
+            $file = $kind === 'file' ? self::fileRef($do) : null;
+            if (isset($file['media'])) {
+                $refs['media'][] = $file['media'];
+            } elseif (isset($file['file'])) {
+                $refs['files'][] = $file['file'];
             }
 
             return $do;
         });
 
-        return ['pages' => array_values(array_unique($refs['pages'])), 'files' => array_values(array_unique($refs['files']))];
+        return array_map(static fn (array $list): array => array_values(array_unique($list)), $refs);
+    }
+
+    /**
+     * The library file a stored file value names: its row ulid when set, else (a body saved before
+     * files were named by row) its storage key; null when it names neither.
+     *
+     * @param  array<array-key, mixed>  $do
+     * @return array{media: string}|array{file: string}|null
+     */
+    public static function fileRef(array $do): ?array
+    {
+        $media = $do['media'] ?? null;
+        if (is_string($media) && $media !== '') {
+            return ['media' => $media];
+        }
+        $file = $do['file'] ?? null;
+
+        return is_string($file) && $file !== '' ? ['file' => $file] : null;
     }
 
     /**
@@ -237,20 +270,29 @@ final class ButtonLink
      * @param  array<array-key, mixed>  $props
      * @param  array<array-key, mixed>  $schema
      * @param  array<string, string>  $pages  entry ulid => public path
-     * @param  array<string, string>  $files  storage key => file address
+     * @param  array<string, string>  $files  older storage key => file address
+     * @param  array<string, string>  $media  upper-case media ulid => file address
      * @return array<array-key, mixed>
      */
-    public static function resolve(array $props, array $schema, array $pages, array $files): array
+    public static function resolve(array $props, array $schema, array $pages, array $files, array $media = []): array
     {
-        return self::walk($props, $schema, static function (array $do) use ($pages, $files): array {
+        return self::walk($props, $schema, static function (array $do) use ($pages, $files, $media): array {
             unset($do[self::RESOLVED]);
             $kind = $do['k'] ?? null;
-            $ref = $kind === 'page' ? ($do['page'] ?? null) : ($kind === 'file' ? ($do['file'] ?? null) : null);
-            if (is_string($ref)) {
-                $found = $kind === 'page' ? ($pages[$ref] ?? null) : ($files[$ref] ?? null);
-                if ($found !== null) {
-                    $do[self::RESOLVED] = $found;
-                }
+            $found = null;
+            if ($kind === 'page') {
+                $ref = $do['page'] ?? null;
+                $found = is_string($ref) ? ($pages[$ref] ?? null) : null;
+            } elseif ($kind === 'file') {
+                $ref = self::fileRef($do);
+                $found = match (true) {
+                    isset($ref['media']) => $media[strtoupper($ref['media'])] ?? null,
+                    isset($ref['file']) => $files[$ref['file']] ?? null,
+                    default => null,
+                };
+            }
+            if ($found !== null) {
+                $do[self::RESOLVED] = $found;
             }
 
             return $do;

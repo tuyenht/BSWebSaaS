@@ -4,6 +4,7 @@ namespace App\Modules\Media\Services;
 
 use App\Modules\Media\Models\Media;
 use App\Modules\Tenancy\Context\SiteLocale;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Batch-resolves a set of media ids to their public URLs in ONE query (site-scoped by
@@ -114,6 +115,45 @@ final readonly class MediaLibraryUrls
         }
 
         return $urls;
+    }
+
+    /**
+     * The addresses of the library files a page's "Tải tệp" buttons name, by row ulid (`media`) and,
+     * for a body saved before files were named by row, by storage key: only this site's files outside
+     * the Trash whose type is one of $mimes. ONE query for both shapes, none when nothing is named; an
+     * unknown, foreign, trashed or malformed value resolves to nothing.
+     *
+     * @param  list<string>  $ulids
+     * @param  list<string>  $keys
+     * @param  list<string>  $mimes
+     * @return array{media: array<string, string>, files: array<string, string>} upper-case ulid => address, storage key => address
+     */
+    public function fileRefUrls(array $ulids, array $keys, array $mimes): array
+    {
+        $ulids = array_values(array_unique(array_map(strtoupper(...), array_filter($ulids, static fn (string $ulid): bool => preg_match('/\A[0-9A-HJKMNP-TV-Z]{26}\z/i', $ulid) === 1))));
+        if ($ulids === [] && $keys === []) {
+            return ['media' => [], 'files' => []];
+        }
+
+        $found = ['media' => [], 'files' => []];
+        $rows = Media::query()
+            ->whereIn('mime', $mimes)
+            ->where(function (Builder $query) use ($ulids, $keys): void {
+                if ($ulids !== []) {
+                    $query->orWhereIn('ulid', $ulids);
+                }
+                if ($keys !== []) {
+                    $query->orWhereIn('storage_key', $keys);
+                }
+            })
+            ->get(['ulid', 'storage_key']);
+        foreach ($rows as $media) {
+            $url = $this->resolver->fileUrl($media->storage_key);
+            $found['media'][strtoupper($media->ulid)] = $url;
+            $found['files'][$media->storage_key] = $url;
+        }
+
+        return $found;
     }
 
     /**

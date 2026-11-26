@@ -587,7 +587,8 @@ final readonly class PackValidator
                         if (is_string($type) && $this->components->has($type) && is_array($block['props'] ?? null)) {
                             $this->blockLinks("{$where}: block ".($index + 1)." ({$type})", $block['props'], $this->components->schemaFor($type), '', $errors);
                             $schema = $this->components->schemaFor($type);
-                            $files = ButtonLink::refs($block['props'], $schema)['files'];
+                            $buttonRefs = ButtonLink::refs($block['props'], $schema);
+                            $files = [...$buttonRefs['files'], ...$buttonRefs['media']];
                             $htmlImages = [];
                             foreach (SchemaHtml::values($block['props'], $schema) as $html) {
                                 array_push($htmlImages, ...RichHtml::imageIds($html));

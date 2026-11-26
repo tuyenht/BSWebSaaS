@@ -194,6 +194,7 @@ final readonly class BlockRenderer
         $anchors = [];
         $pageRefs = [];
         $fileRefs = [];
+        $mediaRefs = [];
         foreach ($bodies as $body) {
             foreach (is_array($body['blocks'] ?? null) ? $body['blocks'] : [] as $block) {
                 if (! is_array($block)) {
@@ -219,12 +220,13 @@ final readonly class BlockRenderer
                 $refs = ButtonLink::refs($props, $schema);
                 $pageRefs = array_merge($pageRefs, $refs['pages']);
                 $fileRefs = array_merge($fileRefs, $refs['files']);
+                $mediaRefs = array_merge($mediaRefs, $refs['media']);
             }
         }
         // The anchors of this page's sections are taken ids: a row of a list block must not repeat one.
         request()->attributes->set('sf_zigzag_ids', $anchors + (array) request()->attributes->get('sf_zigzag_ids', []));
         $pages = $this->pageLinks->paths(array_values(array_unique($pageRefs)), app()->getLocale());
-        $files = $this->mediaUrls->fileUrls(array_values(array_unique($fileRefs)), ButtonLink::DOCUMENT_MIMES);
+        ['media' => $fileRows, 'files' => $files] = $this->mediaUrls->fileRefUrls(array_values(array_unique($mediaRefs)), array_values(array_unique($fileRefs)), ButtonLink::DOCUMENT_MIMES);
 
         // One batched lookup for the whole page (site-scoped; unknown ids simply resolve to nothing).
         // The same rows give each URL its srcset (server-built from storage keys, never from props) and
@@ -257,7 +259,7 @@ final readonly class BlockRenderer
                 $schema = $this->registry->schemaFor($type);
                 /** @var array<string, mixed> $resolved */
                 $resolved = SchemaHtml::map(
-                    ButtonLink::resolve(SchemaImages::replaceVideos(SchemaImages::replace($props, $schema, $urls), $schema, $videos), $schema, $pages, $files),
+                    ButtonLink::resolve(SchemaImages::replaceVideos(SchemaImages::replace($props, $schema, $urls), $schema, $videos), $schema, $pages, $files, $fileRows),
                     $schema,
                     fn (string $html): string => $this->richHtml->render($html, $urls, $srcsets, $alts, $dims)['html'],
                 );

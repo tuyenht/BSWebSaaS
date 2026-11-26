@@ -97,6 +97,9 @@ describe('saving', function (): void {
         'long subject' => [['k' => 'mail', 'email' => 'a@b.vn', 'subject' => str_repeat('a', ButtonLink::SUBJECT_MAX + 1)]],
         'bad page ulid' => [['k' => 'page', 'page' => 'not-a-ulid']],
         'file as an address' => [['k' => 'file', 'file' => 'https://evil.example/x.pdf']],
+        'file row not a ulid' => [['k' => 'file', 'media' => 'a/library/ho-so-aaaaaaaaaaaa.pdf']],
+        'file row and key both' => [['k' => 'file', 'media' => '01HZZZZZZZZZZZZZZZZZZZZZZZ', 'file' => 'a/library/ho-so-aaaaaaaaaaaa.pdf']],
+        'file row not a string' => [['k' => 'file', 'media' => 42]],
         'unknown kind' => [['k' => 'form', 'form' => 'lien-he']],
         'a field of another kind' => [['k' => 'tel', 'phone' => '0915668383', 'url' => 'https://x.vn']],
         'a resolved address smuggled in' => [['k' => 'page', 'page' => '01HZZZZZZZZZZZZZZZZZZZZZZZ', 'href' => 'javascript:alert(1)']],
@@ -137,6 +140,51 @@ describe('saving', function (): void {
             $page->delete();
 
             expect(buttonErrors(['button_url_do' => ['k' => 'page', 'page' => $page->ulid]]))->toBe([]);
+        });
+    });
+
+    it("names a file by its row ulid: this site's document saves, also from the Trash; another site's, an image or an unknown one is refused", function (): void {
+        $foreign = app(Tenancy::class)->enter(2, fn (): string => buttonDocument('b/library/ho-so-bbbbbbbbbbbb.pdf')->ulid);
+
+        app(Tenancy::class)->enter(1, function () use ($foreign): void {
+            $doc = buttonDocument('a/library/ho-so-aaaaaaaaaaaa.pdf');
+            $trashed = buttonDocument('a/library/ho-so-dddddddddddd.pdf');
+            $trashed->delete();
+            $image = buttonDocument('a/library/anh-aaaaaaaaaaaa.png', 'image/png');
+            app()->setLocale('vi');
+            $missing = [__('entries.err_block_button_file_missing')];
+
+            expect(buttonErrors(['button_url_do' => ['k' => 'file', 'media' => $doc->ulid]]))->toBe([])
+                ->and(buttonErrors(['button_url_do' => ['k' => 'file', 'media' => strtolower($doc->ulid)]]))->toBe([])
+                ->and(buttonErrors(['button_url_do' => ['k' => 'file', 'media' => $trashed->ulid]]))->toBe([])
+                ->and(buttonErrors(['button_url_do' => ['k' => 'file', 'media' => $foreign]]))->toBe($missing)
+                ->and(buttonErrors(['button_url_do' => ['k' => 'file', 'media' => $image->ulid]]))->toBe($missing)
+                ->and(buttonErrors(['button_url_do' => ['k' => 'file', 'media' => '01HZZZZZZZZZZZZZZZZZZZZZZZ']]))->toBe($missing)
+                // one forged value among good ones of both shapes is still refused
+                ->and(buttonErrors(['items' => [
+                    ['icon' => 'link', 'label' => 'A', 'url_do' => ['k' => 'file', 'media' => $doc->ulid]],
+                    ['icon' => 'link', 'label' => 'B', 'url_do' => ['k' => 'file', 'file' => $doc->storage_key]],
+                    ['icon' => 'link', 'label' => 'C', 'url_do' => ['k' => 'file', 'media' => $foreign]],
+                ]], 'quick_links'))->toBe($missing);
+        });
+    });
+
+    it('checks every file button of a body, in both shapes, with one query', function (): void {
+        app(Tenancy::class)->enter(1, function (): void {
+            $docs = [buttonDocument('a/library/ho-so-aaaaaaaaaaaa.pdf'), buttonDocument('a/library/ho-so-cccccccccccc.pdf')];
+            $items = [];
+            foreach (range(0, 9) as $i) {
+                $doc = $docs[$i % 2];
+                $items[] = ['icon' => 'link', 'label' => 'T'.$i, 'url_do' => $i < 5 ? ['k' => 'file', 'media' => $doc->ulid] : ['k' => 'file', 'file' => $doc->storage_key]];
+            }
+
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $errors = buttonErrors(['items' => $items], 'quick_links');
+            $mediaQueries = count(array_filter(DB::getQueryLog(), static fn (array $q): bool => str_contains($q['query'], '"media"')));
+            DB::disableQueryLog();
+
+            expect($errors)->toBe([])->and($mediaQueries)->toBe(1);
         });
     });
 
@@ -247,6 +295,59 @@ describe('drawing', function (): void {
         });
     });
 
+    it('draws the same download for a file named by its row as for the older key, and nothing for a trashed or foreign row', function (): void {
+        $foreign = app(Tenancy::class)->enter(2, fn (): string => buttonDocument('b/library/ho-so-bbbbbbbbbbbb.pdf')->ulid);
+
+        app(Tenancy::class)->enter(1, function () use ($foreign): void {
+            $doc = buttonDocument('a/library/ho-so-aaaaaaaaaaaa.pdf');
+            $trashed = buttonDocument('a/library/ho-so-dddddddddddd.pdf');
+            $trashed->delete();
+            $image = buttonDocument('a/library/anh-aaaaaaaaaaaa.png', 'image/png');
+
+            $old = buttonHtml(['button_label' => 'Tải hồ sơ', 'button_url_do' => ['k' => 'file', 'file' => $doc->storage_key]]);
+            $new = buttonHtml(['button_label' => 'Tải hồ sơ', 'button_url_do' => ['k' => 'file', 'media' => $doc->ulid]]);
+            expect($new)->toBe($old)->toMatch('~href="[^"]+/a/library/ho-so-aaaaaaaaaaaa\.pdf" download=""~')
+                ->and(buttonHtml(['button_label' => 'Tải hồ sơ', 'button_url_do' => ['k' => 'file', 'media' => strtolower($doc->ulid)]]))->toBe($old);
+
+            foreach ([$trashed->ulid, $foreign, $image->ulid, '01HZZZZZZZZZZZZZZZZZZZZZZZ'] as $ulid) {
+                expect(buttonHtml(['button_label' => 'Tải hồ sơ', 'button_url_do' => ['k' => 'file', 'media' => $ulid]]))->not->toContain('cta__button')->not->toContain('download');
+            }
+        });
+    });
+
+    it('resolves a page of ten file buttons, old and new shapes mixed, with one file query', function (): void {
+        app(Tenancy::class)->enter(1, function (): void {
+            $docs = [buttonDocument('a/library/ho-so-aaaaaaaaaaaa.pdf'), buttonDocument('a/library/ho-so-cccccccccccc.pdf')];
+            $page = static function (string $shape) use ($docs): array {
+                $blocks = [];
+                foreach (range(0, 9) as $i) {
+                    $doc = $docs[$i % 2];
+                    $byRow = $shape === 'new' || ($shape === 'mixed' && $i % 3 === 0);
+                    $blocks[] = ['type' => 'cta', 'props' => ['button_label' => 'T'.$i, 'button_url_do' => $byRow ? ['k' => 'file', 'media' => $doc->ulid] : ['k' => 'file', 'file' => $doc->storage_key]]];
+                }
+
+                return $blocks;
+            };
+            $render = static function (array $blocks): array {
+                DB::flushQueryLog();
+                DB::enableQueryLog();
+                $html = app(BlockRenderer::class)->render(['blocks' => $blocks]);
+                $n = count(DB::getQueryLog());
+                DB::disableQueryLog();
+
+                return [$html, $n];
+            };
+
+            [$old, $oldCount] = $render($page('old'));
+            [$new, $newCount] = $render($page('new'));
+            [$mixed, $mixedCount] = $render($page('mixed'));
+
+            expect($oldCount)->toBe(1)->and($newCount)->toBe(1)->and($mixedCount)->toBe(1)
+                ->and($new)->toBe($old)->and($mixed)->toBe($old)
+                ->and(substr_count($old, 'download=""'))->toBe(10);
+        });
+    });
+
     it('resolves the buttons of list items (quick links) the same way', function (): void {
         app(Tenancy::class)->enter(1, function (): void {
             $page = buttonPage('lien-he', '/lien-he');
@@ -288,13 +389,17 @@ describe('drawing', function (): void {
     });
 });
 
-it("counts a button's file as in use in the library", function (): void {
-    app(Tenancy::class)->enter(1, function (): void {
+it("counts a button's file as in use in the library, named by its row or by the older key", function (string $shape): void {
+    $foreign = app(Tenancy::class)->enter(2, fn (): string => buttonDocument('b/library/ho-so-bbbbbbbbbbbb.pdf')->ulid);
+
+    app(Tenancy::class)->enter(1, function () use ($shape, $foreign): void {
         $doc = buttonDocument('a/library/ho-so-aaaaaaaaaaaa.pdf');
         $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'meta' => []]);
         $entry->translations()->create(['locale' => 'vi', 'title' => 'T', 'slug' => 't', 'status' => 'draft',
             'body' => ['blocks' => [['type' => 'quick_links', 'props' => ['items' => [
-                ['icon' => 'link', 'label' => 'Tải', 'url_do' => ['k' => 'file', 'file' => $doc->storage_key]],
+                ['icon' => 'link', 'label' => 'Tải', 'url_do' => $shape === 'row' ? ['k' => 'file', 'media' => strtolower($doc->ulid)] : ['k' => 'file', 'file' => $doc->storage_key]],
+                // another site's row named in the body is never recorded
+                ['icon' => 'link', 'label' => 'Lạ', 'url_do' => ['k' => 'file', 'media' => $foreign]],
             ]]]]]]);
 
         app(EntryBlockMediaReconciler::class)->reconcile($entry);
@@ -303,7 +408,7 @@ it("counts a button's file as in use in the library", function (): void {
         expect(app(MediaUsageLocator::class)->usagesFor($doc, 'vi'))->toHaveCount(1)
             ->and(app(MediaUsageLocator::class)->usagesFor($doc, 'vi')[0]['role'])->toBe('content');
     });
-});
+})->with(['row', 'key']);
 
 describe('older plain addresses and mail headers', function (): void {
     it('never lets a mail address carry extra header fields, typed or older, saved or drawn', function (): void {
