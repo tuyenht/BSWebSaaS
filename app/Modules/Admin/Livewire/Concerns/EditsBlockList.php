@@ -10,6 +10,7 @@ use App\Modules\Catalog\Components\ProductGridComponent;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaLibraryUrls;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Theme\Components\BlockReference;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SchemaImages;
 use App\Modules\Theme\Components\StyleProps;
@@ -165,7 +166,8 @@ trait EditsBlockList
         $type = $this->blocks[$index]['type'] ?? null;
         $registry = app(ComponentRegistry::class);
 
-        return is_string($type) && $registry->has($type)
+        // a shared block keeps its own look: its place holds only the block's ulid
+        return is_string($type) && $type !== BlockReference::TYPE && $registry->has($type)
             && ($registry->schemaFor($type)[$key] ?? null) === (StyleProps::SCHEMA[$key] ?? false);
     }
 
@@ -681,6 +683,9 @@ trait EditsBlockList
         }
 
         $index = (int) $match[1];
+        if (BlockReference::is($this->blocks[$index] ?? null)) {
+            return; // a shared block's place holds only the block's ulid (its own blocks keep their anchors)
+        }
         $field = "blocks.{$index}.props.anchor_id";
         $typed = is_string($value) ? trim($value) : '';
         $anchor = rtrim(Str::limit(Str::slug($typed), 64, ''), '-');

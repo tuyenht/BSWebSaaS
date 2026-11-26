@@ -887,6 +887,10 @@
         </div>
     @endif
 
+    @if ($sharedPicker)
+        @include('admin::livewire.entries.partials.shared-block-picker')
+    @endif
+
     @can('media.view')
         @include('admin::livewire.entries.partials.block-pickers')
         {{-- The shared «Chọn ảnh» (WithMediaLibraryPicker): the body's «Chèn ảnh», the cover and a block's
