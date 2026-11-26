@@ -358,6 +358,22 @@ it('loads the scripts a panel’s block needs on every page that shows it', func
         {
             return new HtmlString(collect((array) $entrypoints)->map(fn (string $entry): string => '<script type="module" src="/'.$entry.'"></script>')->implode(''));
         }
+
+        // the rest as withoutVite() fakes it: no build manifest is needed (CI runs Pest without one)
+        public function asset($asset, $buildDirectory = null): string
+        {
+            return '';
+        }
+
+        public function content($asset, $buildDirectory = null): string
+        {
+            return '';
+        }
+
+        public function preloadedAssets(): array
+        {
+            return [];
+        }
     });
     $headerBar ? mbpRichHeader() : seedHomepage(1, 'Trang chủ');   // the plain header lists the menu as links: no panel
     mbpIn(1, function () use ($published): void {
