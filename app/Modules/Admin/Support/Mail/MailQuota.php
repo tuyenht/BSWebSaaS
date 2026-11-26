@@ -60,7 +60,7 @@ final readonly class MailQuota
         }
 
         try {
-            DB::transaction(fn (): int => MailLogWriter::countDay(app(CurrentSite::class)->id(), 'platform', 'held'));
+            MailLogWriter::withLockWait(fn (): int => DB::transaction(fn (): int => MailLogWriter::countDay(app(CurrentSite::class)->id(), 'platform', 'held')));
         } catch (Throwable $e) {
             report($e);
         }

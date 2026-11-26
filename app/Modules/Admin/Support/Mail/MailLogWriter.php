@@ -11,6 +11,7 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Context\Tenancy;
+use Closure;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -23,6 +24,9 @@ use Throwable;
  */
 final readonly class MailLogWriter implements MailFailureRecorder
 {
+    /** The longest a mail count waits for another job's lock on the same day row. */
+    public const string LOCK_WAIT = '2s';
+
     /**
      * A mail that left. $countDay is false when MailQuotaGate already counted it on reservation.
      * Returns the day's new sent count of that outbox, or null when it was not counted.
@@ -77,6 +81,29 @@ final readonly class MailLogWriter implements MailFailureRecorder
     }
 
     /**
+     * Runs $write (a savepoint of its own) waiting at most LOCK_WAIT for a row lock, then puts the
+     * transaction's lock_timeout back. Another job of the same website keeps its day row locked until
+     * it commits (through its SMTP send), so an unbounded wait could hold a visitor's form submit or a
+     * security mail that long; past the bound the write fails and the caller decides.
+     *
+     * @template T
+     *
+     * @param  Closure():T  $write
+     * @return T
+     */
+    public static function withLockWait(Closure $write): mixed
+    {
+        $before = Cast::string(DB::scalar("select current_setting('lock_timeout')"));
+        DB::select("select set_config('lock_timeout', ?, true)", [self::LOCK_WAIT]);
+
+        try {
+            return $write();
+        } finally {
+            DB::select("select set_config('lock_timeout', ?, true)", [$before]);
+        }
+    }
+
+    /**
      * Adds one to the day's $column of the outbox (sent, failed or held) for the current website and
      * returns the new value. The caller runs it inside a savepoint.
      *
@@ -108,7 +135,7 @@ final readonly class MailLogWriter implements MailFailureRecorder
         $siteId = $current->id();
 
         try {
-            return DB::transaction(function () use ($siteId, $kind, $via, $status, $reason, $recipients, $notificationId, $dayColumn): ?int {
+            DB::transaction(function () use ($siteId, $kind, $via, $status, $reason, $recipients, $notificationId): void {
                 $first = $recipients[0] ?? null;
                 MailLog::query()->create([
                     'site_id' => $siteId,
@@ -121,8 +148,20 @@ final readonly class MailLogWriter implements MailFailureRecorder
                     'reason_code' => $reason,
                 ]);
 
-                return $dayColumn === null ? null : self::countDay($siteId, $via, $dayColumn);
             });
+        } catch (Throwable $e) {
+            report($e);
+
+            return null;
+        }
+
+        if ($dayColumn === null) {
+            return null;
+        }
+
+        // Counted apart from the log row: a count that waits too long is lost, the record is kept.
+        try {
+            return self::withLockWait(fn (): int => DB::transaction(fn (): int => self::countDay($siteId, $via, $dayColumn)));
         } catch (Throwable $e) {
             report($e);
 

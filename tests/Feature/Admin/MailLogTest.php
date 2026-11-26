@@ -13,6 +13,8 @@ use App\Modules\Forms\Actions\SubmitForm;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Forms\Notifications\NewLeadNotification;
+use App\Modules\Identity\Models\User;
+use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Contracts\Encryption\DecryptException;
@@ -170,6 +172,42 @@ it('logs a refused own server as failed with that reason, and as sent when the s
         ->and(mlogRows()->last()->via)->toBe('platform')
         ->and(mlogDay('platform')->sent)->toBe(1)
         ->and($this->mlogTransport->messages())->toHaveCount(1);
+});
+
+it('sends the email verification mail through the website outbox and logs it', function (): void {
+    mlogPlatformOutbox();
+    mlogOwnOutbox('93.184.216.34');
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, fn () => $user->notifyNow(new VerifyEmail));
+
+    $rows = mlogRows();
+    expect($this->mlogTransport->messages())->toHaveCount(1)
+        ->and($rows)->toHaveCount(1)
+        ->and($rows[0]->kind)->toBe('email_verification')
+        ->and($rows[0]->via)->toBe('own');
+});
+
+it('does not wait long for a day row another job holds: the mail leaves and its record is kept', function (): void {
+    mlogPlatformOutbox();
+    $day = app(Tenancy::class)->enter(1, fn (): string => app(SiteTime::class)->now()->toDateString());
+    $admin = DB::connection('pgsql_admin');
+    $admin->table('mail_daily')->insert(['site_id' => 1, 'day' => $day, 'via' => 'platform', 'sent' => 5]);
+    $admin->beginTransaction();
+    $admin->select("select sent from mail_daily where site_id = 1 and day = ?::date and via = 'platform' for update", [$day]);
+
+    try {
+        $started = microtime(true);
+        mlogSendOtp();
+        $took = microtime(true) - $started;
+    } finally {
+        $admin->rollBack();
+    }
+
+    expect($this->mlogTransport->messages())->toHaveCount(1)
+        ->and(mlogRows())->toHaveCount(1)
+        ->and($took)->toBeLessThan(10.0)
+        ->and(mlogDay('platform')->sent)->toBe(5);
 });
 
 it('logs a mail through the website own outbox under own', function (): void {

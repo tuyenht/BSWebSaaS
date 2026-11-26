@@ -52,21 +52,27 @@ final class MailMonths
     }
 
     /**
-     * The months whose whole span is older than KEEP_DAYS: they end at or before that day (UTC).
+     * The months whose whole span is older than KEEP_DAYS (they end at or before that day, UTC) and
+     * that the database lets go: never the running month or the 3 before it (mail_log_month_drop).
      *
      * @return list<string>
      */
     public function expired(): array
     {
-        $cutoff = Cast::string(DB::scalar(
-            "select to_char((now() at time zone 'UTC')::date - make_interval(days => ?), 'YYYY-MM-DD')",
-            [self::KEEP_DAYS],
-        ));
+        $today = Cast::string(DB::scalar("select to_char((now() at time zone 'UTC')::date, 'YYYY-MM-DD')"));
 
-        return array_values(array_filter(
-            $this->months(),
-            fn (string $month): bool => date('Y-m-d', (int) strtotime($month.'-01 +1 month')) <= $cutoff,
-        ));
+        return array_values(array_filter($this->months(), fn (string $month): bool => self::isExpired($month, $today)));
+    }
+
+    /** Whether a month (YYYY-MM) may be removed on a given UTC day (YYYY-MM-DD). */
+    public static function isExpired(string $month, string $today): bool
+    {
+        $start = (int) strtotime($month.'-01 00:00:00 UTC');
+        $end = (int) strtotime('+1 month', $start);
+        $cutoff = (int) strtotime($today.' 00:00:00 UTC -'.self::KEEP_DAYS.' days');
+        $keptFrom = (int) strtotime(gmdate('Y-m-01', (int) strtotime($today.' 00:00:00 UTC')).' 00:00:00 UTC -3 months');
+
+        return $end <= $cutoff && $start < $keptFrom;
     }
 
     /** Drops one month (its own transaction); false when it was gone already. */

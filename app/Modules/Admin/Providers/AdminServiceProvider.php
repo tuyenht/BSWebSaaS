@@ -217,12 +217,17 @@ final class AdminServiceProvider extends ServiceProvider
             now()->addMinutes(Cast::int(config('auth.verification.expire'), 60)),
             ['id' => $notifiable->getKey(), 'hash' => sha1($notifiable->getEmailForVerification())],
         ));
-        VerifyEmail::toMailUsing(fn (mixed $notifiable, string $url): MailMessage => (new MailMessage)
-            ->subject(__('auth.verify_email_subject'))
-            ->greeting(Cast::string(config('admin.brand.name')))
-            ->line(__('auth.verify_email_intro'))
-            ->action(__('auth.verify_email_action'), $url)
-            ->line(__('auth.verify_email_outro')));
+        // Through the website's outbox like every other account mail (and so in its mail log).
+        VerifyEmail::toMailUsing(function (mixed $notifiable, string $url): MailMessage {
+            app(TenantMailer::class)->apply();
+
+            return (new MailMessage)
+                ->subject(__('auth.verify_email_subject'))
+                ->greeting(Cast::string(config('admin.brand.name')))
+                ->line(__('auth.verify_email_intro'))
+                ->action(__('auth.verify_email_action'), $url)
+                ->line(__('auth.verify_email_outro'));
+        });
 
         // XOAUTH2 SMTP transport for OAuth2 email senders (Gmail/MS/Yahoo). TenantMailer
         // stashes host/port/username + a freshly-minted access token into this mailer's

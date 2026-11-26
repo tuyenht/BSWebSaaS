@@ -72,13 +72,13 @@ final readonly class MailQuotaGate
         }
 
         try {
-            $row = DB::transaction(fn (): mixed => DB::selectOne(
+            $row = MailLogWriter::withLockWait(fn (): mixed => DB::transaction(fn (): mixed => DB::selectOne(
                 "insert into mail_daily (site_id, day, via, sent) values (?, ?::date, 'platform', 1)
                 on conflict (site_id, day, via) do update set sent = mail_daily.sent + 1
                 where mail_daily.sent < ?
                 returning sent",
                 [$siteId, $day, $ceiling],
-            ));
+            )));
         } catch (Throwable $e) {
             // A lock conflict (another job of this website holds its day, past a lock_timeout, or a
             // deadlock) fails this attempt before the mail leaves: the queue tries it again. Sending

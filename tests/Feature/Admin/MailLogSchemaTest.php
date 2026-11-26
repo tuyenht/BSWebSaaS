@@ -127,6 +127,17 @@ it('drops the months and day counts older than 90 days, and nothing newer', func
     $this->artisan('mail:prune')->expectsOutputToContain('Removed 0 mail log months')->assertSuccessful();
 });
 
+it('removes a month only once it is past 90 days and outside the 3 months the database keeps', function (string $today, string $month, bool $expired): void {
+    expect(MailMonths::isExpired($month, $today))->toBe($expired);
+})->with([
+    'last day of a 30-day month: August ended 90 days ago but is kept' => ['2026-11-30', '2026-08', false],
+    'the month before it goes' => ['2026-11-30', '2026-07', true],
+    'first day of a month' => ['2026-12-01', '2026-08', true],
+    'September still has days within 90 days' => ['2026-12-01', '2026-09', false],
+    'across a year' => ['2027-01-15', '2026-09', true],
+    'the running month never' => ['2026-11-30', '2026-11', false],
+]);
+
 it('creates the missing coming months and counts how many are ready', function (): void {
     $this->artisan('mail:months')->expectsOutputToContain('months are ready after the running one')->assertSuccessful();
 
