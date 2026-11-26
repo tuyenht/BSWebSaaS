@@ -16,7 +16,8 @@ use Carbon\CarbonImmutable;
  * («Nổi bật» = accent), the badge's text in it, and the application deadline as a day. The deadline
  * is stored as one more fact whose text is «Hạn nộp: dd/mm/yyyy» in each language, so it counts as
  * one of the four (JobDeadline reads it back). The other languages' texts are kept apart, by the
- * fact's key, and written back untouched; a form that changed nothing leaves both keys as stored.
+ * fact's key, and a save writes back the ones stored at that moment, untouched; a form that changed
+ * nothing leaves both keys as stored.
  *
  * @phpstan-type STORED array{others: array<string, array<string, string>>, badge: array<string, string>, deadlineDay: string, deadlineTexts: array<string, string>, seq: int, print: string, form: array{facts: list<array{key: string, text: string, accent: bool}>, deadline: string, deadlineAccent: bool, badge: string}}
  */
@@ -81,9 +82,11 @@ final class JobCardForm
     /**
      * $meta with the form's facts and badge in it; as it was when the form is as loaded. In the
      * website's default language ($default) the form's shape is the card's, with the other languages'
-     * words kept by box, and an empty badge takes the badge off in every language (a save that changed
-     * the card there takes off a badge only other languages have). In another language only its words go
-     * in, onto the card $meta holds now (words()): a shape another save gave the card meanwhile stays.
+     * words as $meta holds them now (each box's from the stored box it was read as, the badge's as
+     * stored: another language's save since the form was read is kept), and an empty badge takes the
+     * badge off in every language (a save that changed the card there takes off a badge only other
+     * languages have). In another language only its words go in, onto the card $meta holds now
+     * (words()): a shape another save gave the card meanwhile stays.
      *
      * @param  array<array-key, mixed>  $meta  the stored meta the save writes over
      * @param  list<array{key: string, text: string, accent: bool}>  $facts
@@ -98,8 +101,93 @@ final class JobCardForm
         }
 
         return $locale === $default
-            ? self::build($meta, $facts, $deadline, $deadlineAccent, $badge, $stored, $locale, $locales, $default)
+            ? self::build($meta, $facts, $deadline, $deadlineAccent, $badge, self::othersNow($meta, $stored, $locale, $default), $locale, $locales, $default)
             : self::words($meta, $facts, $badge, $stored, $locale, $default);
+    }
+
+    /**
+     * $stored with the other languages' words as $meta (the card as stored now) holds them: each box
+     * the form read takes the words of the stored box it is now (matched as words() matches), the badge
+     * the words stored for it. A box the form read that is no longer stored keeps the words the form
+     * read for it (the form puts it back); a box added in the form has none.
+     *
+     * @param  array<array-key, mixed>  $meta
+     * @param  STORED  $stored
+     * @return STORED
+     */
+    private static function othersNow(array $meta, array $stored, string $locale, string $default): array
+    {
+        $now = self::load($meta, $locale);
+        $pairs = self::pairBoxes(
+            self::sources($now['facts'], $now['stored']['others'], $locale, $default),
+            self::sources($stored['form']['facts'], $stored['others'], $locale, $default),
+        );
+        $others = [];
+        foreach ($pairs as $box => $form) {
+            $others[$form] = $now['stored']['others'][$box] ?? [];
+        }
+        $stored['others'] = $others + $stored['others'];
+        $stored['badge'] = $now['stored']['badge'];
+
+        return $stored;
+    }
+
+    /**
+     * Each box's words in the default language (null: none), by the box's key, from a form read in
+     * $locale and the other languages' words kept by key.
+     *
+     * @param  list<array{key: string, text: string, accent: bool}>  $facts
+     * @param  array<string, array<string, string>>  $others
+     * @return array<string, string|null>
+     */
+    private static function sources(array $facts, array $others, string $locale, string $default): array
+    {
+        $sources = [];
+        foreach ($facts as $fact) {
+            $text = self::clean($locale === $default ? $fact['text'] : ($others[$fact['key']][$default] ?? ''));
+            $sources[$fact['key']] = $text !== '' ? $text : null;
+        }
+
+        return $sources;
+    }
+
+    /**
+     * Which box of a form each stored box is (stored key => form key), each by its words in the default
+     * language: the box at the same key worded the same, else one worded the same elsewhere (a box
+     * taken out or added before it), else, only while both have as many boxes (none taken out or added,
+     * so the default language reworded it), the one at the same key.
+     *
+     * @param  array<string, string|null>  $boxes  the stored boxes' default-language words, by key
+     * @param  array<string, string|null>  $form  the form's boxes' default-language words as it read them, by key
+     * @return array<string, string>
+     */
+    private static function pairBoxes(array $boxes, array $form): array
+    {
+        $pairs = [];
+        $used = [];
+        $steps = [
+            static fn (string $box, string $at): bool => $box === $at && $boxes[$box] === $form[$at],
+            static fn (string $box, string $at): bool => $form[$at] !== null && $boxes[$box] === $form[$at],
+        ];
+        if (count($boxes) === count($form)) {
+            $steps[] = static fn (string $box, string $at): bool => $box === $at;
+        }
+        foreach ($steps as $fits) {
+            foreach (array_keys($boxes) as $box) {
+                if (isset($pairs[$box])) {
+                    continue;
+                }
+                foreach (array_keys($form) as $at) {
+                    if (! isset($used[$at]) && $fits($box, $at)) {
+                        $pairs[$box] = $at;
+                        $used[$at] = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        return $pairs;
     }
 
     /**
@@ -152,12 +240,13 @@ final class JobCardForm
     /**
      * $meta (the card as stored now) with this language's words from the form and nothing else: the
      * boxes, their order and tone, the deadline and whether there is a badge stay as $meta has them,
-     * as do the other languages' words. A form box goes to the stored box it was read as: the one at
-     * its key still worded the same in the default language, else another box worded as it was (a box
-     * before it was taken out), else the one at its key (the default language reworded it). A box the
-     * form does not have keeps this language's words; one taken out since takes the form's words with
-     * it. The badge words go in while the badge exists (the default language has one, or this language
-     * does); empty, this language's words come off.
+     * as do the other languages' words. A form box goes to the stored box it was read as (pairBoxes()):
+     * the one at its key still worded the same in the default language, else another box worded as it
+     * was (a box before it was taken out), else, while there are as many boxes as the form read, the one
+     * at its key (the default language reworded it). A box the form does not have keeps this language's
+     * words; one taken out or replaced since takes the form's words with it. The badge words go in
+     * while the badge exists (the default language has one, or this language does); empty, this
+     * language's words come off.
      *
      * @param  array<array-key, mixed>  $meta
      * @param  list<array{key: string, text: string, accent: bool}>  $facts
@@ -170,26 +259,11 @@ final class JobCardForm
         $nowOthers = $now['stored']['others'];
 
         // stored box key => the form's words for it
+        $texts = array_column($facts, 'text', 'key');
         $matched = [];
-        $used = [];
-        $match = static function (callable $fits) use (&$matched, &$used, $now, $facts): void {
-            foreach ($now['facts'] as $box) {
-                if (isset($matched[$box['key']])) {
-                    continue;
-                }
-                foreach ($facts as $at => $fact) {
-                    if (! isset($used[$at]) && $fits($box['key'], $fact['key'])) {
-                        $matched[$box['key']] = $fact['text'];
-                        $used[$at] = true;
-                        break;
-                    }
-                }
-            }
-        };
-        $was = $stored['others'];
-        $match(static fn (string $box, string $form): bool => $box === $form && self::sourceOf($nowOthers, $box, $default) === self::sourceOf($was, $form, $default));
-        $match(static fn (string $box, string $form): bool => self::sourceOf($was, $form, $default) !== null && self::sourceOf($nowOthers, $box, $default) === self::sourceOf($was, $form, $default));
-        $match(static fn (string $box, string $form): bool => $box === $form);
+        foreach (self::pairBoxes(self::sources($now['facts'], $nowOthers, $locale, $default), self::sources($facts, $stored['others'], $locale, $default)) as $box => $form) {
+            $matched[$box] = $texts[$form];
+        }
 
         $raw = is_array($meta['facts'] ?? null) && array_is_list($meta['facts']) ? $meta['facts'] : [];
         foreach ($now['facts'] as $box) {
@@ -224,16 +298,6 @@ final class JobCardForm
         }
 
         return $meta;
-    }
-
-    /**
-     * A box's words in the default language, from the other languages' words kept by key.
-     *
-     * @param  array<string, array<string, string>>  $others
-     */
-    private static function sourceOf(array $others, string $key, string $default): ?string
-    {
-        return $others[$key][$default] ?? null;
     }
 
     /**
@@ -277,12 +341,22 @@ final class JobCardForm
      */
     public static function sameShape(array $facts, string $deadline, bool $deadlineAccent, string $badge, array $stored, string $default): bool
     {
-        $was = $stored['form'];
-
-        return self::shapeOf($facts) === self::shapeOf($was['facts'])
-            && $deadline === $was['deadline']
-            && $deadlineAccent === $was['deadlineAccent']
+        return self::sameBoxes($facts, $deadline, $deadlineAccent, $stored['form'])
             && ! (self::badgeHeld($stored, $default) && self::clean($badge) !== '');
+    }
+
+    /**
+     * Whether $facts and the deadline have the boxes of $form (a form as load() reads it): the same
+     * boxes in the same order with the same tone, the same deadline and its tone.
+     *
+     * @param  list<array{key: string, text: string, accent: bool}>  $facts
+     * @param  array{facts: list<array{key: string, text: string, accent: bool}>, deadline: string, deadlineAccent: bool, badge: string}  $form
+     */
+    public static function sameBoxes(array $facts, string $deadline, bool $deadlineAccent, array $form): bool
+    {
+        return self::shapeOf($facts) === self::shapeOf($form['facts'])
+            && $deadline === $form['deadline']
+            && $deadlineAccent === $form['deadlineAccent'];
     }
 
     /**

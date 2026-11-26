@@ -276,8 +276,11 @@ trait EditsJobCard
     }
 
     /**
-     * After a save wrote $meta: the form is what is stored now. Outside the default language it is
-     * read again from $meta, whose shape may be another save's (JobCardForm::words).
+     * After a save wrote $meta: the form is what is stored now, its fields kept as they are (what was
+     * typed while the save ran stays). Outside the default language what the form remembers is read
+     * again from $meta, whose shape may be another save's (JobCardForm::words): only then do the boxes
+     * and the deadline come from $meta, and the badge only when the save could not keep it (the
+     * default language took the badge off meanwhile).
      *
      * @param  array<array-key, mixed>|null  $meta
      */
@@ -288,9 +291,16 @@ trait EditsJobCard
             return;
         }
         if ($this->sharedLocked() && $meta !== null) {
-            $this->loadJobCard($meta);
-
-            return;
+            $now = JobCardForm::load($meta, $this->locale);
+            if (! JobCardForm::sameBoxes($this->jobFactList(), $this->jobDeadline, $this->jobDeadlineAccent, $now['stored']['form'])) {
+                $this->jobFacts = $now['facts'];
+                $this->jobDeadline = $now['deadline'];
+                $this->jobDeadlineAccent = $now['deadlineAccent'];
+            }
+            if (JobCardForm::clean($this->jobBadge) !== JobCardForm::clean($now['badge'])) {
+                $this->jobBadge = $now['badge'];
+            }
+            $stored = $now['stored'];
         }
         $this->jobStored = JobCardForm::saved($meta ?? [], $this->jobFactList(), $this->jobDeadline, $this->jobDeadlineAccent, $this->jobBadge, $stored);
     }
