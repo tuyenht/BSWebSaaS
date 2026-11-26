@@ -533,6 +533,134 @@ it('leaves a seed file missing from storage unmatched and gives it no row', func
         ->toEqual(['logo' => "https://files.test/media/{$seed}", 'name' => 'A']);
 });
 
+/** The brand logo address of $site, read back. */
+function rekeyBrandLogo(int $site): mixed
+{
+    return app(Tenancy::class)->enter($site, fn () => SiteSetting::query()->where('key', 'brand')->sole()->value['logo'] ?? null);
+}
+
+it('never takes in a seed file under another website\'s old folder, and adopts it for that website itself', function (): void {
+    DB::connection('pgsql_admin')->table('reserved_site_codes')->insert(['code' => 'an-vinh', 'reason' => 'legacy_key', 'site_id' => 1]);
+    $disk = Storage::disk(MediaKey::disk());
+    $disk->put(REKEY_SEED_LOGO, 'seed logo');
+    $address = 'https://files.test/media/'.REKEY_SEED_LOGO;
+    rekeyBrand(1, $address);
+    rekeyBrand(2, $address);
+    $line = 'not adopted: '.REKEY_SEED_LOGO." (another website's folder; left unmatched)";
+
+    [$exit, $output] = rekeyRun(site: '2');
+    expect($exit)->toBe(0, $output)->and($output)->toContain('Seed files to adopt: 0.')->and($output)->toContain($line);
+    [$exit, $output] = rekeyRun(apply: true, site: '2');
+    expect($exit)->toBe(0, $output)->and($output)->toContain('Seed files adopted: 0 of 0.')->and($output)->toContain($line)
+        ->and(rekeyKeys(2))->toBe([])
+        ->and($disk->allFiles(siteCode(2)))->toBe([])
+        ->and(rekeyBrandLogo(2))->toBe($address);
+
+    [$exit, $output] = rekeyRun(apply: true);
+    $logo = siteCode(1).'/logo-e76d7cb1dfe4.png';
+    expect($exit)->toBe(0, $output)->and($output)->toContain('Seed files adopted: 1 of 1.')
+        ->and(rekeyKeys(1))->toBe([$logo])
+        ->and(rekeyBrandLogo(1))->toBe("https://files.test/media/{$logo}");
+});
+
+it('shows a seed file whose name a planned move takes as not adopted in the dry run too', function (): void {
+    rekeyMedia(1, REKEY_LOGO);                                              // moves to {code}/logo-ab12cd.png
+    $seed = 'an-vinh/brand/logo-ab12cd.jpg';                                // the same stem under another extension
+    Storage::disk(MediaKey::disk())->put($seed, 'seed logo');
+    rekeyBrand(1, "https://files.test/media/{$seed}");
+    $code = siteCode(1);
+    $line = "not adopted: {$seed} (the website already has another file at {$code}/logo-ab12cd.jpg; left unmatched)";
+
+    [$exit, $output] = rekeyRun();
+    expect($exit)->toBe(0, $output)->and($output)->toContain('Seed files to adopt: 0.')->and($output)->toContain($line);
+    [$exit, $output] = rekeyRun(apply: true);
+    expect($exit)->toBe(0, $output)->and($output)->toContain('Seed files adopted: 0 of 0.')->and($output)->toContain($line)
+        ->and(rekeyKeys(1))->toBe(["{$code}/logo-ab12cd.png"])
+        ->and(rekeyBrandLogo(1))->toBe("https://files.test/media/{$seed}");
+});
+
+it('does not adopt a seed file whose new key another row of the website holds', function (): void {
+    $disk = Storage::disk(MediaKey::disk());
+    $disk->put(REKEY_SEED_LOGO, 'seed logo');
+    $target = siteCode(1).'/logo-e76d7cb1dfe4.png';
+    rekeyMedia(1, $target, stored: false);                                  // no object, so only the row stands in the way
+    rekeyBrand(1, 'https://files.test/media/'.REKEY_SEED_LOGO);
+    $line = 'not adopted: '.REKEY_SEED_LOGO." (the website already has another file at {$target}; left unmatched)";
+
+    foreach ([false, true] as $apply) {
+        [$exit, $output] = rekeyRun(apply: $apply);
+        expect($exit)->toBe(0, $output)->and($output)->toContain($line);
+    }
+    expect(rekeyKeys(1))->toBe([$target])
+        ->and($disk->exists($target))->toBeFalse()
+        ->and(rekeyBrandLogo(1))->toBe('https://files.test/media/'.REKEY_SEED_LOGO);
+});
+
+it('does not adopt a seed file when another object is stored at its new key', function (): void {
+    $disk = Storage::disk(MediaKey::disk());
+    $disk->put(REKEY_SEED_LOGO, 'seed logo');
+    $target = siteCode(1).'/logo-e76d7cb1dfe4.png';
+    $disk->put($target, 'other bytes');                                     // an object with no row
+    rekeyBrand(1, 'https://files.test/media/'.REKEY_SEED_LOGO);
+    $line = 'not adopted: '.REKEY_SEED_LOGO." (another object is stored at {$target}; left unmatched)";
+
+    foreach ([false, true] as $apply) {
+        [$exit, $output] = rekeyRun(apply: $apply);
+        expect($exit)->toBe(0, $output)->and($output)->toContain($line);
+    }
+    expect(rekeyKeys(1))->toBe([])
+        ->and($disk->get($target))->toBe('other bytes')
+        ->and(rekeyBrandLogo(1))->toBe('https://files.test/media/'.REKEY_SEED_LOGO);
+});
+
+it('adopts only the first of two seed files with the same name, and lists the other in the dry run too', function (): void {
+    $disk = Storage::disk(MediaKey::disk());
+    $brand = 'an-vinh/brand/anh-1a2b.png';
+    $hero = 'an-vinh/hero/anh-1a2b.png';
+    $disk->put($brand, 'brand bytes');
+    $disk->put($hero, 'hero bytes');
+    rekeyBrand(1, "https://files.test/media/{$brand}");
+    $post = app(Tenancy::class)->enter(1, fn (): Entry => Entry::query()->create(['type' => 'post', 'status' => 'draft', 'meta' => ['image_url' => $hero]]));
+    $target = siteCode(1).'/anh-1a2b.png';
+    $line = "not adopted: {$hero} (same name as {$brand}; left unmatched)";
+
+    [$exit, $output] = rekeyRun();
+    expect($exit)->toBe(0, $output)
+        ->and($output)->toContain('Seed files to adopt: 1.')
+        ->and($output)->toContain("to adopt: {$brand} -> {$target}")
+        ->and($output)->toContain($line);
+
+    [$exit, $output] = rekeyRun(apply: true);
+    expect($exit)->toBe(0, $output)->and($output)->toContain('Seed files adopted: 1 of 1.')->and($output)->toContain($line)
+        ->and(rekeyKeys(1))->toBe([$target])
+        ->and($disk->get($target))->toBe('brand bytes')
+        ->and(rekeyBrandLogo(1))->toBe("https://files.test/media/{$target}")
+        ->and(app(Tenancy::class)->enter(1, fn () => Entry::query()->findOrFail($post->id)->meta))->toBe(['image_url' => $hero]);
+});
+
+it('reports a seed file whose copy fails, tries the next one, and still finishes the run', function (): void {
+    $disk = Storage::disk(MediaKey::disk());
+    $disk->put(REKEY_SEED_LOGO, 'seed logo');
+    $disk->put(REKEY_SEED_HERO, 'seed hero');
+    $code = siteCode(1);
+    $disk->put($code, 'a file where the folder should be');                // every copy under the code fails
+    rekeyMedia(1, REKEY_LOGO, stored: false);                               // a key that still moves (no object to copy)
+    rekeyBrand(1, 'https://files.test/media/'.REKEY_SEED_LOGO);
+    app(Tenancy::class)->enter(1, fn (): Entry => Entry::query()->create(['type' => 'post', 'status' => 'draft', 'meta' => ['image_url' => REKEY_SEED_HERO]]));
+
+    [$exit, $output] = rekeyRun(apply: true);
+
+    expect($exit)->toBe(0, $output)
+        ->and($output)->toContain('Seed files adopted: 0 of 2.')
+        ->and($output)->toContain('not adopted: '.REKEY_SEED_HERO.' (copy failed: ')
+        ->and($output)->toContain('not adopted: '.REKEY_SEED_LOGO.' (copy failed: ')
+        ->and($output)->toContain('Some seed files could not be adopted')
+        ->and($output)->toContain('Keys moved: 1 of 1. Featured-picture usage:')   // the reference pass and the usage still ran
+        ->and($output)->not->toContain('Stopped after')
+        ->and(rekeyKeys(1))->toBe(["{$code}/logo-ab12cd.png"])
+        ->and(rekeyBrandLogo(1))->toBe('https://files.test/media/'.REKEY_SEED_LOGO);
+});
+
 it('refuses a single-site install, whose files stay under their collections', function (): void {
     config(['media.tenant_prefix' => false]);
 

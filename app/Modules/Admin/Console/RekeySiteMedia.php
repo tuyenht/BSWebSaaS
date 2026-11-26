@@ -41,7 +41,10 @@ use Throwable;
  * it (data seeded before the seeder made one) is adopted: copied under the code with a row recording
  * its seed source, as the seeder does today, then rewritten with the rest. The dry run lists these
  * as "to adopt" and counts their references. History (HISTORY) is never a reason to adopt; a seed
- * file missing from storage is never given a row; both stay unmatched.
+ * file missing from storage is never given a row; a website never takes in a file under another
+ * website's old folder; two seed files with one name give one row; all of these stay unmatched and
+ * are listed as "not adopted", in the dry run too. A seed whose copy fails is listed the same way
+ * and the run goes on (the reference pass and the featured-picture usage still run).
  *
  * Lives in Admin because it writes the content of several modules (Media depends on none of them);
  * the module list here is data, the work is in the Media module.
@@ -112,7 +115,7 @@ final class RekeySiteMedia extends Command
 
         if (! $apply) {
             $known = [...$rekey->previousKeys($siteId), ...array_column($plan, 'to', 'from')];
-            $seeds = $rekey->seedAdoptions($siteId, $code, self::livePlaces(), $known);
+            $seeds = $rekey->seedAdoptions($siteId, $code, self::livePlaces(), $known, array_column($plan, 'to'));
             $this->seeds($seeds, 'Seed files to adopt: '.count($seeds['adopt']).'.');
             $rewriter = new MediaKeyRewriter([...$known, ...$seeds['adopt']], $oldFolders);
             $this->report($rekey->rewriteReferences($siteId, $rewriter, self::PLACES, false));
@@ -144,9 +147,7 @@ final class RekeySiteMedia extends Command
                 $references = self::add($references, $done['references']);
                 $this->line("  keys: {$moved}/".count($plan));
             }
-            $seeds = $rekey->seedAdoptions($siteId, $code, self::livePlaces(), [...$rekey->previousKeys($siteId), ...array_column($copy['moves'], 'to', 'from')]);
-            $adopted = $rekey->adoptSeedFiles($siteId, $seeds['adopt']);
-            $this->seeds($seeds, 'Seed files adopted: '.count($adopted).' of '.count($seeds['adopt']).'.');
+            $seedsFailed = ! $this->adopt($rekey, $siteId, $code, array_column($copy['moves'], 'to', 'from'));
             $repair = $rekey->rewriteReferences($siteId, new MediaKeyRewriter($rekey->previousKeys($siteId), $oldFolders), self::PLACES, true);
             $references = self::add($references, $repair, unmatchedFrom: $repair);
             $covers = $tenancy->enter($siteId, fn (): array => EntryCoverUsage::reconcileSite($siteId));
@@ -165,8 +166,37 @@ final class RekeySiteMedia extends Command
         if ($moved < count($plan)) {
             $this->warn('Some files changed while this ran and were left as they are; run the command again.');
         }
+        if ($seedsFailed) {
+            $this->warn('Some seed files could not be adopted and were left as they are; run the command again.');
+        }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Adopts the seed files the website's live places name (after the keys moved, before the
+     * reference pass), reporting each one. Its failures are its own: a seed that fails is reported
+     * and the rest still go, and a failure of the whole step is reported without stopping the run,
+     * so the reference pass and the featured-picture usage still run. Returns false when any failed.
+     *
+     * @param  array<string, string>  $moves  old key => the key it moved to
+     */
+    private function adopt(SiteMediaRekey $rekey, int $siteId, string $code, array $moves): bool
+    {
+        try {
+            $seeds = $rekey->seedAdoptions($siteId, $code, self::livePlaces(), [...$rekey->previousKeys($siteId), ...$moves], array_values($moves));
+            $adoption = $rekey->adoptSeedFiles($siteId, $seeds['adopt']);
+        } catch (Throwable $e) {
+            $this->error('Seed files not adopted: '.$e->getMessage());
+
+            return false;
+        }
+        $this->seeds($seeds, 'Seed files adopted: '.count($adoption['adopted']).' of '.count($seeds['adopt']).'.');
+        foreach (array_slice($adoption['failed'], 0, 20) as $failed) {
+            $this->warn("  not adopted: {$failed['key']} ({$failed['reason']}; left unmatched)");
+        }
+
+        return $adoption['failed'] === [];
     }
 
     /**
