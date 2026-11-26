@@ -18,8 +18,8 @@ export function sitePreview() {
             setTimeout(() => this.$root.querySelector('[data-site-preview-close]')?.focus(), 30);
         },
         // Escape pressed inside the frame (same origin) never reaches this window's listeners. One
-        // Escape closes one thing: while the website's phone menu or search panel is open (its opener
-        // says aria-expanded="true" before the key reaches it), or the website took the key (a bar
+        // Escape closes one thing: while the website's phone menu or search panel is open (its opener,
+        // drawn or not, says aria-expanded="true" before the key reaches it), or the website took the key (a bar
         // submenu stops it), the website closes its own part and the preview stays. Only those two
         // openers count: a menu branch the server draws open for the current page is not an overlay.
         frameKeys(frame) {
@@ -27,9 +27,10 @@ export function sitePreview() {
                 const win = frame.contentWindow;
                 let siteOpen = false;
                 win?.addEventListener('keydown', (e) => {
+                    // the opener may be hidden by then (search opened at a computer's width, then the
+                    // preview switched to a phone's): the website still closes its panel on this key
                     siteOpen = e.key === 'Escape'
-                        && [...win.document.querySelectorAll('[data-menu-toggle][aria-expanded="true"], [data-search-open][aria-expanded="true"]')]
-                            .some((el) => el.getClientRects().length > 0);
+                        && !!win.document.querySelector('[data-menu-toggle][aria-expanded="true"], [data-search-open][aria-expanded="true"]');
                 }, true);
                 win?.addEventListener('keydown', (e) => {
                     if (e.key === 'Escape' && this.open && !siteOpen && !e.defaultPrevented) {
