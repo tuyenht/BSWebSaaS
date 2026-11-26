@@ -11,9 +11,9 @@ use Illuminate\Support\Str;
 
 /**
  * A form as the «Biểu mẫu» editor holds it while it is being changed: the texts of one language (the
- * site's main one, or another one through translation()), whether it takes leads, and its fields in order — the consent box left out (it is
- * the platform's, always last, and never edited there). A choice field's choices are one per line.
- * SaveForm writes such a draft back; the other languages and every setting the editor does not show
+ * site's main one, or another one through translation()), whether it takes leads, and its fields in
+ * order — the consent box left out (it is the platform's, always last, and never edited there). A
+ * choice field's choices are one per line. SaveForm writes such a draft back; the other languages and every setting the editor does not show
  * (an empty field's example, length limits) stay as they were. A file field carries its kind
  * (`accept`, LeadFileKinds::KINDS) and its most files; any other field has '' and 0 there.
  *
