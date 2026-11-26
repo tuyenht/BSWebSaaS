@@ -6,6 +6,7 @@ namespace App\Modules\Admin\Support\Settings;
 
 use App\Modules\Cms\Exceptions\LayoutBlocksRejectedException;
 use App\Modules\Cms\Support\BlockMediaUsage;
+use App\Modules\Cms\Support\BlockUsageIndex;
 use App\Modules\Cms\Validation\LayoutSlotInput;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Models\SiteSetting;
@@ -28,13 +29,15 @@ use Illuminate\Support\Facades\Gate;
  * (SettingsWrite: the site's settings lock first, waited for a few seconds at most, else a busy
  * refusal); the row is locked, read and written back whole, and RecordsWhoSaved stamps who saved.
  * The library's "in use" rows of the setting (BlockMediaUsage, owner `site_setting`) are written in
- * the same transaction, so a picture or file a slot shows is never reported unused.
+ * the same transaction, so a picture or file a slot shows is never reported unused, and so are the
+ * places of the shared blocks the slots show (BlockUsageIndex).
  */
 final readonly class SetLayoutBlocks
 {
     public function __construct(
         private LayoutSlotInput $input,
         private BlockMediaUsage $usage,
+        private BlockUsageIndex $blocks,
     ) {}
 
     /**
@@ -79,6 +82,7 @@ final readonly class SetLayoutBlocks
             }
 
             $this->usage->sync('site_setting', Cast::int($row->getKey()), LayoutSlots::blockLists($row->value));
+            $this->blocks->syncSiteSetting($row, $row->value);
         });
     }
 }
