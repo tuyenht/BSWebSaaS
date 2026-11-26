@@ -6,8 +6,8 @@ use Illuminate\Support\Facades\Blade;
  * A toast never covers a dialog's buttons (on a phone a question is a sheet from the bottom whose «Ở lại»
  * sat right under the toast). Every message box tells resources/js/admin-toast-spot.js it is on the screen,
  * which lifts the toast above the dialog (--toast-over), sets it beside the dialog or puts it under, except
- * over a drawer, a working panel whose messages stay in sight. The placement itself is measured in the
- * browser (tests/js/admin-toast-spot.test.mjs for its rule).
+ * over a drawer, a working panel: there it stands above the footer's buttons, or stays in sight. The
+ * placement itself is measured in the browser (tests/js/admin-toast-spot.test.mjs).
  */
 
 it('lets every toast box tell the placement it is on the screen, in each of its forms', function (string $blade): void {
@@ -24,10 +24,18 @@ it('lets every toast box tell the placement it is on the screen, in each of its 
     'kept in the browser' => ['<x-bs-admin::toast state="msg" dismiss="closeMsg" />'],
 ]);
 
-it('marks the drawer as a working panel, whose messages stay in sight over it', function (): void {
-    $html = Blade::render('<x-bs-admin::drawer title="Sửa" close="closePanel"><p>Nội dung</p></x-bs-admin::drawer>');
+it('marks the drawer as a working panel and its footer as the buttons a toast stands clear of', function (): void {
+    $html = Blade::render('<x-bs-admin::drawer title="Sửa" close="closePanel"><p>Nội dung</p><x-slot:footer><button type="button">Lưu</button></x-slot:footer></x-bs-admin::drawer>');
 
-    expect($html)->toContain('data-bs-modal data-toast-keep');
+    expect($html)->toContain('data-bs-modal data-toast-keep')
+        ->and(substr_count($html, 'data-toast-foot'))->toBe(1)
+        ->and($html)->toMatch('/<div data-toast-foot [^>]*>\\s*<button type="button">Lưu<\\/button>/');
+});
+
+it('leaves the footer mark out of a drawer without a footer', function (): void {
+    $html = Blade::render('<x-bs-admin::drawer title="Xem" close="closePanel"><p>Nội dung</p></x-bs-admin::drawer>');
+
+    expect($html)->not->toContain('data-toast-foot');
 });
 
 it('loads the placement with the admin script on every screen', function (): void {

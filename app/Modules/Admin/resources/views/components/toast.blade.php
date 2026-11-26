@@ -29,8 +29,9 @@
     // `action` (state only) names the Alpine method behind one more button, shown when the message
     // carries its label as `act` ("Thử lại", "Tải lại", "Mở …"); a message with one stays 10 seconds.
     // Without `state`, `action` names the host's public method and `actionLabel` its words, shown when set.
-    // While a dialog is open the toast never covers it (resources/js/admin-toast-spot.js): it stands above
-    // the dialog (--toast-over), beside it, or, with no room, under its dimmed layer with its timer held.
+    // While a dialog is open the toast never lies over its controls (resources/js/admin-toast-spot.js): it
+    // stands above the dialog (--toast-over), beside it, above a drawer's footer, or, with no room, under the
+    // dialog's own layer with its timer held (over a drawer: where it is, its timer running).
     $serverAct = $state === null && $action !== null && $actionLabel !== null && $actionLabel !== '';
     $icon = ['error' => 'ri-error-warning', 'info' => 'ri-information'][$tone] ?? 'ri-check';
     $wait = $undo || $serverAct ? 10000 : 6000;
