@@ -12,6 +12,11 @@ use Illuminate\Support\Facades\DB;
  * so a search rewritten into LIKE, a function on the column or a comparison in another collation
  * falls back to reading rows one by one and fails here. The test database is small, so the planner is
  * told to avoid a full table read (`enable_seqscan = off`); each test starts from the same analysed rows.
+ *
+ * ANALYZE at the default statistics target samples 30,000 rows afresh on every run, so the estimates
+ * the planner chooses its plan from, and with them the plan, could differ between runs. The fixture
+ * is analysed in full instead (300 rows per step of the target; 300 x 1,000 covers every row), so every
+ * run reads the same statistics.
  */
 
 beforeEach(function (): void {
@@ -31,8 +36,11 @@ beforeEach(function (): void {
         select p.site_id, p.id, w
         from products p, lateral (values ('vong'), ('loai' || (p.id % 50)), ('wx' || p.id), ('ma' || p.id)) as v (w)
         SQL);
-    $admin->statement('analyze products');
-    $admin->statement('analyze product_search_words');
+    $admin->transaction(function () use ($admin): void {
+        $admin->statement('set local default_statistics_target = 1000');
+        $admin->statement('analyze products');
+        $admin->statement('analyze product_search_words');
+    });
 });
 
 /**
