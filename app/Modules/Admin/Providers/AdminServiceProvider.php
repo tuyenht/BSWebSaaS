@@ -57,6 +57,7 @@ use App\Modules\Admin\Support\AdminAddressLimit;
 use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Support\Settings\BranchList;
 use App\Modules\Admin\Support\Settings\FloatingContactInput;
+use App\Modules\Admin\Support\Settings\HeadingDecorInput;
 use App\Modules\Admin\Support\TenantMailer;
 use App\Modules\Admin\Theme\AdminBrandColor;
 use App\Modules\Admin\Theme\AdminChromeResolver;
@@ -141,6 +142,9 @@ final class AdminServiceProvider extends ServiceProvider
             }
             if ($setting->group_name === 'storefront' && $setting->key === 'floating_contact') {
                 FloatingContactInput::syncIconUsage(Cast::int($setting->getKey()), []);
+            }
+            if ($setting->group_name === 'theme' && $setting->key === 'heading_decor') {
+                HeadingDecorInput::syncMaskUsage(Cast::int($setting->getKey()), []);
             }
         });
 

@@ -490,10 +490,12 @@ final readonly class PackValidator
 
             return;
         }
-        if (($value['mask_media'] ?? '') !== '') {
-            $errors[] = "{$at}: mask_media is a picture of the site's own library; a pack cannot set it.";
+        foreach (['mask_media', 'mask_ulid'] as $field) {
+            if (($value[$field] ?? '') !== '') {
+                $errors[] = "{$at}: {$field} is a picture of the site's own library; a pack cannot set it.";
 
-            return;
+                return;
+            }
         }
         $probe = array_combine(array_map('strval', array_keys($value)), $value);
         if ($managed !== null) {
