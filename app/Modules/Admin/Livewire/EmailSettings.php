@@ -11,6 +11,8 @@ use App\Modules\Admin\Support\TenantMailer;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Context\CurrentSite;
+use App\Modules\Tenancy\Models\Site;
 use Closure;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Mail\Message;
@@ -38,8 +40,13 @@ final class EmailSettings extends Component
     use TracksSavedState;
 
     /** The fields the save bar compares with the saved setup (a secret only while one is typed). */
-    private const array TRACKED = ['method', 'smtpHost', 'smtpPort', 'smtpEncryption', 'smtpUsername', 'smtpPassword',
-        'oauthProvider', 'oauthClientId', 'oauthClientSecret', 'fromAddress', 'fromName', 'replyTo'];
+    private const array TRACKED = ['provider', 'smtpHost', 'smtpPort', 'smtpEncryption', 'smtpUsername', 'smtpPassword',
+        'oauthClientId', 'oauthClientSecret', 'fromAddress', 'fromName', 'replyTo'];
+
+    /** The outboxes a website picks from, in the board's order; a mail provider signs in with OAuth. */
+    public const array OUTBOXES = ['platform', 'google', 'microsoft', 'other'];
+
+    private const array OAUTH_OUTBOXES = ['google', 'microsoft', 'yahoo'];
 
     /** Which sender this screen writes (this site's or the system's); set once, never by the browser. */
     #[Locked]
@@ -47,6 +54,9 @@ final class EmailSettings extends Component
 
     #[Locked]
     public bool $isSuperAdmin = false;
+
+    /** Which outbox a website sends through: the platform's shared one, a signed-in mailbox, or its own server. */
+    public string $provider = 'platform';
 
     public string $method = 'smtp_password';
 
@@ -78,7 +88,13 @@ final class EmailSettings extends Component
 
     public ?string $oauthConnectedEmail = null;
 
-    public bool $hasOverride = false;
+    /** The outbox last saved: Yahoo stays offered only to a website already on it. */
+    #[Locked]
+    public string $storedProvider = 'platform';
+
+    /** The mailbox provider that sign-in belongs to (picking another one does not move it). */
+    #[Locked]
+    public ?string $oauthConnectedProvider = null;
 
     public bool $platformConfigured = false;
 
@@ -122,8 +138,8 @@ final class EmailSettings extends Component
         $cfg = $this->configRepo()->get('email');
 
         if ($this->scope === 'site') {
-            $this->hasOverride = $cfg !== null && $cfg !== [];
-            $this->platformConfigured = app(PlatformSettings::class)->get('email') !== null;
+            // Whether the platform's outbox really sends (a blank password does not), as the mailer reads it.
+            $this->platformConfigured = app(TenantMailer::class)->canSendWith(null);
         }
 
         if ($cfg === null || $cfg === []) {
@@ -131,6 +147,8 @@ final class EmailSettings extends Component
         }
 
         $this->method = Cast::string($cfg['method'] ?? null, 'smtp_password');
+        $this->provider = self::outboxOf($cfg);
+        $this->storedProvider = $this->provider;
         $this->fromAddress = Cast::string($cfg['from_address'] ?? null);
         $this->fromName = Cast::string($cfg['from_name'] ?? null);
         $this->replyTo = Cast::string($cfg['reply_to'] ?? null);
@@ -148,6 +166,45 @@ final class EmailSettings extends Component
         $this->oauthSecretSet = ! empty($oauth['client_secret']);
         $connectedEmail = $oauth['email'] ?? null;
         $this->oauthConnectedEmail = is_string($connectedEmail) && ! empty($oauth['refresh_token']) ? $connectedEmail : null;
+        $this->oauthConnectedProvider = $this->oauthConnectedEmail !== null ? $this->oauthProvider : null;
+    }
+
+    /**
+     * The outbox a stored setup sends through. A setup saved before the choice existed is read by
+     * what it holds: a signed-in mailbox, a mail server, or nothing of its own (the platform's).
+     *
+     * @param  array<string, mixed>  $cfg
+     */
+    public static function outboxOf(array $cfg): string
+    {
+        $stored = $cfg['provider'] ?? null;
+        if (is_string($stored) && in_array($stored, [...self::OUTBOXES, 'yahoo'], true)) {
+            return $stored;
+        }
+
+        if (($cfg['method'] ?? null) === 'oauth2') {
+            $oauth = Cast::string(Cast::arr($cfg['oauth'] ?? null)['provider'] ?? null, 'google');
+
+            return in_array($oauth, self::OAUTH_OUTBOXES, true) ? $oauth : 'google';
+        }
+
+        return Cast::string(Cast::arr($cfg['smtp'] ?? null)['host'] ?? null) !== '' ? 'other' : 'platform';
+    }
+
+    /** A pick shows its own setup at once: a mailbox signs in (OAuth), «Khác» is a mail server. */
+    public function updatedProvider(): void
+    {
+        $this->syncMethod();
+    }
+
+    private function syncMethod(): void
+    {
+        if (in_array($this->provider, self::OAUTH_OUTBOXES, true)) {
+            $this->method = 'oauth2';
+            $this->oauthProvider = $this->provider;
+        } elseif ($this->provider === 'other') {
+            $this->method = 'smtp_password';
+        }
     }
 
     /** True once written (a form that fails its checks stops at validation). */
@@ -158,6 +215,8 @@ final class EmailSettings extends Component
         if ($this->scope === 'platform') {
             abort_unless($this->checkSuperAdmin(), 403);
             $this->method = 'smtp_password';
+        } else {
+            $this->syncMethod();
         }
 
         $this->validate($this->rules(), ['smtpPort.in' => __('admin.smtp_port_mail_only', ['ports' => implode(', ', MailHostGuard::PORTS)])]);
@@ -165,14 +224,24 @@ final class EmailSettings extends Component
         $repo = $this->configRepo();
         $existing = $repo->get('email') ?? [];
 
+        $platformPick = $this->scope === 'site' && $this->provider === 'platform';
+
         $cfg = [
             'method' => $this->method,
+            ...($this->scope === 'site' ? ['provider' => $this->provider] : []),
             'from_address' => $this->fromAddress ?: null,
             'from_name' => $this->fromName ?: null,
             'reply_to' => $this->replyTo ?: null,
         ];
 
-        if ($this->method === 'smtp_password') {
+        if ($platformPick) {
+            // The shared outbox: what the website set up for its own stays stored, to pick again later.
+            foreach (['smtp', 'oauth'] as $kept) {
+                if (isset($existing[$kept])) {
+                    $cfg[$kept] = $existing[$kept];
+                }
+            }
+        } elseif ($this->method === 'smtp_password') {
             $existingSmtp = Cast::arr($existing['smtp'] ?? null);
             $password = $this->smtpPassword !== ''
                 ? SecretCipher::encrypt($this->smtpPassword)
@@ -193,6 +262,11 @@ final class EmailSettings extends Component
             $secret = $this->oauthClientSecret !== ''
                 ? SecretCipher::encrypt($this->oauthClientSecret)
                 : ($existingOauth['client_secret'] ?? null);
+
+            // A sign-in belongs to the mailbox it was made with: another provider's token never carries over.
+            if (($existingOauth['provider'] ?? null) !== $this->oauthProvider) {
+                unset($existingOauth['refresh_token'], $existingOauth['email']);
+            }
 
             $cfg['oauth'] = array_merge($existingOauth, [
                 'provider' => $this->oauthProvider,
@@ -223,20 +297,30 @@ final class EmailSettings extends Component
 
         $this->save();
 
-        return redirect()->route('admin.oauth.start', ['provider' => $this->oauthProvider, 'purpose' => 'email']);
+        // Only a picked mailbox signs in, and with that mailbox (save() has checked the pick is offered).
+        abort_unless(in_array($this->provider, self::OAUTH_OUTBOXES, true), 422);
+
+        return redirect()->route('admin.oauth.start', ['provider' => $this->provider, 'purpose' => 'email']);
     }
 
-    public function clearOverride(): void
+    /** Forget the signed-in mailbox; mail goes through the platform's outbox until it is signed in again. */
+    public function disconnect(): void
     {
-        // Only a tenant override can be cleared — never the system default.
         if ($this->scope === 'platform') {
             return;
         }
 
-        app(SettingsRepository::class)->put('email', 'config', []);
-        $this->reset();
-        $this->mount();
-        session()->flash('status', __('admin.override_cleared'));
+        $repo = app(SettingsRepository::class);
+        $cfg = $repo->get('email') ?? [];
+        $oauth = Cast::arr($cfg['oauth'] ?? null);
+        unset($oauth['refresh_token'], $oauth['email']);
+        $cfg['oauth'] = $oauth;
+        $repo->put('email', 'config', $cfg);
+
+        // Nothing the save bar tracks was written: edits not yet saved stay counted.
+        $this->oauthConnectedEmail = null;
+        $this->oauthConnectedProvider = null;
+        session()->flash('status', __('admin.em_disconnected'));
     }
 
     public function sendTest(): void
@@ -295,6 +379,16 @@ final class EmailSettings extends Component
      */
     private function rules(): array
     {
+        $outbox = ['provider' => ['required', 'string', Rule::in($this->yahooKept() ? [...self::OUTBOXES, 'yahoo'] : self::OUTBOXES)]];
+
+        if ($this->scope === 'site' && $this->provider === 'platform') {
+            return [...$outbox, 'fromAddress' => 'nullable|email', 'replyTo' => 'nullable|email'];
+        }
+
+        if ($this->scope !== 'site') {
+            $outbox = [];
+        }
+
         if ($this->method === 'smtp_password') {
             // The platform default must be a real, working sender (SMTP required). A tenant may leave
             // SMTP blank to send via the shared transport with just their own identity (name +
@@ -310,6 +404,7 @@ final class EmailSettings extends Component
             };
 
             return [
+                ...$outbox,
                 'smtpHost' => [$smtpRequired ? 'required' : 'nullable', 'string', ...($smtpRequired ? [] : ['required_with:smtpUsername']), $publicHost],
                 'smtpPort' => ['nullable', 'integer', ...($smtpRequired ? ['min:1', 'max:65535'] : [Rule::in(MailHostGuard::PORTS)])],
                 'smtpUsername' => $smtpRequired ? 'required|string' : 'nullable|string|required_with:smtpHost',
@@ -319,6 +414,7 @@ final class EmailSettings extends Component
         }
 
         return [
+            ...$outbox,
             'oauthProvider' => 'required|string|in:google,microsoft,yahoo',
             'oauthClientId' => 'required|string',
             'fromAddress' => 'nullable|email',
@@ -326,11 +422,54 @@ final class EmailSettings extends Component
         ];
     }
 
+    /**
+     * What the summary card says: whether the picked outbox sends, and where mail goes meanwhile
+     * (the same order as TenantMailer: the website's own → the platform's → nowhere).
+     *
+     * @return array{ok: bool, outbox: string, fallback: bool}
+     */
+    private function deliveryStatus(): array
+    {
+        $ok = match ($this->provider) {
+            'platform' => $this->platformConfigured,
+            'other' => $this->smtpHost !== '' && $this->smtpUsername !== '' && $this->smtpPasswordSet,
+            default => $this->oauthConnectedProvider === $this->provider,
+        };
+
+        return ['ok' => $ok, 'outbox' => $this->provider, 'fallback' => ! $ok && $this->provider !== 'platform' && $this->platformConfigured];
+    }
+
+    /** A website already on Yahoo keeps that row; nobody new is offered it. */
+    public function yahooKept(): bool
+    {
+        return $this->storedProvider === 'yahoo' || $this->oauthConnectedProvider === 'yahoo';
+    }
+
+    /** The address the platform's shared outbox sends from (what a customer sees in the From line). */
+    private function platformFrom(): string
+    {
+        $from = Cast::string(Cast::arr(app(PlatformSettings::class)->get('email'))['from_address'] ?? null);
+
+        return $from !== '' ? $from : Cast::string(config('mail.from.address'));
+    }
+
+    private function siteName(): string
+    {
+        $current = app(CurrentSite::class);
+
+        return $current->hasId() ? Cast::string(Site::query()->whereKey($current->id())->value('name')) : '';
+    }
+
     public function render(): View
     {
         $platform = $this->scope === 'platform';
 
-        $view = view('admin::livewire.email-settings', ['changes' => $this->unsavedCount()]);
+        $view = view('admin::livewire.email-settings', [
+            'changes' => $this->unsavedCount(),
+            'status' => $platform ? null : $this->deliveryStatus(),
+            'platformFrom' => $platform ? '' : $this->platformFrom(),
+            'siteName' => $platform ? '' : $this->siteName(),
+        ]);
         $view->layout($platform ? 'admin::layouts.platform' : 'admin::layouts.app');
         $view->title($platform ? __('admin.system_email') : __('admin.email_settings'));
 
