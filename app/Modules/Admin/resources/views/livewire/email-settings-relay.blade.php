@@ -153,7 +153,7 @@
         <x-bs-admin::button :variant="$relayChecked ? 'outline' : 'solid'" wire:click="checkRelay" wire:loading.attr="disabled" wire:target="checkRelay">
             <x-bs-admin::icon :name="$relayChecked ? 'ri-refresh' : 'ri-shield-check'" class="size-4" />{{ __($relayChecked ? 'admin.em_rl_recheck' : 'admin.em_rl_check') }}
         </x-bs-admin::button>
-        <span role="status" aria-live="polite" @class([
+        <span @class([
                 'inline-flex items-center gap-[7px] rounded-full px-[11px] py-[5px] text-[calc(0.78125rem+var(--user-text-boost))] font-semibold',
                 'bg-success-base/14 text-success-text' => $relayChecked,
                 'bg-warning-base/16 text-warning-text' => ! $relayChecked,

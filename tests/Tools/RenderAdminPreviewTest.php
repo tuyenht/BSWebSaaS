@@ -58,6 +58,7 @@ use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
 use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Models\ContentBlock;
+use App\Modules\Cms\Models\ContentBlockTranslation;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryRevision;
@@ -97,6 +98,7 @@ use App\Modules\Tenancy\Models\SiteFeature;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Components\BlockReference;
 use App\Modules\Theme\Theming\AiCrawlerCheck;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Client\Request;
@@ -381,6 +383,41 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/menus')->assertOk()->getContent();
     expect($html)->toContain(e(__('menus.ui_mega_kind_block')), e(__('menus.ui_blocks_open')));
     file_put_contents($dir.'/menus-block.html', $html);
+
+    // «Khối dùng chung» in «Trình dựng» of a page (board 27): a page placing a published block, a draft
+    // and a block since deleted from the library (each its own card), and what «Chèn khối dùng chung»
+    // reads when it opens (the browser draws the list from it; saved next to the screens for the checks).
+    $refPage = app(Tenancy::class)->enter(1, function () use ($owner): Entry {
+        $contactBlock = ContentBlock::query()->create(['key' => 'thong-tin-lien-he', 'name' => 'Thông tin liên hệ', 'region' => 'inline', 'status' => 'published']);
+        ContentBlockTranslation::query()->create(['content_block_id' => $contactBlock->id, 'locale' => 'vi', 'body' => ['blocks' => []]]);
+        $gone = ContentBlock::query()->create(['key' => 'khoi-da-xoa', 'name' => 'Khối đã xóa', 'region' => 'inline', 'status' => 'published']);
+        $gone->delete();
+        $draft = ContentBlock::query()->where('key', 'cta-khuyen-mai')->firstOrFail();
+        $ref = fn (string $ulid): array => ['type' => BlockReference::TYPE, 'props' => [BlockReference::PROP => strtoupper($ulid)]];
+        $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $owner->id, 'meta' => []]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Bảng giá dịch vụ', 'slug' => 'bang-gia-dich-vu', 'status' => 'draft', 'body' => ['blocks' => [
+            ['type' => 'cta', 'props' => ['heading' => 'Nhận báo giá trong 24 giờ']],
+            $ref($contactBlock->ulid), $ref($draft->ulid), $ref($gone->ulid),
+        ]]]);
+
+        return $entry;
+    });
+    app('livewire')->flushState();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$refPage->ulid.'/edit')->assertOk()->getContent();
+    expect($html)->toContain('data-ref-card="ok"', 'data-ref-card="draft"', 'data-ref-card="gone"', 'data-ref-picker');
+    file_put_contents($dir.'/editor-shared-blocks.html', $html);
+    $choices = app(Tenancy::class)->enter(1, function () use ($owner, $refPage): mixed {
+        $out = null;
+        Livewire::actingAs($owner)->test(App\Modules\Admin\Livewire\Entries\Editor::class, ['ulid' => $refPage->ulid])
+            ->call('sharedBlockChoices')->assertReturned(function ($value) use (&$out): bool {
+                $out = $value;
+
+                return is_array($value);
+            });
+
+        return $out;
+    });
+    file_put_contents($dir.'/editor-shared-blocks-choices.json', (string) json_encode($choices, JSON_UNESCAPED_UNICODE));
 
     // The platform Audit log, as a support operator, with a member's row and a support sign-in row.
     DB::connection('pgsql_admin')->statement('truncate audit_logs restart identity cascade');
@@ -1717,5 +1754,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 156);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 157);
 });

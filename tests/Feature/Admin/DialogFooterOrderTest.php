@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Blade;
  */
 function footerOf(string $html): string
 {
-    expect(preg_match('/<div class="([^"]*border-t[^"]*)">\s*<button type="button">Hủy<\/button>/', $html, $m))->toBe(1);
+    expect(preg_match('/<div (?:data-toast-foot )?class="([^"]*border-t[^"]*)">\s*<button type="button">Hủy<\/button>/', $html, $m))->toBe(1);
 
     return $m[1];
 }

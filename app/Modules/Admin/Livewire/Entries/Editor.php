@@ -7,6 +7,7 @@ use App\Modules\Admin\Livewire\Concerns\EditsButtonActions;
 use App\Modules\Admin\Livewire\Concerns\EditsJobCard;
 use App\Modules\Admin\Livewire\Concerns\EditsPageOrder;
 use App\Modules\Admin\Livewire\Concerns\EditsPendingChange;
+use App\Modules\Admin\Livewire\Concerns\PlacesSharedBlocks;
 use App\Modules\Admin\Livewire\Concerns\ShowsEntryRevisions;
 use App\Modules\Admin\Livewire\Concerns\StartsPageFromTemplate;
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
@@ -43,6 +44,7 @@ use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Exceptions\SchedulePastException;
 use App\Modules\Cms\Exceptions\TaxonomyChangeRejectedException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
+use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryTranslation;
@@ -139,6 +141,7 @@ final class Editor extends Component
     use EditsJobCard;
     use EditsPageOrder;
     use EditsPendingChange;
+    use PlacesSharedBlocks;
     use ShowsEntryRevisions;
     use StartsPageFromTemplate;
     use WithMediaLibraryPicker;
@@ -2343,6 +2346,11 @@ final class Editor extends Component
             'buttonPanel' => $buttonPanel,
             'availableTypes' => app(ComponentRegistry::class)->listedTypes(),
             'kinds' => $this->blockKinds(),
+            // «Khối dùng chung» (board 27): the picker, and what the cards of the blocks this layout places say
+            'sharedPicker' => $this->sharedBlocksOffered() ? [
+                'library' => Gate::allows('create', ContentBlock::class) ? route('admin.blocks.index') : null,
+            ] : null,
+            'refs' => $this->placedSharedBlocks(),
             'prosePreview' => $this->prose ? EntryProseBody::preview($this->bodyHtml) : '',
             'localeLabel' => Locales::label($this->locale),
             // «Quản lý ngôn ngữ» on the language bar: the site's languages, for a member who may change them

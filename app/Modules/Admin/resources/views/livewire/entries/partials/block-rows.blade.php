@@ -1,7 +1,9 @@
 {{-- The block rows of «Trình dựng» (design 07), shared by the content editor and the reusable block
      editor: the host draws them with EditsBlockList and gives $blocks, $kinds, $schemas, $looks,
      $blockImageUrls, $goneProducts, $openBlock, $rowButton, $askDelete, $error, $localeLabel and $unit, and
-     may give $emptyText for an empty list. --}}
+     may give $emptyText for an empty list. A host that gives $refs (what each placed shared block says, by
+     ulid; absent = deleted) draws a shared block placed in the layout (reusable_ref, board 27) with
+     shared-block-card; any other host keeps its plain row. --}}
 @error('blocks') <p class="{{ $error }} m-0">{{ $message }}</p> @enderror
 @if ($blocks === [])
     <p class="m-0 rounded-md border border-border bg-surface-muted p-4 text-center text-small text-text-muted">{{ $emptyText ?? __('entries.ed.builder_none') }}</p>
@@ -11,6 +13,10 @@
      with the form's «Lên trên» / «Xuống dưới»: there is no drag reordering yet. --}}
 <ol class="m-0 flex list-none flex-col gap-2 p-0">
     @foreach ($blocks as $i => $block)
+        @if (isset($refs) && \App\Modules\Theme\Components\BlockReference::is($block))
+            @include('admin::livewire.entries.partials.shared-block-card', ['i' => (int) $i, 'last' => count($blocks) - 1])
+            @continue
+        @endif
         @php
             $i = (int) $i;
             $kind = $kinds[$block['type']] ?? \App\Modules\Admin\Support\BlockKinds::of($block['type']);
