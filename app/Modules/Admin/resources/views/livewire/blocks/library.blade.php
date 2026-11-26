@@ -1,4 +1,4 @@
-{{-- «Thư viện khối tái dùng» (board 28): the explainer, the «Quay lại …» band when the member came from
+{{-- «Khối dùng chung» (board 28): the explainer, the «Quay lại …» band when the member came from
      another screen, the status groups and region chips (from 900px; below that both live in the Filter
      sheet, with a summary line under the toolbar), the search, then one row per block. Region icons
      and tints come from the region (the board's per-block colours are mock data). --}}
@@ -181,6 +181,11 @@
                                     </x-bs-admin::button>
                                     <x-slot:menu>
                                         <p class="list-mh m-0" aria-hidden="true">{{ __('blocks.more_aria', ['name' => $row['name']]) }}</p>
+                                        @if ($row['published'])
+                                            <x-bs-admin::list.menu-item icon="ri-draft" wire:click="askUnpublish({{ $ulid }})">{{ __('blocks.unpublish') }}</x-bs-admin::list.menu-item>
+                                        @else
+                                            <x-bs-admin::list.menu-item icon="ri-send-plane" wire:click="publish({{ $ulid }})">{{ __('blocks.publish') }}</x-bs-admin::list.menu-item>
+                                        @endif
                                         <x-bs-admin::list.menu-item icon="ri-file-copy" wire:click="duplicate({{ $ulid }})">{{ __('blocks.duplicate') }}</x-bs-admin::list.menu-item>
                                         <x-bs-admin::list.menu-sep />
                                         <x-bs-admin::list.menu-item icon="ri-delete-bin-6" danger wire:click="askDelete({{ $ulid }})">{{ __('blocks.delete') }}</x-bs-admin::list.menu-item>
@@ -225,7 +230,7 @@
         <span>{{ __('blocks.footer_note') }}</span>
     </p>
 
-    {{-- «Tạo / Sửa khối tái dùng»: the name and the region; the content is made in the block editor --}}
+    {{-- «Tạo / Sửa khối dùng chung»: the name and the region; the content is made in the block editor --}}
     <x-bs-admin::modal model="formOpen" :title="$editing === null ? __('blocks.form_title_new') : __('blocks.form_title_edit')" :close-label="__('blocks.close')">
         <form id="block-form" wire:submit="saveBlock" class="flex flex-col gap-4" novalidate>
             <x-bs-admin::input :label="__('blocks.f_name')" wire:model="name" id="block-name" maxlength="{{ ContentBlock::NAME_MAX }}"
@@ -301,24 +306,29 @@
         </x-slot:footer>
     </x-bs-admin::modal>
 
-    {{-- «Xóa khối tái dùng?»: no Trash, so the question says what uses the block --}}
+    {{-- «Xóa khối dùng chung?» / «Đưa khối về nháp?»: one question for both; no Trash, so it says what uses the block --}}
     @php
         $del = $deleting;
         $delPlaces = $del['places'] ?? 0;
+        $toDraft = $asking === 'draft';
+        $placesText = fn (): string => '<b class="font-semibold text-text-strong">'.e(trans_choice('blocks.n_places', $delPlaces, ['n' => $num($delPlaces)])).'</b>';
+        $nameText = $del === null ? '' : '<b class="font-semibold text-text-strong">'.e($del['name']).'</b>';
     @endphp
-    <x-bs-admin::confirm-dialog model="confirmOpen" danger icon="ri-alert" ok-icon="ri-delete-bin-6"
-        :title="__('blocks.del_title')" :ok="__('blocks.del_ok')" :cancel-label="__('blocks.del_stay')"
-        confirm="confirmDelete" cancel="cancelDelete">
+    <x-bs-admin::confirm-dialog model="confirmOpen" :danger="! $toDraft" :warning="$toDraft" :icon="$toDraft ? 'ri-draft' : 'ri-alert'" :ok-icon="$toDraft ? 'ri-draft' : 'ri-delete-bin-6'"
+        :title="$toDraft ? __('blocks.unpub_title') : __('blocks.del_title')" :ok="$toDraft ? __('blocks.unpub_ok') : __('blocks.del_ok')" :cancel-label="__('blocks.del_stay')"
+        :confirm="$toDraft ? 'confirmUnpublish' : 'confirmDelete'" cancel="cancelDelete">
         @if ($del !== null)
             <p class="m-0 [overflow-wrap:anywhere]">
-                @if ($delPlaces > 0)
-                    {!! __('blocks.del_used', ['name' => '<b class="font-semibold text-text-strong">'.e($del['name']).'</b>', 'places' => '<b class="font-semibold text-text-strong">'.e(trans_choice('blocks.n_places', $delPlaces, ['n' => $num($delPlaces)])).'</b>']) !!}
+                @if ($toDraft)
+                    {!! __('blocks.unpub_used', ['name' => $nameText, 'places' => $placesText()]) !!}
+                @elseif ($delPlaces > 0)
+                    {!! __('blocks.del_used', ['name' => $nameText, 'places' => $placesText()]) !!}
                 @else
-                    {!! __('blocks.del_free', ['name' => '<b class="font-semibold text-text-strong">'.e($del['name']).'</b>']) !!}
+                    {!! __('blocks.del_free', ['name' => $nameText]) !!}
                 @endif
             </p>
             @if ($del['menu'] && $delPlaces > 0)
-                <x-bs-admin::alert color="warning" role="note" class="mt-1">{{ __('blocks.del_menu') }}</x-bs-admin::alert>
+                <x-bs-admin::alert color="warning" role="note" class="mt-1">{{ $toDraft ? __('blocks.unpub_menu') : __('blocks.del_menu') }}</x-bs-admin::alert>
             @endif
         @endif
     </x-bs-admin::confirm-dialog>

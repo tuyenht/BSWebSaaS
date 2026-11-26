@@ -39,7 +39,7 @@ final readonly class PresignMediaUpload
         // lifecycle rule on prefix `_incoming/` can expire every site's abandoned staging uploads.
         // Do NOT move the site slug ahead of `_incoming/`: that makes the key un-coverable by a single
         // rule (a nested `{site}/_incoming/` segment is not a left-anchored prefix).
-        $tempKey = '_incoming/'.Str::slug($siteName).'/'.Str::ulid().'.'.$ext;
+        $tempKey = MediaKey::STAGING_SEGMENT.'/'.Str::slug($siteName).'/'.Str::ulid().'.'.$ext;
 
         // Cross-tenant guard: record which site this temp key belongs to (register verifies + pulls).
         Cache::put(self::ownershipKey($tempKey), $this->current->id(), now()->addMinutes(5));

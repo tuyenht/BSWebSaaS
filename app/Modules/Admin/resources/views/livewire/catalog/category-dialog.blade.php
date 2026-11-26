@@ -38,7 +38,7 @@
                 <p x-show="items.length > 0 && shown.length === 0" x-cloak class="m-0 p-3 text-body text-text-muted" x-text="{{ Js::from(__('catalog.cat_nomatch')) }}.replace(':q', q.trim())"></p>
             </div>
             <p class="m-0 text-caption text-text-muted">{{ __('catalog.cat_note') }}@if ($dlg['moves'] && $dlg['published'] > 0) {{ __('catalog.cat_note_pub', ['count' => $dlg['published']]) }}@endif</p>
-            <div class="flex flex-wrap justify-end gap-2 border-t border-border pt-3 max-[599.98px]:*:flex-[1_1_100%]">
+            <div class="flex flex-wrap justify-end gap-2 border-t border-border pt-3 max-[599.98px]:flex-col-reverse max-[599.98px]:*:w-full">
                 <x-bs-admin::button color="primary" variant="outline" x-on:click="hide()">{{ __('admin.cancel') }}</x-bs-admin::button>
                 <x-bs-admin::button color="primary" x-bind:aria-disabled="(! pick).toString()" class="aria-disabled:opacity-60" x-on:click="go()">
                     <x-bs-admin::icon name="ri-folder-transfer" class="size-4" /> {{ $dlgCount > 1 ? __('catalog.cat_ok_n', ['count' => $dlgCount]) : __('catalog.cat_ok') }}

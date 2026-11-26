@@ -3,6 +3,7 @@
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 /*
@@ -61,4 +62,22 @@ it('soft-deleting a master keeps its R2 object and attachments (Thùng rác)', f
         expect(Mediable::query()->count())->toBe(1);
         Storage::disk('r2')->assertExists('a/library/keep-bbbbbbbbbbbb.png');
     });
+});
+
+it('never deletes an object under a seed folder, whichever field names it', function (): void {
+    config(['media.seed_folders' => ['seed-demo']]);
+    DB::connection('pgsql_admin')->table('reserved_site_codes')->insert(['code' => 'seed-demo', 'reason' => 'legacy_key', 'site_id' => 1]);
+    $seed = 'seed-demo/hero/anh-cccccccccccc.png';
+    $own = 'a/library/anh-dddddddddddd.png';
+    Storage::disk('r2')->put($seed, 'seed');
+
+    app(Tenancy::class)->enter(1, function () use ($seed, $own): void {
+        makeMediaWithAttachment($seed, str_repeat('c', 64))->forceDelete();   // a row still holding the seed key
+        $moved = makeMediaWithAttachment($own, str_repeat('d', 64));
+        $moved->update(['meta' => ['moved_from' => $seed]]);                  // a moved row naming it as its old key
+        $moved->forceDelete();
+    });
+
+    Storage::disk('r2')->assertExists($seed);
+    Storage::disk('r2')->assertMissing($own);
 });

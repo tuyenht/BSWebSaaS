@@ -10,15 +10,14 @@ return [
     // local → upload proxied through Laravel (dev). The action reads this, not a hardcoded 'r2'.
     'disk' => env('MEDIA_DISK', 'r2'),
 
-    // Whether the storage key is prefixed with the tenant slug ({tenant}/{collection}/…). True in
-    // multi-tenant SaaS (isolates each tenant's objects); false for a standalone exported single
-    // site, giving a cleaner {collection}/{slug}.{ext}. RLS still scopes uniqueness either way.
+    // Whether the storage key starts with the website's permanent code ({code}/{slug}-{hash}.{ext},
+    // ADR-17). True in multi-tenant SaaS: codes are unique over every website, so two websites never
+    // share a key. False for a standalone exported single site: {collection}/{slug}-{hash}.{ext}.
     'tenant_prefix' => (bool) env('MEDIA_TENANT_PREFIX', true),
 
     // Opaque content-hash length embedded in the storage key (cache-bust + uniqueness; NOT the dedup
     // hash — that is the full 64-hex media.hash column). Media is public, so anti-enumerate is waived;
-    // a collision only extends this length. 0 = no suffix at all → a clean {slug}.{ext} (but then a
-    // same-slug Replace keeps the URL, so the CDN must be busted by renaming the slug). Default 4.
+    // a collision only extends this length. Never below 4 (smaller values count as 4). Default 4.
     'url_hash_length' => (int) env('MEDIA_URL_HASH_LENGTH', 4),
 
     // Cloudflare Worker plane (cf.image reads ?w). Also the base for the `static` raw-master driver.
@@ -52,5 +51,11 @@ return [
     // lower of this and folder_undo_max_files is where Hoàn tác stops).
     'folder_delete_inline_max_files' => (int) env('MEDIA_FOLDER_DELETE_INLINE_MAX_FILES', 20000),
     'folder_delete_batch_files' => (int) env('MEDIA_FOLDER_DELETE_BATCH_FILES', 2000),
+
+    // Demo seed sources: first folders of shared seed files the repository's seeders copy into
+    // whichever website they seed. No website may delete an object under one of them, whichever
+    // row or field names it (a permanent delete, or a moved row's old key), since every later
+    // seeding needs it. Listed here so Media code names no website.
+    'seed_folders' => ['an-vinh'],
 
 ];

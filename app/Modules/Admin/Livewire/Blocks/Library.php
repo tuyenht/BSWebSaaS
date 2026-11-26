@@ -8,6 +8,7 @@ use App\Modules\Admin\Livewire\Blocks\Concerns\GatesBlockScreens;
 use App\Modules\Cms\Actions\ContentBlocks\CreateContentBlock;
 use App\Modules\Cms\Actions\ContentBlocks\DeleteContentBlock;
 use App\Modules\Cms\Actions\ContentBlocks\DuplicateContentBlock;
+use App\Modules\Cms\Actions\ContentBlocks\PublishContentBlock;
 use App\Modules\Cms\Actions\ContentBlocks\UpdateContentBlock;
 use App\Modules\Cms\ContentBlocks\ContentBlockRules;
 use App\Modules\Cms\ContentBlocks\ContentBlockVersion;
@@ -29,13 +30,15 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
- * «Thư viện khối tái dùng» (board 28): the website's reusable blocks, newest change first, by
+ * «Khối dùng chung» (board 28): the website's reusable blocks, newest change first, by
  * status (Tất cả / Đã xuất bản / Nháp) and region, searched by name (Vietnamese marks ignored) or
  * reference code. A row names its region, its reference code (copied in the browser), the
  * languages it has content in (each opens the block editor in that language), how many places use
  * it («Nơi đang dùng khối» lists them) and its status. «Thêm khối» / «Sửa» ask the name and the
  * region; a new block opens in the block editor. «Nhân bản» copies a block with its languages;
- * «Xóa» asks first, saying what uses it, and deletes for good (the board has no Trash).
+ * «Xóa» asks first, saying what uses it, and deletes for good (the board has no Trash). The row's «⋯»
+ * starts with «Xuất bản» (a draft; acts at once) or «Đưa về nháp» (a published block; used somewhere:
+ * asks first, in the delete question's dialog).
  *
  * The list is read in keyset pages (ContentBlockList::page) and «Xem thêm» follows the cursor one
  * page further; a website keeps at most `cms.blocks.max_per_site` blocks. Gated on every request
@@ -73,7 +76,7 @@ final class Library extends Component
     #[Locked]
     public int $pages = 1;
 
-    /** The «Tạo / Sửa khối tái dùng» dialog is open. */
+    /** The «Tạo / Sửa khối dùng chung» dialog is open. */
     public bool $formOpen = false;
 
     /** The block the dialog edits (null: a new one) and the version it read. */
@@ -94,12 +97,16 @@ final class Library extends Component
     #[Locked]
     public ?array $usage = null;
 
-    /** The «Xóa khối tái dùng?» question is open. */
+    /** The «Xóa khối dùng chung?» question is open. */
     public bool $confirmOpen = false;
 
     /** @var array{ulid: string, name: string, places: int, menu: bool}|null the block it asks about, read when it opened */
     #[Locked]
     public ?array $deleting = null;
+
+    /** What the open question is about: 'delete' («Xóa khối dùng chung?») or 'draft' («Đưa khối về nháp?»). */
+    #[Locked]
+    public string $asking = 'delete';
 
     public string $toastMsg = '';
 
@@ -292,6 +299,67 @@ final class Library extends Component
         $this->usage = null;
     }
 
+    /** «Xuất bản» in the row's ⋯: the block shows wherever it is placed; a toast says where. */
+    public function publish(string $ulid): void
+    {
+        $block = $this->writable($ulid, 'publish');
+        if ($block === null) {
+            return;
+        }
+        try {
+            app(PublishContentBlock::class)->handle($this->actingUser(), $block, true);
+            $places = app(ContentBlockUsages::class)->countsFor([$block->id])[$block->id] ?? 0;
+            $this->toast($places > 0
+                ? __('blocks.toast_published', ['name' => $block->name, 'places' => trans_choice('blocks.n_places', $places, ['n' => $places])])
+                : __('blocks.toast_published_none', ['name' => $block->name]));
+        } catch (ContentBlockChangeRejectedException $e) {
+            $this->refused($e->reason);
+        } catch (AuthorizationException) {
+            $this->toast(__('blocks.toast_cannot'), 'error');
+        }
+    }
+
+    /** «Đưa về nháp» in the row's ⋯: used somewhere, it asks first (the delete question's dialog); else it acts. */
+    public function askUnpublish(string $ulid): void
+    {
+        $block = $this->writable($ulid, 'publish');
+        if ($block === null) {
+            return;
+        }
+        $places = app(ContentBlockUsages::class)->countsFor([$block->id])[$block->id] ?? 0;
+        if ($places === 0) {
+            $this->unpublishNow($block);
+
+            return;
+        }
+        $this->asking = 'draft';
+        $this->deleting = ['ulid' => $block->ulid, 'name' => $block->name, 'places' => $places, 'menu' => $block->region === 'menu'];
+        $this->confirmOpen = true;
+    }
+
+    /** The dialog's «Đưa về nháp»: the website stops showing the block; its content and places stay. */
+    public function confirmUnpublish(): void
+    {
+        $asked = $this->asking === 'draft' ? $this->deleting : null;
+        $this->cancelDelete();
+        $block = $asked === null ? null : $this->writable($asked['ulid'], 'publish');
+        if ($block !== null) {
+            $this->unpublishNow($block);
+        }
+    }
+
+    private function unpublishNow(ContentBlock $block): void
+    {
+        try {
+            app(PublishContentBlock::class)->handle($this->actingUser(), $block, false);
+            $this->toast(__('blocks.toast_unpublished', ['name' => $block->name]));
+        } catch (ContentBlockChangeRejectedException $e) {
+            $this->refused($e->reason);
+        } catch (AuthorizationException) {
+            $this->toast(__('blocks.toast_cannot'), 'error');
+        }
+    }
+
     /** «Xóa» in the row's ⋮: the question says how many places use the block, read now. */
     public function askDelete(string $ulid): void
     {
@@ -305,13 +373,14 @@ final class Library extends Component
             'places' => app(ContentBlockUsages::class)->countsFor([$block->id])[$block->id] ?? 0,
             'menu' => $block->region === 'menu',
         ];
+        $this->asking = 'delete';
         $this->confirmOpen = true;
     }
 
     /** The dialog's «Vẫn xóa»: the block, its languages and where it was used go for good. */
     public function confirmDelete(): void
     {
-        $asked = $this->deleting;
+        $asked = $this->asking === 'delete' ? $this->deleting : null;
         $this->cancelDelete();
         $block = $asked === null ? null : $this->writable($asked['ulid'], 'delete');
         if ($asked === null || $block === null) {
@@ -341,6 +410,7 @@ final class Library extends Component
         $this->authorizeLibrary();
         $this->confirmOpen = false;
         $this->deleting = null;
+        $this->asking = 'delete';
     }
 
     public function closeToast(int $seq = 0): void

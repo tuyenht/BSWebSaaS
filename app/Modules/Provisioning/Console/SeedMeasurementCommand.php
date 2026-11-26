@@ -15,7 +15,9 @@ use Illuminate\Console\Command;
 final class SeedMeasurementCommand extends Command
 {
     #[\Override]
-    protected $signature = 'site:seed-measurement {--host= : Hostname of the measurement site (a platform subdomain)}';
+    protected $signature = 'site:seed-measurement
+        {--host= : Hostname of the measurement site (a platform subdomain)}
+        {--photo-folder : Print only the folder of the photos\' keys (where the CI job copies them) and seed nothing}';
 
     #[\Override]
     protected $description = 'Seed the speed and accessibility measurement pages into a test site. Idempotent; never in production.';
@@ -41,6 +43,12 @@ final class SeedMeasurementCommand extends Command
             $this->error("No site found for host '{$host}'.");
 
             return self::FAILURE;
+        }
+
+        if ($this->option('photo-folder') === true) {
+            $this->line($tenancy->enter($resolved->siteId, fn (): string => $action->photoFolder()));
+
+            return self::SUCCESS;
         }
 
         $tenancy->enter($resolved->siteId, fn () => $action->handle());

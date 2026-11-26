@@ -33,6 +33,8 @@
     // `wide` (board 12's file drawer): 520px from the right on wider screens and the whole screen
     // below 600px, where a bottom sheet would leave the fields too little room. An `actions` slot
     // puts the panel's own buttons (a ⋮ menu) before ✕.
+    // Footer: below 600px its direct children stack full width with the main (last) button on top, like confirm-dialog;
+    // the markup and Tab order stay as written (Cancel first). A footer that is one wrapper (the file drawer) keeps its row.
     // `guard` is the id of the element that holds the panel's <x-bs-admin::unsaved-dialog> (outside
     // the panel: the panel is a size container, which would trap the dialog's fixed layer). Every
     // way of closing then asks that dialog first while something is unsaved; the dialog's own
@@ -98,7 +100,7 @@
         </div>
         <div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-5 py-4">{{ $slot }}</div>
         @isset($footer)
-            <div class="flex shrink-0 flex-wrap justify-end gap-2 border-t border-border px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] max-[599px]:*:flex-1 max-[599px]:*:basis-full">{{ $footer }}</div>
+            <div class="flex shrink-0 flex-wrap justify-end gap-2 border-t border-border px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] max-[599.98px]:flex-col-reverse max-[599.98px]:*:w-full">{{ $footer }}</div>
         @endisset
     </div>
 </div>

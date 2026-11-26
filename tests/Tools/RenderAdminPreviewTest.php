@@ -353,7 +353,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     file_put_contents($dir.'/leads-form-off.html', $html);
     app(Tenancy::class)->enter(1, fn () => $contact->update(['status' => 'active']));
 
-    // Thư viện khối tái dùng: three blocks in three regions, the block editor of the footer, and «Xóa» asked on it.
+    // Khối dùng chung: three blocks in three regions, the block editor of the footer, and «Xóa» asked on it.
     $footerBlock = app(Tenancy::class)->enter(1, function (): ContentBlock {
         ContentBlock::query()->create(['key' => 'cta-khuyen-mai', 'name' => 'CTA khuyến mãi tháng 12', 'region' => 'inline']);
         ContentBlock::query()->create(['key' => 'bang-lon-san-pham', 'name' => 'Bảng lớn sản phẩm', 'region' => 'menu']);
@@ -408,6 +408,11 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($top)->get($platform.'/settings/social')->assertOk()->getContent();
     expect($html)->toContain(e(__('admin.sl.providers_platform')))->not->toContain('GOCSPX-preview-only');
     file_put_contents($dir.'/system-social.html', str_replace($platform, 'http://'.ADMIN_PREVIEW_HOST, $html));
+    // the console's «Email hệ thống»: the console frame, its own wording
+    $this->flushSession();
+    $html = $this->actingAs($top)->get($platform.'/settings/email')->assertOk()->getContent();
+    expect($html)->toContain('id="platform-sidebar"')->not->toContain('id="admin-sidebar"');
+    file_put_contents($dir.'/system-email.html', str_replace($platform, 'http://'.ADMIN_PREVIEW_HOST, $html));
     $this->flushSession();
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/social')->assertOk()->getContent();
     expect($html)->toContain(e(__('admin.sl.providers_site')));
@@ -793,7 +798,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'storefront', 'key' => 'header'], ['value' => ['drawer_tone' => 'dark', 'drawer_accent' => 'brand']]));
     $this->flushSession();
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/appearance')->assertOk()->getContent();
-    expect($html)->toContain('data-look-slot="logo"', 'data-look-stamp', 'data-look-share', 'Cập nhật lần cuối', 'Màu nhấn của menu', 'data-look-search', 'Có tìm kiếm');
+    expect($html)->toContain('data-look-slot="logo"', 'data-set-stamp', 'data-look-share', 'Cập nhật lần cuối', 'Màu nhấn của menu', 'data-look-search', 'Có tìm kiếm');
     file_put_contents($dir.'/appearance.html', $html);
 
     // "Ngôn ngữ website": Vietnamese the default, English public, Japanese written but hidden (its
@@ -1653,5 +1658,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 151);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 152);
 });

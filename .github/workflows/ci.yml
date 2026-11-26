@@ -380,6 +380,11 @@ jobs:
       - name: JS unit tests (tree drag rule)
         run: node --test 'tests/js/*.test.mjs'
 
+      # The media Worker (deploy/media-worker/, deployed apart with wrangler): what the file host serves,
+      # its safety headers and the legacy-folder 301s. Pure Node, no deps.
+      - name: Media Worker unit tests
+        run: node --test deploy/media-worker/test/worker.test.js
+
       # The storefront slider's behaviour (rotation, pause, keys, reduced motion) in jsdom.
       - name: Storefront slider behaviour
         run: node scripts/storefront/slider-check.mjs
@@ -512,12 +517,15 @@ jobs:
       # scripts/cwv-serve.php with the 320 px copies in w320/, as the media Worker resizes. The
       # serving step below sets MEDIA_DRIVER/MEDIA_CF_BASE; a media host equal to the site's host
       # would make provisioning refuse the name, so it is not set job-wide.
+      # The photos' keys sit under the site's own random code, so the folder is asked for.
       - name: Seed the measurement pages
         run: |
           php artisan site:seed-measurement --host="${CWV_HOST}"
-          mkdir -p public/cwv-media/cwv/library/w320
-          cp tests/Fixtures/cwv/*.webp public/cwv-media/cwv/library/
-          cp tests/Fixtures/cwv/w320/*.webp public/cwv-media/cwv/library/w320/
+          folder=$(php artisan site:seed-measurement --host="${CWV_HOST}" --photo-folder)
+          [[ "$folder" =~ ^[0-9a-hjkmnp-tv-z]{6}/$ ]] || { echo "unexpected photo folder: '${folder}'"; exit 1; }
+          mkdir -p "public/cwv-media/${folder}w320"
+          cp tests/Fixtures/cwv/*.webp "public/cwv-media/${folder}"
+          cp tests/Fixtures/cwv/w320/*.webp "public/cwv-media/${folder}w320/"
 
       # Chrome (via Lighthouse/axe) resolves this by real hostname, same as production —
       # no Host-header spoofing needed, and the multi-tenant domain resolver sees a real domain.

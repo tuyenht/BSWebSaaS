@@ -5,7 +5,7 @@ namespace App\Modules\Media\Actions;
 use App\Modules\Media\Exceptions\MediaRejectedException;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Support\MediaKey;
-use App\Modules\Shared\Support\Slugger;
+use App\Modules\Media\Support\MediaKeyPrefix;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
@@ -18,8 +18,10 @@ use Illuminate\Support\Facades\Storage;
  *
  * GĐ1 allow-list excludes SVG (XSS surface; needs a dedicated sanitizer dependency — deferred).
  */
-final class UploadMedia
+final readonly class UploadMedia
 {
+    public function __construct(private MediaKeyPrefix $prefix) {}
+
     /** Max upload size in KB (10 MB). */
     public const int MAX_KB = 10240;
 
@@ -37,7 +39,7 @@ final class UploadMedia
      *                            media.delete.any right, resolved by the caller). The action holds no user
      *                            of its own, so the caller decides; false refuses with `in_trash`.
      */
-    public function handle(UploadedFile $file, string $siteName, string $collection = 'library', ?int $createdBy = null, bool $mayRestore = false): Media
+    public function handle(UploadedFile $file, string $collection = 'library', ?int $createdBy = null, bool $mayRestore = false): Media
     {
         MediaKey::assertConfigured(); // fail loud + clean if the R2 disk has no bucket/creds (.env drift)
 
@@ -53,7 +55,7 @@ final class UploadMedia
             throw new MediaRejectedException('unsupported_type');
         }
 
-        // 3) Content hash (full SHA-256; the key embeds the first 12 chars — ADR-17).
+        // 3) Content hash (full SHA-256; the key embeds its first characters, at least 4 — ADR-17).
         $contents = (string) file_get_contents((string) $file->getRealPath());
         $hash = hash('sha256', $contents);
 
@@ -78,10 +80,10 @@ final class UploadMedia
             return $existing;
         }
 
-        // 5) Opaque content-hash storage key (ADR-17) — unique within the site (MediaKey extends the
-        // hash suffix only on a collision). Anti-enumerate waived (public media); cache-bust + uniqueness.
-        $slug = Slugger::make(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) ?: 'tep';
-        $key = MediaKey::unique($siteName, $collection, $slug, $hash, $ext);
+        // 5) Opaque content-hash storage key under the website's code (ADR-17) — unique within the
+        // website (MediaKey extends the hash suffix only on a collision), never shared with another.
+        $slug = MediaKey::slugFromFilename($file->getClientOriginalName());
+        $key = MediaKey::unique($this->prefix->forNewObject($collection), $slug, $hash, $ext);
 
         // 6) Store the single master (private; the public URL is derived, never stored).
         // Laravel's filesystem does NOT throw by default — put() returns false on failure. Guard it,

@@ -17,8 +17,8 @@ use Tests\Fixtures\StorefrontCards;
  * site:load-content --media — the image step. A dry run lists what each image slot would do and
  * uploads nothing; --apply uploads the pack's files through the media library's own upload path
  * (magic-byte sniffing, content-hash key, one row per (collection, hash)), reuses a file the site
- * already has, reports one in the Trash instead of restoring it, and refuses before any upload
- * when the site's storage folder is shared with another website or a key would land outside it.
+ * already has, reports one in the Trash instead of restoring it, and files every new key under the
+ * site's own permanent code, so a website with the same name never shares its folder.
  */
 
 beforeEach(function (): void {
@@ -65,7 +65,7 @@ it('uploads nothing on a dry run and prints what each slot would do', function (
         ->and(ContentPacks::fingerprint($output))->toMatch('/^[0-9a-f]{12}$/')
         ->and(ContentPacks::verdict($output, 'media:header'))->toBe('upload')
         ->and(ContentPacks::verdict($output, 'media:news-1'))->toBe('upload')
-        ->and($output)->toMatch('#media:header\s.*demo/library/header-[0-9a-f]{4}\.png#');
+        ->and($output)->toMatch('#media:header\s.*'.siteCode($this->siteId).'/header-[0-9a-f]{4}\.png#');
 });
 
 it('uploads each file once through the media library and reuses it on the next run (one row, one put)', function (): void {
@@ -74,7 +74,7 @@ it('uploads each file once through the media library and reuses it on the next r
 
     $keys = packMedia($this->siteId);
     expect($keys)->toHaveCount(2)
-        ->and($keys['header.png'])->toMatch('#^demo/library/header-[0-9a-f]{4}\.png$#')
+        ->and($keys['header.png'])->toMatch('#^'.siteCode($this->siteId).'/header-[0-9a-f]{4}\.png$#')
         ->and(Storage::disk('r2')->allFiles())->toEqualCanonicalizing(array_values($keys));
 
     $header = ContentPacks::in($this->siteId, fn () => Media::query()->where('storage_key', $keys['header.png'])->firstOrFail());
@@ -114,36 +114,22 @@ it('reports a matching file in the Trash without restoring it, and restores it o
         ->and(ContentPacks::in($this->siteId, fn () => Media::query()->withTrashed()->count()))->toBe(2);
 });
 
-it('refuses before any upload when another website\'s name gives the same storage folder', function (): void {
-    StorefrontCards::site('DEMO!', 'khac.platform.test');
+it('files the images under the site\'s own code when another website\'s name gave the same folder', function (): void {
+    $otherId = StorefrontCards::site('DEMO!', 'khac.platform.test');   // the old layout filed both under demo/
 
-    $writes = ContentPacks::writes(function () use (&$exit, &$output): void {
-        [$exit, $output] = ContentPacks::run('demo-co', ['--media' => true]);
-    });
+    [$exit, $output] = mediaLoad();
 
-    expect($exit)->toBe(1, $output)
-        ->and($output)->toContain('another website')
-        ->and($output)->not->toContain('DEMO!')
-        ->and($output)->not->toContain('khac.platform.test')
-        ->and($writes)->toBe([])
-        ->and(Storage::disk('r2')->allFiles())->toBe([]);
-
-    [$exit, $output] = ContentPacks::run('demo-co', ['--media' => true, '--apply' => true, '--plan' => 'abcdefabcdef']);
-    expect($exit)->toBe(1, $output)->and($output)->toContain('another website')
-        ->and(packMedia($this->siteId))->toBe([]);
+    expect($exit)->toBe(0, $output)
+        ->and(siteCode($otherId))->not->toBe(siteCode($this->siteId))
+        ->and(packMedia($this->siteId)['header.png'] ?? '')->toStartWith(siteCode($this->siteId).'/')
+        ->and(Storage::disk('r2')->allFiles())->each->toStartWith(siteCode($this->siteId).'/');
 });
 
-it('refuses a key that would land outside the site\'s own storage folder', function (): void {
-    config(['media.tenant_prefix' => false]);
+it('files the images under their collection in single-site mode', function (): void {
+    [$exit, $output] = inSingleSiteMode(fn (): array => mediaLoad());
 
-    $writes = ContentPacks::writes(function () use (&$exit, &$output): void {
-        [$exit, $output] = ContentPacks::run('demo-co', ['--media' => true]);
-    });
-
-    expect($exit)->toBe(1, $output)
-        ->and($output)->toContain("outside this site's storage folder 'demo/'")
-        ->and($writes)->toBe([])
-        ->and(Storage::disk('r2')->allFiles())->toBe([]);
+    expect($exit)->toBe(0, $output)
+        ->and(packMedia($this->siteId)['header.png'] ?? '')->toMatch('#^library/header-[0-9a-f]{4}\.png$#');
 });
 
 it('refuses an apply whose image plan changed since the dry run', function (): void {
@@ -213,18 +199,9 @@ it('resolves the pack\'s image slots to the uploaded media on the next content l
     expect($html)->toContain('header-');
 });
 
-it('counts a website in the Trash when it looks for a shared storage folder', function (): void {
-    $otherId = StorefrontCards::site('DEMO!', 'khac.platform.test');
-    Site::query()->whereKey($otherId)->firstOrFail()->delete();
-
-    [$exit, $output] = ContentPacks::run('demo-co', ['--media' => true]);
-
-    expect($exit)->toBe(1, $output)->and($output)->toContain('another website');
-});
-
 it('refuses an upload that would overwrite an object no image of the site owns', function (): void {
     [, $output] = ContentPacks::run('demo-co', ['--media' => true]);
-    preg_match('#(demo/library/header-[0-9a-f]{4}\.png)#', $output, $m);
+    preg_match('#('.siteCode($this->siteId).'/header-[0-9a-f]{4}\.png)#', $output, $m);
     Storage::disk('r2')->put($m[1], 'left by an earlier owner of the folder');
 
     [$exit, $output] = ContentPacks::run('demo-co', ['--media' => true]);
@@ -235,7 +212,7 @@ it('refuses an upload that would overwrite an object no image of the site owns',
         ->and(packMedia($this->siteId))->toBe([]);
 });
 
-it('refuses a forced restore of a row stored outside the site\'s folder', function (): void {
+it('restores a row stored under an old key in place when forced', function (): void {
     $bytes = (string) file_get_contents($this->folder.'/media/header.png');
     ContentPacks::in($this->siteId, fn () => Media::query()->create([
         'collection' => 'library', 'slug' => 'cu', 'hash' => hash('sha256', $bytes),
@@ -245,8 +222,10 @@ it('refuses a forced restore of a row stored outside the site\'s folder', functi
     [$exit, $output] = ContentPacks::run('demo-co', ['--media' => true]);
     expect($exit)->toBe(0, $output)->and(ContentPacks::verdict($output, 'media:header'))->toBe('in-trash');
 
-    [$exit, $output] = ContentPacks::run('demo-co', ['--media' => true, '--force-item' => ['media:header']]);
-    expect($exit)->toBe(1, $output)->and($output)->toContain("outside this site's storage folder 'demo/'");
+    [$exit, $output] = mediaLoad(['media:header']);
+    expect($exit)->toBe(0, $output)
+        ->and(ContentPacks::verdict($output, 'media:header'))->toBe('restore (forced)')
+        ->and(Storage::disk('r2')->get('cu/library/cu-0000.png'))->toBe($bytes);
 });
 
 it('gives two slots with the same bytes one row, and forcing either restores it for both', function (): void {
@@ -305,7 +284,7 @@ it('never resolves a content slot to a file in the Trash', function (): void {
 
 it('uploads over an object that already holds the same bytes (left by a run that failed after its put)', function (): void {
     [, $output] = ContentPacks::run('demo-co', ['--media' => true]);
-    preg_match('#(demo/library/header-[0-9a-f]{4}\.png)#', $output, $m);
+    preg_match('#('.siteCode($this->siteId).'/header-[0-9a-f]{4}\.png)#', $output, $m);
     Storage::disk('r2')->put($m[1], (string) file_get_contents($this->folder.'/media/header.png'));
 
     [$exit, $output] = mediaLoad();
@@ -316,10 +295,13 @@ it('uploads over an object that already holds the same bytes (left by a run that
 });
 
 it('refuses two slots that would be stored under the same key', function (): void {
-    config(['media.url_hash_length' => 0]);
     File::ensureDirectoryExists($this->folder.'/other');
-    // Another picture under the same file name (other bytes: a trailer after the PNG's end).
-    File::put($this->folder.'/other/header.png', File::get($this->folder.'/media/header.png').'other');
+    // Another picture under the same file name whose hash starts like the first one's (other bytes:
+    // a trailer after the PNG's end, tried until the first four hex characters match).
+    $header = File::get($this->folder.'/media/header.png');
+    $want = substr(hash('sha256', $header), 0, 4);
+    for ($i = 0; substr(hash('sha256', $header.$i), 0, 4) !== $want; $i++);
+    File::put($this->folder.'/other/header.png', $header.$i);
     ContentPacks::edit($this->folder, 'media.json', function (array $media): array {
         $media['slots'][] = ['slot' => 'header-other', 'file' => 'other/header.png'];
 
@@ -331,17 +313,18 @@ it('refuses two slots that would be stored under the same key', function (): voi
     expect($exit)->toBe(1, $output)->and($output)->toContain('would both be stored under');
 });
 
-it('refuses to repair a row stored outside the site\'s folder', function (): void {
+it('repairs a row stored under an old key in place', function (): void {
     $bytes = (string) file_get_contents($this->folder.'/media/header.png');
     ContentPacks::in($this->siteId, fn () => Media::query()->create([
         'collection' => 'library', 'slug' => 'cu', 'hash' => hash('sha256', $bytes),
         'storage_key' => 'cu/library/cu-0000.png', 'mime' => 'image/png', 'size' => strlen($bytes),
     ]));
 
-    [$exit, $output] = ContentPacks::run('demo-co', ['--media' => true]);
+    [$exit, $output] = mediaLoad();
 
-    expect($exit)->toBe(1, $output)->and($output)->toContain("outside this site's storage folder 'demo/'")
-        ->and(Storage::disk('r2')->allFiles())->toBe([]);
+    expect($exit)->toBe(0, $output)
+        ->and(ContentPacks::verdict($output, 'media:header'))->toBe('repair')
+        ->and(Storage::disk('r2')->get('cu/library/cu-0000.png'))->toBe($bytes);
 });
 
 it('records the files written before a run stopped part-way', function (): void {
@@ -377,7 +360,7 @@ it('uploads a document slot as a PDF through the media library', function (): vo
 
     $row = ContentPacks::in($this->siteId, fn () => Media::query()->where('original_filename', 'profile.pdf')->firstOrFail());
     expect($row->mime)->toBe('application/pdf')
-        ->and($row->storage_key)->toMatch('#^demo/library/profile-[0-9a-f]{4}\.pdf$#')
+        ->and($row->storage_key)->toMatch('#^'.siteCode($this->siteId).'/profile-[0-9a-f]{4}\.pdf$#')
         ->and($row->hash)->toBe(hash('sha256', $pdf))
         ->and($row->width)->toBeNull()
         ->and($row->alt)->toBe(['vi' => 'Hồ sơ năng lực'])
@@ -445,6 +428,37 @@ it('leaves the download button out, with a warning, while its document is not up
     expect($exit)->toBe(0, $output)
         ->and(aboutLastBlock($this->siteId))->toMatchArray(['button_label' => 'Tải hồ sơ'])->not->toHaveKey('button_url_do');
 });
+
+it('finds a legacy_key\'s file by the old key its row records, never by its file name alone', function (string $field): void {
+    profileButton($this->folder);
+    $legacy = 'an-vinh/tai-lieu/ho-so-ab12cd.pdf';
+    $moved = siteCode($this->siteId).'/ho-so-ab12cdef.pdf';
+    ContentPacks::in($this->siteId, function () use ($legacy, $moved, $field): void {
+        // Same file name under the code, but it never held the legacy key: not the slot's file.
+        Media::query()->create([
+            'collection' => 'library', 'slug' => 'ho-so', 'hash' => hash('sha256', 'other'),
+            'storage_key' => siteCode($this->siteId).'/ho-so-ab12cd.pdf', 'mime' => 'application/pdf', 'size' => 1024,
+        ]);
+        Media::query()->create([
+            'collection' => 'library', 'slug' => 'ho-so', 'hash' => hash('sha256', 'ho-so'),
+            'storage_key' => $moved, 'mime' => 'application/pdf', 'size' => 2048, 'meta' => [$field => $legacy],
+        ]);
+    });
+    ContentPacks::edit($this->folder, 'media.json', function (array $media) use ($legacy): array {
+        $media['slots'] = array_map(fn (array $slot): array => $slot['slot'] === 'profile'
+            ? ['slot' => 'profile', 'kind' => 'document', 'legacy_key' => $legacy]
+            : $slot, $media['slots']);
+
+        return $media;
+    });
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)
+        ->and(aboutLastBlock($this->siteId))->toMatchArray(['button_url_do' => ['k' => 'file', 'file' => $moved]]);
+})->with([
+    'moved by media:rekey-site' => 'moved_from',
+    'copied by a seeder' => 'seed_source',
+]);
 
 it('leaves the download button out when its document slot names an existing image', function (): void {
     profileButton($this->folder);

@@ -53,10 +53,13 @@
     $mutedCard = 'col-span-full rounded-lg border border-border bg-surface-muted';
 @endphp
 <x-bs-admin::settings-shell active="seo" :unsaved="$changes" :invalid="$errorCount" live-errors first-error="seo-first-error" :first-error-detail="['group' => $firstErrorGroup]">
+    <x-slot:more><x-bs-admin::settings-restore-more :name="__('admin.seoset.title')" /></x-slot:more>
     <div class="@container/seo flex flex-col gap-4" data-set-form
          x-data="{ open: {{ Js::from($groupKeys[0]) }}, info: null }"
          x-on:seo-first-error.window="open = $event.detail.group; $nextTick(() => $el.querySelector('[aria-invalid=true]:not([disabled]), [data-ferr-focus]')?.focus())"
          x-on:keydown.escape="if (info) { const b = $el.querySelector('[aria-controls=\'' + info + '\']'); info = null; b?.focus() }">
+
+        <x-bs-admin::settings-stamp :stamp="$stamp" />
 
         {{-- The language being edited (only on a site with more than one) --}}
         @if ($multi)
@@ -367,5 +370,5 @@
         <x-bs-admin::confirm-line icon="ri-time">{{ __('admin.seoset.cf_l3') }}</x-bs-admin::confirm-line>
     </x-bs-admin::confirm-dialog>
 
-    <x-bs-admin::toast :message="$toast" :tone="$toastTone" dismiss="dismissToast" :seq="$toastSeq" />
+    <x-bs-admin::toast :message="$toast" :tone="$toastTone" dismiss="dismissToast" :seq="$toastSeq" :undo="$undo !== null ? 'undoRestore' : null" />
 </x-bs-admin::settings-shell>

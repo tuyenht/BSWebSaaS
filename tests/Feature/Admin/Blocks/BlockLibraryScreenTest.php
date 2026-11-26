@@ -25,7 +25,7 @@ use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 
 /*
- * «Thư viện khối tái dùng» and the block editor it opens. Who reaches them (ContentBlockPolicy:
+ * «Khối dùng chung» and the block editor it opens. Who reaches them (ContentBlockPolicy:
  * `blocks.manage`, not limited to some categories); the list by status, region and search (marks
  * ignored) in keyset pages; create → the block editor; rename with the version read; duplicate;
  * delete after a question that counts the places; another website's block reads as gone; the list
@@ -99,7 +99,7 @@ it('lists the blocks newest change first, with region, code, status and place co
     libraryBlock(2, 'other-site', 'Khối của site B');
 
     $this->actingAs($editor)->get('http://a.test/admin/blocks')->assertOk()
-        ->assertSeeText('Thư viện khối tái dùng')
+        ->assertSeeText('Khối dùng chung')
         ->assertSeeText('Chân trang chung')->assertSeeText('footer')
         ->assertSeeText('CTA khuyến mãi')->assertSeeText('cta-sale')
         ->assertSeeText('Chèn trong trang')->assertSeeText('0 nơi')
@@ -250,7 +250,7 @@ it('saves one language of a block in the block editor with the version it read, 
     $block = libraryBlock(1, 'footer', 'Chân trang');
 
     $this->actingAs($editor)->get('http://a.test/admin/blocks/'.$block->ulid.'/edit')->assertOk()
-        ->assertSeeText('Đang sửa khối tái dùng · Chân trang')->assertSeeText('Lưu & quay lại');
+        ->assertSeeText('Đang sửa khối dùng chung · Chân trang')->assertSeeText('Lưu & quay lại');
 
     app(Tenancy::class)->enter(1, function () use ($editor, $block): void {
         $page = Livewire::actingAs($editor)->test(BlockEditor::class, ['ulid' => $block->ulid])->assertSet('blocks', []);

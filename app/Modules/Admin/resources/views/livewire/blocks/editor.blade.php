@@ -21,15 +21,20 @@
     <div class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-border bg-primary-soft px-4 py-2.5">
         <span class="inline-flex min-w-0 flex-[1_1_16rem] items-start gap-2 text-small font-semibold text-primary-text">
             <x-bs-admin::icon name="ri-stack" class="mt-0.5 size-4 shrink-0" />
-            <span class="min-w-0 [overflow-wrap:anywhere]">{{ __('blocks.editor_band', ['name' => $blockName]) }}{{ __('blocks.editor_band_note') }}</span>
+            <span class="min-w-0 [overflow-wrap:anywhere]">{{ __('blocks.editor_band', ['name' => $blockName]) }}{{ $isDraft ? __('blocks.editor_band_note_draft') : __('blocks.editor_band_note') }}</span>
         </span>
-        <span class="ms-auto flex flex-wrap gap-2">
+        <span class="ms-auto flex flex-wrap justify-end gap-2">
             <x-bs-admin::button variant="outline" color="primary" :href="route('admin.blocks.index')" wire:navigate title="{{ __('blocks.editor_back') }}">
                 <x-bs-admin::icon name="ri-arrow-left" class="size-4" /> {{ __('blocks.editor_back') }}
             </x-bs-admin::button>
-            <x-bs-admin::button color="primary" wire:click="saveAndReturn" wire:loading.attr="disabled" wire:target="saveAndReturn,save">
+            <x-bs-admin::button :variant="$isDraft ? 'outline' : 'solid'" color="primary" wire:click="saveAndReturn" wire:loading.attr="disabled" wire:target="saveAndReturn,saveAndPublish,save">
                 <x-bs-admin::icon name="ri-save-3" class="size-4" /> {{ __('blocks.editor_save_back') }}
             </x-bs-admin::button>
+            @if ($isDraft)
+                <x-bs-admin::button color="primary" wire:click="saveAndPublish" wire:loading.attr="disabled" wire:target="saveAndReturn,saveAndPublish,save">
+                    <x-bs-admin::icon name="ri-send-plane-fill" class="size-4" /> {{ __('blocks.editor_save_publish') }}
+                </x-bs-admin::button>
+            @endif
         </span>
     </div>
 

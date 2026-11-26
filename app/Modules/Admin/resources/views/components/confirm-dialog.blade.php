@@ -4,6 +4,7 @@
     'title' => '',
     'icon' => 'ri-information',
     'danger' => false,
+    'warning' => false,
     'ok' => '',
     'confirm',
     'cancel',
@@ -15,7 +16,8 @@
     // question as its title, one line per consequence (the slot: <x-bs-admin::confirm-line>), then
     // [Hủy] and the change. Hủy takes the focus first, so Enter never makes the change by
     // accident; Escape and the backdrop cancel. A change that cannot be undone is `danger` (the
-    // red button with the bin) and says so in its lines. `model` is the host's open flag
+    // red button with the bin) and says so in its lines; `warning` tints only the icon box for a
+    // change that can be undone but takes something off the website. `model` is the host's open flag
     // (entangled); `confirm` and `cancel` are the host's public methods. Below 600px it is a sheet
     // from the bottom with its buttons stacked, the change on top. The `alt` slot holds a second
     // way through (buttons between Hủy and the change). `cancel-label` renames Hủy where the
@@ -54,7 +56,8 @@
                         <span @class([
                             'inline-flex size-9 shrink-0 items-center justify-center rounded-lg',
                             'bg-danger-soft text-danger-text' => $danger,
-                            'bg-primary-soft text-primary-text' => ! $danger,
+                            'bg-warning-soft text-warning-text' => $warning && ! $danger,
+                            'bg-primary-soft text-primary-text' => ! $danger && ! $warning,
                         ])>
                             <x-bs-admin::icon :name="$icon" class="size-[min(1.5rem,calc(1.125rem+var(--user-text-boost)))]" />
                         </span>

@@ -44,17 +44,27 @@ final readonly class TenantMailer implements TenantMailConfigurator
      */
     public function resolve(): ?array
     {
+        return $this->pick()[0];
+    }
+
+    /**
+     * The sender resolve() picks, and whether it is the site's own (not the platform's).
+     *
+     * @return array{0: array<string, mixed>|null, 1: bool}
+     */
+    private function pick(): array
+    {
         $tenant = $this->tenant->get('email');
         if ($this->usable($tenant)) {
-            return $tenant;
+            return [$tenant, true];
         }
 
         $platform = $this->platform->get('email');
         if ($this->usable($platform)) {
-            return $platform;
+            return [$platform, false];
         }
 
-        return null;
+        return [null, false];
     }
 
     public function isConfigured(): bool
@@ -80,7 +90,7 @@ final readonly class TenantMailer implements TenantMailConfigurator
         Mail::purge('smtp');
         Mail::purge('admin_xoauth2');
 
-        $cfg = $this->resolve();
+        [$cfg, $siteOwn] = $this->pick();
         if ($cfg === null) {
             // No email override found anywhere in the resolution chain. Force the global
             // config to a safe no-op mailer so a previous request's SMTP config cannot
@@ -91,7 +101,7 @@ final readonly class TenantMailer implements TenantMailConfigurator
         }
 
         $applied = match ($cfg['method'] ?? 'smtp_password') {
-            'smtp_password' => $this->applySmtpPassword($cfg),
+            'smtp_password' => $this->applySmtpPassword($cfg, $siteOwn),
             'oauth2' => $this->applyOAuth2($cfg),
             default => false,
         };
@@ -162,12 +172,30 @@ final readonly class TenantMailer implements TenantMailConfigurator
     /**
      * @param  array<string, mixed>  $cfg
      */
-    private function applySmtpPassword(array $cfg): bool
+    private function applySmtpPassword(array $cfg, bool $siteOwn): bool
     {
         $smtp = Cast::arr($cfg['smtp'] ?? null);
         $from = $cfg['from_address'] ?? ($smtp['username'] ?? null);
         $port = Cast::int($smtp['port'] ?? null, 587);
         $encryption = is_string($smtp['encryption'] ?? null) ? $smtp['encryption'] : 'tls';
+
+        // A site's own server never leads to a private address or a non-mail port, even one saved
+        // before that was checked or whose name now resolves elsewhere: send nothing (log mailer).
+        // The platform's sender is the operator's and may be a relay on the private network.
+        if ($siteOwn) {
+            $guard = app(MailHostGuard::class);
+            $host = Cast::string($smtp['host'] ?? null);
+            $refusal = $guard->allowsPort($port) ? $guard->refusal($host) : 'port';
+            // A name that does not resolve right now (a passing DNS fault) is left to the connection:
+            // it fails there and the queued mail is tried again, instead of going to the log for good.
+            if ($refusal !== null && $refusal !== MailHostGuard::UNRESOLVABLE) {
+                config(['mail.default' => 'log']);
+                // Mail is held back, so it must not vanish unseen (lead notices, password resets).
+                report(new MailHostRefused($host, $port, $refusal, app(CurrentSite::class)->hasId() ? app(CurrentSite::class)->id() : null));
+
+                return false;
+            }
+        }
 
         config([
             'mail.default' => 'smtp',

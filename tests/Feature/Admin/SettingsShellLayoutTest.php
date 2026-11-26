@@ -5,12 +5,15 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use Dom\HTMLDocument;
+use Illuminate\Support\Facades\DB;
 
 beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
+    // no sender anywhere, whatever an earlier test left: the menu marks «Email» «Chưa cấu hình»
+    DB::connection('pgsql_admin')->statement('truncate site_settings, platform_settings restart identity cascade');
 });
 
 it('lists the sections in the board groups, each with its icon, and names the open one as the page title', function (): void {
@@ -25,7 +28,8 @@ it('lists the sections in the board groups, each with its icon, and names the op
     // the member's own «Bảo mật» first, then the board's groups; «Nâng cao» is the owner's, so an admin has none
     expect($heads)->toBe(['Tài khoản của tôi', 'Chung', 'Nội dung', 'Tiếp thị & Kết nối', 'Hệ thống'])
         ->and($menu->querySelector('input[type="search"]')?->getAttribute('aria-label'))->toBe('Tìm trong cài đặt')
-        ->and(trim((string) $menu->querySelector('a[aria-current="page"]')?->textContent))->toBe(__('admin.email_settings'))
+        ->and(trim((string) $menu->querySelector('a[aria-current="page"] .sr-only')?->textContent))->toBe('('.__('admin.set.unconfigured').')')
+        ->and(trim((string) preg_replace('/\s+/', ' ', str_replace((string) $menu->querySelector('a[aria-current="page"] .sr-only')?->textContent, '', (string) $menu->querySelector('a[aria-current="page"]')?->textContent))))->toBe(__('admin.email_settings'))
         ->and($menu->querySelector('a[aria-current="page"] svg'))->not->toBeNull()
         ->and($menu->querySelector('li[data-find*="Tên website"] a')?->getAttribute('href'))->toBe(route('admin.settings.general'));
 

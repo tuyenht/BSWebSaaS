@@ -1,12 +1,14 @@
 <?php
 
 use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Media\Support\MediaKey;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Actions\SeedAnVinhContent;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\Site;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /*
  * Cơ Khí Chính Xác An Vinh storefront — collection and page smoke tests.
@@ -24,6 +26,7 @@ beforeEach(function (): void {
          restart identity cascade'
     );
     truncateRbac();
+    Storage::fake(MediaKey::disk());
 });
 
 function seedAnVinhStorefront(): void
@@ -197,7 +200,7 @@ it('renders the home page with An Vinh heading and resolved media URLs in entry_
     expect($html)->toContain('Sản phẩm tiêu biểu');
 
     // Header carries the brand logo (server-resolved from the 'brand' site setting)
-    expect($html)->toContain('site-header__logo')->toContain('an-vinh/brand/logo-');
+    expect($html)->toContain('site-header__logo')->toContain(Site::query()->firstWhere('name', 'An Vinh')->code.'/logo-');
 });
 
 it('news posts are listed at /tin-tuc', function (): void {
