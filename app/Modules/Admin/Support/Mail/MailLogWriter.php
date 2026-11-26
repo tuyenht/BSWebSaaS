@@ -91,10 +91,10 @@ final readonly class MailLogWriter implements MailFailureRecorder
      * @param  Closure():T  $write
      * @return T
      */
-    public static function withLockWait(Closure $write): mixed
+    public static function withLockWait(Closure $write, string $wait = self::LOCK_WAIT): mixed
     {
         $before = Cast::string(DB::scalar("select current_setting('lock_timeout')"));
-        DB::select("select set_config('lock_timeout', ?, true)", [self::LOCK_WAIT]);
+        DB::select("select set_config('lock_timeout', ?, true)", [$wait]);
 
         try {
             return $write();

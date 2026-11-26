@@ -67,7 +67,16 @@ final readonly class MailQuotaGate
             throw new MailHeld('site', $this->nextLocalMidnight());
         }
 
-        if ($cap !== null && Cast::int(Cache::get($this->platformKey())) >= $cap) {
+        try {
+            $platformCount = $cap === null ? 0 : Cast::int(Cache::get($this->platformKey()));
+        } catch (Throwable $e) {
+            report($e); // without the platform count the ceiling is not applied, the mail leaves
+
+            $platformCount = 0;
+            $cap = null;
+        }
+
+        if ($cap !== null && $platformCount >= $cap) {
             throw new MailHeld('platform', $this->nextUtcMidnight());
         }
 
@@ -78,7 +87,7 @@ final readonly class MailQuotaGate
                 where mail_daily.sent < ?
                 returning sent",
                 [$siteId, $day, $ceiling],
-            )));
+            )), Cast::string(config('mail.quota.reserve_lock_wait'), '20s'));
         } catch (Throwable $e) {
             // A lock conflict (another job of this website holds its day, past a lock_timeout, or a
             // deadlock) fails this attempt before the mail leaves: the queue tries it again. Sending

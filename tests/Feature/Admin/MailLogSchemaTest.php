@@ -136,6 +136,8 @@ it('removes a month only once it is past 90 days and outside the 3 months the da
     'September still has days within 90 days' => ['2026-12-01', '2026-09', false],
     'across a year' => ['2027-01-15', '2026-09', true],
     'the running month never' => ['2026-11-30', '2026-11', false],
+    '1 May (non-leap): January is outside the kept months but ended only 89 days ago' => ['2027-05-01', '2027-01', false],
+    'the day after, January goes' => ['2027-05-02', '2027-01', true],
 ]);
 
 it('creates the missing coming months and counts how many are ready', function (): void {

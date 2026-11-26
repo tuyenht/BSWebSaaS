@@ -38,9 +38,16 @@ function mqlToday(int $site): string
 function mqlReserve(int $site): MailSendContext
 {
     return app(Tenancy::class)->enter($site, function (): MailSendContext {
-        DB::statement("set local lock_timeout = '300ms'");
+        config(['mail.quota.reserve_lock_wait' => '300ms']);
+        DB::statement("set local lock_timeout = '7s'");
         $context = new MailSendContext;
-        app(MailQuotaGate::class)->reserve($context);
+
+        try {
+            app(MailQuotaGate::class)->reserve($context);
+        } finally {
+            // The reservation's own wait never outlives it: the job's setting is put back.
+            expect(DB::scalar("select current_setting('lock_timeout')"))->toBe('7s');
+        }
 
         return $context;
     });
