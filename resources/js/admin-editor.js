@@ -15,6 +15,9 @@ const SAVES = ['save', 'publish', 'autosave'];
 
 /** A field's value as the server writes it in `saved` (Editor::tracked). */
 export function valueText(value) {
+    if (Array.isArray(value) && value.some((v) => v !== null && typeof v === 'object')) {
+        return JSON.stringify(value); // a list of rows (the job card's boxes): as the server writes it
+    }
     if (Array.isArray(value)) {
         return JSON.stringify([...new Set(value.map((v) => Number.parseInt(v, 10) || 0))]);
     }
