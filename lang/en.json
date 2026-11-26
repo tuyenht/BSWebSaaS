@@ -4930,6 +4930,7 @@
     "storefront.back_to_first": "Back to the first page",
     "storefront.contact_info": "Contact details",
     "storefront.contact_phone": "Phone",
+    "storefront.contact_zalo_cta": "Message us on Zalo",
     "storefront.contact_email": "Email",
     "storefront.contact_address": "Address",
     "validation.required": "The :attribute field is required.",
