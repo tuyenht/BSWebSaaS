@@ -369,6 +369,16 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         ->call('askDelete', $footerBlock->ulid)->assertSet('confirmOpen', true)->html());
     expect($askBlock)->toContain('role="alertdialog"', __('blocks.del_title'));
     file_put_contents($dir.'/blocks-delete.html', str_replace('</body>', $askBlock.'</body>', $blocksPage));
+    // Trình đơn with a large panel built from a shared block still in draft: the row's «Khối tự dựng»
+    // chip, the editor's two ways and block list, the preview box and the self-check line.
+    app(Tenancy::class)->enter(1, function (): void {
+        $panel = ContentBlock::query()->where('key', 'bang-lon-san-pham')->firstOrFail();
+        MenuItem::query()->whereHas('translations', fn ($q) => $q->where('label', 'Về chúng tôi'))
+            ->update(['meta' => json_encode(['mega' => ['type' => 'block', 'block' => $panel->ulid]])]);
+    });
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/menus')->assertOk()->getContent();
+    expect($html)->toContain(e(__('menus.ui_mega_kind_block')), e(__('menus.ui_blocks_open')));
+    file_put_contents($dir.'/menus-block.html', $html);
 
     // The platform Audit log, as a support operator, with a member's row and a support sign-in row.
     DB::connection('pgsql_admin')->statement('truncate audit_logs restart identity cascade');
@@ -1690,5 +1700,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 153);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 154);
 });

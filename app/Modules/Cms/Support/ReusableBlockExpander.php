@@ -88,6 +88,51 @@ final class ReusableBlockExpander
     }
 
     /**
+     * The blocks the large panels of a menu show, for each of these shared blocks that has something
+     * to show (a draft, one gone, one of another website or one with neither language is left out:
+     * its item stays a plain link). Read with the page's references (the same request-wide answers,
+     * so a block a panel and the body both show is read once). As in a body: no reference inside, no
+     * block only a slot may hold. A panel is no place for a link anchor (the page's own may use the
+     * same one) nor for the scroll-in motion (it opens on demand), so both are left off. At most
+     * BlockReference::PAGE_MAX blocks for all the panels together.
+     *
+     * @param  list<string>  $ulids  upper-cased (BlockReference::ulid)
+     * @return array<string, list<array<array-key, mixed>>> ulid → its blocks
+     */
+    public function panels(array $ulids, string $locale): array
+    {
+        $ulids = array_values(array_unique($ulids));
+        if ($ulids === []) {
+            return [];
+        }
+        $panels = [];
+        $count = 0;
+        foreach ($this->load($ulids, $locale) as $ulid => $blocks) {
+            $out = [];
+            foreach ($blocks ?? [] as $one) {
+                $type = $one['type'] ?? null;
+                if (! is_string($type) || $type === BlockReference::TYPE || ($this->registry->has($type) && $this->registry->slotOnly($type))) {
+                    continue;
+                }
+                if ($count >= BlockReference::PAGE_MAX) {
+                    break 2;
+                }
+                $props = is_array($one['props'] ?? null) ? $one['props'] : [];
+                unset($props['anchor_id']);
+                $props['motion'] = 'none';
+                $one['props'] = $props;
+                $out[] = $one;
+                $count++;
+            }
+            if ($out !== []) {
+                $panels[(string) $ulid] = $out;
+            }
+        }
+
+        return $panels;
+    }
+
+    /**
      * The list with each reference replaced by the shared block's blocks: in a body ($slot null) none
      * that only a slot may hold, in a slot only those the slot accepts (LayoutSlots::accepts), and
      * nothing in a slot that takes no reference. An anchor the page already uses (its own blocks', or

@@ -9,10 +9,15 @@ use App\Modules\Cms\Models\MenuItemTranslation;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Cms\Support\ReusableBlockExpander;
 use App\Modules\Shared\Support\MenuPath;
+use App\Modules\Theme\Rendering\BlockRenderer;
+use App\Modules\Theme\Rendering\PageRenderer;
+use App\Modules\Theme\Theming\MenuAreas;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\HtmlString;
 
 /**
  * Resolves the menu bound to a theme region for the active locale into a primitive tree
@@ -30,6 +35,15 @@ use Illuminate\Support\Collection;
  * with nothing behind it is left out like an unpublished page. Each node also carries the item's
  * display options for this language and this moment (MenuItemOptions::forRender): icon,
  * description, button style, large-panel columns, a badge not past its end date, device.
+ *
+ * A top-level item whose large panel shows one of the website's shared blocks gets `panel`: the
+ * block drawn for the page's language (else the default one), or null when it cannot be shown (a
+ * draft, gone, of another website, with neither language): the item is then a plain link, its
+ * children still in the phone menu. The panels of every region are read in ONE query with the
+ * page's own references (ReusableBlockExpander, kept for the request) and drawn in ONE pass
+ * (BlockRenderer::renderBodies: one lookup per kind of picture, page and file, none when they hold
+ * none; no panel takes the page's high-priority image). Both are taken from the container at each
+ * call, never kept: this reader lives as long as the worker that holds it (Octane).
  */
 final readonly class MenuResolver
 {
@@ -42,7 +56,7 @@ final readonly class MenuResolver
 
     /**
      * @param  array<string, mixed>  $contact  the site's details in the page's language (SiteIdentity::for), for the special links
-     * @return list<array<string, mixed>> nodes: {label, url, active, attrs, icon, auto_icon, description, cta, mega, badge, device, children}
+     * @return list<array<string, mixed>> nodes: {label, url, active, attrs, icon, auto_icon, description, cta, mega, panel, badge, device, children}
      */
     public function resolve(string $region, string $locale, string $defaultLocale, string $currentPath = '/', array $contact = []): array
     {
@@ -94,6 +108,58 @@ final readonly class MenuResolver
             [$urls, $titles] = $lookups[$pick['locale']];
             $menuItems = $items->where('menu_id', $pick['menu'])->values();
             $trees[$region] = $this->buildTree($menuItems, null, $pick['locale'], $here, $host, $urls, $titles, 0, $now);
+        }
+
+        return $this->withPanels($trees, $locale);
+    }
+
+    /**
+     * Each top-level node's `mega_block` (the ulid its large panel shows) turned into `panel`: the
+     * shared block's drawing, or null. One read and one drawing for all the regions; a block several
+     * items (or regions) show is drawn once.
+     *
+     * @param  array<string, list<array<string, mixed>>>  $trees
+     * @return array<string, list<array<string, mixed>>>
+     */
+    private function withPanels(array $trees, string $locale): array
+    {
+        $ulids = [];
+        foreach ($trees as $region => $nodes) {
+            // Only an area that draws large panels pays for them (a menu moved to the footer keeps its choice).
+            if (! MenuAreas::mega((string) $region)) {
+                continue;
+            }
+            foreach ($nodes as $node) {
+                if (is_string($node['mega_block'] ?? null)) {
+                    $ulids[] = $node['mega_block'];
+                }
+            }
+        }
+        $html = [];
+        $scripts = [];
+        $blocks = $ulids === [] ? [] : app(ReusableBlockExpander::class)->panels($ulids, $locale);
+        if ($blocks !== []) {
+            $drawn = app(BlockRenderer::class)->renderBodies(array_map(fn (array $list): array => ['blocks' => $list], array_values($blocks)), [], false);
+            foreach (array_keys($blocks) as $i => $ulid) {
+                $one = trim($drawn[$i]['html'] ?? '');
+                if ($one !== '') {
+                    $html[$ulid] = new HtmlString($one);
+                    // The scripts the panel's blocks need load on every page that shows the panel (PageChrome).
+                    $scripts[$ulid] = app(PageRenderer::class)->scriptFlags(['blocks' => $blocks[$ulid]]) + (($drawn[$i]['bgVideo'] ?? false) ? ['bgVideoScript' => true] : []);
+                }
+            }
+        }
+        foreach ($trees as $region => $nodes) {
+            foreach ($nodes as $i => $node) {
+                if (array_key_exists('mega_block', $node)) {
+                    $ulid = MenuAreas::mega((string) $region) && is_string($node['mega_block']) ? $node['mega_block'] : null;
+                    $trees[$region][$i]['panel'] = $ulid === null ? null : ($html[$ulid] ?? null);
+                    if ($ulid !== null && isset($html[$ulid])) {
+                        $trees[$region][$i]['panel_scripts'] = $scripts[$ulid];
+                    }
+                    unset($trees[$region][$i]['mega_block']);
+                }
+            }
         }
 
         return $trees;
@@ -376,12 +442,15 @@ final readonly class MenuResolver
             }
 
             $options = MenuItemOptions::forRender($item->meta ?? [], $locale, $now);
-            $nodes[] = [
+            $panelBlock = $options['mega_block'];
+            unset($options['mega_block']);
+            $node = [
                 'label' => $label,
                 'url' => $url,
                 'active' => $here !== null && MenuPath::normalize($url, $host) === $here,
                 'attrs' => $this->attrs($item),
                 ...$options,
+                'panel' => null,
                 // Only the phone menu draws it, on top-level rows: the icon it picks for a row whose editor chose none
                 // (and did not turn icons off), from the link kind, else the label's words.
                 'auto_icon' => $depth === 0 && $options['icon'] === null && ! $options['cta'] && ! MenuItemOptions::iconOff($item->meta ?? [])
@@ -389,6 +458,11 @@ final readonly class MenuResolver
                     : null,
                 'children' => $this->buildTree($items, $item->id, $locale, $here, $host, $urls, $titles, $depth + 1, $now),
             ];
+            // a large panel opens from the top level only (withPanels() draws it)
+            if ($depth === 0 && $panelBlock !== null) {
+                $node['mega_block'] = $panelBlock;
+            }
+            $nodes[] = $node;
         }
 
         return $nodes;

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Cms\Navigation;
 
 use App\Modules\Cms\Exceptions\MenuChangeRejectedException;
+use App\Modules\Cms\Support\BlockUsageIndex;
 use App\Modules\Theme\Chrome\StorefrontIcons;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
@@ -14,12 +15,17 @@ use Throwable;
  * A menu item's display options, kept in menu_items.meta because the website only draws them and
  * nothing filters on them. Three shapes of the same thing:
  *  - the screen's (draft) shape, see normalize(): {hidden, new_tab, icon, description{locale},
- *    cta, mega{type, columns}, badge{kind, until}, device};
+ *    cta, mega{type: columns, columns} | {type: block, block}, badge{kind, until}, device};
  *  - the stored keys: target ('_blank'), hidden, icon, description{locale}, cta,
- *    mega{type, columns}, badge, badge_until (UTC ISO), device;
+ *    mega{type: columns, columns} | {type: block, block?}, badge, badge_until (UTC ISO), device;
  *  - what the website draws for one language at one moment (forRender()).
  * Every key is checked strictly; a key the screen sends that is not listed here is dropped, and
  * stored keys this class does not own are kept as they are.
+ *
+ * A large panel is built one of two ways: columns of the item's children, or one of the website's
+ * shared blocks (Khối dùng chung), named by its ulid, never by its id (`block` is left out while
+ * none is chosen yet). That the ulid names a block of this website is the write path's check
+ * (ApplyMenuDraft), which may read the database; this class only checks the shape.
  */
 final class MenuItemOptions
 {
@@ -35,8 +41,13 @@ final class MenuItemOptions
 
     public const array DEVICES = ['all', 'desktop', 'phone'];
 
-    /** Columns of a large panel built from the item's children. The block-built panel waits for the block library. */
+    /** Columns of a large panel built from the item's children. */
     public const array MEGA_COLUMNS = [2, 3, 4];
+
+    /** The two ways a large panel is built: columns of the children, or a shared block. */
+    public const string MEGA_COLUMNS_TYPE = 'columns';
+
+    public const string MEGA_BLOCK_TYPE = 'block';
 
     /** The stored icon value for "no icon, not even an automatic one" (the phone menu picks an icon by itself when none is chosen). */
     public const string ICON_OFF = 'none';
@@ -84,14 +95,9 @@ final class MenuItemOptions
             $meta['description'] = $descriptions;
         }
 
-        $mega = $options['mega'] ?? null;
-        if ($mega !== null) {
-            if (! is_array($mega) || ($mega['type'] ?? 'columns') !== 'columns' || ! in_array($mega['columns'] ?? null, self::MEGA_COLUMNS, true)) {
-                throw new MenuChangeRejectedException('option_invalid');
-            }
-            if ($topLevel && $megaAllowed) {
-                $meta['mega'] = ['type' => 'columns', 'columns' => $mega['columns']];
-            }
+        $mega = self::mega($options['mega'] ?? null);
+        if ($mega !== null && $topLevel && $megaAllowed) {
+            $meta['mega'] = $mega;
         }
 
         $badge = $options['badge'] ?? null;
@@ -137,13 +143,17 @@ final class MenuItemOptions
      * The screen's shape of the stored meta (what normalize() takes back).
      *
      * @param  array<string, mixed>  $meta
-     * @return array{hidden: bool, new_tab: bool, icon: string|null, description: array<string, string>, cta: bool, mega: array{type: string, columns: int}|null, badge: array{kind: string, until: string|null}|null, device: string}
+     * @return array{hidden: bool, new_tab: bool, icon: string|null, description: array<string, string>, cta: bool, mega: array{type: 'columns', columns: int}|array{type: 'block', block: string|null}|null, badge: array{kind: string, until: string|null}|null, device: string}
      */
     public static function forScreen(array $meta): array
     {
-        $mega = is_array($meta['mega'] ?? null) && in_array($meta['mega']['columns'] ?? null, self::MEGA_COLUMNS, true)
-            ? ['type' => 'columns', 'columns' => (int) $meta['mega']['columns']]
-            : null;
+        $stored = is_array($meta['mega'] ?? null) ? $meta['mega'] : null;
+        $mega = match (true) {
+            $stored === null => null,
+            ($stored['type'] ?? null) === self::MEGA_BLOCK_TYPE => ['type' => self::MEGA_BLOCK_TYPE, 'block' => BlockUsageIndex::panelBlock($meta)],
+            in_array($stored['columns'] ?? null, self::MEGA_COLUMNS, true) => ['type' => self::MEGA_COLUMNS_TYPE, 'columns' => (int) $stored['columns']],
+            default => null,
+        };
         $badge = is_string($meta['badge'] ?? null) && in_array($meta['badge'], self::BADGES, true)
             ? ['kind' => $meta['badge'], 'until' => is_string($meta['badge_until'] ?? null) ? $meta['badge_until'] : null]
             : null;
@@ -163,10 +173,12 @@ final class MenuItemOptions
 
     /**
      * What the website draws for an item in $locale at $now: a badge past its end date is gone, a
-     * description in another language is not shown.
+     * description in another language is not shown. `mega` is the number of columns of a panel built
+     * from the children; `mega_block` the ulid of the shared block a panel shows instead (the menu
+     * reader turns it into the block's drawing, or into nothing when the block cannot be shown).
      *
      * @param  array<string, mixed>  $meta
-     * @return array{icon: string|null, description: string|null, cta: bool, mega: int|null, badge: string|null, device: string}
+     * @return array{icon: string|null, description: string|null, cta: bool, mega: int|null, mega_block: string|null, badge: string|null, device: string}
      */
     public static function forRender(array $meta, string $locale, DateTimeInterface $now): array
     {
@@ -187,7 +199,8 @@ final class MenuItemOptions
             'icon' => $screen['icon'] === self::ICON_OFF ? null : $screen['icon'],
             'description' => $screen['description'][$locale] ?? null,
             'cta' => $screen['cta'],
-            'mega' => $screen['mega']['columns'] ?? null,
+            'mega' => $screen['mega'] !== null && $screen['mega']['type'] === self::MEGA_COLUMNS_TYPE ? $screen['mega']['columns'] : null,
+            'mega_block' => $screen['mega'] !== null && $screen['mega']['type'] === self::MEGA_BLOCK_TYPE ? $screen['mega']['block'] : null,
             'badge' => $badge['kind'] ?? null,
             'device' => $screen['device'],
         ];
@@ -201,6 +214,41 @@ final class MenuItemOptions
     public static function iconOff(array $meta): bool
     {
         return ($meta['icon'] ?? null) === self::ICON_OFF;
+    }
+
+    /**
+     * The stored shape of the screen's large panel: {type: columns, columns} or {type: block, block}
+     * (block upper-cased, left out while none is chosen); null for no panel.
+     *
+     * @return array{type: 'columns', columns: int}|array{type: 'block', block?: string}|null
+     *
+     * @throws MenuChangeRejectedException option_invalid
+     */
+    private static function mega(mixed $mega): ?array
+    {
+        if ($mega === null) {
+            return null;
+        }
+        if (! is_array($mega)) {
+            throw new MenuChangeRejectedException('option_invalid');
+        }
+        $type = $mega['type'] ?? self::MEGA_COLUMNS_TYPE;
+        if ($type === self::MEGA_COLUMNS_TYPE && in_array($mega['columns'] ?? null, self::MEGA_COLUMNS, true)) {
+            return ['type' => self::MEGA_COLUMNS_TYPE, 'columns' => $mega['columns']];
+        }
+        if ($type !== self::MEGA_BLOCK_TYPE) {
+            throw new MenuChangeRejectedException('option_invalid');
+        }
+        $block = $mega['block'] ?? null;
+        if ($block === null || $block === '') {
+            return ['type' => self::MEGA_BLOCK_TYPE];
+        }
+        $ulid = BlockUsageIndex::panelBlock(['mega' => ['type' => self::MEGA_BLOCK_TYPE, 'block' => $block]]);
+        if ($ulid === null) {
+            throw new MenuChangeRejectedException('option_invalid');
+        }
+
+        return ['type' => self::MEGA_BLOCK_TYPE, 'block' => $ulid];
     }
 
     /** @param array<string, mixed> $options */
