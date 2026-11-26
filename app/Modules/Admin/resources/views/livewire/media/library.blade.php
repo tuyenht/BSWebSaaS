@@ -149,7 +149,9 @@
          },
          drop(e) {
              this.hide();
-             if (e.defaultPrevented || ! this.files(e)) return;
+             const inner = this.inner;
+             this.inner = false;
+             if (e.defaultPrevented || inner || ! [...(e.dataTransfer?.types ?? [])].includes('Files')) return;
              e.preventDefault();
              if (! this.ok()) return;
              const list = [...(e.dataTransfer?.files ?? [])];

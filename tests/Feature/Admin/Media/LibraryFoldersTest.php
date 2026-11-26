@@ -5,6 +5,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Media\Jobs\DeleteLargeMediaFolder;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\MediaFolder;
+use App\Modules\Media\Support\MediaKey;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -742,6 +743,30 @@ it('saves a picture from «Từ đường link» into the folder in view, under 
 
         // with no preview (or the panel shut) the picker's insert stays closed here
         $page->call('insertPicked')->assertForbidden();
+    });
+});
+
+it('forgets a link preview when the upload panel is closed, so it cannot be saved later', function (): void {
+    $user = fdUser('admin');
+    fdFolder(1, 'Công trình', 'cong-trinh', 1);
+    Http::fake(['https://93.184.216.34/xuong.png' => Http::response((string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', true), 200)]);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $page = Livewire::actingAs($user)->test(Library::class)->call('openUpload')
+            ->set('pickerUrlInput', 'https://93.184.216.34/xuong.png')->call('previewPickerUrl')
+            ->assertHasNoErrors();
+        $tempKey = $page->get('pickerUrlPreview')['tempKey'];
+        expect(Storage::disk(MediaKey::disk())->exists($tempKey))->toBeTrue();
+
+        $page->call('closeUpload')
+            ->assertSet('pickerUrlPreview', null)
+            ->assertSet('pickerUrlInput', '');
+        expect(Storage::disk(MediaKey::disk())->exists($tempKey))->toBeFalse();
+
+        $before = Media::query()->count();
+        $page->call('openUpload')->set('pickerSource', 'url')->set('pickerTab', 'upload')
+            ->call('insertPicked')->assertForbidden();
+        expect(Media::query()->count())->toBe($before);
     });
 });
 

@@ -413,6 +413,8 @@ final class Library extends Component
 
     public function closeUpload(): void
     {
+        $this->discardStagedUrlPreview();
+        $this->pickerUrlInput = '';
         $this->uploadOpen = false;
         $this->pickerSource = null;
     }
