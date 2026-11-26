@@ -189,3 +189,24 @@ it('draws no cover when the id names a trashed file, even with the old key of a 
             ->and($pages[$path])->not->toContain($photo);
     }
 });
+
+it('names a share image only when the cover is a picture', function (): void {
+    ['site' => $site] = coverSite(1);
+    app(Tenancy::class)->enter($site, fn () => StorefrontCards::post(StorefrontCards::news(), 'Bài địa chỉ lạ', 'bai-dia-chi-la', CarbonImmutable::parse('2026-10-01 06:00', 'UTC'), ['image_url' => 'javascript://la/a.jpg'], 'Tóm tắt.'));
+    $head = fn (string $path): string => (string) test()->get('http://mau.platform.test'.$path)->assertOk()->getContent();
+
+    // a glyph name is no picture: no address is built from it, in the head or in the article data
+    $glyph = $head('/tin-tuc/bai-hinh-ve');
+    expect($glyph)->not->toContain('/shield?')->not->toContain('/shield"');
+
+    // an outside picture is named as it is, not hung under the media host
+    $outside = $head('/tin-tuc/bai-anh-ngoai');
+    expect($outside)->toContain('property="og:image" content="https://cdn.example.test/a/ngoai.jpg"')
+        ->not->toContain('/https://cdn.example.test');
+
+    // an address that is not a web address names no share image at all
+    expect($head('/tin-tuc/bai-dia-chi-la'))->not->toContain('javascript://la/a.jpg"')->not->toContain('/javascript:');
+
+    // a stored file still goes through the media host at the share width
+    expect($head('/tin-tuc/bai-1'))->toMatch('/property="og:image" content="[^"]*anh-bai-1[^"]*w=1280/');
+});

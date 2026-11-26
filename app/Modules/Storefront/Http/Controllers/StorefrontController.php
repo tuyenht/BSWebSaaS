@@ -325,8 +325,13 @@ final readonly class StorefrontController
         // Resolve at 1280 (whitelisted width; Cloudflare Worker serves it via cf.image).
         // Pages without a featured image omit $extra['ogImage'] so head.blade.php
         // falls back to the site-wide brand og_image automatically.
+        // An old cover value may also be a glyph name (no picture: the brand image stands in) or an
+        // outside web address (kept as it is, like the cover the post itself draws); an address of
+        // any other scheme names no share image.
         $metaImageKey = EntryCover::value($entry);
-        if ($metaImageKey !== '') {
+        if (preg_match('~^https?://~i', $metaImageKey) === 1) {
+            $extra['ogImage'] = $metaImageKey;
+        } elseif (str_contains($metaImageKey, '/') && ! str_contains($metaImageKey, '://')) {
             $extra['ogImage'] = $this->media->url($metaImageKey, 1280);
         }
 
