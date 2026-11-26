@@ -722,6 +722,53 @@ if (typeof window !== 'undefined' && window.Alpine) {
             setCols(k, n) {
                 this.setOpt(k, 'mega', { type: 'columns', columns: parseInt(n, 10) || 3 });
             },
+            // How the large panel is built: columns of the children ('cols') or a shared block ('block').
+            megaKind(it) {
+                return it && it.options.mega && it.options.mega.type === 'block' ? 'block' : 'cols';
+            },
+            setMegaKind(k, kind) {
+                this.setOpt(k, 'mega', kind === 'block' ? { type: 'block', block: null } : { type: 'columns', columns: 3 });
+            },
+            setMegaBlock(k, key) {
+                this.setOpt(k, 'mega', { type: 'block', block: key || null });
+            },
+            // The shared blocks a large panel may show (the "menu" region, plus any one already chosen).
+            panelBlocks() {
+                return (this.menu && this.menu.blocks) || [];
+            },
+            blockOf(key) {
+                return key ? this.panelBlocks().find((b) => b.key === key) || null : null;
+            },
+            blockLabel(b) {
+                return b.name + (b.draft ? t.blockDraft : '');
+            },
+            // «Dựng khối mới» / «Mở Khối dùng chung»: the shared blocks screen at the large panel region;
+            // unsaved rows ask first (save, or go without saving).
+            openBlocks() {
+                const url = cfg.blocks;
+                if (!url) {
+                    return;
+                }
+                const go = () => {
+                    if (window.Livewire && window.Livewire.navigate) {
+                        window.Livewire.navigate(url);
+                    } else {
+                        window.location.href = url;
+                    }
+                };
+                if (!this.dirty().n) {
+                    go();
+                    return;
+                }
+                this.ask = {
+                    title: t.blocksTitle,
+                    body: t.blocksBody,
+                    ok: t.leaveSave,
+                    alt: t.leaveDrop,
+                    run: async () => { await this.save(); if (!this.dirty().n) { go(); } },
+                    altRun: go,
+                };
+            },
             pick(k) {
                 if (this.locked()) {
                     return;
@@ -1465,7 +1512,7 @@ if (typeof window !== 'undefined' && window.Alpine) {
                 return out;
             },
             pvCols(it) {
-                const n = it.options.mega ? it.options.mega.columns : 3;
+                const n = it.options.mega && it.options.mega.type !== 'block' ? it.options.mega.columns : 3;
                 const kids = this.pvKids(it.key);
                 const cols = Array.from({ length: n }, () => []);
                 kids.forEach((k, i) => cols[i % n].push(k));

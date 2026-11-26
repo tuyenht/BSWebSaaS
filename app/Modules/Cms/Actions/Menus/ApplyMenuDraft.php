@@ -7,6 +7,7 @@ namespace App\Modules\Cms\Actions\Menus;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Cms\Actions\Menus\Concerns\EditsMenuTree;
 use App\Modules\Cms\Exceptions\MenuChangeRejectedException;
+use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\MenuItemTranslation;
@@ -52,6 +53,11 @@ use Illuminate\Support\Facades\Gate;
  * is the strictest area showing it (MenuLimits); an item may not be NEW at a level past that limit
  * (a new item, or one moved deeper than it was) — what was already deeper stays as it is.
  *
+ * A large panel may show one of the website's shared blocks (options.mega = {type: block, block:
+ * ulid}): the block must be one of this site's (one lookup by ulid through the site scope for the
+ * whole draft, so another site's block is simply not found: block_invalid), draft blocks included
+ * (the website shows the panel once the block is published). An item that keeps the block it
+ * already showed is not checked again, so a block deleted since never blocks the save of the rest.
  * Where the menu's large panels place shared blocks is rewritten in the same transaction, for every
  * live item of the menu (BlockUsageIndex), when a panel showed or shows one; the items sent to the
  * trash keep theirs.
@@ -112,6 +118,7 @@ final readonly class ApplyMenuDraft
             $this->checkDepth($levels, $live, $limits['depth']);
 
             $targets = $this->targetsFor([...$creates, ...$updates]);
+            $this->checkPanelBlocks($creates, $updates, $live);
             $zone = $this->siteTime->zone();
 
             // To the trash first: one UPDATE, one removal time for every row.
@@ -197,6 +204,39 @@ final readonly class ApplyMenuDraft
 
             return ['version' => MenuVersion::of($menu, $items, $labels), 'keys' => $keys, 'removed' => Cast::int($removed)];
         });
+    }
+
+    /**
+     * Every shared block a new or changed large panel names must be one of this site's: one lookup
+     * for the whole draft (site scope + RLS). A panel that keeps the block its item already showed is
+     * left as it is, even when that block is gone since.
+     *
+     * @param  array<string, array<string, mixed>>  $creates
+     * @param  array<string, array<string, mixed>>  $updates
+     * @param  array<string, MenuItem>  $live
+     *
+     * @throws MenuChangeRejectedException block_invalid
+     */
+    private function checkPanelBlocks(array $creates, array $updates, array $live): void
+    {
+        $wanted = [];
+        foreach ([...$creates, ...$updates] as $key => $entry) {
+            if (! array_key_exists('options', $entry) || ! is_array($entry['options'])) {
+                continue;
+            }
+            // a malformed ulid is MenuItemOptions' to refuse (option_invalid)
+            $ulid = BlockUsageIndex::panelBlock($entry['options']);
+            if ($ulid !== null && $ulid !== BlockUsageIndex::panelBlock(isset($live[$key]) ? $live[$key]->meta : null)) {
+                $wanted[$ulid] = true;
+            }
+        }
+        if ($wanted === []) {
+            return;
+        }
+        $found = ContentBlock::query()->whereIn('ulid', array_keys($wanted))->pluck('ulid')->all();
+        if (count($found) !== count($wanted)) {
+            throw new MenuChangeRejectedException('block_invalid');
+        }
     }
 
     /**
