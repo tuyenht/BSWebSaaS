@@ -119,7 +119,7 @@ return new class extends Migration
         // Rolled back alone after 2099_01_01_000100, this would leave the columns with no key at all:
         // that migration's down() puts the plain keys back first.
         $plain = DB::scalar("SELECT count(*) FROM pg_constraint WHERE contype = 'f' AND confrelid = 'media'::regclass AND conname LIKE '%\_media\_id\_foreign' AND conname NOT LIKE '%\_same\_site\_foreign'");
-        if ((int) $plain < 7) {
+        if (! is_numeric($plain) || (int) $plain < 7) {
             throw new RuntimeException('Same-site media keys: roll back 2099_01_01_000100 first; it puts the plain media keys back, without which this rollback would leave the media columns with no foreign key.');
         }
 
