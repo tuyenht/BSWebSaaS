@@ -109,13 +109,15 @@ final class JobCardForm
      * $stored with the other languages' words as $meta (the card as stored now) holds them: each box
      * the form read takes the words of the stored box it is now (matched as words() matches), the badge
      * the words stored for it. A box the form read that is no longer stored keeps the words the form
-     * read for it (the form puts it back); a box added in the form has none.
+     * read for it (the form puts it back); a box added in the form has none. In the default language
+     * only (the form's boxes are paired by their words in it). After a save, with $stored as saved()
+     * left it, the words that save wrote for each box of the form as it is now.
      *
      * @param  array<array-key, mixed>  $meta
      * @param  STORED  $stored
      * @return STORED
      */
-    private static function othersNow(array $meta, array $stored, string $locale, string $default): array
+    public static function othersNow(array $meta, array $stored, string $locale, string $default): array
     {
         $now = self::load($meta, $locale);
         $pairs = self::pairBoxes(
@@ -197,8 +199,9 @@ final class JobCardForm
 
     /**
      * $meta with the form's card as the form holds it (its shape, this language's words, the other
-     * languages' words as the form read them): what into() writes in the default language, and what
-     * the save checks against the stored rule in any language.
+     * languages' words as $stored holds them): what into() writes in the default language (with the
+     * words stored now, othersNow()), and what the form checks against the stored rule with the words
+     * it read (a new post, another language).
      *
      * @param  array<array-key, mixed>  $meta
      * @param  list<array{key: string, text: string, accent: bool}>  $facts

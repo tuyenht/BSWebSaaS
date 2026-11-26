@@ -11,6 +11,7 @@ use App\Modules\Cms\Support\JobFacts;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteLocale;
 use Closure;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 
 /**
@@ -304,6 +305,68 @@ trait EditsJobCard
             $stored = $now['stored'];
         }
         $this->jobStored = JobCardForm::saved($meta ?? [], $this->jobFactList(), $this->jobDeadline, $this->jobDeadlineAccent, $this->jobBadge, $stored);
+        if (! $this->sharedLocked() && $meta !== null) {
+            // the default language: each box's other-language words as this save wrote them (those stored
+            // when it saved, not when the form read the card), for the next check and the next save
+            $this->jobStored = JobCardForm::othersNow($meta, $this->jobStored, $this->locale, app(SiteLocale::class)->default());
+        }
+    }
+
+    /**
+     * $meta (the meta stored now, read under the save's row lock: the post's, or its pending change's)
+     * with the card this save writes (jobMeta()), judged as written. In the default language each box
+     * takes the other languages' words stored at that moment, not the ones the form read: a box another
+     * language emptied since may be left with words in no language (refused on that box, in the words
+     * the form's own check uses), and one another language worded since is no empty box. A card the
+     * stored rule refuses (JobFacts::errors) writes nothing either. The form keeps what was typed.
+     *
+     * @param  array<array-key, mixed>  $meta
+     * @return array<array-key, mixed>
+     *
+     * @throws ValidationException
+     */
+    private function jobWritten(array $meta): array
+    {
+        $written = $this->jobMeta($meta);
+        if ($written === $meta) {
+            return $written;   // the card as stored
+        }
+        $errors = [];
+        if (! $this->sharedLocked()) {
+            // the form's own check (touchJobFact) then knows the words judged here, refused or not
+            $stored = $this->jobStored;
+            if ($stored !== []) {
+                $this->jobStored = JobCardForm::othersNow($meta, $stored, $this->locale, app(SiteLocale::class)->default());
+            }
+            // the default language writes the form's boxes in its order (JobCardForm::build)
+            $boxes = is_array($written['facts'] ?? null) ? array_values($written['facts']) : [];
+            foreach ($this->jobFactList() as $index => $fact) {
+                $box = $boxes[$index] ?? null;
+                if (is_array($box) && ($box['text'] ?? null) === []) {
+                    $errors['jobFacts.'.$index.'.text'] = Cast::string(__('entries.ed.job_fact_empty', ['n' => $index + 1]));
+                }
+            }
+        }
+        if ($errors === [] && JobFacts::errors(array_intersect_key($written, ['facts' => true, 'badge' => true])) !== []) {
+            $errors['jobFacts'] = Cast::string(__('entries.ed.job_invalid'));
+        }
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        return $written;
+    }
+
+    /**
+     * Whether the save judges the boxes' other-language words as it writes them (jobWritten), not as
+     * the form read them: a saved post in the website's default language, whose save takes the words
+     * stored at that moment. A new post has none stored, and another language writes only its own
+     * words onto the card stored (JobCardForm::words, which never empties a box): both are judged as
+     * the form read the card, before the save.
+     */
+    private function jobJudgedAsWritten(): bool
+    {
+        return $this->ulid !== null && ! $this->sharedLocked();
     }
 
     /**
@@ -339,17 +402,19 @@ trait EditsJobCard
 
                     return;
                 }
+                $asRead = ! $this->jobJudgedAsWritten();
                 foreach ($facts as $index => $fact) {
-                    if ($this->jobFactError($fact, $index) !== null) {
+                    if ($this->jobFactError($fact, $index, $asRead) !== null) {
                         return;   // said on that box
                     }
                 }
                 if (JobCardForm::length($this->jobBadge) > JobFacts::BADGE_MAX || ($this->jobDeadline !== '' && ! JobCardForm::validDay($this->jobDeadline))) {
                     return;   // said on that field
                 }
-                // the rule the stored meta must pass, whoever writes it (checked with the other languages'
-                // words as the form read them: the save takes them as stored then, each passed by its own save)
-                if ($stored !== [] && JobFacts::errors(JobCardForm::build([], $facts, $this->jobDeadline, $this->jobDeadlineAccent, $this->jobBadge, $stored, $this->locale, $locales->enabled(), $locales->default())) !== []) {
+                // the rule the stored meta must pass, whoever writes it, with the other languages' words as the
+                // form read them; a saved post in the default language is judged as its save writes it instead
+                // (jobWritten: it takes the other languages' words stored at that moment)
+                if ($stored !== [] && $asRead && JobFacts::errors(JobCardForm::build([], $facts, $this->jobDeadline, $this->jobDeadlineAccent, $this->jobBadge, $stored, $this->locale, $locales->enabled(), $locales->default())) !== []) {
                     $fail(Cast::string(__('entries.ed.job_invalid')));
                 }
             }],
@@ -357,7 +422,7 @@ trait EditsJobCard
             'jobFacts.*.text' => ['string', new JobFactText(function (string $attribute, Closure $fail): void {
                 $index = (int) explode('.', $attribute)[1];
                 $fact = $this->jobFactList()[$index] ?? null;
-                $why = $fact !== null ? $this->jobFactError($fact, $index) : null;
+                $why = $fact !== null ? $this->jobFactError($fact, $index, ! $this->jobJudgedAsWritten()) : null;
                 if ($why !== null) {
                     $fail($why);
                 }
@@ -378,17 +443,18 @@ trait EditsJobCard
     }
 
     /**
-     * Why a box cannot be stored: no words in any language, or too many in this one.
+     * Why a box cannot be stored: too many words in this language, or ($empty) none in any language as
+     * the form knows the other languages' words.
      *
      * @param  array{key: string, text: string, accent: bool}  $fact
      */
-    private function jobFactError(array $fact, int $index): ?string
+    private function jobFactError(array $fact, int $index, bool $empty = true): ?string
     {
         $length = JobCardForm::length($fact['text']);
         if ($length > JobFacts::FACT_TEXT_MAX) {
             return Cast::string(__('entries.ed.job_fact_long', ['n' => $index + 1, 'max' => JobFacts::FACT_TEXT_MAX]));
         }
-        if ($length === 0 && ($this->jobStored['others'][$fact['key']] ?? []) === []) {
+        if ($empty && $length === 0 && ($this->jobStored['others'][$fact['key']] ?? []) === []) {
             return Cast::string(__('entries.ed.job_fact_empty', ['n' => $index + 1]));
         }
 

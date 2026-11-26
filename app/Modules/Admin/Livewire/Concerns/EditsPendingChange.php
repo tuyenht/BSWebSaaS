@@ -195,9 +195,10 @@ trait EditsPendingChange
             $shared['meta'] = $meta;
             $shared['template_override'] = $this->formTemplate(is_string($before) ? $before : null);
         }
-        // «Thông tin tuyển dụng» goes into the change too (this language's words, every language's boxes)
+        // «Thông tin tuyển dụng» goes into the change too (this language's words, every language's boxes),
+        // judged as written onto the card the change holds now (a refusal takes the transaction back)
         /** @var array<string, mixed> $meta */
-        $meta = $this->jobMeta($meta);
+        $meta = $this->jobWritten($meta);
         $shared['meta'] = $meta;
 
         if ($change === null && $this->sameAsLive($entry, $live, $text, $coverId, $meta, $filing[0] ?? null)) {
