@@ -16,7 +16,6 @@ use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Forms\Actions\EnsureContactForm;
 use App\Modules\Media\Services\EnsureMediaFromKey;
-use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Provisioning\Support\FirstOwner;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -227,7 +226,6 @@ final readonly class SeedAnVinhContent
 
     public function __construct(
         private RouteSync $routes,
-        private MediaUrlResolver $media,
         private EnsureMediaFromKey $ensureMedia,
         private TaxonomyPaths $paths,
         private FirstOwner $owner,
@@ -597,13 +595,20 @@ final readonly class SeedAnVinhContent
 
     /**
      * Stamps the real An Vinh brand name, legal name, and NAP on the existing SiteProfile
-     * (created blank by ProvisionSite). Also upserts the localized brand_name translation.
+     * (created blank by ProvisionSite), with its brand images as the profile's pictures (logo,
+     * favicon: a small cut of the logo until An Vinh supplies a dedicated favicon file; share image:
+     * the about photo), never as addresses. Also upserts the localized brand_name translation.
      */
     private function updateBrandNAP(string $locale): void
     {
         $profile = SiteProfile::query()->firstOrCreate([], []);
+        $logo = $this->ensureMedia->fromSeedSource(self::KEY_LOGO);
+        $about = $this->ensureMedia->fromSeedSource(self::KEY_ABOUT);
 
         $profile->fill([
+            'logo_media_id' => $logo->id,
+            'favicon_media_id' => $logo->id,
+            'og_image_media_id' => $about->id,
             'brand_name' => 'Cơ Khí Chính Xác An Vinh',
             'legal_name' => 'CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THIẾT KẾ GIA CÔNG CƠ KHÍ AN VINH',
             'tax_code' => '0108649706',
@@ -624,26 +629,18 @@ final readonly class SeedAnVinhContent
             ],
         );
 
-        // Storefront brand setting: name, logo, SEO defaults, and NAP.
+        // Storefront brand setting: name, SEO defaults, and NAP (the brand images are the profile's, above).
         // - name: displayed in the header logo aria-label and footer copyright
         // - legal_name: full legal name shown in the footer company block
         // - description: meta description fallback for pages without a per-page description
-        // - og_image: fallback og:image; per-entry images override this in StorefrontController
         // - address/phone/email/license: NAP for the footer; conditional — tenants without
         //   these keys get a minimal footer so no An Vinh content leaks to other tenants
-        $logo = $this->ensureMedia->fromSeedSource(self::KEY_LOGO)->storage_key;
-        $about = $this->ensureMedia->fromSeedSource(self::KEY_ABOUT)->storage_key;
         SiteSetting::query()->updateOrCreate(
             ['group_name' => 'general', 'key' => 'brand'],
             ['value' => [
                 'name' => 'Cơ Khí Chính Xác An Vinh',
                 'legal_name' => 'Công ty TNHH TM & DV Thiết Kế Gia Công Cơ Khí An Vinh',
-                'logo' => $this->media->url($logo),
-                // Browser-tab icon (PNG is fine). Interim: a small cut of the logo until An Vinh
-                // supplies a dedicated favicon file — still beats showing the platform's icon.
-                'favicon' => $this->media->url($logo, 64),
                 'description' => 'Dẫn đầu về giải pháp cơ khí chính xác, chuyên thiết kế, gia công đồ gá, jig, và khuôn mẫu chất lượng cao tại Việt Nam.',
-                'og_image' => $this->media->url($about, 1280),
                 // Combined address string — used by the footer display and as fallback streetAddress
                 // for tenants that haven't been re-seeded with the split NAP fields below.
                 'address' => 'Thôn Xuân Sơn, Xã Trung Giã, TP Hà Nội',

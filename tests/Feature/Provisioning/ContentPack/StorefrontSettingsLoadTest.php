@@ -212,6 +212,28 @@ it('drops the in-use row of a heading mask the pack load takes away, as the admi
     expect($rows)->toBe(0);
 });
 
+it('keeps the heading mask staff chose and its in-use row when the pack manages only other keys', function (): void {
+    $key = 'setting:theme.heading_decor';
+    [$rowId, $ulid] = ContentPacks::in($this->siteId, function (): array {
+        $media = StorefrontCards::media('staff-mask');
+        $media->forceFill(['mime' => 'image/png', 'storage_key' => 's/library/staff-mask.png'])->save();
+        $row = SiteSetting::query()->create(['group_name' => 'theme', 'key' => 'heading_decor', 'value' => ['style' => 'star', 'mask_ulid' => $media->ulid]]);
+        Mediable::query()->create(['media_id' => $media->id, 'mediable_type' => 'site_setting', 'mediable_id' => $row->id, 'collection' => HeadingDecorInput::MASK_COLLECTION]);
+
+        return [(int) $row->id, (string) $media->ulid];
+    });
+    sfAddSetting($this->folder, $key, ['style' => 'gear'], ['managed_keys' => ['style']]);
+
+    [$exit, $output] = ContentPacks::load('demo-co', [$key]);
+    expect($exit)->toBe(0, $output);
+
+    $stored = sfStored($this->siteId, 'theme', 'heading_decor');
+    $rows = ContentPacks::in($this->siteId, fn (): int => Mediable::query()->where('mediable_type', 'site_setting')->where('mediable_id', $rowId)->where('collection', HeadingDecorInput::MASK_COLLECTION)->count());
+    expect($stored['style'] ?? null)->toBe('gear')
+        ->and(strtoupper((string) ($stored['mask_ulid'] ?? '')))->toBe(strtoupper($ulid))
+        ->and($rows)->toBe(1);
+});
+
 it('keeps a value staff changed in the admin, shows both at -vv, and writes the pack only when forced', function (string $group, string $name, array $first, array $second, array $staff): void {
     $key = "setting:{$group}.{$name}";
     sfAddSetting($this->folder, $key, $first);

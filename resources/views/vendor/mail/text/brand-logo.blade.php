@@ -1,0 +1,2 @@
+@props(['brand'])
+{{ $brand['name'] }}

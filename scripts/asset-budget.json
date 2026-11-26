@@ -194,6 +194,10 @@
       "js": 1739,
       "css": 0
     },
+    "resources/js/admin-email-signature.js": {
+      "js": 2188,
+      "css": 0
+    },
     "resources/js/admin-media-drawer.js": {
       "js": 1128,
       "css": 0

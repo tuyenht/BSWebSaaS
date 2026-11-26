@@ -48,6 +48,9 @@ const ADMIN_BRAND_LITERAL_EXCEPTIONS = [
     // The text-colour palette of the writing frame: fixed tones the author writes into the document
     // (design 06), one of which happens to equal a table colour. Content, not the admin brand.
     'app/Modules/Admin/resources/views/components/rich-editor.blade.php' => ['#2050a0'],
+    // The button colours a website picks for its own mail (board c-email-settings, «Màu nút & tiêu đề»):
+    // fixed swatches stored in the site's settings and written into the mail. Mail, not the admin brand.
+    'app/Modules/Admin/Support/MailBrand.php' => ['#2050a0', '#2f6fd0', '#0e7490', '#0f766e', '#15803d', '#4338ca', '#5b3fb3', '#9d174d'],
 ];
 
 /** The @theme declarations that hold the build-time default, by token => table field. */

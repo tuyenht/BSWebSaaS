@@ -2,23 +2,35 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Livewire\Concerns\ShowsSettingsToast;
 use App\Modules\Admin\Livewire\Concerns\TracksSavedState;
+use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
+use App\Modules\Admin\Support\MailBrand;
 use App\Modules\Admin\Support\MailHostGuard;
 use App\Modules\Admin\Support\PlatformSettings;
 use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Admin\Support\TenantMailer;
 use App\Modules\Identity\Support\SupportSession;
+use App\Modules\Media\Models\Media;
+use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
+use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Models\Site;
 use Closure;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Mail\Markdown;
 use Illuminate\Mail\Message;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -34,14 +46,29 @@ use Throwable;
  *
  * Secrets are write-only (a "stored" flag is shown; blank-on-save keeps the value) and
  * persist AES-256-GCM encrypted via SecretCipher.
+ *
+ * A website's page has two tabs: «Gửi thư» (the outbox above) and «Chữ ký & thương hiệu»: the logo,
+ * the button colour and the signature every mail it sends carries (MailBrand). They share the one
+ * save bar; a save writes only the part that changed, so a signature is saved without the outbox
+ * being checked again, and the other way round.
  */
 final class EmailSettings extends Component
 {
+    use ShowsSettingsToast;
     use TracksSavedState;
+    use WithMediaLibraryPicker {
+        openImagePicker as private openLibrary;
+    }
 
     /** The fields the save bar compares with the saved setup (a secret only while one is typed). */
     private const array TRACKED = ['provider', 'smtpHost', 'smtpPort', 'smtpEncryption', 'smtpUsername', 'smtpPassword',
         'oauthClientId', 'oauthClientSecret', 'fromAddress', 'fromName', 'replyTo'];
+
+    /** The fields of «Chữ ký & thương hiệu» (the signature is compared as it would be stored). */
+    private const array BRAND_TRACKED = ['brandColor', 'logoKey', 'sigLayout', 'sigHtml'];
+
+    /** The tabs of a website's page, in the board's order («Mẫu thư» comes with the mail templates). */
+    public const array TABS = ['send', 'sign'];
 
     /** The outboxes a website picks from, in the board's order; a mail provider signs in with OAuth. */
     public const array OUTBOXES = ['platform', 'google', 'microsoft', 'other'];
@@ -100,6 +127,29 @@ final class EmailSettings extends Component
 
     public ?string $testResult = null;
 
+    /** The tab shown (?tab=sign opens on it); the browser switches at once and tells the server with its next request. */
+    public string $tab = 'send';
+
+    /** The mail's button colour: one of the swatches, '' = the website's own brand colour. */
+    public string $brandColor = '';
+
+    /** The logo at the top of every mail: a picture of the library by its key ('' = none). */
+    public string $logoKey = '';
+
+    /** Where the signature puts the logo: MailBrand::LAYOUTS. */
+    public string $sigLayout = 'left';
+
+    /** The signature as the editor writes it ('' = the layout's own, filled from «Thông tin chung»). */
+    public string $sigHtml = '';
+
+    /** The website's own brand colour (its theme's), what '' above stands for. */
+    #[Locked]
+    public string $siteColor = MailBrand::FALLBACK_COLOR;
+
+    /** What the library was opened for: the logo, or a picture in the signature (set on the server only). */
+    #[Locked]
+    public string $pickerFor = '';
+
     public function boot(): void
     {
         // Defense-in-depth: the livewire/update endpoint bypasses route middleware, so
@@ -111,6 +161,8 @@ final class EmailSettings extends Component
 
     public function mount(string $scope = 'site'): void
     {
+        $tab = request()->query('tab');
+        $this->tab = is_string($tab) && in_array($tab, self::TABS, true) ? $tab : 'send';
         $this->loadConfig($scope);
         $this->rememberSaved();
     }
@@ -118,11 +170,12 @@ final class EmailSettings extends Component
     /** Back to the saved setup (the save bar's "Bỏ thay đổi"); a secret typed but not saved is dropped. */
     public function resetChanges(): void
     {
-        $this->reset(...self::TRACKED);
+        $this->reset(...self::TRACKED, ...self::BRAND_TRACKED);
         $this->resetErrorBag();
         $this->testResult = null;
         $this->loadConfig($this->scope);
         $this->rememberSaved();
+        $this->sendSignatureToEditor();
     }
 
     private function loadConfig(string $scope): void
@@ -140,6 +193,7 @@ final class EmailSettings extends Component
         if ($this->scope === 'site') {
             // Whether the platform's outbox really sends (a blank password does not), as the mailer reads it.
             $this->platformConfigured = app(TenantMailer::class)->canSendWith(null);
+            $this->loadBrand();
         }
 
         if ($cfg === null || $cfg === []) {
@@ -167,6 +221,20 @@ final class EmailSettings extends Component
         $connectedEmail = $oauth['email'] ?? null;
         $this->oauthConnectedEmail = is_string($connectedEmail) && ! empty($oauth['refresh_token']) ? $connectedEmail : null;
         $this->oauthConnectedProvider = $this->oauthConnectedEmail !== null ? $this->oauthProvider : null;
+    }
+
+    /** «Chữ ký & thương hiệu» as saved; a logo whose picture left the library shows empty. */
+    private function loadBrand(): void
+    {
+        $brand = app(MailBrand::class);
+        $stored = $brand->stored();
+        $this->siteColor = $brand->siteColor();
+        $this->brandColor = $stored['color'] !== null && $stored['color'] !== $this->siteColor ? $stored['color'] : '';
+        $this->logoKey = $stored['logo_media_id'] !== null
+            ? Cast::string(Media::query()->whereKey($stored['logo_media_id'])->where('mime', 'like', 'image/%')->value('storage_key'))
+            : '';
+        $this->sigLayout = $stored['layout'];
+        $this->sigHtml = $stored['html'] ?? '';
     }
 
     /**
@@ -219,7 +287,41 @@ final class EmailSettings extends Component
             $this->syncMethod();
         }
 
-        $this->validate($this->rules(), ['smtpPort.in' => __('admin.smtp_port_mail_only', ['ports' => implode(', ', MailHostGuard::PORTS)])]);
+        // Only what changed is checked and written: a signature saves without the outbox, and back.
+        $changed = $this->unsavedFields();
+        $brandChanged = $this->scope === 'site' && array_intersect($changed, self::BRAND_TRACKED) !== [];
+        $senderChanged = ! $brandChanged || array_diff($changed, self::BRAND_TRACKED) !== [];
+
+        try {
+            $this->validate(
+                [...($senderChanged ? $this->rules() : []), ...($brandChanged ? $this->brandRules() : [])],
+                [
+                    'smtpPort.in' => __('admin.smtp_port_mail_only', ['ports' => implode(', ', MailHostGuard::PORTS)]),
+                    'sigHtml.max' => __('admin.em_sig_too_long'),
+                    'brandColor.in' => __('admin.em_brand_color_invalid'),
+                    'sigLayout.in' => __('admin.em_sig_layout_invalid'),
+                ],
+            );
+        } catch (ValidationException $e) {
+            // The save bar names the first error; the tab that holds it opens.
+            $this->showTabOf(array_keys($e->errors()));
+
+            throw $e;
+        }
+
+        if ($brandChanged && ! $this->saveBrand()) {
+            $this->showTabOf(['logoKey']);
+
+            return false;
+        }
+        if (! $senderChanged) {
+            $this->loadBrand();
+            $this->rememberSaved();
+            $this->sendSignatureToEditor();
+            session()->flash('status', __('admin.saved'));
+
+            return true;
+        }
 
         $repo = $this->configRepo();
         $existing = $repo->get('email') ?? [];
@@ -286,9 +388,207 @@ final class EmailSettings extends Component
         $this->reset('smtpPassword', 'oauthClientSecret');
         $this->loadConfig($this->scope);
         $this->rememberSaved();
+        if ($brandChanged) {
+            $this->sendSignatureToEditor();
+        }
         session()->flash('status', __('admin.saved'));
 
         return true;
+    }
+
+    /**
+     * Opens the tab that holds the first of these fields.
+     *
+     * @param  list<string>  $fields
+     */
+    private function showTabOf(array $fields): void
+    {
+        if ($this->scope !== 'site' || $fields === []) {
+            return;
+        }
+        $tab = in_array($fields[0], self::BRAND_TRACKED, true) ? 'sign' : 'send';
+        if ($tab !== $this->tab) {
+            $this->tab = $tab;
+            $this->dispatch('email-tab', tab: $tab);
+        }
+    }
+
+    /** Writes «Chữ ký & thương hiệu»; false (with the error under the logo) when its picture left the library. */
+    private function saveBrand(): bool
+    {
+        // Only the fields that changed are written over what is stored: a colour saved from an older
+        // page leaves a newer logo or signature be.
+        $changed = array_flip($this->unsavedFields());
+        $logoId = null;
+        if (isset($changed['logoKey']) && $this->logoKey !== '') {
+            $logoId = Media::query()->where('storage_key', $this->logoKey)->where('mime', 'like', 'image/%')->value('id');
+            if (! is_int($logoId)) {
+                $this->addError('logoKey', __('admin.em_logo_gone'));
+
+                return false;
+            }
+        }
+
+        $repo = app(SettingsRepository::class);
+        $stored = app(MailBrand::class)->stored();
+        if (isset($changed['logoKey']) || isset($changed['brandColor'])) {
+            $repo->put('email', 'brand', [
+                'logo_media_id' => isset($changed['logoKey']) ? $logoId : $stored['logo_media_id'],
+                'color' => isset($changed['brandColor']) ? ($this->brandColor !== '' ? $this->brandColor : null) : $stored['color'],
+            ]);
+        }
+        if (isset($changed['sigLayout']) || isset($changed['sigHtml'])) {
+            $layout = isset($changed['sigLayout']) ? $this->sigLayout : $stored['layout'];
+            $repo->put('email', 'signature', [
+                'layout' => $layout,
+                'html' => isset($changed['sigHtml']) ? app(MailBrand::class)->clean($this->sigHtml, $layout) : $stored['html'],
+            ]);
+        }
+
+        return true;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function brandRules(): array
+    {
+        return [
+            'brandColor' => ['nullable', 'string', Rule::in($this->swatchColors())],
+            'logoKey' => ['nullable', 'string', 'max:512'],
+            'sigLayout' => ['required', 'string', Rule::in(MailBrand::LAYOUTS)],
+            'sigHtml' => ['nullable', 'string', 'max:'.MailBrand::SIGNATURE_MAX],
+        ];
+    }
+
+    /**
+     * The button colours offered: the board's eight, after the website's own when it is none of them.
+     *
+     * @return list<string>
+     */
+    private function swatchColors(): array
+    {
+        $colors = array_keys(MailBrand::SWATCHES);
+
+        return in_array($this->siteColor, $colors, true) ? $colors : [$this->siteColor, ...$colors];
+    }
+
+    /** A swatch: the mail's buttons and headings take that colour (the website's own is stored as following it). */
+    public function pickBrandColor(string $color): void
+    {
+        if ($this->scope !== 'site') {
+            return;
+        }
+        $color = MailBrand::hex($color) ?? '';
+        if (! in_array($color, $this->swatchColors(), true)) {
+            $this->addError('brandColor', __('admin.em_brand_color_invalid'));
+
+            return;
+        }
+        $this->resetErrorBag('brandColor');
+        $this->brandColor = $color === $this->siteColor ? '' : $color;
+    }
+
+    /**
+     * A layout button: where the logo sits, and the signature that layout shows (what was written for
+     * it earlier on this page, or '' for its own).
+     */
+    public function setSigLayout(string $layout, string $html = ''): void
+    {
+        if ($this->scope !== 'site' || ! in_array($layout, MailBrand::LAYOUTS, true)) {
+            return;
+        }
+        // Taken even when too long, so the server holds what the editor shows; «Lưu» then refuses it.
+        $this->sigLayout = $layout;
+        $this->sigHtml = $html;
+        $this->updatedSigHtml();
+    }
+
+    /** «Về mặc định»: the layout's own signature again (saved with «Lưu», undone with «Bỏ thay đổi»). */
+    public function resetSignature(): void
+    {
+        if ($this->scope !== 'site') {
+            return;
+        }
+        $this->sigHtml = '';
+        $this->resetErrorBag('sigHtml');
+        $this->sendSignatureToEditor(saved: false);
+        $this->notify(__('admin.em_sig_reset_done'));
+    }
+
+    public function updatedTab(): void
+    {
+        if (! in_array($this->tab, self::TABS, true)) {
+            $this->tab = 'send';
+        }
+    }
+
+    public function updatedSigHtml(): void
+    {
+        $this->resetErrorBag('sigHtml');
+        if (mb_strlen($this->sigHtml) > MailBrand::SIGNATURE_MAX) {
+            $this->addError('sigHtml', __('admin.em_sig_too_long'));
+        }
+    }
+
+    /** The logo box: the library opens on pictures, for the logo. */
+    public function pickLogo(): void
+    {
+        if ($this->scope !== 'site') {
+            return;
+        }
+        $this->pickerFor = 'logo';
+        $this->openLibrary('single');
+    }
+
+    /** The signature's «Ảnh»: the library opens on pictures, for one put at the caret. */
+    public function pickSignatureImage(): void
+    {
+        if ($this->scope !== 'site') {
+            return;
+        }
+        $this->pickerFor = 'sig';
+        $this->openLibrary('single');
+    }
+
+    /** The picker is opened only through pickLogo() / pickSignatureImage(). */
+    public function openImagePicker(string $mode = 'single'): void
+    {
+        if ($this->pickerFor !== '') {
+            $this->openLibrary('single');
+        }
+    }
+
+    /** «Gỡ logo»: mail goes out with the website's name instead; the picture stays in the library. */
+    public function removeLogo(): void
+    {
+        $this->logoKey = '';
+        $this->resetErrorBag('logoKey');
+    }
+
+    protected function pickedSingleImage(Media $media): void
+    {
+        if (! str_starts_with($media->mime, 'image/')) {
+            return;
+        }
+        if ($this->pickerFor === 'logo') {
+            $this->logoKey = $media->storage_key;
+            $this->resetErrorBag('logoKey');
+        } elseif ($this->pickerFor === 'sig') {
+            // At most 200px across in the signature, never wider than the picture itself.
+            $width = is_int($media->width) && $media->width > 0 ? min(200, $media->width) : 200;
+            $this->dispatch('email-signature-image', url: app(MediaUrlResolver::class)->url($media->storage_key, 600),
+                alt: Cast::string($media->alt[app()->getLocale()] ?? null), width: $width);
+        }
+        $this->pickerFor = '';
+    }
+
+    /** The editor keeps its own page part: after a load, a save or «Về mặc định» it is handed the signature again. */
+    private function sendSignatureToEditor(bool $saved = true): void
+    {
+        if ($this->scope === 'site') {
+            $this->dispatch('email-signature-load', layout: $this->sigLayout, html: $this->sigHtml, saved: $saved);
+        }
     }
 
     public function connect(): RedirectResponse
@@ -342,7 +642,13 @@ final class EmailSettings extends Component
         }
 
         try {
-            Mail::raw(__('admin.test_email_body'), function (Message $message) use ($to): void {
+            // Through the shared mail frame, so the test shows the website's logo, colour and signature.
+            $mail = (new MailMessage)->subject(__('admin.test_email_subject'))->line(__('admin.test_email_body'));
+            $views = [
+                'html' => new HtmlString((string) $mail->render()),
+                'text' => new HtmlString((string) app(Markdown::class)->renderText('notifications::email', $mail->toArray())),
+            ];
+            Mail::send($views, [], function (Message $message) use ($to): void {
                 $message->to($to)->subject(__('admin.test_email_subject'));
             });
             $this->testResult = 'ok';
@@ -358,6 +664,14 @@ final class EmailSettings extends Component
         $state = [];
         foreach (self::TRACKED as $field) {
             $state[$field] = $this->{$field};
+        }
+        if ($this->scope === 'site') {
+            $state['brandColor'] = $this->brandColor;
+            $state['logoKey'] = $this->logoKey;
+            $state['sigLayout'] = $this->sigLayout;
+            $state['sigHtml'] = mb_strlen($this->sigHtml) > MailBrand::SIGNATURE_MAX
+                ? $this->sigHtml
+                : (app(MailBrand::class)->clean($this->sigHtml, $this->sigLayout) ?? '');
         }
 
         return $state;
@@ -460,6 +774,58 @@ final class EmailSettings extends Component
         return $from !== '' ? $from : Cast::string(config('mail.from.address'));
     }
 
+    /**
+     * What «Chữ ký & thương hiệu» draws: the swatches with their names and contrast, the logo, the
+     * layouts' own signatures, the variables with this website's values and its social links.
+     *
+     * @return array<string, mixed>
+     */
+    private function signTab(): array
+    {
+        $brand = app(MailBrand::class);
+        $color = $this->brandColor !== '' ? $this->brandColor : $this->siteColor;
+        $swatches = [];
+        foreach ($this->swatchColors() as $hex) {
+            $key = MailBrand::SWATCHES[$hex] ?? null;
+            $name = $key !== null ? __('admin.em_sw_'.$key) : __('admin.em_sw_site');
+            $ok = MailBrand::contrast($hex) >= MailBrand::AA;
+            $swatches[] = [
+                'hex' => $hex,
+                'on' => $hex === $color,
+                'ink' => MailBrand::textOn($hex),
+                'label' => __($ok ? 'admin.em_sw_note_ok' : 'admin.em_sw_note_low', [
+                    'name' => $name,
+                    'ink' => __(MailBrand::textOn($hex) === '#ffffff' ? 'admin.em_ink_white' : 'admin.em_ink_black'),
+                ]),
+            ];
+        }
+        $logo = $this->logoKey !== '' ? app(MediaUrlResolver::class)->url($this->logoKey, 400) : null;
+        $values = $brand->values();
+        $links = app(SiteIdentity::class)->for(app()->getLocale())['social_links'] ?? null;
+        $socials = [];
+        foreach (is_array($links) ? $links : [] as $network => $url) {
+            if (is_string($url) && $url !== '') {
+                $key = 'admin.gs.f.'.$network;
+                $socials[] = ['name' => Lang::has($key) ? Cast::string(__($key)) : Str::headline((string) $network), 'url' => $url];
+            }
+        }
+        $defaults = [];
+        foreach (MailBrand::LAYOUTS as $layout) {
+            $defaults[$layout] = MailBrand::defaultSignature($layout);
+        }
+
+        return [
+            'color' => $color,
+            'lowContrast' => MailBrand::contrast($color) < MailBrand::AA,
+            'swatches' => $swatches,
+            'logo' => $logo,
+            'defaults' => $defaults,
+            'values' => $values,
+            'socials' => $socials,
+            'canPick' => Gate::allows('media.view'),
+        ];
+    }
+
     private function siteName(): string
     {
         $current = app(CurrentSite::class);
@@ -476,6 +842,7 @@ final class EmailSettings extends Component
             'status' => $platform ? null : $this->deliveryStatus(),
             'platformFrom' => $platform ? '' : $this->platformFrom(),
             'siteName' => $platform ? '' : $this->siteName(),
+            'sign' => $platform ? null : $this->signTab(),
         ]);
         $view->layout($platform ? 'admin::layouts.platform' : 'admin::layouts.app');
         $view->title($platform ? __('admin.system_email') : __('admin.email_settings'));

@@ -118,6 +118,7 @@ const ADMIN_PREVIEW_SCREENS = [
     'dashboard' => '/admin',
     'list' => '/admin/content',
     'form' => '/admin/settings/email',
+    'email-sign' => '/admin/settings/email?tab=sign',
     'gallery' => '/admin/_gallery',
     'menus' => '/admin/menus',
     'account' => '/admin/account',

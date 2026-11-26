@@ -352,6 +352,26 @@ it('sets brand and NAP on SiteProfile', function (): void {
     });
 });
 
+it('names the brand images by the profile\'s pictures, never by an address in the brand setting', function (): void {
+    $site = seedPrecisionSite();
+
+    app(Tenancy::class)->enter($site->id, function (): void {
+        // a site seeded before: the brand setting held the images as addresses
+        SiteSetting::query()->updateOrCreate(['group_name' => 'general', 'key' => 'brand'], ['value' => [
+            'name' => 'An Vinh', 'logo' => 'https://files.example.test/an-vinh/brand/logo.png', 'favicon' => 'https://files.example.test/x.png', 'og_image' => 'https://files.example.test/y.jpg',
+        ]]);
+        app(SeedAnVinhContent::class)->handle();
+
+        $profile = SiteProfile::query()->firstOrFail();
+        $key = fn (mixed $id): ?string => Media::query()->whereKey($id)->value('storage_key');
+        expect($key($profile->logo_media_id))->toEndWith('/logo-e76d7cb1dfe4.png')
+            ->and($profile->favicon_media_id)->toBe($profile->logo_media_id)
+            ->and($key($profile->og_image_media_id))->toEndWith('/about-doi-ngu-a7b78a0a6ff7.jpg')
+            ->and(SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->value('value'))
+            ->toHaveKey('name')->not->toHaveKeys(['logo', 'favicon', 'og_image']);
+    });
+});
+
 it('contains no insulation, Formosa, or Mông Dương strings', function (): void {
     $site = seedPrecisionSite();
 

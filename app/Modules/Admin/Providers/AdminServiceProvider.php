@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Providers;
 
 use App\Modules\Admin\Console\CheckSocialApps;
+use App\Modules\Admin\Console\MediaRefsById;
 use App\Modules\Admin\Console\ReconcileBlockUsage;
 use App\Modules\Admin\Console\ReconcileContentUsage;
 use App\Modules\Admin\Console\RecoverSiteOwnerCommand;
@@ -113,7 +114,7 @@ final class AdminServiceProvider extends ServiceProvider
         View::addNamespace('admin', $this->app->basePath('app/Modules/Admin/resources/views'));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CheckSocialApps::class, ReconcileBlockUsage::class, ReconcileContentUsage::class, RecoverSiteOwnerCommand::class, RekeySiteMedia::class]);
+            $this->commands([CheckSocialApps::class, MediaRefsById::class, ReconcileBlockUsage::class, ReconcileContentUsage::class, RecoverSiteOwnerCommand::class, RekeySiteMedia::class]);
         }
 
         // Meta's data-deletion callback and its status page: per IP, a burst Meta never needs.

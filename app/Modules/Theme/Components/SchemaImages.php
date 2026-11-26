@@ -62,6 +62,20 @@ final class SchemaImages
     }
 
     /**
+     * $props with every image leaf passed through $fn, whatever it holds (an id, an older address or
+     * key, null), for a pass that converts stored values; every other prop is untouched.
+     *
+     * @param  array<array-key, mixed>  $props
+     * @param  array<array-key, mixed>  $schema
+     * @param  callable(mixed): mixed  $fn
+     * @return array<array-key, mixed>
+     */
+    public static function mapImages(array $props, array $schema, callable $fn): array
+    {
+        return self::walk($props, $schema, $fn, ['image']);
+    }
+
+    /**
      * $props with every video leaf resolved for rendering: a media_id → its source from $videos
      * (only this site's video files are in it), anything else — an unknown, other-site, trashed or
      * non-video id, a string — → null, which the section renders as "no video".
