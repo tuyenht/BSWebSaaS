@@ -85,7 +85,9 @@ it('leaves the picker shut in another language: the cover is every language\'s a
         $page = coverDropPage();
         $c = Livewire::actingAs($member)->test(Editor::class, ['ulid' => $page->ulid, 'locale' => 'en']);
         // the box offers no drop there (its «Chọn ảnh» says where the cover is changed)
-        expect($c->html())->not->toContain('$wire.dropCover()');
+        expect($c->html())->toContain('data-cover-pick')
+            ->not->toContain('Kéo thả ảnh vào đây')
+            ->not->toContain('$wire.dropCover()');
         $c->call('dropCover')
             ->assertReturned(false)
             ->assertSet('showImagePicker', false)

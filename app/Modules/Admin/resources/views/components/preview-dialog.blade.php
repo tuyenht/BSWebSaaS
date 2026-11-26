@@ -13,9 +13,9 @@
     // The frame is in the Tab order (a keyboard reaches the website to scroll it), and Escape pressed
     // inside it closes the dialog too. It stacks and locks the page as the shared modal does (data-bs-modal).
     // Behaviour: resources/js/admin-site-preview.js, started by the shared lazy loader.
-    // The frame loads again on every open, so a save in between shows; its address is read from the root
-    // (data-url), which the server keeps current when the form switches language. Up to 600px wide it fills the
-    // screen. The website keeps its own light colours inside the frame.
+    // The frame loads again on every open, so a save in between shows. Its address (data-url on the root,
+    // which no redraw changes: wire:ignore.self) names the record by its code in the page's language, and
+    // switching language loads the editor again. Up to 600px wide it fills the screen. The website keeps its own light colours inside the frame.
 @endphp
 <div x-ignore wire:ignore.self data-bs-lazy="bsSitePreview" x-data="bsSitePreview" data-bs-modal
      x-on:bs-site-preview.window="show()"

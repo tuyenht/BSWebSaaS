@@ -17,11 +17,19 @@ export function sitePreview() {
             // as the board: «Đóng» takes the focus (after the trap has put it on the first button)
             setTimeout(() => this.$root.querySelector('[data-site-preview-close]')?.focus(), 30);
         },
-        // Escape pressed inside the frame (same origin) never reaches this window's listeners.
+        // Escape pressed inside the frame (same origin) never reaches this window's listeners. One
+        // Escape closes one thing: while something of the website is open (its menu, its search, a
+        // language list: aria-expanded="true" before the key reaches it) or the website took the key,
+        // the website closes its own part and the preview stays.
         frameKeys(frame) {
             try {
-                frame.contentWindow?.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape' && this.open) {
+                const win = frame.contentWindow;
+                let siteOpen = false;
+                win?.addEventListener('keydown', (e) => {
+                    siteOpen = e.key === 'Escape' && !!win.document.querySelector('[aria-expanded="true"]');
+                }, true);
+                win?.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && this.open && !siteOpen && !e.defaultPrevented) {
                         e.preventDefault();
                         this.hide();
                     }
