@@ -239,10 +239,11 @@ export function areaEmptyOf(areas, area, main) {
         }
         return false;
     };
-    if (shown(area, 2)) {
+    // the website follows one hop only (MenuResolver), so the screen does too
+    if (shown(area, 1)) {
         return false;
     }
-    return !(area.key === 'handheld' && shown(areas.find((x) => x.key === 'primary'), 2));
+    return !(area.key === 'handheld' && shown(areas.find((x) => x.key === 'primary'), 1));
 }
 
 // The rows the shared tree draws from the draft: each with its level, its place among its siblings

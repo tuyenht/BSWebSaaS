@@ -249,6 +249,10 @@ test('an area is marked empty only when the website shows no menu there in the m
     // following an area shows that area's menu, or nothing when it has none
     assert.equal(areaEmptyOf([primary, follows], follows, 'vi'), false);
     assert.equal(areaEmptyOf([area('primary', {}), follows], follows, 'vi'), true);
+    // one hop only, like the website: following an area that itself follows another shows nothing
+    const mid = area('handheld', { follows: 'primary' });
+    const twoHops = area('footer', { follows: 'handheld' });
+    assert.equal(areaEmptyOf([primary, mid, twoHops], twoHops, 'vi'), true);
     // another language's choice does not count for the main one
     assert.equal(areaEmptyOf([{ key: 'footer', shows: { en: { menu: 'M2' } } }], { key: 'footer', shows: { en: { menu: 'M2' } } }, 'vi'), true);
 });
