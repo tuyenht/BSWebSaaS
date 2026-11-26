@@ -189,3 +189,20 @@ it('draws no cover when the id names a trashed file, even with the old key of a 
             ->and($pages[$path])->not->toContain($photo);
     }
 });
+
+it('names a share image only when the cover is a picture', function (): void {
+    coverSite(1);
+    $head = fn (string $path): string => (string) test()->get('http://mau.platform.test'.$path)->assertOk()->getContent();
+
+    // a glyph name is no picture: no address is built from it, in the head or in the article data
+    $glyph = $head('/tin-tuc/bai-hinh-ve');
+    expect($glyph)->not->toContain('/shield?')->not->toContain('/shield"');
+
+    // an outside picture is named as it is, not hung under the media host
+    $outside = $head('/tin-tuc/bai-anh-ngoai');
+    expect($outside)->toContain('property="og:image" content="https://cdn.example.test/a/ngoai.jpg"')
+        ->not->toContain('/https://cdn.example.test');
+
+    // a stored file still goes through the media host at the share width
+    expect($head('/tin-tuc/bai-1'))->toMatch('/property="og:image" content="[^"]*anh-bai-1[^"]*w=1280/');
+});
