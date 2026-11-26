@@ -2436,6 +2436,7 @@
     "media.usage_layout_slots_of": ":name · Side column / End-of-page call to action",
     "media.usage_block": "Shared block · :name",
     "media.usage_branches": "Branches / Factories",
+    "media.usage_heading_mask": "Decoration under headings",
     "media.picker_trash": "Trash",
     "media.picker_trash_restore": "Restore",
     "media.picker_trash_purge": "Delete permanently",

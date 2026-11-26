@@ -29,6 +29,7 @@ use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Components\BlockReference;
 use App\Modules\Workflow\Actions\InstantiateWorkflow;
 use Illuminate\Support\Facades\View;
+use Tests\Fixtures\StorefrontCards;
 
 /*
  * Query Budget guardrail (CLAUDE.md §6): assert a hard ceiling of DB queries per
@@ -191,6 +192,34 @@ it('renders the storefront home with contact buttons drawn by their own pictures
 
     expect($html)->toContain('sf-fc__img')->toContain($keys['goi'])->toContain($keys['zalo'])
         ->and($count)->toBeLessThanOrEqual($budget);
+});
+
+it('renders the storefront home with a heading mask picture within the budget plus one', function (): void {
+    // The mask picture resolves in ONE media query, by its row ulid or by an older storage key alike;
+    // with none set the heading decoration adds no query, so this is the home budget + 1.
+    $budget = 12;
+    StorefrontCards::pinMediaConfig();   // an absolute file address, the only shape printed in url()
+    $mask = app(Tenancy::class)->enter(1, function (): Media {
+        $hash = hash('sha256', 'heading-mask');
+
+        return Media::query()->create([
+            'collection' => 'library', 'slug' => 'hoa-van', 'hash' => $hash, 'storage_key' => 's/library/hoa-van-'.substr($hash, 0, 12).'.png',
+            'mime' => 'image/png', 'size' => 2_000, 'width' => 320, 'height' => 32,
+        ]);
+    });
+    $url = e(app(MediaUrlResolver::class)->fileUrl($mask->storage_key));
+
+    foreach ([['mask_ulid' => $mask->ulid], ['mask_media' => $mask->storage_key]] as $setting) {
+        app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'theme', 'key' => 'heading_decor'], ['value' => $setting]));
+
+        $html = '';
+        $count = countQueries(function () use (&$html): void {
+            $html = $this->get('http://a.test/')->assertOk()->getContent();
+        });
+
+        expect($html)->toContain('--sf-decor-mask:url('.$url.')')
+            ->and($count)->toBeLessThanOrEqual($budget);
+    }
 });
 
 it('renders the storefront home with the full chrome within its query budget', function (): void {

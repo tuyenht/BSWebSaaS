@@ -2436,6 +2436,7 @@
     "media.usage_layout_slots_of": ":name · Cột phải / Kêu gọi cuối trang",
     "media.usage_block": "Khối dùng chung · :name",
     "media.usage_branches": "Chi nhánh / Nhà máy",
+    "media.usage_heading_mask": "Hoa văn dưới tiêu đề",
     "media.picker_trash": "Thùng rác",
     "media.picker_trash_restore": "Khôi phục",
     "media.picker_trash_purge": "Xóa vĩnh viễn",

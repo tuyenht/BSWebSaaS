@@ -6,6 +6,7 @@ namespace App\Modules\Theme\Theming;
 
 use App\Modules\Media\Services\MediaLibraryUrls;
 use App\Modules\Tenancy\Context\CurrentSite;
+use App\Modules\Theme\Components\ButtonLink;
 
 /**
  * The decoration under a section's heading: the site-wide setting `theme.heading_decor` plus the
@@ -14,11 +15,13 @@ use App\Modules\Tenancy\Context\CurrentSite;
  * Nothing stored reaches the markup as text. The drawn shape is a class picked from the fixed STYLES /
  * WIDTHS / WEIGHTS lists (storefront.css paints it, shapes included); a colour is printed only as a CSS
  * variable inside the head's `:root{}` after it matched a hex pattern or a palette step; the mask
- * picture is a media key resolved through the site's own library (a PNG of this site, not in the
- * trash) to an address of fixed shape. A stored value that is not listed falls back to the default,
- * so a setting nobody saved draws exactly what a heading drew before.
+ * picture is a library row named by its ulid (`mask_ulid`; a setting saved before pictures were
+ * named by row holds its storage key in `mask_media` instead, read the same way), resolved through
+ * the site's own library (a PNG of this site, not in the trash) to an address of fixed shape. A
+ * stored value that is not listed falls back to the default, so a setting nobody saved draws exactly
+ * what a heading drew before.
  *
- * @phpstan-type Settings array{style: string, color: string, custom_color: string, gradient: bool, custom_color_2: string, align: string, width: string, weight: string, mask_media: string, mask_keep_color: bool}
+ * @phpstan-type Settings array{style: string, color: string, custom_color: string, gradient: bool, custom_color_2: string, align: string, width: string, weight: string, mask_media: string, mask_ulid: string, mask_keep_color: bool}
  */
 final class HeadingDecor
 {
@@ -97,6 +100,7 @@ final class HeadingDecor
             $color = 'accent';
         }
         $mask = $text('mask_media');
+        $maskUlid = trim($text('mask_ulid'));
 
         return [
             'style' => $pick('style', self::SITE_STYLES, ''),
@@ -108,6 +112,7 @@ final class HeadingDecor
             'width' => $pick('width', self::WIDTHS, 'medium'),
             'weight' => $pick('weight', self::WEIGHTS, 'medium'),
             'mask_media' => preg_match('~^[A-Za-z0-9._/-]{1,255}$~D', $mask) === 1 ? $mask : '',
+            'mask_ulid' => preg_match(ButtonLink::ULID_PATTERN, $maskUlid) === 1 ? strtoupper($maskUlid) : '',
             'mask_keep_color' => ($raw['mask_keep_color'] ?? false) === true,
         ];
     }
@@ -200,23 +205,27 @@ final class HeadingDecor
     }
 
     /**
-     * The address of the site's mask picture, or null when none is set, the key is not a PNG of this
-     * site (another site's, in the trash, a different type) or the address is not of the plain shape
-     * printed unquoted. One query, only when a key is set, and once per request.
+     * The address of the site's mask picture, or null when none is set, the picture is not a PNG of
+     * this site (another site's, in the trash, a different type) or the address is not of the plain
+     * shape printed unquoted. The row ulid is read first; only a setting without one is read by its
+     * older storage key. One query, only when a picture is named, and once per request.
      *
      * @param  Settings  $site
      */
     private function maskUrl(array $site): ?string
     {
-        if ($site['mask_media'] === '') {
+        $ulid = $site['mask_ulid'];
+        $key = $ulid === '' ? $site['mask_media'] : '';
+        if ($ulid === '' && $key === '') {
             return null;
         }
         if (! $this->current->hasId()) {
             return null;
         }
-        $scope = $this->current->id().'|'.$site['mask_media'];
+        $scope = $this->current->id().'|'.$ulid.'|'.$key;
         if (($this->mask['scope'] ?? null) !== $scope) {
-            $url = $this->media->fileUrls([$site['mask_media']], self::MASK_MIMES)[$site['mask_media']] ?? null;
+            $found = $this->media->fileRefUrls($ulid !== '' ? [$ulid] : [], $key !== '' ? [$key] : [], self::MASK_MIMES);
+            $url = $ulid !== '' ? ($found['media'][$ulid] ?? null) : ($found['files'][$key] ?? null);
             $this->mask = ['scope' => $scope, 'url' => is_string($url) && preg_match(self::URL_SAFE, $url) === 1 ? $url : null];
         }
 

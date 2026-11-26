@@ -1,10 +1,13 @@
 <?php
 
+use App\Modules\Admin\Support\MediaUsageLocator;
+use App\Modules\Admin\Support\Settings\HeadingDecorInput;
 use App\Modules\Admin\Support\Settings\SetHeadingDecor;
 use App\Modules\Admin\Support\Settings\SettingsChangeRejected;
 use App\Modules\Cms\Validation\ValidPageJson;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
+use App\Modules\Media\Models\Mediable;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteSetting;
@@ -19,6 +22,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\Str;
 use Tests\Fixtures\StorefrontCards;
 use Tests\Fixtures\StorefrontCss;
 
@@ -324,7 +328,166 @@ describe('the mask picture', function (): void {
         }
 
         $save($mine->storage_key)();
-        expect(app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('key', 'heading_decor')->first()->value['mask_media']))->toBe($mine->storage_key);
+        expect(app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('key', 'heading_decor')->first()->value))
+            ->toHaveKey('mask_ulid', $mine->ulid)->not->toHaveKey('mask_media');
+    });
+});
+
+describe('the mask picture named by its row', function (): void {
+    it('reads the ulid trimmed and in capitals, and drops a malformed one', function (): void {
+        $ulid = (string) Str::ulid();
+
+        expect(HeadingDecor::clean(['mask_ulid' => ' '.strtolower($ulid).' '])['mask_ulid'])->toBe($ulid)
+            ->and(HeadingDecor::clean(['mask_ulid' => 'not-a-ulid'])['mask_ulid'])->toBe('')
+            ->and(HeadingDecor::clean(['mask_ulid' => ['x']])['mask_ulid'])->toBe('')
+            ->and(HeadingDecor::clean([])['mask_ulid'])->toBe('');
+    });
+
+    it('draws the same for its row ulid as for its older key, and the ulid wins over a key', function (): void {
+        $png = decorPng(1, 'vien-theo-dong');
+        $other = decorPng(1, 'vien-khac');
+        $read = fn (): array => [app(Tenancy::class)->enter(1, fn () => app(ThemeResolver::class)->cssVariables()), decorFaq(1)];
+
+        decorSet(1, ['mask_media' => $png->storage_key, 'mask_keep_color' => true]);
+        $byKey = $read();
+        decorSet(1, ['mask_ulid' => strtolower($png->ulid), 'mask_keep_color' => true]);
+        $byUlid = $read();
+
+        expect($byKey[0]['sf-decor-mask'])->toBe('url(https://files.test/'.$png->storage_key.')')
+            ->and($byUlid)->toBe($byKey)
+            ->and($byUlid[1])->toContain('class="sf-decor sf-decor--image"');
+
+        decorSet(1, ['mask_ulid' => $png->ulid, 'mask_media' => $other->storage_key]);
+        expect($read()[0]['sf-decor-mask'])->toBe('url(https://files.test/'.$png->storage_key.')');
+    });
+
+    it('draws nothing for another site\'s, a trashed, a non-PNG or an unknown row, with two sites interleaved, and never falls back to the key', function (): void {
+        $mine = decorPng(1, 'vien-a');
+        $theirs = decorPng(2, 'vien-b');
+        $webp = decorPng(1, 'vien-webp', 'image/webp');
+        $trashed = decorPng(1, 'vien-rac');
+        app(Tenancy::class)->enter(1, fn () => Media::query()->whereKey($trashed->id)->first()->delete());
+
+        decorSet(1, ['mask_ulid' => $mine->ulid]);
+        // site 2 names site 1's rows (a PNG, a WebP, one in the Trash) or no row at all, with its own key beside it
+        foreach ([$mine->ulid, $webp->ulid, $trashed->ulid, (string) Str::ulid()] as $named) {
+            decorSet(2, ['mask_ulid' => $named, 'mask_media' => $theirs->storage_key, 'style' => 'wave']);
+            foreach (range(1, 2) as $_) {
+                $a = app(Tenancy::class)->enter(1, fn () => app(ThemeResolver::class)->cssVariables());
+                $b = app(Tenancy::class)->enter(2, fn () => app(ThemeResolver::class)->cssVariables());
+
+                expect($a['sf-decor-mask'])->toBe('url(https://files.test/'.$mine->storage_key.')')
+                    ->and($b)->not->toHaveKey('sf-decor-mask')
+                    ->and(decorFaq(2))->toContain('class="sf-decor sf-decor--wave"')->not->toContain('sf-decor--mask');
+            }
+        }
+
+        decorSet(2, ['mask_ulid' => $theirs->ulid]);
+        expect(app(Tenancy::class)->enter(2, fn () => app(ThemeResolver::class)->cssVariables())['sf-decor-mask'])->toBe('url(https://files.test/'.$theirs->storage_key.')');
+
+        foreach ([$webp->ulid, $trashed->ulid] as $named) {
+            decorSet(1, ['mask_ulid' => $named]);
+            expect(decorFaq(1))->toContain('sf-section-head__rule')->not->toContain('sf-decor');
+        }
+    });
+
+    it('is saved by the row\'s own ulid, given a ulid or an older key, and the key is not kept', function (): void {
+        $mine = decorPng(1, 'vien-luu');
+        $this->actingAs(decorAdmin());
+        $save = fn (array $input) => app(Tenancy::class)->enter(1, fn () => app(SetHeadingDecor::class)->handle($input));
+        $stored = fn (): array => app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('key', 'heading_decor')->first()->value);
+
+        $save(['style' => 'wave', 'mask_ulid' => strtolower($mine->ulid)]);
+        expect($stored())->toHaveKey('mask_ulid', $mine->ulid)->not->toHaveKey('mask_media')
+            ->and(decorFaq(1))->toContain('class="sf-decor sf-decor--mask"');
+
+        $save(['mask_media' => $mine->storage_key]);
+        expect($stored())->toHaveKey('mask_ulid', $mine->ulid)->not->toHaveKey('mask_media');
+    });
+
+    it('refuses at save a row that is not this site\'s PNG outside the Trash, a malformed ulid and a mask named twice', function (): void {
+        $mine = decorPng(1, 'vien-dung');
+        $theirs = decorPng(2, 'vien-b');
+        $webp = decorPng(1, 'vien-webp', 'image/webp');
+        $trashed = decorPng(1, 'vien-rac');
+        app(Tenancy::class)->enter(1, fn () => Media::query()->whereKey($trashed->id)->first()->delete());
+        $this->actingAs(decorAdmin());
+        $save = fn (array $input) => fn () => app(Tenancy::class)->enter(1, fn () => app(SetHeadingDecor::class)->handle(['style' => 'wave'] + $input));
+
+        foreach ([$theirs->ulid, $webp->ulid, $trashed->ulid, (string) Str::ulid(), 'not-a-ulid', $mine->storage_key, 7] as $ulid) {
+            expect($save(['mask_ulid' => $ulid]))->toThrow(SettingsChangeRejected::class, 'image_invalid: mask_ulid');
+        }
+        expect($save(['mask_ulid' => $mine->ulid, 'mask_media' => $mine->storage_key]))->toThrow(SettingsChangeRejected::class, 'image_invalid: mask_ulid')
+            ->and(app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('key', 'heading_decor')->exists()))->toBeFalse()
+            ->and(app(Tenancy::class)->enter(1, fn () => Mediable::query()->count()))->toBe(0);
+    });
+
+    it('is refused without the settings permission, and nothing is written', function (): void {
+        $mine = decorPng(1, 'vien-quyen');
+        $this->actingAs(decorAdmin(1, allowed: false));
+
+        expect(fn () => app(Tenancy::class)->enter(1, fn () => app(SetHeadingDecor::class)->handle(['mask_ulid' => $mine->ulid])))->toThrow(AuthorizationException::class)
+            ->and(app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('key', 'heading_decor')->exists()))->toBeFalse()
+            ->and(app(Tenancy::class)->enter(1, fn () => Mediable::query()->count()))->toBe(0);
+    });
+});
+
+describe('the mask in the library', function (): void {
+    it('is listed as used under the heading decoration, its row follows each save and the setting\'s removal, and site B sees nothing', function (): void {
+        $first = decorPng(1, 'vien-mot');
+        $second = decorPng(1, 'vien-hai');
+        $loose = decorPng(1, 'chua-dung');
+        $otherPic = decorPng(2, 'vien-site-b');
+        decorSet(2, ['mask_ulid' => $otherPic->ulid]);   // written directly: site B never saved through the admin
+        $this->actingAs(decorAdmin());
+        $save = fn (array $input) => app(Tenancy::class)->enter(1, fn () => app(SetHeadingDecor::class)->handle($input));
+        $rows = fn (int $siteId = 1): array => app(Tenancy::class)->enter($siteId, fn (): array => Mediable::query()
+            ->where('collection', HeadingDecorInput::MASK_COLLECTION)->where('mediable_type', 'site_setting')->orderBy('media_id')->pluck('media_id')->all());
+        $read = static fn (int $siteId, Media $media): array => app(Tenancy::class)->enter($siteId, function () use ($media): array {
+            $locator = app(MediaUsageLocator::class);
+            $used = Media::query();
+            $locator->constrain($used, true, true);
+            $unused = Media::query();
+            $locator->constrain($unused, false);
+
+            return [$used->orderBy('id')->pluck('id')->all(), $unused->orderBy('id')->pluck('id')->all(), $locator->usagesFor($media, 'vi'), $locator->countsFor([$media])];
+        });
+
+        app()->setLocale('vi');
+        $save(['mask_ulid' => $first->ulid]);
+        [$used, $unused, $usages, $counts] = $read(1, $first);
+        expect($rows())->toBe([$first->id])
+            ->and($used)->toBe([$first->id])->and($unused)->toBe([$second->id, $loose->id])
+            ->and($usages)->toBe([['kind' => 'site', 'role' => 'content', 'label' => 'Hoa văn dưới tiêu đề', 'url' => null]])
+            ->and($counts)->toBe([$first->id => 1]);
+
+        $save(['mask_media' => $second->storage_key]);   // a screen opened before pictures were named by row
+        expect($rows())->toBe([$second->id]);
+        $save(['style' => 'wave']);
+        expect($rows())->toBe([]);
+        $save(['mask_ulid' => $second->ulid]);
+        expect($rows())->toBe([$second->id]);
+        $save([]);
+        expect($rows())->toBe([]);
+
+        [$used, $unused, $usages] = $read(2, $otherPic);
+        expect($used)->toBe([])->and($unused)->toBe([$otherPic->id])->and($usages)->toBe([])->and($rows(2))->toBe([]);
+    });
+
+    it('is recorded by the reconcile for a setting by ulid or by older key, and a row with no setting is dropped', function (): void {
+        $byUlid = decorPng(1, 'vien-ulid');
+        $byKey = decorPng(2, 'vien-khoa');
+        decorSet(1, ['mask_ulid' => $byUlid->ulid]);
+        decorSet(2, ['mask_media' => $byKey->storage_key]);
+        $rows = fn (int $siteId): array => app(Tenancy::class)->enter($siteId, fn (): array => Mediable::query()
+            ->where('collection', HeadingDecorInput::MASK_COLLECTION)->where('mediable_type', 'site_setting')->pluck('media_id')->all());
+
+        $this->artisan('media:reconcile-content-usage')->assertSuccessful();
+        expect($rows(1))->toBe([$byUlid->id])->and($rows(2))->toBe([$byKey->id]);
+
+        app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('key', 'heading_decor')->delete());   // a road that skips the model
+        $this->artisan('media:reconcile-content-usage')->assertSuccessful();
+        expect($rows(1))->toBe([])->and($rows(2))->toBe([$byKey->id]);
     });
 });
 
@@ -371,12 +534,12 @@ describe('saving a mask', function (): void {
         $save = fn (array $input) => app(Tenancy::class)->enter(1, fn () => app(SetHeadingDecor::class)->handle($input));
         $stored = fn (): array => app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('key', 'heading_decor')->first()->value);
 
-        $save(['mask_media' => $mine->storage_key]);
-        expect($stored()['style'])->toBe('')->and($stored()['mask_media'])->toBe($mine->storage_key)
+        $save(['mask_ulid' => $mine->ulid]);
+        expect($stored()['style'])->toBe('')->and($stored()['mask_ulid'])->toBe($mine->ulid)
             ->and(decorFaq(1))->toContain('class="sf-decor sf-decor--mask"')->not->toContain('sf-section-head__rule');
 
         $save(['style' => 'wave']);
-        expect($stored()['mask_media'])->toBe('')
+        expect($stored()['mask_ulid'])->toBe('')
             ->and(decorFaq(1))->toContain('class="sf-decor sf-decor--wave"')->not->toContain('sf-decor--mask');
     });
 
@@ -431,7 +594,7 @@ describe('the setting', function (): void {
         $stored = app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('group_name', 'theme')->where('key', 'heading_decor')->first()->value);
         expect($stored)->toEqual([
             'style' => 'wave', 'color' => '700', 'custom_color' => '', 'gradient' => false, 'custom_color_2' => '',
-            'align' => 'center', 'width' => 'wide', 'weight' => 'light', 'mask_media' => '', 'mask_keep_color' => false,
+            'align' => 'center', 'width' => 'wide', 'weight' => 'light', 'mask_ulid' => '', 'mask_keep_color' => false,
         ])->and(decorFaq(1))->toContain('class="sf-decor sf-decor--wave sf-decor--wide sf-decor--light"');
 
         // Saving nothing brings the plain rule back; the other site never changed.
@@ -490,11 +653,13 @@ describe('queries', function (): void {
 
         decorSet(1, ['style' => 'wave']);
         $plain = $count(1);
-        decorSet(1, ['mask_media' => $png->storage_key]);
-        $one = $count(1);
-        $five = $count(5);
+        foreach ([['mask_media' => $png->storage_key], ['mask_ulid' => $png->ulid], ['mask_ulid' => $png->ulid, 'mask_media' => 'no/such/key.png']] as $setting) {
+            decorSet(1, $setting);
+            $one = $count(1);
+            $five = $count(5);
 
-        expect($one - $plain)->toBeLessThanOrEqual(1)->and($five)->toBe($one)
-            ->and(decorBlocks(1, [['type' => 'faq', 'props' => ['heading' => DECOR_HEADING, 'items' => [['q' => 'Ổn không ạ', 'a' => 'Đáp ạ']]]]]))->toContain('sf-decor--mask');
+            expect($one - $plain)->toBeLessThanOrEqual(1)->and($five)->toBe($one)
+                ->and(decorBlocks(1, [['type' => 'faq', 'props' => ['heading' => DECOR_HEADING, 'items' => [['q' => 'Ổn không ạ', 'a' => 'Đáp ạ']]]]]))->toContain('sf-decor--mask');
+        }
     });
 });

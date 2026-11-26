@@ -4,6 +4,7 @@ namespace App\Modules\Admin\Console;
 
 use App\Modules\Admin\Support\Settings\BranchList;
 use App\Modules\Admin\Support\Settings\FloatingContactInput;
+use App\Modules\Admin\Support\Settings\HeadingDecorInput;
 use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
@@ -24,7 +25,8 @@ use Illuminate\Console\Command;
  * of blocks: each entry, the site's block slots setting and each category with blocks of its own
  * for those slots, and each shared block (its body in every language); and the site's branch and
  * factory pictures (collection 'branch', owner the `storefront.footer` setting row, BranchList) and the floating contact's own icon pictures
- * (collection 'contact_icon', owner the `storefront.floating_contact` row), and each entry's
+ * (collection 'contact_icon', owner the `storefront.floating_contact` row) and the heading mask
+ * picture (collection 'heading_mask', owner the `theme.heading_decor` row), and each entry's
  * featured picture (collection 'cover', EntryCoverUsage::reconcileSite, set-based, entries in the
  * Trash included), dropping the cover rows of entries that no longer exist. Every save reconciles, so this covers content that never passed through a save —
  * seeded pages, a fresh deploy, or self-healing after a drift — and drops the rows of a slot owner
@@ -128,6 +130,15 @@ class ReconcileContentUsage extends Command
             ->delete();
         if ($floating !== null) {
             FloatingContactInput::syncIconUsage(Cast::int($floating->getKey()), $floating->value);
+            $count++;
+        }
+
+        $decor = SiteSetting::query()->where('group_name', 'theme')->where('key', 'heading_decor')->first(['id', 'value']);
+        Mediable::query()->where('mediable_type', 'site_setting')->where('collection', HeadingDecorInput::MASK_COLLECTION)
+            ->when($decor !== null, fn ($query) => $query->where('mediable_id', '!=', $decor?->getKey()))
+            ->delete();
+        if ($decor !== null) {
+            HeadingDecorInput::syncMaskUsage(Cast::int($decor->getKey()), $decor->value);
             $count++;
         }
 

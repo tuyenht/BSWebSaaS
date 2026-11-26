@@ -233,6 +233,7 @@ it('refuses a heading decoration the admin would refuse', function (array $value
     'a colour that is not hex' => [['style' => 'gear', 'color' => 'custom', 'custom_color' => 'red'], "'custom_color' is not accepted"],
     'an unknown field' => [['style' => 'gear', 'glow' => true], "'glow' is not accepted"],
     'a mask picture' => [['mask_media' => 'a/b.png'], 'mask_media is a picture of the site'],
+    'a mask picture by its row' => [['mask_ulid' => '01JD6Q5Z8R3W4X2Y1V0T9S8R7Q'], 'mask_ulid is a picture of the site'],
     'an empty value' => [[], 'value must not be empty'],
 ]);
 
