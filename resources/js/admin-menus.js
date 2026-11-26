@@ -225,6 +225,26 @@ export function goneSpanOf(items) {
     return items.filter((it) => gone.has(it.key) || under(it.key)).map((it) => it.key);
 }
 
+// Whether an area shows no menu at all in the main language (the screen marks it "Chưa dùng trình đơn
+// nào"): it has no menu of its own, follows an area that has none, and is not the phone menu, which
+// shows the main menu while it has none of its own (PageChrome mobileMenu).
+export function areaEmptyOf(areas, area, main) {
+    const shown = (a, hops) => {
+        const s = (a && a.shows && a.shows[main]) || {};
+        if (s.menu) {
+            return true;
+        }
+        if (s.follows && hops > 0) {
+            return shown(areas.find((x) => x.key === s.follows), hops - 1);
+        }
+        return false;
+    };
+    if (shown(area, 2)) {
+        return false;
+    }
+    return !(area.key === 'handheld' && shown(areas.find((x) => x.key === 'primary'), 2));
+}
+
 // The rows the shared tree draws from the draft: each with its level, its place among its siblings
 // and its guide lines (the fields of a TreeRows entry). While a filter is on, the matches stand flat,
 // in order, and cannot be moved.
@@ -1402,7 +1422,16 @@ if (typeof window !== 'undefined' && window.Alpine) {
             areaRows() {
                 const all = this.d ? this.d.areas : [];
                 const list = all.filter((a) => !a.advanced || this.advOn);
-                return list.map((a, i) => ({ ...a, head: i === 0 || list[i - 1].group !== a.group }));
+                return list.map((a, i) => ({
+                    ...a,
+                    head: i === 0 || list[i - 1].group !== a.group,
+                    tip: fill(t.areaTip, { help: a.help, n: a.depth }),
+                    codeTip: fill(t.codeTip, { code: a.key }),
+                    empty: areaEmptyOf(all, a, cfg.main),
+                }));
+            },
+            get advCount() {
+                return this.d ? this.d.areas.filter((a) => a.advanced).length : 0;
             },
             areaValue(a, loc) {
                 const s = a.shows[loc] || {};
