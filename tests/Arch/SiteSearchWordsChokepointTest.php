@@ -19,8 +19,9 @@ use Tests\Fixtures\ModelWriteBypasses;
  * routes/ and the migrations that come after the word tables' own. `search:words` corrects what still
  * slips through, and its nightly run logs it.
  *
- * Listed bypasses (each writes none of the columns): `cms:resanitize-bodies` saves a translation
- * quietly after reading only its id and body, so only the body is written; SiteSearchWords deletes
+ * Listed bypasses (each writes none of the columns): `cms:resanitize-bodies` and `media:refs-by-id`
+ * (MediaRefsBackfill) save a translation quietly after reading only its id and body, so only the body
+ * is written; SiteSearchWords deletes
  * from the word table it is given (a computed table in a file that mentions products), never from a
  * translations table; CategoryRelinker deletes rows of the category pivot it is given
  * (entry_taxonomies or product_taxonomies) when categories are merged.
@@ -29,6 +30,7 @@ use Tests\Fixtures\ModelWriteBypasses;
 /** @var array<string, string> file => the one rule allowed there */
 const SITE_WORDS_ALLOWED = [
     'app/Modules/Cms/Console/ResanitizePageBodies.php' => 'save without events',
+    'app/Modules/Admin/Support/MediaBackfill/MediaRefsBackfill.php' => 'save without events',
     'app/Modules/Shared/Support/SiteSearchWords.php' => 'raw SQL delete from a computed table',
     'app/Modules/Cms/Routing/CategoryRelinker.php' => 'raw SQL delete from a computed table',
 ];
