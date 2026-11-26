@@ -150,7 +150,7 @@
                                         <input id="em-redirect-{{ $k }}" type="text" readonly value="{{ \App\Modules\Admin\Support\OAuthFlow::callbackUrl() }}"
                                                class="field block w-full select-all rounded border border-border-strong bg-surface px-3 font-mono text-text">
                                         <x-bs-admin::button type="button" variant="soft" size="sm"
-                                                         x-on:click="navigator.clipboard.writeText(@js(\App\Modules\Admin\Support\OAuthFlow::callbackUrl())); copied = true; setTimeout(() => copied = false, 1500)">
+                                                         x-on:click="navigator.clipboard.writeText({{ \Illuminate\Support\Js::from(\App\Modules\Admin\Support\OAuthFlow::callbackUrl()) }}); copied = true; setTimeout(() => copied = false, 1500)">
                                             <span x-show="!copied">{{ __('admin.copy') }}</span><span x-show="copied" x-cloak>{{ __('admin.copied') }}</span>
                                         </x-bs-admin::button>
                                     </div>
@@ -162,7 +162,7 @@
                                             <x-bs-admin::icon name="ri-send-plane" class="size-4" />{{ __('admin.em_resend_test') }}
                                         </x-bs-admin::button>
                                         <x-bs-admin::button type="button" variant="ghost" color="danger"
-                                                         x-on:click="$bsConfirm({ text: @js(__('admin.em_disconnect_confirm', ['email' => $oauthConnectedEmail])), confirm: @js(__('admin.em_disconnect')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.disconnect())">
+                                                         x-on:click="$bsConfirm({ text: {{ \Illuminate\Support\Js::from(__('admin.em_disconnect_confirm', ['email' => $oauthConnectedEmail])) }}, confirm: {{ \Illuminate\Support\Js::from(__('admin.em_disconnect')) }}, cancel: {{ \Illuminate\Support\Js::from(__('admin.cancel')) }} }).then(ok => ok && $wire.disconnect())">
                                             <x-bs-admin::icon name="ri-link-unlink-m" class="size-4" />{{ __('admin.em_disconnect') }}
                                         </x-bs-admin::button>
                                         <x-bs-admin::button type="button" variant="soft" wire:click="connect">{{ __('admin.oauth_reconnect') }}</x-bs-admin::button>
