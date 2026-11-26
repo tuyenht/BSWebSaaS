@@ -48,9 +48,12 @@ it('offers the drop on the empty box to a member who may add files, and opens th
         expect($html)->toContain('Kéo thả ảnh vào đây hoặc bấm để chọn')
             ->toContain('x-on:drop.prevent=')
             ->toContain('$wire.dropCover()')
-            ->toContain("window.bsStagePickerFiles(\$event.dataTransfer?.files, 'image/')");
+            ->toContain("if (window.bsStagePickerFiles(\$event.dataTransfer?.files, 'image/'))")
+            // a refusal or a failed call lets the kept files go
+            ->toContain('$wire.dropCover().then((ok) => ok || (window.__pendingPickerFiles = null), () => (window.__pendingPickerFiles = null))');
 
         $c->call('dropCover')
+            ->assertReturned(true)
             ->assertSet('showImagePicker', true)
             ->assertSet('imagePickerMode', 'single')
             ->assertSet('pickerTab', 'upload')
@@ -80,8 +83,11 @@ it('leaves the picker shut in another language: the cover is every language\'s a
         SiteLocale::query()->firstOrCreate(['locale' => 'vi'], ['is_default' => true, 'enabled' => true]);
         SiteLocale::query()->firstOrCreate(['locale' => 'en'], ['is_default' => false, 'enabled' => true]);
         $page = coverDropPage();
-        Livewire::actingAs($member)->test(Editor::class, ['ulid' => $page->ulid, 'locale' => 'en'])
-            ->call('dropCover')
+        $c = Livewire::actingAs($member)->test(Editor::class, ['ulid' => $page->ulid, 'locale' => 'en']);
+        // the box offers no drop there (its «Chọn ảnh» says where the cover is changed)
+        expect($c->html())->not->toContain('$wire.dropCover()');
+        $c->call('dropCover')
+            ->assertReturned(false)
             ->assertSet('showImagePicker', false)
             ->assertDispatched('bs-toast');
     });

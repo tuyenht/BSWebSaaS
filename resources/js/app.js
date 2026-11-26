@@ -163,35 +163,6 @@ document.addEventListener('alpine:init', () => {
     }));
 });
 
-// «Xem trước trên website» (components/preview-dialog.blade.php): the saved version in a frame at a
-// computer's width or a phone's; the editor frame's «Xem trước» opens it (the bs-site-preview event).
-// Closing gives the focus back to what opened it, or to the ⋮ when that was the phone's menu item.
-document.addEventListener('alpine:init', () => {
-    window.Alpine.data('bsSitePreview', () => ({
-        open: false,
-        dev: 'd',
-        opener: null,
-        show() {
-            this.opener = document.activeElement;
-            this.dev = 'd';
-            this.open = true;
-            document.body.style.overflow = 'hidden';
-            // as the board: «Đóng» takes the focus (after the trap has put it on the first button)
-            setTimeout(() => this.$root.querySelector('[data-site-preview-close]')?.focus(), 30);
-        },
-        hide() {
-            this.open = false;
-            document.body.style.overflow = '';
-            const back = this.opener;
-            this.opener = null;
-            this.$nextTick(() => {
-                const shown = back && back.isConnected && back.getClientRects().length > 0;
-                (shown ? back : this.$root.closest('[data-entry-editor]')?.querySelector('[data-guide=more]'))?.focus();
-            });
-        },
-    }));
-});
-
 // Picker "Thiết bị của tôi" uploader. The device pane appears/disappears inside a Livewire modal
 // (no page navigation), so it mounts via an Alpine component: init() when the pane renders,
 // destroy() when it's removed (tab/source change or modal close). The pane carries wire:ignore so

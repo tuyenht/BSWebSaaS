@@ -152,7 +152,8 @@ describe('posts and pages', function (): void {
                 ->toContain("x-on:click=\"dev = 'd'\"")
                 ->toContain("x-on:click=\"dev = 'm'\"")
                 ->toContain('aria-label="Đóng xem trước (Esc)"')
-                ->toContain('x-bind:src="$root.dataset.url" title="Bản đã lưu của tin tức trên website"')
+                ->toContain('x-bind:src="$root.dataset.url" tabindex="0" x-on:load="frameKeys($el)" title="Bản đã lưu của tin tức trên website"')
+                ->toContain('<div x-ignore wire:ignore.self data-bs-lazy="bsSitePreview" x-data="bsSitePreview" data-bs-modal')
                 ->toContain('Chỉ người trong website thấy bản xem trước này. Khách chưa thấy gì cho tới khi tin tức được đăng.');
         });
     });

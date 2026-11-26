@@ -10,13 +10,16 @@
     // computer's width or a phone's (390px), so the member never leaves the form. Opened by the editor
     // frame's «Xem trước» (the window event `bs-site-preview`). Escape, the backdrop or «Đóng» close it,
     // and focus goes back to what opened it (the ⋮ when that was the phone's menu item, gone by then).
+    // The frame is in the Tab order (a keyboard reaches the website to scroll it), and Escape pressed
+    // inside it closes the dialog too. It stacks and locks the page as the shared modal does (data-bs-modal).
+    // Behaviour: resources/js/admin-site-preview.js, started by the shared lazy loader.
     // The frame loads again on every open, so a save in between shows; its address is read from the root
     // (data-url), which the server keeps current when the form switches language. Up to 600px wide it fills the
     // screen. The website keeps its own light colours inside the frame.
 @endphp
-<div x-data="bsSitePreview"
+<div x-ignore wire:ignore.self data-bs-lazy="bsSitePreview" x-data="bsSitePreview" data-bs-modal
      x-on:bs-site-preview.window="show()"
-     x-on:keydown.escape.window="if (open) { $event.stopPropagation(); hide(); }"
+     x-on:keydown.escape.window="if (open) { const up = [...document.querySelectorAll('[aria-modal=true]')].filter((d) => d.getClientRects().length > 0); if (up.length === 0 || $el.contains(up[up.length - 1])) { hide(); } }"
      data-site-preview data-url="{{ $url }}">
     <div x-show="open" x-cloak class="fixed inset-0 z-90 flex items-center justify-center min-[601px]:p-6">
         <div class="absolute inset-0 bg-gray-900/50" x-on:click="hide()"></div>
@@ -39,7 +42,7 @@
             </div>
             <div class="flex min-h-0 flex-1 justify-center overflow-auto bg-bg p-4">
                 <template x-if="open">
-                    <iframe x-bind:src="$root.dataset.url" title="{{ __('entries.pv.frame', ['unit' => $unit]) }}" class="h-full min-h-96 w-full rounded-md border border-border bg-white shadow-card"
+                    <iframe x-bind:src="$root.dataset.url" tabindex="0" x-on:load="frameKeys($el)" title="{{ __('entries.pv.frame', ['unit' => $unit]) }}" class="h-full min-h-96 w-full rounded-md border border-border bg-white shadow-card"
                             x-bind:class="dev === 'm' ? 'max-w-[390px]' : 'max-w-[1024px]'"></iframe>
                 </template>
             </div>

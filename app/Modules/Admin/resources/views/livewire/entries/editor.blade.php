@@ -546,10 +546,12 @@
                             @endif
                         @elseif ($mayPick)
                             {{-- A member who may add files can also drop pictures here (Editor::dropCover): the browser
-                                 keeps the files for the picker's device upload, which opens with them. --}}
-                            @php($mayDrop = auth()->user()?->can('media.upload') ?? false)
+                                 keeps the files for the picker's device upload, which opens with them. Not in another
+                                 language (the cover is changed in the source), and the kept files are let go when the
+                                 server says no, so no later device upload picks them up. --}}
+                            @php($mayDrop = ! $sharedLock && (auth()->user()?->can('media.upload') ?? false))
                             <button type="button" data-cover-pick wire:click="openCoverPicker" class="absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-3 text-center text-[calc(0.8125rem+var(--user-text-boost))] leading-normal text-text transition-colors hover:bg-surface-hover"
-                                    @if ($mayDrop) x-data x-on:dragover.prevent x-on:drop.prevent="window.bsStagePickerFiles($event.dataTransfer?.files, 'image/'); $wire.dropCover()" @endif>
+                                    @if ($mayDrop) x-data x-on:dragover.prevent x-on:drop.prevent="if (window.bsStagePickerFiles($event.dataTransfer?.files, 'image/')) { $wire.dropCover().then((ok) => ok || (window.__pendingPickerFiles = null), () => (window.__pendingPickerFiles = null)); }" @endif>
                                 <x-bs-admin::icon name="ri-image-add" class="size-6 text-primary-text" />
                                 <span><span class="font-semibold text-primary-text">{{ __('entries.ed.cover_choose') }}</span>@if ($mayDrop)<br>{{ __('entries.ed.cover_drop') }}@endif</span>
                             </button>

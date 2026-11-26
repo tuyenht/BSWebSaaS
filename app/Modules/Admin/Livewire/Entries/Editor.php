@@ -1998,17 +1998,19 @@ final class Editor extends Component
      * (window.__pendingPickerFiles, as the picker's own drop area does). Once they are in the library
      * the member picks the cover there, as after any upload. Only for who may add files.
      */
-    public function dropCover(): void
+    public function dropCover(): bool
     {
         $this->authorizeEditing();
         abort_unless(Gate::allows('media.view') && Gate::allows('media.upload'), 403);
         if ($this->coverRefused()) {
-            return;
+            return false;
         }
         $this->blockImagePickerPath = '';
         $this->openImagePicker('single');
         $this->setPickerTab('upload');
         $this->openPickerSource('device');
+
+        return true;
     }
 
     /**
