@@ -14,7 +14,10 @@ use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Support\EntryCover;
+use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\EnsureMediaFromKey;
+use App\Modules\Media\Support\MediaRefs;
 use App\Modules\Provisioning\Exceptions\DryRunRollback;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\ConcurrencyError;
@@ -336,16 +339,25 @@ final readonly class PromoteAnVinhProductPostsToCatalog
         $product->assignCategories($categoryIds);
     }
 
-    /** Materializes the post's featured image (a raw R2 key) into a Media row and sets it as the cover. */
+    /**
+     * The post's featured image as the product's cover, read as every reader reads it (EntryCover): the
+     * file its cover_media_id names (none when that file is gone or in the Trash), else the old key in
+     * meta, materialized into a Media row.
+     */
     private function attachCoverImage(Product $product, Entry $entry): void
     {
-        $key = $entry->meta['image_url'] ?? null;
-
-        if (! is_string($key) || $key === '') {
-            return;
+        if (EntryCover::named($entry->cover_media_id)) {
+            $media = Media::query()->whereKey(MediaRefs::id($entry->cover_media_id))->first(['id']);
+            if ($media === null) {
+                return;
+            }
+        } else {
+            $key = EntryCover::metaValue($entry->meta);
+            if ($key === '') {
+                return;
+            }
+            $media = $this->ensureMedia->handle($key);
         }
-
-        $media = $this->ensureMedia->handle($key);
 
         // The cover goes first; pictures the product already had keep their order after it (position,
         // then id: the order sync() compares in, so an unchanged gallery writes nothing).

@@ -47,10 +47,12 @@ use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Cms\Support\CategoryPublicCounts;
 use App\Modules\Cms\Support\CategoryScopes;
+use App\Modules\Cms\Support\EntryCoverUsage;
 use App\Modules\Cms\Support\EntryReviewReach;
 use App\Modules\Cms\Support\LayoutSlotBlocks;
 use App\Modules\Cms\Support\ReusableBlockExpander;
 use App\Modules\Forms\Models\Form;
+use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Events\CustomRolePermissionsAdding;
 use App\Modules\Rbac\Events\InvitationAccepted;
 use App\Modules\Rbac\Events\SiteMembershipChanged;
@@ -144,6 +146,10 @@ final class CmsServiceProvider extends ServiceProvider
 
         // Purging an entry drops its block image usage rows (polymorphic, no FK cascade).
         Entry::observe(EntryObserver::class);
+        // A file deleted for good is no entry's cover any more (cover_media_id has no FK). Registered
+        // here, before MediaServiceProvider's observer drops the usage rows that find those entries.
+        // Media never depends on Cms: Cms listens.
+        Media::forceDeleting(static fn (Media $media) => EntryCoverUsage::purging($media));
         // Deleting a category drops its block slots' usage rows (polymorphic, no FK cascade).
         Taxonomy::observe(TaxonomyObserver::class);
         // Deleting a shared block drops its body's usage rows (polymorphic, no FK cascade).

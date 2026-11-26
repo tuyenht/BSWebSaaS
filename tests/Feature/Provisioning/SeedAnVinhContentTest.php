@@ -45,6 +45,12 @@ beforeEach(function (): void {
     Storage::fake(MediaKey::disk());
 });
 
+/** The storage key of the file an entry's cover names by its row (the seeder writes covers that way). */
+function seededCoverKey(Entry $entry): ?string
+{
+    return $entry->cover_media_id === null ? null : Media::query()->whereKey($entry->cover_media_id)->value('storage_key');
+}
+
 function seedPrecisionSite(): Site
 {
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
@@ -82,7 +88,7 @@ it('seeds san-pham with 3 sub-categories and 6 products', function (): void {
             ->whereHas('translations', fn ($q) => $q->where('slug', 'truc-may-cnc'))
             ->first();
         expect($product)->not->toBeNull();
-        expect($product->meta['image_url'])->toStartWith($site->code.'/sp-truc-may-cnc-');  // the website's own copy: slug + content-hash; the hash changes when the photo is re-curated
+        expect(seededCoverKey($product))->toStartWith($site->code.'/sp-truc-may-cnc-');  // the website's own copy: slug + content-hash; the hash changes when the photo is re-curated
         $productTranslation = $product->translationFor('vi');
         expect($productTranslation)->not->toBeNull();
         $bodyBlocks = $productTranslation->body['blocks'] ?? [];
@@ -119,7 +125,7 @@ it('seeds du-an with 6 projects, route, and no sectors', function (): void {
             ->whereHas('translations', fn ($q) => $q->where('slug', 'day-chuyen-lap-rap-tu-dong'))
             ->first();
         expect($project)->not->toBeNull();
-        expect($project->meta['image_url'])->toStartWith($site->code.'/da-day-chuyen-lap-rap-tu-dong-');
+        expect(seededCoverKey($project))->toStartWith($site->code.'/da-day-chuyen-lap-rap-tu-dong-');
 
         expect(ContentSection::query()->where('key', 'projects')->exists())->toBeTrue();
         expect(MenuItem::query()->where('routable_type', 'taxonomy')->where('routable_id', $duAn->id)->exists())->toBeTrue();
@@ -178,7 +184,7 @@ it('seeds 6 tin-tuc news posts under the ProvisionSite news category', function 
             ->whereHas('translations', fn ($q) => $q->where('slug', 'an-vinh-to-chuc-team-building-2024'))
             ->first();
         expect($newsPost)->not->toBeNull();
-        expect($newsPost->meta['image_url'])->toStartWith($site->code.'/tt-team-building-2024-');
+        expect(seededCoverKey($newsPost))->toStartWith($site->code.'/tt-team-building-2024-');
     });
 });
 
@@ -460,9 +466,37 @@ it('re-seed refreshes an existing post featured image (re-curated photo reaches 
 
         app(SeedAnVinhContent::class)->handle();   // re-seed
 
-        // The featured image is refreshed to the canonical curated key (firstOrCreatePost updates it
+        // The featured image is refreshed to the canonical curated file (firstOrCreatePost updates it
         // on an existing post instead of skipping) — so a swapped photo actually reaches prod.
-        expect($product->fresh()->meta['image_url'])->toStartWith($site->code.'/sp-truc-may-cnc-');
+        expect(seededCoverKey($product->fresh()))->toStartWith($site->code.'/sp-truc-may-cnc-')
+            ->and($product->fresh()->meta)->not->toHaveKey('image_url');
+    });
+});
+
+it('re-seed replaces a cover the editor moved to its row, never leaving an id and a key together', function (): void {
+    $site = seedPrecisionSite();
+
+    app(Tenancy::class)->enter($site->id, function () use ($site): void {
+        app(SeedAnVinhContent::class)->handle();
+        $picked = Media::query()->create([
+            'collection' => 'library', 'slug' => 'anh-chon', 'hash' => str_repeat('c', 64),
+            'storage_key' => $site->code.'/library/anh-chon-cccccccccccc.jpg', 'disk' => MediaKey::disk(), 'mime' => 'image/jpeg', 'size' => 1024,
+        ]);
+        // what the editor stores after a member picked another picture: its row, no old key
+        $product = Entry::query()->whereHas('translations', fn ($q) => $q->where('slug', 'truc-may-cnc'))->firstOrFail();
+        $product->update(['cover_media_id' => $picked->id, 'meta' => []]);
+        $service = Entry::query()->whereHas('translations', fn ($q) => $q->where('slug', 'thiet-ke-jig-do-ga'))->firstOrFail();
+        $service->update(['cover_media_id' => $picked->id, 'meta' => []]);
+
+        app(SeedAnVinhContent::class)->handle();   // re-seed
+
+        $product->refresh();
+        $service->refresh();
+        expect($product->cover_media_id)->not->toBe($picked->id)
+            ->and(seededCoverKey($product))->toStartWith($site->code.'/sp-truc-may-cnc-')
+            ->and($product->meta)->not->toHaveKey('image_url')
+            ->and($service->cover_media_id)->toBeNull()            // a glyph card: the seed's icon, no picture beside it
+            ->and($service->meta['image_url'])->toBe('cog');
     });
 });
 

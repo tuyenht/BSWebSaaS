@@ -882,13 +882,16 @@ it('puts a cover picked in the shared «Chọn ảnh» dialog into the change of
 
         Livewire::actingAs($author->fresh())->test(Editor::class, ['ulid' => $post->ulid])
             ->call('openCoverPicker')->call('togglePickerItem', $cover->id)->call('insertPicked')
-            ->assertSet('coverImageKey', 'a/library/bia-cho-duyet.png')
+            ->assertSet('coverUlid', $cover->ulid)
             ->call('save')
             ->assertHasNoErrors()
             ->assertDispatched('bs-toast', text: __('entries.chg.t_saved_wf'));
 
-        expect(data_get(pcChange($post)?->content, 'shared.meta.image_url'))->toBe('a/library/bia-cho-duyet.png')
-            ->and($post->fresh()->meta)->toBe($liveMeta);
+        // named by its row in the change, no old key beside it
+        expect(data_get(pcChange($post)?->content, 'shared.cover_media_id'))->toBe($cover->id)
+            ->and(data_get(pcChange($post)?->content, 'shared.meta.image_url'))->toBeNull()
+            ->and($post->fresh()->meta)->toBe($liveMeta)
+            ->and($post->fresh()->cover_media_id)->toBeNull();
     });
 });
 
@@ -912,7 +915,7 @@ it('opens and compares a held change that names its cover by id, with no old key
         $coverRow = fn ($editor) => collect($editor->viewData('changeBand')['diff']['rows'])->firstWhere('label', __('entries.chg.f_cover'));
 
         $open = Livewire::actingAs($author->fresh())->test(Editor::class, ['ulid' => $post->ulid])
-            ->assertSet('coverImageKey', 'a/library/bia-theo-ma.png');
+            ->assertSet('coverUlid', $cover->ulid);
         expect($coverRow($open))->toMatchArray(['now' => __('entries.chg.cover_other'), 'seen' => __('entries.chg.diff_empty')]);
 
         // a file in the Trash is no cover, even beside an old key: nothing to compare with the live post
@@ -920,7 +923,7 @@ it('opens and compares a held change that names its cover by id, with no old key
         $content['shared']['meta']['image_url'] = 'a/library/anh-cu.png';
         $change->forceFill(['content' => $content])->saveQuietly();
         $open = Livewire::actingAs($author->fresh())->test(Editor::class, ['ulid' => $post->ulid])
-            ->assertSet('coverImageKey', '');
+            ->assertSet('coverUlid', '');
         expect($coverRow($open))->toBeNull();
     });
 });

@@ -12,11 +12,13 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Forms\Actions\EnsureContactForm;
 use App\Modules\Media\Services\EnsureMediaFromKey;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Provisioning\Support\FirstOwner;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteProfile;
@@ -31,7 +33,7 @@ use App\Modules\Tenancy\Models\SiteSetting;
  *
  * Idempotent — anchored on localized slug (taxonomies/entries) or route path (pages).
  * Runs INSIDE the tenant context (caller enters it) so site_id is stamped and RLS-scoped.
- * card image_url = the storage key of the website's own copy of a seed file (EntryGridComponent
+ * card image = the row of the website's own copy of a seed file in cover_media_id (EntryGridComponent
  * resolves it at render); page-section block
  * images reference a media_id (BlockRenderer resolves it at render via MediaLibraryUrls).
  */
@@ -676,8 +678,8 @@ final readonly class SeedAnVinhContent
      * Create a published post (product / project / service / news) under the given categories.
      * The first category ID is the primary one (drives routing). If $blocks is empty, falls back
      * to a single richtext block from $excerpt. Card image: a seed file's key (filed for the website
-     * under its code first) stored in meta['image_url'], or a glyph name without a slash
-     * (EntryGridComponent resolves it at render time via MediaUrlResolver).
+     * under its code first) stored as its row in cover_media_id (EntryCover::stored), or a glyph name
+     * without a slash in meta['image_url'] (EntryGridComponent resolves it at render time via MediaUrlResolver).
      *
      * @param  list<int>  $categoryIds  first = primary category (prefix for routing)
      * @param  list<array<string, mixed>>  $blocks  body blocks; falls back to a richtext from $excerpt
@@ -699,24 +701,28 @@ final readonly class SeedAnVinhContent
         if ($existing !== null) {
             // Re-seed: the post's text is admin-owned, but the featured image is canonical here — so
             // refresh just it, so a re-curated photo (new content-hash key) reaches existing posts.
+            // The post has one cover: the seed file's row in cover_media_id, with no meta.image_url beside it
+            // (a glyph stays in meta with no id), so a cover the editor moved to its row is replaced, not doubled.
             $entry = Entry::query()->find($existing->entry_id);
             if ($entry !== null) {
-                $meta = $entry->meta;
-                if (data_get($meta, 'image_url') !== $image) {
-                    $meta['image_url'] = $image;
-                    $entry->update(['meta' => $meta]);
+                [$coverId, $meta] = EntryCover::stored(null, ['image_url' => $image] + Cast::arr($entry->meta), lock: true);
+                $entry->fill(['cover_media_id' => $coverId, 'meta' => $meta]);
+                if ($entry->isDirty(['cover_media_id', 'meta'])) {
+                    $entry->save();
                 }
             }
 
             return;
         }
 
+        [$coverId, $meta] = EntryCover::stored(null, ['image_url' => $image], lock: true);
         $entry = Entry::query()->create([
             'type' => 'post',
             'author_id' => $this->owner->id(),
             'status' => 'published',
             'published_at' => now(),
-            'meta' => ['image_url' => $image],
+            'cover_media_id' => $coverId,
+            'meta' => $meta,
         ]);
 
         $body = $blocks !== []

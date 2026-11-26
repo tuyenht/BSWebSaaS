@@ -26,6 +26,7 @@ use App\Modules\Cms\Queries\PendingEntryDrafts;
 use App\Modules\Cms\Routing\CategoryChange;
 use App\Modules\Cms\Routing\CategoryRelinker;
 use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormField;
@@ -1485,7 +1486,10 @@ final class Planner
             return [];
         }
 
-        $entries = $this->locked(Entry::query()->whereIn('id', $ids))->get(['id', 'ulid', 'type', 'status', 'published_at', 'expires_at', 'meta', 'parent_id']);
+        $entries = $this->locked(Entry::query()->whereIn('id', $ids))->get(['id', 'ulid', 'type', 'status', 'published_at', 'expires_at', 'cover_media_id', 'meta', 'parent_id']);
+        // a post's card image as every reader sees it (EntryCover): the file its row names, else the old
+        // key; one read for the page of entries, only when one names a file by its row
+        $covers = EntryCover::refs($entries, false);
         $parentIds = [];
         foreach ($entries as $entry) {
             if ($entry->type === 'page' && $entry->parent_id !== null) {
@@ -1535,8 +1539,9 @@ final class Planner
                 }
             }
             if ($entry->type === 'post') {
-                $image = $entry->meta['image_url'] ?? null;
-                $state['image'] = is_string($image) && $image !== '' ? $image : null;
+                // in the key form the ledger hashes (a post moved from its key to its row hashes as it did)
+                $image = EntryCover::value($entry, $covers);
+                $state['image'] = $image !== '' ? $image : null;
                 $state['categories'] = $categories[$entry->id] ?? [];
                 // Only when present, so a post without them hashes as it did before they existed
                 // and ledger lines written then keep reading as unchanged.
