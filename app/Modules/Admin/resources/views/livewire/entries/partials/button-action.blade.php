@@ -156,7 +156,7 @@
                 @break
 
             @case('file')
-                @if (($v['file'] ?? '') !== '')
+                @if (($v['media'] ?? '') !== '' || ($v['file'] ?? '') !== '')
                     <div class="btn-act__card" id="{{ $id }}-pg" tabindex="-1">
                         <span class="btn-act__ic"><x-bs-admin::icon :name="$b['file']['icon'] ?? 'ri-file'" class="btn-act__ic-glyph" /></span>
                         <span class="btn-act__kt"><span class="btn-act__name">{{ $b['file']['name'] ?? __('entries.btn_file_gone_name') }}</span>@if ($b['file'] !== null)<span class="btn-act__meta">{{ $b['file']['meta'] }}</span>@endif</span>

@@ -12,6 +12,7 @@ use App\Modules\Theme\Components\ButtonLink;
 use App\Modules\Theme\Components\ComponentRegistry;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Server-side Page-JSON guard (ADR-08). The allow-list IS the ComponentRegistry — the
@@ -272,7 +273,9 @@ final readonly class ValidPageJson implements ValidationRule
     /**
      * The message for a button that names a page or a library file this site does not have (another
      * site's, or one deleted for good), or null. The Trash counts as kept: a restored page or file
-     * works again. Documents only for a file. Site-scoped queries (BelongsToSite + RLS).
+     * works again. Documents only for a file, named by its row ulid or (a body saved before files
+     * were named by row) its storage key: one query for both, so a ulid sent from the browser that is
+     * not this site's document is refused. Site-scoped queries (BelongsToSite + RLS).
      *
      * @param  array<array-key, mixed>  $blocks
      */
@@ -280,6 +283,7 @@ final readonly class ValidPageJson implements ValidationRule
     {
         $pages = [];
         $files = [];
+        $media = [];
         foreach ($blocks as $block) {
             $type = is_array($block) ? ($block['type'] ?? null) : null;
             if (! is_string($type) || ! is_array($block['props'] ?? null)) {
@@ -288,15 +292,31 @@ final readonly class ValidPageJson implements ValidationRule
             $refs = ButtonLink::refs($block['props'], $this->registry->schemaFor($type));
             $pages = array_merge($pages, $refs['pages']);
             $files = array_merge($files, $refs['files']);
+            $media = array_merge($media, $refs['media']);
         }
         $pages = array_values(array_unique($pages));
         $files = array_values(array_unique($files));
+        $media = array_values(array_unique(array_map(strtoupper(...), $media)));
 
         if ($pages !== [] && Entry::withTrashed()->whereIn('ulid', $pages)->count() < count($pages)) {
             return __('entries.err_block_button_page_missing');
         }
-        if ($files !== [] && Media::withTrashed()->whereIn('storage_key', $files)->whereIn('mime', ButtonLink::DOCUMENT_MIMES)->count() < count($files)) {
-            return __('entries.err_block_button_file_missing');
+        if ($files !== [] || $media !== []) {
+            $found = Media::withTrashed()->whereIn('mime', ButtonLink::DOCUMENT_MIMES)
+                ->where(function (Builder $query) use ($files, $media): void {
+                    if ($files !== []) {
+                        $query->orWhereIn('storage_key', $files);
+                    }
+                    if ($media !== []) {
+                        $query->orWhereIn('ulid', $media);
+                    }
+                })
+                ->get(['ulid', 'storage_key']);
+            $keys = $found->map(static fn (Media $row): string => $row->storage_key)->all();
+            $ulids = $found->map(static fn (Media $row): string => strtoupper($row->ulid))->all();
+            if (array_diff($files, $keys) !== [] || array_diff($media, $ulids) !== []) {
+                return __('entries.err_block_button_file_missing');
+            }
         }
 
         return null;
