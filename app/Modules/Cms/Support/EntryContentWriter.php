@@ -6,14 +6,18 @@ namespace App\Modules\Cms\Support;
 
 use App\Modules\Cms\Actions\RecordEntryRevision;
 use App\Modules\Cms\Exceptions\RouteConflictException;
+use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Media\Models\Media;
+use App\Modules\Shared\Support\Cast;
+use App\Modules\Theme\Components\BlockReference;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SchemaImages;
 use App\Modules\Theme\Rendering\TemplateCatalog;
+use Closure;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -24,7 +28,8 @@ use Illuminate\Support\Facades\Validator;
  * content back onto an entry — a revision restore today — writes through here, so they cannot drift.
  *
  * Three steps, called in order: read() checks a snapshot can be written today, withoutMissingMedia()
- * drops references to media that has left the library, write() stores it. The status is never
+ * drops references to media that has left the library, write() stores it. A snapshot taken earlier
+ * (a revision) first passes withoutMissingBlocks(), which drops the places of shared blocks deleted since. The status is never
  * touched and no revision is recorded: which revision kind (and for which languages) is the caller's
  * decision, made from what write() returns. write() runs in the caller's transaction and takes no
  * lock of its own.
@@ -53,12 +58,15 @@ final readonly class EntryContentWriter
      * an editor save passes (title/slug ≤ 200). A layout the entry already stores is accepted as it is
      * ($keptTemplate): the editor offers only the post variants, so refusing an older stored layout
      * would block every save.
-     * With $dropMisfit a layout that does not fit is read as null (a restore of an old snapshot).
+     * With $dropMisfit a layout that does not fit is read as null (a restore of an old snapshot). A
+     * shared block the entry stores now ($keptRefs, EntryContentRules::storedRefs) is accepted once it
+     * is gone, as the editor accepts it.
      *
      * @param  array<array-key, mixed>  $snapshot
+     * @param  list<string>|Closure(): list<string>  $keptRefs
      * @return EntryContent|null
      */
-    public function read(array $snapshot, string $entryType, ?string $keptTemplate = null, bool $dropMisfit = false): ?array
+    public function read(array $snapshot, string $entryType, ?string $keptTemplate = null, bool $dropMisfit = false, array|Closure $keptRefs = []): ?array
     {
         $body = $snapshot['body'] ?? null;
         $blocks = is_array($body) ? ($body['blocks'] ?? []) : null;
@@ -126,7 +134,7 @@ final readonly class EntryContentWriter
             || Validator::make([
                 'title' => $title, 'slug' => $slug, 'blocks' => $blocks,
                 'excerpt' => $strings['excerpt'], 'seo_title' => $strings['seo_title'], 'seo_description' => $strings['seo_description'],
-            ], $this->rules->rules())->fails()) {
+            ], $this->rules->rules($keptRefs))->fails()) {
             return null;
         }
 
@@ -167,6 +175,40 @@ final readonly class EntryContentWriter
     private function templateFits(string $template, string $entryType): bool
     {
         return TemplateCatalog::fitsEntry($template, $entryType);
+    }
+
+    /**
+     * Drop every place in a snapshot's body that shows a shared block this site no longer has (deleted
+     * since the snapshot was taken), as withoutMissingMedia drops a missing picture: the storefront
+     * would draw nothing there, and refusing it would make the version impossible to restore. Called
+     * before read(). Returns the snapshot and how many places were dropped. One site-scoped query
+     * (BelongsToSite + RLS), only when the body places any; a draft block counts as present.
+     *
+     * @param  array<array-key, mixed>  $snapshot
+     * @return array{0: array<array-key, mixed>, 1: int}
+     */
+    public function withoutMissingBlocks(array $snapshot): array
+    {
+        $body = $snapshot['body'] ?? null;
+        $blocks = is_array($body) ? ($body['blocks'] ?? null) : null;
+        if (! is_array($blocks)) {
+            return [$snapshot, 0];
+        }
+        $ulids = BlockReference::ulids($blocks);
+        if ($ulids === []) {
+            return [$snapshot, 0];
+        }
+        $found = array_map(static fn (mixed $ulid): string => strtoupper(Cast::string($ulid)), ContentBlock::query()->whereIn('ulid', $ulids)->pluck('ulid')->all());
+        $missing = array_diff($ulids, $found);
+        if ($missing === []) {
+            return [$snapshot, 0];
+        }
+
+        $kept = array_values(array_filter($blocks, static fn (mixed $block): bool => ! in_array(BlockReference::ulid($block), $missing, true)));
+        $body['blocks'] = $kept;
+        $snapshot['body'] = $body;
+
+        return [$snapshot, count($blocks) - count($kept)];
     }
 
     /**

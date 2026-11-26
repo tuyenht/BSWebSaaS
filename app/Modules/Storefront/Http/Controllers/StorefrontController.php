@@ -21,6 +21,7 @@ use App\Modules\Cms\Routing\RouteResolver;
 use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Cms\Support\EntryTags;
 use App\Modules\Cms\Support\JobFacts;
+use App\Modules\Cms\Support\ReusableBlockExpander;
 use App\Modules\Cms\Taxonomy\CategoryTemplates;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -307,6 +308,11 @@ final readonly class StorefrontController
 
         $categoryTemplate = null;
         $extra = $chrome;
+        // The shared blocks the body (and, for a post, its slots) place are put in before anything
+        // reads the blocks (ReusableBlockExpander: one query for the page). Resolved per request: it
+        // keeps what it read for this request only.
+        $expander = app(ReusableBlockExpander::class);
+        $body = $content->translation->body;
         // The page view is counted by the visitor's browser (sf-view.js → RecordEntryView), never
         // here: a page the edge serves never reaches this code, and counting both would double it.
         $extra['viewBeacon'] = route('storefront.views.record', ['entry' => $entry->ulid], false);
@@ -366,7 +372,7 @@ final readonly class StorefrontController
 
             // The blocks of the side column and of the band below the post; the newest posts of the
             // post's own category are read with the related posts only when a block asks for them.
-            $slotBlocks = $this->slots->blocks(SlotContext::POST_SLOTS, $locale, $category);
+            ['body' => $body, 'slots' => $slotBlocks] = $expander->expand($body, $this->slots->blocks(SlotContext::POST_SLOTS, $locale, $category), $locale);
             $extra['slotBlocks'] = $slotBlocks;
             $withRecent = SlotContext::has($slotBlocks, 'recent_posts');
             $brandData = is_array($brand) ? $brand : null;
@@ -390,9 +396,12 @@ final readonly class StorefrontController
             }
             $extra['slotContext'] = $this->slots->context($slotBlocks, $category, $locale, $brandData, is_array($extra['recent'] ?? null) ? $extra['recent'] : [], $entry->id);
             unset($extra['recent']);
-        } elseif ($path !== '/') {
-            $extra['breadcrumb'] = [$this->crumbs->home($locale), ...$this->crumbs->parentPages($entry, $locale), $self];
-            $extra['crumbsShown'] = $this->crumbs->visible($extra['breadcrumb'], false);
+        } else {
+            $body = $expander->expand($body, [], $locale)['body'];
+            if ($path !== '/') {
+                $extra['breadcrumb'] = [$this->crumbs->home($locale), ...$this->crumbs->parentPages($entry, $locale), $self];
+                $extra['crumbsShown'] = $this->crumbs->visible($extra['breadcrumb'], false);
+            }
         }
 
         // A page on the layout with a table of contents shows the day it took effect (and the day it
@@ -426,7 +435,7 @@ final readonly class StorefrontController
             $entry->type,
             $entry->template_override,
             $content->translation->title,
-            $content->translation->body,
+            $body,
             self::entrySeo($content->translation) + ['home' => $path === '/'] + $this->pageTitleSeo($entry, $content->translation, $locale, $extra),
             $categoryTemplate,
             $extra,
@@ -658,7 +667,8 @@ final readonly class StorefrontController
         $extra['breadcrumb'] = [$this->crumbs->home($locale), ...$trail];
         $extra['crumbsShown'] = $this->crumbs->visible($extra['breadcrumb'], false);
         // The band below the list (the list's own category speaks first, then the site's default).
-        $extra['slotBlocks'] = $this->slots->blocks(SlotContext::LIST_SLOTS, $locale, $resolved->taxonomy);
+        // The shared blocks they place are put in first (one query for the page, none without any).
+        $extra['slotBlocks'] = app(ReusableBlockExpander::class)->expand([], $this->slots->blocks(SlotContext::LIST_SLOTS, $locale, $resolved->taxonomy), $locale)['slots'];
         $extra['slotContext'] = $this->slots->context($extra['slotBlocks'], $resolved->taxonomy, $locale, is_array($extra['brand'] ?? null) ? $extra['brand'] : null);
 
         $links = $this->lists->links(request()->url(), $position, $more, $lastUlid);

@@ -15,6 +15,7 @@ use App\Modules\Cms\Navigation\MenuLimits;
 use App\Modules\Cms\Navigation\MenuRules;
 use App\Modules\Cms\Navigation\MenuTargets;
 use App\Modules\Cms\Navigation\MenuVersion;
+use App\Modules\Cms\Support\BlockUsageIndex;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -50,6 +51,10 @@ use Illuminate\Support\Facades\Gate;
  * (MenuRules::safeUrl), labels at most 255 letters in an enabled language. Depth: the menu's limit
  * is the strictest area showing it (MenuLimits); an item may not be NEW at a level past that limit
  * (a new item, or one moved deeper than it was) — what was already deeper stays as it is.
+ *
+ * Where the menu's large panels place shared blocks is rewritten in the same transaction, for every
+ * live item of the menu (BlockUsageIndex), when a panel showed or shows one; the items sent to the
+ * trash keep theirs.
  */
 final readonly class ApplyMenuDraft
 {
@@ -66,6 +71,7 @@ final readonly class ApplyMenuDraft
         private SiteLocale $siteLocales,
         private SiteTime $siteTime,
         private MenuTargets $targets,
+        private BlockUsageIndex $blocks,
     ) {}
 
     /**
@@ -90,6 +96,7 @@ final readonly class ApplyMenuDraft
             $this->lockMenu($menu->id);
             $menu->refresh();
             [$items, $labels] = $this->read($menu->id);
+            $panelsBefore = self::placesPanelBlock($items);
             if (! hash_equals(MenuVersion::of($menu, $items, $labels), $version)) {
                 throw new MenuChangeRejectedException('draft_stale');
             }
@@ -183,9 +190,29 @@ final readonly class ApplyMenuDraft
             ]);
 
             [$items, $labels] = $this->read($menu->id);
+            // a menu whose panels show no shared block, before or after, has no rows to rewrite
+            if ($panelsBefore || self::placesPanelBlock($items)) {
+                $this->blocks->syncMenuItems($items);
+            }
 
             return ['version' => MenuVersion::of($menu, $items, $labels), 'keys' => $keys, 'removed' => Cast::int($removed)];
         });
+    }
+
+    /**
+     * Whether one of these items' large panels shows a shared block.
+     *
+     * @param  iterable<MenuItem>  $items
+     */
+    private static function placesPanelBlock(iterable $items): bool
+    {
+        foreach ($items as $item) {
+            if (BlockUsageIndex::panelBlock($item->meta) !== null) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -198,7 +225,7 @@ final readonly class ApplyMenuDraft
     {
         $items = MenuItem::query()->where('menu_id', $menuId)
             ->orderBy('id')
-            ->get(['id', 'ulid', 'menu_id', 'parent_id', 'position', 'link_type', 'routable_type', 'routable_id', 'url', 'dynamic_key', 'meta', 'created_at']);
+            ->get(['id', 'ulid', 'site_id', 'menu_id', 'parent_id', 'position', 'link_type', 'routable_type', 'routable_id', 'url', 'dynamic_key', 'meta', 'created_at']);
         $labels = MenuItemTranslation::query()
             ->whereIn('menu_item_id', MenuItem::query()->select('id')->where('menu_id', $menuId))
             ->get(['menu_item_id', 'locale', 'label']);

@@ -22,6 +22,9 @@ use stdClass;
  * stored bare. Paths without a host (`/…/{key}`) are never stored, so they are left alone; so is
  * the imgproxy form, whose signature covers the path and could not be rewritten anyway.
  *
+ * seedKeys() finds, the same way, the demo seed files (`media.seed_folders`) a document names, for
+ * the command to adopt the ones the website holds no row for.
+ *
  * Works on the document as json_decode(…, false) returns it, so `{}` stays an object and `[]` a list.
  * Stateless apart from the counters of one rewrite() call; Octane-safe (made per run, never bound).
  */
@@ -113,6 +116,63 @@ final class MediaKeyRewriter
         }
 
         return null;
+    }
+
+    /**
+     * The demo seed key (MediaKey::isSeedKey(): under `media.seed_folders`) that $value names, as a
+     * bare key or as an address on a media host whose path ends with one (the longest such tail),
+     * or null. Only a file name with an extension counts.
+     */
+    public function seedKey(string $value): ?string
+    {
+        if (preg_match(MediaKey::CLEAN_PATH_PATTERN, $value) === 1) {
+            return self::isSeedFile($value) ? $value : null;
+        }
+
+        $path = $this->addressPath($value);
+        if ($path === null) {
+            return null;
+        }
+        $offset = 0;
+        while (($slash = strpos($path['path'], '/', $offset)) !== false) {
+            $tail = substr($path['path'], $slash + 1);
+            if (preg_match(MediaKey::CLEAN_PATH_PATTERN, $tail) === 1 && self::isSeedFile($tail)) {
+                return $tail;
+            }
+            $offset = $slash + 1;
+        }
+
+        return null;
+    }
+
+    /**
+     * Every demo seed key the document names (seedKey()), each once.
+     *
+     * @return list<string>
+     */
+    public function seedKeys(mixed $document): array
+    {
+        $keys = [];
+        $walk = function (mixed $value) use (&$walk, &$keys): void {
+            if (is_string($value)) {
+                $key = $this->seedKey($value);
+                if ($key !== null) {
+                    $keys[$key] = true;
+                }
+            } elseif (is_array($value) || $value instanceof stdClass) {
+                foreach ((array) $value as $item) {
+                    $walk($item);
+                }
+            }
+        };
+        $walk($document);
+
+        return array_map(strval(...), array_keys($keys));
+    }
+
+    private static function isSeedFile(string $key): bool
+    {
+        return MediaKey::isSeedKey($key) && preg_match('/\.[A-Za-z0-9]+\z/D', basename($key)) === 1;
     }
 
     private function walk(mixed $value): mixed

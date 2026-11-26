@@ -12,6 +12,7 @@ use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -104,6 +105,7 @@ final readonly class EntryDraftApplier
                 is_string($entry->template_override) ? $entry->template_override : null,
                 // A stored change is never this request's input: a layout that no longer fits is dropped, not refused.
                 true,
+                EntryContentRules::storedRefs($entry->ulid),
             );
 
             if ($content === null) {

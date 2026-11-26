@@ -1,9 +1,12 @@
 <?php
 
+use App\Modules\Cms\Models\BlockUsage;
+use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Provisioning\ContentPack\PackReader;
 use App\Modules\Provisioning\ContentPack\PackValidator;
+use App\Modules\Theme\Components\BlockReference;
 use Tests\Fixtures\ContentPacks;
 use Tests\Fixtures\StorefrontCards;
 
@@ -112,4 +115,31 @@ it('skips a category staff edited until it is forced, and a slot the pack does n
     $layout = tlbMeta($this->siteId, 'tin-tuc')['layout_blocks'];
     expect($layout['after_list']['vi']['blocks'][0]['props']['heading'])->toBe('Bản mới của gói')
         ->and($layout)->toHaveKey('post_aside');
+});
+
+it('rewrites where shared blocks are placed from the category slots a pack load writes', function (): void {
+    // A pack cannot name a shared block itself (it is checked before any website is chosen), but a
+    // slot staff set that the pack does not name is written back, and it may place one.
+    ContentPacks::load();
+    $kept = ContentPacks::in($this->siteId, function (): ContentBlock {
+        $kept = ContentBlock::query()->create(['key' => 'bao-gia', 'name' => 'Báo giá', 'region' => 'inline', 'status' => 'published']);
+        $replaced = ContentBlock::query()->create(['key' => 'lien-he', 'name' => 'Liên hệ', 'region' => 'inline', 'status' => 'published']);
+        $category = Taxonomy::query()->findOrFail(TaxonomyTranslation::query()->where('slug', 'tin-tuc')->value('taxonomy_id'));
+        $category->update(['meta' => ['layout_blocks' => [
+            'post_aside' => ['vi' => ['blocks' => [['type' => BlockReference::TYPE, 'props' => [BlockReference::PROP => $kept->ulid]]]]],
+            'after_list' => ['vi' => ['blocks' => [['type' => BlockReference::TYPE, 'props' => [BlockReference::PROP => $replaced->ulid]]]]],
+        ]] + (array) $category->meta]);
+        // written by hand, so only the slot the pack replaces has its row (as an earlier save left it)
+        BlockUsage::query()->insert(['site_id' => $category->site_id, 'content_block_id' => $replaced->id, 'taxonomy_id' => $category->id, 'slot' => 'after_list', 'locale' => 'vi', 'created_at' => now()]);
+
+        return $kept;
+    });
+    tlbPack($this->folder, tlbSlot());
+
+    [$exit, $output] = ContentPacks::load('demo-co', ['tax:post_cat/tin-tuc']);
+
+    expect($exit)->toBe(0, $output)
+        ->and(ContentPacks::in($this->siteId, fn (): array => BlockUsage::query()->whereNotNull('taxonomy_id')->get(['content_block_id', 'slot', 'locale'])
+            ->map(fn (BlockUsage $row): string => "{$row->content_block_id}:{$row->slot}:{$row->locale}")->all()))
+        ->toBe(["{$kept->id}:post_aside:vi"]);
 });
