@@ -231,6 +231,9 @@ it('purges the website\'s pages once when a shared block is published, edited or
 
 describe('in the slots around posts, lists and products', function (): void {
     it('draws shared blocks in a post, list and product slot, and none in the product information tabs', function (): void {
+        // A provisioned site of its own (another test of the run may have left one on this host).
+        StorefrontCards::reset();
+        StorefrontCards::pinMediaConfig();
         $siteId = StorefrontCards::site();
         app(Tenancy::class)->enter($siteId, function (): void {
             $photo = StorefrontCards::media('anh', 960, 720);
