@@ -69,4 +69,22 @@ final class BlockReference
 
         return $found;
     }
+
+    /**
+     * The ulids the references of several block lists name, each once.
+     *
+     * @param  iterable<mixed>  $lists
+     * @return list<string>
+     */
+    public static function ulidsIn(iterable $lists): array
+    {
+        $found = [];
+        foreach ($lists as $list) {
+            if (is_iterable($list)) {
+                array_push($found, ...self::ulids($list));
+            }
+        }
+
+        return array_values(array_unique($found));
+    }
 }

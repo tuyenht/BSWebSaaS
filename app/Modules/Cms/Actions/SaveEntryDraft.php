@@ -11,6 +11,7 @@ use App\Modules\Cms\Support\EntryContentWriter;
 use App\Modules\Cms\Support\EntryDraftApplier;
 use App\Modules\Cms\Support\EntryNotifier;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
+use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -137,7 +138,7 @@ final readonly class SaveEntryDraft
             // the open change or the live post (a restore can leave the old value behind) is dropped to
             // none, or no later save or publish of that post could ever succeed.
             $sentLayout = array_key_exists('template_override', $shared);
-            $readable = $this->writer->read(['v' => RecordEntryRevision::FORMAT] + $sharedNow + $textNow, $entry->type, $this->storedTemplate($entry), ! $sentLayout)
+            $readable = $this->writer->read(['v' => RecordEntryRevision::FORMAT] + $sharedNow + $textNow, $entry->type, $this->storedTemplate($entry), ! $sentLayout, EntryContentRules::storedRefs($entry->ulid))
                 ?? throw new EntryDraftRejectedException('content_invalid');
             if (! $sentLayout) {
                 $sharedNow['template_override'] = $readable['template_override'];

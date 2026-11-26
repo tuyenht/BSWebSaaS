@@ -10,6 +10,7 @@ use App\Modules\Cms\Support\BlockUsageIndex;
 use App\Modules\Cms\Validation\LayoutSlotInput;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Components\BlockReference;
 use App\Modules\Theme\Rendering\LayoutSlots;
 use Illuminate\Support\Facades\Gate;
 
@@ -53,7 +54,10 @@ final readonly class SetLayoutBlocks
         }
 
         try {
-            $checked = $this->input->check($slots, allowNone: false);
+            // a shared block the slots place now stays allowed once it is gone; read only if one is not found
+            $checked = $this->input->check($slots, allowNone: false, kept: static fn (): array => BlockReference::ulidsIn(LayoutSlots::blockLists(
+                SiteSetting::query()->where('group_name', LayoutSlots::SETTING_GROUP)->where('key', LayoutSlots::SETTING_KEY)->value('value'),
+            )));
         } catch (LayoutBlocksRejectedException $e) {
             throw new SettingsChangeRejected($e->reason, $e->field(), $e);
         }

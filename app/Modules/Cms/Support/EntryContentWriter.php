@@ -14,6 +14,7 @@ use App\Modules\Media\Models\Media;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SchemaImages;
 use App\Modules\Theme\Rendering\TemplateCatalog;
+use Closure;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -53,12 +54,15 @@ final readonly class EntryContentWriter
      * an editor save passes (title/slug ≤ 200). A layout the entry already stores is accepted as it is
      * ($keptTemplate): the editor offers only the post variants, so refusing an older stored layout
      * would block every save.
-     * With $dropMisfit a layout that does not fit is read as null (a restore of an old snapshot).
+     * With $dropMisfit a layout that does not fit is read as null (a restore of an old snapshot). A
+     * shared block the entry stores now ($keptRefs, EntryContentRules::storedRefs) is accepted once it
+     * is gone, as the editor accepts it.
      *
      * @param  array<array-key, mixed>  $snapshot
+     * @param  list<string>|Closure(): list<string>  $keptRefs
      * @return EntryContent|null
      */
-    public function read(array $snapshot, string $entryType, ?string $keptTemplate = null, bool $dropMisfit = false): ?array
+    public function read(array $snapshot, string $entryType, ?string $keptTemplate = null, bool $dropMisfit = false, array|Closure $keptRefs = []): ?array
     {
         $body = $snapshot['body'] ?? null;
         $blocks = is_array($body) ? ($body['blocks'] ?? []) : null;
@@ -126,7 +130,7 @@ final readonly class EntryContentWriter
             || Validator::make([
                 'title' => $title, 'slug' => $slug, 'blocks' => $blocks,
                 'excerpt' => $strings['excerpt'], 'seo_title' => $strings['seo_title'], 'seo_description' => $strings['seo_description'],
-            ], $this->rules->rules())->fails()) {
+            ], $this->rules->rules($keptRefs))->fails()) {
             return null;
         }
 

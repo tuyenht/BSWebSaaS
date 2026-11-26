@@ -3300,7 +3300,7 @@
     "entries.err_blocks_too_many": "The page has too many blocks (:max max).",
     "entries.err_block_refs_too_many": "The content holds too many shared blocks (:max max).",
     "entries.err_block_ref_invalid": "The shared block at position :position has no block chosen, or its code is not valid. Choose the block again from “Shared blocks”.",
-    "entries.err_block_ref_missing": "A shared block in the content is no longer on this website. Choose another block or remove it.",
+    "entries.err_block_ref_missing": "The shared block at position :position is not on this website. Choose another block or remove it.",
     "entries.err_block_ref_nested": "A shared block cannot be placed inside another shared block. Remove it.",
     "entries.err_body_too_large": "The page content is too large.",
     "entries.err_block_invalid": "Block #:position is not valid.",

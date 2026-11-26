@@ -12,6 +12,7 @@ use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Cms\Support\EntryContentWriter;
+use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -71,7 +72,7 @@ final readonly class RestoreEntryRevision
             throw new RevisionRestoreRejectedException('locale_disabled');
         }
 
-        $content = $this->writer->read($revision->snapshot, $entry->type, null, true)
+        $content = $this->writer->read($revision->snapshot, $entry->type, null, true, EntryContentRules::storedRefs($entry->ulid))
             ?? throw new RevisionRestoreRejectedException('snapshot_incompatible');
         [$content, $dropped] = $this->writer->withoutMissingMedia($content);
 

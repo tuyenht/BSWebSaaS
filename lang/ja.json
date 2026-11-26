@@ -3300,7 +3300,7 @@
     "entries.err_blocks_too_many": "ページのブロックが多すぎます（最大 :max 個）。",
     "entries.err_block_refs_too_many": "共通ブロックが多すぎます（最大 :max 個）。",
     "entries.err_block_ref_invalid": ":position 番目の共通ブロックはブロックが選ばれていないか、コードが正しくありません。「共通ブロック」からもう一度選んでください。",
-    "entries.err_block_ref_missing": "内容の中の共通ブロックが、このウェブサイトにもうありません。別のブロックを選ぶか、削除してください。",
+    "entries.err_block_ref_missing": ":position 番目の共通ブロックは、このウェブサイトにありません。別のブロックを選ぶか、削除してください。",
     "entries.err_block_ref_nested": "共通ブロックの中に別の共通ブロックは置けません。削除してください。",
     "entries.err_body_too_large": "ページの内容が大きすぎます。",
     "entries.err_block_invalid": "ブロック #:position が無効です。",

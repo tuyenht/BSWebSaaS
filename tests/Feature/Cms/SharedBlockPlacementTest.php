@@ -1,25 +1,39 @@
 <?php
 
+use App\Modules\Admin\Livewire\Entries\Editor as EntryEditor;
+use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
 use App\Modules\Admin\Support\Settings\SetLayoutBlocks;
 use App\Modules\Admin\Support\Settings\SettingsChangeRejected;
+use App\Modules\Cms\Actions\ContentBlocks\SaveContentBlockBody;
+use App\Modules\Cms\Actions\RecordEntryRevision;
+use App\Modules\Cms\Actions\RestoreEntryRevision;
 use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
 use App\Modules\Cms\Actions\Taxonomies\SetCategoryLayoutBlocks;
+use App\Modules\Cms\ContentBlocks\ContentBlockVersion;
 use App\Modules\Cms\Data\TaxonomyData;
+use App\Modules\Cms\Enums\RevisionKind;
+use App\Modules\Cms\Exceptions\ContentBlockChangeRejectedException;
 use App\Modules\Cms\Exceptions\TaxonomyChangeRejectedException;
 use App\Modules\Cms\Models\ContentBlock;
+use App\Modules\Cms\Models\ContentBlockTranslation;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\BlockUsageIndex;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
+use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Cms\Validation\ValidPageJson;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Components\BlockReference;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Livewire\Livewire;
 
 /*
  * Where a website's shared blocks (Khối dùng chung) are placed: a page or post body, a category's
@@ -193,7 +207,7 @@ describe('recording where a block is placed', function (): void {
         } catch (SettingsChangeRejected $e) {
             $refused = $e->getPrevious()?->getMessage();
         }
-        expect($refused)->toContain(__('entries.err_block_ref_missing'))
+        expect($refused)->toContain(__('entries.err_block_ref_missing', ['position' => 1]))
             ->and(sbpRows())->toBe(['1:chan-trang:setting:after_post:vi', '1:uu-dai:category:after_list:vi']);
     });
 
@@ -287,8 +301,73 @@ describe('checking a body on save', function (): void {
     it('refuses a block of another website and one that is gone', function (): void {
         $foreign = sbpBlock(2, 'chan-trang');
 
-        expect(sbpBodyError([sbpRef($foreign->ulid)]))->toBe(__('entries.err_block_ref_missing'))
-            ->and(sbpBodyError([sbpRef('01J00000000000000000000000')]))->toBe(__('entries.err_block_ref_missing'));
+        expect(sbpBodyError([sbpRef($foreign->ulid)]))->toBe(__('entries.err_block_ref_missing', ['position' => 1]))
+            ->and(sbpBodyError([['type' => 'cta', 'props' => ['heading' => 'Liên hệ']], sbpRef('01J00000000000000000000000')]))->toBe(__('entries.err_block_ref_missing', ['position' => 2]));
+    });
+
+    it('keeps a block the place stores once it is deleted, and still refuses a new one that is not this website\'s', function (): void {
+        $gone = sbpBlock(1, 'da-xoa');
+        $foreign = sbpBlock(2, 'ngoai');
+        $entry = sbpPage(['vi' => [sbpRef($gone->ulid)]]);
+        app(Tenancy::class)->enter(1, fn () => ContentBlock::query()->whereKey($gone->id)->delete());
+        $guard = app(ValidPageJson::class)->keeping(EntryContentRules::storedRefs($entry->ulid));
+        $cta = ['type' => 'cta', 'props' => ['heading' => 'Mới']];
+
+        expect(sbpBodyError([$cta, sbpRef(strtolower($gone->ulid))], $guard))->toBeNull()
+            ->and(sbpBodyError([sbpRef($gone->ulid), sbpRef('01J00000000000000000000000')], $guard))->toBe(__('entries.err_block_ref_missing', ['position' => 2]))
+            ->and(sbpBodyError([sbpRef($gone->ulid), $cta, sbpRef($foreign->ulid)], $guard))->toBe(__('entries.err_block_ref_missing', ['position' => 3]))
+            // with nothing stored, the deleted block is new to the place
+            ->and(sbpBodyError([sbpRef($gone->ulid)]))->toBe(__('entries.err_block_ref_missing', ['position' => 1]));
+    });
+
+    it('lets the editor save a page whose placed block was deleted, and refuses one it adds', function (): void {
+        $user = User::factory()->create();
+        app(Tenancy::class)->enter(1, fn () => grantRole($user, 'site-admin', ['entries.view', 'entries.create', 'entries.edit.any', 'entries.publish']));
+        app(TeamContext::class)->forget();
+        $gone = sbpBlock(1, 'da-xoa');
+        $entry = sbpPage(['vi' => [['type' => 'cta', 'props' => ['heading' => 'Liên hệ']], sbpRef($gone->ulid)]]);
+        app(Tenancy::class)->enter(1, fn () => ContentBlock::query()->whereKey($gone->id)->delete());
+
+        app(Tenancy::class)->enter(1, function () use ($user, $entry): void {
+            $editor = Livewire::actingAs($user)->test(EntryEditor::class, ['ulid' => $entry->ulid])
+                ->set('title', 'Giới thiệu mới')
+                ->call('save')
+                ->assertHasNoErrors();
+            expect($entry->translations()->where('locale', 'vi')->value('title'))->toBe('Giới thiệu mới');
+
+            $editor->set('blocks', [...$editor->get('blocks'), sbpRef('01J00000000000000000000000')])
+                ->call('save')
+                ->assertHasErrors('blocks');
+        });
+    });
+
+    it('lets a category and the website keep a slot whose placed block was deleted', function (): void {
+        $admin = User::factory()->create();
+        app(Tenancy::class)->enter(1, fn () => grantRole($admin, 'site-admin', ['settings.manage', 'taxonomies.manage']));
+        app(TeamContext::class)->forget();
+        $this->actingAs($admin->fresh() ?? $admin);
+        $gone = sbpBlock(1, 'da-xoa');
+        $category = app(Tenancy::class)->enter(1, fn (): Taxonomy => app(CreateTaxonomy::class)->handle('post_cat', null, new TaxonomyData(names: ['vi' => 'Tin tức'])));
+        $slot = fn (array $more = []): array => ['vi' => ['blocks' => [sbpRef($gone->ulid), ...$more]]];
+        app(Tenancy::class)->enter(1, function () use ($category, $slot): void {
+            app(SetCategoryLayoutBlocks::class)->handle($category, ['after_list' => $slot()]);
+            app(SetLayoutBlocks::class)->handle(['after_post' => $slot()]);
+        });
+        app(Tenancy::class)->enter(1, fn () => ContentBlock::query()->whereKey($gone->id)->delete());
+
+        $cta = ['type' => 'cta', 'props' => ['heading' => 'Hỏi giá']];
+        app(Tenancy::class)->enter(1, function () use ($category, $slot, $cta): void {
+            app(SetCategoryLayoutBlocks::class)->handle($category->fresh() ?? $category, ['after_list' => $slot([$cta])]);
+            app(SetLayoutBlocks::class)->handle(['after_post' => $slot([$cta])]);
+        });
+
+        $refused = null;
+        try {
+            app(Tenancy::class)->enter(1, fn () => app(SetLayoutBlocks::class)->handle(['after_post' => $slot([sbpRef('01J00000000000000000000000')])]));
+        } catch (SettingsChangeRejected $e) {
+            $refused = $e->getPrevious()?->getMessage();
+        }
+        expect($refused)->toBe(__('entries.err_block_ref_missing', ['position' => 2]));
     });
 
     it('refuses more references than one body may hold', function (): void {

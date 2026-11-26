@@ -4,15 +4,21 @@ declare(strict_types=1);
 
 namespace App\Modules\Cms\Validation;
 
+use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Support\DisplayDate;
 use App\Modules\Cms\Support\JobFacts;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\PlainText;
+use App\Modules\Theme\Components\BlockReference;
+use Closure;
 
 /**
  * The rules one locale's content must pass to be written: the editor's save and a revision
  * restore read them from here, so nothing reaches entry_translations by one road that the other
  * would refuse. `blocks` is the body's block list, checked against the component registry
- * (ValidPageJson). The excerpt and the Google title and description are optional and fit their
+ * (ValidPageJson; a shared block the entry already stores stays allowed once it is gone,
+ * storedRefs). The excerpt and the Google title and description are optional and fit their
  * varchar(255) columns (`max` counts characters, not bytes); a form whose fields carry other names
  * maps them (Entries\Editor).
  */
@@ -63,14 +69,36 @@ final readonly class EntryContentRules
     public function __construct(private ValidPageJson $blocks) {}
 
     /**
+     * The shared blocks an entry's stored bodies place now, in every language (ValidPageJson::keeping),
+     * read in one site-scoped query when called: only when a placed block is not found.
+     *
+     * @return Closure(): list<string>
+     */
+    public static function storedRefs(string $entryUlid): Closure
+    {
+        return static function () use ($entryUlid): array {
+            $lists = [];
+            $bodies = EntryTranslation::query()
+                ->whereIn('entry_id', Entry::withTrashed()->select('id')->where('ulid', $entryUlid))
+                ->get(['id', 'site_id', 'entry_id', 'body']);
+            foreach ($bodies as $translation) {
+                $lists[] = Cast::arr($translation->body['blocks'] ?? null);
+            }
+
+            return BlockReference::ulidsIn($lists);
+        };
+    }
+
+    /**
+     * @param  list<string>|Closure(): list<string>  $keptRefs  the shared blocks the entry stores now (storedRefs)
      * @return array{title: list<string>, slug: list<string>, blocks: list<ValidPageJson>, excerpt: list<string>, seo_title: list<string>, seo_description: list<string>}
      */
-    public function rules(): array
+    public function rules(array|Closure $keptRefs = []): array
     {
         return [
             'title' => ['required', 'string', 'max:200'],
             'slug' => ['required', 'string', 'max:200', 'regex:'.self::SLUG_PATTERN],
-            'blocks' => [$this->blocks],
+            'blocks' => [$this->blocks->keeping($keptRefs)],
             'excerpt' => ['nullable', 'string', 'max:255'],
             'seo_title' => ['nullable', 'string', 'max:255'],
             'seo_description' => ['nullable', 'string', 'max:255'],
