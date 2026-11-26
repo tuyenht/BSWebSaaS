@@ -26,16 +26,35 @@
     $boundLabel = $nameBind ? \Illuminate\Support\Js::from(__('admin.list.more_for')).'.replace(\':name\', '.$nameBind.')' : null;
     $sheet = $title ? 'title' : 'row';
     // a component tag cannot hold @if, so the bound name reaches the ⋮ through an attribute bag
+    // The menu is built on its first opening, so what it holds is said here for the stylesheet, which
+    // hides a ⋮ whose every item the row already shows as a button: `plain` for an item that is
+    // always in the menu, the data-xm marks of the others, `allxv` when no item lacks the xv mark.
+    $holds = [];
+    $allXv = true;
+    if ($hasMenu) {
+        preg_match_all('/<(?:a|button)\b(?:[^>"\']|"[^"]*+"|\'[^\']*+\')*+>/', $menu->toHtml(), $tags);
+        foreach ($tags[0] ?? [] as $tag) {
+            if (preg_match('/\sclass="(?:[^"]*\s)?list-mi(?:\s[^"]*)?"/', $tag) !== 1) {
+                continue;
+            }
+            $marks = preg_match('/\sdata-xm="([^"]*)"/', $tag, $xm) === 1 ? preg_split('/\s+/', trim($xm[1]), -1, PREG_SPLIT_NO_EMPTY) : null;
+            foreach ($marks ?? ['plain'] as $mark) {
+                $holds[$mark] = true;
+            }
+            $allXv = $allXv && $marks !== null && in_array('xv', $marks, true);
+        }
+    }
+    $holds = implode(' ', [...array_keys($holds), ...($allXv ? ['allxv'] : [])]);
 @endphp
 <div class="list-acts">
     {{ $slot }}
     @if ($hasMenu)
-        <div class="list-more" x-data="{ open: false, up: false, sheet: false, was: '',
+        <div class="list-more" data-has="{{ $holds }}" x-data="{ open: false, up: false, sheet: false, was: '',
                 lock(on) { const de = document.documentElement.style; if (on) { this.was = de.overflow; de.overflow = 'hidden' } else { de.overflow = this.was } this.sheet = on },
                 close(back) { this.open = false; this.sheet && this.lock(false); if (back) { this.$refs.more.focus() } },
                 destroy() { this.sheet && this.lock(false) } }"
             x-on:click.outside="open = false; sheet && lock(false)" x-on:keydown.escape.prevent.stop="close(true)"
-            x-on:resize.window="sheet && getComputedStyle($refs.menu).getPropertyValue('--list-sheet').trim() !== '1' && lock(false)">
+            x-on:resize.window="sheet && $refs.menu && getComputedStyle($refs.menu).getPropertyValue('--list-sheet').trim() !== '1' && lock(false)">
             <x-bs-admin::button :size="$head ? 'md' : 'sm'" :variant="$head ? 'outline' : 'ghost'" :color="$head ? 'neutral' : 'primary'" icon x-ref="more" data-guide="row-more"
                 aria-label="{{ $label ?? __('admin.list.more_for', ['name' => $name]) }}" title="{{ $label ?? __('admin.list.more') }}"
                 {{ $attributes->only([])->merge($boundLabel ? ['x-bind:aria-label' => $boundLabel] : []) }}
@@ -44,7 +63,7 @@
                 <x-bs-admin::icon name="ri-more-2-fill" class="list-more-i" />
             </x-bs-admin::button>
             <div x-show="open" x-cloak class="list-sheet-bg" data-sheet="{{ $sheet }}" x-on:click="close(true)"></div>
-            <x-bs-admin::list.menu class="list-menu" :label="$title ?? __('admin.list.more_for', ['name' => $name])" :bind-label="$boundLabel" :sheet="$sheet">
+            <x-bs-admin::list.menu class="list-menu" :label="$title ?? __('admin.list.more_for', ['name' => $name])" :bind-label="$boundLabel" :sheet="$sheet" on-open>
                 @if ($title)
                     <div class="list-mh" @if ($nameBind) x-text="{{ $nameBind }}" @endif>{{ $title }}</div>
                 @else
