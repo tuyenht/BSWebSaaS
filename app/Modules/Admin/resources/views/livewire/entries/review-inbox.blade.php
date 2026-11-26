@@ -15,7 +15,45 @@
     $reloads = 'setTab,search,sectionFilter,clearFilters,reloadInbox';
     $Js = \Illuminate\Support\Js::class;
 @endphp
-<div class="space-y-4">
+{{-- The keyboard (board 17): ↑ / ↓ walk the list, Enter runs the publishing move of the post being read through
+     its own button, so its question always comes first. Only while the focus is on this screen or nowhere, never
+     while a dialog, the guide, the bell or a menu is open (the reader covering a phone's screen excepted) or a
+     question is on its way, nor in a field; Enter stays with a button, a link or another post's row that has the
+     focus; with the move out of sight (a phone showing the list) Enter opens the marked post instead; a held Enter
+     never repeats it; a key held with Ctrl, Alt or ⌘ stays the browser's; ↑ on the first post and ↓ on the last
+     stay the page's scroll. An open dialog is found by its role (aria-modal is valid only on one). --}}
+<div class="space-y-4" x-data="{
+        inboxAsking: false,
+        inboxSteps: 0,
+        key(e) {
+            if (e.defaultPrevented || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || this.inboxAsking || ! ['ArrowDown', 'ArrowUp', 'Enter'].includes(e.key)) { return }
+            if ([...document.querySelectorAll('[role=dialog], [role=alertdialog], [role=menu]')].some((d) => ! d.matches('[data-inbox-reader]') && d.getClientRects().length > 0)) { return }
+            const t = e.target instanceof Element ? e.target : null;
+            if (t && t !== document.body && t !== document.documentElement && ! $root.contains(t)) { return }
+            if (t?.closest('input, textarea, select, [contenteditable]:not([contenteditable=false])')) { return }
+            if (e.key !== 'Enter') {
+                const rows = [...$root.querySelectorAll('[data-inbox-open]')];
+                const at = rows.findIndex((r) => r.hasAttribute('data-current'));
+                if (rows.length === 0 || (at === 0 && e.key === 'ArrowUp') || (at === rows.length - 1 && e.key === 'ArrowDown' && ! $root.querySelector('[data-inbox-more]'))) { return }
+                e.preventDefault();
+                this.inboxSteps++;
+                $wire.step(e.key === 'ArrowDown' ? 1 : -1, true).then(() => {
+                    if (! $wire.detail || window.matchMedia('(min-width: 64rem)').matches) { $root.querySelector('[data-inbox-open][data-current]')?.scrollIntoView({ block: 'nearest' }) }
+                }).finally(() => { this.inboxSteps-- });
+                return;
+            }
+            if (e.repeat) { return }
+            // a step on its way: the page still shows the post being left, so Enter waits for the new one
+            if (this.inboxSteps > 0) { e.preventDefault(); return }
+            const row = t?.closest('[data-inbox-open]');
+            if (row ? ! row.hasAttribute('data-current') : t?.closest('button, a[href], summary, [role=button], [role=checkbox], [role=switch], [role=tab], [role=radio], [role=link], [role=menuitem], [role=option]')) { return }
+            const go = $root.querySelector('[data-inbox-primary]');
+            if (go?.disabled) { return }
+            if (go && go.getClientRects().length > 0) { e.preventDefault(); go.click(); return }
+            // a phone showing the list: Enter opens the post ↑ / ↓ marked, to be read before any move
+            const mark = $wire.detail || window.matchMedia('(min-width: 64rem)').matches ? null : $root.querySelector('[data-inbox-open][data-current]');
+            if (mark && mark.getClientRects().length > 0) { e.preventDefault(); mark.click(); }
+        } }" x-on:keydown.window="key($event)">
     {{-- The header, as the admin shell draws it (board 17): the trail «⌂ › Hộp duyệt», the title row with the (?)
          guide and «Tải lại» at its end, then the one line on what the screen is for. --}}
     <header class="flex flex-col gap-1">
@@ -139,14 +177,15 @@
                                        clear="clearPicked" :clear-label="__('admin.inbox.bulk_clear')" :skip="$bulk['why']" class="min-[600px]:mx-0!" data-inbox-bulk>
                     @if ($bulk['ready'] > 0)
                         <x-bs-admin::button size="sm" color="primary" :title="$bulk['why']" wire:loading.attr="disabled" wire:target="approvePicked"
-                                            x-on:click="$bsConfirm({
-                                                icon: 'question',
+                                            x-on:click="inboxAsking = true; $bsConfirm({
+                                                icon: 'publish',
                                                 danger: false,
+                                                focusCancel: true,
                                                 title: {{ $Js::from(__('admin.inbox.bulk_title', ['count' => $bulk['ready']])) }},
                                                 text: {{ $Js::from(__('admin.inbox.bulk_text', ['count' => $bulk['ready']])) }},
                                                 confirm: {{ $Js::from(__('admin.inbox.bulk_ok', ['count' => $bulk['ready']])) }},
                                                 cancel: {{ $Js::from(__('entries.wf_ap_cancel')) }},
-                                            }).then(ok => ok && $wire.approvePicked())">
+                                            }).then(ok => ok && $wire.approvePicked()).finally(() => { inboxAsking = false })">
                             <x-bs-admin::icon name="ri-check-double" class="size-4" />{{ __('admin.inbox.bulk_ok', ['count' => $bulk['ready']]) }}
                         </x-bs-admin::button>
                     @else
@@ -225,7 +264,7 @@
 
                 @if ($total > count($rows))
                     <div class="mt-3 flex justify-center">
-                        <x-bs-admin::button color="light" size="sm" wire:click="loadMore" wire:loading.attr="disabled">
+                        <x-bs-admin::button color="light" size="sm" wire:click="loadMore" wire:loading.attr="disabled" data-inbox-more>
                             <x-bs-admin::icon name="ri-arrow-down" class="size-4" />{{ __('admin.inbox.load_more', ['count' => $total - count($rows)]) }}
                         </x-bs-admin::button>
                     </div>
@@ -536,27 +575,29 @@
                             @foreach ($reader['actions'] as $action)
                                 @if ($action['note'])
                                     {{-- A move that demands a reason opens the reason dialog (with «Giao cho») --}}
-                                    <x-bs-admin::button :color="$action['to_published'] ? 'primary' : 'danger'" :variant="$action['to_published'] ? 'solid' : 'outline'" wire:key="act-{{ $action['key'] }}" data-inbox-act="{{ $action['key'] }}"
+                                    <x-bs-admin::button :color="$action['to_published'] ? 'primary' : 'danger'" :variant="$action['to_published'] ? 'solid' : 'outline'" wire:key="act-{{ $action['key'] }}" data-inbox-act="{{ $action['key'] }}" :data-inbox-primary="$action['primary']"
                                                      wire:click="askNote({{ $Js::from($action['key']) }})" wire:loading.attr="disabled">
                                         <x-bs-admin::icon :name="$action['icon']" class="size-4" />{{ $action['label'] }}
                                     </x-bs-admin::button>
                                 @elseif ($action['first'])
                                     {{-- The first publication asks «Khi nào đăng?» first (board 17): now, or approved for a later time --}}
-                                    <x-bs-admin::button color="primary" wire:key="act-{{ $action['key'] }}" wire:loading.attr="disabled" data-inbox-act="{{ $action['key'] }}"
-                                                     x-on:click="$dispatch('inbox-ap', {{ $Js::from(['key' => $action['key']]) }})">
+                                    <x-bs-admin::button color="primary" wire:key="act-{{ $action['key'] }}" wire:loading.attr="disabled" data-inbox-act="{{ $action['key'] }}" :data-inbox-primary="$action['primary']"
+                                                     x-on:click="$dispatch('inbox-ap', {{ $Js::from(['key' => $action['key'], 'ulid' => $reader['ulid']]) }})">
                                         <x-bs-admin::icon name="ri-check-double" class="size-4" />{{ $action['label'] }}
                                     </x-bs-admin::button>
                                 @elseif ($action['to_published'])
-                                    {{-- Going live is asked first (board 17 «Duyệt đăng “…”?», the same question as the posts list) --}}
-                                    <x-bs-admin::button color="primary" wire:key="act-{{ $action['key'] }}" wire:loading.attr="disabled" data-inbox-act="{{ $action['key'] }}"
-                                                     x-on:click="$bsConfirm({
-                                                         icon: 'question',
+                                    {{-- Going live is asked first (board 17 «Duyệt đăng “…”?», the same question as the posts list): the
+                                         globe in a green circle, and «Để tôi đọc lại đã» focused, so a second Enter never publishes --}}
+                                    <x-bs-admin::button color="primary" wire:key="act-{{ $action['key'] }}" wire:loading.attr="disabled" data-inbox-act="{{ $action['key'] }}" :data-inbox-primary="$action['primary']"
+                                                     x-on:click="inboxAsking = true; $bsConfirm({
+                                                         icon: 'publish',
                                                          danger: false,
+                                                         focusCancel: true,
                                                          title: {{ $Js::from(__('entries.wf_ap_title', ['title' => \Illuminate\Support\Str::limit($reader['title'], 42, '…')])) }},
                                                          text: {{ $Js::from(__('entries.wf_ap_text')) }},
                                                          confirm: {{ $Js::from(__('entries.wf_ap_ok')) }},
                                                          cancel: {{ $Js::from(__('entries.wf_ap_cancel')) }},
-                                                     }).then(ok => ok && $wire.apply({{ $Js::from($action['key']) }}))">
+                                                     }).then(ok => ok && $wire.apply({{ $Js::from($action['key']) }}, {{ $Js::from($reader['ulid']) }})).finally(() => { inboxAsking = false })">
                                         <x-bs-admin::icon name="ri-check-double" class="size-4" />{{ $action['label'] }}
                                     </x-bs-admin::button>
                                 @else
@@ -668,10 +709,10 @@
                     if (this.busy || ! this.ap) { return }
                     this.err = this.check();
                     if (this.err) { document.getElementById('inbox-ap-at')?.focus(); return }
-                    const key = this.ap.key;
-                    if (this.mode !== 'sched') { this.ap = null; $wire.apply(key); return }
+                    const key = this.ap.key, ulid = this.ap.ulid;
+                    if (this.mode !== 'sched') { this.ap = null; $wire.apply(key, ulid); return }
                     this.busy = true;
-                    $wire.approveLater(key, this.value).then((e) => { this.busy = false; if (e) { this.err = e; document.getElementById('inbox-ap-at')?.focus(); return } this.ap = null; }, () => { this.busy = false; });
+                    $wire.approveLater(key, this.value, ulid).then((e) => { this.busy = false; if (e) { this.err = e; document.getElementById('inbox-ap-at')?.focus(); return } this.ap = null; }, () => { this.busy = false; });
                 } }"
              x-on:inbox-ap.window="open($event.detail)" data-inbox-ap>
             <x-bs-admin::modal state="ap" close="ap = null" size="narrow" alert :close-label="__('admin.close')"
