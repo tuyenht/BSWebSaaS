@@ -7,6 +7,12 @@
 
 ## 2026
 
+### 2026-11-26 — Máy phục vụ tệp files.baoson.net: chuyển hướng 301 từ thư mục cũ về mã website
+
+- **Việc:** chủ dự án chạy `plans/tools/deploy-media-worker.sh` (Cloudflare Worker, PR #994), bản Worker `644e9428`. Địa chỉ cũ `files.baoson.net/an-vinh/…` và `…/co-khi-chinh-xac-an-vinh/library/…` trả 301 về `/{mã website}/{tệp}` khi bản chép ở chỗ mới có cùng ETag và cỡ; kiểm và 301 đều lưu 5 phút ở Cloudflare.
+- **Kiểm:** `plans/tools/check-media-worker.sh` 22/22 dòng đạt. Sau deploy prod d2d06955 (#996): 60/60 địa chỉ tệp trên 16 trang av1 nằm dưới `zpvjzx/` và trả 200.
+- **Quay lại:** `wrangler rollback` về bản trước trong `deploy/media-worker` (docs/runbooks/media-worker-deploy.md).
+
 ### 2026-11-19 — Ổ đĩa máy chủ đầy 96%: dọn, mở rộng bước dọn đêm, cảnh báo trong thư tổng hợp
 
 - **Sự cố (18/11 23:4x):** deploy prod dừng ở bước 0 vì ổ sao lưu còn 4 GB (cần 5 GB); `/` dùng 92/96 GB. Prod vẫn chạy bản cũ, không mất dữ liệu.
