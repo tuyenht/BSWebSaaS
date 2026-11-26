@@ -327,3 +327,53 @@ it('accepts an emailed code pasted or typed with spaces in it', function (): voi
         expect($otp->verify($user, ' '.substr((string) $code, 0, 3).' '.substr((string) $code, 3)."\t"))->toBeTrue();
     });
 });
+
+// ── the authenticator app, once on, is the only second factor ─────────────────────────
+// The emailed code is the fallback for people WITHOUT the app. Someone who reached the code step
+// for an account that has the app on (from a password or a Google/Facebook sign-in) must not
+// trade it for a code mailed to the inbox — that inbox may be exactly what was stolen.
+
+it('sends a person with the authenticator app on from the emailed-code step to the app step', function (): void {
+    $user = User::factory()->create(['two_factor_secret' => 'JBSWY3DPEHPK3PXP', 'two_factor_confirmed_at' => now()]);
+    session(['2fa.user_id' => $user->getAuthIdentifier()]);
+
+    Livewire::test(EmailOtpChallenge::class)->assertRedirect(route('admin.two-factor.challenge'));
+
+    expect(session('2fa.user_id'))->toBe($user->getAuthIdentifier());
+});
+
+it('never signs a person with the authenticator app on in with an emailed code, nor mails one', function (): void {
+    seedTenancy();
+    Notification::fake();
+    $user = User::factory()->create();
+
+    // A valid emailed code is outstanding and the code step is open...
+    $code = app(Tenancy::class)->enter(1, function () use ($user): string {
+        app(EmailOtp::class)->send($user);
+        $code = null;
+        Notification::assertSentTo($user, EmailOtpNotification::class, function (EmailOtpNotification $note) use (&$code): bool {
+            $code = (new ReflectionProperty($note, 'code'))->getValue($note);
+
+            return true;
+        });
+
+        return (string) $code;
+    });
+    session(['2fa.user_id' => $user->getAuthIdentifier()]);
+    $page = Livewire::test(EmailOtpChallenge::class)->assertNoRedirect();
+
+    // ...when the account turns the authenticator app on (in another tab, or a crafted request
+    // that never went through the opening redirect). Neither the code nor a new one may count now.
+    $user->forceFill(['two_factor_secret' => 'JBSWY3DPEHPK3PXP', 'two_factor_confirmed_at' => now()])->save();
+    Notification::fake();
+
+    $page->set('code', $code)->call('verify')->assertRedirect(route('admin.two-factor.challenge'));
+    $this->assertGuest();
+
+    // No code outstanding any more (so no resend cooldown): only the authenticator rule can stop a new one.
+    app(EmailOtp::class)->invalidate($user);
+    app(Tenancy::class)->enter(1, fn () => $page->call('resend')->assertRedirect(route('admin.two-factor.challenge')));
+
+    $this->assertGuest();
+    Notification::assertNothingSent();
+});
