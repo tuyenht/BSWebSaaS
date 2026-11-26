@@ -19,6 +19,7 @@ use App\Modules\Theme\Rendering\LayoutSlots;
 use Closure;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
+use LogicException;
 use stdClass;
 use Throwable;
 
@@ -43,12 +44,16 @@ use Throwable;
  * the website, or a file of another type, is left as it is and counted as unmatched.
  *
  * Rows are read BATCH at a time per tenant transaction, in the order of an index that leads with
- * site_id (WALKS), so a batch reads about BATCH rows of the website, not all of them. In a real run
- * the rows of a converted place are locked FOR NO KEY UPDATE, then the media rows FOR KEY SHARE (the
- * order an entry save takes them), with lock_timeout set, and a batch that lost a lock conflict is
- * run again whole, TRIES times at most (as SiteMediaRekey). A dry run reads without locks and
- * writes nothing. A row is written only while it still holds what was read (a save in between, which
- * the lock rules out, leaves it for the next run, counted). Writes skip the model events (no
+ * site_id (WALKS), so a batch reads about BATCH rows of the website, not all of them. The page is
+ * read without a lock and the walk's cursor taken from that read. In a real run the rows of it that
+ * hold a reference are then locked and read again by id (FOR NO KEY UPDATE), then the media rows FOR
+ * KEY SHARE (the order an entry save takes them), with lock_timeout set, and a batch that lost a
+ * lock conflict is run again whole, TRIES times at most (as SiteMediaRekey). (A cursor taken from the
+ * locked rows could jump: at READ COMMITTED a row that waited for a save comes back with its new key
+ * values, out of order, and the rows between would never be read.) A dry run reads without locks and
+ * writes nothing. A row is written only while it still holds what was read under the lock (a save in
+ * between, which the lock rules out, leaves it for the next run, counted); a row that left the
+ * segment between the two reads is counted the same way. Writes skip the model events (no
  * updated_at, no revision, no content mark: the page shows the same picture): a page body through a
  * quiet save of its model, so its sanitizing cast still runs, the other places one statement per
  * batch. A real run keeps the usage index in the same transaction (a block picture now named by id
@@ -300,7 +305,8 @@ final readonly class MediaRefsBackfill
      *
      * $filter is computed per row (`hit`), not put in the WHERE: there it would make a batch scan
      * the index until BATCH rows match, the whole website when few do. So every batch reads at most
-     * BATCH index entries, and also locks the rows of it that do not match, for that batch's time.
+     * BATCH index entries. With $lock, only the rows that match are locked and read again (locked());
+     * the cursor stays the one of the unlocked page, so no row is passed over.
      *
      * @param  list<mixed>  $filterBindings
      * @param  Closure(list<stdClass>): array{0: BackfillPass, 1: int, 2: int}  $handle
@@ -314,12 +320,21 @@ final readonly class MediaRefsBackfill
             $cursor = null;
             do {
                 [$count, $cursor, $pass, $written, $left] = $this->batch($siteId, function () use ($siteId, $table, $select, $segment, $keys, $filter, $filterBindings, $lock, $handle, $cursor): array {
-                    [$sql, $bindings] = self::page($siteId, $table, $select, $segment, $keys, $filter, $filterBindings, $cursor, $lock);
+                    [$sql, $bindings] = self::page($siteId, $table, $select, $segment, $keys, $filter, $filterBindings, $cursor);
                     $found = self::objects(DB::select($sql, $bindings));
-                    [$pass, $written, $left] = $handle(array_values(array_filter($found, static fn (stdClass $row): bool => Cast::int($row->hit) === 1)));
                     $last = $found === [] ? $cursor : array_map(static fn (int $i): mixed => $found[count($found) - 1]->{"k{$i}"}, array_keys($keys));
+                    $hits = self::hits($found);
+                    $gone = 0;
+                    if ($lock && $hits !== []) {
+                        [$sql, $bindings] = self::locked($siteId, $table, $select, $segment, $filter, $filterBindings, array_map(static fn (stdClass $row): int => Cast::int($row->id), $hits));
+                        $again = self::objects(DB::select($sql, $bindings));
+                        // a row deleted or moved out of the segment since the page was read
+                        $gone = count($hits) - count($again);
+                        $hits = self::hits($again);
+                    }
+                    [$pass, $written, $left] = $handle($hits);
 
-                    return [count($found), $last, $pass, $written, $left];
+                    return [count($found), $last, $pass, $written, $left + $gone];
                 });
                 $lines = self::merge($lines, $pass->lines);
                 if (! isset(self::COUNTED[$place])) {
@@ -333,17 +348,21 @@ final readonly class MediaRefsBackfill
     }
 
     /**
-     * The query of one batch: up to BATCH rows of the website after $cursor, in the keys' order.
-     * The first key's bound is also given alone, so an index whose next column is not the second
-     * key still starts at the cursor.
+     * The query of one batch: up to BATCH rows of the website after $cursor, in the keys' order,
+     * read without a lock. The first key's bound is also given alone (>=), so an index whose next
+     * column is not the second key still starts at the cursor; that bound holds only for a first
+     * key walked up, so a first key walked down is refused.
      *
      * @param  list<array{0: string, 1: string}>  $keys
      * @param  list<mixed>  $filterBindings
      * @param  list<mixed>|null  $cursor
      * @return array{0: string, 1: list<mixed>}
      */
-    public static function page(int $siteId, string $table, string $select, string $segment, array $keys, string $filter, array $filterBindings, ?array $cursor, bool $lock): array
+    public static function page(int $siteId, string $table, string $select, string $segment, array $keys, string $filter, array $filterBindings, ?array $cursor): array
     {
+        if ($keys === [] || self::descending($keys[0][1])) {
+            throw new LogicException("The walk of {$table} must start with a key walked up (ascending).");
+        }
         $columns = implode(', ', array_map(static fn (array $key, int $i): string => "{$key[0]} AS k{$i}", $keys, array_keys($keys)));
         $hit = $filter === '' ? '1' : "CASE WHEN {$filter} THEN 1 ELSE 0 END";
         $sql = "SELECT {$select}, {$hit} AS hit, {$columns} FROM {$table} WHERE site_id = ?".($segment !== '' ? " AND {$segment}" : '');
@@ -353,7 +372,7 @@ final readonly class MediaRefsBackfill
                 $sql .= " AND {$keys[0][0]} >= ?";
                 $bindings[] = $cursor[0];
             }
-            $down = array_map(static fn (array $key): bool => str_ends_with($key[1], ' DESC'), $keys);
+            $down = array_map(static fn (array $key): bool => self::descending($key[1]), $keys);
             if (! in_array(true, $down, true)) {
                 $sql .= ' AND ('.implode(', ', array_column($keys, 0)).') > ('.implode(', ', array_fill(0, count($keys), '?')).')';
                 array_push($bindings, ...$cursor);
@@ -373,9 +392,40 @@ final readonly class MediaRefsBackfill
                 $sql .= ' AND ('.implode(' OR ', $or).')';
             }
         }
-        $sql .= ' ORDER BY '.implode(', ', array_column($keys, 1)).' LIMIT '.self::BATCH.($lock ? ' FOR NO KEY UPDATE' : '');
+        $sql .= ' ORDER BY '.implode(', ', array_column($keys, 1)).' LIMIT '.self::BATCH;
 
         return [$sql, $bindings];
+    }
+
+    /**
+     * The rows of a page that matched, locked and read again by id (in id order) while they are still
+     * in the segment: what a real run converts.
+     *
+     * @param  list<mixed>  $filterBindings
+     * @param  list<int>  $ids
+     * @return array{0: string, 1: list<mixed>}
+     */
+    public static function locked(int $siteId, string $table, string $select, string $segment, string $filter, array $filterBindings, array $ids): array
+    {
+        $hit = $filter === '' ? '1' : "CASE WHEN {$filter} THEN 1 ELSE 0 END";
+        $sql = "SELECT {$select}, {$hit} AS hit FROM {$table} WHERE site_id = ? AND id = ANY(?::bigint[])".($segment !== '' ? " AND {$segment}" : '').' ORDER BY id FOR NO KEY UPDATE';
+
+        return [$sql, [...$filterBindings, $siteId, '{'.implode(',', $ids).'}']];
+    }
+
+    /** An ORDER BY term that walks its column down. */
+    private static function descending(string $term): bool
+    {
+        return preg_match('/\sDESC(\s+NULLS\s+(FIRST|LAST))?$/i', $term) === 1;
+    }
+
+    /**
+     * @param  list<stdClass>  $rows
+     * @return list<stdClass> the rows that match the walk's filter
+     */
+    private static function hits(array $rows): array
+    {
+        return array_values(array_filter($rows, static fn (stdClass $row): bool => Cast::int($row->hit) === 1));
     }
 
     /**

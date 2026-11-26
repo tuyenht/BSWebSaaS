@@ -24,6 +24,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -547,4 +548,105 @@ it('walks every segment of a table: the Trash, pages, rows with no updated_at, a
         ->and($admin->table('entries')->whereIn('id', $ids)->whereNull('cover_media_id')->count())->toBe(0)
         ->and($report['sites'][1]['lines']['entry_translations image']['converted'])->toBe(MediaRefsBackfill::BATCH + 1)
         ->and($admin->table('entry_translations')->whereRaw("body->'blocks'->0->'props'->>'image_url' = ?", [(string) $hero->id])->count())->toBe(MediaRefsBackfill::BATCH + 1);
+});
+
+it('passes over no row when the last row of a batch moves ahead between its page read and its lock', function (): void {
+    $hero = backfillMedia(1, 'hero-1a2b.jpg', 'image/jpeg');
+    $admin = DB::connection('pgsql_admin');
+    $total = MediaRefsBackfill::BATCH + 3;
+    $at = now()->subDays(2)->startOfSecond();
+    $rows = array_map(static fn (int $i): array => [
+        'ulid' => (string) Str::ulid(), 'site_id' => 1, 'type' => 'post', 'status' => 'draft',
+        'meta' => json_encode(['image_url' => $hero->storage_key]), 'created_at' => $at, 'updated_at' => $at->copy()->addSeconds($i),
+    ], range(1, $total));
+    foreach (array_chunk($rows, 200) as $chunk) {
+        $admin->table('entries')->insert($chunk);
+    }
+    // the last row of the first batch in the walk's order (updated_at, id)
+    $last = (int) $admin->table('entries')->where('site_id', 1)->orderBy('updated_at')->orderBy('id')->pluck('id')[MediaRefsBackfill::BATCH - 1];
+    $ahead = now()->addDay()->startOfSecond();
+
+    $moved = false;
+    DB::listen(function (QueryExecuted $query) use (&$moved, $admin, $last, $ahead): void {
+        if ($moved || $query->connectionName === 'pgsql_admin') {
+            return;
+        }
+        // the first page of entries is read, not yet locked: a staff save commits and moves its last row ahead
+        if (str_contains($query->sql, 'FROM entries') && ! str_contains($query->sql, 'FOR NO KEY UPDATE')) {
+            $moved = true;
+            $admin->table('entries')->where('id', $last)->update(['updated_at' => $ahead]);
+        }
+    });
+
+    [$exit, $output, $report] = backfillRun(apply: true);
+
+    expect($moved)->toBeTrue()
+        ->and($exit)->toBe(0, $output)
+        ->and($report['sites'][1]['lines']['entries cover']['converted'])->toBe($total)
+        ->and($report['sites'][1]['rows']['entries'])->toBe($total)
+        ->and($admin->table('entries')->where('site_id', 1)->whereNull('cover_media_id')->count())->toBe(0)
+        ->and(Carbon::parse((string) $admin->table('entries')->where('id', $last)->value('updated_at'))->eq($ahead))->toBeTrue();
+});
+
+it('never overwrites a category or a cover changed under the lock: each is left and counted', function (): void {
+    $hero = backfillMedia(1, 'hero-1a2b.jpg', 'image/jpeg');
+    $logo = backfillMedia(1, 'logo-2b3c.png', 'image/png');
+    $doc = backfillMedia(1, 'bang-gia-3c4d.pdf', 'application/pdf');
+    $made = app(Tenancy::class)->enter(1, fn (): array => [
+        'keyChanged' => Entry::query()->create(['type' => 'post', 'status' => 'draft', 'meta' => ['image_url' => $hero->storage_key]]),
+        'idSet' => Entry::query()->create(['type' => 'post', 'status' => 'draft', 'meta' => ['image_url' => $hero->storage_key]]),
+        'category' => Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]),
+    ]);
+    $slots = static fn (string $heading): array => ['layout_blocks' => ['after_post' => ['vi' => ['blocks' => [
+        ['type' => 'cta', 'props' => ['heading' => $heading, 'button_label' => 'Tải', 'button_url_do' => ['k' => 'file', 'file' => $doc->storage_key]]],
+    ]]]]];
+    backfillWrite('taxonomies', $made['category']->id, 'meta', $slots('Tải bảng giá'));
+    $staff = $slots('Bản của người sửa');
+
+    $previous = '';
+    $busy = false;
+    $done = [];
+    DB::listen(function (QueryExecuted $query) use (&$previous, &$busy, &$done, $made, $logo, $staff): void {
+        if ($busy || $query->connectionName === 'pgsql_admin') {
+            return;
+        }
+        // after the rows are locked and read, before the write: the media lookup. The changes are
+        // made in the batch's own transaction, standing for the save the lock rules out.
+        if (str_contains($query->sql, 'for key share')) {
+            $busy = true;
+            if (str_contains($previous, 'FROM entries') && ! isset($done['entries'])) {
+                $done['entries'] = true;
+                DB::table('entries')->where('id', $made['keyChanged']->id)->update(['meta' => json_encode(['image_url' => $logo->storage_key])]);
+                DB::table('entries')->where('id', $made['idSet']->id)->update(['cover_media_id' => $logo->id]);
+            }
+            if (str_contains($previous, 'FROM taxonomies') && ! isset($done['taxonomies'])) {
+                $done['taxonomies'] = true;
+                DB::table('taxonomies')->where('id', $made['category']->id)->update(['meta' => json_encode($staff, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)]);
+            }
+            $busy = false;
+        }
+        $previous = $query->sql;
+    });
+
+    [$exit, $output, $report] = backfillRun(apply: true);
+    $entry = fn (Entry $e): array => (array) DB::connection('pgsql_admin')->table('entries')->where('id', $e->id)->first(['cover_media_id', 'meta']);
+    expect($done)->toBe(['entries' => true, 'taxonomies' => true])
+        ->and($exit)->toBe(0, $output)
+        // the cover's key changed: the write needs meta.image_url to be the key read
+        ->and($entry($made['keyChanged'])['cover_media_id'])->toBeNull()
+        ->and(json_decode($entry($made['keyChanged'])['meta'], true))->toBe(['image_url' => $logo->storage_key])
+        // a cover id set meanwhile: the write needs cover_media_id still empty
+        ->and($entry($made['idSet'])['cover_media_id'])->toBe($logo->id)
+        ->and(json_decode($entry($made['idSet'])['meta'], true))->toBe(['image_url' => $hero->storage_key])
+        // a category written past its model: the write needs the stored meta to be the one read
+        ->and(backfillJson('taxonomies', $made['category']->id, 'meta'))->toBe($staff)
+        ->and($report['sites'][1]['rows'])->toMatchArray([
+            'entries' => 0, 'entries changed since read, left for the next run' => 2,
+            'taxonomies' => 0, 'taxonomies changed since read, left for the next run' => 1,
+        ]);
+
+    [, , $again] = backfillRun(apply: true);
+    expect($again['sites'][1]['rows'])->toMatchArray(['entries' => 1, 'taxonomies' => 1])
+        ->and(backfillJson('taxonomies', $made['category']->id, 'meta')['layout_blocks']['after_post']['vi']['blocks'][0]['props'])
+        ->toBe(['heading' => 'Bản của người sửa', 'button_label' => 'Tải', 'button_url_do' => ['k' => 'file', 'media' => strtoupper($doc->ulid)]]);
 });
