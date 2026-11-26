@@ -26,7 +26,7 @@
     $boundLabel = $nameBind ? \Illuminate\Support\Js::from(__('admin.list.more_for')).'.replace(\':name\', '.$nameBind.')' : null;
     $sheet = $title ? 'title' : 'row';
     // a component tag cannot hold @if, so the bound name reaches the ⋮ through an attribute bag
-    // The menu is built only while open, so what it holds is said here for the stylesheet, which
+    // The menu is built on its first opening, so what it holds is said here for the stylesheet, which
     // hides a ⋮ whose every item the row already shows as a button: `plain` for an item that is
     // always in the menu, the data-xm marks of the others, `allxv` when no item lacks the xv mark.
     $holds = [];
