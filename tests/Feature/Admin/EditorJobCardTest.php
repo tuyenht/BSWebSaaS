@@ -917,6 +917,8 @@ it('judges a default-language save by the words it writes: a box no language wor
             ->assertHasErrors(['jobFacts.1.text' => __('entries.ed.job_fact_empty', ['n' => 2])])
             ->assertSet('jobFacts.1.text', '');
         expect($post->fresh()->meta)->toEqual($stored);
+        // leaving the box says the same: the form knows the words the save judged
+        $vietnamese->call('touchJobFact', 1)->assertHasErrors(['jobFacts.1.text' => __('entries.ed.job_fact_empty', ['n' => 2])]);
 
         // the other way: a box only Vietnamese worded when the form read it, which English worded since
         $post = jcPostEn($jobs, ['facts' => [jcFact('Nhà máy 2'), jcFact('Toàn thời gian')]]);

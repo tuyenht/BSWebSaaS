@@ -333,6 +333,11 @@ trait EditsJobCard
         }
         $errors = [];
         if (! $this->sharedLocked()) {
+            // the form's own check (touchJobFact) then knows the words judged here, refused or not
+            $stored = $this->jobStored;
+            if ($stored !== []) {
+                $this->jobStored = JobCardForm::othersNow($meta, $stored, $this->locale, app(SiteLocale::class)->default());
+            }
             // the default language writes the form's boxes in its order (JobCardForm::build)
             $boxes = is_array($written['facts'] ?? null) ? array_values($written['facts']) : [];
             foreach ($this->jobFactList() as $index => $fact) {
