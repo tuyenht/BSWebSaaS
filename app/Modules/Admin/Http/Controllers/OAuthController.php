@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Http\Controllers;
 
+use App\Modules\Admin\Support\EmailOtp;
 use App\Modules\Admin\Support\OAuthError;
 use App\Modules\Admin\Support\OAuthFlow;
 use App\Modules\Admin\Support\PlatformSettings;
@@ -183,12 +184,34 @@ final readonly class OAuthController
             return redirect()->route('admin.login')->withErrors(['email' => __('admin.oauth_failed')])->withCookie($forget);
         }
 
+        $provider = Cast::string($data['provider'] ?? null);
+
+        // The second factor applies here exactly as after a password: the authenticator app when the
+        // person turned it on; otherwise the emailed code, unless the provider itself vouched for the
+        // account's own mailbox (a code sent there would reach whoever already holds that inbox).
+        // Not authenticated until the challenge passes; the provider rides along for the log.
+        if ($user->two_factor_confirmed_at !== null || ($data['trusted'] ?? false) !== true) {
+            $request->session()->put('2fa.user_id', $user->getAuthIdentifier());
+            $request->session()->put('2fa.via', $provider);
+
+            if ($user->two_factor_confirmed_at !== null) {
+                return redirect()->route('admin.two-factor.challenge')->withCookie($forget);
+            }
+
+            // Same flood guard as the password path: never a new code while one is outstanding.
+            if (app(EmailOtp::class)->canResend($user)) {
+                app(EmailOtp::class)->send($user);
+            }
+
+            return redirect()->route('admin.otp.challenge')->withCookie($forget);
+        }
+
         Auth::login($user);
         $request->session()->regenerate();
         Audit::record('auth.login.succeeded', [
             'actor_id' => $user->getAuthIdentifier(),
             'actor_label' => $user->email,
-            'meta' => ['factor' => 'social', 'provider' => Cast::string($data['provider'] ?? null)],
+            'meta' => ['factor' => 'social', 'provider' => $provider],
         ]);
 
         return redirect()->intended(route('admin.dashboard'))->withCookie($forget);
@@ -242,7 +265,7 @@ final readonly class OAuthController
             if ($linked !== null) {
                 $user = User::find($linked->user_id);
                 if ($user instanceof User && $this->memberOfOrigin($user)) {
-                    return $this->bounceLogin($origin, $user, $nonceHash, $provider);
+                    return $this->bounceLogin($origin, $user, $nonceHash, $provider, $this->vouchesForMailbox($info, $provider, $user));
                 }
                 $linkedElsewhere = $user instanceof User;
             }
@@ -277,7 +300,7 @@ final readonly class OAuthController
             );
         }
 
-        return $this->bounceLogin($origin, $user, $nonceHash, $provider);
+        return $this->bounceLogin($origin, $user, $nonceHash, $provider, $this->vouchesForMailbox($info, $provider, $user));
     }
 
     /**
@@ -346,6 +369,21 @@ final readonly class OAuthController
         return redirect()->away($this->originPath($origin, 'account').'?tab=linked&oauth=connected');
     }
 
+    /**
+     * Whether the provider asserted, as verified, the very email the account uses — the mailbox the
+     * emailed code would go to. Facebook never asserts it; another verified email is not the account's.
+     *
+     * @param  array<string, mixed>  $info
+     */
+    private function vouchesForMailbox(array $info, string $provider, User $user): bool
+    {
+        $email = $info[Cast::string(config("oauth.providers.$provider.email_field"), 'email')] ?? null;
+
+        return ($info['email_verified'] ?? false) === true
+            && is_string($email) && $email !== ''
+            && mb_strtolower($email) === mb_strtolower((string) $user->email);
+    }
+
     private function subjectField(string $provider): string
     {
         return Cast::string(config("oauth.providers.$provider.subject_field"), 'sub');
@@ -361,13 +399,14 @@ final readonly class OAuthController
      * The session lives on the origin host — bounce there with a single-use login token. The token
      * payload carries the nonce hash so finish() can verify the same browser that began the flow.
      */
-    private function bounceLogin(string $origin, User $user, string $nonceHash, string $provider): RedirectResponse
+    private function bounceLogin(string $origin, User $user, string $nonceHash, string $provider, bool $trusted): RedirectResponse
     {
         $token = Str::random(48);
         Cache::put('oauth-login:'.$token, [
             'uid' => $user->getAuthIdentifier(),
             'nonce' => $nonceHash,
             'provider' => $provider,
+            'trusted' => $trusted,
         ], self::LOGIN_TTL);
 
         return redirect()->away($this->originPath($origin, 'oauth/finish').'?token='.$token);

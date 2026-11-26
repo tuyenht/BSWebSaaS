@@ -1,6 +1,8 @@
 <?php
 
+use App\Modules\Admin\Livewire\EmailOtpChallenge;
 use App\Modules\Admin\Livewire\SocialSettings;
+use App\Modules\Admin\Notifications\EmailOtpNotification;
 use App\Modules\Admin\Support\AuditEntryView;
 use App\Modules\Admin\Support\PlatformSettings;
 use App\Modules\Admin\Support\SecretCipher;
@@ -15,6 +17,7 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 
 /*
@@ -314,6 +317,35 @@ function facebookSignIn(object $test): array
     return [$back, $nonce];
 }
 
+/** A member of website 1 (where a.test points). @param  array<string, mixed>  $attributes */
+function quickLoginMember(array $attributes = []): User
+{
+    $member = User::factory()->create($attributes);
+    app(Tenancy::class)->enter(1, fn () => grantRole($member, 'role-'.$member->getKey(), ['settings.manage']));
+    app(TeamContext::class)->forget();
+
+    return $member->fresh();
+}
+
+/** Fakes Google's token and profile answers: a verified email, as Google sends for its accounts. */
+function fakeGoogle(string $sub, string $email): void
+{
+    Http::fake([
+        'oauth2.googleapis.com/*' => Http::response(['access_token' => 'at']),
+        'openidconnect.googleapis.com/*' => Http::response(['sub' => $sub, 'email' => $email, 'email_verified' => true]),
+    ]);
+}
+
+/** Runs a Google sign-in through the provider and returns [callback Location, browser nonce]. */
+function googleSignIn(object $test): array
+{
+    $start = $test->get('http://a.test/admin/oauth/google/start?purpose=login');
+    parse_str((string) parse_url((string) $start->headers->get('Location'), PHP_URL_QUERY), $query);
+    $nonce = (string) $start->getCookie('oauth_login_nonce')?->getValue();
+
+    return [(string) $test->get('http://a.test/oauth/callback?code=the-code&state='.$query['state'])->headers->get('Location'), $nonce];
+}
+
 function socialAuditRow(string $action): ?object
 {
     return DB::connection('pgsql_admin')->table('audit_logs')->where('action', $action)->sole();
@@ -343,23 +375,74 @@ it('tells a linked Facebook account that it is not a member of this website', fu
     $this->assertGuest();
 });
 
-it('signs a linked member in with Facebook and records how', function (): void {
+it('sends a linked member who signs in with Facebook to the emailed code, then records how', function (): void {
     seedSocialRows(null, SOCIAL_SHARED_READY, 'facebook');
-    $member = User::factory()->create();
-    app(Tenancy::class)->enter(1, fn () => grantRole($member, 'role-'.$member->getKey(), ['settings.manage']));
-    app(TeamContext::class)->forget();
+    Notification::fake();
+    $member = quickLoginMember();
     SocialIdentity::query()->create(['user_id' => $member->getKey(), 'provider' => 'facebook', 'sub' => 'fb-3']);
     fakeFacebook('fb-3', null);
 
     [$back, $nonce] = facebookSignIn($this);
     expect($back)->toContain('/admin/oauth/finish?token=');
 
+    // Facebook proves nothing about the mailbox: the second factor is still asked for.
+    $this->withCookie('oauth_login_nonce', $nonce)->get($back)->assertRedirect(route('admin.otp.challenge'));
+    $this->assertGuest();
+    expect(session('2fa.user_id'))->toBe($member->getKey());
+
+    $code = null;
+    Notification::assertSentTo($member, EmailOtpNotification::class, function (EmailOtpNotification $note) use (&$code): bool {
+        $code = (new ReflectionProperty($note, 'code'))->getValue($note);
+
+        return true;
+    });
+    Livewire::test(EmailOtpChallenge::class)->set('code', (string) $code)->call('verify')->assertHasNoErrors();
+
+    $this->assertAuthenticatedAs($member->fresh());
+    expect(json_decode((string) socialAuditRow('auth.login.succeeded')?->meta, true))
+        ->toMatchArray(['factor' => 'email_otp', 'provider' => 'facebook']);
+});
+
+it('asks for the authenticator code whenever the member turned it on, however they signed in', function (bool $sameEmail): void {
+    seedSocialRows(null, SOCIAL_SHARED_READY);
+    $member = quickLoginMember(['two_factor_secret' => 'JBSWY3DPEHPK3PXP', 'two_factor_confirmed_at' => now()]);
+    SocialIdentity::query()->create(['user_id' => $member->getKey(), 'provider' => 'google', 'sub' => 'g-2']);
+    fakeGoogle('g-2', $sameEmail ? $member->email : 'other-'.$member->email);
+
+    [$back, $nonce] = googleSignIn($this);
+    $this->withCookie('oauth_login_nonce', $nonce)->get($back)->assertRedirect(route('admin.two-factor.challenge'));
+
+    $this->assertGuest();
+    expect(session('2fa.user_id'))->toBe($member->getKey());
+})->with(['Google email is the account email' => [true], 'another Google email' => [false]]);
+
+it('signs a member in with Google at once when Google vouches for the account email itself', function (): void {
+    seedSocialRows(null, SOCIAL_SHARED_READY);
+    Notification::fake();
+    $member = quickLoginMember();
+    fakeGoogle('g-3', strtoupper($member->email)); // email addresses compare without case
+
+    [$back, $nonce] = googleSignIn($this);
     $this->withCookie('oauth_login_nonce', $nonce)->get($back)->assertRedirect('http://a.test/admin');
 
     $this->assertAuthenticatedAs($member->fresh());
-    $row = socialAuditRow('auth.login.succeeded');
-    expect($row?->actor_id)->toBe($member->getKey())
-        ->and(json_decode((string) $row?->meta, true))->toMatchArray(['factor' => 'social', 'provider' => 'facebook']);
+    Notification::assertNothingSent();
+    expect(json_decode((string) socialAuditRow('auth.login.succeeded')?->meta, true))
+        ->toMatchArray(['factor' => 'social', 'provider' => 'google']);
+});
+
+it('asks for the emailed code when a linked Google account has another email than the account', function (): void {
+    seedSocialRows(null, SOCIAL_SHARED_READY);
+    Notification::fake();
+    $member = quickLoginMember();
+    SocialIdentity::query()->create(['user_id' => $member->getKey(), 'provider' => 'google', 'sub' => 'g-4']);
+    fakeGoogle('g-4', 'personal-'.$member->email);
+
+    [$back, $nonce] = googleSignIn($this);
+    $this->withCookie('oauth_login_nonce', $nonce)->get($back)->assertRedirect(route('admin.otp.challenge'));
+
+    $this->assertGuest();
+    Notification::assertSentTo($member, EmailOtpNotification::class);
 });
 
 it('records which Facebook account a member linked', function (): void {
@@ -380,12 +463,10 @@ it('records which Facebook account a member linked', function (): void {
 
 it('tells a Google account whose email Google has not verified how to link it', function (): void {
     seedSocialRows(null, SOCIAL_SHARED_READY);
-    $member = User::factory()->create(['email' => 'same@example.com']);
-    app(Tenancy::class)->enter(1, fn () => grantRole($member, 'role-'.$member->getKey(), ['settings.manage']));
-    app(TeamContext::class)->forget();
+    $member = quickLoginMember();
     Http::fake([
         'oauth2.googleapis.com/*' => Http::response(['access_token' => 'at']),
-        'openidconnect.googleapis.com/*' => Http::response(['sub' => 'g-1', 'email' => 'same@example.com', 'email_verified' => false]),
+        'openidconnect.googleapis.com/*' => Http::response(['sub' => 'g-1', 'email' => $member->email, 'email_verified' => false]),
     ]);
 
     $start = $this->get('http://a.test/admin/oauth/google/start?purpose=login');
