@@ -153,24 +153,28 @@ final class JobCardForm
 
     /**
      * Which box of a form each stored box is (stored key => form key), each by its words in the default
-     * language: the box at the same key worded the same, else one worded the same elsewhere (a box
+     * language: the box at the same place worded the same, else one worded the same elsewhere (a box
      * taken out or added before it), else, only while both have as many boxes (none taken out or added,
-     * so the default language reworded it), the one at the same key.
+     * so the default language reworded it), the one at the same place. Places, not keys: a form saved in
+     * the default language keeps the keys it gave its boxes (a new box's, one moved), while the stored
+     * card's keys are its places.
      *
-     * @param  array<string, string|null>  $boxes  the stored boxes' default-language words, by key
-     * @param  array<string, string|null>  $form  the form's boxes' default-language words as it read them, by key
+     * @param  array<string, string|null>  $boxes  the stored boxes' default-language words, by key, in order
+     * @param  array<string, string|null>  $form  the form's boxes' default-language words as it read them, by key, in order
      * @return array<string, string>
      */
     private static function pairBoxes(array $boxes, array $form): array
     {
         $pairs = [];
         $used = [];
+        $boxAt = array_flip(array_keys($boxes));
+        $formAt = array_flip(array_keys($form));
         $steps = [
-            static fn (string $box, string $at): bool => $box === $at && $boxes[$box] === $form[$at],
+            static fn (string $box, string $at): bool => $boxAt[$box] === $formAt[$at] && $boxes[$box] === $form[$at],
             static fn (string $box, string $at): bool => $form[$at] !== null && $boxes[$box] === $form[$at],
         ];
         if (count($boxes) === count($form)) {
-            $steps[] = static fn (string $box, string $at): bool => $box === $at;
+            $steps[] = static fn (string $box, string $at): bool => $boxAt[$box] === $formAt[$at];
         }
         foreach ($steps as $fits) {
             foreach (array_keys($boxes) as $box) {
@@ -343,6 +347,31 @@ final class JobCardForm
     {
         return self::sameBoxes($facts, $deadline, $deadlineAccent, $stored['form'])
             && ! (self::badgeHeld($stored, $default) && self::clean($badge) !== '');
+    }
+
+    /**
+     * Whether a form in a language other than the default, which read the card as $was and was just
+     * saved onto the card now stored ($now, load()['stored']), still holds that card's boxes as they
+     * are: the same keys, tone and deadline, and each box the stored box of the same key (by the words
+     * in the default language, as words() pairs them; another save may have moved boxes of one tone).
+     *
+     * @param  list<array{key: string, text: string, accent: bool}>  $facts
+     * @param  STORED  $was
+     * @param  STORED  $now
+     */
+    public static function holdsBoxes(array $facts, string $deadline, bool $deadlineAccent, array $was, array $now, string $locale, string $default): bool
+    {
+        if (! self::sameBoxes($facts, $deadline, $deadlineAccent, $now['form'])) {
+            return false;
+        }
+        $pairs = self::pairBoxes(self::sources($now['form']['facts'], $now['others'], $locale, $default), self::sources($facts, $was['others'], $locale, $default));
+        foreach ($facts as $fact) {
+            if (($pairs[$fact['key']] ?? null) !== $fact['key']) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
