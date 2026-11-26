@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Admin\Support\OAuthState;
 use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Identity\Models\User;
@@ -61,9 +62,9 @@ it('sends a configured social-login start to the provider with a PKCE-bound stat
 });
 
 it('rejects an OAuth callback carrying an unknown state', function (): void {
-    $this->get('http://a.test/oauth/callback?state=bogus&code=whatever')
-        ->assertRedirectContains('/admin/login')
-        ->assertSessionHasErrors('oauth');
+    $location = (string) $this->get('http://a.test/oauth/callback?state=bogus&code=whatever')->headers->get('Location');
+
+    expect($location)->toBe(consoleSignIn('state_mismatch'));
 });
 
 // ── finish() browser-binding (login-CSRF / session-fixation) ──────────────────────
@@ -81,10 +82,10 @@ it('never sends the browser back to an origin that is not a verified domain of a
         'verifier' => 'v', 'user_id' => null, 'nonce' => 'n',
     ], 600);
 
-    $response = $this->get('http://a.test/oauth/callback?code=the-code&state=the-state');
+    $location = (string) $this->get('http://a.test/oauth/callback?code=the-code&state=the-state')->headers->get('Location');
 
-    $response->assertRedirectContains('/admin/login')->assertSessionHasErrors('oauth');
-    expect((string) $response->headers->get('Location'))->not->toContain(parse_url($origin, PHP_URL_HOST));
+    expect($location)->toBe(consoleSignIn('failed'))
+        ->not->toContain((string) parse_url($origin, PHP_URL_HOST));
 })->with([
     'attached but not verified' => ['https://waiting.example'],
     'not attached at all' => ['https://evil.example'],
@@ -244,3 +245,132 @@ it('connects the sender only if the person still manages settings when the provi
     expect($email['method'] ?? null)->toBe($keepsRight ? 'oauth2' : 'smtp_password')
         ->and(isset($email['oauth']['refresh_token']))->toBe($keepsRight);
 })->with(['still a manager' => [true], 'right removed meanwhile' => [false]]);
+
+// ── A callback whose single-use state is gone (expired, already used, never ours) ──────────────
+// The person goes back to the sign-in page of the website they started from when the state value
+// carries a valid signature for a verified domain of a site; anything else lands on the console's
+// own sign-in page, never on a host taken from the address.
+
+/** The console host's sign-in page with an OAuth reason code — the dead-end-free fallback. */
+function consoleSignIn(string $code): string
+{
+    return 'http://'.config('tenancy.platform_host').'/login?oauth_error='.$code;
+}
+
+function configureSocialGoogle(int $site): void
+{
+    config(['admin.encryption_key' => 'base64:'.base64_encode('0123456789abcdef0123456789abcdef')]);
+
+    app(Tenancy::class)->enter($site, fn () => app(SettingsRepository::class)->put('oauth_social', 'google', [
+        'client_id' => 'test-client-id',
+        'client_secret' => SecretCipher::encrypt('test-secret'),
+        'enabled' => true,
+    ]));
+}
+
+/** Starts a social sign-in on the given origin and returns the state sent to the provider. */
+function startSocialLogin(object $test, string $origin): string
+{
+    $location = (string) $test->get($origin.'/admin/oauth/google/start?purpose=login')->headers->get('Location');
+    parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
+
+    return (string) $query['state'];
+}
+
+it('sends a person whose sign-in state expired back to the sign-in page of their website', function (): void {
+    configureSocialGoogle(1);
+    $state = startSocialLogin($this, 'http://a.test');
+    Cache::forget('oauth-state:'.$state);
+
+    $this->get('http://'.config('tenancy.platform_host').'/oauth/callback?code=the-code&state='.urlencode($state))
+        ->assertRedirect('http://a.test/admin/login?oauth_error=state_mismatch');
+});
+
+it('keeps the state single-use: a second visit to the callback signs nobody in', function (): void {
+    configureSocialGoogle(1);
+    Http::fake([
+        'oauth2.googleapis.com/*' => Http::response(['access_token' => 'at']),
+        'openidconnect.googleapis.com/*' => Http::response(['sub' => '42', 'email' => 'nobody@example.com', 'email_verified' => true]),
+    ]);
+    $state = startSocialLogin($this, 'http://a.test');
+    $callback = 'http://'.config('tenancy.platform_host').'/oauth/callback?code=the-code&state='.urlencode($state);
+
+    $this->get($callback)->assertRedirect('http://a.test/admin/login?oauth_error=no_account');
+    Http::assertSentCount(2);
+
+    $this->get($callback)->assertRedirect('http://a.test/admin/login?oauth_error=state_mismatch');
+    Http::assertSentCount(2);
+    expect(Cache::get('oauth-state:'.$state))->toBeNull();
+});
+
+it('never follows a state value that this app did not sign', function (string $state): void {
+    $location = (string) $this->get('http://'.config('tenancy.platform_host').'/oauth/callback?code=the-code&state='.urlencode($state))
+        ->headers->get('Location');
+
+    // Every forged value names a host that IS a verified site domain: only the signature stops it.
+    expect($location)->toBe(consoleSignIn('state_mismatch'))->not->toContain('b.test');
+})->with([
+    'garbage' => ['bogus'],
+    'empty' => [''],
+    'three empty parts' => ['..'],
+    'signature changed' => [function (): string {
+        [$random, $origin] = explode('.', OAuthState::mint('http://b.test'));
+
+        return $random.'.'.$origin.'.'.rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
+    }],
+    'host swapped, signature kept' => [function (): string {
+        [$random, , $signature] = explode('.', OAuthState::mint('http://a.test'));
+
+        return $random.'.'.rtrim(strtr(base64_encode('http://b.test'), '+/', '-_'), '=').'.'.$signature;
+    }],
+    'signed with another key' => [function (): string {
+        $random = 'r';
+        $origin = rtrim(strtr(base64_encode('http://b.test'), '+/', '-_'), '=');
+
+        return $random.'.'.$origin.'.'.rtrim(strtr(base64_encode(hash_hmac('sha256', 'oauth-state|'.$random.'|'.$origin, 'not-the-app-key', true)), '+/', '-_'), '=');
+    }],
+]);
+
+it('lands on the console sign-in page for a signed state whose host is no verified site domain', function (string $origin): void {
+    DB::connection('pgsql_admin')->table('domains')->insert([
+        'site_id' => 1, 'hostname' => 'waiting.example', 'kind' => 'custom', 'is_primary' => false,
+        'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    $location = (string) $this->get('http://'.config('tenancy.platform_host').'/oauth/callback?state='.urlencode(OAuthState::mint($origin)))
+        ->headers->get('Location');
+
+    expect($location)->toBe(consoleSignIn('state_mismatch'))
+        ->not->toContain((string) parse_url($origin, PHP_URL_HOST));
+})->with([
+    'attached but not verified' => ['https://waiting.example'],
+    'not attached at all' => ['https://evil.example'],
+]);
+
+it('reads back only a bare origin from a signed state value', function (string $origin, ?string $expected): void {
+    expect(OAuthState::origin(OAuthState::mint($origin)))->toBe($expected);
+})->with([
+    'plain host' => ['http://a.test', 'http://a.test'],
+    'two padding chars' => ['https://ab.example', 'https://ab.example'],
+    'with a port' => ['https://abc.example:8443', 'https://abc.example:8443'],
+    'with a path' => ['http://a.test/admin', null],
+    'another scheme' => ['javascript:alert(1)', null],
+    'user info' => ['https://a.test@evil.example', null],
+]);
+
+it('reads nothing from a state value that is not a string or is too long', function (): void {
+    expect(OAuthState::origin(['x']))->toBeNull()
+        ->and(OAuthState::origin(null))->toBeNull()
+        ->and(OAuthState::origin(str_repeat('a', 2000)))->toBeNull();
+});
+
+it('shows the expired-request sentence on the sign-in page it lands on', function (): void {
+    app()->setLocale('vi');
+
+    $this->get('http://a.test/admin/login?oauth_error=state_mismatch')
+        ->assertOk()
+        ->assertSee(__('admin.oauth_state_mismatch'));
+    $this->get(consoleSignIn('state_mismatch'))
+        ->assertOk()
+        ->assertSee(__('admin.oauth_state_mismatch'));
+});

@@ -21,6 +21,7 @@ enum OAuthError: string
     case NotMember = 'not_member';
     case NotLinked = 'not_linked';
     case AlreadyLinked = 'already_linked';
+    case StateMismatch = 'state_mismatch';
 
     public function message(): string
     {
@@ -32,6 +33,7 @@ enum OAuthError: string
             self::NotMember => 'admin.oauth_login_not_member',
             self::NotLinked => 'admin.oauth_login_not_linked',
             self::AlreadyLinked => 'admin.social_already_linked',
+            self::StateMismatch => 'admin.oauth_state_mismatch',
         });
     }
 
