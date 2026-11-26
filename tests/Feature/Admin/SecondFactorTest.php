@@ -345,9 +345,9 @@ it('sends a person with the authenticator app on from the emailed-code step to t
 it('never signs a person with the authenticator app on in with an emailed code, nor mails one', function (): void {
     seedTenancy();
     Notification::fake();
-    $user = User::factory()->create(['two_factor_secret' => 'JBSWY3DPEHPK3PXP', 'two_factor_confirmed_at' => now()]);
+    $user = User::factory()->create();
 
-    // A code that would be valid for this account (e.g. sent before the app was turned on).
+    // A valid emailed code is outstanding and the code step is open...
     $code = app(Tenancy::class)->enter(1, function () use ($user): string {
         app(EmailOtp::class)->send($user);
         $code = null;
@@ -360,10 +360,19 @@ it('never signs a person with the authenticator app on in with an emailed code, 
         return (string) $code;
     });
     session(['2fa.user_id' => $user->getAuthIdentifier()]);
+    $page = Livewire::test(EmailOtpChallenge::class)->assertNoRedirect();
+
+    // ...when the account turns the authenticator app on (in another tab, or a crafted request
+    // that never went through the opening redirect). Neither the code nor a new one may count now.
+    $user->forceFill(['two_factor_secret' => 'JBSWY3DPEHPK3PXP', 'two_factor_confirmed_at' => now()])->save();
     Notification::fake();
 
-    // Straight at the component's endpoints, as a crafted request would, past its first redirect.
-    Livewire::test(EmailOtpChallenge::class)->set('code', $code)->call('verify')->call('resend');
+    $page->set('code', $code)->call('verify')->assertRedirect(route('admin.two-factor.challenge'));
+    $this->assertGuest();
+
+    // No code outstanding any more (so no resend cooldown): only the authenticator rule can stop a new one.
+    app(EmailOtp::class)->invalidate($user);
+    app(Tenancy::class)->enter(1, fn () => $page->call('resend')->assertRedirect(route('admin.two-factor.challenge')));
 
     $this->assertGuest();
     Notification::assertNothingSent();

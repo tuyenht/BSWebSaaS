@@ -208,6 +208,8 @@ final readonly class OAuthController
             return redirect()->route('admin.otp.challenge')->withCookie($forget);
         }
 
+        // A half-done second-factor step from an earlier attempt is not left lying in the session.
+        $request->session()->forget(['2fa.user_id', '2fa.via']);
         Auth::login($user);
         $request->session()->regenerate();
         Audit::record('auth.login.succeeded', [

@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Livewire\EmailOtpChallenge;
 use App\Modules\Admin\Livewire\SocialSettings;
+use App\Modules\Admin\Livewire\TwoFactorChallenge;
 use App\Modules\Admin\Notifications\EmailOtpNotification;
 use App\Modules\Admin\Support\AuditEntryView;
 use App\Modules\Admin\Support\PlatformSettings;
@@ -11,6 +12,7 @@ use App\Modules\Admin\Support\SocialAuth;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Identity\Models\SocialIdentity;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\TwoFactor\TwoFactorService;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Database\Events\QueryExecuted;
@@ -405,7 +407,10 @@ it('sends a linked member who signs in with Facebook to the emailed code, then r
 
 it('asks for the authenticator code whenever the member turned it on, however they signed in', function (bool $sameEmail): void {
     seedSocialRows(null, SOCIAL_SHARED_READY);
-    $member = quickLoginMember(['two_factor_secret' => 'JBSWY3DPEHPK3PXP', 'two_factor_confirmed_at' => now()]);
+    $member = quickLoginMember();
+    $totp = app(TwoFactorService::class);
+    $secret = $totp->generateSecret();
+    $totp->enable($member, $secret, totpCode($secret, -1));
     SocialIdentity::query()->create(['user_id' => $member->getKey(), 'provider' => 'google', 'sub' => 'g-2']);
     fakeGoogle('g-2', $sameEmail ? $member->email : 'other-'.$member->email);
 
@@ -414,6 +419,12 @@ it('asks for the authenticator code whenever the member turned it on, however th
 
     $this->assertGuest();
     expect(session('2fa.user_id'))->toBe($member->getKey());
+
+    Livewire::test(TwoFactorChallenge::class)->set('code', totpCode($secret))->call('verify')->assertHasNoErrors();
+
+    $this->assertAuthenticatedAs($member->fresh());
+    expect(json_decode((string) socialAuditRow('auth.login.succeeded')?->meta, true))
+        ->toMatchArray(['factor' => 'totp', 'provider' => 'google']);
 })->with(['Google email is the account email' => [true], 'another Google email' => [false]]);
 
 it('signs a member in with Google at once when Google vouches for the account email itself', function (): void {
