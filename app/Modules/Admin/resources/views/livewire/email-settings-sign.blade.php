@@ -68,7 +68,7 @@
             <span class="h-8 w-px shrink-0 self-center bg-border-strong @max-[40rem]:hidden" aria-hidden="true"></span>
             <div class="min-w-0 flex-[1_1_260px]">
                 <span id="em-brand-color" class="text-[calc(0.78125rem+var(--user-text-boost))] text-text-muted">{{ __('admin.em_brand_color_label') }}</span>
-                <div role="radiogroup" aria-label="{{ __('admin.em_brand_colors_aria') }}" class="mt-[7px] flex flex-wrap items-center gap-2"
+                <div role="radiogroup" aria-label="{{ __('admin.em_brand_colors_aria') }}" class="mt-[7px] flex flex-wrap items-center gap-3"
                      x-data="{ step(el, by) { const r = [...$root.querySelectorAll('[role=radio]')]; const n = r[(r.indexOf(el) + by + r.length) % r.length]; n.focus(); n.click() } }">
                     @foreach ($sign['swatches'] as $sw)
                         <button type="button" role="radio" wire:key="sw-{{ $sw['hex'] }}" aria-checked="{{ $sw['on'] ? 'true' : 'false' }}" tabindex="{{ $sw['on'] ? 0 : -1 }}"

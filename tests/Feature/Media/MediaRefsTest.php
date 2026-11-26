@@ -76,6 +76,20 @@ it('never finds a file in the Trash', function (): void {
     });
 });
 
+it('finds a file in the Trash only when asked to, and never another website\'s', function (): void {
+    $trashed = refsMedia('trashed');
+    $theirs = refsMedia('theirs', 2);
+    app(Tenancy::class)->enter(1, fn () => Media::query()->whereKey($trashed->id)->firstOrFail()->delete());
+
+    app(Tenancy::class)->enter(1, function () use ($trashed, $theirs): void {
+        $refs = MediaRefs::rows([], [], [$trashed->storage_key, $theirs->storage_key], ['deleted_at'], withTrashed: true, lock: true);
+
+        expect($refs->byKey($trashed->storage_key)?->id)->toBe($trashed->id)
+            ->and($refs->byKey($trashed->storage_key)?->trashed())->toBeTrue()
+            ->and($refs->byKey($theirs->storage_key))->toBeNull();
+    });
+});
+
 it('never finds another website’s file, by id, ulid or key', function (): void {
     $theirs = refsMedia('theirs', 2);
     $ours = refsMedia('ours');
