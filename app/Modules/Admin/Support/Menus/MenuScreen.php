@@ -6,6 +6,7 @@ namespace App\Modules\Admin\Support\Menus;
 
 use App\Modules\Admin\Support\ProductsTabSwitch;
 use App\Modules\Cms\Actions\Menus\ApplyMenuDraft;
+use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
@@ -15,6 +16,7 @@ use App\Modules\Cms\Navigation\MenuLimits;
 use App\Modules\Cms\Navigation\MenuRules;
 use App\Modules\Cms\Navigation\MenuVersion;
 use App\Modules\Cms\Navigation\SpecialLinks;
+use App\Modules\Cms\Support\BlockUsageIndex;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Theme\Theming\MenuAreas;
@@ -222,7 +224,46 @@ final readonly class MenuScreen
             'limits' => MenuLimits::fromAssignments($menu->id, $assignments),
             'items' => $rows,
             'trash' => $this->trashRows($trash, $trashLabels, $sources),
+            'blocks' => $this->panelBlocks($items),
         ];
+    }
+
+    /** The most shared blocks the large-panel list offers (the site's "menu" region, by name). */
+    public const int PANEL_BLOCKS_MAX = 200;
+
+    /**
+     * The shared blocks a large panel may show: those of the "menu" region (Bảng lớn trình đơn), by
+     * name, plus any other one an item of this menu already shows (so the list never hides what is
+     * chosen: one more read only when the cap would cut a chosen block off). `draft` tells the screen to say the block is not shown to guests yet.
+     *
+     * @param  Collection<int, MenuItem>  $items
+     * @return list<array{key: string, name: string, draft: bool}>
+     */
+    private function panelBlocks(Collection $items): array
+    {
+        $chosen = [];
+        foreach ($items as $item) {
+            $ulid = BlockUsageIndex::panelBlock($item->meta);
+            if ($ulid !== null) {
+                $chosen[$ulid] = true;
+            }
+        }
+        $rows = ContentBlock::query()
+            ->where(fn ($query) => $query->where('region', 'menu')->when($chosen !== [], fn ($query) => $query->orWhereIn('ulid', array_keys($chosen))))
+            ->orderBy('name')->orderBy('id')
+            ->limit(self::PANEL_BLOCKS_MAX + count($chosen))
+            ->get(['id', 'ulid', 'name', 'status']);
+        // A chosen block the cap cut off (a website with more blocks than the list shows) is read on its own.
+        $missing = array_diff(array_keys($chosen), $rows->map(fn (ContentBlock $block): string => $block->ulid)->all());
+        if ($missing !== []) {
+            $rows = $rows->concat(ContentBlock::query()->whereIn('ulid', array_values($missing))->orderBy('name')->orderBy('id')->get(['id', 'ulid', 'name', 'status']));
+        }
+
+        return array_values($rows->map(fn (ContentBlock $block): array => [
+            'key' => $block->ulid,
+            'name' => $block->name,
+            'draft' => $block->status !== ContentBlock::PUBLISHED,
+        ])->all());
     }
 
     /**

@@ -295,6 +295,41 @@ it('renders the storefront home with a phone menu and no products within its que
         ->and($count)->toBeLessThanOrEqual($budget);
 });
 
+/** The main menu of site 1 with one top-level item whose large panel shows a published shared block. */
+function qbBlockPanelMenu(): void
+{
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'header', 'value' => ['sticky' => false]]);
+        $block = ContentBlock::query()->create(['key' => 'bang-lon', 'name' => 'Bảng lớn', 'region' => 'menu', 'status' => 'published']);
+        ContentBlockTranslation::query()->create(['content_block_id' => $block->id, 'locale' => 'vi', 'body' => ['blocks' => [
+            ['type' => 'cta', 'props' => ['heading' => 'Bảng lớn dùng chung']],
+        ]]]);
+        $home = Entry::query()->firstOrFail();
+        $menu = Menu::query()->create(['name' => 'Chính', 'handle' => 'primary']);
+        foreach (range(1, 3) as $position) {
+            $item = MenuItem::query()->create(['menu_id' => $menu->id, 'link_type' => 'entry', 'routable_type' => 'entry', 'routable_id' => $home->id,
+                'position' => $position, 'meta' => $position === 1 ? ['mega' => ['type' => 'block', 'block' => $block->ulid]] : []]);
+            $item->translations()->create(['locale' => 'vi', 'label' => "Mục {$position}"]);
+        }
+        MenuAssignment::query()->create(['region_key' => 'primary', 'locale' => 'vi', 'menu_id' => $menu->id]);
+    });
+}
+
+it('renders the storefront home with a large panel showing a shared block within the menu budget plus one', function (): void {
+    // The home budget, the menu's three reads and the phone menu's products-section read, plus ONE read
+    // for every shared block the large panels show (with the page's own references when it has any).
+    $budget = 16;
+    qbBlockPanelMenu();
+
+    $html = '';
+    $count = countQueries(function () use (&$html): void {
+        $html = $this->get('http://a.test/')->assertOk()->getContent();
+    });
+
+    expect($html)->toContain('sf-nav__panel--block')->toContain('Bảng lớn dùng chung')
+        ->and($count)->toBeLessThanOrEqual($budget);
+});
+
 it('renders the site’s 404 page with the full chrome within its query budget', function (): void {
     // The page resolve misses (the route, then the redirect check), then the same chrome as the
     // home: one settings read, the brand, the menus' three reads. The contact page costs nothing
@@ -328,6 +363,21 @@ it('renders the site’s 404 page with the full chrome within its query budget',
     });
 
     expect($html)->toContain('sf-404')->toContain('sf-header')->toContain('sf-footer')->toContain('Mục 3')
+        ->and($count)->toBeLessThanOrEqual($budget);
+});
+
+it('renders the site’s 404 page with a large panel showing a shared block within its budget plus one', function (): void {
+    // The 404 page's own budget (no footer menu here, so one read less than with the full chrome)
+    // plus the one read of the panels' blocks.
+    $budget = 15;
+    qbBlockPanelMenu();
+
+    $html = '';
+    $count = countQueries(function () use (&$html): void {
+        $html = $this->get('http://a.test/khong-co-trang-nay')->assertNotFound()->getContent();
+    });
+
+    expect($html)->toContain('sf-404')->toContain('sf-nav__panel--block')->toContain('Bảng lớn dùng chung')
         ->and($count)->toBeLessThanOrEqual($budget);
 });
 

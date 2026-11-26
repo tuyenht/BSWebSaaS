@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Support\Menus;
 
 use App\Modules\Cms\Actions\Menus\ApplyMenuDraft;
+use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuItem;
+use App\Modules\Cms\Navigation\MenuItemOptions;
 use App\Modules\Cms\Navigation\MenuLimits;
+use App\Modules\Cms\Support\BlockUsageIndex;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Theme\Theming\MenuAreas;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 /**
@@ -18,14 +22,16 @@ use Illuminate\Support\Str;
  * For the menu being edited — items whose page, post or product is not published, in the trash
  * or gone, and items whose category has no version in a language the menu is written for (the
  * website hides each of them by itself); items deeper than the strictest area showing the menu
- * can draw; the menu not shown anywhere. For the site — an area with no menu, and languages an
+ * can draw; large panels set to show a shared block that is not chosen, gone or still a draft (the
+ * website then shows the item as a plain link); the menu not shown anywhere. For the site — an area with no menu, and languages an
  * area has no menu for (the website shows the main language's menu there).
  *
  * Each issue: code, level (problem = the website hides or lacks something; tip = worth a look),
  * the plain-language message, and what the screen needs to act on it — the item's ulid, the
  * source's kind, public slug and ulid for "Mở trang / sản phẩm / chuyên mục", the area, the
  * languages. Never an id. A fixed number of queries whatever the menu's size: the assignments,
- * the items and their labels, two per kind of source.
+ * the items and their labels, two per kind of source, one for the shared blocks panels show (none
+ * when no panel shows one).
  */
 final readonly class MenuSelfCheck
 {
@@ -99,6 +105,9 @@ final readonly class MenuSelfCheck
         }
 
         $limits = MenuLimits::fromAssignments($menu->id, $assignments);
+        if ($limits['mega']) {
+            array_push($issues, ...$this->panelIssues($items, $mainLabel, $sources));
+        }
         $tooDeep = $this->deeperThan($items->all(), $limits['depth']);
         if ($tooDeep > 0) {
             $area = $limits['area'] === null ? null : MenuAreas::all()[$limits['area']]['label'];
@@ -119,6 +128,47 @@ final readonly class MenuSelfCheck
                 'menu' => $menu->ulid,
                 'message' => __('menus.check_menu_unplaced', ['name' => $menu->name]),
             ];
+        }
+
+        return $issues;
+    }
+
+    /**
+     * Top-level items whose large panel should show a shared block the website cannot show: none
+     * chosen or gone (block_missing), or still a draft (block_draft). The item is then a plain link
+     * for guests; the fix is on the shared blocks screen (`action: blocks`). Hidden items are left
+     * out. One read of the blocks named, through the site scope.
+     *
+     * @param  Collection<int, MenuItem>  $items
+     * @param  array<int, string>  $mainLabel
+     * @param  array<int, array<string, mixed>>  $sources
+     * @return list<array<string, mixed>>
+     */
+    private function panelIssues(Collection $items, array $mainLabel, array $sources): array
+    {
+        $panels = $items->filter(fn (MenuItem $item): bool => $item->parent_id === null
+            && ($item->meta['hidden'] ?? false) !== true
+            && is_array($item->meta['mega'] ?? null)
+            && ($item->meta['mega']['type'] ?? null) === MenuItemOptions::MEGA_BLOCK_TYPE)
+            ->sortBy([['position', 'asc'], ['id', 'asc']]);
+        if ($panels->isEmpty()) {
+            return [];
+        }
+        $ulids = $panels->map(fn (MenuItem $item): ?string => BlockUsageIndex::panelBlock($item->meta))->filter()->unique()->values()->all();
+        $blocks = $ulids === [] ? collect() : ContentBlock::query()->whereIn('ulid', $ulids)->get(['id', 'ulid', 'name', 'status'])->keyBy('ulid');
+
+        $issues = [];
+        foreach ($panels as $item) {
+            $name = $mainLabel[$item->id] ?? (is_string($sources[$item->id]['title'] ?? null) ? $sources[$item->id]['title'] : (string) $item->url);
+            $block = $blocks->get((string) BlockUsageIndex::panelBlock($item->meta));
+            $about = ['level' => 'problem', 'item' => $item->ulid, 'label' => $name, 'icon' => 'ri-layout-masonry', 'action' => 'blocks'];
+            if (! $block instanceof ContentBlock) {
+                $issues[] = ['code' => 'block_missing', ...$about, 'tone' => 'danger',
+                    'message' => __('menus.check_block_missing', ['label' => $name])];
+            } elseif ($block->status !== ContentBlock::PUBLISHED) {
+                $issues[] = ['code' => 'block_draft', ...$about, 'tone' => 'warning', 'block' => $block->ulid,
+                    'message' => __('menus.check_block_draft', ['label' => $name, 'block' => $block->name])];
+            }
         }
 
         return $issues;
