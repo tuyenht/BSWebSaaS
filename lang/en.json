@@ -133,6 +133,7 @@
     "entries.ed.cover_remove_title": "Remove the image from the :unit",
     "entries.ed.cover_picked": "Featured image chosen",
     "entries.ed.cover_removed": "Featured image removed",
+    "entries.ed.cover_gone": "The featured image you picked is no longer in the library. Pick another one, then save again.",
     "media.picker_insert_one": "Use this image",
     "media.picker_note_cover": "Pick one image as the featured image",
     "entries.ed.cover_img": "Featured image: :name",

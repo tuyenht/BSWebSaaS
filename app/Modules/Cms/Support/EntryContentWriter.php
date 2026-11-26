@@ -12,6 +12,7 @@ use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Media\Models\Media;
+use App\Modules\Media\Support\MediaRefs;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Theme\Components\BlockReference;
 use App\Modules\Theme\Components\ComponentRegistry;
@@ -160,14 +161,6 @@ final readonly class EntryContentWriter
         ] + $author + $alt;
     }
 
-    /** The featured picture every language's page shows: its key in meta (as Entry::saved reads a cover change). */
-    private static function coverOf(Entry $entry): mixed
-    {
-        $meta = $entry->getAttribute('meta');
-
-        return is_array($meta) ? ($meta['image_url'] ?? null) : null;
-    }
-
     /**
      * Whether an entry's own layout is acceptable: in the theme's template list and of the entry type's
      * role (a post takes post layouts and the post variants, a page takes page layouts).
@@ -213,8 +206,9 @@ final readonly class EntryContentWriter
 
     /**
      * Drop every reference to media no longer in this site's library (RLS-scoped, Trash excluded —
-     * the same test the editor's pickers apply): the OG image and the cover id become null, the
-     * cover key in meta is removed, block image props are cleared (the block and its text stay).
+     * the same test the editor's pickers apply): the OG image and the cover id become null, an old
+     * cover key in meta becomes its file's id (or goes when no file has it), block image props are
+     * cleared (the block and its text stay).
      * Returns the content and how many references were dropped. Two queries at most.
      *
      * @param  EntryContent  $content
@@ -245,6 +239,7 @@ final readonly class EntryContentWriter
         }
 
         $dropped = 0;
+        $named = $content['cover_media_id'] !== null;
 
         foreach ($content['blocks'] as $i => $block) {
             $missing = array_diff($blockIds[$i], $existing);
@@ -261,11 +256,22 @@ final readonly class EntryContentWriter
             }
         }
 
-        // The cover the storefront shows is the media's storage key in meta.image_url.
+        // The cover is written as its row (EntryCover::stored): a version that named it by id drops the old
+        // key beside it (the id decided alone, also when it names no file any more); one that named it by its
+        // key in meta.image_url takes that file's id while it is in the library, else loses the key.
         $coverKey = $content['meta']['image_url'] ?? null;
-        if ($coverKey !== null && (! is_string($coverKey) || ! Media::query()->where('storage_key', $coverKey)->exists())) {
+        if ($named) {
             unset($content['meta']['image_url']);
-            $dropped++;
+        } elseif ($coverKey !== null) {
+            $coverId = is_string($coverKey) && MediaRefs::looksLikeKey($coverKey)
+                ? MediaRefs::id(Media::query()->where('storage_key', $coverKey)->lock('for key share')->value('id'))
+                : null;
+            unset($content['meta']['image_url']);
+            if ($coverId !== null) {
+                $content['cover_media_id'] = $coverId;
+            } else {
+                $dropped++;
+            }
         }
 
         return [$content, $dropped];
@@ -304,14 +310,15 @@ final readonly class EntryContentWriter
      */
     public function write(Entry $entry, string $locale, array $content): array
     {
-        $coverBefore = self::coverOf($entry);
+        $coverBefore = [$entry->getAttribute('cover_media_id'), $entry->getAttribute('meta')];
         $entry->fill([
             'template_override' => $content['template_override'],
             'cover_media_id' => $content['cover_media_id'],
             'meta' => $content['meta'],
         ]);
         $sharedChanged = $entry->isDirty();
-        $coverChanged = self::coverOf($entry) !== $coverBefore;
+        // the same picture moved from its key to its row is no new picture: its words stay
+        $coverChanged = ! EntryCover::same($coverBefore[0], $coverBefore[1], $entry->getAttribute('cover_media_id'), $entry->getAttribute('meta'));
         $entry->save();
 
         $translation = $entry->translations()->firstOrNew(['locale' => $locale]);

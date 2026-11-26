@@ -133,6 +133,7 @@
     "entries.ed.cover_remove_title": ":unitから画像を外す",
     "entries.ed.cover_picked": "アイキャッチ画像を選びました",
     "entries.ed.cover_removed": "アイキャッチ画像を外しました",
+    "entries.ed.cover_gone": "選んだアイキャッチ画像はライブラリにもうありません。別の画像を選んでから保存し直してください。",
     "media.picker_insert_one": "この画像を使う",
     "media.picker_note_cover": "アイキャッチにする画像を1枚選んでください",
     "entries.ed.cover_img": "アイキャッチ画像: :name",

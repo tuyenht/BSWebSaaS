@@ -46,7 +46,7 @@ use Livewire\Attributes\Locked;
  * @property string $excerpt
  * @property string $seoTitle
  * @property string $seoDescription
- * @property string $coverImageKey
+ * @property string $coverUlid
  * @property string $coverAlt
  */
 trait ShowsEntryRevisions
@@ -374,7 +374,7 @@ trait ShowsEntryRevisions
         // names no live file), else, with no id, the meta's key
         $cover = EntryCover::resolve($snap['cover_media_id'] ?? null, $snap['meta'] ?? null, MediaRefs::rows([$snap['cover_media_id'] ?? null]));
         $noCover = Cast::string(__('entries.rev.no_cover'));
-        $coverNow = $this->coverImageKey !== '' ? $this->revisionCoverName($this->coverImageKey) : $noCover;
+        $coverNow = $this->coverUlid !== '' ? $this->revisionCoverName($this->coverKey()) : $noCover;
         $coverThen = $cover !== '' ? $this->revisionCoverName($cover) : $noCover;
 
         $fields = [];
