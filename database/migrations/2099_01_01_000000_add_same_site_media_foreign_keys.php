@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -55,11 +56,11 @@ return new class extends Migration
         ['mediables', 'media_id'],
     ];
 
-    /** @var array<string, string> index name => definition */
+    /** @var array<string, array{string, string, string}> index name => [kind, table, columns and predicate] */
     private const array INDEXES = [
-        'media_site_id_id_unique' => 'CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS media_site_id_id_unique ON media (site_id, id)',
-        'entries_cover_media_id_index' => 'CREATE INDEX CONCURRENTLY IF NOT EXISTS entries_cover_media_id_index ON entries (cover_media_id) WHERE cover_media_id IS NOT NULL',
-        'entry_translations_og_image_id_index' => 'CREATE INDEX CONCURRENTLY IF NOT EXISTS entry_translations_og_image_id_index ON entry_translations (og_image_id) WHERE og_image_id IS NOT NULL',
+        'media_site_id_id_unique' => ['UNIQUE INDEX', 'media', '(site_id, id)'],
+        'entries_cover_media_id_index' => ['INDEX', 'entries', '(cover_media_id) WHERE cover_media_id IS NOT NULL'],
+        'entry_translations_og_image_id_index' => ['INDEX', 'entry_translations', '(og_image_id) WHERE og_image_id IS NOT NULL'],
     ];
 
     /** How many bad ids a printout or an error lists at most. */
@@ -73,8 +74,8 @@ return new class extends Migration
 
         $this->refuseUnlessEveryRowIsVisible();
 
-        foreach (self::INDEXES as $name => $create) {
-            $this->index($name, $create);
+        foreach (self::INDEXES as $name => [$kind, $table, $definition]) {
+            $this->index($name, $kind, $table, $definition);
         }
 
         foreach (self::NULLABLE as [$table, $column]) {
@@ -159,11 +160,12 @@ return new class extends Migration
             implode(', ', $bad['pairs']),
         ));
 
-        DB::statement(<<<SQL
-            UPDATE {$table} AS t SET {$column} = NULL
-            WHERE t.{$column} IS NOT NULL
-              AND NOT EXISTS (SELECT 1 FROM media m WHERE m.site_id = t.site_id AND m.id = t.{$column})
-            SQL);
+        // Only a media-id column from the list above is written (never a body or a title).
+        DB::table($table)
+            ->whereNotNull($column)
+            ->whereNotExists(fn (Builder $media) => $media->selectRaw('1')->from('media')
+                ->whereColumn('media.site_id', "{$table}.site_id")->whereColumn('media.id', "{$table}.{$column}"))
+            ->update([$column => null]);
     }
 
     /**
@@ -191,13 +193,13 @@ return new class extends Migration
     }
 
     /** Builds an index, first dropping one an interrupted CONCURRENTLY build left INVALID. */
-    private function index(string $name, string $create): void
+    private function index(string $name, string $kind, string $table, string $definition): void
     {
         $invalid = DB::selectOne('SELECT 1 FROM pg_index WHERE indexrelid = to_regclass(?) AND NOT indisvalid', [$name]);
         if ($invalid !== null) {
             DB::statement('DROP INDEX CONCURRENTLY IF EXISTS '.$name);
         }
-        DB::statement($create);
+        DB::statement("CREATE {$kind} CONCURRENTLY IF NOT EXISTS {$name} ON {$table} {$definition}");
     }
 
     /** Add a same-site key NOT VALID unless a repeated run already added it; up() validates it later. */
