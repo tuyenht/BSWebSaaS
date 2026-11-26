@@ -43,9 +43,12 @@ use Illuminate\Support\Facades\DB;
  */
 
 beforeEach(function (): void {
-    seedTenancy();
     $admin = DB::connection('pgsql_admin');
-    $admin->statement("delete from users where email like 'kh-budget-%'");
+    // Only this fixture's owners: earlier tests of a shard leave their users behind, and a few hundred
+    // of them were enough to turn the plan of the search every owner matches ("v") into a full read
+    // of users. Truncating users cascades to tenants and sites, so it comes before the seed.
+    $admin->statement('truncate users restart identity cascade');
+    seedTenancy();
     $admin->statement(<<<'SQL'
         insert into users (ulid, name, email, password, created_at, updated_at)
         select lpad(upper(to_hex(i)), 26, '0'), 'Chủ ' || (array['Nguyễn','Trần','Lê','Phạm','Hoàng'])[1 + i % 5] || ' Văn ' || i,
