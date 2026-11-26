@@ -2,6 +2,7 @@
     'label' => null,
     'bindLabel' => null,
     'sheet' => false,
+    'onOpen' => false,
 ])
 @php
     // The panel of a menu opened by a button (the ⋮ of list.actions, a row's status pill): hidden until
@@ -17,7 +18,12 @@
     // the browser draws. `sheet` is the bottom sheet the menu turns into on a narrow screen (list.actions):
     // 'title' below a 600 screen, 'row' below a 900 list; there Tab and Shift+Tab move round the items
     // instead of closing it (the host's `sheet` is true while it is a sheet).
+    // `on-open` builds the panel only while it is open (a list draws one per row, and the browser
+    // walks every built element on each Livewire answer). Livewire does not look inside a template,
+    // so its key is made from the content: a changed menu replaces the template.
+    $built = $onOpen ? 'lm-'.md5($slot->toHtml().'|'.$label) : null;
 @endphp
+@if ($built)<template x-if="open" wire:key="{{ $built }}">@endif
 <div x-ref="menu" x-show="open" x-cloak role="menu" aria-label="{{ $label }}"
     @if ($bindLabel && $sheet !== 'title') x-bind:aria-label="{{ $bindLabel }}" @endif
     @if ($sheet) data-sheet="{{ $sheet }}" @endif x-bind:data-up="up ? 'true' : null"
@@ -27,3 +33,4 @@
     {{ $attributes }}>
     {{ $slot }}
 </div>
+@if ($built)</template>@endif
