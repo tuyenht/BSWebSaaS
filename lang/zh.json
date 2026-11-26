@@ -392,6 +392,7 @@
     "entries.ed.job_badge_ph": "急聘",
     "entries.ed.job_badge_hint": "选填。显示在职位卡片的角上，例如“急聘”。",
     "entries.ed.job_badge_long": "卡片标签超过 :max 个字符。请缩短。",
+    "entries.ed.job_badge_others": "其他语言的此卡片有标签。此栏为空时，保存对卡片的修改会删除所有语言的标签。",
     "entries.ed.job_invalid": "招聘信息无法保存。请检查各项。",
     "entries.ed.pd_hint": "留空则使用实际发布日期。",
     "entries.ed.pd_invalid": "该日期不存在。请在日历上重新选择，或留空以使用实际发布日期。",
