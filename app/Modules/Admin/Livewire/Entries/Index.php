@@ -2942,7 +2942,7 @@ final class Index extends Component
         $list = new EntryListQuery($filter, app(CurrentSite::class)->id(), function (Builder $rows) use ($scopes, $user, $type): void {
             $scopes->selectHasLimits($rows, $user, EntryListQuery::COLUMNS);
             if ($type === 'post') {
-                $rows->selectRaw(EntryCover::valueSql('entries').' as cover_key');
+                $rows->selectRaw(EntryCover::valueSql('entries').' as cover_value');
             }
         });
 
@@ -3096,7 +3096,7 @@ final class Index extends Component
                 $entry = $item['entry'];
                 $primary = $entry->relationLoaded('taxonomies') ? $entry->taxonomies->first() : null;
                 $rowCategory[$entry->ulid] = $tree->label($primary instanceof Taxonomy ? $primary->id : null);
-                $key = $entry->getAttribute('cover_key');
+                $key = $entry->getAttribute('cover_value');
                 $rowCover[$entry->ulid] = is_string($key) && $key !== '' ? $urls->url($key, 96) : null;
             }
         }

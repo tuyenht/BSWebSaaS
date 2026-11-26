@@ -99,13 +99,14 @@ final class EntryCover
      * none. With cover_media_id NULL: meta.image_url.
      *
      * A reader that adds the KEY subselect must also select entries.cover_media_id, or the id could
-     * not be told apart from no id: that mistake throws instead of drawing the old value.
+     * not be told apart from no id: that mistake throws in local and testing (CI catches it) and, in
+     * production, is reported and draws no cover, so a missing picture never takes a page down.
      */
     public static function value(Entry $entry, ?MediaRefs $refs = null): string
     {
         $attributes = $entry->getAttributes();
         if ($refs === null && array_key_exists(self::KEY, $attributes) && ! array_key_exists('cover_media_id', $attributes)) {
-            throw new LogicException('A query that reads EntryCover::KEY must also select entries.cover_media_id.');
+            return self::misuse('A query that reads EntryCover::KEY must also select entries.cover_media_id.');
         }
         $id = $attributes['cover_media_id'] ?? null;
         if (! self::named($id)) {
@@ -115,7 +116,7 @@ final class EntryCover
             return self::live($refs->byId($id));
         }
         if (! array_key_exists(self::KEY, $attributes)) {
-            throw new LogicException('An entry cover named by id needs the EntryCover::KEY subselect or a MediaRefs batch.');
+            return self::misuse('An entry cover named by id needs the EntryCover::KEY subselect or a MediaRefs batch.');
         }
         $key = $attributes[self::KEY];
 
@@ -149,5 +150,17 @@ final class EntryCover
         $value = is_array($meta) ? ($meta['image_url'] ?? null) : null;
 
         return is_string($value) ? $value : '';
+    }
+
+    /** A reader built the query wrong: loud where tests run, a reported error and no cover elsewhere. */
+    private static function misuse(string $message): string
+    {
+        $error = new LogicException($message);
+        if (app()->environment('local', 'testing')) {
+            throw $error;
+        }
+        report($error);
+
+        return '';
     }
 }
