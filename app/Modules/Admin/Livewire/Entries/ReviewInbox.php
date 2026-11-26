@@ -23,6 +23,7 @@ use App\Modules\Cms\Support\JobFacts;
 use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Media\Support\MediaRefs;
 use App\Modules\Rbac\Support\RoleLabel;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
@@ -1185,7 +1186,7 @@ final class ReviewInbox extends Component
         $seoTitle = $translation?->seo_title;
         $seoDescription = $translation?->seo_description;
         $mayEdit = $actor->can('update', $entry);
-        $cover = $this->coverUrl($entry);
+        $cover = $this->coverUrl(EntryCover::value($entry, EntryCover::refs([$entry], keys: false)));
 
         return [
             'ulid' => (string) $entry->ulid,
@@ -1294,12 +1295,14 @@ final class ReviewInbox extends Component
         return ['at' => ScheduleInput::tomorrowEight(), 'offset' => $offset, 'zone' => $zone];
     }
 
-    /** The cover: the file its cover_media_id names (one read, only when it names one), else the meta's key. */
-    private function coverUrl(Entry $entry): ?string
+    /**
+     * The address of the cover picture. An old cover value may be a glyph name or an outside address:
+     * only a storage key is a picture of ours, anything else counts as no cover here (it was a broken
+     * picture before).
+     */
+    private function coverUrl(string $value): ?string
     {
-        $key = EntryCover::value($entry, EntryCover::refs([$entry], keys: false));
-
-        return $key !== '' ? app(MediaUrlResolver::class)->url($key, 640) : null;
+        return MediaRefs::looksLikeKey($value) ? app(MediaUrlResolver::class)->url($value, 640) : null;
     }
 
     /**
