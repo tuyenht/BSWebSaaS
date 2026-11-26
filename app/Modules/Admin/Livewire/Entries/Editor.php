@@ -3828,6 +3828,17 @@ final class Editor extends Component
 
                 return null;
             }
+            // «Thông tin tuyển dụng» as this save writes it, onto the card stored now, before anything is written
+            try {
+                $this->jobWritten(Cast::arr($cover[1]));
+            } catch (ValidationException $e) {
+                if ($filled) {
+                    $this->slug = '';
+                }
+                $this->saveFailed = true;
+
+                throw $e;
+            }
             // the move before anything is written, in one MovePage call (a new «Trang cha» at the place typed
             // in «Thứ tự», or the typed place alone): a refused one leaves the page as it was and the form as typed
             $placed = $reparent ? $this->moveToParent($entry, $this->typedPageIndex()) : ($this->type !== 'page' || $this->applyPageOrder($entry, false));

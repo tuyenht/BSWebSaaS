@@ -895,3 +895,118 @@ it('keeps another language\'s words typed in a box the default language reworded
             ->and(array_column($english->get('jobFacts'), 'text'))->toBe(['Night shift', 'Plant 2']);
     });
 });
+
+it('judges a default-language save by the words it writes: a box no language words now is refused, one another language worded since is kept', function (): void {
+    $user = jcUser();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        jcLanguages('en');
+        [, $jobs] = jcCategories();
+
+        // the Vietnamese form is open; meanwhile English takes its words off the second box
+        $post = jcPostEn($jobs, ['facts' => [jcFact('Nhà máy 2'), jcFact2('Toàn thời gian', 'Full time')]]);
+        $vietnamese = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid]);
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid, 'locale' => 'en'])
+            ->set('jobFacts.1.text', '')->call('save')->assertHasNoErrors();
+        $stored = ['facts' => [jcFact('Nhà máy 2'), jcFact('Toàn thời gian')]];
+        expect($post->fresh()->meta)->toEqual($stored);
+
+        // Vietnamese empties that box too: «Giữ bản của tôi» would leave it with words in no language
+        $vietnamese->set('jobFacts.1.text', '')->call('autosave');
+        expect($vietnamese->get('stale'))->not->toBeNull();
+        $vietnamese->call('keepMine')
+            ->assertHasErrors(['jobFacts.1.text' => __('entries.ed.job_fact_empty', ['n' => 2])])
+            ->assertSet('jobFacts.1.text', '');
+        expect($post->fresh()->meta)->toEqual($stored);
+
+        // the other way: a box only Vietnamese worded when the form read it, which English worded since
+        $post = jcPostEn($jobs, ['facts' => [jcFact('Nhà máy 2'), jcFact('Toàn thời gian')]]);
+        $vietnamese = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid]);
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid, 'locale' => 'en'])
+            ->set('jobFacts.1.text', 'Full time')->call('save')->assertHasNoErrors();
+        $vietnamese->set('jobFacts.1.text', '')->call('autosave');
+        expect($vietnamese->get('stale'))->not->toBeNull();
+        $vietnamese->call('keepMine')->assertHasNoErrors();
+        expect($post->fresh()->meta)->toEqual(['facts' => [jcFact('Nhà máy 2'), ['text' => ['en' => 'Full time'], 'tone' => 'plain']]]);
+    });
+});
+
+it('remembers the other languages\' words a default-language save wrote, for the next check and save', function (): void {
+    $user = jcUser();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        jcLanguages('en');
+        [, $jobs] = jcCategories();
+        $post = jcPostEn($jobs, ['facts' => [jcFact('Nhà máy 2'), jcFact('Toàn thời gian')]]);
+
+        // the Vietnamese form is open; meanwhile English words the second box
+        $vietnamese = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid]);
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid, 'locale' => 'en'])
+            ->set('jobFacts.1.text', 'Full time')->call('save')->assertHasNoErrors();
+
+        // Vietnamese rewords the first box and keeps its card: the English words go in with it
+        $vietnamese->set('jobFacts.0.text', 'Nhà máy 3')->call('autosave');
+        $vietnamese->call('keepMine')->assertHasNoErrors();
+        expect($post->fresh()->meta)->toEqual(['facts' => [jcFact('Nhà máy 3'), jcFact2('Toàn thời gian', 'Full time')]]);
+
+        // the form now knows the second box has English words: emptying its Vietnamese ones is no empty box
+        $vietnamese->set('jobFacts.1.text', '')->call('touchJobFact', 1)->assertHasNoErrors()
+            ->call('autosave')->assertHasNoErrors()->assertSet('stale', null);
+        expect($post->fresh()->meta)->toEqual(['facts' => [jcFact('Nhà máy 3'), ['text' => ['en' => 'Full time'], 'tone' => 'plain']]]);
+    });
+});
+
+it('refuses a box with no words in a save held in the pending change, and keeps what was typed', function (): void {
+    $user = jcUser(['entries.view', 'entries.edit.any']);
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        jcLanguages('en');
+        [, $jobs] = jcCategories();
+        $live = ['facts' => [jcFact('Nhà máy 2'), jcFact2('Toàn thời gian', 'Full time')]];
+        $post = jcPostEn($jobs, $live, 'published');
+
+        $vietnamese = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid])
+            ->set('jobFacts.0.text', '')->call('save')
+            ->assertHasErrors(['jobFacts.0.text' => __('entries.ed.job_fact_empty', ['n' => 1])])
+            ->assertSet('jobFacts.0.text', '');
+        expect($post->fresh()->meta)->toEqual($live)
+            ->and(EntryDraft::query()->where('entry_id', $post->id)->exists())->toBeFalse();
+
+        // a box with words in another language may lose its Vietnamese ones
+        $vietnamese->set('jobFacts.0.text', 'Nhà máy 3')->set('jobFacts.1.text', '')->call('save')->assertHasNoErrors();
+        expect($post->fresh()->meta)->toEqual($live)
+            ->and(EntryDraft::query()->where('entry_id', $post->id)->sole()->content['shared']['meta'])
+            ->toEqual(['facts' => [jcFact('Nhà máy 3'), ['text' => ['en' => 'Full time'], 'tone' => 'plain']]]);
+    });
+});
+
+it('keeps the shown date the default language set when a change saved from another language goes on the website', function (bool $englishFirst): void {
+    $publisher = jcUser();
+    $translator = jcUser(['entries.view', 'entries.edit.any']);
+    app(Tenancy::class)->enter(1, function () use ($publisher, $translator, $englishFirst): void {
+        jcLanguages('en');
+        [, $jobs] = jcCategories();
+        $post = jcPostEn($jobs, ['facts' => [jcFact2('Nhà máy 2', 'Plant 2')], 'display_date' => '2026-10-01'], 'published');
+        $english = fn () => Livewire::actingAs($translator)->test(Editor::class, ['ulid' => $post->ulid, 'locale' => 'en'])
+            ->set('jobFacts.0.text', 'Plant 2 Hanoi')->call('save')->assertHasNoErrors();
+        $vietnamese = fn () => Livewire::actingAs($publisher)->test(Editor::class, ['ulid' => $post->ulid])
+            ->set('displayDate', '2026-10-20')->call('save')->assertHasNoErrors();
+
+        // English first: its change holds the shown date of then, and the Vietnamese save goes into that
+        // change too (a post with a pending change holds back every save). Vietnamese first: on the
+        // website, and English's change starts from it.
+        if ($englishFirst) {
+            $english();
+            $vietnamese();
+        } else {
+            $vietnamese();
+            $english();
+        }
+        expect(EntryDraft::query()->where('entry_id', $post->id)->sole()->content['shared']['meta']['display_date'] ?? null)->toBe('2026-10-20');
+
+        Livewire::actingAs($publisher)->test(Editor::class, ['ulid' => $post->ulid])
+            ->call('askApplyChange')->call('applyChange')->assertHasNoErrors();
+        expect($post->fresh()->meta)->toEqual(['facts' => [jcFact2('Nhà máy 2', 'Plant 2 Hanoi')], 'display_date' => '2026-10-20'])
+            ->and(EntryDraft::query()->where('entry_id', $post->id)->exists())->toBeFalse();
+    });
+})->with([
+    'English saved first' => [true],
+    'Vietnamese saved first' => [false],
+]);
