@@ -333,6 +333,7 @@ describe('rebuilding the index', function (): void {
         $panel = sbpBlock(1, 'bang-lon');
         $category = app(Tenancy::class)->enter(1, fn (): Taxonomy => app(CreateTaxonomy::class)->handle('post_cat', null, new TaxonomyData(names: ['vi' => 'Tin tức'])));
         $foreignPage = app(Tenancy::class)->enter(2, fn (): Entry => Entry::query()->create(['type' => 'page', 'status' => 'draft', 'meta' => []]));
+        $foreignBlock = sbpBlock(2, 'ngoai');
 
         $seo = app(Tenancy::class)->enter(1, function () use ($category, $footer, $offer, $panel): SiteSetting {
             // written by hand: none of them passed through a save
@@ -347,11 +348,13 @@ describe('rebuilding the index', function (): void {
         DB::connection('pgsql_admin')->table('block_usages')->insert([
             ['site_id' => 1, 'content_block_id' => $footer->id, 'entry_id' => $foreignPage->id, 'site_setting_id' => null, 'slot' => null, 'locale' => 'vi', 'created_at' => now()],
             ['site_id' => 1, 'content_block_id' => $offer->id, 'entry_id' => null, 'site_setting_id' => $seo->id, 'slot' => 'after_post', 'locale' => 'vi', 'created_at' => now()],
+            // website 2's own row: a run for website 1 never touches it
+            ['site_id' => 2, 'content_block_id' => $foreignBlock->id, 'entry_id' => $foreignPage->id, 'site_setting_id' => null, 'slot' => null, 'locale' => 'vi', 'created_at' => now()],
         ]);
 
         $this->artisan('blocks:reconcile-usage', ['--site' => 1])->assertSuccessful();
 
-        expect(sbpRows())->toBe(['1:bang-lon:menu:-:-', '1:chan-trang:setting:after_post:vi', '1:uu-dai:category:after_list:vi']);
+        expect(sbpRows())->toBe(['1:bang-lon:menu:-:-', '1:chan-trang:setting:after_post:vi', '2:ngoai:entry:-:vi', '1:uu-dai:category:after_list:vi']);
     });
 
     it('refuses a site that does not exist', function (): void {
