@@ -18,6 +18,36 @@
     @endif
 
     @if ($scope !== 'platform')
+        {{-- A website's page has two tabs (the board's strip; «Mẫu thư» joins them with the mail
+             templates). Switching shows the other at once; the server learns the tab with the next
+             request, so a redraw keeps it, and the address keeps it for a reload. --}}
+        @php
+            $tabs = [
+                'send' => ['icon' => 'ri-send-plane', 'label' => __('admin.em_tab_send'), 'short' => __('admin.em_tab_send')],
+                'sign' => ['icon' => 'ri-quill-pen', 'label' => __('admin.em_tab_sign'), 'short' => __('admin.em_tab_sign_short')],
+            ];
+        @endphp
+        <div class="@container flex flex-col gap-6"
+             x-data="{ tab: @js($tab), go(t) { if (this.tab === t) return; this.tab = t; $wire.$set('tab', t, false); try { const u = new URL(location.href); t === 'send' ? u.searchParams.delete('tab') : u.searchParams.set('tab', t); history.replaceState(history.state, '', u) } catch (e) {} } }"
+             x-on:email-tab.window="go($event.detail.tab)">
+            <div role="tablist" aria-label="{{ __('admin.em_tabs_label') }}"
+                 class="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-border-strong [scrollbar-width:none] [&::-webkit-scrollbar]:h-0"
+                 x-data="{ step(el, by) { const r = [...$root.querySelectorAll('[role=tab]')]; const n = r[(r.indexOf(el) + by + r.length) % r.length]; n.focus(); n.click() } }">
+                @foreach ($tabs as $k => $t)
+                    <button type="button" role="tab" id="em-tab-{{ $k }}" aria-controls="em-panel-{{ $k }}" title="{{ $t['label'] }}"
+                            aria-selected="{{ $tab === $k ? 'true' : 'false' }}" tabindex="{{ $tab === $k ? 0 : -1 }}"
+                            x-bind:aria-selected="tab === @js($k) ? 'true' : 'false'" x-bind:tabindex="tab === @js($k) ? 0 : -1"
+                            x-on:click="go(@js($k))"
+                            x-on:keydown.right.prevent="step($el, 1)" x-on:keydown.left.prevent="step($el, -1)"
+                            class="-mb-px inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-[7px] border-b-2 border-transparent px-4 pt-[11px] pb-[13px] text-[calc(0.84375rem+var(--user-text-boost))] font-medium whitespace-nowrap text-text-muted hover:text-text-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-text aria-selected:border-primary-text aria-selected:font-semibold aria-selected:text-primary-text @max-[37.5rem]:px-2.5">
+                        <x-bs-admin::icon :name="$t['icon']" class="size-[min(1.25rem,calc(1rem+var(--user-text-boost)))] shrink-0 @max-[25rem]:hidden" />
+                        <span class="@max-[37.5rem]:hidden">{{ $t['label'] }}</span><span class="hidden @max-[37.5rem]:inline">{{ $t['short'] }}</span>
+                    </button>
+                @endforeach
+            </div>
+
+            <div id="em-panel-send" role="tabpanel" aria-labelledby="em-tab-send" class="flex flex-col gap-6"
+                 @if ($tab !== 'send') hidden @endif x-bind:hidden="tab !== 'send'">
         @php
             $obName = fn (string $k): string => __('admin.em_ob_'.$k);
             $statusName = $status['outbox'] === 'other' ? __('admin.em_ob_other_name') : $obName($status['outbox']);
@@ -25,7 +55,7 @@
                 'platform' => ['icon' => null, 'meta' => $platformFrom, 'badge' => __('admin.em_default'), 'tip' => null],
                 'google' => ['icon' => 'ri-google-fill', 'color' => 'text-[#ea4335]', 'meta' => __('admin.em_meta_google'), 'tip' => __('admin.em_tip_fast')],
                 'microsoft' => ['icon' => 'ri-microsoft-fill', 'color' => 'text-[#0078d4]', 'meta' => __('admin.em_meta_microsoft'), 'tip' => null],
-                'other' => ['icon' => 'ri-server', 'color' => 'text-primary-text', 'meta' => $status['outbox'] === 'other' && $status['ok'] ? __('admin.em_meta_other_saved') : __('admin.em_meta_other'), 'tip' => __('admin.em_tip_bulk')],
+                'other' => ['icon' => 'ri-server', 'color' => 'text-primary-text', 'meta' => $status['outbox'] === 'other' && $status['ok'] ? __('admin.em_meta_other_saved', ['name' => $storedRelay === 'smtp' ? __('admin.em_meta_other_smtp') : __('admin.em_rl_'.$storedRelay)]) : __('admin.em_meta_other'), 'tip' => __('admin.em_tip_bulk')],
             ];
             if ($this->yahooKept()) {
                 $rows['yahoo'] = ['icon' => 'ri-mail', 'color' => 'text-[#6001d2]', 'meta' => __('admin.em_meta_yahoo'), 'tip' => null];
@@ -203,17 +233,21 @@
                 @endforeach
             </div>
         </div>
+
+        @if ($provider === 'other')
+            @include('admin::livewire.email-settings-relay')
+        @endif
     @endif
 
-    {{-- Configuration form --}}
+    {{-- Configuration form (a website's page: the end of «Gửi thư») --}}
     {{-- Enter in a field is the save bar's "Lưu" (it waits while a save runs and does nothing with nothing to save); the form itself never submits, so the page never reloads --}}
     <form x-data x-on:submit.prevent class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
         <div class="border-b border-border px-5 py-3">
-            {{-- The console's page says what it is in the warning above; a website's names what it holds now: its own server, or who the mail is from. --}}
-            <h2 class="text-[15px] font-semibold text-text-strong">{{ $scope === 'platform' ? __('admin.email_settings') : ($provider === 'other' ? __('admin.em_info_other_t') : __('admin.em_sender_title')) }}</h2>
+            {{-- The console's page says what it is in the warning above; a website's is who the mail is from (its own service is set up in «Chọn dịch vụ»). --}}
+            <h2 class="text-[15px] font-semibold text-text-strong">{{ $scope === 'platform' ? __('admin.email_settings') : __('admin.em_sender_title') }}</h2>
         </div>
         <div class="space-y-5 p-5">
-            @if ($scope === 'platform' || $provider === 'other')
+            @if ($scope === 'platform')
                 <div class="grid gap-4 sm:grid-cols-2">
                     <x-bs-admin::input :label="__('admin.smtp_host')" wire:model.live.blur="smtpHost" placeholder="smtp.gmail.com" />
                     <x-bs-admin::input :label="__('admin.smtp_port')" type="number" wire:model.live.blur="smtpPort" placeholder="587" />
@@ -259,4 +293,17 @@
             </div>
         </div>
     </form>
+
+    @if ($scope !== 'platform')
+            </div>{{-- #em-panel-send --}}
+
+            <div id="em-panel-sign" role="tabpanel" aria-labelledby="em-tab-sign" class="flex flex-col gap-[18px]"
+                 @if ($tab !== 'sign') hidden @endif x-bind:hidden="tab !== 'sign'">
+                @include('admin::livewire.email-settings-sign', ['sign' => $sign])
+            </div>
+        </div>
+
+        <x-bs-admin::toast :message="$toast" :tone="$toastTone" dismiss="dismissToast" :seq="$toastSeq" />
+        @include('admin::partials.media-picker-modal', ['pickedIds' => []])
+    @endif
 </x-bs-admin::settings-shell>

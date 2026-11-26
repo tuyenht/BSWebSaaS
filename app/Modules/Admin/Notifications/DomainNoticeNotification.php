@@ -14,6 +14,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Throwable;
 
 /**
  * A website's own domain needs its managers (design.md §28): it stopped pointing here, it will
@@ -50,6 +51,12 @@ final class DomainNoticeNotification extends Notification implements ShouldQueue
     public function backoff(): array
     {
         return [5, 20];
+    }
+
+    /** A mail that failed for good is logged in the website's «Thư gần đây» (the bell's job logs nothing). */
+    public function failed(Throwable $e): void
+    {
+        $this->recordMailFailure($e);
     }
 
     public function kind(): string

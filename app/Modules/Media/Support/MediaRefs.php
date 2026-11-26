@@ -51,8 +51,10 @@ final readonly class MediaRefs
      * @param  iterable<mixed>  $ulids
      * @param  iterable<mixed>  $keys
      * @param  list<string>  $columns  extra columns beyond COLUMNS
+     * @param  bool  $withTrashed  also the files in the Trash (a backfill that names them by row; readers never)
+     * @param  bool  $lock  FOR KEY SHARE, so a purge of a file found waits for the caller's transaction
      */
-    public static function rows(iterable $ids, iterable $ulids = [], iterable $keys = [], array $columns = []): self
+    public static function rows(iterable $ids, iterable $ulids = [], iterable $keys = [], array $columns = [], bool $withTrashed = false, bool $lock = false): self
     {
         $idList = [];
         foreach ($ids as $id) {
@@ -77,7 +79,7 @@ final readonly class MediaRefs
             return self::none();
         }
 
-        $rows = Media::query()
+        $rows = ($withTrashed ? Media::withTrashed() : Media::query())
             ->where(function (Builder $query) use ($idList, $ulidList, $keyList): void {
                 if ($idList !== []) {
                     $query->orWhereIn('id', array_values($idList));
@@ -89,6 +91,7 @@ final readonly class MediaRefs
                     $query->orWhereIn('storage_key', array_map('strval', array_keys($keyList)));
                 }
             })
+            ->when($lock, fn (Builder $query) => $query->lock('for key share'))
             ->get(array_values(array_unique([...self::COLUMNS, ...$columns])));
 
         $byId = [];

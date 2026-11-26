@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Support;
 
+use App\Modules\Admin\Support\Mail\MailSendContext;
 use App\Modules\Shared\Contracts\TenantMailConfigurator;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
@@ -98,23 +99,30 @@ final readonly class TenantMailer implements TenantMailConfigurator
         Mail::purge('smtp');
         Mail::purge('admin_xoauth2');
 
+        // What is set up below is noted for the mail log and the daily limit (MailSendContext).
+        $context = app(MailSendContext::class);
+        $context->begin();
+
         [$cfg, $siteOwn] = $this->pick();
         if ($cfg === null) {
             // No email override found anywhere in the resolution chain. Force the global
             // config to a safe no-op mailer so a previous request's SMTP config cannot
             // bleed through in the same Octane worker.
             config(['mail.default' => 'log']);
+            $context->applied('platform', 'log', 'config');
 
             return false;
         }
 
         $applied = $this->applyConfig($cfg, $siteOwn);
+        $via = $siteOwn ? 'own' : 'platform';
 
         if ($siteOwn) {
             $this->noteOwnOutbox($applied);
             $platform = $this->platform->get('email');
             if (! $applied && $fallback && is_array($platform) && $this->usable($platform)) {
                 $applied = $this->applyConfig($platform, false);
+                $via = 'platform';
             }
         }
 
@@ -122,13 +130,27 @@ final readonly class TenantMailer implements TenantMailConfigurator
             // A sender that could not be set up may return before writing any config: never leave
             // the previous request's live mailer (another site's server) in place in this worker.
             config(['mail.default' => 'log']);
+            $context->applied($via, 'log', $context->hostRefused ? 'refused_host' : 'config');
 
             return false;
         }
 
         $this->applyTenantIdentity();
+        $context->applied($via, Cast::string(config('mail.default')));
 
         return true;
+    }
+
+    /**
+     * The outbox the website's next mail would try first: its own when one is set up and did not
+     * fail on its last send, else the platform's. For a record made after the send's own context is
+     * gone (a queued mail that failed for good); the send itself is told by apply().
+     *
+     * @return 'own'|'platform'
+     */
+    public function outbox(): string
+    {
+        return $this->pick()[1] && ! $this->ownOutboxFailing() ? 'own' : 'platform';
     }
 
     /** @param array<string, mixed> $cfg */
@@ -215,11 +237,10 @@ final readonly class TenantMailer implements TenantMailConfigurator
         }
 
         if (($cfg['method'] ?? 'smtp_password') === 'smtp_password') {
-            $smtp = Cast::arr($cfg['smtp'] ?? null);
-
             // A blank password is not a usable credential — fall through (tenant → platform → log)
             // rather than attempting SMTP auth (or decrypting an empty payload) and failing the send.
-            return ! empty($smtp['host']) && ! empty($smtp['username']) && ! empty($smtp['password']);
+            // A mail service's server comes from the relay table, its login from it or its own field.
+            return MailRelay::ready($cfg);
         }
 
         $oauth = Cast::arr($cfg['oauth'] ?? null);
@@ -232,8 +253,11 @@ final readonly class TenantMailer implements TenantMailConfigurator
      */
     private function applySmtpPassword(array $cfg, bool $siteOwn): bool
     {
-        $smtp = Cast::arr($cfg['smtp'] ?? null);
-        $from = $cfg['from_address'] ?? ($smtp['username'] ?? null);
+        // A mail service sends through its own relay, its server taken from the relay table, never
+        // from what is stored; «Email khác» through the server the website typed in.
+        $smtp = MailRelay::smtpOf($cfg);
+        $from = $cfg['from_address'] ?? MailRelay::defaultFrom($cfg);
+        $password = is_string($smtp['password'] ?? null) ? SecretCipher::decrypt($smtp['password']) : null;
         $port = Cast::int($smtp['port'] ?? null, 587);
         $encryption = is_string($smtp['encryption'] ?? null) ? $smtp['encryption'] : 'tls';
 
@@ -248,6 +272,7 @@ final readonly class TenantMailer implements TenantMailConfigurator
             // it fails there and the queued mail is tried again, instead of going to the log for good.
             if ($refusal !== null && $refusal !== MailHostGuard::UNRESOLVABLE) {
                 config(['mail.default' => 'log']);
+                app(MailSendContext::class)->hostRefused = true;
                 // Mail is held back, so it must not vanish unseen (lead notices, password resets).
                 report(new MailHostRefused($host, $port, $refusal, app(CurrentSite::class)->hasId() ? app(CurrentSite::class)->id() : null));
 
@@ -257,7 +282,7 @@ final readonly class TenantMailer implements TenantMailConfigurator
 
         // A stored password that no longer decrypts (a rotated key) reads as ''; sending would fail
         // at the server, so count the sender as not set up and let apply() fall back.
-        if (is_string($smtp['password'] ?? null) && $smtp['password'] !== '' && SecretCipher::decrypt($smtp['password']) === '') {
+        if (is_string($smtp['password'] ?? null) && $smtp['password'] !== '' && $password === '') {
             return false;
         }
 
@@ -272,8 +297,9 @@ final readonly class TenantMailer implements TenantMailConfigurator
             // value throws UnsupportedSchemeException. SSL or port 465 → smtps; otherwise smtp.
             'mail.mailers.smtp.scheme' => ($encryption === 'ssl' || $port === 465) ? 'smtps' : 'smtp',
             'mail.mailers.smtp.encryption' => $encryption,
-            'mail.mailers.smtp.username' => $smtp['username'] ?? null,
-            'mail.mailers.smtp.password' => is_string($smtp['password'] ?? null) ? SecretCipher::decrypt($smtp['password']) : null,
+            // Postmark's login is its key (never stored in the clear).
+            'mail.mailers.smtp.username' => MailRelay::loginIsKey(MailRelay::of($cfg)) ? $password : ($smtp['username'] ?? null),
+            'mail.mailers.smtp.password' => $password,
             'mail.from.address' => $from,
             'mail.from.name' => $cfg['from_name'] ?? config('admin.brand.name'),
         ]);

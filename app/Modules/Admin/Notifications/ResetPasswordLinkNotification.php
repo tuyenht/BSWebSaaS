@@ -49,6 +49,7 @@ final class ResetPasswordLinkNotification extends Notification implements Should
             'actor_id' => $this->actorId,
             'meta' => ['site_id' => $this->tenantSiteId, 'error' => $e::class],
         ]);
+        $this->recordMailFailure($e);
     }
 
     /**

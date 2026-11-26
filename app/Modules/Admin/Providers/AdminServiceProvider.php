@@ -3,6 +3,9 @@
 namespace App\Modules\Admin\Providers;
 
 use App\Modules\Admin\Console\CheckSocialApps;
+use App\Modules\Admin\Console\EnsureMailMonths;
+use App\Modules\Admin\Console\MediaRefsById;
+use App\Modules\Admin\Console\PruneMailLogs;
 use App\Modules\Admin\Console\ReconcileBlockUsage;
 use App\Modules\Admin\Console\ReconcileContentUsage;
 use App\Modules\Admin\Console\RecoverSiteOwnerCommand;
@@ -13,6 +16,8 @@ use App\Modules\Admin\Http\Middleware\EnforceSupportSession;
 use App\Modules\Admin\Http\Middleware\ResolveLivewireContext;
 use App\Modules\Admin\Http\Middleware\RestrictAdminAddress;
 use App\Modules\Admin\Http\Middleware\TrackSignedInDevice;
+use App\Modules\Admin\Listeners\RecordTenantMail;
+use App\Modules\Admin\Listeners\ReserveMailQuota;
 use App\Modules\Admin\Listeners\SetTenantReplyTo;
 use App\Modules\Admin\Listeners\TellSiteAboutDomain;
 use App\Modules\Admin\Livewire\Account;
@@ -55,6 +60,8 @@ use App\Modules\Admin\Navigation\AdminNav;
 use App\Modules\Admin\Navigation\PlatformNav;
 use App\Modules\Admin\Support\AdminAddressLimit;
 use App\Modules\Admin\Support\AdminPlane;
+use App\Modules\Admin\Support\Mail\MailLogWriter;
+use App\Modules\Admin\Support\Mail\MailSendContext;
 use App\Modules\Admin\Support\Settings\BranchList;
 use App\Modules\Admin\Support\Settings\FloatingContactInput;
 use App\Modules\Admin\Support\Settings\HeadingDecorInput;
@@ -64,6 +71,7 @@ use App\Modules\Admin\Theme\AdminChromeResolver;
 use App\Modules\Cms\Support\BlockMediaUsage;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Support\RoleLabel;
+use App\Modules\Shared\Contracts\MailFailureRecorder;
 use App\Modules\Shared\Contracts\TenantMailConfigurator;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Events\DomainNeedsAttention;
@@ -75,6 +83,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Http\Request;
 use Illuminate\Mail\Events\MessageSending;
+use Illuminate\Mail\Events\MessageSent;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Blade;
@@ -106,6 +115,11 @@ final class AdminServiceProvider extends ServiceProvider
 
         // Per request (Octane-safe): where the website's admin may be opened from, read once.
         $this->app->scoped(AdminAddressLimit::class);
+
+        // What TenantMailer::apply() set up for the mail about to leave: per request / per job.
+        $this->app->scoped(MailSendContext::class);
+        // Feature modules record a mail that failed in the website's mail log through Shared.
+        $this->app->bind(MailFailureRecorder::class, MailLogWriter::class);
     }
 
     public function boot(): void
@@ -113,7 +127,7 @@ final class AdminServiceProvider extends ServiceProvider
         View::addNamespace('admin', $this->app->basePath('app/Modules/Admin/resources/views'));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CheckSocialApps::class, ReconcileBlockUsage::class, ReconcileContentUsage::class, RecoverSiteOwnerCommand::class, RekeySiteMedia::class]);
+            $this->commands([CheckSocialApps::class, MediaRefsById::class, ReconcileBlockUsage::class, ReconcileContentUsage::class, RecoverSiteOwnerCommand::class, RekeySiteMedia::class, EnsureMailMonths::class, PruneMailLogs::class]);
         }
 
         // Meta's data-deletion callback and its status page: per IP, a burst Meta never needs.
@@ -204,12 +218,17 @@ final class AdminServiceProvider extends ServiceProvider
             now()->addMinutes(Cast::int(config('auth.verification.expire'), 60)),
             ['id' => $notifiable->getKey(), 'hash' => sha1($notifiable->getEmailForVerification())],
         ));
-        VerifyEmail::toMailUsing(fn (mixed $notifiable, string $url): MailMessage => (new MailMessage)
-            ->subject(__('auth.verify_email_subject'))
-            ->greeting(Cast::string(config('admin.brand.name')))
-            ->line(__('auth.verify_email_intro'))
-            ->action(__('auth.verify_email_action'), $url)
-            ->line(__('auth.verify_email_outro')));
+        // Through the website's outbox like every other account mail (and so in its mail log).
+        VerifyEmail::toMailUsing(function (mixed $notifiable, string $url): MailMessage {
+            app(TenantMailer::class)->apply();
+
+            return (new MailMessage)
+                ->subject(__('auth.verify_email_subject'))
+                ->greeting(Cast::string(config('admin.brand.name')))
+                ->line(__('auth.verify_email_intro'))
+                ->action(__('auth.verify_email_action'), $url)
+                ->line(__('auth.verify_email_outro'));
+        });
 
         // XOAUTH2 SMTP transport for OAuth2 email senders (Gmail/MS/Yahoo). TenantMailer
         // stashes host/port/username + a freshly-minted access token into this mailer's
@@ -230,6 +249,9 @@ final class AdminServiceProvider extends ServiceProvider
         // Stamp the tenant's reply-to onto outgoing mail so replies reach the customer, not the
         // shared platform inbox (stateless per-message — no Octane reply-to leak).
         Event::listen(MessageSending::class, SetTenantReplyTo::class);
+        // The website's mail log and daily limit of the shared outbox (MailQuotaGate).
+        Event::listen(MessageSending::class, ReserveMailQuota::class);
+        Event::listen(MessageSent::class, RecordTenantMail::class);
 
         // A website's own domain needs its managers (design.md §28): bell + mail.
         Event::listen(DomainNeedsAttention::class, TellSiteAboutDomain::class);

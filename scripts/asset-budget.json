@@ -2,7 +2,7 @@
   "entries": {
     "resources/css/app.css": {
       "js": 0,
-      "css": 53921
+      "css": 54615
     },
     "resources/css/admin-account.css": {
       "js": 0,
@@ -85,7 +85,7 @@
       "css": 2317
     },
     "resources/js/app.js": {
-      "js": 19926,
+      "js": 22945,
       "css": 0
     },
     "resources/js/sections.js": {
@@ -163,11 +163,11 @@
       "css": 0
     },
     "resources/js/admin-categories.js": {
-      "js": 28144,
+      "js": 30501,
       "css": 0
     },
     "resources/js/admin-rich-editor.js": {
-      "js": 213261,
+      "js": 215618,
       "css": 36159
     },
     "resources/js/admin-unsaved.js": {
@@ -183,7 +183,7 @@
       "css": 0
     },
     "resources/js/media-picker-uploader.js": {
-      "js": 54204,
+      "js": 56561,
       "css": 920
     },
     "resources/js/media-uppy.js": {
@@ -194,12 +194,16 @@
       "js": 1739,
       "css": 0
     },
+    "resources/js/admin-email-signature.js": {
+      "js": 2188,
+      "css": 0
+    },
     "resources/js/admin-media-drawer.js": {
       "js": 1128,
       "css": 0
     },
     "resources/js/admin-menus.js": {
-      "js": 29584,
+      "js": 31941,
       "css": 0
     },
     "resources/js/admin-bell.js": {
