@@ -24,6 +24,7 @@
      stay the page's scroll. --}}
 <div class="space-y-4" x-data="{
         inboxAsking: false,
+        inboxStepping: false,
         key(e) {
             if (e.defaultPrevented || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || this.inboxAsking || ! ['ArrowDown', 'ArrowUp', 'Enter'].includes(e.key)) { return }
             if ([...document.querySelectorAll('[role=dialog], [role=alertdialog], [aria-modal=true], [role=menu]')].some((d) => ! d.matches('[data-inbox-reader]') && d.getClientRects().length > 0)) { return }
@@ -35,18 +36,22 @@
                 const at = rows.findIndex((r) => r.hasAttribute('data-current'));
                 if (rows.length === 0 || (at === 0 && e.key === 'ArrowUp') || (at === rows.length - 1 && e.key === 'ArrowDown' && ! $root.querySelector('[data-inbox-more]'))) { return }
                 e.preventDefault();
+                this.inboxStepping = true;
                 $wire.step(e.key === 'ArrowDown' ? 1 : -1, true).then(() => {
                     if (! $wire.detail || window.matchMedia('(min-width: 64rem)').matches) { $root.querySelector('[data-inbox-open][data-current]')?.scrollIntoView({ block: 'nearest' }) }
-                });
+                }).finally(() => { this.inboxStepping = false });
                 return;
             }
             if (e.repeat) { return }
+            // a step on its way: the page still shows the post being left, so Enter waits for the new one
+            if (this.inboxStepping) { e.preventDefault(); return }
             const row = t?.closest('[data-inbox-open]');
             if (row ? ! row.hasAttribute('data-current') : t?.closest('button, a[href], summary, [role=button], [role=checkbox], [role=switch], [role=tab], [role=radio], [role=link], [role=menuitem], [role=option]')) { return }
             const go = $root.querySelector('[data-inbox-primary]');
-            if (go && ! go.disabled && go.getClientRects().length > 0) { e.preventDefault(); go.click(); return }
+            if (go?.disabled) { return }
+            if (go && go.getClientRects().length > 0) { e.preventDefault(); go.click(); return }
             // a phone showing the list: Enter opens the post ↑ / ↓ marked, to be read before any move
-            const mark = $wire.detail ? null : $root.querySelector('[data-inbox-open][data-current]');
+            const mark = $wire.detail || window.matchMedia('(min-width: 64rem)').matches ? null : $root.querySelector('[data-inbox-open][data-current]');
             if (mark && mark.getClientRects().length > 0) { e.preventDefault(); mark.click(); }
         } }" x-on:keydown.window="key($event)">
     {{-- The header, as the admin shell draws it (board 17): the trail «⌂ › Hộp duyệt», the title row with the (?)

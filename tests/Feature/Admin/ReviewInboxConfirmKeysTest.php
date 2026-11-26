@@ -100,6 +100,24 @@ it('asks before a first publication with «Khi nào đăng?», never applying st
             // the reason move is no publishing move: it is never the one Enter runs
             ->and(askButton($html, 'reject'))->not->toContain(INBOX_PRIMARY_MARK)
             ->and(substr_count($html, INBOX_PRIMARY_MARK))->toBe(1);
+        // the dialog sends the post it named, now or at a later time
+        expect($html)->toContain('$wire.apply(key, ulid)', '$wire.approveLater(key, this.value, ulid)');
+        expect($post->fresh()->status)->toBe('pending');
+    });
+});
+
+it('asks before publishing the ticked posts the same way, holding the keys until it is answered', function (): void {
+    [$author, $approver] = askPeople();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $approver): void {
+        $post = askPost(askSection(), $author, 'Bài mới', 'bai-moi');
+
+        $html = Livewire::actingAs($approver)->test(ReviewInbox::class)->set('tab', 'queue')
+            ->call('togglePick', (string) $post->ulid)->html();
+
+        $attrs = '(?:[^>"]|"[^"]*")*';
+        expect(preg_match('/<button\b'.$attrs.'wire:target="approvePicked"'.$attrs.'>/s', $html, $m))->toBe(1)
+            ->and($m[0])->toContain('inboxAsking = true', '$bsConfirm(', "icon: 'publish'", 'focusCancel: true', 'inboxAsking = false');
         expect($post->fresh()->status)->toBe('pending');
     });
 });
