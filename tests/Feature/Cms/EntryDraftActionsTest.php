@@ -719,10 +719,9 @@ it('approves a two-language change within its query budget', function (): void {
         // language the translation read/write and block-usage rebuild (~6), plus the route move and
         // 301 for the one new address (~9); a revision per language (2 each); the storefront search
         // words of each language whose title changed (delete + insert, 2 each; measured 42 with
-        // them); delete, audit and the author's notice; the rewrite of where the body places shared
-        // blocks (one delete per language when it places none, 1 each). It grows with the languages
-        // in the change, never with the site's size.
-        expect($queries)->toBeLessThanOrEqual(46);
+        // them); delete, audit and the author's notice. It grows with the languages in the change,
+        // never with the site's size.
+        expect($queries)->toBeLessThanOrEqual(44);
     });
 });
 

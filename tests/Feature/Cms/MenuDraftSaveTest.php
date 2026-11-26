@@ -4,6 +4,8 @@ use App\Modules\Cms\Actions\Menus\ApplyMenuDraft;
 use App\Modules\Cms\Actions\Menus\RestoreMenuItem;
 use App\Modules\Cms\Actions\Menus\SaveMenu;
 use App\Modules\Cms\Exceptions\MenuChangeRejectedException;
+use App\Modules\Cms\Models\BlockUsage;
+use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
@@ -354,6 +356,27 @@ it('drops a large panel from an item moved under another, and where no area can 
         $state = mdState($menu);
         mdSave($menu, ['version' => $state['version'], 'tree' => $state['tree'], 'updates' => [['key' => $b->ulid, 'options' => ['mega' => ['type' => 'columns', 'columns' => 2]]]]]);
         expect($b->fresh()?->meta)->toBe([]);
+    });
+});
+
+it('rewrites where the large panels place shared blocks, and drops the row when the panel goes', function (): void {
+    mdIn(1, function (): void {
+        $block = ContentBlock::query()->create(['key' => 'bang-lon', 'name' => 'Bảng lớn', 'region' => 'menu', 'status' => 'published']);
+        $menu = mdMenu();
+        // set by hand: the draft does not choose a block panel yet, and an apply keeps it as stored
+        $a = mdRow($menu, 'A', meta: ['mega' => ['type' => 'block', 'block' => $block->ulid]]);
+        $b = mdRow($menu, 'B');
+        $placed = fn (): array => BlockUsage::query()->whereNotNull('menu_item_id')->pluck('menu_item_id')->all();
+
+        $state = mdState($menu);
+        mdSave($menu, ['version' => $state['version'], 'tree' => $state['tree']]);
+        expect($placed())->toBe([$a->id]);
+
+        // moved under another item, A loses its large panel and its row
+        $state = mdState($menu);
+        mdSave($menu, ['version' => $state['version'], 'tree' => [['key' => $b->ulid, 'parent' => null], ['key' => $a->ulid, 'parent' => $b->ulid]]]);
+        expect($a->fresh()?->meta)->toBe([])
+            ->and($placed())->toBe([]);
     });
 });
 

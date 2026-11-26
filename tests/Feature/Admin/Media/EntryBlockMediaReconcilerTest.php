@@ -94,16 +94,15 @@ it('costs the same few queries however many images the body holds, writing only 
         $reconciler = app(EntryBlockMediaReconciler::class);
         $reconciler->reconcile($entry);
 
-        // Unchanged body: read the bodies, the visible ids, prune, read what is recorded, and clear
-        // where the body places shared blocks (it places none: one delete) — nothing per image.
-        expect(countQueries(fn () => $reconciler->reconcile($entry)))->toBeLessThanOrEqual(5);
+        // Unchanged body: read the bodies, the visible ids, prune, read what is recorded — nothing per image.
+        expect(countQueries(fn () => $reconciler->reconcile($entry)))->toBeLessThanOrEqual(4);
 
         // One new image: the same reads plus one insert.
         $extra = reconcilerMedia('m-f', 'f');
         $entry->translations()->where('locale', 'vi')->update(['body' => ['blocks' => array_map(
             fn (Media $m): array => ['type' => 'hero', 'props' => ['image_url' => $m->id]], [...$media, $extra],
         )]]);
-        expect(countQueries(fn () => $reconciler->reconcile($entry)))->toBeLessThanOrEqual(6)
+        expect(countQueries(fn () => $reconciler->reconcile($entry)))->toBeLessThanOrEqual(5)
             ->and(contentMediaIds($entry))->toBe(array_map(fn (Media $m): int => $m->id, [...$media, $extra]));
     });
 });

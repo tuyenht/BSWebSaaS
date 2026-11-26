@@ -142,6 +142,20 @@ describe('recording where a block is placed', function (): void {
         expect(sbpRows())->toBe(['1:chan-trang:entry:-:en']);
     });
 
+    it('clears a row a page holds that its body no longer places', function (): void {
+        $footer = sbpBlock(1, 'chan-trang');
+        $entry = sbpPage(['vi' => [['type' => 'cta', 'props' => ['heading' => 'Liên hệ']]]]);
+        expect(sbpRows())->toBe([]);
+
+        app(Tenancy::class)->enter(1, function () use ($entry, $footer): void {
+            DB::table('block_usages')->insert(['site_id' => 1, 'content_block_id' => $footer->id, 'entry_id' => $entry->id, 'locale' => 'vi', 'created_at' => now()]);
+        });
+        expect(sbpRows())->toBe(['1:chan-trang:entry:-:vi']);
+
+        app(Tenancy::class)->enter(1, fn () => app(EntryBlockMediaReconciler::class)->reconcile($entry));
+        expect(sbpRows())->toBe([]);
+    });
+
     it('writes nothing when the save rolls back', function (): void {
         $footer = sbpBlock(1, 'chan-trang');
 

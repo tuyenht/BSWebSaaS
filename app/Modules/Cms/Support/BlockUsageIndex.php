@@ -40,8 +40,10 @@ final readonly class BlockUsageIndex
 
     /**
      * @param  array<array-key, mixed>  $bodies  locale → the body's blocks in that language
+     * @param  bool  $hasRows  false only when the caller read, in this save, that the entry has no
+     *                         rows: then nothing is deleted (and nothing is written when it places none)
      */
-    public function syncEntry(Entry $entry, array $bodies): void
+    public function syncEntry(Entry $entry, array $bodies, bool $hasRows = true): void
     {
         $this->own($entry);
         $places = [];
@@ -49,7 +51,7 @@ final readonly class BlockUsageIndex
             $places[] = ['owner' => $entry->id, 'locale' => (string) $locale, 'slot' => null, 'ulids' => BlockReference::ulids(Cast::arr($blocks))];
         }
 
-        $this->write('entry_id', [$entry->id], $places);
+        $this->write('entry_id', [$entry->id], $places, $hasRows);
     }
 
     /**
@@ -124,19 +126,22 @@ final readonly class BlockUsageIndex
     }
 
     /**
-     * Replace the rows of these owners (one delete) with one row per block and place (one lookup and
-     * one insert, only when anything is placed).
+     * Replace the rows of these owners (one delete, unless they are known to have none) with one row
+     * per block and place (one lookup and one insert, only when anything is placed).
      *
      * @param  'entry_id'|'taxonomy_id'|'site_setting_id'|'menu_item_id'  $column
      * @param  list<int>  $owners
      * @param  list<array{owner: int, locale: string|null, slot: string|null, ulids: list<string>}>  $places
+     * @param  bool  $hasRows  false: the owners are known to have no rows, so none is deleted
      */
-    private function write(string $column, array $owners, array $places): void
+    private function write(string $column, array $owners, array $places, bool $hasRows = true): void
     {
         if ($owners === []) {
             return;
         }
-        BlockUsage::query()->whereIn($column, $owners)->delete();
+        if ($hasRows) {
+            BlockUsage::query()->whereIn($column, $owners)->delete();
+        }
 
         $ulids = array_values(array_unique(array_merge([], ...array_column($places, 'ulids'))));
         if ($ulids === []) {

@@ -53,7 +53,8 @@ use Illuminate\Support\Facades\Gate;
  * (a new item, or one moved deeper than it was) — what was already deeper stays as it is.
  *
  * Where the menu's large panels place shared blocks is rewritten in the same transaction, for every
- * live item of the menu (BlockUsageIndex); the items sent to the trash keep theirs.
+ * live item of the menu (BlockUsageIndex), when a panel showed or shows one; the items sent to the
+ * trash keep theirs.
  */
 final readonly class ApplyMenuDraft
 {
@@ -95,6 +96,7 @@ final readonly class ApplyMenuDraft
             $this->lockMenu($menu->id);
             $menu->refresh();
             [$items, $labels] = $this->read($menu->id);
+            $panelsBefore = self::placesPanelBlock($items);
             if (! hash_equals(MenuVersion::of($menu, $items, $labels), $version)) {
                 throw new MenuChangeRejectedException('draft_stale');
             }
@@ -188,10 +190,29 @@ final readonly class ApplyMenuDraft
             ]);
 
             [$items, $labels] = $this->read($menu->id);
-            $this->blocks->syncMenuItems($items);
+            // a menu whose panels show no shared block, before or after, has no rows to rewrite
+            if ($panelsBefore || self::placesPanelBlock($items)) {
+                $this->blocks->syncMenuItems($items);
+            }
 
             return ['version' => MenuVersion::of($menu, $items, $labels), 'keys' => $keys, 'removed' => Cast::int($removed)];
         });
+    }
+
+    /**
+     * Whether one of these items' large panels shows a shared block.
+     *
+     * @param  iterable<MenuItem>  $items
+     */
+    private static function placesPanelBlock(iterable $items): bool
+    {
+        foreach ($items as $item) {
+            if (BlockUsageIndex::panelBlock($item->meta) !== null) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
