@@ -61,6 +61,9 @@ it('keeps the post editor within its page weight', function (): void {
     $html = (string) $this->actingAs($this->member)->get("http://a.test/admin/content/{$ulid}/edit")->assertOk()->getContent();
     $weight = adminPageWeight($html);
 
-    expect($weight['kb'])->toBeLessThanOrEqual(320.0)
+    // the editor of a post, not a lighter page answering 200 in its place
+    expect($html)->toContain('Bài ')->toContain('wire:snapshot')
+        ->and($weight['kb'])->toBeGreaterThan(150.0)
+        ->and($weight['kb'])->toBeLessThanOrEqual(320.0)
         ->and($weight['elements'])->toBeLessThanOrEqual(1370);
 });
