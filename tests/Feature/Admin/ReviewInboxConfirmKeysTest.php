@@ -102,6 +102,9 @@ it('asks before a first publication with «Khi nào đăng?», never applying st
             ->and(substr_count($html, INBOX_PRIMARY_MARK))->toBe(1);
         // the dialog sends the post it named, now or at a later time
         expect($html)->toContain('$wire.apply(key, ulid)', '$wire.approveLater(key, this.value, ulid)');
+        // Enter waits while any ↑ ↓ step is still on its way (a count, so two quick steps both hold it),
+        // and on a phone list it opens the marked post instead of asking to publish one not yet seen
+        expect($html)->toContain('inboxSteps++', 'inboxSteps--', 'if (this.inboxSteps > 0)', "matchMedia('(min-width: 64rem)')");
         expect($post->fresh()->status)->toBe('pending');
     });
 });

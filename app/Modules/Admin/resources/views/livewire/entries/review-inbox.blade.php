@@ -24,7 +24,7 @@
      stay the page's scroll. An open dialog is found by its role (aria-modal is valid only on one). --}}
 <div class="space-y-4" x-data="{
         inboxAsking: false,
-        inboxStepping: false,
+        inboxSteps: 0,
         key(e) {
             if (e.defaultPrevented || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || this.inboxAsking || ! ['ArrowDown', 'ArrowUp', 'Enter'].includes(e.key)) { return }
             if ([...document.querySelectorAll('[role=dialog], [role=alertdialog], [role=menu]')].some((d) => ! d.matches('[data-inbox-reader]') && d.getClientRects().length > 0)) { return }
@@ -36,15 +36,15 @@
                 const at = rows.findIndex((r) => r.hasAttribute('data-current'));
                 if (rows.length === 0 || (at === 0 && e.key === 'ArrowUp') || (at === rows.length - 1 && e.key === 'ArrowDown' && ! $root.querySelector('[data-inbox-more]'))) { return }
                 e.preventDefault();
-                this.inboxStepping = true;
+                this.inboxSteps++;
                 $wire.step(e.key === 'ArrowDown' ? 1 : -1, true).then(() => {
                     if (! $wire.detail || window.matchMedia('(min-width: 64rem)').matches) { $root.querySelector('[data-inbox-open][data-current]')?.scrollIntoView({ block: 'nearest' }) }
-                }).finally(() => { this.inboxStepping = false });
+                }).finally(() => { this.inboxSteps-- });
                 return;
             }
             if (e.repeat) { return }
             // a step on its way: the page still shows the post being left, so Enter waits for the new one
-            if (this.inboxStepping) { e.preventDefault(); return }
+            if (this.inboxSteps > 0) { e.preventDefault(); return }
             const row = t?.closest('[data-inbox-open]');
             if (row ? ! row.hasAttribute('data-current') : t?.closest('button, a[href], summary, [role=button], [role=checkbox], [role=switch], [role=tab], [role=radio], [role=link], [role=menuitem], [role=option]')) { return }
             const go = $root.querySelector('[data-inbox-primary]');
