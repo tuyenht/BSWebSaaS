@@ -69,6 +69,11 @@ final readonly class BlockUsageIndex
     public function syncSiteSetting(Model $setting, mixed $slots): void
     {
         $this->own($setting);
+        if ($setting->getTable() !== 'site_settings'
+            || $setting->getAttribute('group_name') !== LayoutSlots::SETTING_GROUP
+            || $setting->getAttribute('key') !== LayoutSlots::SETTING_KEY) {
+            throw new LogicException('Only the website\'s block slots setting places shared blocks.');
+        }
         $id = Cast::int($setting->getKey());
         $this->write('site_setting_id', [$id], $this->slotPlaces($id, $slots));
     }

@@ -166,6 +166,19 @@ describe('recording where a block is placed', function (): void {
             ->and(sbpRows())->toBe([]);
     });
 
+    it('records slots only for the website\'s block slots setting', function (): void {
+        $footer = sbpBlock(1, 'chan-trang');
+        $slots = ['after_post' => ['vi' => ['blocks' => [sbpRef($footer->ulid)]]]];
+
+        expect(fn () => app(Tenancy::class)->enter(1, function () use ($slots): void {
+            $other = SiteSetting::query()->firstOrCreate(['group_name' => 'seo', 'key' => 'config'], ['value' => []]);
+            app(BlockUsageIndex::class)->syncSiteSetting($other, $slots);
+        }))->toThrow(LogicException::class)
+            ->and(fn () => app(Tenancy::class)->enter(1, fn () => app(BlockUsageIndex::class)->syncSiteSetting(Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]), $slots)))
+            ->toThrow(LogicException::class)
+            ->and(sbpRows())->toBe([]);
+    });
+
     it('keeps the rows of a page in the Trash and drops them when it is deleted for good', function (): void {
         $footer = sbpBlock(1, 'chan-trang');
         $entry = sbpPage(['vi' => [sbpRef($footer->ulid)]]);
