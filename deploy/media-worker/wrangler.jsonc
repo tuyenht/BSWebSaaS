@@ -6,5 +6,15 @@
   "main": "src/index.js",
   "compatibility_date": "2026-06-01",
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "baoson-media" }],
-  "routes": [{ "pattern": "files.baoson.net/*", "zone_name": "baoson.net" }]
+  "routes": [{ "pattern": "files.baoson.net/*", "zone_name": "baoson.net" }],
+  // Folders of a website's files from before website codes → that website's code. A request under one
+  // answers 301 to /{code}/{file} when media:rekey-site copied the file there (same bytes); otherwise
+  // the old object is served as before. One line per old folder, ending in "/"; add a line only
+  // after the website's rekey ran on this bucket.
+  "vars": {
+    "LEGACY_PREFIXES": {
+      "an-vinh/": "zpvjzx",
+      "co-khi-chinh-xac-an-vinh/library/": "zpvjzx"
+    }
+  }
 }

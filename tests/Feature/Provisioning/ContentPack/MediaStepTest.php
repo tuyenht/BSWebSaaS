@@ -126,9 +126,7 @@ it('files the images under the site\'s own code when another website\'s name gav
 });
 
 it('files the images under their collection in single-site mode', function (): void {
-    config(['media.tenant_prefix' => false]);
-
-    [$exit, $output] = mediaLoad();
+    [$exit, $output] = inSingleSiteMode(fn (): array => mediaLoad());
 
     expect($exit)->toBe(0, $output)
         ->and(packMedia($this->siteId)['header.png'] ?? '')->toMatch('#^library/header-[0-9a-f]{4}\.png$#');
@@ -430,6 +428,37 @@ it('leaves the download button out, with a warning, while its document is not up
     expect($exit)->toBe(0, $output)
         ->and(aboutLastBlock($this->siteId))->toMatchArray(['button_label' => 'Tải hồ sơ'])->not->toHaveKey('button_url_do');
 });
+
+it('finds a legacy_key\'s file by the old key its row records, never by its file name alone', function (string $field): void {
+    profileButton($this->folder);
+    $legacy = 'an-vinh/tai-lieu/ho-so-ab12cd.pdf';
+    $moved = siteCode($this->siteId).'/ho-so-ab12cdef.pdf';
+    ContentPacks::in($this->siteId, function () use ($legacy, $moved, $field): void {
+        // Same file name under the code, but it never held the legacy key: not the slot's file.
+        Media::query()->create([
+            'collection' => 'library', 'slug' => 'ho-so', 'hash' => hash('sha256', 'other'),
+            'storage_key' => siteCode($this->siteId).'/ho-so-ab12cd.pdf', 'mime' => 'application/pdf', 'size' => 1024,
+        ]);
+        Media::query()->create([
+            'collection' => 'library', 'slug' => 'ho-so', 'hash' => hash('sha256', 'ho-so'),
+            'storage_key' => $moved, 'mime' => 'application/pdf', 'size' => 2048, 'meta' => [$field => $legacy],
+        ]);
+    });
+    ContentPacks::edit($this->folder, 'media.json', function (array $media) use ($legacy): array {
+        $media['slots'] = array_map(fn (array $slot): array => $slot['slot'] === 'profile'
+            ? ['slot' => 'profile', 'kind' => 'document', 'legacy_key' => $legacy]
+            : $slot, $media['slots']);
+
+        return $media;
+    });
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)
+        ->and(aboutLastBlock($this->siteId))->toMatchArray(['button_url_do' => ['k' => 'file', 'file' => $moved]]);
+})->with([
+    'moved by media:rekey-site' => 'moved_from',
+    'copied by a seeder' => 'seed_source',
+]);
 
 it('leaves the download button out when its document slot names an existing image', function (): void {
     profileButton($this->folder);

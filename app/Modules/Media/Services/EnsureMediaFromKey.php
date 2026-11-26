@@ -5,8 +5,12 @@ namespace App\Modules\Media\Services;
 use App\Modules\Media\Exceptions\MediaKeyRejectedException;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Support\MediaKey;
+use App\Modules\Media\Support\MediaKeyPrefix;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteDirectory;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 
 /**
  * Ensures a Media master exists for a storage_key already sitting in R2, returning it (idempotent
@@ -38,7 +42,47 @@ final readonly class EnsureMediaFromKey
     public function __construct(
         private CurrentSite $current,
         private SiteDirectory $sites,
+        private MediaKeyPrefix $prefix,
     ) {}
+
+    /**
+     * A seeder's fixed file, filed for the current website: the object at $sourceKey (a shared seed
+     * file in the bucket, such as `an-vinh/hero/hero-home-7ca90eafe212.jpg`) is copied server-side
+     * to the website's own folder under the same file name (`{code}/hero-home-7ca90eafe212.jpg`)
+     * unless a copy is there already, and the master for that key is ensured. So no seeder writes a
+     * key outside the website's code, and re-seeding finds the same row. A new row records the seed
+     * key in `meta.seed_source`, so a content pack's `legacy_key` and a stored reference to the seed
+     * key still find it. The seed file is shared by every seeded website: unlike `meta.moved_from`
+     * (a moved row's own old object), a permanent delete never removes it. A source that is not in
+     * storage is logged and the row still made (as for any key whose object is missing).
+     *
+     * @param  array<string, mixed>  $overrides
+     */
+    public function fromSeedSource(string $sourceKey, array $overrides = []): Media
+    {
+        MediaKey::assertCleanPath($sourceKey);
+        $key = $this->prefix->forNewObject('library').basename($sourceKey);
+        MediaKey::assertCleanPath($key);
+
+        $disk = Storage::disk(MediaKey::disk());
+        if (! $disk->exists($key)) {
+            if ($disk->exists($sourceKey)) {
+                $mime = self::MIME_BY_EXT[strtolower(pathinfo($key, PATHINFO_EXTENSION))] ?? 'application/octet-stream';
+                if (! MediaKey::copyAs($disk, $sourceKey, $key, $mime)) {
+                    throw new RuntimeException("Copying the seed file '{$sourceKey}' to '{$key}' failed.");
+                }
+            } else {
+                Log::warning('Seed file missing from media storage', ['source' => $sourceKey, 'key' => $key]);
+            }
+        }
+
+        if ($key !== $sourceKey) {
+            $meta = $overrides['meta'] ?? [];
+            $overrides['meta'] = [...(is_array($meta) ? $meta : []), 'seed_source' => $sourceKey];
+        }
+
+        return $this->handle($key, $overrides);
+    }
 
     /**
      * @param  array<string, mixed>  $overrides  known metadata (e.g. real size/width) to prefer over derived

@@ -4,6 +4,9 @@
 //                       If-* preconditions (304/412); HEAD answers the headers without the body
 // - GET /{key}?w=320  → cf.image transform to the client's best format (avif/webp/jpeg), edge-cached
 // - GET /__origin/{key} → internal raw path that feeds cf.image (breaks the transform→fetch loop)
+// - GET /{old prefix}/…/{file}[?w=…] → 301 to /{code}/{file}[?w=…] when a website's files were moved
+//                       under its code (media:rekey-site) and an identical copy is there; else served
+//                       as before. The prefix → code map is config (wrangler.jsonc vars.LEGACY_PREFIXES)
 // Width is whitelisted (anti resize-DoS). A transform failure degrades to the raw master (image never
 // disappears), cached for five minutes only. The key is content-addressed
 // ({tenant}/{collection}/{slug}-{hash}.ext) so the immutable cache never goes stale: changed content =
@@ -15,7 +18,7 @@
 // names every final key from the sniffed MIME); keys whose first segment starts with "_" (uploads in
 // flight, internal prefixes) are never public.
 
-import { publicKey, typeOf } from './keys.js';
+import { legacyPrefixes, legacyTarget, publicKey, typeOf } from './keys.js';
 
 const ALLOWED_WIDTHS = new Set([320, 640, 960, 1280, 1600, 2048]);
 const CACHE_CONTROL = 'public, max-age=31536000, immutable';
@@ -24,6 +27,15 @@ const CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const FALLBACK_CACHE_CONTROL = 'public, max-age=300';
 const RASTER = new Set(['image/avif', 'image/webp', 'image/jpeg', 'image/png', 'image/gif']);
 const ORIGIN_PREFIX = '/__origin/'; // internal raw path — source for cf.image, avoids a fetch loop
+// Edge cache (Cache API, per data centre) of the legacy check, under a path no public request can
+// reach (a "_" first segment is never served). Both answers, found or missing, are kept five minutes,
+// and the 301 itself five minutes too, never a year: `an-vinh/` is also the shared demo seed folder,
+// so other websites may link to a seed file whose copy the website later deletes; its old address
+// then stops redirecting within about ten minutes (edge five + browser five) and answers from the
+// old object again. Cloudflare has no asynchronous stale-while-revalidate, so an expired entry costs
+// the next request one or two R2 HEADs (a few milliseconds).
+const LEGACY_CHECK_PREFIX = '/__legacy/';
+const LEGACY_TTL = 300;
 // Sent on every response: no sniffing, and a sandbox so even a mislabelled body can never run script
 // or reach this origin's cookies.
 const SAFETY_HEADERS = {
@@ -44,7 +56,7 @@ function plain(status, text) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (request.method !== 'GET' && request.method !== 'HEAD') return plain(405, 'Method not allowed');
 
@@ -61,6 +73,12 @@ export default {
     if (width !== null && !ALLOWED_WIDTHS.has(width)) {
       return plain(400, 'Invalid width');
     }
+
+    // A key under a legacy prefix whose file has an identical copy under its website's code → 301 there,
+    // the query (a width) kept. Otherwise it is served as before: a shared seed file that was never
+    // copied keeps answering from its old key, never a redirect to a 404.
+    const moved = await movedTo(env, ctx, url.origin, key);
+    if (moved !== null) return redirect(moved, url.search);
 
     // (b) No width, or not a raster image → the raw master (canonical / L2 fallback).
     if (width === null || !type.startsWith('image/')) return serveRaw(request, env, key, type);
@@ -93,6 +111,49 @@ export default {
     return new Response(resp.body, { status: resp.status, headers });
   },
 };
+
+// The key a legacy key was copied to, when the copy is there with the same content: both HEADs
+// answer and their ETags (an MD5 of the bytes on R2) and sizes match. A same-named file that
+// media:rekey-site had to give a longer hash (two old folders held the same name) fails the check,
+// so its old address never points at the other file. The answer is kept in the edge cache.
+async function movedTo(env, ctx, origin, key) {
+  const target = legacyTarget(key, legacyPrefixes(env.LEGACY_PREFIXES));
+  if (target === null) return null;
+
+  const cache = globalThis.caches?.default;
+  const checkUrl = `${origin}${LEGACY_CHECK_PREFIX}${encodeURIComponent(key)}`;
+  if (cache) {
+    const kept = await cache.match(checkUrl);
+    if (kept) return (await kept.text()) === target ? target : null;
+  }
+
+  // The old key first: a made-up name under an old folder costs one HEAD, not two. A passing R2 fault
+  // is no reason to fail the request: the old object is served as before and nothing is cached.
+  let same;
+  try {
+    const from = await env.MEDIA.head(key);
+    const to = from === null ? null : await env.MEDIA.head(target);
+    same = to !== null && from.etag === to.etag && from.size === to.size;
+  } catch {
+    return null;
+  }
+  if (cache) {
+    const put = cache.put(checkUrl, new Response(same ? target : '', { headers: { 'Cache-Control': `max-age=${LEGACY_TTL}` } }));
+    if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(put);
+    else await put;
+  }
+  return same ? target : null;
+}
+
+// A relative Location on this host: "/" + the code (six letters and digits, from the config) + the
+// file, each segment escaped, so it can never become "//other-host".
+function redirect(target, search) {
+  const location = `/${target.split('/').map(encodeURIComponent).join('/')}${search}`;
+  return new Response(null, {
+    status: 301,
+    headers: { Location: location, 'Cache-Control': `public, max-age=${LEGACY_TTL}`, ...SAFETY_HEADERS },
+  });
+}
 
 // The raw master. R2 reads the request's Range and If-* headers itself: a ranged read gives a 206
 // with Content-Range, a failed precondition gives an object without a body (304, or 412 for a
@@ -195,5 +256,6 @@ function preconditionStatus(request, obj) {
   return 304;
 }
 
-// Future (designed-for, not wired): a host→tenant prefix map for per-tenant domains, and a
+// Future (designed-for, not wired): a host→website map for the other two address forms
+// ({domain}/media/…, files.{domain}/…) with a 301 to the website's configured form, and a
 // draft-media token check at the top of fetch(). Both slot in here without changing public URLs.

@@ -9,11 +9,13 @@ use App\Modules\Admin\Livewire\Concerns\EditsBlockList;
 use App\Modules\Admin\Livewire\Concerns\EditsButtonActions;
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\Locales;
+use App\Modules\Cms\Actions\ContentBlocks\PublishContentBlock;
 use App\Modules\Cms\Actions\ContentBlocks\SaveContentBlockBody;
 use App\Modules\Cms\ContentBlocks\ContentBlockVersion;
 use App\Modules\Cms\Exceptions\ContentBlockChangeRejectedException;
 use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\ContentBlockTranslation;
+use App\Modules\Cms\Queries\ContentBlockUsages;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\Cast;
@@ -71,6 +73,10 @@ final class Editor extends Component
 
     #[Locked]
     public string $blockName = '';
+
+    /** The block is still a draft: the website shows nothing of it, and the bar offers «Lưu & xuất bản». */
+    #[Locked]
+    public bool $isDraft = false;
 
     public string $toastMsg = '';
 
@@ -184,13 +190,7 @@ final class Editor extends Component
             if ($e->reason === 'body_invalid') {
                 $this->addError('blocks', $e->getMessage() !== '' ? $e->getMessage() : __('blocks.err_body'));
             }
-            $this->toast(__(match ($e->reason) {
-                'version_stale' => 'blocks.err_stale_body',
-                'locale_invalid' => 'blocks.err_lang_off',
-                'body_invalid' => 'blocks.err_body',
-                'block_missing' => 'blocks.toast_gone',
-                default => 'blocks.err_generic',
-            }), 'error');
+            $this->toast(__(self::refusalKey($e->reason)), 'error');
 
             return false;
         } catch (AuthorizationException) {
@@ -202,6 +202,33 @@ final class Editor extends Component
         $this->toast(__('blocks.toast_body_saved', ['lang' => Locales::label($this->editingLocale())]));
 
         return true;
+    }
+
+    /** «Lưu & xuất bản» (a block still in draft): save this language's layout, publish the block, go back to the library. */
+    public function saveAndPublish(): void
+    {
+        $this->authorizeEditing();
+        if (! $this->save()) {
+            return;
+        }
+        try {
+            app(PublishContentBlock::class)->handle($this->actingUser(), $this->block(), true);
+        } catch (ContentBlockChangeRejectedException $e) {
+            $this->toast(__(self::refusalKey($e->reason)), 'error');
+
+            return;
+        } catch (AuthorizationException) {
+            $this->toast(__('blocks.toast_cannot'), 'error');
+
+            return;
+        }
+        $this->isDraft = false;
+        $block = $this->block();
+        $places = app(ContentBlockUsages::class)->countsFor([$block->id])[$block->id] ?? 0;
+        session()->flash(Library::FLASH, $places > 0
+            ? __('blocks.toast_published', ['name' => $this->blockName, 'places' => trans_choice('blocks.n_places', $places, ['n' => $places])])
+            : __('blocks.toast_published_none', ['name' => $this->blockName]));
+        $this->redirectRoute('admin.blocks.index', navigate: true);
     }
 
     /** «Lưu & quay lại»: save, then the library says it was saved. */
@@ -219,6 +246,18 @@ final class Editor extends Component
     {
         $this->authorizeEditing();
         $this->load($this->block());
+    }
+
+    /** The message for a block change the action refused, by its reason. */
+    private static function refusalKey(string $reason): string
+    {
+        return match ($reason) {
+            'version_stale' => 'blocks.err_stale_body',
+            'locale_invalid' => 'blocks.err_lang_off',
+            'body_invalid' => 'blocks.err_body',
+            'block_missing' => 'blocks.toast_gone',
+            default => 'blocks.err_generic',
+        };
     }
 
     public function closeToast(int $seq = 0): void
@@ -294,6 +333,7 @@ final class Editor extends Component
         $this->openBlock = null;
         $this->lookSplit = [];
         $this->blockName = $block->name;
+        $this->isDraft = $block->status !== ContentBlock::PUBLISHED;
         $this->version = ContentBlockVersion::current($block);
         $this->savedHash = $this->hash();
         $this->resetErrorBag();

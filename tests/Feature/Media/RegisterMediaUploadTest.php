@@ -124,11 +124,10 @@ it('uses an 8-hex suffix when url_hash_length is 8', function (): void {
 });
 
 it('omits the tenant prefix in standalone (non-SaaS) mode', function (): void {
-    config(['media.tenant_prefix' => false]);
     $tempKey = '_incoming/a/01solo.png';
     stageUpload(1, $tempKey, pngContent());
 
-    $media = app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'logo.png'));
+    $media = inSingleSiteMode(fn () => app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'logo.png')));
 
     expect($media->storage_key)->toMatch('#^library/logo-[0-9a-f]{4}\.png$#')
         ->and($media->storage_key)->not->toStartWith(siteCode(1).'/');

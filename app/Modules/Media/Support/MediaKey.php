@@ -5,6 +5,10 @@ namespace App\Modules\Media\Support;
 use App\Modules\Media\Exceptions\MediaKeyRejectedException;
 use App\Modules\Media\Models\Media;
 use App\Modules\Shared\Support\Slugger;
+use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Filesystem\FilesystemAdapter;
+use League\Flysystem\FilesystemException;
+use LogicException;
 use RuntimeException;
 
 /**
@@ -100,6 +104,26 @@ final class MediaKey
     }
 
     /**
+     * Server-side copy that REPLACES the object's metadata with headers derived from the stored MIME
+     * (objectOptions), so nothing set on the source object reaches the copy. Returns false on
+     * failure, like the disk's own copy() on this ('throw' => false) disk.
+     */
+    public static function copyAs(Filesystem $disk, string $from, string $to, string $mime): bool
+    {
+        if (! $disk instanceof FilesystemAdapter) {
+            throw new LogicException('Media storage must be a Flysystem-backed disk to replace object headers on copy.');
+        }
+
+        try {
+            $disk->getDriver()->copy($from, $to, self::objectOptions($mime) + ['MetadataDirective' => 'REPLACE']);
+        } catch (FilesystemException) {
+            return false; // the disk is configured not to report; the caller decides what a failure means
+        }
+
+        return true;
+    }
+
+    /**
      * Fail LOUD + EARLY when the configured media disk is an S3-family (r2/s3) disk with no bucket —
      * i.e. its credentials are missing from .env. Without this, Storage::disk() throws a cryptic
      * "bucket must be string, null given" TypeError deep in the adapter (which is exactly how a
@@ -125,6 +149,17 @@ final class MediaKey
     public static function isReservedFirstSegment(string $segment): bool
     {
         return in_array($segment, self::RESERVED_FIRST_SEGMENTS, true) || str_starts_with($segment, self::PRIVATE_MARK);
+    }
+
+    /**
+     * Whether $key lies under a demo seed source (`media.seed_folders`): a shared seed file every
+     * seeded website copies from, which no website may delete.
+     */
+    public static function isSeedKey(string $key): bool
+    {
+        $folders = config('media.seed_folders', []);
+
+        return is_array($folders) && in_array(explode('/', $key, 2)[0], $folders, true);
     }
 
     /** Refuses a storage key that is not a clean relative path (CLEAN_PATH_PATTERN). */

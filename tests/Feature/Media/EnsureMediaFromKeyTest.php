@@ -17,11 +17,11 @@ beforeEach(fn () => seedTenancy());
 
 it('materializes a Media row from a storage key with metadata derived from the key', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
-        $media = app(EnsureMediaFromKey::class)->handle('an-vinh/hero/hero-home-7ca90eafe212.jpg');
+        $media = app(EnsureMediaFromKey::class)->handle('a-vinh/hero/hero-home-7ca90eafe212.jpg');
 
         expect($media->exists)->toBeTrue()
             ->and($media->site_id)->toBe(1)
-            ->and($media->storage_key)->toBe('an-vinh/hero/hero-home-7ca90eafe212.jpg')
+            ->and($media->storage_key)->toBe('a-vinh/hero/hero-home-7ca90eafe212.jpg')
             ->and($media->collection)->toBe('hero')
             ->and($media->slug)->toBe('hero-home')                  // trailing -hash dropped
             ->and($media->mime)->toBe('image/jpeg')
@@ -31,12 +31,12 @@ it('materializes a Media row from a storage key with metadata derived from the k
 
 it('is idempotent per site — the same key returns the same row, never a duplicate', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
-        $a = app(EnsureMediaFromKey::class)->handle('an-vinh/brand/logo-e76d7cb1dfe4.png');
-        $b = app(EnsureMediaFromKey::class)->handle('an-vinh/brand/logo-e76d7cb1dfe4.png');
+        $a = app(EnsureMediaFromKey::class)->handle('a-vinh/brand/logo-e76d7cb1dfe4.png');
+        $b = app(EnsureMediaFromKey::class)->handle('a-vinh/brand/logo-e76d7cb1dfe4.png');
 
         expect($b->id)->toBe($a->id)
             ->and($a->mime)->toBe('image/png')
-            ->and(Media::query()->where('storage_key', 'an-vinh/brand/logo-e76d7cb1dfe4.png')->count())->toBe(1);
+            ->and(Media::query()->where('storage_key', 'a-vinh/brand/logo-e76d7cb1dfe4.png')->count())->toBe(1);
     });
 });
 
@@ -44,11 +44,11 @@ it('never overwrites an existing master for the key', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         $existing = Media::query()->create([
             'collection' => 'library', 'slug' => 'real', 'hash' => str_repeat('e', 64),
-            'storage_key' => 'an-vinh/content/real-abc123abc123.webp', 'disk' => 'r2',
+            'storage_key' => 'a-vinh/content/real-abc123abc123.webp', 'disk' => 'r2',
             'mime' => 'image/webp', 'size' => 4242,
         ]);
 
-        $got = app(EnsureMediaFromKey::class)->handle('an-vinh/content/real-abc123abc123.webp');
+        $got = app(EnsureMediaFromKey::class)->handle('a-vinh/content/real-abc123abc123.webp');
 
         expect($got->id)->toBe($existing->id)->and($got->size)->toBe(4242);   // untouched
     });
