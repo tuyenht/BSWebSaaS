@@ -144,6 +144,13 @@ it('offers «Khối dùng chung» in «+ Thêm khối» and its dialog only wher
             ->call('sharedBlockChoices')->assertForbidden();
     });
     $block = sbpBlock(1, 'thong-tin-lien-he', 'Thông tin liên hệ');
+    // a block placed before the plan lost the library still shows, without «Mở khối» to a screen it cannot open
+    $placed = sbpPage($user, [sbpRef(strtoupper($block->ulid))], 'draft', 'trang-co-khoi');
+    app(Tenancy::class)->enter(1, function () use ($user, $placed): void {
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $placed->ulid])
+            ->assertSeeHtml('data-ref-card="ok"')
+            ->assertDontSeeHtml('data-ref-open-block');
+    });
     app(Tenancy::class)->enter(1, function () use ($user, $entry, $block): void {
         Livewire::actingAs($user)->test(Editor::class, ['ulid' => $entry->ulid])
             ->call('insertSharedBlock', $block->ulid)->assertForbidden();

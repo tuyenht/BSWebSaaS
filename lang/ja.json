@@ -480,7 +480,7 @@
     "entries.ref.hits": "見つかったブロック: :n 件",
     "entries.ref.going": "配置中…",
     "entries.ref.remove_named": "ブロック「:name」をページから外す",
-    "entries.ref.open_named": "ブロック「:name」を開く（新しいタブ）",
+    "entries.ref.open_named": "ブロックを開く:「:name」（新しいタブ）",
     "entries.ref.look_note": "共有ブロックは自分の色・余白・表示を保つため、ここでは調整しません。ブロック側で変えると、使っているすべてのページに反映されます。",
     "entries.block.richtext": "テキスト（シンプル）",
     "entries.block.cta": "行動喚起（CTA）",

@@ -6,7 +6,8 @@
      already holds the most shared blocks, every row says so instead of «Chèn». While a row is being
      placed it says so and the others dim; when the server places nothing (the block deleted meanwhile,
      the layout full) the dialog stays open, says so and reads the list again. One polite live region
-     reads out the state and the number of matches. The host gives
+     reads out the state and the number of matches; a note (not placed, layout full) is read once, with
+     the list that follows it, not again at every keystroke. The host gives
      $sharedPicker (the library link, or null) and $localeLabel. --}}
 @php
     $refOrder = ['inline', 'header', 'footer', 'sidebar', 'menu'];
@@ -19,7 +20,7 @@
     $refLibrary = $sharedPicker['library'] ?? null;
 @endphp
 <div x-data="{
-        rp: false, mode: 'loading', rows: [], cap: false, q: '', busy: false, pick: null, insErr: false,
+        rp: false, mode: 'loading', rows: [], cap: false, q: '', busy: false, pick: null, insErr: false, notice: '',
         say: @js([
             'loading' => __('entries.ref.loading'),
             'error' => __('entries.ref.err_title'),
@@ -28,6 +29,7 @@
             'insErr' => __('entries.ref.ins_err'),
             'none' => __('entries.ref.none_title'),
             'hits' => __('entries.ref.hits'),
+            'going' => __('entries.ref.going'),
         ]),
         order: @js($refOrder), labels: @js($refLabels), tints: @js($refTints),
         fold(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').trim(); },
@@ -38,21 +40,19 @@
                 const r = await $wire.sharedBlockChoices();
                 if (! r || r.ok !== true) { throw new Error('refused'); }
                 this.rows = r.rows; this.cap = r.cap; this.mode = 'list';
+                this.notice = [this.insErr ? this.say.insErr : '', this.cap && r.rows.length > 0 ? this.say.cap : ''].filter((t) => t !== '').join(' ');
             } catch (e) { this.mode = 'error'; }
             this.$nextTick(() => { const el = document.getElementById(this.mode === 'error' ? 'ref-pick-retry' : (this.rows.length ? 'ref-pick-q' : 'ref-pick-cancel')); if (el) { el.focus(); } });
         },
         get hits() { const q = this.fold(this.q); return q === '' ? this.rows : this.rows.filter((r) => this.fold(r.name).includes(q) || this.fold(r.key).includes(q)); },
         get groups() { const hits = this.hits; return this.order.map((k) => { const items = hits.filter((r) => r.region === k); return { k, label: this.labels[k] + ' · ' + items.length, items }; }).filter((g) => g.items.length > 0); },
         get live() {
+            if (this.pick !== null) { return this.say.going; }
             if (this.mode === 'loading') { return this.say.loading; }
-            if (this.mode === 'error') { return this.say.error; }
-            if (this.rows.length === 0) { return this.say.empty; }
+            if (this.mode === 'error') { return (this.insErr ? this.say.insErr + ' ' : '') + this.say.error; }
             const n = this.hits.length;
-            const parts = [];
-            if (this.insErr) { parts.push(this.say.insErr); }
-            if (this.cap) { parts.push(this.say.cap); }
-            parts.push(n === 0 ? this.say.none.replace(':q', this.q.trim()) : this.say.hits.replace(':n', n));
-            return parts.join(' ');
+            const base = this.rows.length === 0 ? this.say.empty : (n === 0 ? this.say.none.replace(':q', this.q.trim()) : this.say.hits.replace(':n', n));
+            return (this.notice !== '' ? this.notice + ' ' : '') + base;
         },
         clearQ() { this.q = ''; this.$nextTick(() => document.getElementById('ref-pick-q')?.focus()); },
         async insert(r) {
@@ -69,7 +69,7 @@
             window.dispatchEvent(new CustomEvent('bs-ref-placed'));
             requestAnimationFrame(() => requestAnimationFrame(() => { const el = document.getElementById('block-ref-' + at); if (el) { el.focus({ preventScroll: true }); el.scrollIntoView({ block: 'center' }); } }));
         },
-     }" x-on:bs-ref-pick.window="open()" data-ref-picker>
+     }" x-init="$watch('q', () => { notice = '' })" x-on:bs-ref-pick.window="open()" data-ref-picker>
     <x-bs-admin::modal state="rp" close="rp = false" :title="__('entries.ref.title')" :subtitle="__('entries.ref.sub', ['lang' => $localeLabel])" :close-label="__('entries.ref.close')">
         <div class="sticky -top-4 z-1 -mt-4 bg-surface pt-4" x-show="mode === 'loading' || rows.length > 0">
             <x-bs-admin::search id="ref-pick-q" :label="__('entries.ref.search_label')" :placeholder="__('entries.ref.search_ph')" x-model="q" x-bind:disabled="mode === 'loading'" />

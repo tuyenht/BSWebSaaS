@@ -479,7 +479,7 @@
     "entries.ref.ins_err": "The block you picked was not placed: it may have just been deleted, or the page already holds the most blocks. The list has been reloaded — please pick again.",
     "entries.ref.hits": "Blocks found: :n",
     "entries.ref.going": "Placing…",
-    "entries.ref.remove_named": "Remove block “:name” from the page",
+    "entries.ref.remove_named": "Remove from page: block “:name”",
     "entries.ref.open_named": "Open block “:name” (opens a new tab)",
     "entries.ref.look_note": "A shared block keeps its own colours, spacing and presentation, so they are not set here. Change them in the block and every page using it follows.",
     "entries.block.richtext": "Text (simple)",
