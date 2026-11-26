@@ -29,7 +29,7 @@ final readonly class EntryBlockMediaReconciler
         // no translation read: rows may be left, so they are cleared
         $hasRows = null;
         $translations = $entry->translations()->select('entry_translations.*')
-            ->selectRaw('exists(select 1 from block_usages b where b.entry_id = entry_translations.entry_id) as has_block_usage')
+            ->selectRaw('exists(select 1 from block_usages b where b.entry_id = entry_translations.entry_id and b.site_id = entry_translations.site_id) as has_block_usage')
             ->get();
         foreach ($translations as $translation) {
             $lists[$translation->locale] = is_array($translation->body['blocks'] ?? null) ? $translation->body['blocks'] : [];
