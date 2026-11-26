@@ -106,6 +106,7 @@ trait EditsPendingChange
         if (array_key_exists('meta', $shared)) {
             if ($this->type === 'post') {
                 $this->displayDate = DisplayDate::of($shared['meta']);
+                $this->loadJobCard($shared['meta']);
             }
         }
         if ($this->type === 'post' && array_key_exists('template_override', $shared)) {
@@ -190,6 +191,10 @@ trait EditsPendingChange
             $shared['meta'] = $meta;
             $shared['template_override'] = $this->formTemplate(is_string($before) ? $before : null);
         }
+        // «Thông tin tuyển dụng» goes into the change too (this language's words, every language's boxes)
+        /** @var array<string, mixed> $meta */
+        $meta = $this->jobMeta($meta);
+        $shared['meta'] = $meta;
 
         if ($change === null && $this->sameAsLive($entry, $live, $text, $meta, $filing[0] ?? null)) {
             $this->heldSave = 'same';
@@ -234,7 +239,8 @@ trait EditsPendingChange
         return self::keysSorted($before) === self::keysSorted($text['body'])
             && data_get($entry->meta, 'image_url') === ($meta['image_url'] ?? null)
             && ($this->type !== 'post' || ! $this->postPropsRead || (DisplayDate::of($entry->meta) === DisplayDate::of($meta) && $entry->template_override === $this->formTemplate($entry->template_override)))
-            && ($this->type !== 'post' || $primary === ($this->storedCategories($entry)[0] ?? null));
+            && ($this->type !== 'post' || $primary === ($this->storedCategories($entry)[0] ?? null))
+            && ($this->type !== 'post' || [$entry->meta['facts'] ?? null, $entry->meta['badge'] ?? null] === [$meta['facts'] ?? null, $meta['badge'] ?? null]);
     }
 
     /**

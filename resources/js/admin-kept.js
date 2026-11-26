@@ -76,6 +76,9 @@ export function valuesOf(w) {
     if (Array.isArray(w.categoryIds)) {
         values.categoryIds = [...w.categoryIds];
     }
+    if (Array.isArray(w.jobFacts)) {
+        Object.assign(values, { jobFacts: JSON.parse(JSON.stringify(w.jobFacts)), jobDeadline: w.jobDeadline, jobDeadlineAccent: w.jobDeadlineAccent, jobBadge: w.jobBadge });
+    }
     if (w.prose) {
         values.bodyHtml = w.bodyHtml;
     } else {

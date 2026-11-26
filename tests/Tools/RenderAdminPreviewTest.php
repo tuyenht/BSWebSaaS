@@ -928,6 +928,37 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         $tech?->delete();
     });
 
+    // «Thông tin tuyển dụng» (board 07): a post filed under a category that lists jobs, with three boxes (one
+    // «Nổi bật»), «Hạn nộp» and «Nhãn trên thẻ», so the four boxes are used: the suggestions wait and say why.
+    // Taken away again, as above.
+    [$jobPost, $jobList] = app(Tenancy::class)->enter(1, function () use ($owner): array {
+        $list = app(CreateTaxonomy::class)->handle('post_cat', null, new TaxonomyData(names: ['vi' => 'Việc làm kỹ thuật']));
+        Taxonomy::query()->whereKey($list->id)->update(['list_template' => 'grid-job']);
+        $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $owner->id, 'meta' => [
+            'facts' => [
+                ['text' => ['vi' => 'Nhà máy 2 – Thạch Thất'], 'tone' => 'plain'],
+                ['text' => ['vi' => 'Toàn thời gian · SL: 3'], 'tone' => 'plain'],
+                ['text' => ['vi' => 'Lương: 9 – 14 triệu/tháng'], 'tone' => 'accent'],
+                ['text' => ['vi' => 'Hạn nộp: 15/12/2026', 'en' => 'Apply by: 15/12/2026'], 'tone' => 'plain'],
+            ],
+            'badge' => ['vi' => 'Tuyển gấp'],
+        ]]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Kỹ thuật viên vận hành máy CNC', 'slug' => 'ky-thuat-vien-van-hanh-cnc',
+            'status' => 'draft', 'body' => ['blocks' => []]]);
+        $entry->assignCategories([$list->id]);
+
+        return [$entry, $list];
+    });
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$jobPost->ulid.'/edit')->assertOk()->getContent();
+    expect($html)->toContain('data-entry-job', 'data-more-open', e(__('entries.ed.job_full', ['max' => 4])), 'Hạn nộp: 15/12/2026', 'Tuyển gấp');
+    file_put_contents($dir.'/post-editor-job.html', $html);
+    app(Tenancy::class)->enter(1, function () use ($jobPost, $jobList): void {
+        $jobPost->forceDelete();
+        $jobList->translations()->delete();
+        $jobList->delete();
+    });
+
     // The news list (Tin tức): posts in the categories above, with cover pictures, several statuses
     // and two authors, as the posts variant of the list board shows them. A cover is the picture's
     // key in the post's meta; here it names an image the preview server has, and one post in three
@@ -1659,5 +1690,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 152);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 153);
 });

@@ -336,9 +336,10 @@
 
             {{-- A page's «Thuộc tính trang» and a post's «Thuộc tính bài» wait behind «Thêm tùy chọn» (design 07), open or
                  closed per browser as in the product editor (localStorage 'bs-editor'); a refused value opens it, and so does
-                 a value already set (a page's parent, preset by «Thêm trang con» too; a post's own look or shown day), so it shows. --}}
+                 a value already set (a page's parent, preset by «Thêm trang con» too; a post's own look or shown day, its job
+                 details), so it shows. --}}
             <div class="flex min-w-0 flex-[1_1_300px] flex-col gap-4"
-                 @if ($isPage || $type === 'post') @if (($isPage && $parentUlid !== null) || (! $isPage && ($templateKey !== '' || $tags !== []))) data-more-open @endif x-data="{ more: false, init() { if ('moreOpen' in this.$el.dataset) { this.more = true; return } try { this.more = JSON.parse(localStorage.getItem('bs-editor') || '{}').more === true } catch (e) {} }, setMore(on) { this.more = on; try { const o = JSON.parse(localStorage.getItem('bs-editor') || '{}') || {}; o.more = on; localStorage.setItem('bs-editor', JSON.stringify(o)) } catch (e) {} } }" @endif>
+                 @if ($isPage || $type === 'post') @if (($isPage && $parentUlid !== null) || (! $isPage && ($templateKey !== '' || $tags !== [] || ($jobCard['set'] ?? false)))) data-more-open @endif x-data="{ more: false, init() { if ('moreOpen' in this.$el.dataset) { this.more = true; return } try { this.more = JSON.parse(localStorage.getItem('bs-editor') || '{}').more === true } catch (e) {} }, setMore(on) { this.more = on; try { const o = JSON.parse(localStorage.getItem('bs-editor') || '{}') || {}; o.more = on; localStorage.setItem('bs-editor', JSON.stringify(o)) } catch (e) {} } }" @endif>
                 <section class="{{ $card }}" aria-labelledby="entry-pub-h">
                     <div class="flex items-center justify-between gap-2.5 border-b border-border px-4 py-3">
                         <h2 id="entry-pub-h" class="{{ $cardTitle }}">{{ __('entries.ed.card_publish') }}</h2>
@@ -683,7 +684,7 @@
                             <span class="ped-ms-s" x-text="more ? @js(__('catalog.ed.less_sub_s')) : @js(__('entries.ed.more_sub_post_s'))">{{ __('entries.ed.more_sub_post_s') }}</span>
                         </span>
                     </button>
-                    @if ($errors->has('templateKey') || $errors->has('tagDraft') || $errors->has('tags') || $errors->has('tags.*')) <span hidden x-init="more = true"></span> @endif
+                    @if ($errors->has('templateKey') || $errors->has('tagDraft') || $errors->has('tags') || $errors->has('tags.*') || $errors->has('job*')) <span hidden x-init="more = true"></span> @endif
                     {{-- «Thẻ» (design 07): the post's tags in this language, each with «Bỏ thẻ»; a name typed and added
                          with Enter (or «Thêm», several split at commas) joins them, and makes a tag on save when none has
                          it. Written to the website at once, so it stays as it is while this member's saves wait for
@@ -748,6 +749,9 @@
                             </div>
                         </div>
                     </section>
+                    @if ($jobCard !== null)
+                        @include('admin::livewire.entries.partials.job-card')
+                    @endif
                 @endif
             </div>
         </div>

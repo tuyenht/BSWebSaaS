@@ -4,6 +4,7 @@ namespace App\Modules\Admin\Livewire\Entries;
 
 use App\Modules\Admin\Livewire\Concerns\EditsBlockList;
 use App\Modules\Admin\Livewire\Concerns\EditsButtonActions;
+use App\Modules\Admin\Livewire\Concerns\EditsJobCard;
 use App\Modules\Admin\Livewire\Concerns\EditsPageOrder;
 use App\Modules\Admin\Livewire\Concerns\EditsPendingChange;
 use App\Modules\Admin\Livewire\Concerns\ShowsEntryRevisions;
@@ -43,6 +44,7 @@ use App\Modules\Cms\Exceptions\SchedulePastException;
 use App\Modules\Cms\Exceptions\TaxonomyChangeRejectedException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
@@ -132,6 +134,7 @@ final class Editor extends Component
     use AuthorizesRequests;
     use EditsBlockList;
     use EditsButtonActions;
+    use EditsJobCard;
     use EditsPageOrder;
     use EditsPendingChange;
     use ShowsEntryRevisions;
@@ -156,7 +159,7 @@ final class Editor extends Component
      * The fields the save state and the leave dialog count against the saved entry. The block list
      * is counted apart (blocksChanged): the browser cannot write it the way the server does.
      */
-    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryIds', 'coverImageKey', 'coverAlt', 'parentUlid', 'pageOrder', 'scheduleAt', 'statusTo', 'templateKey', 'displayDate', 'tags', 'expiresAt'];
+    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryIds', 'coverImageKey', 'coverAlt', 'parentUlid', 'pageOrder', 'scheduleAt', 'statusTo', 'templateKey', 'displayDate', 'tags', 'expiresAt', 'jobFacts', 'jobDeadline', 'jobDeadlineAccent', 'jobBadge'];
 
     /** Which entry is being edited — server-resolved (mount/persist); never client-set. */
     #[Locked]
@@ -577,6 +580,7 @@ final class Editor extends Component
                 $this->placePageOrder($this->parentUlid === null ? null : $this->findPage($this->parentUlid)?->id);
             }
             $this->slugFresh = true;
+            $this->loadJobCard(null);
             $this->saved = $this->tracked();
             $this->guideDue = true;
 
@@ -611,6 +615,7 @@ final class Editor extends Component
             $this->displayDate = $this->storedDisplayDate = DisplayDate::of($entry->meta);
             $this->tags = app(EntryTags::class)->names($entry, $this->locale);
             $this->tagsLoaded = $this->tags;
+            $this->loadJobCard($entry->meta);
         }
 
         // one read for the post's categories in order, the main one (position 0) among them
@@ -680,6 +685,7 @@ final class Editor extends Component
         if ($this->type === 'post') {
             $this->categoryIds = $this->categoryId !== null ? [$this->categoryId] : [];
             $this->address = $this->previewAddress();
+            $this->jobFollowCategory();
         }
     }
 
@@ -847,6 +853,7 @@ final class Editor extends Component
         $this->resetErrorBag(['categoryId', 'categoryIds', 'categoryIds.*']);
         if ($previous !== $this->categoryId) {
             $this->address = $this->previewAddress();
+            $this->jobFollowCategory();
         }
     }
 
@@ -2179,6 +2186,7 @@ final class Editor extends Component
                 : __('entries.ed.body_placeholder_tr', ['lang' => Locales::label($this->locale)]),
             'schemas' => $schemas,
             'categoryCard' => $this->categoryCard(),
+            'jobCard' => $this->jobCard(),
             'urls' => $urls,
             'cover' => $this->coverCard($urls),
             'blockImageUrls' => $this->resolveBlockImageUrls($schemas),
@@ -2213,7 +2221,7 @@ final class Editor extends Component
         $this->saveFailed = false;
         // A language with no saved version yet loads nothing back: start from an empty form.
         $preset = $this->ulid === null ? $this->parentLoaded : null;
-        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'coverAlt', 'templateKey', 'displayDate', 'storedDisplayDate', 'expiresAt', 'expiresLoaded', 'publishedDay', 'formToast', 'formUndo', 'tags', 'tagsLoaded', 'tagDraft', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
+        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'coverAlt', 'templateKey', 'displayDate', 'storedDisplayDate', 'expiresAt', 'expiresLoaded', 'publishedDay', 'formToast', 'formUndo', 'tags', 'tagsLoaded', 'tagDraft', 'jobFacts', 'jobDeadline', 'jobDeadlineAccent', 'jobBadge', 'jobStored', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
             'transitionNote', 'assignTo', 'showImagePicker', 'blockImagePickerPath', 'coverToast', 'coverUndo', 'stale', 'overwrite',
             'parentUlid', 'parentLoaded', 'parentName', 'pageHome', 'scheduleAt', 'scheduleLoaded', 'statusTo', 'autoSaved', 'slugFresh', 'slugTouched');
         $this->mount($this->ulid, $this->sectionKey, $this->locale, $preset);
@@ -2295,6 +2303,9 @@ final class Editor extends Component
                 $this->displayDate = $day;
             }
         }
+        if ($this->type === 'post') {
+            $this->restoreKeptJob($kept);
+        }
         if ($this->type === 'post' && is_array($kept['categoryIds'] ?? null)) {
             $this->restoreCategories($kept['categoryIds']);
         } elseif ($this->type === 'post' && array_key_exists('categoryId', $kept)) {
@@ -2352,6 +2363,9 @@ final class Editor extends Component
             // after it, as later fields: a form opened before them holds a print without them (see save())
             'template' => md5((string) $template),
             'display_date' => md5(DisplayDate::of($meta)),
+            // «Thông tin tuyển dụng»: every language's boxes and label (another language's save changes them too),
+            // keys in a fixed order like the body's (the database hands the language maps back sorted)
+            'job' => md5((string) json_encode(self::keysSorted(is_array($meta) ? [$meta['facts'] ?? null, $meta['badge'] ?? null] : [null, null]))),
         ];
     }
 
@@ -2455,6 +2469,7 @@ final class Editor extends Component
             'category' => [__('entries.ed.card_category'), $categoryNames($this->categoryIds), $categoryNames($theirIds)],
             'template' => [__('entries.rev.f_tpl'), $this->templateName($this->formTemplate($entry->template_override)), $this->templateName($entry->template_override)],
             'display_date' => [__('entries.ed.pd_label', ['doc' => $this->docNoun()]), $this->dayName($this->displayDate), $this->dayName(DisplayDate::of($entry->meta))],
+            'job' => [__('entries.ed.job_card'), $this->jobSummary(), $this->jobSummaryOf($entry->meta)],
         ];
 
         $rows = [];
@@ -2500,7 +2515,8 @@ final class Editor extends Component
         foreach (self::TRACKED as $field) {
             $value = $this->{$field};
             $values[$field] = match (true) {
-                is_array($value) => (string) json_encode($value),
+                // written as the browser's JSON.stringify writes it (admin-editor.js valueText)
+                is_array($value) => (string) json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_LINE_TERMINATORS),
                 is_scalar($value) => (string) $value,
                 default => '',
             };
@@ -3244,7 +3260,7 @@ final class Editor extends Component
             ? ['string', new ExpiryTime(app(SiteTime::class)->zone(), $this->formPublishAt())]
             : ['string'];
 
-        return $rules;
+        return [...$rules, ...$this->jobRules()];
     }
 
     /**
@@ -3567,13 +3583,18 @@ final class Editor extends Component
             if ($this->overwrite !== null) {
                 $this->overwrite += ['cover_alt' => md5('')];
             }
-            // a form opened before «Mẫu hiển thị» and «Ngày đăng hiện trên bài» could not change them: read as stored
-            $later = array_intersect_key($stored['print'], ['template' => true, 'display_date' => true]);
+            // a form opened before «Mẫu hiển thị», «Ngày đăng hiện trên bài» and «Thông tin tuyển dụng» could not change them: read as stored
+            $later = array_intersect_key($stored['print'], ['template' => true, 'display_date' => true, 'job' => true]);
             if ($this->storedPrint !== []) {
                 $this->storedPrint += $later;
             }
             if ($this->overwrite !== null) {
                 $this->overwrite += $later;
+            }
+            // in the stored print's order, so a field read as stored above compares as the same print
+            $this->storedPrint = array_replace(array_intersect_key($stored['print'], $this->storedPrint), $this->storedPrint);
+            if ($this->overwrite !== null) {
+                $this->overwrite = array_replace(array_intersect_key($stored['print'], $this->overwrite), $this->overwrite);
             }
             if ($stored['print'] !== $this->storedPrint && $stored['print'] !== $this->overwrite) {
                 if ($filled) {
@@ -3629,6 +3650,9 @@ final class Editor extends Component
             $meta = DisplayDate::into($meta, $this->displayDate);
             $entry->template_override = $this->formTemplate($entry->template_override);
         }
+        // «Thông tin tuyển dụng»: this language's words, every language's boxes and deadline
+        /** @var array<string, mixed> $meta */
+        $meta = $this->jobMeta(Cast::arr($meta));
         $entry->meta = $meta;
         $sharedChanged = $entry->isDirty(['meta', 'template_override']);
         $coverChanged = ($meta['image_url'] ?? null) !== $coverBefore;
@@ -3698,6 +3722,7 @@ final class Editor extends Component
         // What this save stored is what the next one compares against (the written model holds it).
         // The main category just written is the form's own value, so it needs no second read.
         $this->storedPrint = self::printOf($translation, $entry->meta, $this->type === 'post' ? $this->categoryIds : [], $entry->template_override);
+        $this->jobSaved($entry->meta);
         $this->mayPublish = $this->user()->can('publish', $entry);
         if ($wasNew) {
             $this->frameRights($entry);
@@ -3792,6 +3817,8 @@ final class Editor extends Component
             $this->dispatch('admin-editor-saved');
             $this->savedAt = self::iso(CarbonImmutable::now());
             $this->loadedAt = $this->savedAt;
+            $held = $this->changeMemo instanceof EntryDraft ? ($this->changeMemo->content['shared']['meta'] ?? null) : null;
+            $this->jobSaved(is_array($held) ? $held : null);
         }
         $this->resetSave();
 
@@ -4397,6 +4424,8 @@ final class Editor extends Component
             $this->expiresAt = $undo['value'];
         } elseif ($undo['field'] === 'displayDate' && $this->type === 'post' && ! $this->sharedLocked()) {
             $this->displayDate = $undo['value'];
+        } elseif ($undo['field'] === 'jobCard') {
+            $this->jobUndo($undo['value']);
         }
     }
 

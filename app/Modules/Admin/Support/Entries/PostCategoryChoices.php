@@ -6,7 +6,10 @@ namespace App\Modules\Admin\Support\Entries;
 
 use App\Modules\Admin\Support\Categories\CategorySections;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Taxonomy\CategoryTemplates;
+use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Theme\Rendering\TemplateCatalog;
 use Illuminate\Database\Query\JoinClause;
 
 /**
@@ -26,7 +29,7 @@ final class PostCategoryChoices
     /** A website's categories are few; the read stops here whatever the data. */
     public const int LIMIT = 2000;
 
-    /** @var array<int, array{ulid: string|null, parent: int|null, name: string}> */
+    /** @var array<int, array{ulid: string|null, parent: int|null, name: string, list: string|null}> */
     private array $nodes = [];
 
     /** @var array<int, list<int>> parent id (0: the top) → child ids, in menu order */
@@ -66,14 +69,15 @@ final class PostCategoryChoices
                 ->where('td.site_id', '=', $siteId)->where('td.locale', '=', $defaultLocale))
             ->orderBy('taxonomies.position')->orderBy('taxonomies.id')
             ->limit(self::LIMIT)
-            ->toBase()->get(['taxonomies.id', 'taxonomies.ulid', 'taxonomies.parent_id', 'tt.name as name', 'td.name as fallback']);
+            ->toBase()->get(['taxonomies.id', 'taxonomies.ulid', 'taxonomies.parent_id', 'taxonomies.list_template', 'tt.name as name', 'td.name as fallback']);
 
         foreach ($rows as $row) {
             $row = (array) $row;
             $id = Cast::int($row['id'] ?? 0);
             $name = Cast::string($row['name'] ?? '') ?: Cast::string($row['fallback'] ?? '') ?: Cast::string(__('entries.unnamed'));
             $parent = $row['parent_id'] ?? null;
-            $choices->nodes[$id] = ['ulid' => Cast::stringOrNull($row['ulid'] ?? null), 'parent' => $parent === null ? null : Cast::int($parent), 'name' => $name];
+            $choices->nodes[$id] = ['ulid' => Cast::stringOrNull($row['ulid'] ?? null), 'parent' => $parent === null ? null : Cast::int($parent), 'name' => $name,
+                'list' => Cast::stringOrNull($row['list_template'] ?? null)];
         }
         foreach ($choices->nodes as $id => $node) {
             // a parent outside the read (or itself) leaves the category at the top
@@ -149,6 +153,27 @@ final class PostCategoryChoices
         }
 
         return $this->sectionMemo[$id] = null;
+    }
+
+    /**
+     * Whether the category's list page is a job list (the «Tuyển dụng» layout, a job grid), its own
+     * layout or the one it follows from above (CategoryTemplates::listFromChain); no query.
+     */
+    public function isJobList(int $id): bool
+    {
+        if (! isset($this->nodes[$id])) {
+            return false;
+        }
+        $above = [];
+        $at = $this->nodes[$id]['parent'];
+        $seen = [$id => true];
+        while ($at !== null && isset($this->nodes[$at]) && ! isset($seen[$at]) && count($above) < TaxonomyRules::MAX_DEPTH) {
+            $seen[$at] = true;
+            $above[] = $this->nodes[$at]['list'];
+            $at = $this->nodes[$at]['parent'];
+        }
+
+        return TemplateCatalog::isJob(app(CategoryTemplates::class)->listFromChain('post_cat', $this->nodes[$id]['list'], $above));
     }
 
     /** The category's level in the vocabulary, a top-level one being 1 (TaxonomyRules::MAX_DEPTH counts the same way). */
