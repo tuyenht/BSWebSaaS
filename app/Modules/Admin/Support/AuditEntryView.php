@@ -23,12 +23,13 @@ final readonly class AuditEntryView
     private const array TARGET_KEYS = ['hostname', 'name', 'member', 'role'];
 
     /** The keys shown under "Chi tiết", in this order. */
-    private const array DETAIL_KEYS = ['reason', 'minutes', 'why', 'factor', 'hostname', 'role', 'name', 'member', 'was', 'value', 'rows', 'confirmed'];
+    private const array DETAIL_KEYS = ['reason', 'minutes', 'why', 'factor', 'provider', 'hostname', 'role', 'name', 'member', 'was', 'value', 'rows', 'confirmed'];
 
-    /** Values of `why`, `factor` and `confirmed` that have words; any other value is left out. */
+    /** Values of `why`, `factor`, `provider` and `confirmed` that have words; any other value is left out. */
     private const array WORDED = [
         'why' => ['left', 'expired', 'replaced'],
-        'factor' => ['email_otp', 'totp', 'recovery'],
+        'factor' => ['email_otp', 'totp', 'recovery', 'social'],
+        'provider' => ['google', 'facebook', 'microsoft', 'yahoo'],
         'confirmed' => ['password'],
     ];
 
