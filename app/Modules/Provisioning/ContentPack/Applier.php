@@ -25,6 +25,7 @@ use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Support\BlockMediaUsage;
+use App\Modules\Cms\Support\BlockUsageIndex;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Support\HomePages;
 use App\Modules\Cms\Support\PageRules;
@@ -72,6 +73,7 @@ final class Applier
         private readonly PermalinkConfig $permalinks,
         private readonly SectionResolver $sections,
         private readonly BlockMediaUsage $blockUsage,
+        private readonly BlockUsageIndex $blockPlaces,
         private readonly FirstOwner $owner,
     ) {}
 
@@ -149,6 +151,7 @@ final class Applier
         $saved = SiteSetting::query()->updateOrCreate(['group_name' => $group, 'key' => $name], ['value' => $value]);
         if ($planned->item->key === 'setting:storefront.layout_blocks') {
             $this->blockUsage->sync('site_setting', Cast::int($saved->getKey()), LayoutSlots::blockLists($saved->value));
+            $this->blockPlaces->syncSiteSetting($saved, $saved->value);
         }
         if ($planned->item->key === 'setting:storefront.footer') {
             BranchList::syncUsage(Cast::int($saved->getKey()), Cast::arr($saved->value)['factories'] ?? null);
@@ -230,11 +233,12 @@ final class Applier
         $this->paths->refreshBranch($taxonomy->id);
 
         // The category's own block slots: written to its meta (other keys stay) and listed in the
-        // usage index, as the admin does when it saves them.
+        // usage indexes (the pictures, and where shared blocks are placed), as the admin does when it saves them.
         $layout = Cast::arr($desired['layout_blocks'] ?? null);
         if ($layout !== []) {
             Taxonomy::query()->whereKey($taxonomy->id)->update(['meta->'.LayoutSlots::META_KEY => $layout]);
             $this->blockUsage->sync('taxonomy', $taxonomy->id, LayoutSlots::blockLists($layout));
+            $this->blockPlaces->syncTaxonomy($taxonomy, $layout);
         }
 
         // A slug change in any language, a new parent, or both move the posts and products under the

@@ -12,6 +12,7 @@ use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Cms\Support\EntryContentWriter;
+use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -35,7 +36,8 @@ use Illuminate\Support\Facades\Gate;
  * Media that has left the library since the revision was taken is dropped rather than refused: a
  * missing cover / OG image becomes none, and a block image prop is cleared (the block and its text
  * stay, as when the editor's "remove image" is used). The count of dropped references is returned
- * so the screen can say so.
+ * so the screen can say so. A place that shows a shared block deleted since is dropped the same way
+ * (EntryContentWriter::withoutMissingBlocks; the audit line counts them): the storefront draws nothing there.
  */
 final readonly class RestoreEntryRevision
 {
@@ -71,7 +73,8 @@ final readonly class RestoreEntryRevision
             throw new RevisionRestoreRejectedException('locale_disabled');
         }
 
-        $content = $this->writer->read($revision->snapshot, $entry->type, null, true)
+        [$snapshot, $droppedBlocks] = $this->writer->withoutMissingBlocks($revision->snapshot);
+        $content = $this->writer->read($snapshot, $entry->type, null, true, EntryContentRules::storedRefs($entry->ulid))
             ?? throw new RevisionRestoreRejectedException('snapshot_incompatible');
         [$content, $dropped] = $this->writer->withoutMissingMedia($content);
 
@@ -130,6 +133,7 @@ final readonly class RestoreEntryRevision
                 'status' => $entry->status,
                 'workflow_state' => $entry->workflow_state,
                 'dropped_media' => $dropped,
+                'dropped_blocks' => $droppedBlocks,
                 'into_change' => $held,
             ],
         ]);

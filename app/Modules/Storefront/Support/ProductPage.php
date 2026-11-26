@@ -8,6 +8,7 @@ use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Catalog\Support\ContactPageSetting;
 use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Cms\Support\ReusableBlockExpander;
 use App\Modules\Theme\Rendering\PageRenderer;
 use App\Modules\Theme\Theming\StorefrontSettings;
 use Illuminate\Database\Eloquent\Builder;
@@ -112,7 +113,8 @@ final readonly class ProductPage
             'contact' => ProductDetail::contact(is_array($chrome['brand'] ?? null) ? $chrome['brand'] : null),
         ];
         $extra['related'] = $category !== null ? $this->products->related($product, $category, $locale) : [];
-        $extra['slotBlocks'] = $this->slots->blocks(SlotContext::PRODUCT_SLOTS, $locale, $category);
+        // The shared blocks the slots place are put in first (one query for the page, none without any).
+        $extra['slotBlocks'] = app(ReusableBlockExpander::class)->expand([], $this->slots->blocks(SlotContext::PRODUCT_SLOTS, $locale, $category), $locale)['slots'];
         $extra['slotContext'] = $this->slots->context($extra['slotBlocks'], $category, $locale, is_array($chrome['brand'] ?? null) ? $chrome['brand'] : null);
 
         if (! $preview) {

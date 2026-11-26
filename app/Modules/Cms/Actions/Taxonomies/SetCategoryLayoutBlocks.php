@@ -10,6 +10,7 @@ use App\Modules\Cms\Exceptions\LayoutBlocksRejectedException;
 use App\Modules\Cms\Exceptions\TaxonomyChangeRejectedException;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\BlockMediaUsage;
+use App\Modules\Cms\Support\BlockUsageIndex;
 use App\Modules\Cms\Taxonomy\CategoryLimitGuard;
 use App\Modules\Cms\Validation\LayoutSlotInput;
 use App\Modules\Identity\Models\User;
@@ -38,7 +39,8 @@ use Illuminate\Support\Facades\Gate;
  * Asks TaxonomyPolicy first (`taxonomies.manage`, then the update ability for this category: a
  * member limited to some categories stays inside them, held again inside the lock by
  * CategoryLimitGuard). One transaction under the tree lock, with the library's "in use" rows of the
- * category (BlockMediaUsage, owner `taxonomy`) written in it.
+ * category (BlockMediaUsage, owner `taxonomy`) and where it places shared blocks (BlockUsageIndex)
+ * written in it.
  */
 final readonly class SetCategoryLayoutBlocks
 {
@@ -52,6 +54,7 @@ final readonly class SetCategoryLayoutBlocks
         private BlockMediaUsage $usage,
         private CurrentSite $site,
         private CategoryLimitGuard $limits,
+        private BlockUsageIndex $blocks,
     ) {}
 
     /**
@@ -103,6 +106,7 @@ final readonly class SetCategoryLayoutBlocks
             }
 
             $this->usage->sync('taxonomy', $taxonomy->id, LayoutSlots::blockLists($layout));
+            $this->blocks->syncTaxonomy($taxonomy, $layout);
 
             Audit::record('cms.taxonomy.updated', [
                 'auditable_type' => Taxonomy::class,

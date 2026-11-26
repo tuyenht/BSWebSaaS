@@ -2,6 +2,8 @@
 
 use App\Modules\Admin\Livewire\FloatingContactSettings;
 use App\Modules\Admin\Support\Settings\BranchList;
+use App\Modules\Cms\Models\BlockUsage;
+use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Support\BlockMediaUsage;
@@ -9,6 +11,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Mediable;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Components\BlockReference;
 use Livewire\Livewire;
 use Tests\Fixtures\ContentPacks;
 use Tests\Fixtures\StorefrontCards;
@@ -305,4 +308,29 @@ it('keeps the live picture of a factory whose picture slot is not on the site ye
     [$exit, $output] = ContentPacks::load('demo-co', ['setting:storefront.footer']);
     expect($exit)->toBe(0, $output)
         ->and(sfStored($this->siteId, 'storefront', 'footer')['factories'][0]['image_media_id'])->toBe($live->id);
+});
+
+it('rewrites where shared blocks are placed from the slots a pack load writes', function (): void {
+    // A pack cannot name a shared block itself (it is checked before any website is chosen), but the
+    // value it writes keeps the slots staff set, and those may place one.
+    $kept = ContentPacks::in($this->siteId, function (): ContentBlock {
+        $kept = ContentBlock::query()->create(['key' => 'bao-gia', 'name' => 'Báo giá', 'region' => 'inline', 'status' => 'published']);
+        $replaced = ContentBlock::query()->create(['key' => 'lien-he', 'name' => 'Liên hệ', 'region' => 'inline', 'status' => 'published']);
+        $row = SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'layout_blocks', 'value' => [
+            'after_list' => ['vi' => ['blocks' => [['type' => BlockReference::TYPE, 'props' => [BlockReference::PROP => $kept->ulid]]]]],
+            'post_aside' => ['vi' => ['blocks' => [['type' => BlockReference::TYPE, 'props' => [BlockReference::PROP => $replaced->ulid]]]]],
+        ]]);
+        // written by hand, so only the slot the pack replaces has its row (as an earlier save left it)
+        BlockUsage::query()->insert(['site_id' => $row->site_id, 'content_block_id' => $replaced->id, 'site_setting_id' => $row->id, 'slot' => 'post_aside', 'locale' => 'vi', 'created_at' => now()]);
+
+        return $kept;
+    });
+    sfAddSetting($this->folder, 'setting:storefront.layout_blocks', ['post_aside' => ['vi' => ['blocks' => [['type' => 'richtext', 'props' => ['paragraphs' => ['Của gói']]]]]]], ['managed_keys' => ['post_aside']]);
+
+    [$exit, $output] = ContentPacks::load('demo-co', ['setting:storefront.layout_blocks']);
+
+    expect($exit)->toBe(0, $output)
+        ->and(ContentPacks::in($this->siteId, fn (): array => BlockUsage::query()->whereNotNull('site_setting_id')->get(['content_block_id', 'slot', 'locale'])
+            ->map(fn (BlockUsage $row): string => "{$row->content_block_id}:{$row->slot}:{$row->locale}")->all()))
+        ->toBe(["{$kept->id}:after_list:vi"]);
 });

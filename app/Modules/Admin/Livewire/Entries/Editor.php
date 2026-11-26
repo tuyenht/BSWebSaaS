@@ -3207,7 +3207,8 @@ final class Editor extends Component
      */
     protected function rules(): array
     {
-        $rules = self::onFormFields(app(EntryContentRules::class)->rules());
+        // a shared block this entry stores now stays allowed once it is gone (read only if one is not found)
+        $rules = self::onFormFields(app(EntryContentRules::class)->rules($this->ulid !== null ? EntryContentRules::storedRefs($this->ulid) : []));
         // the featured image's words: one line of plain text (normalized before validation)
         $rules['coverAlt'] = ['nullable', 'string', 'max:'.EntryContentRules::COVER_ALT_MAX, $this->plainCoverAlt(...)];
 
