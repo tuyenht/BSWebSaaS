@@ -2390,8 +2390,11 @@ final class Planner
         $row = $this->locked(SiteSetting::query()->where('group_name', $group)->where('key', $name))->first(['group_name', 'key', 'value']);
         $live = $row === null ? null : Cast::arr($row->value);
         $managed = $item->managedKeys();
-        if ($item->key === self::BRAND_ITEM && $live !== null) {
-            $live = $this->brandImagesFromProfile($live, self::brandImagesOwned($managed));
+        if ($item->key === self::BRAND_ITEM) {
+            // The profile is read even before a brand row exists, so a picture staff chose there shows
+            // in the plan whenever the load would take it away.
+            $live = $this->brandImagesFromProfile($live ?? [], self::brandImagesOwned($managed));
+            $live = $live === [] && $row === null ? null : $live;
         }
 
         $current = $live === null ? null : self::settingState($live, $managed);

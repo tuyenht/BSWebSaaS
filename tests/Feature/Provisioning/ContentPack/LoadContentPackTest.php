@@ -751,6 +751,28 @@ it('takes the brand logo it placed away when the pack leaves it out or states it
     'stated null in a managed item' => [['name', 'phone', 'logo'], true],
 ]);
 
+it('plans as adopted, and then clears, a logo staff chose before a whole-value brand item first loads', function (): void {
+    $staff = ContentPacks::in($this->siteId, function (): Media {
+        $media = StorefrontCards::media('logo-cua-khach');
+        SiteProfile::query()->firstOrCreate([], [])->update(['logo_media_id' => $media->id]);
+
+        return $media;
+    });
+    ContentPacks::item($this->folder, 'settings.json', 'setting:general.brand', fn (): array => ['key' => 'setting:general.brand', 'value' => ['name' => 'Công ty Mẫu', 'phone' => '0900 000 000']]);
+    expect(cpBrandImages($this->siteId)[0])->toBe([]);   // no brand row yet
+
+    // the dry run says the item takes over a value already there, not that it creates one
+    [, $plan] = ContentPacks::run();
+    expect(ContentPacks::verdict($plan, 'setting:general.brand'))->toBe('adopt', $plan);
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and(cpBrandImages($this->siteId)[1])->toBeNull()
+        ->and(ContentPacks::in($this->siteId, fn () => Media::query()->whereKey($staff->id)->exists()))->toBeTrue();   // only the reference goes
+
+    [, $settled] = ContentPacks::run();
+    expect(ContentPacks::verdict($settled, 'setting:general.brand'))->toBe('unchanged');
+});
+
 it('leaves a brand image the item does not manage, and a logo staff changed while the item is skipped', function (): void {
     $other = ContentPacks::in($this->siteId, fn () => StorefrontCards::media('logo-moi'));
     [$exit, $output] = ContentPacks::load();
