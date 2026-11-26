@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Cms\Validation\ValidPageJson;
+use App\Modules\Theme\Components\BlockReference;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SchemaHtml;
 use App\Modules\Theme\Components\SectionComponent;
@@ -87,6 +88,13 @@ it('stays in lockstep with the renderer allow-list (DRY)', function (): void {
 
     // Every type the renderer can dispatch also validates (a type only a block slot may hold validates through the slot guard) …
     foreach ($registry->types() as $type) {
+        if ($type === BlockReference::TYPE) {
+            // a shared block's place is recognised, and valid only once it names one of the site's
+            // blocks (SharedBlockPlacementTest)
+            expect(validateBlocks([['type' => $type, 'props' => []]])->errors()->first('blocks'))->toBe(__('entries.err_block_ref_invalid', ['position' => 1]));
+
+            continue;
+        }
         $guard = $registry->slotOnly($type) ? app(ValidPageJson::class)->forSlots() : app(ValidPageJson::class);
         expect(Validator::make(['blocks' => [['type' => $type, 'props' => []]]], ['blocks' => [$guard]])->passes())
             ->toBeTrue("registered type '{$type}' should validate");
