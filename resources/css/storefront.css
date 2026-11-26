@@ -2794,8 +2794,28 @@ html:not(.sf-js) :is(.sf-lang-h, .sf-lang-back, .sf-lang-search, .sf-lang-none) 
     color: var(--color-on-primary);
 }
 
-.sf-nav--desk .sf-nav__item--parent:has(> .sf-nav__panel--mega) {
+.sf-nav--desk .sf-nav__item--parent:has(> :is(.sf-nav__panel--mega, .sf-nav__panel--block)) {
     position: static;
+}
+
+/* A large panel built from a shared block: the block's own sections, on the page's colours (they are
+   drawn for the page, not for the dark bar), as wide as the bar allows; a tall block scrolls inside its
+   own box, so the panel's bridge above it (::before) is never clipped. */
+.sf-nav--desk .sf-nav__panel--block {
+    width: min(72rem, 94vw);
+    padding: 0;
+    background: var(--page, color-mix(in srgb, var(--color-surface) 97%, var(--color-dark)));
+    color: color-mix(in srgb, var(--color-dark) 85%, white);
+    text-align: start;
+    white-space: normal;
+}
+
+.sf-nav__block {
+    max-height: calc(100vh - 8rem);
+    max-height: calc(100dvh - 8rem);
+    overflow: auto;
+    overscroll-behavior: contain;
+    border-radius: inherit;
 }
 
 .sf-nav--desk > .sf-nav__list {

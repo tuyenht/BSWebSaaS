@@ -12,6 +12,7 @@ use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Navigation\MenuTree;
 use App\Modules\Cms\Navigation\MenuVersion;
+use App\Modules\Cms\Support\BlockUsageIndex;
 use App\Modules\Identity\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
@@ -28,7 +29,7 @@ final readonly class DuplicateMenuItem
     use CopiesMenuItems;
     use EditsMenuTree;
 
-    public function __construct(private ApplyMenuDraft $drafts) {}
+    public function __construct(private ApplyMenuDraft $drafts, private BlockUsageIndex $blocks) {}
 
     /**
      * @throws AuthorizationException
@@ -57,6 +58,10 @@ final readonly class DuplicateMenuItem
             $this->ensureRoom($menu->id, count($branch));
             $copies = $this->copyItems($menu->id, $items->whereIn('id', $branch)->values(), [$original->id => $original->parent_id], [$original->id => $original->position + 1], markRoots: true);
             $copyId = $copies[$original->id];
+            // the copies' large panels place their shared blocks too (none read when no panel shows one)
+            if ($items->whereIn('id', $branch)->contains(fn (MenuItem $one): bool => BlockUsageIndex::panelBlock($one->meta) !== null)) {
+                $this->blocks->syncMenuItems(MenuItem::query()->whereIn('id', array_values($copies))->get(['id', 'site_id', 'meta']));
+            }
 
             $siblings = [];
             foreach ($items->where('parent_id', $original->parent_id)->sortBy([['position', 'asc'], ['id', 'asc']]) as $sibling) {
