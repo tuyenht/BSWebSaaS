@@ -16,19 +16,34 @@
     $Js = \Illuminate\Support\Js::class;
 @endphp
 {{-- The keyboard (board 17): ↑ / ↓ walk the list, Enter runs the publishing move of the post being read through
-     its own button, so its question always comes first. Not while a dialog, the guide or a menu is open (the
-     reader covering a phone's screen excepted), nor in a field; Enter stays with a button or a link that has
-     the focus, a row of the list excepted; a key held with Ctrl, Alt or ⌘ stays the browser's. --}}
+     its own button, so its question always comes first. Only while the focus is on this screen or nowhere, never
+     while a dialog, the guide, the bell or a menu is open (the reader covering a phone's screen excepted) or a
+     question is on its way, nor in a field; Enter stays with a button, a link or another post's row that has the
+     focus, and with a move that is out of sight; a held Enter never repeats it; a key held with Ctrl, Alt or ⌘
+     stays the browser's; ↑ on the first post and ↓ on the last stay the page's scroll. --}}
 <div class="space-y-4" x-data="{
+        inboxAsking: false,
         key(e) {
-            if (e.defaultPrevented || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || ! ['ArrowDown', 'ArrowUp', 'Enter'].includes(e.key)) { return }
-            if ([...document.querySelectorAll('[aria-modal=true], [role=menu]')].some((d) => ! d.matches('[data-inbox-reader]') && d.getClientRects().length > 0)) { return }
+            if (e.defaultPrevented || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || this.inboxAsking || ! ['ArrowDown', 'ArrowUp', 'Enter'].includes(e.key)) { return }
+            if ([...document.querySelectorAll('[role=dialog], [role=alertdialog], [aria-modal=true], [role=menu]')].some((d) => ! d.matches('[data-inbox-reader]') && d.getClientRects().length > 0)) { return }
             const t = e.target instanceof Element ? e.target : null;
+            if (t && t !== document.body && t !== document.documentElement && ! $root.contains(t)) { return }
             if (t?.closest('input, textarea, select, [contenteditable]:not([contenteditable=false])')) { return }
-            if (e.key !== 'Enter') { if ($root.querySelector('[data-inbox-open]')) { e.preventDefault(); $wire.step(e.key === 'ArrowDown' ? 1 : -1, true); } return }
-            if (t?.closest('button, a[href], summary, [role=button], [role=checkbox], [role=switch], [role=tab], [role=radio], [role=link], [role=menuitem], [role=option]') && ! t.closest('[data-inbox-open]')) { return }
+            if (e.key !== 'Enter') {
+                const rows = [...$root.querySelectorAll('[data-inbox-open]')];
+                const at = rows.findIndex((r) => r.hasAttribute('data-current'));
+                if (at < 0 || (e.key === 'ArrowUp' && at === 0) || (e.key === 'ArrowDown' && at === rows.length - 1 && ! $root.querySelector('[data-inbox-more]'))) { return }
+                e.preventDefault();
+                $wire.step(e.key === 'ArrowDown' ? 1 : -1, true).then(() => {
+                    if (! $wire.detail || window.matchMedia('(min-width: 64rem)').matches) { $root.querySelector('[data-inbox-open][data-current]')?.scrollIntoView({ block: 'nearest' }) }
+                });
+                return;
+            }
+            if (e.repeat) { return }
+            const row = t?.closest('[data-inbox-open]');
+            if (row ? ! row.hasAttribute('data-current') : t?.closest('button, a[href], summary, [role=button], [role=checkbox], [role=switch], [role=tab], [role=radio], [role=link], [role=menuitem], [role=option]')) { return }
             const go = $root.querySelector('[data-inbox-primary]');
-            if (go && ! go.disabled) { e.preventDefault(); go.click(); }
+            if (go && ! go.disabled && go.getClientRects().length > 0) { e.preventDefault(); go.click(); }
         } }" x-on:keydown.window="key($event)">
     {{-- The header, as the admin shell draws it (board 17): the trail «⌂ › Hộp duyệt», the title row with the (?)
          guide and «Tải lại» at its end, then the one line on what the screen is for. --}}
@@ -154,8 +169,9 @@
                     @if ($bulk['ready'] > 0)
                         <x-bs-admin::button size="sm" color="primary" :title="$bulk['why']" wire:loading.attr="disabled" wire:target="approvePicked"
                                             x-on:click="$bsConfirm({
-                                                icon: 'question',
+                                                icon: 'publish',
                                                 danger: false,
+                                                focusCancel: true,
                                                 title: {{ $Js::from(__('admin.inbox.bulk_title', ['count' => $bulk['ready']])) }},
                                                 text: {{ $Js::from(__('admin.inbox.bulk_text', ['count' => $bulk['ready']])) }},
                                                 confirm: {{ $Js::from(__('admin.inbox.bulk_ok', ['count' => $bulk['ready']])) }},
@@ -239,7 +255,7 @@
 
                 @if ($total > count($rows))
                     <div class="mt-3 flex justify-center">
-                        <x-bs-admin::button color="light" size="sm" wire:click="loadMore" wire:loading.attr="disabled">
+                        <x-bs-admin::button color="light" size="sm" wire:click="loadMore" wire:loading.attr="disabled" data-inbox-more>
                             <x-bs-admin::icon name="ri-arrow-down" class="size-4" />{{ __('admin.inbox.load_more', ['count' => $total - count($rows)]) }}
                         </x-bs-admin::button>
                     </div>
@@ -564,7 +580,7 @@
                                     {{-- Going live is asked first (board 17 «Duyệt đăng “…”?», the same question as the posts list): the
                                          globe in a green circle, and «Để tôi đọc lại đã» focused, so a second Enter never publishes --}}
                                     <x-bs-admin::button color="primary" wire:key="act-{{ $action['key'] }}" wire:loading.attr="disabled" data-inbox-act="{{ $action['key'] }}" :data-inbox-primary="$action['primary']"
-                                                     x-on:click="$bsConfirm({
+                                                     x-on:click="inboxAsking = true; $bsConfirm({
                                                          icon: 'publish',
                                                          danger: false,
                                                          focusCancel: true,
@@ -572,7 +588,7 @@
                                                          text: {{ $Js::from(__('entries.wf_ap_text')) }},
                                                          confirm: {{ $Js::from(__('entries.wf_ap_ok')) }},
                                                          cancel: {{ $Js::from(__('entries.wf_ap_cancel')) }},
-                                                     }).then(ok => ok && $wire.apply({{ $Js::from($action['key']) }}))">
+                                                     }).then(ok => ok && $wire.apply({{ $Js::from($action['key']) }}, {{ $Js::from($reader['ulid']) }})).finally(() => { inboxAsking = false })">
                                         <x-bs-admin::icon name="ri-check-double" class="size-4" />{{ $action['label'] }}
                                     </x-bs-admin::button>
                                 @else

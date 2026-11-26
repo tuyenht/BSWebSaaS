@@ -534,11 +534,18 @@ final class ReviewInbox extends Component
 
     /**
      * Apply a transition to the open post. The engine owns the rules; this only decides where
-     * the failure is shown and moves the reader on to the next piece of work.
+     * the failure is shown and moves the reader on to the next piece of work. $ulid is the post a
+     * question named: when the reader has moved on since it was asked, nothing is applied.
      */
-    public function apply(string $key): void
+    public function apply(string $key, ?string $ulid = null): void
     {
         $this->resetErrorBag();
+
+        if ($ulid !== null && $ulid !== $this->current) {
+            $this->addError('inbox', __('admin.inbox.err_moved'));
+
+            return;
+        }
 
         $entry = $this->currentEntry();
         if (! $entry instanceof Entry) {

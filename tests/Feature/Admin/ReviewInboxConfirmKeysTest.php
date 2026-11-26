@@ -112,9 +112,11 @@ it('asks «Duyệt đăng “…”?» before publishing a post that was live be
             ->call('open', $post->ulid)->html();
 
         $approve = askButton($html, 'approve');
-        expect($approve)->toContain('$bsConfirm(', "icon: 'publish'", 'focusCancel: true', INBOX_PRIMARY_MARK)
+        // the question names the post, and the move carries it: a reader that moved on meanwhile applies nothing
+        expect($approve)->toContain('$bsConfirm(', "icon: 'publish'", 'focusCancel: true', INBOX_PRIMARY_MARK, 'inboxAsking = true')
             ->not->toContain('wire:click')
-            ->and($html)->not->toContain('data-inbox-ap');
+            ->and($html)->toMatch('/\$wire\.apply\([^)]*'.preg_quote((string) $post->ulid, '/').'/')
+            ->not->toContain('data-inbox-ap');
     });
 });
 
@@ -179,7 +181,7 @@ it('offers no publishing move to a reviewer without the right, and refuses one s
         $post = askPost(askSection(), $author, 'Bài chờ', 'bai-cho');
 
         $inbox = Livewire::actingAs($reviewer->fresh())->test(ReviewInbox::class)->set('tab', 'queue')
-            ->call('open', $post->ulid);
+            ->call('open', $post->ulid)->assertSet('current', (string) $post->ulid);
         expect($inbox->html())->not->toContain(INBOX_PRIMARY_MARK)->not->toContain('data-inbox-ap');
 
         $inbox->call('apply', 'approve')->assertHasErrors('inbox')
@@ -229,23 +231,64 @@ it('never steps onto, opens or publishes another website\'s post', function (): 
     [$author, $approver] = askPeople(1);
     [$authorB] = askPeople(2);
 
-    $postB = app(Tenancy::class)->enter(2, fn (): Entry => askPost(askSection(), $authorB, 'Bài B', 'bai-b'));
+    // made between this website's two posts, so a list that leaked it would put it in the middle
+    [$categoryId, $first] = app(Tenancy::class)->enter(1, function () use ($author): array {
+        $this->travel(-3)->minutes();
+        $categoryId = askSection();
 
-    app(Tenancy::class)->enter(1, function () use ($author, $approver, $postB): void {
-        $postA = askPost(askSection(), $author, 'Bài A', 'bai-a');
+        return [$categoryId, askPost($categoryId, $author, 'Bài A1', 'bai-a1')];
+    });
+    $postB = app(Tenancy::class)->enter(2, function () use ($authorB): Entry {
+        $this->travel(1)->minutes();
+
+        return askPost(askSection(), $authorB, 'Bài B', 'bai-b');
+    });
+
+    app(Tenancy::class)->enter(1, function () use ($author, $approver, $categoryId, $first, $postB): void {
+        $this->travel(1)->minutes();
+        $second = askPost($categoryId, $author, 'Bài A2', 'bai-a2');
+        $this->travelBack();
+        $ours = [(string) $first->ulid, (string) $second->ulid];
 
         $inbox = Livewire::actingAs($approver)->test(ReviewInbox::class)->set('tab', 'queue')
             ->call('open', (string) $postB->ulid)
-            ->assertSet('current', (string) $postA->ulid)
-            ->call('step', 1, true)->assertSet('current', (string) $postA->ulid)
-            ->call('step', -1, true)->assertSet('current', (string) $postA->ulid)
             ->assertDontSee('Bài B');
-        $inbox->call('apply', 'approve')->assertHasNoErrors();
-        expect($postA->fresh()->status)->toBe('published');
+        $start = $inbox->get('current');
+        expect($ours)->toContain($start);
+        $other = $ours[0] === $start ? $ours[1] : $ours[0];
+
+        // a step each way from there reaches this website's other post, never the one made between them elsewhere
+        $seen = [$inbox->call('step', 1, true)->get('current'), $inbox->call('step', -1, true)->get('current')];
+        expect($seen)->each->toBeIn($ours)->and($seen)->toContain($other);
+
+        // and a move sent naming it applies nothing
+        $inbox->call('open', $other)->assertSet('current', $other)
+            ->call('apply', 'approve', (string) $postB->ulid)->assertHasErrors('inbox')
+            ->call('apply', 'approve', $other)->assertHasNoErrors();
+        expect(Entry::query()->where('ulid', $other)->value('status'))->toBe('published');
     });
 
     app(Tenancy::class)->enter(2, function () use ($postB): void {
         expect($postB->fresh()->status)->toBe('pending')
             ->and(WorkflowLog::query()->where('entry_id', $postB->id)->where('transition_key', 'approve')->exists())->toBeFalse();
+    });
+});
+
+it('applies nothing when the question named another post than the one now open', function (): void {
+    [$author, $approver] = askPeople();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $approver): void {
+        $categoryId = askSection();
+        $a = askPost($categoryId, $author, 'Bài A', 'bai-a');
+        $b = askPost($categoryId, $author, 'Bài B', 'bai-b');
+
+        Livewire::actingAs($approver)->test(ReviewInbox::class)->set('tab', 'queue')
+            ->call('open', (string) $b->ulid)
+            ->call('apply', 'approve', (string) $a->ulid)
+            ->assertHasErrors(['inbox'])->assertSee(__('admin.inbox.err_moved'))
+            ->assertSet('current', (string) $b->ulid);
+
+        expect($a->fresh()->status)->toBe('pending')->and($b->fresh()->status)->toBe('pending')
+            ->and(WorkflowLog::query()->whereIn('entry_id', [$a->id, $b->id])->where('transition_key', 'approve')->exists())->toBeFalse();
     });
 });
