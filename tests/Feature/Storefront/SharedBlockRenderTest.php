@@ -180,6 +180,36 @@ it('prints a shared block\'s anchor once when the block is placed twice', functi
         ->and(substr_count($html, 'id="lien-he"'))->toBe(1);
 });
 
+it('leaves out of a slot the blocks of a shared block that the slot does not take', function (): void {
+    $block = sbrBlock(1, 'bai-moi', ['vi' => [sbrCta('Hỏi giá'), ['type' => 'recent_posts', 'props' => []]]]);
+
+    $out = app(Tenancy::class)->enter(1, fn (): array => app(ReusableBlockExpander::class)->expand([], [
+        'after_list' => [sbrRef($block->ulid)],
+        'after_post' => [sbrRef($block->ulid)],
+    ], 'vi'));
+
+    expect(array_column($out['slots']['after_list'], 'type'))->toBe(['cta'])
+        ->and(array_column($out['slots']['after_post'], 'type'))->toBe(['cta', 'recent_posts']);
+});
+
+it('leaves off a shared block\'s anchor that the page\'s own blocks already use', function (): void {
+    $block = sbrBlock(1, 'lien-he', ['vi' => [sbrCta('Liên hệ ngay', ['anchor_id' => 'lien-he']), sbrCta('Bảng giá', ['anchor_id' => 'bang-gia'])]]);
+
+    $out = app(Tenancy::class)->enter(1, fn (): array => app(ReusableBlockExpander::class)->expand(
+        ['blocks' => [sbrRef($block->ulid), sbrCta('Của trang', ['anchor_id' => 'lien-he'])]],
+        ['after_post' => [sbrCta('Ô của trang', ['anchor_id' => 'bang-gia']), sbrRef($block->ulid)]],
+        'vi',
+    ));
+
+    expect(array_map(fn (array $b): ?string => $b['props']['anchor_id'] ?? null, $out['body']['blocks']))->toBe([null, null, 'lien-he'])
+        ->and(array_map(fn (array $b): ?string => $b['props']['anchor_id'] ?? null, $out['slots']['after_post']))->toBe(['bang-gia', null, null]);
+
+    sbrHome(1, [sbrCta('Của trang', ['anchor_id' => 'lien-he']), sbrRef($block->ulid)]);
+    $html = sbrPage();
+    expect(substr_count($html, 'id="lien-he"'))->toBe(1)
+        ->and(substr_count($html, 'id="bang-gia"'))->toBe(1);
+});
+
 it('draws at most the page cap, the page\'s own blocks always kept, and logs what it left out', function (): void {
     Log::spy();
     $block = sbrBlock(1, 'nhieu', ['vi' => array_map(fn (int $n): array => sbrCta("Chung {$n}"), range(1, 20))]);

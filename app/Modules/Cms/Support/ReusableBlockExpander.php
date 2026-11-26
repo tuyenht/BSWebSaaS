@@ -30,11 +30,11 @@ use Illuminate\Support\Facades\Log;
  * by site), so a block read once is not read again.
  *
  * The limits: one level (a reference inside a shared block is left out, as is a block only a slot
- * may hold when the place is in a body); no reference in a slot that takes none
- * (LayoutSlots::NO_REFERENCES); at most BlockReference::PAGE_MAX blocks on the page once expanded
- * (the page's own blocks always stay; the shared blocks' extra ones are left out, with a warning in
- * the log); and a shared block placed twice on one page keeps its link anchors only the first time
- * (an id is never printed twice).
+ * may hold when the place is in a body, and in a slot a block the slot does not take); no reference
+ * in a slot that takes none (LayoutSlots::NO_REFERENCES); at most BlockReference::PAGE_MAX blocks on
+ * the page once expanded (the page's own blocks always stay; the shared blocks' extra ones are left
+ * out, with a warning in the log); and a shared block's link anchor that the page already uses (its
+ * own blocks', or the same block placed earlier) is left off (an id is never printed twice).
  */
 final class ReusableBlockExpander
 {
@@ -71,12 +71,12 @@ final class ReusableBlockExpander
         foreach ($slots as $list) {
             $ownCount += self::ownBlocks($list);
         }
-        $state = ['count' => $ownCount, 'seen' => [], 'dropped' => 0];
+        $state = ['count' => $ownCount, 'anchors' => self::anchors([$own, ...array_values($slots)]), 'dropped' => 0];
         if (array_key_exists('blocks', $body)) {
-            $body['blocks'] = $this->replace($own, $found, true, true, $state);
+            $body['blocks'] = $this->replace($own, $found, null, $state);
         }
         foreach ($slots as $slot => $list) {
-            $slots[$slot] = $this->replace($list, $found, false, LayoutSlots::accepts($slot, BlockReference::TYPE), $state);
+            $slots[$slot] = $this->replace($list, $found, $slot, $state);
         }
         if ($state['dropped'] > 0) {
             Log::warning('A page holds more blocks than it may draw once its shared blocks are in: the rest are left out.', [
@@ -88,13 +88,19 @@ final class ReusableBlockExpander
     }
 
     /**
+     * The list with each reference replaced by the shared block's blocks: in a body ($slot null) none
+     * that only a slot may hold, in a slot only those the slot accepts (LayoutSlots::accepts), and
+     * nothing in a slot that takes no reference. An anchor the page already uses (its own blocks', or
+     * one an earlier shared block brought) is left off.
+     *
      * @param  array<array-key, mixed>  $blocks
      * @param  array<string, list<array<array-key, mixed>>|null>  $found
-     * @param  array{count: int, seen: array<string, true>, dropped: int}  $state
+     * @param  array{count: int, anchors: array<string, true>, dropped: int}  $state
      * @return list<array<array-key, mixed>>
      */
-    private function replace(array $blocks, array $found, bool $inBody, bool $takesReferences, array &$state): array
+    private function replace(array $blocks, array $found, ?string $slot, array &$state): array
     {
+        $takesReferences = $slot === null || LayoutSlots::accepts($slot, BlockReference::TYPE);
         $out = [];
         foreach ($blocks as $block) {
             if (! is_array($block)) {
@@ -107,14 +113,18 @@ final class ReusableBlockExpander
             }
             $ulid = BlockReference::ulid($block);
             $inner = $takesReferences && $ulid !== null ? ($found[$ulid] ?? null) : null;
-            if ($ulid === null || $inner === null) {
+            if ($inner === null) {
                 continue;
             }
-            $again = isset($state['seen'][$ulid]);
-            $state['seen'][$ulid] = true;
             foreach ($inner as $one) {
                 $type = $one['type'] ?? null;
-                if (! is_string($type) || $type === BlockReference::TYPE || ($inBody && $this->registry->has($type) && $this->registry->slotOnly($type))) {
+                if (! is_string($type) || $type === BlockReference::TYPE) {
+                    continue;
+                }
+                $refused = $slot === null
+                    ? $this->registry->has($type) && $this->registry->slotOnly($type)
+                    : ! LayoutSlots::accepts($slot, $type);
+                if ($refused) {
                     continue;
                 }
                 if ($state['count'] >= BlockReference::PAGE_MAX) {
@@ -122,8 +132,13 @@ final class ReusableBlockExpander
 
                     continue;
                 }
-                if ($again && is_array($one['props'] ?? null)) {
-                    unset($one['props']['anchor_id']);
+                $anchor = is_array($one['props'] ?? null) ? ($one['props']['anchor_id'] ?? null) : null;
+                if (is_string($anchor) && $anchor !== '') {
+                    if (isset($state['anchors'][$anchor])) {
+                        unset($one['props']['anchor_id']);
+                    } else {
+                        $state['anchors'][$anchor] = true;
+                    }
                 }
                 $out[] = $one;
                 $state['count']++;
@@ -131,6 +146,27 @@ final class ReusableBlockExpander
         }
 
         return $out;
+    }
+
+    /**
+     * The anchors the page's own blocks use (references left out).
+     *
+     * @param  list<array<array-key, mixed>>  $lists
+     * @return array<string, true>
+     */
+    private static function anchors(array $lists): array
+    {
+        $anchors = [];
+        foreach ($lists as $list) {
+            foreach ($list as $block) {
+                $anchor = is_array($block) && ! BlockReference::is($block) && is_array($block['props'] ?? null) ? ($block['props']['anchor_id'] ?? null) : null;
+                if (is_string($anchor) && $anchor !== '') {
+                    $anchors[$anchor] = true;
+                }
+            }
+        }
+
+        return $anchors;
     }
 
     /**
