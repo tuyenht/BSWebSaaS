@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Http\Controllers;
 use App\Modules\Admin\Support\EmailOtp;
 use App\Modules\Admin\Support\OAuthError;
 use App\Modules\Admin\Support\OAuthFlow;
+use App\Modules\Admin\Support\OAuthState;
 use App\Modules\Admin\Support\PlatformSettings;
 use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\SettingsRepository;
@@ -97,7 +98,8 @@ final readonly class OAuthController
             return $this->failLocal($purpose, OAuthError::NotConfigured);
         }
 
-        $state = Str::random(40);
+        $origin = $request->getSchemeAndHttpHost();
+        $state = OAuthState::mint($origin);
         $verifier = Str::random(64);
 
         // Bind this flow to the initiating browser. A random nonce is set as an HttpOnly cookie on
@@ -108,7 +110,7 @@ final readonly class OAuthController
         $nonce = Str::random(40);
 
         Cache::put('oauth-state:'.$state, [
-            'origin' => $request->getSchemeAndHttpHost(),
+            'origin' => $origin,
             'provider' => $provider,
             'purpose' => $purpose,
             'verifier' => $verifier,
@@ -131,8 +133,10 @@ final readonly class OAuthController
         $state = $request->query('state');
         $data = is_string($state) ? Cache::pull('oauth-state:'.$state) : null;
 
+        // Expired, already used or never ours: the flow is over, but the person still goes back to
+        // the sign-in page of the website they started from when the value itself proves which.
         if (! is_array($data)) {
-            return redirect()->route('admin.login')->withErrors(['oauth' => __('admin.oauth_state_mismatch')]);
+            return $this->failBack(OAuthState::origin($state), OAuthError::StateMismatch);
         }
 
         $origin = Cast::string($data['origin'] ?? null);
@@ -148,10 +152,10 @@ final readonly class OAuthController
         }
 
         // The origin rode along in server-side state, but it is still a redirect target: only a
-        // verified domain of a site is one. Anything else lands on this host's own sign-in page.
+        // verified domain of a site is one. Anything else lands on the console's sign-in page.
         $resolved = $this->sites->resolve($host);
         if ($resolved === null) {
-            return redirect()->route('admin.login')->withErrors(['oauth' => __('admin.oauth_failed')]);
+            return $this->failBack(null, OAuthError::Failed);
         }
 
         // Re-enter the originating tenant's context to read its app + store/verify.
@@ -461,6 +465,22 @@ final readonly class OAuthController
         };
 
         return redirect()->away($this->originPath($origin, $path).'oauth_error='.$error->value);
+    }
+
+    /**
+     * A failure before the origin's site is entered: back to the origin's sign-in page only when it
+     * is a verified domain of a site (the same test the success path passes), otherwise to the
+     * sign-in page of the console host, which is where the callback itself lives.
+     */
+    private function failBack(?string $origin, OAuthError $error): RedirectResponse
+    {
+        $host = $origin === null ? '' : (string) (parse_url($origin, PHP_URL_HOST) ?: '');
+
+        if ($origin !== null && $host !== '' && $this->sites->resolve($host) !== null) {
+            return $this->failTo($origin, 'login', $error);
+        }
+
+        return redirect()->route('platform.login', ['oauth_error' => $error->value]);
     }
 
     private function failLocal(string $purpose, OAuthError $error): RedirectResponse
