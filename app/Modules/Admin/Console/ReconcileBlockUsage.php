@@ -25,8 +25,10 @@ use Throwable;
  * now: every page or post whose body places a shared block in some language, the website's default
  * slots and each category with slots of its own, and every menu item whose large panel shows one,
  * the Trash included (a place in the Trash keeps its rows until it is gone for good); and every
- * owner that has rows but places nothing any more loses them. Each save keeps the index
- * (BlockUsageIndex), so this covers what never passed through a save (a seed, a hand fix, a drift).
+ * owner that has rows but places nothing any more loses them, as does a row whose owner the site's
+ * own read does not find (another website's, a settings row that is not the block slots). Each save
+ * keeps the index (BlockUsageIndex), so this covers what never passed through a save (a seed, a hand
+ * fix, a drift).
  * Idempotent: a second run writes the same rows.
  *
  * Lives in Admin, beside content:reconcile-usage, because it reads the website's settings rows,
@@ -100,7 +102,8 @@ final class ReconcileBlockUsage extends Command
             ->whereRaw('jsonb_path_exists(body, ?::jsonpath)', [self::PLACES_A_BLOCK])
             ->distinct()->pluck('entry_id')->all());
         foreach (array_chunk($entries, $chunk) as $ids) {
-            foreach (Entry::withTrashed()->whereIn('id', $ids)->with('translations:id,site_id,entry_id,locale,body')->get() as $entry) {
+            $read = Entry::withTrashed()->whereIn('id', $ids)->with('translations:id,site_id,entry_id,locale,body')->get();
+            foreach ($read as $entry) {
                 $bodies = [];
                 foreach ($entry->translations as $translation) {
                     $bodies[$translation->locale] = Cast::arr($translation->body['blocks'] ?? null);
@@ -108,31 +111,55 @@ final class ReconcileBlockUsage extends Command
                 $index->syncEntry($entry, $bodies);
                 $count++;
             }
+            $this->dropUnread('entry_id', $ids, $read->modelKeys());
         }
 
         $categories = $this->owners('taxonomy_id', Taxonomy::query()->whereNotNull('meta->'.LayoutSlots::META_KEY)->pluck('id')->all());
         foreach (array_chunk($categories, $chunk) as $ids) {
-            foreach (Taxonomy::query()->whereIn('id', $ids)->get(['id', 'site_id', 'meta']) as $category) {
+            $read = Taxonomy::query()->whereIn('id', $ids)->get(['id', 'site_id', 'meta']);
+            foreach ($read as $category) {
                 $index->syncTaxonomy($category, Cast::arr($category->meta)[LayoutSlots::META_KEY] ?? null);
                 $count++;
             }
+            $this->dropUnread('taxonomy_id', $ids, $read->modelKeys());
         }
 
         $settings = $this->owners('site_setting_id', SiteSetting::query()
             ->where('group_name', LayoutSlots::SETTING_GROUP)->where('key', LayoutSlots::SETTING_KEY)->pluck('id')->all());
-        foreach (SiteSetting::query()->whereIn('id', $settings)->get(['id', 'site_id', 'group_name', 'key', 'value']) as $setting) {
-            $isSlots = $setting->group_name === LayoutSlots::SETTING_GROUP && $setting->key === LayoutSlots::SETTING_KEY;
-            $index->syncSiteSetting($setting, $isSlots ? $setting->value : null);
+        $read = SiteSetting::query()->whereIn('id', $settings)
+            ->where('group_name', LayoutSlots::SETTING_GROUP)->where('key', LayoutSlots::SETTING_KEY)
+            ->get(['id', 'site_id', 'group_name', 'key', 'value']);
+        foreach ($read as $setting) {
+            $index->syncSiteSetting($setting, $setting->value);
             $count++;
         }
+        $this->dropUnread('site_setting_id', $settings, $read->modelKeys());
 
         $items = $this->owners('menu_item_id', MenuItem::withTrashed()->where('meta->mega->type', 'block')->pluck('id')->all());
         foreach (array_chunk($items, $chunk) as $ids) {
-            $index->syncMenuItems(MenuItem::withTrashed()->whereIn('id', $ids)->get(['id', 'site_id', 'meta']));
-            $count += count($ids);
+            $read = MenuItem::withTrashed()->whereIn('id', $ids)->get(['id', 'site_id', 'meta']);
+            $index->syncMenuItems($read);
+            $count += $read->count();
+            $this->dropUnread('menu_item_id', $ids, $read->modelKeys());
         }
 
         return $count;
+    }
+
+    /**
+     * Rows of this site whose owner the site-scoped read did not return (an owner of another website,
+     * one that is gone, a settings row that holds no block slots) place nothing here: they go.
+     *
+     * @param  'entry_id'|'taxonomy_id'|'site_setting_id'|'menu_item_id'  $column
+     * @param  list<int>  $asked
+     * @param  array<array-key, mixed>  $read
+     */
+    private function dropUnread(string $column, array $asked, array $read): void
+    {
+        $unread = array_values(array_diff($asked, array_map(Cast::int(...), $read)));
+        if ($unread !== []) {
+            BlockUsage::query()->whereIn($column, $unread)->delete();
+        }
     }
 
     /**
