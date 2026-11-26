@@ -4929,6 +4929,7 @@
     "storefront.back_to_first": "返回第一页",
     "storefront.contact_info": "联系方式",
     "storefront.contact_phone": "电话",
+    "storefront.contact_zalo_cta": "通过 Zalo 发消息",
     "storefront.contact_email": "电子邮件",
     "storefront.contact_address": "地址",
     "validation.required": ":attribute不能为空。",

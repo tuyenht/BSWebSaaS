@@ -2917,12 +2917,14 @@ html:not(.sf-js) :is(.sf-lang-h, .sf-lang-back, .sf-lang-search, .sf-lang-none) 
     margin: 0 auto 2.5rem;
 }
 
+/* A long registered name wraps into lines of even length (no last word alone on a line). */
 .sf-footer__legal-name {
     margin-bottom: 1.5rem;
     color: color-mix(in srgb, var(--color-dark) 10%, white);
     font-size: 1.25rem;
     font-weight: 600;
     text-transform: uppercase;
+    text-wrap: balance;
 }
 
 .sf-footer__facts {
@@ -3979,9 +3981,14 @@ html:not(.sf-js) :is(.sf-lang-h, .sf-lang-back, .sf-lang-search, .sf-lang-none) 
 }
 @media (max-width: 639.98px) {
 
-    .sf-footer__legal-name,
     .sf-band--dark :is(.sf-feature__title, .sf-fcard__title) {
         font-size: 1.125rem;
+        line-height: 1.35;
+    }
+
+    /* A full registered company name (about 60 capitals) fits two lines from 360px wide. */
+    .sf-footer__legal-name {
+        font-size: 1rem;
         line-height: 1.35;
     }
 }

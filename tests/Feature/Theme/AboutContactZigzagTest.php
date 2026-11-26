@@ -251,6 +251,13 @@ describe('contact Zalo', function (): void {
         }
     });
 
+    it('labels a Zalo card with no label of its own as an invitation to message, never the raw number or link', function (): void {
+        $html = contactHtml(['variant' => 'cards', 'zalo' => 'https://zalo.me/0915668383']);
+
+        expect($html)->toContain('>'.__('storefront.contact_zalo_cta').'<span class="sr-only">')
+            ->and(substr_count($html, '0915668383'))->toBe(1);
+    });
+
     it('draws a Zalo link in the plain list look and escapes the label', function (): void {
         $html = contactHtml(['zalo' => 'https://zalo.me/0915668383', 'zalo_label' => '<i>Zalo</i>']);
 

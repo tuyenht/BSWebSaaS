@@ -135,12 +135,18 @@
     line-height: 1.5;
 }
 
+/*
+ * The link keeps a 2.5rem tap height (one line) through padding, and negative margins of the same
+ * size pull its text up under the title, as close as the plain address text, so the card reads
+ * title + line beside the icon. The padding overlaps only the title's line box, which is not a control.
+ */
 .sf-contact-card__value {
-    display: inline-flex;
-    align-items: center;
-    min-height: 2.5rem;
+    display: inline-block;
     min-width: 0;
     max-width: 100%;
+    padding-block: 0.625rem;
+    margin-block: -0.375rem -0.625rem;
+    line-height: 1.25rem;
 }
 
 .sf-map,
