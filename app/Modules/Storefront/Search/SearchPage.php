@@ -6,6 +6,7 @@ namespace App\Modules\Storefront\Search;
 
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Storefront\Support\ListPage;
 use App\Modules\Tenancy\Context\CurrentSite;
@@ -76,7 +77,9 @@ final readonly class SearchPage
             ->get(['id', 'ulid', 'sku', 'site_id'])->keyBy('id');
         $entries = $entryIds === [] ? collect() : Entry::query()->whereIn('id', $entryIds)
             ->with(['translations' => fn (Relation $query) => $query->where('locale', $locale), 'routes' => fn (Relation $query) => $query->where('locale', $locale)])
-            ->get(['id', 'ulid', 'type', 'site_id', 'meta', 'published_at', 'parent_id'])->keyBy('id');
+            ->select(['id', 'ulid', 'type', 'site_id', 'meta', 'published_at', 'parent_id'])
+            ->addSelect([EntryCover::KEY => EntryCover::keySubquery()])
+            ->get()->keyBy('id');
         $labels = array_map(static fn (array $category): string => $category['name'], $categories);
 
         $groups = [];

@@ -14,6 +14,8 @@ use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Queries\EntryRevisions;
 use App\Modules\Cms\Support\DisplayDate;
 use App\Modules\Cms\Support\EntryContentWriter;
+use App\Modules\Cms\Support\EntryCover;
+use App\Modules\Media\Support\MediaRefs;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteTime;
 use DateTimeInterface;
@@ -368,10 +370,11 @@ trait ShowsEntryRevisions
     {
         $snap = $version['snapshot'];
         $str = static fn (mixed $value): string => is_string($value) ? $value : '';
-        $cover = data_get($snap, 'meta.image_url');
+        // the version's cover: the file its cover_media_id names (read only when it names one), else the meta's key
+        $cover = EntryCover::resolve($snap['cover_media_id'] ?? null, $snap['meta'] ?? null, MediaRefs::rows([$snap['cover_media_id'] ?? null]));
         $noCover = Cast::string(__('entries.rev.no_cover'));
         $coverNow = $this->coverImageKey !== '' ? $this->revisionCoverName($this->coverImageKey) : $noCover;
-        $coverThen = is_string($cover) && $cover !== '' ? $this->revisionCoverName($cover) : $noCover;
+        $coverThen = $cover !== '' ? $this->revisionCoverName($cover) : $noCover;
 
         $fields = [];
         foreach (array_filter([

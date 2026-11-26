@@ -2,6 +2,7 @@
 
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Media\Models\Media;
 use App\Modules\Tenancy\Context\Tenancy;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -177,3 +178,39 @@ it('reads a job grid block in a fixed number of reads, however many posts it lis
 
     expect(blockCount($block, 12))->toBe(blockCount($block, 3));
 });
+
+/**
+ * Names the cover of every post ('new') or of every other post ('mixed') by id instead of by key,
+ * past the model, as the backfill will; 'old' leaves them all as keys.
+ */
+function budgetCoverShape(string $shape, Media $photo): void
+{
+    if ($shape === 'old') {
+        return;
+    }
+    foreach (Entry::query()->where('type', 'post')->orderBy('id')->get() as $i => $post) {
+        if ($shape === 'mixed' && $i % 2 === 1) {
+            continue;
+        }
+        $meta = $post->meta;
+        unset($meta['image_url']);
+        DB::table('entries')->where('id', $post->id)->update(['cover_media_id' => $photo->id, 'meta' => json_encode($meta)]);
+    }
+}
+
+it('reads a list of 20 covers, a grid of 20 and a post with a cover in the same count whatever the covers’ shape', function (string $path, ?string $news, bool $block): void {
+    $count = fn (string $shape): int => budgetCount($path, 20, 2, $news, setup: function (Media $photo) use ($shape, $block): void {
+        if ($block) {
+            StorefrontCards::page('/khoi', 'Các khối', [['type' => 'entry_grid', 'props' => ['taxonomy_slug' => 'tin-tuc', 'variant' => 'news-cards', 'limit' => 20]]]);
+        }
+        budgetCoverShape($shape, $photo);
+    });
+    $old = $count('old');
+
+    expect($count('new'))->toBe($old)
+        ->and($count('mixed'))->toBe($old);
+})->with([
+    'the news cards list' => ['/tin-tuc', 'grid-news', false],
+    'a news cards block' => ['/khoi', null, true],
+    'a post with a cover and its related posts' => ['/tin-tuc/bai-1', null, false],
+]);

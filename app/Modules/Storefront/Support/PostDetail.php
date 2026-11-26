@@ -9,6 +9,7 @@ use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Support\DisplayDate;
+use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Tenancy\Context\SiteTime;
@@ -184,6 +185,8 @@ final readonly class PostDetail
             ->select(['entries.id', 'entries.site_id', 'entries.type', 'entries.published_at'])
             // Cards read only the image link and the shown day from meta; do not carry the rest of the document.
             ->selectRaw("jsonb_strip_nulls(jsonb_build_object('image_url', entries.meta->'image_url', 'display_date', entries.meta->'display_date')) as meta")
+            // the cover's file named by id (EntryCover), in the same read
+            ->addSelect([EntryCover::KEY => EntryCover::keySubquery()])
             // Which part of the union a row came from; $slot is one of this class's literals.
             ->selectRaw("'{$slot}'::text as slot")
             ->where('entries.type', 'post')
@@ -215,8 +218,8 @@ final readonly class PostDetail
      */
     private function cover(Entry $post, EntryTranslation $translation, string $locale): ?array
     {
-        $value = $post->meta['image_url'] ?? null;
-        if (! is_string($value) || ! str_contains($value, '/')) {
+        $value = EntryCover::value($post);
+        if (! str_contains($value, '/')) {
             return null;
         }
         $own = trim((string) $translation->cover_alt);

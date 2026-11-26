@@ -352,6 +352,8 @@ final readonly class MediaUsageLocator
         // raw import before the next reconcile) still keeps its file out of the Trash, the meta of a
         // post in the Trash too, so restoring it still finds its picture.
         $coverKeys = $liveOwners ? null : Entry::withTrashed()->whereNotNull('meta->image_url')->select(DB::raw("meta->>'image_url'"));
+        // … and the covers named by id (NOT IN with a NULL in the list matches nothing, so no NULLs)
+        $coverIds = $liveOwners ? null : Entry::withTrashed()->whereNotNull('cover_media_id')->select('cover_media_id');
         $blockMediaIds = $liveOwners
             ? Mediable::query()->whereIn('collection', [BlockMediaUsage::COLLECTION, EntryCoverUsage::COLLECTION])->where('mediable_type', 'entry')
                 ->whereIn('mediable_id', Entry::query()->select('id'))->select('media_id')
@@ -371,9 +373,10 @@ final readonly class MediaUsageLocator
         }
 
         if ($used) {
-            $query->where(function (Builder $q) use ($galleryMediaIds, $coverKeys, $blockMediaIds, $categoryMediaIds, $brandMediaIds): void {
+            $query->where(function (Builder $q) use ($galleryMediaIds, $coverKeys, $coverIds, $blockMediaIds, $categoryMediaIds, $brandMediaIds): void {
                 $q->whereIn('id', $galleryMediaIds)
                     ->when($coverKeys !== null, fn (Builder $q) => $q->orWhereIn('storage_key', $coverKeys))
+                    ->when($coverIds !== null, fn (Builder $q) => $q->orWhereIn('id', $coverIds))
                     ->orWhereIn('id', $blockMediaIds)
                     ->orWhereIn('id', $categoryMediaIds)
                     ->orWhereIn('id', $brandMediaIds);
@@ -384,6 +387,7 @@ final readonly class MediaUsageLocator
 
         $query->whereNotIn('id', $galleryMediaIds)
             ->when($coverKeys !== null, fn (Builder $q) => $q->whereNotIn('storage_key', $coverKeys))
+            ->when($coverIds !== null, fn (Builder $q) => $q->whereNotIn('id', $coverIds))
             ->whereNotIn('id', $blockMediaIds)
             ->whereNotIn('id', $categoryMediaIds)
             ->whereNotIn('id', $brandMediaIds);

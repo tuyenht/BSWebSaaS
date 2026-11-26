@@ -18,6 +18,7 @@ use App\Modules\Cms\Routing\ResolvedCategory;
 use App\Modules\Cms\Routing\ResolvedContent;
 use App\Modules\Cms\Routing\ResolvedProduct;
 use App\Modules\Cms\Routing\RouteResolver;
+use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Cms\Support\EntryTags;
 use App\Modules\Cms\Support\JobFacts;
 use App\Modules\Cms\Taxonomy\CategoryTemplates;
@@ -175,7 +176,7 @@ final readonly class StorefrontController
         $locale = $request->query('locale', $default);
         abort_unless(is_string($locale) && $this->locale->isEnabled($locale), 404);
 
-        $entry = Entry::query()->where('ulid', $ulid)->first();
+        $entry = Entry::query()->where('ulid', $ulid)->addSelect([EntryCover::KEY => EntryCover::keySubquery()])->first();
         // not allowed answers like a missing entry (as the product preview does): a ulid probe learns nothing
         abort_unless($entry !== null && Gate::allows('preview', $entry), 404);
         $translation = $entry->translationFor($locale);
@@ -313,12 +314,13 @@ final readonly class StorefrontController
         $extra['canonical'] = $canonical;
         $extra['ogType'] = $entry->type === 'post' ? 'article' : 'website';
 
-        // Featured image for og:image — posts carry meta['image_url'] as a raw R2 key.
+        // Featured image for og:image: the key of the file the entry's cover_media_id names (read
+        // with the entry, EntryCover::KEY), else the raw R2 key in meta['image_url'].
         // Resolve at 1280 (whitelisted width; Cloudflare Worker serves it via cf.image).
         // Pages without a featured image omit $extra['ogImage'] so head.blade.php
         // falls back to the site-wide brand og_image automatically.
-        $metaImageKey = data_get($entry->meta, 'image_url');
-        if (is_string($metaImageKey) && $metaImageKey !== '') {
+        $metaImageKey = EntryCover::value($entry);
+        if ($metaImageKey !== '') {
             $extra['ogImage'] = $this->media->url($metaImageKey, 1280);
         }
 
@@ -472,6 +474,8 @@ final readonly class StorefrontController
             // Posts whose PRIMARY category (pivot position 0) is this one or any below it.
             $query = Entry::query()
                 ->select('entries.*', 'entry_taxonomies.taxonomy_id as primary_taxonomy_id')
+                // the cover's file named by id, in this query (EntryCover)
+                ->addSelect([EntryCover::KEY => EntryCover::keySubquery()])
                 ->join('entry_taxonomies', fn (JoinClause $join) => $join->on('entry_taxonomies.entry_id', '=', 'entries.id')->where('entry_taxonomies.position', 0))
                 ->whereIn('entry_taxonomies.taxonomy_id', $this->lists->subtree($taxonomy));
         } else {
@@ -545,7 +549,7 @@ final readonly class StorefrontController
             ->where('entries.type', 'post')
             ->where('entries.status', 'published')
             ->whereHas('translations', fn (Builder $query) => $query->where('locale', $locale)->where('status', 'published'));
-        ['rows' => $rows, 'more' => $more] = $this->lists->window($live->select('entries.*')->with(['translations', 'routes']), Entry::class, $position);
+        ['rows' => $rows, 'more' => $more] = $this->lists->window($live->select('entries.*')->addSelect([EntryCover::KEY => EntryCover::keySubquery()])->with(['translations', 'routes']), Entry::class, $position);
         $first = $position['after'] === null && $position['page'] === 1;
         $site = trim(Cast::string(data_get($chrome, 'brand.name')));
 

@@ -463,6 +463,7 @@ final class ReviewChanges extends Component
             ->where('locale', $default)->pluck('name', 'taxonomy_id')->all());
         $order = app(SiteLocale::class)->enabled();
         $diff = app(PendingChangeDiff::class);
+        $covers = PendingChangeDiff::coverRefs($changes);
         $scopes = app(CategoryScopes::class);
         $actor = $this->actor();
 
@@ -492,7 +493,7 @@ final class ReviewChanges extends Component
             /** @var Collection<string, EntryTranslation> $live */
             $live = $entry->translations->keyBy('locale');
             $primary = $entry->type === 'post' ? $entry->primaryCategory()?->id : null;
-            $rowsDiff = $diff->between($entry, $change, $live, $primary, static fn (array $ids): array => array_intersect_key($names, array_flip($ids)), $order)['rows'];
+            $rowsDiff = $diff->between($entry, $change, $live, $primary, static fn (array $ids): array => array_intersect_key($names, array_flip($ids)), $order, $covers)['rows'];
 
             $writer = $change->updated_by !== null ? ($writers[$change->updated_by] ?? null) : null;
             $by = is_string($writer) ? $writer : Cast::string(__('admin.inbox.chg_writer_gone'));

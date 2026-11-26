@@ -6,6 +6,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\MemberCategoryScope;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -388,4 +389,31 @@ it('reads a categorised posts list on a flat query budget, whatever the number o
         expect($many)->toBe($few, "query string {$query}")
             ->and($many)->toBeLessThanOrEqual(27, "query string {$query}");
     }
+});
+
+it('shows a cover named by id exactly as the same cover named by its old key, and none for a file in the Trash', function (): void {
+    config(['media.driver' => 'cloudflare']);
+    app(Tenancy::class)->enter(1, function (): void {
+        $user = plcatEditor();
+        $t = plcatTree();
+        $media = fn (string $slug): Media => Media::query()->create([
+            'collection' => 'library', 'slug' => $slug, 'hash' => hash('sha256', $slug), 'storage_key' => "s1/library/{$slug}-0123456789ab.jpg",
+            'mime' => 'image/jpeg', 'size' => 1024,
+        ]);
+        $photo = $media('ban-ve');
+        $gone = $media('da-xoa');
+        $old = plcatPost('Theo địa chỉ', [$t['cnc']->id], ['image_url' => $photo->storage_key]);
+        $new = plcatPost('Theo mã', [$t['cnc']->id]);
+        $trashed = plcatPost('Ảnh trong thùng rác', [$t['cnc']->id]);
+        DB::table('entries')->where('id', $new->id)->update(['cover_media_id' => $photo->id]);
+        DB::table('entries')->where('id', $trashed->id)->update(['cover_media_id' => $gone->id]);
+        $gone->delete();
+
+        $test = Livewire::actingAs($user)->test(Index::class, ['section' => 'posts']);
+        $covers = $test->viewData('rowCover');
+
+        expect($covers[$old->ulid])->toContain('ban-ve-0123456789ab.jpg')
+            ->and($covers[$new->ulid])->toBe($covers[$old->ulid])
+            ->and($covers[$trashed->ulid])->toBeNull();
+    });
 });

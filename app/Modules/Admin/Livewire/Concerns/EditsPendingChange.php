@@ -16,9 +16,11 @@ use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Support\DisplayDate;
+use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Cms\Support\EntryTags;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Support\MediaRefs;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\PlainText;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -95,9 +97,12 @@ trait EditsPendingChange
             $this->coverAlt = Cast::string($text['cover_alt'] ?? '');
         }
         $shared = $change->content['shared'] ?? [];
+        // the cover: the file its cover_media_id names (read only when it names one), else the meta's key
+        $coverId = MediaRefs::id($shared['cover_media_id'] ?? null);
+        if (array_key_exists('meta', $shared) || $coverId !== null) {
+            $this->coverImageKey = EntryCover::resolve($coverId, $shared['meta'] ?? null, MediaRefs::rows([$coverId]));
+        }
         if (array_key_exists('meta', $shared)) {
-            $cover = data_get($shared['meta'], 'image_url');
-            $this->coverImageKey = is_string($cover) ? $cover : '';
             if ($this->type === 'post') {
                 $this->displayDate = DisplayDate::of($shared['meta']);
             }
@@ -771,6 +776,9 @@ trait EditsPendingChange
         $names = static fn (array $ids): array => array_map(Cast::string(...), TaxonomyTranslation::query()->whereIn('taxonomy_id', $ids)
             ->where('locale', app(SiteLocale::class)->default())->pluck('name', 'taxonomy_id')->all());
 
-        return app(PendingChangeDiff::class)->between($entry, $change, $live, $livePrimary, $names, app(SiteLocale::class)->enabled());
+        // the covers named by id (a read only when one is)
+        $covers = MediaRefs::rows([$change->content['shared']['cover_media_id'] ?? null, $entry->cover_media_id]);
+
+        return app(PendingChangeDiff::class)->between($entry, $change, $live, $livePrimary, $names, app(SiteLocale::class)->enabled(), $covers);
     }
 }

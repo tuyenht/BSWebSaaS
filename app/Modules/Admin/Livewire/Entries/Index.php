@@ -44,6 +44,7 @@ use App\Modules\Cms\Support\BlankEntrySlug;
 use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
+use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Cms\Support\EntryReviewReach;
 use App\Modules\Cms\Support\EntryTrash;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
@@ -2941,7 +2942,7 @@ final class Index extends Component
         $list = new EntryListQuery($filter, app(CurrentSite::class)->id(), function (Builder $rows) use ($scopes, $user, $type): void {
             $scopes->selectHasLimits($rows, $user, EntryListQuery::COLUMNS);
             if ($type === 'post') {
-                $rows->selectRaw("entries.meta->>'image_url' as cover_key");
+                $rows->selectRaw('coalesce('.EntryCover::keySql('entries').", entries.meta->>'image_url') as cover_key");
             }
         });
 
