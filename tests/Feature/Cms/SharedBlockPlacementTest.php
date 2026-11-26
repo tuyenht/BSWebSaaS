@@ -498,6 +498,33 @@ describe('checking a body on save', function (): void {
         });
     });
 
+    it('restores an old version whose placed block was deleted, dropping that place', function (): void {
+        $user = User::factory()->create();
+        app(Tenancy::class)->enter(1, fn () => grantRole($user, 'site-admin', ['entries.view', 'entries.create', 'entries.edit.any', 'entries.publish']));
+        app(TeamContext::class)->forget();
+        $user = $user->fresh() ?? $user;
+        $gone = sbpBlock(1, 'da-xoa');
+        $kept = sbpBlock(1, 'con-lai');
+        $cta = ['type' => 'cta', 'props' => ['heading' => 'Liên hệ']];
+        $entry = sbpPage(['vi' => [$cta, sbpRef($gone->ulid), sbpRef($kept->ulid)]]);
+
+        app(Tenancy::class)->enter(1, function () use ($entry, $user, $gone): void {
+            $translation = $entry->translations()->where('locale', 'vi')->firstOrFail();
+            app(RecordEntryRevision::class)->forLocale($entry, $translation, RevisionKind::Edit, $user);
+            $translation->update(['body' => ['blocks' => [['type' => 'cta', 'props' => ['heading' => 'Mới']]]]]);
+            app(EntryBlockMediaReconciler::class)->reconcile($entry);
+            ContentBlock::query()->whereKey($gone->id)->delete();
+        });
+
+        app(Tenancy::class)->enter(1, fn () => app(RestoreEntryRevision::class)->handle(EntryRevision::query()->where('entry_id', $entry->id)->latest('id')->firstOrFail(), $user));
+
+        app(Tenancy::class)->enter(1, function () use ($entry, $cta, $kept): void {
+            expect($entry->translations()->where('locale', 'vi')->firstOrFail()->body['blocks'])->toBe([$cta, sbpRef($kept->ulid)])
+                ->and(AuditLog::query()->where('action', RestoreEntryRevision::AUDIT_ACTION)->latest('id')->firstOrFail()->meta)->toMatchArray(['dropped_blocks' => 1, 'dropped_media' => 0]);
+        });
+        expect(sbpRows())->toBe(['1:con-lai:entry:-:vi']);
+    });
+
     it('lets a category and the website keep a slot whose placed block was deleted', function (): void {
         $admin = User::factory()->create();
         app(Tenancy::class)->enter(1, fn () => grantRole($admin, 'site-admin', ['settings.manage', 'taxonomies.manage']));
