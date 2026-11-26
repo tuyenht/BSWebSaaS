@@ -1,10 +1,12 @@
 <?php
 
 use App\Modules\Admin\Livewire\SocialSettings;
+use App\Modules\Admin\Support\AuditEntryView;
 use App\Modules\Admin\Support\PlatformSettings;
 use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Admin\Support\SocialAuth;
+use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Identity\Models\SocialIdentity;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
@@ -25,7 +27,7 @@ use Livewire\Livewire;
 beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
-    DB::connection('pgsql_admin')->statement('truncate platform_settings, social_identities restart identity cascade');
+    DB::connection('pgsql_admin')->statement('truncate platform_settings, social_identities, audit_logs restart identity cascade');
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
     config(['admin.encryption_key' => 'base64:'.base64_encode('0123456789abcdef0123456789abcdef')]);
@@ -285,4 +287,121 @@ it('shows the switch as it really is for a row saved before the switch existed',
 
     app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($admin)->test(SocialSettings::class)
         ->assertSet('on.google', true));
+});
+
+// ── what a Facebook sign-in tells the person, and what it leaves in the audit trail ─────────────
+// Facebook never asserts a verified email, so a Facebook account only signs in once it is linked
+// from «Tài khoản của tôi». Before that the person is told how to link it — "try again" never helps.
+
+/** Fakes Facebook's token and profile answers for the given Facebook user id. */
+function fakeFacebook(string $id, ?string $email = 'fb@example.com'): void
+{
+    Http::fake([
+        'graph.facebook.com/v19.0/oauth/*' => Http::response(['access_token' => 'at']),
+        'graph.facebook.com/me*' => Http::response(array_filter(['id' => $id, 'name' => 'Người dùng', 'email' => $email])),
+    ]);
+}
+
+/** Runs a Facebook sign-in through the provider and returns [callback Location, browser nonce]. */
+function facebookSignIn(object $test): array
+{
+    $start = $test->get('http://a.test/admin/oauth/facebook/start?purpose=login');
+    parse_str((string) parse_url((string) $start->headers->get('Location'), PHP_URL_QUERY), $query);
+    $nonce = (string) $start->getCookie('oauth_login_nonce')?->getValue();
+
+    $back = (string) $test->get('http://a.test/oauth/callback?code=the-code&state='.$query['state'])->headers->get('Location');
+
+    return [$back, $nonce];
+}
+
+function socialAuditRow(string $action): ?object
+{
+    return DB::connection('pgsql_admin')->table('audit_logs')->where('action', $action)->sole();
+}
+
+it('tells a Facebook account that is not linked yet how to link it, and links nothing', function (): void {
+    seedSocialRows(null, SOCIAL_SHARED_READY, 'facebook');
+    fakeFacebook('fb-1');
+
+    [$back] = facebookSignIn($this);
+
+    expect($back)->toContain('/admin/login?oauth_error=not_linked')
+        ->and(SocialIdentity::query()->count())->toBe(0);
+    $this->assertGuest();
+    $this->get('http://a.test/admin/login?oauth_error=not_linked')->assertOk()->assertSee(__('admin.oauth_login_not_linked'));
+});
+
+it('tells a linked Facebook account that it is not a member of this website', function (): void {
+    seedSocialRows(null, SOCIAL_SHARED_READY, 'facebook');
+    $outsider = User::factory()->create();
+    SocialIdentity::query()->create(['user_id' => $outsider->getKey(), 'provider' => 'facebook', 'sub' => 'fb-2']);
+    fakeFacebook('fb-2');
+
+    [$back] = facebookSignIn($this);
+
+    expect($back)->toContain('/admin/login?oauth_error=not_member');
+    $this->assertGuest();
+});
+
+it('signs a linked member in with Facebook and records how', function (): void {
+    seedSocialRows(null, SOCIAL_SHARED_READY, 'facebook');
+    $member = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($member, 'role-'.$member->getKey(), ['settings.manage']));
+    app(TeamContext::class)->forget();
+    SocialIdentity::query()->create(['user_id' => $member->getKey(), 'provider' => 'facebook', 'sub' => 'fb-3']);
+    fakeFacebook('fb-3', null);
+
+    [$back, $nonce] = facebookSignIn($this);
+    expect($back)->toContain('/admin/oauth/finish?token=');
+
+    $this->withCookie('oauth_login_nonce', $nonce)->get($back)->assertRedirect('http://a.test/admin');
+
+    $this->assertAuthenticatedAs($member->fresh());
+    $row = socialAuditRow('auth.login.succeeded');
+    expect($row?->actor_id)->toBe($member->getKey())
+        ->and(json_decode((string) $row?->meta, true))->toMatchArray(['factor' => 'social', 'provider' => 'facebook']);
+});
+
+it('records which Facebook account a member linked', function (): void {
+    seedSocialRows(null, SOCIAL_SHARED_READY, 'facebook');
+    $member = User::factory()->create();
+    fakeFacebook('fb-4', 'mine@example.com');
+
+    $start = $this->actingAs($member)->get('http://a.test/admin/oauth/facebook/start?purpose=connect');
+    parse_str((string) parse_url((string) $start->headers->get('Location'), PHP_URL_QUERY), $query);
+    $this->get('http://a.test/oauth/callback?code=the-code&state='.$query['state'])
+        ->assertRedirectContains('/admin/account?tab=linked&oauth=connected');
+
+    expect(SocialIdentity::query()->where('user_id', $member->getKey())->value('sub'))->toBe('fb-4');
+    $row = socialAuditRow('auth.social.linked');
+    expect($row?->actor_id)->toBe($member->getKey())
+        ->and(json_decode((string) $row?->meta, true))->toBe(['provider' => 'facebook']);
+});
+
+it('tells a Google account whose email Google has not verified how to link it', function (): void {
+    seedSocialRows(null, SOCIAL_SHARED_READY);
+    $member = User::factory()->create(['email' => 'same@example.com']);
+    app(Tenancy::class)->enter(1, fn () => grantRole($member, 'role-'.$member->getKey(), ['settings.manage']));
+    app(TeamContext::class)->forget();
+    Http::fake([
+        'oauth2.googleapis.com/*' => Http::response(['access_token' => 'at']),
+        'openidconnect.googleapis.com/*' => Http::response(['sub' => 'g-1', 'email' => 'same@example.com', 'email_verified' => false]),
+    ]);
+
+    $start = $this->get('http://a.test/admin/oauth/google/start?purpose=login');
+    parse_str((string) parse_url((string) $start->headers->get('Location'), PHP_URL_QUERY), $query);
+
+    $this->get('http://a.test/oauth/callback?code=the-code&state='.$query['state'])
+        ->assertRedirectContains('/admin/login?oauth_error=not_linked');
+    $this->assertGuest();
+    expect(SocialIdentity::query()->count())->toBe(0);
+});
+
+it('words a quick sign-in and its service on the activity log', function (): void {
+    $row = (new AuditLog)->forceFill(['action' => 'auth.login.succeeded', 'meta' => ['factor' => 'social', 'provider' => 'facebook']]);
+
+    expect((new AuditEntryView([], 'Bảo Sơn'))->details($row))->toBe([
+        ['label' => __('admin.audit.meta.factor'), 'value' => __('admin.audit.meta.factor_social')],
+        ['label' => __('admin.audit.meta.provider'), 'value' => 'Facebook'],
+    ]);
 });
