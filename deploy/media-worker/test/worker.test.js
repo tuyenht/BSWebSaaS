@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import worker from '../src/index.js';
-import { publicKey, typeOf } from '../src/keys.js';
+import { legacyPrefixes, legacyTarget, publicKey, typeOf } from '../src/keys.js';
 
 // An R2 stand-in whose objects carry whatever metadata the uploader chose (text/html, which the
 // Worker must never pass on). Like R2, get() reads the Range and If-* headers itself: a failed
@@ -12,9 +12,12 @@ import { publicKey, typeOf } from '../src/keys.js';
 const ETAG = '"e1"';
 const UPLOADED = new Date('2026-11-01T00:00:00Z');
 
-function env(objects) {
+// `etag` stands in for R2's MD5 of the bytes: equal bodies, equal etags.
+function env(objects, vars = {}) {
+  const heads = [];
   const meta = (key) => ({
     size: objects[key].length,
+    etag: `md5-of-${objects[key]}`,
     httpEtag: ETAG,
     uploaded: UPLOADED,
     writeHttpMetadata(h) {
@@ -22,8 +25,11 @@ function env(objects) {
     },
   });
   return {
+    ...vars,
+    heads,
     MEDIA: {
       async head(key) {
+        heads.push(key);
         return key in objects ? meta(key) : null;
       },
       async get(key, opts = {}) {
@@ -344,4 +350,195 @@ test('key rules', () => {
   assert.equal(publicKey('an-vinh/library/x.JPG'), 'an-vinh/library/x.JPG');
   assert.equal(typeOf('a/b.JPG'), 'image/jpeg');
   assert.equal(typeOf('a.jpg/b'), null);
+});
+
+// --- Legacy prefixes: a website's files from before website codes, moved under its code ---------------
+
+const LEGACY = { LEGACY_PREFIXES: { 'an-vinh/': 'zpvjzx', 'co-khi-chinh-xac-an-vinh/library/': 'zpvjzx' } };
+
+test('a legacy key with an identical copy under the code answers 301 there, kept five minutes', async () => {
+  const e = env(
+    {
+      'co-khi-chinh-xac-an-vinh/library/may-tien-3f9a.jpg': 'img',
+      'an-vinh/hero/banner-1a2b.webp': 'hero',
+      'zpvjzx/may-tien-3f9a.jpg': 'img',
+      'zpvjzx/banner-1a2b.webp': 'hero',
+    },
+    LEGACY,
+  );
+  for (const [from, to] of [
+    ['/co-khi-chinh-xac-an-vinh/library/may-tien-3f9a.jpg', '/zpvjzx/may-tien-3f9a.jpg'],
+    ['/an-vinh/hero/banner-1a2b.webp', '/zpvjzx/banner-1a2b.webp'],
+  ]) {
+    const res = await get(from, e);
+    assert.equal(res.status, 301, from);
+    assert.equal(res.headers.get('Location'), to, from);
+    assert.equal(res.headers.get('Cache-Control'), 'public, max-age=300', from);
+    assert.equal(await res.text(), '', from);
+    assertSafe(res, `301 ${from}`);
+  }
+  const head = await get('/an-vinh/hero/banner-1a2b.webp', e, {}, 'HEAD');
+  assert.equal(head.status, 301);
+  assert.equal(head.headers.get('Location'), '/zpvjzx/banner-1a2b.webp');
+});
+
+test('a legacy key with no copy under the code is served as before, never sent to a 404', async () => {
+  // A shared demo seed file that only exists under its old folder.
+  const e = env({ 'an-vinh/seed/xuong-0a1b.jpg': 'seed' }, LEGACY);
+  const res = await get('/an-vinh/seed/xuong-0a1b.jpg', e);
+  assert.equal(res.status, 200);
+  assert.equal(await res.text(), 'seed');
+  assert.match(res.headers.get('Cache-Control'), /immutable/);
+  assert.equal(res.headers.get('Location'), null);
+  assert.deepEqual(e.heads, ['an-vinh/seed/xuong-0a1b.jpg', 'zpvjzx/xuong-0a1b.jpg']);
+});
+
+test('a made-up name under an old folder costs one R2 check, not two', async () => {
+  const e = env({ 'zpvjzx/x-1a2b.jpg': 'x' }, LEGACY);
+  assert.equal((await get('/an-vinh/made-up-9z9z.jpg', e)).status, 404);
+  assert.deepEqual(e.heads.slice(0, 1), ['an-vinh/made-up-9z9z.jpg']);
+  assert.ok(!e.heads.includes('zpvjzx/made-up-9z9z.jpg'));
+});
+
+test('an R2 fault during the check serves the old object instead of failing', async () => {
+  const e = env({ 'an-vinh/x-1a2b.jpg': 'x', 'zpvjzx/x-1a2b.jpg': 'x' }, LEGACY);
+  const realHead = e.MEDIA.head;
+  let calls = 0;
+  e.MEDIA.head = async (key) => {
+    calls += 1;
+    if (calls === 2) throw new Error('R2 unavailable');
+    return realHead(key);
+  };
+  const res = await get('/an-vinh/x-1a2b.jpg', e);
+  assert.equal(res.status, 200);
+  assert.equal(await res.text(), 'x');
+});
+
+test('a copy with other bytes under the same name is not a redirect target', async () => {
+  // Two old folders held the same name; media:rekey-site gave the second one a longer hash.
+  // Same length, so only the ETag tells them apart.
+  const e = env({ 'an-vinh/x-1a2b.jpg': 'other', 'zpvjzx/x-1a2b.jpg': 'first' }, LEGACY);
+  const res = await get('/an-vinh/x-1a2b.jpg', e);
+  assert.equal(res.status, 200);
+  assert.equal(await res.text(), 'other');
+});
+
+test('a legacy key whose old object is gone stays a 404, even when the code holds the name', async () => {
+  const e = env({ 'zpvjzx/x-1a2b.jpg': 'x' }, LEGACY);
+  const res = await get('/an-vinh/x-1a2b.jpg', e);
+  assert.equal(res.status, 404);
+  assertSafe(res, 'legacy 404');
+});
+
+test('the width and the rest of the query go with the redirect; a bad width is still a 400', async () => {
+  const e = env({ 'an-vinh/x-1a2b.jpg': 'x', 'zpvjzx/x-1a2b.jpg': 'x', 'an-vinh/bang-gia-1a2b.pdf': '%PDF', 'zpvjzx/bang-gia-1a2b.pdf': '%PDF' }, LEGACY);
+  const res = await get('/an-vinh/x-1a2b.jpg?w=320', e, { Accept: 'image/avif' });
+  assert.equal(res.status, 301);
+  assert.equal(res.headers.get('Location'), '/zpvjzx/x-1a2b.jpg?w=320');
+  assert.equal((await get('/an-vinh/x-1a2b.jpg?w=640&v=2', e)).headers.get('Location'), '/zpvjzx/x-1a2b.jpg?w=640&v=2');
+  assert.equal((await get('/an-vinh/bang-gia-1a2b.pdf?w=320', e)).headers.get('Location'), '/zpvjzx/bang-gia-1a2b.pdf?w=320');
+  const bad = await get('/an-vinh/x-1a2b.jpg?w=999', e);
+  assert.equal(bad.status, 400);
+  assert.equal(bad.headers.get('Location'), null);
+});
+
+test('the Location is a path on this host with each segment escaped', async () => {
+  const e = env({ 'an-vinh/a b-1a2b.jpg': 'x', 'zpvjzx/a b-1a2b.jpg': 'x' }, LEGACY);
+  const res = await get('/an-vinh/a%20b-1a2b.jpg', e);
+  assert.equal(res.headers.get('Location'), '/zpvjzx/a%20b-1a2b.jpg');
+});
+
+test('private paths, the internal path and unknown types are never redirected', async () => {
+  const e = env(
+    {
+      'an-vinh/x-1a2b.jpg': 'x',
+      'zpvjzx/x-1a2b.jpg': 'x',
+      'an-vinh/page.html': '<script>',
+      'zpvjzx/page.html': '<script>',
+      '_incoming/an-vinh/x-1a2b.jpg': 'x',
+    },
+    { LEGACY_PREFIXES: { ...LEGACY.LEGACY_PREFIXES, '_incoming/': 'zpvjzx' } },
+  );
+  assert.equal((await get('/_incoming/an-vinh/x-1a2b.jpg', e)).status, 404);
+  const internal = await get('/__origin/an-vinh/x-1a2b.jpg', e);
+  assert.equal(internal.status, 200, 'cf.image reads the old key itself');
+  assert.equal(internal.headers.get('Location'), null);
+  assert.equal((await get('/an-vinh/page.html', e)).status, 404);
+  assert.deepEqual(e.heads, [], 'no R2 check for a request that is refused or internal');
+});
+
+test('without the map, or with a bad line, nothing is redirected', async () => {
+  const objects = { 'an-vinh/x-1a2b.jpg': 'x', 'zpvjzx/x-1a2b.jpg': 'x', 'an-vinhx/y-1a2b.jpg': 'y', 'zpvjzx/y-1a2b.jpg': 'y' };
+  assert.equal((await get('/an-vinh/x-1a2b.jpg', env(objects))).status, 200);
+  for (const map of ['not json', '["an-vinh/"]', { 'an-vinh/': 'ZPVJZX' }, { 'an-vinh/': 'zpv' }, { 'an-vinh': 'zpvjzx' }, { '../': 'zpvjzx' }]) {
+    const res = await get('/an-vinh/x-1a2b.jpg', env(objects, { LEGACY_PREFIXES: map }));
+    assert.equal(res.status, 200, JSON.stringify(map));
+  }
+  // The prefix is a folder: "an-vinh/" does not hold "an-vinhx/".
+  assert.equal((await get('/an-vinhx/y-1a2b.jpg', env(objects, LEGACY))).status, 200);
+  // The map may also arrive as a JSON string (a var set as text).
+  const str = await get('/an-vinh/x-1a2b.jpg', env(objects, { LEGACY_PREFIXES: JSON.stringify(LEGACY.LEGACY_PREFIXES) }));
+  assert.equal(str.status, 301);
+});
+
+test('the legacy check is kept in the edge cache five minutes, found or not', async () => {
+  const store = new Map();
+  const realCaches = globalThis.caches;
+  globalThis.caches = {
+    default: {
+      async match(url) {
+        return store.has(url) ? new Response(store.get(url).body) : undefined;
+      },
+      async put(url, res) {
+        store.set(url, { body: await res.text(), cacheControl: res.headers.get('Cache-Control') });
+      },
+    },
+  };
+  try {
+    const e = env({ 'an-vinh/x-1a2b.jpg': 'x', 'zpvjzx/x-1a2b.jpg': 'x', 'an-vinh/seed-1a2b.jpg': 's' }, LEGACY);
+    const waits = [];
+    const ctx = { waitUntil: (p) => waits.push(p) };
+    const fetchIt = (path) => worker.fetch(new Request(`https://files.example.test${path}`), e, ctx);
+
+    assert.equal((await fetchIt('/an-vinh/x-1a2b.jpg')).status, 301);
+    assert.equal((await fetchIt('/an-vinh/seed-1a2b.jpg')).status, 200);
+    await Promise.all(waits);
+    assert.equal(e.heads.length, 4);
+    assert.deepEqual(store.get('https://files.example.test/__legacy/an-vinh%2Fx-1a2b.jpg'), { body: 'zpvjzx/x-1a2b.jpg', cacheControl: 'max-age=300' });
+    assert.deepEqual(store.get('https://files.example.test/__legacy/an-vinh%2Fseed-1a2b.jpg'), { body: '', cacheControl: 'max-age=300' });
+
+    // Answered from the cache: no further R2 check, same outcome.
+    assert.equal((await fetchIt('/an-vinh/x-1a2b.jpg?w=320')).headers.get('Location'), '/zpvjzx/x-1a2b.jpg?w=320');
+    assert.equal((await fetchIt('/an-vinh/seed-1a2b.jpg')).status, 200);
+    assert.equal(e.heads.length, 4);
+
+    // A cached answer for another target (the map changed since) is not trusted as a redirect.
+    store.set('https://files.example.test/__legacy/an-vinh%2Fx-1a2b.jpg', { body: 'abcdef/x-1a2b.jpg' });
+    assert.equal((await fetchIt('/an-vinh/x-1a2b.jpg')).status, 200);
+    // The check's own path is never public.
+    assert.equal((await fetchIt('/__legacy/an-vinh%2Fx-1a2b.jpg')).status, 404);
+  } finally {
+    globalThis.caches = realCaches;
+  }
+});
+
+test('legacy map rules', () => {
+  const prefixes = legacyPrefixes({
+    'a/': 'zpvjzx',
+    'a/deep/': '23456z',
+    '_x/': 'zpvjzx',
+    'b/./': 'zpvjzx',
+    'c//': 'zpvjzx',
+    // A code folder is never an old folder: to itself (a loop) or into another website's folder.
+    'zpvjzx/': 'zpvjzx',
+    'abcdef/': 'zpvjzx',
+  });
+  assert.deepEqual(prefixes, [['a/deep/', '23456z'], ['a/', 'zpvjzx']]);
+  assert.equal(legacyTarget('a/deep/f/x.jpg', prefixes), '23456z/x.jpg', 'the longest prefix wins');
+  assert.equal(legacyTarget('a/x.jpg', prefixes), 'zpvjzx/x.jpg');
+  assert.equal(legacyTarget('a/', prefixes), null);
+  assert.equal(legacyTarget('ab/x.jpg', prefixes), null);
+  assert.equal(legacyTarget('zpvjzx/x.jpg', [['zpvjzx/', 'zpvjzx']]), null, 'never to itself');
+  assert.deepEqual(legacyPrefixes(undefined), []);
+  assert.deepEqual(legacyPrefixes(null), []);
 });
