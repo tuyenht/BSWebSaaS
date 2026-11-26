@@ -11,7 +11,7 @@ globalThis.window = window;
 globalThis.document = window.document;
 globalThis.MutationObserver = window.MutationObserver;
 globalThis.requestAnimationFrame = window.requestAnimationFrame.bind(window);
-const { toastSpot, watch, unwatch } = await import('../../resources/js/admin-toast-spot.js');
+const { toastSpot, watch, unwatch, dialogCard, seeThrough } = await import('../../resources/js/admin-toast-spot.js');
 const doc = window.document;
 
 // jsdom lays nothing out: each scene gives its elements their boxes, drawn in the order listed (last on top)
@@ -330,11 +330,62 @@ test('a drawer whose field being typed in sits just above the footer: the toast 
     at.rects.name = R(620, 664, 20, 370);
     const s = await scene({ ...at, html: at.html, rects: at.rects });
     assert.equal(s.spot(), 'up');
-    doc.getElementById('name').focus();
-    doc.getElementById('foot').setAttribute('class', 'focus-in'); // any change inside the drawer re-places
+    doc.getElementById('name').focus(); // the focus moving is enough: nothing else on the page changes
     await frame();
     assert.equal(s.spot(), 'keep');
     await s.done();
+});
+
+test('…but a checkbox focused there raises no keyboard: the toast stays lifted', async () => {
+    const at = drawer(724);
+    at.html = at.html.replace('<input id="name">', '<input id="name" type="checkbox">');
+    at.rects.name = R(620, 664, 20, 370);
+    const s = await scene({ ...at, html: at.html, rects: at.rects });
+    doc.getElementById('name').focus();
+    doc.getElementById('foot').setAttribute('class', 'x'); // and a change inside the drawer re-places it
+    await frame();
+    assert.equal(s.spot(), 'up');
+    await s.done();
+});
+
+test('a transition that ends outside the open dialog does not re-measure the toast', async () => {
+    const s = await scene({
+        ...wide,
+        html: '<div id="m" role="dialog" aria-modal="true" style="position:fixed;z-index:90"><button id="ok">OK</button></div><div id="bar"></div>',
+        rects: { m: R(300, 600, 433, 933), ok: R(540, 580, 800, 900) },
+    });
+    const before = s.reads.n;
+    doc.getElementById('bar').dispatchEvent(new window.Event('transitionend', { bubbles: true }));
+    await frame();
+    assert.equal(s.reads.n, before);
+    doc.getElementById('ok').dispatchEvent(new window.Event('transitionend', { bubbles: true }));
+    await frame();
+    assert.ok(s.reads.n > before); // one inside it does
+    await s.done();
+});
+
+test('which backgrounds let the page show through (a dim) and which are solid (a card), in any colour space', () => {
+    for (const c of ['', 'transparent', 'rgba(0, 0, 0, 0.5)', 'rgb(0 0 0 / 0.4)', 'oklab(0.2 0 0 / 40%)', 'oklch(0.2 0 0 / 0.6)', 'color(srgb 0 0 0 / 0.5)']) {
+        assert.equal(seeThrough(c), true, c);
+    }
+    for (const c of ['rgb(255, 255, 255)', 'rgba(0, 0, 0, 1)', 'oklch(0.98 0.01 250)', 'oklab(1 0 0)', 'oklab(0.2 0 0 / 100%)', 'color(srgb 1 1 1)', 'lab(98 0 0)']) {
+        assert.equal(seeThrough(c), false, c);
+    }
+});
+
+test('a full-screen panel with a solid oklch background (a drawer on a phone) is measured whole, not as its buttons', async () => {
+    painted = [];
+    doc.body.innerHTML = '<div id="p" role="dialog" aria-modal="true"><button id="b">Lưu</button></div>';
+    const p = doc.getElementById('p');
+    lay(p, R(0, 844, 0, 390));
+    lay(doc.getElementById('b'), R(780, 830, 20, 370));
+    const real = window.getComputedStyle;
+    window.getComputedStyle = (el) => (el === p ? { backgroundColor: 'oklch(0.99 0.005 250)' } : real.call(window, el));
+    try {
+        assert.deepEqual(dialogCard(p, 390, 844).els, [p]);
+    } finally {
+        window.getComputedStyle = real;
+    }
 });
 
 test('a side panel on a computer: the toast moves into the free side, its width and centre set inline', async () => {

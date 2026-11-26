@@ -24,6 +24,16 @@ it('lets every toast box tell the placement it is on the screen, in each of its 
     'kept in the browser' => ['<x-bs-admin::toast state="msg" dismiss="closeMsg" />'],
 ]);
 
+it('keeps a timed toast\'s timer stopped while it lies under a dialog, whatever the pointer or the focus does', function (string $blade): void {
+    $html = Blade::render($blade);
+
+    // the placement starts it again (and only it) once the toast is back in sight
+    expect($html)->toContain("release() { if (this.\$el.closest('[data-spot=under]')) { this.\$el._spotHeld = true; return }");
+})->with([
+    'success (timed)' => ['<x-bs-admin::toast message="Đã lưu" dismiss="closeToast" />'],
+    'kept in the browser' => ['<x-bs-admin::toast state="msg" dismiss="closeMsg" />'],
+]);
+
 it('marks the drawer as a working panel and its footer as the buttons a toast stands clear of', function (): void {
     $html = Blade::render('<x-bs-admin::drawer title="Sửa" close="closePanel"><p>Nội dung</p><x-slot:footer><button type="button">Lưu</button></x-slot:footer></x-bs-admin::drawer>');
 

@@ -92,14 +92,33 @@ export function topDialog(doc = document) {
     return list[list.length - 1];
 }
 
-// a background nothing shows through: the element is a card, not a dim
-const opaque = (el) => {
-    const bg = el.ownerDocument.defaultView.getComputedStyle(el).backgroundColor || '';
-    const m = bg.match(/^rgba?\(([^)]*)\)/);
-    const parts = m ? m[1].split(/[\s,/]+/).filter(Boolean) : [];
+/**
+ * Whether a computed background colour lets the page show through: none, `transparent`, or a colour whose
+ * alpha is below 1 (`rgb(0 0 0 / 0.5)`, `rgba(0, 0, 0, 0.5)`, `oklab(… / 40%)`, `color(srgb … / 0.5)`).
+ * Any other colour, in whatever space the browser writes it, is solid.
+ */
+export function seeThrough(bg) {
+    const c = String(bg || '').trim().toLowerCase();
+    if (c === '' || c === 'transparent') {
+        return true;
+    }
+    const m = c.match(/\(([^()]*)\)$/);
+    if (!m) {
+        return false;
+    }
+    const bySlash = m[1].split('/');
+    const byComma = m[1].split(',');
+    const a = (bySlash.length === 2 ? bySlash[1] : byComma.length === 4 ? byComma[3] : '').trim();
+    if (a === '') {
+        return false;
+    }
+    const n = a.endsWith('%') ? parseFloat(a) / 100 : parseFloat(a);
 
-    return parts.length === 3 || (parts.length === 4 && parseFloat(parts[3]) >= 1);
-};
+    return Number.isFinite(n) && n < 1;
+}
+
+// a background nothing shows through: the element is a card, not a dim
+const opaque = (el) => !seeThrough(el.ownerDocument.defaultView.getComputedStyle(el).backgroundColor);
 
 /**
  * What a dialog draws on a vw × vh screen: its own box, or, when it is a full-screen layer that lets the
@@ -227,20 +246,24 @@ function track(els) {
     els.forEach((el) => ro.observe(el));
 }
 
-function place(root) {
+// a field the keyboard types into (a checkbox, a button or a slider being focused does not raise one)
+const NOT_TYPED = /^(checkbox|radio|button|submit|reset|image|range|color|file)$/;
+const typedIn = (el) => !!el && el.nodeType === 1 && (el.isContentEditable || el.matches('textarea, [contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"]') || (el.matches('input') && !NOT_TYPED.test(el.type)));
+
+// `top`: the dialog on top now (one look per frame for every toast)
+function place(root, top) {
     const doc = root.ownerDocument;
     const win = doc.defaultView;
     const was = root.getAttribute('data-spot') || 'def';
     reset(root);
     const box = [...root.querySelectorAll('[data-tone]')].find(shown);
-    let dlg = box ? topDialog(doc) : null;
+    let dlg = box ? top : null;
     if (dlg && dlg.contains(root)) {
         dlg = null; // a toast inside the dialog is drawn with it
     }
     // the layout viewport (a fixed layer's box), a classic scrollbar left out
     const vw = doc.documentElement.clientWidth || win.innerWidth;
     const vh = doc.documentElement.clientHeight || win.innerHeight;
-    current = dlg;
     let spot = { mode: 'def' };
     if (dlg) {
         const t = rectOf(box);
@@ -257,7 +280,7 @@ function place(root) {
         });
         // over a drawer the lifted spot lies in its body: never over the field being typed in
         const typing = doc.activeElement;
-        if (keep && spot.mode === 'up' && typing && typing !== dlg && dlg.contains(typing) && shown(typing)) {
+        if (keep && spot.mode === 'up' && typedIn(typing) && dlg.contains(typing) && shown(typing)) {
             const lifted = { top: vh - spot.bottom - (t.bottom - t.top), bottom: vh - spot.bottom, left: t.left, right: t.right };
             if (touches(lifted, rectOf(typing))) {
                 spot = { mode: 'keep' };
@@ -305,6 +328,13 @@ function changed(records) {
     }
 }
 
+// the focus moving inside the dialog on top (onto a field: the lifted toast must not stand over it)
+function focused(e) {
+    if (e.target && e.target.nodeType === 1 && !inToast(e.target) && inCurrent(e.target)) {
+        schedule();
+    }
+}
+
 // a transition that ends on a dialog (opening, closing, sliding in) or inside the one on top
 function settled(e) {
     const el = e.target;
@@ -321,6 +351,7 @@ function start() {
     sized = [];
     window.addEventListener('resize', schedule);
     document.addEventListener('transitionend', settled, true);
+    document.addEventListener('focusin', focused, true);
 }
 
 function stop() {
@@ -333,6 +364,7 @@ function stop() {
     sized = [];
     window.removeEventListener('resize', schedule);
     document.removeEventListener('transitionend', settled, true);
+    document.removeEventListener('focusin', focused, true);
 }
 
 // watching the body that is on the page now (wire:navigate swaps it)
@@ -357,7 +389,8 @@ function schedule() {
             return;
         }
         ensure();
-        watched.forEach((_, root) => place(root));
+        current = topDialog(document);
+        watched.forEach((_, root) => place(root, current));
     });
 }
 
