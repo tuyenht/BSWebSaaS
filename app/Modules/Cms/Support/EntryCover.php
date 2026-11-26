@@ -8,16 +8,18 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Support\MediaRefs;
 use Illuminate\Database\Eloquent\Builder;
+use LogicException;
 
 /**
  * An entry's cover (its featured / share picture) as every reader sees it while covers move from an
- * address to a row: `entries.cover_media_id` first (the website's file outside the Trash that it
- * names), else the old `meta.image_url` value (a storage key, a glyph name or an outside https
- * address), else none. The value comes back in the old string shape, so the code that draws it is
+ * address to a row: with `entries.cover_media_id` set, the website's file outside the Trash that it
+ * names; with it NULL, the old `meta.image_url` value (a storage key, a glyph name or an outside
+ * https address); else none. The value comes back in the old string shape, so the code that draws it is
  * unchanged: a key, a glyph, an address or ''.
  *
- * An id that names no live file of this website (trashed, purged, another website's) falls back to
- * meta.image_url, and to no picture when that is empty.
+ * A cover_media_id that is set decides on its own: when it names no live file of this website
+ * (trashed, purged, another website's) the entry has no cover, and meta.image_url is never read.
+ * The old value counts only while cover_media_id is NULL.
  *
  * Three ways to read it, each at the reader's existing query cost:
  *  - a correlated subselect in the reader's own query (keySubquery / keySql, read back by value());
@@ -60,6 +62,18 @@ final class EntryCover
     }
 
     /**
+     * The whole cover in raw SQL, in the old string shape: the key keySql() finds when
+     * cover_media_id is set (NULL when it names no live file: no cover), else meta.image_url.
+     *
+     * @param  literal-string  $alias
+     * @return literal-string
+     */
+    public static function valueSql(string $alias): string
+    {
+        return "(case when {$alias}.cover_media_id is null then {$alias}.meta->>'image_url' else ".self::keySql($alias).' end)';
+    }
+
+    /**
      * The one batch for a page of entries: every cover_media_id, plus (with $keys) every old
      * key-shaped meta.image_url so a reader also gets its width. No query when none names a file.
      *
@@ -80,34 +94,53 @@ final class EntryCover
     }
 
     /**
-     * The entry's cover in the old string shape: the key of the file its cover_media_id names (from
-     * $refs, else from the KEY subselect when the reader's query added it), else meta.image_url.
+     * The entry's cover in the old string shape. With cover_media_id set: the key of the live file
+     * it names (from $refs, else from the KEY subselect the reader's query added), '' when it names
+     * none. With cover_media_id NULL: meta.image_url.
+     *
+     * A reader that adds the KEY subselect must also select entries.cover_media_id, or the id could
+     * not be told apart from no id: that mistake throws instead of drawing the old value.
      */
     public static function value(Entry $entry, ?MediaRefs $refs = null): string
     {
+        $attributes = $entry->getAttributes();
+        if ($refs === null && array_key_exists(self::KEY, $attributes) && ! array_key_exists('cover_media_id', $attributes)) {
+            throw new LogicException('A query that reads EntryCover::KEY must also select entries.cover_media_id.');
+        }
+        $id = $attributes['cover_media_id'] ?? null;
+        if (! self::named($id)) {
+            return self::metaValue($entry->getAttribute('meta'));
+        }
         if ($refs !== null) {
-            return self::resolve($entry->getAttribute('cover_media_id'), $entry->getAttribute('meta'), $refs);
+            return self::live($refs->byId($id));
         }
-        $key = $entry->getAttribute(self::KEY);
-        if (is_string($key) && $key !== '') {
-            return $key;
+        if (! array_key_exists(self::KEY, $attributes)) {
+            throw new LogicException('An entry cover named by id needs the EntryCover::KEY subselect or a MediaRefs batch.');
         }
+        $key = $attributes[self::KEY];
 
-        return self::metaValue($entry->getAttribute('meta'));
+        return is_string($key) ? $key : '';
     }
 
     /**
      * A cover from stored shared fields (an entry, a draft, a revision snapshot, a pending change):
-     * the key of the live file the id names, else the meta's image_url, else ''.
+     * with an id, the key of the live file it names, else ''; with none, the meta's image_url.
      */
     public static function resolve(mixed $coverMediaId, mixed $meta, MediaRefs $refs): string
     {
-        $row = $refs->byId($coverMediaId);
-        if ($row !== null && $row->storage_key !== '') {
-            return $row->storage_key;
-        }
+        return self::named($coverMediaId) ? self::live($refs->byId($coverMediaId)) : self::metaValue($meta);
+    }
 
-        return self::metaValue($meta);
+    /** Whether a stored cover_media_id names a row (any value but NULL), so meta.image_url is not read. */
+    public static function named(mixed $coverMediaId): bool
+    {
+        return $coverMediaId !== null && $coverMediaId !== '';
+    }
+
+    /** The live row's key, '' for a cover id that names no live file. */
+    private static function live(?Media $row): string
+    {
+        return $row !== null ? $row->storage_key : '';
     }
 
     /** The old cover value inside a meta array: a non-empty string, else ''. */

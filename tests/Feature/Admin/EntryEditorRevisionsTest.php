@@ -8,6 +8,7 @@ use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
@@ -158,6 +159,38 @@ it('shows one version beside the form, marking each place that differs', functio
         $editor->call('viewRevision', $latest);
         expect($editor->get('revView')['sum'])->toBe(__('entries.rev.sum_latest'))
             ->and($editor->get('revView')['canRestore'])->toBeFalse();
+    });
+});
+
+it('shows the cover a version names by id, with no old key in its meta, and none when that file is in the Trash', function (): void {
+    $member = revEditorMember();
+
+    app(Tenancy::class)->enter(1, function () use ($member): void {
+        $cover = Media::query()->create([
+            'collection' => 'library', 'slug' => 'bia-phien-ban', 'hash' => str_repeat('7', 64), 'original_filename' => 'bia-phien-ban.png',
+            'storage_key' => 'a/library/bia-phien-ban.png', 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1024,
+        ]);
+        [$page, $v1] = revEditorPage($member);
+        // the version names the cover by id only (as converted covers will be); the form has none
+        $snapshot = $v1->snapshot;
+        $snapshot['cover_media_id'] = $cover->id;
+        $snapshot['meta'] = ['image_url' => 'a/library/khong-doc.png'];
+        DB::table('entry_revisions')->where('id', $v1->id)->update(['snapshot' => json_encode($snapshot)]);
+        unset($snapshot['meta']['image_url']);
+        $onlyId = $snapshot;
+
+        $field = fn (): array => collect(Livewire::actingAs($member)->test(Editor::class, ['ulid' => $page->ulid])
+            ->call('loadRevisions')->call('viewRevision', $v1->ulid)->get('revView')['fields'])->keyBy('label')[__('entries.rev.f_cover')];
+
+        // the id decides even beside an old key in meta
+        expect($field())->toMatchArray(['value' => 'bia-phien-ban.png', 'now' => __('entries.rev.no_cover'), 'differs' => true]);
+
+        DB::table('entry_revisions')->where('id', $v1->id)->update(['snapshot' => json_encode($onlyId)]);
+        expect($field()['value'])->toBe('bia-phien-ban.png');
+
+        $cover->delete();
+        DB::table('entry_revisions')->where('id', $v1->id)->update(['snapshot' => json_encode(['meta' => ['image_url' => 'a/library/khong-doc.png']] + $onlyId)]);
+        expect($field())->toMatchArray(['value' => __('entries.rev.no_cover'), 'differs' => false]);
     });
 });
 

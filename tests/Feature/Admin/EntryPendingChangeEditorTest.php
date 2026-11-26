@@ -892,6 +892,39 @@ it('puts a cover picked in the shared «Chọn ảnh» dialog into the change of
     });
 });
 
+it('opens and compares a held change that names its cover by id, with no old key, and none when that file is in the Trash', function (): void {
+    [$author, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
+        $post = pcLivePost(pcCollection(), $author, $editor);
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+        $cover = Media::query()->create([
+            'collection' => 'library', 'slug' => 'bia-theo-ma', 'hash' => str_repeat('5', 64),
+            'storage_key' => 'a/library/bia-theo-ma.png', 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1024,
+        ]);
+        Livewire::actingAs($author->fresh())->test(Editor::class, ['ulid' => $post->ulid])
+            ->set('title', 'Bản sửa chờ duyệt')->call('save')->assertHasNoErrors();
+        // the change names the cover by id only (as converted covers will be); the live post has none
+        $change = pcChange($post);
+        $content = $change->content;
+        $content['shared']['cover_media_id'] = $cover->id;
+        unset($content['shared']['meta']['image_url']);
+        $change->forceFill(['content' => $content])->saveQuietly();
+        $coverRow = fn ($editor) => collect($editor->viewData('changeBand')['diff']['rows'])->firstWhere('label', __('entries.chg.f_cover'));
+
+        $open = Livewire::actingAs($author->fresh())->test(Editor::class, ['ulid' => $post->ulid])
+            ->assertSet('coverImageKey', 'a/library/bia-theo-ma.png');
+        expect($coverRow($open))->toMatchArray(['now' => __('entries.chg.cover_other'), 'seen' => __('entries.chg.diff_empty')]);
+
+        // a file in the Trash is no cover, even beside an old key: nothing to compare with the live post
+        $cover->delete();
+        $content['shared']['meta']['image_url'] = 'a/library/anh-cu.png';
+        $change->forceFill(['content' => $content])->saveQuietly();
+        $open = Livewire::actingAs($author->fresh())->test(Editor::class, ['ulid' => $post->ulid])
+            ->assertSet('coverImageKey', '');
+        expect($coverRow($open))->toBeNull();
+    });
+});
+
 it('writes nothing when an unchanged older plain-text body is saved on a held post', function (): void {
     [$author, $editor] = pcCast();
     app(Tenancy::class)->enter(1, function () use ($author, $editor): void {

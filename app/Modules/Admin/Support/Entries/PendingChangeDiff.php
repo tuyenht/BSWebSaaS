@@ -73,8 +73,9 @@ final readonly class PendingChangeDiff
         }
 
         $shared = $change->content['shared'] ?? [];
-        // each cover as the file its cover_media_id names (from $covers), else the meta's key
-        $changed = array_key_exists('meta', $shared) || MediaRefs::id($shared['cover_media_id'] ?? null) !== null;
+        // each cover as the file its cover_media_id names (from $covers; none when it names no live
+        // file), else, with no id, the meta's key
+        $changed = array_key_exists('meta', $shared) || EntryCover::named($shared['cover_media_id'] ?? null);
         $cover = $changed
             ? EntryCover::resolve($shared['cover_media_id'] ?? null, $shared['meta'] ?? null, $covers)
             : EntryCover::value($entry, $covers);

@@ -13,8 +13,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * The library's "in use" row of an entry's featured / share picture (`mediables`, collection
  * `cover`, owner the entry). The picture is named by entries.cover_media_id or, until every cover is
- * converted, by its storage key inside entries.meta (`image_url`), which no index serves; the id
- * wins when it names a file of this site, the key is the fallback (EntryCover). The library's use chips, its «Đang dùng / Chưa dùng»
+ * converted, by its storage key inside entries.meta (`image_url`), which no index serves; a set id
+ * decides alone, the key counts only while the id is NULL (EntryCover). The library's use chips, its «Đang dùng / Chưa dùng»
  * filter and the drawer read this row instead of every entry's meta: the anti-scan contract at
  * tenant scale, as BlockMediaUsage keeps it for block pictures.
  *
@@ -32,20 +32,23 @@ final class EntryCoverUsage
     public const string COLLECTION = 'cover';
 
     /**
-     * The id of the file an entry `e` names as its cover, the Trash included: the one its
-     * cover_media_id names, else the one with the key in its meta, else NULL.
+     * The id of the file an entry `e` names as its cover, the Trash included (EntryCover's rule):
+     * with cover_media_id set, the site's file it names (NULL when purged or another site's), the
+     * meta never read; with none, the file with the key in its meta, else NULL.
      */
     private const string COVER_ID_SQL = <<<'SQL'
-        COALESCE(
-            (SELECT m.id FROM media m WHERE m.site_id = e.site_id AND m.id = e.cover_media_id),
-            (SELECT m.id FROM media m WHERE m.site_id = e.site_id AND m.storage_key = e.meta->>'image_url')
-        )
+        CASE WHEN e.cover_media_id IS NOT NULL
+            THEN (SELECT m.id FROM media m WHERE m.site_id = e.site_id AND m.id = e.cover_media_id)
+            ELSE (SELECT m.id FROM media m WHERE m.site_id = e.site_id AND m.storage_key = e.meta->>'image_url')
+        END
         SQL;
 
     public static function sync(Entry $entry): void
     {
-        $id = MediaRefs::id($entry->getAttribute('cover_media_id'));
-        $key = self::keyOf($entry->meta);
+        // a set cover_media_id decides alone (EntryCover): the meta's key counts only without one
+        $coverId = $entry->getAttribute('cover_media_id');
+        $id = MediaRefs::id($coverId);
+        $key = EntryCover::named($coverId) ? null : self::keyOf($entry->meta);
         $rows = Mediable::query()
             ->where('mediable_type', 'entry')
             ->where('mediable_id', $entry->id)
@@ -57,13 +60,12 @@ final class EntryCoverUsage
             return;
         }
 
-        // one read for both shapes: the file the id names, else the one with the old key
-        $found = Media::withTrashed()
-            ->where(fn ($query) => $query->when($id !== null, fn ($q) => $q->orWhere('id', $id))->when($key !== null, fn ($q) => $q->orWhere('storage_key', $key)))
-            ->get(['id']);
-        $match = ($id !== null ? $found->firstWhere('id', $id) : null) ?? $found->first();
+        // one read: the file the id names, else (no id) the one with the old key
+        $match = Media::withTrashed()
+            ->when($id !== null, fn ($query) => $query->whereKey($id), fn ($query) => $query->where('storage_key', $key))
+            ->first(['id']);
         if ($match === null) {
-            $rows->delete(); // neither names a file of this site (an outside address, a file purged since)
+            $rows->delete(); // it names no file of this site (an outside address, a file purged since, another site's id)
 
             return;
         }
@@ -86,9 +88,9 @@ final class EntryCoverUsage
      * Rebuilds the current site's cover rows from its entries' covers in two set-based statements,
      * the Trash included on both sides (a post in the Trash still reserves its picture, and a
      * picture in the Trash still has its use): one INSERT … SELECT finding each entry's file by
-     * cover_media_id (primary key), else by (site_id, storage_key) from meta (UNIQUE), adds the
+     * cover_media_id (primary key) when it is set, else by (site_id, storage_key) from meta (UNIQUE), adds the
      * rows that are missing, then one DELETE drops every cover row
-     * that the entry's current meta no longer names (another file, no picture, a gone entry, a
+     * that the entry's current cover no longer names (another file, no picture, a gone entry, a
      * purged file's NULL). Not chunked: each statement is a single join over the site's entries
      * (site_id index) and media (UNIQUE site_id+storage_key), cheap next to a round trip per entry.
      *

@@ -102,12 +102,12 @@ final readonly class SitemapRoutes
                     where t.site_id = routes.site_id and t.product_id = routes.product_id and t.locale = routes.locale)
             ) end as updated_at')
             ->selectRaw('case when routes.entry_id is not null then
-                (select coalesce('.EntryCover::keySql('e').", e.meta->>'image_url') from entries e where e.site_id = routes.site_id and e.id = routes.entry_id)
+                (select '.EntryCover::valueSql('e').' from entries e where e.site_id = routes.site_id and e.id = routes.entry_id)
                 when routes.product_id is not null then
                 (select m.storage_key from product_images pi join media m on m.site_id = pi.site_id and m.id = pi.media_id
                     where pi.site_id = routes.site_id and pi.product_id = routes.product_id and m.deleted_at is null
                     order by pi.position, pi.id limit 1)
-            end as image")
+            end as image')
             ->toBase()
             ->cursor();
 

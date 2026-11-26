@@ -10,6 +10,7 @@ use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -1111,6 +1112,35 @@ it('colours each row dot and each step node from the workflow, and warns of what
             ->assertDontSee(__('admin.inbox.seo_no_title'))
             ->assertDontSee(__('admin.inbox.seo_no_description'))
             ->assertSee('Tiêu đề Google');
+    });
+});
+
+it('shows the cover a post names by id with no old key, and none when that file is in the Trash', function (): void {
+    $author = User::factory()->create();
+    $reviewer = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $reviewer): void {
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
+        grantRole($reviewer, 'reviewer', ['entries.review', 'entries.approve']);
+        $post = submittedPost(inboxCollection(), $author, 'Bìa theo mã', 'bia-theo-ma');
+        $cover = Media::query()->create([
+            'collection' => 'library', 'slug' => 'bia-hop-duyet', 'hash' => str_repeat('6', 64),
+            'storage_key' => 'a/library/bia-hop-duyet-a1b2c3d4e5f6.jpg', 'disk' => 'r2', 'mime' => 'image/jpeg', 'size' => 1024,
+        ]);
+        DB::table('entries')->where('id', $post->id)->update(['cover_media_id' => $cover->id]);
+
+        Livewire::actingAs($reviewer->fresh())->test(ReviewInbox::class)->set('tab', 'queue')
+            ->assertSet('current', $post->ulid)
+            ->assertSeeHtml('bia-hop-duyet-a1b2c3d4e5f6')
+            ->assertDontSee(__('admin.inbox.missing_cover'));
+
+        // a file in the Trash is no cover, even beside an old key
+        $cover->delete();
+        DB::table('entries')->where('id', $post->id)->update(['meta' => json_encode(['image_url' => 'site-1/anh-cu-a1b2c3d4e5f6.jpg'])]);
+        Livewire::actingAs($reviewer->fresh())->test(ReviewInbox::class)->set('tab', 'queue')
+            ->assertDontSeeHtml('bia-hop-duyet-a1b2c3d4e5f6')
+            ->assertDontSeeHtml('anh-cu-a1b2c3d4e5f6')
+            ->assertSee(__('admin.inbox.missing_cover'));
     });
 });
 

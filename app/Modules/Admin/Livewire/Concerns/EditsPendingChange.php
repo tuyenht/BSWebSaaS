@@ -97,9 +97,10 @@ trait EditsPendingChange
             $this->coverAlt = Cast::string($text['cover_alt'] ?? '');
         }
         $shared = $change->content['shared'] ?? [];
-        // the cover: the file its cover_media_id names (read only when it names one), else the meta's key
-        $coverId = MediaRefs::id($shared['cover_media_id'] ?? null);
-        if (array_key_exists('meta', $shared) || $coverId !== null) {
+        // the cover: the file its cover_media_id names (read only when it names one; none when it
+        // names no live file), else, with no id, the meta's key
+        $coverId = $shared['cover_media_id'] ?? null;
+        if (array_key_exists('meta', $shared) || EntryCover::named($coverId)) {
             $this->coverImageKey = EntryCover::resolve($coverId, $shared['meta'] ?? null, MediaRefs::rows([$coverId]));
         }
         if (array_key_exists('meta', $shared)) {

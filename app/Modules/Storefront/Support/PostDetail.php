@@ -182,7 +182,7 @@ final readonly class PostDetail
     private function published(Entry $post, string $locale, string $slot): Builder
     {
         return Entry::query()
-            ->select(['entries.id', 'entries.site_id', 'entries.type', 'entries.published_at'])
+            ->select(['entries.id', 'entries.site_id', 'entries.type', 'entries.published_at', 'entries.cover_media_id'])
             // Cards read only the image link and the shown day from meta; do not carry the rest of the document.
             ->selectRaw("jsonb_strip_nulls(jsonb_build_object('image_url', entries.meta->'image_url', 'display_date', entries.meta->'display_date')) as meta")
             // the cover's file named by id (EntryCover), in the same read

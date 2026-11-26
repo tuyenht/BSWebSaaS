@@ -370,7 +370,8 @@ trait ShowsEntryRevisions
     {
         $snap = $version['snapshot'];
         $str = static fn (mixed $value): string => is_string($value) ? $value : '';
-        // the version's cover: the file its cover_media_id names (read only when it names one), else the meta's key
+        // the version's cover: the file its cover_media_id names (read only when it names one; none when it
+        // names no live file), else, with no id, the meta's key
         $cover = EntryCover::resolve($snap['cover_media_id'] ?? null, $snap['meta'] ?? null, MediaRefs::rows([$snap['cover_media_id'] ?? null]));
         $noCover = Cast::string(__('entries.rev.no_cover'));
         $coverNow = $this->coverImageKey !== '' ? $this->revisionCoverName($this->coverImageKey) : $noCover;

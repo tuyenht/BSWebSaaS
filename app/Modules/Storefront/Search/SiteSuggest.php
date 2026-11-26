@@ -150,7 +150,7 @@ final readonly class SiteSuggest
             $order = 'e.published_at desc nulls last, e.id desc';
         }
 
-        $inner = 'select e.id, e.type, e.published_at, coalesce('.EntryCover::keySql('e').", e.meta->>'image_url') as image, e.meta->>'display_date' as shown_day, t.title from {$source} join entries e on e.site_id = ? and e.id = c.id"
+        $inner = 'select e.id, e.type, e.published_at, '.EntryCover::valueSql('e')." as image, e.meta->>'display_date' as shown_day, t.title from {$source} join entries e on e.site_id = ? and e.id = c.id"
             ." join entry_translations t on t.entry_id = e.id and t.site_id = ? and t.locale = ? and t.status = 'published'"
             ." where e.deleted_at is null and e.status = 'published' and e.type in ('page', 'post')"
             .' and (e.published_at is null or e.published_at <= now()) and e.ulid::text <> all (?::text[])';

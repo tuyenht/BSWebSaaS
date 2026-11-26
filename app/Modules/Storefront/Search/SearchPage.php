@@ -77,7 +77,7 @@ final readonly class SearchPage
             ->get(['id', 'ulid', 'sku', 'site_id'])->keyBy('id');
         $entries = $entryIds === [] ? collect() : Entry::query()->whereIn('id', $entryIds)
             ->with(['translations' => fn (Relation $query) => $query->where('locale', $locale), 'routes' => fn (Relation $query) => $query->where('locale', $locale)])
-            ->select(['id', 'ulid', 'type', 'site_id', 'meta', 'published_at', 'parent_id'])
+            ->select(['id', 'ulid', 'type', 'site_id', 'meta', 'published_at', 'parent_id', 'cover_media_id'])
             ->addSelect([EntryCover::KEY => EntryCover::keySubquery()])
             ->get()->keyBy('id');
         $labels = array_map(static fn (array $category): string => $category['name'], $categories);
