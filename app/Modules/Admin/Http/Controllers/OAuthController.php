@@ -8,6 +8,7 @@ use App\Modules\Admin\Support\PlatformSettings;
 use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Admin\Support\SocialAuth;
+use App\Modules\Admin\Support\TenantMailer;
 use App\Modules\Identity\Models\SocialIdentity;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
@@ -292,6 +293,7 @@ final readonly class OAuthController
         ]);
         $cfg['from_address'] ??= $connectedEmail;
         $this->tenant->put('email', 'config', $cfg);
+        app(TenantMailer::class)->forgetOwnOutboxFailing();
 
         return redirect()->away($this->originPath($origin, 'settings/email').'?oauth=connected');
     }
