@@ -156,6 +156,30 @@ describe('recording where a block is placed', function (): void {
         expect(sbpRows())->toBe([]);
     });
 
+    it('records the places again when an old version is restored, and a copy of the page records its own', function (): void {
+        $user = User::factory()->create();
+        app(Tenancy::class)->enter(1, fn () => grantRole($user, 'site-admin', ['entries.view', 'entries.create', 'entries.edit.any', 'entries.publish']));
+        app(TeamContext::class)->forget();
+        $user = $user->fresh() ?? $user;
+        $footer = sbpBlock(1, 'chan-trang');
+        $entry = sbpPage(['vi' => [sbpRef($footer->ulid)]]);
+
+        app(Tenancy::class)->enter(1, function () use ($entry, $user): void {
+            $translation = $entry->translations()->where('locale', 'vi')->firstOrFail();
+            app(RecordEntryRevision::class)->forLocale($entry, $translation, RevisionKind::Edit, $user);
+            $translation->update(['body' => ['blocks' => [['type' => 'cta', 'props' => ['heading' => 'Liên hệ']]]]]);
+            app(EntryBlockMediaReconciler::class)->reconcile($entry);
+        });
+        expect(sbpRows())->toBe([]);
+
+        app(Tenancy::class)->enter(1, fn () => app(RestoreEntryRevision::class)->handle(EntryRevision::query()->where('entry_id', $entry->id)->latest('id')->firstOrFail(), $user));
+        expect(sbpRows())->toBe(['1:chan-trang:entry:-:vi']);
+
+        app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($user)->test(EntriesIndex::class)->call('duplicate', $entry->ulid)->assertOk());
+        $copy = app(Tenancy::class)->enter(1, fn (): int => Cast::int(Entry::query()->where('type', 'page')->whereKeyNot($entry->id)->value('id')));
+        expect(DB::connection('pgsql_admin')->table('block_usages')->orderBy('entry_id')->pluck('entry_id')->all())->toBe([$entry->id, $copy]);
+    });
+
     it('writes nothing when the save rolls back', function (): void {
         $footer = sbpBlock(1, 'chan-trang');
 
@@ -430,6 +454,22 @@ describe('checking a body on save', function (): void {
 
         expect(sbpBodyError($max))->toBeNull()
             ->and(sbpBodyError([...$max, sbpRef($footer->ulid)]))->toBe(__('entries.err_block_refs_too_many', ['max' => BlockReference::LIST_MAX]));
+    });
+
+    it('refuses a reference in a shared block\'s own content when it is saved', function (): void {
+        $editor = blockLibraryUser(1, 'editor');
+        $footer = sbpBlock(1, 'chan-trang');
+        $block = sbpBlock(1, 'ben-ngoai');
+
+        $refused = null;
+        try {
+            app(Tenancy::class)->enter(1, fn () => app(SaveContentBlockBody::class)->handle($editor, $block, 'vi', [sbpRef($footer->ulid)], ContentBlockVersion::current($block)));
+        } catch (ContentBlockChangeRejectedException $e) {
+            $refused = $e->getMessage();
+        }
+
+        expect($refused)->toBe(__('entries.err_block_ref_nested'))
+            ->and(app(Tenancy::class)->enter(1, fn (): int => ContentBlockTranslation::query()->where('content_block_id', $block->id)->count()))->toBe(0);
     });
 
     it('refuses a reference inside a shared block\'s own body', function (): void {
