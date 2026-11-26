@@ -7,7 +7,8 @@
 //   1. just above the dialog's visible box (8px gap), when it fits below the top of the screen;
 //   2. beside the box, centred in the free side, when that side is at least 280px wide (a side panel);
 //   3. over a working panel (a drawer, [data-toast-keep]): just above the panel's footer buttons
-//      ([data-toast-foot]) when it fits below the panel's header, else where it is — its timer runs as usual;
+//      ([data-toast-foot]) when it fits below the panel's header and not over the field being typed in,
+//      else where it is — its timer runs as usual;
 //   4. otherwise under the dialog's layer and its dim (the lower of the two, minus one), its timer held,
 //      until the dialog closes.
 // The visible box is the card a full-screen dialog layer holds (a dim with the card inside), not the layer.
@@ -91,14 +92,24 @@ export function topDialog(doc = document) {
     return list[list.length - 1];
 }
 
+// a background nothing shows through: the element is a card, not a dim
+const opaque = (el) => {
+    const bg = el.ownerDocument.defaultView.getComputedStyle(el).backgroundColor || '';
+    const m = bg.match(/^rgba?\(([^)]*)\)/);
+    const parts = m ? m[1].split(/[\s,/]+/).filter(Boolean) : [];
+
+    return parts.length === 3 || (parts.length === 4 && parseFloat(parts[3]) >= 1);
+};
+
 /**
- * What a dialog draws on a vw × vh screen: its own box, or, when it is a full-screen layer (a dim with the
- * card inside, aria-modal on the layer), the union of what it holds, a full-screen dim left out.
+ * What a dialog draws on a vw × vh screen: its own box, or, when it is a full-screen layer that lets the
+ * page show through (a dim with the card inside, aria-modal on the layer), the union of what it holds, a
+ * full-screen dim left out. A full-screen card (an opaque background: a drawer on a phone) is its own box.
  * @returns {{ rect: Rect, els: Element[] }}
  */
 export function dialogCard(dlg, vw, vh, depth = 0) {
     const rect = rectOf(dlg);
-    if (!fills(rect, vw, vh) || depth > 2) {
+    if (!fills(rect, vw, vh) || depth > 2 || opaque(dlg)) {
         return { rect, els: [dlg] };
     }
     let u = null;
@@ -178,6 +189,7 @@ export function underZ(dlg, win, vw, vh) {
 let mo = null;
 let ro = null;
 let observed = null;
+let current = null; // the dialog on top at the last placement
 let sized = [];
 let frame = 0;
 
@@ -188,11 +200,19 @@ function reset(root) {
     root.style.removeProperty('z-index');
 }
 
+// only what the placement itself stopped is started again (a box held by the pointer or the focus stays held)
 function hold(root, on) {
     root.querySelectorAll('[data-tone]').forEach((box) => {
         const d = box._x_dataStack && box._x_dataStack[0];
-        if (d && typeof d.hold === 'function') {
-            on ? d.hold() : d.release();
+        if (!d || typeof d.hold !== 'function') {
+            return;
+        }
+        if (on && d.timer != null) {
+            d.hold();
+            box._spotHeld = true;
+        } else if (!on && box._spotHeld) {
+            box._spotHeld = false;
+            d.release();
         }
     });
 }
@@ -217,8 +237,10 @@ function place(root) {
     if (dlg && dlg.contains(root)) {
         dlg = null; // a toast inside the dialog is drawn with it
     }
-    const vw = win.innerWidth;
-    const vh = win.innerHeight;
+    // the layout viewport (a fixed layer's box), a classic scrollbar left out
+    const vw = doc.documentElement.clientWidth || win.innerWidth;
+    const vh = doc.documentElement.clientHeight || win.innerHeight;
+    current = dlg;
     let spot = { mode: 'def' };
     if (dlg) {
         const t = rectOf(box);
@@ -233,6 +255,14 @@ function place(root) {
             foot: shown(foot) ? rectOf(foot) : null,
             head: head && head !== foot ? rectOf(head) : null,
         });
+        // over a drawer the lifted spot lies in its body: never over the field being typed in
+        const typing = doc.activeElement;
+        if (keep && spot.mode === 'up' && typing && typing !== dlg && dlg.contains(typing) && shown(typing)) {
+            const lifted = { top: vh - spot.bottom - (t.bottom - t.top), bottom: vh - spot.bottom, left: t.left, right: t.right };
+            if (touches(lifted, rectOf(typing))) {
+                spot = { mode: 'keep' };
+            }
+        }
     } else {
         track([]);
     }
@@ -259,17 +289,27 @@ function place(root) {
 
 // a node that is a dialog or holds one (its opening, closing or moving can change where the toast stands)
 const holdsDialog = (n) => n.nodeType === 1 && (n.matches(DIALOG) || !!n.querySelector(DIALOG));
+// …or a change inside the dialog on top now (a morph swapping its footer, a button shown or hidden)
+const inCurrent = (n) => !!current && current.isConnected && current.contains(n);
 
 function changed(records) {
     for (const r of records) {
         if (inToast(r.target)) {
             continue; // the toast's own changes (its spot, its text) do not move a dialog
         }
-        if (r.type === 'childList' ? [...r.addedNodes, ...r.removedNodes].some(holdsDialog) : r.attributeName === 'aria-modal' || holdsDialog(r.target)) {
+        if (inCurrent(r.target) || (r.type === 'childList' ? [...r.addedNodes, ...r.removedNodes].some(holdsDialog) : r.attributeName === 'aria-modal' || holdsDialog(r.target))) {
             schedule();
 
             return;
         }
+    }
+}
+
+// a transition that ends on a dialog (opening, closing, sliding in) or inside the one on top
+function settled(e) {
+    const el = e.target;
+    if (el && el.nodeType === 1 && !inToast(el) && (inCurrent(el) || el.closest(DIALOG) || holdsDialog(el))) {
+        schedule();
     }
 }
 
@@ -280,7 +320,7 @@ function start() {
     ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => schedule()) : null;
     sized = [];
     window.addEventListener('resize', schedule);
-    document.addEventListener('transitionend', schedule, true);
+    document.addEventListener('transitionend', settled, true);
 }
 
 function stop() {
@@ -289,9 +329,10 @@ function stop() {
     mo = null;
     ro = null;
     observed = null;
+    current = null;
     sized = [];
     window.removeEventListener('resize', schedule);
-    document.removeEventListener('transitionend', schedule, true);
+    document.removeEventListener('transitionend', settled, true);
 }
 
 // watching the body that is on the page now (wire:navigate swaps it)

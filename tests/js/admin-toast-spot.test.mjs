@@ -17,7 +17,7 @@ const doc = window.document;
 // jsdom lays nothing out: each scene gives its elements their boxes, drawn in the order listed (last on top)
 let painted = [];
 const inside = (r, x, y) => x >= r.left && x < r.right && y >= r.top && y < r.bottom;
-doc.elementsFromPoint = (x, y) => painted.filter(([, r]) => inside(r, x, y)).map(([el]) => el).reverse();
+doc.elementsFromPoint = (x, y) => painted.filter(([el, r]) => el.isConnected && inside(r, x, y)).map(([el]) => el).reverse();
 function lay(el, r, counter, clipped = false) {
     const box = { ...r, x: r.left, y: r.top, width: r.right - r.left, height: r.bottom - r.top };
     el.getBoundingClientRect = () => {
@@ -56,11 +56,13 @@ async function scene({ vw, vh, html, rects, toast, clipped = [] }) {
     lay(box, toast, reads);
     lay(doc.getElementById('tc'), { ...toast, left: toast.right - 80 });
     const timer = { hold: 0, release: 0 };
-    box._x_dataStack = [{ hold: () => timer.hold++, release: () => timer.release++ }];
+    // the box's timer as the toast component keeps it: hold() stops a running one, release() starts it again
+    const d = { timer: 1, hold() { this.timer = null; timer.hold++; }, release() { this.timer = 1; timer.release++; } };
+    box._x_dataStack = [d];
     watch(root);
     await frame();
 
-    return { root, timer, reads, spot: () => root.getAttribute('data-spot'), done: async () => { unwatch(root); await frame(); } };
+    return { root, timer, reads, d, spot: () => root.getAttribute('data-spot'), done: async () => { unwatch(root); await frame(); } };
 }
 
 // a phone (390 × 844): the toast at its usual spot, 16px from the bottom, 87px tall, 12px from each side
@@ -252,5 +254,129 @@ test('a change elsewhere on the page (a progress bar) while a dialog is open doe
         await frame();
     }
     assert.equal(s.reads.n, before);
+    await s.done();
+});
+
+// a bottom sheet question at z 90 (its «Ở lại» under the toast's usual spot on a phone), added to the page
+function addQuestion(top = 560) {
+    const q = doc.createElement('div');
+    q.innerHTML = '<div id="qw" style="position:fixed;z-index:90"><div id="q" role="alertdialog" aria-modal="true"><button id="stay">Ở lại</button></div></div>';
+    doc.body.appendChild(q);
+    lay(doc.getElementById('q'), R(top, 844, 0, 390));
+    lay(doc.getElementById('stay'), R(792, 832, 16, 374));
+
+    return q;
+}
+
+test('a dialog that holds the toast under it, then closes: back at the usual spot, its timer started again once', async () => {
+    const s = await scene({ ...phone, html: '', rects: {} });
+    const q = addQuestion(68);
+    await frame();
+    assert.equal(s.spot(), 'under');
+    assert.equal(s.root.style.zIndex, '89');
+    assert.deepEqual(s.timer, { hold: 1, release: 0 });
+    q.remove();
+    await frame();
+    assert.equal(s.spot(), 'def');
+    assert.equal(s.root.style.zIndex, '');
+    assert.deepEqual(s.timer, { hold: 1, release: 1 });
+    await s.done();
+});
+
+test('a toast the pointer holds when a dialog sends it under: closing the dialog does not start its timer', async () => {
+    const s = await scene({ ...phone, html: '', rects: {} });
+    s.d.timer = null; // mouseenter held it
+    const q = addQuestion(68);
+    await frame();
+    assert.equal(s.spot(), 'under');
+    q.remove();
+    await frame();
+    assert.deepEqual(s.timer, { hold: 0, release: 0 });
+    await s.done();
+});
+
+test('a question over a drawer: the question on top decides, and the toast stands above its sheet', async () => {
+    const at = drawer(724);
+    const s = await scene({ ...at, html: at.html, rects: at.rects });
+    assert.equal(s.spot(), 'up'); // above the drawer's footer
+    addQuestion(560);
+    await frame();
+    assert.equal(s.spot(), 'up');
+    assert.equal(s.root.style.getPropertyValue('--toast-over'), `${844 - 560 + 8}px`);
+    await s.done();
+});
+
+test('a drawer that had the toast under another dialog: once that closes the toast stays in sight, its timer running', async () => {
+    const at = drawer(130, 250);
+    const s = await scene({ ...at, html: at.html, rects: at.rects });
+    assert.equal(s.spot(), 'keep');
+    const q = doc.createElement('div');
+    // with the keyboard up the question's card fills the screen: an opaque card is measured whole
+    q.innerHTML = '<div id="qw" style="position:fixed;z-index:90"><div id="q" role="alertdialog" aria-modal="true" style="background:#fff"><button id="ok">Xóa</button></div></div>';
+    doc.body.appendChild(q);
+    lay(doc.getElementById('q'), R(0, 250, 0, 390));
+    lay(doc.getElementById('ok'), R(190, 234, 16, 374));
+    await frame();
+    assert.equal(s.spot(), 'under');
+    q.remove();
+    await frame();
+    assert.equal(s.spot(), 'keep');
+    assert.deepEqual(s.timer, { hold: 1, release: 1 });
+    await s.done();
+});
+
+test('a drawer whose field being typed in sits just above the footer: the toast does not lift onto it', async () => {
+    const at = drawer(724);
+    at.rects.name = R(620, 664, 20, 370);
+    const s = await scene({ ...at, html: at.html, rects: at.rects });
+    assert.equal(s.spot(), 'up');
+    doc.getElementById('name').focus();
+    doc.getElementById('foot').setAttribute('class', 'focus-in'); // any change inside the drawer re-places
+    await frame();
+    assert.equal(s.spot(), 'keep');
+    await s.done();
+});
+
+test('a side panel on a computer: the toast moves into the free side, its width and centre set inline', async () => {
+    const s = await scene({
+        ...wide,
+        html: '<div id="p" role="dialog" aria-modal="true" style="position:fixed;z-index:60"><button id="f">Tên</button></div>',
+        rects: { p: R(0, 900, 886, 1366), f: R(820, 864, 906, 1346) },
+    });
+    // the toast at 403–963 reaches the panel's field at 906–963
+    assert.equal(s.spot(), 'side');
+    assert.equal(s.root.style.left, '443px');
+    assert.equal(s.root.style.width, '560px');
+    await s.done();
+});
+
+test('a change inside the open dialog (a morph adds a button under the toast): the toast moves', async () => {
+    const s = await scene({
+        ...phone,
+        html: '<div id="mp" role="dialog" aria-modal="true" style="position:fixed;z-index:90"><div id="card"><div id="foot"></div></div></div>',
+        rects: { mp: R(0, 844, 0, 390), card: R(92, 840, 16, 374), foot: R(740, 840, 16, 374) },
+    });
+    assert.equal(s.spot(), 'def');
+    const b = doc.createElement('button');
+    b.textContent = 'Xóa hẳn';
+    lay(b, R(780, 824, 30, 360));
+    doc.getElementById('foot').appendChild(b);
+    await frame();
+    assert.equal(s.spot(), 'under');
+    await s.done();
+});
+
+test('leaving the page lets go of its body; once the new page is in, a dialog there moves the toast again', async () => {
+    const s = await scene({ ...phone, html: '', rects: {} });
+    doc.dispatchEvent(new window.Event('livewire:navigating'));
+    const q = addQuestion(560);
+    await frame();
+    assert.equal(s.spot(), 'def'); // not watching while the page is being left
+    doc.dispatchEvent(new window.Event('livewire:navigated'));
+    await frame();
+    assert.equal(s.spot(), 'up');
+    q.remove();
+    await frame();
+    assert.equal(s.spot(), 'def');
     await s.done();
 });
