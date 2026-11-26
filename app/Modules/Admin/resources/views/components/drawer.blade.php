@@ -23,7 +23,8 @@
     // $busy (optional, a fixed method name too): while the host's call to it runs, the panel is aria-busy, ✕ is aria-disabled
     // and nothing closes the panel (an irreversible step must not be left half-seen).
     // The panel counts as an open [data-bs-modal] (it is on the page only while open), so a dialog closed over it
-    // leaves the page behind locked.
+    // leaves the page behind locked. It is a working panel for the toast (data-toast-keep): a message that finds no
+    // room beside or above it stays in sight over it rather than going under it (resources/js/admin-toast-spot.js).
     //
     // A screen that keeps its state in the browser passes `state` (an Alpine expression: the panel is
     // drawn while it is set) and `close` as the Alpine call that asks to close it (the screen may
@@ -55,7 +56,7 @@
 @if ($alpine)
 <template x-if="{{ $state }}">
 @endif
-<div data-bs-modal x-data="{
+<div data-bs-modal data-toast-keep x-data="{
          open: true,
          back: @js($returnTo),
          opener: null,

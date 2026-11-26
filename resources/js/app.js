@@ -36,6 +36,9 @@ import './admin-list-state.js';
 // Where the focus goes back to after a row's ⋮ pick or status change (window.bsListFocus).
 import './admin-list-focus.js';
 
+// Where a toast stands while a dialog is open, so it never covers the dialog's buttons (window.bsToastSpot).
+import './admin-toast-spot.js';
+
 // The "Nút liên hệ nổi" screen (window.bsFloatingContact): a channel's own icon picture, uploaded to the
 // media library, and the preview frame's reopening of the dial or the "Thêm" sheet.
 import './admin-floating-contact.js';

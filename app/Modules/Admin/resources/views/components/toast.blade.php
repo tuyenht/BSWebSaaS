@@ -29,19 +29,23 @@
     // `action` (state only) names the Alpine method behind one more button, shown when the message
     // carries its label as `act` ("Thử lại", "Tải lại", "Mở …"); a message with one stays 10 seconds.
     // Without `state`, `action` names the host's public method and `actionLabel` its words, shown when set.
+    // While a dialog is open the toast never covers it (resources/js/admin-toast-spot.js): it stands above
+    // the dialog (--toast-over), beside it, or, with no room, under its dimmed layer with its timer held.
     $serverAct = $state === null && $action !== null && $actionLabel !== null && $actionLabel !== '';
     $icon = ['error' => 'ri-error-warning', 'info' => 'ri-information'][$tone] ?? 'ri-check';
     $wait = $undo || $serverAct ? 10000 : 6000;
     $call = $dismiss.'('.($seq !== null ? (int) $seq : '').')';
-    $bottom = $raised ? 'bottom-[max(5.5rem,calc(var(--bulk-bar-h,0px)+0.5rem),env(safe-area-inset-bottom))]' : 'bottom-[max(1rem,calc(var(--sb-h,0px)+0.5rem),env(safe-area-inset-bottom))]';
+    $bottom = $raised ? 'bottom-[max(5.5rem,calc(var(--bulk-bar-h,0px)+0.5rem),env(safe-area-inset-bottom),var(--toast-over,0px))]' : 'bottom-[max(1rem,calc(var(--sb-h,0px)+0.5rem),env(safe-area-inset-bottom),var(--toast-over,0px))]';
+    // each message box tells the placement it is on the screen, and when it leaves
+    $spot = 'spot: null, place() { this.spot = this.$el.closest(\'[data-toast-spot]\'); window.bsToastSpot?.watch(this.spot) }, unplace() { window.bsToastSpot?.unwatch(this.spot) }';
     $box = 'pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md bg-text-strong px-4 py-3 text-body text-surface shadow-lg';
     $btn = 'hit-area inline-flex min-h-control items-center whitespace-nowrap rounded border border-current px-3 font-semibold any-pointer-coarse:min-h-hit';
 @endphp
-<div role="status" aria-live="polite"
+<div role="status" aria-live="polite" data-toast-spot
      class="pointer-events-none fixed {{ $bottom }} left-1/2 z-95 w-[min(35rem,calc(100vw-1.5rem))] -translate-x-1/2">
     @if ($state !== null)
         <template x-for="s in (({{ $state }}) && ({{ $state }}).text ? [{{ $state }}] : [])" :key="s.seq">
-            <div x-data="{ timer: null, end: 0, left: 0, arm(ms) { this.end = Date.now() + ms; this.timer = setTimeout(() => {{ $dismiss }}(s.seq), ms) }, hold() { if (this.timer === null) { return } clearTimeout(this.timer); this.timer = null; this.left = Math.max(0, this.end - Date.now()) }, release() { if (this.timer === null && s.tone !== 'error') { this.arm(Math.max(this.left, 3000)) } }, init() { if (s.tone !== 'error') { this.left = s.undo || s.act ? 10000 : 6000; this.arm(this.left); } }, destroy() { clearTimeout(this.timer); } }"
+            <div x-data="{ timer: null, end: 0, left: 0, arm(ms) { this.end = Date.now() + ms; this.timer = setTimeout(() => {{ $dismiss }}(s.seq), ms) }, hold() { if (this.timer === null) { return } clearTimeout(this.timer); this.timer = null; this.left = Math.max(0, this.end - Date.now()) }, release() { if (this.timer === null && s.tone !== 'error') { this.arm(Math.max(this.left, 3000)) } }, init() { this.place(); if (s.tone !== 'error') { this.left = s.undo || s.act ? 10000 : 6000; this.arm(this.left); } }, destroy() { clearTimeout(this.timer); this.unplace(); }, {{ $spot }} }"
                  x-on:mouseenter="hold()" x-on:mouseleave="release()" x-on:focusin="hold()" x-on:focusout="release()"
                  x-bind:data-tone="s.tone" class="{{ $box }}">
                 <span x-show="s.tone === 'error'"><x-bs-admin::icon name="ri-error-warning" class="size-5 shrink-0" /></span>
@@ -60,8 +64,10 @@
     @elseif ($message !== '')
         <div wire:key="toast-{{ md5($tone.$message.($undo ?? '').'|'.($serverAct ? $action : '').'|'.($seq ?? '')) }}"
              @if ($tone !== 'error')
-                 x-data="{ timer: null, end: 0, left: {{ $wait }}, arm(ms) { this.end = Date.now() + ms; this.timer = setTimeout(() => this.$wire.{{ $call }}, ms) }, hold() { if (this.timer === null) { return } clearTimeout(this.timer); this.timer = null; this.left = Math.max(0, this.end - Date.now()) }, release() { if (this.timer === null) { this.arm(Math.max(this.left, 3000)) } }, init() { this.arm({{ $wait }}) }, destroy() { clearTimeout(this.timer) } }"
+                 x-data="{ timer: null, end: 0, left: {{ $wait }}, arm(ms) { this.end = Date.now() + ms; this.timer = setTimeout(() => this.$wire.{{ $call }}, ms) }, hold() { if (this.timer === null) { return } clearTimeout(this.timer); this.timer = null; this.left = Math.max(0, this.end - Date.now()) }, release() { if (this.timer === null) { this.arm(Math.max(this.left, 3000)) } }, init() { this.place(); this.arm({{ $wait }}) }, destroy() { clearTimeout(this.timer); this.unplace() }, {{ $spot }} }"
                  x-on:mouseenter="hold()" x-on:mouseleave="release()" x-on:focusin="hold()" x-on:focusout="release()"
+             @else
+                 x-data="{ init() { this.place() }, destroy() { this.unplace() }, {{ $spot }} }"
              @endif
              data-tone="{{ $tone }}"
              class="{{ $box }}">
