@@ -138,6 +138,73 @@ final class EntryCover
         return $coverMediaId !== null && $coverMediaId !== '';
     }
 
+    /**
+     * The picture a stored pair names, as one comparable value: '#<id>' with cover_media_id set (the
+     * id decides alone), else the meta's value ('' for none). No query.
+     */
+    public static function identity(mixed $coverMediaId, mixed $meta): string
+    {
+        return self::named($coverMediaId) ? '#'.(is_scalar($coverMediaId) ? (string) $coverMediaId : '?') : self::metaValue($meta);
+    }
+
+    /**
+     * Whether two stored pairs name the same picture: the same identity, or one names by id the file
+     * whose storage key the other still holds in meta (a cover moved from its address to its row).
+     * One read on the media primary key, only in that mixed case (the Trash included: the same file).
+     */
+    public static function same(mixed $idA, mixed $metaA, mixed $idB, mixed $metaB): bool
+    {
+        $a = self::identity($idA, $metaA);
+        $b = self::identity($idB, $metaB);
+        if ($a === $b) {
+            return true;
+        }
+        if (self::named($idA) === self::named($idB)) {
+            return false;
+        }
+        [$id, $key] = self::named($idA) ? [MediaRefs::id($idA), $b] : [MediaRefs::id($idB), $a];
+        if ($id === null || ! MediaRefs::looksLikeKey($key)) {
+            return false;
+        }
+
+        return Media::withTrashed()->whereKey($id)->value('storage_key') === $key;
+    }
+
+    /**
+     * The shape a writer stores while covers move from an address to a row: with cover_media_id set,
+     * meta.image_url is removed (the id decides alone) and the id is kept only while it names a file of
+     * this website (the Trash included: the same file, which a restore from the Trash brings back), else
+     * the entry gets no cover; with none, an old key that names a picture of this website outside the
+     * Trash becomes that file's id and leaves the meta. A glyph name, an outside address or a key with
+     * no live file stays in the meta as it is. One read on the media primary key or on
+     * (site_id, storage_key), none for a glyph or an address; FOR KEY SHARE when $lock, so a purge of
+     * the file waits for the caller's transaction (and then finds the entry through its `cover` usage row).
+     *
+     * @param  array<array-key, mixed>  $meta
+     * @return array{0: int|null, 1: array<array-key, mixed>}
+     */
+    public static function stored(mixed $coverMediaId, array $meta, bool $lock = false): array
+    {
+        if (self::named($coverMediaId)) {
+            unset($meta['image_url']);
+            $id = MediaRefs::id($coverMediaId);
+            $found = $id === null ? null : Media::withTrashed()->whereKey($id)->when($lock, fn (Builder $query) => $query->lock('for key share'))->value('id');
+
+            return [MediaRefs::id($found), $meta];
+        }
+        $key = self::metaValue($meta);
+        if (! MediaRefs::looksLikeKey($key)) {
+            return [null, $meta];
+        }
+        $id = MediaRefs::id(Media::query()->where('storage_key', $key)->when($lock, fn (Builder $query) => $query->lock('for key share'))->value('id'));
+        if ($id === null) {
+            return [null, $meta];
+        }
+        unset($meta['image_url']);
+
+        return [$id, $meta];
+    }
+
     /** The live row's key, '' for a cover id that names no live file. */
     private static function live(?Media $row): string
     {

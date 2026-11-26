@@ -16,6 +16,7 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\EnsureMediaFromKey;
@@ -538,8 +539,10 @@ final readonly class SeedMeasurementSite
             return;
         }
 
+        [$coverId, $meta] = EntryCover::stored(null, ['image_url' => $image], lock: true);
         $entry = Entry::query()->create([
-            'type' => 'post', 'author_id' => $this->owner->id(), 'status' => 'published', 'published_at' => $publishedAt, 'meta' => ['image_url' => $image],
+            'type' => 'post', 'author_id' => $this->owner->id(), 'status' => 'published', 'published_at' => $publishedAt,
+            'cover_media_id' => $coverId, 'meta' => $meta,
         ]);
         $entry->translations()->create([
             'locale' => $locale, 'title' => $title, 'slug' => $slug, 'status' => 'published', 'excerpt' => $excerpt,

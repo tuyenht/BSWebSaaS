@@ -236,7 +236,27 @@
                  xNoFit: false,
                  seen: '',
                  ro: null,
-                 destroy() { this.ro?.disconnect(); },
+                 {{-- A row tick answers on the spot and several quick ticks go to the server as one request: the box,
+                      the row tint and $wire.selected change here; the server then draws the bulk bar for the whole pick. An answer that left
+                      before a later tick must not undo it on screen, so every answer is followed by repick(). --}}
+                 pickT: null,
+                 pick(box, id) {
+                     const on = box.getAttribute('aria-checked') !== 'true';
+                     this.tick(box, on);
+                     this.$wire.selected = [...this.$wire.selected.filter((u) => u !== id), ...(on ? [id] : [])];
+                     clearTimeout(this.pickT);
+                     this.pickT = setTimeout(() => this.$wire.$refresh(), 250);
+                 },
+                 tick(box, on) {
+                     if ((box.getAttribute('aria-checked') === 'true') === on) { return; }
+                     const row = box.closest('.list-r'), mark = box.querySelector('.list-box');
+                     box.setAttribute('aria-checked', on ? 'true' : 'false');
+                     on ? row?.setAttribute('data-sel', '1') : row?.removeAttribute('data-sel');
+                     mark?.querySelector('.list-box-i')?.remove();
+                     if (on && mark && this.$refs.tick) { mark.append(this.$refs.tick.content.cloneNode(true)); }
+                 },
+                 repick() { this.$refs.rows?.querySelectorAll('.list-r[data-rk]').forEach((row) => { const box = row.querySelector('.list-ck'); if (box) { this.tick(box, this.$wire.selected.includes(row.dataset.rk)); } }); },
+                 destroy() { this.ro?.disconnect(); clearTimeout(this.pickT); },
                  size(force = false) { const w = this.$refs.rows?.clientWidth ?? 0, rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16, boost = window.bsListFold.boostPx(), key = w + ':' + boost; if (! force && key === this.seen) { return; } this.seen = key; this.mode = w < 37.5 * rem ? 'card' : (w < 56.25 * rem ? 'line' : 'cols'); this.$nextTick(() => this.foldCols(boost)); },
                  {{-- a side column shows whenever the name text keeps the shared minimum beside it: as the table narrows or the text grows, the category and then the author fold into the line under the name. One pass after the chosen columns are drawn (next tick): clear the fold, read every width, write the fold once. The name text's room is the name cell less what stands beside the text in it (padding, the cover, the indent, the ✎), read on the first row. --}}
                  {{-- the rows stay hidden (visibility, so they can still be measured) from the first paint until this first pass has folded them: no flash of columns that then fold --}}
@@ -295,7 +315,7 @@
                  get vStep() { return this.$wire.cols.includes('step'); },
                  get vViews() { return this.$wire.cols.includes('views'); },
              }"
-             x-init="size(true); ro = new ResizeObserver(() => size()); ro.observe($el); $watch('$wire.cols', () => $nextTick(() => size(true))); $wire.$hook('commit', ({ succeed }) => succeed(() => $nextTick(() => size(true))))">
+             x-init="size(true); ro = new ResizeObserver(() => size()); ro.observe($el); $watch('$wire.cols', () => $nextTick(() => size(true))); $wire.$hook('commit', ({ succeed }) => succeed(() => $nextTick(() => { repick(); size(true); })))">
             <div class="flex flex-col gap-3 pb-3 min-[600px]:px-4 min-[600px]:pt-4 min-[900px]:pt-3 @min-[56.25rem]/lt:flex-row @min-[56.25rem]/lt:flex-wrap @min-[56.25rem]/lt:items-center">
                 {{-- From 900 the search and the tools share a row: the search keeps room for its whole short hint
                      ("Ví dụ: bảng giá", sized in its own text size, so it grows with the member's text size) and takes
@@ -384,6 +404,7 @@
                     @endif
                 </div>
             @endif
+            <template x-ref="tick"><x-bs-admin::icon name="ri-check" class="list-box-i" /></template>
             <div x-ref="rows" data-fold-wait class="min-w-0 @max-[56.25rem]/lt:order-3 max-[599.98px]:rounded-md max-[599.98px]:border max-[599.98px]:border-border max-[599.98px]:bg-surface max-[599.98px]:[&_.list-g]:border-t-0">
             <x-bs-admin::list :label="__('entries.list_label', ['label' => $sectionLabel])" :kind="$isPost ? 'posts' : null" :data-page-tree="$treeMode ? '1' : null"
                 busy="tab,setTab,search,sortKey,sortDir,sortBy,setSort,resetSort,page,gotoPage,turnPage,perPage,setPerPage,cursor,catF,langF,creatorF,templateF,transF,when,from,to,clearWhen,toggleFilterValue,resetFilterGroup,clearAllFilters,$refresh"
@@ -481,7 +502,7 @@
                             <span class="list-g-tree" aria-hidden="true">@foreach ($rowGuides[$entry->ulid] as $g)<span class="list-gl" data-d="{{ $g['d'] }}" data-k="{{ $g['k'] }}"></span>@endforeach</span>
                         @endif
                         <x-bs-admin::list.cell col="chk">
-                            <x-bs-admin::list.check data-guide="row-check" :checked="$isSelected" :label="__('entries.select_named', ['title' => $title])" wire:click="toggleSelectAll(['{{ $entry->ulid }}'])" />
+                            <x-bs-admin::list.check data-guide="row-check" :checked="$isSelected" :label="__('entries.select_named', ['title' => $title])" x-on:click="pick($el, '{{ $entry->ulid }}')" />
                         </x-bs-admin::list.cell>
 
                         <x-bs-admin::list.cell col="main">
@@ -670,7 +691,7 @@
                                     <div x-data="{ open: false, up: false, close(back) { this.open = false; if (back) { this.$refs.pill.focus() } } }" x-on:click.outside="open = false" x-on:keydown.escape="if (open) { $event.stopPropagation(); close(true) }" class="relative inline-block">
                                         <x-bs-admin::status-pill button x-ref="pill" :status="$status" aria-haspopup="menu" x-bind:aria-expanded="open.toString()" title="{{ __('entries.status_menu_label') }}"
                                             x-on:click="up = window.innerHeight - $el.getBoundingClientRect().bottom < 280; open = ! open; open && $nextTick(() => $focus.within($refs.menu).first())">{{ __('entries.status_'.$status) }}<span class="sr-only"> · {{ __('entries.status_menu_label') }}</span></x-bs-admin::status-pill>
-                                        <x-bs-admin::list.menu class="list-stm absolute left-0 z-30 mt-1 w-64 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-surface p-1 shadow-lg" x-bind:class="up && 'bottom-full mb-1 mt-0'" :label="__('entries.status_menu_label')">
+                                        <x-bs-admin::list.menu class="list-stm absolute left-0 z-30 mt-1 w-64 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-surface p-1 shadow-lg" x-bind:class="up && 'bottom-full mb-1 mt-0'" :label="__('entries.status_menu_label')" on-open>
                                             {{-- the menu's own name says the same, so a screen reader hears it once --}}
                                             <div class="list-lmh" aria-hidden="true">{{ __('entries.status_menu_label') }}</div>
                                             @foreach ($stOpts as $opt)

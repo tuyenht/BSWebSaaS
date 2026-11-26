@@ -15,8 +15,9 @@ use DomainException;
  * itself, or another area follows this one: one hop only) · draft_stale (the menu changed since the
  * screen read it: someone else saved, restored or added an item) · option_invalid (a display option
  * of an item, e.g. an icon not in the website's set or a badge with a bad end date) · menu_full (the
- * menu already holds MenuRules::ITEMS_MAX live items) · support_session (support staff signed in
- * for a member only look: the menus screen refuses every change).
+ * menu already holds MenuRules::ITEMS_MAX live items) · block_invalid (the shared block a large
+ * panel should show is not one of this site's: gone, or another site's) · support_session (support
+ * staff signed in for a member only look: the menus screen refuses every change).
  */
 final class MenuChangeRejectedException extends DomainException
 {

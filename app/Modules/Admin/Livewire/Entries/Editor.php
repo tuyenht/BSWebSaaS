@@ -57,6 +57,7 @@ use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\DisplayDate;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Support\EntryCategoryWriter;
+use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Cms\Support\EntryTags;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Cms\Support\HomePages;
@@ -68,6 +69,7 @@ use App\Modules\Cms\Validation\ExpiryTime;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Media\Support\MediaRefs;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\PlainText;
 use App\Modules\Shared\Support\Slugger;
@@ -147,6 +149,9 @@ final class Editor extends Component
     /** The states a translation row may hold (entry_translations_status_check). */
     private const array TRANSLATION_STATES = ['draft', 'pending', 'published', 'archived'];
 
+    /** A ulid as the site writes one (Crockford base 32, any case): a cover named otherwise is never looked up. */
+    private const string ULID_SHAPE = '/\A[0-9A-HJKMNP-TV-Z]{26}\z/i';
+
     /**
      * Cap on the "Giao cho" list. It rides inside the Livewire snapshot of every governed
      * render, so an unbounded team would grow the payload without bound (ADR-18: paginate
@@ -159,7 +164,7 @@ final class Editor extends Component
      * The fields the save state and the leave dialog count against the saved entry. The block list
      * is counted apart (blocksChanged): the browser cannot write it the way the server does.
      */
-    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryIds', 'coverImageKey', 'coverAlt', 'parentUlid', 'pageOrder', 'scheduleAt', 'statusTo', 'templateKey', 'displayDate', 'tags', 'expiresAt', 'jobFacts', 'jobDeadline', 'jobDeadlineAccent', 'jobBadge'];
+    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryIds', 'coverUlid', 'coverAlt', 'parentUlid', 'pageOrder', 'scheduleAt', 'statusTo', 'templateKey', 'displayDate', 'tags', 'expiresAt', 'jobFacts', 'jobDeadline', 'jobDeadlineAccent', 'jobBadge'];
 
     /** Which entry is being edited — server-resolved (mount/persist); never client-set. */
     #[Locked]
@@ -232,12 +237,36 @@ final class Editor extends Component
     public string $addressHost = '';
 
     /**
-     * Featured/OG image — the picked media's storage_key, persisted to entry.meta['image_url']. Locked:
-     * only a pick from this site's library (pickedSingleImage), «Bỏ ảnh», its «Hoàn tác» and the
-     * server's own loads write it, so a key typed into the wire never reaches the save.
+     * Featured/OG image: the ulid of the picked picture of this site's library, stored as the row's id
+     * in entries.cover_media_id (the save resolves it, FOR KEY SHARE, and drops the old
+     * meta.image_url). Locked: only a pick from this site's library (pickedSingleImage), «Bỏ ảnh», its
+     * «Hoàn tác», a copy kept on this device (checked) and the server's own loads write it, so a value
+     * typed into the wire never reaches the save. '' = no picture of the library (none, or a glyph,
+     * an outside address or a file in the Trash, kept as stored while the form leaves the cover alone).
      */
     #[Locked]
+    public string $coverUlid = '';
+
+    /** The cover was changed in this form since it was loaded or saved (a pick, «Bỏ ảnh», «Hoàn tác», a kept copy). */
+    #[Locked]
+    public bool $coverTouched = false;
+
+    /**
+     * Set on every open: a form opened before covers were named by their row has it false and holds
+     * its cover in coverImageKey (a storage key), taken once as its row's ulid (hydrate).
+     */
+    #[Locked]
+    public bool $coverById = false;
+
+    /** The old form's cover (a storage key); only a form opened before covers were named by their row holds one. */
+    #[Locked]
     public string $coverImageKey = '';
+
+    /** The cover's library row read in this request (the open reads it, the card draws it): one read. */
+    private ?Media $coverRow = null;
+
+    /** Nobody else changed the stored cover since this form read it: set by persist(), read by the held save too. */
+    private bool $coverStoredSame = true;
 
     /**
      * «Mô tả ảnh»: this language's words for the featured image (entry_translations.cover_alt), what
@@ -324,7 +353,9 @@ final class Editor extends Component
     /**
      * What «Hoàn tác» on «Đã gỡ ảnh đại diện» puts back: the picture and this language's words for it.
      *
-     * @var array{key: string, alt: string}|null
+     * A message shown before covers were named by their row holds the picture's `key` instead.
+     *
+     * @var array{ulid?: string, key?: string, alt: string}|null
      */
     #[Locked]
     public ?array $coverUndo = null;
@@ -554,6 +585,7 @@ final class Editor extends Component
         $this->locale = $this->resolveLocale(app(SiteLocale::class), $locale ?? request()->query('locale'));
         $this->multiLocale = count(app(SiteLocale::class)->enabled()) > 1;
         $this->postPropsRead = true;
+        $this->coverById = true;
 
         if ($ulid === null) {
             $this->authorize('create', Entry::class);
@@ -608,8 +640,7 @@ final class Editor extends Component
             $this->coverAlt = $translation->cover_alt ?? '';
         }
 
-        $cover = data_get($entry->meta, 'image_url');
-        $this->coverImageKey = is_string($cover) ? $cover : '';
+        $this->loadCover($entry->cover_media_id, $entry->meta);
         if ($this->type === 'post') {
             $this->templateKey = TemplateCatalog::variant($entry->template_override) ?? '';
             $this->displayDate = $this->storedDisplayDate = DisplayDate::of($entry->meta);
@@ -644,7 +675,7 @@ final class Editor extends Component
         // carries when it was last saved.
         $this->savedAt = self::iso($translation?->updated_at);
         // what visitors see, also while the form edits a pending change: the overwrite check compares the website
-        $this->storedPrint = self::printOf($translation, $entry->meta, $liveCategories, $entry->template_override);
+        $this->storedPrint = self::printOf($translation, $this->coverPrint($entry->cover_media_id, $entry->meta), $entry->meta, $liveCategories, $entry->template_override);
         $this->loadedAt = self::iso(CarbonImmutable::now());
         $this->mayPublish = $this->user()->can('publish', $entry);
         $this->frameRights($entry);
@@ -1932,7 +1963,7 @@ final class Editor extends Component
     private function missingPublicFields(): array
     {
         $missing = [];
-        if ($this->coverImageKey === '') {
+        if ($this->coverUlid === '') {
             $missing[] = __('admin.wfb.missing_cover');
         }
         if ($this->prose ? EntryProseBody::isBlank($this->bodyHtml) : $this->blocks === []) {
@@ -1966,11 +1997,12 @@ final class Editor extends Component
     {
         $this->authorizeEditing();
         abort_unless(Gate::allows('media.view'), 403);
-        if ($this->coverRefused() || $this->coverImageKey === '') {
+        if ($this->coverRefused() || $this->coverUlid === '') {
             return;
         }
-        $undo = ['key' => $this->coverImageKey, 'alt' => $this->coverAlt];
-        $this->coverImageKey = '';
+        $undo = ['ulid' => $this->coverUlid, 'alt' => $this->coverAlt];
+        $this->coverUlid = '';
+        $this->coverTouched = true;
         // the words described the picture taken off: a new picture is described afresh
         $this->coverAlt = '';
         $this->sayCover(Cast::string(__('entries.ed.cover_removed')), $undo);
@@ -1986,10 +2018,13 @@ final class Editor extends Component
         $undo = $this->coverUndo;
         $this->coverToast = '';
         $this->coverUndo = null;
-        if ($undo === null || $this->coverRefused() || ! Media::query()->where('storage_key', $undo['key'])->exists()) {
+        // (a message shown before covers were named by their row holds the picture's key)
+        $row = $undo === null || $this->coverRefused() ? null : $this->libraryImage($undo['ulid'] ?? null, $undo['key'] ?? null);
+        if ($row === null) {
             return;
         }
-        $this->coverImageKey = $undo['key'];
+        $this->coverUlid = $row->ulid;
+        $this->coverTouched = true;
         $this->coverAlt = $undo['alt'];
     }
 
@@ -2020,11 +2055,13 @@ final class Editor extends Component
         if ($this->coverRefused() || ! str_starts_with($media->mime, 'image/')) {
             return;
         }
-        if ($media->storage_key !== $this->coverImageKey) {
+        if (strcasecmp($media->ulid, $this->coverUlid) !== 0) {
             // the words described the picture taken off: a new picture is described afresh
             $this->coverAlt = '';
         }
-        $this->coverImageKey = $media->storage_key;
+        $this->coverUlid = $media->ulid;
+        $this->coverRow = $media;
+        $this->coverTouched = true;
         $this->sayCover(Cast::string(__('entries.ed.cover_picked')), null);
     }
 
@@ -2054,7 +2091,7 @@ final class Editor extends Component
     }
 
     /**
-     * @param  array{key: string, alt: string}|null  $undo
+     * @param  array{ulid: string, alt: string}|null  $undo
      */
     private function sayCover(string $message, ?array $undo): void
     {
@@ -2072,34 +2109,171 @@ final class Editor extends Component
      */
     private function coverCard(MediaUrlResolver $urls): ?array
     {
-        if ($this->coverImageKey === '') {
+        $media = $this->coverMedia();
+        if ($media === null) {
             return null;
         }
-        $media = Media::query()->where('storage_key', $this->coverImageKey)->first(['id', 'original_filename', 'width', 'height']);
-        $w = $media?->width;
-        $h = $media?->height;
+        $w = $media->width;
+        $h = $media->height;
         $ratio = is_int($w) && is_int($h) && $w > 0 && $h > 0
             ? (abs($w / $h - 16 / 9) <= 16 / 9 * 0.02 ? 'ok' : 'warn')
             : null;
 
         return [
-            'url' => $urls->url($this->coverImageKey, 640),
-            'name' => is_string($media?->original_filename) && $media->original_filename !== '' ? $media->original_filename : '',
+            'url' => $urls->url($media->storage_key, 640),
+            'name' => is_string($media->original_filename) && $media->original_filename !== '' ? $media->original_filename : '',
             'ratio' => $ratio,
         ];
+    }
+
+    /**
+     * The library row of the form's cover (this site's, outside the Trash), read once per request;
+     * null without one or when it has left the library since.
+     */
+    private function coverMedia(): ?Media
+    {
+        if ($this->coverUlid === '') {
+            return null;
+        }
+        if ($this->coverRow === null || strcasecmp($this->coverRow->ulid, $this->coverUlid) !== 0) {
+            $this->coverRow = MediaRefs::rows([], [$this->coverUlid], [], ['original_filename'])->byUlid($this->coverUlid);
+        }
+
+        return $this->coverRow;
+    }
+
+    /** The storage key of the form's cover, '' without one (the history and the stale question name it by file). */
+    private function coverKey(): string
+    {
+        return $this->coverMedia()->storage_key ?? '';
+    }
+
+    /**
+     * The form takes a stored cover (an entry's or a pending change's shared fields) as EntryCover reads
+     * it: the picture cover_media_id names, else the old key in meta; its library row's ulid, or ''
+     * when it is no picture of the library (none, a glyph, an outside address, a file in the Trash).
+     * One read, only when the cover names a file.
+     */
+    private function loadCover(mixed $coverMediaId, mixed $meta): void
+    {
+        $refs = MediaRefs::rows([$coverMediaId], [], [EntryCover::metaValue($meta)], ['original_filename']);
+        $this->coverRow = $refs->byKey(EntryCover::resolve($coverMediaId, $meta, $refs));
+        $this->coverUlid = $this->coverRow->ulid ?? '';
+        $this->coverTouched = false;
+    }
+
+    /**
+     * A picture of this site's library outside the Trash, named by its ulid (checked for its shape)
+     * or, from a form or message made before covers were named by their row, by its storage key.
+     */
+    private function libraryImage(mixed $ulid, mixed $key = null): ?Media
+    {
+        $query = Media::query()->where('mime', 'like', 'image/%');
+        if (is_string($ulid)) {
+            if (preg_match(self::ULID_SHAPE, $ulid) !== 1) {
+                return null;
+            }
+            $query->where('ulid', strtoupper($ulid));
+        } elseif (is_string($key) && MediaRefs::looksLikeKey($key)) {
+            $query->where('storage_key', $key);
+        } else {
+            return null;
+        }
+
+        return $query->first(['id', 'ulid', 'storage_key', 'original_filename', 'width', 'height']);
+    }
+
+    /**
+     * A form opened before covers were named by their row holds its cover as a storage key
+     * (coverImageKey): taken once, on its first request after, as the row's ulid. It counts as changed
+     * when it is not the key the form read (its stored print), so a save keeps a cover it never touched.
+     */
+    public function hydrate(): void
+    {
+        if ($this->coverById) {
+            return;
+        }
+        $this->coverById = true;
+        $key = $this->coverImageKey;
+        $this->coverImageKey = '';
+        $row = $this->libraryImage(null, $key);
+        $this->coverRow = $row;
+        $this->coverUlid = $row->ulid ?? '';
+        $this->coverTouched = md5($key) !== ($this->storedPrint['cover'] ?? md5(''));
+        if (! $this->coverTouched) {
+            $this->saved['coverUlid'] = $this->coverUlid;
+            unset($this->saved['coverImageKey']);
+        }
+    }
+
+    /**
+     * The cover this save stores over the stored pair ($id, $meta): the picture the form names, by its
+     * id, the old meta.image_url dropped; none (no id, no meta.image_url); or, when the form left the
+     * cover as it read it and nobody else changed it since ($storedSame), the stored pair as it is (a
+     * glyph, an outside address, a file in the Trash), with only an old key of the same picture moved
+     * to its id. The picture is read FOR KEY SHARE in the save's transaction, so a purge of the file
+     * waits for it. Null when the form names a picture that is no longer one of this site's library
+     * (another site's, or gone since): said in a message that stays, the card emptied, nothing written.
+     *
+     * @param  array<string, mixed>  $meta
+     * @return array{0: int|null, 1: array<string, mixed>}|null
+     */
+    private function coverToStore(mixed $id, array $meta, bool $storedSame): ?array
+    {
+        $keep = ! $this->coverTouched && $storedSame;
+        if ($keep && EntryCover::named($id)) {
+            unset($meta['image_url']); // a set id decides alone: no old key is kept beside it
+        }
+        if ($this->coverUlid === '') {
+            if ($keep) {
+                return [MediaRefs::id($id), $meta];
+            }
+            unset($meta['image_url']);
+
+            return [null, $meta];
+        }
+        $row = preg_match(self::ULID_SHAPE, $this->coverUlid) === 1
+            ? Media::query()->where('ulid', strtoupper($this->coverUlid))->where('mime', 'like', 'image/%')->lock('for key share')->first(['id'])
+            : null;
+        if ($row === null) {
+            if ($keep) {
+                return [MediaRefs::id($id), $meta];
+            }
+            $this->coverUlid = '';
+            $this->coverRow = null;
+            $this->dispatch('bs-toast', text: Cast::string(__('entries.ed.cover_gone')), stay: true, close: Cast::string(__('admin.close')));
+
+            return null;
+        }
+        unset($meta['image_url']);
+
+        return [$row->id, $meta];
     }
 
     /**
      * The cover kept on this device put back: in the website's default language only (it is every
      * language's) and only a picture still in this site's library — the kept copy is the browser's word.
      */
-    private function restoreKeptCover(mixed $key): void
+    private function restoreKeptCover(mixed $ulid, mixed $key): void
     {
-        if (! is_string($key) || $key === $this->coverImageKey || $this->locale !== app(SiteLocale::class)->default()) {
+        // a copy kept before covers were named by their row holds the picture's key instead
+        $value = is_string($ulid) ? $ulid : $key;
+        if (! is_string($value) || $this->locale !== app(SiteLocale::class)->default() || ! Gate::allows('media.view')) {
             return;
         }
-        if ($key === '' || Media::query()->where('storage_key', $key)->where('mime', 'like', 'image/%')->exists()) {
-            $this->coverImageKey = $key;
+        if ($value === '') {
+            if ($this->coverUlid !== '') {
+                $this->coverUlid = '';
+                $this->coverTouched = true;
+            }
+
+            return;
+        }
+        $row = $this->libraryImage(is_string($ulid) ? $ulid : null, $key);
+        if ($row !== null && strcasecmp($row->ulid, $this->coverUlid) !== 0) {
+            $this->coverUlid = $row->ulid;
+            $this->coverRow = $row;
+            $this->coverTouched = true;
         }
     }
 
@@ -2221,7 +2395,7 @@ final class Editor extends Component
         $this->saveFailed = false;
         // A language with no saved version yet loads nothing back: start from an empty form.
         $preset = $this->ulid === null ? $this->parentLoaded : null;
-        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'coverAlt', 'templateKey', 'displayDate', 'storedDisplayDate', 'expiresAt', 'expiresLoaded', 'publishedDay', 'formToast', 'formUndo', 'tags', 'tagsLoaded', 'tagDraft', 'jobFacts', 'jobDeadline', 'jobDeadlineAccent', 'jobBadge', 'jobStored', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
+        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverUlid', 'coverTouched', 'coverAlt', 'templateKey', 'displayDate', 'storedDisplayDate', 'expiresAt', 'expiresLoaded', 'publishedDay', 'formToast', 'formUndo', 'tags', 'tagsLoaded', 'tagDraft', 'jobFacts', 'jobDeadline', 'jobDeadlineAccent', 'jobBadge', 'jobStored', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
             'transitionNote', 'assignTo', 'showImagePicker', 'blockImagePickerPath', 'coverToast', 'coverUndo', 'stale', 'overwrite',
             'parentUlid', 'parentLoaded', 'parentName', 'pageHome', 'scheduleAt', 'scheduleLoaded', 'statusTo', 'autoSaved', 'slugFresh', 'slugTouched');
         $this->mount($this->ulid, $this->sectionKey, $this->locale, $preset);
@@ -2291,7 +2465,7 @@ final class Editor extends Component
                 $this->{$field} = $kept[$field];
             }
         }
-        $this->restoreKeptCover($kept['coverImageKey'] ?? null);
+        $this->restoreKeptCover($kept['coverUlid'] ?? null, $kept['coverImageKey'] ?? null);
         // a post's own look and shown day, in the website's default language (they are every language's)
         if ($this->type === 'post' && ! $this->sharedLocked()) {
             $template = $kept['templateKey'] ?? null;
@@ -2335,7 +2509,7 @@ final class Editor extends Component
         // The whole row: the save writes through this same model, so the check costs no extra read.
         $translation = $entry->translations()->where('locale', $this->locale)->first();
 
-        return ['print' => self::printOf($translation, $entry->meta, $this->type === 'post' ? $this->storedCategories($entry) : [], $entry->template_override), 'translation' => $translation];
+        return ['print' => self::printOf($translation, $this->coverPrint($entry->cover_media_id, $entry->meta), $entry->meta, $this->type === 'post' ? $this->storedCategories($entry) : [], $entry->template_override), 'translation' => $translation];
     }
 
     /**
@@ -2345,10 +2519,8 @@ final class Editor extends Component
      * @param  list<int>  $categoryIds  a post's categories, the main one first (none for a page)
      * @return array<string, string>
      */
-    private static function printOf(?EntryTranslation $translation, mixed $meta, array $categoryIds, ?string $template): array
+    private static function printOf(?EntryTranslation $translation, string $cover, mixed $meta, array $categoryIds, ?string $template): array
     {
-        $cover = is_array($meta) ? ($meta['image_url'] ?? null) : null;
-
         return [
             'title' => md5((string) $translation?->title),
             'slug' => md5((string) $translation?->slug),
@@ -2356,7 +2528,8 @@ final class Editor extends Component
             'excerpt' => md5((string) $translation?->excerpt),
             'seo_title' => md5((string) $translation?->seo_title),
             'seo_description' => md5((string) $translation?->seo_description),
-            'cover' => md5(is_string($cover) ? $cover : ''),
+            // the file's key (coverPrint): a form opened before covers had rows printed the key alone
+            'cover' => md5($cover),
             'category' => implode(',', $categoryIds),
             // last: a form opened before the field existed holds a print without it (see save())
             'cover_alt' => md5((string) $translation?->cover_alt),
@@ -2367,6 +2540,26 @@ final class Editor extends Component
             // keys in a fixed order like the body's (the database hands the language maps back sorted)
             'job' => md5((string) json_encode(self::keysSorted(is_array($meta) ? [$meta['facts'] ?? null, $meta['badge'] ?? null] : [null, null]))),
         ];
+    }
+
+    /**
+     * The stored cover as the overwrite check compares it: the storage key of the file the pair names
+     * (by its id, the Trash included, else the old key in meta), so the same picture moved from its key
+     * to its row in another tab is no change; '#<id>' for an id that names no file of this website.
+     * The form's own cover row answers when it is that file, else one read on the media primary key.
+     */
+    private function coverPrint(mixed $coverMediaId, mixed $meta): string
+    {
+        $id = MediaRefs::id($coverMediaId);
+        if (! EntryCover::named($coverMediaId) || $id === null) {
+            return EntryCover::identity($coverMediaId, $meta);
+        }
+        if ($this->coverRow !== null && MediaRefs::id($this->coverRow->id) === $id) {
+            return $this->coverRow->storage_key;
+        }
+        $key = Media::withTrashed()->whereKey($id)->value('storage_key');
+
+        return is_string($key) ? $key : '#'.$id;
     }
 
     private static function keysSorted(mixed $value): mixed
@@ -2437,7 +2630,8 @@ final class Editor extends Component
         $prose = app(EntryProseBody::class);
         $storedBlocks = $this->normalizeBlocks($translation instanceof EntryTranslation ? ($translation->body['blocks'] ?? []) : []);
         $storedBody = $prose->read($storedBlocks);
-        $cover = data_get($entry->meta, 'image_url');
+        // the stored cover as EntryCover reads it (its row, else the old key); read only when it names a file
+        $cover = EntryCover::resolve($entry->cover_media_id, $entry->meta, MediaRefs::rows([$entry->cover_media_id]));
         $categories = [];
         $theirIds = array_values(array_filter(array_map(self::idOrNull(...), explode(',', $print['category'] ?? ''))));
         if (($print['category'] ?? '') !== ($this->storedPrint['category'] ?? '')) {
@@ -2464,7 +2658,7 @@ final class Editor extends Component
                 $storedBody !== null ? EntryProseBody::preview($storedBody['html'], 160) : __('entries.ed.stale_blocks', ['n' => count($storedBlocks)])],
             'seo_title' => [__('admin.seo.title_label'), $this->seoTitle, (string) $translation?->seo_title],
             'seo_description' => [__('admin.seo.description_label'), $this->seoDescription, (string) $translation?->seo_description],
-            'cover' => [__('entries.ed.card_cover'), $this->coverName($this->coverImageKey), $this->coverName(is_string($cover) ? $cover : '')],
+            'cover' => [__('entries.ed.card_cover'), $this->coverName($this->coverKey()), $this->coverName($cover)],
             'cover_alt' => [__('entries.ed.cover_alt_label'), $this->coverAlt, (string) $translation?->cover_alt],
             'category' => [__('entries.ed.card_category'), $categoryNames($this->categoryIds), $categoryNames($theirIds)],
             'template' => [__('entries.rev.f_tpl'), $this->templateName($this->formTemplate($entry->template_override)), $this->templateName($entry->template_override)],
@@ -3503,11 +3697,23 @@ final class Editor extends Component
         $filing = $this->categoryIds;
         $orderRefused = false;
 
+        $cover = null;
+        $this->coverStoredSame = true;
         if ($this->ulid === null) {
             $this->authorize('create', Entry::class);
             // Opening the editor needs only `create`; what is saved must lie inside the member's
             // category limits (a page has no category, so a limited member writes no page).
             $this->authorize('fileUnder', [Entry::class, $this->type, $this->type === 'post' ? $this->categoryId : null]);
+            // the picture first: one gone from the library since the pick makes no entry
+            $cover = $this->coverToStore(null, [], true);
+            if ($cover === null) {
+                if ($filled) {
+                    $this->slug = '';
+                }
+                $this->saveFailed = true;
+
+                return null;
+            }
             $fields = [
                 'type' => $this->type,
                 'status' => 'draft',
@@ -3604,11 +3810,24 @@ final class Editor extends Component
 
                 return null;
             }
+            // a cover this form left alone keeps what is stored, unless another save changed it and this one is kept over it
+            $this->coverStoredSame = ($stored['print']['cover'] ?? null) === ($this->storedPrint['cover'] ?? null);
             if ($held) {
                 return $this->persistHeld($entry, $stored['translation'], $proseBody ?? $layoutBody ?? $this->blocks, $reparent, $filled);
             }
             // not held back: no change is open (one put on the website in another tab is gone from the bar too)
             $this->changeSeen = null;
+            // the picture before anything is written (the page's move below included): one gone from the
+            // library since the pick writes nothing
+            $cover = $this->coverToStore($entry->cover_media_id, Cast::arr($entry->meta), $this->coverStoredSame);
+            if ($cover === null) {
+                if ($filled) {
+                    $this->slug = '';
+                }
+                $this->saveFailed = true;
+
+                return null;
+            }
             // the move before anything is written, in one MovePage call (a new «Trang cha» at the place typed
             // in «Thứ tự», or the typed place alone): a refused one leaves the page as it was and the form as typed
             $placed = $reparent ? $this->moveToParent($entry, $this->typedPageIndex()) : ($this->type !== 'page' || $this->applyPageOrder($entry, false));
@@ -3635,16 +3854,12 @@ final class Editor extends Component
         $this->overwrite = null;
         $this->stale = null;
 
-        // Featured/OG image: store the picked media's storage_key in entry.meta['image_url'] (the
-        // storefront resolves it to an absolute og:image + card thumbnail). Merge so any other meta
-        // key survives; an empty pick clears it.
-        $meta = $entry->meta;
-        $coverBefore = $meta['image_url'] ?? null;
-        if ($this->coverImageKey !== '') {
-            $meta['image_url'] = $this->coverImageKey;
-        } else {
-            unset($meta['image_url']);
-        }
+        // Featured/OG image: the picked picture's row in cover_media_id (the storefront resolves it to
+        // an absolute og:image + card thumbnail), the old key in meta.image_url dropped in the same save
+        // (coverToStore). Any other meta key survives.
+        $coverBefore = [$entry->cover_media_id, $entry->meta];
+        [$coverId, $meta] = $cover;
+        $entry->cover_media_id = $coverId;
         // «Thuộc tính bài»: every language's, so set in the website's default language only
         if ($this->type === 'post' && ! $this->sharedLocked() && $this->postPropsRead) {
             $meta = DisplayDate::into($meta, $this->displayDate);
@@ -3654,8 +3869,10 @@ final class Editor extends Component
         /** @var array<string, mixed> $meta */
         $meta = $this->jobMeta(Cast::arr($meta));
         $entry->meta = $meta;
-        $sharedChanged = $entry->isDirty(['meta', 'template_override']);
-        $coverChanged = ($meta['image_url'] ?? null) !== $coverBefore;
+        $sharedChanged = $entry->isDirty(['meta', 'template_override', 'cover_media_id']);
+        // the same picture moved from its key to its row is no new picture: the other languages' words stay
+        $coverChanged = ! EntryCover::same($coverBefore[0], $coverBefore[1], $coverId, $meta);
+        $hasCover = $coverId !== null || EntryCover::metaValue($meta) !== '';
         $entry->save();
 
         $translation = $current ?? $entry->translations()->firstOrNew(['locale' => $this->locale]);
@@ -3671,7 +3888,7 @@ final class Editor extends Component
             'excerpt' => $this->excerpt !== '' ? $this->excerpt : null,
             'seo_title' => $this->seoTitle !== '' ? $this->seoTitle : null,
             'seo_description' => $this->seoDescription !== '' ? $this->seoDescription : null,
-            'cover_alt' => $this->coverImageKey !== '' && $this->coverAlt !== '' ? $this->coverAlt : null,
+            'cover_alt' => $hasCover && $this->coverAlt !== '' ? $this->coverAlt : null,
             'status' => $this->translationStatus($entry, $translation),
         ])->save();
         if ($coverChanged) {
@@ -3721,7 +3938,8 @@ final class Editor extends Component
         $this->loadedAt = $this->savedAt;
         // What this save stored is what the next one compares against (the written model holds it).
         // The main category just written is the form's own value, so it needs no second read.
-        $this->storedPrint = self::printOf($translation, $entry->meta, $this->type === 'post' ? $this->categoryIds : [], $entry->template_override);
+        $this->storedPrint = self::printOf($translation, $this->coverPrint($entry->cover_media_id, $entry->meta), $entry->meta, $this->type === 'post' ? $this->categoryIds : [], $entry->template_override);
+        $this->coverTouched = false;
         $this->jobSaved($entry->meta);
         $this->mayPublish = $this->user()->can('publish', $entry);
         if ($wasNew) {

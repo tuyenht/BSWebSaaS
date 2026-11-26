@@ -57,6 +57,18 @@ test('only what changed is sent for a saved row, and a moved row only through th
     assert.deepEqual(d.tree.at(-1), { key: '01B', parent: '01A' });
 });
 
+test('a large panel switched to a shared block is sent with the block it shows, or none chosen yet', () => {
+    const picked = { ...A, options: opts({ mega: { type: 'block', block: '01JABCDEFGHJKMNPQRSTVWXYZ0' } }) };
+    const none = { ...B, options: opts({ mega: { type: 'block', block: null } }) };
+    const d = buildDraft([picked, A1, A2, A21, none], savedOf(all), 'v1');
+    assert.deepEqual(d.updates, [
+        { key: '01A', options: picked.options },
+        { key: '01B', options: none.options },
+    ]);
+    // nothing changed once saved as the server hands it back
+    assert.deepEqual(buildDraft([picked], savedOf([picked]), 'v2').updates, []);
+});
+
 test('a row not saved yet keeps its new: key, in the tree and as a create', () => {
     const fresh = row('new:1', '01A', { vi: 'Ứng dụng' });
     const child = row('new:2', 'new:1', { vi: 'Ô tô' });

@@ -9,6 +9,7 @@ use App\Modules\Cms\Actions\Menus\Concerns\CopiesMenuItems;
 use App\Modules\Cms\Exceptions\MenuChangeRejectedException;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuItem;
+use App\Modules\Cms\Support\BlockUsageIndex;
 use App\Modules\Identity\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +25,7 @@ final readonly class DuplicateMenu
 {
     use CopiesMenuItems;
 
-    public function __construct(private SaveMenu $saveMenu) {}
+    public function __construct(private SaveMenu $saveMenu, private BlockUsageIndex $blocks) {}
 
     /**
      * @throws AuthorizationException
@@ -55,6 +56,10 @@ final readonly class DuplicateMenu
                 $roots->mapWithKeys(fn (MenuItem $item): array => [$item->id => null])->all(),
                 $roots->mapWithKeys(fn (MenuItem $item): array => [$item->id => $item->position])->all(),
             );
+            // the copy's large panels place their shared blocks too (none read when no panel shows one)
+            if ($items->contains(fn (MenuItem $item): bool => BlockUsageIndex::panelBlock($item->meta) !== null)) {
+                $this->blocks->syncMenuItems(MenuItem::query()->where('menu_id', $copy->id)->get(['id', 'site_id', 'meta']));
+            }
 
             Audit::record('cms.menu.duplicated', [
                 'auditable_type' => Menu::class,

@@ -6,6 +6,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\EntryCategoryWriter;
+use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\Slugger;
@@ -48,6 +49,8 @@ final class DuplicateEntry
 
         /** @var Entry $copy */
         $copy = DB::transaction(function () use ($entry, $actor): Entry {
+            // the same picture, named by its row (an old key in meta becomes its file's id)
+            [$coverId, $meta] = EntryCover::stored($entry->cover_media_id, Cast::arr($entry->meta), true);
             $copy = Entry::query()->create([
                 'type' => $entry->type,
                 'status' => 'draft',
@@ -55,8 +58,8 @@ final class DuplicateEntry
                 'parent_id' => null,
                 // A layout the theme no longer lists for this kind of page is not carried over.
                 'template_override' => $this->ownLayout($entry),
-                'cover_media_id' => $entry->cover_media_id,
-                'meta' => $entry->meta,
+                'cover_media_id' => $coverId,
+                'meta' => $meta,
             ]);
 
             foreach ($entry->translations()->get() as $translation) {

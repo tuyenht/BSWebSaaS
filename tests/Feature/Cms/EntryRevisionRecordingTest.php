@@ -310,7 +310,7 @@ it('records every language when an editor save on live content changes the share
 
         expect(revisionTally($page))->toBe(['en:edit' => 1, 'vi:edit' => 1])
             ->and(EntryRevision::query()->where('entry_id', $page->id)->where('locale', 'en')->value('snapshot'))
-            ->toMatchArray(['title' => 'Trang en', 'meta' => ['image_url' => 'a/library/bia-moi.png']]);
+            ->toMatchArray(['title' => 'Trang en', 'cover_media_id' => $cover->id, 'meta' => []]);
     });
 });
 
