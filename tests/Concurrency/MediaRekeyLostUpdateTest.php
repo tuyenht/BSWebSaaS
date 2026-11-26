@@ -69,14 +69,15 @@ it('never loses a save that races its rewrite of a post', function (string $pass
     }
 
     // The read of the post's text that the rewrite writes back: in a chunk (by id, after the lock
-    // taken first) or in the repair pass (a keyset read that takes the lock itself).
+    // taken first) or in the repair pass (a keyset read that takes the lock itself; the seed-file
+    // scan before it reads the same way without a lock and writes nothing).
     $rivalFirst = null;
     DB::listen(function (QueryExecuted $query) use (&$rivalFirst, $post, $pass): void {
         $sql = strtolower($query->sql);
         if ($rivalFirst !== null || $query->connectionName === 'pgsql_admin' || ! str_contains($sql, 'meta::text as doc from entries')) {
             return;
         }
-        if (! str_contains($sql, $pass === 'chunk' ? 'and id in (' : 'and id > ?')) {
+        if ($pass === 'chunk' ? ! str_contains($sql, 'and id in (') : (! str_contains($sql, 'and id > ?') || ! str_contains($sql, 'for no key update'))) {
             return;
         }
         $rivalFirst = false;   // set before running it, so the rival's own queries never re-enter

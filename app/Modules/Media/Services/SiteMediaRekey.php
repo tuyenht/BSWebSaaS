@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Media\Services;
 
+use App\Modules\Media\Exceptions\SeedFileCopyFailedException;
 use App\Modules\Media\Exceptions\UnplannableMediaKeyException;
+use App\Modules\Media\Models\Media;
 use App\Modules\Media\Support\MediaKey;
 use App\Modules\Media\Support\MediaKeyRewriter;
 use App\Modules\Shared\Support\Cast;
@@ -12,10 +14,12 @@ use App\Modules\Tenancy\Context\Tenancy;
 use Closure;
 use Illuminate\Database\DeadlockException;
 use Illuminate\Database\QueryException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
+use League\Flysystem\FilesystemException;
 use PDOException;
 use RuntimeException;
 use Throwable;
@@ -56,6 +60,16 @@ use Throwable;
  *    opened before the run saving) is repaired by this pass or by the next run, and a dry run counts
  *    it as a reference to rewrite.
  *
+ * 5. seedAdoptions() and adoptSeedFiles(), between steps 3 and 4: a demo seed file (`media.seed_folders`)
+ *    that a live place names (bare or as an address on the media host) while the website holds no row
+ *    for it, nor one copied from it, is adopted: EnsureMediaFromKey::fromSeedSource() copies it to
+ *    `{code}/{file}` and makes the row with `meta.seed_source`, the seeder's own path, so step 4
+ *    rewrites the reference like any other (its address form kept). History (a revision snapshot)
+ *    is never a reason to adopt; a seed file under a folder with an owner other than this website
+ *    (another website's, or one several share), missing from storage, with the name of another one
+ *    adopted, or whose new key is taken, is left as it is and reported, and so is one whose copy fails
+ *    or whose key another writer took (the rest are still adopted). Any other error stops the run.
+ *
  * A row whose key is already under the code is never planned, so a run stopped part way leaves its
  * committed chunks consistent (keys and references together), and running again finishes the rest.
  * Single-site installs keep the collection layout (`media.tenant_prefix` false) and are never
@@ -77,10 +91,13 @@ final readonly class SiteMediaRekey
     /** SQLSTATEs of a lost lock conflict: deadlock_detected, lock_not_available. */
     private const array LOCK_CONFLICTS = ['40P01', '55P03'];
 
+    /** SQLSTATE unique_violation. */
+    private const string UNIQUE_VIOLATION = '23505';
+
     /** A table or column name the reference scan may be given (they are code constants, never input). */
     private const string IDENTIFIER = '/\A[a-z_][a-z0-9_]*\z/';
 
-    public function __construct(private Tenancy $tenancy) {}
+    public function __construct(private Tenancy $tenancy, private EnsureMediaFromKey $ensure) {}
 
     /**
      * Every row of the website whose key is not under its code, with its new key, and the keys that
@@ -158,6 +175,192 @@ final readonly class SiteMediaRekey
 
             return $keys;
         });
+    }
+
+    /**
+     * The demo seed files (`media.seed_folders`) the website's $places name, bare or as an address on
+     * the media host, that it holds no row for and that $known (old key => current key) does not
+     * place, each with the key adopting it gives (`{code}/{file}`, fromSeedSource()'s). One whose
+     * object is not in storage is listed as missing (never given a row). Listed as blocked: one under
+     * a folder with an owner other than this website (closedFolders(): another website's, or one
+     * shared by several, this one included: a website never takes in another's file); one with the file name of
+     * another seed file adopted before it; one whose new key, or its stem under another extension, is
+     * another file of the website or a key of $planned (the plan's new keys, not written yet in a dry
+     * run); one whose object there differs. Reads only.
+     *
+     * @param  list<array{0: string, 1: string}>  $places  [table, jsonb column]; every table has id + site_id
+     * @param  array<string, string>  $known
+     * @param  list<string>  $planned
+     * @return array{adopt: array<string, string>, missing: list<string>, blocked: list<array{key: string, reason: string}>}
+     */
+    public function seedAdoptions(int $siteId, string $code, array $places, array $known, array $planned = []): array
+    {
+        self::assertPlaces($places);
+        $patterns = array_map(static fn (string $folder): string => '%'.self::likeEscape($folder).'/%', Cast::strings(config('media.seed_folders', [])));
+        $result = ['adopt' => [], 'missing' => [], 'blocked' => []];
+        if ($patterns === []) {
+            return $result;
+        }
+
+        $rewriter = new MediaKeyRewriter([]);
+        $mentions = 'LIKE ANY (ARRAY['.implode(', ', array_fill(0, count($patterns), '?')).']::text[])';
+        $named = [];
+        foreach ($places as [$table, $column]) {
+            $lastId = 0;
+            do {
+                $count = $this->tenancy->enter($siteId, function () use ($siteId, $rewriter, $table, $column, $mentions, $patterns, &$named, &$lastId): int {
+                    $rows = DB::select(
+                        "SELECT id, {$column}::text AS doc FROM {$table} WHERE site_id = ? AND id > ? AND {$column}::text {$mentions} ORDER BY id LIMIT ".self::CHUNK,
+                        [$siteId, $lastId, ...$patterns],
+                    );
+                    foreach ($rows as $row) {
+                        if (! is_object($row) || ! isset($row->id, $row->doc)) {
+                            continue;
+                        }
+                        $lastId = Cast::int($row->id);
+                        foreach ($rewriter->seedKeys(json_decode(Cast::string($row->doc), false, 512, JSON_THROW_ON_ERROR)) as $key) {
+                            $named[$key] = true;
+                        }
+                    }
+
+                    return count($rows);
+                });
+            } while ($count === self::CHUNK);
+        }
+
+        $keys = array_map(strval(...), array_keys(array_diff_key($named, $known)));
+        sort($keys);
+        if ($keys === []) {
+            return $result;
+        }
+        $targets = array_combine($keys, array_map(static fn (string $key): string => "{$code}/".basename($key), $keys));
+        $held = $this->tenancy->enter($siteId, function () use ($siteId, $targets): array {
+            $held = [];
+            foreach (array_chunk([...array_keys($targets), ...array_values($targets)], self::CHUNK) as $chunk) {
+                foreach (DB::table('media')->where('site_id', $siteId)->whereIn('storage_key', $chunk)->pluck('storage_key') as $key) {
+                    $held[Cast::string($key)] = true;
+                }
+            }
+
+            return $held;
+        });
+
+        $closed = $this->closedFolders($siteId, array_map(static fn (string $key): string => explode('/', $key, 2)[0], $keys));
+        $assigned = array_fill_keys(array_map(self::stem(...), $planned), true);
+        $adopting = [];
+        $disk = Storage::disk(MediaKey::disk());
+        foreach ($targets as $key => $target) {
+            if (isset($held[$key])) {
+                continue; // a row holds the seed file itself: plan() moves it
+            }
+            $folder = explode('/', $key, 2)[0];
+            if (isset($closed[$folder])) {
+                $result['blocked'][] = ['key' => $key, 'reason' => $closed[$folder]];
+
+                continue;
+            }
+            if (! $disk->exists($key)) {
+                $result['missing'][] = $key;
+
+                continue;
+            }
+            $ext = pathinfo($target, PATHINFO_EXTENSION);
+            $stem = self::stem($target);
+            if (isset($adopting[$stem])) {
+                $result['blocked'][] = ['key' => $key, 'reason' => "same name as {$adopting[$stem]}"];
+            } elseif (isset($held[$target]) || $this->tenancy->enter($siteId, fn (): bool => $this->stemTaken($siteId, $stem, $ext, $assigned))) {
+                $result['blocked'][] = ['key' => $key, 'reason' => "the website already has another file at {$target}"];
+            } elseif ($disk->exists($target) && ! $this->sameObject($disk, $key, $target)) {
+                $result['blocked'][] = ['key' => $key, 'reason' => "another object is stored at {$target}"];
+            } elseif (preg_match(MediaKey::CLEAN_PATH_PATTERN, $target) !== 1) {
+                $result['blocked'][] = ['key' => $key, 'reason' => "{$target} is not a clean key"];
+            } else {
+                $result['adopt'][$key] = $target;
+                $adopting[$stem] = $key;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Those of $folders the website may not adopt from, each with why: a folder with several owners
+     * (`legacy_key` rows with a website), $siteId among them or not ("shared folder"), or whose one
+     * owner is another website ("another website's folder"). Adopted are only the files of a folder
+     * with no owner, or whose only owner is $siteId.
+     *
+     * A folder without an owner is a seed folder no website held a row in when it was frozen
+     * (2098_01_01_000000_close_open_media_folders), or one whose owner was hard-deleted: the AFTER
+     * DELETE trigger on sites leaves an ownerless row where no other owner is left. The demo-folder
+     * files of such a folder may then be adopted by any website that names them; those bytes are
+     * public (served from the media host), so a copy reveals nothing new. `reserved_site_codes` is
+     * platform-wide, so no tenant context is needed.
+     *
+     * @param  list<string>  $folders
+     * @return array<string, string>
+     */
+    private function closedFolders(int $siteId, array $folders): array
+    {
+        $owners = [];
+        $rows = DB::table('reserved_site_codes')->where('reason', 'legacy_key')->whereNotNull('site_id')
+            ->whereIn('code', array_values(array_unique($folders)))->get(['code', 'site_id']);
+        foreach ($rows as $row) {
+            $owners[Cast::string($row->code)][Cast::int($row->site_id)] = true;
+        }
+
+        $closed = [];
+        foreach ($owners as $folder => $ids) {
+            if (count($ids) > 1) {
+                $closed[$folder] = 'shared folder';
+            } elseif (! isset($ids[$siteId])) {
+                $closed[$folder] = "another website's folder";
+            }
+        }
+
+        return $closed;
+    }
+
+    /**
+     * Adopts each seed file of $adopt (seed key => expected key) for the website, in its tenant
+     * context, through EnsureMediaFromKey::fromSeedSource(): the object is copied to its new key and
+     * the row made with `meta.seed_source`, so previousKeys() places every reference to the seed key.
+     * Returns the seed keys adopted (=> their row's key) and those that failed, each with why: one
+     * whose storage copy failed, or whose row lost to another writer of its key (a unique violation;
+     * each in its own transaction, so it left no row; the next seed is still tried), or whose row
+     * came out otherwise (a person took the key meanwhile). A failed one's references stay as they
+     * are, and running again tries it again. Any other error (a tenancy assertion among them) is
+     * thrown on: it is no reason to go on with the next seed.
+     *
+     * @param  array<string, string>  $adopt
+     * @return array{adopted: array<string, string>, failed: list<array{key: string, reason: string}>}
+     */
+    public function adoptSeedFiles(int $siteId, array $adopt): array
+    {
+        $result = ['adopted' => [], 'failed' => []];
+        foreach ($adopt as $key => $target) {
+            try {
+                $media = $this->tenancy->enter($siteId, fn (): Media => $this->ensure->fromSeedSource($key));
+            } catch (SeedFileCopyFailedException|FilesystemException $e) {
+                $result['failed'][] = ['key' => $key, 'reason' => 'copy failed: '.$e->getMessage()];
+
+                continue;
+            } catch (Throwable $e) {
+                if (! self::uniqueViolation($e)) {
+                    throw $e;
+                }
+                $result['failed'][] = ['key' => $key, 'reason' => "{$target} was taken meanwhile"];
+
+                continue;
+            }
+            $meta = $media->getAttribute('meta');
+            if ($media->storage_key === $target && is_array($meta) && ($meta['seed_source'] ?? null) === $key) {
+                $result['adopted'][$key] = $target;
+            } else {
+                $result['failed'][] = ['key' => $key, 'reason' => "{$target} was taken meanwhile"];
+            }
+        }
+
+        return $result;
     }
 
     /**
@@ -262,6 +465,25 @@ final readonly class SiteMediaRekey
                 $state = (string) $current->getCode();
             }
             if (in_array($state, self::LOCK_CONFLICTS, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Whether $e is a unique violation (SQLSTATE 23505): another writer took the key first. */
+    private static function uniqueViolation(Throwable $e): bool
+    {
+        for ($current = $e; $current !== null; $current = $current->getPrevious()) {
+            if ($current instanceof UniqueConstraintViolationException) {
+                return true;
+            }
+            $state = $current instanceof QueryException ? ($current->errorInfo[0] ?? null) : null;
+            if ($state === null && $current instanceof PDOException) {
+                $state = (string) $current->getCode();
+            }
+            if ($state === self::UNIQUE_VIOLATION) {
                 return true;
             }
         }
