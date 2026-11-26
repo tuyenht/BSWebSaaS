@@ -691,7 +691,7 @@
                                     <div x-data="{ open: false, up: false, close(back) { this.open = false; if (back) { this.$refs.pill.focus() } } }" x-on:click.outside="open = false" x-on:keydown.escape="if (open) { $event.stopPropagation(); close(true) }" class="relative inline-block">
                                         <x-bs-admin::status-pill button x-ref="pill" :status="$status" aria-haspopup="menu" x-bind:aria-expanded="open.toString()" title="{{ __('entries.status_menu_label') }}"
                                             x-on:click="up = window.innerHeight - $el.getBoundingClientRect().bottom < 280; open = ! open; open && $nextTick(() => $focus.within($refs.menu).first())">{{ __('entries.status_'.$status) }}<span class="sr-only"> · {{ __('entries.status_menu_label') }}</span></x-bs-admin::status-pill>
-                                        <x-bs-admin::list.menu class="list-stm absolute left-0 z-30 mt-1 w-64 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-surface p-1 shadow-lg" x-bind:class="up && 'bottom-full mb-1 mt-0'" :label="__('entries.status_menu_label')">
+                                        <x-bs-admin::list.menu class="list-stm absolute left-0 z-30 mt-1 w-64 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-surface p-1 shadow-lg" x-bind:class="up && 'bottom-full mb-1 mt-0'" :label="__('entries.status_menu_label')" on-open>
                                             {{-- the menu's own name says the same, so a screen reader hears it once --}}
                                             <div class="list-lmh" aria-hidden="true">{{ __('entries.status_menu_label') }}</div>
                                             @foreach ($stOpts as $opt)

@@ -113,10 +113,13 @@
     color: #fff;
 }
 
+/* A tight line box pulled up 0.25rem: the title's capitals start level with the icon's top edge,
+   so title + line sit within the icon's height. */
 .sf-contact-card__title {
+    margin-top: -0.25rem;
     color: var(--color-text-strong);
     font-size: 1.125rem;
-    line-height: 1.75rem;
+    line-height: 1.5rem;
     font-weight: 600;
 }
 
