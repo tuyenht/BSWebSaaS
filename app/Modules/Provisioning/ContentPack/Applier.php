@@ -7,6 +7,7 @@ namespace App\Modules\Provisioning\ContentPack;
 use App\Modules\Admin\Support\Entries\SectionListViews;
 use App\Modules\Admin\Support\Settings\BranchList;
 use App\Modules\Admin\Support\Settings\FloatingContactInput;
+use App\Modules\Admin\Support\Settings\HeadingDecorInput;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Support\ProductGallery;
 use App\Modules\Catalog\Support\ProductSearchWords;
@@ -159,6 +160,9 @@ final class Applier
         }
         if ($planned->item->key === 'setting:storefront.floating_contact') {
             FloatingContactInput::syncIconUsage(Cast::int($saved->getKey()), $saved->value);
+        }
+        if ($planned->item->key === 'setting:theme.heading_decor') {
+            HeadingDecorInput::syncMaskUsage(Cast::int($saved->getKey()), $saved->value);
         }
     }
 

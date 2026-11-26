@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Livewire\FloatingContactSettings;
 use App\Modules\Admin\Support\Settings\BranchList;
+use App\Modules\Admin\Support\Settings\HeadingDecorInput;
 use App\Modules\Cms\Models\BlockUsage;
 use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Entry;
@@ -190,6 +191,24 @@ it('syncs the library usage rows of the block slots after a load, as the admin d
     expect($exit)->toBe(0, $output);
 
     $rows = ContentPacks::in($this->siteId, fn (): int => Mediable::query()->where('mediable_type', 'site_setting')->where('mediable_id', $rowId)->count());
+    expect($rows)->toBe(0);
+});
+
+it('drops the in-use row of a heading mask the pack load takes away, as the admin does', function (): void {
+    $key = 'setting:theme.heading_decor';
+    $rowId = ContentPacks::in($this->siteId, function (): int {
+        $row = SiteSetting::query()->create(['group_name' => 'theme', 'key' => 'heading_decor', 'value' => ['style' => 'star']]);
+        $media = StorefrontCards::media('old-mask');
+        Mediable::query()->create(['media_id' => $media->id, 'mediable_type' => 'site_setting', 'mediable_id' => $row->id, 'collection' => HeadingDecorInput::MASK_COLLECTION]);
+
+        return (int) $row->id;
+    });
+    sfAddSetting($this->folder, $key, ['style' => 'gear']);
+
+    [$exit, $output] = ContentPacks::load('demo-co', [$key]);
+    expect($exit)->toBe(0, $output);
+
+    $rows = ContentPacks::in($this->siteId, fn (): int => Mediable::query()->where('mediable_type', 'site_setting')->where('mediable_id', $rowId)->where('collection', HeadingDecorInput::MASK_COLLECTION)->count());
     expect($rows)->toBe(0);
 });
 
