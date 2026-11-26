@@ -53,6 +53,7 @@ use App\Modules\Cms\Support\PageRules;
 use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Media\Support\MediaRefs;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\ConcurrencyError;
 use App\Modules\Shared\Support\Slugger;
@@ -3096,8 +3097,14 @@ final class Index extends Component
                 $entry = $item['entry'];
                 $primary = $entry->relationLoaded('taxonomies') ? $entry->taxonomies->first() : null;
                 $rowCategory[$entry->ulid] = $tree->label($primary instanceof Taxonomy ? $primary->id : null);
+                // an old cover value may be a glyph name or an outside address: only a storage key is a
+                // file of ours to resize, an https address is shown as it is, a glyph name is no picture
                 $key = $entry->getAttribute('cover_value');
-                $rowCover[$entry->ulid] = is_string($key) && $key !== '' ? $urls->url($key, 96) : null;
+                $rowCover[$entry->ulid] = match (true) {
+                    is_string($key) && MediaRefs::looksLikeKey($key) => $urls->url($key, 96),
+                    is_string($key) && str_starts_with($key, 'https://') => $key,
+                    default => null,
+                };
             }
         }
 
