@@ -68,7 +68,7 @@ final class MailMonths
     public static function isExpired(string $month, string $today): bool
     {
         $start = (int) strtotime($month.'-01 00:00:00 UTC');
-        $end = (int) strtotime('+1 month', $start);
+        $end = (int) strtotime($month.'-01 00:00:00 UTC +1 month');
         $cutoff = (int) strtotime($today.' 00:00:00 UTC -'.self::KEEP_DAYS.' days');
         $keptFrom = (int) strtotime(gmdate('Y-m-01', (int) strtotime($today.' 00:00:00 UTC')).' 00:00:00 UTC -3 months');
 

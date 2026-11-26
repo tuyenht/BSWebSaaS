@@ -63,12 +63,15 @@ it('makes the second mail of one website wait for the first, then holds it at th
         $admin->update("update mail_daily set sent = sent + 1 where site_id = 1 and via = 'platform' and sent < 10");
 
         $waited = null;
+        $started = microtime(true);
         try {
             mqlReserve(1);
         } catch (QueryException $e) {
             $waited = $e->errorInfo[0] ?? null;
         }
-        expect($waited)->toBe('55P03');
+        // Its own wait (300 ms here), not the job's 7 s.
+        expect($waited)->toBe('55P03')
+            ->and(microtime(true) - $started)->toBeLessThan(3.0);
 
         // Another website is not held up.
         expect(mqlReserve(2)->reserved)->toBeTrue();
