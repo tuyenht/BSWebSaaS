@@ -224,6 +224,15 @@ trait EditsJobCard
         return true;
     }
 
+    /**
+     * Outside the default language, a badge the default language does not have and this one had not
+     * either: its field is read-only (wording it would start a badge; JobCardForm::sameShape).
+     */
+    private function jobBadgeHeld(): bool
+    {
+        return $this->sharedLocked() && $this->jobStored !== [] && JobCardForm::badgeHeld($this->jobStored, app(SiteLocale::class)->default());
+    }
+
     /** Why the shape stays: the words the shown date uses («… hãy sửa ở bản Tiếng Việt»). */
     private function jobSharedWhy(): string
     {
@@ -261,20 +270,29 @@ trait EditsJobCard
             return $meta;
         }
 
-        return JobCardForm::into($meta, $this->jobFactList(), $this->jobDeadline, $this->jobDeadlineAccent, $this->jobBadge, $stored, $this->locale, app(SiteLocale::class)->enabled());
+        $locales = app(SiteLocale::class);
+
+        return JobCardForm::into($meta, $this->jobFactList(), $this->jobDeadline, $this->jobDeadlineAccent, $this->jobBadge, $stored, $this->locale, $locales->enabled(), $locales->default());
     }
 
     /**
-     * After a save wrote $meta: the form is what is stored now.
+     * After a save wrote $meta: the form is what is stored now. Outside the default language it is
+     * read again from $meta, whose shape may be another save's (JobCardForm::words).
      *
      * @param  array<array-key, mixed>|null  $meta
      */
     private function jobSaved(?array $meta): void
     {
         $stored = $this->jobStored;
-        if ($stored !== [] && $this->jobOn()) {
-            $this->jobStored = JobCardForm::saved($meta ?? [], $this->jobFactList(), $this->jobDeadline, $this->jobDeadlineAccent, $this->jobBadge, $stored);
+        if ($stored === [] || ! $this->jobOn()) {
+            return;
         }
+        if ($this->sharedLocked() && $meta !== null) {
+            $this->loadJobCard($meta);
+
+            return;
+        }
+        $this->jobStored = JobCardForm::saved($meta ?? [], $this->jobFactList(), $this->jobDeadline, $this->jobDeadlineAccent, $this->jobBadge, $stored);
     }
 
     /**
@@ -299,7 +317,8 @@ trait EditsJobCard
                 }
                 $facts = $this->jobFactList();
                 $stored = $this->jobStored;
-                if ($stored !== [] && $this->sharedLocked() && ! JobCardForm::sameShape($facts, $this->jobDeadline, $this->jobDeadlineAccent, $this->jobBadge, $stored)) {
+                $locales = app(SiteLocale::class);
+                if ($stored !== [] && $this->sharedLocked() && ! JobCardForm::sameShape($facts, $this->jobDeadline, $this->jobDeadlineAccent, $this->jobBadge, $stored, $locales->default())) {
                     $fail($this->jobSharedWhy());
 
                     return;
@@ -318,7 +337,7 @@ trait EditsJobCard
                     return;   // said on that field
                 }
                 // the rule the stored meta must pass, whoever writes it
-                if ($stored !== [] && JobFacts::errors(JobCardForm::into([], $facts, $this->jobDeadline, $this->jobDeadlineAccent, $this->jobBadge, ['print' => ''] + $stored, $this->locale, app(SiteLocale::class)->enabled())) !== []) {
+                if ($stored !== [] && JobFacts::errors(JobCardForm::build([], $facts, $this->jobDeadline, $this->jobDeadlineAccent, $this->jobBadge, $stored, $this->locale, $locales->enabled(), $locales->default())) !== []) {
                     $fail(Cast::string(__('entries.ed.job_invalid')));
                 }
             }],
@@ -442,7 +461,7 @@ trait EditsJobCard
                 }
             }
             $this->jobFacts = array_map(static fn (array $fact): array => ['text' => $words[$fact['key']] ?? $fact['text']] + $fact, $this->jobFactList());
-            if (is_string($kept['jobBadge'] ?? null) && ($this->jobStored['badge'] !== [] || JobCardForm::clean($this->jobStored['form']['badge']) !== '')) {
+            if (is_string($kept['jobBadge'] ?? null) && ! $this->jobBadgeHeld()) {
                 $this->jobBadge = $kept['jobBadge'];
             }
 
@@ -549,7 +568,9 @@ trait EditsJobCard
             'set' => $facts !== [] || $this->jobDeadline !== '' || trim($this->jobBadge) !== '',
             // another language than the default: only this language's words change (the shape is every language's)
             'locked' => $this->sharedLocked(),
-            'badgeLocked' => $this->sharedLocked() && $stored !== [] && $stored['badge'] === [] && JobCardForm::clean($stored['form']['badge']) === '',
+            'badgeLocked' => $this->jobBadgeHeld(),
+            // the default language: other languages word the badge too, and emptying it here takes it off theirs
+            'badgeOthers' => ! $this->sharedLocked() && $stored !== [] && $stored['badge'] !== [],
             'why' => $this->jobSharedWhy(),
         ];
     }

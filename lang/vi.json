@@ -392,6 +392,7 @@
     "entries.ed.job_badge_ph": "Tuyển gấp",
     "entries.ed.job_badge_hint": "Không bắt buộc. Hiện ở góc thẻ việc làm, ví dụ «Tuyển gấp».",
     "entries.ed.job_badge_long": "Nhãn trên thẻ dài hơn :max ký tự. Hãy viết ngắn lại.",
+    "entries.ed.job_badge_others": "Ngôn ngữ khác đang có nhãn trên thẻ. Khi ô này trống, lần lưu có sửa thẻ sẽ bỏ nhãn ở mọi ngôn ngữ.",
     "entries.ed.job_invalid": "Thông tin tuyển dụng chưa lưu được. Hãy kiểm tra lại các ô.",
     "entries.ed.pd_hint": "Để trống thì lấy ngày đăng thật.",
     "entries.ed.pd_invalid": "Ngày này không có thật. Chọn lại ngày trên lịch, hoặc để trống để lấy ngày đăng thật.",
