@@ -276,8 +276,11 @@ trait EditsJobCard
     }
 
     /**
-     * After a save wrote $meta: the form is what is stored now. Outside the default language it is
-     * read again from $meta, whose shape may be another save's (JobCardForm::words).
+     * After a save wrote $meta: the form is what is stored now, its fields kept as they are (what was
+     * typed while the save ran stays). Outside the default language what the form remembers is read
+     * again from $meta, whose shape may be another save's (JobCardForm::words): only then (boxes
+     * added, taken out or moved meanwhile) do the boxes and the deadline come from $meta, and the badge
+     * only when the save could not keep it (the default language took the badge off meanwhile).
      *
      * @param  array<array-key, mixed>|null  $meta
      */
@@ -288,9 +291,17 @@ trait EditsJobCard
             return;
         }
         if ($this->sharedLocked() && $meta !== null) {
-            $this->loadJobCard($meta);
-
-            return;
+            $now = JobCardForm::load($meta, $this->locale);
+            $default = app(SiteLocale::class)->default();
+            if (! JobCardForm::holdsBoxes($this->jobFactList(), $this->jobDeadline, $this->jobDeadlineAccent, $stored, $now['stored'], $this->locale, $default)) {
+                $this->jobFacts = $now['facts'];
+                $this->jobDeadline = $now['deadline'];
+                $this->jobDeadlineAccent = $now['deadlineAccent'];
+            }
+            if (JobCardForm::clean($this->jobBadge) !== JobCardForm::clean($now['badge'])) {
+                $this->jobBadge = $now['badge'];
+            }
+            $stored = $now['stored'];
         }
         $this->jobStored = JobCardForm::saved($meta ?? [], $this->jobFactList(), $this->jobDeadline, $this->jobDeadlineAccent, $this->jobBadge, $stored);
     }
@@ -336,7 +347,8 @@ trait EditsJobCard
                 if (JobCardForm::length($this->jobBadge) > JobFacts::BADGE_MAX || ($this->jobDeadline !== '' && ! JobCardForm::validDay($this->jobDeadline))) {
                     return;   // said on that field
                 }
-                // the rule the stored meta must pass, whoever writes it
+                // the rule the stored meta must pass, whoever writes it (checked with the other languages'
+                // words as the form read them: the save takes them as stored then, each passed by its own save)
                 if ($stored !== [] && JobFacts::errors(JobCardForm::build([], $facts, $this->jobDeadline, $this->jobDeadlineAccent, $this->jobBadge, $stored, $this->locale, $locales->enabled(), $locales->default())) !== []) {
                     $fail(Cast::string(__('entries.ed.job_invalid')));
                 }
