@@ -82,6 +82,87 @@ final readonly class SaveForm
     }
 
     /**
+     * «Lưu» on the editor open in $locale, a language other than the site's main one: writes that
+     * language's texts only — the form's name and thank-you sentence, each field's label and its
+     * choices' labels (line by line, in the stored choices' order). A text left empty removes that
+     * language's version, so visitors read the main language there. Nothing shared by every language
+     * changes: the switch, the emails, which fields there are, their kinds, order and settings, and
+     * the consent box. A field of the draft the form no longer has is skipped; a choices box with
+     * more lines than the field has choices is refused (the caller says so first).
+     *
+     * @param  Draft  $draft
+     */
+    public function translate(Form $form, array $draft, string $locale): Form
+    {
+        if (mb_strlen($draft['name']) > FormDraft::MAX_NAME || mb_strlen($draft['success']) > FormDraft::MAX_SUCCESS || count($draft['fields']) > FormDraft::MAX_FIELDS) {
+            throw new InvalidArgumentException('A text cannot be stored.');
+        }
+
+        return DB::transaction(function () use ($form, $draft, $locale): Form {
+            $form = Form::query()->whereKey($form->getKey())->lockForUpdate()->firstOrFail();
+            $form->update([
+                'name' => self::withText($form->name, $locale, $draft['name']),
+                'success_message' => self::withText($form->success_message, $locale, $draft['success']),
+                'settings' => [...Cast::arr($form->settings), 'edited' => true],
+            ]);
+
+            /** @var array<string, FormField> $existing */
+            $existing = $form->fields()->get()->keyBy('key')->all();
+            foreach ($draft['fields'] as $f) {
+                $field = $existing[$f['key']] ?? null;
+                if ($field === null || $f['key'] === Form::CONSENT_KEY) {
+                    continue;
+                }
+                if (mb_strlen($f['label']) > FormDraft::MAX_NAME) {
+                    throw new InvalidArgumentException('A field label cannot be stored.');
+                }
+                $changes = ['label' => self::withText($field->label, $locale, $f['label'])];
+                if (FormFieldTypes::isChoice($field->type)) {
+                    $choices = FormFieldTypes::choices($field);
+                    $lines = FormDraft::translatedLines($f['choices']);
+                    if (count($lines) > count($choices) || array_filter($lines, fn (string $l): bool => mb_strlen($l) > FormDraft::MAX_NAME) !== []) {
+                        throw new InvalidArgumentException('The choices cannot be stored.');
+                    }
+                    foreach ($choices as $n => $choice) {
+                        $choices[$n]['label'] = self::withText($choice['label'], $locale, $lines[$n] ?? '');
+                    }
+                    $changes['options'] = [...Cast::arr($field->options), 'choices' => $choices];
+                }
+                $field->update($changes);
+            }
+
+            Audit::record('forms.form.saved', [
+                'auditable_type' => Form::class,
+                'auditable_id' => $form->id,
+                'meta' => ['key' => $form->key, 'created' => false, 'locale' => $locale],
+            ]);
+
+            return $form;
+        });
+    }
+
+    /**
+     * $map with $locale's version set to $text, or removed when $text is empty.
+     *
+     * @return array<string, string>
+     */
+    private static function withText(mixed $map, string $locale, string $text): array
+    {
+        $out = [];
+        foreach (Cast::arr($map) as $code => $value) {
+            $out[(string) $code] = Cast::string($value);
+        }
+        $text = trim($text);
+        if ($text === '') {
+            unset($out[$locale]);
+        } else {
+            $out[$locale] = $text;
+        }
+
+        return $out;
+    }
+
+    /**
      * @param  list<DraftField>  $fields
      */
     private function saveFields(Form $form, array $fields, string $locale): void

@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Modules\Forms\Support;
 
 use App\Modules\Forms\Models\Form;
+use App\Modules\Forms\Models\FormField;
 use App\Modules\Shared\Support\Cast;
 use Illuminate\Support\Str;
 
 /**
  * A form as the «Biểu mẫu» editor holds it while it is being changed: the texts of one language (the
- * site's main one), whether it takes leads, and its fields in order — the consent box left out (it is
+ * site's main one, or another one through translation()), whether it takes leads, and its fields in order — the consent box left out (it is
  * the platform's, always last, and never edited there). A choice field's choices are one per line.
  * SaveForm writes such a draft back; the other languages and every setting the editor does not show
  * (an empty field's example, length limits) stay as they were. A file field carries its kind
@@ -78,6 +79,55 @@ final class FormDraft
             'emails' => Cast::strings($form->notify_emails),
             'fields' => $fields,
         ];
+    }
+
+    /**
+     * $form as the editor holds it in $locale, a language other than the site's main one ($source):
+     * the texts exactly as written in $locale (an empty one has no version there yet), everything
+     * shared by every language (switch, emails, fields, their kinds, order and settings) as in $source.
+     * A choice field's choices are one line per stored choice, in their order: a line left blank has
+     * no version in $locale yet (trailing blank lines dropped).
+     *
+     * @return Draft
+     */
+    public static function translation(Form $form, string $locale, string $source): array
+    {
+        $draft = self::fromForm($form, $source);
+        $byKey = $form->fields->keyBy('key');
+        foreach ($draft['fields'] as $i => $f) {
+            $field = $byKey->get($f['key']);
+            if (! $field instanceof FormField) {
+                continue;
+            }
+            $draft['fields'][$i]['label'] = self::own($field->label, $locale);
+            $draft['fields'][$i]['choices'] = FormFieldTypes::isChoice($field->type)
+                ? rtrim(implode("\n", array_map(fn (array $c): string => $c['label'][$locale] ?? '', FormFieldTypes::choices($field))))
+                : '';
+        }
+
+        return [...$draft, 'name' => self::own($form->name, $locale), 'success' => self::own($form->success_message, $locale)];
+    }
+
+    /** A per-language text exactly as written in $locale ('' when it has none there), trimmed. */
+    public static function own(mixed $map, string $locale): string
+    {
+        return trim(Cast::string(Cast::arr($map)[$locale] ?? null));
+    }
+
+    /**
+     * The lines of a translated choices box, trimmed, in order, one per choice of the main language:
+     * a blank line keeps its place (that choice has no version yet); trailing blank lines are dropped.
+     *
+     * @return list<string>
+     */
+    public static function translatedLines(string $text): array
+    {
+        $lines = array_map(trim(...), preg_split('/\R/u', $text) ?: []);
+        while ($lines !== [] && end($lines) === '') {
+            array_pop($lines);
+        }
+
+        return $lines;
     }
 
     /**
