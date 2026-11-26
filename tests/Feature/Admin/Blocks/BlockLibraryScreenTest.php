@@ -19,6 +19,7 @@ use App\Modules\Tenancy\Context\SiteLocale as SiteLocaleContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Models\SiteLocale;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
@@ -400,4 +401,45 @@ it('refuses to save a language turned off while its editor was open, instead of 
         $vi = ContentBlockTranslation::query()->where('content_block_id', $block->id)->where('locale', 'vi')->value('body');
         expect($vi['blocks'] ?? [])->toBe([]);
     });
+});
+
+/** The markup of the one shown dialog box (role dialog or alertdialog) holding $text. */
+function libraryDialogBox(string $html, string $text): string
+{
+    $doc = new DOMDocument;
+    @$doc->loadHTML('<?xml encoding="utf-8"?>'.$html);
+    foreach ((new DOMXPath($doc))->query('//*[@role="dialog" or @role="alertdialog"]') as $box) {
+        $markup = (string) $doc->saveHTML($box);
+        if (str_contains($markup, $text)) {
+            return $markup;
+        }
+    }
+    throw new RuntimeException('no dialog holding '.$text);
+}
+
+it('takes the focus into each «Khối dùng chung» dialog, keeps it there and gives it back', function (): void {
+    $editor = blockLibraryUser(1, 'editor');
+    $block = libraryBlock(1, 'footer', 'Chân trang', 'footer', 'draft', ['vi']);
+
+    app(Tenancy::class)->enter(1, function () use ($editor, $block): void {
+        $page = Livewire::actingAs($editor)->test(Library::class);
+
+        // «Thêm khối»: the name field takes the focus
+        $form = libraryDialogBox($page->call('openAdd')->assertSet('formOpen', true)->html(), __('blocks.form_title_new'));
+        expect($form)->toContain('x-trap="open"', 'aria-modal="true"')
+            ->and($form)->toMatch('/<input[^>]*id="block-name"[^>]*autofocus/');
+
+        // «N nơi»: the first control of the dialog (its ✕) takes it
+        $usage = libraryDialogBox($page->call('closeForm')->call('showUsage', $block->ulid)->assertSet('usageOpen', true)->html(), __('blocks.usage_title'));
+        expect($usage)->toContain('x-trap="open"', 'aria-modal="true"');
+
+        // «Xóa»: «Ở lại» takes it, so Enter never deletes by accident
+        $ask = libraryDialogBox($page->call('closeUsage')->call('askDelete', $block->ulid)->assertSet('confirmOpen', true)->html(), __('blocks.del_title'));
+        expect($ask)->toContain('x-trap="open"', 'role="alertdialog"')
+            ->and($ask)->toMatch('/<button[^>]*autofocus[^>]*>\s*'.preg_quote(__('blocks.del_stay'), '/').'/');
+    });
+
+    // the form dialogs keep what had the focus when they opened and focus it again when they close
+    $modal = Blade::render('<x-bs-admin::modal model="open" title="Sửa"><p>Nội dung</p></x-bs-admin::modal>');
+    expect($modal)->toContain('this.opener = document.activeElement', 'back.focus()');
 });
