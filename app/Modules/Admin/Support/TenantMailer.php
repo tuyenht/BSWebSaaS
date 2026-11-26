@@ -152,7 +152,8 @@ final readonly class TenantMailer implements TenantMailConfigurator
      */
     private function usable(?array $cfg): bool
     {
-        if (! is_array($cfg)) {
+        // A website that picked the platform's shared outbox keeps its own setup stored, unused.
+        if (! is_array($cfg) || ($cfg['provider'] ?? null) === 'platform') {
             return false;
         }
 

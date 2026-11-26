@@ -284,6 +284,7 @@ final readonly class OAuthController
 
         $cfg = $this->tenant->get('email') ?? [];
         $cfg['method'] = 'oauth2';
+        $cfg['provider'] = $provider;
         $cfg['oauth'] = array_merge(Cast::arr($cfg['oauth'] ?? null), [
             'provider' => $provider,
             'refresh_token' => SecretCipher::encrypt($refresh),
