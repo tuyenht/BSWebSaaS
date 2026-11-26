@@ -30,6 +30,9 @@ const SSK_CONTRACT = 'migrations/2099_01_01_000100_drop_plain_media_foreign_keys
 /** Tables whose rows are links to a file (written by insert); the others hold the id on a content row. */
 const SSK_LINK_TABLES = ['mediables', 'product_images'];
 
+/** Stray attachments past the 50 ids a message names, to show the cleared-rows file lists them all. */
+const SSK_EXTRA_ATTACHMENTS = 55;
+
 beforeEach(function (): void {
     seedTenancy();
 });
@@ -241,8 +244,9 @@ it('clears earlier references to another website\'s file or to none, and stops f
     $expand = require database_path(SSK_EXPAND);
     $contract = require database_path(SSK_CONTRACT);
     $admin = DB::connection('pgsql_admin');
+    $logs = [];
 
-    sskAsMigrations(function () use ($expand, $contract, $admin, $siteA, $siteB, $mine, $theirs): void {
+    sskAsMigrations(function () use ($expand, $contract, $admin, $siteA, $siteB, $mine, $theirs, &$logs): void {
         try {
             $contract->down();
             $expand->down();
@@ -254,13 +258,29 @@ it('clears earlier references to another website\'s file or to none, and stops f
                 sskWrite($admin, $table, $column, $theirs->id, $siteB);
             }
             sskWrite($admin, 'product_images', 'media_id', $mine->id, $siteA);
+            // more stray attachments than a message would list: the file lists every one
+            $admin->table('mediables')->insert(array_map(fn (int $i): array => [
+                'site_id' => 1, 'media_id' => $theirs->id, 'mediable_type' => 'entry', 'mediable_id' => $siteA['entries'],
+                'collection' => "extra-{$i}", 'created_at' => now(), 'updated_at' => now(),
+            ], range(1, SSK_EXTRA_ATTACHMENTS)));
 
-            expect(fn () => $expand->up())->toThrow(RuntimeException::class, '1 product_images row(s)')
+            $logs['stray_gallery'] = $admin->table('product_images')->where('site_id', 1)->where('media_id', $theirs->id)->value('id');
+            $stop = null;
+            try {
+                $expand->up();
+            } catch (RuntimeException $e) {
+                $stop = $e->getMessage();
+            }
+            $logs['stopped'] = $expand->foundLog;
+            expect($stop)->toContain('1 product_images row(s)')
+                ->toContain('No row was changed, but the new keys are already in place')
+                ->toContain((string) $expand->foundLog)
                 ->and(sskStored('entries', 'cover_media_id', $siteA))->toBe([999_999])
                 ->and(sskStored('site_profiles', 'logo_media_id', $siteA))->toBe([$theirs->id]);
 
             $admin->table('product_images')->where('site_id', 1)->where('media_id', $theirs->id)->delete();
             $expand->up();
+            $logs['cleared'] = $expand->foundLog;
             $contract->up();
         } finally {
             // never leave the test database without the keys, whatever failed above
@@ -272,8 +292,43 @@ it('clears earlier references to another website\'s file or to none, and stops f
     });
 
     foreach (sskColumns() as [$table, $column]) {
-        expect(sskStored($table, $column, $siteA))->toBe($table === 'product_images' ? [$mine->id] : [null], "site A {$table}.{$column}")
+        $cleared = $table === 'mediables' ? array_fill(0, 1 + SSK_EXTRA_ATTACHMENTS, null) : [null];
+        expect(sskStored($table, $column, $siteA))->toBe($table === 'product_images' ? [$mine->id] : $cleared, "site A {$table}.{$column}")
             ->and(sskStored($table, $column, $siteB))->toBe([$theirs->id], "site B {$table}.{$column}");
+    }
+
+    // every row found is in the run's file, in full: the gallery row that stopped the first run, and
+    // each value the second one cleared (table, row, website, column, old file id)
+    try {
+        $read = fn (?string $path): array => array_map(
+            fn (string $line): array => str_getcsv($line, escape: ''),
+            file((string) $path, FILE_IGNORE_NEW_LINES) ?: [],
+        );
+        expect($read($logs['stopped'] ?? null))->toBe([
+            ['action', 'table', 'id', 'site_id', 'column', 'old_media_id'],
+            ['stopped', 'product_images', (string) $logs['stray_gallery'], '1', 'media_id', (string) $theirs->id],
+        ]);
+
+        $cleared = array_slice($read($logs['cleared'] ?? null), 1);
+        $expected = [];
+        foreach (sskColumns() as [$table, $column]) {
+            if ($table === 'product_images') {
+                continue;
+            }
+            $ids = $table === 'mediables'
+                ? $admin->table('mediables')->where('site_id', 1)->whereNull('media_id')->orderBy('id')->pluck('id')->all()
+                : [$siteA[$table]];
+            foreach ($ids as $id) {
+                $expected[] = ['cleared', $table, (string) $id, '1', $column, (string) ($table === 'entries' ? 999_999 : $theirs->id)];
+            }
+        }
+        expect($cleared)->toBe($expected)->and($cleared)->toHaveCount(7 + 1 + SSK_EXTRA_ATTACHMENTS);
+    } finally {
+        foreach ([$logs['stopped'] ?? null, $logs['cleared'] ?? null] as $path) {
+            if (is_string($path) && is_file($path)) {
+                unlink($path);
+            }
+        }
     }
 });
 
@@ -345,4 +400,67 @@ it('does not drop a plain key before its same-site key is validated', function (
             $contract->up();
         }
     });
+});
+
+it('stops on a lock held too long, at an index build, a new key or a validation, and the next run finishes', function (): void {
+    $expand = require database_path(SSK_EXPAND);
+    $contract = require database_path(SSK_CONTRACT);
+    $admin = DB::connection('pgsql_admin');
+    $after = ['keys' => sskKeys(), 'indexes' => sskIndexes()];
+    $sessionWait = $admin->scalar('SHOW lock_timeout');
+    // another session (the app's) holds a lock in an open transaction while one run of the migration goes
+    $app = DB::connection();
+    $holding = function (string $lock, string $stop) use ($app, $expand): void {
+        $app->beginTransaction();
+        try {
+            $app->statement($lock);
+            sskAsMigrations(fn () => expect(fn () => $expand->up())->toThrow(RuntimeException::class, $stop));
+        } finally {
+            $app->rollBack();
+        }
+    };
+    $mediaIndex = fn (): array => array_map(fn (object $i): bool => (bool) $i->indisvalid, $admin->select(
+        "select i.indisvalid from pg_index i join pg_class c on c.oid = i.indexrelid where c.relname = 'media_site_id_id_unique'",
+    ));
+    $key = fn (string $name): array => array_values(array_filter(sskKeys(), fn (string $k): bool => str_starts_with($k, $name.' ')));
+
+    try {
+        $expand->lockWait = '300ms';
+        sskAsMigrations(function () use ($expand, $contract): void {
+            $contract->down();
+            $expand->down();
+        });
+
+        // a write on media still open: the index build waits for it, gives up and leaves the index INVALID
+        $holding('LOCK TABLE media IN ROW EXCLUSIVE MODE', 'stopped while building the index media_site_id_id_unique: another transaction held the table for more than 300ms');
+        expect($mediaIndex())->toBe([false])
+            ->and($admin->scalar('SHOW lock_timeout'))->toBe($sessionWait);
+
+        // the next run drops it and builds it again; then a lock on site_profiles stops it at that key
+        $holding('LOCK TABLE site_profiles IN SHARE UPDATE EXCLUSIVE MODE', 'stopped while adding the key on site_profiles.logo_media_id');
+        expect($mediaIndex())->toBe([true])
+            ->and($key('taxonomies_cover_media_id_same_site_foreign'))->toHaveCount(1)
+            ->and($key('taxonomies_cover_media_id_same_site_foreign')[0])->toContain(' NOT VALID ')
+            ->and($key('site_profiles_logo_media_id_same_site_foreign'))->toBe([]);
+
+        // the next run adds the rest; a lock on taxonomies stops it at that validation
+        $holding('LOCK TABLE taxonomies IN SHARE UPDATE EXCLUSIVE MODE', 'stopped while validating taxonomies_cover_media_id_same_site_foreign');
+        expect($key('entries_cover_media_id_same_site_foreign')[0] ?? '')->toContain(' valid ')
+            ->and($key('taxonomies_cover_media_id_same_site_foreign')[0] ?? '')->toContain(' NOT VALID ')
+            ->and($key('product_images_media_id_same_site_foreign'))->toHaveCount(1)
+            ->and($admin->scalar('SHOW lock_timeout'))->toBe($sessionWait);
+
+        // nothing in the way: the run finishes, and the database is as after a clean one
+        sskAsMigrations(function () use ($expand, $contract): void {
+            $expand->up();
+            $contract->up();
+        });
+        expect(['keys' => sskKeys(), 'indexes' => sskIndexes()])->toBe($after);
+    } finally {
+        $expand->lockWait = '5s';
+        sskAsMigrations(function () use ($expand, $contract): void {
+            $expand->up();
+            $contract->up();
+        });
+    }
 });

@@ -9,6 +9,7 @@ use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Storage;
 
 /*
  * P2 — "Nhân bản" (design §3a). A copy is a fresh single-node DRAFT: parent_id cleared, every
@@ -172,18 +173,47 @@ it('carries the cover as its row: an id stays, an old key of a library picture b
 });
 
 it('gives the copy no cover when the original names a file that is no longer there', function (): void {
+    Storage::fake('r2');
     $editor = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.create', 'entries.edit.any']);
-        // an id no file of this website has (purged past the model): nothing stops the column holding it today
-        $dangling = (int) Media::withTrashed()->max('id') + 1000;
-        $page = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'cover_media_id' => $dangling, 'meta' => ['image_url' => 'a/library/cu-cccccccccccc.png']]);
-        $page->translations()->create(['locale' => 'vi', 'title' => 'Trang', 'slug' => 'mat-anh', 'status' => 'draft', 'body' => ['blocks' => []]]);
+        // the column can no longer hold an id no file of this website has (the same-site key refuses
+        // it): the original read just before its picture was purged still names it, and its old key
+        $gone = Media::query()->create([
+            'collection' => 'library', 'slug' => 'cu', 'hash' => str_repeat('c', 64),
+            'storage_key' => 'a/library/cu-cccccccccccc.png', 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1024,
+        ]);
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'cover_media_id' => $gone->id, 'meta' => ['image_url' => $gone->storage_key]]);
+        $page->translations()->create(['locale' => 'vi', 'title' => 'Trang', 'slug' => 'mat-anh', 'status' => 'draft', 'body' => ['blocks' => []], 'og_image_id' => $gone->id]);
+        $read = $page->fresh();
+        $gone->delete();
+        $gone->forceDelete();
+        expect($read->cover_media_id)->toBe($gone->id);
+
+        $copy = app(DuplicateEntry::class)->handle($read, $editor->fresh());
+
+        expect($copy->fresh()->cover_media_id)->toBeNull()
+            ->and($copy->fresh()->meta)->not->toHaveKey('image_url')
+            ->and($copy->translations()->value('og_image_id'))->toBeNull();
+    });
+});
+
+it('keeps the share picture of each copied language while it is a file of the website', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.create', 'entries.edit.any']);
+        $share = Media::query()->create([
+            'collection' => 'library', 'slug' => 'chia-se', 'hash' => str_repeat('d', 64),
+            'storage_key' => 'a/library/chia-se-dddddddddddd.png', 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1024,
+        ]);
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'meta' => []]);
+        $page->translations()->create(['locale' => 'vi', 'title' => 'Trang', 'slug' => 'chia-se', 'status' => 'draft', 'body' => ['blocks' => []], 'og_image_id' => $share->id]);
+        $page->translations()->create(['locale' => 'en', 'title' => 'Page', 'slug' => 'share', 'status' => 'draft', 'body' => ['blocks' => []]]);
 
         $copy = app(DuplicateEntry::class)->handle($page->fresh(), $editor->fresh());
 
-        expect($copy->fresh()->cover_media_id)->toBeNull()
-            ->and($copy->fresh()->meta)->not->toHaveKey('image_url');
+        expect($copy->translations()->orderBy('locale')->pluck('og_image_id', 'locale')->all())->toBe(['en' => null, 'vi' => $share->id]);
     });
 });

@@ -170,11 +170,17 @@ it('gives the product the cover a post names by its row, and none when that file
             'collection' => 'library', 'slug' => 'jig-moi', 'hash' => str_repeat('d', 64),
             'storage_key' => 'a-vinh/library/jig-moi-dddddddddddd.jpg', 'disk' => 'r2', 'mime' => 'image/jpeg', 'size' => 2048,
         ]);
-        // the editor moved the first post's cover to its row (the old key gone); the second names a file purged past the model
+        // the editor moved the first post's cover to its row (the old key gone); the second names, past
+        // the model, a file now in the Trash (a purged one the same-site key no longer lets it name)
         $first = Entry::query()->whereHas('translations', fn ($q) => $q->where('slug', $slugs[0]))->firstOrFail();
         $first->update(['cover_media_id' => $photo->id, 'meta' => []]);
+        $binned = Media::query()->create([
+            'collection' => 'library', 'slug' => 'jig-cu', 'hash' => str_repeat('e', 64),
+            'storage_key' => 'a-vinh/library/jig-cu-eeeeeeeeeeee.jpg', 'disk' => 'r2', 'mime' => 'image/jpeg', 'size' => 2048,
+        ]);
         $second = Entry::query()->whereHas('translations', fn ($q) => $q->where('slug', $slugs[1]))->firstOrFail();
-        DB::table('entries')->where('id', $second->id)->update(['cover_media_id' => $photo->id + 1000]);
+        DB::table('entries')->where('id', $second->id)->update(['cover_media_id' => $binned->id]);
+        $binned->delete();
 
         return $photo;
     });

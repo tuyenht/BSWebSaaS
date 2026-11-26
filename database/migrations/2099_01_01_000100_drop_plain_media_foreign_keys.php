@@ -13,12 +13,12 @@ use Illuminate\Support\Facades\DB;
  * Locks: dropping a foreign key takes ACCESS EXCLUSIVE on its table and, for its triggers, on media,
  * which blocks every read for that moment. So each drop is its own short transaction that gives up
  * after 5s rather than queue storefront requests behind it; a stopped run can be repeated.
- * down() adds the seven back NOT VALID, each in its own short step, then validates them outside any
- * transaction (the scan blocks neither reads nor writes).
+ * down() adds the seven back NOT VALID, each in its own short step, then validates each in a
+ * one-statement transaction with the same 5s lock wait (the scan blocks neither reads nor writes).
  */
 return new class extends Migration
 {
-    /** Each drop is its own short transaction; VALIDATE runs outside them. */
+    /** Each step is its own short transaction. */
     public $withinTransaction = false;
 
     /** @var array<string, array{string, string, string}> FK name => [table, column, ON DELETE action] */
@@ -67,8 +67,9 @@ return new class extends Migration
             });
         }
 
+        // each validation in its own one-statement transaction, so it too gives up on a lock after 5s
         foreach (self::PLAIN as $name => [$table]) {
-            DB::statement("ALTER TABLE {$table} VALIDATE CONSTRAINT {$name}");
+            $this->briefly(fn () => DB::statement("ALTER TABLE {$table} VALIDATE CONSTRAINT {$name}"));
         }
     }
 

@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -27,17 +28,22 @@ use Illuminate\Support\Facades\DB;
  * and media against writes for a moment, scans nothing, and checks every write from then on). Then
  * references written before it that name no media row of their own site are found:
  *   - a gallery row is never deleted here: any one found stops the migration with the count and the
- *     ids, before anything is changed (removing those rows is the owner's call);
- *   - in a nullable column the value is printed, then cleared (it named no file of that site, so it
- *     showed nothing; this cannot be undone).
+ *     ids before any row is changed (removing those rows is the owner's call);
+ *   - in a nullable column the value is cleared (it named no file of that site, so it showed
+ *     nothing; this cannot be undone).
+ * Every row found is written to storage/logs/media-same-site-keys-<UTC time>.csv (action, table,
+ * id, site_id, column, old media id), all of them, before its column is cleared; STDERR names the
+ * file and the count per column. A clean run writes no file.
  * Last, each key is validated outside any transaction: the scan holds no lock that blocks reads or
  * writes. The cleanup must see every website's rows, so up() first refuses a role that row security
  * filters. The old plain keys stay until 2099_01_01_000100 drops them.
  *
- * Every step is guarded (an index an interrupted build left INVALID is dropped and built again; a
- * constraint is added only when missing), so a run that stops half way can be repeated. down()
- * drops the nine keys (each drop locks media against reads for a moment: roll back at low traffic)
- * and the three indexes; cleared values are not put back.
+ * Every step waits at most $lockWait (5s) for a table lock, CREATE INDEX CONCURRENTLY and VALIDATE
+ * included (set on this session for that one statement); one that runs out stops the run with a
+ * message saying to run it again. Every step is guarded (an index an interrupted build left INVALID
+ * is dropped and built again; a constraint is added only when missing), so a run that stops half
+ * way can be repeated. down() drops the nine keys (each drop locks media against reads for a
+ * moment: roll back at low traffic) and the three indexes; cleared values are not put back.
  */
 return new class extends Migration
 {
@@ -63,8 +69,17 @@ return new class extends Migration
         'entry_translations_og_image_id_index' => ['INDEX', 'entry_translations', '(og_image_id) WHERE og_image_id IS NOT NULL'],
     ];
 
-    /** How many bad ids a printout or an error lists at most. */
+    /** How many gallery row ids the stop message names (the file it points to lists them all). */
     private const int SHOWN = 50;
+
+    /**
+     * How long a step waits for a table lock before it stops (the release stops, re-runnable). A
+     * test may shorten it.
+     */
+    public string $lockWait = '5s';
+
+    /** The file listing every reference this run found (cleared, or stopping the run); null while none was. */
+    public ?string $foundLog = null;
 
     public function up(): void
     {
@@ -73,23 +88,25 @@ return new class extends Migration
         }
 
         $this->refuseUnlessEveryRowIsVisible();
+        $this->foundLog = null;
 
         foreach (self::INDEXES as $name => [$kind, $table, $definition]) {
-            $this->index($name, $kind, $table, $definition);
+            $this->waitingBriefly("building the index {$name}", fn () => $this->index($name, $kind, $table, $definition));
         }
 
         foreach (self::NULLABLE as [$table, $column]) {
-            $this->briefly(fn () => $this->addConstraint($table, $column, "ON DELETE SET NULL ({$column})"));
+            $this->briefly("adding the key on {$table}.{$column}", fn () => $this->addConstraint($table, $column, "ON DELETE SET NULL ({$column})"));
         }
-        $this->briefly(fn () => $this->addConstraint('product_images', 'media_id', 'ON DELETE CASCADE'));
+        $this->briefly('adding the key on product_images.media_id', fn () => $this->addConstraint('product_images', 'media_id', 'ON DELETE CASCADE'));
 
         $this->stopOnForeignGalleryRows();
         foreach (self::NULLABLE as [$table, $column]) {
-            $this->briefly(fn () => $this->clear($table, $column));
+            $this->clear($table, $column);
         }
 
         foreach ([...self::NULLABLE, ['product_images', 'media_id']] as [$table, $column]) {
-            DB::statement("ALTER TABLE {$table} VALIDATE CONSTRAINT ".self::name($table, $column));
+            $name = self::name($table, $column);
+            $this->waitingBriefly("validating {$name}", fn () => DB::statement("ALTER TABLE {$table} VALIDATE CONSTRAINT {$name}"));
         }
     }
 
@@ -102,11 +119,11 @@ return new class extends Migration
         // Dropping a foreign key drops its triggers on media too, which locks media against every
         // read for that step: each drop is its own short step.
         foreach ([...self::NULLABLE, ['product_images', 'media_id']] as [$table, $column]) {
-            $this->briefly(fn () => DB::statement("ALTER TABLE {$table} DROP CONSTRAINT IF EXISTS ".self::name($table, $column)));
+            $this->briefly("dropping the key on {$table}.{$column}", fn () => DB::statement("ALTER TABLE {$table} DROP CONSTRAINT IF EXISTS ".self::name($table, $column)));
         }
 
         foreach (array_keys(self::INDEXES) as $name) {
-            DB::statement('DROP INDEX CONCURRENTLY IF EXISTS '.$name);
+            $this->waitingBriefly("dropping the index {$name}", fn () => DB::statement('DROP INDEX CONCURRENTLY IF EXISTS '.$name));
         }
     }
 
@@ -130,66 +147,136 @@ return new class extends Migration
         }
     }
 
-    /** A gallery row naming no media row of its own site cannot be cleared (media_id is NOT NULL): stop, change nothing. */
+    /**
+     * A gallery row naming no media row of its own site cannot be cleared (media_id is NOT NULL):
+     * every one is listed in the file, then the run stops before any row is changed.
+     */
     private function stopOnForeignGalleryRows(): void
     {
-        $bad = $this->foreign('product_images', 'media_id');
+        $ids = [];
+        foreach (self::foreignRows('product_images', 'media_id', false) as $row) {
+            $this->found('stopped', 'product_images', 'media_id', $row);
+            $ids[] = $row['id'];
+        }
 
-        if ($bad['count'] > 0) {
+        if ($ids !== []) {
             throw new RuntimeException(sprintf(
-                'Same-site media keys: %d product_images row(s) name a file that is not of their own website (ids: %s). Nothing was changed; decide what to do with these gallery rows, then run the migration again.',
-                $bad['count'],
-                implode(', ', $bad['ids']),
+                'Same-site media keys: %d product_images row(s) name a file that is not of their own website (ids: %s%s; all of them, with their website and file, in %s). '
+                .'No row was changed, but the new keys are already in place (not yet validated) and refuse every new write that names another website\'s file. '
+                .'Decide what to do with these gallery rows, then run the migration again.',
+                count($ids),
+                implode(', ', array_slice($ids, 0, self::SHOWN)),
+                count($ids) > self::SHOWN ? ', …' : '',
+                $this->foundLog,
             ));
         }
     }
 
-    /** Print, then clear, the values of one column that name no media row of their own site. */
+    /**
+     * Clear the values of one column that name no media row of their own site, in one short
+     * transaction: the rows are locked and each is written to the file (table, id, site, column, old
+     * value) before the update, which must then clear exactly those rows. A rollback is marked in
+     * the file, so a line there is cleared unless a "rolled back" line for its column follows it.
+     */
     private function clear(string $table, string $column): void
     {
-        $bad = $this->foreign($table, $column);
-        if ($bad['count'] === 0) {
-            return;
+        $count = 0;
+
+        try {
+            $this->briefly("clearing {$table}.{$column}", function () use ($table, $column, &$count): void {
+                foreach (self::foreignRows($table, $column, true) as $row) {
+                    $this->found('cleared', $table, $column, $row);
+                    $count++;
+                }
+                if ($count === 0) {
+                    return;
+                }
+
+                // Only a media-id column from the list above is written (never a body or a title).
+                $cleared = DB::table($table)
+                    ->whereNotNull($column)
+                    ->whereNotExists(fn (Builder $media) => $media->selectRaw('1')->from('media')
+                        ->whereColumn('media.site_id', "{$table}.site_id")->whereColumn('media.id', "{$table}.{$column}"))
+                    ->update([$column => null]);
+
+                if ($cleared !== $count) {
+                    throw new RuntimeException(sprintf('Same-site media keys: %s.%s listed %d row(s) but would clear %d; nothing was cleared, run the migration again.', $table, $column, $count, $cleared));
+                }
+            });
+        } catch (Throwable $e) {
+            if ($count > 0) {
+                $this->note("rolled back: {$table}.{$column}, the {$count} row(s) listed above for it were not cleared");
+            }
+
+            throw $e;
         }
 
-        fwrite(STDERR, sprintf(
-            "Same-site media keys: clearing %s.%s on %d row(s) that named no file of their own website (row id => media id: %s)\n",
-            $table,
-            $column,
-            $bad['count'],
-            implode(', ', $bad['pairs']),
-        ));
-
-        // Only a media-id column from the list above is written (never a body or a title).
-        DB::table($table)
-            ->whereNotNull($column)
-            ->whereNotExists(fn (Builder $media) => $media->selectRaw('1')->from('media')
-                ->whereColumn('media.site_id', "{$table}.site_id")->whereColumn('media.id', "{$table}.{$column}"))
-            ->update([$column => null]);
+        if ($count > 0) {
+            fwrite(STDERR, sprintf("Same-site media keys: cleared %s.%s on %d row(s) that named no file of their own website; every one is listed in %s\n", $table, $column, $count, $this->foundLog));
+        }
     }
 
     /**
-     * The rows of one column that name no media row of their own site, the first few by id.
+     * The rows of one column that name no media row of their own site, by id; with $lock each is
+     * locked FOR UPDATE until the caller's transaction ends.
      *
-     * @return array{count: int, ids: list<int>, pairs: list<string>}
+     * @return Generator<int, array{id: int, site_id: int, media_id: int}>
      */
-    private function foreign(string $table, string $column): array
+    private static function foreignRows(string $table, string $column, bool $lock): Generator
     {
-        /** @var list<object{id: int, media_id: int, total: int}> $rows */
-        $rows = DB::select(<<<SQL
-            SELECT t.id, t.{$column} AS media_id, count(*) OVER () AS total
+        $rows = DB::cursor(<<<SQL
+            SELECT t.id, t.site_id, t.{$column} AS media_id
             FROM {$table} AS t
             WHERE t.{$column} IS NOT NULL
               AND NOT EXISTS (SELECT 1 FROM media m WHERE m.site_id = t.site_id AND m.id = t.{$column})
             ORDER BY t.id
-            LIMIT ?
-            SQL, [self::SHOWN]);
+            SQL.($lock ? ' FOR UPDATE OF t' : ''));
 
-        return [
-            'count' => $rows === [] ? 0 : $rows[0]->total,
-            'ids' => array_map(fn (object $r): int => $r->id, $rows),
-            'pairs' => array_map(fn (object $r): string => $r->id.' => '.$r->media_id, $rows),
-        ];
+        foreach ($rows as $row) {
+            $fields = get_object_vars($row);
+            yield ['id' => self::int($fields['id'] ?? null), 'site_id' => self::int($fields['site_id'] ?? null), 'media_id' => self::int($fields['media_id'] ?? null)];
+        }
+    }
+
+    private static function int(mixed $value): int
+    {
+        return is_numeric($value) ? (int) $value : 0;
+    }
+
+    /**
+     * One CSV line of the found-references file, which is created (with its header) on the first.
+     *
+     * @param  array{id: int, site_id: int, media_id: int}  $row
+     */
+    private function found(string $action, string $table, string $column, array $row): void
+    {
+        $this->line([$action, $table, $row['id'], $row['site_id'], $column, $row['media_id']]);
+    }
+
+    private function note(string $text): void
+    {
+        $this->line(['# '.$text]);
+    }
+
+    /** @param  list<mixed>  $fields */
+    private function line(array $fields): void
+    {
+        $path = $this->foundLog;
+        if ($path === null) {
+            $path = $this->foundLog = storage_path('logs/media-same-site-keys-'.now()->utc()->format('Ymd-His-u').'.csv');
+            $this->write($path, ['action', 'table', 'id', 'site_id', 'column', 'old_media_id']);
+        }
+        $this->write($path, $fields);
+    }
+
+    /** @param  list<mixed>  $fields */
+    private function write(string $path, array $fields): void
+    {
+        $handle = fopen($path, 'ab');
+        if ($handle === false || fputcsv($handle, array_map(static fn (mixed $f): string => is_scalar($f) ? (string) $f : '', $fields), escape: '') === false) {
+            throw new RuntimeException("Same-site media keys: cannot write the list of found references to {$path}; nothing was changed by this step.");
+        }
+        fclose($handle);
     }
 
     /** Builds an index, first dropping one an interrupted CONCURRENTLY build left INVALID. */
@@ -215,14 +302,49 @@ return new class extends Migration
 
     /**
      * One step in its own transaction with a short lock wait: queued behind a long transaction it
-     * gives up after 5 s (the release stops, re-runnable) instead of holding uploads and every
-     * write to the table behind it.
+     * gives up (the release stops, re-runnable) instead of holding uploads and every write to the
+     * table behind it.
      */
-    private function briefly(Closure $step): void
+    private function briefly(string $step, Closure $work): void
     {
-        DB::transaction(function () use ($step): void {
-            DB::statement("SET LOCAL lock_timeout = '5s'");
-            $step();
-        });
+        $this->explainingLockWait($step, fn () => DB::transaction(function () use ($work): void {
+            DB::select('SELECT set_config(?, ?, true)', ['lock_timeout', $this->lockWait]);
+            $work();
+        }));
+    }
+
+    /**
+     * A step that cannot run in a transaction (CREATE/DROP INDEX CONCURRENTLY, VALIDATE), with the
+     * same short lock wait set on this session for it and reset after it.
+     */
+    private function waitingBriefly(string $step, Closure $work): void
+    {
+        DB::select('SELECT set_config(?, ?, false)', ['lock_timeout', $this->lockWait]);
+        try {
+            $this->explainingLockWait($step, $work);
+        } finally {
+            DB::statement('RESET lock_timeout');
+        }
+    }
+
+    /** A lock wait that ran out (SQLSTATE 55P03) stops the run with what to do next. */
+    private function explainingLockWait(string $step, Closure $work): void
+    {
+        try {
+            $work();
+        } catch (QueryException $e) {
+            if ($e->getCode() !== '55P03') {
+                throw $e;
+            }
+
+            throw new RuntimeException(sprintf(
+                'Same-site media keys: stopped while %s: another transaction held the table for more than %s. '
+                .'The steps before it are kept and this one left nothing half-done (an index it had started is dropped and built again on the next run). '
+                .'Run the migration again when traffic is quieter; to see what held it: '
+                ."SELECT pid, state, xact_start, left(query, 80) FROM pg_stat_activity WHERE xact_start < now() - interval '5 seconds' ORDER BY xact_start.",
+                $step,
+                $this->lockWait,
+            ), 0, $e);
+        }
     }
 };
