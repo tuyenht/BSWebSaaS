@@ -3,6 +3,7 @@
 namespace App\Modules\Media\Services;
 
 use App\Modules\Media\Exceptions\MediaKeyRejectedException;
+use App\Modules\Media\Exceptions\SeedFileCopyFailedException;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Support\MediaKey;
 use App\Modules\Media\Support\MediaKeyPrefix;
@@ -10,7 +11,6 @@ use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteDirectory;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use RuntimeException;
 
 /**
  * Ensures a Media master exists for a storage_key already sitting in R2, returning it (idempotent
@@ -69,7 +69,7 @@ final readonly class EnsureMediaFromKey
             if ($disk->exists($sourceKey)) {
                 $mime = self::MIME_BY_EXT[strtolower(pathinfo($key, PATHINFO_EXTENSION))] ?? 'application/octet-stream';
                 if (! MediaKey::copyAs($disk, $sourceKey, $key, $mime)) {
-                    throw new RuntimeException("Copying the seed file '{$sourceKey}' to '{$key}' failed.");
+                    throw new SeedFileCopyFailedException("Copying the seed file '{$sourceKey}' to '{$key}' failed.");
                 }
             } else {
                 Log::warning('Seed file missing from media storage', ['source' => $sourceKey, 'key' => $key]);
