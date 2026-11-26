@@ -625,13 +625,20 @@ final class ReviewInbox extends Component
      * dialog keeps it on the field until it is put right. Anything else (done, refused, the post moved on)
      * is the page's message, and the dialog closes. The move must be one this person may make from where
      * the post stands, going live, asking no reason, on a post not yet live — the same set the dialog is
-     * shown for; ApproveEntryForLater judges it all again on the locked row.
+     * shown for; ApproveEntryForLater judges it all again on the locked row. $ulid is the post the dialog
+     * named: when the reader has moved on since, nothing is approved.
      *
      * @return string|null the field's error, or null once the dialog may close
      */
-    public function approveLater(string $key, string $publishAt): ?string
+    public function approveLater(string $key, string $publishAt, ?string $ulid = null): ?string
     {
         $this->resetErrorBag();
+
+        if ($ulid !== null && $ulid !== $this->current) {
+            $this->addError('inbox', __('admin.inbox.err_moved'));
+
+            return null;
+        }
 
         $when = ScheduleInput::parse($publishAt);
         $refused = ScheduleInput::error($publishAt);

@@ -78,7 +78,10 @@ const INBOX_PRIMARY_MARK = 'data-inbox-primary="';
 /** The opening tag of the reader's button for move $key, or '' when there is none. */
 function askButton(string $html, string $key): string
 {
-    return preg_match('/<button\b[^>]*data-inbox-act="'.preg_quote($key, '/').'"[^>]*>/s', $html, $m) === 1 ? $m[0] : '';
+    // attribute values may hold a ">" (an arrow function): a quoted value is skipped whole
+    $attrs = '(?:[^>"]|"[^"]*")*';
+
+    return preg_match('/<button\b'.$attrs.'data-inbox-act="'.preg_quote($key, '/').'"'.$attrs.'>/s', $html, $m) === 1 ? $m[0] : '';
 }
 
 it('asks before a first publication with «Khi nào đăng?», never applying straight from the click', function (): void {
@@ -91,7 +94,7 @@ it('asks before a first publication with «Khi nào đăng?», never applying st
             ->call('open', $post->ulid)->html();
 
         $approve = askButton($html, 'approve');
-        expect($approve)->toContain("\$dispatch('inbox-ap'", INBOX_PRIMARY_MARK)
+        expect($approve)->toContain("\$dispatch('inbox-ap'", INBOX_PRIMARY_MARK, (string) $post->ulid)
             ->not->toContain('wire:click')
             ->and($html)->toContain('data-inbox-ap', e(__('admin.inbox.ap_group')), e(__('entries.wf_ap_cancel')))
             // the reason move is no publishing move: it is never the one Enter runs
@@ -113,10 +116,10 @@ it('asks «Duyệt đăng “…”?» before publishing a post that was live be
 
         $approve = askButton($html, 'approve');
         // the question names the post, and the move carries it: a reader that moved on meanwhile applies nothing
-        expect($approve)->toContain('$bsConfirm(', "icon: 'publish'", 'focusCancel: true', INBOX_PRIMARY_MARK, 'inboxAsking = true')
+        expect($approve)->toContain('$bsConfirm(', "icon: 'publish'", 'focusCancel: true', INBOX_PRIMARY_MARK, 'inboxAsking = true', 'inboxAsking = false')
+            ->toMatch('/\$wire\.apply\([^)]*'.preg_quote((string) $post->ulid, '/').'/')
             ->not->toContain('wire:click')
-            ->and($html)->toMatch('/\$wire\.apply\([^)]*'.preg_quote((string) $post->ulid, '/').'/')
-            ->not->toContain('data-inbox-ap');
+            ->and($html)->not->toContain('data-inbox-ap');
     });
 });
 
@@ -286,6 +289,9 @@ it('applies nothing when the question named another post than the one now open',
             ->call('open', (string) $b->ulid)
             ->call('apply', 'approve', (string) $a->ulid)
             ->assertHasErrors(['inbox'])->assertSee(__('admin.inbox.err_moved'))
+            ->assertSet('current', (string) $b->ulid)
+            ->call('approveLater', 'approve', app(SiteTime::class)->now()->addDay()->format('Y-m-d\TH:i'), (string) $a->ulid)
+            ->assertReturned(null)->assertHasErrors(['inbox'])
             ->assertSet('current', (string) $b->ulid);
 
         expect($a->fresh()->status)->toBe('pending')->and($b->fresh()->status)->toBe('pending')
