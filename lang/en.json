@@ -392,6 +392,7 @@
     "entries.ed.job_badge_ph": "Urgent",
     "entries.ed.job_badge_hint": "Optional. Shows in the corner of the job card, for example «Urgent».",
     "entries.ed.job_badge_long": "The label on the card is longer than :max characters. Please shorten it.",
+    "entries.ed.job_badge_others": "Another language has a label on this card. While this box is empty, saving a change to the card removes the label in every language.",
     "entries.ed.job_invalid": "The job details could not be saved. Please check the boxes.",
     "entries.ed.pd_hint": "Leave it empty to use the real publish date.",
     "entries.ed.pd_invalid": "This date does not exist. Pick a day on the calendar, or leave it empty to use the real publish date.",

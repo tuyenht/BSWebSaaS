@@ -145,11 +145,14 @@
             <label for="entry-job-bd" class="{{ $label }}">{{ __('entries.ed.job_badge_label') }}</label>
             <input type="text" id="entry-job-bd" wire:model="jobBadge" maxlength="{{ \App\Modules\Cms\Support\JobFacts::BADGE_MAX }}" placeholder="{{ __('entries.ed.job_badge_ph') }}"
                    @readonly($jobCard['badgeLocked']) @if ($jobCard['badgeLocked']) aria-readonly="true" title="{{ $jobCard['why'] }}" @endif
-                   aria-describedby="entry-job-bd-h entry-job-bd-c @error('jobBadge') entry-job-bd-e @enderror" @error('jobBadge') aria-invalid="true" @enderror
+                   aria-describedby="entry-job-bd-h @if ($jobCard['badgeOthers']) entry-job-bd-o @endif entry-job-bd-c @error('jobBadge') entry-job-bd-e @enderror" @error('jobBadge') aria-invalid="true" @enderror
                    class="field {{ $fieldLook }}">
             @error('jobBadge') <x-bs-admin::field-error id="entry-job-bd-e">{{ $message }}</x-bs-admin::field-error> @enderror
             <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                 <p id="entry-job-bd-h" class="{{ $hint }}">{{ __('entries.ed.job_badge_hint') }}</p>
+                @if ($jobCard['badgeOthers'])
+                    <p id="entry-job-bd-o" class="{{ $hint }} basis-full">{{ __('entries.ed.job_badge_others') }}</p>
+                @endif
                 <span id="entry-job-bd-c" class="seo-count ms-auto" data-b="{{ $jobLen($jobBadge) >= 20 ? 'near' : '' }}"
                       x-bind:data-b="len(badge()) >= 20 ? 'near' : ''" x-text="count(@js($badgeCount), len(badge()))">{{ str_replace('__N__', (string) $jobLen($jobBadge), $badgeCount) }}</span>
             </div>
