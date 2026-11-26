@@ -37,6 +37,36 @@ final readonly class PageRenderer
     ) {}
 
     /**
+     * The page scripts a list of blocks drawn outside the page body needs (a menu's large panel): the
+     * same checks the body's own scripts go through, as the view flags the head reads. Blocks drawn
+     * there never move, so the scroll-in script is not one of them.
+     *
+     * @param  array<string, mixed>  $body
+     * @return array<string, true>
+     */
+    public function scriptFlags(array $body): array
+    {
+        $flags = [];
+        if ((self::sliderHints($body, null, $this->media)['sliderScript'] ?? false) || self::hasRails($body)) {
+            $flags['sliderScript'] = true;
+        }
+        if (self::playsVideo($body) || $this->blocks->playsRichVideo($body)) {
+            $flags['videoScript'] = true;
+        }
+        if (self::countsUp($body)) {
+            $flags['statsScript'] = true;
+        }
+        if (self::hasTabs($body)) {
+            $flags['tabsScript'] = true;
+        }
+        if ($this->hasBranchMap($body)) {
+            $flags['branchMapScript'] = true;
+        }
+
+        return $flags;
+    }
+
+    /**
      * @param  array<string, mixed>  $body  the Page-JSON body
      * @param  array{title?: string|null, description?: string|null, home?: bool, pageTitle?: string}  $seo  `home`: the site's home page
      * @param  string|null  $categoryTemplate  per-category layout name (override → category → type)
