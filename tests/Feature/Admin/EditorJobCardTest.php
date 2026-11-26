@@ -2,7 +2,13 @@
 
 use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Support\Locales;
+use App\Modules\Cms\Actions\RecordEntryRevision;
+use App\Modules\Cms\Actions\RestoreEntryRevision;
+use App\Modules\Cms\Actions\SaveEntryDraft;
+use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryDraft;
+use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\JobDeadline;
 use App\Modules\Cms\Support\JobFacts;
@@ -360,4 +366,322 @@ it('reads the deadline box in each language the editor writes it', function (): 
         ->and(JobDeadline::dayOfText('截止日期: 15/12/2026'))->toBe('2026-12-15')
         ->and(JobDeadline::dayOfText('Hạn nộp: 30/02/2026'))->toBeNull()
         ->and(JobDeadline::dayOfText('Lương: 9 – 14 triệu'))->toBeNull();
+});
+
+/** The website's languages: Vietnamese (the default) and these others, enabled. */
+function jcLanguages(string ...$locales): void
+{
+    foreach ($locales as $locale) {
+        SiteLocaleRow::query()->updateOrCreate(['locale' => $locale], ['is_default' => false, 'enabled' => true, 'is_public' => true]);
+    }
+    app(SiteLanguages::class)->forget();
+}
+
+/** A box worded in Vietnamese and English. */
+function jcFact2(string $vi, string $en, string $tone = 'plain'): array
+{
+    return ['text' => ['vi' => $vi, 'en' => $en], 'tone' => $tone];
+}
+
+/** jcPost() with an English page too ($status: both languages and the post). */
+function jcPostEn(Taxonomy $category, array $meta = [], string $status = 'draft'): Entry
+{
+    $entry = Entry::query()->create(['type' => 'post', 'status' => $status, 'meta' => $meta]);
+    $entry->translations()->create(['locale' => 'vi', 'title' => 'Kỹ thuật viên CNC', 'slug' => 'ky-thuat-vien-cnc', 'status' => $status, 'body' => ['blocks' => []]]);
+    $entry->translations()->create(['locale' => 'en', 'title' => 'CNC technician', 'slug' => 'cnc-technician', 'status' => $status, 'body' => ['blocks' => []]]);
+    $entry->assignCategories([$category->id]);
+
+    return $entry->fresh();
+}
+
+/** The card as it is later: on the website, or (held) in the post's pending change, the website keeping the older one. */
+function jcNewer(Entry $post, array $meta, User $actor, bool $held): void
+{
+    if ($held) {
+        app(SaveEntryDraft::class)->handle($post->fresh(), $actor, 'vi', [], ['meta' => $meta]);
+    } else {
+        $post->update(['meta' => $meta]);
+    }
+}
+
+/** The post's history version of $locale as it is now. */
+function jcRevision(Entry $post, string $locale, User $actor): EntryRevision
+{
+    $post = $post->fresh();
+    app(RecordEntryRevision::class)->forLocale($post, $post->translationFor($locale), RevisionKind::Edit, $actor);
+
+    return EntryRevision::query()->where('entry_id', $post->id)->where('locale', $locale)->latest('id')->firstOrFail();
+}
+
+it('keeps the card\'s shape on «Nổi bật» of «Hạn nộp» sent from another language, and on a kept copy brought back there', function (): void {
+    $user = jcUser();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        jcLanguages('en');
+        [, $jobs] = jcCategories();
+        $deadline = ['text' => ['vi' => 'Hạn nộp: 15/12/2026', 'en' => 'Apply by: 15/12/2026'], 'tone' => 'plain'];
+        $stored = ['facts' => [jcFact('Nhà máy 2'), jcFact('Toàn thời gian'), $deadline]];
+        $post = jcPostEn($jobs, $stored);
+        $why = __('entries.ed.shared_guard', ['lang' => Locales::label('vi')]);
+
+        // the accent set straight on the property: refused at the save
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid, 'locale' => 'en'])
+            ->set('jobDeadlineAccent', true)->call('save')->assertHasErrors(['jobFacts'])->assertSee($why);
+        expect($post->fresh()->meta)->toEqual($stored);
+
+        // «Khôi phục» of a copy kept on this device: the English words come back box by box; the
+        // boxes, their tone, the deadline and a label Vietnamese does not have stay as stored
+        $english = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid, 'locale' => 'en'])
+            ->call('restoreKept', [
+                'jobFacts' => [
+                    ['key' => 'f1', 'text' => 'Full time', 'accent' => true],
+                    ['key' => 'f0', 'text' => 'Plant 2', 'accent' => true],
+                    ['key' => 'n7', 'text' => 'Extra box', 'accent' => false],
+                ],
+                'jobDeadline' => '2027-01-31',
+                'jobDeadlineAccent' => true,
+                'jobBadge' => 'Urgent',
+            ])
+            ->assertSet('jobDeadline', '2026-12-15')
+            ->assertSet('jobDeadlineAccent', false)
+            ->assertSet('jobBadge', '');
+        expect($english->get('jobFacts'))->toEqual([
+            ['key' => 'f0', 'text' => 'Plant 2', 'accent' => false],
+            ['key' => 'f1', 'text' => 'Full time', 'accent' => false],
+        ]);
+        $english->call('save')->assertHasNoErrors();
+        expect($post->fresh()->meta)->toEqual(['facts' => [jcFact2('Nhà máy 2', 'Plant 2'), jcFact2('Toàn thời gian', 'Full time'), $deadline]]);
+
+        // with a Vietnamese label, the English one comes back too
+        $post->update(['meta' => $stored + ['badge' => ['vi' => 'Gấp']]]);
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid, 'locale' => 'en'])
+            ->call('restoreKept', ['jobBadge' => 'Urgent'])
+            ->assertSet('jobBadge', 'Urgent')
+            ->call('save')->assertHasNoErrors();
+        expect($post->fresh()->meta['badge'])->toEqual(['vi' => 'Gấp', 'en' => 'Urgent']);
+    });
+});
+
+it('puts the card back to what was read when «Chuyên mục chính» moves to a category that does not list jobs', function (): void {
+    $user = jcUser();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        [, $jobs] = jcCategories();
+        $events = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 2]);
+        $events->translations()->create(['locale' => 'vi', 'name' => 'Sự kiện', 'slug' => 'su-kien']);
+        $post = jcPost($jobs, ['facts' => [jcFact('Nhà máy 2')], 'badge' => ['vi' => 'Gấp']]);
+
+        $form = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid])
+            ->set('jobFacts.0.text', 'Nhà máy 3')
+            ->set('jobDeadline', '2026-12-15')
+            ->set('jobBadge', '')
+            ->call('toggleCategory', $events->ulid)
+            ->assertSeeHtml('data-entry-job')
+            ->assertSet('jobBadge', '')
+            ->call('setMainCategory', $events->ulid)
+            ->assertSet('categoryId', $events->id)
+            ->assertDontSeeHtml('data-entry-job')
+            ->assertSet('jobDeadline', '')
+            ->assertSet('jobBadge', 'Gấp');
+        expect($form->get('jobFacts'))->toBe([['key' => 'f0', 'text' => 'Nhà máy 2', 'accent' => false]]);
+    });
+});
+
+it('takes the label off in every language when the default language empties it, and says so first', function (): void {
+    $user = jcUser();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        jcLanguages('en');
+        [, $jobs] = jcCategories();
+        $post = jcPostEn($jobs, ['facts' => [jcFact2('Nhà máy 2', 'Plant 2')], 'badge' => ['vi' => 'Gấp', 'en' => 'Urgent']]);
+
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid])
+            ->assertSee(__('entries.ed.job_badge_others'))
+            ->set('jobBadge', '')
+            ->call('save')->assertHasNoErrors();
+        expect($post->fresh()->meta)->toEqual(['facts' => [jcFact2('Nhà máy 2', 'Plant 2')]]);
+
+        // no other language has one: no such line
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid])->assertDontSee(__('entries.ed.job_badge_others'));
+
+        // a label only another language has (left from before): the line shows; a save that leaves the
+        // card as it is keeps it, and a save that changes the card, its label empty, takes it off
+        $post->update(['meta' => ['facts' => [jcFact2('Nhà máy 2', 'Plant 2')], 'badge' => ['en' => 'Urgent']]]);
+        $form = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid])
+            ->assertSee(__('entries.ed.job_badge_others'))
+            ->set('title', 'Kỹ thuật viên CNC (ca đêm)')
+            ->call('save')->assertHasNoErrors();
+        expect($post->fresh()->meta)->toEqual(['facts' => [jcFact2('Nhà máy 2', 'Plant 2')], 'badge' => ['en' => 'Urgent']]);
+        $form->set('jobFacts.0.text', 'Nhà máy 2 – Thạch Thất')->call('save')->assertHasNoErrors()
+            ->assertDontSee(__('entries.ed.job_badge_others'));
+        expect($post->fresh()->meta)->toEqual(['facts' => [jcFact2('Nhà máy 2 – Thạch Thất', 'Plant 2')]]);
+    });
+});
+
+it('lets another language empty a label the default language does not have, and never start one', function (): void {
+    $user = jcUser();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        jcLanguages('en', 'ja');
+        [, $jobs] = jcCategories();
+        $facts = [['text' => ['vi' => 'Nhà máy 2', 'en' => 'Plant 2', 'ja' => '第2工場'], 'tone' => 'plain']];
+        $post = jcPostEn($jobs, ['facts' => $facts, 'badge' => ['en' => 'Urgent']]);
+        $badgeField = static fn (string $html): bool => preg_match('/<input[^>]*id="entry-job-bd"[^>]*aria-readonly="true"/', $html) === 1;
+
+        // English has one, Vietnamese none: English may empty its own (towards the shape Vietnamese has)
+        $english = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid, 'locale' => 'en']);
+        expect($badgeField($english->html()))->toBeFalse();
+        $english->set('jobBadge', '')->call('save')->assertHasNoErrors();
+        expect($post->fresh()->meta)->toEqual(['facts' => $facts]);
+
+        // English none and Vietnamese none: the field is read-only, and a label sent anyway is refused
+        // (Japanese having one, left from before, does not make it every language's)
+        $post->update(['meta' => ['facts' => $facts, 'badge' => ['ja' => '急募']]]);
+        $english = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid, 'locale' => 'en']);
+        expect($badgeField($english->html()))->toBeTrue();
+        $english->set('jobBadge', 'Urgent')->call('save')->assertHasErrors(['jobFacts']);
+        expect($post->fresh()->meta)->toEqual(['facts' => $facts, 'badge' => ['ja' => '急募']]);
+
+        // with a Vietnamese label, English writes its own
+        $post->update(['meta' => ['facts' => $facts, 'badge' => ['vi' => 'Gấp', 'ja' => '急募']]]);
+        $english = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid, 'locale' => 'en']);
+        expect($badgeField($english->html()))->toBeFalse();
+        $english->set('jobBadge', 'Urgent')->call('save')->assertHasNoErrors();
+        expect($post->fresh()->meta['badge'])->toEqual(['vi' => 'Gấp', 'en' => 'Urgent', 'ja' => '急募']);
+    });
+});
+
+it('restores another language\'s version with only its words on the card: the shape and the other languages\' words stay', function (array $permissions, bool $held): void {
+    $user = jcUser($permissions);
+    app(Tenancy::class)->enter(1, function () use ($user, $held): void {
+        jcLanguages('en');
+        [, $jobs] = jcCategories();
+        $deadline = ['text' => ['vi' => 'Hạn nộp: 15/12/2026', 'en' => 'Apply by: 15/12/2026'], 'tone' => 'plain'];
+        $post = jcPostEn($jobs, ['facts' => [jcFact2('Nhà máy 2', 'Plant 2'), jcFact2('Toàn thời gian', 'Full time'), $deadline], 'badge' => ['vi' => 'Gấp', 'en' => 'Urgent']], 'published');
+        $old = jcRevision($post, 'en', $user);
+
+        // later: Vietnamese drops the second box, rewords and accents the first, rewords the label;
+        // English rewords its first box and its label
+        $now = ['facts' => [['text' => ['vi' => 'Nhà máy 3', 'en' => 'Plant 3'], 'tone' => 'accent'], $deadline], 'badge' => ['vi' => 'Gấp lắm', 'en' => 'Very urgent']];
+        $live = $post->fresh()->meta;
+        jcNewer($post, $now, $user, $held);
+
+        app(RestoreEntryRevision::class)->handle($old, $user);
+
+        $expected = ['facts' => [['text' => ['vi' => 'Nhà máy 3', 'en' => 'Plant 2'], 'tone' => 'accent'], $deadline], 'badge' => ['vi' => 'Gấp lắm', 'en' => 'Urgent']];
+        if ($held) {
+            expect($post->fresh()->meta)->toEqual($live)
+                ->and(EntryDraft::query()->where('entry_id', $post->id)->sole()->content['shared']['meta'])->toEqual($expected);
+        } else {
+            expect($post->fresh()->meta)->toEqual($expected);
+        }
+    });
+})->with([
+    'on the website' => [['entries.view', 'entries.edit.any', 'entries.publish'], false],
+    'into the pending change' => [['entries.view', 'entries.edit.any'], true],
+]);
+
+it('restores a default-language version with its shape and words, keeping other languages\' words for the boxes still there', function (array $permissions, bool $held): void {
+    $user = jcUser($permissions);
+    app(Tenancy::class)->enter(1, function () use ($user, $held): void {
+        jcLanguages('en');
+        [, $jobs] = jcCategories();
+        $deadline = ['text' => ['vi' => 'Hạn nộp: 15/12/2026', 'en' => 'Apply by: 15/12/2026'], 'tone' => 'accent'];
+        $post = jcPostEn($jobs, ['facts' => [jcFact2('Nhà máy 2', 'Plant 2'), jcFact2('Toàn thời gian', 'Full time'), $deadline], 'badge' => ['vi' => 'Gấp', 'en' => 'Urgent']], 'published');
+        $old = jcRevision($post, 'vi', $user);
+
+        // later: one box left and no deadline; English rewords that box and the label
+        $now = ['facts' => [jcFact2('Nhà máy 3', 'Plant 3', 'accent')], 'badge' => ['vi' => 'Gấp lắm', 'en' => 'Very urgent']];
+        $live = $post->fresh()->meta;
+        jcNewer($post, $now, $user, $held);
+
+        app(RestoreEntryRevision::class)->handle($old, $user);
+
+        // the version's boxes, tone, deadline and label, in its Vietnamese words; English keeps its
+        // words for the box still there, and the box back again has none in English yet
+        $expected = ['facts' => [jcFact2('Nhà máy 2', 'Plant 3'), jcFact('Toàn thời gian'), $deadline], 'badge' => ['vi' => 'Gấp', 'en' => 'Very urgent']];
+        $stored = $held ? EntryDraft::query()->where('entry_id', $post->id)->sole()->content['shared']['meta'] : $post->fresh()->meta;
+        expect($stored)->toEqual($expected);
+        if ($held) {
+            expect($post->fresh()->meta)->toEqual($live);
+        }
+    });
+})->with([
+    'on the website' => [['entries.view', 'entries.edit.any', 'entries.publish'], false],
+    'into the pending change' => [['entries.view', 'entries.edit.any'], true],
+]);
+
+it('restores a default-language version without a label: the label goes in every language', function (): void {
+    $user = jcUser();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        jcLanguages('en');
+        [, $jobs] = jcCategories();
+        $post = jcPostEn($jobs, ['facts' => [jcFact2('Nhà máy 2', 'Plant 2')]], 'published');
+        $old = jcRevision($post, 'vi', $user);
+        $post->update(['meta' => ['facts' => [jcFact2('Nhà máy 2', 'Plant 2')], 'badge' => ['vi' => 'Gấp', 'en' => 'Urgent']]]);
+
+        app(RestoreEntryRevision::class)->handle($old, $user);
+
+        expect($post->fresh()->meta)->toEqual(['facts' => [jcFact2('Nhà máy 2', 'Plant 2')]]);
+    });
+});
+
+it('keeps the shape the default language saved when another language\'s older form keeps its own words', function (): void {
+    $user = jcUser();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        jcLanguages('en');
+        [, $jobs] = jcCategories();
+        $post = jcPostEn($jobs, ['facts' => [jcFact2('Nhà máy 2', 'Plant 2'), jcFact2('Toàn thời gian', 'Full time')], 'badge' => ['vi' => 'Gấp', 'en' => 'Urgent']]);
+
+        // the English form is open; meanwhile Vietnamese drops the first box and accents the other
+        $english = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid, 'locale' => 'en'])
+            ->set('jobFacts.1.text', 'Full-time')
+            ->set('jobBadge', 'Very urgent');
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid])
+            ->call('removeJobFact', 0)->call('toggleJobAccent', 0)
+            ->call('save')->assertHasNoErrors();
+        $shaped = ['facts' => [['text' => ['vi' => 'Toàn thời gian', 'en' => 'Full time'], 'tone' => 'accent']], 'badge' => ['vi' => 'Gấp', 'en' => 'Urgent']];
+        expect($post->fresh()->meta)->toEqual($shaped);
+
+        // the English form's own save by itself stops at the question
+        $english->call('autosave');
+        expect($english->get('stale'))->not->toBeNull()
+            ->and($post->fresh()->meta)->toEqual($shaped);
+
+        // «Giữ bản của tôi»: the English words go into the boxes Vietnamese left; the shape stays Vietnamese's
+        $english->call('keepMine')->assertHasNoErrors();
+        expect($post->fresh()->meta)->toEqual(['facts' => [['text' => ['vi' => 'Toàn thời gian', 'en' => 'Full-time'], 'tone' => 'accent']], 'badge' => ['vi' => 'Gấp', 'en' => 'Very urgent']])
+            ->and(array_column($english->get('jobFacts'), 'text'))->toBe(['Full-time']);
+
+        // and after a label Vietnamese took off meanwhile, the English one is not started again
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $post->ulid])->set('jobBadge', '')->call('save')->assertHasNoErrors();
+        $english->set('jobFacts.0.text', 'Full time job')->call('save');
+        $english->call('keepMine')->assertHasNoErrors();
+        expect($post->fresh()->meta)->toEqual(['facts' => [['text' => ['vi' => 'Toàn thời gian', 'en' => 'Full time job'], 'tone' => 'accent']]])
+            ->and($english->get('jobBadge'))->toBe('');
+    });
+});
+
+it('matches a restored version\'s boxes to the card by their default-language words, and leaves an unchanged card unchanged', function (): void {
+    $user = jcUser();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        jcLanguages('en');
+        [, $jobs] = jcCategories();
+        $post = jcPostEn($jobs, ['facts' => [jcFact2('Nhà máy 2', 'Plant 2'), jcFact2('Toàn thời gian', 'Full time')], 'badge' => ['vi' => 'Gấp', 'en' => 'Urgent']], 'published');
+        $english = jcRevision($post, 'en', $user);
+        $vietnamese = jcRevision($post, 'vi', $user);
+
+        // a card the version has as it is now comes back exactly as stored, key order too (the entry's
+        // meta compares strictly: anything else would count as a change of every language's fields)
+        $meta = $post->fresh()->meta;
+        expect(JobFacts::restored($meta, $english->snapshot['meta'], 'en', 'vi'))->toBe($meta)
+            ->and(JobFacts::restored($meta, $vietnamese->snapshot['meta'], 'vi', 'vi'))->toBe($meta);
+
+        // Vietnamese took the first box out and English reworded the other: the English version's words
+        // go to the box worded the same in Vietnamese, not to the box now first
+        $post->update(['meta' => ['facts' => [jcFact2('Toàn thời gian', 'Full-time')]]]);
+        app(RestoreEntryRevision::class)->handle($english, $user);
+        expect($post->fresh()->meta)->toEqual(['facts' => [jcFact2('Toàn thời gian', 'Full time')]]);
+
+        // the Vietnamese version brings the first box back: new to English, the other keeps its English
+        $post->fresh()->update(['meta' => ['facts' => [jcFact2('Toàn thời gian', 'Full-time')]]]);
+        app(RestoreEntryRevision::class)->handle($vietnamese, $user);
+        expect($post->fresh()->meta)->toEqual(['facts' => [jcFact('Nhà máy 2'), jcFact2('Toàn thời gian', 'Full-time')], 'badge' => ['vi' => 'Gấp']]);
+    });
 });

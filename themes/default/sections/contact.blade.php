@@ -24,7 +24,7 @@
             <span class="sf-contact-card__icon sf-contact-card__icon--zalo" aria-hidden="true">Zalo</span>
             <div>
                 <h3 class="sf-contact-card__title">Zalo</h3>
-                <a class="sf-contact-card__value" href="{{ $sfZalo }}" target="_blank" rel="noopener">{{ \App\Modules\Theme\Components\SectionProps::text($props, 'zalo_label', $props['zalo']) }}<span class="sr-only"> {{ __('storefront.new_tab') }}</span></a>
+                <a class="sf-contact-card__value" href="{{ $sfZalo }}" target="_blank" rel="noopener">{{ \App\Modules\Theme\Components\SectionProps::text($props, 'zalo_label', __('storefront.contact_zalo_cta')) }}<span class="sr-only"> {{ __('storefront.new_tab') }}</span></a>
             </div>
         </li>
 @endif

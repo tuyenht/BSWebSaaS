@@ -15,8 +15,10 @@ use App\Modules\Cms\Queries\EntryRevisions;
 use App\Modules\Cms\Support\DisplayDate;
 use App\Modules\Cms\Support\EntryContentWriter;
 use App\Modules\Cms\Support\EntryCover;
+use App\Modules\Cms\Support\JobFacts;
 use App\Modules\Media\Support\MediaRefs;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
 use DateTimeInterface;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -46,7 +48,7 @@ use Livewire\Attributes\Locked;
  * @property string $excerpt
  * @property string $seoTitle
  * @property string $seoDescription
- * @property string $coverImageKey
+ * @property string $coverUlid
  * @property string $coverAlt
  */
 trait ShowsEntryRevisions
@@ -374,7 +376,7 @@ trait ShowsEntryRevisions
         // names no live file), else, with no id, the meta's key
         $cover = EntryCover::resolve($snap['cover_media_id'] ?? null, $snap['meta'] ?? null, MediaRefs::rows([$snap['cover_media_id'] ?? null]));
         $noCover = Cast::string(__('entries.rev.no_cover'));
-        $coverNow = $this->coverImageKey !== '' ? $this->revisionCoverName($this->coverImageKey) : $noCover;
+        $coverNow = $this->coverUlid !== '' ? $this->revisionCoverName($this->coverKey()) : $noCover;
         $coverThen = $cover !== '' ? $this->revisionCoverName($cover) : $noCover;
 
         $fields = [];
@@ -442,7 +444,12 @@ trait ShowsEntryRevisions
         $missing = 0;
         $shared = false;
         if ($content !== null) {
-            [$content, $missing] = $writer->withoutMissingMedia($content);
+            [$content, $missing] = $writer->withoutMissingMedia($content, lock: false);
+            // the job card as the restore writes it: this language's words onto the card as it is (in the
+            // pending change, when there is one: a restore held back goes there)
+            $held = EntryDraft::query()->where('entry_id', $entry->id)->first()?->content['shared'] ?? null;
+            $current = is_array($held) && is_array($held['meta'] ?? null) ? $held['meta'] : $entry->meta;
+            $content['meta'] = JobFacts::restored($current, $content['meta'], $this->locale, app(SiteLocale::class)->default());
             $shared = $writer->changesShared($entry, $content);
         }
         $status = $entry->status;

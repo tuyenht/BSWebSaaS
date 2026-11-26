@@ -192,11 +192,37 @@ it('resolves the pack\'s image slots to the uploaded media on the next content l
 
         expect($entry->translationFor('vi')?->body['blocks'][0]['props']['image_url'])->toBe($header->id)
             ->and(Mediable::query()->where('mediable_type', 'entry')->where('mediable_id', $entry->id)->where('media_id', $header->id)->exists())->toBeTrue()
-            ->and($post->meta['image_url'] ?? null)->toBe($keys['news-1.png']);
+            ->and(Media::query()->whereKey($post->cover_media_id)->value('storage_key'))->toBe($keys['news-1.png'])
+            ->and($post->meta)->not->toHaveKey('image_url');   // the card image is the post's one cover, by its row
     });
 
     $html = $this->get('http://'.ContentPacks::HOST.'/gioi-thieu')->assertOk()->getContent();
     expect($html)->toContain('header-');
+});
+
+it('loads a post\'s card image as its one cover: the plan reads a cover by its row, a new image replaces it and an unset one clears it', function (): void {
+    mediaLoad();
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output);
+    $post = fn (): Entry => ContentPacks::in($this->siteId, fn (): Entry => Entry::query()->whereKey(EntryTranslation::query()->where('slug', 'ra-mat-website')->value('entry_id'))->firstOrFail());
+    $media = fn (string $name): int => ContentPacks::in($this->siteId, fn (): int => (int) Media::query()->where('original_filename', $name)->value('id'));
+
+    // the post as the editor stores it once a member saves it: its picture by its row, no old key
+    ContentPacks::in($this->siteId, fn () => $post()->update(['cover_media_id' => $media('news-1.png'), 'meta' => []]));
+    [, $dry] = ContentPacks::run();
+    expect(ContentPacks::verdict($dry, 'post:ra-mat-website'))->toBe('unchanged');
+
+    ContentPacks::item($this->folder, 'posts.json', 'post:ra-mat-website', fn (array $item): array => ['image' => ['media' => 'header']] + $item);
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)
+        ->and($post()->cover_media_id)->toBe($media('header.png'))
+        ->and($post()->meta)->not->toHaveKey('image_url');
+
+    ContentPacks::item($this->folder, 'posts.json', 'post:ra-mat-website', fn (array $item): array => array_diff_key($item, ['image' => true]));
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)
+        ->and($post()->cover_media_id)->toBeNull()
+        ->and($post()->meta)->not->toHaveKey('image_url');
 });
 
 it('refuses an upload that would overwrite an object no image of the site owns', function (): void {

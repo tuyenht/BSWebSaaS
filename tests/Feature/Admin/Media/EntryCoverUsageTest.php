@@ -293,3 +293,37 @@ it('reads a cover named by id alone, the old key only without an id, in the row,
         expect($used->exists())->toBeTrue()->and($unused->exists())->toBeFalse();
     });
 });
+
+it('leaves no cover on this website\'s entries when their picture is deleted for good, and touches no other website\'s', function (): void {
+    Storage::fake('r2');
+    $pic = coverMedia('mat');
+    $keep = coverMedia('con');
+
+    [$byId, $mixed, $other] = app(Tenancy::class)->enter(1, function () use ($pic, $keep): array {
+        $byId = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'cover_media_id' => $pic->id, 'meta' => ['subtitle' => 'Phụ']]);
+        // a row from before the writers dropped the key: the id and the same file's key beside it
+        $mixed = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'cover_media_id' => $pic->id, 'meta' => ['image_url' => $pic->storage_key]]);
+        $other = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'cover_media_id' => $keep->id, 'meta' => []]);
+        expect(coverRows($byId))->toBe([$pic->id]);
+
+        return [$byId, $mixed, $other];
+    });
+    // another website's entry naming the same number (no foreign key holds it to its own website)
+    $theirs = app(Tenancy::class)->enter(2, fn (): Entry => Entry::query()->create(['type' => 'post', 'status' => 'draft', 'cover_media_id' => $pic->id, 'meta' => []]));
+
+    app(Tenancy::class)->enter(1, function () use ($pic): void {
+        $pic->delete();
+        $pic->forceDelete();
+    });
+
+    app(Tenancy::class)->enter(1, function () use ($byId, $mixed, $other, $keep): void {
+        $byId = Entry::query()->find($byId->id);
+        $mixed = Entry::query()->find($mixed->id);
+        expect($byId->cover_media_id)->toBeNull()
+            ->and($byId->meta)->toBe(['subtitle' => 'Phụ'])
+            ->and($mixed->cover_media_id)->toBeNull()
+            ->and($mixed->meta)->not->toHaveKey('image_url')   // no old key left to fall back to
+            ->and(Entry::query()->find($other->id)->cover_media_id)->toBe($keep->id);
+    });
+    expect(app(Tenancy::class)->enter(2, fn (): mixed => Entry::query()->find($theirs->id)->cover_media_id))->toBe($pic->id);
+});

@@ -17,6 +17,7 @@ use App\Modules\Cms\Actions\Menus\RestoreMenuItem;
 use App\Modules\Cms\Actions\Menus\SaveMenu;
 use App\Modules\Cms\Actions\Menus\SetMenuAutoAdd;
 use App\Modules\Cms\Exceptions\MenuChangeRejectedException;
+use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
@@ -28,6 +29,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
+use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Theme\Chrome\StorefrontIcons;
 use App\Modules\Theme\Theming\MenuAreas;
 use Closure;
@@ -358,6 +360,11 @@ final class Index extends Component
             'siteName' => $this->siteName($main),
             // support staff signed in for a member: the screen only looks (every change is refused here too)
             'support' => app(SupportSession::class)->active(),
+            // «Dựng khối mới» / «Mở Khối dùng chung»: the shared blocks screen, filtered to the large
+            // panel region, with its way back here; only where it opens (the plan's module, and
+            // someone who may build blocks: GatesBlockScreens)
+            'blocks' => in_array('blocks', app(Entitlement::class)->entitledModuleKeys(), true) && Gate::allows('create', ContentBlock::class)
+                ? route('admin.blocks.index', ['region' => 'menu', 'return' => 'menus']) : null,
             'kinds' => MenuIconGuess::KIND,
             'icons' => array_map(fn (string $group): array => [
                 'group' => __('menus.icon_group_'.$group),
