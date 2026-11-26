@@ -59,6 +59,7 @@ final class MemberInvitationNotification extends Notification implements ShouldQ
         Audit::record('rbac.invitation.send_failed', [
             'meta' => ['site_id' => $this->tenantSiteId, 'error' => $e::class],
         ]);
+        $this->recordMailFailure($e);
     }
 
     /**

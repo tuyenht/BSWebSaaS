@@ -9,6 +9,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Throwable;
 
 /**
  * A website owner asks the support team to point a domain for them (design.md §28, "Nhờ hỗ trợ
@@ -33,6 +34,12 @@ final class DomainHelpRequestNotification extends Notification implements Should
         public readonly string $memberEmail,
         public readonly array $records,
     ) {}
+
+    /** Sent with no website: nothing is logged (recordMailFailure() needs one). */
+    public function failed(Throwable $e): void
+    {
+        $this->recordMailFailure($e);
+    }
 
     /** @return list<string> */
     public function via(object $notifiable): array

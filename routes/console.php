@@ -148,6 +148,11 @@ Schedule::command('audit:months')->dailyAt('03:00')->timezone('UTC')->withoutOve
 // month and the 24 full months before it, with an audit row saying so.
 Schedule::command('audit:prune')->monthlyOn(1, '03:30')->timezone('UTC')->withoutOverlapping();
 
+// The mail log is one table per month (UTC), kept 90 days: make sure the coming months exist (the
+// command fails when fewer than two lie ahead), then drop the months and day counts past 90 days.
+Schedule::command('mail:months')->dailyAt('03:05')->timezone('UTC')->withoutOverlapping();
+Schedule::command('mail:prune')->dailyAt('03:35')->timezone('UTC')->withoutOverlapping();
+
 // Error notices: the morning summary of the counting day that just closed, at a local time set
 // explicitly (the app clock stays UTC). Mails only when there is something to say.
 Schedule::command('monitoring:summary')
