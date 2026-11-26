@@ -121,11 +121,52 @@ describe('posts and pages', function (): void {
             $post = frameEntry('post', $member, 'Khai trương xưởng mới', 'khai-truong');
             $c = Livewire::actingAs($member)->test(EntryEditor::class, ['ulid' => $post->ulid])
                 ->assertSeeHtmlInOrder(['aria-current="page">Sửa</span>', 'Sửa tin tức</h1>', 'Sửa nội dung, ảnh, đường dẫn và cách hiện trên Google — mở từ dòng trong danh sách.'])
-                ->assertSeeHtml('href="'.route('admin.entries.preview', ['ulid' => $post->ulid]).'"')
                 ->assertSeeHtml('"id":"preview"')
                 ->assertSeeHtml('wire:click="trash"')
                 ->assertSee('Chuyển vào thùng rác');
             assertChildBar($c);
+        });
+    });
+
+    it('opens «Xem trước» on the screen: the saved version in «Xem trước trên website», never a new tab', function (): void {
+        $member = frameMember(['entries.view', 'entries.create', 'entries.edit.any']);
+
+        app(Tenancy::class)->enter(1, function () use ($member): void {
+            frameSection();
+            $post = frameEntry('post', $member, 'Khai trương xưởng mới', 'khai-truong');
+            $url = route('admin.entries.preview', ['ulid' => $post->ulid]);
+            $html = Livewire::actingAs($member)->test(EntryEditor::class, ['ulid' => $post->ulid])->html();
+
+            // the bar's button and the phone's ⋮ item both open the dialog, neither is a link away
+            expect(substr_count($html, "\$dispatch('bs-site-preview')"))->toBe(2)
+                ->and($html)->not->toContain('href="'.$url.'"')
+                ->not->toContain(__('admin.editor.preview_tip'))
+                // the dialog: its name, the two widths (computer pressed first), «Đóng» named with Esc, the
+                // frame of the saved version read from the root, and the board's line under it
+                ->toContain('data-site-preview data-url="'.$url.'"')
+                ->toContain('<h2 id="site-pv-t"')
+                ->toContain('Xem trước trên website')
+                ->toMatch('/<span role="group" aria-label="Thiết bị xem trước"/')
+                ->toContain('Máy tính')
+                ->toContain('Điện thoại')
+                ->toContain("x-on:click=\"dev = 'd'\"")
+                ->toContain("x-on:click=\"dev = 'm'\"")
+                ->toContain('aria-label="Đóng xem trước (Esc)"')
+                ->toContain('x-bind:src="$root.dataset.url" title="Bản đã lưu của tin tức trên website"')
+                ->toContain('Chỉ người trong website thấy bản xem trước này. Khách chưa thấy gì cho tới khi tin tức được đăng.');
+        });
+    });
+
+    it('draws no «Xem trước trên website» while the post is not saved yet: the button stays locked with its reason', function (): void {
+        $member = frameMember(['entries.view', 'entries.create', 'entries.edit.any']);
+
+        app(Tenancy::class)->enter(1, function () use ($member): void {
+            frameSection();
+            $html = Livewire::actingAs($member)->test(EntryEditor::class, ['section' => 'posts'])->html();
+
+            expect($html)->not->toContain('data-site-preview')
+                ->not->toContain("\$dispatch('bs-site-preview')")
+                ->toContain(e(__('admin.editor.preview_new')));
         });
     });
 

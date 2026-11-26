@@ -1993,6 +1993,25 @@ final class Editor extends Component
     }
 
     /**
+     * Pictures dropped on the empty cover box («Kéo thả ảnh vào đây», design 07): the cover's «Chọn ảnh»
+     * opens on its device upload, which takes the dropped files the browser kept for it
+     * (window.__pendingPickerFiles, as the picker's own drop area does). Once they are in the library
+     * the member picks the cover there, as after any upload. Only for who may add files.
+     */
+    public function dropCover(): void
+    {
+        $this->authorizeEditing();
+        abort_unless(Gate::allows('media.view') && Gate::allows('media.upload'), 403);
+        if ($this->coverRefused()) {
+            return;
+        }
+        $this->blockImagePickerPath = '';
+        $this->openImagePicker('single');
+        $this->setPickerTab('upload');
+        $this->openPickerSource('device');
+    }
+
+    /**
      * «Bỏ ảnh»: the cover leaves the form (saved with «Lưu»), with «Hoàn tác» that puts the picture
      * and this language's words back as they were.
      */
@@ -2311,10 +2330,11 @@ final class Editor extends Component
         $unit = $this->unit();
         $title = Cast::string(__($this->ulid === null ? 'entries.ed.h1_new' : 'entries.ed.h1_edit', ['unit' => $unit]));
         $listUrl = route('admin.entries.index', $this->sectionKey !== null ? ['section' => $this->sectionKey] : []);
-        // «Xem trước» is drawn with its link, or locked with the reason on a record not saved yet; a member
-        // without the preview right gets no button, so the guide has no step for it either
+        // «Xem trước» opens the saved version in «Xem trước trên website» on this screen (design 07), or is
+        // locked with the reason on a record not saved yet; a member without the preview right gets no
+        // button, so the guide has no step for it either
         $preview = $this->ulid !== null && $this->mayPreview
-            ? ['url' => route('admin.entries.preview', ['ulid' => $this->ulid] + ($this->locale !== app(SiteLocale::class)->default() ? ['locale' => $this->locale] : [])), 'why' => null]
+            ? ['url' => route('admin.entries.preview', ['ulid' => $this->ulid] + ($this->locale !== app(SiteLocale::class)->default() ? ['locale' => $this->locale] : [])), 'why' => null, 'dialog' => true]
             : ['url' => null, 'why' => $this->ulid === null ? Cast::string(__('admin.editor.preview_new')) : null];
 
         return view('admin::livewire.entries.editor', [

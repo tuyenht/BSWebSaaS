@@ -132,6 +132,15 @@ document.addEventListener('bs-rich-editors-remount', mountRichEditors);
 // Quick-upload dropzone on the picker's source-select screen: drag-drop or "browse files" stages
 // the File objects on window.__pendingPickerFiles and opens the device pane, whose island drains
 // them on init (a File can't survive a Livewire round-trip, so it's handed over client-side).
+// window.bsStagePickerFiles does the staging for any other drop that opens the picker on its device
+// pane (the post editor's empty cover box: pictures only, `type` 'image/').
+window.bsStagePickerFiles = (files, type = '') => {
+    const list = Array.from(files ?? []).filter((f) => f.type.startsWith(type));
+    window.__pendingPickerFiles = list.length ? list : null;
+
+    return list.length;
+};
+
 document.addEventListener('alpine:init', () => {
     window.Alpine.data('pickerQuickUpload', () => ({
         pick() {
@@ -148,8 +157,37 @@ document.addEventListener('alpine:init', () => {
             if (!files?.length) {
                 return;
             }
-            window.__pendingPickerFiles = Array.from(files);
+            window.bsStagePickerFiles(files);
             this.$wire.openPickerSource('device');
+        },
+    }));
+});
+
+// «Xem trước trên website» (components/preview-dialog.blade.php): the saved version in a frame at a
+// computer's width or a phone's; the editor frame's «Xem trước» opens it (the bs-site-preview event).
+// Closing gives the focus back to what opened it, or to the ⋮ when that was the phone's menu item.
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('bsSitePreview', () => ({
+        open: false,
+        dev: 'd',
+        opener: null,
+        show() {
+            this.opener = document.activeElement;
+            this.dev = 'd';
+            this.open = true;
+            document.body.style.overflow = 'hidden';
+            // as the board: «Đóng» takes the focus (after the trap has put it on the first button)
+            setTimeout(() => this.$root.querySelector('[data-site-preview-close]')?.focus(), 30);
+        },
+        hide() {
+            this.open = false;
+            document.body.style.overflow = '';
+            const back = this.opener;
+            this.opener = null;
+            this.$nextTick(() => {
+                const shown = back && back.isConnected && back.getClientRects().length > 0;
+                (shown ? back : this.$root.closest('[data-entry-editor]')?.querySelector('[data-guide=more]'))?.focus();
+            });
         },
     }));
 });
