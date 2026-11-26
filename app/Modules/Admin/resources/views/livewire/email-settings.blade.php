@@ -145,6 +145,9 @@
                                         <li>{{ __('admin.oauth_guide_step3') }}</li>
                                         <li>{{ __('admin.oauth_guide_connect') }}</li>
                                     </ol>
+                                    @if ($k === 'google')
+                                        <p class="text-text-muted">{{ __('admin.oauth_guide_google_tip') }}</p>
+                                    @endif
                                     <label for="em-redirect-{{ $k }}" class="block pt-1 font-medium text-text-muted">{{ __('admin.redirect_uri') }}</label>
                                     <div class="flex items-center gap-2" x-data="{ copied: false }">
                                         <input id="em-redirect-{{ $k }}" type="text" readonly value="{{ \App\Modules\Admin\Support\OAuthFlow::callbackUrl() }}"

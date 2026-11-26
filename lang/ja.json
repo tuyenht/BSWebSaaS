@@ -854,6 +854,7 @@
     "admin.oauth_guide_step2": "下のリダイレクトURIを承認済みリダイレクトURIに追加します。",
     "admin.oauth_guide_step3": "クライアントIDとシークレットをここに貼り付けて保存します。",
     "admin.oauth_guide_connect": "「接続」をクリックして送信を承認します（オフラインアクセスを付与）。",
+    "admin.oauth_guide_google_tip": "Google Workspaceでは、手順1でユーザーの種類に「内部」を選んでください。Googleの審査が不要で、7日後に接続が切れません。個人のGmailなら「その他のプロバイダー」とアプリパスワードのほうが簡単です。",
     "admin.oauth_open_console": ":provider コンソールを開く",
     "admin.oauth_redirect_uri_shared": "このURIをプロバイダーごとに1回登録すれば全サイトで使えます。",
     "admin.users": "メンバー",

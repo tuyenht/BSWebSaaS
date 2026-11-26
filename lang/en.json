@@ -854,6 +854,7 @@
     "admin.oauth_guide_step2": "Add the Redirect URI below as an authorized redirect URI.",
     "admin.oauth_guide_step3": "Paste the Client ID & Secret here, then Save.",
     "admin.oauth_guide_connect": "Click Connect to authorize sending (grants offline access).",
+    "admin.oauth_guide_google_tip": "On Google Workspace, choose the «Internal» user type in step 1: Google need not review it and the connection does not stop after 7 days. For a personal Gmail, «Another provider» with an app password is easier.",
     "admin.oauth_open_console": "Open :provider console",
     "admin.oauth_redirect_uri_shared": "Register this one URI per provider — it works for every site.",
     "admin.users": "Members",

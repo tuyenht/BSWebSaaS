@@ -854,6 +854,7 @@
     "admin.oauth_guide_step2": "Thêm Redirect URI bên dưới vào danh sách redirect URI hợp lệ của app.",
     "admin.oauth_guide_step3": "Dán Client ID & Secret vào đây rồi Lưu.",
     "admin.oauth_guide_connect": "Bấm Kết nối để cấp quyền gửi mail (cấp quyền offline).",
+    "admin.oauth_guide_google_tip": "Dùng Google Workspace thì ở bước 1 chọn loại người dùng «Internal»: không cần Google duyệt và kết nối không tự ngắt sau 7 ngày. Gmail cá nhân thì chọn «Nhà cung cấp khác» với mật khẩu ứng dụng sẽ dễ hơn.",
     "admin.oauth_open_console": "Mở console :provider",
     "admin.oauth_redirect_uri_shared": "Đăng ký 1 URI này cho mỗi provider — dùng chung cho mọi website.",
     "admin.users": "Thành viên",
