@@ -340,8 +340,8 @@
         "Chúng tôi lấy chất lượng sản phẩm, dịch vụ và sự hài lòng của Quý khách hàng làm tôn chỉ hành động. Đồng hành cùng sự phát triển của An Vinh là sự thịnh vượng của Quý khách hàng; vì vậy An Vinh luôn chào đón sự hợp tác của các doanh nghiệp trên cả nước, trên cơ sở chia sẻ lợi ích và cùng hướng tới sự phát triển bền vững, lâu dài.",
         "Chúng tôi hy vọng nhận được sự hợp tác của Quý vị.",
         "Xin trân trọng cảm ơn!",
-        "Bùi Văn Quy",
-        "Giám đốc Công ty An Vinh"
+        "Ban Giám đốc",
+        "Công ty An Vinh"
        ],
        "image_url": {
         "media": "about-letter"
@@ -1078,8 +1078,7 @@
        "email": "quybv@ckanvinh.vn",
        "email_label": "Email",
        "address": "Xã Trung Giã, TP Hà Nội",
-       "address_label": "Trụ sở & Nhà máy",
-       "hours": "Thứ 2 – Thứ 7, giờ hành chính"
+       "address_label": "Trụ sở & Nhà máy"
       }
      },
      {
