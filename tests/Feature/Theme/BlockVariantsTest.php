@@ -106,6 +106,17 @@ it('renders contact cards with tel and mailto links and a hidden h2 when there i
         ->and($html)->toContain('<iframe class="sf-map" src="https://www.google.com/maps/embed?pb=1"');
 });
 
+it('lays four contact cards two by two below 1280px and in one row from 1280px', function (): void {
+    $css = (string) file_get_contents(resource_path('css/sf-form.css'));
+    preg_match('/@media \(min-width: 1024px\) \{\s*\.sf-contact-cards \{.*?\n\}/s', $css, $wide);
+    preg_match('/@media \(min-width: 1280px\) \{\s*\/\*[^*]*\*\/\s*\.sf-contact-cards:has\(> :nth-child\(4\)\) \{\s*grid-template-columns: ([^;]+);/s', $css, $widest);
+
+    // At 1024px four cards in one row are too narrow for their text: the fourth card keeps the grid at two.
+    expect($wide[0] ?? '')->toMatch('/\.sf-contact-cards \{\s*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/')
+        ->and($wide[0] ?? '')->toMatch('/\.sf-contact-cards:has\(> :nth-child\(4\)\) \{\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/')
+        ->and($widest[1] ?? '')->toBe('repeat(4, minmax(0, 1fr))');
+});
+
 it('renders features as top-rule cards with their glyphs', function (): void {
     $html = variantPage([['type' => 'features', 'props' => ['heading' => 'Năng lực', 'variant' => 'top-rule', 'items' => [
         ['title' => 'Máy CNC', 'text' => '20 máy', 'icon' => 'machine'], ['title' => 'Kiểm tra', 'icon' => 'not-a-glyph'],
