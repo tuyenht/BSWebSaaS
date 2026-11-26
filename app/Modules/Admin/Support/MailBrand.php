@@ -28,8 +28,8 @@ use Throwable;
  * layout's default, written with the website's variables, so editing «Thông tin chung» updates it).
  *
  * The signature is stored as HTML cleaned by RichTextSanitizer (the `full` profile) with the variables
- * left as `{site_name}`-style words; they are filled when a mail is drawn, each value HTML-escaped,
- * after the HTML is cleaned again. The shared mail frame (resources/views/vendor/notifications) asks
+ * left as `{site_name}`-style words; they are filled when a mail is drawn, after the HTML is cleaned
+ * again, and only as text or as a checked link address (never as markup). The shared mail frame (resources/views/vendor/notifications) asks
  * current() for all of it; a mail sent with no website in context, or one whose look cannot be read,
  * goes out in the plain frame — a look never stops a mail.
  */
@@ -144,11 +144,20 @@ final readonly class MailBrand
             return null;
         }
         $clean = trim($this->sanitizer->full($html));
-        if ($clean === '' || $clean === trim($this->sanitizer->full(self::defaultSignature($layout)))) {
+        if ($clean === '' || $clean === $this->cleanDefault($layout)) {
             return null;
         }
 
         return $clean;
+    }
+
+    /** A layout's own signature, cleaned once per worker: fixed text, the same for every site. */
+    private function cleanDefault(string $layout): string
+    {
+        /** @var array<string, string> $done */
+        static $done = [];
+
+        return $done[$layout] ??= trim($this->sanitizer->full(self::defaultSignature($layout)));
     }
 
     /**
@@ -237,7 +246,7 @@ final readonly class MailBrand
     }
 
     /**
-     * A stored signature made ready for a mail: cleaned again, the variables filled (escaped), the
+     * A stored signature made ready for a mail: cleaned again, the variables filled (as text), the
      * lines a blank variable leaves empty dropped, and each block given the mail's own inline style
      * (mail programs ignore a stylesheet, and the frame's theme would print paragraphs at 16px).
      *
@@ -245,23 +254,28 @@ final readonly class MailBrand
      */
     public function signature(string $html, array $values, bool $centered = false): string
     {
-        $escaped = [];
-        foreach ($values as $token => $value) {
-            $escaped[$token] = e($value);
-            // a variable written into a link's address is stored percent-encoded
-            $escaped[rawurlencode($token)] = e($value);
-        }
-        $filled = strtr($this->sanitizer->full($html), $escaped);
-
         $dom = new DOMDocument;
         $previous = libxml_use_internal_errors(true);
-        $dom->loadHTML('<?xml encoding="utf-8"?><div id="sig">'.$filled.'</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        $dom->loadHTML('<?xml encoding="utf-8"?><div id="sig">'.$this->sanitizer->full($html).'</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
         libxml_clear_errors();
         libxml_use_internal_errors($previous);
         $xpath = new DOMXPath($dom);
         $root = self::nodes($xpath, '/div')[0] ?? null;
         if (! $root instanceof DOMElement) {
             return '';
+        }
+
+        // The variables are filled after cleaning, so a value only ever lands as text (the DOM escapes it)
+        // or, in an address, as a checked link: never as markup or an unchecked scheme.
+        foreach (self::nodes($xpath, './/text()', $root) as $text) {
+            if ($text instanceof DOMText && str_contains($text->data, '{')) {
+                $text->data = strtr($text->data, $values);
+            }
+        }
+        foreach (self::nodes($xpath, './/a[@href]|.//img[@src]', $root) as $el) {
+            if ($el instanceof DOMElement) {
+                self::fillAddress($el, $el->tagName === 'a' ? 'href' : 'src', $values);
+            }
         }
 
         foreach (self::nodes($xpath, './/p|.//div|.//li', $root) as $block) {
@@ -345,6 +359,33 @@ final readonly class MailBrand
         $lines = array_filter(array_map(trim(...), explode("\n", $text)), fn (string $line): bool => $line !== '');
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * A link's or picture's address with variables in it: the website's address, its email (as
+     * mailto:) or its hotline (as tel:) when the address is just that variable; anything else that
+     * still holds a variable, or ends up with a scheme other than https/http/mailto/tel, is dropped.
+     *
+     * @param  array<string, string>  $values
+     */
+    private static function fillAddress(DOMElement $el, string $attribute, array $values): void
+    {
+        $raw = rawurldecode(trim($el->getAttribute($attribute)));
+        if (! str_contains($raw, '{')) {
+            return;
+        }
+        $phone = (string) preg_replace('/[^0-9+]/', '', $values['{hotline}'] ?? '');
+        $address = match (true) {
+            $raw === '{contact_email}' => ($values['{contact_email}'] ?? '') !== '' ? 'mailto:'.$values['{contact_email}'] : '',
+            $raw === '{hotline}' => $phone !== '' ? 'tel:'.$phone : '',
+            default => strtr($raw, ['{site_url}' => $values['{site_url}'] ?? '']),
+        };
+        if ($address === '' || str_contains($address, '{') || preg_match('~^(?:https?://|mailto:|tel:)~i', $address) !== 1) {
+            $el->removeAttribute($attribute);
+
+            return;
+        }
+        $el->setAttribute($attribute, $address);
     }
 
     /** A blank variable leaves «· ·» or a dangling «·» behind: close the gap. */

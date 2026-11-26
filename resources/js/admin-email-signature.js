@@ -24,7 +24,16 @@ window.Alpine.data('bsEmailSig', (cfg) => ({
     sendTimer: null,
 
     init() {
+        // New lines and aligned text as <p> (a <div>'s alignment would not survive the server's cleaning).
+        try {
+            document.execCommand('defaultParagraphSeparator', false, 'p');
+        } catch (e) {
+            // see cmd()
+        }
         this.fill(cfg.html);
+        // The editor is wire:ignore: its error state follows the message Livewire draws below it.
+        this.aria();
+        this.$wire.$hook('morphed', () => this.aria());
         window.addEventListener('email-signature-load', (e) => {
             const d = e.detail ?? {};
             clearTimeout(this.sendTimer);
@@ -45,9 +54,20 @@ window.Alpine.data('bsEmailSig', (cfg) => ({
             const img = document.createElement('img');
             img.src = d.url;
             img.alt = typeof d.alt === 'string' ? d.alt : '';
-            img.style.maxWidth = '200px';
+            img.setAttribute('width', '200');
             this.insert(img.outerHTML);
         });
+    },
+
+    aria() {
+        const ed = this.$refs.ed;
+        if (document.getElementById('em-sig-err')) {
+            ed.setAttribute('aria-invalid', 'true');
+            ed.setAttribute('aria-describedby', 'em-sig-err');
+        } else {
+            ed.removeAttribute('aria-invalid');
+            ed.removeAttribute('aria-describedby');
+        }
     },
 
     // The editor shows `html`, or the layout's own signature for ''.
@@ -89,10 +109,19 @@ window.Alpine.data('bsEmailSig', (cfg) => ({
         return s;
     },
 
-    // What the server stores: chips back to their {variable}, the editor's own marks dropped.
+    // What the server stores: chips back to their {variable}, the editor's own marks dropped, and the
+    // browser's <div> lines as <p> (the server keeps a paragraph's alignment, not a div's).
     serialize() {
         const d = this.$refs.ed.cloneNode(true);
         d.querySelectorAll('.em-var').forEach((s) => s.replaceWith(document.createTextNode(s.dataset.v ?? '')));
+        [...d.querySelectorAll('div')].reverse().forEach((div) => {
+            const p = document.createElement('p');
+            if (div.style.textAlign) {
+                p.style.textAlign = div.style.textAlign;
+            }
+            p.append(...div.childNodes);
+            div.replaceWith(p);
+        });
         const html = d.innerHTML.trim();
         return /^(<p>(<br>)?<\/p>|<br>)?$/i.test(html) ? '' : html;
     },
@@ -190,7 +219,8 @@ window.Alpine.data('bsEmailSig', (cfg) => ({
         this.linkError = '';
         if (this.pop === 'link') {
             const a = this.range?.commonAncestorContainer?.parentElement?.closest('a');
-            this.linkUrl = a ? a.getAttribute('href') ?? '' : '';
+            // A saved variable address comes back percent-encoded (%7Bsite_url%7D).
+            this.linkUrl = a ? (a.getAttribute('href') ?? '').replace(/%7B(\w+)%7D/gi, '{$1}') : '';
             this.$nextTick(() => this.$refs.linkInput?.focus());
         }
     },

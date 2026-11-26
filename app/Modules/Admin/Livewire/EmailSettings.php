@@ -21,10 +21,14 @@ use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Models\Site;
 use Closure;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Mail\Markdown;
 use Illuminate\Mail\Message;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -412,8 +416,11 @@ final class EmailSettings extends Component
     /** Writes «Chữ ký & thương hiệu»; false (with the error under the logo) when its picture left the library. */
     private function saveBrand(): bool
     {
+        // Only the rows whose fields changed: a colour saved from an older page leaves a newer signature be.
+        $changed = $this->unsavedFields();
+        $brandRow = array_intersect(['brandColor', 'logoKey'], $changed) !== [];
         $logoId = null;
-        if ($this->logoKey !== '') {
+        if ($brandRow && $this->logoKey !== '') {
             $logoId = Media::query()->where('storage_key', $this->logoKey)->where('mime', 'like', 'image/%')->value('id');
             if (! is_int($logoId)) {
                 $this->addError('logoKey', __('admin.em_logo_gone'));
@@ -422,10 +429,13 @@ final class EmailSettings extends Component
             }
         }
 
-        $brand = app(MailBrand::class);
         $repo = app(SettingsRepository::class);
-        $repo->put('email', 'brand', ['logo_media_id' => $logoId, 'color' => $this->brandColor !== '' ? $this->brandColor : null]);
-        $repo->put('email', 'signature', ['layout' => $this->sigLayout, 'html' => $brand->clean($this->sigHtml, $this->sigLayout)]);
+        if ($brandRow) {
+            $repo->put('email', 'brand', ['logo_media_id' => $logoId, 'color' => $this->brandColor !== '' ? $this->brandColor : null]);
+        }
+        if (array_intersect(['sigLayout', 'sigHtml'], $changed) !== []) {
+            $repo->put('email', 'signature', ['layout' => $this->sigLayout, 'html' => app(MailBrand::class)->clean($this->sigHtml, $this->sigLayout)]);
+        }
 
         return true;
     }
@@ -480,14 +490,10 @@ final class EmailSettings extends Component
         if ($this->scope !== 'site' || ! in_array($layout, MailBrand::LAYOUTS, true)) {
             return;
         }
-        if (mb_strlen($html) > MailBrand::SIGNATURE_MAX) {
-            $this->addError('sigHtml', __('admin.em_sig_too_long'));
-
-            return;
-        }
+        // Taken even when too long, so the server holds what the editor shows; «Lưu» then refuses it.
         $this->sigLayout = $layout;
         $this->sigHtml = $html;
-        $this->resetErrorBag('sigHtml');
+        $this->updatedSigHtml();
     }
 
     /** «Về mặc định»: the layout's own signature again (saved with «Lưu», undone with «Bỏ thay đổi»). */
@@ -627,8 +633,12 @@ final class EmailSettings extends Component
 
         try {
             // Through the shared mail frame, so the test shows the website's logo, colour and signature.
-            $html = (string) (new MailMessage)->subject(__('admin.test_email_subject'))->line(__('admin.test_email_body'))->render();
-            Mail::html($html, function (Message $message) use ($to): void {
+            $mail = (new MailMessage)->subject(__('admin.test_email_subject'))->line(__('admin.test_email_body'));
+            $views = [
+                'html' => new HtmlString((string) $mail->render()),
+                'text' => new HtmlString((string) app(Markdown::class)->renderText('notifications::email', $mail->toArray())),
+            ];
+            Mail::send($views, [], function (Message $message) use ($to): void {
                 $message->to($to)->subject(__('admin.test_email_subject'));
             });
             $this->testResult = 'ok';
@@ -785,7 +795,8 @@ final class EmailSettings extends Component
         $socials = [];
         foreach (is_array($links) ? $links : [] as $network => $url) {
             if (is_string($url) && $url !== '') {
-                $socials[] = ['name' => Cast::string(__('admin.gs.f.'.$network)), 'url' => $url];
+                $key = 'admin.gs.f.'.$network;
+                $socials[] = ['name' => Lang::has($key) ? Cast::string(__($key)) : Str::headline((string) $network), 'url' => $url];
             }
         }
         $defaults = [];

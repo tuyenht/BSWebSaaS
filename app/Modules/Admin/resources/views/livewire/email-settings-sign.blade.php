@@ -208,7 +208,6 @@
                 <div wire:ignore id="em-sig-ed" x-ref="ed" contenteditable="true" role="textbox" aria-multiline="true" aria-label="{{ __('admin.em_sig_editor') }}"
                      data-ph="{{ __('admin.em_sig_ph') }}" spellcheck="true"
                      x-on:input="changed()" x-on:blur="changed(true)" x-on:keyup="keep()" x-on:mouseup="keep()" x-on:paste="paste($event)"
-                     @error('sigHtml') aria-invalid="true" aria-describedby="em-sig-err" @enderror
                      class="min-h-[120px] min-w-0 flex-1 self-stretch px-4 py-[18px] text-[calc(0.875rem+var(--user-text-boost))] leading-relaxed text-text outline-none [overflow-wrap:anywhere] focus-visible:rounded focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-text empty:before:text-text-muted empty:before:content-[attr(data-ph)] [&_a]:text-primary-text [&_a]:underline [&_hr]:my-2.5 [&_hr]:border-0 [&_hr]:border-t [&_hr]:border-border-strong [&_img]:inline-block [&_img]:max-w-full [&_.em-var]:mx-px [&_.em-var]:inline-block [&_.em-var]:rounded [&_.em-var]:border [&_.em-var]:border-border [&_.em-var]:bg-surface-muted [&_.em-var]:px-[7px] [&_.em-var]:py-px [&_.em-var]:text-[.92em] [&_.em-var]:font-semibold [&_.em-var]:whitespace-nowrap [&_.em-var]:text-primary-text"></div>
             </div>
         </div>

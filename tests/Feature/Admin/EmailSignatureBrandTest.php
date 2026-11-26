@@ -257,3 +257,45 @@ it('keeps the framework frame for mail sent without a website', function (): voi
     expect($html)->toContain(config('app.name'))
         ->not->toContain('#fafbfc');
 });
+
+it('fills a variable into a link only as a checked address, never as an unchecked scheme', function (): void {
+    esbIdentity(['brand_name' => 'javascript:alert(1)', 'email' => 'lienhe@anvinh.test']);
+    app(Tenancy::class)->enter(1, fn () => app(SettingsRepository::class)->put('email', 'signature', [
+        'layout' => 'text',
+        'html' => '<p><a href="{site_name}">Xem</a> <a href="{contact_email}">Thư</a> <img src="{site_name}" alt="x"></p>',
+    ]));
+
+    $html = esbMail();
+
+    expect($html)->not->toMatch('/(?:href|src)="javascript:/i')
+        ->toContain('href="mailto:lienhe@anvinh.test"');
+});
+
+it('takes a layout with an over-long signature as shown, and refuses it on save', function (): void {
+    $admin = esbAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Livewire::actingAs($admin)->test(EmailSettings::class)
+            ->call('setSigLayout', 'top', '<p>'.str_repeat('a', MailBrand::SIGNATURE_MAX).'</p>')
+            ->assertSet('sigLayout', 'top')
+            ->assertHasErrors('sigHtml')
+            ->call('save')
+            ->assertHasErrors(['sigHtml' => 'max']);
+
+        expect(app(SettingsRepository::class)->get('email', 'signature'))->toBeNull();
+    });
+});
+
+it('writes only the part that changed, so a colour from an older page keeps a newer signature', function (): void {
+    $admin = esbAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $older = Livewire::actingAs($admin)->test(EmailSettings::class);
+        app(SettingsRepository::class)->put('email', 'signature', ['layout' => 'top', 'html' => '<p>Mới hơn</p>']);
+
+        $older->call('pickBrandColor', '#15803d')->call('save')->assertHasNoErrors();
+
+        expect(app(SettingsRepository::class)->get('email', 'signature'))->toEqual(['layout' => 'top', 'html' => '<p>Mới hơn</p>'])
+            ->and(app(SettingsRepository::class)->get('email', 'brand')['color'])->toBe('#15803d');
+    });
+});
