@@ -7,6 +7,7 @@ use App\Modules\Admin\Livewire\Concerns\TracksSavedState;
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\MailBrand;
 use App\Modules\Admin\Support\MailHostGuard;
+use App\Modules\Admin\Support\MailRelay;
 use App\Modules\Admin\Support\PlatformSettings;
 use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\SettingsRepository;
@@ -27,6 +28,7 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -61,11 +63,17 @@ final class EmailSettings extends Component
     }
 
     /** The fields the save bar compares with the saved setup (a secret only while one is typed). */
-    private const array TRACKED = ['provider', 'smtpHost', 'smtpPort', 'smtpEncryption', 'smtpUsername', 'smtpPassword',
+    private const array TRACKED = ['provider', 'relay', 'relayRegion', 'sendDomain', 'smtpHost', 'smtpPort', 'smtpEncryption', 'smtpUsername', 'smtpPassword',
         'oauthClientId', 'oauthClientSecret', 'fromAddress', 'fromName', 'replyTo'];
+
+    /** The fields of «Chọn dịch vụ»: changing one makes its last check stale («Chưa kiểm tra»). */
+    private const array RELAY_FIELDS = ['relay', 'relayRegion', 'sendDomain', 'smtpHost', 'smtpPort', 'smtpEncryption', 'smtpUsername', 'smtpPassword'];
 
     /** The fields of «Chữ ký & thương hiệu» (the signature is compared as it would be stored). */
     private const array BRAND_TRACKED = ['brandColor', 'logoKey', 'sigLayout', 'sigHtml'];
+
+    /** Test sends a member may start per minute on one website («Kiểm tra & lưu kết nối» and «Gửi thử» together). */
+    private const int TEST_SENDS_PER_MINUTE = 5;
 
     /** The tabs of a website's page, in the board's order («Mẫu thư» comes with the mail templates). */
     public const array TABS = ['send', 'sign'];
@@ -110,6 +118,27 @@ final class EmailSettings extends Component
     public string $replyTo = '';
 
     public bool $smtpPasswordSet = false;
+
+    /** The mail service «Nhà cung cấp khác» sends through (MailRelay::KEYS); the board starts on SendGrid. */
+    public string $relay = 'sendgrid';
+
+    /** Mailgun's (us|eu) or Amazon SES's region, from MailRelay::regions(). */
+    public string $relayRegion = '';
+
+    /** The domain a mail service sends from. */
+    public string $sendDomain = '';
+
+    /** The relay last saved ('' = none): a stored key belongs to it and never carries to another. */
+    #[Locked]
+    public string $storedRelay = '';
+
+    /** Whether the stored «Nhà cung cấp khác» setup has all a send needs. */
+    #[Locked]
+    public bool $ownReady = false;
+
+    /** «Đã kết nối và gửi thử thành công»: the stored setup passed «Kiểm tra & lưu kết nối» and nothing changed since. */
+    #[Locked]
+    public bool $relayChecked = false;
 
     public bool $oauthSecretSet = false;
 
@@ -214,6 +243,19 @@ final class EmailSettings extends Component
         $this->smtpUsername = Cast::string($smtp['username'] ?? null);
         $this->smtpPasswordSet = ! empty($smtp['password']);
 
+        if ($this->scope === 'site') {
+            // A setup saved before the services existed is its own mail server («Email khác»).
+            $stored = MailRelay::stored($cfg);
+            $this->relay = $stored ?? ($this->provider === 'other' || $this->smtpHost !== '' ? 'smtp' : 'sendgrid');
+            $this->storedRelay = $stored ?? ($this->smtpHost !== '' || $this->smtpPasswordSet ? 'smtp' : '');
+            $region = Cast::string($cfg['relay_region'] ?? null);
+            $this->relayRegion = in_array($region, MailRelay::regions($this->relay), true) ? $region : MailRelay::defaultRegion($this->relay);
+            $this->sendDomain = Cast::string($cfg['send_domain'] ?? null);
+            $this->ownReady = MailRelay::ready($cfg);
+            // a passed check stops counting while the mailer marks this outbox failing (a send could not set it up)
+            $this->relayChecked = $this->ownReady && isset($cfg['checked_at']) && ! app(TenantMailer::class)->ownOutboxFailing();
+        }
+
         $oauth = Cast::arr($cfg['oauth'] ?? null);
         $this->oauthProvider = Cast::string($oauth['provider'] ?? null, 'google');
         $this->oauthClientId = Cast::string($oauth['client_id'] ?? null);
@@ -275,6 +317,101 @@ final class EmailSettings extends Component
         }
     }
 
+    /** A tile of «Chọn dịch vụ»: its own fields; a key or login typed for another service never carries over. */
+    public function pickRelay(string $relay): void
+    {
+        if ($this->scope !== 'site' || ! in_array($relay, MailRelay::KEYS, true) || $relay === $this->relay) {
+            return;
+        }
+        $this->relay = $relay;
+        $this->smtpPassword = '';
+        $this->relayChecked = false;
+        $this->resetErrorBag(self::RELAY_FIELDS);
+        if ($relay === $this->storedRelay) {
+            // back to the saved service: its saved fields again
+            $cfg = Cast::arr($this->configRepo()->get('email'));
+            $smtp = Cast::arr($cfg['smtp'] ?? null);
+            $this->smtpHost = Cast::string($smtp['host'] ?? null);
+            $this->smtpPort = Cast::int($smtp['port'] ?? null, 587);
+            $this->smtpEncryption = Cast::string($smtp['encryption'] ?? null, 'tls');
+            $this->smtpUsername = Cast::string($smtp['username'] ?? null);
+            $region = Cast::string($cfg['relay_region'] ?? null);
+            $this->relayRegion = in_array($region, MailRelay::regions($relay), true) ? $region : MailRelay::defaultRegion($relay);
+
+            return;
+        }
+        $this->smtpHost = '';
+        $this->smtpPort = 587;
+        $this->smtpEncryption = 'tls';
+        $this->smtpUsername = '';
+        $this->relayRegion = MailRelay::defaultRegion($relay);
+    }
+
+    /** Any change in «Chọn dịch vụ» makes its last check stale. */
+    public function updated(string $name): void
+    {
+        if (in_array($name, self::RELAY_FIELDS, true)) {
+            $this->relayChecked = false;
+        }
+    }
+
+    /**
+     * «Email gửi đi» of «Email khác»: a Gmail or Yahoo address fills in its provider's server, only
+     * while no server is typed.
+     */
+    public function updatedSmtpUsername(): void
+    {
+        if ($this->scope !== 'site' || $this->relay !== 'smtp' || trim($this->smtpHost) !== '') {
+            return;
+        }
+        $server = MailRelay::mailboxServer($this->smtpUsername);
+        if ($server !== null) {
+            $this->smtpHost = $server['host'];
+            $this->smtpPort = $server['port'];
+            $this->smtpEncryption = $server['encryption'];
+        }
+    }
+
+    /**
+     * «Kiểm tra & lưu kết nối»: saves, then sends a test mail to the member who pressed it through
+     * the service just saved; success is remembered until a field of the service changes.
+     */
+    public function checkRelay(): void
+    {
+        if ($this->scope !== 'site' || $this->provider !== 'other') {
+            return;
+        }
+        // refused before saving: the member waits, then saves and checks in one go
+        if ($this->testSendThrottled()) {
+            return;
+        }
+        $this->relayChecked = false;
+        try {
+            $saved = $this->save();
+        } catch (ValidationException $e) {
+            $this->notify(__('admin.em_rl_invalid_toast', ['count' => count($e->errors())]), 'error');
+
+            throw $e;
+        }
+        if (! $saved) {
+            return;
+        }
+
+        $this->sendTest();
+        $repo = $this->configRepo();
+        $cfg = Cast::arr($repo->get('email'));
+        unset($cfg['checked_at']);
+        if ($this->testResult === 'ok') {
+            $cfg['checked_at'] = now()->utc()->toIso8601String();
+        }
+        $repo->put('email', 'config', $cfg);
+        $this->relayChecked = $this->testResult === 'ok';
+        if (! $this->relayChecked) {
+            return;
+        }
+        $this->notify(__('admin.em_rl_ok_toast'));
+    }
+
     /** True once written (a form that fails its checks stops at validation). */
     public function save(): bool
     {
@@ -297,6 +434,15 @@ final class EmailSettings extends Component
                 [...($senderChanged ? $this->rules() : []), ...($brandChanged ? $this->brandRules() : [])],
                 [
                     'smtpPort.in' => __('admin.smtp_port_mail_only', ['ports' => implode(', ', MailHostGuard::PORTS)]),
+                    'smtpPassword.required' => __($this->relay === 'smtp' ? 'admin.em_rl_err_pass' : 'admin.em_rl_err_key'),
+                    'sendDomain.required' => __('admin.em_rl_err_domain'),
+                    'sendDomain.regex' => __('admin.em_rl_err_domain'),
+                    'sendDomain.max' => __('admin.em_rl_err_domain'),
+                    'relayRegion.required' => __('admin.em_rl_err_region'),
+                    'relayRegion.in' => __('admin.em_rl_err_region'),
+                    'smtpUsername.required' => __('admin.em_rl_err_login'),
+                    'relay.required' => __('admin.em_rl_err_relay'),
+                    'relay.in' => __('admin.em_rl_err_relay'),
                     'sigHtml.max' => __('admin.em_sig_too_long'),
                     'brandColor.in' => __('admin.em_brand_color_invalid'),
                     'sigLayout.in' => __('admin.em_sig_layout_invalid'),
@@ -327,6 +473,9 @@ final class EmailSettings extends Component
         $existing = $repo->get('email') ?? [];
 
         $platformPick = $this->scope === 'site' && $this->provider === 'platform';
+        // What «Chọn dịch vụ» last saved, kept while another outbox is picked; a passed check only while nothing of it changed.
+        $relayKept = array_intersect_key($existing, array_flip(['relay', 'relay_region', 'send_domain',
+            ...(array_intersect($changed, self::RELAY_FIELDS) === [] ? ['checked_at'] : [])]));
 
         $cfg = [
             'method' => $this->method,
@@ -343,19 +492,32 @@ final class EmailSettings extends Component
                     $cfg[$kept] = $existing[$kept];
                 }
             }
+            $cfg += $relayKept;
         } elseif ($this->method === 'smtp_password') {
             $existingSmtp = Cast::arr($existing['smtp'] ?? null);
+            // A key belongs to the service it was saved for (validation asks for a new one on a switch).
+            $relay = $this->scope === 'site' ? $this->relay : 'smtp';
             $password = $this->smtpPassword !== ''
                 ? SecretCipher::encrypt($this->smtpPassword)
-                : ($existingSmtp['password'] ?? null);
+                : ($this->scope === 'platform' || $this->keySaved() ? ($existingSmtp['password'] ?? null) : null);
 
+            // A service's server is the relay table's, whatever the browser sent; «Email khác» takes the typed one.
+            $server = $relay === 'smtp' ? null : MailRelay::server($relay, $this->relayRegion);
             $cfg['smtp'] = [
-                'host' => $this->smtpHost,
-                'port' => $this->smtpPort,
-                'encryption' => $this->smtpEncryption,
-                'username' => $this->smtpUsername,
+                'host' => $server['host'] ?? $this->smtpHost,
+                'port' => $server['port'] ?? $this->smtpPort,
+                'encryption' => $server['encryption'] ?? $this->smtpEncryption,
+                'username' => $relay === 'smtp' || MailRelay::hasOwnLogin($relay) ? $this->smtpUsername : MailRelay::fixedLogin($relay),
                 'password' => $password,
             ];
+            if ($this->scope === 'site') {
+                $cfg['relay'] = $relay;
+                $cfg['relay_region'] = MailRelay::regions($relay) !== [] ? $this->relayRegion : null;
+                $cfg['send_domain'] = $relay === 'smtp' ? null : strtolower(trim($this->sendDomain));
+                if (isset($relayKept['checked_at'])) {
+                    $cfg['checked_at'] = $relayKept['checked_at'];
+                }
+            }
             if (isset($existing['oauth'])) {
                 $cfg['oauth'] = $existing['oauth'];
             }
@@ -378,6 +540,7 @@ final class EmailSettings extends Component
             if (isset($existing['smtp'])) {
                 $cfg['smtp'] = $existing['smtp'];
             }
+            $cfg += $relayKept;
         }
 
         $repo->put('email', 'config', $cfg);
@@ -387,6 +550,7 @@ final class EmailSettings extends Component
 
         $this->reset('smtpPassword', 'oauthClientSecret');
         $this->loadConfig($this->scope);
+        $this->dispatch('em-key-saved');
         $this->rememberSaved();
         if ($brandChanged) {
             $this->sendSignatureToEditor();
@@ -631,9 +795,11 @@ final class EmailSettings extends Component
         $this->testResult = null;
         $to = auth()->user()?->email;
 
-        if (! $to) {
+        if (! $to || $this->testSendThrottled()) {
             return;
         }
+        // each test opens a connection to a server the member typed in or picked: a few a minute at most
+        RateLimiter::hit($this->testLimitKey(), 60);
 
         if (! app(TenantMailer::class)->apply(fallback: false)) {
             $this->testResult = 'error';
@@ -656,6 +822,32 @@ final class EmailSettings extends Component
             report($e);
             $this->testResult = 'error';
         }
+    }
+
+    /** One count per member and website, shared by «Kiểm tra & lưu kết nối» and «Gửi thử». */
+    private function testLimitKey(): string
+    {
+        $current = app(CurrentSite::class);
+
+        return 'mail-test-send:'.($this->scope === 'site' && $current->hasId() ? $current->id() : 'platform').':'.Cast::int(auth()->id());
+    }
+
+    /** True (with a message that says how long to wait) once this member used up this minute's test sends. */
+    private function testSendThrottled(): bool
+    {
+        $key = $this->testLimitKey();
+        if (! RateLimiter::tooManyAttempts($key, self::TEST_SENDS_PER_MINUTE)) {
+            return false;
+        }
+        $message = __('admin.em_test_wait', ['seconds' => max(1, RateLimiter::availableIn($key))]);
+        $this->testResult = null;
+        if ($this->scope === 'site' && $this->provider === 'other') {
+            // under the service tiles, where «Kiểm tra & lưu kết nối» was pressed
+            $this->addError('relay', $message);
+        }
+        $this->notify($message, 'error');
+
+        return true;
     }
 
     /** @return array<string, mixed> */
@@ -706,6 +898,10 @@ final class EmailSettings extends Component
             $outbox = [];
         }
 
+        if ($this->method === 'smtp_password' && $this->scope === 'site' && $this->relay !== 'smtp') {
+            return [...$outbox, ...$this->relayRules(), 'fromAddress' => 'nullable|email', 'replyTo' => 'nullable|email'];
+        }
+
         if ($this->method === 'smtp_password') {
             // The platform default must be a real, working sender (SMTP required). A tenant may leave
             // SMTP blank to send via the shared transport with just their own identity (name +
@@ -722,6 +918,12 @@ final class EmailSettings extends Component
 
             return [
                 ...$outbox,
+                ...($this->scope === 'site' ? [
+                    'relay' => ['required', 'string', Rule::in(MailRelay::KEYS)],
+                    // a server needs its password: the stored one, or one pasted now; a switch from a
+                    // service with a saved key asks for one too, so that key never vanishes unnoticed
+                    'smtpPassword' => [Rule::requiredIf(fn (): bool => ! $this->keySaved() && (trim($this->smtpHost) !== '' || $this->smtpPasswordSet))],
+                ] : []),
                 'smtpHost' => [$smtpRequired ? 'required' : 'nullable', 'string', ...($smtpRequired ? [] : ['required_with:smtpUsername']), $publicHost],
                 'smtpPort' => ['nullable', 'integer', ...($smtpRequired ? ['min:1', 'max:65535'] : [Rule::in(MailHostGuard::PORTS)])],
                 'smtpUsername' => $smtpRequired ? 'required|string' : 'nullable|string|required_with:smtpHost',
@@ -740,6 +942,40 @@ final class EmailSettings extends Component
     }
 
     /**
+     * The checks of a mail service: its key (a stored one only for the same service), its sending
+     * domain, its region and login where it has them; its server from the relay table must be public too.
+     *
+     * @return array<string, mixed>
+     */
+    private function relayRules(): array
+    {
+        $relay = $this->relay;
+        $regions = MailRelay::regions($relay);
+
+        return [
+            'relay' => ['required', 'string', Rule::in(MailRelay::KEYS), function (string $attribute, mixed $value, Closure $fail) use ($relay): void {
+                $server = MailRelay::server($relay, $this->relayRegion);
+                $refusal = $server !== null ? app(MailHostGuard::class)->refusal($server['host']) : null;
+                // The table's own name not resolving right now is a passing DNS fault: the send path
+                // takes it the same way (TenantMailer); a private address still stops the save.
+                if ($refusal !== null && $refusal !== MailHostGuard::UNRESOLVABLE) {
+                    $fail(__('admin.smtp_host_private'));
+                }
+            }],
+            'smtpPassword' => [Rule::requiredIf(fn (): bool => ! $this->keySaved()), 'nullable', 'string', 'max:1024'],
+            'sendDomain' => ['required', 'string', 'max:253', 'regex:/^(?!-)[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/i'],
+            ...($regions !== [] ? ['relayRegion' => ['required', 'string', Rule::in($regions)]] : []),
+            ...(MailRelay::hasOwnLogin($relay) ? ['smtpUsername' => ['required', 'string', 'max:255']] : []),
+        ];
+    }
+
+    /** Whether the stored key (or password) belongs to the service picked now, so a blank field keeps it. */
+    private function keySaved(): bool
+    {
+        return $this->smtpPasswordSet && $this->relay === $this->storedRelay;
+    }
+
+    /**
      * What the summary card says: whether the picked outbox sends, and where mail goes meanwhile
      * (the same order as TenantMailer: the website's own → the platform's → nowhere).
      *
@@ -749,7 +985,7 @@ final class EmailSettings extends Component
     {
         $ok = match ($this->provider) {
             'platform' => $this->platformConfigured,
-            'other' => $this->smtpHost !== '' && $this->smtpUsername !== '' && $this->smtpPasswordSet,
+            'other' => $this->ownReady,
             default => $this->oauthConnectedProvider === $this->provider,
         };
         // Set up but failing on its last send: mail is going out through the shared outbox meanwhile.
@@ -843,6 +1079,7 @@ final class EmailSettings extends Component
             'platformFrom' => $platform ? '' : $this->platformFrom(),
             'siteName' => $platform ? '' : $this->siteName(),
             'sign' => $platform ? null : $this->signTab(),
+            'keySaved' => ! $platform && $this->keySaved(),
         ]);
         $view->layout($platform ? 'admin::layouts.platform' : 'admin::layouts.app');
         $view->title($platform ? __('admin.system_email') : __('admin.email_settings'));
