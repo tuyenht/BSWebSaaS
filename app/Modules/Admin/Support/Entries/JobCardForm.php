@@ -155,9 +155,10 @@ final class JobCardForm
      * Which box of a form each stored box is (stored key => form key), each by its words in the default
      * language: the box at the same place worded the same, else one worded the same elsewhere (a box
      * taken out or added before it), else, only while both have as many boxes (none taken out or added,
-     * so the default language reworded it), the one at the same place. Places, not keys: a form saved in
-     * the default language keeps the keys it gave its boxes (a new box's, one moved), while the stored
-     * card's keys are its places.
+     * so the default language reworded it), the boxes still left, in their order (a box reworded and
+     * another moved past it is still paired, so no words typed in it are left out). Places, not keys:
+     * a form saved in the default language keeps the keys it gave its boxes (a new box's, one moved),
+     * while the stored card's keys are its places.
      *
      * @param  array<string, string|null>  $boxes  the stored boxes' default-language words, by key, in order
      * @param  array<string, string|null>  $form  the form's boxes' default-language words as it read them, by key, in order
@@ -174,7 +175,7 @@ final class JobCardForm
             static fn (string $box, string $at): bool => $form[$at] !== null && $boxes[$box] === $form[$at],
         ];
         if (count($boxes) === count($form)) {
-            $steps[] = static fn (string $box, string $at): bool => $boxAt[$box] === $formAt[$at];
+            $steps[] = static fn (): bool => true;
         }
         foreach ($steps as $fits) {
             foreach (array_keys($boxes) as $box) {
@@ -245,12 +246,12 @@ final class JobCardForm
      * $meta (the card as stored now) with this language's words from the form and nothing else: the
      * boxes, their order and tone, the deadline and whether there is a badge stay as $meta has them,
      * as do the other languages' words. A form box goes to the stored box it was read as (pairBoxes()):
-     * the one at its key still worded the same in the default language, else another box worded as it
-     * was (a box before it was taken out), else, while there are as many boxes as the form read, the one
-     * at its key (the default language reworded it). A box the form does not have keeps this language's
-     * words; one taken out or replaced since takes the form's words with it. The badge words go in
-     * while the badge exists (the default language has one, or this language does); empty, this
-     * language's words come off.
+     * the one at its place still worded the same in the default language, else another box worded as
+     * it was (a box before it was taken out), else, while there are as many boxes as the form read, the
+     * boxes left in their order (the default language reworded them). A box the form does not have
+     * keeps this language's words; one taken out or replaced since takes the form's words with it. The
+     * badge words go in while the badge exists (the default language has one, or this language does);
+     * empty, this language's words come off.
      *
      * @param  array<array-key, mixed>  $meta
      * @param  list<array{key: string, text: string, accent: bool}>  $facts

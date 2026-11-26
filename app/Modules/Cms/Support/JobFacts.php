@@ -95,8 +95,9 @@ final class JobFacts
      * website's default language; each language owns only its own words. A box of one card is the
      * box of the other worded the same in the default language at the same place, else one worded the
      * same elsewhere (a box taken out or added before it), else, only while both cards have as many
-     * boxes, the one at the same place (the default language reworded it; with a box taken out, added or
-     * replaced, a place says nothing); the deadline, the last fact that reads as one, is not a box.
+     * boxes, the boxes still left, in their order (the default language reworded them; with a box taken
+     * out, added or replaced, a place says nothing); the deadline, the last fact that reads as one, is
+     * not a box.
      *  - $locale is not the default: $current's shape stays, with every other language's words; this
      *    language's words come from $from for each box both have (a box that would be left with no
      *    words at all keeps the ones it has), and its badge words only while the badge exists here
@@ -208,7 +209,7 @@ final class JobFacts
             static fn (int $t, int $s): bool => isset($targets[$t][$default]) && $targets[$t][$default] === ($sources[$s][$default] ?? null),
         ];
         if (count($targets) === count($sources)) {
-            $steps[] = static fn (int $t, int $s): bool => $t === $s;
+            $steps[] = static fn (): bool => true;
         }
         foreach ($steps as $fits) {
             foreach (array_keys($targets) as $t) {
