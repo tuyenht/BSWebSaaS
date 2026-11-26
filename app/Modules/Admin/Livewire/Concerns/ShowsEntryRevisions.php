@@ -390,8 +390,9 @@ trait ShowsEntryRevisions
             // the picture's words, when the version holds them (one saved before they existed leaves them as they are)
             array_key_exists('cover_alt', $snap) ? ['entries.ed.cover_alt_label', $str($snap['cover_alt']), $this->coverAlt, false] : null,
             ['entries.rev.f_tpl', $this->revisionTemplate($snap['template_override'] ?? null), $this->revisionTemplate($this->formTemplate($entry->template_override)), true],
-            // a post's shown publish day (empty in a version: the real day)
-            $entry->type === 'post' ? ['entries.ed.pd_label', $this->revisionDay(DisplayDate::of($snap['meta'] ?? null)), $this->revisionDay($this->displayDate), true] : null,
+            // a post's shown publish day (empty in a version: the real day), set in the website's default
+            // language only: another language's version leaves it as it is (JobFacts::restored)
+            $entry->type === 'post' && ! $this->sharedLocked() ? ['entries.ed.pd_label', $this->revisionDay(DisplayDate::of($snap['meta'] ?? null)), $this->revisionDay($this->displayDate), true] : null,
         ]) as [$label, $then, $now, $shared]) {
             $fields[] = ['label' => Cast::string(__($label, ['doc' => $this->docNoun()])), 'value' => $then, 'now' => $now, 'differs' => $then !== $now, 'shared' => $shared];
         }

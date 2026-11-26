@@ -94,8 +94,10 @@ final class JobFacts
      * order and tone, the deadline, whether there is a badge) is every language's and is set in the
      * website's default language; each language owns only its own words. A box of one card is the
      * box of the other worded the same in the default language at the same place, else one worded the
-     * same elsewhere (a box taken out or added before it), else the one at the same place (the default
-     * language reworded it); the deadline, the last fact that reads as one, is not a box.
+     * same elsewhere (a box taken out or added before it), else, only while both cards have as many
+     * boxes, the boxes still left, in their order (the default language reworded them; with a box taken
+     * out, added or replaced, a place says nothing); the deadline, the last fact that reads as one, is
+     * not a box.
      *  - $locale is not the default: $current's shape stays, with every other language's words; this
      *    language's words come from $from for each box both have (a box that would be left with no
      *    words at all keeps the ones it has), and its badge words only while the badge exists here
@@ -104,8 +106,9 @@ final class JobFacts
      *    keep their words from $current for the boxes still there (a box new to them has none yet), and
      *    for the badge while $from has one in the default language (none there: no badge at all). The
      *    deadline keeps $current's words in each language when it names the same day.
-     * Every other key of $from is returned as it is, and every key in the order the database keeps
-     * them, so a card the restore leaves as it is does not count as a change.
+     * Every other key of $from is returned as it is, except the shown date (DisplayDate), set in the
+     * default language only: another language's version keeps $current's. Every key comes back in the
+     * order the database keeps them, so a card the restore leaves as it is does not count as a change.
      *
      * @param  array<array-key, mixed>  $current
      * @param  array<array-key, mixed>  $from
@@ -174,6 +177,12 @@ final class JobFacts
 
         $meta = $from;
         unset($meta['facts'], $meta['badge']);
+        if ($locale !== $default) {
+            unset($meta[DisplayDate::KEY]);
+            if (array_key_exists(DisplayDate::KEY, $current)) {
+                $meta[DisplayDate::KEY] = $current[DisplayDate::KEY];
+            }
+        }
         if ($facts !== []) {
             $meta['facts'] = $facts;
         }
@@ -198,8 +207,10 @@ final class JobFacts
         $steps = [
             static fn (int $t, int $s): bool => $t === $s && ($targets[$t][$default] ?? null) === ($sources[$s][$default] ?? null),
             static fn (int $t, int $s): bool => isset($targets[$t][$default]) && $targets[$t][$default] === ($sources[$s][$default] ?? null),
-            static fn (int $t, int $s): bool => $t === $s,
         ];
+        if (count($targets) === count($sources)) {
+            $steps[] = static fn (): bool => true;
+        }
         foreach ($steps as $fits) {
             foreach (array_keys($targets) as $t) {
                 if (isset($pairs[$t])) {
