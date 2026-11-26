@@ -19,6 +19,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /*
  * Restoring a revision writes an earlier version's content back through the editor's own checks:
@@ -230,7 +231,8 @@ it('drops references to media that left the library, counts them, and rebuilds t
 
         $page = $page->fresh();
         $blocks = $page->translationFor('vi')->body['blocks'];
-        expect($dropped)->toBe(4)   // hero image, one partner logo, cover id, cover key
+        // hero image, one partner logo, the cover id (the old key beside it was never the cover: it goes uncounted)
+        expect($dropped)->toBe(3)
             ->and($blocks[0]['props'])->toMatchArray(['heading' => 'Hero', 'image_url' => null])
             ->and($blocks[1]['props']['logos'][0])->toMatchArray(['image_url' => $kept->id, 'name' => 'Còn'])
             ->and($blocks[1]['props']['logos'][1])->toMatchArray(['image_url' => null, 'name' => 'Mất'])
@@ -347,13 +349,15 @@ it('restores the shared fields and records every language when they change, leav
         app(RestoreEntryRevision::class)->handle($v1, $actor);
 
         $page = $page->fresh();
-        expect($page->meta['image_url'])->toBe($first->storage_key)
+        // the version's old key comes back as its file's row, with no key beside it
+        expect($page->cover_media_id)->toBe($first->id)
+            ->and($page->meta)->not->toHaveKey('image_url')
             ->and($page->translationFor('en')->title)->toBe('Page, rewritten');
 
         $restores = EntryRevision::query()->where('entry_id', $page->id)->where('kind', RevisionKind::Restore->value)->orderBy('locale')->get();
         expect($restores->pluck('locale')->all())->toBe(['en', 'vi'])
             ->and(EntryRevision::query()->where('entry_id', $page->id)->count())->toBe($before + 2)
-            ->and($restores[0]->snapshot)->toMatchArray(['title' => 'Page, rewritten', 'meta' => ['image_url' => $first->storage_key]]);
+            ->and($restores[0]->snapshot)->toMatchArray(['title' => 'Page, rewritten', 'cover_media_id' => $first->id, 'meta' => []]);
     });
 });
 
@@ -459,5 +463,46 @@ it('refuses to restore a byline longer than its column', function (): void {
 
         expect(fn () => app(RestoreEntryRevision::class)->handle($v1->fresh(), $actor))->toThrow(RevisionRestoreRejectedException::class)
             ->and($page->fresh()->translationFor('vi')->title)->toBe('Bản hai');
+    });
+});
+
+it('restores a cover named by its row, and a version whose cover file was purged comes back with no cover', function (): void {
+    Storage::fake('r2');
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
+        $actor = $editor->fresh();
+        $first = restoreMedia('bia-mot', 'e');
+
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'cover_media_id' => $first->id, 'meta' => []]);
+        $page->translations()->create(['locale' => 'vi', 'title' => 'Trang', 'slug' => 'trang', 'status' => 'draft', 'body' => ['blocks' => []]]);
+        app(PublishEntry::class)->handle($page->fresh(), 'vi', $actor);
+        $v1 = EntryRevision::query()->where('entry_id', $page->id)->sole();
+        expect($v1->snapshot['cover_media_id'] ?? null)->toBe($first->id);
+
+        $page->update(['cover_media_id' => null]);
+        // the version's files are checked inside the restore's own transaction and held FOR KEY SHARE
+        // until it commits, so a purge meanwhile cannot leave the id naming nothing
+        $outer = DB::transactionLevel();
+        $held = [];
+        DB::listen(function ($query) use (&$held): void {
+            if (str_contains($query->sql, 'from "media"') && str_contains($query->sql, '"id" in') && str_contains($query->sql, 'for key share')) {
+                $held[] = DB::transactionLevel();
+            }
+        });
+        expect(app(RestoreEntryRevision::class)->handle($v1, $actor))->toBe(0)
+            ->and($held)->not->toBeEmpty()
+            ->and(min($held))->toBeGreaterThan($outer)
+            ->and($page->fresh()->cover_media_id)->toBe($first->id)
+            ->and($page->fresh()->meta)->not->toHaveKey('image_url');
+
+        // the file deleted for good: the version names a row that no longer exists, and is saved without it
+        $page->fresh()->update(['cover_media_id' => null]);
+        $first->delete();
+        $first->forceDelete();
+        expect(app(RestoreEntryRevision::class)->handle($v1->fresh(), $actor))->toBe(1)
+            ->and($page->fresh()->cover_media_id)->toBeNull()
+            ->and($page->fresh()->meta)->not->toHaveKey('image_url');
     });
 });

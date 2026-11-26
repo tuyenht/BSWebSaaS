@@ -133,6 +133,7 @@
     "entries.ed.cover_remove_title": "Bỏ ảnh khỏi :unit",
     "entries.ed.cover_picked": "Đã chọn ảnh đại diện",
     "entries.ed.cover_removed": "Đã gỡ ảnh đại diện",
+    "entries.ed.cover_gone": "Ảnh đại diện vừa chọn không còn trong thư viện. Hãy chọn ảnh khác rồi lưu lại.",
     "media.picker_insert_one": "Dùng ảnh này",
     "media.picker_note_cover": "Chọn một ảnh làm ảnh đại diện",
     "entries.ed.cover_img": "Ảnh đại diện: :name",

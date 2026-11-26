@@ -101,7 +101,7 @@ trait EditsPendingChange
         // names no live file), else, with no id, the meta's key
         $coverId = $shared['cover_media_id'] ?? null;
         if (array_key_exists('meta', $shared) || EntryCover::named($coverId)) {
-            $this->coverImageKey = EntryCover::resolve($coverId, $shared['meta'] ?? null, MediaRefs::rows([$coverId]));
+            $this->loadCover($coverId, $shared['meta'] ?? null);
         }
         if (array_key_exists('meta', $shared)) {
             if ($this->type === 'post') {
@@ -174,16 +174,20 @@ trait EditsPendingChange
             'excerpt' => $this->excerpt !== '' ? $this->excerpt : null,
             'seo_title' => $this->seoTitle !== '' ? $this->seoTitle : null,
             'seo_description' => $this->seoDescription !== '' ? $this->seoDescription : null,
-            'cover_alt' => $this->coverImageKey !== '' && $this->coverAlt !== '' ? $this->coverAlt : null,
         ];
-        /** @var array<string, mixed> $meta */
-        $meta = Cast::arr($change !== null && array_key_exists('meta', $change->content['shared'] ?? []) ? $change->content['shared']['meta'] : $entry->meta);
-        if ($this->coverImageKey !== '') {
-            $meta['image_url'] = $this->coverImageKey;
-        } else {
-            unset($meta['image_url']);
+        // the cover over the one the change holds (else the website's), as the direct save writes it: by its row
+        $held = $change !== null ? ($change->content['shared'] ?? []) : [];
+        $cover = $this->coverToStore(
+            array_key_exists('cover_media_id', $held) ? $held['cover_media_id'] : $entry->cover_media_id,
+            Cast::arr(array_key_exists('meta', $held) ? $held['meta'] : $entry->meta),
+            $this->coverStoredSame,
+        );
+        if ($cover === null) {
+            return false;
         }
-        $shared = ['meta' => $meta] + ($this->type === 'post' && $filing !== [] ? ['primary_category_id' => $filing[0]] : []);
+        [$coverId, $meta] = $cover;
+        $text['cover_alt'] = ($coverId !== null || EntryCover::metaValue($meta) !== '') && $this->coverAlt !== '' ? $this->coverAlt : null;
+        $shared = ['cover_media_id' => $coverId, 'meta' => $meta] + ($this->type === 'post' && $filing !== [] ? ['primary_category_id' => $filing[0]] : []);
         // «Thuộc tính bài» goes into the change too, from the website's default language (every language's)
         if ($this->type === 'post' && ! $this->sharedLocked() && $this->postPropsRead) {
             $before = $change !== null && array_key_exists('template_override', $change->content['shared'] ?? []) ? $change->content['shared']['template_override'] : $entry->template_override;
@@ -196,7 +200,7 @@ trait EditsPendingChange
         $meta = $this->jobMeta($meta);
         $shared['meta'] = $meta;
 
-        if ($change === null && $this->sameAsLive($entry, $live, $text, $meta, $filing[0] ?? null)) {
+        if ($change === null && $this->sameAsLive($entry, $live, $text, $coverId, $meta, $filing[0] ?? null)) {
             $this->heldSave = 'same';
 
             return true;
@@ -224,7 +228,7 @@ trait EditsPendingChange
      * @param  array<string, mixed>  $text
      * @param  array<string, mixed>  $meta
      */
-    private function sameAsLive(Entry $entry, ?EntryTranslation $live, array $text, array $meta, ?int $primary): bool
+    private function sameAsLive(Entry $entry, ?EntryTranslation $live, array $text, ?int $coverId, array $meta, ?int $primary): bool
     {
         if ($live === null) {
             return false;
@@ -237,7 +241,8 @@ trait EditsPendingChange
         }
 
         return self::keysSorted($before) === self::keysSorted($text['body'])
-            && data_get($entry->meta, 'image_url') === ($meta['image_url'] ?? null)
+            // the same picture, also when the form names by its row the one the website still names by its key
+            && EntryCover::same($entry->cover_media_id, $entry->meta, $coverId, $meta)
             && ($this->type !== 'post' || ! $this->postPropsRead || (DisplayDate::of($entry->meta) === DisplayDate::of($meta) && $entry->template_override === $this->formTemplate($entry->template_override)))
             && ($this->type !== 'post' || $primary === ($this->storedCategories($entry)[0] ?? null))
             && ($this->type !== 'post' || [$entry->meta['facts'] ?? null, $entry->meta['badge'] ?? null] === [$meta['facts'] ?? null, $meta['badge'] ?? null]);

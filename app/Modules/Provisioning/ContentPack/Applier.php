@@ -27,6 +27,7 @@ use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Support\BlockMediaUsage;
 use App\Modules\Cms\Support\BlockUsageIndex;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
+use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Cms\Support\HomePages;
 use App\Modules\Cms\Support\PageRules;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
@@ -328,14 +329,18 @@ final class Applier
     }
 
     /**
-     * A post's meta with what the pack manages (the card image, the short facts, the badge) set or removed;
-     * every other key staff or the editor put there is kept.
+     * A post's cover and meta with what the pack manages (the card image, the short facts, the badge) set
+     * or removed; every other key staff or the editor put there is kept. The card image is the post's one
+     * cover (EntryCover::stored): a key of this website's picture is written as its row in
+     * cover_media_id with no meta.image_url beside it, a glyph or a key with no live file stays in the
+     * meta with no id, and an image the pack unsets leaves neither. The file is read FOR KEY SHARE in the
+     * load's transaction, so a purge of it waits.
      *
      * @param  array<array-key, mixed>  $meta
      * @param  array<string, mixed>  $desired
-     * @return array<array-key, mixed>
+     * @return array{cover_media_id: int|null, meta: array<array-key, mixed>}
      */
-    private function postMeta(array $meta, array $desired): array
+    private function postCover(array $meta, array $desired): array
     {
         foreach (['image' => 'image_url', 'facts' => 'facts', 'badge' => 'badge'] as $from => $to) {
             $value = $desired[$from] ?? null;
@@ -345,8 +350,9 @@ final class Applier
                 unset($meta[$to]);
             }
         }
+        [$coverId, $meta] = EntryCover::stored(null, $meta, lock: true);
 
-        return $meta;
+        return ['cover_media_id' => $coverId, 'meta' => $meta];
     }
 
     private function entry(PlanItem $planned, Planner $planner): void
@@ -372,8 +378,7 @@ final class Applier
                 'author_id' => $this->owner->id(),   // a pack item has no typist: the website's first owner
                 'status' => $status,
                 'published_at' => $this->publishedAt($planned->item, $status),
-                'meta' => $isPost ? $this->postMeta([], $desired) : [],
-            ] + $parent);
+            ] + ($isPost ? $this->postCover([], $desired) : ['meta' => []]) + $parent);
         } else {
             $entry = Entry::withTrashed()->findOrFail($planned->recordId);
             if ($entry->trashed()) {
@@ -386,8 +391,7 @@ final class Applier
             if ($expired && $status === 'published') {
                 $status = $entry->status;
             }
-            $meta = $isPost ? $this->postMeta($entry->meta, $desired) : $entry->meta;
-            $entry->fill(['status' => $status, 'meta' => $meta] + $parent);
+            $entry->fill(['status' => $status] + ($isPost ? $this->postCover(Cast::arr($entry->meta), $desired) : []) + $parent);
             if ($status === 'published' && ! $expired && $entry->published_at === null) {
                 $entry->published_at = $this->publishedAt($planned->item, $status);
             }

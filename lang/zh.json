@@ -133,6 +133,7 @@
     "entries.ed.cover_remove_title": "从:unit移除图片",
     "entries.ed.cover_picked": "已选择封面图片",
     "entries.ed.cover_removed": "已移除封面图片",
+    "entries.ed.cover_gone": "所选的封面图片已不在媒体库中。请另选一张图片，然后重新保存。",
     "media.picker_insert_one": "使用此图片",
     "media.picker_note_cover": "选择一张图片作为封面",
     "entries.ed.cover_img": "封面图片：:name",

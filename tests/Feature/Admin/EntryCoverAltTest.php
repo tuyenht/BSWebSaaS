@@ -259,11 +259,12 @@ describe('versions', function (): void {
                 ->and(coverAltOf($page))->toBe('Thợ đứng máy');
 
             // …and drops them when it brings back another picture: they described this one
-            $kept = $page->fresh()->meta;
-            $page->update(['meta' => ['image_url' => coverAltOtherMedia()->storage_key]]);
+            // (the version's old key comes back as its file's row)
+            $page->update(['cover_media_id' => coverAltOtherMedia()->id, 'meta' => []]);
             $page->translationFor('vi')->update(['cover_alt' => 'Kho ống thép']);
             app(RestoreEntryRevision::class)->handle($v1->fresh(), $user);
-            expect($page->fresh()->meta['image_url'] ?? null)->toBe($kept['image_url'])
+            expect($page->fresh()->cover_media_id)->toBe(Media::query()->where('storage_key', 'a/library/xuong-cccccccccccc.png')->value('id'))
+                ->and($page->fresh()->meta)->not->toHaveKey('image_url')
                 ->and(coverAltOf($page))->toBeNull();
             $page->translationFor('vi')->update(['cover_alt' => 'Thợ đứng máy']);
 
@@ -300,18 +301,20 @@ describe('versions across languages', function (): void {
             expect($page->fresh()->meta)->not->toHaveKey('subtitle')
                 ->and(coverAltOfIn($page, 'en'))->toBe('A machinist at work');
 
-            // only the cover's library id differs, the picture the pages show is the same: English stays
-            $page->forceFill(['cover_media_id' => coverAltOtherMedia()->id])->save();
+            // the page names the same picture by its row, the version by its old key: the same picture, English stays
+            expect($page->fresh()->cover_media_id)->toBe($first->id);   // the restore above wrote it by its row
+            $page->forceFill(['meta' => []])->save();
             app(RestoreEntryRevision::class)->handle($v1->fresh(), $user);
-            expect($page->fresh()->cover_media_id)->toBeNull()
+            expect($page->fresh()->cover_media_id)->toBe($first->id)
+                ->and($page->fresh()->meta)->not->toHaveKey('image_url')
                 ->and(coverAltOf($page))->toBe('Thợ đứng máy')
                 ->and(coverAltOfIn($page, 'en'))->toBe('A machinist at work');
 
             // the page now shows another picture, English describing it; the version brings the first back
-            $page->update(['meta' => ['image_url' => coverAltOtherMedia()->storage_key]]);
+            $page->update(['cover_media_id' => coverAltOtherMedia()->id]);
             $page->translationFor('en')->update(['cover_alt' => 'Steel pipes']);
             app(RestoreEntryRevision::class)->handle($v1->fresh(), $user);
-            expect($page->fresh()->meta['image_url'] ?? null)->toBe($first->storage_key)
+            expect($page->fresh()->cover_media_id)->toBe($first->id)
                 ->and(coverAltOf($page))->toBe('Thợ đứng máy')
                 ->and(coverAltOfIn($page, 'en'))->toBeNull();
         });
