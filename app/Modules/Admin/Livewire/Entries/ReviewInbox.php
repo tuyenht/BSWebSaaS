@@ -263,23 +263,16 @@ final class ReviewInbox extends Component
     /** Open a post in the reader (only one that is actually in this person's queue). */
     public function open(string $ulid): void
     {
-        $this->current = $this->visible()->firstWhere('ulid', $ulid)?->ulid;
-        $this->detail = $this->current !== null;
-        $this->trailShown = self::TRAIL_PAGE;
-        $this->note = '';
-        $this->closeNote();
-        $this->resetErrorBag();
-        if ($this->detail) {
-            // Below the two-pane width the reader now covers the list: the reading starts at its title.
-            $this->js("if (window.matchMedia('(max-width: 63.999rem)').matches) document.getElementById('inbox-reader-title')?.focus()");
-        }
+        $this->select($ulid, true);
     }
 
     /**
-     * «Bài trước» / «Bài sau» in the reader's bar: the neighbour of the open post in the list on screen.
-     * Only a post of this person's list opens (open() checks it again).
+     * «Bài trước» / «Bài sau» in the reader's bar, or ↑ / ↓ on the keyboard ($keys, board 17): the neighbour
+     * of the open post in the list on screen. The buttons open it like a click on its row; the keys only
+     * mark it and read it, so below the two-pane width the list stays in view unless the reader already
+     * covers it. Only a post of this person's list is picked (select() checks it again).
      */
-    public function step(int $by): void
+    public function step(int $by, bool $keys = false): void
     {
         $ulids = $this->visible()->map(fn (Entry $entry): string => (string) $entry->ulid)->values();
         $at = $this->current === null ? false : $ulids->search($this->current);
@@ -289,8 +282,27 @@ final class ReviewInbox extends Component
 
         $target = $ulids->get($at + ($by < 0 ? -1 : 1));
         if (is_string($target)) {
-            $this->open($target);
+            $this->select($target, ! $keys);
             $this->shown = max($this->shown, $ulids->search($target) + 1);
+        }
+    }
+
+    /**
+     * Read the post $ulid in the reader. $show also brings the reader over the list below the two-pane
+     * width (a click on a row, «Bài sau»), and the reading starts at its title there; otherwise the reader
+     * keeps covering the list or not, as it did.
+     */
+    private function select(string $ulid, bool $show): void
+    {
+        $this->current = $this->visible()->firstWhere('ulid', $ulid)?->ulid;
+        $this->detail = $this->current !== null && ($show || $this->detail);
+        $this->trailShown = self::TRAIL_PAGE;
+        $this->note = '';
+        $this->closeNote();
+        $this->resetErrorBag();
+        if ($show && $this->detail) {
+            // Below the two-pane width the reader now covers the list: the reading starts at its title.
+            $this->js("if (window.matchMedia('(max-width: 63.999rem)').matches) document.getElementById('inbox-reader-title')?.focus()");
         }
     }
 
@@ -1124,7 +1136,7 @@ final class ReviewInbox extends Component
      *     step_no: int, step_count: int, step_label: string, step_icon: string, workflow: string,
      *     fields: list<array{label: string, value: string}>, missing: list<string>, seo_edit: bool,
      *     words: int, paragraphs: int,
-     *     actions: list<array{key: string, label: string, to_label: string, to_published: bool, first: bool, note: bool, icon: string}>,
+     *     actions: list<array{key: string, label: string, to_label: string, to_published: bool, first: bool, note: bool, icon: string, primary: bool}>,
      *     schedule: array{at: string, offset: int, zone: string},
      *     trail: list<array{id: int, at: string, actor: string|null, transition: string, from: string, to: string, note: string|null}>,
      *     trail_total: int, trail_more: int,
@@ -1173,6 +1185,8 @@ final class ReviewInbox extends Component
                 'note' => $transition->requires_note,
                 // The same icon as its reason dialog: going live, taking a live post down, or a return.
                 'icon' => $live ? 'ri-check-double' : ($states->firstWhere('key', $fromState)?->is_published === true ? 'ri-eye-off' : 'ri-arrow-go-back'),
+                // Enter runs the first move that goes live (board 17), through its own button and question
+                'primary' => $live && ! in_array(true, array_column($actions, 'primary'), true),
             ];
         }
 

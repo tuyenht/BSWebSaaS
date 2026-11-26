@@ -15,7 +15,21 @@
     $reloads = 'setTab,search,sectionFilter,clearFilters,reloadInbox';
     $Js = \Illuminate\Support\Js::class;
 @endphp
-<div class="space-y-4">
+{{-- The keyboard (board 17): ↑ / ↓ walk the list, Enter runs the publishing move of the post being read through
+     its own button, so its question always comes first. Not while a dialog, the guide or a menu is open (the
+     reader covering a phone's screen excepted), nor in a field; Enter stays with a button or a link that has
+     the focus, a row of the list excepted; a key held with Ctrl, Alt or ⌘ stays the browser's. --}}
+<div class="space-y-4" x-data="{
+        key(e) {
+            if (e.defaultPrevented || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || ! ['ArrowDown', 'ArrowUp', 'Enter'].includes(e.key)) { return }
+            if ([...document.querySelectorAll('[aria-modal=true], [role=menu]')].some((d) => ! d.matches('[data-inbox-reader]') && d.getClientRects().length > 0)) { return }
+            const t = e.target instanceof Element ? e.target : null;
+            if (t?.closest('input, textarea, select, [contenteditable]:not([contenteditable=false])')) { return }
+            if (e.key !== 'Enter') { if ($root.querySelector('[data-inbox-open]')) { e.preventDefault(); $wire.step(e.key === 'ArrowDown' ? 1 : -1, true); } return }
+            if (t?.closest('button, a[href], summary, [role=button], [role=checkbox], [role=switch], [role=tab], [role=radio], [role=link], [role=menuitem], [role=option]') && ! t.closest('[data-inbox-open]')) { return }
+            const go = $root.querySelector('[data-inbox-primary]');
+            if (go && ! go.disabled) { e.preventDefault(); go.click(); }
+        } }" x-on:keydown.window="key($event)">
     {{-- The header, as the admin shell draws it (board 17): the trail «⌂ › Hộp duyệt», the title row with the (?)
          guide and «Tải lại» at its end, then the one line on what the screen is for. --}}
     <header class="flex flex-col gap-1">
@@ -536,22 +550,24 @@
                             @foreach ($reader['actions'] as $action)
                                 @if ($action['note'])
                                     {{-- A move that demands a reason opens the reason dialog (with «Giao cho») --}}
-                                    <x-bs-admin::button :color="$action['to_published'] ? 'primary' : 'danger'" :variant="$action['to_published'] ? 'solid' : 'outline'" wire:key="act-{{ $action['key'] }}" data-inbox-act="{{ $action['key'] }}"
+                                    <x-bs-admin::button :color="$action['to_published'] ? 'primary' : 'danger'" :variant="$action['to_published'] ? 'solid' : 'outline'" wire:key="act-{{ $action['key'] }}" data-inbox-act="{{ $action['key'] }}" :data-inbox-primary="$action['primary']"
                                                      wire:click="askNote({{ $Js::from($action['key']) }})" wire:loading.attr="disabled">
                                         <x-bs-admin::icon :name="$action['icon']" class="size-4" />{{ $action['label'] }}
                                     </x-bs-admin::button>
                                 @elseif ($action['first'])
                                     {{-- The first publication asks «Khi nào đăng?» first (board 17): now, or approved for a later time --}}
-                                    <x-bs-admin::button color="primary" wire:key="act-{{ $action['key'] }}" wire:loading.attr="disabled" data-inbox-act="{{ $action['key'] }}"
+                                    <x-bs-admin::button color="primary" wire:key="act-{{ $action['key'] }}" wire:loading.attr="disabled" data-inbox-act="{{ $action['key'] }}" :data-inbox-primary="$action['primary']"
                                                      x-on:click="$dispatch('inbox-ap', {{ $Js::from(['key' => $action['key']]) }})">
                                         <x-bs-admin::icon name="ri-check-double" class="size-4" />{{ $action['label'] }}
                                     </x-bs-admin::button>
                                 @elseif ($action['to_published'])
-                                    {{-- Going live is asked first (board 17 «Duyệt đăng “…”?», the same question as the posts list) --}}
-                                    <x-bs-admin::button color="primary" wire:key="act-{{ $action['key'] }}" wire:loading.attr="disabled" data-inbox-act="{{ $action['key'] }}"
+                                    {{-- Going live is asked first (board 17 «Duyệt đăng “…”?», the same question as the posts list): the
+                                         globe in a green circle, and «Để tôi đọc lại đã» focused, so a second Enter never publishes --}}
+                                    <x-bs-admin::button color="primary" wire:key="act-{{ $action['key'] }}" wire:loading.attr="disabled" data-inbox-act="{{ $action['key'] }}" :data-inbox-primary="$action['primary']"
                                                      x-on:click="$bsConfirm({
-                                                         icon: 'question',
+                                                         icon: 'publish',
                                                          danger: false,
+                                                         focusCancel: true,
                                                          title: {{ $Js::from(__('entries.wf_ap_title', ['title' => \Illuminate\Support\Str::limit($reader['title'], 42, '…')])) }},
                                                          text: {{ $Js::from(__('entries.wf_ap_text')) }},
                                                          confirm: {{ $Js::from(__('entries.wf_ap_ok')) }},
