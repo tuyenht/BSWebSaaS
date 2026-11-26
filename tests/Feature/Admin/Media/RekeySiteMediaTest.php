@@ -28,6 +28,8 @@ use Illuminate\Support\Str;
  * second run finds nothing, or repairs an old key written back meanwhile. An address on another host
  * ending with a moved key is reported, never rewritten; a key that cannot be moved is skipped and
  * listed; a chunk that lost a lock conflict is retried; a permanent delete removes the old object too.
+ * A seed file a live place names with no row of the website is adopted (copied under the code with a
+ * row, as the seeder does), never one only history names or one missing from storage.
  */
 
 const REKEY_HERO = 'a-vinh/hero/hero-home-7ca90eafe212.jpg';
@@ -435,6 +437,100 @@ it('records an old key under a seed folder as the seed source, so a permanent de
         ->and($disk->get($seed))->toBe("bytes of {$seed}")                  // the seed file stays for every later seeding
         ->and($disk->exists($logo->storage_key))->toBeFalse()
         ->and($disk->exists(REKEY_LOGO))->toBeFalse();                      // a moved row's own old object still goes
+});
+
+const REKEY_SEED_LOGO = 'an-vinh/brand/logo-e76d7cb1dfe4.png';
+const REKEY_SEED_HERO = 'an-vinh/hero/hero-home-7ca90eafe212.jpg';
+
+/** A brand setting of $site whose logo is the address $logo (the form an older seeder stored). */
+function rekeyBrand(int $site, string $logo): void
+{
+    app(Tenancy::class)->enter($site, fn () => SiteSetting::query()->create(['group_name' => 'general', 'key' => 'brand', 'value' => ['logo' => $logo, 'name' => 'A']]));
+}
+
+it('adopts a seed file a live place names with no row of the website, rewrites it in its own form, and finds nothing the second time', function (): void {
+    $disk = Storage::disk(MediaKey::disk());
+    $disk->put(REKEY_SEED_LOGO, 'seed logo');
+    $disk->put(REKEY_SEED_HERO, 'seed hero');
+    rekeyBrand(1, 'https://files.test/media/'.REKEY_SEED_LOGO);
+    $post = app(Tenancy::class)->enter(1, fn (): Entry => Entry::query()->create(['type' => 'post', 'status' => 'draft', 'meta' => ['image_url' => REKEY_SEED_HERO]]));
+    rekeyMedia(2, REKEY_OTHER);                                             // another website naming the same seed file
+    rekeyBrand(2, 'https://files.test/media/'.REKEY_SEED_LOGO);
+    $code = siteCode(1);
+    $logo = "{$code}/logo-e76d7cb1dfe4.png";
+    $hero = "{$code}/hero-home-7ca90eafe212.jpg";
+
+    [$exit, $output] = rekeyRun();
+    expect($exit)->toBe(0, $output)
+        ->and($output)->toContain('Seed files to adopt: 2.')
+        ->and($output)->toContain('to adopt: '.REKEY_SEED_LOGO." -> {$logo}")
+        ->and($output)->toMatch('/site_settings\.value\s*\|\s*1\s*\|\s*1\s*\|\s*0\s*\|/')
+        ->and($output)->toMatch('/entries\.meta\s*\|\s*1\s*\|\s*1\s*\|\s*0\s*\|/')
+        ->and(rekeyKeys(1))->toBe([])
+        ->and($disk->allFiles($code))->toBe([]);
+
+    [$exit, $output] = rekeyRun(apply: true);
+    expect($exit)->toBe(0, $output)->and($output)->toContain('Seed files adopted: 2 of 2.');
+    app(Tenancy::class)->enter(1, function () use ($post, $logo, $hero): void {
+        expect(Media::query()->orderBy('storage_key')->get()->map(fn (Media $m): array => [$m->storage_key, $m->meta])->all())
+            ->toBe([[$hero, ['seed_source' => REKEY_SEED_HERO]], [$logo, ['seed_source' => REKEY_SEED_LOGO]]])
+            ->and(SiteSetting::query()->where('key', 'brand')->sole()->value)->toEqual(['logo' => "https://files.test/media/{$logo}", 'name' => 'A'])
+            ->and(Entry::query()->findOrFail($post->id)->meta)->toBe(['image_url' => $hero]);   // a key stays a key
+    });
+    expect($disk->get($logo))->toBe('seed logo')
+        ->and($disk->get(REKEY_SEED_LOGO))->toBe('seed logo')                // the seed file stays for every website
+        ->and($disk->get(REKEY_SEED_HERO))->toBe('seed hero')
+        ->and(rekeyKeys(2))->toBe([REKEY_OTHER])
+        ->and(app(Tenancy::class)->enter(2, fn () => SiteSetting::query()->where('key', 'brand')->sole()->value))
+        ->toEqual(['logo' => 'https://files.test/media/'.REKEY_SEED_LOGO, 'name' => 'A']);
+
+    [$exit, $output] = rekeyRun();
+    expect($exit)->toBe(0, $output)
+        ->and($output)->toContain('Files to move: 0.')
+        ->and($output)->toContain('Seed files to adopt: 0.')
+        ->and($output)->toMatch('/site_settings\.value\s*\|\s*0\s*\|\s*0\s*\|\s*0\s*\|/')
+        ->and($output)->toMatch('/entries\.meta\s*\|\s*0\s*\|\s*0\s*\|\s*0\s*\|/');
+
+    [$exit, $output] = rekeyRun(apply: true);
+    expect($exit)->toBe(0, $output)->and($output)->toContain('Seed files adopted: 0 of 0.')->and(rekeyKeys(1))->toHaveCount(2);
+});
+
+it('never adopts a seed file only history names, and reports it as unmatched', function (): void {
+    $seed = 'an-vinh/du-an/nha-xuong-1a2b3c.jpg';
+    Storage::disk(MediaKey::disk())->put($seed, 'seed bytes');
+    $snapshot = ['v' => 1, 'meta' => ['image_url' => $seed]];
+    $post = app(Tenancy::class)->enter(1, function () use ($snapshot): Entry {
+        $post = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'meta' => []]);
+        EntryRevision::query()->create(['entry_id' => $post->id, 'locale' => 'vi', 'kind' => RevisionKind::Edit, 'snapshot' => $snapshot]);
+
+        return $post;
+    });
+
+    [$exit, $output] = rekeyRun(apply: true);
+
+    expect($exit)->toBe(0, $output)
+        ->and($output)->toContain('Seed files adopted: 0 of 0.')
+        ->and($output)->toContain("unmatched in entry_revisions.snapshot: {$seed}")
+        ->and(rekeyKeys(1))->toBe([])
+        ->and(app(Tenancy::class)->enter(1, fn () => EntryRevision::query()->where('entry_id', $post->id)->sole()->snapshot))->toEqual($snapshot);
+});
+
+it('leaves a seed file missing from storage unmatched and gives it no row', function (): void {
+    $seed = 'an-vinh/brand/mat-9f9f9f.png';
+    rekeyBrand(1, "https://files.test/media/{$seed}");
+
+    [$exit, $output] = rekeyRun();
+    expect($exit)->toBe(0, $output)
+        ->and($output)->toContain('Seed files to adopt: 0.')
+        ->and($output)->toContain("not adopted: {$seed} (the seed file is not in storage; left unmatched)")
+        ->and($output)->toContain("unmatched in site_settings.value: https://files.test/media/{$seed}");
+
+    [$exit, $output] = rekeyRun(apply: true);
+    expect($exit)->toBe(0, $output)
+        ->and($output)->toContain('Seed files adopted: 0 of 0.')
+        ->and(rekeyKeys(1))->toBe([])
+        ->and(app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('key', 'brand')->sole()->value))
+        ->toEqual(['logo' => "https://files.test/media/{$seed}", 'name' => 'A']);
 });
 
 it('refuses a single-site install, whose files stay under their collections', function (): void {

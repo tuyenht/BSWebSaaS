@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Media\Services;
 
 use App\Modules\Media\Exceptions\UnplannableMediaKeyException;
+use App\Modules\Media\Models\Media;
 use App\Modules\Media\Support\MediaKey;
 use App\Modules\Media\Support\MediaKeyRewriter;
 use App\Modules\Shared\Support\Cast;
@@ -56,6 +57,14 @@ use Throwable;
  *    opened before the run saving) is repaired by this pass or by the next run, and a dry run counts
  *    it as a reference to rewrite.
  *
+ * 5. seedAdoptions() and adoptSeedFiles(), between steps 3 and 4: a demo seed file (`media.seed_folders`)
+ *    that a live place names (bare or as an address on the media host) while the website holds no row
+ *    for it, nor one copied from it, is adopted: EnsureMediaFromKey::fromSeedSource() copies it to
+ *    `{code}/{file}` and makes the row with `meta.seed_source`, the seeder's own path, so step 4
+ *    rewrites the reference like any other (its address form kept). History (a revision snapshot)
+ *    is never a reason to adopt; a seed file missing from storage, or whose new key is taken, is
+ *    left as it is and reported.
+ *
  * A row whose key is already under the code is never planned, so a run stopped part way leaves its
  * committed chunks consistent (keys and references together), and running again finishes the rest.
  * Single-site installs keep the collection layout (`media.tenant_prefix` false) and are never
@@ -80,7 +89,7 @@ final readonly class SiteMediaRekey
     /** A table or column name the reference scan may be given (they are code constants, never input). */
     private const string IDENTIFIER = '/\A[a-z_][a-z0-9_]*\z/';
 
-    public function __construct(private Tenancy $tenancy) {}
+    public function __construct(private Tenancy $tenancy, private EnsureMediaFromKey $ensure) {}
 
     /**
      * Every row of the website whose key is not under its code, with its new key, and the keys that
@@ -158,6 +167,119 @@ final readonly class SiteMediaRekey
 
             return $keys;
         });
+    }
+
+    /**
+     * The demo seed files (`media.seed_folders`) the website's $places name, bare or as an address on
+     * the media host, that it holds no row for and that $known (old key => current key) does not
+     * place, each with the key adopting it gives (`{code}/{file}`, fromSeedSource()'s). One whose
+     * object is not in storage is listed as missing (never given a row); one whose new key, or its
+     * stem under another extension, is another file of the website, or whose object there differs,
+     * as blocked. Reads only.
+     *
+     * @param  list<array{0: string, 1: string}>  $places  [table, jsonb column]; every table has id + site_id
+     * @param  array<string, string>  $known
+     * @return array{adopt: array<string, string>, missing: list<string>, blocked: list<array{key: string, reason: string}>}
+     */
+    public function seedAdoptions(int $siteId, string $code, array $places, array $known): array
+    {
+        self::assertPlaces($places);
+        $patterns = array_map(static fn (string $folder): string => '%'.self::likeEscape($folder).'/%', Cast::strings(config('media.seed_folders', [])));
+        $result = ['adopt' => [], 'missing' => [], 'blocked' => []];
+        if ($patterns === []) {
+            return $result;
+        }
+
+        $rewriter = new MediaKeyRewriter([]);
+        $mentions = 'LIKE ANY (ARRAY['.implode(', ', array_fill(0, count($patterns), '?')).']::text[])';
+        $named = [];
+        foreach ($places as [$table, $column]) {
+            $lastId = 0;
+            do {
+                $count = $this->tenancy->enter($siteId, function () use ($siteId, $rewriter, $table, $column, $mentions, $patterns, &$named, &$lastId): int {
+                    $rows = DB::select(
+                        "SELECT id, {$column}::text AS doc FROM {$table} WHERE site_id = ? AND id > ? AND {$column}::text {$mentions} ORDER BY id LIMIT ".self::CHUNK,
+                        [$siteId, $lastId, ...$patterns],
+                    );
+                    foreach ($rows as $row) {
+                        if (! is_object($row) || ! isset($row->id, $row->doc)) {
+                            continue;
+                        }
+                        $lastId = Cast::int($row->id);
+                        foreach ($rewriter->seedKeys(json_decode(Cast::string($row->doc), false, 512, JSON_THROW_ON_ERROR)) as $key) {
+                            $named[$key] = true;
+                        }
+                    }
+
+                    return count($rows);
+                });
+            } while ($count === self::CHUNK);
+        }
+
+        $keys = array_map(strval(...), array_keys(array_diff_key($named, $known)));
+        sort($keys);
+        if ($keys === []) {
+            return $result;
+        }
+        $targets = array_combine($keys, array_map(static fn (string $key): string => "{$code}/".basename($key), $keys));
+        $held = $this->tenancy->enter($siteId, function () use ($siteId, $targets): array {
+            $held = [];
+            foreach (array_chunk([...array_keys($targets), ...array_values($targets)], self::CHUNK) as $chunk) {
+                foreach (DB::table('media')->where('site_id', $siteId)->whereIn('storage_key', $chunk)->pluck('storage_key') as $key) {
+                    $held[Cast::string($key)] = true;
+                }
+            }
+
+            return $held;
+        });
+
+        $disk = Storage::disk(MediaKey::disk());
+        foreach ($targets as $key => $target) {
+            if (isset($held[$key])) {
+                continue; // a row holds the seed file itself: plan() moves it
+            }
+            if (! $disk->exists($key)) {
+                $result['missing'][] = $key;
+
+                continue;
+            }
+            $ext = pathinfo($target, PATHINFO_EXTENSION);
+            if (isset($held[$target]) || $this->tenancy->enter($siteId, fn (): bool => $this->stemTaken($siteId, self::stem($target), $ext, []))) {
+                $result['blocked'][] = ['key' => $key, 'reason' => "the website already has another file at {$target}"];
+            } elseif ($disk->exists($target) && ! $this->sameObject($disk, $key, $target)) {
+                $result['blocked'][] = ['key' => $key, 'reason' => "another object is stored at {$target}"];
+            } elseif (preg_match(MediaKey::CLEAN_PATH_PATTERN, $target) !== 1) {
+                $result['blocked'][] = ['key' => $key, 'reason' => "{$target} is not a clean key"];
+            } else {
+                $result['adopt'][$key] = $target;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Adopts each seed file of $adopt (seed key => expected key) for the website, in its tenant
+     * context, through EnsureMediaFromKey::fromSeedSource(): the object is copied to its new key and
+     * the row made with `meta.seed_source`, so previousKeys() places every reference to the seed key.
+     * Returns the seed keys adopted (=> their row's key); one whose row came out otherwise (a person
+     * took the key meanwhile) is left out, and its references stay as they are.
+     *
+     * @param  array<string, string>  $adopt
+     * @return array<string, string>
+     */
+    public function adoptSeedFiles(int $siteId, array $adopt): array
+    {
+        $adopted = [];
+        foreach ($adopt as $key => $target) {
+            $media = $this->tenancy->enter($siteId, fn (): Media => $this->ensure->fromSeedSource($key));
+            $meta = $media->getAttribute('meta');
+            if ($media->storage_key === $target && is_array($meta) && ($meta['seed_source'] ?? null) === $key) {
+                $adopted[$key] = $target;
+            }
+        }
+
+        return $adopted;
     }
 
     /**
