@@ -372,13 +372,34 @@ final class Library extends Component
         $this->picked = [];
     }
 
-    public function openUpload(): void
+    /**
+     * The upload panel, on its choice of source; 'device' goes straight to the device pane (files
+     * dropped on the page, handed over by the browser). New files go into the folder in view.
+     */
+    public function openUpload(string $source = ''): void
     {
         abort_unless(Gate::allows('media.upload'), 403);
 
         $this->uploadOpen = true;
-        $this->pickerSource = null;
+        $this->pickerSource = $source === 'device' ? 'device' : null;
         $this->closePickerDetail();
+        $this->dispatch('media-upload-opened'); // the page moves focus to the panel's heading
+    }
+
+    /** «Tải ảnh lên vào đây» (a folder's menu): that folder opens, with the upload panel on it. */
+    public function uploadInto(string $slug): void
+    {
+        abort_unless(Gate::allows('media.upload'), 403);
+
+        $folder = self::folderBySlug($slug);
+        if ($folder === null) {
+            return; // gone meanwhile, or never this site's
+        }
+        $this->setFolder((string) $folder->slug);
+        if ($folder->parent_id !== null) {
+            $this->dispatch('media-folder-open', slug: Cast::string(MediaFolder::query()->whereKey($folder->parent_id)->value('slug')));
+        }
+        $this->openUpload();
     }
 
     public function closeUpload(): void
@@ -1108,10 +1129,11 @@ final class Library extends Component
         $people = new Collection;
         $byCounts = [];
         $whenCounts = [];
+        $groupCounts = [];
         $useCounts = [];
         try {
             // a savepoint inside the request's tenancy transaction: a failed read leaves it usable
-            DB::transaction(function () use ($directory, $canDelete, $canDeleteAny, $trash, &$folders, &$counts, &$page, &$totals, &$current, &$mineN, &$chosenN, &$people, &$byCounts, &$whenCounts, &$useCounts): void {
+            DB::transaction(function () use ($directory, $canDelete, $canDeleteAny, $trash, &$folders, &$counts, &$page, &$totals, &$current, &$mineN, &$chosenN, &$people, &$byCounts, &$whenCounts, &$groupCounts, &$useCounts): void {
                 $folders = MediaFolder::inTreeOrder(MediaFolder::query()->orderBy('position')->orderBy('name')->orderBy('id')
                     ->get(['id', 'name', 'slug', 'parent_id', 'position']));
                 $current = $this->currentFolder($folders);
@@ -1145,6 +1167,12 @@ final class Library extends Component
                         $byCounts = $directory->uploaderCounts($visible($directory->filtered(['by' => []] + $filters)));
                     }
                     $whenCounts = $directory->whenCounts($visible($directory->filtered(['since' => null, 'until' => null] + $filters)), $this->from, $this->to);
+                    // «Loại tệp», «Định dạng» and «Tình trạng» (live files only), each without its own choices
+                    $groupCounts['kinds'] = $directory->kindCounts($visible($directory->filtered(['kinds' => []] + $filters)));
+                    $groupCounts['formats'] = $directory->formatCounts($visible($directory->filtered(['formats' => []] + $filters)));
+                    if (! $trash) {
+                        $groupCounts['uses'] = $directory->useCounts($directory->filtered(['uses' => []] + $filters));
+                    }
                 }
                 if (! $trash) {
                     // «Dùng ở N nơi» on each tile and list row: one statement for the page
@@ -1217,6 +1245,7 @@ final class Library extends Component
             'uploaders' => $this->uploaderOptions($people, $this->tally ? $byCounts : null),
             'manyUploaders' => $counts['many'],
             'whenCounts' => $whenCounts,
+            'groupCounts' => $groupCounts,
             'useCounts' => $useCounts,
         ]);
         $view->title(__('media.lib.title'));

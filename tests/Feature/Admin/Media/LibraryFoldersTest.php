@@ -631,3 +631,92 @@ it('sweeps again when more files than one batch came into a large folder below w
         ->and($unfiled)->toBe(5)
         ->and(fdLeft(1, $folder->id))->toBe(['filed' => 0, 'folder' => false]);
 });
+
+it('offers «Tải ảnh lên vào đây» in the open folder’s menu and opens the upload panel on that folder', function (): void {
+    $user = fdUser('admin');
+    $top = fdFolder(1, 'Công trình', 'cong-trinh', 1);
+    $sub = app(Tenancy::class)->enter(1, fn () => MediaFolder::query()->create(['name' => 'Nhà xưởng', 'slug' => 'nha-xuong', 'parent_id' => $top->id, 'position' => 1]));
+    fdFile(1, 'a.png', $sub);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $page = Livewire::actingAs($user)->test(Library::class)->call('setFolder', 'nha-xuong')
+            ->assertSee("uploadInto('nha-xuong')", false)
+            ->assertSee(__('media.lib.upload_here'));
+        $page->call('setFolder', '')->call('uploadInto', 'nha-xuong')
+            ->assertSet('folder', 'nha-xuong')
+            ->assertSet('uploadOpen', true)
+            ->assertSet('pickerSource', null)
+            ->assertDispatched('media-upload-opened')
+            ->assertDispatched('media-folder-open', slug: 'cong-trinh')
+            ->assertSeeHtml('data-upload-folder="nha-xuong"')
+            ->assertSeeHtml(e(__('media.lib.up_to_folder', ['name' => 'Nhà xưởng'])));
+    });
+});
+
+it('says new files go to «Tất cả ảnh (Chưa phân loại)» outside a folder, in the Trash too', function (string $place): void {
+    $user = fdUser('admin');
+    fdFolder(1, 'Công trình', 'cong-trinh', 1);
+    fdFile(1, 'a.png');
+
+    app(Tenancy::class)->enter(1, function () use ($user, $place): void {
+        Livewire::actingAs($user)->test(Library::class)->call('setFolder', $place)->call('openUpload')
+            ->assertSeeHtml('data-upload-folder=""')
+            ->assertSeeHtml(e(__('media.lib.up_to_all')))
+            ->assertDontSeeHtml(e(__('media.lib.up_to_folder', ['name' => 'Công trình'])));
+    });
+})->with(['', '-', '~trash']);
+
+it('lets an uploader without the folder rights upload into a folder, and refuses one who cannot upload', function (): void {
+    $editor = fdUser('editor');
+    $viewer = fdUser('viewer');
+    fdFolder(1, 'Công trình', 'cong-trinh', 1);
+    fdFile(1, 'a.png');
+
+    app(Tenancy::class)->enter(1, function () use ($editor, $viewer): void {
+        // no ⋮ for an editor (the folder menu is the website admin's), but the upload panel still files into the folder in view
+        Livewire::actingAs($editor)->test(Library::class)->call('setFolder', 'cong-trinh')
+            ->assertDontSee("uploadInto('cong-trinh')", false)
+            ->call('openUpload')->assertSeeHtml('data-upload-folder="cong-trinh"');
+        Livewire::actingAs($editor)->test(Library::class)->call('uploadInto', 'cong-trinh')->assertSet('uploadOpen', true);
+
+        Livewire::actingAs($viewer)->test(Library::class)->call('uploadInto', 'cong-trinh')->assertForbidden();
+        Livewire::actingAs($viewer)->test(Library::class)->call('openUpload', 'device')->assertForbidden();
+    });
+});
+
+it('never opens another site’s folder for an upload', function (): void {
+    $user = fdUser('admin');
+    fdFolder(2, 'Của site B', 'cua-site-b', 1);
+    fdFile(1, 'a.png');
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Livewire::actingAs($user)->test(Library::class)->call('uploadInto', 'cua-site-b')
+            ->assertSet('folder', '')
+            ->assertSet('uploadOpen', false)
+            ->assertNotDispatched('media-upload-opened');
+    });
+});
+
+it('takes dropped files to the device pane, and offers the drop cover only while an upload is possible', function (): void {
+    $admin = fdUser('admin');
+    $viewer = fdUser('viewer');
+    fdFolder(1, 'Công trình', 'cong-trinh', 1);
+    fdFile(1, 'a.png');
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $viewer): void {
+        $page = Livewire::actingAs($admin)->test(Library::class)->call('setFolder', 'cong-trinh')
+            ->assertSeeHtml('data-drop-ok="true"')
+            ->assertSeeHtml('data-drop-cover')
+            ->assertSeeHtml(e(__('media.lib.drop_to_folder', ['name' => 'Công trình'])));
+        $page->call('openUpload', 'device')
+            ->assertSet('uploadOpen', true)
+            ->assertSet('pickerSource', 'device')
+            ->assertSeeHtml('data-drop-ok="false"'); // the panel's own drop area takes over
+        Livewire::actingAs($admin)->test(Library::class)->call('openUpload', 'url-or-anything')->assertSet('pickerSource', null)
+            ->call('closeUpload')->assertSeeHtml(e(__('media.lib.drop_to_all')));
+
+        Livewire::actingAs($viewer)->test(Library::class)
+            ->assertSeeHtml('data-drop-ok="false"')
+            ->assertDontSeeHtml('data-drop-cover');
+    });
+});

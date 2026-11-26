@@ -1517,6 +1517,13 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $reparent = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($library()->call('openReparent', 'anh-xuong')));
     expect($reparent)->toContain('wire:model.live="reparentTo"');
     file_put_contents($dir.'/media-folder-reparent.html', $swap($html, $reparent, $media));
+    // «Tải ảnh lên vào đây» of a folder's menu: the upload panel on that folder, and the filters open with each choice counted
+    $upInto = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($library()->call('uploadInto', 'anh-xuong')));
+    expect($upInto)->toContain('data-upload-folder="anh-xuong"', e(__('media.lib.up_to_folder', ['name' => 'Ảnh xưởng'])));
+    file_put_contents($dir.'/media-upload-into.html', $swap($html, $upInto, $media));
+    $counted = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($owner)->test(Library::class)->set('tally', true)));
+    expect($counted)->toContain('wire:model.live="formats"');
+    file_put_contents($dir.'/media-filter-counts.html', $swap($html, $counted, $media));
     // someone who may delete only the files they uploaded, with one of theirs and someone else's
     // chosen: the Trash button names theirs, a line says why the other stays, and the question
     $author = User::factory()->create(['name' => 'Ngọc Anh']);
@@ -1700,5 +1707,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 154);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 156);
 });

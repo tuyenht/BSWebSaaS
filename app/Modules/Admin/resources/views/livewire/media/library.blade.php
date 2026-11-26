@@ -12,6 +12,8 @@
     $siteTime = app(SiteTime::class);
     $canPick = $trash ? $canDelete : ($canUpload || $canDelete);
     $placeName = $trash ? __('media.lib.trash') : ($folder === '-' ? __('media.lib.unfiled') : ($current?->name ?? __('media.lib.all')));
+    // a new file goes into the folder in view (none in the Trash, «Tất cả ảnh» or «Chưa phân loại»)
+    $upFolder = $trash ? null : $current;
     $baseN = $trash ? $counts['trash'] : ($folder === '-' ? $counts['unfiled'] : ($current !== null ? ($treeN[$current->id] ?? 0) : $counts['all']));
     // the folders of one parent in their order, and the top-level ones (a folder goes in one of those)
     $siblings = fn ($f) => $folders->where('parent_id', $f->parent_id)->values();
@@ -40,12 +42,12 @@
         + ($trash ? ['on' => false, 'summary' => '', 'suffix' => ''] : [])
         + ($canFolders ? ['action' => ['label' => __('media.lib.manage_folders'), 'icon' => 'ri-folder-settings', 'call' => 'openFolderSheet']] : []);
     $sections[] = ['key' => 'kinds', 'label' => __('media.lib.f_kind'), 'model' => 'kinds', 'multiple' => true, 'value' => $kinds, 'reset' => 'clearKinds',
-        'options' => array_map(fn (string $k): array => ['value' => $k, 'label' => $kindLabels[$k]], Dir::KINDS)];
+        'options' => array_map(fn (string $k): array => ['value' => $k, 'label' => $kindLabels[$k]] + (isset($groupCounts['kinds'][$k]) ? ['count' => $groupCounts['kinds'][$k]] : []), Dir::KINDS)];
     $sections[] = ['key' => 'formats', 'label' => __('media.lib.f_format'), 'model' => 'formats', 'multiple' => true, 'value' => $formats, 'reset' => 'clearFormats',
-        'options' => array_map(fn (string $f): array => ['value' => $f, 'label' => strtoupper($f)], array_keys(Dir::FORMATS))];
+        'options' => array_map(fn (string $f): array => ['value' => $f, 'label' => strtoupper($f)] + (isset($groupCounts['formats'][$f]) ? ['count' => $groupCounts['formats'][$f]] : []), array_keys(Dir::FORMATS))];
     if (! $trash) {
         $sections[] = ['key' => 'uses', 'label' => __('media.lib.f_use'), 'model' => 'uses', 'multiple' => true, 'value' => $uses, 'reset' => 'clearUses',
-            'options' => array_map(fn (string $u): array => ['value' => $u, 'label' => $useLabels[$u]], Dir::USES)];
+            'options' => array_map(fn (string $u): array => ['value' => $u, 'label' => $useLabels[$u]] + (isset($groupCounts['uses'][$u]) ? ['count' => $groupCounts['uses'][$u]] : []), Dir::USES)];
     }
     // «Người tạo»: offered once two people have uploaded files here (the member first); its options, like
     // every group's counts, are read while the filters are open ($tally)
@@ -108,7 +110,27 @@
     $listTargets = 'search,kinds,formats,uses,by,when,from,to,folderPick,status,sort,per,older,newer,setFolder,setSort,clearFilters,clearSearch,removeCondition,clearKinds,clearFormats,clearUses,clearStatus,clearBy,clearWhen';
     $folderBtn = 'flex min-h-control w-full items-center gap-2 rounded-md px-2.5 text-start text-body text-text hover:bg-surface-muted aria-[current=true]:bg-primary/12 aria-[current=true]:font-semibold aria-[current=true]:text-primary-text any-pointer-coarse:min-h-hit';
 @endphp
-<div class="flex min-w-0 flex-col gap-4" x-data
+{{-- Files dragged onto the page (board 12): while they are over it, «Thả tệp vào đây» covers the screen; dropped, the
+     upload panel opens on the device pane with them (handed over in the browser: a file cannot ride a Livewire request).
+     Only while uploading is possible here and the upload panel, with its own drop area, is shut. --}}
+<div class="flex min-w-0 flex-col gap-4" data-drop-ok="{{ $canUpload && ! $failed && ! $uploadOpen ? 'true' : 'false' }}"
+     x-data="{
+         over: false, depth: 0,
+         files(e) { return this.$root.dataset.dropOk === 'true' && [...(e.dataTransfer?.types ?? [])].includes('Files') },
+         enter(e) { if (! this.files(e)) return; e.preventDefault(); this.depth++; this.over = true },
+         leave() { if (! this.over) return; this.depth = Math.max(0, this.depth - 1); if (this.depth === 0) this.over = false },
+         drop(e) {
+             const ok = this.files(e);
+             this.over = false; this.depth = 0;
+             if (! ok) return;
+             e.preventDefault();
+             const list = [...(e.dataTransfer?.files ?? [])];
+             if (list.length) { window.__pendingPickerFiles = list; this.$wire.openUpload('device') }
+         },
+     }"
+     x-on:dragenter="enter($event)" x-on:dragover="if (files($event)) $event.preventDefault()" x-on:dragleave="leave()" x-on:drop="drop($event)"
+     x-on:drop.window="over = false; depth = 0"
+     x-on:media-upload-opened.window="$nextTick(() => document.getElementById('media-up-h')?.focus())"
      x-on:keydown.slash.window="if (! ['INPUT','TEXTAREA','SELECT'].includes($event.target.tagName) && ! $event.target.isContentEditable) { $event.preventDefault(); document.getElementById('media-search')?.focus() }">
 
     <div class="flex flex-wrap items-start justify-between gap-3">
@@ -124,12 +146,13 @@
     </div>
 
     @if ($uploadOpen && $canUpload)
-        <section class="rounded-md border border-border bg-surface p-4 shadow-card" aria-labelledby="media-up-h">
+        {{-- data-upload-folder: where a file added now goes (the device pane reads it as each file is added) --}}
+        <section class="rounded-md border border-border bg-surface p-4 shadow-card" aria-labelledby="media-up-h" data-upload-folder="{{ $upFolder?->slug ?? '' }}">
             <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <h2 id="media-up-h" class="m-0 text-[calc(1rem+var(--user-text-boost))] font-semibold text-text-strong">{{ __('media.lib.up_title') }}</h2>
+                <h2 id="media-up-h" tabindex="-1" class="m-0 text-[calc(1rem+var(--user-text-boost))] font-semibold text-text-strong">{{ __('media.lib.up_title') }}</h2>
                 <x-bs-admin::button variant="outline" color="secondary" wire:click="closeUpload"><x-bs-admin::icon name="ri-arrow-left" class="size-4" />{{ __('media.lib.up_done') }}</x-bs-admin::button>
             </div>
-            <p class="mb-3 flex items-center gap-2 text-body text-text"><x-bs-admin::icon name="ri-folder-3" class="size-4 shrink-0 text-text-muted" /><span>{{ __('media.lib.up_to') }} <b>{{ __('media.lib.unfiled') }}</b></span></p>
+            <p class="mb-3 flex items-center gap-2 text-body text-text"><x-bs-admin::icon name="ri-folder-3" class="size-4 shrink-0 text-text-muted" /><span>{{ __('media.lib.up_to') }} <b>{{ $upFolder !== null ? __('media.lib.up_to_folder', ['name' => $upFolder->name]) : __('media.lib.up_to_all') }}</b></span></p>
             <div class="min-h-[320px] overflow-hidden rounded-md border border-border">
                 @if ($pickerSource === 'url')
                     @include('admin::partials.media-picker-url-pane')
@@ -612,6 +635,19 @@
             <x-bs-admin::confirm-line icon="ri-delete-bin-2">{{ __('media.lib.ask_purge_l1', ['n' => $num($purge['n']), 'size' => Library::bytes($purge['bytes'])]) }}</x-bs-admin::confirm-line>
             <x-bs-admin::confirm-line icon="ri-image-2">{{ __('media.lib.ask_purge_l2') }}</x-bs-admin::confirm-line>
         </x-bs-admin::confirm-dialog>
+    @endif
+
+    {{-- the drop cover (board 12): seen only while files are dragged over the page; the «Tải lên» button is the same
+         action for the keyboard and screen readers, so the cover itself is hidden from them --}}
+    @if ($canUpload)
+        <div x-show="over" x-cloak aria-hidden="true" data-drop-cover
+             class="pointer-events-none fixed inset-0 z-[90] flex items-center justify-center bg-[color-mix(in_srgb,var(--color-admin-primary)_18%,rgb(15_18_30/0.45))] p-6">
+            <div class="flex flex-col items-center gap-2.5 rounded-lg border-[3px] border-dashed border-accent bg-surface px-10 py-8 text-center text-[calc(1rem+var(--user-text-boost))] font-semibold text-text-strong">
+                <x-bs-admin::icon name="ri-upload-cloud-2" class="size-10 text-accent" />
+                <span>{{ __('media.lib.drop_title') }}</span>
+                <span class="text-[calc(0.875rem+var(--user-text-boost))] font-medium text-text-muted">{{ $upFolder !== null ? __('media.lib.drop_to_folder', ['name' => $upFolder->name]) : __('media.lib.drop_to_all') }}</span>
+            </div>
+        </div>
     @endif
 
     <x-bs-admin::toast :message="$toast" :tone="$toastTone" dismiss="dismissToast" :undo="$undoTrash !== [] ? 'undo' : ($undoFolder !== '' ? 'undoFolderDelete' : ($undoReparent !== '' ? 'undoReparent' : null))" :seq="$toastSeq" />
