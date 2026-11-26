@@ -156,7 +156,7 @@ return [
     'markdown' => [
         'theme' => 'default',
         'paths' => [
-            resource_path('views/vendor/mail'),
+            dirname(__DIR__).'/resources/views/vendor/mail',
         ],
     ],
 

@@ -91,9 +91,7 @@
         </div>
         @error('logoKey')<x-bs-admin::field-error class="mt-2.5">{{ $message }}</x-bs-admin::field-error>@enderror
         @if ($sign['lowContrast'])
-            <div role="status" class="mt-2.5 flex items-start gap-2 rounded bg-warning-base/12 px-[11px] py-[9px] text-[calc(0.75rem+var(--user-text-boost))] leading-normal text-warning-text">
-                <x-bs-admin::icon name="ri-error-warning" class="mt-px size-4 shrink-0" /><span>{{ __('admin.em_brand_low') }}</span>
-            </div>
+            <x-bs-admin::alert color="warning" role="status" icon="ri-error-warning" class="mt-2.5">{{ __('admin.em_brand_low') }}</x-bs-admin::alert>
         @endif
     </div>
 </section>
@@ -208,7 +206,7 @@
                 <div wire:ignore id="em-sig-ed" x-ref="ed" contenteditable="true" role="textbox" aria-multiline="true" aria-label="{{ __('admin.em_sig_editor') }}"
                      data-ph="{{ __('admin.em_sig_ph') }}" spellcheck="true"
                      x-on:input="changed()" x-on:blur="changed(true)" x-on:keyup="keep()" x-on:mouseup="keep()" x-on:paste="paste($event)"
-                     class="min-h-[120px] min-w-0 flex-1 self-stretch px-4 py-[18px] text-[calc(0.875rem+var(--user-text-boost))] leading-relaxed text-text outline-none [overflow-wrap:anywhere] focus-visible:rounded focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-text empty:before:text-text-muted empty:before:content-[attr(data-ph)] [&_a]:text-primary-text [&_a]:underline [&_hr]:my-2.5 [&_hr]:border-0 [&_hr]:border-t [&_hr]:border-border-strong [&_img]:inline-block [&_img]:max-w-full [&_.em-var]:mx-px [&_.em-var]:inline-block [&_.em-var]:rounded [&_.em-var]:border [&_.em-var]:border-border [&_.em-var]:bg-surface-muted [&_.em-var]:px-[7px] [&_.em-var]:py-px [&_.em-var]:text-[.92em] [&_.em-var]:font-semibold [&_.em-var]:whitespace-nowrap [&_.em-var]:text-primary-text"></div>
+                     class="min-h-[120px] min-w-0 flex-1 self-stretch px-4 py-[18px] text-[calc(0.875rem+var(--user-text-boost))] leading-relaxed text-text [overflow-wrap:anywhere] focus-visible:rounded focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-text empty:before:text-text-muted empty:before:content-[attr(data-ph)] [&_a]:text-primary-text [&_a]:underline [&_hr]:my-2.5 [&_hr]:border-0 [&_hr]:border-t [&_hr]:border-border-strong [&_img]:inline-block [&_img]:max-w-full [&_.em-var]:mx-px [&_.em-var]:inline-block [&_.em-var]:rounded [&_.em-var]:border [&_.em-var]:border-border [&_.em-var]:bg-surface-muted [&_.em-var]:px-[7px] [&_.em-var]:py-px [&_.em-var]:text-[.92em] [&_.em-var]:font-semibold [&_.em-var]:whitespace-nowrap [&_.em-var]:text-primary-text"></div>
             </div>
         </div>
         @error('sigHtml')<x-bs-admin::field-error id="em-sig-err" class="mt-2">{{ $message }}</x-bs-admin::field-error>@enderror
