@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Cms\Validation;
 
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Support\DisplayDate;
 use App\Modules\Cms\Support\JobFacts;
@@ -69,20 +70,26 @@ final readonly class EntryContentRules
     public function __construct(private ValidPageJson $blocks) {}
 
     /**
-     * The shared blocks an entry's stored bodies place now, in every language (ValidPageJson::keeping),
-     * read in one site-scoped query when called: only when a placed block is not found.
+     * The shared blocks an entry stores now (ValidPageJson::keeping): those its live bodies place, in
+     * every language, and those its open pending change places (entry_drafts.content, per language),
+     * so approving, saving or folding a change that places a block deleted since is not refused.
+     * Read in two site-scoped queries when called: only when a placed block is not found.
      *
      * @return Closure(): list<string>
      */
     public static function storedRefs(string $entryUlid): Closure
     {
         return static function () use ($entryUlid): array {
+            $entryId = Entry::withTrashed()->select('id')->where('ulid', $entryUlid);
             $lists = [];
-            $bodies = EntryTranslation::query()
-                ->whereIn('entry_id', Entry::withTrashed()->select('id')->where('ulid', $entryUlid))
-                ->get(['id', 'site_id', 'entry_id', 'body']);
+            $bodies = EntryTranslation::query()->whereIn('entry_id', $entryId)->get(['id', 'site_id', 'entry_id', 'body']);
             foreach ($bodies as $translation) {
                 $lists[] = Cast::arr($translation->body['blocks'] ?? null);
+            }
+            $change = EntryDraft::query()->whereIn('entry_id', $entryId)->first(['id', 'site_id', 'entry_id', 'content']);
+            foreach (Cast::arr($change?->content['locales'] ?? null) as $text) {
+                $body = is_array($text) ? ($text['body'] ?? null) : null;
+                $lists[] = Cast::arr(is_array($body) ? ($body['blocks'] ?? null) : null);
             }
 
             return BlockReference::ulidsIn($lists);

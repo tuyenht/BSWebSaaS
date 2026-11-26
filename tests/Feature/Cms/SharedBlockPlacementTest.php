@@ -4,9 +4,12 @@ use App\Modules\Admin\Livewire\Entries\Editor as EntryEditor;
 use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
 use App\Modules\Admin\Support\Settings\SetLayoutBlocks;
 use App\Modules\Admin\Support\Settings\SettingsChangeRejected;
+use App\Modules\Audit\Models\AuditLog;
+use App\Modules\Cms\Actions\ApplyEntryDraft;
 use App\Modules\Cms\Actions\ContentBlocks\SaveContentBlockBody;
 use App\Modules\Cms\Actions\RecordEntryRevision;
 use App\Modules\Cms\Actions\RestoreEntryRevision;
+use App\Modules\Cms\Actions\SaveEntryDraft;
 use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
 use App\Modules\Cms\Actions\Taxonomies\SetCategoryLayoutBlocks;
 use App\Modules\Cms\ContentBlocks\ContentBlockVersion;
@@ -17,12 +20,16 @@ use App\Modules\Cms\Exceptions\TaxonomyChangeRejectedException;
 use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\ContentBlockTranslation;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Support\BlockUsageIndex;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
+use App\Modules\Cms\Support\EntryDraftAudit;
+use App\Modules\Cms\Support\EntryDraftFolder;
 use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Cms\Validation\ValidPageJson;
 use App\Modules\Identity\Models\User;
@@ -100,6 +107,20 @@ function sbpPage(array $bodies, string $slug = 'gioi-thieu'): Entry
         app(EntryBlockMediaReconciler::class)->reconcile($entry);
 
         return $entry;
+    });
+}
+
+/** A live page of site 1 at /gioi-thieu, in Vietnamese only, whose body is $blocks. */
+function sbpLivePage(array $blocks): Entry
+{
+    return app(Tenancy::class)->enter(1, function () use ($blocks): Entry {
+        $entry = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now(), 'meta' => []]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Giới thiệu', 'slug' => 'gioi-thieu', 'status' => 'published', 'body' => ['blocks' => $blocks]]);
+        app(EntryBlockMediaReconciler::class)->reconcile($entry);
+        $entry = $entry->fresh() ?? $entry;
+        app(RouteSync::class)->sync($entry, 'vi', 'gioi-thieu');
+
+        return $entry->fresh() ?? $entry;
     });
 }
 
@@ -419,6 +440,61 @@ describe('checking a body on save', function (): void {
             $editor->set('blocks', [...$editor->get('blocks'), sbpRef('01J00000000000000000000000')])
                 ->call('save')
                 ->assertHasErrors('blocks');
+        });
+    });
+
+    it('saves and applies an open change whose placed block was deleted since', function (): void {
+        $user = User::factory()->create();
+        app(Tenancy::class)->enter(1, fn () => grantRole($user, 'site-admin', ['entries.view', 'entries.create', 'entries.edit.any', 'entries.publish']));
+        app(TeamContext::class)->forget();
+        $user = $user->fresh() ?? $user;
+        $gone = sbpBlock(1, 'da-xoa');
+        $cta = ['type' => 'cta', 'props' => ['heading' => 'Liên hệ']];
+        $entry = sbpLivePage([$cta]);
+
+        app(Tenancy::class)->enter(1, function () use ($user, $entry, $gone, $cta): void {
+            // the change places the block; the live page does not
+            app(SaveEntryDraft::class)->handle($entry, $user, 'vi', ['body' => ['blocks' => [$cta, sbpRef($gone->ulid)]]]);
+            ContentBlock::query()->whereKey($gone->id)->delete();
+
+            $change = app(SaveEntryDraft::class)->handle($entry->fresh() ?? $entry, $user, 'vi', ['title' => 'Giới thiệu mới']);
+            expect($change->content['locales']['vi']['body']['blocks'])->toBe([$cta, sbpRef($gone->ulid)]);
+
+            Livewire::actingAs($user)->test(EntryEditor::class, ['ulid' => $entry->ulid])
+                ->set('title', 'Giới thiệu lần hai')
+                ->call('save')
+                ->assertHasNoErrors();
+            $change = EntryDraft::query()->where('entry_id', $entry->id)->sole();
+            expect($change->content['locales']['vi']['title'])->toBe('Giới thiệu lần hai');
+
+            expect(app(ApplyEntryDraft::class)->handle($entry->fresh() ?? $entry, $user, $change->version()))->toBe(['vi'])
+                ->and($entry->translations()->where('locale', 'vi')->value('title'))->toBe('Giới thiệu lần hai')
+                ->and(EntryDraft::query()->where('entry_id', $entry->id)->exists())->toBeFalse();
+        });
+    });
+
+    it('keeps a language\'s pending text when a change whose placed block was deleted is folded', function (): void {
+        $user = User::factory()->create();
+        app(Tenancy::class)->enter(1, fn () => grantRole($user, 'site-admin', ['entries.view', 'entries.create', 'entries.edit.any', 'entries.publish']));
+        app(TeamContext::class)->forget();
+        $user = $user->fresh() ?? $user;
+        $gone = sbpBlock(1, 'da-xoa');
+        $cta = ['type' => 'cta', 'props' => ['heading' => 'Liên hệ']];
+        $entry = sbpLivePage([$cta]);
+
+        app(Tenancy::class)->enter(1, function () use ($user, $entry, $gone, $cta): void {
+            app(SaveEntryDraft::class)->handle($entry, $user, 'vi', ['title' => 'Chờ gộp', 'body' => ['blocks' => [$cta, sbpRef($gone->ulid)]]]);
+            ContentBlock::query()->whereKey($gone->id)->delete();
+
+            $folded = DB::transaction(function () use ($entry, $user): bool {
+                $entry->update(['status' => 'draft']);
+
+                return app(EntryDraftFolder::class)->fold($entry, $user);
+            });
+
+            expect($folded)->toBeTrue()
+                ->and($entry->translations()->where('locale', 'vi')->value('title'))->toBe('Chờ gộp')
+                ->and(AuditLog::query()->where('action', EntryDraftAudit::FOLDED)->latest('id')->firstOrFail()->meta)->toMatchArray(['locales' => ['vi'], 'skipped_locales' => []]);
         });
     });
 
