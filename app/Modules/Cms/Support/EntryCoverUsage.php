@@ -135,8 +135,8 @@ final class EntryCoverUsage
 
     /**
      * A file deleted for good (the Trash purge, «Xóa vĩnh viễn»): the entries of its website that name it
-     * as their cover by id (entries.cover_media_id, which has no foreign key: a D3 soft reference) lose
-     * the id, in the purge's transaction. They are found through the file's `cover` usage rows, the
+     * as their cover by id lose the id and the old key in meta, in the purge's transaction (the same-site
+     * foreign key's ON DELETE SET NULL would clear the id alone, and only after this runs). They are found through the file's `cover` usage rows, the
      * mediables UNIQUE (media_id, mediable_type, mediable_id, collection) index, then the entries
      * primary key: no scan of the site's entries. Runs at `forceDeleting`, before MediaObserver drops
      * those rows (CmsServiceProvider boots before MediaServiceProvider).

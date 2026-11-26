@@ -10,6 +10,7 @@ use App\Modules\Media\Models\Mediable;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -254,9 +255,11 @@ it('reads a cover named by id alone, the old key only without an id, in the row,
         $post->update(['cover_media_id' => $byId->id]);
         expect(coverRows($post))->toBe([$byId->id]);
 
-        // an id that names no file of this site (another site's) is no picture: the old key is not read
-        $post->update(['cover_media_id' => $theirs->id]);
-        expect(coverRows($post))->toBe([]);
+        // another site's file is refused by the database (the same-site key): the post keeps its cover
+        expect(fn () => DB::transaction(fn () => $post->update(['cover_media_id' => $theirs->id])))
+            ->toThrow(QueryException::class, 'entries_cover_media_id_same_site_foreign');
+        $post->refresh();
+        expect($post->cover_media_id)->toBe($byId->id)->and(coverRows($post))->toBe([$byId->id]);
 
         // an id naming a file in the Trash beside the old key of a live one: the id's file keeps its use
         $trashed->delete();
@@ -270,7 +273,7 @@ it('reads a cover named by id alone, the old key only without an id, in the row,
         expect(coverRows($quiet))->toBe([]);
         EntryCoverUsage::reconcileSite(1);
         expect(coverRows($quiet))->toBe([$byId->id])
-            ->and(coverRows($post))->toBe([])
+            ->and(coverRows($post))->toBe([$byId->id])
             ->and(coverRows($held))->toBe([$trashed->id]);
 
         // the rebuild writes the same rows from nothing
@@ -278,7 +281,7 @@ it('reads a cover named by id alone, the old key only without an id, in the row,
         DB::table('mediables')->insert(['media_id' => $byKey->id, 'mediable_type' => 'entry', 'mediable_id' => $held->id, 'site_id' => 1, 'collection' => EntryCoverUsage::COLLECTION, 'sort_order' => 0, 'created_at' => now(), 'updated_at' => now()]);
         EntryCoverUsage::reconcileSite(1);
         expect(coverRows($held))->toBe([$trashed->id])
-            ->and(coverRows($post))->toBe([])
+            ->and(coverRows($post))->toBe([$byId->id])
             ->and(coverRows($quiet))->toBe([$byId->id]);
 
         // the protective reading keeps a file named only by an id out of the Trash, without its row
@@ -295,6 +298,7 @@ it('leaves no cover on this website\'s entries when their picture is deleted for
     Storage::fake('r2');
     $pic = coverMedia('mat');
     $keep = coverMedia('con');
+    $ownPic = coverMedia('cua-ho', 2);
 
     [$byId, $mixed, $other] = app(Tenancy::class)->enter(1, function () use ($pic, $keep): array {
         $byId = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'cover_media_id' => $pic->id, 'meta' => ['subtitle' => 'Phụ']]);
@@ -305,8 +309,14 @@ it('leaves no cover on this website\'s entries when their picture is deleted for
 
         return [$byId, $mixed, $other];
     });
-    // another website's entry naming the same number (no foreign key holds it to its own website)
-    $theirs = app(Tenancy::class)->enter(2, fn (): Entry => Entry::query()->create(['type' => 'post', 'status' => 'draft', 'cover_media_id' => $pic->id, 'meta' => []]));
+    // another website's entry cannot name this file (the same-site key refuses it); one naming its own file stays
+    $theirs = app(Tenancy::class)->enter(2, function () use ($pic, $ownPic): Entry {
+        expect(fn () => DB::transaction(fn () => Entry::query()->create(['type' => 'post', 'status' => 'draft', 'cover_media_id' => $pic->id, 'meta' => []])))
+            ->toThrow(QueryException::class, 'entries_cover_media_id_same_site_foreign');
+        expect(Entry::query()->where('cover_media_id', $pic->id)->exists())->toBeFalse();
+
+        return Entry::query()->create(['type' => 'post', 'status' => 'draft', 'cover_media_id' => $ownPic->id, 'meta' => []]);
+    });
 
     app(Tenancy::class)->enter(1, function () use ($pic): void {
         $pic->delete();
@@ -322,5 +332,5 @@ it('leaves no cover on this website\'s entries when their picture is deleted for
             ->and($mixed->meta)->not->toHaveKey('image_url')   // no old key left to fall back to
             ->and(Entry::query()->find($other->id)->cover_media_id)->toBe($keep->id);
     });
-    expect(app(Tenancy::class)->enter(2, fn (): mixed => Entry::query()->find($theirs->id)->cover_media_id))->toBe($pic->id);
+    expect(app(Tenancy::class)->enter(2, fn (): mixed => Entry::query()->find($theirs->id)->cover_media_id))->toBe($ownPic->id);
 });

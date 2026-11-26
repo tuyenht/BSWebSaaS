@@ -8,6 +8,8 @@ use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\EntryCategoryWriter;
 use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Models\Media;
+use App\Modules\Media\Support\MediaRefs;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\Slugger;
 use App\Modules\Theme\Rendering\TemplateCatalog;
@@ -62,7 +64,13 @@ final class DuplicateEntry
                 'meta' => $meta,
             ]);
 
-            foreach ($entry->translations()->get() as $translation) {
+            // the share pictures kept are files of this website, read FOR KEY SHARE: a purge meanwhile
+            // waits for the copy and then clears it too, instead of the copy failing on the same-site key
+            $translations = $entry->translations()->get();
+            $shareIds = array_values(array_unique(array_filter($translations->map(fn (EntryTranslation $t): ?int => MediaRefs::id($t->og_image_id))->all())));
+            $kept = $shareIds === [] ? [] : array_map(MediaRefs::id(...), Media::withTrashed()->whereIn('id', $shareIds)->lock('for key share')->pluck('id')->all());
+
+            foreach ($translations as $translation) {
                 $copy->translations()->create([
                     'locale' => $translation->locale,
                     // The copy is marked in the copied translation's own language.
@@ -73,7 +81,7 @@ final class DuplicateEntry
                     'excerpt' => $translation->excerpt,
                     'seo_title' => $translation->seo_title,
                     'seo_description' => $translation->seo_description,
-                    'og_image_id' => $translation->og_image_id,
+                    'og_image_id' => in_array(MediaRefs::id($translation->og_image_id), $kept, true) ? MediaRefs::id($translation->og_image_id) : null,
                     'author_name' => $translation->author_name,
                     'cover_alt' => $translation->cover_alt,
                 ]);

@@ -146,7 +146,7 @@ final class CmsServiceProvider extends ServiceProvider
 
         // Purging an entry drops its block image usage rows (polymorphic, no FK cascade).
         Entry::observe(EntryObserver::class);
-        // A file deleted for good is no entry's cover any more (cover_media_id has no FK). Registered
+        // A file deleted for good is no entry's cover any more (its id and any old key in meta). Registered
         // here, before MediaServiceProvider's observer drops the usage rows that find those entries.
         // Media never depends on Cms: Cms listens.
         Media::forceDeleting(static fn (Media $media) => EntryCoverUsage::purging($media));

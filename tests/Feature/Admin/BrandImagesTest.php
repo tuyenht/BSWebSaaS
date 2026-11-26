@@ -18,6 +18,7 @@ use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -351,9 +352,11 @@ it('shows nothing for a profile image that names another site\'s picture', funct
     $mine = brandMedia(1, 'logo');
     $theirs = brandMedia(2, 'theirs');
     app(Tenancy::class)->enter(1, fn () => SiteProfile::query()->create(['brand_name' => 'Ở xưởng Bảo Hà']));
-    // The FK cannot tell sites apart: an id written past the settings screen may name any media row.
-    DB::connection('pgsql_admin')->table('site_profiles')->where('site_id', 1)
-        ->update(['logo_media_id' => $theirs->id, 'favicon_media_id' => $mine->id]);
+    // The database refuses another site's picture even past the settings screen (the same-site key);
+    // the reader still shows nothing for an id handed to it that names no picture of this site.
+    expect(fn () => DB::connection('pgsql_admin')->table('site_profiles')->where('site_id', 1)->update(['logo_media_id' => $theirs->id]))
+        ->toThrow(QueryException::class, 'site_profiles_logo_media_id_same_site_foreign');
+    DB::connection('pgsql_admin')->table('site_profiles')->where('site_id', 1)->update(['favicon_media_id' => $mine->id]);
 
     $images = app(Tenancy::class)->enter(1, fn () => app(BrandImages::class)->for(['media_ids' => ['logo' => $theirs->id, 'favicon' => $mine->id]]));
     expect($images['logo'])->toBeNull()
