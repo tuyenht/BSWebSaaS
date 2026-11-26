@@ -47,6 +47,7 @@ final class OwnerRecoveredNotification extends Notification implements ShouldQue
             'site_id' => $this->tenantSiteId,
             'meta' => ['error' => $e::class],
         ]);
+        $this->recordMailFailure($e);
     }
 
     /**

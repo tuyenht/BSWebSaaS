@@ -58,6 +58,7 @@ final class EmailOtpNotification extends Notification implements ShouldQueue
             'actor_id' => $this->actorId,
             'meta' => ['site_id' => $this->tenantSiteId, 'error' => $e::class],
         ]);
+        $this->recordMailFailure($e);
     }
 
     /**
