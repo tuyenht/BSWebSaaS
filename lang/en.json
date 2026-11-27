@@ -6615,6 +6615,7 @@
     "catalog.ed.sv_full_day": "Saved at :time on :day",
     "catalog.ed.sv_tip": ":text — in the website's time zone",
     "catalog.ed.sv_dirty": ":n unsaved changes",
+    "catalog.ed.sv_dirty_short": "Not saved",
     "catalog.ed.sv_dirty_draft": ":n unsaved changes — saves automatically in 3 seconds",
     "catalog.ed.sv_dirty_live": ":n unsaved changes — press Update so visitors see them",
     "catalog.ed.sv_saving": "Saving…",

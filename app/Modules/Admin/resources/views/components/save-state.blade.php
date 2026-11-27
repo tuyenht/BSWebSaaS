@@ -17,7 +17,8 @@
             <x-bs-admin::icon name="ri-error-warning" :class="$glyph" x-show="state() === 'dirty'" />
             <x-bs-admin::icon name="ri-loader-4" :class="$glyph.' motion-safe:animate-spin'" x-show="state() === 'saving'" />
             <x-bs-admin::icon name="ri-wifi-off" :class="$glyph" x-show="state() === 'offline'" />
-            <span x-text="text()"></span>
+            {{-- the phone's one bar shows the short line; the long one is still what is read out (admin-editor.css) --}}
+            <span class="bs-save-state-l" x-text="text()"></span><span class="bs-save-state-s" aria-hidden="true" x-text="short()"></span>
         </span>
     </span>
 </span>

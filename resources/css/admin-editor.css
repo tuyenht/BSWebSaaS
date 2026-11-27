@@ -72,6 +72,11 @@
     display: none;
 }
 
+/* The short line of the browser's state is for the phone's one bar only (below). */
+.bs-save-state-s {
+    display: none;
+}
+
 /* Parts of the bar drawn for the phone's one bar only: the name, the (?) and, in the ⋮, Xem trước and
    Cỡ chữ (the admin's top bar, with its way to the member's settings, is gone there). */
 .ped-h1,
@@ -173,6 +178,21 @@
         border: 0;
         background: transparent;
         font-size: min(0.875rem, calc(0.75rem + var(--user-text-boost) * 0.5));
+        white-space: nowrap;
+    }
+
+    /* One line beside ← and ⋮: the short line shows («Chưa lưu»), the long one stays what is read out
+       and the pill's title (a long line here pushed the page sideways on a phone). */
+    [data-child-screen] .ped-bar .bs-save-state-s {
+        display: inline;
+    }
+
+    [data-child-screen] .ped-bar .bs-save-state-l {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
         white-space: nowrap;
     }
 

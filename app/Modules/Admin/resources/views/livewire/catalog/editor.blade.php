@@ -26,6 +26,7 @@
         'dirty' => __('catalog.ed.sv_dirty'),
         'dirtyDraft' => __('catalog.ed.sv_dirty_draft'),
         'dirtyLive' => __('catalog.ed.sv_dirty_live'),
+        'dirtyShort' => __('catalog.ed.sv_dirty_short'),
         'saving' => __('catalog.ed.sv_saving'),
         'offline' => __('catalog.ed.sv_offline'),
         'offlineToast' => __('catalog.ed.toast_offline'),

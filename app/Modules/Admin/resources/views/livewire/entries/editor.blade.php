@@ -31,6 +31,7 @@
         'dirty' => $dirty,
         'dirtyDraft' => __('entries.ed.sv_dirty_draft'),
         'dirtyLive' => __('entries.ed.sv_dirty_live'),
+        'dirtyShort' => __('catalog.ed.sv_dirty_short'),
         'saving' => __('catalog.ed.sv_saving'),
         'autosaving' => __('entries.ed.sv_autosaving'),
         'offline' => __('catalog.ed.sv_offline'),

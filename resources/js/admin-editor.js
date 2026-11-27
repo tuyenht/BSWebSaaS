@@ -79,6 +79,19 @@ export function stateText(state, words, n, status, auto = false) {
 }
 
 /**
+ * The short line of a state, for the phone's one bar of an editor (design 07: «Đang lưu…» · «Chưa lưu»),
+ * where the long line would not fit on one line; the long one stays its title and what is read out.
+ * Without `dirtyShort` among the words it is the long line.
+ */
+export function shortStateText(state, words, long) {
+    if (state === 'saving') {
+        return words.saving;
+    }
+
+    return words.dirtyShort ?? long;
+}
+
+/**
  * @param {{ fields: string[], words: Record<string, string>, delay?: number, autosave?: boolean, autosaveNew?: boolean, extra?: string, keep?: { key: string } }} cfg
  *   the counted fields, the words of each state, the wait before a draft saves itself (ms);
  *   `autosave: false` for an editor whose drafts do not save themselves; `autosaveNew` for one whose new
@@ -250,6 +263,10 @@ export function editorSave(cfg) {
             const itself = this.own > 0 && savesItself(cfg, status, this.get);
 
             return stateText(this.state(), cfg.words, this.n, itself ? 'draft' : (status === 'draft' || savesItself(cfg, status, this.get) ? 'none' : status), this.auto);
+        },
+
+        short() {
+            return shortStateText(this.state(), cfg.words, this.text());
         },
 
         /** "Thử lại": the save that did not reach the server ("Đăng" again, otherwise a plain save). */
