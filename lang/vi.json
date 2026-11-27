@@ -6705,6 +6705,7 @@
     "catalog.ed.video_max": "Mỗi sản phẩm có tối đa :max video. Hãy bỏ bớt một video trước.",
     "catalog.ed.video_need_image": "Thêm ít nhất một ảnh trước, vì ảnh đầu là ảnh đại diện.",
     "catalog.ed.video_keep_image": "Bỏ video trước, hoặc thêm ảnh khác — đầu dải luôn là ảnh.",
+    "catalog.ed.video_no_image": "Sản phẩm có video cần ít nhất một ảnh. Hãy thêm ảnh, hoặc bỏ các video.",
     "catalog.ed.toast_video_added": "Đã thêm video — video luôn đứng sau ảnh đại diện.",
     "catalog.ed.toast_video_added_t": "Đã thêm video “:title” — video luôn đứng sau ảnh đại diện.",
     "catalog.ed.toast_video_removed": "Đã bỏ video “:name” khỏi sản phẩm.",

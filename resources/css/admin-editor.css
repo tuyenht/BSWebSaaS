@@ -736,8 +736,9 @@
     min-width: 0;
 }
 
-/* the row follows the width of the gallery card it sits in (the board's 520px), not the editor's */
-@container (min-width: 32.5rem) {
+/* the row follows the width of the gallery card it sits in (the board's 520px, and 29em of its own text so a
+   larger text size keeps one column longer), not the editor's */
+@container (min-width: 32.5rem) and (min-width: 29em) {
     .ped-yt-row {
         grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
     }

@@ -507,9 +507,16 @@ final class Editor extends Component
             $ids = array_values(array_filter($this->imageMediaIds, static fn (int $id): bool => $id !== $image['id']));
             array_splice($ids, max(0, min($image['at'], count($ids))), 0, [$image['id']]);
             $this->imageMediaIds = $ids;
+            $this->resetErrorBag('imageMediaIds');
         } elseif ($undo === 'video' && $video !== null && $this->screen === 'form') {
             $this->authorizeEdit();
             if ($this->sharedRefused()) {
+                return;
+            }
+            if ($this->imageMediaIds === []) {
+                // the pictures went since (another tab, «Bỏ thay đổi»): a video never comes back without one
+                $this->say(Cast::string(__('catalog.ed.video_need_image')), null);
+
                 return;
             }
             $videos = array_values(array_filter($this->videos, static fn (array $v): bool => $v['yt'] !== $video['yt']));
@@ -1217,6 +1224,8 @@ final class Editor extends Component
         }
         if (! in_array($mediaId, $this->imageMediaIds, true)) {
             $this->imageMediaIds[] = $mediaId;
+            // a picture is there now: the save's «needs a picture» message no longer applies
+            $this->resetErrorBag('imageMediaIds');
         }
     }
 
@@ -1304,9 +1313,14 @@ final class Editor extends Component
         $video = $this->videos[$index];
         array_splice($this->videos, $index, 1);
         $this->videoError = '';
+        if ($this->videos === []) {
+            // no video is left: the save's «needs a picture» message no longer applies
+            $this->resetErrorBag('imageMediaIds');
+        }
         $name = $video['title'] !== '' ? $video['title'] : Cast::string(__('catalog.ed.video_unnamed'));
         $this->say(Cast::string(__('catalog.ed.toast_video_removed', ['name' => $name])), 'video', null, $video + ['at' => $index]);
-        // focus goes to the item now at that place; with no video left, to the main picture (-1)
+        // focus goes to the item now at that place; with no video left, to the main picture or, with none,
+        // to what the card shows instead (-1)
         $this->dispatch('ped-vfocus', i: $this->videos === [] ? -1 : min($index, count($this->videos) - 1));
     }
 
@@ -1507,11 +1521,11 @@ final class Editor extends Component
             'bestseller' => ['boolean'],
             'sku' => ['nullable', 'string', 'max:'.SkuCode::MAX, $this->skuIsFree(...)],
             'status' => ['required', Rule::in(['draft', 'published', 'archived'])],
-            // the strip always starts with a picture: a save never empties the pictures under a video
-            // (a product that already had none, its last picture deleted from the Library, may still save)
+            // the strip always starts with a picture: a product with videos is never saved without one,
+            // whatever was stored before (a new product, or one whose last picture the Library deleted)
             'imageMediaIds' => ['array', function (string $attribute, mixed $value, \Closure $fail): void {
-                if ($value === [] && $this->videos !== [] && ($this->saved['imageMediaIds'] ?? '[]') !== '[]') {
-                    $fail(Cast::string(__('catalog.ed.video_keep_image')));
+                if ($value === [] && ProductVideos::clean($this->videos) !== []) {
+                    $fail(Cast::string(__('catalog.ed.video_no_image')));
                 }
             }],
             // RLS scopes the exists to this site. Deliberately NOT whereNull(deleted_at): an

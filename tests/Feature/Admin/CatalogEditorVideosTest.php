@@ -52,6 +52,25 @@ function pvdProduct(int $pictures = 2, array $meta = []): Product
 
 const PVD_ID = 'dQw4w9WgXcQ';
 
+/** A picture in the Library, not yet on any product. */
+function pvdMedia(): Media
+{
+    $key = uniqid('pvdm-');
+
+    return Media::query()->create(['collection' => 'library', 'slug' => $key, 'hash' => hash('sha256', $key), 'storage_key' => "s/library/{$key}.png",
+        'disk' => 'r2', 'mime' => 'image/png', 'size' => 1024]);
+}
+
+/** The value of `$attr` on the tag that carries `$marker`, as the editor drew it; null when no such tag. */
+function pvdAttr(string $html, string $marker, string $attr): ?string
+{
+    if (preg_match('~<[a-z]+\b(?=[^>]*\s'.preg_quote($marker, '~').'[\s>=])[^>]*>~', $html, $tag) !== 1) {
+        return null;
+    }
+
+    return preg_match('~\s'.preg_quote($attr, '~').'="([^"]*)"~', $tag[0], $m) === 1 ? html_entity_decode($m[1], ENT_QUOTES) : null;
+}
+
 it('stores the 11-character id of every accepted YouTube link shape, never the link', function (string $url): void {
     $user = pvdMember();
     app(Tenancy::class)->enter(1, function () use ($user, $url): void {
@@ -233,12 +252,15 @@ it('keeps the videos visible and removable after their last picture is deleted f
         Livewire::actingAs($user)->test(Editor::class, ['ulid' => $product->ulid])
             ->assertSet('imageMediaIds', [])
             ->assertSeeHtml('data-vid-i="0"')
-            ->assertDontSeeHtml('ped-imempty')
-            ->set('name', 'Mũi khoan 2')->call('save')->assertHasNoErrors()
-            ->call('removeVideo', 0)->assertSet('videos', [])->assertSeeHtml('ped-imempty')
+            ->assertDontSeeHtml('class="ped-imempty"')
+            // a save asks for a picture first (or the videos gone), keeping what was typed
+            ->set('name', 'Mũi khoan 2')->call('save')->assertHasErrors(['imageMediaIds'])
+            ->assertSee(__('catalog.ed.video_no_image'))->assertSet('name', 'Mũi khoan 2')->assertCount('videos', 1)
+            ->call('removeVideo', 0)->assertSet('videos', [])->assertHasNoErrors(['imageMediaIds'])->assertSeeHtml('class="ped-imempty"')
             ->call('save')->assertHasNoErrors();
 
-        expect((array) Product::query()->whereKey($product->id)->value('meta'))->toBe(['note' => 'keep me']);
+        expect((array) Product::query()->whereKey($product->id)->value('meta'))->toBe(['note' => 'keep me'])
+            ->and($product->translations()->value('name'))->toBe('Mũi khoan 2');
     });
 });
 
@@ -276,10 +298,6 @@ it('draws the strip as the board does: its words, the add group, the YouTube mar
             ->assertSee(__('catalog.ed.img_strip'))->assertSee('role="group" aria-labelledby="ped-yt-h"', false)
             ->assertSee('aria-describedby="ped-yt-o"', false)->assertSee(__('catalog.ed.img_add_media_why'), false)
             ->assertSee('x-on:blur="$wire.checkVideoLink(url)"', false);
-        // the cover never swaps across the videos, and the last picture stays under a video
-        $c->assertSee('(sel === 0 || (sel === 1 && vN > 0))', false)
-            ->assertSee('(sel === n - 1 || (sel === 0 && vN > 0))', false)
-            ->assertSee('(n === 1 && vN > 0)', false);
         expect(__('catalog.ed.img_strip'))->toContain('video')
             ->and(file_get_contents(base_path('app/Modules/Admin/resources/views/components/icon.blade.php')))->toContain("'ri-youtube'");
     });
@@ -288,5 +306,130 @@ it('draws the strip as the board does: its words, the add group, the YouTube mar
 it('sizes the add-video row by the gallery card it sits in, as the board does', function (): void {
     $css = (string) file_get_contents(base_path('resources/css/admin-editor.css'));
     expect($css)->toMatch('~\.ped-yt \{[^}]*container-type: inline-size~')
-        ->and($css)->toContain('@container (min-width: 32.5rem)')->not->toContain('@container (min-width: 40rem)');
+        ->and($css)->toContain('@container (min-width: 32.5rem) and (min-width: 29em) {')->not->toContain('@container (min-width: 40rem)');
+});
+
+it('never saves a new product with videos and no picture, by any save', function (string $how): void {
+    $user = pvdMember();
+    app(Tenancy::class)->enter(1, function () use ($user, $how): void {
+        $picture = pvdMedia();
+        $c = Livewire::actingAs($user)->test(Editor::class)
+            ->set('name', 'Dao phay')->set('slug', 'dao-phay')
+            ->set('imageMediaIds', [$picture->id])
+            ->call('addVideo', 'https://youtu.be/'.PVD_ID, 'Cắt thử')->assertReturned(true)
+            ->set('imageMediaIds', [])
+            ->call($how);
+        expect(Product::query()->count())->toBe(0);
+        // what was typed and added stays on the screen
+        $c->assertSet('name', 'Dao phay')->assertCount('videos', 1);
+        if ($how !== 'autosave') {
+            $c->assertHasErrors(['imageMediaIds'])->assertSee(__('catalog.ed.video_no_image'));
+        }
+    });
+})->with(['save', 'publish', 'autosave']);
+
+it('never saves videos onto a product that was stored with no picture, after the picture added for them is taken away', function (): void {
+    $user = pvdMember();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $product = pvdProduct(0, ['note' => 'keep me']);
+        $picture = pvdMedia();
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $product->ulid])
+            ->set('imageMediaIds', [$picture->id])
+            ->call('addVideo', 'https://youtu.be/'.PVD_ID, '')->assertReturned(true)
+            ->set('imageMediaIds', [])
+            ->call('save')->assertHasErrors(['imageMediaIds'])->assertCount('videos', 1);
+        expect((array) Product::query()->whereKey($product->id)->value('meta'))->toBe(['note' => 'keep me']);
+    });
+});
+
+it('does not put a video back with «Hoàn tác» once the pictures are gone', function (): void {
+    $user = pvdMember();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $picture = pvdMedia();
+        Livewire::actingAs($user)->test(Editor::class)
+            ->set('name', 'Dao phay')->set('slug', 'dao-phay')
+            ->set('imageMediaIds', [$picture->id])
+            ->call('addVideo', 'https://youtu.be/'.PVD_ID, '')
+            ->call('removeVideo', 0)->assertSet('undo', 'video')
+            ->set('imageMediaIds', [])
+            ->call('undoLast')->assertSet('videos', [])->assertSet('toastMsg', __('catalog.ed.video_need_image'))
+            ->call('save')->assertHasNoErrors();
+        expect(Product::query()->value('meta'))->not->toHaveKey('videos');
+    });
+});
+
+it('does not put a video back with «Hoàn tác» after «Bỏ thay đổi» took the pictures of a new product', function (): void {
+    $user = pvdMember();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $picture = pvdMedia();
+        Livewire::actingAs($user)->test(Editor::class)
+            ->set('imageMediaIds', [$picture->id])
+            ->call('addVideo', 'https://youtu.be/'.PVD_ID, '')
+            ->call('removeVideo', 0)
+            ->call('resetChanges')->assertSet('imageMediaIds', [])->assertSet('undo', 'video')
+            ->call('undoLast')->assertSet('videos', [])->assertSet('toastMsg', __('catalog.ed.video_need_image'))
+            ->set('name', 'Dao phay')->set('slug', 'dao-phay')
+            ->call('save')->assertHasNoErrors();
+        expect(Product::query()->value('meta'))->not->toHaveKey('videos');
+    });
+});
+
+it('refuses «Hoàn tác» on a video when another tab filled the list since and «Bỏ thay đổi» read it again', function (): void {
+    $user = pvdMember();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $mine = array_map(static fn (int $i): array => ['yt' => str_pad((string) $i, 11, 'm', STR_PAD_LEFT), 'title' => ''], range(1, 20));
+        $theirs = array_map(static fn (int $i): array => ['yt' => str_pad((string) $i, 11, 't', STR_PAD_LEFT), 'title' => ''], range(1, 20));
+        $product = pvdProduct(1, ['videos' => $mine]);
+        $c = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $product->ulid])
+            ->call('removeVideo', 0)->assertSet('undo', 'video')->assertCount('videos', 19);
+        // another tab saves twenty other videos meanwhile
+        Product::query()->whereKey($product->id)->update(['meta' => json_encode(['videos' => $theirs])]);
+        $c->call('resetChanges')->assertSet('videos', $theirs)
+            ->call('undoLast')
+            ->assertSet('videoError', __('catalog.ed.video_max', ['max' => 20]))
+            ->assertSet('videos', $theirs);
+    });
+});
+
+it('draws the picture toolbar\'s refusals from the pictures and videos of each render', function (): void {
+    $user = pvdMember();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $product = pvdProduct(2);
+        $c = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $product->ulid]);
+        $state = static function () use ($c): array {
+            $html = $c->html();
+
+            return [
+                'up' => pvdAttr($html, 'data-ped-up', 'x-bind:aria-disabled'),
+                'down' => pvdAttr($html, 'data-ped-down', 'x-bind:aria-disabled'),
+                'rm' => pvdAttr($html, 'data-ped-rm', 'aria-disabled'),
+                'rmWhy' => pvdAttr($html, 'data-ped-rm', 'title'),
+                'pos' => str_contains($html, ".replace(':n', ".count($c->get('imageMediaIds')).')'),
+            ];
+        };
+        $free = ['up' => '[0].includes(sel).toString()', 'down' => '[1].includes(sel).toString()', 'rm' => 'false', 'rmWhy' => __('catalog.ed.img_remove_why'), 'pos' => true];
+        expect($state())->toBe($free);
+
+        // a video after the cover: picture 2 no longer moves up, the cover no longer moves down
+        $c->call('addVideo', 'https://youtu.be/aaaaaaaaaaa', '');
+        $withVideo = ['up' => '[0,1].includes(sel).toString()', 'down' => '[1,0].includes(sel).toString()', 'rm' => 'false', 'rmWhy' => __('catalog.ed.img_remove_why'), 'pos' => true];
+        expect($state())->toBe($withVideo);
+
+        // picture 2 taken off: the last picture stays under the video, and says why
+        $c->call('removeImage', 1);
+        $keep = ['up' => '[0,1].includes(sel).toString()', 'down' => '[0].includes(sel).toString()', 'rm' => 'true', 'rmWhy' => __('catalog.ed.video_keep_image'), 'pos' => true];
+        expect($state())->toBe($keep);
+
+        // the video taken off: the last picture may go again
+        $c->call('removeVideo', 0);
+        expect($state())->toBe(['up' => '[0].includes(sel).toString()', 'down' => '[0].includes(sel).toString()', 'rm' => 'false', 'rmWhy' => __('catalog.ed.img_remove_why'), 'pos' => true]);
+
+        // «Hoàn tác» puts the video back, and the last picture is kept again
+        $c->call('undoLast');
+        expect($state())->toBe($keep);
+
+        // «Bỏ thay đổi»: back to the two stored pictures with no video
+        $c->call('resetChanges');
+        expect($state())->toBe($free);
+    });
 });

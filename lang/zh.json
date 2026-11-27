@@ -6705,6 +6705,7 @@
     "catalog.ed.video_max": "每个产品最多 :max 个视频。请先移除一个。",
     "catalog.ed.video_need_image": "请先至少添加一张图片，因为第一张图片是主图。",
     "catalog.ed.video_keep_image": "请先移除视频，或添加另一张图片——图片条的第一项始终是图片。",
+    "catalog.ed.video_no_image": "有视频的产品至少需要一张图片。请添加图片，或移除视频。",
     "catalog.ed.toast_video_added": "已添加视频——视频始终排在主图之后。",
     "catalog.ed.toast_video_added_t": "已添加视频“:title”——视频始终排在主图之后。",
     "catalog.ed.toast_video_removed": "已将视频“:name”从产品中移除。",

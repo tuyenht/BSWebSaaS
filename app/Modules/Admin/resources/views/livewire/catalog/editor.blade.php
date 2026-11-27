@@ -184,35 +184,42 @@
                      place; ← → go from picture to picture. The order is saved with the product. --}}
                 @php
                     $imgN = count($galleryImages);
+                    $vidN = count($galleryVideos);
+                    // what the picture toolbar refuses, drawn from this render's pictures and videos (Livewire
+                    // draws it again after every change): the places «Chuyển lên» / «Chuyển xuống» are off at,
+                    // and whether the last picture must stay because a video follows it
+                    $upOff = $vidN > 0 ? [0, 1] : [0];
+                    $downOff = array_values(array_unique($vidN > 0 ? [$imgN - 1, 0] : [$imgN - 1]));
+                    $keepCover = $imgN === 1 && $vidN > 0;
                     $mayAddImages = $editShared && auth()->user()?->can('media.view');
                     $imgWords = [
                         'pos' => __('catalog.ed.img_pos'), 'posCover' => __('catalog.ed.img_pos_cover'),
                         'upFirst' => __('catalog.ed.img_up_first'), 'up' => __('catalog.ed.img_up_why'),
                         'downLast' => __('catalog.ed.img_down_last'), 'down' => __('catalog.ed.img_down_why'),
                         'coverIs' => __('catalog.ed.img_cover_is'), 'cover' => __('catalog.ed.img_cover_why'),
-                        'fixed' => __('catalog.ed.video_fixed'), 'keep' => __('catalog.ed.video_keep_image'), 'rm' => __('catalog.ed.img_remove_why'),
+                        'fixed' => __('catalog.ed.video_fixed'),
                     ];
                 @endphp
                 <section class="rounded-md border border-border bg-surface shadow-card" aria-labelledby="ped-h-img" data-picker-home
                          x-data="{
                              sel: null, selV: null, from: null, over: null, canL: false, canR: false,
-                             get n() { return this.$refs.strip ? this.$refs.strip.querySelectorAll('[data-img-i]').length : 0; },
-                             get vN() { return this.$refs.strip ? this.$refs.strip.querySelectorAll('[data-vid-i]').length : 0; },
                              w: {{ Js::from($imgWords) }},
                              edge() { const s = this.$refs.strip; if (! s) { this.canL = this.canR = false; return; } const x = Math.abs(s.scrollLeft); this.canL = x > 2; this.canR = x + s.clientWidth < s.scrollWidth - 2; },
                              page(d) { const s = this.$refs.strip; s && s.scrollBy({ left: d * Math.max(120, s.clientWidth * 0.8), behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); },
                              pick(i) { this.selV = null; this.sel = this.sel === i ? null : i; },
                              pickV(j) { this.sel = null; this.selV = this.selV === j ? null : j; },
                              dropV() { const j = this.selV; if (j === null) return; $wire.removeVideo(j).then(() => { this.selV = null; }); },
-                             focusV(i) { setTimeout(() => { const b = i < 0 ? this.$root.querySelector('[data-img-i=&quot;0&quot;]') : this.$root.querySelector('[data-vid-i=&quot;' + i + '&quot;]'); if (b) { b.focus(); b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } }, 40); },
+                             vTarget(i) { const q = (s) => this.$root.querySelector(s); return (i >= 0 && q('[data-vid-i=&quot;' + i + '&quot;]')) || q('[data-img-i=&quot;0&quot;]') || q('.ped-imempty button, .ped-imadd') || q('#ped-h-img'); },
+                             focusV(i) { setTimeout(() => { const b = this.vTarget(i); if (b) { b.focus(); b.scrollIntoView && b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } }, 40); },
                              act(method, to) { const i = this.sel; if (i === null) return; $wire[method](...(to === undefined ? [i] : [i, to])).then(() => { this.sel = method === 'removeImage' ? null : (method === 'setCover' ? 0 : to); this.$nextTick(() => this.focusTile(this.sel)); }); },
                              drop(i) { const f = this.from; this.from = this.over = null; if (f === null || f === i) return; $wire.moveImage(f, i).then(() => { this.sel = i; }); },
                              key(e) { const d = e.key === 'ArrowRight' ? 1 : (e.key === 'ArrowLeft' ? -1 : 0); if (! d) return; e.preventDefault(); const all = [...this.$root.querySelectorAll('.ped-imb')], to = all[Math.max(0, Math.min(all.length - 1, all.indexOf(e.currentTarget) + d))]; if (to) { to.focus(); to.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } },
                              focusTile(i) { if (i === null) return; const b = this.$root.querySelector('[data-img-i=&quot;' + i + '&quot;]'); b && b.focus(); b && b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); },
                          }"
+                         x-effect="if (sel !== null && sel >= {{ $imgN }}) sel = null; if (selV !== null && selV >= {{ $vidN }}) selV = null"
                          x-on:resize.window.debounce.100ms="edge()" x-on:ped-vfocus.window="focusV($event.detail.i)">
                     <div class="{{ $cardHead }}">
-                        <h2 id="ped-h-img" class="{{ $cardTitle }}">{{ __('catalog.card_gallery') }}</h2>
+                        <h2 id="ped-h-img" class="{{ $cardTitle }}" tabindex="-1">{{ __('catalog.card_gallery') }}</h2>
                         @if ($sharedLock)
                             <x-bs-admin::shared-chip :why="$sharedWhy" />
                         @endif
@@ -293,21 +300,21 @@
                             </div>
                             @if ($editShared)
                                 <div class="ped-tb" role="toolbar" aria-label="{{ __('catalog.ed.img_toolbar') }}" x-show="sel !== null" x-cloak>
-                                    <span>{{ __('catalog.ed.img_selected') }} <strong x-text="w.pos.replace(':i', sel + 1).replace(':n', n)"></strong></span>
-                                    <x-bs-admin::button variant="outline" color="secondary" size="sm" x-bind:aria-disabled="(sel === 0 || (sel === 1 && vN > 0)).toString()" x-bind:title="sel === 0 ? w.upFirst : (sel === 1 && vN > 0 ? w.fixed : w.up)"
-                                                        x-on:click="sel > 0 && ! (sel === 1 && vN > 0) && act('moveImage', sel - 1)" class="aria-disabled:opacity-60">
+                                    <span>{{ __('catalog.ed.img_selected') }} <strong x-text="w.pos.replace(':i', sel + 1).replace(':n', {{ $imgN }})"></strong></span>
+                                    <x-bs-admin::button variant="outline" color="secondary" size="sm" data-ped-up x-bind:aria-disabled="{{ json_encode($upOff) }}.includes(sel).toString()" x-bind:title="sel === 0 ? w.upFirst : ({{ json_encode($upOff) }}.includes(sel) ? w.fixed : w.up)"
+                                                        x-on:click="$el.getAttribute('aria-disabled') !== 'true' && act('moveImage', sel - 1)" class="aria-disabled:opacity-60">
                                         <x-bs-admin::icon name="ri-arrow-left" :class="$glyph" /> {{ __('catalog.gallery_move_up') }}
                                     </x-bs-admin::button>
-                                    <x-bs-admin::button variant="outline" color="secondary" size="sm" x-bind:aria-disabled="(sel === n - 1 || (sel === 0 && vN > 0)).toString()" x-bind:title="sel === n - 1 ? w.downLast : (sel === 0 && vN > 0 ? w.fixed : w.down)"
-                                                        x-on:click="sel < n - 1 && ! (sel === 0 && vN > 0) && act('moveImage', sel + 1)" class="aria-disabled:opacity-60">
+                                    <x-bs-admin::button variant="outline" color="secondary" size="sm" data-ped-down x-bind:aria-disabled="{{ json_encode($downOff) }}.includes(sel).toString()" x-bind:title="sel === {{ $imgN - 1 }} ? w.downLast : ({{ json_encode($downOff) }}.includes(sel) ? w.fixed : w.down)"
+                                                        x-on:click="$el.getAttribute('aria-disabled') !== 'true' && act('moveImage', sel + 1)" class="aria-disabled:opacity-60">
                                         <x-bs-admin::icon name="ri-arrow-right" :class="$glyph" /> {{ __('catalog.gallery_move_down') }}
                                     </x-bs-admin::button>
-                                    <x-bs-admin::button variant="outline" color="secondary" size="sm" x-bind:aria-disabled="(sel === 0).toString()" x-bind:title="sel === 0 ? w.coverIs : w.cover"
-                                                        x-on:click="sel > 0 && act('setCover')" class="aria-disabled:opacity-60">
+                                    <x-bs-admin::button variant="outline" color="secondary" size="sm" data-ped-cover x-bind:aria-disabled="(sel === 0).toString()" x-bind:title="sel === 0 ? w.coverIs : w.cover"
+                                                        x-on:click="$el.getAttribute('aria-disabled') !== 'true' && act('setCover')" class="aria-disabled:opacity-60">
                                         <x-bs-admin::icon name="ri-star" :class="$glyph" /> {{ __('catalog.ed.img_set_cover') }}
                                     </x-bs-admin::button>
-                                    <x-bs-admin::button variant="outline" color="danger" size="sm" x-bind:aria-disabled="(n === 1 && vN > 0).toString()" x-bind:title="n === 1 && vN > 0 ? w.keep : w.rm"
-                                                        x-on:click="! (n === 1 && vN > 0) && act('removeImage')" class="aria-disabled:opacity-60">
+                                    <x-bs-admin::button variant="outline" color="danger" size="sm" data-ped-rm aria-disabled="{{ $keepCover ? 'true' : 'false' }}" title="{{ $keepCover ? __('catalog.ed.video_keep_image') : __('catalog.ed.img_remove_why') }}"
+                                                        x-on:click="$el.getAttribute('aria-disabled') !== 'true' && act('removeImage')" class="aria-disabled:opacity-60">
                                         <x-bs-admin::icon name="ri-close-circle" :class="$glyph" /> {{ __('catalog.ed.img_remove') }}
                                     </x-bs-admin::button>
                                 </div>
