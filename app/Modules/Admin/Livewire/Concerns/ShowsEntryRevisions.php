@@ -50,6 +50,7 @@ use Livewire\Attributes\Locked;
  * @property string $seoDescription
  * @property string $coverUlid
  * @property string $coverAlt
+ * @property string $focusKeyword
  */
 trait ShowsEntryRevisions
 {
@@ -384,6 +385,8 @@ trait ShowsEntryRevisions
             ['entries.rev.f_title', $str($snap['title'] ?? null), $this->title, false],
             ['entries.rev.f_slug', $str($snap['slug'] ?? null), $this->slug, false],
             ['entries.rev.f_excerpt', $str($snap['excerpt'] ?? null), $this->excerpt, false],
+            // the words the page should be found by, when the version holds them (one saved before they existed leaves them as they are)
+            array_key_exists('focus_keyword', $snap) ? ['entries.ed.keyword_label', $str($snap['focus_keyword']), $this->focusKeyword, false] : null,
             ['entries.rev.f_seo_title', $str($snap['seo_title'] ?? null), $this->seoTitle, false],
             ['entries.rev.f_seo_desc', $str($snap['seo_description'] ?? null), $this->seoDescription, false],
             ['entries.rev.f_cover', $coverThen, $coverNow, true],
