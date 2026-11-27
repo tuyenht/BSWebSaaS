@@ -79,12 +79,12 @@ trait EditsPendingChange
     public ?array $refusal = null;
 
     /**
-     * The reasons the dialog says (the board draws these; a sub-page's taken address and a schedule
-     * refused while a change is open keep their line on the screen).
+     * The reasons the dialog says (the board draws these; a schedule refused while a change is open
+     * keeps its line on the screen).
      */
     private const array REFUSAL_DIALOG = [
         'change_locked', 'change_pending', 'change_stale', 'not_live', 'content_invalid',
-        'category_governed', 'locale_disabled', 'slug_taken', 'workflow_governed',
+        'category_governed', 'locale_disabled', 'slug_taken', 'subpage_path_taken', 'workflow_governed',
     ];
 
     /** «Tải bản mới nhất?» is open: «Tải lại» was pressed with edits still in the form. */
@@ -579,8 +579,7 @@ trait EditsPendingChange
      * The refusal in plain words. A save, a send, «Cập nhật website» / «Duyệt đăng» or «Bỏ thay đổi»
      * refused for a reason the board draws opens «Chưa làm được», titled by that move (a save or a send
      * refused because the change was sent is «Chưa sửa được»); a taken address of the change's own also stays
-     * under the link field. Any other (a sub-page's address, a return or a middle step refused) is the
-     * line above the form.
+     * under the link field. Any other (a return or a middle step refused) is the line above the form.
      */
     private function changeRefused(string $reason, string $path = ''): void
     {

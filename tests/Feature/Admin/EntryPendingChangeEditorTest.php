@@ -1136,7 +1136,8 @@ it('rolls a scheduled page back when its sub-page’s new address is taken, noth
     });
 });
 
-it('refuses to apply a page’s change whose new link moves a sub-page to a taken address, saying which, nothing moved', function (): void {
+// A page never resolves an approval workflow (EntryWorkflowResolver), so «Cập nhật website» is the move that meets it
+it('says a page’s change that would move a sub-page to a taken address in «Chưa cập nhật được website», naming the address, nothing moved', function (): void {
     [, $editor] = pcCast();
     $writer = User::factory()->create();
     app(Tenancy::class)->enter(1, function () use ($writer, $editor): void {
@@ -1150,16 +1151,24 @@ it('refuses to apply a page’s change whose new link moves a sub-page to a take
         $other = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
         SiteRoute::query()->create(['locale' => 'vi', 'path' => '/ve-chung-toi/doi-ngu', 'entry_id' => $other->id]);
         $redirects = Redirect::query()->count();
+        $before = pcStored($about);
 
-        $form = Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $about->ulid])
+        Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $about->ulid])
             ->call('askApplyChange')
             ->call('applyChange')
-            ->assertHasNoErrors('slug')
-            ->assertHasErrors('workflow')
-            ->assertSet('refusal', null);   // the board draws no dialog for it: the line above the form
-        expect($form->errors()->first('workflow'))->toBe(__('entries.change_err_subpage_path_taken', ['path' => '/ve-chung-toi/doi-ngu']));
+            ->assertHasNoErrors()   // neither the line above the form nor the link field: the page's own link is free
+            ->assertSet('changeApplyAsk', false)
+            ->assertSet('refusal', [
+                'title' => __('entries.refuse.t_apply'),
+                'text' => __('entries.change_err_subpage_path_taken', ['path' => '/ve-chung-toi/doi-ngu']),
+                'reload' => false,
+            ])
+            ->assertSeeHtml('data-entry-refusal')
+            ->assertSee(__('entries.refuse.t_apply'))
+            ->assertSee('/ve-chung-toi/doi-ngu')
+            ->assertDontSeeHtml('data-refusal-reload');
 
-        expect(pcChange($about))->not->toBeNull()
+        expect(pcStored($about))->toBe($before)
             ->and($about->fresh()->translationFor('vi')->slug)->toBe('gioi-thieu')
             ->and(SiteRoute::query()->where('entry_id', $about->id)->pluck('path')->all())->toBe(['/gioi-thieu'])
             ->and(SiteRoute::query()->where('entry_id', $team->id)->pluck('path')->all())->toBe(['/gioi-thieu/doi-ngu'])
