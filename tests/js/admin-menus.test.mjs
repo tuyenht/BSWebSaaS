@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { buildDraft, descMaxOf, goneKeysOf, goneSpanOf, iconGroupsOf, autoIconOf, suggestIconOf, treeRowsOf } from '../../resources/js/admin-menus.js';
+import { areaEmptyOf, buildDraft, descMaxOf, goneKeysOf, goneSpanOf, iconGroupsOf, autoIconOf, suggestIconOf, treeRowsOf } from '../../resources/js/admin-menus.js';
 
 const opts = (more = {}) => ({ hidden: false, new_tab: false, icon: null, description: {}, cta: false, mega: null, badge: null, device: 'all', ...more });
 const row = (key, parent, labels, more = {}) => ({ key, parent, link: { type: 'url', url: '/' + key }, labels, options: opts(more) });
@@ -233,4 +233,29 @@ test('the description of a top-level item may run to 200 letters before the scre
     assert.equal(descMaxOf(1), 90);
     assert.equal(descMaxOf(3), 90);
     assert.equal(descMaxOf(undefined), 90);
+});
+
+test('an area is marked empty only when the website shows no menu there in the main language', () => {
+    const area = (key, shows) => ({ key, shows: { vi: shows } });
+    const primary = area('primary', { menu: 'M1' });
+    const handheld = area('handheld', {});
+    const footer = area('footer', {});
+    const follows = area('footer', { follows: 'primary' });
+    assert.equal(areaEmptyOf([primary, handheld, footer], primary, 'vi'), false);
+    // the phone menu shows the main menu while it has none of its own
+    assert.equal(areaEmptyOf([primary, handheld, footer], handheld, 'vi'), false);
+    assert.equal(areaEmptyOf([area('primary', {}), handheld], handheld, 'vi'), true);
+    assert.equal(areaEmptyOf([primary, handheld, footer], footer, 'vi'), true);
+    // following an area shows that area's menu, or nothing when it has none
+    assert.equal(areaEmptyOf([primary, follows], follows, 'vi'), false);
+    assert.equal(areaEmptyOf([area('primary', {}), follows], follows, 'vi'), true);
+    // one hop only, like the website: following an area that itself follows another shows nothing
+    const mid = area('handheld', { follows: 'primary' });
+    const twoHops = area('footer', { follows: 'handheld' });
+    assert.equal(areaEmptyOf([primary, mid, twoHops], twoHops, 'vi'), true);
+    // the phone fallback also takes one hop: a main menu that only follows another area shows nothing
+    const chain = [area('primary', { follows: 'footer' }), area('handheld', {}), area('footer', { follows: 'x' }), area('x', { menu: 'M9' })];
+    assert.equal(areaEmptyOf(chain, chain[1], 'vi'), true);
+    // another language's choice does not count for the main one
+    assert.equal(areaEmptyOf([{ key: 'footer', shows: { en: { menu: 'M2' } } }], { key: 'footer', shows: { en: { menu: 'M2' } } }, 'vi'), true);
 });

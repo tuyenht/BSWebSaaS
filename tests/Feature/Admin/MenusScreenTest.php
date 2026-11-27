@@ -28,6 +28,7 @@ use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Chrome\StorefrontIcons;
+use App\Modules\Theme\Theming\MenuAreas;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -406,6 +407,28 @@ it('words the empty choice of the phone menu area as using the main menu, and of
     $page = $this->actingAs($this->editor->fresh())->get('http://a.test/admin/menus')->assertOk()->getContent();
     expect($page)->toContain('areaMainMenu')->toContain('areaNone')
         ->and(__('menus.ui_areaMainMenu'))->not->toBe(__('menus.ui_areaNone'));
+});
+
+it('draws each area with the icon its theme declares, its depth in the hint and a mark when it shows no menu', function (): void {
+    $page = $this->actingAs($this->editor->fresh())->get('http://a.test/admin/menus')->assertOk()->getContent();
+
+    // one icon per declared icon name, picked by the row from the area's own declaration
+    foreach (array_unique(array_column(MenuAreas::all(), 'icon')) as $icon) {
+        expect($page)->toContain('x-if="a.icon === \''.$icon.'\'"');
+    }
+    expect($page)->toContain('x-show="a.empty"')
+        ->toContain(e(__('menus.ui_area_empty')))
+        ->toContain(e(__('menus.ui_dev_foot')))
+        ->toContain('areaTip')->toContain('codeTip');
+
+    $script = (string) file_get_contents(resource_path('js/admin-menus.js'));
+    expect($script)->toContain('fill(t.areaTip, { help: a.help, n: a.depth })')
+        ->toContain('fill(t.codeTip, { code: a.key })')
+        ->toContain('empty: areaEmptyOf(all, a, cfg.main)');
+
+    expect(__('menus.ui_areaTip', ['help' => 'H', 'n' => 3]))->toContain('H')->toContain('3')
+        ->and(__('menus.ui_codeTip', ['code' => 'primary']))->toContain('primary')
+        ->and(__('menus.ui_adv_show'))->toContain(':n');
 });
 
 it('refuses the product tab switch to someone who may not manage menus', function (): void {
