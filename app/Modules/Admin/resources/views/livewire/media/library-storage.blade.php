@@ -6,7 +6,7 @@
      support (there is no plans page for a website yet). --}}
 @php
     $lv = $storage['level'];
-    $barTone = ['ok' => 'bg-admin-primary', 'warn' => 'bg-admin-warning', 'full' => 'bg-admin-danger'][$lv];
+    $barTone = ['ok' => 'bg-primary', 'warn' => 'bg-warning-base', 'full' => 'bg-danger-base'][$lv];
     $usedLine = __('media.lib.st_used', ['used' => '<b class="font-semibold">'.e($storage['used']).'</b>', 'limit' => e($storage['limit'])]);
     $aria = __('media.lib.st_aria', ['used' => $storage['used'], 'limit' => $storage['limit']]);
     $fullText = __($upsell ? 'media.lib.st_full_up' : 'media.lib.st_full_off', ['trash' => $storage['trash']]);
@@ -43,15 +43,15 @@
     ]) data-lv="{{ $lv }}" aria-label="{{ __('media.lib.st_label') }}">
         <div class="flex min-w-0 flex-[1_1_16rem] flex-col gap-1.5">
             <span class="flex flex-wrap items-center gap-x-2 gap-y-1 text-body text-text-strong">
-                <x-bs-admin::icon :name="['ok' => 'ri-hard-drive-2', 'warn' => 'ri-alert', 'full' => 'ri-error-warning-fill'][$lv]" @class(['size-4 shrink-0', 'text-admin-warning-text' => $lv === 'warn', 'text-admin-danger-text' => $lv === 'full']) />
+                <x-bs-admin::icon :name="['ok' => 'ri-hard-drive-2', 'warn' => 'ri-alert', 'full' => 'ri-error-warning-fill'][$lv]" @class(['size-4 shrink-0', 'text-warning-text' => $lv === 'warn', 'text-danger-text' => $lv === 'full']) />
                 <span>{!! $usedLine !!}</span>
             </span>
             {!! $bar !!}
             <span @class([
                 'inline-flex items-center gap-1.5 text-body',
                 'text-text-muted' => $lv === 'ok',
-                'font-semibold text-admin-warning-text' => $lv === 'warn',
-                'font-semibold text-admin-danger-text' => $lv === 'full',
+                'font-semibold text-warning-text' => $lv === 'warn',
+                'font-semibold text-danger-text' => $lv === 'full',
             ])>@if ($lv === 'warn')<x-bs-admin::icon name="ri-alert" class="size-4 shrink-0" />@endif{{ $storage['status'] }}</span>
         </div>
         @if ($lv === 'warn' && $canDelete)
