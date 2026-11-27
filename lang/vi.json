@@ -2952,7 +2952,7 @@
     "catalog.gallery_move_up": "Chuyển lên",
     "catalog.gallery_move_down": "Chuyển xuống",
     "catalog.gallery_missing": "Ảnh không còn trong thư viện",
-    "catalog.gallery_invalid": "Có ảnh không hợp lệ trong danh sách.",
+    "catalog.gallery_invalid": "Có ảnh trong danh sách không còn nữa. Hãy thêm một ảnh khác rồi bỏ ô ảnh hỏng, hoặc bỏ các video của sản phẩm.",
     "catalog.picker_title": "Chọn ảnh từ thư viện",
     "catalog.picker_empty": "Thư viện chưa có ảnh. Hãy tải ảnh lên ở mục Thư viện trước.",
     "catalog.picker_external_label": "Hoặc dán đường dẫn (URL) ảnh",

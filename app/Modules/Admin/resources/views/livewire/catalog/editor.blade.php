@@ -211,7 +211,8 @@
                              dropV() { const j = this.selV; if (j === null) return; $wire.removeVideo(j).then(() => { this.selV = null; }); },
                              vTarget(i) { const q = (s) => this.$root.querySelector(s); return (i >= 0 && q('[data-vid-i=&quot;' + i + '&quot;]')) || q('[data-img-i=&quot;0&quot;]') || q('.ped-imempty button, .ped-imadd') || q('#ped-h-img'); },
                              focusV(i) { setTimeout(() => { const b = this.vTarget(i); if (b) { b.focus(); b.scrollIntoView && b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } }, 40); },
-                             act(method, to) { const i = this.sel; if (i === null) return; $wire[method](...(to === undefined ? [i] : [i, to])).then(() => { this.sel = method === 'removeImage' ? null : (method === 'setCover' ? 0 : to); this.$nextTick(() => this.focusTile(this.sel)); }); },
+                             act(method, to) { const i = this.sel; if (i === null) return; $wire[method](...(to === undefined ? [i] : [i, to])).then(() => { if (method === 'removeImage') { this.sel = null; this.focusAfterRemove(i); return; } this.sel = method === 'setCover' ? 0 : to; this.$nextTick(() => this.focusTile(this.sel)); }); },
+                             focusAfterRemove(i) { setTimeout(() => { const all = [...this.$root.querySelectorAll('[data-img-i]')], b = all.find((t) => t.getAttribute('data-img-i') === String(i)) || all[all.length - 1] || this.vTarget(-1); if (b) { b.focus(); b.scrollIntoView && b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } }, 40); },
                              drop(i) { const f = this.from; this.from = this.over = null; if (f === null || f === i) return; $wire.moveImage(f, i).then(() => { this.sel = i; }); },
                              key(e) { const d = e.key === 'ArrowRight' ? 1 : (e.key === 'ArrowLeft' ? -1 : 0); if (! d) return; e.preventDefault(); const all = [...this.$root.querySelectorAll('.ped-imb')], to = all[Math.max(0, Math.min(all.length - 1, all.indexOf(e.currentTarget) + d))]; if (to) { to.focus(); to.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } },
                              focusTile(i) { if (i === null) return; const b = this.$root.querySelector('[data-img-i=&quot;' + i + '&quot;]'); b && b.focus(); b && b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); },
@@ -369,7 +370,7 @@
                                 @endif
                             </div>
                         @endif
-                        @if ($galleryImages === [] && $galleryVideos !== [] && ! $errors->has('imageMediaIds'))
+                        @if ($editShared && $galleryImages === [] && $galleryVideos !== [] && ! $errors->has('imageMediaIds'))
                             {{-- stored this way (the last picture deleted from the Library): other changes still save --}}
                             <p id="ped-img-note" class="flex items-start gap-1.5 text-small text-warning-text">
                                 <x-bs-admin::icon name="ri-error-warning" class="mt-0.5 {{ $glyph }}" /><span>{{ __('catalog.ed.video_stored_no_image') }}</span>
