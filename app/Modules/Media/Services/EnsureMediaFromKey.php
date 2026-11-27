@@ -7,6 +7,7 @@ use App\Modules\Media\Exceptions\SeedFileCopyFailedException;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Support\MediaKey;
 use App\Modules\Media\Support\MediaKeyPrefix;
+use App\Modules\Media\Support\MediaStorage;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteDirectory;
 use Illuminate\Support\Facades\Log;
@@ -43,6 +44,7 @@ final readonly class EnsureMediaFromKey
         private CurrentSite $current,
         private SiteDirectory $sites,
         private MediaKeyPrefix $prefix,
+        private MediaStorage $storage,
     ) {}
 
     /**
@@ -98,10 +100,17 @@ final readonly class EnsureMediaFromKey
             throw MediaKeyRejectedException::notOwnFolder($storageKey);
         }
 
-        return Media::query()->firstOrCreate(
+        $media = Media::query()->firstOrCreate(
             ['storage_key' => $storageKey],
             array_merge($this->deriveFromKey($storageKey), $overrides),
         );
+        // a row just made counts into the library's storage total (never refused: this files what is
+        // already stored, it uploads nothing), as the last write
+        if ($media->wasRecentlyCreated) {
+            $this->storage->added($media);
+        }
+
+        return $media;
     }
 
     /**

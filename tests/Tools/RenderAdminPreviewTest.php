@@ -81,6 +81,7 @@ use App\Modules\Identity\Support\UserPreferences;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
 use App\Modules\Media\Models\MediaFolder;
+use App\Modules\Media\Support\MediaStorage;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Rbac\Actions\InviteMember;
@@ -99,6 +100,7 @@ use App\Modules\Tenancy\Models\SiteFeature;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Tenancy\Services\SiteCounters;
 use App\Modules\Theme\Components\BlockReference;
 use App\Modules\Theme\Theming\AiCrawlerCheck;
 use Illuminate\Database\QueryException;
@@ -1578,6 +1580,24 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/media')->assertOk()->getContent();
     expect($html)->toContain('Ảnh xưởng', 'Hồ sơ công ty');
     file_put_contents($dir.'/media-folders.html', $html);
+    // «Dung lượng đã dùng»: «Sắp đầy» at 450 of 500 MB with «Mở Thùng rác», then, with the storage switch on,
+    // «Đã hết dung lượng» (the card's alert, the greyed upload button) and the upload panel's box
+    $addBytes = fn (int $mb) => app(Tenancy::class)->enter(1, fn () => app(SiteCounters::class)
+        ->addMany([MediaStorage::BYTES => $mb * 1048576, MediaStorage::TRASH => intdiv($mb, 10) * 1048576]));
+    $addBytes(450);
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/media')->assertOk()->getContent();
+    expect($html)->toContain('data-lv="warn"', e(__('media.lib.st_open_trash')));
+    file_put_contents($dir.'/media-storage-warn.html', $html);
+    config(['media.storage_enforce' => true]);
+    $addBytes(50);
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/media')->assertOk()->getContent();
+    expect($html)->toContain('data-lv="full"', 'id="tv-full"');
+    file_put_contents($dir.'/media-storage-full.html', $html);
+    $fullBox = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($owner)->test(Library::class)->call('openUpload')));
+    expect($fullBox)->toContain(e(__('media.lib.st_full_title')));
+    file_put_contents($dir.'/media-storage-full-upload.html', $swap($html, $fullBox, 'app\\.modules\\.admin\\.livewire\\.media\\.library'));
+    config(['media.storage_enforce' => false]);
+    $addBytes(-500);
     $library = fn () => Livewire::actingAs($owner)->test(Library::class)->call('setFolder', 'anh-xuong');
     $media = 'app\\.modules\\.admin\\.livewire\\.media\\.library';
     // the same page as a list, with its «Nơi dùng» column
@@ -1849,5 +1869,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 164);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 167);
 });

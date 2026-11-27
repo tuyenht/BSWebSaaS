@@ -8,10 +8,13 @@ use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\PdfPages;
 use App\Modules\Media\Support\MediaKey;
 use App\Modules\Media\Support\MediaKeyPrefix;
+use App\Modules\Media\Support\MediaStorage;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use finfo;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -21,13 +24,17 @@ use Illuminate\Support\Facades\Storage;
  * the temp key was issued to THIS site (cross-tenant guard), reads the object once to sniff magic
  * bytes + compute the full SHA-256 + check the real size, dedups, then R2-internal-copies it to the
  * final content-hash key and records the row. A spoofed / oversize / foreign upload is rejected and
- * its temp object deleted — the bytes never become a usable media row.
+ * its temp object deleted — the bytes never become a usable media row. A new row counts its size into
+ * the library's storage total (MediaStorage) as the last write; with the storage switch on, this is
+ * the authoritative check: a file that does not fit is refused and its copy removed.
  */
 final readonly class RegisterMediaUpload
 {
     public function __construct(
         private CurrentSite $current,
         private MediaKeyPrefix $prefix,
+        private MediaStorage $storage,
+        private TrashMedia $trash,
     ) {}
 
     /**
@@ -97,7 +104,7 @@ final readonly class RegisterMediaUpload
                     $disk->delete($tempKey);
                     throw new MediaRejectedException('in_trash');
                 }
-                $existing->restore();
+                $this->trash->restore(new Collection([$existing]));
             }
             if (! $disk->exists($existing->storage_key) && ! MediaKey::copyAs($disk, $tempKey, $existing->storage_key, $mime)) {
                 throw new MediaRejectedException('storage_failed');
@@ -119,21 +126,40 @@ final readonly class RegisterMediaUpload
         $disk->delete($tempKey);
 
         // 8) Persist — BelongsToSite stamps site_id; createOrFirst is race-safe on (site,collection,hash).
-        $media = Media::query()->createOrFirst(
-            ['collection' => $collection, 'hash' => $hash],
-            [
-                'slug' => $slug,
-                'storage_key' => $finalKey,
-                'disk' => MediaKey::disk(),
-                'original_filename' => $filename,
-                'mime' => $mime,
-                'size' => strlen($contents),
-                'width' => $width,
-                'height' => $height,
-                'created_by' => $createdBy,
-                'folder_id' => $folderId,
-            ],
-        );
+        // 9) Count a row really created into the library's storage total, as the last write.
+        $create = function () use ($collection, $hash, $slug, $finalKey, $filename, $mime, $contents, $width, $height, $createdBy, $folderId): Media {
+            $media = Media::query()->createOrFirst(
+                ['collection' => $collection, 'hash' => $hash],
+                [
+                    'slug' => $slug,
+                    'storage_key' => $finalKey,
+                    'disk' => MediaKey::disk(),
+                    'original_filename' => $filename,
+                    'mime' => $mime,
+                    'size' => strlen($contents),
+                    'width' => $width,
+                    'height' => $height,
+                    'created_by' => $createdBy,
+                    'folder_id' => $folderId,
+                ],
+            );
+            if ($media->wasRecentlyCreated) {
+                $this->storage->charge($media);
+            }
+
+            return $media;
+        };
+
+        // With the storage switch on, a refusal rolls the new row back (a savepoint) and drops the copy;
+        // while it is off nothing is refused, so no savepoint is spent.
+        try {
+            $media = MediaStorage::enforcing() ? DB::transaction($create) : $create();
+        } catch (MediaRejectedException $e) {
+            if ($e->reason === 'storage_full') {
+                $disk->delete($finalKey);
+            }
+            throw $e;
+        }
 
         // a new PDF gets its pages counted once the upload has committed (a file already here keeps
         // whatever count it has; media:pdf-pages fills older ones)

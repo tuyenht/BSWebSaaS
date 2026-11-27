@@ -8,8 +8,11 @@ use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\PdfPages;
 use App\Modules\Media\Support\MediaKey;
 use App\Modules\Media\Support\MediaKeyPrefix;
+use App\Modules\Media\Support\MediaStorage;
 use App\Modules\Shared\Support\Cast;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -17,13 +20,19 @@ use Illuminate\Support\Facades\Storage;
  * real MIME is sniffed from the file's MAGIC BYTES (finfo) — never the client header or extension,
  * so a `.jpg` carrying PHP is rejected. Content is SHA-256 hashed → deduped within (site, collection,
  * hash) → stored to R2 under the opaque content-hash key (the source of truth; URL derived later by
- * MediaUrlResolver). site_id is stamped by BelongsToSite from the current tenant context.
+ * MediaUrlResolver). site_id is stamped by BelongsToSite from the current tenant context. A new row
+ * counts its size into the library's storage total (MediaStorage) as the action's last write; with
+ * the storage switch on, a file that does not fit is refused and its stored copy removed.
  *
  * GĐ1 allow-list excludes SVG (XSS surface; needs a dedicated sanitizer dependency — deferred).
  */
 final readonly class UploadMedia
 {
-    public function __construct(private MediaKeyPrefix $prefix) {}
+    public function __construct(
+        private MediaKeyPrefix $prefix,
+        private MediaStorage $storage,
+        private TrashMedia $trash,
+    ) {}
 
     /** Max upload size in KB (10 MB). */
     public const int MAX_KB = 10240;
@@ -75,7 +84,7 @@ final readonly class UploadMedia
                 if (! $mayRestore) {
                     throw new MediaRejectedException('in_trash');
                 }
-                $existing->restore();
+                $this->trash->restore(new Collection([$existing]));
             }
             $disk = Storage::disk(MediaKey::disk());
             if (! $disk->exists($existing->storage_key) && ! $disk->put($existing->storage_key, $contents, MediaKey::objectOptions($mime))) {
@@ -105,21 +114,41 @@ final readonly class UploadMedia
         // (the request transaction stays valid) and returns the winner. A double-submit / concurrent
         // upload is thus idempotent, never a 500 / aborted transaction. (site_id is in the unique key
         // but stamped by the trait, so the dedup attributes are collection + hash within this site.)
-        $media = Media::query()->createOrFirst(
-            ['collection' => $collection, 'hash' => $hash],
-            [
-                'slug' => $slug,
-                'storage_key' => $key,
-                'disk' => MediaKey::disk(),
-                'original_filename' => $file->getClientOriginalName(),
-                'mime' => $mime,
-                'size' => (int) $file->getSize(),
-                'width' => $width,
-                'height' => $height,
-                'created_by' => $createdBy,
-                'folder_id' => $folderId,
-            ],
-        );
+        $create = function () use ($collection, $hash, $slug, $key, $file, $mime, $width, $height, $createdBy, $folderId): Media {
+            $media = Media::query()->createOrFirst(
+                ['collection' => $collection, 'hash' => $hash],
+                [
+                    'slug' => $slug,
+                    'storage_key' => $key,
+                    'disk' => MediaKey::disk(),
+                    'original_filename' => $file->getClientOriginalName(),
+                    'mime' => $mime,
+                    'size' => (int) $file->getSize(),
+                    'width' => $width,
+                    'height' => $height,
+                    'created_by' => $createdBy,
+                    'folder_id' => $folderId,
+                ],
+            );
+            // 8) Count it into the library's storage total — only a row really created (a concurrent
+            // identical upload that won is already counted) — as the last write.
+            if ($media->wasRecentlyCreated) {
+                $this->storage->charge($media);
+            }
+
+            return $media;
+        };
+
+        // With the storage switch on, a refusal rolls the new row back (a savepoint) and drops the copy
+        // just stored; while it is off nothing is refused, so no savepoint is spent.
+        try {
+            $media = MediaStorage::enforcing() ? DB::transaction($create) : $create();
+        } catch (MediaRejectedException $e) {
+            if ($e->reason === 'storage_full') {
+                Storage::disk(MediaKey::disk())->delete($key);
+            }
+            throw $e;
+        }
 
         // a new PDF gets its pages counted once the upload has committed (a file already here keeps
         // whatever count it has; media:pdf-pages fills older ones)
