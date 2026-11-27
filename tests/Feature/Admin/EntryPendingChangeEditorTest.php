@@ -1176,6 +1176,45 @@ it('says a page’s change that would move a sub-page to a taken address in «Ch
     });
 });
 
+it('names a sub-page’s taken address in another language as visitors see it, with that language when the editor is open in another', function (string $open): void {
+    [, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($editor, $open): void {
+        DB::connection('pgsql_admin')->table('site_locales')->insert([
+            'site_id' => 1, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $about = pcLivePage($editor, 'gioi-thieu', null);
+        $team = pcLivePage($editor, 'doi-ngu', $about);
+        foreach ([[$about, 'about'], [$team, 'team']] as [$page, $slug]) {
+            $page->translations()->create(['locale' => 'en', 'title' => ucfirst($slug), 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);
+            app(PublishEntry::class)->handle($page->fresh(), 'en', $editor);
+        }
+        // one change in both languages: the Vietnamese edit moves nothing, the English link moves «Team»
+        app(SaveEntryDraft::class)->handle($about->fresh(), $editor, 'vi', ['title' => 'Giới thiệu công ty']);
+        app(SaveEntryDraft::class)->handle($about->fresh(), $editor, 'en', ['slug' => 'about-us']);
+        $other = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
+        SiteRoute::query()->create(['locale' => 'en', 'path' => '/about-us/team', 'entry_id' => $other->id]);
+        $routes = SiteRoute::query()->whereIn('entry_id', [$about->id, $team->id])->orderBy('id')->pluck('path')->all();
+        $redirects = Redirect::query()->count();
+        $before = pcStored($about);
+
+        $text = $open === 'vi'
+            ? __('entries.change_err_subpage_path_taken_lang', ['path' => '/en/about-us/team', 'lang' => __('entries.language_en')])
+            : __('entries.change_err_subpage_path_taken', ['path' => '/en/about-us/team']);
+        Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $about->ulid] + ($open === 'en' ? ['locale' => 'en'] : []))
+            ->call('askApplyChange')
+            ->call('applyChange')
+            ->assertHasNoErrors()
+            ->assertSet('refusal', ['title' => __('entries.refuse.t_apply'), 'text' => $text, 'reload' => false])
+            ->assertSee('/en/about-us/team');
+
+        expect($text)->toContain('/en/about-us/team')
+            ->and(str_contains($text, (string) __('entries.language_en')))->toBe($open === 'vi')
+            ->and(pcStored($about))->toBe($before)
+            ->and(SiteRoute::query()->whereIn('entry_id', [$about->id, $team->id])->orderBy('id')->pluck('path')->all())->toBe($routes)
+            ->and(Redirect::query()->count())->toBe($redirects);
+    });
+})->with(['open in Vietnamese' => 'vi', 'open in English' => 'en']);
+
 it('says which sub-page address is taken when a page cannot go live again, never blaming its own free link', function (string $road): void {
     [, $editor] = pcCast();
     app(Tenancy::class)->enter(1, function () use ($editor, $road): void {

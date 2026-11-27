@@ -3814,6 +3814,7 @@
     "entries.change_err_locale_disabled": "This language is switched off on the website. Switch it back on to save the change.",
     "entries.change_err_slug_taken": "The change's address is now used by other content. Change the address and try again.",
     "entries.change_err_subpage_path_taken": "When this change goes live, a sub-page of this page would move to :path, but that path is already used by other content. Change this page’s path, or change that sub-page’s path (or move it under another parent page), then try again.",
+    "entries.change_err_subpage_path_taken_lang": "When this change goes live, a sub-page of this page (:lang version) would move to :path, but that path is already used by other content. Change the :lang path of this page, or change that sub-page’s path (or move it under another parent page), then try again.",
     "entries.change_err_workflow_governed": "This post follows an approval workflow — the change must be approved rather than put on the website directly.",
     "entries.change_err_change_open": "Cannot schedule yet: this content has a pending change. Put that change on the website or discard it first.",
     "entries.refuse.t_save": "Could not save the change",

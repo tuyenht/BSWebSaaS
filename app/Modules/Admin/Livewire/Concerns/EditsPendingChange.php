@@ -4,6 +4,7 @@ namespace App\Modules\Admin\Livewire\Concerns;
 
 use App\Modules\Admin\Support\Entries\PendingChangeDiff;
 use App\Modules\Admin\Support\EntryProseBody;
+use App\Modules\Admin\Support\LangBar;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Cms\Actions\ApplyEntryDraft;
 use App\Modules\Cms\Actions\ApplyEntryDraftTransition;
@@ -15,6 +16,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\TaxonomyTranslation;
+use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Support\DisplayDate;
 use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Cms\Support\EntryTags;
@@ -254,7 +256,7 @@ trait EditsPendingChange
         try {
             $saved = app(SaveEntryDraft::class)->handle($entry, $this->user(), $this->locale, $text, $shared);
         } catch (EntryDraftRejectedException $refused) {
-            $this->changeRefused($refused->reason, $refused->path);
+            $this->changeRefused($refused->reason, $refused->path, $refused->locale);
 
             return false;
         }
@@ -390,7 +392,7 @@ trait EditsPendingChange
             try {
                 app(ApplyEntryDraft::class)->handle($entry, $this->user(), $this->changeSeen);
             } catch (EntryDraftRejectedException $refused) {
-                $this->changeRefused($refused->reason, $refused->path);
+                $this->changeRefused($refused->reason, $refused->path, $refused->locale);
 
                 return;
             } catch (AuthorizationException) {
@@ -441,7 +443,7 @@ trait EditsPendingChange
         try {
             app(DiscardEntryDraft::class)->handle($entry, $this->user(), (string) $this->changeSeen);
         } catch (EntryDraftRejectedException $refused) {
-            $this->changeRefused($refused->reason, $refused->path);
+            $this->changeRefused($refused->reason, $refused->path, $refused->locale);
 
             return;
         } catch (AuthorizationException) {
@@ -528,7 +530,7 @@ trait EditsPendingChange
         try {
             $to = app(ApplyEntryDraftTransition::class)->handle($entry, $this->locale, $this->user(), $key, (string) $this->changeSeen, $note);
         } catch (EntryDraftRejectedException $refused) {
-            $this->changeRefused($refused->reason, $refused->path);
+            $this->changeRefused($refused->reason, $refused->path, $refused->locale);
 
             return false;
         } catch (InvalidTransitionException) {
@@ -581,9 +583,11 @@ trait EditsPendingChange
      * refused because the change was sent is «Chưa sửa được»); a taken address of the change's own also stays
      * under the link field. Any other (a return or a middle step refused) is the line above the form.
      */
-    private function changeRefused(string $reason, string $path = ''): void
+    private function changeRefused(string $reason, string $path = '', string $locale = ''): void
     {
-        $text = Cast::string(__('entries.change_err_'.$reason, ['path' => $path]));
+        $text = $reason === 'subpage_path_taken'
+            ? $this->subPageTakenText($path, $locale)
+            : Cast::string(__('entries.change_err_'.$reason, ['path' => $path]));
         if ($reason === 'slug_taken') {
             $this->addError('slug', $text);
         }
@@ -600,6 +604,21 @@ trait EditsPendingChange
         }
         $title = $reason === 'change_locked' && in_array($this->changeAct, ['save', 'submit'], true) ? 'entries.refuse.t_locked' : 'entries.refuse.t_'.$this->changeAct;
         $this->refusal = ['title' => Cast::string(__($title)), 'text' => $text, 'reload' => $reason === 'change_stale'];
+    }
+
+    /**
+     * A sub-page's taken address as visitors see it (PathBuilder: the default language unprefixed, any
+     * other `/{locale}`); when it is in another language than the one open here, that language is named
+     * as the language bar names it, since the page's own link in this language is free.
+     */
+    private function subPageTakenText(string $path, string $locale): string
+    {
+        $locale = $locale !== '' ? $locale : $this->locale;
+        $url = app(PathBuilder::class)->publicUrl($path, $locale);
+
+        return Cast::string($locale === $this->locale
+            ? __('entries.change_err_subpage_path_taken', ['path' => $url])
+            : __('entries.change_err_subpage_path_taken_lang', ['path' => $url, 'lang' => LangBar::name($locale)]));
     }
 
     /** «Đóng» (or Escape, the backdrop) on «Chưa làm được»: nothing else changes. */
