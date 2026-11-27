@@ -246,7 +246,8 @@
         @endif
     @endif
 
-    {{-- Configuration form (a website's page: the end of «Gửi thư») --}}
+    @if ($scope === 'platform')
+    {{-- The console's «Email hệ thống»: the platform's own server and sender (a website's page draws the card below) --}}
     {{-- Enter in a field is the save bar's "Lưu" (it waits while a save runs and does nothing with nothing to save); the form itself never submits, so the page never reloads --}}
     <form x-data x-on:submit.prevent class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
         <div class="border-b border-border px-5 py-3">
@@ -281,12 +282,6 @@
             <div class="grid gap-4 border-t border-border-soft pt-5 sm:grid-cols-2">
                 <x-bs-admin::input :label="__('admin.from_address')" type="email" wire:model.live.blur="fromAddress" placeholder="no-reply@example.com" />
                 <x-bs-admin::input :label="__('admin.from_name')" wire:model.live.blur="fromName" :placeholder="config('admin.brand.name')" />
-                @if ($scope !== 'platform')
-                    <div class="sm:col-span-2">
-                        <x-bs-admin::input :label="__('admin.reply_to')" type="email" wire:model.live.blur="replyTo" placeholder="lienhe@congty-cua-ban.com" />
-                        <p class="mt-1 text-xs text-body-muted">{{ __('admin.reply_to_hint') }}</p>
-                    </div>
-                @endif
             </div>
 
             {{-- Actions --}}
@@ -300,6 +295,134 @@
             </div>
         </div>
     </form>
+    @else
+        {{-- «Tên và địa chỉ người gửi» beside «Nhận thông báo liên hệ» (one column on a narrow page), the
+             test send under both. Enter in a field is the save bar's "Lưu"; the form itself never submits. --}}
+        @php
+            // An address may wrap only after its "@" and its dots (each piece kept whole).
+            $mailParts = function (string $text): \Illuminate\Support\HtmlString {
+                $pieces = preg_split('/(?<=[@.])/u', $text, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+                return new \Illuminate\Support\HtmlString(implode('<wbr>', array_map(fn (string $p): string => '<span class="whitespace-nowrap">'.e($p).'</span>', $pieces)));
+            };
+            $lab = 'text-[calc(0.8125rem+var(--user-text-boost))] font-medium text-text-strong';
+            $notifyErr = $errors->first('notifyTo');
+            $replyWho = '<b class="font-semibold text-text-strong">'.e(__('admin.em_notify_reply_who')).'</b>';
+        @endphp
+        <form x-data x-on:submit.prevent class="rounded-md border border-border-strong bg-surface p-4 shadow-card">
+            <div class="grid grid-cols-1 items-start gap-y-[18px] @min-[56.25rem]:grid-cols-2">
+                <div class="min-w-0 [overflow-wrap:anywhere] @min-[56.25rem]:pe-6">
+                    <h2 class="mb-2.5 text-caption font-bold tracking-[.04em] text-text-muted uppercase">{{ __('admin.em_sender_title') }}</h2>
+                    {{-- The sender line as a customer's mailbox shows it --}}
+                    <div class="mb-3.5 flex min-w-0 items-center gap-2 rounded border border-dashed border-border bg-surface-muted px-[11px] py-[9px] text-[calc(0.8125rem+var(--user-text-boost))] leading-normal" data-sender-preview>
+                        <x-bs-admin::icon name="ri-mail" class="size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0 text-text-muted" />
+                        @if ($sender['address'] !== '')
+                            <span class="min-w-0 flex-auto text-text [overflow-wrap:normal]">{{ $sender['name'] }} {{ $mailParts('<'.$sender['address'].'>') }}</span>
+                        @else
+                            <span class="min-w-0 flex-auto text-text-muted">{{ __('admin.em_sender_no_addr') }}</span>
+                        @endif
+                    </div>
+                    <div class="flex flex-col gap-3.5">
+                        <div class="flex flex-col gap-1.5">
+                            <label for="em-from-name" class="{{ $lab }}">{{ __('admin.em_from_name') }}</label>
+                            <x-bs-admin::input id="em-from-name" name="em_sender_name" autocomplete="organization" wire:model.live.blur="fromName" />
+                        </div>
+                        @if ($sender['edit'])
+                            {{-- «Nhà cung cấp khác»: the part before @ is typed, the domain is the one it sends from --}}
+                            <div class="flex flex-col gap-1.5">
+                                <span class="flex items-center gap-1"><label for="em-from-local" class="{{ $lab }}">{{ __('admin.em_from_addr') }}</label><x-bs-admin::help-pop :label="__('admin.em_from_help')">{{ __('admin.em_from_help_edit') }}</x-bs-admin::help-pop></span>
+                                <span class="flex items-stretch">
+                                    <input id="em-from-local" type="text" name="em_from_local" autocomplete="off" spellcheck="false" wire:model.live.blur="fromLocal"
+                                           x-on:input="$el.value = $el.value.replace(/[^a-zA-Z0-9._-]/g, '')" placeholder="{{ $sender['defaultLocal'] }}"
+                                           aria-label="{{ __('admin.em_from_local') }}" @error('fromLocal') aria-invalid="true" aria-describedby="em-from-local-err" @enderror
+                                           class="field block min-w-0 flex-1 rounded-s border border-e-0 border-border-input bg-surface px-3 text-text placeholder:text-placeholder transition-colors focus:border-primary-text aria-invalid:border-danger-text">
+                                    <span class="inline-flex items-center rounded-e border border-border-input bg-surface-hover px-3 text-[calc(0.84375rem+var(--user-text-boost))] whitespace-nowrap text-text-muted">{{ '@'.($sender['domain'] !== '' ? $sender['domain'] : '—') }}</span>
+                                </span>
+                                @error('fromLocal')
+                                    <x-bs-admin::field-error id="em-from-local-err">{{ $message }}</x-bs-admin::field-error>
+                                @enderror
+                            </div>
+                        @elseif ($sender['locked'] !== '')
+                            {{-- A signed-in Google / Microsoft mailbox sends as itself: shown, never typed --}}
+                            <div class="flex flex-col gap-1.5">
+                                <span class="flex items-center gap-1"><span id="em-from-ro-l" class="{{ $lab }}">{{ __('admin.em_from_addr') }}</span><x-bs-admin::help-pop :label="__('admin.em_from_help')">{{ __('admin.em_from_help_locked') }}</x-bs-admin::help-pop></span>
+                                <span role="textbox" aria-readonly="true" aria-labelledby="em-from-ro-l" data-from-locked
+                                      class="flex min-w-0 items-center gap-2 rounded border border-border-strong bg-surface-hover px-[11px] py-[9px] text-[calc(0.875rem+var(--user-text-boost))] text-text-muted">
+                                    <x-bs-admin::icon name="ri-lock" class="size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0" />
+                                    <span class="min-w-0 [overflow-wrap:anywhere]">{{ $sender['locked'] }}</span>
+                                </span>
+                            </div>
+                        @endif
+                        <div class="flex flex-col gap-1.5">
+                            <span class="flex items-center gap-1"><label for="em-reply-to" class="{{ $lab }}">{{ __('admin.em_reply_label') }}</label><x-bs-admin::help-pop :label="__('admin.em_reply_help')">{{ __('admin.em_reply_help_text') }}</x-bs-admin::help-pop></span>
+                            <x-bs-admin::input id="em-reply-to" type="email" name="em_reply_to" autocomplete="off" inputmode="email" wire:model.live.blur="replyTo" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="min-w-0 [overflow-wrap:anywhere] @min-[56.25rem]:border-s @min-[56.25rem]:border-border @min-[56.25rem]:ps-6">
+                    <h2 class="mb-3.5 text-caption font-bold tracking-[.04em] text-text-muted uppercase">{{ __('admin.em_notify_title') }}</h2>
+                    {{-- «Gửi thông báo tới»: Enter, a comma or Tab adds what is typed (leaving the box too);
+                         Backspace in the empty box takes the last address off. The server checks each one. --}}
+                    <div class="flex flex-col gap-1.5"
+                         x-data="{ draft: '', add() { const v = this.draft.trim().replace(/,$/, ''); if (v === '') return; this.draft = ''; $wire.addNotify(v) } }">
+                        <span class="flex items-center gap-1"><span id="em-notify-l" class="{{ $lab }}">{{ __('admin.em_notify_label') }}</span><x-bs-admin::help-pop :label="__('admin.em_notify_help')">{{ __('admin.em_notify_help_text') }}</x-bs-admin::help-pop></span>
+                        <div @class([
+                                'flex min-h-11 w-full flex-wrap items-center gap-1.5 rounded border bg-surface px-2 py-1.5 transition-colors has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-primary-text',
+                                'border-danger-text' => $notifyErr !== '',
+                                'border-border-input has-[input:focus]:border-primary-text' => $notifyErr === '',
+                            ]) role="group" aria-labelledby="em-notify-l">
+                            @foreach ($notifyTo as $i => $email)
+                                @php $ok = \App\Modules\Forms\Support\FormDraft::isEmail($email); @endphp
+                                <span wire:key="em-nt-{{ $i }}-{{ md5($email) }}" data-notify-chip @unless ($ok) data-bad @endunless
+                                      @class(['inline-flex max-w-full items-center gap-[5px] rounded-full py-[3px] ps-2.5 pe-1 text-[calc(0.8125rem+var(--user-text-boost))]',
+                                              'bg-surface-muted text-primary-text' => $ok, 'bg-danger-base/12 text-danger-text' => ! $ok])>
+                                    <span class="min-w-0 [overflow-wrap:normal]">{{ $mailParts($email) }}</span>
+                                    <button type="button" wire:click="removeNotify({{ $i }})" aria-label="{{ __('admin.em_notify_remove', ['email' => $email]) }}" title="{{ __('admin.em_notify_remove', ['email' => $email]) }}"
+                                            class="hit-area inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-surface-hover">
+                                        <x-bs-admin::icon name="ri-close" class="size-3.5" />
+                                    </button>
+                                </span>
+                            @endforeach
+                            <input id="em-notify-in" type="text" inputmode="email" autocomplete="off" spellcheck="false" x-model="draft"
+                                   x-on:keydown="if ($event.isComposing) return; if (['Enter', ',', 'Tab'].includes($event.key) && draft.trim() !== '') { $event.preventDefault(); add() } else if ($event.key === 'Backspace' && draft === '' && $wire.notifyTo.length > 0) { $wire.removeNotify($wire.notifyTo.length - 1) }"
+                                   x-on:blur="add()"
+                                   aria-label="{{ __('admin.em_notify_input') }}" placeholder="{{ $notifyTo === [] ? __('admin.em_notify_ph', ['domain' => $sender['placeholderDomain']]) : '' }}"
+                                   @if ($notifyErr !== '') aria-invalid="true" aria-describedby="em-notify-err" @endif
+                                   class="min-h-control min-w-[7.5rem] flex-[1_1_7.5rem] border-0 bg-transparent px-0.5 text-[calc(0.875rem+var(--user-text-boost))] text-text placeholder:text-placeholder focus-visible:outline-none any-pointer-coarse:min-h-hit">
+                        </div>
+                        @if ($sender['suggestions'] !== [])
+                            <div class="mt-[3px] flex flex-wrap gap-2">
+                                @foreach ($sender['suggestions'] as $sg)
+                                    <button type="button" wire:click="addNotify({{ \Illuminate\Support\Js::from($sg) }})" wire:key="em-sg-{{ md5($sg) }}"
+                                            class="inline-flex min-h-control max-w-full cursor-pointer items-center rounded-full border border-dashed border-border-input bg-surface px-3 py-1 text-start text-caption text-primary-text transition-colors hover:bg-primary-soft any-pointer-coarse:min-h-hit">
+                                        <span class="min-w-0 [overflow-wrap:normal]">{{ $mailParts('+'.$sg) }}</span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        @endif
+                        @if ($notifyErr !== '')
+                            <x-bs-admin::field-error id="em-notify-err">{{ $notifyErr }}</x-bs-admin::field-error>
+                        @endif
+                    </div>
+                    <div class="mt-3 flex items-start gap-[9px] rounded border border-info-base/28 bg-info-base/7 px-3 py-[11px]">
+                        <x-bs-admin::icon name="ri-reply" class="mt-px size-[min(1.5rem,calc(0.9375rem+var(--user-text-boost)))] shrink-0 text-info-text" />
+                        <p class="min-w-0 text-[calc(0.78125rem+var(--user-text-boost))] leading-relaxed text-text">{!! str_replace('%who%', $replyWho, e(__('admin.em_notify_reply', ['who' => '%who%']))) !!}</p>
+                    </div>
+                </div>
+
+                {{-- The test send (to the member who presses it) --}}
+                <div class="col-span-full mt-1.5 flex flex-wrap items-center gap-3 border-t border-border pt-4">
+                    <x-bs-admin::button type="button" variant="outline" wire:click="sendTest" wire:loading.attr="disabled" wire:target="sendTest">{{ __('admin.send_test_email') }}</x-bs-admin::button>
+                    @if ($testResult === 'ok')
+                        <span class="text-caption text-success-text">{{ __('admin.test_email_sent') }}</span>
+                    @elseif ($testResult === 'error')
+                        <span class="text-caption text-danger-text">{{ __('admin.test_email_failed') }}</span>
+                    @endif
+                </div>
+            </div>
+        </form>
+    @endif
 
     @if ($scope !== 'platform')
                 <livewire:admin.email-recent-mail wire:key="em-recent-mail" />
