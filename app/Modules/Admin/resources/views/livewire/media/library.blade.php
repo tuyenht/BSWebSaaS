@@ -40,12 +40,12 @@
         + ($trash ? ['on' => false, 'summary' => '', 'suffix' => ''] : [])
         + ($canFolders ? ['action' => ['label' => __('media.lib.manage_folders'), 'icon' => 'ri-folder-settings', 'call' => 'openFolderSheet']] : []);
     $sections[] = ['key' => 'kinds', 'label' => __('media.lib.f_kind'), 'model' => 'kinds', 'multiple' => true, 'value' => $kinds, 'reset' => 'clearKinds',
-        'options' => array_map(fn (string $k): array => ['value' => $k, 'label' => $kindLabels[$k]], Dir::KINDS)];
+        'options' => array_map(fn (string $k): array => ['value' => $k, 'label' => $kindLabels[$k]] + (isset($groupCounts['kinds'][$k]) ? ['count' => $groupCounts['kinds'][$k]] : []), Dir::KINDS)];
     $sections[] = ['key' => 'formats', 'label' => __('media.lib.f_format'), 'model' => 'formats', 'multiple' => true, 'value' => $formats, 'reset' => 'clearFormats',
-        'options' => array_map(fn (string $f): array => ['value' => $f, 'label' => strtoupper($f)], array_keys(Dir::FORMATS))];
+        'options' => array_map(fn (string $f): array => ['value' => $f, 'label' => strtoupper($f)] + (isset($groupCounts['formats'][$f]) ? ['count' => $groupCounts['formats'][$f]] : []), array_keys(Dir::FORMATS))];
     if (! $trash) {
         $sections[] = ['key' => 'uses', 'label' => __('media.lib.f_use'), 'model' => 'uses', 'multiple' => true, 'value' => $uses, 'reset' => 'clearUses',
-            'options' => array_map(fn (string $u): array => ['value' => $u, 'label' => $useLabels[$u]], Dir::USES)];
+            'options' => array_map(fn (string $u): array => ['value' => $u, 'label' => $useLabels[$u]] + (isset($groupCounts['uses'][$u]) ? ['count' => $groupCounts['uses'][$u]] : []), Dir::USES)];
     }
     // «Người tạo»: offered once two people have uploaded files here (the member first); its options, like
     // every group's counts, are read while the filters are open ($tally)
@@ -108,7 +108,57 @@
     $listTargets = 'search,kinds,formats,uses,by,when,from,to,folderPick,status,sort,per,older,newer,setFolder,setSort,clearFilters,clearSearch,removeCondition,clearKinds,clearFormats,clearUses,clearStatus,clearBy,clearWhen';
     $folderBtn = 'flex min-h-control w-full items-center gap-2 rounded-md px-2.5 text-start text-body text-text hover:bg-surface-muted aria-[current=true]:bg-primary/12 aria-[current=true]:font-semibold aria-[current=true]:text-primary-text any-pointer-coarse:min-h-hit';
 @endphp
-<div class="flex min-w-0 flex-col gap-4" x-data
+{{-- Files dragged onto the page (board 12): while they are over it, «Thả tệp vào đây» covers the screen; dropped, the
+     upload panel opens on the device pane with them (handed over in the browser: a file cannot ride a Livewire request).
+     The whole window is the drop area, as the cover shows (listeners on the document while this page is mounted, gone
+     when it is left), so a file dropped on the side menu or the top bar never opens in the tab instead. Only file drags
+     count: a text or link drag, or one that starts on the page, is left alone, and a drop area of its own on the page
+     (the upload panel's) takes its drops first. Where uploading is not possible, a dropped file does nothing.
+     The cover cannot stay up: it goes when the drag leaves the window, on drop, dragend, Escape, window blur, a re-render,
+     and when no dragover has come for a second (browsers send one at least every 350ms while a drag is over the page). --}}
+<div class="flex min-w-0 flex-col gap-4" data-drop-ok="{{ $canUpload && ! $failed && ! $uploadOpen ? 'true' : 'false' }}"
+     x-data="{
+         over: false, inner: false, timer: 0, off: null,
+         init() {
+             const on = (target, name, fn) => { target.addEventListener(name, fn); return () => target.removeEventListener(name, fn) };
+             const offs = [
+                 on(document, 'dragstart', () => { this.inner = true }),
+                 on(document, 'dragend', () => { this.inner = false; this.hide() }),
+                 on(document, 'dragenter', (e) => this.drag(e)),
+                 on(document, 'dragover', (e) => this.drag(e)),
+                 on(document, 'dragleave', (e) => { if (this.over && ! e.relatedTarget) this.later(100) }),
+                 on(document, 'drop', (e) => this.drop(e)),
+                 on(document, 'keydown', (e) => { if (e.key === 'Escape') this.hide() }),
+                 on(window, 'blur', () => this.hide()),
+             ];
+             this.$wire.$hook('morphed', () => this.hide());
+             this.off = () => offs.forEach((undo) => undo());
+         },
+         destroy() { this.off?.(); this.hide() },
+         files(e) { return ! this.inner && [...(e.dataTransfer?.types ?? [])].includes('Files') },
+         ok() { return this.$root.dataset.dropOk === 'true' },
+         later(ms) { clearTimeout(this.timer); this.timer = setTimeout(() => this.hide(), ms) },
+         hide() { clearTimeout(this.timer); this.over = false },
+         drag(e) {
+             if (e.defaultPrevented || ! this.files(e)) return;
+             e.preventDefault();
+             if (! this.ok()) { e.dataTransfer.dropEffect = 'none'; this.hide(); return }
+             e.dataTransfer.dropEffect = 'copy';
+             this.over = true;
+             this.later(1000);
+         },
+         drop(e) {
+             this.hide();
+             const inner = this.inner;
+             this.inner = false;
+             if (e.defaultPrevented || inner || ! [...(e.dataTransfer?.types ?? [])].includes('Files')) return;
+             e.preventDefault();
+             if (! this.ok()) return;
+             const list = [...(e.dataTransfer?.files ?? [])];
+             if (list.length) { window.__pendingPickerFiles = list; this.$wire.openUpload('device') }
+         },
+     }"
+     x-on:media-upload-opened.window="$nextTick(() => document.getElementById('media-up-h')?.focus())"
      x-on:keydown.slash.window="if (! ['INPUT','TEXTAREA','SELECT'].includes($event.target.tagName) && ! $event.target.isContentEditable) { $event.preventDefault(); document.getElementById('media-search')?.focus() }">
 
     <div class="flex flex-wrap items-start justify-between gap-3">
@@ -124,15 +174,22 @@
     </div>
 
     @if ($uploadOpen && $canUpload)
-        <section class="rounded-md border border-border bg-surface p-4 shadow-card" aria-labelledby="media-up-h">
+        {{-- data-upload-folder: where a file added now goes (the device pane reads it as each file is added) --}}
+        <section class="rounded-md border border-border bg-surface p-4 shadow-card" aria-labelledby="media-up-h" data-upload-folder="{{ $upFolder?->slug ?? '' }}">
             <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <h2 id="media-up-h" class="m-0 text-[calc(1rem+var(--user-text-boost))] font-semibold text-text-strong">{{ __('media.lib.up_title') }}</h2>
+                <h2 id="media-up-h" tabindex="-1" class="m-0 text-[calc(1rem+var(--user-text-boost))] font-semibold text-text-strong">{{ __('media.lib.up_title') }}</h2>
                 <x-bs-admin::button variant="outline" color="secondary" wire:click="closeUpload"><x-bs-admin::icon name="ri-arrow-left" class="size-4" />{{ __('media.lib.up_done') }}</x-bs-admin::button>
             </div>
-            <p class="mb-3 flex items-center gap-2 text-body text-text"><x-bs-admin::icon name="ri-folder-3" class="size-4 shrink-0 text-text-muted" /><span>{{ __('media.lib.up_to') }} <b>{{ __('media.lib.unfiled') }}</b></span></p>
+            <p class="mb-3 flex items-center gap-2 text-body text-text"><x-bs-admin::icon name="ri-folder-3" class="size-4 shrink-0 text-text-muted" /><span>{{ __('media.lib.up_to') }} <b>{{ $upFolder !== null ? __('media.lib.up_to_folder', ['name' => $upFolder->name]) : __('media.lib.up_to_all') }}</b></span></p>
             <div class="min-h-[320px] overflow-hidden rounded-md border border-border">
                 @if ($pickerSource === 'url')
                     @include('admin::partials.media-picker-url-pane')
+                    {{-- the picker's footer button (board 13) for the previewed picture: it is copied into the library --}}
+                    @if ($this->hasUrlPick())
+                        <div class="flex justify-end border-t border-border px-[18px] py-3">
+                            <x-bs-admin::button color="primary" wire:click="insertPicked"><x-bs-admin::icon name="ri-check" class="size-4" />{{ __('media.picker_insert_count', ['count' => 1]) }}</x-bs-admin::button>
+                        </div>
+                    @endif
                 @elseif ($pickerSource === 'device')
                     @include('admin::partials.media-picker-device-pane')
                 @else
@@ -612,6 +669,19 @@
             <x-bs-admin::confirm-line icon="ri-delete-bin-2">{{ __('media.lib.ask_purge_l1', ['n' => $num($purge['n']), 'size' => Library::bytes($purge['bytes'])]) }}</x-bs-admin::confirm-line>
             <x-bs-admin::confirm-line icon="ri-image-2">{{ __('media.lib.ask_purge_l2') }}</x-bs-admin::confirm-line>
         </x-bs-admin::confirm-dialog>
+    @endif
+
+    {{-- the drop cover (board 12): seen only while files are dragged over the page; the «Tải lên» button is the same
+         action for the keyboard and screen readers, so the cover itself is hidden from them --}}
+    @if ($canUpload)
+        <div x-show="over" x-cloak aria-hidden="true" data-drop-cover
+             class="pointer-events-none fixed inset-0 z-[90] flex items-center justify-center bg-[color-mix(in_srgb,var(--color-primary)_18%,rgb(15_18_30/0.45))] p-6">
+            <div class="flex flex-col items-center gap-2.5 rounded-lg border-[3px] border-dashed border-primary-text bg-surface px-10 py-8 text-center text-[calc(1rem+var(--user-text-boost))] font-semibold text-text-strong">
+                <x-bs-admin::icon name="ri-upload-cloud-2" class="size-10 text-primary-text" />
+                <span>{{ __('media.lib.drop_title') }}</span>
+                <span class="text-[calc(0.875rem+var(--user-text-boost))] font-medium text-text-muted">{{ $upFolder !== null ? __('media.lib.drop_to_folder', ['name' => $upFolder->name]) : __('media.lib.drop_to_all') }}</span>
+            </div>
+        </div>
     @endif
 
     <x-bs-admin::toast :message="$toast" :tone="$toastTone" dismiss="dismissToast" :undo="$undoTrash !== [] ? 'undo' : ($undoFolder !== '' ? 'undoFolderDelete' : ($undoReparent !== '' ? 'undoReparent' : null))" :seq="$toastSeq" />
