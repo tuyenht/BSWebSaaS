@@ -361,7 +361,7 @@ it('takes a held member\'s move back when the change is refused after it, and ke
             return $writing ? throw new EntryDraftRejectedException('change_locked') : $real;
         });
 
-        $editor->call('save')->assertHasErrors('workflow')
+        $editor->call('save')->assertSet('refusal.text', __('entries.change_err_change_locked'))
             ->assertSet('saveFailed', true)->assertSet('pageOrder', '2')->assertSet('pageOrderLoaded', '1');
 
         expect($editor->get('saved')['pageOrder'])->toBe('1')

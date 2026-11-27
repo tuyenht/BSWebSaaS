@@ -897,6 +897,43 @@
         </div>
     @endif
 
+    @if ($refusal !== null)
+        {{-- «Chưa làm được» (design 07, the refused change): a save, a send, «Cập nhật website» /
+             «Duyệt đăng» or «Bỏ thay đổi» of the pending change refused (EditsPendingChange::changeRefused).
+             The move as its title, the reason in plain words; «Đóng» takes the focus and closes it, like
+             Escape and the backdrop, keeping what was typed. When the change moved on elsewhere,
+             «Tải lại» reads it again, the typed text kept. Focus goes back to the button pressed. --}}
+        <div wire:key="entry-refusal-{{ md5(json_encode($refusal)) }}" data-entry-refusal
+             x-data="{ shut: false, opener: null, init() { this.opener = document.activeElement; }, destroy() { const o = this.opener; if (o && o.isConnected) { o.focus(); } } }">
+            {{-- `shut` hides it at once on «Đóng», Escape or the backdrop; the server then drops it --}}
+            <x-bs-admin::modal state="! shut" close="shut = true; $wire.closeRefusal()" size="narrow" compact alert describedby="entry-refusal-d" :close-label="__('admin.dismiss')">
+                <x-slot:heading>
+                    <span class="flex items-center gap-2.5">
+                        <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-danger-text)_10%,var(--color-surface))] text-danger-text" aria-hidden="true">
+                            <x-bs-admin::icon name="ri-close-circle" class="size-[min(1.5rem,calc(1.125rem+var(--user-text-boost)))]" />
+                        </span>
+                        <span>{{ $refusal['title'] }}</span>
+                    </span>
+                </x-slot:heading>
+                <x-bs-admin::alert color="danger" icon="ri-close-circle" id="entry-refusal-d">{{ $refusal['text'] }}</x-bs-admin::alert>
+                <x-slot:footer>
+                    @if ($refusal['reload'])
+                        <x-bs-admin::button variant="outline" color="secondary" size="sm" autofocus x-on:click="hide()" data-refusal-close>
+                            <x-bs-admin::icon name="ri-close" :class="$glyph" /> {{ __('admin.close') }}
+                        </x-bs-admin::button>
+                        <x-bs-admin::button color="primary" size="sm" wire:click="reloadChange" wire:loading.attr="disabled" wire:target="reloadChange" data-refusal-reload>
+                            <x-bs-admin::icon name="ri-refresh" :class="$glyph" /> {{ __('entries.refuse.reload') }}
+                        </x-bs-admin::button>
+                    @else
+                        <x-bs-admin::button color="primary" size="sm" autofocus x-on:click="hide()" data-refusal-close>
+                            <x-bs-admin::icon name="ri-close" :class="$glyph" /> {{ __('admin.close') }}
+                        </x-bs-admin::button>
+                    @endif
+                </x-slot:footer>
+            </x-bs-admin::modal>
+        </div>
+    @endif
+
     @if ($sharedPicker)
         @include('admin::livewire.entries.partials.shared-block-picker')
     @endif

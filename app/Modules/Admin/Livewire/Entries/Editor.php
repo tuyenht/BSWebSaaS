@@ -3802,7 +3802,7 @@ final class Editor extends Component
                 if ($filled) {
                     $this->slug = '';
                 }
-                $this->addError('workflow', __('entries.change_err_change_stale'));
+                $this->changeRefused('change_stale');
 
                 return null;
             }

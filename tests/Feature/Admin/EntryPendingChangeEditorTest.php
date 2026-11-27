@@ -138,7 +138,8 @@ it('holds an author’s save of a governed live post in its pending change, then
 
         // Locked once sent: a further save and a discard are refused, nothing written.
         $page->set('title', 'Sửa thêm sau khi gửi')->call('save')
-            ->assertHasErrors('workflow');
+            ->assertHasNoErrors('workflow')
+            ->assertSet('refusal', ['title' => __('entries.refuse.t_locked'), 'text' => __('entries.change_err_change_locked'), 'reload' => false]);
         expect(pcChange($post)->content['locales']['vi']['title'])->toBe('Bản sửa chờ duyệt');
 
         // Approving a sent change leaves out what the reviewer typed since, and the question says so.
@@ -306,7 +307,8 @@ it('refuses a stale tab: the change moved on since the form read it', function (
         app(SaveEntryDraft::class)->handle($post->fresh(), $editor, 'vi', ['title' => 'Bản của tab khác']);
 
         $old->set('title', 'Bản của tab cũ')->call('save')
-            ->assertHasErrors('workflow');
+            ->assertHasNoErrors('workflow')
+            ->assertSet('refusal', ['title' => __('entries.refuse.t_save'), 'text' => __('entries.change_err_change_stale'), 'reload' => true]);
         expect(pcChange($post)->content['locales']['vi']['title'])->toBe('Bản của tab khác');
     });
 });
@@ -965,6 +967,7 @@ it('authorizes every change method on its own', function (string $method, array 
     'returnChange' => ['returnChange', []],
     'submitChange' => ['submitChange', []],
     'moveChange' => ['moveChange', ['submit']],
+    'reloadChange' => ['reloadChange', []],
 ]);
 
 it('keeps an offline page under its parent through the editor’s «Trang cha» and a drag, when a live sub-page’s edits are held back', function (string $road): void {
@@ -1149,7 +1152,8 @@ it('refuses to apply a page’s change whose new link moves a sub-page to a take
             ->call('askApplyChange')
             ->call('applyChange')
             ->assertHasNoErrors('slug')
-            ->assertHasErrors('workflow');
+            ->assertHasErrors('workflow')
+            ->assertSet('refusal', null);   // the board draws no dialog for it: the line above the form
         expect($form->errors()->first('workflow'))->toBe(__('entries.change_err_subpage_path_taken', ['path' => '/ve-chung-toi/doi-ngu']));
 
         expect(pcChange($about))->not->toBeNull()
@@ -1225,3 +1229,217 @@ it('says which sub-page address is taken when a live page’s link is changed in
             ->and(SiteRoute::query()->where('entry_id', $team->id)->pluck('path')->all())->toBe([$kept[2]]);
     });
 })->with(['list link', 'older version']);
+
+/*
+ * «Chưa làm được» (board 07): a save, a send, «Cập nhật website» / «Duyệt đăng» or «Bỏ thay đổi» of the
+ * pending change refused opens one dialog — the move as its title, the reason in plain words, «Đóng»
+ * (and «Tải lại» when the change moved on elsewhere) — and writes nothing.
+ */
+
+/** The pending change as stored, to compare before and after a refusal. */
+function pcStored(Entry $entry): array
+{
+    $change = pcChange($entry);
+
+    return [
+        'change' => $change === null ? null : [$change->version(), $change->workflow_state],
+        'live' => $entry->fresh()->translationFor('vi')->title,
+        'revisions' => pcRevisions($entry),
+        'logs' => WorkflowLog::query()->where('entry_id', $entry->id)->count(),
+    ];
+}
+
+/** @return array{title: string, text: string, reload: bool} */
+function pcRefusal(string $move, string $reason): array
+{
+    return ['title' => __('entries.refuse.t_'.$move), 'text' => __('entries.change_err_'.$reason), 'reload' => $reason === 'change_stale'];
+}
+
+it('shows «Chưa sửa được» in the dialog when a sent change is saved, with only «Đóng», writing nothing', function (): void {
+    [$author, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
+        $post = pcLivePost(pcCollection(), $author, $editor);
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+        Livewire::actingAs($author)->test(Editor::class, ['ulid' => $post->ulid])
+            ->set('title', 'Bản đã gửi')->call('submitChange')->assertHasNoErrors();
+        $before = pcStored($post);
+
+        $form = Livewire::actingAs($author)->test(Editor::class, ['ulid' => $post->ulid])
+            ->set('title', 'Gõ thêm sau khi gửi')->call('save')
+            ->assertHasNoErrors()
+            ->assertSet('refusal', pcRefusal('locked', 'change_locked'))
+            ->assertSeeHtml('data-entry-refusal')
+            ->assertSeeHtml('role="alertdialog"')
+            ->assertSeeHtml('aria-describedby="entry-refusal-d"')
+            ->assertSee(__('entries.refuse.t_locked'))
+            ->assertSee(__('entries.change_err_change_locked'))
+            ->assertSeeHtml('data-refusal-close')
+            ->assertDontSeeHtml('data-refusal-reload');
+        expect(pcStored($post))->toBe($before)
+            ->and(pcChange($post)->content['locales']['vi']['title'])->toBe('Bản đã gửi');
+
+        // «Đóng»: the dialog goes, the typed text stays
+        $form->call('closeRefusal')
+            ->assertSet('refusal', null)
+            ->assertDontSeeHtml('data-entry-refusal')
+            ->assertSet('title', 'Gõ thêm sau khi gửi');
+        expect(pcStored($post))->toBe($before);
+
+        // «Gửi duyệt thay đổi» of the sent change: the same «Chưa sửa được»
+        $form->call('submitChange')
+            ->assertHasNoErrors()
+            ->assertSet('refusal', pcRefusal('locked', 'change_locked'));
+        expect(pcStored($post))->toBe($before);
+    });
+});
+
+it('titles a stale tab’s refused save or send by its move, offers «Tải lại», and keeps the typed text through it', function (string $method, string $move): void {
+    [$author, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($author, $editor, $method, $move): void {
+        $post = pcLivePost(pcCollection(), $author, $editor);
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+        $old = Livewire::actingAs($author)->test(Editor::class, ['ulid' => $post->ulid]);
+        app(SaveEntryDraft::class)->handle($post->fresh(), $editor, 'vi', ['title' => 'Bản của tab khác']);
+        $before = pcStored($post);
+
+        $old->set('title', 'Bản của tab cũ')->call($method)
+            ->assertHasNoErrors()
+            ->assertSet('refusal', pcRefusal($move, 'change_stale'))
+            ->assertSee(__('entries.refuse.t_'.$move))
+            ->assertSeeHtml('data-refusal-reload')
+            ->assertSee(__('entries.refuse.reload'));
+        expect(pcStored($post))->toBe($before)
+            ->and(pcChange($post)->content['locales']['vi']['title'])->toBe('Bản của tab khác');
+
+        // «Tải lại»: the change is read again, the form keeps what was typed; nothing written by it
+        $old->call('reloadChange')
+            ->assertSet('refusal', null)
+            ->assertSet('changeSeen', pcChange($post)->version())
+            ->assertSet('title', 'Bản của tab cũ')
+            ->assertDispatched('bs-toast', text: __('entries.refuse.reloaded'));
+        expect(pcStored($post))->toBe($before);
+
+        // the next save goes into the change as it stands now
+        $old->call('save')->assertHasNoErrors()->assertSet('refusal', null);
+        expect(pcChange($post)->content['locales']['vi']['title'])->toBe('Bản của tab cũ');
+    });
+})->with([
+    'Lưu thay đổi' => ['save', 'save'],
+    'Gửi duyệt thay đổi' => ['submitChange', 'submit'],
+]);
+
+it('shows «Chưa cập nhật được website» / «Chưa duyệt đăng được» when the change moved on before it went live, the website untouched', function (bool $workflow): void {
+    [$author, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($author, $editor, $workflow): void {
+        $post = pcLivePost(pcCollection(), $author, $editor);
+        if ($workflow) {
+            app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+            Livewire::actingAs($author)->test(Editor::class, ['ulid' => $post->ulid])
+                ->set('title', 'Bản đã gửi')->call('submitChange')->assertHasNoErrors();
+        } else {
+            app(SaveEntryDraft::class)->handle($post->fresh(), $author, 'vi', ['title' => 'Bản đã gửi']);
+        }
+        $form = Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid])
+            ->call('askApplyChange')->assertSet('changeApplyAsk', true);
+        // edited elsewhere after this form read it
+        $change = pcChange($post);
+        $content = $change->content;
+        $content['locales']['vi']['title'] = 'Bản chưa xem';
+        $change->update(['content' => $content]);
+        $before = pcStored($post);
+
+        $form->call('applyChange')
+            ->assertHasNoErrors()
+            ->assertSet('changeApplyAsk', false)
+            ->assertSet('refusal', pcRefusal($workflow ? 'approve' : 'apply', 'change_stale'))
+            ->assertSee(__($workflow ? 'entries.refuse.t_approve' : 'entries.refuse.t_apply'));
+        expect(pcStored($post))->toBe($before)
+            ->and($post->fresh()->translationFor('vi')->title)->toBe('Bản đang đăng');
+    });
+})->with([
+    'no workflow: Cập nhật website' => [false],
+    'workflow: Duyệt đăng' => [true],
+]);
+
+it('shows «Chưa bỏ được thay đổi» when a sent change is thrown away, or one already gone, the change kept', function (): void {
+    [$author, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
+        $post = pcLivePost(pcCollection(), $author, $editor);
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+        $writer = Livewire::actingAs($author)->test(Editor::class, ['ulid' => $post->ulid])
+            ->set('title', 'Bản đã gửi')->call('submitChange')->assertHasNoErrors();
+        $before = pcStored($post);
+
+        $writer->call('askDiscardChange')->assertSet('changeDiscardAsk', true)
+            ->call('discardChange')
+            ->assertHasNoErrors()
+            ->assertSet('changeDiscardAsk', false)
+            ->assertSet('refusal', pcRefusal('discard', 'change_pending'))
+            ->assertDontSeeHtml('data-refusal-reload');
+        expect(pcStored($post))->toBe($before);
+
+        // a change thrown away elsewhere: the question is not asked, the dialog offers «Tải lại»
+        $review = Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid]);
+        EntryDraft::query()->where('entry_id', $post->id)->delete();
+        $gone = pcStored($post);
+        $review->call('askDiscardChange')
+            ->assertSet('changeDiscardAsk', false)
+            ->assertSet('refusal', pcRefusal('discard', 'change_stale'))
+            ->call('reloadChange')
+            ->assertSet('refusal', null)
+            ->assertSet('changeSeen', null);
+        expect(pcStored($post))->toBe($gone);
+    });
+});
+
+it('says a change’s taken address in the dialog when it is put live, and keeps it under the link field, nothing written', function (): void {
+    [$author, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
+        $category = pcCollection();
+        $post = pcLivePost($category, $author, $editor);
+        // the author may not publish: the new link waits in the change, and another post takes it meanwhile
+        Livewire::actingAs($author)->test(Editor::class, ['ulid' => $post->ulid])
+            ->set('slug', 'bai-2')->call('save')->assertHasNoErrors();
+        pcLivePost($category, $author, $editor, 'bai-2');
+        $form = Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid])
+            ->call('askApplyChange')->assertSet('changeApplyAsk', true);
+        $before = pcStored($post);
+
+        $form->call('applyChange')
+            ->assertHasNoErrors('workflow')
+            ->assertHasErrors(['slug' => __('entries.change_err_slug_taken')])
+            ->assertSet('refusal', pcRefusal('apply', 'slug_taken'));
+        expect(pcStored($post))->toBe($before)
+            ->and($post->fresh()->translationFor('vi')->slug)->toBe('bai-1');
+    });
+});
+
+it('keeps a refused «Trả lại» on the line above the form (the board draws no dialog for it)', function (): void {
+    [$author, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
+        $post = pcLivePost(pcCollection(), $author, $editor);
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+        Livewire::actingAs($author)->test(Editor::class, ['ulid' => $post->ulid])
+            ->set('title', 'Bản đã gửi')->call('submitChange')->assertHasNoErrors();
+        $review = Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid]);
+        $change = pcChange($post);
+        $content = $change->content;
+        $content['locales']['vi']['title'] = 'Bản chưa xem';
+        $change->update(['content' => $content]);
+        $before = pcStored($post);
+
+        $review->call('openChangeReturn')->set('changeNote', 'Sửa lại')->call('returnChange')
+            ->assertHasErrors(['workflow' => __('entries.change_err_change_stale')])
+            ->assertSet('refusal', null);
+        expect(pcStored($post))->toBe($before);
+    });
+});
+
+it('never lets the browser set the refusal', function (): void {
+    [$author, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
+        $post = pcLivePost(pcCollection(), $author, $editor);
+        Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid])
+            ->set('refusal', ['title' => 'x', 'text' => 'y', 'reload' => true]);
+    });
+})->throws(CannotUpdateLockedPropertyException::class);
