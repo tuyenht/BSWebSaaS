@@ -879,6 +879,7 @@
     "admin.em_notify_invalid": "邮箱格式不正确：:list",
     "admin.em_notify_max": "最多 :max 个地址——先移除一个再添加。",
     "admin.em_notify_reply": "在通知邮件中，系统会自动把回复地址设为:who——点“回复”即可直接回复客户，无需复制地址。",
+    "admin.em_notify_lang": "通知邮件以网站的主要语言（:lang）发送。",
     "admin.em_notify_reply_who": "刚提交的客户的邮箱",
     "admin.em_ob_platform": "平台共享邮箱",
     "admin.em_ob_google": "Gmail / Google Workspace",

@@ -11,6 +11,7 @@ use App\Modules\Admin\Support\TenantMailer;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\Site;
 use Illuminate\Support\Facades\Cache;
@@ -140,6 +141,18 @@ it('words a reply address that is not an email the board way', function (): void
             ->set('replyTo', 'lienhe@')->call('save')
             ->assertHasErrors(['replyTo'])
             ->assertSee(__('admin.em_reply_invalid'));
+    });
+});
+
+it('says notices go out in the website\'s main language, not the member\'s', function (): void {
+    $admin = esnAdmin();
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $code = app(SiteLocale::class)->default();
+        Livewire::actingAs($admin)->test(EmailSettings::class)
+            ->assertSee('Thư thông báo gửi bằng')
+            ->assertSee(config('locales.labels.'.$code) ?? strtoupper($code))
+            ->assertSee('ngôn ngữ chính của website')
+            ->assertDontSee('theo ngôn ngữ trong hồ sơ của bạn');
     });
 });
 

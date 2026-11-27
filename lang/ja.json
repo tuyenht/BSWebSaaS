@@ -879,6 +879,7 @@
     "admin.em_notify_invalid": "メールの形式になっていません: :list",
     "admin.em_notify_max": "最大 :max 件までです — 1 件削除してから追加してください。",
     "admin.em_notify_reply": "通知メールでは、返信先が自動で :who になります — 「返信」を押せばそのままお客様に返信でき、アドレスをコピーする必要はありません。",
+    "admin.em_notify_lang": "通知メールはウェブサイトの主要言語（:lang）で送信されます。",
     "admin.em_notify_reply_who": "問い合わせたお客様のメール",
     "admin.em_ob_platform": "プラットフォームの共有メールボックス",
     "admin.em_ob_google": "Gmail / Google Workspace",

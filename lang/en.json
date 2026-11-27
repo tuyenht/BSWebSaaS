@@ -879,6 +879,7 @@
     "admin.em_notify_invalid": "Not a valid email: :list",
     "admin.em_notify_max": "At most :max addresses — remove one, then add.",
     "admin.em_notify_reply": "In a notice, the system sets the reply address to :who — press Reply to answer the customer directly, no copying needed.",
+    "admin.em_notify_lang": "Notices are sent in :lang, the website's main language.",
     "admin.em_notify_reply_who": "the email of the customer who wrote",
     "admin.em_ob_platform": "The platform's shared mailbox",
     "admin.em_ob_google": "Gmail / Google Workspace",

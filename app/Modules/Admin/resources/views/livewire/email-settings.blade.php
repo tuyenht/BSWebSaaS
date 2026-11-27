@@ -405,6 +405,13 @@
                             <x-bs-admin::field-error id="em-notify-err">{{ $notifyErr }}</x-bs-admin::field-error>
                         @endif
                     </div>
+                    {{-- The board says the notices follow the member's profile language; a new-lead notice is sent
+                         in the website's main language, so the line says that instead. --}}
+                    @php($siteLang = app(\App\Modules\Tenancy\Context\SiteLocale::class)->default())
+                    <div class="mt-2.5 flex items-start gap-[9px] text-[calc(0.78125rem+var(--user-text-boost))] leading-relaxed text-text-muted">
+                        <x-bs-admin::icon name="ri-translate-2" class="mt-0.5 size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0 text-text-muted" />
+                        <p class="min-w-0">{!! str_replace('%lang%', '<b class="font-semibold text-text">'.e(config('locales.labels.'.$siteLang) ?? strtoupper($siteLang)).'</b>', e(__('admin.em_notify_lang', ['lang' => '%lang%']))) !!}</p>
+                    </div>
                     <div class="mt-3 flex items-start gap-[9px] rounded border border-info-base/28 bg-info-base/7 px-3 py-[11px]">
                         <x-bs-admin::icon name="ri-reply" class="mt-px size-[min(1.5rem,calc(0.9375rem+var(--user-text-boost)))] shrink-0 text-info-text" />
                         <p class="min-w-0 text-[calc(0.78125rem+var(--user-text-boost))] leading-relaxed text-text">{!! str_replace('%who%', $replyWho, e(__('admin.em_notify_reply', ['who' => '%who%']))) !!}</p>

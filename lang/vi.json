@@ -879,6 +879,7 @@
     "admin.em_notify_invalid": "Chưa đúng định dạng email: :list",
     "admin.em_notify_max": "Tối đa :max địa chỉ — gỡ bớt một địa chỉ rồi thêm.",
     "admin.em_notify_reply": "Trong thư thông báo, hệ thống tự đặt người trả lời là :who — bạn bấm Trả lời là trả lời thẳng cho khách, không phải sao chép địa chỉ.",
+    "admin.em_notify_lang": "Thư thông báo gửi bằng :lang — ngôn ngữ chính của website.",
     "admin.em_notify_reply_who": "email của khách vừa gửi",
     "admin.em_ob_platform": "Hộp thư dùng chung của nền tảng",
     "admin.em_ob_google": "Gmail / Google Workspace",
