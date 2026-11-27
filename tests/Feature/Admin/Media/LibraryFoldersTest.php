@@ -5,11 +5,13 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Media\Jobs\DeleteLargeMediaFolder;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\MediaFolder;
+use App\Modules\Media\Support\MediaKey;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
@@ -630,4 +632,177 @@ it('sweeps again when more files than one batch came into a large folder below w
         // 3 in the first sweep, the 2 that came in below the cursor in a second one: never left to the row delete
         ->and($unfiled)->toBe(5)
         ->and(fdLeft(1, $folder->id))->toBe(['filed' => 0, 'folder' => false]);
+});
+
+it('offers «Tải ảnh lên vào đây» in the open folder’s menu and opens the upload panel on that folder', function (): void {
+    $user = fdUser('admin');
+    $top = fdFolder(1, 'Công trình', 'cong-trinh', 1);
+    $sub = app(Tenancy::class)->enter(1, fn () => MediaFolder::query()->create(['name' => 'Nhà xưởng', 'slug' => 'nha-xuong', 'parent_id' => $top->id, 'position' => 1]));
+    fdFile(1, 'a.png', $sub);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $page = Livewire::actingAs($user)->test(Library::class)->call('setFolder', 'nha-xuong')
+            ->assertSee("uploadInto('nha-xuong')", false)
+            ->assertSee(__('media.lib.upload_here'));
+        $page->call('setFolder', '')->call('uploadInto', 'nha-xuong')
+            ->assertSet('folder', 'nha-xuong')
+            ->assertSet('uploadOpen', true)
+            ->assertSet('pickerSource', null)
+            ->assertDispatched('media-upload-opened')
+            ->assertDispatched('media-folder-open', slug: 'cong-trinh')
+            ->assertSeeHtml('data-upload-folder="nha-xuong"')
+            ->assertSeeHtml(e(__('media.lib.up_to_folder', ['name' => 'Nhà xưởng'])));
+    });
+});
+
+it('says new files go to «Tất cả ảnh (Chưa phân loại)» outside a folder, in the Trash too', function (string $place): void {
+    // the bracket never breaks inside (non-breaking spaces), the whole phrase wraps when space runs out
+    expect(__('media.lib.up_to_all'))->toBe("Tất cả ảnh (Chưa\u{00A0}phân\u{00A0}loại)");
+    $user = fdUser('admin');
+    fdFolder(1, 'Công trình', 'cong-trinh', 1);
+    fdFile(1, 'a.png');
+
+    app(Tenancy::class)->enter(1, function () use ($user, $place): void {
+        Livewire::actingAs($user)->test(Library::class)->call('setFolder', $place)->call('openUpload')
+            ->assertSeeHtml('data-upload-folder=""')
+            ->assertSeeHtml(e(__('media.lib.up_to_all')))
+            ->assertDontSeeHtml(e(__('media.lib.up_to_folder', ['name' => 'Công trình'])));
+    });
+})->with(['', '-', '~trash']);
+
+it('lets an uploader without the folder rights upload into a folder, and refuses one who cannot upload', function (): void {
+    $editor = fdUser('editor');
+    $viewer = fdUser('viewer');
+    fdFolder(1, 'Công trình', 'cong-trinh', 1);
+    fdFile(1, 'a.png');
+
+    app(Tenancy::class)->enter(1, function () use ($editor, $viewer): void {
+        // no ⋮ for an editor (the folder menu is the website admin's), but the upload panel still files into the folder in view
+        Livewire::actingAs($editor)->test(Library::class)->call('setFolder', 'cong-trinh')
+            ->assertDontSee("uploadInto('cong-trinh')", false)
+            ->call('openUpload')->assertSeeHtml('data-upload-folder="cong-trinh"');
+        Livewire::actingAs($editor)->test(Library::class)->call('uploadInto', 'cong-trinh')->assertSet('uploadOpen', true);
+
+        Livewire::actingAs($viewer)->test(Library::class)->call('uploadInto', 'cong-trinh')->assertForbidden();
+        Livewire::actingAs($viewer)->test(Library::class)->call('openUpload', 'device')->assertForbidden();
+    });
+});
+
+it('never offers a folder being deleted in the background as where new files go', function (): void {
+    Queue::fake();
+    $user = fdUser('admin');
+    $leaving = fdFolder(1, 'Đang xóa', 'dang-xoa', 1);
+    fdFile(1, 'a.png', $leaving);
+    DeleteLargeMediaFolder::markPending(1, $leaving->id);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        // its menu item: the panel does not open, and the person is told why
+        Livewire::actingAs($user)->test(Library::class)->call('uploadInto', 'dang-xoa')
+            ->assertSet('folder', '')
+            ->assertSet('uploadOpen', false)
+            ->assertNotDispatched('media-upload-opened')
+            ->assertSet('toastTone', 'info')
+            ->assertSet('toast', __('media.lib.folder_deleting', ['name' => 'Đang xóa']));
+
+        // already open (it began deleting meanwhile): the panel and the drop cover name «Tất cả ảnh», as the endpoints file it
+        Livewire::actingAs($user)->test(Library::class)->call('setFolder', 'dang-xoa')->call('openUpload')
+            ->assertSeeHtml('data-upload-folder=""')
+            ->assertSeeHtml(e(__('media.lib.up_to_all')))
+            ->assertDontSeeHtml(e(__('media.lib.up_to_folder', ['name' => 'Đang xóa'])))
+            ->assertDontSeeHtml(e(__('media.lib.drop_to_folder', ['name' => 'Đang xóa'])));
+    });
+});
+
+it('saves a picture from «Từ đường link» into the folder in view, under the upload right', function (): void {
+    $user = fdUser('admin');
+    $folder = fdFolder(1, 'Công trình', 'cong-trinh', 1);
+    fdFile(1, 'a.png');
+    Http::fake(['https://93.184.216.34/xuong.png' => Http::response((string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', true), 200)]);
+
+    app(Tenancy::class)->enter(1, function () use ($user, $folder): void {
+        $page = Livewire::actingAs($user)->test(Library::class)->call('setFolder', 'cong-trinh')->call('openUpload')
+            ->set('pickerUrlInput', 'https://93.184.216.34/xuong.png')->call('previewPickerUrl')
+            ->assertHasNoErrors()
+            ->assertSet('pickerSource', 'url')
+            ->assertSeeHtml('wire:click="insertPicked"')
+            ->assertSee(__('media.picker_insert_count', ['count' => 1]));
+
+        $page->call('insertPicked')
+            ->assertHasNoErrors()
+            ->assertSet('pickerUrlPreview', null)
+            ->assertSet('pickerUrlInput', '')
+            ->assertSet('pickerSource', null)
+            ->assertSet('uploadOpen', true)
+            ->assertSet('toast', __('media.upload_success'))
+            ->assertDontSeeHtml('wire:click="insertPicked"');
+
+        $saved = Media::query()->latest('id')->firstOrFail();
+        expect($saved->folder_id)->toBe($folder->id)
+            ->and($saved->created_by)->toBe($user->id)
+            ->and($saved->collection)->toBe('library');
+
+        // with no preview (or the panel shut) the picker's insert stays closed here
+        $page->call('insertPicked')->assertForbidden();
+    });
+});
+
+it('forgets a link preview when the upload panel is closed, so it cannot be saved later', function (): void {
+    $user = fdUser('admin');
+    fdFolder(1, 'Công trình', 'cong-trinh', 1);
+    Http::fake(['https://93.184.216.34/xuong.png' => Http::response((string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', true), 200)]);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $page = Livewire::actingAs($user)->test(Library::class)->call('openUpload')
+            ->set('pickerUrlInput', 'https://93.184.216.34/xuong.png')->call('previewPickerUrl')
+            ->assertHasNoErrors();
+        $tempKey = $page->get('pickerUrlPreview')['tempKey'];
+        expect(Storage::disk(MediaKey::disk())->exists($tempKey))->toBeTrue();
+
+        $page->call('closeUpload')
+            ->assertSet('pickerUrlPreview', null)
+            ->assertSet('pickerUrlInput', '');
+        expect(Storage::disk(MediaKey::disk())->exists($tempKey))->toBeFalse();
+
+        $before = Media::query()->count();
+        $page->call('openUpload')->set('pickerSource', 'url')->set('pickerTab', 'upload')
+            ->call('insertPicked')->assertForbidden();
+        expect(Media::query()->count())->toBe($before);
+    });
+});
+
+it('never opens another site’s folder for an upload', function (): void {
+    $user = fdUser('admin');
+    fdFolder(2, 'Của site B', 'cua-site-b', 1);
+    fdFile(1, 'a.png');
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Livewire::actingAs($user)->test(Library::class)->call('uploadInto', 'cua-site-b')
+            ->assertSet('folder', '')
+            ->assertSet('uploadOpen', false)
+            ->assertNotDispatched('media-upload-opened');
+    });
+});
+
+it('takes dropped files to the device pane, and offers the drop cover only while an upload is possible', function (): void {
+    $admin = fdUser('admin');
+    $viewer = fdUser('viewer');
+    fdFolder(1, 'Công trình', 'cong-trinh', 1);
+    fdFile(1, 'a.png');
+
+    app(Tenancy::class)->enter(1, function () use ($admin, $viewer): void {
+        $page = Livewire::actingAs($admin)->test(Library::class)->call('setFolder', 'cong-trinh')
+            ->assertSeeHtml('data-drop-ok="true"')
+            ->assertSeeHtml('data-drop-cover')
+            ->assertSeeHtml(e(__('media.lib.drop_to_folder', ['name' => 'Công trình'])));
+        $page->call('openUpload', 'device')
+            ->assertSet('uploadOpen', true)
+            ->assertSet('pickerSource', 'device')
+            ->assertSeeHtml('data-drop-ok="false"'); // the panel's own drop area takes over
+        Livewire::actingAs($admin)->test(Library::class)->call('openUpload', 'url-or-anything')->assertSet('pickerSource', null)
+            ->call('closeUpload')->assertSeeHtml(e(__('media.lib.drop_to_all')));
+
+        Livewire::actingAs($viewer)->test(Library::class)
+            ->assertSeeHtml('data-drop-ok="false"')
+            ->assertDontSeeHtml('data-drop-cover');
+    });
 });
