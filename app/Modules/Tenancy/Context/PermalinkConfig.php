@@ -27,6 +27,11 @@ use Closure;
  * from the live preset while a background run moves the routes, composing from the pending one only
  * inside withTargets(); promote() then makes the pending preset the live one.
  *
+ * The run itself keeps its place in one more row (group `permalink_run`, key `state`; run(),
+ * saveRun()): its phase, the sections it walks, its cursor, the time of its last progress (the
+ * heartbeat that tells a working run from a lost one) and the items it could not move. The site is
+ * busy (busy()) while a change is staged or a run is still walking, settle included.
+ *
  * Memoized per-site for the request and negative-cached — a section with no row costs at most one
  * query. Registered scoped (TenancyServiceProvider) so the memo is flushed between Octane operations
  * and never leaks a stale pattern across requests.
@@ -34,6 +39,17 @@ use Closure;
 final class PermalinkConfig
 {
     private const string GROUP = 'permalinks';
+
+    private const string RUN_GROUP = 'permalink_run';
+
+    private const string RUN_KEY = 'state';
+
+    /** Phases of a run (ReflowPermalinks): moving to the staged preset, settling on the live one, finished with items it could not move. */
+    public const string RUN_MOVE = 'move';
+
+    public const string RUN_SETTLE = 'settle';
+
+    public const string RUN_DONE = 'done';
 
     /** The universal default: every section is flat unless the site opts into a prefixing preset. */
     public const string DEFAULT_PATTERN = 'flat';
@@ -56,6 +72,9 @@ final class PermalinkConfig
 
     /** @var array<string, array{pattern: string, base: string|null}> sections composed from a target preset for the length of withTargets() */
     private array $targets = [];
+
+    /** @var array<int, array<mixed>|null> the run row per site id as the last sections() read found it (until flush()) */
+    private array $runs = [];
 
     public function __construct(private readonly CurrentSite $current) {}
 
@@ -133,32 +152,83 @@ final class PermalinkConfig
 
     /**
      * Every stored section row of the current site in one read: its live preset and, while a change
-     * is being applied, the staged one. Empty with no site context.
+     * is being applied, the staged one. Empty with no site context. Always read afresh; the same read
+     * brings the run's row, which run() then answers from.
      *
      * @return array<string, array{pattern: string|null, base: string|null, pending: array{pattern: string, base: string|null, started_at: string}|null}>
      */
     public function sections(): array
     {
+        return $this->read();
+    }
+
+    /**
+     * The current site's permalink run, null when none is under way or kept: `phase` (RUN_MOVE,
+     * RUN_SETTLE, or RUN_DONE when it finished with items it could not move), the `sections` it
+     * walks, its cursor (`kind` index, `after` the last item id done), `beat` the ISO time of its last
+     * progress, and the items it could not move (`failures`, at most a few, `failed` how many).
+     *
+     * @return array{phase: string, sections: list<string>, kind: int, after: int, beat: string, failures: list<array{section: string, type: string, title: string, locale: string, old: string, new: string, reason: string}>, failed: int}|null
+     */
+    public function run(): ?array
+    {
         if (! $this->current->hasId()) {
-            return [];
+            return null;
+        }
+        if (! array_key_exists($this->current->id(), $this->runs)) {
+            $this->read();
+        }
+        $raw = $this->runs[$this->current->id()] ?? null;
+        if ($raw === null || ! in_array($raw['phase'] ?? null, [self::RUN_MOVE, self::RUN_SETTLE, self::RUN_DONE], true)) {
+            return null;
+        }
+        $failures = [];
+        foreach (is_array($raw['failures'] ?? null) ? $raw['failures'] : [] as $failure) {
+            if (is_array($failure)) {
+                $failures[] = [
+                    'section' => self::text($failure['section'] ?? null),
+                    'type' => self::text($failure['type'] ?? null),
+                    'title' => self::text($failure['title'] ?? null),
+                    'locale' => self::text($failure['locale'] ?? null),
+                    'old' => self::text($failure['old'] ?? null),
+                    'new' => self::text($failure['new'] ?? null),
+                    'reason' => self::text($failure['reason'] ?? null),
+                ];
+            }
         }
 
-        $out = [];
-        foreach (SiteSetting::query()->where('group_name', self::GROUP)->get(['key', 'value']) as $row) {
-            $value = $row->value;
-            $pending = is_array($value['pending'] ?? null) && is_string($value['pending']['pattern'] ?? null) ? $value['pending'] : null;
-            $out[$row->key] = [
-                'pattern' => is_string($value['pattern'] ?? null) ? $value['pattern'] : null,
-                'base' => is_string($value['base'] ?? null) ? $value['base'] : null,
-                'pending' => $pending === null ? null : [
-                    'pattern' => (string) $pending['pattern'],
-                    'base' => is_string($pending['base'] ?? null) ? $pending['base'] : null,
-                    'started_at' => is_string($pending['started_at'] ?? null) ? $pending['started_at'] : '',
-                ],
-            ];
+        return [
+            'phase' => (string) $raw['phase'],
+            'sections' => array_values(array_filter(is_array($raw['sections'] ?? null) ? $raw['sections'] : [], 'is_string')),
+            'kind' => is_int($raw['kind'] ?? null) ? $raw['kind'] : 0,
+            'after' => is_int($raw['after'] ?? null) ? $raw['after'] : 0,
+            'beat' => self::text($raw['beat'] ?? null),
+            'failures' => $failures,
+            'failed' => is_int($raw['failed'] ?? null) ? $raw['failed'] : count($failures),
+        ];
+    }
+
+    /**
+     * Store the run's state (null: the run is over and nothing is kept). The caller holds the
+     * site's permalink lock.
+     *
+     * @param  array{phase: string, sections: list<string>, kind: int, after: int, beat: string, failures: list<array{section: string, type: string, title: string, locale: string, old: string, new: string, reason: string}>, failed: int}|null  $state
+     */
+    public function saveRun(?array $state): void
+    {
+        if ($state === null) {
+            SiteSetting::query()->where('group_name', self::RUN_GROUP)->where('key', self::RUN_KEY)->delete();
+        } else {
+            SiteSetting::query()->updateOrCreate(['group_name' => self::RUN_GROUP, 'key' => self::RUN_KEY], ['value' => $state]);
         }
 
-        return $out;
+        $this->flush();
+    }
+
+    /** Whether a change is staged or a run is still walking (moving or settling): no other change may start. */
+    public function busy(): bool
+    {
+        return $this->pending() !== [] || in_array($this->run()['phase'] ?? null, [self::RUN_MOVE, self::RUN_SETTLE], true);
     }
 
     /**
@@ -224,7 +294,8 @@ final class PermalinkConfig
 
     /**
      * Every stored section of the current site back to the flat default, anything staged dropped
-     * (the operator's «everything flat» reflow). Idempotent: a row already exactly flat is left.
+     * and any run's
+     * state forgotten (the operator's «everything flat» reflow). Idempotent: a row already exactly flat is left.
      */
     public function flattenStored(): void
     {
@@ -233,6 +304,7 @@ final class PermalinkConfig
                 $row->update(['value' => ['pattern' => self::DEFAULT_PATTERN]]);
             }
         }
+        SiteSetting::query()->where('group_name', self::RUN_GROUP)->where('key', self::RUN_KEY)->delete();
 
         $this->flush();
     }
@@ -252,6 +324,50 @@ final class PermalinkConfig
     public function flush(): void
     {
         $this->memo = [];
+        $this->runs = [];
+    }
+
+    /**
+     * Both groups of the current site in one read: the section rows, returned, and the run's row,
+     * kept for run().
+     *
+     * @return array<string, array{pattern: string|null, base: string|null, pending: array{pattern: string, base: string|null, started_at: string}|null}>
+     */
+    private function read(): array
+    {
+        if (! $this->current->hasId()) {
+            return [];
+        }
+
+        $out = [];
+        $run = null;
+        foreach (SiteSetting::query()->whereIn('group_name', [self::GROUP, self::RUN_GROUP])->orderBy('key')->get(['group_name', 'key', 'value']) as $row) {
+            $value = $row->value;
+            if ($row->group_name === self::RUN_GROUP) {
+                $run = $row->key === self::RUN_KEY ? $value : $run;
+
+                continue;
+            }
+            $pending = is_array($value['pending'] ?? null) && is_string($value['pending']['pattern'] ?? null) ? $value['pending'] : null;
+            $out[$row->key] = [
+                'pattern' => is_string($value['pattern'] ?? null) ? $value['pattern'] : null,
+                'base' => is_string($value['base'] ?? null) ? $value['base'] : null,
+                'pending' => $pending === null ? null : [
+                    'pattern' => (string) $pending['pattern'],
+                    'base' => is_string($pending['base'] ?? null) ? $pending['base'] : null,
+                    'started_at' => is_string($pending['started_at'] ?? null) ? $pending['started_at'] : '',
+                ],
+            ];
+        }
+
+        $this->runs[$this->current->id()] = is_array($run) ? $run : null;
+
+        return $out;
+    }
+
+    private static function text(mixed $value): string
+    {
+        return is_string($value) ? $value : '';
     }
 
     /**

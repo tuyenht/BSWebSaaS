@@ -23,7 +23,7 @@ final class PermalinkKinds
     /** The routes columns a kind may name (the table's own target columns, written into queries). */
     private const array COLUMNS = ['product_id'];
 
-    /** @var array<string, array{column: string, section: string, items: Closure(list<int>): list<PermalinkItem>}> */
+    /** @var array<string, array{column: string, section: string, module: string|null, items: Closure(list<int>): list<PermalinkItem>}> */
     private array $kinds = [];
 
     /**
@@ -31,17 +31,18 @@ final class PermalinkKinds
      * @param  string  $column  the routes column naming its items, e.g. 'product_id'
      * @param  string  $section  the PermalinkConfig section composing its paths, e.g. 'products'
      * @param  Closure(list<int>): list<PermalinkItem>  $items  the published items among these ids
+     * @param  string|null  $module  the module a website needs for the section to be offered (Entitlement), null: always
      */
-    public function register(string $kind, string $column, string $section, Closure $items): void
+    public function register(string $kind, string $column, string $section, Closure $items, ?string $module = null): void
     {
         if (! in_array($column, self::COLUMNS, true)) {
             throw new InvalidArgumentException("Permalink kind '{$kind}' names an unknown routes column.");
         }
 
-        $this->kinds[$kind] = ['column' => $column, 'section' => $section, 'items' => $items];
+        $this->kinds[$kind] = ['column' => $column, 'section' => $section, 'module' => $module, 'items' => $items];
     }
 
-    /** @return array<string, array{column: string, section: string, items: Closure(list<int>): list<PermalinkItem>}> */
+    /** @return array<string, array{column: string, section: string, module: string|null, items: Closure(list<int>): list<PermalinkItem>}> */
     public function all(): array
     {
         return $this->kinds;

@@ -11,10 +11,12 @@ use App\Modules\Cms\Actions\Permalinks\ReflowSitePermalinks;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\PermalinkItem;
 use App\Modules\Cms\Routing\PermalinkKinds;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\PermalinkConfig;
+use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Models\ContentSection;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\JoinClause;
@@ -31,7 +33,10 @@ use Illuminate\Support\Facades\DB;
  * draft preset (PermalinkConfig::withTargets), the way the run will compose it. The preview reads
  * SAMPLE items per section: the board's «Khoảng N» is the section's count times the share of the
  * sample that changes, and a clash is one of the sample's new addresses another item already holds.
- * A fixed number of reads whatever the website's size.
+ * A section larger than its sample whose sample shows no change is counted `unknown` (its other
+ * items may still move), so the confirmation never hangs on the sample alone. Addresses are shown as
+ * visitors open them (PathBuilder::publicUrl: another language under its prefix). A fixed number of
+ * reads whatever the website's size or its number of post sections.
  */
 final readonly class PermalinkBoard
 {
@@ -60,6 +65,8 @@ final readonly class PermalinkBoard
         private ReflowSitePermalinks $engine,
         private PermalinkKinds $kinds,
         private ProductRoutes $products,
+        private PathBuilder $paths,
+        private SiteLocale $locales,
     ) {}
 
     /**
@@ -83,17 +90,25 @@ final readonly class PermalinkBoard
             ->mapWithKeys(fn (ContentSection $section): array => [$section->key => AdminNav::sectionIcon($section)])->all();
         $rootPaths = $this->rootPaths(array_merge([], ...array_column($cards, 'roots')));
 
-        // the sample items, entries of every card in one load
-        $entryIds = [];
+        // the capped count and the sample of every entry card in one read, then their items in one load
         $counts = [];
-        foreach ($cards as $card) {
+        $samples = [];
+        $union = null;
+        foreach ($cards as $index => $card) {
             if ($card['type'] === 'products') {
                 continue;
             }
-            $query = $this->entriesOf($card['type'], array_values(array_filter(array_map(fn (int $id): ?string => $rootPaths[$id] ?? null, $card['roots']))));
-            $counts[$card['key']] = $this->capped($query);
-            $entryIds = [...$entryIds, ...$this->sampleIds($query)];
+            $inner = $this->entriesOf($card['type'], array_values(array_filter(array_map(fn (int $id): ?string => $rootPaths[$id] ?? null, $card['roots']))))
+                ->select('entries.id')->limit(self::COUNT_CAP + 1)->toBase();
+            $part = DB::query()->fromSub($inner, 'c')->selectRaw('?::int as card, c.id, count(*) over () as n', [$index])->orderBy('c.id')->limit(self::SAMPLE);
+            $union = $union === null ? $part : $union->unionAll($part);
         }
+        foreach ($union?->get() ?? [] as $row) {
+            $key = $cards[Cast::int($row->card)]['key'];
+            $counts[$key] = Cast::int($row->n);
+            $samples[] = Cast::int($row->id);
+        }
+        $entryIds = $samples;
         $bySection = [];
         foreach ($this->engine->items(ReflowSitePermalinks::ENTRIES, array_values(array_unique($entryIds))) as ['section' => $section, 'item' => $item]) {
             if ($section !== null) {
@@ -139,8 +154,10 @@ final readonly class PermalinkBoard
     public function example(string $section, array $items, string $pattern, ?string $base): ?string
     {
         $best = null;
+        $bestLocale = null;
+        $default = $this->locales->default();
         foreach ($items as $item) {
-            $locale = array_key_first($item->routes);
+            $locale = isset($item->routes[$default]) ? $default : array_key_first($item->routes);
             if ($locale === null || ! isset($item->slugs[$locale])) {
                 continue;
             }
@@ -148,21 +165,22 @@ final readonly class PermalinkBoard
             $path = $this->permalinks->withTargets([$section => ['pattern' => $pattern, 'base' => $base]], fn (): string => ($item->compose)($locale, $slug));
             // the deepest address shows the format best; the home page ('/') only when nothing else
             if ($best === null || $best === '/' || ($path !== '/' && substr_count($path, '/') > substr_count($best, '/'))) {
-                $best = $path;
+                [$best, $bestLocale] = [$path, $locale];
             }
         }
 
-        return $best;
+        return $best === null || $bestLocale === null ? null : $this->paths->publicUrl($best, $bestLocale);
     }
 
     /**
      * The preview of the draft choices: for each section whose choice changes, its sample's
-     * old → new addresses (a clash marked with the holder of the address), the estimated number of
-     * addresses that change, and the totals.
+     * old → new addresses as visitors open them (a clash marked with the holder of the address), the
+     * estimated number of addresses that change, and the totals; `unknown` counts the changed
+     * sections larger than their sample whose sample shows no change (some of their items may move).
      *
      * @param  list<array{key: string, type: string, name: string, icon: string, count: int, capped: bool, pattern: string, base: string|null, pending: array{pattern: string, base: string|null}|null, items: list<PermalinkItem>}>  $sections
      * @param  array<string, array{pattern: string, base: string|null}>  $drafts  the changed sections
-     * @return array{list: list<array{key: string, name: string, from: string, to: string, estimate: int, capped: bool, rows: list<array{old: string, new: string, dup: string|null, holder: string|null}>, more: int}>, changed: int, capped: bool, dups: int}
+     * @return array{list: list<array{key: string, name: string, from: string, to: string, estimate: int, capped: bool, rows: list<array{old: string, new: string, dup: string|null, holder: string|null}>, more: int}>, changed: int, capped: bool, dups: int, unknown: int}
      */
     public function preview(array $sections, array $drafts): array
     {
@@ -195,7 +213,11 @@ final readonly class PermalinkBoard
         $changed = 0;
         $capped = false;
         $dups = 0;
+        $unknown = 0;
         foreach ($planned as ['section' => $section, 'draft' => $draft, 'rows' => $rows, 'total' => $total]) {
+            if ($rows === [] && ($section['capped'] || $section['count'] > count($section['items']))) {
+                $unknown++;
+            }
             $share = $total === 0 ? 0.0 : count($rows) / $total;
             $estimate = (int) round(($section['capped'] ? self::COUNT_CAP : $section['count']) * $share);
             $out = [];
@@ -204,7 +226,13 @@ final readonly class PermalinkBoard
                 if ($holder !== null && $holder['column'] === $row['column'] && $holder['id'] === $row['id']) {
                     $holder = null;
                 }
-                $out[] = ['old' => $row['old'], 'new' => $holder === null ? $row['new'] : $row['new'].'-2', 'dup' => $holder === null ? null : $row['new'], 'holder' => $holder['label'] ?? null];
+                $locale = $row['locale'];
+                $out[] = [
+                    'old' => $this->paths->publicUrl($row['old'], $locale),
+                    'new' => $this->paths->publicUrl($holder === null ? $row['new'] : $row['new'].'-2', $locale),
+                    'dup' => $holder === null ? null : $this->paths->publicUrl($row['new'], $locale),
+                    'holder' => $holder['label'] ?? null,
+                ];
             }
             $dups += count(array_filter($out, static fn (array $row): bool => $row['dup'] !== null));
             $changed += $estimate;
@@ -222,7 +250,7 @@ final readonly class PermalinkBoard
             ];
         }
 
-        return ['list' => $list, 'changed' => $changed, 'capped' => $capped, 'dups' => $dups];
+        return ['list' => $list, 'changed' => $changed, 'capped' => $capped, 'dups' => $dups, 'unknown' => $unknown];
     }
 
     /** The registered kind whose items sit in the `products` section, null when Catalog registered none. */
@@ -327,28 +355,5 @@ final readonly class PermalinkBoard
         }
 
         return $paths;
-    }
-
-    /**
-     * The rows of $query counted up to one past COUNT_CAP.
-     *
-     * @param  Builder<covariant \Illuminate\Database\Eloquent\Model>  $query
-     */
-    private function capped(Builder $query): int
-    {
-        $table = $query->getModel()->getTable();
-
-        return DB::query()->fromSub((clone $query)->select($table.'.id')->limit(self::COUNT_CAP + 1)->toBase(), 'c')->count();
-    }
-
-    /**
-     * @param  Builder<covariant \Illuminate\Database\Eloquent\Model>  $query
-     * @return list<int>
-     */
-    private function sampleIds(Builder $query): array
-    {
-        $table = $query->getModel()->getTable();
-
-        return array_values(array_map(static fn (mixed $id): int => Cast::int($id), (clone $query)->orderBy($table.'.id')->limit(self::SAMPLE)->pluck($table.'.id')->all()));
     }
 }

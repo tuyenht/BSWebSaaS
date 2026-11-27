@@ -100,6 +100,7 @@ final class CatalogServiceProvider extends ServiceProvider
             'products',
             /** @param list<int> $ids */
             static fn (array $ids): array => app(ProductRoutes::class)->permalinkItems($ids),
+            module: 'catalog',
         );
 
         // A gallery picture whose file goes into the media trash leaves the product page at once (the

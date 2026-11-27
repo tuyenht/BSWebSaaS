@@ -13,6 +13,7 @@ use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteFeature;
+use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Bus\UniqueLock;
 use Illuminate\Contracts\Cache\Repository as Cache;
@@ -22,9 +23,12 @@ use Illuminate\Support\Facades\Queue;
 /*
  * A change of address format: ChangeSitePermalinks checks the choice and stages it, the
  * ReflowPermalinks run moves every route of the changed sections in chunks (each in its own tenant
- * transaction), leaves a 301 from every old address, gives a clashing item the next free «-2» slug,
- * then makes the staged format live. Repeating a run changes nothing; another website is never
- * touched; a website whose plan may not choose keeps what it stored.
+ * transaction, its cursor and heartbeat stored with it), leaves a 301 from every old address, makes
+ * the staged format live, then settles: puts right what was saved meanwhile and gives an address
+ * still taken the next free «-2» slug. The website takes no other change until settle ends. An
+ * address that cannot move is skipped and kept for the screen. Repeating a run changes nothing; a
+ * lost run resumes from its cursor; another website is never touched; a website whose plan may not
+ * choose keeps what it stored.
  */
 
 beforeEach(function (): void {
@@ -86,6 +90,30 @@ function plRun(int $site = 1, int $size = 500, int $seconds = 30): bool
     return (bool) app()->call([$job, 'handle']);
 }
 
+/** The run's stored state (PermalinkConfig::run). */
+function plState(int $site = 1): ?array
+{
+    return plIn(function (): ?array {
+        app(PermalinkConfig::class)->flush();
+
+        return app(PermalinkConfig::class)->run();
+    }, $site);
+}
+
+/** Why a change was refused, null when it was taken. */
+function plRefusal(array $wanted, int $site = 1): ?string
+{
+    return plIn(function () use ($wanted): ?string {
+        try {
+            app(ChangeSitePermalinks::class)->handle($wanted);
+        } catch (PermalinkChangeRejectedException $e) {
+            return $e->reason;
+        }
+
+        return null;
+    }, $site);
+}
+
 /** Run a queued hand-over as a worker would: free its unique lock first, then handle it. */
 function plStart(ReflowPermalinks $job): bool
 {
@@ -114,6 +142,7 @@ function plRedirects(int $site): array
 it('moves pages, posts and products to the staged format in chunks, each with a 301, then makes it live', function (): void {
     Queue::fake();
     $ids = plIn(function (): array {
+        SiteModule::query()->create(['module_key' => 'catalog', 'enabled' => true]);
         $news = plSection('news', 'tin-tuc');
         $machines = Taxonomy::query()->create(['vocabulary' => 'product_cat', 'position' => 0]);
         $machines->translations()->create(['locale' => 'vi', 'name' => 'May', 'slug' => 'may']);
@@ -131,12 +160,13 @@ it('moves pages, posts and products to the staged format in chunks, each with a 
         'products' => ['pattern' => 'category', 'base' => null],
     ]));
     expect($staged)->toBe(['pages', 'news', 'products']);
-    Queue::assertPushed(ReflowPermalinks::class, fn (ReflowPermalinks $job): bool => $job->siteId === 1 && $job->phase === ReflowPermalinks::MOVE);
+    Queue::assertPushed(ReflowPermalinks::class, fn (ReflowPermalinks $job): bool => $job->siteId === 1);
     // staged, not live: nothing moved yet and the stored format still serves
     expect(plRoutes(1))->toHaveKey('/gioi-thieu')
         ->and(plIn(fn (): string => app(PermalinkConfig::class)->pattern('pages', 'pages')))->toBe('flat');
 
-    expect(plRun(size: 2))->toBeTrue();
+    expect(plRun(size: 2))->toBeTrue()
+        ->and(plState())->toBeNull();
 
     [$a, $b, $c] = $ids['pages'];
     [$p1, $p2] = $ids['posts'];
@@ -176,7 +206,9 @@ it('hands over to a fresh run between chunks and the next run carries on from it
 
         return true;
     });
-    expect($next->after)->toBeGreaterThan(0)->and($next->phase)->toBe(ReflowPermalinks::MOVE)
+    // the cursor is the run's stored place, not the job's: the hand-over carries only the website
+    expect(plState())->toMatchArray(['phase' => ReflowPermalinks::MOVE, 'kind' => 0])
+        ->and(plState()['after'])->toBeGreaterThan(0)
         ->and(array_keys(array_filter(plRoutes(1), fn (string $owner, string $path): bool => str_starts_with($path, '/trang/'), ARRAY_FILTER_USE_BOTH)))->toHaveCount(2);
 
     // the rest of the run, one chunk per hand-over, until it reports done
@@ -358,4 +390,208 @@ it('checks every prefix: filled, plain letters, not a platform address, not anot
     });
     expect($reason)->toBe('invalid');
     Queue::assertNotPushed(ReflowPermalinks::class);
+});
+
+/** Free the site's place in the queue, as it frees itself after uniqueFor (a queued run that was lost). */
+function plFreeQueue(int $site = 1): void
+{
+    (new UniqueLock(app(Cache::class)))->release(new ReflowPermalinks($site));
+}
+
+it('stays busy until the settle walk ends and puts right an item saved during the move', function (): void {
+    Queue::fake();
+    $ids = plIn(fn (): array => array_map(fn (string $slug): int => plEntry('page', $slug)->id, ['gioi-thieu', 'lien-he', 'bang-gia', 'tuyen-dung']));
+    plIn(fn () => app(ChangeSitePermalinks::class)->handle(['pages' => ['pattern' => 'base', 'base' => 'trang']]));
+
+    expect(plRun(size: 2, seconds: 0))->toBeFalse();
+    expect(plRoutes(1))->toHaveKey('/trang/gioi-thieu');
+    // a member renames a page the move has already passed: the save composes from the live, still flat format
+    plIn(function () use ($ids): void {
+        $page = Entry::query()->findOrFail($ids[0]);
+        $page->translations()->where('locale', 'vi')->update(['slug' => 've-chung-toi']);
+        app(RouteSync::class)->sync($page->fresh() ?? $page, 'vi', 've-chung-toi');
+    });
+    expect(plRoutes(1))->toHaveKey('/ve-chung-toi');
+
+    // the rest of the move, one step per run, until the new format is live and settle begins
+    $guard = 0;
+    while ((plState()['phase'] ?? null) !== ReflowPermalinks::SETTLE && $guard++ < 10) {
+        plRun(size: 2, seconds: 0);
+    }
+    expect(plState()['phase'] ?? null)->toBe(ReflowPermalinks::SETTLE)
+        ->and(plIn(fn (): array => app(PermalinkConfig::class)->pending()))->toBe([])
+        ->and(plIn(fn (): string => app(PermalinkConfig::class)->pattern('pages', 'pages')))->toBe('base');
+
+    // a new change while settle walks is refused in plain words, and the settle run is not dropped
+    expect(plRefusal(['pages' => ['pattern' => 'flat', 'base' => null]]))->toBe('pending')
+        ->and(plIn(fn (): bool => app(PermalinkConfig::class)->busy()))->toBeTrue();
+
+    // whichever run comes next carries settle on from the stored cursor
+    expect(plRun())->toBeTrue()
+        ->and(plState())->toBeNull()
+        ->and(plRoutes(1))->toHaveKey('/trang/ve-chung-toi')
+        ->and(plRoutes(1))->not->toHaveKey('/ve-chung-toi')
+        ->and(plRedirects(1))->toContain('/ve-chung-toi → /trang/ve-chung-toi (301)', '/gioi-thieu → /trang/ve-chung-toi (301)');
+
+    // after settle the website takes the next change
+    expect(plRefusal(['pages' => ['pattern' => 'flat', 'base' => null]]))->toBeNull();
+});
+
+it('moves an item into an address that another item of the same run leaves, without «-2»', function (): void {
+    Queue::fake();
+    [$page, $post] = plIn(function (): array {
+        $news = plSection('news', 'tin-tuc');
+        $page = plEntry('page', 'gioi-thieu');                   // moves first: /trang/gioi-thieu is still the post's
+        SiteSetting::query()->create(['group_name' => 'permalinks', 'key' => 'news', 'value' => ['pattern' => 'base', 'base' => 'trang']]);
+
+        return [$page, plEntry('post', 'gioi-thieu', $news)];
+    });
+    expect(plRoutes(1))->toBe(['/gioi-thieu' => 'e'.$page->id, '/trang/gioi-thieu' => 'e'.$post->id]);
+
+    plIn(fn () => app(ChangeSitePermalinks::class)->handle([
+        'pages' => ['pattern' => 'base', 'base' => 'trang'],
+        'news' => ['pattern' => 'base', 'base' => 'tin-tuc'],
+    ]));
+    expect(plRun())->toBeTrue();
+
+    expect(plRoutes(1))->toBe(['/tin-tuc/gioi-thieu' => 'e'.$post->id, '/trang/gioi-thieu' => 'e'.$page->id])
+        ->and(plIn(fn () => $page->translations()->where('locale', 'vi')->value('slug')))->toBe('gioi-thieu')
+        ->and(plRedirects(1))->toBe(['/gioi-thieu → /trang/gioi-thieu (301)'])
+        ->and(plState())->toBeNull();
+});
+
+it('skips an address that cannot move, finishes the run, and keeps it for the screen', function (): void {
+    Queue::fake();
+    $long = str_repeat('a', 250);
+    [$short, $tooLong] = plIn(fn (): array => [plEntry('page', 'gioi-thieu'), plEntry('page', $long)]);
+    plIn(fn () => app(ChangeSitePermalinks::class)->handle(['pages' => ['pattern' => 'base', 'base' => 'trang']]));
+
+    // '/trang/' + 250 letters is past what a route stores: that one page stays, the run goes on and ends
+    expect(plRun())->toBeTrue();
+
+    expect(plRoutes(1))->toBe(['/'.$long => 'e'.$tooLong->id, '/trang/gioi-thieu' => 'e'.$short->id])
+        ->and(plIn(fn (): string => app(PermalinkConfig::class)->pattern('pages', 'pages')))->toBe('base')
+        ->and(plIn(fn (): bool => app(PermalinkConfig::class)->busy()))->toBeFalse();
+    $state = plState();
+    expect($state['phase'])->toBe('done')->and($state['failed'])->toBe(1)
+        ->and($state['failures'][0])->toMatchArray(['section' => 'pages', 'locale' => 'vi', 'old' => '/'.$long, 'reason' => ReflowSitePermalinks::TOO_LONG]);
+
+    // shortened by the member, «Thử lại» walks the section again and the page follows the format
+    plIn(function () use ($tooLong): void {
+        $tooLong->translations()->where('locale', 'vi')->update(['slug' => 'trang-dai']);
+        app(RouteSync::class)->sync($tooLong->fresh() ?? $tooLong, 'vi', 'trang-dai');
+    });
+    plFreeQueue();
+    expect(plIn(fn (): bool => app(ChangeSitePermalinks::class)->retryFailed()))->toBeTrue()
+        ->and(plState()['phase'])->toBe(ReflowPermalinks::SETTLE);
+    Queue::assertPushed(ReflowPermalinks::class, 2);
+    expect(plRun())->toBeTrue()
+        ->and(plState())->toBeNull()
+        ->and(plRoutes(1))->toHaveKey('/trang/trang-dai');
+});
+
+it('lets a sub-page follow a parent page that takes «-2» in settle, in the same chunk and outside it', function (): void {
+    Queue::fake();
+    $ids = plIn(function (): array {
+        SiteSetting::query()->create(['group_name' => 'permalinks', 'key' => 'pages', 'value' => ['pattern' => 'base', 'base' => 'trang']]);
+        $history = plEntry('page', 'lich-su');                            // a sub-page older than its parent
+        $about = plEntry('page', 'gioi-thieu');
+        $team = plEntry('page', 'doi-ngu', parent: $about);
+        Entry::query()->whereKey($history->id)->update(['parent_id' => $about->id]);
+        plEntry('post', 'gioi-thieu', plSection('news', 'tin-tuc'));      // holds /gioi-thieu once pages nest
+        SiteSetting::query()->where('group_name', 'permalinks')->where('key', 'pages')->update(['value' => ['pattern' => 'nested']]);
+        app(PermalinkConfig::class)->flush();
+
+        return ['history' => $history->id, 'about' => $about->id, 'team' => $team->id];
+    });
+
+    // one settle chunk over the pages on the live (nested) format
+    plIn(fn (): array => app(ReflowSitePermalinks::class)->chunk(ReflowSitePermalinks::ENTRIES, ['pages'], [], 0, 500, suffix: true));
+
+    expect(plRoutes(1))->toMatchArray([
+        '/gioi-thieu-2' => 'e'.$ids['about'],
+        '/gioi-thieu-2/doi-ngu' => 'e'.$ids['team'],
+        '/gioi-thieu-2/lich-su' => 'e'.$ids['history'],
+    ])->and(plRoutes(1))->not->toHaveKeys(['/gioi-thieu/doi-ngu', '/gioi-thieu/lich-su']);
+});
+
+it('resumes a lost run from its cursor, judged by its last progress, never from the start', function (): void {
+    Queue::fake();
+    plIn(function (): void {
+        foreach (['mot', 'hai', 'ba', 'bon', 'nam'] as $slug) {
+            plEntry('page', $slug);
+        }
+    });
+    plIn(fn () => app(ChangeSitePermalinks::class)->handle(['pages' => ['pattern' => 'base', 'base' => 'trang']]));
+    $resume = fn (): bool => plIn(fn (): bool => app(ChangeSitePermalinks::class)->resumeIfStale());
+
+    // a long run: the change was staged 70 minutes ago, but its last chunk ran just now
+    $this->travel(70)->minutes();
+    plFreeQueue();
+    expect(plRun(size: 2, seconds: 0))->toBeFalse();
+    $cursor = plState()['after'];
+    $this->travel(5)->minutes();
+    expect($resume())->toBeFalse();
+    Queue::assertPushed(ReflowPermalinks::class, 2); // the staging's and the hand-over's
+
+    // a chunk replayed after a crash (its cursor never stored) moves nothing twice; its hand-over is
+    // dropped beside the one still queued, which would carry on from the same stored cursor
+    $redirectIds = DB::connection('pgsql_admin')->table('redirects')->where('site_id', 1)->orderBy('id')->pluck('id')->all();
+    $state = plState();
+    plIn(fn () => app(PermalinkConfig::class)->saveRun([...$state, 'after' => 0]));
+    plRun(size: 2, seconds: 0);
+    expect(DB::connection('pgsql_admin')->table('redirects')->where('site_id', 1)->orderBy('id')->pluck('id')->all())->toBe($redirectIds)
+        ->and(plState()['after'])->toBe($cursor);
+
+    // its hand-over lost, no progress for 20 minutes: a page open starts it again, from the stored cursor
+    $this->travel(20)->minutes();
+    plFreeQueue();
+    expect($resume())->toBeTrue();
+    Queue::assertPushed(ReflowPermalinks::class, 3);
+    $resumed = Queue::pushed(ReflowPermalinks::class)->last();
+    expect($resumed->siteId)->toBe(1);
+    $guard = 0;
+    while (! plStart($resumed) && $guard++ < 10) {
+        $resumed = Queue::pushed(ReflowPermalinks::class)->last();
+    }
+
+    expect(array_keys(plRoutes(1)))->toBe(['/trang/ba', '/trang/bon', '/trang/hai', '/trang/mot', '/trang/nam'])
+        ->and(plRedirects(1))->toHaveCount(5)
+        ->and(array_slice(DB::connection('pgsql_admin')->table('redirects')->where('site_id', 1)->orderBy('id')->pluck('id')->all(), 0, count($redirectIds)))->toBe($redirectIds)
+        ->and(plState())->toBeNull();
+});
+
+it('walks only the kinds the changed sections live in', function (): void {
+    Queue::fake();
+    plIn(function (): void {
+        SiteModule::query()->create(['module_key' => 'catalog', 'enabled' => true]);
+        $machines = Taxonomy::query()->create(['vocabulary' => 'product_cat', 'position' => 0]);
+        $machines->translations()->create(['locale' => 'vi', 'name' => 'May', 'slug' => 'may']);
+        plEntry('page', 'gioi-thieu');
+        plProduct('may-cnc', $machines);
+    });
+    plIn(fn () => app(ChangeSitePermalinks::class)->handle(['products' => ['pattern' => 'base', 'base' => 'san-pham']]));
+
+    $entryReads = 0;
+    DB::listen(function ($query) use (&$entryReads): void {
+        if (preg_match('/from "entries"|join "entries"|"entries"\."/', $query->sql) === 1) {
+            $entryReads++;
+        }
+    });
+    expect(plRun())->toBeTrue();
+
+    expect($entryReads)->toBe(0)
+        ->and(plRoutes(1))->toHaveKeys(['/gioi-thieu', '/san-pham/may-cnc']);
+});
+
+it('offers the products format only to a website that has the catalog', function (): void {
+    Queue::fake();
+    $products = ['products' => ['pattern' => 'base', 'base' => 'san-pham']];
+
+    expect(plIn(fn (): array => app(ChangeSitePermalinks::class)->problems($products)))->toBe(['products' => ['code' => 'pattern', 'other' => null]])
+        ->and(plRefusal($products))->toBe('invalid');
+
+    plIn(fn () => SiteModule::query()->create(['module_key' => 'catalog', 'enabled' => true]));
+    app()->forgetScopedInstances(); // the website's modules are read once per request
+    expect(plIn(fn (): array => app(ChangeSitePermalinks::class)->problems($products)))->toBe([]);
 });

@@ -24,7 +24,8 @@ use Illuminate\Support\Facades\DB;
  * one waits in `value.pending`) and ReflowPermalinks moves every route in chunks, each move with its
  * 301, then makes the staged presets live.
  *
- * Refused while an earlier change is still being applied (one at a time per site), and when the
+ * Refused while an earlier change is still being applied, its settle phase included (one at a time
+ * per site: PermalinkConfig::busy), and when the
  * website may not choose (`permalinks.custom` off: only CHANGING is gated, the stored presets keep
  * working). Every choice is checked: the preset is one its section's type allows, and a prefix is
  * lower-case letters, digits and single hyphens, used by no other section, and not a first segment
@@ -36,8 +37,8 @@ final readonly class ChangeSitePermalinks
 {
     public const string FEATURE = 'permalinks.custom';
 
-    /** A run whose change was staged this long ago and is still pending is taken as lost. */
-    public const int STALE_MINUTES = 60;
+    /** A run whose last progress (its heartbeat, or the staging before the first chunk) is this old is taken as lost. */
+    public const int STALE_MINUTES = 15;
 
     public const int BASE_MAX = 60;
 
@@ -63,14 +64,19 @@ final readonly class ChangeSitePermalinks
 
     /**
      * Every section whose address format the current site may set, with its type: pages, each
-     * section that files posts, and each registered kind's section (products).
+     * section that files posts, and each registered kind's section (products) when the website has
+     * that kind's module (the same rule the screen shows its card by).
      *
      * @return array<string, string> section => type
      */
     public function sections(): array
     {
         $out = ['pages' => 'pages'];
+        $modules = null;
         foreach ($this->kinds->all() as $kind) {
+            if ($kind['module'] !== null && ! in_array($kind['module'], $modules ??= $this->entitlement->entitledModuleKeys(), true)) {
+                continue;
+            }
             $out[$kind['section']] = $kind['section'];
         }
         foreach ($this->sections->postSections() as $section) {
@@ -163,7 +169,7 @@ final readonly class ChangeSitePermalinks
         if ($changes === []) {
             return [];
         }
-        if ($this->permalinks->pending() !== []) {
+        if ($this->permalinks->busy()) {
             throw new PermalinkChangeRejectedException('pending');
         }
         if (! $this->entitlement->featureEnabled(self::FEATURE)) {
@@ -174,6 +180,9 @@ final readonly class ChangeSitePermalinks
             throw new PermalinkChangeRejectedException('invalid', $problems);
         }
 
+        if ($this->permalinks->run() !== null) {
+            $this->permalinks->saveRun(null); // what an earlier run could not move is superseded by this one
+        }
         $this->permalinks->stage($changes, Carbon::now()->utc()->toIso8601String());
         ReflowPermalinks::dispatch($siteId);
 
@@ -181,25 +190,71 @@ final readonly class ChangeSitePermalinks
     }
 
     /**
-     * Start the run again when a change has been pending for STALE_MINUTES (its run was lost: a
-     * worker restart past its retries). The run skips what already moved. True when one was started.
+     * Start the run again when its last progress is STALE_MINUTES old (it was lost: a worker restart
+     * past its retries, a queued run that never came): the run carries on from its stored cursor.
+     * A run that is still working, however long it has run, is left alone. True when one was started.
      */
     public function resumeIfStale(): bool
     {
-        $oldest = null;
-        foreach ($this->permalinks->sections() as $row) {
-            $started = $row['pending']['started_at'] ?? null;
-            if (is_string($started) && $started !== '' && ($oldest === null || $started < $oldest)) {
-                $oldest = $started;
+        $run = $this->permalinks->run();
+        $walking = in_array($run['phase'] ?? null, [ReflowPermalinks::MOVE, ReflowPermalinks::SETTLE], true);
+        $last = $walking ? ($run['beat'] ?? '') : null;
+        if (! $walking) {
+            foreach ($this->permalinks->sections() as $row) {
+                $started = $row['pending']['started_at'] ?? null;
+                if (is_string($started) && $started !== '' && ($last === null || $started > $last)) {
+                    $last = $started;
+                }
             }
         }
-        if ($oldest === null || Carbon::parse($oldest)->gt(Carbon::now()->subMinutes(self::STALE_MINUTES))) {
+        if ($last === null || ($last !== '' && Carbon::parse($last)->gt(Carbon::now()->subMinutes(self::STALE_MINUTES)))) {
             return false;
         }
 
         ReflowPermalinks::dispatch($this->current->id());
 
         return true;
+    }
+
+    /**
+     * «Thử lại» for the items the last run could not move: walk their sections once more on the live
+     * format (a settle run), now that the member may have shortened or renamed them. False when
+     * there is nothing to retry or a run is under way.
+     */
+    public function retryFailed(): bool
+    {
+        self::lock($this->current->id());
+        $this->permalinks->flush();
+        $run = $this->permalinks->run();
+        if ($run === null || $run['phase'] !== PermalinkConfig::RUN_DONE || $this->permalinks->busy()) {
+            return false;
+        }
+        $sections = array_values(array_intersect(array_unique(array_column($run['failures'], 'section')), array_keys($this->sections())));
+        if ($sections === []) {
+            $sections = array_values(array_intersect($run['sections'], array_keys($this->sections())));
+        }
+        if ($sections === []) {
+            $this->permalinks->saveRun(null);
+
+            return false;
+        }
+        $this->permalinks->saveRun([
+            'phase' => ReflowPermalinks::SETTLE, 'sections' => $sections, 'kind' => 0, 'after' => 0,
+            'beat' => Carbon::now()->utc()->toIso8601String(), 'failures' => [], 'failed' => 0,
+        ]);
+        ReflowPermalinks::dispatch($this->current->id());
+
+        return true;
+    }
+
+    /** «Đã hiểu»: forget the items the last run could not move (they keep their old address). */
+    public function dismissFailed(): void
+    {
+        self::lock($this->current->id());
+        $this->permalinks->flush();
+        if (($this->permalinks->run()['phase'] ?? null) === PermalinkConfig::RUN_DONE) {
+            $this->permalinks->saveRun(null);
+        }
     }
 
     /** Whether a prefix would take a first segment the platform answers on. */

@@ -77,10 +77,16 @@ final class ReflowSitePermalinksCommand extends Command
         );
 
         $conflicts = array_filter($summary, static fn (array $row): bool => $row['status'] === 'conflict');
+        $failed = array_filter($summary, static fn (array $row): bool => $row['status'] === 'failed');
         $moved = array_filter($summary, static fn (array $row): bool => $row['status'] === 'moved');
 
-        if ($conflicts !== []) {
-            $this->error(count($conflicts).' route(s) collide on their flat slug — resolve those slugs, then re-run. Nothing was changed for them.');
+        if ($conflicts !== [] || $failed !== []) {
+            if ($conflicts !== []) {
+                $this->error(count($conflicts).' route(s) collide on their flat slug — resolve those slugs, then re-run. Nothing was changed for them.');
+            }
+            if ($failed !== []) {
+                $this->error(count($failed).' route(s) could not move (too long for a route, or an error — see the log). Nothing was changed for them.');
+            }
 
             return self::FAILURE;
         }

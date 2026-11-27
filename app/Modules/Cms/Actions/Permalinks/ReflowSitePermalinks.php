@@ -15,10 +15,13 @@ use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\Slugger;
+use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\PermalinkConfig;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
+use Throwable;
 
 /**
  * Moves the routes of the current site's published items to the address their section's permalink
@@ -33,9 +36,14 @@ use RuntimeException;
  *     already where it belongs is left untouched, so a chunk run twice writes nothing the second
  *     time (idempotent, resumable from any cursor). A clash — the new address another item holds,
  *     or one of the platform's — gets the next free slug (`-2`, `-3`…) stored on the item, then the
- *     move and its 301; without `suffix` it is reported instead.
- *   - handle(): the operator command (permalinks:reflow): every section back to flat in one run,
- *     clashes reported, never suffixed; `dryRun` runs the same writes and rolls them back.
+ *     move and its 301, when `suffix` is on (the run's settle phase only: during the move the holder
+ *     may be an item that moves away later in the same run); without it the item keeps its address
+ *     and is reported `conflict`. Each address moves under its own savepoint: one that cannot move
+ *     (too long for a route, or any error) is rolled back, reported `failed` with its reason and
+ *     skipped, and the chunk carries on.
+ *   - handle(): the operator command (permalinks:reflow): every section back to flat in one run
+ *     under the site's permalink lock, clashes reported, never suffixed; `dryRun` runs the same
+ *     writes and rolls them back.
  *
  * Runs inside the caller's Tenancy::enter() (an explicit transaction with SET LOCAL, RLS-scoped).
  */
@@ -50,18 +58,29 @@ final readonly class ReflowSitePermalinks
     /** Parent levels loaded with a page, so a nested address composes without a query per level. */
     private const int PARENT_LEVELS = 4;
 
+    /** The longest address a route stores (routes.path). */
+    public const int PATH_MAX = 255;
+
+    /** Why an address could not move: too long for a route, taken with no free slug, or an error. */
+    public const string TOO_LONG = 'too_long';
+
+    public const string TAKEN = 'taken';
+
+    public const string ERROR = 'error';
+
     public function __construct(
         private RouteSync $routes,
         private PathBuilder $paths,
         private PermalinkConfig $permalinks,
         private SectionResolver $sections,
         private PermalinkKinds $kinds,
+        private CurrentSite $current,
     ) {}
 
     /**
      * Every section back to flat and every route moved to its flat address (the operator command).
      *
-     * @return list<array{type: string, title: string, locale: string, old: string, new: string, status: string}>
+     * @return list<array{type: string, title: string, locale: string, old: string, new: string, status: string, reason: string|null}>
      */
     public function handle(bool $dryRun = false): array
     {
@@ -95,20 +114,37 @@ final readonly class ReflowSitePermalinks
     }
 
     /**
+     * Whether a run over $sections has anything to walk in $kind: entries when pages or a post
+     * section is among them, another kind when its own section is.
+     *
+     * @param  list<string>  $sections
+     */
+    public function walks(string $kind, array $sections): bool
+    {
+        return $kind === self::ENTRIES ? $this->entryTypes($sections) !== [] : in_array($this->kinds->all()[$kind]['section'] ?? null, $sections, true);
+    }
+
+    /**
      * One chunk of a run: the published items of $kind whose id follows $after (at most $limit ids
-     * with a route), each route moved to the address its section's preset gives — the preset of
-     * $targets for the sections named there. `last` is the cursor for the next chunk, null when
-     * this was the last one.
+     * with a route; only pages, or only posts, when $sections names only those), each route moved
+     * to the address its section's preset gives — the preset of $targets for the sections named
+     * there. `last` is the cursor for the next chunk, null when this was the last one.
      *
      * @param  list<string>|null  $sections  only items of these sections (null: every item)
      * @param  array<string, array{pattern: string, base: string|null}>  $targets
-     * @return array{last: int|null, rows: list<array{type: string, title: string, locale: string, old: string, new: string, status: string, section: string|null}>}
+     * @return array{last: int|null, rows: list<array{type: string, title: string, locale: string, old: string, new: string, status: string, reason: string|null, section: string|null}>}
      */
     public function chunk(string $kind, ?array $sections, array $targets, int $after, int $limit = self::CHUNK, bool $suffix = true): array
     {
+        if ($sections !== null && ! $this->walks($kind, $sections)) {
+            return ['last' => null, 'rows' => []];
+        }
         $column = $this->column($kind);
-        $ids = array_values(array_map(static fn (mixed $id): int => Cast::int($id), SiteRoute::query()
-            ->whereNotNull($column)->where($column, '>', $after)
+        $query = SiteRoute::query()->whereNotNull($column)->where($column, '>', $after);
+        if ($kind === self::ENTRIES && $sections !== null && count($types = $this->entryTypes($sections)) === 1) {
+            $query->whereIn('entry_id', Entry::query()->select('id')->where('type', $types[0]));
+        }
+        $ids = array_values(array_map(static fn (mixed $id): int => Cast::int($id), $query
             ->distinct()->orderBy($column)->limit($limit)->pluck($column)->all()));
 
         $rows = [];
@@ -120,7 +156,7 @@ final readonly class ReflowSitePermalinks
                         continue;
                     }
                     foreach ($item->routes as $locale => $old) {
-                        $row = $this->move($item, $locale, $old, $suffix);
+                        $row = $this->moveSafely($item, $locale, $old, $suffix);
                         if ($row !== null) {
                             $rows[] = $row + ['section' => $section];
                         }
@@ -166,6 +202,7 @@ final readonly class ReflowSitePermalinks
             ->with(['translations', 'routes', ...$parents, ...PathBuilder::primaryCategoryRelations()])
             ->orderBy('id')->get();
         $this->sections->prime($entries);
+        $this->shareParents($entries);
 
         $out = [];
         foreach ($entries as $entry) {
@@ -177,34 +214,61 @@ final readonly class ReflowSitePermalinks
     }
 
     /**
-     * Move one route of $item; null when its language has no slug to compose from.
+     * Move one route of $item under its own savepoint: an address that cannot move is rolled back
+     * and reported `failed` with its reason, so one item never stops the run. Null when its
+     * language has no slug to compose from.
      *
-     * @return array{type: string, title: string, locale: string, old: string, new: string, status: string}|null
+     * @return array{type: string, title: string, locale: string, old: string, new: string, status: string, reason: string|null}|null
      */
-    private function move(PermalinkItem $item, string $locale, string $old, bool $suffix): ?array
+    private function moveSafely(PermalinkItem $item, string $locale, string $old, bool $suffix): ?array
     {
         if (! array_key_exists($locale, $item->slugs)) {
             return null;
         }
+        $row = ['type' => $item->type, 'title' => $item->titles[$locale] ?? '', 'locale' => $locale, 'old' => $old];
+
+        try {
+            return DB::transaction(fn (): array => $this->move($item, $locale, $old, $suffix));
+        } catch (RouteConflictException) {
+            // a sub-page following a renamed parent found its address taken: the parent stays too
+            return $row + ['new' => $old, 'status' => 'failed', 'reason' => self::TAKEN];
+        } catch (Throwable $e) {
+            report($e);
+
+            return $row + ['new' => $old, 'status' => 'failed', 'reason' => self::ERROR];
+        }
+    }
+
+    /**
+     * @return array{type: string, title: string, locale: string, old: string, new: string, status: string, reason: string|null}
+     */
+    private function move(PermalinkItem $item, string $locale, string $old, bool $suffix): array
+    {
         $slug = trim($item->slugs[$locale], '/');
         $row = ['type' => $item->type, 'title' => $item->titles[$locale] ?? '', 'locale' => $locale, 'old' => $old];
         $target = ($item->compose)($locale, $slug);
         if ($target === $old) {
-            return $row + ['new' => $old, 'status' => 'unchanged'];
+            return $row + ['new' => $old, 'status' => 'unchanged', 'reason' => null];
+        }
+        if (mb_strlen($target) > self::PATH_MAX) {
+            return $row + ['new' => $target, 'status' => 'failed', 'reason' => self::TOO_LONG];
         }
 
         try {
-            return $row + ['new' => ($item->sync)($locale, $slug), 'status' => 'moved'];
+            return $row + ['new' => ($item->sync)($locale, $slug), 'status' => 'moved', 'reason' => null];
         } catch (RouteConflictException) {
             $free = $suffix ? $this->freeSlug($item, $locale, $slug, $target) : null;
             if ($free === null) {
-                return $row + ['new' => $old, 'status' => 'conflict'];
+                return $row + ['new' => $target, 'status' => 'conflict', 'reason' => self::TAKEN];
             }
+        }
+        if (mb_strlen(($item->compose)($locale, $free)) > self::PATH_MAX) {
+            return $row + ['new' => $target, 'status' => 'failed', 'reason' => self::TOO_LONG];
         }
 
         ($item->rename)($locale, $free);
 
-        return $row + ['new' => ($item->sync)($locale, $free), 'status' => 'suffixed'];
+        return $row + ['new' => ($item->sync)($locale, $free), 'status' => 'suffixed', 'reason' => null];
     }
 
     /**
@@ -256,10 +320,15 @@ final readonly class ReflowSitePermalinks
             routes: $routes,
             compose: fn (string $locale, string $slug): string => $this->paths->forEntry($entry, $locale, $slug),
             sync: fn (string $locale, string $slug): string => $this->routes->sync($entry, $locale, $slug),
-            rename: static function (string $locale, string $slug) use ($entry): void {
+            // the loaded translation is the one every sub-page of the chunk composes from (shareParents);
+            // a sub-page elsewhere follows through RouteSync, each with its 301
+            rename: function (string $locale, string $slug) use ($entry): void {
                 $translation = $entry->translations->firstWhere('locale', $locale);
                 if ($translation instanceof EntryTranslation) {
                     $translation->update(['slug' => $slug]);
+                }
+                if ($entry->type === 'page' && $this->permalinks->pagesNested()) {
+                    $this->routes->syncDescendants($entry, $locale);
                 }
             },
         );
@@ -280,10 +349,62 @@ final readonly class ReflowSitePermalinks
     }
 
     /**
-     * @return list<array{type: string, title: string, locale: string, old: string, new: string, status: string}>
+     * The entry types a run over $sections walks: `page` for pages, `post` for any post section
+     * (a section that is neither pages nor another kind's).
+     *
+     * @param  list<string>  $sections
+     * @return list<string>
+     */
+    private function entryTypes(array $sections): array
+    {
+        $other = array_column($this->kinds->all(), 'section');
+        $types = [];
+        foreach ($sections as $section) {
+            $type = $section === 'pages' ? 'page' : (in_array($section, $other, true) ? null : 'post');
+            if ($type !== null && ! in_array($type, $types, true)) {
+                $types[] = $type;
+            }
+        }
+
+        return $types;
+    }
+
+    /**
+     * Point each loaded page's parent (at every loaded level) at the parent's own instance when the
+     * chunk holds it, so a parent's new slug («-2») is the one its sub-pages compose from next.
+     *
+     * @param  Collection<int, Entry>  $entries
+     */
+    private function shareParents(Collection $entries): void
+    {
+        $byId = $entries->keyBy('id');
+        $seen = [];
+        $stack = $entries->all();
+        while ($stack !== []) {
+            $entry = array_pop($stack);
+            if (isset($seen[spl_object_id($entry)])) {
+                continue;
+            }
+            $seen[spl_object_id($entry)] = true;
+            if (! $entry->relationLoaded('parent') || $entry->parent_id === null) {
+                continue;
+            }
+            $shared = $byId->get($entry->parent_id);
+            if ($shared instanceof Entry) {
+                $entry->setRelation('parent', $shared);
+            } elseif ($entry->parent instanceof Entry) {
+                $stack[] = $entry->parent;
+            }
+        }
+    }
+
+    /**
+     * @return list<array{type: string, title: string, locale: string, old: string, new: string, status: string, reason: string|null}>
      */
     private function flattenAll(): array
     {
+        // the same lock as a change and its run: never between two chunks of a run, never beside a save
+        ChangeSitePermalinks::lock($this->current->id());
         $this->permalinks->flattenStored();
 
         $summary = [];

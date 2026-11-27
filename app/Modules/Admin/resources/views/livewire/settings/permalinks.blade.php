@@ -72,6 +72,38 @@
                 <span class="min-w-0">{!! __('admin.pl.info', ['primary' => '<b>'.e(__('admin.pl.info_primary')).'</b>']) !!}</span>
             </div>
 
+            @if ($failures !== null)
+                {{-- after a run (not on the board): the addresses it could not move, each with what to do; they keep their old address --}}
+                <section aria-labelledby="pl-fail-h" class="flex flex-col gap-2.5">
+                    <x-bs-admin::alert color="warning" icon="ri-error-warning">
+                        <h2 id="pl-fail-h" class="m-0 block text-[calc(0.9375rem+var(--user-text-boost))] font-semibold">{{ __('admin.pl.failed_title', ['n' => $num($failures['count'])]) }}</h2>
+                        <span class="block">{{ __('admin.pl.failed_body') }}</span>
+                        <ul class="m-0 mt-2 flex list-none flex-col gap-2 p-0">
+                            @foreach ($failures['rows'] as $i => $f)
+                                <li wire:key="pl-fail-{{ $i }}" class="flex flex-col gap-0.5 rounded border border-current/20 bg-surface px-3 py-2 text-text-strong">
+                                    <span class="font-semibold [overflow-wrap:anywhere]">{{ $f['title'] }}@if ($f['section'] !== '') <span class="font-normal text-text-muted">· {{ $f['section'] }}</span>@endif</span>
+                                    <span class="font-mono text-[calc(0.78125rem+var(--user-text-boost))] leading-normal text-text-muted [overflow-wrap:anywhere]" dir="ltr">{{ __('admin.pl.failed_keeps', ['url' => $host.$f['old']]) }}</span>
+                                    <span class="text-small text-text-muted">{{ $f['fix'] }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                        @if ($failures['more'] > 0)
+                            <span class="mt-1.5 block text-caption">{{ __('admin.pl.failed_more', ['n' => $num($failures['more'])]) }}</span>
+                        @endif
+                        <span class="mt-2.5 flex flex-wrap gap-2">
+                            <x-bs-admin::button variant="solid" color="primary" wire:click="retryFailed" wire:loading.attr="disabled" wire:target="retryFailed">
+                                <x-bs-admin::icon name="ri-refresh" :class="$glyph" />
+                                <span>{{ __('admin.pl.retry') }}</span>
+                            </x-bs-admin::button>
+                            <x-bs-admin::button variant="outline" color="neutral" wire:click="dismissFailed" wire:loading.attr="disabled" wire:target="dismissFailed">
+                                <x-bs-admin::icon name="ri-check" :class="$glyph" />
+                                <span>{{ __('admin.pl.failed_dismiss') }}</span>
+                            </x-bs-admin::button>
+                        </span>
+                    </x-bs-admin::alert>
+                </section>
+            @endif
+
             @if ($pending)
                 {{-- a change still being applied (not on the board): the run moves the addresses, then the page refreshes itself --}}
                 <div wire:poll.15s="retry">
@@ -213,10 +245,16 @@
     </div>
 
     {{-- Before addresses visitors know change: how many, the redirects the website gets, the clashes, Google's delay. --}}
+    {{-- A section larger than its sample whose sample shows no change still asks, with a line that says so instead of a number. --}}
     <x-bs-admin::confirm-dialog model="confirming" :title="__('admin.pl.cf_title', ['n' => $changes])" icon="ri-links" warning
-        :ok="__('admin.pl.cf_ok', ['n' => $num($preview['changed'], $preview['capped'])])" ok-icon="ri-check" confirm="confirmSave" cancel="cancelConfirm">
-        <x-bs-admin::confirm-line icon="ri-links">{{ __('admin.pl.cf_changed', ['n' => $num($preview['changed'], $preview['capped'])]) }}</x-bs-admin::confirm-line>
-        <x-bs-admin::confirm-line icon="ri-route">{{ __('admin.pl.cf_redirects', ['n' => $num($preview['changed'], $preview['capped'])]) }}</x-bs-admin::confirm-line>
+        :ok="$preview['changed'] > 0 ? __('admin.pl.cf_ok', ['n' => $num($preview['changed'], $preview['capped'])]) : __('admin.pl.cf_ok_plain')" ok-icon="ri-check" confirm="confirmSave" cancel="cancelConfirm">
+        @if ($preview['changed'] > 0)
+            <x-bs-admin::confirm-line icon="ri-links">{{ __('admin.pl.cf_changed', ['n' => $num($preview['changed'], $preview['capped'])]) }}</x-bs-admin::confirm-line>
+            <x-bs-admin::confirm-line icon="ri-route">{{ __('admin.pl.cf_redirects', ['n' => $num($preview['changed'], $preview['capped'])]) }}</x-bs-admin::confirm-line>
+        @endif
+        @if ($preview['unknown'] > 0)
+            <x-bs-admin::confirm-line icon="ri-information">{{ __('admin.pl.cf_unknown') }}</x-bs-admin::confirm-line>
+        @endif
         @if ($preview['dups'] > 0)
             <x-bs-admin::confirm-line icon="ri-error-warning">{{ __('admin.pl.cf_dups', ['n' => $num($preview['dups'])]) }}</x-bs-admin::confirm-line>
         @endif

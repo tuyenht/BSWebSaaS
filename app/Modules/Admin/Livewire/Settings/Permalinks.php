@@ -8,11 +8,15 @@ use App\Modules\Admin\Support\Permalinks\PermalinkBoard;
 use App\Modules\Admin\Support\SeoFields;
 use App\Modules\Admin\Support\UpgradeInvitation;
 use App\Modules\Cms\Actions\Permalinks\ChangeSitePermalinks;
+use App\Modules\Cms\Actions\Permalinks\ReflowSitePermalinks;
 use App\Modules\Cms\Exceptions\PermalinkChangeRejectedException;
+use App\Modules\Cms\Jobs\ReflowPermalinks;
+use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Support\RoleLabel;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\Slugger;
+use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use Illuminate\Database\QueryException;
@@ -29,8 +33,10 @@ use Livewire\Component;
  * addresses that change and a confirmation that says how many redirects the website gets.
  *
  * Saving stages the change (ChangeSitePermalinks): a background run moves the addresses, each with
- * a 301 from the old one, and makes the new format live; until it is done the screen says so and
- * the cards show what is coming, read-only. settings.manage on every request and every action; a
+ * a 301 from the old one, and makes the new format live; until it is done (its settle walk
+ * included) the screen says so and the cards show what is coming, read-only. The items the run could
+ * not move are listed after it, each with why and what to do, with «Thử lại» and «Đã hiểu».
+ * settings.manage on every request and every action; a
  * member without it gets the board's no-permission card. A website whose plan does not let it
  * choose (`permalinks.custom` off) gets the board's locked card; what it stored keeps working.
  */
@@ -76,7 +82,8 @@ final class Permalinks extends Component
         if ($changes === []) {
             return;
         }
-        if (app(Entitlement::class)->siteIsActive() && $this->board()->preview($sections, $changes)['changed'] > 0) {
+        $preview = $this->board()->preview($sections, $changes);
+        if (app(Entitlement::class)->siteIsActive() && ($preview['changed'] > 0 || $preview['unknown'] > 0)) {
             $this->confirming = true;
 
             return;
@@ -96,6 +103,25 @@ final class Permalinks extends Component
             return;
         }
         $this->commit($changes, $this->board()->preview($sections, $changes)['changed']);
+    }
+
+    /** «Thử lại» on the list of items the last run could not move. */
+    public function retryFailed(): void
+    {
+        $this->authorized();
+        $this->dismissToast();
+        if (app(ChangeSitePermalinks::class)->retryFailed()) {
+            $this->notify(__('admin.pl.failed_retrying'));
+        }
+        $this->load();
+    }
+
+    /** «Đã hiểu» on that list: the items keep their old address. */
+    public function dismissFailed(): void
+    {
+        $this->authorized();
+        app(ChangeSitePermalinks::class)->dismissFailed();
+        $this->load();
     }
 
     public function cancelConfirm(): void
@@ -147,29 +173,33 @@ final class Permalinks extends Component
         $locked = ! $entitlement->featureEnabled(ChangeSitePermalinks::FEATURE);
         $failed = false;
         $sections = [];
-        $preview = ['list' => [], 'changed' => 0, 'capped' => false, 'dups' => 0];
+        $preview = ['list' => [], 'changed' => 0, 'capped' => false, 'dups' => 0, 'unknown' => 0];
+        $run = null;
         $changes = [];
         $problems = [];
         try {
             // a savepoint inside the request's tenancy transaction: a failed read leaves it usable
-            [$sections, $changes, $preview, $problems] = DB::transaction(function () use ($locked): array {
+            [$sections, $changes, $preview, $problems, $run] = DB::transaction(function () use ($locked): array {
                 if ($locked) {
-                    return [[], [], ['list' => [], 'changed' => 0, 'capped' => false, 'dups' => 0], []];
+                    return [[], [], ['list' => [], 'changed' => 0, 'capped' => false, 'dups' => 0, 'unknown' => 0], [], null];
                 }
                 $sections = $this->board()->sections();
-                $changes = $this->changes($sections);
+                $run = app(PermalinkConfig::class)->run(); // read with the sections
+                $changes = $this->changes($sections, $run);
                 $problems = $this->problems();
 
                 // a prefix still in error previews nothing (the field says what to fix)
-                return [$sections, $changes, $this->board()->preview($sections, array_diff_key($changes, $problems)), $problems];
+                return [$sections, $changes, $this->board()->preview($sections, array_diff_key($changes, $problems)), $problems, $run];
             });
         } catch (QueryException $e) {
             report($e);
             $failed = true;
         }
 
-        $pending = array_values(array_filter($sections, static fn (array $s): bool => $s['pending'] !== null)) !== [];
+        $walking = in_array($run['phase'] ?? null, [ReflowPermalinks::MOVE, ReflowPermalinks::SETTLE], true);
+        $pending = $walking || array_values(array_filter($sections, static fn (array $s): bool => $s['pending'] !== null)) !== [];
         $problems = $pending ? [] : $problems;
+        $settling = $walking && $run !== null && $run['phase'] === ReflowPermalinks::SETTLE ? $run['sections'] : [];
         $cards = [];
         foreach ($sections as $section) {
             $key = $section['key'];
@@ -184,7 +214,7 @@ final class Permalinks extends Component
                 'draft' => $draft,
                 'options' => $options,
                 'changed' => isset($changes[$key]),
-                'staged' => $section['pending'] !== null,
+                'staged' => $section['pending'] !== null || in_array($key, $settling, true),
                 'problem' => $problems[$key] ?? null,
                 'example_base' => $this->defaultBase($section),
             ];
@@ -205,6 +235,7 @@ final class Permalinks extends Component
             'changes' => count($changes),
             'invalid' => count($problems),
             'preview' => $preview,
+            'failures' => $this->failures($run, $names),
             'host' => $this->host(),
             'num' => fn (int $n, bool $capped = false): string => Number::format($n, locale: app()->getLocale()).($capped ? '+' : ''),
         ]);
@@ -238,10 +269,14 @@ final class Permalinks extends Component
      * The drafted sections whose choice differs from the stored one.
      *
      * @param  list<array{key: string, type: string, pattern: string, base: string|null, pending: array{pattern: string, base: string|null}|null}>  $sections
+     * @param  array{phase: string}|null  $run  the run under way, when the caller has read it
      * @return array<string, array{pattern: string, base: string|null}>
      */
-    private function changes(array $sections): array
+    private function changes(array $sections, ?array $run = null): array
     {
+        if (in_array(($run ?? app(PermalinkConfig::class)->run())['phase'] ?? null, [ReflowPermalinks::MOVE, ReflowPermalinks::SETTLE], true)) {
+            return [];
+        }
         $out = [];
         foreach ($sections as $section) {
             if ($section['pending'] !== null) {
@@ -339,6 +374,34 @@ final class Permalinks extends Component
             'category_path' => '/'.__('admin.pl.ex_category').'/'.__('admin.pl.ex_sub').'/'.$slug,
             default => '/'.$slug,
         };
+    }
+
+    /**
+     * The items the last run could not move, as the screen lists them: name, the address it keeps,
+     * the one it should take (as visitors open them), and what to do.
+     *
+     * @param  array{phase: string, failures: list<array{section: string, type: string, title: string, locale: string, old: string, new: string, reason: string}>, failed: int}|null  $run
+     * @param  array<string, string>  $names  section key => card name
+     * @return array{count: int, more: int, rows: list<array{title: string, section: string, old: string, new: string, fix: string}>}|null
+     */
+    private function failures(?array $run, array $names): ?array
+    {
+        if ($run === null || $run['phase'] !== PermalinkConfig::RUN_DONE || $run['failed'] === 0) {
+            return null;
+        }
+        $paths = app(PathBuilder::class);
+        $rows = [];
+        foreach ($run['failures'] as $failure) {
+            $rows[] = [
+                'title' => $failure['title'] !== '' ? $failure['title'] : __('admin.pl.failed_untitled'),
+                'section' => $names[$failure['section']] ?? '',
+                'old' => $paths->publicUrl($failure['old'], $failure['locale']),
+                'new' => $paths->publicUrl($failure['new'], $failure['locale']),
+                'fix' => __('admin.pl.failed_'.(in_array($failure['reason'], [ReflowSitePermalinks::TOO_LONG, ReflowSitePermalinks::TAKEN], true) ? $failure['reason'] : ReflowSitePermalinks::ERROR)),
+            ];
+        }
+
+        return ['count' => $run['failed'], 'more' => max(0, $run['failed'] - count($rows)), 'rows' => $rows];
     }
 
     private function host(): string

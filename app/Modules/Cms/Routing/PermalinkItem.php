@@ -14,7 +14,8 @@ use Closure;
  * save does:
  *   - compose(locale, slug): the path the item would take with this slug (no write);
  *   - sync(locale, slug): move its route there (RouteSync: a 301 from the old address);
- *   - rename(locale, slug): store a new slug for that language (a clash's «-2»).
+ *   - rename(locale, slug): store a new slug for that language (a clash's «-2»); a page's sub-pages
+ *     follow its new address when pages nest.
  */
 final readonly class PermalinkItem
 {

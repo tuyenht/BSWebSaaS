@@ -792,7 +792,8 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     file_put_contents($dir.'/redirects-trash.html', $trash);
 
     // "Đường dẫn": the cards as stored; a drafted change with its preview of the addresses that move;
-    // and a change still being applied (read-only cards, the notice that refreshes itself).
+    // a change still being applied (read-only cards, the notice that refreshes itself); and the
+    // addresses a finished run could not move, each with what to do, «Thử lại» and «Đã hiểu».
     $this->flushSession();
     $page = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/permalinks')->assertOk()->getContent();
     expect($page)->toContain('Khuyên dùng', 'Phẳng');
@@ -807,6 +808,15 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($pending)->toContain('Đang đổi đường dẫn');
     file_put_contents($dir.'/permalinks-pending.html', $pending);
     app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('group_name', 'permalinks')->delete());
+    app(Tenancy::class)->enter(1, fn () => app(PermalinkConfig::class)->saveRun([
+        'phase' => PermalinkConfig::RUN_DONE, 'sections' => ['pages'], 'kind' => 1, 'after' => 0, 'beat' => now()->utc()->toIso8601String(), 'failed' => 1,
+        'failures' => [['section' => 'pages', 'type' => 'page', 'title' => 'Chính sách bảo hành và đổi trả sản phẩm', 'locale' => 'vi', 'old' => '/chinh-sach-bao-hanh-va-doi-tra-san-pham', 'new' => '/trang/chinh-sach-bao-hanh-va-doi-tra-san-pham', 'reason' => 'too_long']],
+    ]));
+    $this->flushSession();
+    $failedRun = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/permalinks')->assertOk()->getContent();
+    expect($failedRun)->toContain('1 địa chỉ chưa đổi được', 'Đã hiểu');
+    file_put_contents($dir.'/permalinks-failed.html', $failedRun);
+    app(Tenancy::class)->enter(1, fn () => app(PermalinkConfig::class)->saveRun(null));
     app(PermalinkConfig::class)->flush();
 
     // "Thông tin chung" filled from the older brand setting, as a site has it before its first save
@@ -1869,5 +1879,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 167);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 168);
 });
