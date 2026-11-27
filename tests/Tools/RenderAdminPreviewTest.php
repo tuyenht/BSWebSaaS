@@ -162,6 +162,17 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
 
     $owner = User::query()->where('email', 'owner@'.ADMIN_PREVIEW_HOST)->firstOrFail();
 
+    // «Thư gần đây» with a sent and a failed mail of today and yesterday, and today's count of the
+    // shared outbox («Còn N thư hôm nay»). mail_logs has no foreign key to sites: cleared here.
+    $mailDb = DB::connection('pgsql_admin');
+    $mailDb->statement('truncate mail_logs, mail_daily restart identity cascade');
+    foreach ([[0, 'lead', 'nguyenvanb@congty.vn', 'sent', null], [1, 'password_reset', 'thuha@vidu.vn', 'sent', null], [2, 'invitation', 'sai@dia-chi', 'failed', 'rejected']] as [$days, $kind, $to, $state, $why]) {
+        $at = now('UTC')->subDays(min(1, $days))->subMinutes(5 + $days * 20);
+        $mailDb->statement('select public.mail_log_month_create(?::date)', [$at->copy()->startOfMonth()->toDateString()]);
+        $mailDb->table('mail_logs')->insert(['site_id' => 1, 'kind' => $kind, 'via' => 'platform', 'recipient_count' => 1, 'to_first' => $to, 'status' => $state, 'reason_code' => $why, 'created_at' => $at]);
+    }
+    $mailDb->table('mail_daily')->insert(['site_id' => 1, 'day' => now('Asia/Ho_Chi_Minh')->toDateString(), 'via' => 'platform', 'sent' => 7, 'failed' => 1, 'held' => 0]);
+
     // A few entries in mixed states so the list screen shows real rows, not an empty state; the site
     // has two languages and one page is translated, so the rows show both language-chip states.
     app(Tenancy::class)->enter(1, function () use ($owner): void {
