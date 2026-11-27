@@ -1980,6 +1980,46 @@ it('shows the «new path» label of a page without the default language in the w
 
         $by = collect(Livewire::actingAs($editor)->test(Index::class)->instance()->moveTargets($solo->ulid)['opts'] ?? [])->keyBy(fn (array $o): string => $o['k'] ?? 'top');
 
-        expect($by[$services->ulid]['label'])->toBe(__('entries.mv_becomes_path', ['n' => 2, 'path' => '/ja/dich-vu-ja/solo-ja']));
+        expect($by[$services->ulid]['label'])->toBe(__('entries.mv_becomes_path', ['n' => 2, 'path' => '/ja/dich-vu-ja/solo-ja']))
+            ->and($by[$services->ulid]['path'])->toBe('/dich-vu/solo-ja');
+    });
+});
+
+it('shows no path in the move label when the page\'s own-language address does not change, and names a candidate in the website’s language order', function (): void {
+    [, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        // the website's order is vi, ja, en; page addresses are nested
+        SiteSetting::query()->updateOrCreate(['group_name' => 'permalinks', 'key' => 'pages'], ['value' => ['pattern' => 'nested']]);
+        DB::connection('pgsql_admin')->table('site_locales')->insert([
+            'site_id' => 1, 'locale' => 'ja', 'is_default' => false, 'enabled' => true, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $make = function (array $titles, ?Entry $parent = null) use ($editor): Entry {
+            $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id, 'parent_id' => $parent?->id]);
+            foreach ($titles as $lc => $slug) {
+                $entry->translations()->create(['locale' => $lc, 'title' => $slug, 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);
+            }
+
+            return $entry;
+        };
+        // P: vi «p», ja «pj». Q: no Vietnamese, en «q-en», ja «p». The page exists only in Japanese, under P.
+        $p = $make(['vi' => 'p', 'ja' => 'pj']);
+        $q = $make(['en' => 'q-en', 'ja' => 'p']);
+        $solo = $make(['ja' => 'solo-ja'], $p);
+        // a candidate that lacks the page's language
+        $none = $make(['vi' => 'khong-ja']);
+
+        $by = collect(Livewire::actingAs($editor)->test(Index::class)->instance()->moveTargets($solo->ulid)['opts'] ?? [])->keyBy(fn (array $o): string => $o['k'] ?? 'top');
+
+        // moving under Q changes the Japanese address /ja/pj/solo-ja to /ja/p/solo-ja
+        expect($by[$q->ulid]['label'])->toBe(__('entries.mv_becomes_path', ['n' => 2, 'path' => '/ja/p/solo-ja']))
+            // Q is named by its Japanese title (the website's next language), not the alphabetically first English one
+            ->and($by[$q->ulid]['name'])->toBe('p')
+            // a parent without Japanese: the address stops at that parent, /ja/solo-ja
+            ->and($by[$none->ulid]['label'])->toBe(__('entries.mv_becomes_path', ['n' => 2, 'path' => '/ja/solo-ja']));
+
+        // from the top level, a parent without Japanese changes nothing in the Japanese address
+        $top = $make(['ja' => 'top-ja']);
+        $by = collect(Livewire::actingAs($editor)->test(Index::class)->instance()->moveTargets($top->ulid)['opts'] ?? [])->keyBy(fn (array $o): string => $o['k'] ?? 'top');
+        expect($by[$none->ulid]['label'])->toBe(__('entries.mv_becomes', ['n' => 2]));
     });
 });
