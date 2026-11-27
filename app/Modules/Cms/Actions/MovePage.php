@@ -452,7 +452,7 @@ final readonly class MovePage
                 }
             }
         } catch (RouteConflictException $e) {
-            throw new PageMoveRejectedException('path_taken', path: $e->path, previous: $e);
+            throw new PageMoveRejectedException('path_taken', path: $e->address(), previous: $e);
         }
 
         return $changed;

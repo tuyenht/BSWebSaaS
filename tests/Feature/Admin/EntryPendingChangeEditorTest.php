@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\Index;
+use App\Modules\Admin\Support\Entries\PageMoveWords;
 use App\Modules\Cms\Actions\ApplyEntryDraft;
 use App\Modules\Cms\Actions\ApplyEntryDraftTransition;
 use App\Modules\Cms\Actions\DiscardEntryDraft;
@@ -22,6 +23,7 @@ use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Support\BlankEntrySlug;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
@@ -1829,3 +1831,90 @@ it('never lets the browser set the refusal, or the fields «Tải lại» would 
     'refusal' => ['refusal', ['title' => 'x', 'text' => 'y', 'reload' => true]],
     'reloadReplaces' => ['reloadReplaces', 'x'],
 ])->throws(CannotUpdateLockedPropertyException::class);
+
+/** The site also in English; «Dịch vụ» > «Logo» (con) and a top page «Thiết kế», all live in Vietnamese and English with the English links services/logo/logo. @return array{0: Entry, 1: Entry, 2: Entry} */
+function pcEnglishTree(User $editor): array
+{
+    DB::connection('pgsql_admin')->table('site_locales')->insert([
+        'site_id' => 1, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'created_at' => now(), 'updated_at' => now(),
+    ]);
+    $services = pcLivePage($editor, 'dich-vu', null);
+    $kid = pcLivePage($editor, 'logo-con', $services);
+    $page = pcLivePage($editor, 'thiet-ke', null);
+    foreach ([[$services, 'services'], [$kid, 'logo'], [$page, 'logo']] as [$entry, $slug]) {
+        $entry->translations()->create(['locale' => 'en', 'title' => ucfirst($slug), 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);
+        app(PublishEntry::class)->handle($entry->fresh(), 'en', $editor);
+    }
+
+    return [$services->fresh(), $kid->fresh(), $page->fresh()];
+}
+
+it('says a sub-page’s taken address with its /en prefix when a page is put live in English from the editor', function (): void {
+    [, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        DB::connection('pgsql_admin')->table('site_locales')->insert([
+            'site_id' => 1, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $about = pcLivePage($editor, 'gioi-thieu', null);
+        $team = pcLivePage($editor, 'doi-ngu', $about);
+        foreach ([[$about, 'about'], [$team, 'team']] as [$page, $slug]) {
+            $page->translations()->create(['locale' => 'en', 'title' => ucfirst($slug), 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);
+            app(PublishEntry::class)->handle($page->fresh(), 'en', $editor);
+        }
+        app(SaveEntryDraft::class)->handle($about->fresh(), $editor, 'en', ['slug' => 'about-us']);
+        app(TransitionEntryStatus::class)->handle($about->fresh(), EntryStatus::Draft, $editor);
+        $other = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
+        SiteRoute::query()->create(['locale' => 'en', 'path' => '/about-us/team', 'entry_id' => $other->id]);
+
+        expect(Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $about->ulid, 'locale' => 'en'])
+            ->call('publish')
+            ->assertHasNoErrors('slug')
+            ->assertHasErrors('workflow')
+            ->errors()->first('workflow'))->toBe(__('entries.subpage_path_taken', ['path' => '/en/about-us/team']));
+    });
+});
+
+it('says a sub-page’s taken address with its /en prefix when an older English version is restored', function (): void {
+    [, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        [$services, $kid] = pcEnglishTree($editor);
+        $first = EntryRevision::query()->where('entry_id', $services->id)->where('locale', 'en')->orderBy('id')->firstOrFail();
+        // the English link moves on, the sub-page with it; the sub-page's old address is taken since
+        $services->translationFor('en')->update(['slug' => 'our-services']);
+        app(RouteSync::class)->sync($services, 'en', 'our-services');
+        app(RouteSync::class)->syncDescendants($services, 'en');
+        Redirect::query()->where('from_path', '/services/logo')->delete();
+        $other = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
+        SiteRoute::query()->create(['locale' => 'en', 'path' => '/services/logo', 'entry_id' => $other->id]);
+
+        $refused = null;
+        try {
+            app(RestoreEntryRevision::class)->handle($first, $editor);
+        } catch (RevisionRestoreRejectedException $e) {
+            $refused = $e;
+        }
+
+        expect($refused?->userMessage())->toBe(__('entries.revision_err_subpage_path_taken', ['path' => '/en/services/logo']))
+            ->and(SiteRoute::query()->where('entry_id', $kid->id)->where('locale', 'en')->value('path'))->toBe('/our-services/logo');
+    });
+});
+
+it('says the address a page move would take with its /en prefix, in the refusal and on the place «Chuyển đến…» locks', function (): void {
+    [, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        [$services, , $page] = pcEnglishTree($editor);
+
+        $refused = null;
+        try {
+            app(MovePage::class)->handle($page, $services, 0);
+        } catch (PageMoveRejectedException $e) {
+            $refused = $e;
+        }
+        expect($refused?->path)->toBe('/en/services/logo')
+            ->and(PageMoveWords::why($refused))->toBe(__('entries.move_path_taken', ['path' => '/en/services/logo']));
+
+        $targets = Livewire::actingAs($editor)->test(Index::class)->instance()->moveTargets($page->ulid);
+        $by = collect($targets['opts'] ?? [])->keyBy(fn (array $o): string => $o['k'] ?? 'top');
+        expect($by[$services->ulid]['why'])->toBe(__('entries.move_path_taken_label', ['path' => '/en/services/logo']));
+    });
+});

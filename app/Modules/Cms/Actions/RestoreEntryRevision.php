@@ -127,7 +127,7 @@ final readonly class RestoreEntryRevision
             });
         } catch (RouteConflictException $e) {
             throw $e->subPageOf($entry->id)
-                ? new RevisionRestoreRejectedException('subpage_path_taken', $e->path)
+                ? new RevisionRestoreRejectedException('subpage_path_taken', $e->address($revision->locale))
                 : new RevisionRestoreRejectedException('slug_taken');
         }
 

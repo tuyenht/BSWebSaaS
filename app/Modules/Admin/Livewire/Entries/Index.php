@@ -687,7 +687,7 @@ final class Index extends Component
         } catch (RouteConflictException $e) {
             // its address, or a sub-page's it would move along, is another item's: nothing changed
             $this->toast(Cast::string(__($e->subPageOf($entry->id) ? 'entries.subpage_path_taken'
-                : ($e->reserved() ? 'entries.slug_reserved' : 'entries.slug_conflict'), ['path' => $e->path])));
+                : ($e->reserved() ? 'entries.slug_reserved' : 'entries.slug_conflict'), ['path' => $e->address()])));
 
             return;
         } catch (ModelNotFoundException) {
@@ -1046,7 +1046,7 @@ final class Index extends Component
         } catch (RouteConflictException $e) {
             // the new address, or a sub-page's it moves along, is another item's: nothing changed
             $this->fieldError(Cast::string(__($e->subPageOf($entry->id) ? 'entries.subpage_path_taken'
-                : ($e->reserved() ? 'entries.slug_reserved' : 'entries.slug_conflict'), ['path' => $e->path])));
+                : ($e->reserved() ? 'entries.slug_reserved' : 'entries.slug_conflict'), ['path' => $e->address()])));
 
             return;
         }
@@ -1453,7 +1453,7 @@ final class Index extends Component
             $clash = null;
             foreach ($nested ? ($wanted[$i] ?? []) : [] as $lc => $p) {
                 if (isset($taken[$lc.' '.$p])) {
-                    $clash = $p;
+                    $clash = app(PathBuilder::class)->publicUrl($p, $lc);
                     break;
                 }
             }

@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Support\Entries;
 use App\Modules\Admin\Support\LangBar;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Shared\Support\Cast;
+use Closure;
 
 /**
  * The sentence for a sub-page whose new address is taken, as the editor's «Chưa làm được» dialog and the
@@ -18,14 +19,15 @@ final class SubPageTakenText
      * @param  string  $path  the taken address, unprefixed as a route stores it
      * @param  string  $clashLocale  the language it is in ('' when unknown: the working language)
      * @param  string  $workingLocale  the language the person has open
+     * @param  Closure(string): string|null  $name  how the screen names a language (default: the language bar's name)
      */
-    public static function say(string $path, string $clashLocale, string $workingLocale): string
+    public static function say(string $path, string $clashLocale, string $workingLocale, ?Closure $name = null): string
     {
         $locale = $clashLocale !== '' ? $clashLocale : $workingLocale;
         $url = app(PathBuilder::class)->publicUrl($path, $locale);
 
         return Cast::string($locale === $workingLocale
             ? __('entries.change_err_subpage_path_taken', ['path' => $url])
-            : __('entries.change_err_subpage_path_taken_lang', ['path' => $url, 'lang' => LangBar::name($locale)]));
+            : __('entries.change_err_subpage_path_taken_lang', ['path' => $url, 'lang' => ($name ?? LangBar::name(...))($locale)]));
     }
 }
