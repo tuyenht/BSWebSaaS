@@ -369,6 +369,12 @@
                                 @endif
                             </div>
                         @endif
+                        @if ($galleryImages === [] && $galleryVideos !== [] && ! $errors->has('imageMediaIds'))
+                            {{-- stored this way (the last picture deleted from the Library): other changes still save --}}
+                            <p id="ped-img-note" class="flex items-start gap-1.5 text-small text-warning-text">
+                                <x-bs-admin::icon name="ri-error-warning" class="mt-0.5 {{ $glyph }}" /><span>{{ __('catalog.ed.video_stored_no_image') }}</span>
+                            </p>
+                        @endif
                         @error('imageMediaIds') <p class="mt-1 text-sm text-danger-text">{{ $message }}</p> @enderror
                         @error('imageMediaIds.*') <p class="mt-1 text-sm text-danger-text">{{ $message }}</p> @enderror
                     </div>

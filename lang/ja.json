@@ -6706,6 +6706,7 @@
     "catalog.ed.video_need_image": "先に画像を1枚以上追加してください。最初の画像がメイン画像になります。",
     "catalog.ed.video_keep_image": "先に動画を外すか、別の画像を追加してください。先頭は常に画像です。",
     "catalog.ed.video_no_image": "動画のある商品には画像が1枚以上必要です。画像を追加するか、動画を外してください。",
+    "catalog.ed.video_stored_no_image": "この商品には動画がありますが、画像がありません。画像を追加するか、動画を外してください。",
     "catalog.ed.toast_video_added": "動画を追加しました。動画は常にメイン画像のあとに並びます。",
     "catalog.ed.toast_video_added_t": "動画「:title」を追加しました。動画は常にメイン画像のあとに並びます。",
     "catalog.ed.toast_video_removed": "動画「:name」を商品から外しました。",

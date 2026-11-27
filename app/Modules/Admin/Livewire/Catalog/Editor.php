@@ -1359,6 +1359,25 @@ final class Editor extends Component
         $product->forceFill(['meta' => $meta])->save();
     }
 
+    /**
+     * Whether a save with no picture would leave videos without one through this editor's own changes:
+     * a product never saved, the video list changed since it was last saved or loaded, or the pictures
+     * it had taken away. A product stored that way already (its last picture deleted from the Library)
+     * saves an unrelated change: the gallery card asks for a picture or the videos gone instead.
+     */
+    private function videosLoseTheirPicture(): bool
+    {
+        if (ProductVideos::clean($this->videos) === []) {
+            return false;
+        }
+        if ($this->ulid === null) {
+            return true;
+        }
+
+        return $this->tracked()['videos'] !== ($this->saved['videos'] ?? '')
+            || ($this->saved['imageMediaIds'] ?? '[]') !== '[]';
+    }
+
     /** A picture dragged to another place in the strip (or moved by its buttons): it moves there, the others close up. */
     public function moveImage(int $from, int $to): void
     {
@@ -1521,10 +1540,10 @@ final class Editor extends Component
             'bestseller' => ['boolean'],
             'sku' => ['nullable', 'string', 'max:'.SkuCode::MAX, $this->skuIsFree(...)],
             'status' => ['required', Rule::in(['draft', 'published', 'archived'])],
-            // the strip always starts with a picture: a product with videos is never saved without one,
-            // whatever was stored before (a new product, or one whose last picture the Library deleted)
+            // the strip always starts with a picture: this save never leaves videos with no picture through
+            // what was changed here (see videosLoseTheirPicture)
             'imageMediaIds' => ['array', function (string $attribute, mixed $value, \Closure $fail): void {
-                if ($value === [] && ProductVideos::clean($this->videos) !== []) {
+                if ($value === [] && $this->videosLoseTheirPicture()) {
                     $fail(Cast::string(__('catalog.ed.video_no_image')));
                 }
             }],

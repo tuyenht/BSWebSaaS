@@ -245,7 +245,7 @@ it('never empties the pictures under a video: a save without any picture is refu
 it('keeps the videos visible and removable after their last picture is deleted from the Library', function (): void {
     $user = pvdMember();
     app(Tenancy::class)->enter(1, function () use ($user): void {
-        $product = pvdProduct(1, ['videos' => [['yt' => 'aaaaaaaaaaa', 'title' => 'Một']], 'note' => 'keep me']);
+        $product = pvdProduct(1, ['videos' => [['yt' => 'aaaaaaaaaaa', 'title' => 'Một'], ['yt' => 'bbbbbbbbbbb', 'title' => '']], 'note' => 'keep me']);
         Media::query()->whereKey($product->images()->value('media_id'))->forceDelete();
         expect($product->images()->count())->toBe(0);
 
@@ -253,14 +253,56 @@ it('keeps the videos visible and removable after their last picture is deleted f
             ->assertSet('imageMediaIds', [])
             ->assertSeeHtml('data-vid-i="0"')
             ->assertDontSeeHtml('class="ped-imempty"')
-            // a save asks for a picture first (or the videos gone), keeping what was typed
-            ->set('name', 'Mũi khoan 2')->call('save')->assertHasErrors(['imageMediaIds'])
-            ->assertSee(__('catalog.ed.video_no_image'))->assertSet('name', 'Mũi khoan 2')->assertCount('videos', 1)
+            // a change to the videos still leaving some with no picture is the user's own: the save asks for a
+            // picture first (or the videos gone), keeping what was typed
+            ->set('name', 'Mũi khoan 2')->call('removeVideo', 0)->call('save')->assertHasErrors(['imageMediaIds'])
+            ->assertSee(__('catalog.ed.video_no_image'))->assertDontSee(__('catalog.ed.video_stored_no_image'))
+            ->assertSet('name', 'Mũi khoan 2')->assertCount('videos', 1)
             ->call('removeVideo', 0)->assertSet('videos', [])->assertHasNoErrors(['imageMediaIds'])->assertSeeHtml('class="ped-imempty"')
             ->call('save')->assertHasNoErrors();
 
         expect((array) Product::query()->whereKey($product->id)->value('meta'))->toBe(['note' => 'keep me'])
             ->and($product->translations()->value('name'))->toBe('Mũi khoan 2');
+    });
+});
+
+it('saves an unrelated change of a product whose last picture the Library deleted, and asks for a picture in the gallery card', function (string $how): void {
+    $user = pvdMember();
+    app(Tenancy::class)->enter(1, function () use ($user, $how): void {
+        $videos = [['yt' => 'aaaaaaaaaaa', 'title' => 'Một']];
+        $product = pvdProduct(1, ['videos' => $videos, 'note' => 'keep me']);
+        Media::query()->whereKey($product->images()->value('media_id'))->forceDelete();
+
+        $c = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $product->ulid])
+            ->assertSee(__('catalog.ed.video_stored_no_image'))
+            ->set('price', '2500')->call($how)->assertHasNoErrors()
+            // still stored that way: the card keeps asking
+            ->assertSee(__('catalog.ed.video_stored_no_image'))->assertCount('videos', 1);
+        $stored = Product::query()->whereKey($product->id)->firstOrFail();
+        expect($stored->price)->toBe(2500)
+            ->and($stored->meta['videos'] ?? null)->toBe($videos)
+            ->and($stored->meta['note'] ?? null)->toBe('keep me')
+            ->and($stored->images()->count())->toBe(0);
+        if ($how === 'publish') {
+            expect($stored->status)->toBe('published');
+        }
+    });
+})->with(['save', 'publish', 'autosave']);
+
+it('keeps the picture added to a product whose last picture the Library deleted while its videos stay', function (): void {
+    $user = pvdMember();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $product = pvdProduct(1, ['videos' => [['yt' => 'aaaaaaaaaaa', 'title' => '']]]);
+        Media::query()->whereKey($product->images()->value('media_id'))->forceDelete();
+        $picture = pvdMedia();
+
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $product->ulid])
+            ->assertSee(__('catalog.ed.video_stored_no_image'))
+            ->set('imageMediaIds', [$picture->id])->assertDontSee(__('catalog.ed.video_stored_no_image'))
+            // the only picture is now the cover under a video: it stays
+            ->call('removeImage', 0)->assertSet('imageMediaIds', [$picture->id])->assertSet('toastMsg', __('catalog.ed.video_keep_image'))
+            ->call('save')->assertHasNoErrors();
+        expect($product->images()->pluck('media_id')->all())->toBe([$picture->id]);
     });
 });
 
