@@ -1103,6 +1103,25 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog/'.$product->ulid.'/edit')->assertOk()->getContent();
     expect($html)->toContain('data-seo-fields')->not->toContain('wire:model="excerpt"');
     file_put_contents($dir.'/product-editor.html', $html);
+    // The picture strip with two pictures and videos (one with a long title), for the strip's screenshots.
+    $withVideos = app(Tenancy::class)->enter(1, function (): Product {
+        $item = Product::query()->create(['status' => 'draft', 'price' => 9000, 'meta' => ['videos' => [
+            ['yt' => 'dQw4w9WgXcQ', 'title' => 'Cắt thử thép'], ['yt' => 'aaaaaaaaaaa', 'title' => ''],
+            ['yt' => 'bbbbbbbbbbb', 'title' => 'Một tiêu đề video rất dài để thử việc cắt chữ và xuống dòng trong ô nhỏ'],
+        ]]]);
+        $item->translations()->create(['locale' => 'vi', 'name' => 'Mũi khoan có video', 'slug' => 'mui-khoan-co-video']);
+        foreach ([0, 1] as $position) {
+            $media = Media::query()->create(['collection' => 'library', 'slug' => "strip-{$position}", 'hash' => hash('sha256', "strip{$position}"), 'storage_key' => "s/library/strip-{$position}.png",
+                'disk' => 'r2', 'mime' => 'image/png', 'size' => 1024, 'original_filename' => "anh-{$position}.png"]);
+            $item->images()->create(['media_id' => $media->id, 'position' => $position]);
+        }
+
+        return $item;
+    });
+    $this->flushSession();
+    $strip = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog/'.$withVideos->ulid.'/edit')->assertOk()->getContent();
+    expect($strip)->toContain('data-vid-i="2"', 'ped-yt');
+    file_put_contents($dir.'/product-editor-videos.html', $strip);
     // The language bar (board 09) on the English version: the name and link written, Japanese not yet,
     // Vietnamese the source; the product's own cards locked with «Chung».
     app(Tenancy::class)->enter(1, fn () => $product->translations()->create(['locale' => 'en', 'name' => '5-axis CNC workholding fixture', 'slug' => 'cnc-5-axis-fixture']));
@@ -1830,5 +1849,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 163);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 164);
 });

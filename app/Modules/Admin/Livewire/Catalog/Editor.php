@@ -20,6 +20,7 @@ use App\Modules\Catalog\Support\CatalogMode;
 use App\Modules\Catalog\Support\ProductGallery;
 use App\Modules\Catalog\Support\ProductPrice;
 use App\Modules\Catalog\Support\ProductSearchWords;
+use App\Modules\Catalog\Support\ProductVideos;
 use App\Modules\Catalog\Support\SkuCode;
 use App\Modules\Catalog\Support\UniqueViolation;
 use App\Modules\Cms\Exceptions\ExpiredContentException;
@@ -112,7 +113,7 @@ final class Editor extends Component
     private const array AS_TYPED = ['name', 'slug', 'summary', 'price', 'salePrice', 'stock', 'seoTitle', 'seoDescription', 'sku'];
 
     /** The fields counted as changes, in the order the form shows them. */
-    public const array TRACKED = ['name', 'slug', 'summary', 'imageMediaIds', 'price', 'stock', 'salePrice', 'saleStartsAt', 'saleEndsAt', 'description', 'seoTitle', 'seoDescription', 'categoryIds', 'sku', 'featured', 'bestseller', 'expiresAt'];
+    public const array TRACKED = ['name', 'slug', 'summary', 'imageMediaIds', 'price', 'stock', 'salePrice', 'saleStartsAt', 'saleEndsAt', 'description', 'seoTitle', 'seoDescription', 'categoryIds', 'sku', 'featured', 'bestseller', 'expiresAt', 'videos'];
 
     /** A sale's start or end as the site's wall clock, the way a datetime-local field gives it. */
     private const string MOMENT = 'Y-m-d\\TH:i';
@@ -170,6 +171,14 @@ final class Editor extends Component
      */
     #[Locked]
     public ?array $undoImage = null;
+
+    /**
+     * The video «Hoàn tác» puts back, and where it stood.
+     *
+     * @var array{yt: string, title: string, at: int}|null
+     */
+    #[Locked]
+    public ?array $undoVideo = null;
 
     /** The guide is printed with the first draw only (the browser keeps it; later round trips skip it). */
     private bool $guideDue = false;
@@ -280,6 +289,19 @@ final class Editor extends Component
      * @var list<int>
      */
     public array $imageMediaIds = [];
+
+    /**
+     * The product's YouTube videos (the 11-character id and a title each), in the order they were added;
+     * changed only by addVideo / removeVideo, saved in the product's `meta`.
+     *
+     * @var list<array{yt: string, title: string}>
+     */
+    #[Locked]
+    public array $videos = [];
+
+    /** What is wrong with the link last pasted, shown under its field; empty when nothing is. */
+    #[Locked]
+    public string $videoError = '';
 
     /**
      * The tracked fields as last saved (or loaded), as text: what the change count compares with.
@@ -467,6 +489,7 @@ final class Editor extends Component
         abort_unless($this->canEdit, 403);
         $undo = $this->undo;
         $image = $this->undoImage;
+        $video = $this->undoVideo;
         $expiry = $this->undoExpiry;
         $this->clearToast();
         if ($undo === 'trash' && $this->screen === 'trash') {
@@ -484,6 +507,29 @@ final class Editor extends Component
             $ids = array_values(array_filter($this->imageMediaIds, static fn (int $id): bool => $id !== $image['id']));
             array_splice($ids, max(0, min($image['at'], count($ids))), 0, [$image['id']]);
             $this->imageMediaIds = $ids;
+            $this->resetErrorBag('imageMediaIds');
+        } elseif ($undo === 'video' && $video !== null && $this->screen === 'form') {
+            $this->authorizeEdit();
+            if ($this->sharedRefused()) {
+                return;
+            }
+            if ($this->imageMediaIds === []) {
+                // the pictures went since (another tab, «Bỏ thay đổi»): a video never comes back without one
+                $this->say(Cast::string(__('catalog.ed.video_need_image')), null);
+
+                return;
+            }
+            $videos = array_values(array_filter($this->videos, static fn (array $v): bool => $v['yt'] !== $video['yt']));
+            if (count($videos) >= ProductVideos::MAX) {
+                // another video took its place since: putting it back would push the newest one off the end
+                $this->videoError = Cast::string(__('catalog.ed.video_max', ['max' => ProductVideos::MAX]));
+
+                return;
+            }
+            $at = max(0, min($video['at'], count($videos)));
+            array_splice($videos, $at, 0, [['yt' => $video['yt'], 'title' => $video['title']]]);
+            $this->videos = ProductVideos::clean($videos);
+            $this->dispatch('ped-vfocus', i: $at);
         }
     }
 
@@ -539,18 +585,21 @@ final class Editor extends Component
         $this->toastMsg = '';
         $this->undo = null;
         $this->undoImage = null;
+        $this->undoVideo = null;
         $this->undoExpiry = '';
     }
 
     /**
      * @param  array{id: int, at: int}|null  $image
+     * @param  array{yt: string, title: string, at: int}|null  $video
      */
-    private function say(string $message, ?string $undo, ?array $image = null): void
+    private function say(string $message, ?string $undo, ?array $image = null, ?array $video = null): void
     {
         $this->toastMsg = $message;
         $this->toastSeq++;
         $this->undo = $undo;
         $this->undoImage = $image;
+        $this->undoVideo = $video;
     }
 
     /**
@@ -1113,7 +1162,7 @@ final class Editor extends Component
         $this->saveFailed = false;
 
         if ($this->ulid === null) {
-            $this->reset('name', 'slug', 'description', 'summary', 'seoTitle', 'seoDescription', 'categoryId', 'categoryIds', 'price', 'salePrice', 'saleStartsAt', 'saleEndsAt', 'expiresAt', 'stock', 'featured', 'bestseller', 'sku', 'imageMediaIds', 'summaryStored', 'summaryShown');
+            $this->reset('name', 'slug', 'description', 'summary', 'seoTitle', 'seoDescription', 'categoryId', 'categoryIds', 'price', 'salePrice', 'saleStartsAt', 'saleEndsAt', 'expiresAt', 'stock', 'featured', 'bestseller', 'sku', 'imageMediaIds', 'videos', 'videoError', 'summaryStored', 'summaryShown');
             $this->address = $this->previewAddress(null);
             $this->saved = $this->tracked();
 
@@ -1175,6 +1224,8 @@ final class Editor extends Component
         }
         if (! in_array($mediaId, $this->imageMediaIds, true)) {
             $this->imageMediaIds[] = $mediaId;
+            // a picture is there now: the save's «needs a picture» message no longer applies
+            $this->resetErrorBag('imageMediaIds');
         }
     }
 
@@ -1191,6 +1242,12 @@ final class Editor extends Component
         if (! array_key_exists($index, $this->imageMediaIds)) {
             return;
         }
+        // the first item of the strip is always a picture: the last one stays while a video follows it
+        if (count($this->imageMediaIds) === 1 && $this->videos !== []) {
+            $this->say(Cast::string(__('catalog.ed.video_keep_image')), null);
+
+            return;
+        }
 
         $ids = $this->imageMediaIds;
         $id = $ids[$index];
@@ -1203,6 +1260,122 @@ final class Editor extends Component
         $this->say(Cast::string($next !== null
             ? __('catalog.ed.toast_img_cover_removed', ['name' => $name, 'next' => $next])
             : __('catalog.ed.toast_img_removed', ['name' => $name])), 'image', ['id' => $id, 'at' => $index]);
+    }
+
+    /**
+     * «Thêm video» under the strip: a YouTube link becomes a video of the product, right after the main
+     * picture. Returns whether it was added (the form then clears its fields). A link that is not one
+     * video of YouTube, one already on the product and one past the limit say why under the field.
+     */
+    public function addVideo(string $url, string $title = ''): bool
+    {
+        $this->authorizeEdit();
+        if ($this->sharedRefused()) {
+            return false;
+        }
+        $this->videoError = '';
+        if ($this->imageMediaIds === []) {
+            $this->say(Cast::string(__('catalog.ed.video_need_image')), null);
+
+            return false;
+        }
+        $id = ProductVideos::id($url);
+        if ($id === null) {
+            $this->videoError = Cast::string(__('catalog.ed.video_bad_link'));
+        } elseif (in_array($id, array_column($this->videos, 'yt'), true)) {
+            $this->videoError = Cast::string(__('catalog.ed.video_dup'));
+        } elseif (count($this->videos) >= ProductVideos::MAX) {
+            $this->videoError = Cast::string(__('catalog.ed.video_max', ['max' => ProductVideos::MAX]));
+        }
+        if ($this->videoError !== '') {
+            return false;
+        }
+
+        $title = ProductVideos::title($title);
+        $this->videos[] = ['yt' => (string) $id, 'title' => $title];
+        $this->say(Cast::string(__($title !== '' ? 'catalog.ed.toast_video_added_t' : 'catalog.ed.toast_video_added', ['title' => $title])), null);
+        $this->dispatch('ped-vfocus', i: count($this->videos) - 1);
+
+        return true;
+    }
+
+    /** «Bỏ khỏi sản phẩm» on a video: it leaves the product, with «Hoàn tác» that puts it back where it stood. */
+    public function removeVideo(int $index): void
+    {
+        $this->authorizeEdit();
+        if ($this->sharedRefused()) {
+            return;
+        }
+        if (! array_key_exists($index, $this->videos)) {
+            return;
+        }
+
+        $video = $this->videos[$index];
+        array_splice($this->videos, $index, 1);
+        $this->videoError = '';
+        if ($this->videos === []) {
+            // no video is left: the save's «needs a picture» message no longer applies
+            $this->resetErrorBag('imageMediaIds');
+        }
+        $name = $video['title'] !== '' ? $video['title'] : Cast::string(__('catalog.ed.video_unnamed'));
+        $this->say(Cast::string(__('catalog.ed.toast_video_removed', ['name' => $name])), 'video', null, $video + ['at' => $index]);
+        // focus goes to the item now at that place; with no video left, to the main picture or, with none,
+        // to what the card shows instead (-1)
+        $this->dispatch('ped-vfocus', i: $this->videos === [] ? -1 : min($index, count($this->videos) - 1));
+    }
+
+    /**
+     * The link field after the user leaves it (board 09): a link that is not one video of YouTube says so
+     * at once, a good or empty one clears the message. Changes nothing but the message.
+     */
+    public function checkVideoLink(string $url): void
+    {
+        $this->authorizeEdit();
+        $url = trim($url);
+        $this->videoError = $url !== '' && ProductVideos::id($url) === null ? Cast::string(__('catalog.ed.video_bad_link')) : '';
+    }
+
+    /**
+     * The videos into the product's `meta` (its other keys kept), once the row is locked and saved; the
+     * list is cleaned again here, so whatever reached the wire is an id or is dropped. Writes nothing
+     * when the stored list is the same; another language than the default never writes it.
+     */
+    private function writeVideos(Product $product): void
+    {
+        if ($this->translating()) {
+            return;
+        }
+        $this->videos = ProductVideos::clean($this->videos);
+        $meta = $product->meta;
+        $stored = ProductVideos::clean($meta['videos'] ?? []);
+        if ($stored === $this->videos) {
+            return;
+        }
+        if ($this->videos === []) {
+            unset($meta['videos']);
+        } else {
+            $meta['videos'] = $this->videos;
+        }
+        $product->forceFill(['meta' => $meta])->save();
+    }
+
+    /**
+     * Whether a save with no picture would leave videos without one through this editor's own changes:
+     * a product never saved, the video list changed since it was last saved or loaded, or the pictures
+     * it had taken away. A product stored that way already (its last picture deleted from the Library)
+     * saves an unrelated change: the gallery card asks for a picture or the videos gone instead.
+     */
+    private function videosLoseTheirPicture(): bool
+    {
+        if (ProductVideos::clean($this->videos) === []) {
+            return false;
+        }
+        if ($this->ulid === null) {
+            return true;
+        }
+
+        return $this->tracked()['videos'] !== ($this->saved['videos'] ?? '')
+            || ($this->saved['imageMediaIds'] ?? '[]') !== '[]';
     }
 
     /** A picture dragged to another place in the strip (or moved by its buttons): it moves there, the others close up. */
@@ -1284,6 +1457,7 @@ final class Editor extends Component
             'mayOpenSettings' => $user instanceof User && $user->can('settings.manage'),
             'mayManageCategories' => $user instanceof User && $user->can('taxonomies.manage'),
             'galleryImages' => $this->galleryImages($urls),
+            'galleryVideos' => $this->videos,
             'urls' => $urls,
             'actions' => $actions,
             'note' => $this->saveNote(),
@@ -1366,7 +1540,13 @@ final class Editor extends Component
             'bestseller' => ['boolean'],
             'sku' => ['nullable', 'string', 'max:'.SkuCode::MAX, $this->skuIsFree(...)],
             'status' => ['required', Rule::in(['draft', 'published', 'archived'])],
-            'imageMediaIds' => ['array'],
+            // the strip always starts with a picture: this save never leaves videos with no picture through
+            // what was changed here (see videosLoseTheirPicture)
+            'imageMediaIds' => ['array', function (string $attribute, mixed $value, \Closure $fail): void {
+                if ($value === [] && $this->videosLoseTheirPicture()) {
+                    $fail(Cast::string(__('catalog.ed.video_no_image')));
+                }
+            }],
             // RLS scopes the exists to this site. Deliberately NOT whereNull(deleted_at): an
             // already attached image whose media went to Trash must not block saving (it renders
             // as "missing"; restoring the media heals it) — the ADD path (pickImage) already
@@ -1532,6 +1712,8 @@ final class Editor extends Component
         $this->categoryId = $category?->id;
         $this->address = $this->previewAddress($category);
         $this->imageMediaIds = $this->normalizeIds($product->images()->pluck('media_id')->all());
+        $this->videos = ProductVideos::clean($product->meta['videos'] ?? []);
+        $this->videoError = '';
         $this->saved = $this->tracked();
         // a language with no version yet has no page on the website
         $this->liveUrl = $this->status === 'published' && $translation instanceof ProductTranslation ? $this->address['base'].$this->slug : null;
@@ -1577,6 +1759,8 @@ final class Editor extends Component
         foreach (self::TRACKED as $field) {
             $value = $this->{$field};
             $values[$field] = match (true) {
+                // a list of rows, written the way the browser writes it (JSON.stringify)
+                $field === 'videos' => (string) json_encode($this->videos, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 is_array($value) => (string) json_encode($this->normalizeIds($value)),
                 is_scalar($value) => (string) $value,
                 default => '',
@@ -2120,6 +2304,7 @@ final class Editor extends Component
             app(FlagProduct::class)->handle($product, $flags);
         }
         app(ProductGallery::class)->sync($product, $this->imageMediaIds);
+        $this->writeVideos($product);
         // once every write went through: what this tab did not write shows as stored, so the form never
         // shows a value the save did not keep
         $this->featured = (bool) $product->is_featured;
