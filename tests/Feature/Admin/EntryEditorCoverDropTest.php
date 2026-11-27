@@ -3,6 +3,7 @@
 use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Identity\Models\User;
+use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
 use Livewire\Livewire;
@@ -15,7 +16,12 @@ use Spatie\Permission\PermissionRegistrar;
  * add files is offered the drop, and the method asks again (editing the record is asked on mount and again by it).
  */
 
+// its own site and rights, whatever test ran before it in the shard
 beforeEach(function (): void {
+    truncateRbac();
+    seedTenancy();
+    $this->artisan('rbac:sync')->assertSuccessful();
+    app(TeamContext::class)->forget();
     app()->setLocale('vi');
 });
 

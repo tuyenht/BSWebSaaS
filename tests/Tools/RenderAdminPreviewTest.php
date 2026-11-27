@@ -66,6 +66,7 @@ use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\Redirect;
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\BlockMediaUsage;
 use App\Modules\Cms\Support\CategoryScopes;
@@ -1719,6 +1720,48 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $ask = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($staleTab->call('reloadChange')));
     expect($ask)->toContain('data-entry-reload-ask', e(__('entries.refuse.reload_title')), e(__('entries.refuse.reload_ok')), e(__('entries.refuse.reload_stay')));
     file_put_contents($dir.'/editor-change-reload-ask.html', $swap($html, $ask, 'admin\\.entries\\.editor'));
+    // «Chưa cập nhật được website» on a live page whose change would move its live sub-page to an address
+    // other content holds (the page's own new link is free): the dialog names that address
+    // pages nested under their parent's address, so the change's new link moves the sub-page (the request's memo forgotten)
+    $permalinks = app(Tenancy::class)->enter(1, function (): mixed {
+        $was = SiteSetting::query()->where('group_name', 'permalinks')->where('key', 'pages')->value('value');
+        SiteSetting::query()->updateOrCreate(['group_name' => 'permalinks', 'key' => 'pages'], ['value' => ['pattern' => 'nested']]);
+
+        return $was;
+    });
+    app()->forgetScopedInstances();
+    [$subPage, $subPageTeam, $subPageOther] = app(Tenancy::class)->enter(1, function () use ($owner): array {
+        $live = function (string $title, string $slug, ?Entry $parent) use ($owner): Entry {
+            $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $owner->id, 'parent_id' => $parent?->id]);
+            $entry->translations()->create(['locale' => 'vi', 'title' => $title, 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);
+            app(PublishEntry::class)->handle($entry->fresh(), 'vi', $owner);
+
+            return $entry->fresh();
+        };
+        $plant = $live('Nhà máy', 'nha-may', null);
+        $team = $live('Xưởng gia công CNC', 'xuong-gia-cong-cnc', $plant);
+        app(SaveEntryDraft::class)->handle($plant, $owner, 'vi', ['slug' => 'gioi-thieu-nha-may']);
+        $other = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $owner->id]);
+        SiteRoute::query()->create(['locale' => 'vi', 'path' => '/gioi-thieu-nha-may/xuong-gia-cong-cnc', 'entry_id' => $other->id]);
+
+        return [$plant, $team, $other];
+    });
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$subPage->ulid.'/edit')->assertOk()->getContent();
+    $refusedSub = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($owner)
+        ->test(App\Modules\Admin\Livewire\Entries\Editor::class, ['ulid' => $subPage->ulid])->call('askApplyChange')->call('applyChange')));
+    expect($refusedSub)->toContain('data-entry-refusal', e(__('entries.refuse.t_apply')), e(__('entries.change_err_subpage_path_taken', ['path' => '/gioi-thieu-nha-may/xuong-gia-cong-cnc'])))
+        ->not->toContain('data-refusal-reload');
+    file_put_contents($dir.'/editor-change-refused-subpage.html', $swap($html, $refusedSub, 'admin\\.entries\\.editor'));
+    // gone again, so the screens below (the review inbox's changes among them) stay as they were
+    app(Tenancy::class)->enter(1, function () use ($permalinks, $subPage, $subPageTeam, $subPageOther): void {
+        foreach ([$subPageOther, $subPageTeam, $subPage] as $page) {
+            $page->forceDelete();
+        }
+        $setting = SiteSetting::query()->where('group_name', 'permalinks')->where('key', 'pages')->sole();
+        $permalinks === null ? $setting->delete() : $setting->update(['value' => $permalinks]);
+    });
+    app()->forgetScopedInstances();
     expect(file_get_contents($dir.'/editor-change-diff.html'))->toContain('data-change-diff')
         ->and(file_get_contents($dir.'/editor-change-return.html'))->toContain(e(__('entries.chg.return_err')));
 
@@ -1776,5 +1819,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 162);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 163);
 });

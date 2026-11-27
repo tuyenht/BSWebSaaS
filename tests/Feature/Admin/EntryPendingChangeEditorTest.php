@@ -1136,7 +1136,8 @@ it('rolls a scheduled page back when its sub-page’s new address is taken, noth
     });
 });
 
-it('refuses to apply a page’s change whose new link moves a sub-page to a taken address, saying which, nothing moved', function (): void {
+// A page never resolves an approval workflow (EntryWorkflowResolver), so «Cập nhật website» is the move that meets it
+it('says a page’s change that would move a sub-page to a taken address in «Chưa cập nhật được website», naming the address, nothing moved', function (): void {
     [, $editor] = pcCast();
     $writer = User::factory()->create();
     app(Tenancy::class)->enter(1, function () use ($writer, $editor): void {
@@ -1150,22 +1151,76 @@ it('refuses to apply a page’s change whose new link moves a sub-page to a take
         $other = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
         SiteRoute::query()->create(['locale' => 'vi', 'path' => '/ve-chung-toi/doi-ngu', 'entry_id' => $other->id]);
         $redirects = Redirect::query()->count();
+        $before = pcStored($about);
 
-        $form = Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $about->ulid])
+        Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $about->ulid])
             ->call('askApplyChange')
             ->call('applyChange')
-            ->assertHasNoErrors('slug')
-            ->assertHasErrors('workflow')
-            ->assertSet('refusal', null);   // the board draws no dialog for it: the line above the form
-        expect($form->errors()->first('workflow'))->toBe(__('entries.change_err_subpage_path_taken', ['path' => '/ve-chung-toi/doi-ngu']));
+            ->assertHasNoErrors()   // neither the line above the form nor the link field: the page's own link is free
+            ->assertSet('changeApplyAsk', false)
+            ->assertSet('refusal', [
+                'title' => __('entries.refuse.t_apply'),
+                'text' => __('entries.change_err_subpage_path_taken', ['path' => '/ve-chung-toi/doi-ngu']),
+                'reload' => false,
+            ])
+            ->assertSeeHtml('data-entry-refusal')
+            ->assertSee(__('entries.refuse.t_apply'))
+            ->assertSee('/ve-chung-toi/doi-ngu')
+            ->assertDontSeeHtml('data-refusal-reload');
 
-        expect(pcChange($about))->not->toBeNull()
+        expect(pcStored($about))->toBe($before)
             ->and($about->fresh()->translationFor('vi')->slug)->toBe('gioi-thieu')
             ->and(SiteRoute::query()->where('entry_id', $about->id)->pluck('path')->all())->toBe(['/gioi-thieu'])
             ->and(SiteRoute::query()->where('entry_id', $team->id)->pluck('path')->all())->toBe(['/gioi-thieu/doi-ngu'])
             ->and(Redirect::query()->count())->toBe($redirects);
     });
 });
+
+it('names a sub-page’s taken address in another language as visitors see it, with that language when the editor is open in another', function (string $open, string $clash): void {
+    [, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($editor, $open, $clash): void {
+        DB::connection('pgsql_admin')->table('site_locales')->insert([
+            'site_id' => 1, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $about = pcLivePage($editor, 'gioi-thieu', null);
+        $team = pcLivePage($editor, 'doi-ngu', $about);
+        foreach ([[$about, 'about'], [$team, 'team']] as [$page, $slug]) {
+            $page->translations()->create(['locale' => 'en', 'title' => ucfirst($slug), 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);
+            app(PublishEntry::class)->handle($page->fresh(), 'en', $editor);
+        }
+        // one change in both languages: the Vietnamese edit moves nothing, the English link moves «Team»
+        app(SaveEntryDraft::class)->handle($about->fresh(), $editor, 'vi', ['title' => 'Giới thiệu công ty']);
+        app(SaveEntryDraft::class)->handle($about->fresh(), $editor, 'en', ['slug' => 'about-us']);
+        app(SaveEntryDraft::class)->handle($about->fresh(), $editor, 'vi', ['slug' => 've-chung-toi']);
+        $other = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
+        SiteRoute::query()->create(['locale' => $clash, 'path' => $clash === 'en' ? '/about-us/team' : '/ve-chung-toi/doi-ngu', 'entry_id' => $other->id]);
+        $url = $clash === 'en' ? '/en/about-us/team' : '/ve-chung-toi/doi-ngu';
+        $routes = SiteRoute::query()->whereIn('entry_id', [$about->id, $team->id])->orderBy('id')->pluck('path')->all();
+        $redirects = Redirect::query()->count();
+        $before = pcStored($about);
+
+        $text = $open === $clash
+            ? __('entries.change_err_subpage_path_taken', ['path' => $url])
+            : __('entries.change_err_subpage_path_taken_lang', ['path' => $url, 'lang' => __($clash === 'en' ? 'entries.language_en' : 'entries.language_vi')]);
+        Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $about->ulid] + ($open === 'en' ? ['locale' => 'en'] : []))
+            ->call('askApplyChange')
+            ->call('applyChange')
+            ->assertHasNoErrors()
+            ->assertSet('refusal', ['title' => __('entries.refuse.t_apply'), 'text' => $text, 'reload' => false])
+            ->assertSee($url);
+
+        expect($text)->toContain($url)
+            ->and(str_contains($text, (string) __($clash === 'en' ? 'entries.language_en' : 'entries.language_vi')))->toBe($open !== $clash)
+            ->and(str_contains($text, '/en/'))->toBe($clash === 'en')
+            ->and(pcStored($about))->toBe($before)
+            ->and(SiteRoute::query()->whereIn('entry_id', [$about->id, $team->id])->orderBy('id')->pluck('path')->all())->toBe($routes)
+            ->and(Redirect::query()->count())->toBe($redirects);
+    });
+})->with([
+    'clash in English, open in Vietnamese' => ['vi', 'en'],
+    'clash in English, open in English' => ['en', 'en'],
+    'clash in Vietnamese, open in English' => ['en', 'vi'],
+]);
 
 it('says which sub-page address is taken when a page cannot go live again, never blaming its own free link', function (string $road): void {
     [, $editor] = pcCast();

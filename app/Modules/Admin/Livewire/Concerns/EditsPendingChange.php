@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Livewire\Concerns;
 
 use App\Modules\Admin\Support\Entries\PendingChangeDiff;
+use App\Modules\Admin\Support\Entries\SubPageTakenText;
 use App\Modules\Admin\Support\EntryProseBody;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Cms\Actions\ApplyEntryDraft;
@@ -79,12 +80,12 @@ trait EditsPendingChange
     public ?array $refusal = null;
 
     /**
-     * The reasons the dialog says (the board draws these; a sub-page's taken address and a schedule
-     * refused while a change is open keep their line on the screen).
+     * The reasons the dialog says (the board draws these; a schedule refused while a change is open
+     * keeps its line on the screen).
      */
     private const array REFUSAL_DIALOG = [
         'change_locked', 'change_pending', 'change_stale', 'not_live', 'content_invalid',
-        'category_governed', 'locale_disabled', 'slug_taken', 'workflow_governed',
+        'category_governed', 'locale_disabled', 'slug_taken', 'subpage_path_taken', 'workflow_governed',
     ];
 
     /** «Tải bản mới nhất?» is open: «Tải lại» was pressed with edits still in the form. */
@@ -254,7 +255,7 @@ trait EditsPendingChange
         try {
             $saved = app(SaveEntryDraft::class)->handle($entry, $this->user(), $this->locale, $text, $shared);
         } catch (EntryDraftRejectedException $refused) {
-            $this->changeRefused($refused->reason, $refused->path);
+            $this->changeRefused($refused->reason, $refused->path, $refused->locale);
 
             return false;
         }
@@ -390,7 +391,7 @@ trait EditsPendingChange
             try {
                 app(ApplyEntryDraft::class)->handle($entry, $this->user(), $this->changeSeen);
             } catch (EntryDraftRejectedException $refused) {
-                $this->changeRefused($refused->reason, $refused->path);
+                $this->changeRefused($refused->reason, $refused->path, $refused->locale);
 
                 return;
             } catch (AuthorizationException) {
@@ -441,7 +442,7 @@ trait EditsPendingChange
         try {
             app(DiscardEntryDraft::class)->handle($entry, $this->user(), (string) $this->changeSeen);
         } catch (EntryDraftRejectedException $refused) {
-            $this->changeRefused($refused->reason, $refused->path);
+            $this->changeRefused($refused->reason, $refused->path, $refused->locale);
 
             return;
         } catch (AuthorizationException) {
@@ -528,7 +529,7 @@ trait EditsPendingChange
         try {
             $to = app(ApplyEntryDraftTransition::class)->handle($entry, $this->locale, $this->user(), $key, (string) $this->changeSeen, $note);
         } catch (EntryDraftRejectedException $refused) {
-            $this->changeRefused($refused->reason, $refused->path);
+            $this->changeRefused($refused->reason, $refused->path, $refused->locale);
 
             return false;
         } catch (InvalidTransitionException) {
@@ -579,12 +580,13 @@ trait EditsPendingChange
      * The refusal in plain words. A save, a send, «Cập nhật website» / «Duyệt đăng» or «Bỏ thay đổi»
      * refused for a reason the board draws opens «Chưa làm được», titled by that move (a save or a send
      * refused because the change was sent is «Chưa sửa được»); a taken address of the change's own also stays
-     * under the link field. Any other (a sub-page's address, a return or a middle step refused) is the
-     * line above the form.
+     * under the link field. Any other (a return or a middle step refused) is the line above the form.
      */
-    private function changeRefused(string $reason, string $path = ''): void
+    private function changeRefused(string $reason, string $path = '', string $locale = ''): void
     {
-        $text = Cast::string(__('entries.change_err_'.$reason, ['path' => $path]));
+        $text = $reason === 'subpage_path_taken'
+            ? SubPageTakenText::say($path, $locale, $this->locale)
+            : Cast::string(__('entries.change_err_'.$reason, ['path' => $path]));
         if ($reason === 'slug_taken') {
             $this->addError('slug', $text);
         }

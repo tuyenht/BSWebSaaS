@@ -8,6 +8,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\MemberCategoryScope;
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
@@ -20,6 +21,7 @@ use App\Modules\Workflow\Actions\InstantiateWorkflow;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowLog;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
@@ -510,3 +512,45 @@ it('gives a change parked at an end stage, or one with no move out, back to its 
         expect($resolver->changeIsOpen($workflow->fresh(), rcChange($post)->fresh()))->toBeFalse();
     });
 });
+
+it('names a sub-page’s taken address as visitors see it when approving a change live is refused, with the language when it is not the reviewed one', function (string $clash): void {
+    $cast = rcCast();
+    app(Tenancy::class)->enter(1, function () use ($cast, $clash): void {
+        $category = rcCollection();
+        SiteSetting::query()->updateOrCreate(['group_name' => 'permalinks', 'key' => 'pages'], ['value' => ['pattern' => 'nested']]);
+        DB::connection('pgsql_admin')->table('site_locales')->insert([
+            'site_id' => 1, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $about = rcLivePost($category, $cast['author'], $cast['publisher'], 'gioi-thieu');
+        $about->update(['type' => 'page']);
+        $team = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $cast['author']->id, 'parent_id' => $about->id]);
+        $team->translations()->create(['locale' => 'vi', 'title' => 'Đội ngũ', 'slug' => 'doi-ngu', 'status' => 'draft', 'body' => ['blocks' => []]]);
+        app(PublishEntry::class)->handle($team->fresh(), 'vi', $cast['publisher']);
+        $about->translations()->create(['locale' => 'en', 'title' => 'About', 'slug' => 'about', 'status' => 'draft', 'body' => ['blocks' => []]]);
+        app(PublishEntry::class)->handle($about->fresh(), 'en', $cast['publisher']);
+        $team->translations()->create(['locale' => 'en', 'title' => 'Team', 'slug' => 'team', 'status' => 'draft', 'body' => ['blocks' => []]]);
+        app(PublishEntry::class)->handle($team->fresh(), 'en', $cast['publisher']);
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+
+        // one change in both languages; the clash is in $clash, where the sub-page would move
+        $slugs = ['vi' => 've-chung-toi', 'en' => 'about-us'];
+        $take = $clash === 'en' ? ['en', '/about-us/team'] : ['vi', '/ve-chung-toi/doi-ngu'];
+        app(SaveEntryDraft::class)->handle($about->fresh(), $cast['author'], 'vi', ['slug' => $slugs['vi']]);
+        app(SaveEntryDraft::class)->handle($about->fresh(), $cast['author'], 'en', ['slug' => $slugs['en']]);
+        $other = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $cast['author']->id]);
+        SiteRoute::query()->create(['locale' => $take[0], 'path' => $take[1], 'entry_id' => $other->id]);
+        $change = EntryDraft::query()->where('entry_id', $about->id)->firstOrFail();
+        app(ApplyEntryDraftTransition::class)->handle($about->fresh(), 'vi', $cast['author'], 'submit', $change->version());
+        $stored = $change->fresh()?->version();
+
+        $says = $clash === 'en'
+            ? __('entries.change_err_subpage_path_taken_lang', ['path' => '/en/about-us/team', 'lang' => __('entries.language_en')])
+            : __('entries.change_err_subpage_path_taken', ['path' => '/ve-chung-toi/doi-ngu']);
+        $card = Livewire::actingAs($cast['approver'])->test(ReviewChanges::class)
+            ->call('openChange', $about->ulid, 'approve')
+            ->call('confirmChange');
+        $card->assertHasErrors('changes');
+        expect($card->errors()->first('changes'))->toBe($says)
+            ->and(rcChange($about)?->version())->toBe($stored);
+    });
+})->with(['in another language' => 'en', 'in the default language' => 'vi']);
