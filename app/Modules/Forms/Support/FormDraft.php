@@ -186,14 +186,12 @@ final class FormDraft
                 for ($n = 2; isset($taken[$value]) || self::valueOfOther($value, $existing, $line, $locale); $n++) {
                     $value = $base.'-'.$n;
                 }
-                $choice = ['value' => $value, 'label' => []];
+                $choice = ['value' => $value, 'label' => [$locale => $line]];
             }
-            // a line that only shows the words another language gave a choice with no name in $locale
-            // was not typed: the choice stays without one
-            $shown = self::text($choice['label'], $locale) ?: $choice['value'];
-            if ($choice['label'] === [] || self::own($choice['label'], $locale) !== '' || $line !== $shown) {
-                $choice['label'][$locale] = $line;
-            }
+            // A line that matched a stored choice shows exactly that choice's words, so it keeps its names
+            // as they are: one that only shows another language's words (or, with no name at all, its
+            // value) stays without a name in $locale. Retyping those words on purpose cannot be told
+            // apart from leaving the line alone; visitors read the same words either way.
             $taken[$choice['value']] = true;
             $out[] = $choice;
         }

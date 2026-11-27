@@ -617,10 +617,10 @@ it('writes a main-language name for a line the member really changed', function 
         Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid])
             ->set('fields.1.choices', "Inox 304\nNhôm tấm\nĐồng")->call('save')->assertSet('toastMsg', __('form_builder.toast_saved'));
 
-        expect(array_column(ftChoices($form), 'label'))->toEqual([
-            ['vi' => 'Inox 304'],
-            ['vi' => 'Nhôm tấm'],
-            ['vi' => 'Đồng', 'en' => 'Copper'],
+        expect(ftChoices($form))->toEqual([
+            ['value' => 'inox', 'label' => ['vi' => 'Inox 304']],
+            ['value' => 'nhom-tam', 'label' => ['vi' => 'Nhôm tấm']],
+            ['value' => 'dong', 'label' => ['vi' => 'Đồng', 'en' => 'Copper']],
         ]);
     });
 });
@@ -642,6 +642,40 @@ it('keeps the translation line of a nameless choice when the main language is sa
         expect(ftChoices($form))->toEqual([
             ['value' => 'inox', 'label' => ['vi' => 'Inox 304', 'en' => 'Stainless']],
             ['value' => 'nhom', 'label' => ['en' => 'Aluminium sheet']],
+            ['value' => 'dong', 'label' => ['vi' => 'Đồng', 'en' => 'Copper']],
+        ]);
+    });
+});
+
+it('keeps a choice with no name at all nameless on an untouched main-language save, and keeps a line typed meanwhile in another language', function (): void {
+    $manager = ftMember();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        ftLanguages('en');
+        $form = ftFallbackForm();
+        // a translator emptied the only name this choice had
+        FormField::query()->where('form_id', $form->id)->where('key', 'material')->firstOrFail()->update(['options' => ['choices' => [
+            ['value' => 'inox', 'label' => ['vi' => 'Inox 304']],
+            ['value' => 'nhom', 'label' => []],
+            ['value' => 'dong', 'label' => ['vi' => 'Đồng', 'en' => 'Copper']],
+        ]]]);
+
+        $english = Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid, 'locale' => 'en'])
+            ->set('fields.1.choices', "Stainless\nAluminium\nCopper");
+        Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid])
+            ->assertSet('fields.1.choices', "Inox 304\nnhom\nĐồng")
+            ->set('name', 'Yêu cầu báo giá mới')->call('save')->assertSet('toastMsg', __('form_builder.toast_saved'));
+
+        expect(ftChoices($form))->toEqual([
+            ['value' => 'inox', 'label' => ['vi' => 'Inox 304']],
+            ['value' => 'nhom', 'label' => []],
+            ['value' => 'dong', 'label' => ['vi' => 'Đồng', 'en' => 'Copper']],
+        ]);
+
+        $english->call('save')->assertSet('toastMsg', __('form_builder.toast_saved'))->assertSet('toastTone', 'success');
+        expect(ftChoices($form))->toEqual([
+            ['value' => 'inox', 'label' => ['vi' => 'Inox 304', 'en' => 'Stainless']],
+            ['value' => 'nhom', 'label' => ['en' => 'Aluminium']],
             ['value' => 'dong', 'label' => ['vi' => 'Đồng', 'en' => 'Copper']],
         ]);
     });
