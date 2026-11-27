@@ -51,18 +51,27 @@
     $sfPreview = ! empty($preview);
     $sfMine = ! $sfPreview && $sfNth === 0 && $sfFormKey !== '' && old('lead_form') === $sfFormKey;
     $sfErr = $sfMine ? $errors : new \Illuminate\Support\MessageBag();
-    $sfOld = fn (string $name) => $sfMine ? old($name) : null;
+    // What was typed, back into a one-value box: text only. A crafted post can flash a list under any key; a list
+    // is never a value to print (e() and strval() would fail on it), so it comes back as nothing.
+    $sfOldAny = fn (string $name): mixed => $sfMine ? old($name) : null;
+    $sfOld = function (string $name) use ($sfOldAny): ?string {
+        $kept = $sfOldAny($name);
+
+        return is_scalar($kept) ? (string) $kept : null;
+    };
+    // A field's message: its own, else one of its picks' («Chọn nhiều» checks each pick as key.n).
+    $sfFieldErr = fn (string $key): string => $sfErr->first($key) ?: $sfErr->first($key.'.*');
     // A visitor who brings no session cookie has no session at all (StorefrontSession): nothing to read.
     $sfSession = request()->hasSession() ? request()->session() : null;
     $sfSent = ! $sfPreview && $sfNth === 0 && $sfSession?->get('form_success_key') === $sfFormKey ? $sfSession?->get('form_success') : null;
     $sfFirstBad = null;
     foreach ($fields as $sfField) {
-        if ($sfErr->has($sfField['key'])) {
+        if ($sfFieldErr($sfField['key']) !== '') {
             $sfFirstBad = $sfField['key'];
             break;
         }
     }
-    $sfAlert = $sfErr->first('form') ?: ($sfFirstBad !== null ? $sfErr->first($sfFirstBad) : $sfErr->first());
+    $sfAlert = $sfErr->first('form') ?: ($sfFirstBad !== null ? $sfFieldErr($sfFirstBad) : $sfErr->first());
     $sfKeys = array_column($fields, 'key');
     // The "phone or email" rule (StoreLeadRequest) is told once, under the later of the two fields.
     $sfOneOfHint = in_array('email', $sfKeys, true) && in_array('phone', $sfKeys, true)
@@ -71,7 +80,7 @@
     // When both fail on that rule, its message shows once (under the hint) and both fields point to it.
     $sfErrorAt = [];
     foreach ($sfKeys as $sfKey) {
-        if ($sfErr->has($sfKey)) {
+        if ($sfFieldErr($sfKey) !== '') {
             $sfErrorAt[$sfKey] = $sfFid($sfKey).'--error';
         }
     }
@@ -165,8 +174,44 @@
                     </div>
                     @continue
                 @endif
+@if ($field['type'] === 'radio' || $field['type'] === 'checkboxes')
+                    {{-- Written at the margin: a false branch prints nothing, not even the line's indent.
+                         «Chọn một» / «Chọn nhiều»: the field's label is the group's legend, each choice a row
+                         like the consent box (the whole row is clickable). A choice is sent by its stable
+                         value, read by its label. Every round box of a required group carries `required`
+                         (one pick answers them all); tick boxes never do, one by one (the server asks for a
+                         pick), so the legend says «required» in words for a screen reader. --}}
+                    @php
+                        $sfPicked = $sfOldAny($field['key']);
+                        $sfPicked = array_map('strval', array_filter(is_array($sfPicked) ? $sfPicked : [$sfPicked], 'is_scalar'));
+                        $sfMany = $field['type'] === 'checkboxes';
+                        $sfN = 0;
+                    @endphp
+                    <fieldset class="lead-form__field lead-form__field--choices" id="{{ $sfId }}"@if ($sfBad) aria-describedby="{{ $sfDescribed }}"@endif>
+                        <legend>
+                            {{ $field['label'] }}@if ($field['is_required']) <span class="lead-form__required" aria-hidden="true">*</span><span class="sr-only"> {{ __('forms.required_sr') }}</span>@endif
+                        </legend>
+                        @foreach ($field['choices'] as $sfValue => $sfText)
+                            @php $sfN++; @endphp
+                            <label class="lead-form__check" for="{{ $sfId }}--o{{ $sfN }}">
+                                <input id="{{ $sfId }}--o{{ $sfN }}" type="{{ $sfMany ? 'checkbox' : 'radio' }}" name="{{ $field['key'] }}{{ $sfMany ? '[]' : '' }}" value="{{ $sfValue }}"
+                                       @checked(in_array((string) $sfValue, $sfPicked, true)) @if (! $sfMany && $field['is_required']) required @endif
+                                       @if ($sfBad) aria-invalid="true" @endif
+                                       @if ($sfFirstBad === $field['key'] && $sfN === 1) autofocus @endif>
+                                <span>{{ $sfText }}</span>
+                            </label>
+                        @endforeach
+                        @if ($sfBad)
+                            <p class="lead-form__field-error" id="{{ $sfId }}--error">{{ $sfFieldErr($field['key']) }}</p>
+                        @endif
+                    </fieldset>
+                    @continue
+@endif
                 @php
-                    $inputType = in_array($field['type'], ['email', 'tel', 'text'], true) ? $field['type'] : 'text';
+                    // A number takes a decimal point on a phone's keypad; a day is the browser's own date box.
+                    // A number is a text box with a decimal keypad, not type=number: a browser sends "" for what it cannot
+                    // read ("1e"), and this form has no script, so what was typed would be lost without a word.
+                    $inputType = in_array($field['type'], ['email', 'tel', 'text', 'date'], true) ? $field['type'] : 'text';
                     $sfAuto = match (true) {
                         $inputType === 'email' => 'email',
                         $inputType === 'tel' => 'tel',
@@ -210,7 +255,7 @@
                             @endforeach
                         </select>
                     @else
-                        <input id="{{ $sfId }}" type="{{ $inputType }}" name="{{ $field['key'] }}"
+                        <input id="{{ $sfId }}" type="{{ $inputType }}"@if ($field['type'] === 'number') inputmode="decimal"@endif name="{{ $field['key'] }}"
                                value="{{ $sfOld($field['key']) }}" @if ($field['is_required']) required @endif
                                @if ($sfAuto !== null) autocomplete="{{ $sfAuto }}" @endif
 @if (($field['placeholder'] ?? '') !== '') placeholder="{{ $field['placeholder'] }}" @endif

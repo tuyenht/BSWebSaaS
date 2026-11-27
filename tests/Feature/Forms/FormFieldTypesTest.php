@@ -8,9 +8,8 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
 
 /*
- * The rules of the field types form_fields cannot hold yet (number, date, radio, checkboxes):
- * written and checked now so that widening the type CHECK is their only remaining schema step.
- * Fields are built in memory — no form row can carry these types today.
+ * The rules of each field type a visitor answers, number, date, one choice (radio) and several
+ * choices (checkboxes) among them. Fields are built in memory: the rules never read the database.
  */
 
 /**
@@ -72,6 +71,7 @@ it('caps a number answer at 15 digits and 6 decimals', function (mixed $value, b
     'exponent' => ['1e3', false],
     '7 decimals' => ['1.1234567', false],
     'words' => ['twelve', false],
+    'a trailing line break' => ["5\n", false],
 ]);
 
 it('keeps a number answer inside the bounds the site set', function (): void {
@@ -106,12 +106,19 @@ it('drops a choice without a value and a value listed twice', function (): void 
     expect(FormFieldTypes::choiceValues($field))->toBe(['cnc']);
 });
 
-it('shows only the types the storefront form block can draw', function (): void {
+it('shows every type the storefront form block can draw, and a choice field only with choices', function (): void {
     expect(FormFieldTypes::isCollectable(typedField('text')))->toBeTrue()
         ->and(FormFieldTypes::isCollectable(typedField('select', PICKS)))->toBeTrue()
         ->and(FormFieldTypes::isCollectable(typedField('select')))->toBeFalse()
-        ->and(FormFieldTypes::isCollectable(typedField('radio', PICKS)))->toBeFalse()
-        ->and(FormFieldTypes::isCollectable(typedField('number')))->toBeFalse();
+        ->and(FormFieldTypes::isCollectable(typedField('radio', PICKS)))->toBeTrue()
+        ->and(FormFieldTypes::isCollectable(typedField('radio')))->toBeFalse()
+        ->and(FormFieldTypes::isCollectable(typedField('checkboxes', PICKS)))->toBeTrue()
+        ->and(FormFieldTypes::isCollectable(typedField('checkboxes')))->toBeFalse()
+        ->and(FormFieldTypes::isCollectable(typedField('number')))->toBeTrue()
+        ->and(FormFieldTypes::isCollectable(typedField('date')))->toBeTrue()
+        ->and(FormFieldTypes::isCollectable(typedField('color')))->toBeFalse()
+        ->and(FormFieldTypes::STORED_TYPES)->toBe(FormFieldTypes::TYPES)
+        ->and(FormFieldTypes::DRAWN_TYPES)->toBe(FormFieldTypes::TYPES);
 });
 
 it('draws a file field only while the platform takes its kind of file', function (): void {
