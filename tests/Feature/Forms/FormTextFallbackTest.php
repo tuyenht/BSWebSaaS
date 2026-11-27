@@ -85,7 +85,7 @@ it('keeps a choice and its value when the editor saves it untouched on a site wh
         expect(FormFieldTypes::choiceLabels(choiceField(['en' => 'Stainless', 'de' => 'Edelstahl']), 'vi'))->toBe(['a' => 'Stainless']);
 
         expect(FormDraft::choicesFrom('Stainless', 'vi', $existing))->toBe([
-            ['value' => 'a', 'label' => ['en' => 'Stainless', 'de' => 'Edelstahl', 'vi' => 'Stainless']],
+            ['value' => 'a', 'label' => ['en' => 'Stainless', 'de' => 'Edelstahl']],
         ]);
     });
 });
@@ -104,8 +104,8 @@ it('keeps both choices on an untouched save when two choices now show the same w
         expect($shown)->toBe("Steel\nSteel");
 
         expect(FormDraft::choicesFrom($shown, 'vi', $existing))->toBe([
-            ['value' => 'a', 'label' => ['ja' => 'Steel', 'vi' => 'Steel']],
-            ['value' => 'b', 'label' => ['en' => 'Steel', 'vi' => 'Steel']],
+            ['value' => 'a', 'label' => ['ja' => 'Steel']],
+            ['value' => 'b', 'label' => ['en' => 'Steel']],
         ]);
         // a line typed once more than there are choices is still merged
         expect(array_column(FormDraft::choicesFrom("Steel\nSteel\nSteel", 'vi', $existing), 'value'))->toBe(['a', 'b']);
