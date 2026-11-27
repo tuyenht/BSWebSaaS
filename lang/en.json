@@ -140,7 +140,7 @@
     "entries.ed.cover_alt_too_long": "The image description is longer than :max characters. Please shorten it.",
     "entries.ed.cover_alt_markup": "The image description is plain text, with no HTML tags. Please remove the < and > signs.",
     "entries.ed.keyword_label": "Keyword to rank for",
-    "entries.ed.keyword_note": "For AI to write the title and description and to check the :doc — not sent to Google",
+    "entries.ed.keyword_note": "The main keyword you want people to find this page by. Only for you while writing; visitors never see it",
     "entries.ed.keyword_ph": "For example: custom CNC machining",
     "entries.ed.keyword_too_long": "The keyword is longer than :max characters. Please shorten it.",
     "entries.ed.keyword_markup": "The keyword is plain text, with no HTML tags. Please remove the < and > signs.",

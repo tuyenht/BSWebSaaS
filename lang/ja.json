@@ -140,7 +140,7 @@
     "entries.ed.cover_alt_too_long": "画像の説明が:max文字を超えています。短くしてください。",
     "entries.ed.cover_alt_markup": "画像の説明は文字だけで、HTML タグは使えません。< と > を削除してください。",
     "entries.ed.keyword_label": "上位表示したいキーワード",
-    "entries.ed.keyword_note": "AI がタイトルと説明を書き、:docをチェックするため — Google には送信しません",
+    "entries.ed.keyword_note": "このページを見つけてほしい主なキーワードです。書くときの目印で、訪問者には表示されません",
     "entries.ed.keyword_ph": "例: 受注 CNC 加工",
     "entries.ed.keyword_too_long": "キーワードが:max文字を超えています。短くしてください。",
     "entries.ed.keyword_markup": "キーワードは文字だけで、HTML タグは使えません。< と > を削除してください。",

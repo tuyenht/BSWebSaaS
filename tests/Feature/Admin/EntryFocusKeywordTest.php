@@ -18,6 +18,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
+use Livewire\Mechanisms\HandleComponents\Checksum;
 use Tests\Fixtures\StorefrontCards;
 
 /*
@@ -72,7 +73,7 @@ describe('the editor', function (): void {
                 ->assertSeeHtml('id="entry-seo-keyword"')
                 ->assertSeeHtml('wire:model="focusKeyword"')
                 ->assertSee(__('entries.ed.keyword_label'))
-                ->assertSee(__('entries.ed.keyword_note', ['doc' => __('entries.ed.doc_page')]))
+                ->assertSee(__('entries.ed.keyword_note'))
                 ->assertSeeHtml('placeholder="'.e(__('entries.ed.keyword_ph')).'"')
                 ->set('focusKeyword', "  gia công\n CNC   theo yêu cầu ")
                 ->call('save')
@@ -106,6 +107,51 @@ describe('the editor', function (): void {
 
             expect(focusKeywordOf($page))->toBe('gia công CNC')
                 ->and(focusKeywordOf($page, 'en'))->toBe('CNC machining');
+        });
+    });
+
+    it('leaves the stored words as they are when a form opened before they existed is saved', function (): void {
+        $user = focusKeywordEditor();
+
+        app(Tenancy::class)->enter(1, function () use ($user): void {
+            $page = focusKeywordPage();
+            $form = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $page->ulid]);
+
+            // another member sets the words meanwhile
+            $page->translationFor('vi')->update(['focus_keyword' => 'gia công CNC']);
+
+            // the form as the editor before the field existed left it in the browser: no field and no mark in its snapshot
+            $snapshot = $form->snapshot;
+            unset($snapshot['checksum'], $snapshot['data']['focusKeyword'], $snapshot['data']['storedPrint'][0]['focus_keyword']);
+            $snapshot['checksum'] = Checksum::generate($snapshot);
+            $form->snapshot = $snapshot;
+
+            $form->set('title', 'Gia công mới')
+                ->call('save')
+                ->assertHasNoErrors()
+                ->assertSet('stale', null);
+
+            expect(focusKeywordOf($page))->toBe('gia công CNC')
+                ->and($page->fresh()->translationFor('vi')->title)->toBe('Gia công mới');
+        });
+    });
+
+    it('does not mark the content as changed when only the words change', function (): void {
+        $user = focusKeywordEditor();
+
+        app(Tenancy::class)->enter(1, function () use ($user): void {
+            $page = focusKeywordPage('cũ');
+            $marked = CarbonImmutable::parse('2026-05-01 03:00:00', 'UTC');
+            EntryTranslation::query()->where('entry_id', $page->id)->toBase()->update(['content_changed_at' => $marked]);
+
+            Livewire::actingAs($user)->test(Editor::class, ['ulid' => $page->ulid])
+                ->set('focusKeyword', 'gia công CNC')
+                ->call('save')
+                ->assertHasNoErrors();
+
+            $translation = $page->fresh()->translationFor('vi');
+            expect($translation->focus_keyword)->toBe('gia công CNC')
+                ->and($translation->content_changed_at?->equalTo($marked))->toBeTrue();
         });
     });
 

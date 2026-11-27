@@ -3887,6 +3887,10 @@ final class Editor extends Component
             // a form opened before «Mẫu hiển thị», «Ngày đăng hiện trên bài», «Thông tin tuyển dụng» and «Từ khóa muốn lên top» could not change them: read as stored
             $later = array_intersect_key($stored['print'], ['template' => true, 'display_date' => true, 'job' => true, 'focus_keyword' => true]);
             if ($this->storedPrint !== []) {
+                // a form opened before «Từ khóa muốn lên top» existed holds no words for it: it leaves the stored ones as they are
+                if (! array_key_exists('focus_keyword', $this->storedPrint)) {
+                    $this->focusKeyword = (string) $stored['translation']?->focus_keyword;
+                }
                 $this->storedPrint += $later;
             }
             if ($this->overwrite !== null) {

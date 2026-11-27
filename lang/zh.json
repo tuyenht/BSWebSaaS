@@ -140,7 +140,7 @@
     "entries.ed.cover_alt_too_long": "图片描述超过 :max 个字符，请缩短。",
     "entries.ed.cover_alt_markup": "图片描述只能是文字，不能包含 HTML 标签。请删除 < 和 > 符号。",
     "entries.ed.keyword_label": "希望排名靠前的关键词",
-    "entries.ed.keyword_note": "供 AI 撰写标题和描述并检查:doc — 不会发送给 Google",
+    "entries.ed.keyword_note": "您希望访客搜到本页所用的主要关键词。仅供撰写时参考，访客不会看到",
     "entries.ed.keyword_ph": "例如：按需 CNC 加工",
     "entries.ed.keyword_too_long": "关键词超过 :max 个字符，请缩短。",
     "entries.ed.keyword_markup": "关键词只能是文字，不能包含 HTML 标签。请删除 < 和 > 符号。",

@@ -194,7 +194,7 @@ it('holds a governed live post’s focus keyword in its pending change, shows it
 
         Livewire::actingAs($author)->test(Editor::class, ['ulid' => $post->ulid])
             ->assertSet('focusKeyword', 'tin cũ')
-            ->assertSee(__('entries.ed.keyword_note', ['doc' => __('entries.ed.doc_post')]))
+            ->assertSee(__('entries.ed.keyword_note'))
             ->set('focusKeyword', 'tin gia công CNC')
             ->call('save')
             ->assertHasNoErrors();
