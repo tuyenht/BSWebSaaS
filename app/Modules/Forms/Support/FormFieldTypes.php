@@ -251,8 +251,8 @@ final class FormFieldTypes
     }
 
     /**
-     * What a visitor reads for each choice, keyed by its value: the label in their language, else in
-     * Vietnamese, else the value itself, so a choice is never shown blank.
+     * What a visitor reads for each choice, keyed by its value: the label in their language, else in the
+     * site's default language, else any stored one, else the value itself, so a choice is never shown blank.
      *
      * @return array<string, string>
      */
@@ -260,7 +260,7 @@ final class FormFieldTypes
     {
         $labels = [];
         foreach (self::choices($field) as $choice) {
-            $labels[$choice['value']] = ($choice['label'][$locale] ?? '') ?: (($choice['label']['vi'] ?? '') ?: $choice['value']);
+            $labels[$choice['value']] = FormDraft::text($choice['label'], $locale) ?: $choice['value'];
         }
 
         return $labels;

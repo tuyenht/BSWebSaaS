@@ -8,12 +8,13 @@
     'raised' => false,
     'action' => null,
     'actionLabel' => null,
+    'sticky' => false,
 ])
 @php
     // A short message at the bottom of the screen (design 03 .kh-toast, 21 .tm-tst), read out
     // politely. Success and info stay 6 seconds, then hide by themselves; with `undo` (the host's
     // public method that reverses the change) it shows "Hoàn tác" and stays 10 seconds. An error
-    // (`tone="error"`) stays until the member closes it. "Đóng" hides it at once. $dismiss is the
+    // (`tone="error"`), or any tone with `sticky` (plain-view form only), stays until the member closes it. "Đóng" hides it at once. $dismiss is the
     // host's public method that clears the message; with `seq` (the host's message counter, which
     // makes even the same words a new message) it is called with that number, and the host clears
     // only the message it names — so a timer that fires while a newer message is on its way never
@@ -66,7 +67,7 @@
         </template>
     @elseif ($message !== '')
         <div wire:key="toast-{{ md5($tone.$message.($undo ?? '').'|'.($serverAct ? $action : '').'|'.($seq ?? '')) }}"
-             @if ($tone !== 'error')
+             @if ($tone !== 'error' && ! $sticky)
                  x-data="{ timer: null, end: 0, left: {{ $wait }}, arm(ms) { this.end = Date.now() + ms; this.timer = setTimeout(() => this.$wire.{{ $call }}, ms) }, hold() { if (this.timer === null) { return } clearTimeout(this.timer); this.timer = null; this.left = Math.max(0, this.end - Date.now()) }, release() { if (this.$el.closest('[data-spot=under]')) { this.$el._spotHeld = true; return } if (this.timer === null) { this.arm(Math.max(this.left, 3000)) } }, init() { this.place(); this.arm({{ $wait }}) }, destroy() { clearTimeout(this.timer); this.unplace() }, {{ $spot }} }"
                  x-on:mouseenter="hold()" x-on:mouseleave="release()" x-on:focusin="hold()" x-on:focusout="release()"
              @else

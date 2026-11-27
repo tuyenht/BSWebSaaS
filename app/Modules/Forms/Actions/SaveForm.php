@@ -155,6 +155,9 @@ final readonly class SaveForm
                         }
                     }
                     $changes['options'] = [...Cast::arr($field->options), 'choices' => $choices];
+                } else {
+                    // the main language made it a kind without choices meanwhile: the typed lines have no choice to land on
+                    $dropped += count(array_filter(FormDraft::translatedLines($f['choices']), fn (string $l): bool => $l !== ''));
                 }
                 $field->update($changes);
             }

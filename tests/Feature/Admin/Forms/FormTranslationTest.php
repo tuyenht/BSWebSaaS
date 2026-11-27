@@ -386,3 +386,55 @@ it('shows neither the language bar nor the language chips on a site with one lan
             ->assertDontSee('data-lang-chip', false);
     });
 });
+
+it('counts the lines typed for a choice field the main language removed meanwhile', function (): void {
+    $manager = ftMember();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        ftLanguages('en');
+        $form = ftForm();
+
+        $english = Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid, 'locale' => 'en'])
+            ->set('fields.1.choices', 'Stainless 304');
+        FormField::query()->where('form_id', $form->id)->where('key', 'material')->delete();
+
+        $english->call('save')
+            ->assertSet('toastMsg', trans_choice('form_builder.toast_saved_dropped', 1, ['n' => 1, 'lang' => LangBar::name('vi')]))
+            ->assertSet('toastTone', 'info');
+    });
+});
+
+it('counts the lines typed for a field the main language turned into a kind without choices', function (): void {
+    $manager = ftMember();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        ftLanguages('en');
+        $form = ftForm();
+
+        $english = Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid, 'locale' => 'en'])
+            ->set('fields.1.choices', "Stainless 304\nCopper");
+        FormField::query()->where('form_id', $form->id)->where('key', 'material')->update(['type' => 'text']);
+
+        $english->call('save')
+            ->assertSet('toastMsg', trans_choice('form_builder.toast_saved_dropped', 2, ['n' => 2, 'lang' => LangBar::name('vi')]))
+            ->assertSet('toastTone', 'info');
+    });
+});
+
+it('keeps the dropped-lines notice until it is closed, and lets other notices hide by themselves', function (): void {
+    $manager = ftMember();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        ftLanguages('en');
+        $form = ftForm();
+
+        $english = Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid, 'locale' => 'en'])
+            ->set('fields.1.choices', 'Stainless 304');
+        FormField::query()->where('form_id', $form->id)->where('key', 'material')->delete();
+
+        $notice = fn (string $html): string => substr($html, (int) strpos($html, 'data-tone="info"') - 700, 700);
+        expect($notice($english->call('save')->html()))->not->toContain('arm(');
+        // a plain saved message still hides by itself
+        $english->set('name', 'Another name')->call('save')->assertSet('toastTone', 'success')->assertSeeHtml('arm(');
+    });
+});

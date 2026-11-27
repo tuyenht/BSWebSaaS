@@ -91,8 +91,7 @@ final class LeadAnswers
 
     private static function label(FormField $field, string $locale): string
     {
-        $labels = Cast::arr($field->label);
-        $label = Cast::string($labels[$locale] ?? $labels['vi'] ?? null);
+        $label = FormDraft::text($field->label, $locale);
 
         return $label !== '' ? $label : $field->key;
     }

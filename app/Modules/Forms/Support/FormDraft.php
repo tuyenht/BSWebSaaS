@@ -7,6 +7,7 @@ namespace App\Modules\Forms\Support;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormField;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Support\Str;
 
 /**
@@ -207,12 +208,14 @@ final class FormDraft
             && filter_var($email, FILTER_VALIDATE_EMAIL, FILTER_FLAG_EMAIL_UNICODE) !== false;
     }
 
-    /** A per-language text in $locale, else Vietnamese, else its first language. */
+    /** A per-language text in $locale, else the site's default language, else any stored language. */
     public static function text(mixed $map, string $locale): string
     {
         $map = Cast::arr($map);
 
-        return Cast::string($map[$locale] ?? null) ?: (Cast::string($map['vi'] ?? null) ?: Cast::string(array_values($map)[0] ?? null));
+        return Cast::string($map[$locale] ?? null)
+            ?: (Cast::string($map[app(SiteLocale::class)->default()] ?? null)
+            ?: Cast::string(array_values(array_filter($map, fn (mixed $v): bool => is_string($v) && $v !== ''))[0] ?? null));
     }
 
     /**
