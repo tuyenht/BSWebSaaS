@@ -15,6 +15,14 @@ RUN install-php-extensions \
     sodium \
     pcov
 
+# qpdf (Apache-2.0) counts the pages of uploaded PDFs for the media library
+# (App\Modules\Media\Services\PdfPages). Pinned to the Debian trixie package, as the base image is
+# pinned by digest: a security fix (trixie-security) is taken by bumping this pin. Once a Debian
+# point release drops this revision the build fails here on purpose: bump the pin then too.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends qpdf=12.2.0-1 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Composer (pinned major 2)
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
