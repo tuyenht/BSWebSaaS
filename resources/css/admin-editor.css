@@ -165,7 +165,7 @@
     }
 
     /* «Thử lại» (no connection) beside the state: with its word while the bar has room, otherwise the
-       icon alone in a 44px square, the word still its name and its title (data-retry-tight, admin-editor.js). */
+       icon alone (its touch area still 44px), the word still its name and its title (data-retry-tight, admin-editor.js). */
     [data-child-screen] .ped-retry {
         margin-right: 0.5rem;
     }

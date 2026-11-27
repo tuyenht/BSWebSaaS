@@ -131,6 +131,7 @@ export function editorSave(cfg) {
     let onSaved = null;
     let onHide = null;
     let ro = null;
+    let fitFrame = 0;
 
     return {
         busy: false,
@@ -144,9 +145,17 @@ export function editorSave(cfg) {
 
         init() {
             this.get = (field) => this.$wire.$get(field);
-            // the bar's own size, its «Thử lại» showing or the text size changing: fit the bar again
+            // the bar's own size, its «Thử lại» showing or the text size changing: fit the bar again, on the
+            // next frame (fitting resizes what is observed; inside the callback that is a ResizeObserver loop)
             if (window.ResizeObserver) {
-                ro = new window.ResizeObserver(() => fitRetry(this.$root));
+                ro = new window.ResizeObserver(() => {
+                    if (!fitFrame) {
+                        fitFrame = requestAnimationFrame(() => {
+                            fitFrame = 0;
+                            fitRetry(this.$root);
+                        });
+                    }
+                });
                 [this.$root, this.$root.querySelector('.ped-retry'), this.$root.querySelector('.ped-tl')].forEach((el) => el && ro.observe(el));
             }
             page = this.$root.closest('[wire\\:id]') || document.body;
@@ -226,6 +235,9 @@ export function editorSave(cfg) {
         destroy() {
             clearTimeout(timer);
             clearTimeout(keepTimer);
+            if (fitFrame) {
+                cancelAnimationFrame(fitFrame);
+            }
             if (ro) {
                 ro.disconnect();
             }
