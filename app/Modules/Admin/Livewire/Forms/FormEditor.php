@@ -5,16 +5,20 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Livewire\Forms;
 
 use App\Modules\Admin\Livewire\Forms\Concerns\GatesFormScreens;
+use App\Modules\Admin\Support\LangBar;
 use App\Modules\Cms\Routing\FormPagePaths;
 use App\Modules\Forms\Actions\SaveForm;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Support\FormDraft;
 use App\Modules\Forms\Support\FormFieldTypes;
+use App\Modules\Forms\Support\FormLangStates;
 use App\Modules\Forms\Support\FormTemplates;
 use App\Modules\Forms\Support\LeadFileStorage;
+use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
+use App\Modules\Theme\Chrome\StorefrontChrome;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Js;
@@ -32,7 +36,11 @@ use Livewire\Component;
  * or removed is one; a new order is one), fields are checked as they are left, and leaving with
  * changes asks first. The consent box is the platform's: shown locked, last, never part of the draft.
  *
- * Texts are written in the site's main language; other languages stay as they are (SaveForm).
+ * A saved form on a site with several languages opens in one of them (`?locale=`, else the main one)
+ * under the shared language bar: in the main language everything is edited (SaveForm::handle, the
+ * other languages kept as they are); in another one only its texts — name, labels, choices, thanks —
+ * with the main language's words as the examples, and what every language shares (switch, emails,
+ * fields, their kinds, order and settings) shown locked with «Chung» (SaveForm::translate).
  * A file field («Tệp đính kèm») picks one of the platform's kinds of file and how many (1 to 5);
  * the kind is offered only while the platform takes it (forms.file_kinds), and the type not at all
  * when it takes none. A field keeps a kind the platform has since held back, shown as picked.
@@ -51,8 +59,52 @@ final class FormEditor extends Component
     #[Locked]
     public ?string $ulid = null;
 
+    /** The language whose texts are edited: `?locale=` when the site has it enabled, else its main one; never client-set. */
     #[Locked]
     public string $locale = 'vi';
+
+    /** The site's main language: the source the other languages are written from. */
+    #[Locked]
+    public string $source = 'vi';
+
+    /** Whether the site writes in more than one language (the fields' language chips). */
+    #[Locked]
+    public bool $multiLang = false;
+
+    /**
+     * The main language's texts, the examples and fallbacks while another language is open.
+     *
+     * @var array{name: string, success: string, labels: array<string, string>, choices: array<string, string>}
+     */
+    #[Locked]
+    public array $sourceTexts = ['name' => '', 'success' => '', 'labels' => [], 'choices' => []];
+
+    /**
+     * Each choice field's choice values, in the order its texts were read: another language's lines
+     * belong to these choices (line n to the n-th value), even when the main language reorders or
+     * removes choices before this language is saved.
+     *
+     * @var array<string, list<string>>
+     */
+    #[Locked]
+    public array $choiceValues = [];
+
+    /**
+     * Beside each of those values, the main language's label it had then: a value the main language
+     * retired and a later choice took again is not the choice these lines were written for.
+     *
+     * @var array<string, list<string>>
+     */
+    #[Locked]
+    public array $choiceSources = [];
+
+    /**
+     * The language bar of a saved form on a site with more than one language (LangBar::items()).
+     *
+     * @var list<array{code: string, label: string, kind: string, done: int, total: int, href: string, current: bool, source: bool, public: bool, live: bool}>
+     */
+    #[Locked]
+    public array $langBar = [];
 
     #[Locked]
     public bool $isNew = false;
@@ -109,9 +161,13 @@ final class FormEditor extends Component
     #[Locked]
     public ?array $removed = null;
 
-    public function mount(?string $ulid = null, ?string $purpose = null): void
+    public function mount(?string $ulid = null, ?string $purpose = null, ?string $locale = null): void
     {
-        $this->locale = app(SiteLocale::class)->default();
+        $languages = app(SiteLocale::class);
+        $this->source = $languages->default();
+        $this->multiLang = count($languages->enabled()) > 1;
+        $requested = $locale ?? request()->query('locale');
+        $this->locale = $ulid !== null && is_string($requested) && in_array($requested, $languages->enabled(), true) ? $requested : $this->source;
         if (! $this->entitled() || ! Gate::allows('viewAny', Form::class)) {
             return; // render() shows the plan or the no-permission card; nothing is read
         }
@@ -119,7 +175,9 @@ final class FormEditor extends Component
         if ($ulid !== null) {
             $form = Form::query()->where('ulid', $ulid)->with('fields')->firstOrFail();
             $this->ulid = $form->ulid;
-            $draft = FormDraft::fromForm($form, $this->locale);
+            $draft = $this->translating() ? FormDraft::translation($form, $this->locale, $this->source) : FormDraft::fromForm($form, $this->locale);
+            $this->readSourceTexts($form);
+            $this->readLangBar($form);
             $consent = $form->fields->firstWhere('key', Form::CONSENT_KEY);
             $this->consentLabel = $consent !== null ? FormDraft::text($consent->label, $this->locale) : '';
             $this->pagePath = app(FormPagePaths::class)->of([$form->id], $this->locale)[$form->id] ?? null;
@@ -127,6 +185,7 @@ final class FormEditor extends Component
             abort_unless(in_array($purpose, FormTemplates::PURPOSES, true), 404);
             $this->isNew = true;
             $draft = FormDraft::template($purpose, $this->locale);
+            $this->sourceTexts = ['name' => $draft['name'], 'success' => '', 'labels' => array_column($draft['fields'], 'label', 'key'), 'choices' => array_column($draft['fields'], 'choices', 'key')];
         }
         if ($this->consentLabel === '') {
             $this->consentLabel = (string) __('forms.consent_label', [], $this->locale);
@@ -139,13 +198,16 @@ final class FormEditor extends Component
     /** Only the draft's own fields may be set from the page; every other change goes through a method. */
     public function updating(string $property, mixed $value): void
     {
-        $scalar = match ($property) {
+        // in another language than the main one only its texts change; what every language shares is locked
+        $shared = $this->translating() && ($property === 'newEmail' || $property === 'active'
+            || preg_match('/^fields\.\d+\.(type|required|accept|max_files)$/', $property) === 1);
+        $scalar = $shared ? false : match ($property) {
             'name', 'success', 'newEmail' => is_string($value),
             'active', 'showThanks' => is_bool($value),
             'openKey' => $value === null || is_string($value),
             default => null,
         };
-        if ($scalar === null && preg_match('/^fields\.(\d+)\.(label|type|required|choices|accept|max_files)$/', $property, $m) === 1) {
+        if (! $shared && $scalar === null && preg_match('/^fields\.(\d+)\.(label|type|required|choices|accept|max_files)$/', $property, $m) === 1) {
             // only a row the draft has, with a value of the column's own kind
             $scalar = isset($this->fields[(int) $m[1]]) && match ($m[2]) {
                 'required' => is_bool($value),
@@ -192,7 +254,7 @@ final class FormEditor extends Component
     public function sortField(string $key, int $position): void
     {
         $i = $this->indexOf($key);
-        if ($i === null) {
+        if ($i === null || $this->sharedRefused()) {
             return;
         }
         $row = array_splice($this->fields, $i, 1);
@@ -202,7 +264,7 @@ final class FormEditor extends Component
     /** «Thêm ô»: a new empty field of $type, opened, its name field focused. */
     public function addField(string $type): void
     {
-        if (! array_key_exists($type, $this->kinds()) || count($this->fields) >= FormDraft::MAX_FIELDS) {
+        if (! array_key_exists($type, $this->kinds()) || count($this->fields) >= FormDraft::MAX_FIELDS || $this->sharedRefused()) {
             return;
         }
         // The inbox fills a lead's email and phone (and the reply address) from the fields keyed
@@ -224,7 +286,7 @@ final class FormEditor extends Component
     public function removeField(string $key): void
     {
         $i = $this->indexOf($key);
-        if ($i === null) {
+        if ($i === null || $this->sharedRefused()) {
             return;
         }
         $field = $this->fields[$i];
@@ -259,7 +321,7 @@ final class FormEditor extends Component
     public function addEmail(): void
     {
         $email = trim($this->newEmail);
-        if ($email === '') {
+        if ($email === '' || $this->sharedRefused()) {
             return;
         }
         $this->emailError = match (true) {
@@ -276,7 +338,7 @@ final class FormEditor extends Component
 
     public function removeEmail(int $index): void
     {
-        if (isset($this->emails[$index])) {
+        if (isset($this->emails[$index]) && ! $this->sharedRefused()) {
             array_splice($this->emails, $index, 1);
         }
     }
@@ -324,8 +386,13 @@ final class FormEditor extends Component
             return;
         }
         $draft = $this->draft();
+        $dropped = 0;
         try {
-            $form = app(SaveForm::class)->handle($form, $draft, $this->locale);
+            if ($form !== null && $this->translating()) {
+                ['form' => $form, 'dropped' => $dropped] = app(SaveForm::class)->translate($form, $draft, $this->locale, $this->source, $this->choiceValues, $this->choiceSources);
+            } else {
+                $form = app(SaveForm::class)->handle($form, $draft, $this->locale);
+            }
         } catch (InvalidArgumentException) {
             $this->toast(__('form_builder.toast_failed'), 'error');
 
@@ -337,10 +404,27 @@ final class FormEditor extends Component
             $this->isNew = false;
             $this->js('history.replaceState(history.state, "", '.Js::from(route('admin.form-builder.edit', $form->ulid)).')');
         }
-        $this->saved = $draft;
         $this->touched = [];
         $this->removed = null;
+        $form->load('fields');
+        if ($this->translating()) {
+            // this language as now stored: the main language's changes made since it opened come in,
+            // so each line stays beside the choice it belongs to for the next save
+            $draft = FormDraft::translation($form, $this->locale, $this->source);
+            $this->fill($this->draftProps($draft));
+            $this->saved = $draft;
+            $draft = $this->draft();
+        }
+        $this->saved = $draft;
+        $this->readSourceTexts($form);
+        $this->readLangBar($form);
         $this->savedAt = app(SiteTime::class)->forDisplay(now())?->format('H:i');
+        // a line typed for a choice the main language has removed meanwhile is not kept: say so
+        if ($dropped > 0) {
+            $this->toast(trans_choice('form_builder.toast_saved_dropped', $dropped, ['n' => $dropped, 'lang' => LangBar::name($this->source)]), 'info');
+
+            return;
+        }
         $this->toast(__('form_builder.toast_saved'));
     }
 
@@ -397,7 +481,8 @@ final class FormEditor extends Component
         $shown = array_intersect_key($errors, $this->touched + ['fields' => true]); // a form left with nothing to fill in says so at once
         $changes = $this->changeCount();
         $firstError = array_key_first($errors);
-        $title = $this->isNew && $this->ulid === null ? __('form_builder.title_new') : __('form_builder.title_edit', ['name' => trim($this->saved['name'])]);
+        $title = $this->isNew && $this->ulid === null ? __('form_builder.title_new') : __('form_builder.title_edit', ['name' => $this->translating() ? $this->sourceTexts['name'] : trim($this->saved['name'])]);
+        $user = auth()->user();
 
         return $this->titled(view('admin::livewire.forms.editor', [
             'title' => $title,
@@ -414,6 +499,11 @@ final class FormEditor extends Component
             'leave' => trans_choice('form_builder.leave_body', $changes, ['n' => $changes]),
             // «Mở Trình dựng trang» opens the pages list, for a member who may open it
             'pagesHref' => Gate::allows('entries.view') ? route('admin.entries.index', ['section' => 'pages']) : null,
+            'translating' => $this->translating(),
+            'textDir' => StorefrontChrome::dir($this->locale),
+            'langName' => LangBar::name($this->locale),
+            'sharedWhy' => $this->translating() ? $this->sharedWhy() : '',
+            'langManage' => $this->langBar !== [] && $user instanceof User && $user->can('settings.manage') ? route('admin.settings.languages') : null,
         ]), $title);
     }
 
@@ -424,6 +514,9 @@ final class FormEditor extends Component
      */
     private function errorsByKey(): array
     {
+        if ($this->translating()) {
+            return $this->translationErrors();
+        }
         $out = [];
         $name = trim($this->name);
         if ($name === '') {
@@ -441,8 +534,8 @@ final class FormEditor extends Component
             $msg = match (true) {
                 $label === '' => ['msg' => __('form_builder.field_label_error'), 'id' => 'bm-l-'.$f['key']],
                 mb_strlen($label) > FormDraft::MAX_NAME => ['msg' => __('form_builder.too_long', ['max' => FormDraft::MAX_NAME]), 'id' => 'bm-l-'.$f['key']],
-                $f['type'] === 'select' && $lines === [] => ['msg' => __('form_builder.choices_error'), 'id' => 'bm-o-'.$f['key']],
-                $f['type'] === 'select' && (count($lines) > FormDraft::MAX_CHOICES || array_filter($lines, fn (string $l): bool => mb_strlen($l) > FormDraft::MAX_NAME) !== []) => ['msg' => __('form_builder.choices_long', ['n' => FormDraft::MAX_CHOICES, 'max' => FormDraft::MAX_NAME]), 'id' => 'bm-o-'.$f['key']],
+                FormFieldTypes::isChoice($f['type']) && $lines === [] => ['msg' => __('form_builder.choices_error'), 'id' => 'bm-o-'.$f['key']],
+                FormFieldTypes::isChoice($f['type']) && (count($lines) > FormDraft::MAX_CHOICES || array_filter($lines, fn (string $l): bool => mb_strlen($l) > FormDraft::MAX_NAME) !== []) => ['msg' => __('form_builder.choices_long', ['n' => FormDraft::MAX_CHOICES, 'max' => FormDraft::MAX_NAME]), 'id' => 'bm-o-'.$f['key']],
                 default => null,
             };
             if ($msg !== null) {
@@ -469,7 +562,9 @@ final class FormEditor extends Component
                 'type' => Cast::string($f['type']),
                 'label' => trim(Cast::string($f['label'])),
                 'required' => Cast::bool($f['required']),
-                'choices' => Cast::string($f['type']) === 'select' ? implode("\n", FormDraft::lines(Cast::string($f['choices']))) : '',
+                'choices' => ! FormFieldTypes::isChoice(Cast::string($f['type'])) ? '' : implode("\n", $this->translating()
+                    ? FormDraft::translatedLines(Cast::string($f['choices']))
+                    : FormDraft::lines(Cast::string($f['choices']))),
                 'accept' => Cast::string($f['accept']),
                 'max_files' => Cast::int($f['max_files']),
             ]), $this->fields),
@@ -538,6 +633,112 @@ final class FormEditor extends Component
         }
 
         return null;
+    }
+
+    /** Another language than the site's main one is open: only its texts are edited. */
+    private function translating(): bool
+    {
+        return $this->locale !== $this->source;
+    }
+
+    /** Why a shared setting is locked here: where to change it (the editors' words). */
+    private function sharedWhy(): string
+    {
+        return Cast::string(__('entries.ed.shared_guard', ['lang' => LangBar::name($this->source)]));
+    }
+
+    /**
+     * In another language than the main one, what every language shares is not changed (its controls
+     * are locked there, so only a hand-made request gets here): say where it is changed. Returns
+     * whether it refused.
+     */
+    private function sharedRefused(): bool
+    {
+        if (! $this->translating()) {
+            return false;
+        }
+        $this->toast($this->sharedWhy(), 'error');
+
+        return true;
+    }
+
+    /**
+     * The errors of another language's texts: none is required (an empty one shows the main
+     * language's), each keeps its length, and a choices box never has more lines than its field
+     * has choices.
+     *
+     * @return array<string, array{msg: string, id: string}>
+     */
+    private function translationErrors(): array
+    {
+        $out = [];
+        if (mb_strlen(trim($this->name)) > FormDraft::MAX_NAME) {
+            $out['name'] = ['msg' => __('form_builder.too_long', ['max' => FormDraft::MAX_NAME]), 'id' => 'bm-name'];
+        }
+        foreach ($this->fields as $f) {
+            $lines = FormDraft::translatedLines($f['choices']);
+            $choices = count($this->choiceValues[$f['key']] ?? []);
+            $msg = match (true) {
+                mb_strlen(trim($f['label'])) > FormDraft::MAX_NAME => ['msg' => __('form_builder.too_long', ['max' => FormDraft::MAX_NAME]), 'id' => 'bm-l-'.$f['key']],
+                FormFieldTypes::isChoice($f['type']) && count($lines) > $choices => ['msg' => trans_choice('form_builder.choices_count_error', $choices, ['n' => $choices, 'lang' => LangBar::name($this->source)]), 'id' => 'bm-o-'.$f['key']],
+                FormFieldTypes::isChoice($f['type']) && array_filter($lines, fn (string $l): bool => mb_strlen($l) > FormDraft::MAX_NAME) !== [] => ['msg' => __('form_builder.too_long', ['max' => FormDraft::MAX_NAME]), 'id' => 'bm-o-'.$f['key']],
+                default => null,
+            };
+            if ($msg !== null) {
+                $out['f:'.$f['key']] = $msg;
+            }
+        }
+        if (mb_strlen(trim($this->success)) > FormDraft::MAX_SUCCESS) {
+            $out['success'] = ['msg' => __('form_builder.too_long', ['max' => FormDraft::MAX_SUCCESS]), 'id' => 'bm-thx'];
+        }
+
+        return $out;
+    }
+
+    /** The main language's texts of $form (its fields loaded), as they are stored, and its choice values with their main-language labels. */
+    private function readSourceTexts(Form $form): void
+    {
+        $source = FormDraft::fromForm($form, $this->source);
+        $this->sourceTexts = [
+            'name' => $source['name'],
+            'success' => $source['success'],
+            'labels' => array_column($source['fields'], 'label', 'key'),
+            'choices' => array_column($source['fields'], 'choices', 'key'),
+        ];
+        $this->choiceValues = [];
+        $this->choiceSources = [];
+        foreach ($form->fields as $field) {
+            if ($field->key !== Form::CONSENT_KEY && FormFieldTypes::isChoice($field->type)) {
+                $choices = FormFieldTypes::choices($field);
+                $this->choiceValues[$field->key] = array_column($choices, 'value');
+                $this->choiceSources[$field->key] = array_map(fn (array $c): string => FormDraft::own($c['label'], $this->source), $choices);
+            }
+        }
+    }
+
+    /**
+     * The language bar of a saved form on a site with more than one language: each language's state
+     * from what $form (its fields loaded) has written in it (FormLangStates), each opening this editor
+     * in that language (the main one without `?locale=`).
+     */
+    private function readLangBar(Form $form): void
+    {
+        $languages = app(SiteLocale::class);
+        $enabled = $languages->enabled();
+        if (count($enabled) < 2) {
+            $this->langBar = [];
+
+            return;
+        }
+        $states = FormLangStates::read($form, $this->source, $enabled);
+        $rows = [];
+        foreach ($enabled as $code) {
+            $rows[$code] = ['done' => $code === $this->source ? $states['total'] : $states['done'][$code], 'mark' => null, 'live' => false];
+        }
+        $ulid = $form->ulid;
+        $source = $this->source;
+        $this->langBar = LangBar::items($rows, $enabled, $source, $languages->public(), $this->locale, $states['total'],
+            static fn (string $code): string => route('admin.form-builder.edit', ['ulid' => $ulid] + ($code !== $source ? ['locale' => $code] : [])));
     }
 
     private function toast(string $message, string $tone = 'success'): void
