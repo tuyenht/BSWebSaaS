@@ -92,6 +92,24 @@ export function shortStateText(state, words, long) {
 }
 
 /**
+ * The phone's one bar (design 01: ← · name over state · Thử lại · (?) · ⋮ on one line): «Thử lại» keeps
+ * its word while the bar holds everything, otherwise it shows its icon alone (data-retry-tight; the word
+ * stays its name and title). Measured with the word shown; elsewhere the bar wraps and always has room.
+ */
+export function fitRetry(bar) {
+    const retry = bar.querySelector('.ped-retry');
+    const acts = bar.querySelector('.ped-acts');
+    bar.removeAttribute('data-retry-tight');
+    if (!retry || !acts || !retry.getClientRects().length) {
+        return;
+    }
+    const edge = bar.getBoundingClientRect().right - (parseFloat(window.getComputedStyle(bar).paddingRight) || 0);
+    if (acts.getBoundingClientRect().right > edge + 0.5) {
+        bar.setAttribute('data-retry-tight', '');
+    }
+}
+
+/**
  * @param {{ fields: string[], words: Record<string, string>, delay?: number, autosave?: boolean, autosaveNew?: boolean, extra?: string, keep?: { key: string } }} cfg
  *   the counted fields, the words of each state, the wait before a draft saves itself (ms);
  *   `autosave: false` for an editor whose drafts do not save themselves; `autosaveNew` for one whose new
@@ -112,6 +130,7 @@ export function editorSave(cfg) {
     let keepTimer = null;
     let onSaved = null;
     let onHide = null;
+    let ro = null;
 
     return {
         busy: false,
@@ -125,6 +144,11 @@ export function editorSave(cfg) {
 
         init() {
             this.get = (field) => this.$wire.$get(field);
+            // the bar's own size, its «Thử lại» showing or the text size changing: fit the bar again
+            if (window.ResizeObserver) {
+                ro = new window.ResizeObserver(() => fitRetry(this.$root));
+                [this.$root, this.$root.querySelector('.ped-retry'), this.$root.querySelector('.ped-tl')].forEach((el) => el && ro.observe(el));
+            }
             page = this.$root.closest('[wire\\:id]') || document.body;
             onInput = () => {
                 this.typed = true;
@@ -202,6 +226,9 @@ export function editorSave(cfg) {
         destroy() {
             clearTimeout(timer);
             clearTimeout(keepTimer);
+            if (ro) {
+                ro.disconnect();
+            }
             if (onSaved) {
                 window.removeEventListener('admin-editor-saved', onSaved);
             }

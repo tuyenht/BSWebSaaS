@@ -1735,24 +1735,25 @@ final class Editor extends Component
     /**
      * The save state beside the title while nothing is being typed: never saved, saved (by a
      * button or by itself) with its time, or a field to fix. The browser shows the typing states
-     * (changes waiting, saving, no connection) over it. `text` is shown, `full` read out and in the
-     * tooltip, times in the website's zone.
+     * (changes waiting, saving, no connection) over it. `text` is shown, `short` on the phone's one
+     * bar (board 09: «Đã lưu 09:40» · «Chưa lưu»), `full` read out and in the tooltip, times in the
+     * website's zone.
      *
-     * @return array{key: string, icon: string, text: string, full: string, tip: string}
+     * @return array{key: string, icon: string, text: string, short: string, full: string, tip: string}
      */
     private function saveNote(): array
     {
         if ($this->saveFailed) {
             $text = __('catalog.ed.sv_error');
 
-            return ['key' => 'error', 'icon' => 'ri-error-warning', 'text' => $text, 'full' => $text, 'tip' => $text];
+            return ['key' => 'error', 'icon' => 'ri-error-warning', 'text' => $text, 'short' => __('catalog.ed.sv_dirty_short'), 'full' => $text, 'tip' => $text];
         }
 
         $at = $this->savedAt !== null ? app(SiteTime::class)->forDisplay(CarbonImmutable::parse($this->savedAt)) : null;
         if (! $at instanceof CarbonImmutable) {
             $text = __('catalog.ed.sv_never');
 
-            return ['key' => 'auto', 'icon' => 'ri-checkbox-circle', 'text' => $text, 'full' => $text, 'tip' => $text];
+            return ['key' => 'auto', 'icon' => 'ri-checkbox-circle', 'text' => $text, 'short' => __('catalog.ed.sv_dirty_short'), 'full' => $text, 'tip' => $text];
         }
 
         $today = $at->isSameDay(app(SiteTime::class)->now());
@@ -1763,7 +1764,9 @@ final class Editor extends Component
             default => $today ? __('catalog.ed.sv_short_at', ['time' => $time]) : __('catalog.ed.sv_short', ['when' => $at->format('d/m')]),
         };
 
-        return ['key' => $this->savedKind === null ? 'auto' : 'saved', 'icon' => 'ri-checkbox-circle', 'text' => $text, 'full' => $full, 'tip' => __('catalog.ed.sv_tip', ['text' => $full])];
+        $short = __('catalog.ed.sv_short', ['when' => $today ? $time : $at->format('d/m')]);
+
+        return ['key' => $this->savedKind === null ? 'auto' : 'saved', 'icon' => 'ri-checkbox-circle', 'text' => $text, 'short' => $short, 'full' => $full, 'tip' => __('catalog.ed.sv_tip', ['text' => $full])];
     }
 
     /**
