@@ -40,18 +40,18 @@ afterEach(function (): void {
     Livewire::flushState();
 });
 
-function psIn(Closure $step, int $site = 1): mixed
+function plsIn(Closure $step, int $site = 1): mixed
 {
     return app(Tenancy::class)->enter($site, $step);
 }
 
-function psManager(): User
+function plsManager(): User
 {
     return blockLibraryUser(1, 'admin', ['settings.manage']);
 }
 
 /** Published pages with their live routes (inside psIn). */
-function psPages(int $from, int $to): void
+function plsPages(int $from, int $to): void
 {
     for ($i = $from; $i <= $to; $i++) {
         $page = Entry::query()->create(['type' => 'page', 'status' => 'published']);
@@ -61,7 +61,7 @@ function psPages(int $from, int $to): void
 }
 
 /** A published page under $parent with its live route (inside psIn). */
-function psPage(string $slug, ?Entry $parent = null): Entry
+function plsPage(string $slug, ?Entry $parent = null): Entry
 {
     $page = Entry::query()->create(['type' => 'page', 'status' => 'published', 'parent_id' => $parent?->id]);
     $page->translations()->create(['locale' => 'vi', 'title' => $slug, 'slug' => $slug, 'status' => 'published', 'body' => ['blocks' => []]]);
@@ -72,7 +72,7 @@ function psPage(string $slug, ?Entry $parent = null): Entry
 }
 
 /** A post section covering a fresh root category, with $posts published posts (inside psIn). */
-function psPostSection(string $key, int $posts): void
+function plsPostSection(string $key, int $posts): void
 {
     $root = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
     $root->translations()->create(['locale' => 'vi', 'name' => $key, 'slug' => $key]);
@@ -89,7 +89,7 @@ function psPostSection(string $key, int $posts): void
 }
 
 /** Run the website's permalink run to its end, as workers would. */
-function psRunAll(): void
+function plsRunAll(): void
 {
     $guard = 0;
     do {
@@ -99,7 +99,7 @@ function psRunAll(): void
 }
 
 /** @return array<string, int> the website's routes path => entry id, read past RLS */
-function psRoutes(): array
+function plsRoutes(): array
 {
     return DB::connection('pgsql_admin')->table('routes')->where('site_id', 1)->whereNotNull('entry_id')->orderBy('path')
         ->pluck('entry_id', 'path')->map(fn (mixed $id): int => (int) $id)->all();
@@ -112,16 +112,16 @@ it('shows a member without settings.manage the no-permission card and answers 40
         ->assertSee('Bạn chưa có quyền sửa cài đặt')->assertDontSee('Khuyên dùng');
 
     foreach (['save', 'confirmSave', 'cancelConfirm', 'resetChanges', 'retry', 'retryFailed', 'dismissFailed', 'dismissToast'] as $method) {
-        psIn(fn () => Livewire::actingAs($editor)->test(Permalinks::class)->call($method)->assertForbidden());
+        plsIn(fn () => Livewire::actingAs($editor)->test(Permalinks::class)->call($method)->assertForbidden());
     }
 });
 
 it('stages the drafted format after the confirmation and starts the run', function (): void {
     Queue::fake();
-    $manager = psManager();
-    psIn(fn () => psPages(1, 3));
+    $manager = plsManager();
+    plsIn(fn () => plsPages(1, 3));
 
-    psIn(function () use ($manager): void {
+    plsIn(function () use ($manager): void {
         $screen = Livewire::actingAs($manager)->test(Permalinks::class)
             ->assertSee('Phẳng')->assertSee('Có tiền tố')
             ->set('draft.pages.pattern', 'base')->set('draft.pages.base', 'trang')
@@ -132,45 +132,45 @@ it('stages the drafted format after the confirmation and starts the run', functi
             ->assertSee('Đang đổi đường dẫn');
     });
 
-    expect(psIn(fn (): array => app(PermalinkConfig::class)->pending()))->toBe(['pages' => ['pattern' => 'base', 'base' => 'trang']])
-        ->and(psIn(fn (): string => app(PermalinkConfig::class)->pattern('pages', 'pages')))->toBe('flat');
+    expect(plsIn(fn (): array => app(PermalinkConfig::class)->pending()))->toBe(['pages' => ['pattern' => 'base', 'base' => 'trang']])
+        ->and(plsIn(fn (): string => app(PermalinkConfig::class)->pattern('pages', 'pages')))->toBe('flat');
     Queue::assertPushed(ReflowPermalinks::class, fn (ReflowPermalinks $job): bool => $job->siteId === 1);
 });
 
 it('shows a prefix error in plain words and saves nothing', function (): void {
     Queue::fake();
-    $manager = psManager();
+    $manager = plsManager();
 
-    psIn(fn () => Livewire::actingAs($manager)->test(Permalinks::class)
+    plsIn(fn () => Livewire::actingAs($manager)->test(Permalinks::class)
         ->set('draft.pages.pattern', 'base')->set('draft.pages.base', 'Trang Mới')
         ->call('save')->assertSet('confirming', false)
         ->assertSee('Chỉ dùng chữ thường không dấu, số và dấu gạch nối')->assertDontSee('Xem trước'));
 
-    expect(psIn(fn (): array => app(PermalinkConfig::class)->pending()))->toBe([]);
+    expect(plsIn(fn (): array => app(PermalinkConfig::class)->pending()))->toBe([]);
     Queue::assertNothingPushed();
 });
 
 it('shows the locked card when the plan may not choose', function (): void {
-    $manager = psManager();
-    psIn(fn () => SiteFeature::query()->create(['feature_key' => 'permalinks.custom', 'value' => false]));
+    $manager = plsManager();
+    plsIn(fn () => SiteFeature::query()->create(['feature_key' => 'permalinks.custom', 'value' => false]));
 
-    psIn(fn () => Livewire::actingAs($manager)->test(Permalinks::class)
+    plsIn(fn () => Livewire::actingAs($manager)->test(Permalinks::class)
         ->assertSee('Tự chọn kiểu đường dẫn')->assertDontSee('Khuyên dùng'));
 });
 
 it('renders in a fixed number of queries however many pages the website has', function (): void {
-    $manager = psManager();
+    $manager = plsManager();
     // one request of the screen with a drafted change: the cards, their samples and the preview
-    $render = fn (): int => psIn(function () use ($manager): int {
+    $render = fn (): int => plsIn(function () use ($manager): int {
         $screen = Livewire::actingAs($manager)->test(Permalinks::class)->set('draft.pages.pattern', 'base');
 
         return countQueries(fn () => $screen->set('draft.pages.base', 'trang')->assertSee('/trang/trang-so-1'));
     });
 
-    psIn(fn () => psPages(1, 2));
+    plsIn(fn () => plsPages(1, 2));
     $render();
     $few = $render();
-    psIn(fn () => psPages(3, 30));
+    plsIn(fn () => plsPages(3, 30));
     $many = $render();
 
     // 18 measured: the settings rows, the sections and their roots, the capped counts, one load of the
@@ -180,53 +180,53 @@ it('renders in a fixed number of queries however many pages the website has', fu
 
 it('asks before nesting pages even when the first pages of the preview stay where they are', function (): void {
     Queue::fake();
-    $manager = psManager();
+    $manager = plsManager();
     // the preview's sample is the oldest pages, all top-level: only the newer sub-pages move
-    [$parent, $child, $grandchild] = psIn(function (): array {
-        psPages(1, 24);
+    [$parent, $child, $grandchild] = plsIn(function (): array {
+        plsPages(1, 24);
         $parent = Entry::query()->whereHas('translations', fn ($query) => $query->where('slug', 'trang-so-1'))->firstOrFail();
-        $child = psPage('doi-ngu', $parent);
+        $child = plsPage('doi-ngu', $parent);
 
-        return [$parent, $child, psPage('ky-thuat', $child)];
+        return [$parent, $child, plsPage('ky-thuat', $child)];
     });
 
-    psIn(fn () => Livewire::actingAs($manager)->test(Permalinks::class)
+    plsIn(fn () => Livewire::actingAs($manager)->test(Permalinks::class)
         ->set('draft.pages.pattern', 'nested')
         ->call('save')->assertSet('confirming', true)
         ->assertSee('Phần xem trước chỉ xét một số mục đầu tiên')
         ->call('confirmSave')->assertSet('confirming', false)->assertSee('Đang đổi đường dẫn'));
-    psRunAll();
+    plsRunAll();
 
-    expect(psRoutes())->toMatchArray([
+    expect(plsRoutes())->toMatchArray([
         '/trang-so-1' => $parent->id,
         '/trang-so-1/doi-ngu' => $child->id,
         '/trang-so-1/doi-ngu/ky-thuat' => $grandchild->id,
-    ])->and(psRoutes())->toHaveKeys(['/trang-so-2', '/trang-so-24'])
-        ->and(psRoutes())->not->toHaveKeys(['/doi-ngu', '/ky-thuat']);
+    ])->and(plsRoutes())->toHaveKeys(['/trang-so-2', '/trang-so-24'])
+        ->and(plsRoutes())->not->toHaveKeys(['/doi-ngu', '/ky-thuat']);
     $this->get('http://a.test/ky-thuat')->assertStatus(301)->assertRedirect('http://a.test/trang-so-1/doi-ngu/ky-thuat');
 });
 
 it('shows and moves the addresses of a second language under its prefix', function (): void {
     Queue::fake();
-    $manager = psManager();
+    $manager = plsManager();
     DB::connection('pgsql_admin')->table('site_locales')->insert(
         ['site_id' => 1, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'is_public' => true, 'created_at' => now(), 'updated_at' => now()],
     );
     app()->forgetInstance(SiteLocale::class);
     app()->forgetScopedInstances();
-    $page = psIn(function (): Entry {
-        $page = psPage('gioi-thieu');
+    $page = plsIn(function (): Entry {
+        $page = plsPage('gioi-thieu');
         $page->translations()->create(['locale' => 'en', 'title' => 'About us', 'slug' => 'about-us', 'status' => 'published', 'body' => ['blocks' => []]]);
         app(RouteSync::class)->sync($page->fresh() ?? $page, 'en', 'about-us');
 
         return $page;
     });
 
-    psIn(fn () => Livewire::actingAs($manager)->test(Permalinks::class)
+    plsIn(fn () => Livewire::actingAs($manager)->test(Permalinks::class)
         ->set('draft.pages.pattern', 'base')->set('draft.pages.base', 'trang')
         ->assertSee('/trang/gioi-thieu')->assertSee('/en/about-us')->assertSee('/en/trang/about-us')
         ->call('save')->assertSet('confirming', true)->call('confirmSave'));
-    psRunAll();
+    plsRunAll();
 
     $en = DB::connection('pgsql_admin')->table('routes')->where('site_id', 1)->where('entry_id', $page->id)->pluck('path', 'locale')->all();
     expect($en)->toBe(['vi' => '/trang/gioi-thieu', 'en' => '/trang/about-us'])
@@ -236,36 +236,36 @@ it('shows and moves the addresses of a second language under its prefix', functi
 
 it('lists the addresses a run could not move, says what to do, and retries or forgets them', function (): void {
     Queue::fake();
-    $manager = psManager();
+    $manager = plsManager();
     $long = str_repeat('b', 250);
-    psIn(function () use ($long): void {
-        psPage('gioi-thieu');
-        psPage($long);
+    plsIn(function () use ($long): void {
+        plsPage('gioi-thieu');
+        plsPage($long);
         app(PermalinkConfig::class)->stage(['pages' => ['pattern' => 'base', 'base' => 'trang']], now()->utc()->toIso8601String());
     });
-    psRunAll();
+    plsRunAll();
 
-    $screen = psIn(fn () => Livewire::actingAs($manager)->test(Permalinks::class)
+    $screen = plsIn(fn () => Livewire::actingAs($manager)->test(Permalinks::class)
         ->assertSee('1 địa chỉ chưa đổi được')->assertSee('dài quá 255 ký tự')->assertSee('Vẫn ở')->assertSee('/'.$long)
         ->assertDontSee('Đang đổi đường dẫn'));
 
     // «Thử lại» walks the section again (still too long: listed again); «Đã hiểu» forgets the list
-    psIn(fn () => $screen->call('retryFailed')->assertSee('Đang đổi đường dẫn'));
+    plsIn(fn () => $screen->call('retryFailed')->assertSee('Đang đổi đường dẫn'));
     Queue::assertPushed(ReflowPermalinks::class);
-    psRunAll();
-    psIn(fn () => $screen->call('retry')->assertSee('1 địa chỉ chưa đổi được')
+    plsRunAll();
+    plsIn(fn () => $screen->call('retry')->assertSee('1 địa chỉ chưa đổi được')
         ->call('dismissFailed')->assertDontSee('chưa đổi được'));
-    expect(psIn(fn (): ?array => app(PermalinkConfig::class)->run()))->toBeNull();
+    expect(plsIn(fn (): ?array => app(PermalinkConfig::class)->run()))->toBeNull();
 });
 
 it('renders in the same number of queries however many post sections the website has', function (): void {
-    $manager = psManager();
-    $render = fn (): int => psIn(function () use ($manager): int {
+    $manager = plsManager();
+    $render = fn (): int => plsIn(function () use ($manager): int {
         $screen = Livewire::actingAs($manager)->test(Permalinks::class)->set('draft.pages.pattern', 'base');
 
         return countQueries(fn () => $screen->set('draft.pages.base', 'trang')->assertSee('/trang/trang-so-1'));
     });
-    psIn(function (): void {
+    plsIn(function (): void {
         SiteModule::query()->create(['module_key' => 'catalog', 'enabled' => true]);
         $machines = Taxonomy::query()->create(['vocabulary' => 'product_cat', 'position' => 0]);
         $machines->translations()->create(['locale' => 'vi', 'name' => 'May', 'slug' => 'may']);
@@ -273,15 +273,15 @@ it('renders in the same number of queries however many post sections the website
         $product->translations()->create(['locale' => 'vi', 'name' => 'May CNC', 'slug' => 'may-cnc']);
         $product->assignCategories([$machines->id]);
         app(RouteSync::class)->syncProduct($product->id, $machines, 'vi', 'may-cnc');
-        psPages(1, 2);
-        psPostSection('tin-tuc', 2);
+        plsPages(1, 2);
+        plsPostSection('tin-tuc', 2);
     });
     app()->forgetScopedInstances();
     $render();
     $one = $render();
-    psIn(function (): void {
-        psPostSection('du-an', 3);
-        psPostSection('tuyen-dung', 2);
+    plsIn(function (): void {
+        plsPostSection('du-an', 3);
+        plsPostSection('tuyen-dung', 2);
     });
     app()->forgetScopedInstances();
     $render();
