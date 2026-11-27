@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Livewire\Entries\ReviewChanges;
+use App\Modules\Admin\Support\Locales;
 use App\Modules\Cms\Actions\ApplyEntryDraftTransition;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\SaveEntryDraft;
@@ -514,6 +515,7 @@ it('gives a change parked at an end stage, or one with no move out, back to its 
 });
 
 it('names a sub-page’s taken address as visitors see it when approving a change live is refused, with the language when it is not the reviewed one', function (string $clash): void {
+    app()->setLocale('vi');   // the language bar would say «Tiếng Anh»; the inbox's chips and this card say «English»
     $cast = rcCast();
     app(Tenancy::class)->enter(1, function () use ($cast, $clash): void {
         $category = rcCollection();
@@ -544,7 +546,7 @@ it('names a sub-page’s taken address as visitors see it when approving a chang
         $stored = $change->fresh()?->version();
 
         $says = $clash === 'en'
-            ? __('entries.change_err_subpage_path_taken_lang', ['path' => '/en/about-us/team', 'lang' => __('entries.language_en')])
+            ? __('entries.change_err_subpage_path_taken_lang', ['path' => '/en/about-us/team', 'lang' => 'English'])
             : __('entries.change_err_subpage_path_taken', ['path' => '/ve-chung-toi/doi-ngu']);
         $card = Livewire::actingAs($cast['approver'])->test(ReviewChanges::class)
             ->call('openChange', $about->ulid, 'approve')
@@ -554,3 +556,79 @@ it('names a sub-page’s taken address as visitors see it when approving a chang
             ->and(rcChange($about)?->version())->toBe($stored);
     });
 })->with(['in another language' => 'en', 'in the default language' => 'vi']);
+
+it('judges «the language reviewed» by the website’s language order, not by the order the change stores its languages', function (): void {
+    $cast = rcCast();
+    app(Tenancy::class)->enter(1, function () use ($cast): void {
+        // the website lists Japanese before English; the change (no Vietnamese) holds both, a clash in English
+        $about = rcNestedAboutChange($cast, ['ja', 'en'], ['ja' => 'about-ja', 'en' => 'about-us'], clashIn: 'en');
+        $stored = array_keys(rcChange($about)->content['locales']);
+        $card = Livewire::actingAs($cast['approver'])->test(ReviewChanges::class)->call('openChange', $about->ulid, 'approve')->call('confirmChange');
+
+        // reviewed language = Japanese (first in the website's order), so the English clash is named; whatever the stored key order was
+        expect($stored)->toContain('en')->toContain('ja')
+            ->and($card->errors()->first('changes'))->toBe(__('entries.change_err_subpage_path_taken_lang', ['path' => '/en/about-us/team', 'lang' => Locales::label('en')]));
+    });
+});
+
+/**
+ * A live page «about» with a live sub-page «team» in vi + $locales (added to the website in that order),
+ * a change by the author in $slugs' languages only (never Vietnamese), sent for review; a route of another
+ * page sits where «team» would move in $clashIn. Returns the page.
+ *
+ * @param  list<string>  $locales
+ * @param  array<string, string>  $slugs
+ */
+function rcNestedAboutChange(array $cast, array $locales, array $slugs, string $clashIn): Entry
+{
+    $category = Taxonomy::query()->where('vocabulary', 'post_cat')->first() ?? rcCollection();
+    SiteSetting::query()->updateOrCreate(['group_name' => 'permalinks', 'key' => 'pages'], ['value' => ['pattern' => 'nested']]);
+    foreach ($locales as $locale) {
+        if (! DB::connection('pgsql_admin')->table('site_locales')->where('site_id', 1)->where('locale', $locale)->exists()) {
+            DB::connection('pgsql_admin')->table('site_locales')->insert([
+                'site_id' => 1, 'locale' => $locale, 'is_default' => false, 'enabled' => true, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+    }
+    $about = rcLivePost($category, $cast['author'], $cast['publisher'], 'gioi-thieu');
+    $about->update(['type' => 'page']);
+    $team = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $cast['author']->id, 'parent_id' => $about->id]);
+    $team->translations()->create(['locale' => 'vi', 'title' => 'Đội ngũ', 'slug' => 'doi-ngu', 'status' => 'draft', 'body' => ['blocks' => []]]);
+    app(PublishEntry::class)->handle($team->fresh(), 'vi', $cast['publisher']);
+    foreach ($locales as $locale) {
+        $about->translations()->create(['locale' => $locale, 'title' => 'About '.$locale, 'slug' => 'about-'.$locale, 'status' => 'draft', 'body' => ['blocks' => []]]);
+        app(PublishEntry::class)->handle($about->fresh(), $locale, $cast['publisher']);
+        $team->translations()->create(['locale' => $locale, 'title' => 'Team '.$locale, 'slug' => 'team', 'status' => 'draft', 'body' => ['blocks' => []]]);
+        app(PublishEntry::class)->handle($team->fresh(), $locale, $cast['publisher']);
+    }
+    app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+    foreach ($slugs as $locale => $slug) {
+        app(SaveEntryDraft::class)->handle($about->fresh(), $cast['author'], $locale, ['slug' => $slug]);
+    }
+    $other = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $cast['author']->id]);
+    SiteRoute::query()->create(['locale' => $clashIn, 'path' => '/'.$slugs[$clashIn].'/team', 'entry_id' => $other->id]);
+    $change = EntryDraft::query()->where('entry_id', $about->id)->firstOrFail();
+    app(ApplyEntryDraftTransition::class)->handle($about->fresh(), array_key_first($slugs), $cast['author'], 'submit', $change->version());
+
+    return $about->fresh();
+}
+
+it('keeps logging the approval in the language it always did, whatever language a refusal would name', function (): void {
+    $cast = rcCast();
+    app(Tenancy::class)->enter(1, function () use ($cast): void {
+        // the website lists Japanese before English; the change (no Vietnamese) stores its languages in another order
+        $about = rcNestedAboutChange($cast, ['ja', 'en'], ['ja' => 'about-ja', 'en' => 'about-us'], clashIn: 'en');
+        $stored = array_keys(rcChange($about)->content['locales']);
+        // the address is free again, so the approval goes through and writes its trail row
+        SiteRoute::query()->where('locale', 'en')->where('path', '/about-us/team')->where('entry_id', '!=', $about->id)->delete();
+        $before = WorkflowLog::query()->where('entry_id', $about->id)->count();
+
+        Livewire::actingAs($cast['approver'])->test(ReviewChanges::class)->call('openChange', $about->ulid, 'approve')->call('confirmChange')->assertHasNoErrors();
+
+        $log = WorkflowLog::query()->where('entry_id', $about->id)->orderByDesc('id')->first();
+        // the first stored key (the old rule), not the website's first language (ja)
+        expect(WorkflowLog::query()->where('entry_id', $about->id)->count())->toBe($before + 1)
+            ->and($stored[0])->not->toBe('ja')
+            ->and($log?->locale)->toBe((string) $stored[0]);
+    });
+});

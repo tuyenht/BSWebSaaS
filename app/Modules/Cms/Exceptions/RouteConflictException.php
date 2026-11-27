@@ -33,6 +33,17 @@ final class RouteConflictException extends RuntimeException
         return $this->entryId !== null && $this->entryId !== $entryId;
     }
 
+    /**
+     * The taken address as visitors see it: the default language unprefixed, any other `/{locale}`
+     * (PathBuilder). $fallbackLocale is the language to use when the thrower did not say.
+     */
+    public function address(?string $fallbackLocale = null): string
+    {
+        $locale = $this->locale ?? $fallbackLocale;
+
+        return $locale === null ? $this->path : app(PathBuilder::class)->publicUrl($this->path, $locale);
+    }
+
     /** The path is one the platform keeps for a page of its own (PathBuilder::RESERVED_PATHS), not another item's. */
     public function reserved(): bool
     {

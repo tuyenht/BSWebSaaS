@@ -1660,7 +1660,7 @@ final class Editor extends Component
     private function addressTaken(RouteConflictException $e, Entry $entry): void
     {
         if ($e->subPageOf($entry->id)) {
-            $this->addError('workflow', __('entries.subpage_path_taken', ['path' => $e->path]));
+            $this->addError('workflow', __('entries.subpage_path_taken', ['path' => $e->address($this->locale)]));
 
             return;
         }

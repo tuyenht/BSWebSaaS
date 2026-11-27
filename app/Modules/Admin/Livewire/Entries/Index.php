@@ -687,7 +687,7 @@ final class Index extends Component
         } catch (RouteConflictException $e) {
             // its address, or a sub-page's it would move along, is another item's: nothing changed
             $this->toast(Cast::string(__($e->subPageOf($entry->id) ? 'entries.subpage_path_taken'
-                : ($e->reserved() ? 'entries.slug_reserved' : 'entries.slug_conflict'), ['path' => $e->path])));
+                : ($e->reserved() ? 'entries.slug_reserved' : 'entries.slug_conflict'), ['path' => $e->address()])));
 
             return;
         } catch (ModelNotFoundException) {
@@ -1046,7 +1046,7 @@ final class Index extends Component
         } catch (RouteConflictException $e) {
             // the new address, or a sub-page's it moves along, is another item's: nothing changed
             $this->fieldError(Cast::string(__($e->subPageOf($entry->id) ? 'entries.subpage_path_taken'
-                : ($e->reserved() ? 'entries.slug_reserved' : 'entries.slug_conflict'), ['path' => $e->path])));
+                : ($e->reserved() ? 'entries.slug_reserved' : 'entries.slug_conflict'), ['path' => $e->address()])));
 
             return;
         }
@@ -1354,9 +1354,15 @@ final class Index extends Component
 
         // a row's slug in a language (none: ''), and the one the dialog shows: the default language's, else any
         $slugIn = static fn (Entry $row, string $lc): string => trim(Cast::string($row->translations->firstWhere('locale', $lc)?->slug), '/');
-        $shownSlug = static function (Entry $row) use ($slugIn, $locale): string {
+        // the website's language order, for the language that stands in when the default one has no address
+        $rank = array_flip(app(SiteLocale::class)->inSiteOrder(array_values(array_unique(array_map(
+            static fn ($translation): string => (string) $translation->locale,
+            array_merge(...array_map(static fn (Entry $row): array => $row->translations->all(), $all->all())),
+        )))));
+        $inSiteOrder = static fn (Entry $row): array => $row->translations->sortBy(fn ($translation): int => $rank[(string) $translation->locale] ?? PHP_INT_MAX)->values()->all();
+        $shownSlug = static function (Entry $row) use ($slugIn, $locale, $inSiteOrder): string {
             $slug = $slugIn($row, $locale);
-            foreach ($slug === '' ? $row->translations : [] as $translation) {
+            foreach ($slug === '' ? $inSiteOrder($row) : [] as $translation) {
                 $slug = trim(Cast::string($translation->slug), '/');
                 if ($slug !== '') {
                     break;
@@ -1414,6 +1420,16 @@ final class Index extends Component
 
         // where the page's address would land in each language it is published in, and which of those are taken
         $leafShown = $shownSlug($page);
+        // the language the shown address is in (the default's, else the first that has one): its /{locale} shows, as visitors see it
+        $shownLocale = $locale;
+        if ($slugIn($page, $locale) === '') {
+            foreach ($inSiteOrder($page) as $translation) {
+                if (trim(Cast::string($translation->slug), '/') !== '') {
+                    $shownLocale = (string) $translation->locale;
+                    break;
+                }
+            }
+        }
         $published = [];
         foreach ($page->status === EntryStatus::Published->value ? $page->translations : [] as $translation) {
             if ($translation->status === EntryStatus::Published->value && trim((string) $translation->slug, '/') !== '') {
@@ -1421,6 +1437,7 @@ final class Index extends Component
             }
         }
         $wanted = [];
+        $published = app(SiteLocale::class)->inSiteOrder($published);
         foreach ($candidates as $i => $c) {
             foreach ($published as $lc) {
                 $p = ($c['row'] === null ? '' : $prefix($c['row'], static fn (Entry $row): string => $slugIn($row, $lc))).'/'.$slugIn($page, $lc);
@@ -1450,10 +1467,15 @@ final class Index extends Component
             $here = $page->parent_id === $row?->id;
             $at = $row === null ? '' : $prefix($row, $shownSlug);
             $ns = $nested && $leafShown !== '' && $at !== $current ? $at.'/'.$leafShown : null;
+            // the address visitors open: the parent's and the page's own slugs in the same language, then its /{locale}
+            $nsShown = $ns === null ? null : app(PathBuilder::class)->publicUrl(
+                ($row === null ? '' : $prefix($row, static fn (Entry $r): string => $slugIn($r, $shownLocale))).'/'.$slugIn($page, $shownLocale),
+                $shownLocale,
+            );
             $clash = null;
             foreach ($nested ? ($wanted[$i] ?? []) : [] as $lc => $p) {
                 if (isset($taken[$lc.' '.$p])) {
-                    $clash = $p;
+                    $clash = app(PathBuilder::class)->publicUrl($p, $lc);
                     break;
                 }
             }
@@ -1473,7 +1495,7 @@ final class Index extends Component
                 'why' => $why,
                 'label' => $here ? Cast::string(__('entries.mv_here')) : ($why !== null
                     ? Cast::string(__('entries.mv_locked', ['why' => mb_strtolower(mb_substr($why, 0, 1)).mb_substr($why, 1)]))
-                    : Cast::string($ns !== null ? __('entries.mv_becomes_path', ['n' => $c['lv'] + 1, 'path' => $ns]) : __('entries.mv_becomes', ['n' => $c['lv'] + 1]))),
+                    : Cast::string($ns !== null ? __('entries.mv_becomes_path', ['n' => $c['lv'] + 1, 'path' => $nsShown]) : __('entries.mv_becomes', ['n' => $c['lv'] + 1]))),
                 'path' => $ns,
             ];
         }

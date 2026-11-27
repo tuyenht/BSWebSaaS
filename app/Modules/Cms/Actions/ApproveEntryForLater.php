@@ -386,7 +386,7 @@ final readonly class ApproveEntryForLater
                     ! $workflow instanceof Workflow => 'failed_address',
                     $atStart => 'failed_address_draft',
                     default => 'failed_address_review',
-                }, $conflict->path);
+                }, $conflict->address($locale));
             }
 
             return true;
