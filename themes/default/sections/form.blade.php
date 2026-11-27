@@ -171,17 +171,18 @@
                     {{-- Written at the margin: a false branch prints nothing, not even the line's indent.
                          «Chọn một» / «Chọn nhiều»: the field's label is the group's legend, each choice a row
                          like the consent box (the whole row is clickable). A choice is sent by its stable
-                         value, read by its label. One round box of a required group carries `required`
-                         for the whole group; tick boxes never do one by one (the server asks for a pick). --}}
+                         value, read by its label. Every round box of a required group carries `required`
+                         (one pick answers them all); tick boxes never do, one by one (the server asks for a
+                         pick), so the legend says «required» in words for a screen reader. --}}
                     @php
                         $sfPicked = $sfOld($field['key']);
                         $sfPicked = array_map('strval', is_array($sfPicked) ? $sfPicked : ($sfPicked === null ? [] : [$sfPicked]));
                         $sfMany = $field['type'] === 'checkboxes';
                         $sfN = 0;
                     @endphp
-                    <fieldset class="lead-form__field lead-form__field--choices" id="{{ $sfId }}">
+                    <fieldset class="lead-form__field lead-form__field--choices" id="{{ $sfId }}"@if ($sfBad) aria-describedby="{{ $sfDescribed }}"@endif>
                         <legend>
-                            {{ $field['label'] }}@if ($field['is_required']) <span class="lead-form__required" aria-hidden="true">*</span>@endif
+                            {{ $field['label'] }}@if ($field['is_required']) <span class="lead-form__required" aria-hidden="true">*</span><span class="sr-only"> {{ __('forms.required_sr') }}</span>@endif
                         </legend>
                         @foreach ($field['choices'] as $sfValue => $sfText)
                             @php $sfN++; @endphp
@@ -201,7 +202,9 @@
 @endif
                 @php
                     // A number takes a decimal point on a phone's keypad; a day is the browser's own date box.
-                    $inputType = in_array($field['type'], ['email', 'tel', 'text', 'number', 'date'], true) ? $field['type'] : 'text';
+                    // A number is a text box with a decimal keypad, not type=number: a browser sends "" for what it cannot
+                    // read ("1e"), and this form has no script, so what was typed would be lost without a word.
+                    $inputType = in_array($field['type'], ['email', 'tel', 'text', 'date'], true) ? $field['type'] : 'text';
                     $sfAuto = match (true) {
                         $inputType === 'email' => 'email',
                         $inputType === 'tel' => 'tel',
@@ -245,7 +248,7 @@
                             @endforeach
                         </select>
                     @else
-                        <input id="{{ $sfId }}" type="{{ $inputType }}"@if ($inputType === 'number') inputmode="decimal" step="any"@endif name="{{ $field['key'] }}"
+                        <input id="{{ $sfId }}" type="{{ $inputType }}"@if ($field['type'] === 'number') inputmode="decimal"@endif name="{{ $field['key'] }}"
                                value="{{ $sfOld($field['key']) }}" @if ($field['is_required']) required @endif
                                @if ($sfAuto !== null) autocomplete="{{ $sfAuto }}" @endif
 @if (($field['placeholder'] ?? '') !== '') placeholder="{{ $field['placeholder'] }}" @endif

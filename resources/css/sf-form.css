@@ -347,7 +347,9 @@
     flex-shrink: 0;
     width: 1.25rem;
     height: 1.25rem;
+    min-height: 0; /* the shared field box's height and padding are for text boxes, not for a tick or round box */
     margin: 0.125rem 0 0;
+    padding: 0;
     accent-color: var(--lf-focus);
     cursor: pointer;
 }

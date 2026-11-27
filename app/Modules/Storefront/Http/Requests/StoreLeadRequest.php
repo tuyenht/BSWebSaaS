@@ -165,6 +165,7 @@ final class StoreLeadRequest extends FormRequest
             $label = FormDraft::text($labels, $locale);
             if ($label !== '') {
                 $attributes[$field->key] = $label;
+                $attributes[$field->key.'.*'] = $label; // each pick of «Chọn nhiều» is named by the field too
             }
         }
 
@@ -206,6 +207,7 @@ final class StoreLeadRequest extends FormRequest
                 $messages[$field->key.'.required'] = __('forms.err_choice_required');
                 // a list sent for one choice is a choice to make again, not text to type again
                 $messages[$field->key.'.string'] = __('forms.err_choice_invalid');
+                $messages[$field->key.'.*.string'] = __('forms.err_choice_invalid');
             }
             if ($field->type === FormFieldTypes::FILE) {
                 $messages[$field->key.'.required'] = __('forms.err_file_required');

@@ -121,7 +121,7 @@ it('draws a number and a day with the browser\'s own boxes, each tied to its lab
     $section = ctSection($this->get('http://a.test/dat-hen')->assertOk()->getContent());
 
     expect($section)
-        ->toMatch('/<label for="lf-dat_hen__qty">\s*Số lượng <span class="lead-form__required" aria-hidden="true">\*<\/span>\s*<\/label>\s*<input id="lf-dat_hen__qty" type="number" inputmode="decimal" step="any" name="qty"\s+value=""\s+required/')
+        ->toMatch('/<label for="lf-dat_hen__qty">\s*Số lượng <span class="lead-form__required" aria-hidden="true">\*<\/span>\s*<\/label>\s*<input id="lf-dat_hen__qty" type="text" inputmode="decimal" name="qty"\s+value=""\s+required/')
         ->toMatch('/<label for="lf-dat_hen__day">\s*Ngày hẹn <span class="lead-form__required" aria-hidden="true">\*<\/span>\s*<\/label>\s*<input id="lf-dat_hen__day" type="date" name="day"\s+value=""\s+required/');
 });
 
@@ -131,7 +131,7 @@ it('draws one choice as a group of round boxes and several choices as tick boxes
     $section = ctSection($this->get('http://a.test/dat-hen')->assertOk()->getContent());
 
     expect($section)
-        ->toMatch('/<fieldset class="lead-form__field lead-form__field--choices" id="lf-dat_hen__slot">\s*<legend>\s*Khung giờ <span class="lead-form__required" aria-hidden="true">\*<\/span>\s*<\/legend>/')
+        ->toMatch('/<fieldset class="lead-form__field lead-form__field--choices" id="lf-dat_hen__slot">\s*<legend>\s*Khung giờ <span class="lead-form__required" aria-hidden="true">\*<\/span><span class="sr-only"> \(bắt buộc\)<\/span>\s*<\/legend>/')
         ->toMatch('/<label class="lead-form__check" for="lf-dat_hen__slot--o1">\s*<input id="lf-dat_hen__slot--o1" type="radio" name="slot" value="sang"\s+required\s*>\s*<span>Buổi sáng<\/span>\s*<\/label>/')
         ->toMatch('/<label class="lead-form__check" for="lf-dat_hen__slot--o3">\s*<input id="lf-dat_hen__slot--o3" type="radio" name="slot" value="toi"\s+required\s*>\s*<span>Buổi tối<\/span>/')
         ->toMatch('/<fieldset class="lead-form__field lead-form__field--choices" id="lf-dat_hen__need">\s*<legend>\s*Dịch vụ\s*<\/legend>/')
@@ -189,4 +189,42 @@ it('never takes a choice another website\'s form offers', function (): void {
     $this->post('http://a.test/forms/dat-hen', ctGoodBooking(['slot' => 'dem']))->assertSessionHasErrors(['slot']);
 
     expect(ctLead())->toBeNull();
+});
+
+it('names a crafted pick of «Chọn nhiều» by the field\'s label, never by its raw key', function (array $need): void {
+    ctBookingPage();
+
+    $this->post('http://a.test/forms/dat-hen', ctGoodBooking(['need' => $need]))->assertSessionHasErrors('need.0');
+
+    // every message the pick gets is plain language: none shows the raw key
+    $messages = session('errors')->get('need.0');
+    expect($messages)->not->toBeEmpty()
+        ->and(implode(' ', $messages))->not->toContain('Need')->not->toContain('need');
+
+    expect(ctLead())->toBeNull();
+})->with([
+    'an empty pick' => [['']],
+    'a list inside a pick' => [[['x']]],
+]);
+
+it('keeps a number the browser could not read and says what is wrong, instead of dropping it', function (): void {
+    ctBookingPage();
+    $this->from('http://a.test/dat-hen')->post('http://a.test/forms/dat-hen', ctGoodBooking(['qty' => '1e']))->assertRedirect('http://a.test/dat-hen');
+
+    $html = ctSection($this->withCookie((string) config('session.cookie'), 'visitor')->get('http://a.test/dat-hen')->getContent());
+
+    expect($html)->toMatch('/<input id="lf-dat_hen__qty" type="text" inputmode="decimal" name="qty"\s+value="1e"/')
+        ->toContain('Vui lòng nhập một số (tối đa 15 chữ số).');
+    expect(ctLead())->toBeNull();
+});
+
+it('tells a screen reader that a group of tick boxes is required, and ties the group to its message', function (): void {
+    ctBookingPage(change: ['need' => ['is_required' => true]]);
+
+    $ok = ctSection($this->get('http://a.test/dat-hen')->assertOk()->getContent());
+    expect($ok)->toMatch('/Dịch vụ <span class="lead-form__required" aria-hidden="true">\*<\/span><span class="sr-only"> \(bắt buộc\)<\/span>\s*<\/legend>/');
+
+    $this->from('http://a.test/dat-hen')->post('http://a.test/forms/dat-hen', ctGoodBooking(['need' => []]));
+    $bad = ctSection($this->withCookie((string) config('session.cookie'), 'visitor')->get('http://a.test/dat-hen')->getContent());
+    expect($bad)->toContain('<fieldset class="lead-form__field lead-form__field--choices" id="lf-dat_hen__need" aria-describedby="lf-dat_hen__need--error">');
 });
