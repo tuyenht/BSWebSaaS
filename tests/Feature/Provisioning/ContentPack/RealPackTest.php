@@ -198,6 +198,16 @@ it('lists the partners on their page with a call to contact, and links the priva
         ->and(collect($about['children'])->firstWhere('target', 'page:/chinh-sach-bao-mat')['label']['vi'] ?? null)->toBe('Chính sách bảo mật');
 });
 
+it('shows no working hours on the contact cards or under the thank-you call', function (): void {
+    $items = collect((new PackReader)->read('an-vinh')->items)->keyBy(fn ($item) => $item->key);
+    $contact = collect($items['page:/lien-he']->data['body']['vi'])->firstWhere('type', 'contact');
+    $call = collect($items['page:/cam-on']->data['body']['vi'])->firstWhere('type', 'cta');
+
+    expect($contact['props'])->not->toHaveKey('hours')
+        ->and($call['props']['heading'])->toBe('Cần gấp? Gọi ngay cho kỹ sư')
+        ->and($call['props'])->not->toHaveKey('text');
+});
+
 it('follows the storefront design: capability posts let the layout draw their band, projects lead with their sector', function (): void {
     $pack = (new PackReader)->read('an-vinh');
     $items = collect($pack->items)->keyBy(fn ($item) => $item->key);
