@@ -9,6 +9,7 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\SiteLocale as SiteLanguages;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 
 /*
@@ -473,5 +474,61 @@ it('draws the picture toolbar\'s refusals from the pictures and videos of each r
         // «Bỏ thay đổi»: back to the two stored pictures with no video
         $c->call('resetChanges');
         expect($state())->toBe($free);
+    });
+});
+
+/** A stored product with two pictures and a video, saved with its pictures cleared on the wire: refused with the picture message. */
+function pvdRefusedForNoPicture(User $user, Product $product): Testable
+{
+    return Livewire::actingAs($user)->test(Editor::class, ['ulid' => $product->ulid])
+        ->call('removeImage', 0)->set('imageMediaIds', [])->call('save')->assertHasErrors(['imageMediaIds']);
+}
+
+it('clears the «needs a picture» message when a picture comes back from the Library', function (): void {
+    $user = pvdMember();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $product = pvdProduct(2, ['videos' => [['yt' => 'aaaaaaaaaaa', 'title' => '']]]);
+        $picture = pvdMedia();
+
+        pvdRefusedForNoPicture($user, $product)
+            ->call('openImagePicker')->call('pickImage', $picture->id)
+            ->assertSet('imageMediaIds', [$picture->id])->assertHasNoErrors(['imageMediaIds']);
+    });
+});
+
+it('clears the «needs a picture» message when «Hoàn tác» puts the picture back', function (): void {
+    $user = pvdMember();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $product = pvdProduct(2, ['videos' => [['yt' => 'aaaaaaaaaaa', 'title' => '']]]);
+
+        pvdRefusedForNoPicture($user, $product)
+            ->call('undoLast')->assertCount('imageMediaIds', 1)->assertHasNoErrors(['imageMediaIds']);
+    });
+});
+
+it('tells the member on the screen what to do about a picture that is gone', function (): void {
+    $user = pvdMember();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $product = pvdProduct(2, ['videos' => [['yt' => 'aaaaaaaaaaa', 'title' => '']]]);
+        $gone = pvdMedia();
+        $gone->forceDelete();
+
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $product->ulid])
+            ->set('imageMediaIds', [$gone->id])->call('save')->assertHasErrors(['imageMediaIds.0'])
+            ->assertSee(__('catalog.gallery_invalid'));
+        // it names the way out (more pictures, or the videos gone), not only that something is wrong
+        expect(__('catalog.gallery_invalid'))->toContain('video');
+    });
+});
+
+it('shows the «no picture» notice only to a member who can edit', function (): void {
+    $editor = pvdMember();
+    $reader = pvdMember(['catalog.view', 'media.view']);
+    app(Tenancy::class)->enter(1, function () use ($editor, $reader): void {
+        $product = pvdProduct(1, ['videos' => [['yt' => 'aaaaaaaaaaa', 'title' => '']]]);
+        Media::query()->whereKey($product->images()->value('media_id'))->forceDelete();
+
+        Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $product->ulid])->assertSeeHtml('id="ped-img-note"');
+        Livewire::actingAs($reader)->test(Editor::class, ['ulid' => $product->ulid])->assertDontSeeHtml('id="ped-img-note"');
     });
 });
