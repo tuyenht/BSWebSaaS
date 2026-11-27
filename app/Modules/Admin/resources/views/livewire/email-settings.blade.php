@@ -143,6 +143,12 @@
                                     <span @class(['size-[7px] shrink-0 rounded-full', 'bg-success-base' => $done, 'border-[1.5px] border-dashed border-text-muted' => ! $done])></span>
                                     {{ $k === 'other' ? __($done ? 'admin.em_set' : 'admin.em_not_set') : __($done ? 'admin.em_connected' : 'admin.em_not_connected') }}
                                 </span>
+                            @elseif ($quota !== null)
+                                {{-- Today's mails left on the shared outbox, the bar filled by the share already used; hidden in a narrow card (the (i) says it) --}}
+                                <span class="inline-flex shrink-0 items-center gap-[7px] text-caption whitespace-nowrap text-text @max-[35rem]:hidden">
+                                    {{ __('admin.em_quota_left', ['n' => \Illuminate\Support\Number::format($quota['left'], locale: app()->getLocale())]) }}
+                                    <span class="inline-block h-[5px] w-11 overflow-hidden rounded-full bg-border-strong" aria-hidden="true"><span class="block h-full bg-success-base" style="width: {{ $quota['used_pct'] }}%"></span></span>
+                                </span>
                             @endif
                             <button type="button" x-on:click="info = info === @js($k) ? null : @js($k)"
                                     x-bind:aria-expanded="info === @js($k) ? 'true' : 'false'" aria-controls="em-info-{{ $k }}"
@@ -222,6 +228,7 @@
                                 @if ($k === 'platform')
                                     {{ __('admin.em_info_platform', ['name' => $fromName !== '' ? $fromName : $siteName, 'address' => $platformFrom]) }}
                                     @if ($replyTo !== '') {{ __('admin.em_info_platform_reply', ['reply' => $replyTo]) }} @endif
+                                    @if ($quota !== null) {{ __('admin.em_info_platform_quota', ['limit' => \Illuminate\Support\Number::format($quota['limit'], locale: app()->getLocale())]) }} @endif
                                 @elseif ($k === 'other')
                                     {{ __('admin.em_info_other') }}
                                 @else
@@ -295,6 +302,7 @@
     </form>
 
     @if ($scope !== 'platform')
+                <livewire:admin.email-recent-mail wire:key="em-recent-mail" />
             </div>{{-- #em-panel-send --}}
 
             <div id="em-panel-sign" role="tabpanel" aria-labelledby="em-tab-sign" class="flex flex-col gap-[18px]"

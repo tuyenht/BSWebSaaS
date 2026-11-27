@@ -5,6 +5,8 @@ namespace App\Modules\Admin\Livewire;
 use App\Modules\Admin\Livewire\Concerns\ShowsSettingsToast;
 use App\Modules\Admin\Livewire\Concerns\TracksSavedState;
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
+use App\Modules\Admin\Models\MailDaily;
+use App\Modules\Admin\Support\Mail\MailQuotaGate;
 use App\Modules\Admin\Support\MailBrand;
 use App\Modules\Admin\Support\MailHostGuard;
 use App\Modules\Admin\Support\MailRelay;
@@ -19,6 +21,7 @@ use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteIdentity;
+use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\Site;
 use Closure;
 use Illuminate\Http\RedirectResponse;
@@ -1069,6 +1072,27 @@ final class EmailSettings extends Component
         return $current->hasId() ? Cast::string(Site::query()->whereKey($current->id())->value('name')) : '';
     }
 
+    /**
+     * Today's mails left on the shared outbox (the board's «Còn N thư hôm nay» and its bar): the
+     * website's daily limit less what its day row (its own time zone) already counts.
+     *
+     * @return array{left: int, limit: int, used_pct: int}
+     */
+    private function platformQuota(): array
+    {
+        $limit = app(MailQuotaGate::class)->limit();
+        $sent = Cast::int(MailDaily::query()
+            ->where('day', app(SiteTime::class)->now()->toDateString())
+            ->where('via', 'platform')
+            ->value('sent'));
+
+        return [
+            'left' => max(0, $limit - $sent),
+            'limit' => $limit,
+            'used_pct' => $limit > 0 ? min(100, intdiv($sent * 100, $limit)) : 100,
+        ];
+    }
+
     public function render(): View
     {
         $platform = $this->scope === 'platform';
@@ -1080,6 +1104,7 @@ final class EmailSettings extends Component
             'siteName' => $platform ? '' : $this->siteName(),
             'sign' => $platform ? null : $this->signTab(),
             'keySaved' => ! $platform && $this->keySaved(),
+            'quota' => $platform ? null : $this->platformQuota(),
         ]);
         $view->layout($platform ? 'admin::layouts.platform' : 'admin::layouts.app');
         $view->title($platform ? __('admin.system_email') : __('admin.email_settings'));
