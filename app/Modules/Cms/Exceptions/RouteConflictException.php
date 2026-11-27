@@ -14,12 +14,16 @@ use RuntimeException;
  * its own (the site search) is refused the same way; reserved() tells the two apart, so the
  * screen can say which it is. $entryId names the entry whose address was being written (null for a
  * product or a category), so a screen can tell a page's own address from one of its sub-pages' that
- * a publication moves along with it (subPageOf()).
+ * a publication moves along with it (subPageOf()). $locale is the language whose address it is (null when
+ * the caller did not say), so a screen can name the language and show the address as visitors see it.
  */
 final class RouteConflictException extends RuntimeException
 {
-    public function __construct(public readonly string $path, public readonly ?int $entryId = null)
-    {
+    public function __construct(
+        public readonly string $path,
+        public readonly ?int $entryId = null,
+        public readonly ?string $locale = null,
+    ) {
         parent::__construct("The path '{$path}' is already used by another entry.");
     }
 

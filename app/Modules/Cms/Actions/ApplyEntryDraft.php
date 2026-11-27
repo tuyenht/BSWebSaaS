@@ -99,7 +99,7 @@ final readonly class ApplyEntryDraft
                 return [$change, $applied['locales']];
             });
         } catch (RouteConflictException $e) {
-            throw $e->subPageOf($entry->id) ? new EntryDraftRejectedException('subpage_path_taken', $e->path) : new EntryDraftRejectedException('slug_taken');
+            throw EntryDraftRejectedException::fromRouteConflict($e, $entry->id);
         }
 
         [$change, $locales] = $done;

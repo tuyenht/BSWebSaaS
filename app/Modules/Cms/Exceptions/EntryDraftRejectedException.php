@@ -20,8 +20,9 @@ use DomainException;
  *  - category_governed: the chosen category would take the post out of its approval workflow.
  *  - locale_disabled: the change's language is switched off on the site.
  *  - slug_taken: the change's address belongs to other content now.
- *  - subpage_path_taken: a language the change puts live moves a live sub-page of the page to
- *    $path, and that address belongs to other content (the page's own address is free).
+ *  - subpage_path_taken: a language the change puts live ($locale) moves a live sub-page of the page
+ *    to $path (unprefixed, as a route stores it), and that address belongs to other content (the
+ *    page's own address is free).
  *  - workflow_governed: an approval workflow governs the entry; the change must be approved.
  *  - change_open: a live entry with a pending change cannot be scheduled (it would leave the website
  *    and go back on at the time with content nobody who may publish has put there); the change is
@@ -34,9 +35,21 @@ final class EntryDraftRejectedException extends DomainException
         'category_governed', 'locale_disabled', 'slug_taken', 'subpage_path_taken', 'workflow_governed', 'change_open',
     ];
 
-    public function __construct(public readonly string $reason, public readonly string $path = '')
+    public function __construct(public readonly string $reason, public readonly string $path = '', public readonly string $locale = '')
     {
         parent::__construct($reason);
+    }
+
+    /**
+     * A taken address met while the change goes live: the page's own address is slug_taken (the link
+     * field says it); a sub-page's that moves along with it is subpage_path_taken, with that address
+     * and its language, so the screen names the address the page's own link field cannot show.
+     */
+    public static function fromRouteConflict(RouteConflictException $conflict, int $entryId): self
+    {
+        return $conflict->subPageOf($entryId)
+            ? new self('subpage_path_taken', $conflict->path, $conflict->locale ?? '')
+            : new self('slug_taken');
     }
 
     /** The sentence to show, in the current locale. */

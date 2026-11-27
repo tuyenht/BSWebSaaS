@@ -257,10 +257,10 @@ final readonly class RouteSync
     {
         $entryId = $ownColumn === 'entry_id' ? $ownId : null;
         if (PathBuilder::isReserved($path) && ! $this->standsAt($locale, $path, $ownColumn, $ownId)) {
-            throw new RouteConflictException($path, $entryId);
+            throw new RouteConflictException($path, $entryId, $locale);
         }
         if ($this->foreignRoute($locale, $path, $ownColumn, $ownId) !== null) {
-            throw new RouteConflictException($path, $entryId);
+            throw new RouteConflictException($path, $entryId, $locale);
         }
     }
 

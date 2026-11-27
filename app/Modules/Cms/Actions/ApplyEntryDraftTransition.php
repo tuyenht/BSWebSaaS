@@ -55,7 +55,7 @@ final readonly class ApplyEntryDraftTransition
      * @param  string  $seenVersion  EntryDraft::version() of the change the actor was shown
      *
      * @throws EntryNotGovernedException no workflow governs this entry (apply with ApplyEntryDraft)
-     * @throws EntryDraftRejectedException not_live · change_stale · content_invalid · category_governed · slug_taken
+     * @throws EntryDraftRejectedException not_live · change_stale · content_invalid · category_governed · slug_taken · subpage_path_taken
      * @throws InvalidTransitionException unknown move, wrong origin, or a missing required note
      * @throws AuthorizationException the actor lacks the move's permission, sends a change to an entry they may not edit (or moves an unsent one on without that right), the entry or the change's category lies outside their category limits, or $assignTo cannot take the change on
      */
@@ -116,8 +116,8 @@ final readonly class ApplyEntryDraftTransition
 
                 return [$destination, $change];
             });
-        } catch (RouteConflictException) {
-            throw new EntryDraftRejectedException('slug_taken');
+        } catch (RouteConflictException $e) {
+            throw EntryDraftRejectedException::fromRouteConflict($e, $entry->id);
         }
 
         [$destination, $change] = $moved;
