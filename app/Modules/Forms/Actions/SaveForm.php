@@ -43,7 +43,7 @@ final readonly class SaveForm
      */
     public function handle(?Form $form, array $draft, string $locale): Form
     {
-        $this->check($draft);
+        $this->check($draft, $form, $locale);
 
         return DB::transaction(function () use ($form, $draft, $locale): Form {
             $created = $form === null;
@@ -248,9 +248,19 @@ final readonly class SaveForm
     }
 
     /**
+     * @return list<array{value: string, label: array<string, string>}>
+     */
+    private function storedChoices(?Form $form, string $key): array
+    {
+        $field = $form?->fields()->where('key', $key)->first();
+
+        return $field === null ? [] : FormFieldTypes::choices($field);
+    }
+
+    /**
      * @param  Draft  $draft
      */
-    private function check(array $draft): void
+    private function check(array $draft, ?Form $form, string $locale): void
     {
         if (count($draft['fields']) > FormDraft::MAX_FIELDS) {
             throw new InvalidArgumentException('Too many fields.');
@@ -265,7 +275,7 @@ final readonly class SaveForm
                 || $field['key'] === Form::CONSENT_KEY
                 || isset($keys[$field['key']])
                 || trim($field['label']) === '' || mb_strlen($field['label']) > FormDraft::MAX_NAME
-                || count(FormDraft::lines($field['choices'], unique: false)) > FormDraft::MAX_CHOICES // each line can become a stored choice
+                || (FormFieldTypes::isChoice($field['type']) && FormDraft::storedChoiceCount($field['choices'], $locale, fn (): array => $this->storedChoices($form, $field['key'])) > FormDraft::MAX_CHOICES)
                 || array_filter(FormDraft::lines($field['choices']), fn (string $c): bool => mb_strlen($c) > FormDraft::MAX_NAME) !== []
                 || ($field['type'] === FormFieldTypes::FILE && (! array_key_exists($field['accept'], LeadFileKinds::KINDS)
                     || $field['max_files'] < 1 || $field['max_files'] > FormFieldTypes::MAX_FILES))) {

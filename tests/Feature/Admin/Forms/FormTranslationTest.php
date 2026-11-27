@@ -4,6 +4,7 @@ use App\Modules\Admin\Livewire\Forms\FormEditor;
 use App\Modules\Admin\Support\LangBar;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormField;
+use App\Modules\Forms\Support\FormDraft;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\SiteLocale as SiteLanguages;
@@ -490,5 +491,61 @@ it('stores a line typed twice once when no other choice shows those words', func
             ['value' => 'dong', 'label' => ['vi' => 'Đồng']],
             ['value' => 'gang', 'label' => ['vi' => 'Gang']],
         ]);
+    });
+});
+
+it('refuses 51 different choices with the limit message and stores nothing', function (): void {
+    $manager = ftMember();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $form = ftForm();
+        $before = FormField::query()->where('form_id', $form->id)->where('key', 'material')->value('options');
+        $lines = implode("\n", array_map(fn (int $n): string => 'Loại '.$n, range(1, FormDraft::MAX_CHOICES + 1)));
+
+        Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid])
+            ->set('fields.1.choices', $lines)
+            ->call('save')
+            ->assertSee(__('form_builder.choices_long', ['n' => FormDraft::MAX_CHOICES, 'max' => FormDraft::MAX_NAME]));
+
+        expect(FormField::query()->where('form_id', $form->id)->where('key', 'material')->value('options'))->toEqual($before);
+    });
+});
+
+it('saves 50 different choices with one accidental repeat as 50 choices', function (): void {
+    $manager = ftMember();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $form = ftForm();
+        $lines = array_map(fn (int $n): string => 'Loại '.$n, range(1, FormDraft::MAX_CHOICES));
+
+        Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid])
+            ->set('fields.1.choices', implode("\n", [...$lines, 'Loại 7']))
+            ->call('save')->assertSet('toastMsg', __('form_builder.toast_saved'));
+
+        $stored = FormField::query()->where('form_id', $form->id)->where('key', 'material')->value('options')['choices'];
+        expect($stored)->toHaveCount(FormDraft::MAX_CHOICES)
+            ->and(array_column(array_column($stored, 'label'), 'vi'))->toBe($lines);
+    });
+});
+
+it('keeps both of two stored choices that show the same words when the box holds the most choices', function (): void {
+    $manager = ftMember();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        SiteLocale::query()->update(['is_default' => false]);
+        SiteLocale::query()->updateOrCreate(['locale' => 'ja'], ['is_default' => true, 'enabled' => true, 'is_public' => true]);
+        app(SiteLanguages::class)->forget();
+        $form = Form::query()->create(['key' => 'steel', 'name' => ['ja' => 'Quote'], 'status' => 'active']);
+        $others = array_map(fn (int $n): array => ['value' => 'v'.$n, 'label' => ['ja' => 'Type '.$n]], range(1, FormDraft::MAX_CHOICES - 2));
+        $form->fields()->create(['key' => 'material', 'type' => 'select', 'label' => ['ja' => 'Material'], 'is_required' => false, 'sort_order' => 1,
+            'options' => ['choices' => [...$others, ['value' => 'a', 'label' => ['ja' => 'Steel']], ['value' => 'b', 'label' => ['en' => 'Steel']]]]]);
+
+        Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid])
+            ->set('name', 'Quote request')
+            ->call('save')->assertSet('toastMsg', __('form_builder.toast_saved'));
+
+        $stored = FormField::query()->where('form_id', $form->id)->where('key', 'material')->value('options')['choices'];
+        expect($stored)->toHaveCount(FormDraft::MAX_CHOICES)
+            ->and(array_slice(array_column($stored, 'value'), -2))->toBe(['a', 'b']);
     });
 });

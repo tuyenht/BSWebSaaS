@@ -196,6 +196,20 @@ final class FormDraft
     }
 
     /**
+     * How many choices saving $lines in $locale would store: what choicesFrom returns, so a repeated
+     * line that no other choice shows the words of does not count. $existing (the field's stored
+     * choices) is only read when the lines alone pass the limit.
+     *
+     * @param  \Closure(): list<array{value: string, label: array<string, string>}>  $existing
+     */
+    public static function storedChoiceCount(string $lines, string $locale, \Closure $existing): int
+    {
+        $raw = count(self::lines($lines, unique: false));
+
+        return $raw > self::MAX_CHOICES ? count(self::choicesFrom($lines, $locale, $existing())) : $raw;
+    }
+
+    /**
      * The non-empty lines of a choices box, trimmed, each once unless $unique is false.
      *
      * @return list<string>
