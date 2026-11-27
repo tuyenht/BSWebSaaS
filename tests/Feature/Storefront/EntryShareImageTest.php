@@ -1,8 +1,12 @@
 <?php
 
+use App\Modules\Cms\Models\EntryTranslation;
+use App\Modules\Cms\Support\EntryShareImage;
 use App\Modules\Media\Models\Media;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteProfile;
+use Carbon\CarbonImmutable;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Tests\Fixtures\StorefrontCards;
 
@@ -43,15 +47,13 @@ function shareHead(): string
     return (string) test()->get('http://mau.platform.test/tin-tuc/bai-chia-se')->assertOk()->getContent();
 }
 
-function shareQueries(): int
+/** The same pairing the database's same-site key refuses, planted with the key checks switched off (privileged role only). */
+function pickShareUnchecked(int $postId, int $mediaId): void
 {
-    $count = 0;
-    DB::listen(function () use (&$count): void {
-        $count++;
+    DB::connection('pgsql_admin')->transaction(function ($admin) use ($postId, $mediaId): void {
+        $admin->statement('set local session_replication_role = replica');
+        $admin->table('entry_translations')->where('entry_id', $postId)->update(['og_image_id' => $mediaId]);
     });
-    shareHead();
-
-    return $count;
 }
 
 it('uses the share image picked for the language as og:image, in the article data and the sitemap', function (): void {
@@ -66,10 +68,27 @@ it('uses the share image picked for the language as og:image, in the article dat
     expect((string) test()->get('http://mau.platform.test/sitemap.xml')->getContent())->toContain('anh-chon-rieng');
 });
 
+it('moves the sitemap lastmod when only the share image changes', function (): void {
+    ['site' => $site, 'post' => $post] = shareSite();
+    app(Tenancy::class)->enter($site, function () use ($post): void {
+        DB::table('entry_translations')->where('entry_id', $post)->update(['content_changed_at' => '2026-01-02 03:04:05+00', 'updated_at' => '2026-01-02 03:04:05+00']);
+        DB::table('routes')->where('entry_id', $post)->update(['updated_at' => '2026-01-02 03:04:05+00']);
+        DB::table('entries')->where('id', $post)->update(['published_at' => '2026-01-01 00:00:00+00']);
+    });
+    $lastmod = fn (): CarbonImmutable => CarbonImmutable::parse(preg_match('#/tin-tuc/bai-chia-se</loc><lastmod>([^<]+)</lastmod>#', (string) test()->get('http://mau.platform.test/sitemap.xml')->getContent(), $m) === 1 ? $m[1] : throw new RuntimeException('post missing from the sitemap'));
+    expect($lastmod()->toDateString())->toBe('2026-01-02');
+
+    $picked = app(Tenancy::class)->enter($site, fn (): Media => StorefrontCards::media('anh-chon-rieng', 1600, 900));
+    app(Tenancy::class)->enter($site, fn () => EntryTranslation::query()->where('entry_id', $post)->firstOrFail()->update(['og_image_id' => $picked->id]));
+
+    expect($lastmod()->greaterThan(CarbonImmutable::parse('2026-01-03', 'UTC')))->toBeTrue();
+});
+
 it('falls back to the cover without a picked share image', function (): void {
     shareSite();
 
     expect(shareHead())->toMatch('/property="og:image" content="[^"]*anh-bia[^"]*w=1280/');
+    expect((string) test()->get('http://mau.platform.test/sitemap.xml')->getContent())->toContain('anh-bia');
 });
 
 it('falls back to the site brand image with neither a share image nor a cover', function (): void {
@@ -82,14 +101,34 @@ it('ignores a picked share image of another website', function (): void {
     ['site' => $site, 'post' => $post] = shareSite();
     $other = StorefrontCards::site('Xưởng Khác', 'khac.platform.test');
     $foreign = app(Tenancy::class)->enter($other, fn (): Media => StorefrontCards::media('anh-nguoi-khac', 1600, 900));
-    // the database refuses the pairing outright when it can; either way the page never draws it
-    try {
-        pickShare($site, $post, $foreign->id);
-    } catch (Throwable) {
-        // refused by the same-site key: nothing to draw
-    }
+
+    // the same-site key (entry_translations_og_image_id_same_site_foreign) refuses the pairing outright
+    expect(fn () => pickShare($site, $post, $foreign->id))->toThrow(QueryException::class);
+
+    // with the key checks off the pairing exists: the page and the sitemap must still never draw it (site_id match)
+    pickShareUnchecked($post, $foreign->id);
+    expect(DB::connection('pgsql_admin')->table('entry_translations')->where('entry_id', $post)->value('og_image_id'))->toBe($foreign->id);
 
     expect(shareHead())->not->toContain('anh-nguoi-khac')->toMatch('/property="og:image" content="[^"]*anh-bia/');
+    expect((string) test()->get('http://mau.platform.test/sitemap.xml')->getContent())->not->toContain('anh-nguoi-khac')->toContain('anh-bia');
+});
+
+it('matches the share image to the page by website in the lookup itself, not only by the scope and row security around it', function (): void {
+    ['site' => $site, 'post' => $post] = shareSite();
+    $other = StorefrontCards::site('Xưởng Khác', 'khac.platform.test');
+    $foreign = app(Tenancy::class)->enter($other, fn (): Media => StorefrontCards::media('anh-nguoi-khac', 1600, 900));
+    $own = app(Tenancy::class)->enter($site, fn (): Media => StorefrontCards::media('anh-cua-minh', 1600, 900));
+
+    // read as the privileged role with every scope off: only the lookup's own site_id match is left to decide
+    $read = fn (): ?string => EntryTranslation::on('pgsql_admin')->withoutGlobalScopes()->where('entry_id', $post)
+        ->addSelect(['entry_translations.id', EntryShareImage::KEY => EntryShareImage::keySubquery()->withoutGlobalScopes()])
+        ->firstOrFail()->getAttribute(EntryShareImage::KEY);
+
+    pickShareUnchecked($post, $foreign->id);
+    expect($read())->toBeNull();
+
+    pickShareUnchecked($post, $own->id);
+    expect($read())->toBe($own->storage_key);
 });
 
 it('ignores a picked share image that is in the Trash', function (): void {
@@ -103,16 +142,37 @@ it('ignores a picked share image that is in the Trash', function (): void {
     pickShare($site, $post, $trashed->id);
 
     expect(shareHead())->not->toContain('anh-da-bo')->toMatch('/property="og:image" content="[^"]*anh-bia/');
+    expect((string) test()->get('http://mau.platform.test/sitemap.xml')->getContent())->not->toContain('anh-da-bo')->toContain('anh-bia');
+});
+
+it('connects to the media host only when the post draws a cover from it', function (): void {
+    ['site' => $site, 'post' => $post] = shareSite(withCover: false);
+    $picked = app(Tenancy::class)->enter($site, fn (): Media => StorefrontCards::media('anh-chon-rieng', 1600, 900));
+    pickShare($site, $post, $picked->id);
+    expect(shareHead())->toContain('anh-chon-rieng')->not->toContain('rel="preconnect"');
+
+    app(Tenancy::class)->enter($site, fn () => DB::table('entries')->where('id', $post)->update(['meta' => json_encode(['image_url' => StorefrontCards::media('anh-bia')->storage_key])]));
+    expect(shareHead())->toContain('<link rel="preconnect" href="https://files.test">');
 });
 
 it('costs no more queries with a share image picked than without', function (): void {
     ['site' => $site, 'post' => $post] = shareSite();
-    shareHead(); // warm caches
-    $without = shareQueries();
+    $count = 0;
+    DB::listen(function () use (&$count): void {
+        $count++;
+    });
+    $queries = function () use (&$count): int {
+        $count = 0;
+        shareHead();
+
+        return $count;
+    };
+    $queries(); // warm caches
+    $without = $queries();
     $picked = app(Tenancy::class)->enter($site, fn (): Media => StorefrontCards::media('anh-chon-rieng', 1600, 900));
     pickShare($site, $post, $picked->id);
-    shareHead();
-    $with = shareQueries();
+    $queries();
+    $with = $queries();
 
-    expect($with)->toBe($without);
+    expect($without)->toBe(17)->and($with)->toBe(17);
 });

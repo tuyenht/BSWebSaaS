@@ -127,10 +127,10 @@ class EntryTranslation extends Model
         });
     }
 
-    /** The columns a post or page shows as its main content: heading, text, summary, Google's title and description. */
+    /** The columns a post or page shows as its main content: heading, text, summary, Google's title and description, share image. */
     public function contentFields(): array
     {
-        return ['title', 'body', 'excerpt', 'seo_title', 'seo_description'];
+        return ['title', 'body', 'excerpt', 'seo_title', 'seo_description', 'og_image_id'];
     }
 
     /**
