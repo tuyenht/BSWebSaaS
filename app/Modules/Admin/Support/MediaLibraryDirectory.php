@@ -134,7 +134,7 @@ final class MediaLibraryDirectory
             ->selectRaw($column.' as k, ulid')->toBase()->first();
         $backwards = $after === '' && $before !== '' && $cursor !== null;
 
-        $rows = (clone $query)->select(['id', 'ulid', 'storage_key', 'original_filename', 'mime', 'size', 'width', 'height', 'alt', 'folder_id', 'created_at', 'deleted_at']);
+        $rows = (clone $query)->select(['id', 'ulid', 'storage_key', 'original_filename', 'mime', 'size', 'width', 'height', 'alt', 'meta', 'folder_id', 'created_at', 'deleted_at']);
         if ($cursor !== null) {
             // forward on a desc order reads smaller keys; going back flips it
             $smaller = ($dir === 'desc') !== $backwards;

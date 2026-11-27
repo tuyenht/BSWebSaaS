@@ -2,6 +2,7 @@
 
 namespace App\Modules\Media\Models;
 
+use App\Modules\Media\Services\PdfPages;
 use App\Modules\Shared\Concerns\HasUlidColumn;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
@@ -34,6 +35,7 @@ use Illuminate\Support\Str;
  * @property int $position
  * @property array<string, string> $alt
  * @property array<string, string> $title
+ * @property array<array-key, mixed> $meta
  */
 final class Media extends Model
 {
@@ -143,6 +145,19 @@ final class Media extends Model
     public function folder(): BelongsTo
     {
         return $this->belongsTo(MediaFolder::class, 'folder_id');
+    }
+
+    /**
+     * A PDF's page count (meta.pages, filled by a queued count after upload), or null for anything
+     * else, a PDF not counted (yet), or a stored value that is not a sensible count.
+     */
+    public function pageCount(): ?int
+    {
+        if ($this->mime !== PdfPages::MIME) {
+            return null;
+        }
+
+        return PdfPages::valid($this->meta['pages'] ?? null);
     }
 
     /** Extension badge for this master ("jpg", "pdf"…) — unmapped mimes fall back to the subtype. */
