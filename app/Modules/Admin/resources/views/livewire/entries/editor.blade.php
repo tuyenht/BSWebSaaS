@@ -332,7 +332,8 @@
                     @endif
                 </section>
 
-                <x-bs-admin::seo-fields excerpt="excerpt" part="card" :kind="$type" :address="$address" :locale="$locale" :multi-locale="$multiLocale" id="entry-seo" />
+                <x-bs-admin::seo-fields excerpt="excerpt" part="card" :kind="$type" :address="$address" :locale="$locale" :multi-locale="$multiLocale" id="entry-seo"
+                                       keyword-model="focusKeyword" :keyword-note="__('entries.ed.keyword_note', ['doc' => __($isPage ? 'entries.ed.doc_page' : 'entries.ed.doc_post')])" />
             </div>
 
             {{-- A page's «Thuộc tính trang» and a post's «Thuộc tính bài» wait behind «Thêm tùy chọn» (design 07), open or

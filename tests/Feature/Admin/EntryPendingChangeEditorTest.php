@@ -185,6 +185,57 @@ it('holds an author’s save of a governed live post in its pending change, then
     });
 });
 
+it('holds a governed live post’s focus keyword in its pending change, shows it in «So sánh» and puts it live on approval', function (): void {
+    [$author, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
+        $post = pcLivePost(pcCollection(), $author, $editor);
+        $post->translationFor('vi')->update(['focus_keyword' => 'tin cũ']);
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+
+        Livewire::actingAs($author)->test(Editor::class, ['ulid' => $post->ulid])
+            ->assertSet('focusKeyword', 'tin cũ')
+            ->assertSee(__('entries.ed.keyword_note', ['doc' => __('entries.ed.doc_post')]))
+            ->set('focusKeyword', 'tin gia công CNC')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        expect(pcChange($post)->content['locales']['vi']['focus_keyword'])->toBe('tin gia công CNC')
+            ->and($post->fresh()->translationFor('vi')->focus_keyword)->toBe('tin cũ');
+
+        // the change is what the form opens with again
+        Livewire::actingAs($author)->test(Editor::class, ['ulid' => $post->ulid])
+            ->assertSet('focusKeyword', 'tin gia công CNC')
+            ->call('submitChange')
+            ->assertHasNoErrors();
+
+        Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid])
+            ->call('openChangeDiff')
+            ->assertSee(__('entries.chg.f_focus_keyword'))
+            ->assertSee(__('entries.chg.diff_seen', ['text' => 'tin cũ']))
+            ->call('askApplyChange')
+            ->call('applyChange')
+            ->assertHasNoErrors();
+
+        expect($post->fresh()->translationFor('vi')->focus_keyword)->toBe('tin gia công CNC');
+    });
+});
+
+it('writes no change when the form holds the live focus keyword unchanged', function (): void {
+    [$author, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
+        $post = pcLivePost(pcCollection(), $author, $editor);
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+
+        // a form with the live words, saved unchanged: nothing differs from the website
+        $post->translationFor('vi')->update(['focus_keyword' => 'tin cũ']);
+        Livewire::actingAs($author)->test(Editor::class, ['ulid' => $post->ulid])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        expect(pcChange($post))->toBeNull();
+    });
+});
+
 it('keeps visitors on the live version while the change waits', function (): void {
     [$author, $editor] = pcCast();
     app(Tenancy::class)->enter(1, function () use ($author, $editor): void {

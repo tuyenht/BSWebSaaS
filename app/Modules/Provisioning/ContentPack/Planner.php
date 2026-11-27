@@ -1564,7 +1564,7 @@ final class Planner
         }
         $this->rememberEntryKeys($parentIds);
         $translations = $this->locked(EntryTranslation::query()->whereIn('entry_id', $ids)->whereIn('locale', $this->locales))
-            ->get(['entry_id', 'locale', 'title', 'slug', 'body', 'excerpt', 'seo_title', 'seo_description', 'author_name', 'status']);
+            ->get(['entry_id', 'locale', 'title', 'slug', 'body', 'excerpt', 'seo_title', 'seo_description', 'author_name', 'focus_keyword', 'status']);
         $byEntry = [];
         foreach ($translations as $translation) {
             $byEntry[$translation->entry_id][] = $translation;
@@ -1584,6 +1584,10 @@ final class Planner
                     'seo_description' => $translation->seo_description,
                     'status' => $translation->status,
                 ];
+                // The focus keyword is part of the state only when set, so an item without one keeps its ledger hash.
+                if (trim((string) $translation->focus_keyword) !== '') {
+                    $row['focus_keyword'] = $translation->focus_keyword;
+                }
                 if ($entry->type === 'post') {
                     $row['slug'] = $translation->slug;
                     // A post's byline is part of the state only when set, so a post without one keeps its ledger hash.
@@ -1775,6 +1779,10 @@ final class Planner
                 'seo_description' => self::text($item->data, 'seo_description', $locale),
                 'status' => $status,
             ];
+            $keyword = self::text($item->data, 'focus_keyword', $locale);
+            if ($keyword !== null) {
+                $row['focus_keyword'] = $keyword;
+            }
             if ($item->kind === 'post') {
                 $row['slug'] = $locale === $this->locale ? $item->anchor() : Cast::string($slugs[$locale] ?? null, $item->anchor());
                 $author = self::text($item->data, 'author', $locale);

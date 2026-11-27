@@ -47,6 +47,7 @@ it('reads the snapshot shape the revision recorder writes, unchanged', function 
             'meta' => ['layout' => 'wide'],
             'author_name' => null,
             'cover_alt' => null,
+            'focus_keyword' => null,
         ]);
     });
 });
@@ -69,6 +70,9 @@ it('reads content that cannot be written today as null', function (array $change
     'image words longer than their column' => [['cover_alt' => str_repeat('a', 251)]],
     'image words that are not text' => [['cover_alt' => 5]],
     'image words holding markup' => [['cover_alt' => 'Ảnh <b>xưởng</b>']],
+    'a focus keyword longer than its column' => [['focus_keyword' => str_repeat('a', 121)]],
+    'a focus keyword that is not text' => [['focus_keyword' => 5]],
+    'a focus keyword holding markup' => [['focus_keyword' => 'gia công <b>CNC</b>']],
 ]);
 
 it('reads a byline as one line of plain text, an empty one as none', function (string $typed, ?string $read): void {
