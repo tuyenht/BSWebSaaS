@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\Process\Exception\ProcessSignaledException;
 use Symfony\Component\Process\Exception\ProcessTimedOutException as SymfonyTimedOut;
 use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process as SymfonyProcess;
@@ -219,6 +220,16 @@ it('leaves the count empty for output or exits it cannot trust, and marks the fi
         $process = new SymfonyProcess(['true']);
 
         throw new ProcessTimedOutException(new SymfonyTimedOut($process, SymfonyTimedOut::TYPE_GENERAL), new FakeProcessResult);
+    },
+    'stopped by a signal (CPU cap)' => fn () => function (): never {
+        $process = new SymfonyProcess(['sh', '-c', 'kill -XCPU $$']);
+        try {
+            $process->run();
+        } catch (ProcessSignaledException $signaled) {
+            throw $signaled;
+        }
+
+        throw new RuntimeException('the shell was not stopped by a signal');
     },
 ]);
 

@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Psr\Http\Message\StreamInterface;
+use Symfony\Component\Process\Exception\ProcessSignaledException;
 use Throwable;
 
 /**
@@ -182,6 +183,8 @@ final readonly class PdfPages
             ]);
         } catch (ProcessTimedOutException) {
             return self::UNREADABLE; // the file kept qpdf busy past its time
+        } catch (ProcessSignaledException) {
+            return self::UNREADABLE; // the CPU cap stopped qpdf with a signal: the file is the cause
         } catch (Throwable) {
             return self::NO_ANSWER; // the process could not start
         }
@@ -273,7 +276,8 @@ final readonly class PdfPages
         $body = $disk->getClient()->getObject([
             'Bucket' => Cast::string($disk->getConfig()['bucket'] ?? null),
             'Key' => $disk->path($key),
-            '@http' => ['stream' => true, 'connect_timeout' => self::READ_IDLE_SECONDS, 'read_timeout' => self::READ_IDLE_SECONDS],
+            // the streaming handler honours only `timeout` for connecting and the headers
+            '@http' => ['stream' => true, 'timeout' => self::READ_IDLE_SECONDS + self::READ_SECONDS, 'connect_timeout' => self::READ_IDLE_SECONDS, 'read_timeout' => self::READ_IDLE_SECONDS],
         ])->get('Body');
 
         return $body instanceof StreamInterface ? StreamWrapper::getResource($body) : null;
