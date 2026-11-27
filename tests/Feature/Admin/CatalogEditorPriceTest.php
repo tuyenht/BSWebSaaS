@@ -351,6 +351,25 @@ it('says what visitors see for a sale running now', function (): void {
         ->assertSee('Có — kèm giá 1.090.000 ₫ (khuyến mãi)');
 });
 
+it('stacks the price and the sale fields in one column that cannot grow past a narrow card', function (): void {
+    $user = priceManager();
+
+    $ulid = app(Tenancy::class)->enter(1, function (): string {
+        sellingSite();
+
+        return priceProduct(['price' => 12500000, 'sale_price' => 9900000])->ulid;
+    });
+
+    $html = $this->actingAs($user)->get("http://a.test/admin/catalog/{$ulid}/edit")->assertOk()->getContent();
+
+    // An input's own width (its default 20 characters, wider with each text size) must not widen its
+    // column: below 32.5rem the grid has one column with a 0 minimum (grid-cols-1), like board 09's
+    // minmax(0,1fr), and only from 32.5rem two.
+    foreach (['catalog-price', 'catalog-sale'] as $field) {
+        expect($html)->toMatch('#<div class="grid grid-cols-1 [^"]*@min-\\[32\\.5rem\\]:grid-cols-2">\\s*<div>\\s*<label for="'.$field.'"#');
+    }
+});
+
 it('draws the editor on the same queries whatever the price card holds', function (): void {
     $user = priceManager();
 
