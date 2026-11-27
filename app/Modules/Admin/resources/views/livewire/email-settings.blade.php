@@ -319,7 +319,7 @@
                         @if ($sender['address'] !== '')
                             <span class="min-w-0 flex-auto text-text [overflow-wrap:normal]">{{ $sender['name'] }} {{ $mailParts('<'.$sender['address'].'>') }}</span>
                         @else
-                            <span class="min-w-0 flex-auto text-text-muted">{{ __('admin.em_sender_no_addr') }}</span>
+                            <span class="min-w-0 flex-auto text-text-muted">{{ $sender['empty'] }}</span>
                         @endif
                     </div>
                     <div class="flex flex-col gap-3.5">
@@ -334,18 +334,23 @@
                                 <span class="flex items-stretch">
                                     <input id="em-from-local" type="text" name="em_from_local" autocomplete="off" spellcheck="false" wire:model.live.blur="fromLocal"
                                            x-on:input="$el.value = $el.value.replace(/[^a-zA-Z0-9._-]/g, '')" placeholder="{{ $sender['defaultLocal'] }}"
-                                           aria-label="{{ __('admin.em_from_local') }}" @error('fromLocal') aria-invalid="true" aria-describedby="em-from-local-err" @enderror
+                                           aria-label="{{ __('admin.em_from_local') }}" @error('fromLocal') aria-invalid="true" aria-describedby="em-from-local-err" @else @if ($sender['keptNote'] !== '') aria-describedby="em-from-kept" @endif @enderror
                                            class="field block min-w-0 flex-1 rounded-s border border-e-0 border-border-input bg-surface px-3 text-text placeholder:text-placeholder transition-colors focus:border-primary-text aria-invalid:border-danger-text">
-                                    <span class="inline-flex items-center rounded-e border border-border-input bg-surface-hover px-3 text-[calc(0.84375rem+var(--user-text-boost))] whitespace-nowrap text-text-muted">{{ '@'.($sender['domain'] !== '' ? $sender['domain'] : '—') }}</span>
+                                    <span class="inline-flex items-center rounded-e border border-border-input bg-surface-hover px-3 text-[calc(0.84375rem+var(--user-text-boost))] whitespace-nowrap text-text-muted">{{ '@'.($sender['suffix'] !== '' ? $sender['suffix'] : '—') }}</span>
                                 </span>
                                 @error('fromLocal')
                                     <x-bs-admin::field-error id="em-from-local-err">{{ $message }}</x-bs-admin::field-error>
+                                @else
+                                    @if ($sender['keptNote'] !== '')
+                                        {{-- A stored address on another domain than the one it sends from now stays as it is until edited --}}
+                                        <span id="em-from-kept" class="text-caption leading-normal text-text-muted" data-from-kept>{{ $sender['keptNote'] }}</span>
+                                    @endif
                                 @enderror
                             </div>
                         @elseif ($sender['locked'] !== '')
-                            {{-- A signed-in Google / Microsoft mailbox sends as itself: shown, never typed --}}
+                            {{-- A signed-in Google / Microsoft / Yahoo mailbox, or «Email khác» on a public mailbox, sends as itself: shown, never typed --}}
                             <div class="flex flex-col gap-1.5">
-                                <span class="flex items-center gap-1"><span id="em-from-ro-l" class="{{ $lab }}">{{ __('admin.em_from_addr') }}</span><x-bs-admin::help-pop :label="__('admin.em_from_help')">{{ __('admin.em_from_help_locked') }}</x-bs-admin::help-pop></span>
+                                <span class="flex items-center gap-1"><span id="em-from-ro-l" class="{{ $lab }}">{{ __('admin.em_from_addr') }}</span><x-bs-admin::help-pop :label="__('admin.em_from_help')">{{ $sender['lockedHelp'] }}</x-bs-admin::help-pop></span>
                                 <span role="textbox" aria-readonly="true" aria-labelledby="em-from-ro-l" data-from-locked
                                       class="flex min-w-0 items-center gap-2 rounded border border-border-strong bg-surface-hover px-[11px] py-[9px] text-[calc(0.875rem+var(--user-text-boost))] text-text-muted">
                                     <x-bs-admin::icon name="ri-lock" class="size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0" />
@@ -378,14 +383,14 @@
                                       @class(['inline-flex max-w-full items-center gap-[5px] rounded-full py-[3px] ps-2.5 pe-1 text-[calc(0.8125rem+var(--user-text-boost))]',
                                               'bg-surface-muted text-primary-text' => $ok, 'bg-danger-base/12 text-danger-text' => ! $ok])>
                                     <span class="min-w-0 [overflow-wrap:normal]">{{ $mailParts($email) }}</span>
-                                    <button type="button" wire:click="removeNotify({{ $i }})" aria-label="{{ __('admin.em_notify_remove', ['email' => $email]) }}" title="{{ __('admin.em_notify_remove', ['email' => $email]) }}"
-                                            class="hit-area inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-surface-hover">
+                                    <button type="button" wire:click="removeNotify({{ \Illuminate\Support\Js::from($email) }})" aria-label="{{ __('admin.em_notify_remove', ['email' => $email]) }}" title="{{ __('admin.em_notify_remove', ['email' => $email]) }}"
+                                            class="hit-area-row inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full [--hit-gap:0.625rem] hover:bg-surface-hover">
                                         <x-bs-admin::icon name="ri-close" class="size-3.5" />
                                     </button>
                                 </span>
                             @endforeach
                             <input id="em-notify-in" type="text" inputmode="email" autocomplete="off" spellcheck="false" x-model="draft"
-                                   x-on:keydown="if ($event.isComposing) return; if (['Enter', ',', 'Tab'].includes($event.key) && draft.trim() !== '') { $event.preventDefault(); add() } else if ($event.key === 'Backspace' && draft === '' && $wire.notifyTo.length > 0) { $wire.removeNotify($wire.notifyTo.length - 1) }"
+                                   x-on:keydown="if ($event.isComposing) return; if (['Enter', ',', 'Tab'].includes($event.key) && draft.trim() !== '') { $event.preventDefault(); add() } else if ($event.key === 'Backspace' && draft === '' && $wire.notifyTo.length > 0) { $wire.removeNotify($wire.notifyTo[$wire.notifyTo.length - 1]) }"
                                    x-on:blur="add()"
                                    aria-label="{{ __('admin.em_notify_input') }}" placeholder="{{ $notifyTo === [] ? __('admin.em_notify_ph', ['domain' => $sender['placeholderDomain']]) : '' }}"
                                    @if ($notifyErr !== '') aria-invalid="true" aria-describedby="em-notify-err" @endif
