@@ -87,6 +87,13 @@
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
+    /* Four ways to reach the company stay two by two until each card is wide enough for its text. */
+    .sf-contact-cards:has(> :nth-child(4)) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1280px) {
     /* Four ways to reach the company stand in one row. */
     .sf-contact-cards:has(> :nth-child(4)) {
         grid-template-columns: repeat(4, minmax(0, 1fr));
