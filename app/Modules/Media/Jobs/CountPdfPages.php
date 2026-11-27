@@ -13,9 +13,11 @@ use Illuminate\Foundation\Queue\Queueable;
  * upload's transaction commits, so the row is there to read; the count runs inside the website's
  * own tenant context (the job carries the site id, never a current-site singleton).
  *
- * One try: a file qpdf cannot count stays uncounted (the library shows «PDF» alone) and the
- * one-off media:pdf-pages command can try it again; a retry would only repeat the same answer.
- * The job's timeout stays above qpdf's own and below the queue worker's.
+ * One try: a file qpdf cannot count stays uncounted (the library shows «PDF» alone) and is marked,
+ * so neither a retry nor the one-off media:pdf-pages command reads it again while it is the same
+ * file. When qpdf is not installed nothing is marked, and media:pdf-pages fills it later.
+ * The job's timeout stays above the storage read's and qpdf's together (5 + 15 + 5 + 20 seconds,
+ * PdfPages) and below the queue worker's.
  */
 final class CountPdfPages implements ShouldQueue
 {
