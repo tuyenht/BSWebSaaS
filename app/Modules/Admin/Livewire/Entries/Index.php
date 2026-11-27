@@ -1371,9 +1371,9 @@ final class Index extends Component
 
             return $slug;
         };
-        $title = static function (Entry $row) use ($locale): string {
+        $title = static function (Entry $row) use ($locale, $inSiteOrder): string {
             $text = Cast::string($row->translations->firstWhere('locale', $locale)?->title);
-            foreach ($text === '' ? $row->translations : [] as $translation) {
+            foreach ($text === '' ? $inSiteOrder($row) : [] as $translation) {
                 $text = Cast::string($translation->title);
                 if ($text !== '') {
                     break;
@@ -1460,16 +1460,19 @@ final class Index extends Component
 
         $home = isset($homes[$page->id]);
         $height = $home ? null : PageRules::heightOf($page);
-        $current = $page->parent_id === null ? '' : (($row = $byId->get($page->parent_id)) instanceof Entry ? $prefix($row, $shownSlug) : null);
+        $inShown = static fn (Entry $r): string => $slugIn($r, $shownLocale);
+        $current = $page->parent_id === null ? '' : (($row = $byId->get($page->parent_id)) instanceof Entry ? $prefix($row, $inShown) : null);
         $out = [];
         foreach ($candidates as $i => $c) {
             $row = $c['row'];
             $here = $page->parent_id === $row?->id;
             $at = $row === null ? '' : $prefix($row, $shownSlug);
-            $ns = $nested && $leafShown !== '' && $at !== $current ? $at.'/'.$leafShown : null;
+            $atShown = $row === null ? '' : $prefix($row, $inShown);
+            // the path the dialog's search matches (parents in any language) is set when either reading moves; the label only when the shown language's address does
+            $ns = $nested && $leafShown !== '' && ($at !== $current || $atShown !== $current) ? $at.'/'.$leafShown : null;
             // the address visitors open: the parent's and the page's own slugs in the same language, then its /{locale}
-            $nsShown = $ns === null ? null : app(PathBuilder::class)->publicUrl(
-                ($row === null ? '' : $prefix($row, static fn (Entry $r): string => $slugIn($r, $shownLocale))).'/'.$slugIn($page, $shownLocale),
+            $nsShown = $ns === null || $atShown === $current ? null : app(PathBuilder::class)->publicUrl(
+                $atShown.'/'.$slugIn($page, $shownLocale),
                 $shownLocale,
             );
             $clash = null;
@@ -1495,7 +1498,7 @@ final class Index extends Component
                 'why' => $why,
                 'label' => $here ? Cast::string(__('entries.mv_here')) : ($why !== null
                     ? Cast::string(__('entries.mv_locked', ['why' => mb_strtolower(mb_substr($why, 0, 1)).mb_substr($why, 1)]))
-                    : Cast::string($ns !== null ? __('entries.mv_becomes_path', ['n' => $c['lv'] + 1, 'path' => $nsShown]) : __('entries.mv_becomes', ['n' => $c['lv'] + 1]))),
+                    : Cast::string($nsShown !== null ? __('entries.mv_becomes_path', ['n' => $c['lv'] + 1, 'path' => $nsShown]) : __('entries.mv_becomes', ['n' => $c['lv'] + 1]))),
                 'path' => $ns,
             ];
         }
