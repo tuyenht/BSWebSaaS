@@ -2953,7 +2953,7 @@
     "catalog.gallery_move_up": "上へ",
     "catalog.gallery_move_down": "下へ",
     "catalog.gallery_missing": "ライブラリにもうありません",
-    "catalog.gallery_invalid": "画像リストに無効な項目があります。",
+    "catalog.gallery_invalid": "リスト内の画像が存在しなくなりました。別の画像を追加して壊れたタイルを削除するか、商品の動画を削除してください。",
     "catalog.picker_title": "ライブラリから選択",
     "catalog.picker_empty": "ライブラリにまだ画像がありません。先に「ライブラリ」で画像をアップロードしてください。",
     "catalog.picker_external_label": "または画像の URL を貼り付け",

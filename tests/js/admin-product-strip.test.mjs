@@ -16,19 +16,19 @@ const listener = html(section[2]);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // The strip as the editor draws it, with the Alpine object bound to it and the listener on the window.
-function strip(body) {
+function strip(body, wire = {}) {
     const dom = new JSDOM(`<!doctype html><html><body><section data-picker-home><h2 id="ped-h-img" tabindex="-1">Ảnh</h2>${body}</section><button id="other">x</button></body></html>`);
     const { window } = dom;
     window.Element.prototype.scrollIntoView = function () {};
     const root = window.document.querySelector('section');
-    const data = new Function('$wire', 'window', `return (${objectSrc});`)({}, window);
+    const data = new Function('$wire', 'window', `return (${objectSrc});`)(wire, window);
     data.$root = root;
     data.$refs = {};
     // `setTimeout` inside the object is Node's: fine for a wait of 40ms
     window.addEventListener('ped-vfocus', ($event) => new Function('$event', `with (this) { ${listener} }`).call(data, $event));
     window.document.getElementById('other').focus();
 
-    return { window, fire: async (i) => { window.dispatchEvent(new window.CustomEvent('ped-vfocus', { detail: { i } })); await wait(60); return window.document.activeElement; } };
+    return { window, data, fire: async (i) => { window.dispatchEvent(new window.CustomEvent('ped-vfocus', { detail: { i } })); await wait(60); return window.document.activeElement; } };
 }
 
 const tiles = (pics, vids) => '<div class="ped-imgs">'
@@ -69,4 +69,26 @@ test('a member who may not open the Library (no «Chọn ảnh»): focus goes to
     const to = await s.fire(-1);
     assert.equal(to.id, 'ped-h-img');
     assert.notEqual(to, s.window.document.body);
+});
+
+test('after a picture is taken off the product, focus goes to the tile now at its place, then the last one, never the page', async () => {
+    const taken = { removeImage: () => Promise.resolve() };
+    const s = strip(tiles(3, 0), taken);
+    s.data.sel = 1;
+    await s.data.act('removeImage');
+    await wait(80);
+    assert.equal(s.window.document.activeElement.getAttribute('data-img-i'), '1');
+    assert.equal(s.data.sel, null);
+
+    const last = strip(tiles(2, 0), taken);
+    last.data.sel = 2;
+    await last.data.act('removeImage');
+    await wait(80);
+    assert.equal(last.window.document.activeElement.getAttribute('data-img-i'), '1');
+
+    const none = strip('<div class="ped-imempty"><button id="choose">Chọn ảnh</button></div>', taken);
+    none.data.sel = 0;
+    await none.data.act('removeImage');
+    await wait(80);
+    assert.equal(none.window.document.activeElement.id, 'choose');
 });

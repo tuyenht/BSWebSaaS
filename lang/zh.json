@@ -2953,7 +2953,7 @@
     "catalog.gallery_move_up": "上移",
     "catalog.gallery_move_down": "下移",
     "catalog.gallery_missing": "媒体库中已不存在",
-    "catalog.gallery_invalid": "图片列表中有无效项目。",
+    "catalog.gallery_invalid": "列表中的图片已不存在。请添加另一张图片并移除损坏的图块，或移除该商品的视频。",
     "catalog.picker_title": "从媒体库选择",
     "catalog.picker_empty": "媒体库中还没有图片。请先在“媒体库”上传图片。",
     "catalog.picker_external_label": "或粘贴图片网址",

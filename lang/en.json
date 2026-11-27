@@ -2953,7 +2953,7 @@
     "catalog.gallery_move_up": "Move up",
     "catalog.gallery_move_down": "Move down",
     "catalog.gallery_missing": "No longer in the library",
-    "catalog.gallery_invalid": "The image list contains an invalid item.",
+    "catalog.gallery_invalid": "A picture in the list no longer exists. Add another picture and remove the broken tile, or remove the product's videos.",
     "catalog.picker_title": "Choose from library",
     "catalog.picker_empty": "The library has no images yet. Upload images in the Library section first.",
     "catalog.picker_external_label": "Or paste an image URL",
