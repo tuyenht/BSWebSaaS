@@ -530,7 +530,7 @@ final class FormEditor extends Component
         }
         foreach ($this->fields as $f) {
             $label = trim($f['label']);
-            $lines = FormDraft::lines($f['choices']);
+            $lines = FormDraft::lines($f['choices'], unique: false); // every line can become a stored choice
             $msg = match (true) {
                 $label === '' => ['msg' => __('form_builder.field_label_error'), 'id' => 'bm-l-'.$f['key']],
                 mb_strlen($label) > FormDraft::MAX_NAME => ['msg' => __('form_builder.too_long', ['max' => FormDraft::MAX_NAME]), 'id' => 'bm-l-'.$f['key']],
@@ -564,7 +564,7 @@ final class FormEditor extends Component
                 'required' => Cast::bool($f['required']),
                 'choices' => ! FormFieldTypes::isChoice(Cast::string($f['type'])) ? '' : implode("\n", $this->translating()
                     ? FormDraft::translatedLines(Cast::string($f['choices']))
-                    : FormDraft::lines(Cast::string($f['choices']))),
+                    : FormDraft::lines(Cast::string($f['choices']), unique: false)), // repeats kept: two choices can show the same words
                 'accept' => Cast::string($f['accept']),
                 'max_files' => Cast::int($f['max_files']),
             ]), $this->fields),

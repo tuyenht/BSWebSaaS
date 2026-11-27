@@ -265,7 +265,7 @@ final readonly class SaveForm
                 || $field['key'] === Form::CONSENT_KEY
                 || isset($keys[$field['key']])
                 || trim($field['label']) === '' || mb_strlen($field['label']) > FormDraft::MAX_NAME
-                || count(FormDraft::lines($field['choices'])) > FormDraft::MAX_CHOICES
+                || count(FormDraft::lines($field['choices'], unique: false)) > FormDraft::MAX_CHOICES // each line can become a stored choice
                 || array_filter(FormDraft::lines($field['choices']), fn (string $c): bool => mb_strlen($c) > FormDraft::MAX_NAME) !== []
                 || ($field['type'] === FormFieldTypes::FILE && (! array_key_exists($field['accept'], LeadFileKinds::KINDS)
                     || $field['max_files'] < 1 || $field['max_files'] > FormFieldTypes::MAX_FILES))) {

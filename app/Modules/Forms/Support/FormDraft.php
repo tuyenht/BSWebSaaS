@@ -150,7 +150,7 @@ final class FormDraft
     /**
      * The choices of a choice field from the lines typed in $locale: a line whose text is an existing
      * choice keeps that choice (its stored value and its other languages), a new line gets a value of
-     * its own. Empty and repeated lines are dropped.
+     * its own. Empty lines are dropped, and so is a repeated line no further choice shows the words of.
      *
      * @param  list<array{value: string, label: array<string, string>}>  $existing
      * @return list<array{value: string, label: array<string, string>}>

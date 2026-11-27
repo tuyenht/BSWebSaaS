@@ -443,3 +443,52 @@ it('keeps the dropped-lines notice until it is closed, and lets other notices hi
         $english->set('name', 'Another name')->call('save')->assertSet('toastTone', 'success')->assertSeeHtml('arm(');
     });
 });
+
+it('keeps both choices on a main-language save that leaves them untouched when two choices show the same words', function (): void {
+    $manager = ftMember();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        SiteLocale::query()->update(['is_default' => false]);
+        SiteLocale::query()->updateOrCreate(['locale' => 'ja'], ['is_default' => true, 'enabled' => true, 'is_public' => true]);
+        app(SiteLanguages::class)->forget();
+        $form = Form::query()->create(['key' => 'steel', 'name' => ['ja' => 'Quote'], 'status' => 'active']);
+        // a has Japanese words, b only English ones: in Japanese both read «Steel»
+        $form->fields()->create(['key' => 'material', 'type' => 'select', 'label' => ['ja' => 'Material'], 'is_required' => false, 'sort_order' => 1,
+            'options' => ['choices' => [['value' => 'a', 'label' => ['ja' => 'Steel']], ['value' => 'b', 'label' => ['en' => 'Steel']]]]]);
+
+        $page = Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid])
+            ->assertSet('locale', 'ja')
+            ->assertSet('fields.0.choices', "Steel\nSteel");
+        expect($page->instance()->changeCount())->toBe(0);
+        // only the form's name changes; the choices box is saved as it was shown
+        $page->set('name', 'Quote request');
+        expect($page->instance()->changeCount())->toBe(1);
+        $page->call('save')->assertSet('toastMsg', __('form_builder.toast_saved'));
+        expect($page->instance()->changeCount())->toBe(0);
+
+        expect(Form::query()->whereKey($form->id)->value('name'))->toEqual(['ja' => 'Quote request'])
+            ->and(FormField::query()->where('form_id', $form->id)->where('key', 'material')->value('options')['choices'])->toEqual([
+                ['value' => 'a', 'label' => ['ja' => 'Steel']],
+                ['value' => 'b', 'label' => ['en' => 'Steel', 'ja' => 'Steel']],
+            ]);
+    });
+});
+
+it('stores a line typed twice once when no other choice shows those words', function (): void {
+    $manager = ftMember();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $form = ftForm();
+
+        Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid])
+            ->set('fields.1.choices', "Inox 304\nNhôm\nĐồng\nĐồng\nGang\nGang")
+            ->call('save')->assertSet('toastMsg', __('form_builder.toast_saved'));
+
+        expect(FormField::query()->where('form_id', $form->id)->where('key', 'material')->value('options')['choices'])->toEqual([
+            ['value' => 'inox', 'label' => ['vi' => 'Inox 304']],
+            ['value' => 'nhom', 'label' => ['vi' => 'Nhôm']],
+            ['value' => 'dong', 'label' => ['vi' => 'Đồng']],
+            ['value' => 'gang', 'label' => ['vi' => 'Gang']],
+        ]);
+    });
+});
