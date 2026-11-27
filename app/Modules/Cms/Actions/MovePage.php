@@ -442,7 +442,7 @@ final readonly class MovePage
         $changed = [];
         try {
             $translations = $page->translations()->get();
-            // the website's language order, so a clash in two languages names the same one the move's lock label does
+            // the website's language order, so a clash in two languages names the same one the move's lock label does for the page itself (a sub-page's clash, or one in a language the page is only a draft in, the label cannot see beforehand)
             $rank = array_flip($this->locales->inSiteOrder($translations->map(fn ($translation): string => (string) $translation->locale)));
             foreach ($translations->sortBy(fn ($translation): int => $rank[$translation->locale])->values() as $translation) {
                 $locale = $translation->locale;

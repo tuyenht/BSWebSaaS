@@ -1922,21 +1922,30 @@ it('says the address a page move would take with its /en prefix, in the refusal 
 it('names the same language in the move refusal and on the «Chuyển đến…» lock when the move clashes in two', function (): void {
     [, $editor] = pcCast();
     app(Tenancy::class)->enter(1, function () use ($editor): void {
+        // Japanese is enabled before English, so the website's order is vi, ja, en
+        DB::connection('pgsql_admin')->table('site_locales')->insert([
+            'site_id' => 1, 'locale' => 'ja', 'is_default' => false, 'enabled' => true, 'created_at' => now(), 'updated_at' => now(),
+        ]);
         [$services, , $page] = pcEnglishTree($editor);
-        // English is taken already (the sub-page «logo» stands at /services/logo); Vietnamese, the website's first language, is taken too
+        // the page's Japanese translation is written after its English one, so stored order (vi, en, ja) differs from the website's (vi, ja, en)
+        foreach ([[$services, 'dich-vu-ja'], [$page, 'thiet-ke-ja']] as [$entry, $slug]) {
+            $entry->translations()->create(['locale' => 'ja', 'title' => $slug, 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);
+            app(PublishEntry::class)->handle($entry->fresh(), 'ja', $editor);
+        }
+        // English is taken already (the sub-page «logo» stands at /services/logo); Japanese is taken too, and it comes first in the website's order
         $other = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
-        SiteRoute::query()->create(['locale' => 'vi', 'path' => '/dich-vu/thiet-ke', 'entry_id' => $other->id]);
+        SiteRoute::query()->create(['locale' => 'ja', 'path' => '/dich-vu-ja/thiet-ke-ja', 'entry_id' => $other->id]);
 
         $refused = null;
         try {
-            app(MovePage::class)->handle($page, $services, 0);
+            app(MovePage::class)->handle($page->fresh(), $services->fresh(), 0);
         } catch (PageMoveRejectedException $e) {
             $refused = $e;
         }
         $by = collect(Livewire::actingAs($editor)->test(Index::class)->instance()->moveTargets($page->ulid)['opts'] ?? [])->keyBy(fn (array $o): string => $o['k'] ?? 'top');
 
-        expect($refused?->path)->toBe('/dich-vu/thiet-ke')
-            ->and($by[$services->ulid]['why'])->toBe(__('entries.move_path_taken_label', ['path' => '/dich-vu/thiet-ke']));
+        expect($refused?->path)->toBe('/ja/dich-vu-ja/thiet-ke-ja')
+            ->and($by[$services->ulid]['why'])->toBe(__('entries.move_path_taken_label', ['path' => '/ja/dich-vu-ja/thiet-ke-ja']));
     });
 });
 
@@ -1951,6 +1960,26 @@ it('shows the «new path» label of a page that exists only in English with its 
         $by = collect(Livewire::actingAs($editor)->test(Index::class)->instance()->moveTargets($solo->ulid)['opts'] ?? [])->keyBy(fn (array $o): string => $o['k'] ?? 'top');
 
         expect($by[$services->ulid]['path'])->toBe('/dich-vu/solo')
-            ->and($by[$services->ulid]['label'])->toBe(__('entries.mv_becomes_path', ['n' => 2, 'path' => '/en/dich-vu/solo']));
+            ->and($by[$services->ulid]['label'])->toBe(__('entries.mv_becomes_path', ['n' => 2, 'path' => '/en/services/solo']));
+    });
+});
+
+it('shows the «new path» label of a page without the default language in the website’s first other language, not the alphabetically first', function (): void {
+    [, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        // the website's order is vi, ja, en: Japanese comes before English although «en» sorts first
+        DB::connection('pgsql_admin')->table('site_locales')->insert([
+            'site_id' => 1, 'locale' => 'ja', 'is_default' => false, 'enabled' => true, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        [$services] = pcEnglishTree($editor);
+        $services->translations()->create(['locale' => 'ja', 'title' => 'ja', 'slug' => 'dich-vu-ja', 'status' => 'draft', 'body' => ['blocks' => []]]);
+        $solo = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
+        foreach (['en' => 'solo', 'ja' => 'solo-ja'] as $lc => $slug) {
+            $solo->translations()->create(['locale' => $lc, 'title' => $slug, 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);
+        }
+
+        $by = collect(Livewire::actingAs($editor)->test(Index::class)->instance()->moveTargets($solo->ulid)['opts'] ?? [])->keyBy(fn (array $o): string => $o['k'] ?? 'top');
+
+        expect($by[$services->ulid]['label'])->toBe(__('entries.mv_becomes_path', ['n' => 2, 'path' => '/ja/dich-vu-ja/solo-ja']));
     });
 });
