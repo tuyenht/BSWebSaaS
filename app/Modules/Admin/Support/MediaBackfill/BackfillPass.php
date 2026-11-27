@@ -177,6 +177,60 @@ final class BackfillPass
         $value->mask_ulid = strtoupper($row->ulid);
     }
 
+    /**
+     * A brand image the general.brand setting still holds (an address on the media host, or a bare
+     * key) beside the site profile's picture of the same slot: the row the profile must name for the
+     * address to leave the setting, the shape the settings screen saves (SetBrandImages), or null to
+     * leave both. Only a picture of the website moves (image/*, as the settings screen accepts), and
+     * only when the profile names that same row or none: a profile naming another picture is the
+     * owner's call (unmatched). An outside address is kept and noted (the page shows it until the
+     * contract). When the address the page will print from the row (BrandImages, at the slot's
+     * width) differs from the stored one, that is noted too.
+     */
+    public function brand(string $place, mixed $profileId, mixed $value, ?int $width): ?int
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+        $value = trim($value);
+        $key = $this->keyOf($value);
+        if ($this->refs === null) {
+            if ($key !== null) {
+                $this->keys[$key] = true;
+            }
+
+            return null;
+        }
+        if ($key === null) {
+            $this->tally($place, 'kept', "not a file of the library, shown until the contract: {$value}");
+
+            return null;
+        }
+        $row = $this->refs->byKey($key);
+        if ($row === null || ! str_starts_with((string) $row->mime, 'image/')) {
+            $this->tally($place, 'unmatched', $row === null ? $value : "{$value} ({$row->mime})");
+
+            return null;
+        }
+        $named = MediaRefs::id($profileId);
+        if ($named !== null && $named !== $row->id) {
+            $this->tally($place, 'unmatched', "{$value} (the profile names another picture)");
+
+            return null;
+        }
+        $this->tally($place, 'converted');
+        if ($row->trashed()) {
+            $this->tally($place, 'trashed', $key);
+        }
+        $shown = $this->urls->url($key, $width);
+        if ($shown !== $value) {
+            $this->lines[$place]['notes'] = self::sampled($this->lines[$place]['notes'], "the page's address becomes {$shown}");
+        }
+        $this->changed++;
+
+        return $row->id;
+    }
+
     /** A block of a type the registry does not know: its values are not read, so it is counted. */
     public function skipped(string $place, string $type): void
     {

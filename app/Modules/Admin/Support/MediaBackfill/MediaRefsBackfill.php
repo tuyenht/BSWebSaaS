@@ -11,7 +11,10 @@ use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Media\Services\SiteMediaRekey;
 use App\Modules\Media\Support\MediaRefs;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Storefront\Support\BrandImages;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteProfile;
+use App\Modules\Tenancy\Support\SiteWriteLock;
 use App\Modules\Theme\Components\ButtonLink;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SchemaImages;
@@ -28,14 +31,15 @@ use Throwable;
  * on the media host) to the row: an entry's cover (entries.meta.image_url → entries.cover_media_id,
  * and the same pair inside its pending change or draft and its history), the image props and "Tải
  * tệp" buttons of blocks (live bodies, shared blocks, a pending change's and a revision's bodies,
- * the block slots of the website and of each category), and the heading decoration's mask. Image
- * props and covers become the bigint id (typed columns and the image-prop contract, which never
- * reach the browser as such), buttons and the mask the row ulid.
+ * the block slots of the website and of each category), the heading decoration's mask, and the
+ * brand images the general.brand setting still holds as addresses (brand()). Image props and covers
+ * become the bigint id (typed columns and the image-prop contract, which never reach the browser as
+ * such), buttons and the mask the row ulid, a brand image the site profile's picture.
  *
  * The other places media:rekey-site rewrites keys in (COUNTED, and every other setting of the
- * website, general.brand among them) are read too but only counted: no reader resolves a file
- * address from them but the brand's, whose URLs the brand step removes. Every file address found
- * there is a line of the report, so the contract sees it.
+ * website, the rest of general.brand among them) are read too but only counted: no reader resolves
+ * a file address from them. Every file address found there is a line of the report, so the
+ * contract sees it.
  *
  * Every lookup goes through MediaRefs (one query per batch, the Trash included and FOR KEY SHARE
  * when writing). A file in the Trash is converted like any other (so a picture in the Trash stops
@@ -155,6 +159,9 @@ final readonly class MediaRefsBackfill
     /** The places a visitor sees: a picture of these in the Trash stops showing once converted. */
     public const array SHOWN = ['entries', 'entry_translations', 'content_block_translations', 'taxonomies', 'site_settings'];
 
+    /** The report's place of a brand image, followed by its slot (SiteProfile::IMAGE_COLUMNS). */
+    public const string BRAND_PLACE = 'site_settings brand';
+
     public function __construct(private Tenancy $tenancy, private ComponentRegistry $registry, private MediaUrlResolver $urls) {}
 
     /**
@@ -170,6 +177,7 @@ final readonly class MediaRefsBackfill
         foreach (self::DOCS as $place => [$table, $column, $owner, $ownerColumn]) {
             $this->docs($siteId, $apply, $place, $table, $column, $owner, $ownerColumn, $lines, $rows);
         }
+        $this->brand($siteId, $apply, $lines, $rows);
         foreach (self::COUNTED as $place => [$table, $column]) {
             $this->docs($siteId, false, $place, $table, $column, null, null, $lines, $rows);
         }
@@ -225,6 +233,106 @@ final readonly class MediaRefsBackfill
 
             return [$pass, $apply ? $written : count($values), $apply ? count($values) - $written : 0];
         }, $lines, $rows, 'entries');
+    }
+
+    /**
+     * general.brand: each brand image the setting still holds as an address (or a key) of a picture
+     * of the website becomes the site profile's picture of that slot, its address leaving the
+     * setting: what the settings screen saves (SetBrandImages), the dark logo included. The page
+     * shows the same picture: until now the address won over the profile's picture (BrandImages),
+     * from now on the profile names the row whose key the address names. A profile already naming
+     * that row only loses the address; one naming another picture, an address that names no picture
+     * of the website, and an outside address are left as they are and counted (BackfillPass::brand).
+     *
+     * One row per website, so one batch: its own tenant transaction, tried again after a lost lock
+     * conflict. A real run takes the website's write lock first (SiteWriteLock, as every writer of
+     * the profile and the settings rows does), then the setting and profile rows FOR NO KEY UPDATE,
+     * then the pictures FOR KEY SHARE; it writes past the models (no updated_at, no "last saved"
+     * stamp: nothing was saved by a person), the profile column only while it still names what was
+     * read and the setting only while it still holds the text that was read. A dry run reads without
+     * locks and writes nothing.
+     *
+     * @param  array<string, Line>  $lines
+     * @param  array<string, int>  $rows
+     */
+    private function brand(int $siteId, bool $apply, array &$lines, array &$rows): void
+    {
+        [$pass, $written, $left] = $this->batch($siteId, function () use ($siteId, $apply): array {
+            $pass = new BackfillPass($this->urls);
+            if ($apply) {
+                SiteWriteLock::take();
+            }
+            $lock = $apply ? ' FOR NO KEY UPDATE' : '';
+            $setting = DB::selectOne("SELECT id, value::text AS doc FROM site_settings WHERE site_id = ? AND group_name = 'general' AND key = 'brand'{$lock}", [$siteId]);
+            $brand = $setting instanceof stdClass ? json_decode(Cast::string($setting->doc), false, 512, JSON_THROW_ON_ERROR) : null;
+            if (! $brand instanceof stdClass || array_intersect_key(get_object_vars($brand), SiteProfile::IMAGE_COLUMNS) === []) {
+                return [$pass, 0, 0];
+            }
+            $profile = DB::selectOne('SELECT id, '.implode(', ', SiteProfile::IMAGE_COLUMNS)." FROM site_profiles WHERE site_id = ?{$lock}", [$siteId]);
+            $profile = $profile instanceof stdClass ? $profile : null;
+            $read = static function () use ($pass, $brand, $profile): array {
+                $ids = [];
+                foreach (SiteProfile::IMAGE_COLUMNS as $slot => $column) {
+                    $id = $pass->brand(self::BRAND_PLACE." {$slot}", $profile?->{$column}, $brand->{$slot} ?? null, BrandImages::WIDTHS[$slot]);
+                    if ($id !== null) {
+                        $ids[$slot] = $id;
+                    }
+                }
+
+                return $ids;
+            };
+            $read();
+            $pass->resolve($this->lookup($pass, $apply));
+            $ids = $read();
+            if (! $apply || $ids === []) {
+                return [$pass, $ids === [] ? 0 : 1, 0];
+            }
+
+            return self::writeBrand($siteId, $setting, $brand, $profile, $ids) ? [$pass, 1, 0] : [$pass, 0, 1];
+        });
+        $lines = self::merge($lines, $pass->lines);
+        $rows[self::BRAND_PLACE] = ($rows[self::BRAND_PLACE] ?? 0) + $written;
+        if ($left > 0) {
+            $rows[self::BRAND_PLACE.' changed since read, left for the next run'] = ($rows[self::BRAND_PLACE.' changed since read, left for the next run'] ?? 0) + $left;
+        }
+    }
+
+    /**
+     * Writes one website's brand conversion: the profile columns that do not name their picture yet
+     * (a profile created when the website has none), only while they still name what was read, then
+     * the setting without the converted addresses, only while it still holds the text that was read
+     * (under the locks both always do). A profile written but a setting left reads as before (the
+     * address still wins) and the next run only takes the address out.
+     *
+     * @param  array<string, int>  $ids  slot → the row the profile names
+     */
+    private static function writeBrand(int $siteId, stdClass $setting, stdClass $brand, ?stdClass $profile, array $ids): bool
+    {
+        $fill = [];
+        $query = DB::table('site_profiles')->where('site_id', $siteId);
+        foreach ($ids as $slot => $id) {
+            $column = SiteProfile::IMAGE_COLUMNS[$slot];
+            if (MediaRefs::id($profile?->{$column}) !== $id) {
+                $fill[$column] = $id;
+                $query->whereNull($column);
+            }
+        }
+        if ($fill !== []) {
+            $done = $profile === null
+                ? DB::table('site_profiles')->insertOrIgnore([...$fill, 'site_id' => $siteId])
+                : $query->where('id', Cast::int($profile->id))->update($fill);
+            if ($done !== 1) {
+                return false;
+            }
+        }
+        foreach (array_keys($ids) as $slot) {
+            unset($brand->{$slot});
+        }
+
+        return DB::update(
+            'UPDATE site_settings SET value = ?::jsonb WHERE site_id = ? AND id = ? AND md5(value::text) = ?',
+            [json_encode($brand, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR), $siteId, Cast::int($setting->id), md5(Cast::string($setting->doc))],
+        ) === 1;
     }
 
     /**
@@ -477,6 +585,10 @@ final readonly class MediaRefsBackfill
             return null;
         }
         if ($place === 'site_settings' && ! self::isDecor($row) && ! self::isSlots($row)) {
+            if (self::isBrand($row) && $value instanceof stdClass) {
+                // its brand images are the brand step's (brand()); the rest is only counted
+                $value = (object) array_diff_key(get_object_vars($value), SiteProfile::IMAGE_COLUMNS);
+            }
             $this->addresses('site_settings '.Cast::string($row->group_name ?? '').'.'.Cast::string($row->key ?? ''), $value, $pass);
 
             return null;
@@ -663,6 +775,11 @@ final readonly class MediaRefsBackfill
     private static function isDecor(object $row): bool
     {
         return ($row->group_name ?? null) === 'theme' && ($row->key ?? null) === 'heading_decor';
+    }
+
+    private static function isBrand(object $row): bool
+    {
+        return ($row->group_name ?? null) === 'general' && ($row->key ?? null) === 'brand';
     }
 
     private static function isSlots(object $row): bool

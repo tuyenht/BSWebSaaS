@@ -17,8 +17,8 @@ use Illuminate\Support\Facades\Gate;
  * file that is not a picture is refused (image_invalid) and nothing is written. An empty key
  * removes that image.
  *
- * The images live on the site profile as media ids. The older general.brand setting still holds a
- * URL for logo, favicon and share image on sites not yet saved here; saving a slot removes its URL
+ * The images live on the site profile as media ids. The older general.brand setting may still hold
+ * a URL for any of them (the logo on a dark background included) on sites not yet saved here; saving a slot removes its URL
  * from that setting, so from then on the id is the one source (an image removed here stays
  * removed). Slots the call does not name keep what they have, URL included.
  *
@@ -29,7 +29,7 @@ use Illuminate\Support\Facades\Gate;
 final class SetBrandImages
 {
     /** The slots whose older URL general.brand may still hold. */
-    private const array LEGACY_SLOTS = ['logo', 'favicon', 'og_image'];
+    private const array LEGACY_SLOTS = ['logo', 'logo_dark', 'favicon', 'og_image'];
 
     /**
      * @param  array<string, string|null>  $picks  slot → media key ('' or null removes the image)

@@ -224,7 +224,7 @@ final class Applier
     }
 
     /**
-     * The brand setting with each image the pack writes (logo, favicon, share image) moved to the
+     * The brand setting with each image the pack writes (Planner::BRAND_IMAGES) moved to the
      * site profile as its picture, the way the settings screen stores one (SetBrandImages): the
      * profile column names the row and the address leaves the setting. Only an address the plan
      * wrote for a picture of this website moves; any other value stays as it is. An image the item

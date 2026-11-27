@@ -416,3 +416,20 @@ it('locks the site row first and the brand row before reading it, in every save 
         $locksFirst(settingsRowQueries(fn () => app(ResetSettingsSection::class)->undo($undo)));
     });
 });
+
+it('removes the older address of the logo on a dark background when that logo is saved, so the saved one shows', function (): void {
+    $dark = brandMedia(1, 'logo-dark');
+    $admin = brandAdmin();
+    brandSetting(1, ['name' => 'An Vinh', 'logo' => 'https://old.test/logo.png', 'logo_dark' => 'https://old.test/logo-dark.png']);
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'footer', 'value' => []]));
+    expect(brandHome())->toContain('sf-footer__logo" src="https://old.test/logo-dark.png"');
+
+    $this->actingAs($admin);
+    app(Tenancy::class)->enter(1, fn () => app(SetBrandImages::class)->handle(['logo_dark' => $dark->storage_key]));
+    auth()->logout();
+
+    $brand = app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->value('value'));
+    expect($brand)->toEqual(['name' => 'An Vinh', 'logo' => 'https://old.test/logo.png'])   // a slot the save does not name keeps its address
+        ->and(brandProfile()['logo_dark_media_id'])->toBe($dark->id)
+        ->and(brandHome())->toContain('sf-footer__logo" src="https://files.test/'.$dark->storage_key.'"');
+});

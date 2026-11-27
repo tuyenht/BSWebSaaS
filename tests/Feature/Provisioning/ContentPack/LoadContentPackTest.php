@@ -714,6 +714,50 @@ it('stores the pack\'s brand logo as the site profile\'s picture, and plans it u
     expect(ContentPacks::verdict($edited, 'setting:general.brand'))->toBe('skip:edited');
 });
 
+it('stores the pack\'s logo on a dark background as the site profile\'s picture too, and plans it unchanged whether the profile or an older address holds it', function (): void {
+    $logo = ContentPacks::in($this->siteId, fn () => StorefrontCards::media('logo'));
+    $dark = ContentPacks::in($this->siteId, fn () => StorefrontCards::media('about'));
+    ContentPacks::item($this->folder, 'settings.json', 'setting:general.brand', fn (array $item): array => [
+        'managed_keys' => [...$item['managed_keys'], 'logo_dark'], 'value' => $item['value'] + ['logo_dark' => ['media' => 'about']],
+    ] + $item);
+    $brand = fn (): array => ContentPacks::in($this->siteId, fn (): array => [
+        Cast::arr(SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->first()?->value),
+        SiteProfile::query()->value('logo_media_id'),
+        SiteProfile::query()->value('logo_dark_media_id'),
+    ]);
+
+    [$exit, $output] = ContentPacks::load();
+    [$setting, $profileLogo, $profileDark] = $brand();
+    expect($exit)->toBe(0, $output)
+        ->and($setting)->toMatchArray(['name' => 'Công ty Mẫu'])->not->toHaveKey('logo')->not->toHaveKey('logo_dark')
+        ->and($profileLogo)->toBe($logo->id)
+        ->and($profileDark)->toBe($dark->id);
+
+    [, $again] = ContentPacks::run();
+    expect(ContentPacks::verdict($again, 'setting:general.brand'))->toBe('unchanged');
+
+    // loaded before the dark logo moved to the profile: its address in the setting, hashed the same
+    ContentPacks::in($this->siteId, function () use ($dark): void {
+        $row = SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->firstOrFail();
+        $row->update(['value' => Cast::arr($row->value) + ['logo_dark' => app(MediaUrlResolver::class)->url($dark->storage_key)]]);
+        SiteProfile::query()->update(['logo_dark_media_id' => null]);
+    });
+    [, $older] = ContentPacks::run();
+    expect(ContentPacks::verdict($older, 'setting:general.brand'))->toBe('unchanged');
+
+    // a member picks another dark logo on the settings screen: their edit, kept
+    $other = ContentPacks::in($this->siteId, fn () => StorefrontCards::media('logo-moi'));
+    ContentPacks::in($this->siteId, function () use ($other): void {
+        $row = SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->firstOrFail();
+        $row->update(['value' => array_diff_key(Cast::arr($row->value), ['logo_dark' => true])]);
+        SiteProfile::query()->update(['logo_dark_media_id' => $other->id]);
+    });
+    [, $edited] = ContentPacks::run();
+    expect(ContentPacks::verdict($edited, 'setting:general.brand'))->toBe('skip:edited');
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and($brand()[2])->toBe($other->id);
+});
+
 /** The brand setting as stored and the profile's logo and favicon, as [setting, logo id, favicon id]. */
 function cpBrandImages(int $siteId): array
 {

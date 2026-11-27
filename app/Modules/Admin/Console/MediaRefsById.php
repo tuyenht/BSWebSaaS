@@ -17,16 +17,19 @@ use Throwable;
 /**
  * Converts the media references content still holds by address (a storage key, or an address on
  * the media host) to the library row, per website (MediaRefsBackfill): entry covers, the image props
- * and "Tải tệp" buttons of blocks wherever blocks are stored, and the heading decoration's mask.
+ * and "Tải tệp" buttons of blocks wherever blocks are stored, the heading decoration's mask, and the
+ * brand images the general.brand setting still holds as addresses (they become the site profile's
+ * pictures, the address leaving the setting, as the settings screen saves them).
  *
  * A dry run by default: per website and place it prints what it would convert, what is already
  * by row, what it keeps (a glyph or an outside address), what names no file of the website
  * (unmatched, with samples; left as it is), and how many converted values name a file in the Trash.
  * It also counts what it does not convert but the contract must see: an old key kept beside the new
  * shape (stale), blocks of a type no longer known (skipped), and the file addresses found in the
- * places only counted (found: the brand setting's URLs among them, and every other setting).
- * A cover or block picture among those stops showing once converted (as block pictures already
- * do), so that number is printed apart, per website, before anything is written. --apply writes.
+ * places only counted (found: every other setting among them).
+ * A cover, block picture or brand image among those stops showing once converted (as block
+ * pictures already do), so that number is printed apart, per website, before anything is written.
+ * --apply writes.
  * The numbers also go to a JSON file (--output, else under storage/app/media-refs-by-id/).
  *
  * One website failing is reported and the rest still run; the command then ends with a failure
@@ -112,8 +115,9 @@ final class MediaRefsById extends Command
     }
 
     /**
-     * Converted covers and block pictures of the places visitors see that name a file in the
-     * Trash: those stop showing. (A button's file or a mask in the Trash already showed nothing.)
+     * Converted covers, block pictures and brand images of the places visitors see that name a
+     * file in the Trash: those stop showing. (A button's file or a mask in the Trash already showed
+     * nothing.)
      *
      * @param  array<string, Line>  $lines
      */
@@ -122,7 +126,7 @@ final class MediaRefsById extends Command
         $count = 0;
         foreach ($lines as $place => $line) {
             [$table, $kind] = array_pad(explode(' ', $place, 2), 2, '');
-            if (in_array($table, MediaRefsBackfill::SHOWN, true) && in_array($kind, ['cover', 'image'], true)) {
+            if (in_array($table, MediaRefsBackfill::SHOWN, true) && (in_array($kind, ['cover', 'image'], true) || str_starts_with($place, MediaRefsBackfill::BRAND_PLACE.' '))) {
                 $count += $line['trashed'];
             }
         }
@@ -157,7 +161,7 @@ final class MediaRefsById extends Command
         $rows = implode(', ', array_map(static fn (string $place, int $count): string => "{$place} {$count}", array_keys($result['rows']), $result['rows']));
         $this->line('  rows '.($result['covers'] === null ? 'to rewrite' : 'rewritten').": {$rows}.");
         if ($hidden > 0) {
-            $this->warn("  {$hidden} covers or block pictures name a file in the Trash: they stop showing once converted.");
+            $this->warn("  {$hidden} covers, block pictures or brand images name a file in the Trash: they stop showing once converted.");
         }
         if ($result['covers'] !== null) {
             $this->line("  featured-picture usage: {$result['covers']['inserted']} added, {$result['covers']['deleted']} removed.");

@@ -19,8 +19,13 @@ use App\Modules\Cms\Support\EntryCoverUsage;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
+use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\RichTextSanitizer;
+use App\Modules\Storefront\Support\BrandImages;
+use App\Modules\Tenancy\Context\SiteIdentity;
+use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\QueryException;
@@ -179,7 +184,7 @@ it('counts every place in a dry run and writes nothing', function (): void {
         ->and($report['sites'][1]['rows'])->toMatchArray(['entries' => 2, 'entry_translations' => 1, 'entry_drafts' => 1, 'entry_revisions' => 1, 'content_block_translations' => 1, 'taxonomies' => 1, 'site_settings' => 2])
         // the Risk the owner is told about: a cover and a block picture whose file is in the Trash
         ->and($report['sites'][1]['trash_stops_showing'])->toBe(2)
-        ->and($output)->toContain('2 covers or block pictures name a file in the Trash')
+        ->and($output)->toContain('2 covers, block pictures or brand images name a file in the Trash')
         ->and($output)->toContain('in the Trash in entries cover: '.$c['old']->storage_key)
         ->and($output)->toContain('unmatched in entries cover: '.$c['theirs']->storage_key.' (left as it is)');
 });
@@ -331,7 +336,7 @@ it('counts the file addresses of the places it only reads, and writes nothing th
             'product' => Product::query()->create(['status' => 'published', 'published_at' => now()]),
             'item' => MenuItem::query()->create(['menu_id' => $menu->id, 'link_type' => 'url', 'url' => '/lien-he', 'position' => 0]),
             'form' => Form::query()->create(['key' => 'contact', 'name' => ['vi' => 'Liên hệ'], 'status' => 'active']),
-            'brand' => SiteSetting::query()->create(['group_name' => 'general', 'key' => 'brand', 'value' => ['logo' => 'https://files.test/media/'.$logo->storage_key.'?w=256', 'name' => 'A', 'og_image' => 'https://cdn.other.test/og.jpg']]),
+            'brand' => SiteSetting::query()->create(['group_name' => 'general', 'key' => 'brand', 'value' => ['note' => 'https://files.test/media/'.$logo->storage_key.'?w=256', 'name' => 'A']]),
         ];
     });
     backfillWrite('products', $made['product']->id, 'meta', ['old_image' => $hero->storage_key, 'note' => '26/11/2026']);
@@ -347,7 +352,7 @@ it('counts the file addresses of the places it only reads, and writes nothing th
         ->and($lines['menu_items address'])->toMatchArray(['found' => 1, 'unmatched' => 0])
         ->and($lines['forms address'])->toMatchArray(['found' => 0, 'unmatched' => 1])
         ->and($lines['forms address']['samples'])->toBe([siteCode(1).'/khong-co-9z9z.jpg'])
-        // the brand setting stays for its own step, counted meanwhile; an outside address is no file
+        // a key of the brand setting that is no brand image is only counted
         ->and($lines['site_settings general.brand'])->toMatchArray(['found' => 1, 'unmatched' => 0])
         ->and($report['totals'])->toMatchArray(['found' => 3, 'unmatched' => 1, 'converted' => 0])
         ->and($output)->toContain('in site_settings general.brand: names a file by address: https://files.test/media/'.$logo->storage_key.'?w=256');
@@ -649,4 +654,154 @@ it('never overwrites a category or a cover changed under the lock: each is left 
     expect($again['sites'][1]['rows'])->toMatchArray(['entries' => 1, 'taxonomies' => 1])
         ->and(backfillJson('taxonomies', $made['category']->id, 'meta')['layout_blocks']['after_post']['vi']['blocks'][0]['props'])
         ->toBe(['heading' => 'Bản của người sửa', 'button_label' => 'Tải', 'button_url_do' => ['k' => 'file', 'media' => strtoupper($doc->ulid)]]);
+});
+
+/** The brand setting, the profile's four picture columns, and the four addresses the page prints, of site 1. */
+function backfillBrand(): array
+{
+    $admin = DB::connection('pgsql_admin');
+
+    return [
+        json_decode((string) $admin->table('site_settings')->where('site_id', 1)->where('group_name', 'general')->where('key', 'brand')->value('value'), true),
+        (array) $admin->table('site_profiles')->where('site_id', 1)->first(array_values(SiteProfile::IMAGE_COLUMNS)),
+        app(Tenancy::class)->enter(1, fn (): array => app(BrandImages::class)->for(app(SiteIdentity::class)->for(app(SiteLocale::class)->default()))),
+    ];
+}
+
+/** @param  array<string, mixed>  $value */
+function backfillBrandSetting(int $site, array $value, array $profile = []): void
+{
+    app(Tenancy::class)->enter($site, function () use ($value, $profile): void {
+        SiteSetting::query()->create(['group_name' => 'general', 'key' => 'brand', 'value' => $value]);
+        SiteProfile::query()->firstOrCreate([], ['brand_name' => 'A'])->forceFill($profile)->saveQuietly();
+    });
+}
+
+it('moves every brand image the brand setting holds by address to the site profile, the page unchanged, and a second run moves nothing', function (): void {
+    $urls = app(MediaUrlResolver::class);
+    $logo = backfillMedia(1, 'logo-1a2b.png', 'image/png');
+    $dark = backfillMedia(1, 'logo-toi-3c4d.png', 'image/png');
+    $icon = backfillMedia(1, 'bieu-tuong-5e6f.png', 'image/png');
+    $share = backfillMedia(1, 'doi-ngu-7a8b.jpg', 'image/jpeg');
+    // the share image already the profile's (as site-profiles:fill-brand-images left it), the others by address only
+    backfillBrandSetting(1, [
+        'name' => 'A', 'phone' => '0900 000 000',
+        'logo' => $urls->url($logo->storage_key),
+        'logo_dark' => $dark->storage_key,                           // a bare key
+        'favicon' => $urls->url($icon->storage_key, 64),             // a ?w= address
+        'og_image' => $urls->url($share->storage_key, 1280),         // ?w=1280
+    ], ['og_image_media_id' => $share->id]);
+    [$setting, $profile, $shown] = backfillBrand();
+    expect($setting['favicon'])->toContain('?w=')->and($setting['og_image'])->toEndWith('?w=1280');
+
+    // a dry run counts each slot and writes nothing
+    [$exit, $output, $report] = backfillRun();
+    $lines = $report['sites'][1]['lines'];
+    expect($exit)->toBe(0, $output)
+        ->and(backfillBrand())->toBe([$setting, $profile, $shown])
+        ->and($lines['site_settings brand logo'])->toMatchArray(['converted' => 1, 'unmatched' => 0])
+        ->and($lines['site_settings brand logo_dark'])->toMatchArray(['converted' => 1])
+        ->and($lines['site_settings brand favicon'])->toMatchArray(['converted' => 1])
+        ->and($lines['site_settings brand og_image'])->toMatchArray(['converted' => 1])
+        // a bare key: the page will print the address the profile's picture gives
+        ->and($lines['site_settings brand logo_dark']['notes'])->toBe(["the page's address becomes ".$urls->url($dark->storage_key)])
+        ->and($lines['site_settings brand favicon']['notes'])->toBe([])
+        ->and($lines)->not->toHaveKey('site_settings general.brand')
+        ->and($report['sites'][1]['rows']['site_settings brand'])->toBe(1);
+
+    $updatedAt = DB::connection('pgsql_admin')->table('site_profiles')->where('site_id', 1)->value('updated_at');
+    [$exit, $output, $report] = backfillRun(apply: true);
+    [$after, $columns, $images] = backfillBrand();
+    expect($exit)->toBe(0, $output)
+        ->and($report['sites'][1]['rows']['site_settings brand'])->toBe(1)
+        ->and($after)->toBe(['name' => 'A', 'phone' => '0900 000 000'])
+        ->and($columns)->toBe(['logo_media_id' => $logo->id, 'logo_dark_media_id' => $dark->id, 'favicon_media_id' => $icon->id, 'og_image_media_id' => $share->id])
+        ->and(DB::connection('pgsql_admin')->table('site_profiles')->where('site_id', 1)->value('updated_at'))->toBe($updatedAt)   // past the model
+        // the same addresses, now from the profile (the bare key is printed as the address it names)
+        ->and($images)->toBe([...$shown, 'logo_dark' => $urls->url($dark->storage_key)])
+        ->and($shown['logo_dark'])->toBe($dark->storage_key);
+
+    $again = backfillBrand();
+    [$exit, $output, $report] = backfillRun(apply: true);
+    expect($exit)->toBe(0, $output)
+        ->and($report['totals']['converted'])->toBe(0)
+        ->and($report['sites'][1]['rows']['site_settings brand'])->toBe(0)
+        ->and(backfillBrand())->toBe($again);
+});
+
+it('leaves a brand address naming another website\'s picture, a file that is no picture, an outside address, or a picture other than the profile\'s', function (): void {
+    $urls = app(MediaUrlResolver::class);
+    $theirs = backfillMedia(2, 'logo-cua-ho-1a2b.png', 'image/png');
+    $pdf = backfillMedia(1, 'ho-so-3c4d.pdf', 'application/pdf');
+    $dark = backfillMedia(1, 'logo-toi-5e6f.png', 'image/png');
+    $chosen = backfillMedia(1, 'logo-toi-moi-7a8b.png', 'image/png');
+    backfillBrandSetting(1, [
+        'name' => 'A',
+        'logo' => $urls->url($theirs->storage_key),
+        'favicon' => $urls->url($pdf->storage_key, 64),
+        'og_image' => 'https://cdn.other.test/og.jpg',
+        'logo_dark' => $urls->url($dark->storage_key),
+    ], ['logo_dark_media_id' => $chosen->id]);
+    $before = backfillBrand();
+
+    [$exit, $output, $report] = backfillRun('all', apply: true);
+    $lines = $report['sites'][1]['lines'];
+    expect($exit)->toBe(0, $output)
+        ->and(backfillBrand())->toBe($before)
+        ->and($report['sites'][1]['rows']['site_settings brand'])->toBe(0)
+        ->and($lines['site_settings brand logo'])->toMatchArray(['converted' => 0, 'unmatched' => 1])
+        ->and($lines['site_settings brand logo']['samples'])->toBe([$urls->url($theirs->storage_key)])
+        ->and($lines['site_settings brand favicon']['samples'])->toBe([$urls->url($pdf->storage_key, 64).' (application/pdf)'])
+        ->and($lines['site_settings brand og_image'])->toMatchArray(['kept' => 1, 'unmatched' => 0])
+        ->and($lines['site_settings brand og_image']['notes'])->toBe(['not a file of the library, shown until the contract: https://cdn.other.test/og.jpg'])
+        ->and($lines['site_settings brand logo_dark']['samples'])->toBe([$urls->url($dark->storage_key).' (the profile names another picture)'])
+        ->and($report['totals'])->toMatchArray(['converted' => 0, 'unmatched' => 3])
+        // site 2 has no brand setting: nothing of site 1's is read for it
+        ->and(array_keys($report['sites'][2]['lines']))->not->toContain('site_settings brand logo');
+});
+
+it('counts a brand image whose picture is in the Trash as one that stops showing, and moves it', function (): void {
+    $logo = backfillMedia(1, 'logo-1a2b.png', 'image/png', trashed: true);
+    backfillBrandSetting(1, ['name' => 'A', 'logo' => app(MediaUrlResolver::class)->url($logo->storage_key)]);
+
+    [$exit, $output, $report] = backfillRun();
+    expect($exit)->toBe(0, $output)
+        ->and($report['sites'][1]['lines']['site_settings brand logo'])->toMatchArray(['converted' => 1, 'trashed' => 1])
+        ->and($report['sites'][1]['trash_stops_showing'])->toBe(1)
+        ->and($output)->toContain('1 covers, block pictures or brand images name a file in the Trash');
+
+    [$exit, $output] = backfillRun(apply: true);
+    expect($exit)->toBe(0, $output)
+        ->and(backfillBrand()[0])->toBe(['name' => 'A'])
+        ->and(backfillBrand()[1]['logo_media_id'])->toBe($logo->id);
+});
+
+it('takes the website\'s write lock before it moves a brand image, so a settings save at the same time waits', function (): void {
+    $logo = backfillMedia(1, 'logo-1a2b.png', 'image/png');
+    backfillBrandSetting(1, ['name' => 'A', 'logo' => app(MediaUrlResolver::class)->url($logo->storage_key)]);
+
+    $seen = null;
+    $busy = false;
+    DB::listen(function (QueryExecuted $query) use (&$seen, &$busy): void {
+        if ($busy || $seen !== null || $query->connectionName === 'pgsql_admin' || ! str_contains($query->sql, 'for key share') || ! str_contains($query->sql, 'storage_key')) {
+            return;
+        }
+        $busy = true;
+        try {
+            // SetBrandImages' first statement (SiteWriteLock), from another connection
+            DB::connection('pgsql_admin')->transaction(function (): void {
+                DB::connection('pgsql_admin')->statement("SET LOCAL lock_timeout = '200ms'");
+                DB::connection('pgsql_admin')->select('SELECT id FROM sites WHERE id = 1 FOR NO KEY UPDATE');
+            });
+            $seen = 'went through';
+        } catch (QueryException $e) {
+            $seen = $e->errorInfo[0] ?? 'error';
+        }
+        $busy = false;
+    });
+
+    [$exit, $output] = backfillRun(apply: true);
+    expect($exit)->toBe(0, $output)
+        ->and($seen)->toBe('55P03')
+        ->and(backfillBrand()[1]['logo_media_id'])->toBe($logo->id);
 });
