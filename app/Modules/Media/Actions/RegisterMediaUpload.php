@@ -3,9 +3,12 @@
 namespace App\Modules\Media\Actions;
 
 use App\Modules\Media\Exceptions\MediaRejectedException;
+use App\Modules\Media\Jobs\CountPdfPages;
 use App\Modules\Media\Models\Media;
+use App\Modules\Media\Services\PdfPages;
 use App\Modules\Media\Support\MediaKey;
 use App\Modules\Media\Support\MediaKeyPrefix;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use finfo;
 use Illuminate\Support\Facades\Cache;
@@ -116,7 +119,7 @@ final readonly class RegisterMediaUpload
         $disk->delete($tempKey);
 
         // 8) Persist — BelongsToSite stamps site_id; createOrFirst is race-safe on (site,collection,hash).
-        return Media::query()->createOrFirst(
+        $media = Media::query()->createOrFirst(
             ['collection' => $collection, 'hash' => $hash],
             [
                 'slug' => $slug,
@@ -131,5 +134,13 @@ final readonly class RegisterMediaUpload
                 'folder_id' => $folderId,
             ],
         );
+
+        // a new PDF gets its pages counted once the upload has committed (a file already here keeps
+        // whatever count it has; media:pdf-pages fills older ones)
+        if ($media->wasRecentlyCreated && $media->mime === PdfPages::MIME) {
+            CountPdfPages::dispatch($media->site_id, Cast::int($media->getKey()));
+        }
+
+        return $media;
     }
 }

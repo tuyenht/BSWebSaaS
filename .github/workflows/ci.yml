@@ -303,6 +303,13 @@ jobs:
       # tests alone, ModuleBoundariesTest about 450M of it, ArchTest about 250M), and it always
       # landed in the last shard, which then ran out of 1G however many shards there were. On its
       # own it gets 2G; the shards keep 1G.
+      # qpdf counts the pages of uploaded PDFs (App\Modules\Media\Services\PdfPages); its real-binary
+      # test skips without it. Every Pest shard installs it: which shard a test class lands in follows
+      # tests/.pest/shards.json and moves whenever that file is rebuilt.
+      - name: Install qpdf (PDF page counts)
+        if: matrix.shard != 'arch'
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends qpdf
+
       - name: Pest (unit · feature · arch · query-budget) shard ${{ matrix.shard }}
         env:
           SHARD: ${{ matrix.shard }}

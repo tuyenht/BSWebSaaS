@@ -3,9 +3,12 @@
 namespace App\Modules\Media\Actions;
 
 use App\Modules\Media\Exceptions\MediaRejectedException;
+use App\Modules\Media\Jobs\CountPdfPages;
 use App\Modules\Media\Models\Media;
+use App\Modules\Media\Services\PdfPages;
 use App\Modules\Media\Support\MediaKey;
 use App\Modules\Media\Support\MediaKeyPrefix;
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
@@ -102,7 +105,7 @@ final readonly class UploadMedia
         // (the request transaction stays valid) and returns the winner. A double-submit / concurrent
         // upload is thus idempotent, never a 500 / aborted transaction. (site_id is in the unique key
         // but stamped by the trait, so the dedup attributes are collection + hash within this site.)
-        return Media::query()->createOrFirst(
+        $media = Media::query()->createOrFirst(
             ['collection' => $collection, 'hash' => $hash],
             [
                 'slug' => $slug,
@@ -117,6 +120,14 @@ final readonly class UploadMedia
                 'folder_id' => $folderId,
             ],
         );
+
+        // a new PDF gets its pages counted once the upload has committed (a file already here keeps
+        // whatever count it has; media:pdf-pages fills older ones)
+        if ($media->wasRecentlyCreated && $media->mime === PdfPages::MIME) {
+            CountPdfPages::dispatch($media->site_id, Cast::int($media->getKey()));
+        }
+
+        return $media;
     }
 
     /**

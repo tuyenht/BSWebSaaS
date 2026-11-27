@@ -90,7 +90,9 @@
         : __('media.lib.foot_n', ['n' => $num($totals['n'])]);
     $foot .= ($trash ? __('media.lib.foot_in_trash') : '').' · '.Library::bytes($totals['bytes']);
     $extOf = fn ($m): string => strtoupper(match ($m->mime) { 'image/jpeg' => 'jpg', 'application/pdf' => 'pdf', default => \Illuminate\Support\Str::after($m->mime, '/') });
-    $dims = fn ($m): string => $m->width ? $m->width.' × '.$m->height : '—';
+    // a PDF shows its page count where a picture shows its size; uncounted (yet) = «—», never a guess
+    $dims = fn ($m): string => $m->width ? $m->width.' × '.$m->height
+        : (($pages = $m->pageCount()) !== null ? trans_choice('media.lib.pages', $pages, ['n' => number_format($pages, 0, ',', '.')]) : '—');
     $leftDays = fn ($m): int => max(0, $retention - (int) floor($m->deleted_at->diffInDays(now())));
     // the chip of a tile and of the «Nơi dùng» column (board 12): days left in the Trash, else where the file is used
     $useChip = function ($m) use ($trash, $leftDays, $useCounts): array {
