@@ -11,6 +11,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
+use Spatie\Permission\PermissionRegistrar;
 
 /*
  * «Biểu mẫu» in the site's other languages (board 15): a saved form opens in one of the site's
@@ -83,7 +84,10 @@ it('opens another enabled language with its own texts, and the main one for anyt
             ->assertSee(__('form_builder.shared_fields_hint'))
             ->assertSee(__('form_builder.field_missing_lang', ['lang' => LangBar::name('en')]))
             ->assertSee(__('entries.ed.shared_chip'))
-            ->assertSee(__('form_builder.title_edit', ['name' => 'Yêu cầu báo giá']));
+            ->assertSee(__('form_builder.title_edit', ['name' => 'Yêu cầu báo giá']))
+            // the texts are typed in that language's direction, and every field row's markup is whole
+            ->assertSee('wire:model.blur="name" maxlength="200" dir="ltr" lang="en"', false)
+            ->assertDontSee('"" title=', false);
         expect($page->instance()->changeCount())->toBe(0);
 
         foreach (['xx', 'fr', 'EN', ''] as $asked) {
@@ -194,6 +198,8 @@ it('never changes what every language shares from another language', function (s
     'a kind' => ['fields.0.type', 'textarea'],
     'required' => ['fields.0.required', false],
     'an email being typed' => ['newEmail', 'a@b.vn'],
+    'a file kind' => ['fields.0.accept', 'image'],
+    'how many files' => ['fields.0.max_files', 2],
 ]);
 
 it('refuses adding, removing, moving fields and changing emails from another language, and says where', function (): void {
@@ -214,20 +220,93 @@ it('refuses adding, removing, moving fields and changing emails from another lan
     });
 });
 
-it('refuses a translation save from a member without forms.manage', function (): void {
-    $viewer = ftMember(['forms.view']);
+it('refuses a translation save once the member has lost forms.manage, and changes nothing', function (): void {
+    $manager = ftMember();
 
-    app(Tenancy::class)->enter(1, function () use ($viewer): void {
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
         ftLanguages('en');
         $form = ftForm();
 
-        Livewire::actingAs($viewer)->test(FormEditor::class, ['ulid' => $form->ulid, 'locale' => 'en'])
-            ->assertSee('data-state="noperm"', false)
+        $page = Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid, 'locale' => 'en'])
             ->set('name', 'Changed')
-            ->call('save');
+            ->set('fields.1.label', 'Material')
+            ->set('fields.1.choices', 'Stainless 304');
+        // the editor was opened while the member could change forms; the permission goes before «Lưu»
+        $manager->roles()->firstOrFail()->revokePermissionTo('forms.manage');
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        auth()->setUser($manager->fresh());
+        $page->call('save')
+            ->assertSet('toastMsg', __('form_builder.toast_cannot'))
+            ->assertSet('toastTone', 'error')
+            // what was typed stays to copy or save later
+            ->assertSet('name', 'Changed');
 
-        expect($form->refresh()->name)->toEqual(['vi' => 'Yêu cầu báo giá', 'en' => 'Quote request']);
+        $form->refresh();
+        $material = FormField::query()->where('form_id', $form->id)->where('key', 'material')->firstOrFail();
+        expect($form->name)->toEqual(['vi' => 'Yêu cầu báo giá', 'en' => 'Quote request'])
+            ->and($material->label)->toEqual(['vi' => 'Vật liệu'])
+            ->and($material->options['choices'][0]['label'])->toEqual(['vi' => 'Inox 304']);
     });
+});
+
+it('keeps each translated choice on its own choice when the main language reorders or removes choices meanwhile', function (): void {
+    $manager = ftMember();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        ftLanguages('en');
+        $form = ftForm();
+
+        $english = Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid, 'locale' => 'en'])
+            ->set('fields.1.choices', "Stainless 304\nAluminium\nCopper");
+        // meanwhile the Vietnamese editor puts «Đồng» first, drops «Nhôm» and adds «Thép»
+        Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid])
+            ->set('fields.1.choices', "Đồng\nInox 304\nThép")->call('save')->assertSet('toastMsg', __('form_builder.toast_saved'));
+
+        $english->call('save')->assertSet('toastMsg', __('form_builder.toast_saved'))
+            // the box now follows the stored choices, so the next save stays right too
+            ->assertSet('fields.1.choices', "Copper\nStainless 304")
+            ->assertSet('choiceValues.material', ['dong', 'inox', 'thep']);
+        expect($english->instance()->changeCount())->toBe(0);
+
+        $choices = FormField::query()->where('form_id', $form->id)->where('key', 'material')->firstOrFail()->options['choices'];
+        expect($choices)->toEqual([
+            ['value' => 'dong', 'label' => ['vi' => 'Đồng', 'en' => 'Copper']],
+            ['value' => 'inox', 'label' => ['vi' => 'Inox 304', 'en' => 'Stainless 304']],
+            ['value' => 'thep', 'label' => ['vi' => 'Thép']],
+        ]);
+
+        $english->set('fields.1.choices', "Copper\nStainless 304\nSteel")->call('save')->assertSet('toastMsg', __('form_builder.toast_saved'));
+        expect(array_column(FormField::query()->where('form_id', $form->id)->where('key', 'material')->firstOrFail()->options['choices'], 'label'))
+            ->toEqual([['vi' => 'Đồng', 'en' => 'Copper'], ['vi' => 'Inox 304', 'en' => 'Stainless 304'], ['vi' => 'Thép', 'en' => 'Steel']]);
+    });
+});
+
+it('skips a field the main language removed while another language was open', function (): void {
+    $manager = ftMember();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        ftLanguages('en');
+        $form = ftForm();
+
+        $english = Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid, 'locale' => 'en'])
+            ->set('name', 'Request a quote')
+            ->set('fields.1.label', 'Material');
+        FormField::query()->where('form_id', $form->id)->where('key', 'material')->delete();
+
+        $english->call('save')->assertSet('toastMsg', __('form_builder.toast_saved'))
+            ->assertSet('fields', fn (array $fields): bool => array_column($fields, 'key') === ['name']);
+        expect($form->refresh()->name)->toEqual(['vi' => 'Yêu cầu báo giá', 'en' => 'Request a quote'])
+            ->and(FormField::query()->where('form_id', $form->id)->orderBy('sort_order')->pluck('key')->all())->toBe(['name', 'consent']);
+    });
+});
+
+it('never opens another site\'s form in another language', function (): void {
+    $manager = ftMember();
+    $other = app(Tenancy::class)->enter(2, fn (): Form => ftForm());
+    app(Tenancy::class)->enter(1, fn () => ftLanguages('en'));
+
+    $this->actingAs($manager)->get('http://a.test/admin/form-builder/'.$other->ulid.'/edit?locale=en')->assertNotFound();
+    app(Tenancy::class)->enter(2, fn () => expect(Form::query()->find($other->id)?->name)->toEqual(['vi' => 'Yêu cầu báo giá', 'en' => 'Quote request']));
 });
 
 it('shows neither the language bar nor the language chips on a site with one language', function (): void {

@@ -18,6 +18,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
+use App\Modules\Theme\Chrome\StorefrontChrome;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Js;
@@ -77,6 +78,16 @@ final class FormEditor extends Component
      */
     #[Locked]
     public array $sourceTexts = ['name' => '', 'success' => '', 'labels' => [], 'choices' => []];
+
+    /**
+     * Each choice field's choice values, in the order its texts were read: another language's lines
+     * belong to these choices (line n to the n-th value), even when the main language reorders or
+     * removes choices before this language is saved.
+     *
+     * @var array<string, list<string>>
+     */
+    #[Locked]
+    public array $choiceValues = [];
 
     /**
      * The language bar of a saved form on a site with more than one language (LangBar::items()).
@@ -368,7 +379,7 @@ final class FormEditor extends Component
         $draft = $this->draft();
         try {
             $form = $form !== null && $this->translating()
-                ? app(SaveForm::class)->translate($form, $draft, $this->locale)
+                ? app(SaveForm::class)->translate($form, $draft, $this->locale, $this->choiceValues)
                 : app(SaveForm::class)->handle($form, $draft, $this->locale);
         } catch (InvalidArgumentException) {
             $this->toast(__('form_builder.toast_failed'), 'error');
@@ -381,10 +392,18 @@ final class FormEditor extends Component
             $this->isNew = false;
             $this->js('history.replaceState(history.state, "", '.Js::from(route('admin.form-builder.edit', $form->ulid)).')');
         }
-        $this->saved = $draft;
         $this->touched = [];
         $this->removed = null;
         $form->load('fields');
+        if ($this->translating()) {
+            // this language as now stored: the main language's changes made since it opened come in,
+            // so each line stays beside the choice it belongs to for the next save
+            $draft = FormDraft::translation($form, $this->locale, $this->source);
+            $this->fill($this->draftProps($draft));
+            $this->saved = $draft;
+            $draft = $this->draft();
+        }
+        $this->saved = $draft;
         $this->readSourceTexts($form);
         $this->readLangBar($form);
         $this->savedAt = app(SiteTime::class)->forDisplay(now())?->format('H:i');
@@ -463,6 +482,7 @@ final class FormEditor extends Component
             // «Mở Trình dựng trang» opens the pages list, for a member who may open it
             'pagesHref' => Gate::allows('entries.view') ? route('admin.entries.index', ['section' => 'pages']) : null,
             'translating' => $this->translating(),
+            'textDir' => StorefrontChrome::dir($this->locale),
             'langName' => LangBar::name($this->locale),
             'sharedWhy' => $this->translating() ? $this->sharedWhy() : '',
             'langManage' => $this->langBar !== [] && $user instanceof User && $user->can('settings.manage') ? route('admin.settings.languages') : null,
@@ -496,8 +516,8 @@ final class FormEditor extends Component
             $msg = match (true) {
                 $label === '' => ['msg' => __('form_builder.field_label_error'), 'id' => 'bm-l-'.$f['key']],
                 mb_strlen($label) > FormDraft::MAX_NAME => ['msg' => __('form_builder.too_long', ['max' => FormDraft::MAX_NAME]), 'id' => 'bm-l-'.$f['key']],
-                $f['type'] === 'select' && $lines === [] => ['msg' => __('form_builder.choices_error'), 'id' => 'bm-o-'.$f['key']],
-                $f['type'] === 'select' && (count($lines) > FormDraft::MAX_CHOICES || array_filter($lines, fn (string $l): bool => mb_strlen($l) > FormDraft::MAX_NAME) !== []) => ['msg' => __('form_builder.choices_long', ['n' => FormDraft::MAX_CHOICES, 'max' => FormDraft::MAX_NAME]), 'id' => 'bm-o-'.$f['key']],
+                FormFieldTypes::isChoice($f['type']) && $lines === [] => ['msg' => __('form_builder.choices_error'), 'id' => 'bm-o-'.$f['key']],
+                FormFieldTypes::isChoice($f['type']) && (count($lines) > FormDraft::MAX_CHOICES || array_filter($lines, fn (string $l): bool => mb_strlen($l) > FormDraft::MAX_NAME) !== []) => ['msg' => __('form_builder.choices_long', ['n' => FormDraft::MAX_CHOICES, 'max' => FormDraft::MAX_NAME]), 'id' => 'bm-o-'.$f['key']],
                 default => null,
             };
             if ($msg !== null) {
@@ -524,7 +544,7 @@ final class FormEditor extends Component
                 'type' => Cast::string($f['type']),
                 'label' => trim(Cast::string($f['label'])),
                 'required' => Cast::bool($f['required']),
-                'choices' => Cast::string($f['type']) !== 'select' ? '' : implode("\n", $this->translating()
+                'choices' => ! FormFieldTypes::isChoice(Cast::string($f['type'])) ? '' : implode("\n", $this->translating()
                     ? FormDraft::translatedLines(Cast::string($f['choices']))
                     : FormDraft::lines(Cast::string($f['choices']))),
                 'accept' => Cast::string($f['accept']),
@@ -639,11 +659,11 @@ final class FormEditor extends Component
         }
         foreach ($this->fields as $f) {
             $lines = FormDraft::translatedLines($f['choices']);
-            $choices = count(FormDraft::lines($this->sourceTexts['choices'][$f['key']] ?? ''));
+            $choices = count($this->choiceValues[$f['key']] ?? []);
             $msg = match (true) {
                 mb_strlen(trim($f['label'])) > FormDraft::MAX_NAME => ['msg' => __('form_builder.too_long', ['max' => FormDraft::MAX_NAME]), 'id' => 'bm-l-'.$f['key']],
-                $f['type'] === 'select' && count($lines) > $choices => ['msg' => trans_choice('form_builder.choices_count_error', $choices, ['n' => $choices, 'lang' => LangBar::name($this->source)]), 'id' => 'bm-o-'.$f['key']],
-                $f['type'] === 'select' && array_filter($lines, fn (string $l): bool => mb_strlen($l) > FormDraft::MAX_NAME) !== [] => ['msg' => __('form_builder.too_long', ['max' => FormDraft::MAX_NAME]), 'id' => 'bm-o-'.$f['key']],
+                FormFieldTypes::isChoice($f['type']) && count($lines) > $choices => ['msg' => trans_choice('form_builder.choices_count_error', $choices, ['n' => $choices, 'lang' => LangBar::name($this->source)]), 'id' => 'bm-o-'.$f['key']],
+                FormFieldTypes::isChoice($f['type']) && array_filter($lines, fn (string $l): bool => mb_strlen($l) > FormDraft::MAX_NAME) !== [] => ['msg' => __('form_builder.too_long', ['max' => FormDraft::MAX_NAME]), 'id' => 'bm-o-'.$f['key']],
                 default => null,
             };
             if ($msg !== null) {
@@ -657,7 +677,7 @@ final class FormEditor extends Component
         return $out;
     }
 
-    /** The main language's texts of $form (its fields loaded), as they are stored. */
+    /** The main language's texts of $form (its fields loaded), as they are stored, and its choice values. */
     private function readSourceTexts(Form $form): void
     {
         $source = FormDraft::fromForm($form, $this->source);
@@ -667,6 +687,12 @@ final class FormEditor extends Component
             'labels' => array_column($source['fields'], 'label', 'key'),
             'choices' => array_column($source['fields'], 'choices', 'key'),
         ];
+        $this->choiceValues = [];
+        foreach ($form->fields as $field) {
+            if ($field->key !== Form::CONSENT_KEY && FormFieldTypes::isChoice($field->type)) {
+                $this->choiceValues[$field->key] = FormFieldTypes::choiceValues($field);
+            }
+        }
     }
 
     /**
