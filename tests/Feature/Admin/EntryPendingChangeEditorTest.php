@@ -1176,9 +1176,9 @@ it('says a page’s change that would move a sub-page to a taken address in «Ch
     });
 });
 
-it('names a sub-page’s taken address in another language as visitors see it, with that language when the editor is open in another', function (string $open): void {
+it('names a sub-page’s taken address in another language as visitors see it, with that language when the editor is open in another', function (string $open, string $clash): void {
     [, $editor] = pcCast();
-    app(Tenancy::class)->enter(1, function () use ($editor, $open): void {
+    app(Tenancy::class)->enter(1, function () use ($editor, $open, $clash): void {
         DB::connection('pgsql_admin')->table('site_locales')->insert([
             'site_id' => 1, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'created_at' => now(), 'updated_at' => now(),
         ]);
@@ -1191,29 +1191,36 @@ it('names a sub-page’s taken address in another language as visitors see it, w
         // one change in both languages: the Vietnamese edit moves nothing, the English link moves «Team»
         app(SaveEntryDraft::class)->handle($about->fresh(), $editor, 'vi', ['title' => 'Giới thiệu công ty']);
         app(SaveEntryDraft::class)->handle($about->fresh(), $editor, 'en', ['slug' => 'about-us']);
+        app(SaveEntryDraft::class)->handle($about->fresh(), $editor, 'vi', ['slug' => 've-chung-toi']);
         $other = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
-        SiteRoute::query()->create(['locale' => 'en', 'path' => '/about-us/team', 'entry_id' => $other->id]);
+        SiteRoute::query()->create(['locale' => $clash, 'path' => $clash === 'en' ? '/about-us/team' : '/ve-chung-toi/doi-ngu', 'entry_id' => $other->id]);
+        $url = $clash === 'en' ? '/en/about-us/team' : '/ve-chung-toi/doi-ngu';
         $routes = SiteRoute::query()->whereIn('entry_id', [$about->id, $team->id])->orderBy('id')->pluck('path')->all();
         $redirects = Redirect::query()->count();
         $before = pcStored($about);
 
-        $text = $open === 'vi'
-            ? __('entries.change_err_subpage_path_taken_lang', ['path' => '/en/about-us/team', 'lang' => __('entries.language_en')])
-            : __('entries.change_err_subpage_path_taken', ['path' => '/en/about-us/team']);
+        $text = $open === $clash
+            ? __('entries.change_err_subpage_path_taken', ['path' => $url])
+            : __('entries.change_err_subpage_path_taken_lang', ['path' => $url, 'lang' => __($clash === 'en' ? 'entries.language_en' : 'entries.language_vi')]);
         Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $about->ulid] + ($open === 'en' ? ['locale' => 'en'] : []))
             ->call('askApplyChange')
             ->call('applyChange')
             ->assertHasNoErrors()
             ->assertSet('refusal', ['title' => __('entries.refuse.t_apply'), 'text' => $text, 'reload' => false])
-            ->assertSee('/en/about-us/team');
+            ->assertSee($url);
 
-        expect($text)->toContain('/en/about-us/team')
-            ->and(str_contains($text, (string) __('entries.language_en')))->toBe($open === 'vi')
+        expect($text)->toContain($url)
+            ->and(str_contains($text, (string) __($clash === 'en' ? 'entries.language_en' : 'entries.language_vi')))->toBe($open !== $clash)
+            ->and(str_contains($text, '/en/'))->toBe($clash === 'en')
             ->and(pcStored($about))->toBe($before)
             ->and(SiteRoute::query()->whereIn('entry_id', [$about->id, $team->id])->orderBy('id')->pluck('path')->all())->toBe($routes)
             ->and(Redirect::query()->count())->toBe($redirects);
     });
-})->with(['open in Vietnamese' => 'vi', 'open in English' => 'en']);
+})->with([
+    'clash in English, open in Vietnamese' => ['vi', 'en'],
+    'clash in English, open in English' => ['en', 'en'],
+    'clash in Vietnamese, open in English' => ['en', 'vi'],
+]);
 
 it('says which sub-page address is taken when a page cannot go live again, never blaming its own free link', function (string $road): void {
     [, $editor] = pcCast();

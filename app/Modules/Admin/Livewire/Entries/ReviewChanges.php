@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Livewire\Entries;
 
 use App\Modules\Admin\Support\Entries\PendingChangeDiff;
+use App\Modules\Admin\Support\Entries\SubPageTakenText;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Cms\Actions\ApplyEntryDraftTransition;
 use App\Modules\Cms\Exceptions\EntryDraftRejectedException;
@@ -614,11 +615,15 @@ final class ReviewChanges extends Component
     {
         $error = null;
         $path = '';
+        $said = null;
         try {
             app(ApplyEntryDraftTransition::class)->handle($entry, $this->localeOf($change), $this->actor(), $key, $seen, $note);
         } catch (EntryDraftRejectedException $refused) {
             $error = 'entries.change_err_'.$refused->reason;
             $path = $refused->path;
+            if ($refused->reason === 'subpage_path_taken') {
+                $said = SubPageTakenText::say($path, $refused->locale, $this->localeOf($change));
+            }
         } catch (InvalidTransitionException) {
             $error = 'admin.wfb.err_stale';
         } catch (AuthorizationException) {
@@ -627,7 +632,7 @@ final class ReviewChanges extends Component
             $error = 'admin.wfb.err_not_governed';
         }
         if ($error !== null) {
-            $this->addError('changes', Cast::string(__($error, ['path' => $path])));
+            $this->addError('changes', $said ?? Cast::string(__($error, ['path' => $path])));
 
             return false;
         }
