@@ -287,6 +287,17 @@ it('fills a new form\'s recipients from «Gửi thông báo tới» and leaves a
     });
 });
 
+it('saves the name of a website whose saved address has a part the newer rule would refuse', function (): void {
+    esnSetup(esnOwnServer('postmaster@mg.congty.vn', 'sales+web@congty.vn'));
+    $admin = esnAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Livewire::actingAs($admin)->test(EmailSettings::class)
+            ->set('fromName', 'Công ty')->call('save')->assertHasNoErrors();
+        expect(app(SettingsRepository::class)->get('email')['from_address'])->toBe('sales+web@congty.vn');
+    });
+});
+
 it('keeps a saved sending address on another domain until its part before @ is edited', function (): void {
     esnSetup(esnOwnServer('postmaster@mg.congty.vn', 'info@congty.vn'));
     $admin = esnAdmin();
@@ -370,7 +381,7 @@ it('never drops a bare address pasted before a «Name <address>» on the same li
         $notify = Livewire::actingAs($admin)->test(EmailSettings::class)
             ->call('addNotify', 'x@anvinh.vn Nguyen <c@anvinh.vn>, e@anvinh.vn')
             ->get('notifyTo');
-        expect($notify)->toContain('x@anvinh.vn', 'c@anvinh.vn', 'e@anvinh.vn');
+        expect($notify)->toBe(['x@anvinh.vn', 'c@anvinh.vn', 'e@anvinh.vn']);
     });
 });
 
@@ -397,7 +408,7 @@ it('takes off the address the × names, once, however often it is sent', functio
         $page = Livewire::actingAs($admin)->test(EmailSettings::class)->call('addNotify', 'a@anvinh.vn, b@anvinh.vn, c@anvinh.vn')
             ->call('removeNotify', 'B@anvinh.vn')->call('removeNotify', 'B@anvinh.vn')
             ->assertSet('notifyTo', ['a@anvinh.vn', 'c@anvinh.vn']);
-        // the × names its address, and its touch area stops halfway to the next chip
+        // the × names its address, and its touch area reaches the next chip's edge, never past it
         expect($page->html())->toMatch('/wire:click="removeNotify\((?:&#039;|\')c@anvinh\.vn(?:&#039;|\')\)"[^>]*class="hit-area-row [^"]*\[--hit-gap:1\.25rem\]/');
     });
 });

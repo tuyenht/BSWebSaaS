@@ -1124,7 +1124,7 @@ final class EmailSettings extends Component
         if ($this->scope !== 'site') {
             return;
         }
-        $text = (string) preg_replace('/(^|[,;\r\n])\s*(?:"[^"]*"\s*)?[^<>@,;\r\n]*<([^<>]*)>/u', '$1,$2,', mb_substr($typed, 0, 2000));
+        $text = (string) preg_replace('/(^|[,;\r\n>]|[^\s,;<>"]*@[^\s,;<>"]*\s)\s*(?:"[^"]*"\s*)?[^<>@,;\r\n]*<([^<>]*)>/u', '$1,$2,', mb_substr($typed, 0, 2000));
         $parts = preg_split('/[\s,;]+/u', $text, -1, PREG_SPLIT_NO_EMPTY) ?: [];
         $have = array_map(mb_strtolower(...), $this->notifyTo);
         foreach ($parts as $part) {
