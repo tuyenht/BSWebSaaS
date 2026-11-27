@@ -1370,9 +1370,6 @@ final class Editor extends Component
         if (ProductVideos::clean($this->videos) === []) {
             return false;
         }
-        if ($this->ulid === null) {
-            return true;
-        }
 
         return $this->tracked()['videos'] !== ($this->saved['videos'] ?? '')
             || ($this->saved['imageMediaIds'] ?? '[]') !== '[]';
