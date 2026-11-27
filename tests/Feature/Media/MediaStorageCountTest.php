@@ -18,6 +18,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteFeature;
 use App\Modules\Tenancy\Services\SiteCounters;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
@@ -309,3 +310,68 @@ it('keeps nothing of a refused link import when the screen shows the refusal and
 
     expect(DB::connection('pgsql_admin')->table('media')->count())->toBe(0);
 })->with(['library', 'shared picker']);
+
+it('drops the stored copy of a new file when its request rolls back, never the copy of a file already there', function (): void {
+    $a = mscUpload(1, 'a.png', mscPng('a'));
+    $later = fn (Closure $upload) => fn () => app(Tenancy::class)->enter(1, function () use ($upload): void {
+        $upload();
+        throw new RuntimeException('the request fails after the upload');
+    });
+
+    // a new file, uploaded and presigned: no row, and no object left behind
+    expect($later(fn () => app(UploadMedia::class)->handle(UploadedFile::fake()->createWithContent('b.png', mscPng('bb')))))
+        ->toThrow(RuntimeException::class);
+    Storage::disk('r2')->put('_incoming/x/01d.png', mscPng('ddd'));
+    Cache::put(PresignMediaUpload::ownershipKey('_incoming/x/01d.png'), 1, now()->addMinutes(5));
+    expect($later(fn () => app(RegisterMediaUpload::class)->handle('_incoming/x/01d.png', 'd.png')))
+        ->toThrow(RuntimeException::class);
+
+    // the same content as a file already kept: that file's object stays
+    expect($later(fn () => app(UploadMedia::class)->handle(UploadedFile::fake()->createWithContent('a-again.png', mscPng('a')))))
+        ->toThrow(RuntimeException::class);
+
+    expect(app(Tenancy::class)->enter(1, fn () => Media::withTrashed()->pluck('id')->all()))->toBe([$a->id])
+        ->and(Storage::disk('r2')->allFiles())->toBe([$a->storage_key])
+        ->and(mscTotals())->toBe(['bytes' => $a->size, 'trash' => 0]);
+});
+
+it('puts a re-uploaded file’s missing object back before it takes the file out of the Trash', function (string $path): void {
+    $a = mscUpload(1, 'a.png', mscPng('a'));
+    app(Tenancy::class)->enter(1, fn () => app(TrashMedia::class)->trash(new Collection([$a])));
+    Storage::disk('r2')->delete($a->storage_key); // its object went missing
+
+    // the Trash total's row is taken last: by then the object is back
+    $storedFirst = null;
+    DB::listen(function (QueryExecuted $query) use (&$storedFirst, $a): void {
+        if ($storedFirst === null && str_contains(strtolower($query->sql), 'into site_counters')) {
+            $storedFirst = Storage::disk('r2')->exists($a->storage_key);
+        }
+    });
+    if ($path === 'upload') {
+        mscUpload(1, 'a-again.png', mscPng('a'), mayRestore: true);
+    } else {
+        Storage::disk('r2')->put('_incoming/x/01a.png', mscPng('a'));
+        Cache::put(PresignMediaUpload::ownershipKey('_incoming/x/01a.png'), 1, now()->addMinutes(5));
+        app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle('_incoming/x/01a.png', 'a.png', mayRestore: true));
+    }
+
+    expect($storedFirst)->toBeTrue()
+        ->and(Storage::disk('r2')->exists($a->storage_key))->toBeTrue()
+        ->and(app(Tenancy::class)->enter(1, fn () => Media::query()->pluck('id')->all()))->toBe([$a->id])
+        ->and(mscTotals())->toBe(['bytes' => $a->size, 'trash' => 0]);
+})->with(['upload', 'register']);
+
+it('says how many files the library’s purge really deleted', function (): void {
+    $a = mscUpload(1, 'a.png', mscPng('a'));
+    $b = mscUpload(1, 'b.png', mscPng('bbbb'));
+    app(Tenancy::class)->enter(1, fn () => app(TrashMedia::class)->trash(new Collection([$a, $b])));
+
+    $done = app(Tenancy::class)->enter(1, function () use ($a): array {
+        $listed = Media::onlyTrashed()->orderBy('id')->get();
+        app(TrashMedia::class)->restore(new Collection([Media::withTrashed()->find($a->id)])); // taken back meanwhile
+
+        return app(PurgeMedia::class)->purge($listed);
+    });
+
+    expect($done)->toBe(['files' => 1, 'bytes' => $b->size]);
+});

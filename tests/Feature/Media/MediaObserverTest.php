@@ -42,15 +42,27 @@ function makeMediaWithAttachment(string $key, string $hash): Media
     return $media;
 }
 
-it('force-deleting a master deletes its R2 object and purges its attachments', function (): void {
+it('force-deleting a master deletes its R2 object once the delete commits, and purges its attachments', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         $media = makeMediaWithAttachment('a/library/anh-aaaaaaaaaaaa.png', str_repeat('a', 64));
 
         $media->forceDelete();
 
         expect(Mediable::query()->count())->toBe(0);
-        Storage::disk('r2')->assertMissing('a/library/anh-aaaaaaaaaaaa.png');
+        Storage::disk('r2')->assertExists('a/library/anh-aaaaaaaaaaaa.png'); // still there until the commit
     });
+
+    Storage::disk('r2')->assertMissing('a/library/anh-aaaaaaaaaaaa.png');
+});
+
+it('keeps the R2 object of a master whose force delete rolls back', function (): void {
+    expect(fn () => app(Tenancy::class)->enter(1, function (): void {
+        makeMediaWithAttachment('a/library/anh-dddddddddddd.png', str_repeat('d', 64))->forceDelete();
+
+        throw new RuntimeException('the purge fails after the row is gone');
+    }))->toThrow(RuntimeException::class);
+
+    Storage::disk('r2')->assertExists('a/library/anh-dddddddddddd.png');
 });
 
 it('soft-deleting a master keeps its R2 object and attachments (Thùng rác)', function (): void {

@@ -18,8 +18,10 @@ use Illuminate\Database\Eloquent\Collection;
  * deleted: one another request deleted meanwhile is skipped, never subtracted twice, and one taken
  * back out of the Trash a moment before (after the caller listed it) is kept. Each goes one by one,
  * so MediaObserver still drops its attachments and its stored file (and refuses support staff
- * signed in for a member); their sizes come off both totals as the last write. Who may delete for
- * good is the caller's question (the media.purge right).
+ * signed in for a member); their sizes come off both totals as the last write. The stored files are
+ * deleted only after the caller's transaction commits (MediaObserver): when anything fails first —
+ * the totals' row held past SiteCounters::LOCK_WAIT, say — the rows go back into the Trash and their
+ * files are still there. Who may delete for good is the caller's question (the media.purge right).
  */
 final readonly class PurgeMedia
 {
@@ -31,8 +33,17 @@ final readonly class PurgeMedia
      */
     public function handle(Collection $rows): int
     {
+        return $this->purge($rows)['files'];
+    }
+
+    /**
+     * @param  Collection<int, Media>  $rows
+     * @return array{files: int, bytes: int} how many files were deleted, and their size
+     */
+    public function purge(Collection $rows): array
+    {
         if ($rows->isEmpty()) {
-            return 0;
+            return ['files' => 0, 'bytes' => 0];
         }
 
         // a row restored meanwhile no longer matches once its lock is taken (the newest version is re-checked)
@@ -51,6 +62,6 @@ final readonly class PurgeMedia
         }
         $this->storage->purged($bytes);
 
-        return $gone;
+        return ['files' => $gone, 'bytes' => $bytes];
     }
 }

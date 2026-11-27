@@ -26,7 +26,11 @@ use Illuminate\Support\Facades\Storage;
  * final content-hash key and records the row. A spoofed / oversize / foreign upload is rejected and
  * its temp object deleted — the bytes never become a usable media row. A new row counts its size into
  * the library's storage total (MediaStorage) as the last write; with the storage switch on, this is
- * the authoritative check: a file that does not fit is refused and its copy removed.
+ * the authoritative check: a file that does not fit is refused. The final copy is made before its
+ * row; once the row is really created, the copy is deleted again if that row rolls back (a refusal,
+ * the counter write failing, the request failing later on: MediaKey::dropOnRollBack), never before.
+ * A re-upload that takes a file back out of the Trash puts its object back first and restores the
+ * row last, so the Trash total's row is held only until the commit, never across a call to storage.
  */
 final readonly class RegisterMediaUpload
 {
@@ -98,18 +102,19 @@ final readonly class RegisterMediaUpload
         // same bytes, copied back under the row's existing storage_key — otherwise dedup would
         // pin that hash to a dead key forever and re-uploading could never fix the broken image.
         $existing = Media::query()->withTrashed()->where('collection', $collection)->where('hash', $hash)->first();
+        // The restore is the last write, after every call to storage.
         if ($existing instanceof Media) {
-            if ($existing->trashed()) {
-                if (! $mayRestore) {
-                    $disk->delete($tempKey);
-                    throw new MediaRejectedException('in_trash');
-                }
-                $this->trash->restore(new Collection([$existing]));
+            if ($existing->trashed() && ! $mayRestore) {
+                $disk->delete($tempKey);
+                throw new MediaRejectedException('in_trash');
             }
             if (! $disk->exists($existing->storage_key) && ! MediaKey::copyAs($disk, $tempKey, $existing->storage_key, $mime)) {
                 throw new MediaRejectedException('storage_failed');
             }
             $disk->delete($tempKey);
+            if ($existing->trashed()) {
+                $this->trash->restore(new Collection([$existing]));
+            }
 
             return $existing;
         }
@@ -144,22 +149,16 @@ final readonly class RegisterMediaUpload
                 ],
             );
             if ($media->wasRecentlyCreated) {
+                MediaKey::dropOnRollBack($finalKey); // only our own copy: a concurrent upload that won keeps its object
                 $this->storage->charge($media);
             }
 
             return $media;
         };
 
-        // With the storage switch on, a refusal rolls the new row back (a savepoint) and drops the copy;
-        // while it is off nothing is refused, so no savepoint is spent.
-        try {
-            $media = MediaStorage::enforcing() ? DB::transaction($create) : $create();
-        } catch (MediaRejectedException $e) {
-            if ($e->reason === 'storage_full') {
-                $disk->delete($finalKey);
-            }
-            throw $e;
-        }
+        // With the storage switch on, a refusal rolls the new row back (a savepoint), which drops the
+        // copy; while it is off nothing is refused, so no savepoint is spent.
+        $media = MediaStorage::enforcing() ? DB::transaction($create) : $create();
 
         // a new PDF gets its pages counted once the upload has committed (a file already here keeps
         // whatever count it has; media:pdf-pages fills older ones)

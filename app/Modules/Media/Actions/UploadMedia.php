@@ -22,8 +22,12 @@ use Illuminate\Support\Facades\Storage;
  * hash) → stored to R2 under the opaque content-hash key (the source of truth; URL derived later by
  * MediaUrlResolver). site_id is stamped by BelongsToSite from the current tenant context. A new row
  * counts its size into the library's storage total (MediaStorage) as the action's last write; with
- * the storage switch on, a file that does not fit is refused and its stored copy removed (never the
- * platform's own content: $mayRefuse).
+ * the storage switch on, a file that does not fit is refused (never the platform's own content:
+ * $mayRefuse). The object is stored before its row; once the row is really created, the object is
+ * deleted again if that row rolls back (a refusal, the counter write failing, the request failing
+ * later on: MediaKey::dropOnRollBack), never before. A re-upload that takes a file back out of the
+ * Trash puts its object back first and restores the row last, so the Trash total's row is held only
+ * until the commit, never across a call to storage.
  *
  * GĐ1 allow-list excludes SVG (XSS surface; needs a dedicated sanitizer dependency — deferred).
  */
@@ -81,18 +85,19 @@ final readonly class UploadMedia
         // withTrashed: the UNIQUE index doesn't know about soft-deletes — re-uploading a binned
         // file restores its master instead of dead-ending on the violation, but only for someone
         // allowed to restore from the Trash; anyone else is told so, and the row stays binned.
-        // Self-heal: if the master's object went missing, these same bytes go back under its key.
+        // Self-heal: if the master's object went missing, these same bytes go back under its key
+        // (kept on a rollback: the row naming it stays either way). The restore is the last write.
         $existing = Media::query()->withTrashed()->where('collection', $collection)->where('hash', $hash)->first();
         if ($existing instanceof Media) {
-            if ($existing->trashed()) {
-                if (! $mayRestore) {
-                    throw new MediaRejectedException('in_trash');
-                }
-                $this->trash->restore(new Collection([$existing]));
+            if ($existing->trashed() && ! $mayRestore) {
+                throw new MediaRejectedException('in_trash');
             }
             $disk = Storage::disk(MediaKey::disk());
             if (! $disk->exists($existing->storage_key) && ! $disk->put($existing->storage_key, $contents, MediaKey::objectOptions($mime))) {
                 throw new MediaRejectedException('storage_failed');
+            }
+            if ($existing->trashed()) {
+                $this->trash->restore(new Collection([$existing]));
             }
 
             return $existing;
@@ -135,24 +140,19 @@ final readonly class UploadMedia
                 ],
             );
             // 8) Count it into the library's storage total — only a row really created (a concurrent
-            // identical upload that won is already counted) — as the last write.
+            // identical upload that won is already counted, and its object is its own) — as the last
+            // write; the object goes with the row if the row rolls back.
             if ($media->wasRecentlyCreated) {
+                MediaKey::dropOnRollBack($key);
                 $mayRefuse ? $this->storage->charge($media) : $this->storage->added($media);
             }
 
             return $media;
         };
 
-        // With the storage switch on, a refusal rolls the new row back (a savepoint) and drops the copy
-        // just stored; while it is off (or for content that is never refused) no savepoint is spent.
-        try {
-            $media = $mayRefuse && MediaStorage::enforcing() ? DB::transaction($create) : $create();
-        } catch (MediaRejectedException $e) {
-            if ($e->reason === 'storage_full') {
-                Storage::disk(MediaKey::disk())->delete($key);
-            }
-            throw $e;
-        }
+        // With the storage switch on, a refusal rolls the new row back (a savepoint), which drops the
+        // copy just stored; while it is off (or for content that is never refused) no savepoint is spent.
+        $media = $mayRefuse && MediaStorage::enforcing() ? DB::transaction($create) : $create();
 
         // a new PDF gets its pages counted once the upload has committed (a file already here keeps
         // whatever count it has; media:pdf-pages fills older ones)

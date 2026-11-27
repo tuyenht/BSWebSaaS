@@ -27,6 +27,12 @@ use Illuminate\Support\Facades\Storage;
  * of the key) because the original file bytes aren't at hand; it only needs to be unique, which the
  * storage_key already is. size is 0 (unknown without fetching the object). An existing master for
  * the key is returned untouched — a real upload is never clobbered.
+ *
+ * The seeders call this many times inside one long transaction of their own. A row of size 0 adds
+ * nothing to the library's storage total, so SiteCounters never touches (or holds) the total's row
+ * and an upload of the website meanwhile does not wait for the seed to end. A caller that passes a
+ * real size counts it at once and holds that row until it commits: keep such a transaction to one
+ * file (one Tenancy::enter per file, as media:rekey-site does).
  */
 final readonly class EnsureMediaFromKey
 {

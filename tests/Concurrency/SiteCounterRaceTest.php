@@ -1,12 +1,20 @@
 <?php
 
+use App\Modules\Media\Actions\PresignMediaUpload;
+use App\Modules\Media\Actions\RegisterMediaUpload;
+use App\Modules\Media\Actions\TrashMedia;
+use App\Modules\Media\Actions\UploadMedia;
 use App\Modules\Media\Console\PurgeTrashedMedia;
 use App\Modules\Media\Models\Media;
+use App\Modules\Media\Services\EnsureMediaFromKey;
 use App\Modules\Media\Support\MediaStorage;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Services\SiteCounters;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -281,4 +289,112 @@ it('never holds the totals while counters:reconcile recounts a drifted website, 
     expect($results)->toBe([true, true])->and((int) $true['trash'])->toBe(1255)
         ->and(scrValue(1))->toBe((int) $true['bytes'])
         ->and(scrValue(1, MediaStorage::TRASH))->toBe((int) $true['trash']);
+});
+
+/** A real 1×1 PNG; $tail after its end makes another file (another hash) that still sniffs as PNG. */
+function scrPng(string $tail): string
+{
+    return (string) base64_decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        true,
+    ).$tail;
+}
+
+/**
+ * Runs $work while another transaction (on pgsql_admin) holds site 1's `media.bytes` row, as a slow
+ * upload of that website would; the SQLSTATE $work failed with, or null.
+ */
+function scrWhileBytesHeld(Closure $work): ?string
+{
+    $admin = DB::connection('pgsql_admin');
+    $admin->beginTransaction();
+    try {
+        $admin->update("update site_counters set value = value where site_id = 1 and metric = 'media.bytes'");
+        $work();
+    } catch (QueryException $e) {
+        return is_string($e->errorInfo[0] ?? null) ? $e->errorInfo[0] : 'query';
+    } finally {
+        $admin->rollBack();
+    }
+
+    return null;
+}
+
+it('keeps a website’s Trash and its files when its purge cannot count, and still purges the next website', function (): void {
+    Storage::fake('r2');
+    $old = [];
+    foreach ([1, 2] as $site) {
+        $old[$site] = app(Tenancy::class)->enter($site, function () use ($site): Media {
+            $media = app(UploadMedia::class)->handle(UploadedFile::fake()->createWithContent("old-{$site}.png", scrPng("old-{$site}")));
+            app(TrashMedia::class)->trash(new Collection([$media]));
+            Media::onlyTrashed()->whereKey($media->id)->update(['deleted_at' => now()->subDays(40)]);
+
+            return $media;
+        });
+    }
+
+    // site 1's purge cannot take its storage total (another request holds it past SiteCounters::LOCK_WAIT)
+    $exit = null;
+    $failed = scrWhileBytesHeld(function () use (&$exit): void {
+        $exit = test()->artisan('media:purge-trash')->run();
+    });
+
+    expect($failed)->toBeNull()->and($exit)->toBe(1); // the command ended, non-zero
+
+    // site 1: the file is still in the Trash, its object still stored, the totals as they were
+    expect(app(Tenancy::class)->enter(1, fn () => Media::onlyTrashed()->pluck('id')->all()))->toBe([$old[1]->id])
+        ->and(Storage::disk('r2')->exists($old[1]->storage_key))->toBeTrue()
+        ->and(scrValue(1))->toBe($old[1]->size)
+        ->and(scrValue(1, MediaStorage::TRASH))->toBe($old[1]->size);
+
+    // site 2 came after it and was purged
+    expect(app(Tenancy::class)->enter(2, fn () => Media::withTrashed()->count()))->toBe(0)
+        ->and(Storage::disk('r2')->exists($old[2]->storage_key))->toBeFalse()
+        ->and(scrValue(2))->toBe(0)
+        ->and(scrValue(2, MediaStorage::TRASH))->toBe(0);
+});
+
+it('keeps no stored copy of a new file whose count cannot be written', function (string $path, bool $enforce): void {
+    Storage::fake('r2');
+    config(['media.storage_enforce' => $enforce]);
+    scrAttempt(1, fn (SiteCounters $c) => $c->add(MediaStorage::BYTES, 100)); // the total's row exists
+
+    $tempKey = '_incoming/x/01race.png';
+    if ($path === 'register') {
+        Storage::disk('r2')->put($tempKey, scrPng('new'));
+        Cache::put(PresignMediaUpload::ownershipKey($tempKey), 1, now()->addMinutes(5));
+    }
+    $failed = scrWhileBytesHeld(fn () => app(Tenancy::class)->enter(1, fn (): Media => $path === 'upload'
+        ? app(UploadMedia::class)->handle(UploadedFile::fake()->createWithContent('new.png', scrPng('new')))
+        : app(RegisterMediaUpload::class)->handle($tempKey, 'new.png')));
+
+    expect($failed)->toBe('55P03')
+        ->and(app(Tenancy::class)->enter(1, fn () => Media::withTrashed()->count()))->toBe(0)
+        ->and(Storage::disk('r2')->allFiles())->toBe([])
+        ->and(scrValue(1))->toBe(100);
+})->with([
+    'an upload, switch off' => ['upload', false],
+    'an upload, switch on' => ['upload', true],
+    'a presigned upload, switch off' => ['register', false],
+    'a presigned upload, switch on' => ['register', true],
+]);
+
+/*
+ * A seed files the shared demo files in one long transaction of its own (SeedAnVinhContent and the
+ * like). Their rows record size 0 (the bytes are not fetched), so the seed adds nothing to the total
+ * and never takes its row: an upload of that website meanwhile does not wait for the seed to end.
+ */
+it('never holds the totals while a seed files its files', function (): void {
+    Storage::fake('r2');
+    scrAttempt(1, fn (SiteCounters $c) => $c->add(MediaStorage::BYTES, 100));
+    Storage::disk('r2')->put('an-vinh/hero/hero-home-7ca90eafe212.jpg', 'seed');
+
+    $inline = app(Tenancy::class)->enter(1, function (): bool {
+        app(EnsureMediaFromKey::class)->fromSeedSource('an-vinh/hero/hero-home-7ca90eafe212.jpg');
+
+        return scrRival([["update site_counters set value = value + 64 where site_id = 1 and metric = 'media.bytes'", []]]);
+    });
+
+    expect($inline)->toBeTrue()->and(scrValue(1))->toBe(164)
+        ->and(app(Tenancy::class)->enter(1, fn () => Media::query()->count()))->toBe(1);
 });

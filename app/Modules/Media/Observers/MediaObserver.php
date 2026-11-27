@@ -13,8 +13,12 @@ use Illuminate\Support\Facades\Storage;
  * Force-purge cleanup for a media master (design.md §16, D3). Soft-delete (Thùng rác) keeps the R2
  * object + attachments; a force-delete (emptying the trash) is the irreversible purge. We drop the
  * master's attachments in forceDeleting — while media_id still resolves them, BEFORE the FK SET NULL
- * cascade strands them — and delete the R2 object in forceDeleted, after the row is gone, so a failed
- * purge never strands a live image. RLS scopes the attachment cleanup to the master's site.
+ * cascade strands them. forceDeleted decides which stored objects go (inside the transaction, where
+ * the website's other rows are still visible) and deletes them only once that transaction has
+ * committed (afterCommit): a purge that fails later on, at its counter write or anywhere else, rolls
+ * its rows back into the Trash with their files still there. A worker killed between the commit and
+ * the delete leaves an object no row names (a leak, never a row without its file). RLS scopes the
+ * attachment cleanup to the master's site.
  *
  * A row media:rekey-site moved still has its old object at `meta.moved_from` (kept so addresses
  * already shared keep working); a purge removes that one too, so a file deleted for good is gone
@@ -40,21 +44,29 @@ final class MediaObserver
 
     public function forceDeleted(Media $media): void
     {
-        $disk = Storage::disk($media->disk);
-        if (! MediaKey::isSeedKey($media->storage_key)) {
-            $disk->delete($media->storage_key);
-        }
+        $keys = MediaKey::isSeedKey($media->storage_key) ? [] : [$media->storage_key];
 
         $meta = $media->getAttribute('meta');
         $movedFrom = is_array($meta) ? ($meta['moved_from'] ?? null) : null;
-        if (! is_string($movedFrom) || $movedFrom === '' || $movedFrom === $media->storage_key || MediaKey::isSeedKey($movedFrom)) {
+        if (is_string($movedFrom) && $movedFrom !== '' && $movedFrom !== $media->storage_key && ! MediaKey::isSeedKey($movedFrom)) {
+            $stillUsed = Media::query()->withTrashed()
+                ->where(fn (Builder $q) => $q->where('storage_key', $movedFrom)->orWhere('meta->seed_source', $movedFrom)->orWhere('meta->moved_from', $movedFrom))
+                ->exists();
+            if (! $stillUsed) {
+                $keys[] = $movedFrom;
+            }
+        }
+        if ($keys === []) {
             return;
         }
-        $stillUsed = Media::query()->withTrashed()
-            ->where(fn (Builder $q) => $q->where('storage_key', $movedFrom)->orWhere('meta->seed_source', $movedFrom)->orWhere('meta->moved_from', $movedFrom))
-            ->exists();
-        if (! $stillUsed) {
-            $disk->delete($movedFrom);
-        }
+
+        // no query in here: after the commit the website's context is gone
+        $disk = $media->disk;
+        $media->getConnection()->afterCommit(static function () use ($disk, $keys): void {
+            $store = Storage::disk($disk);
+            foreach ($keys as $key) {
+                $store->delete($key);
+            }
+        });
     }
 }
