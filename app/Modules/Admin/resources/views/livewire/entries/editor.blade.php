@@ -902,9 +902,9 @@
              «Duyệt đăng» or «Bỏ thay đổi» of the pending change refused (EditsPendingChange::changeRefused).
              The move as its title, the reason in plain words; «Đóng» takes the focus and closes it, like
              Escape and the backdrop, keeping what was typed. When the change moved on elsewhere,
-             «Tải lại» reads it again, the typed text kept. Focus goes back to the button pressed. --}}
+             «Tải lại» loads it into the form (asking first when edits would be replaced). --}}
         <div wire:key="entry-refusal-{{ md5(json_encode($refusal)) }}" data-entry-refusal
-             x-data="{ shut: false, opener: null, init() { this.opener = document.activeElement; }, destroy() { const o = this.opener; if (o && o.isConnected) { o.focus(); } } }">
+             x-data="{ shut: false, {{ \App\Modules\Admin\Livewire\Entries\Editor::REFUSAL_REFOCUS }} }">
             {{-- `shut` hides it at once on «Đóng», Escape or the backdrop; the server then drops it --}}
             <x-bs-admin::modal state="! shut" close="shut = true; $wire.closeRefusal()" size="narrow" compact alert describedby="entry-refusal-d" :close-label="__('admin.dismiss')">
                 <x-slot:heading>
@@ -931,6 +931,18 @@
                     @endif
                 </x-slot:footer>
             </x-bs-admin::modal>
+        </div>
+    @endif
+    @if ($reloadReplaces !== null)
+        {{-- «Tải bản mới nhất?»: «Tải lại» with edits still in the form. Keeping them over the newer change would
+             save over another member's edits, so the question names the fields replaced; «Ở lại» (the focus first,
+             Escape, the backdrop) keeps the typed text and loads nothing. --}}
+        <div wire:key="entry-reload-ask" data-entry-reload-ask x-data="{ {{ \App\Modules\Admin\Livewire\Entries\Editor::REFUSAL_REFOCUS }} }">
+            <x-bs-admin::confirm-dialog model="changeReloadAsk" :title="__('entries.refuse.reload_title')" icon="ri-refresh" danger
+                                        :ok="__('entries.refuse.reload_ok')" ok-icon="ri-refresh" :cancel-label="__('entries.refuse.reload_stay')"
+                                        confirm="confirmReloadChange" cancel="keepTypedText">
+                <x-bs-admin::confirm-line>{{ __('entries.refuse.reload_line', ['fields' => $reloadReplaces]) }}</x-bs-admin::confirm-line>
+            </x-bs-admin::confirm-dialog>
         </div>
     @endif
 

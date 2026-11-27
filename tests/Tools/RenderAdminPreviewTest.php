@@ -1715,6 +1715,10 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $stale = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($staleTab->set('excerpt', 'Gõ ở tab cũ')->call('save')));
     expect($stale)->toContain('data-entry-refusal', e(__('entries.refuse.t_save')), e(__('entries.change_err_change_stale')), 'data-refusal-reload');
     file_put_contents($dir.'/editor-change-refused-stale.html', $swap($html, $stale, 'admin\\.entries\\.editor'));
+    // «Tải lại» there, with the typed text: «Tải bản mới nhất?» names the field it would replace
+    $ask = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($staleTab->call('reloadChange')));
+    expect($ask)->toContain('data-entry-reload-ask', e(__('entries.refuse.reload_title')), e(__('entries.refuse.reload_ok')), e(__('entries.refuse.reload_stay')));
+    file_put_contents($dir.'/editor-change-reload-ask.html', $swap($html, $ask, 'admin\\.entries\\.editor'));
     expect(file_get_contents($dir.'/editor-change-diff.html'))->toContain('data-change-diff')
         ->and(file_get_contents($dir.'/editor-change-return.html'))->toContain(e(__('entries.chg.return_err')));
 
@@ -1772,5 +1776,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 161);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 162);
 });

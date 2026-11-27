@@ -1600,6 +1600,8 @@ final class Editor extends Component
     /** "Đăng" / "Cập nhật" (live content) / "Gửi duyệt" (no right to publish): save, then publish or send. */
     public function publish(): void
     {
+        // on live content this is «Cập nhật» (or «Gửi duyệt» without the right to publish): a held save refused names that move
+        $this->changeAct = $this->mayPublish ? 'apply' : 'submit';
         $entry = $this->persist('publish');
         if (! $entry instanceof Entry || $this->saveFailed) {
             // nothing put on the website after a save refused in part (a new page's typed place)
@@ -1674,6 +1676,8 @@ final class Editor extends Component
     {
         $this->resetErrorBag(['workflow', 'transitionNote', 'assignTo']);
 
+        // the save this move starts with is what a held change refuses (nothing moved): «Chưa lưu được thay đổi»
+        $this->changeAct = 'save';
         $entry = $this->persist('transition', $key);
         if (! $entry instanceof Entry || ! $this->applyExpiry($entry)) {
             return;
@@ -2770,6 +2774,40 @@ final class Editor extends Component
         }
 
         return $count;
+    }
+
+    /**
+     * The fields with unsaved edits, by the names the form shows them under, once each and in the
+     * form's order; empty when nothing differs from what was loaded or saved (as changeCount counts,
+     * the block list judged again now).
+     *
+     * @return list<string>
+     */
+    private function unsavedNames(): array
+    {
+        $props = $this->type === 'page' ? 'entries.ed.card_page_props' : 'entries.ed.card_publish';
+        $labels = [
+            'title' => $this->type === 'page' ? 'entries.ed.title_page' : 'entries.ed.title_post',
+            'slug' => 'entries.ed.slug', 'excerpt' => 'admin.seo.excerpt_label', 'bodyHtml' => 'entries.ed.body_label',
+            'seoTitle' => 'admin.seo.title_label', 'seoDescription' => 'admin.seo.description_label',
+            'categoryIds' => 'entries.ed.card_category', 'coverUlid' => 'entries.ed.card_cover', 'coverAlt' => 'entries.ed.cover_alt_label',
+            'parentUlid' => $props, 'pageOrder' => $props, 'scheduleAt' => 'entries.ed.card_publish', 'statusTo' => 'entries.ed.card_publish',
+            'templateKey' => 'entries.rev.f_tpl', 'displayDate' => 'entries.ed.pd_label', 'tags' => 'entries.ed.card_tags',
+            'expiresAt' => 'entries.ed.exp_label', 'jobFacts' => 'entries.ed.job_card', 'jobDeadline' => 'entries.ed.job_card',
+            'jobDeadlineAccent' => 'entries.ed.job_card', 'jobBadge' => 'entries.ed.job_card',
+        ];
+        $blocks = $this->blocksHash() !== ($this->saved['blocks'] ?? '');
+        $names = [];
+        foreach ($this->tracked() as $field => $value) {
+            if ($field === 'blocks' || ($field === 'scheduleAt' && $this->effectiveStatus() !== EntryStatus::Scheduled->value)) {
+                continue;
+            }
+            if (($this->saved[$field] ?? '') !== $value || ($field === 'bodyHtml' && $blocks)) {
+                $names[] = Cast::string(__($labels[$field] ?? 'entries.ed.body_label', ['doc' => $this->docNoun()]));
+            }
+        }
+
+        return array_values(array_unique($names));
     }
 
     /** The list this entry belongs to: a post's content section, the pages list for a page. */

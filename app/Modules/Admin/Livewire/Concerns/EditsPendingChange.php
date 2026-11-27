@@ -87,6 +87,28 @@ trait EditsPendingChange
         'category_governed', 'locale_disabled', 'slug_taken', 'workflow_governed',
     ];
 
+    /** «Tải bản mới nhất?» is open: «Tải lại» was pressed with edits still in the form. */
+    public bool $changeReloadAsk = false;
+
+    /**
+     * The fields «Tải lại» would replace, named in «Tải bản mới nhất?»; set only by reloadChange after a
+     * refusal that offered it, so the question's answer can never load over a form nobody asked about.
+     */
+    #[Locked]
+    public ?string $reloadReplaces = null;
+
+    /**
+     * Focus once «Chưa làm được» or «Tải bản mới nhất?» leaves (Alpine, merged into each one's x-data): back to
+     * the button that opened it, unless the focus already sits on something shown (the next dialog). That
+     * button may be gone or hidden (it sat in the question before «Duyệt đăng» / «Bỏ thay đổi», or in the
+     * dialog before this one): then the band's first move, else the bar's main button.
+     */
+    public const string REFUSAL_REFOCUS = 'opener: null, init() { this.opener = document.activeElement; }, '
+        .'destroy() { const opener = this.opener; setTimeout(() => { '
+        .'const shown = (el) => el instanceof HTMLElement && el !== document.body && el.isConnected && el.getClientRects().length > 0; '
+        .'if (shown(document.activeElement)) { return; } '
+        .'[opener, ...document.querySelectorAll("[data-change-band] [data-change-act]:not([aria-disabled]), [data-guide=main], [data-guide=main-b]")].find(shown)?.focus(); }); }';
+
     /** The move this request makes on the change, naming the dialog: save, submit, apply, approve, discard; null for a move the board draws no dialog for (return, a middle step). */
     private ?string $changeAct = 'save';
 
@@ -534,13 +556,23 @@ trait EditsPendingChange
     private function changeSettled(string $toast): void
     {
         $this->changeSeen = null;
+        $this->reopenForm();
+        $this->dispatch('bs-toast', text: $toast);
+    }
+
+    /**
+     * The form opened again as it opens (mount): the website's version, then the pending change as it
+     * stands now, which also sets the version this form saw from what it loaded (openPendingChange).
+     * The rich text editor takes the new text, and the browser forgets the copy it kept on the device.
+     */
+    private function reopenForm(): void
+    {
         $this->changeMemo = false;
         $this->resetChanges();
         if ($this->prose) {
             $this->dispatch('admin-editor-set-html', target: 'bodyHtml', html: $this->bodyHtml);
         }
         $this->dispatch('admin-editor-saved');
-        $this->dispatch('bs-toast', text: $toast);
     }
 
     /**
@@ -574,18 +606,50 @@ trait EditsPendingChange
     }
 
     /**
-     * «Tải lại» on «Chưa làm được» (the change moved on elsewhere): the change is read again as it
-     * stands now — the band, and the version the next save is judged against — and the form keeps what
-     * was typed. A change sent meanwhile is still refused by the save itself (SaveEntryDraft).
+     * «Tải lại» on «Chưa làm được» (the change moved on elsewhere): the form takes the change as it
+     * stands now. Typed edits still in the form are never kept over it (they would be saved over
+     * another member's edits nobody here has seen): with some, «Tải bản mới nhất?» asks first and
+     * names the fields it replaces; with none, it loads at once. Only after a refusal that offered it.
      */
     public function reloadChange(): void
     {
+        $this->changeEntry();
+        if (($this->refusal['reload'] ?? false) !== true) {
+            return;
+        }
         $this->refusal = null;
-        $entry = $this->changeEntry();
-        $this->changeMemo = false;
-        $this->changeSeen = $this->pendingChange($entry)?->version();
-        $this->loadTrail($entry->id);
-        $this->status = $entry->status;
+        $names = $this->unsavedNames();
+        if ($names !== []) {
+            $this->reloadReplaces = implode(', ', $names);
+            $this->changeReloadAsk = true;
+
+            return;
+        }
+        $this->loadNewestChange();
+    }
+
+    /** «Tải bản mới nhất» on «Tải bản mới nhất?»: the typed edits go, the change as it stands now comes in. */
+    public function confirmReloadChange(): void
+    {
+        $this->changeEntry();
+        if ($this->reloadReplaces === null) {
+            return;
+        }
+        $this->loadNewestChange();
+    }
+
+    /** «Ở lại» (or Escape, the backdrop) on «Tải bản mới nhất?»: the form keeps what was typed, nothing loaded. */
+    public function keepTypedText(): void
+    {
+        $this->changeReloadAsk = false;
+        $this->reloadReplaces = null;
+    }
+
+    private function loadNewestChange(): void
+    {
+        $this->changeReloadAsk = false;
+        $this->reloadReplaces = null;
+        $this->reopenForm();
         $this->dispatch('bs-toast', text: Cast::string(__('entries.refuse.reloaded')));
     }
 
