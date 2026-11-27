@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Provisioning\Console;
 
-use App\Modules\Provisioning\Actions\ReflowSitePermalinks;
+use App\Modules\Cms\Actions\Permalinks\ReflowSitePermalinks;
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\Site;

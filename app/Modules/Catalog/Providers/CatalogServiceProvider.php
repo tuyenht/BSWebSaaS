@@ -18,6 +18,7 @@ use App\Modules\Catalog\Support\ProductIndexLink;
 use App\Modules\Catalog\Support\ProductRoutes;
 use App\Modules\Cms\Navigation\MenuTargets;
 use App\Modules\Cms\Routing\CategoryDependents;
+use App\Modules\Cms\Routing\PermalinkKinds;
 use App\Modules\Media\Models\Media;
 use App\Modules\Theme\Components\ComponentRegistry;
 use Illuminate\Database\Eloquent\Builder;
@@ -89,6 +90,16 @@ final class CatalogServiceProvider extends ServiceProvider
             /** @param list<int> $ids */
             changed: static fn (array $ids) => Product::markContentChanged($ids),
             translations: 'product_translations',
+        );
+
+        // A change of the products' address format («Đường dẫn») moves their routes with pages and
+        // posts: Cms's permalink run loads them through here, published ones only.
+        $this->app->make(PermalinkKinds::class)->register(
+            'product',
+            'product_id',
+            'products',
+            /** @param list<int> $ids */
+            static fn (array $ids): array => app(ProductRoutes::class)->permalinkItems($ids),
         );
 
         // A gallery picture whose file goes into the media trash leaves the product page at once (the

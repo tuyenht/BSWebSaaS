@@ -37,6 +37,7 @@ use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog;
 use App\Modules\Admin\Livewire\Roles\Index as RolesIndex;
 use App\Modules\Admin\Livewire\SeoSettings;
 use App\Modules\Admin\Livewire\Settings\Domains as DomainSettings;
+use App\Modules\Admin\Livewire\Settings\Permalinks as PermalinkSettings;
 use App\Modules\Admin\Livewire\Settings\Redirects as RedirectSettings;
 use App\Modules\Admin\Livewire\Users\Index as MembersIndex;
 use App\Modules\Admin\Livewire\WorkflowSettings;
@@ -90,6 +91,7 @@ use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Shared\Http\SafeHttp;
 use App\Modules\Storefront\Models\ContactClickDaily;
+use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
@@ -788,6 +790,24 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $trash = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/redirects?tab=trash')->assertOk()->getContent();
     expect($trash)->toContain('/trang-cu-da-xoa');
     file_put_contents($dir.'/redirects-trash.html', $trash);
+
+    // "Đường dẫn": the cards as stored; a drafted change with its preview of the addresses that move;
+    // and a change still being applied (read-only cards, the notice that refreshes itself).
+    $this->flushSession();
+    $page = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/permalinks')->assertOk()->getContent();
+    expect($page)->toContain('Khuyên dùng', 'Phẳng');
+    file_put_contents($dir.'/permalinks.html', $page);
+    $draft = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(PermalinkSettings::class)
+        ->set('draft.pages.pattern', 'base')->set('draft.pages.base', 'trang-moi')->html());
+    expect($draft)->toContain('/trang-moi/lien-he');
+    file_put_contents($dir.'/permalinks-change.html', str_replace('</body>', $draft.'</body>', $page));
+    app(Tenancy::class)->enter(1, fn () => app(PermalinkConfig::class)->stage(['pages' => ['pattern' => 'base', 'base' => 'trang']], now()->utc()->toIso8601String()));
+    $this->flushSession();
+    $pending = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/permalinks')->assertOk()->getContent();
+    expect($pending)->toContain('Đang đổi đường dẫn');
+    file_put_contents($dir.'/permalinks-pending.html', $pending);
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('group_name', 'permalinks')->delete());
+    app(PermalinkConfig::class)->flush();
 
     // "Thông tin chung" filled from the older brand setting, as a site has it before its first save
     // (long names, so a clipped label or a sideways scroll shows up).
@@ -1849,5 +1869,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 164);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 167);
 });

@@ -1,12 +1,12 @@
 <?php
 
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Actions\Permalinks\ReflowSitePermalinks;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
-use App\Modules\Provisioning\Actions\ReflowSitePermalinks;
 use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
