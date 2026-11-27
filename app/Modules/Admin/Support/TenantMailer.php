@@ -339,7 +339,9 @@ final readonly class TenantMailer implements TenantMailConfigurator
             'mail.mailers.admin_xoauth2.encryption' => $smtp['encryption'] ?? 'tls',
             'mail.mailers.admin_xoauth2.username' => $username,
             'mail.mailers.admin_xoauth2.access_token' => $accessToken,
-            'mail.from.address' => $cfg['from_address'] ?? $username,
+            // Google, Microsoft and Yahoo send only as the mailbox signed in, so its address is the
+            // sender (the Email screen shows it locked); a stored «Địa chỉ gửi đi» is for another outbox.
+            'mail.from.address' => $username,
             'mail.from.name' => $cfg['from_name'] ?? config('admin.brand.name'),
         ]);
 

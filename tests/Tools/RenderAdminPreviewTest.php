@@ -458,8 +458,8 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     app(PlatformAccess::class)->onPlatform(fn () => $top->assignRole('super_admin'));
     app(PlatformAccess::class)->forgetMemo();
     $this->flushSession();
-    $html = $this->actingAs($top)->get($platform.'/audit')->assertOk()->getContent();
-    file_put_contents($dir.'/audit-cleanup.html', str_replace($platform, 'http://'.ADMIN_PREVIEW_HOST, $html));
+    $auditHtml = $this->actingAs($top)->get($platform.'/audit')->assertOk()->getContent();
+    file_put_contents($dir.'/audit-cleanup.html', str_replace($platform, 'http://'.ADMIN_PREVIEW_HOST, $auditHtml));
 
     // «Đăng nhập nhanh»: the platform's face with Google connected and Facebook not yet (its policy
     // addresses configured), then a website's face on the same shared apps.
@@ -481,17 +481,23 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain(e(__('admin.sl.providers_site')));
     file_put_contents($dir.'/social.html', $html);
     // «Email» → «Nhà cung cấp khác»: «Chọn dịch vụ» on SendGrid not set up yet, then Amazon SES with
-    // its key saved and checked
+    // its key saved and checked (with two notice addresses); then a signed-in Google mailbox, whose
+    // sending address is locked
     foreach ([
         'email-other' => ['provider' => 'other', 'method' => 'smtp_password', 'relay' => 'sendgrid'],
         'email-other-saved' => ['provider' => 'other', 'method' => 'smtp_password', 'relay' => 'ses', 'relay_region' => 'eu-west-1',
-            'send_domain' => 'congtydemo.vn', 'checked_at' => now()->toIso8601String(),
+            'send_domain' => 'congtydemo.vn', 'checked_at' => now()->toIso8601String(), 'from_address' => 'lienhe@congtydemo.vn',
             'smtp' => ['host' => 'email-smtp.eu-west-1.amazonaws.com', 'port' => 587, 'encryption' => 'tls', 'username' => 'AKIAPREVIEWONLY00000', 'password' => SecretCipher::encrypt('preview-only')]],
+        'email-google' => ['provider' => 'google', 'method' => 'oauth2', 'from_name' => 'Công ty Demo',
+            'oauth' => ['provider' => 'google', 'client_id' => 'preview-client', 'client_secret' => SecretCipher::encrypt('preview-only'), 'refresh_token' => SecretCipher::encrypt('preview-only'), 'email' => 'hop@congtydemo.vn']],
     ] as $shot => $cfg) {
-        app(Tenancy::class)->enter(1, fn () => app(SettingsRepository::class)->put('email', 'config', $cfg));
+        app(Tenancy::class)->enter(1, function () use ($cfg, $shot): void {
+            app(SettingsRepository::class)->put('email', 'config', $cfg);
+            app(SettingsRepository::class)->put('email', 'notify_to', ['emails' => $shot === 'email-other' ? [] : ['kinhdoanh@congtydemo.vn', 'giamdoc@congtydemo.vn']]);
+        });
         $this->flushSession();
         $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/email')->assertOk()->getContent();
-        expect($html)->toContain(e(__('admin.em_prov_title')))->not->toContain('preview-only');
+        expect($html)->toContain($shot === 'email-google' ? 'data-from-locked' : e(__('admin.em_prov_title')))->not->toContain('preview-only');
         file_put_contents($dir.'/'.$shot.'.html', $html);
     }
     DB::connection('pgsql_admin')->table('site_settings')->where('group_name', 'email')->delete();
@@ -507,7 +513,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($dialog->get('exact'))->not->toBeNull();
     $steps = ['audit-cleanup-pick' => $pick, 'audit-cleanup-confirm' => $dialog->html()];
     foreach ($steps as $name => $open) {
-        file_put_contents($dir.'/'.$name.'.html', str_replace([$platform, '</body>'], ['http://'.ADMIN_PREVIEW_HOST, $open.'</body>'], $html));
+        file_put_contents($dir.'/'.$name.'.html', str_replace([$platform, '</body>'], ['http://'.ADMIN_PREVIEW_HOST, $open.'</body>'], $auditHtml));
     }
 
     // "Gói & tính năng": three plans (one with a customer on it) as the platform super-admin, who
@@ -1869,5 +1875,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 167);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 168);
 });

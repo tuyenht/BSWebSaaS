@@ -9,11 +9,13 @@ use App\Modules\Admin\Models\MailDaily;
 use App\Modules\Admin\Support\Mail\MailQuotaGate;
 use App\Modules\Admin\Support\MailBrand;
 use App\Modules\Admin\Support\MailHostGuard;
+use App\Modules\Admin\Support\MailNotifyTo;
 use App\Modules\Admin\Support\MailRelay;
 use App\Modules\Admin\Support\PlatformSettings;
 use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Admin\Support\TenantMailer;
+use App\Modules\Forms\Support\FormDraft;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -21,6 +23,7 @@ use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteIdentity;
+use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\Site;
 use Closure;
@@ -67,7 +70,7 @@ final class EmailSettings extends Component
 
     /** The fields the save bar compares with the saved setup (a secret only while one is typed). */
     private const array TRACKED = ['provider', 'relay', 'relayRegion', 'sendDomain', 'smtpHost', 'smtpPort', 'smtpEncryption', 'smtpUsername', 'smtpPassword',
-        'oauthClientId', 'oauthClientSecret', 'fromAddress', 'fromName', 'replyTo'];
+        'oauthClientId', 'oauthClientSecret', 'fromAddress', 'fromLocal', 'fromName', 'replyTo', 'notifyTo'];
 
     /** The fields of «Chọn dịch vụ»: changing one makes its last check stale («Chưa kiểm tra»). */
     private const array RELAY_FIELDS = ['relay', 'relayRegion', 'sendDomain', 'smtpHost', 'smtpPort', 'smtpEncryption', 'smtpUsername', 'smtpPassword'];
@@ -80,6 +83,12 @@ final class EmailSettings extends Component
 
     /** The tabs of a website's page, in the board's order («Mẫu thư» comes with the mail templates). */
     public const array TABS = ['send', 'sign'];
+
+    /** The mailbox providers whose address cannot carry a website's own «info@…» (no suggestion from them). */
+    private const array PUBLIC_MAILBOXES = ['gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.com.vn', 'outlook.com', 'hotmail.com', 'live.com', 'icloud.com'];
+
+    /** The parts before @ «Gửi thông báo tới» suggests on the website's domain, in the board's order. */
+    private const array NOTIFY_PREFIXES = ['info', 'contact'];
 
     /** The outboxes a website picks from, in the board's order; a mail provider signs in with OAuth. */
     public const array OUTBOXES = ['platform', 'google', 'microsoft', 'other'];
@@ -119,6 +128,22 @@ final class EmailSettings extends Component
     public string $fromName = '';
 
     public string $replyTo = '';
+
+    /** A website's «Địa chỉ gửi đi» on «Nhà cung cấp khác»: the part before @ (the part after is its sending domain). */
+    public string $fromLocal = '';
+
+    /**
+     * «Gửi thông báo tới» (MailNotifyTo): changed only through addNotify()/removeNotify(), so every
+     * address is checked as it is added; one not well-formed stays shown (in red) until removed.
+     *
+     * @var list<string>
+     */
+    #[Locked]
+    public array $notifyTo = [];
+
+    /** The website's own domain («+ info@…» suggestions when no sending domain is known yet); '' = none. */
+    #[Locked]
+    public string $siteDomain = '';
 
     public bool $smtpPasswordSet = false;
 
@@ -226,6 +251,8 @@ final class EmailSettings extends Component
             // Whether the platform's outbox really sends (a blank password does not), as the mailer reads it.
             $this->platformConfigured = app(TenantMailer::class)->canSendWith(null);
             $this->loadBrand();
+            $this->notifyTo = app(MailNotifyTo::class)->emails();
+            $this->siteDomain = $this->ownDomain();
         }
 
         if ($cfg === null || $cfg === []) {
@@ -238,6 +265,7 @@ final class EmailSettings extends Component
         $this->fromAddress = Cast::string($cfg['from_address'] ?? null);
         $this->fromName = Cast::string($cfg['from_name'] ?? null);
         $this->replyTo = Cast::string($cfg['reply_to'] ?? null);
+        $this->fromLocal = $this->scope === 'site' && str_contains($this->fromAddress, '@') ? Str::beforeLast($this->fromAddress, '@') : '';
 
         $smtp = Cast::arr($cfg['smtp'] ?? null);
         $this->smtpHost = Cast::string($smtp['host'] ?? null);
@@ -427,15 +455,24 @@ final class EmailSettings extends Component
             $this->syncMethod();
         }
 
-        // Only what changed is checked and written: a signature saves without the outbox, and back.
+        // Only what changed is checked and written: a signature or the notice addresses save
+        // without the outbox, and back.
         $changed = $this->unsavedFields();
         $brandChanged = $this->scope === 'site' && array_intersect($changed, self::BRAND_TRACKED) !== [];
-        $senderChanged = ! $brandChanged || array_diff($changed, self::BRAND_TRACKED) !== [];
+        $notifyChanged = $this->scope === 'site' && in_array('notifyTo', $changed, true);
+        $senderChanged = array_diff($changed, [...self::BRAND_TRACKED, 'notifyTo']) !== [] || (! $brandChanged && ! $notifyChanged);
 
         try {
             $this->validate(
-                [...($senderChanged ? $this->rules() : []), ...($brandChanged ? $this->brandRules() : [])],
                 [
+                    ...($senderChanged ? $this->senderRules() : []),
+                    ...($brandChanged ? $this->brandRules() : []),
+                    ...($notifyChanged ? ['notifyTo' => [$this->notifyRule(...)]] : []),
+                ],
+                [
+                    'replyTo.email' => __('admin.em_reply_invalid'),
+                    'fromLocal.regex' => __('admin.em_from_local_invalid'),
+                    'fromLocal.max' => __('admin.em_from_local_invalid'),
                     'smtpPort.in' => __('admin.smtp_port_mail_only', ['ports' => implode(', ', MailHostGuard::PORTS)]),
                     'smtpPassword.required' => __($this->relay === 'smtp' ? 'admin.em_rl_err_pass' : 'admin.em_rl_err_key'),
                     'sendDomain.required' => __('admin.em_rl_err_domain'),
@@ -463,10 +500,16 @@ final class EmailSettings extends Component
 
             return false;
         }
+        if ($notifyChanged) {
+            app(MailNotifyTo::class)->put($this->notifyTo);
+        }
         if (! $senderChanged) {
             $this->loadBrand();
+            $this->notifyTo = app(MailNotifyTo::class)->emails();
             $this->rememberSaved();
-            $this->sendSignatureToEditor();
+            if ($brandChanged) {
+                $this->sendSignatureToEditor();
+            }
             session()->flash('status', __('admin.saved'));
 
             return true;
@@ -483,7 +526,7 @@ final class EmailSettings extends Component
         $cfg = [
             'method' => $this->method,
             ...($this->scope === 'site' ? ['provider' => $this->provider] : []),
-            'from_address' => $this->fromAddress ?: null,
+            'from_address' => $this->scope === 'site' ? $this->siteFromAddress($existing) : ($this->fromAddress ?: null),
             'from_name' => $this->fromName ?: null,
             'reply_to' => $this->replyTo ?: null,
         ];
@@ -945,6 +988,283 @@ final class EmailSettings extends Component
     }
 
     /**
+     * The checks of «Tên và địa chỉ người gửi»: a website types only the part before @ of its
+     * address, and only on «Nhà cung cấp khác» (the platform's outbox sends from the platform's
+     * address, a signed-in mailbox from itself).
+     *
+     * @return array<string, mixed>
+     */
+    private function senderRules(): array
+    {
+        $rules = $this->rules();
+        if ($this->scope !== 'site') {
+            return $rules;
+        }
+        unset($rules['fromAddress']);
+        // an address kept as saved is not checked again: the old rule let `sales+web@…` through
+        if ($this->provider === 'other' && $this->loginMailbox() === '' && $this->fromLocalEdited()) {
+            $rules['fromLocal'] = ['nullable', 'string', 'max:64', 'regex:/^[A-Za-z0-9._-]+$/',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    if (! is_string($value) || $value === '' || ! $this->fromLocalEdited()) {
+                        return;
+                    }
+                    $domain = $this->fromDomain();
+                    if ($domain === '') {
+                        // a part typed with no domain to put after @ would be dropped on save
+                        $fail($this->noDomainMessage());
+                    } elseif (filter_var($value.'@'.$domain, FILTER_VALIDATE_EMAIL) === false) {
+                        $fail(__('admin.em_from_local_invalid'));
+                    }
+                }];
+        }
+
+        return $rules;
+    }
+
+    /**
+     * The address a website's save stores. On «Nhà cung cấp khác»: none when «Email khác» signs in
+     * to a public mailbox (it sends only as that login, MailRelay::defaultFrom); the stored one as
+     * it is while its part before @ is not edited (even on another domain than the one it sends
+     * from now: a save of the name or the reply address never rewrites it); once edited, the part
+     * typed and the sending domain (none typed = the service's own default). On any other outbox
+     * the stored one stays as it was (that outbox does not send from it).
+     *
+     * @param  array<string, mixed>  $existing
+     */
+    private function siteFromAddress(array $existing): ?string
+    {
+        $kept = $existing['from_address'] ?? null;
+        $kept = is_string($kept) && $kept !== '' ? $kept : null;
+        if ($this->provider !== 'other') {
+            return $kept;
+        }
+        if ($this->loginMailbox() !== '') {
+            return null;
+        }
+        if (! $this->fromLocalEdited()) {
+            return $kept;
+        }
+        $domain = $this->fromDomain();
+        $local = trim($this->fromLocal);
+
+        return $local !== '' && $domain !== '' ? $local.'@'.$domain : null;
+    }
+
+    /**
+     * The domain «Nhà cung cấp khác» sends from: a service's sending domain, or the domain of
+     * «Email gửi đi» of «Email khác» (a server saved with a login that is no address: the domain
+     * of the address it sends from); '' while none is known.
+     */
+    private function fromDomain(): string
+    {
+        if ($this->relay === 'smtp') {
+            $login = trim($this->smtpUsername);
+            $from = str_contains($login, '@') ? $login : trim($this->fromAddress);
+
+            return str_contains($from, '@') ? mb_strtolower(Str::afterLast($from, '@')) : '';
+        }
+        $domain = mb_strtolower(trim($this->sendDomain));
+
+        return preg_match('/^(?!-)[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/', $domain) === 1 ? $domain : '';
+    }
+
+    /**
+     * The login of «Email khác» when it is an address of a public mailbox (Gmail, Outlook, Yahoo…):
+     * such a mailbox sends only as itself, so the sending address is that login, never typed; ''
+     * otherwise.
+     */
+    private function loginMailbox(): string
+    {
+        if ($this->provider !== 'other' || $this->relay !== 'smtp') {
+            return '';
+        }
+        $login = trim($this->smtpUsername);
+
+        return str_contains($login, '@') && in_array(mb_strtolower(Str::afterLast($login, '@')), self::PUBLIC_MAILBOXES, true) ? $login : '';
+    }
+
+    /** Whether the part before @ of «Địa chỉ gửi đi» differs from the one saved (only then is the address rebuilt). */
+    private function fromLocalEdited(): bool
+    {
+        return in_array('fromLocal', $this->unsavedFields(), true);
+    }
+
+    /** What to do while «Nhà cung cấp khác» has no domain to send from yet (the preview and the error say it). */
+    private function noDomainMessage(): string
+    {
+        return Cast::string(__($this->relay === 'smtp' ? 'admin.em_from_no_domain_smtp' : 'admin.em_from_no_domain'));
+    }
+
+    /** The website's own domain (a custom one, without `www.`), '' when it runs only on a platform subdomain. */
+    private function ownDomain(): string
+    {
+        $current = app(CurrentSite::class);
+        if (! $current->hasId()) {
+            return '';
+        }
+        // the address its pages are served on, when that is its own domain (not a platform subdomain)
+        $host = mb_strtolower((string) preg_replace('/^www\./i', '', (string) app(SiteResolver::class)->primaryHostFor($current->id())));
+        foreach (Cast::strings(config('tenancy.base_domains')) as $base) {
+            if ($host === mb_strtolower($base) || str_ends_with($host, '.'.mb_strtolower($base))) {
+                return '';
+            }
+        }
+
+        return $host;
+    }
+
+    /**
+     * «Gửi thông báo tới»: what was typed (or pasted, several at once) is added, each address
+     * once; one not well-formed is kept and named in the error. A pasted «Tên <địa chỉ>» gives its
+     * address (the name, quoted or not, is dropped); the rest splits at commas, semicolons and
+     * line breaks, and at spaces only between bare addresses.
+     */
+    public function addNotify(string $typed): void
+    {
+        if ($this->scope !== 'site') {
+            return;
+        }
+        $text = (string) preg_replace('/(^|[,;\r\n>]|[^\s,;<>"]*@[^\s,;<>"]*\s)\s*(?:"[^"]*"\s*)?[^<>@,;\r\n]*<([^<>]*)>/u', '$1,$2,', mb_substr($typed, 0, 2000));
+        $parts = preg_split('/[\s,;]+/u', $text, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $have = array_map(mb_strtolower(...), $this->notifyTo);
+        foreach ($parts as $part) {
+            $part = trim($part, " \t<>\"'");
+            if ($part === '' || in_array(mb_strtolower($part), $have, true)) {
+                continue;
+            }
+            if (count($this->notifyTo) >= MailNotifyTo::MAX) {
+                $this->checkNotify(full: true);
+
+                return;
+            }
+            $this->notifyTo[] = mb_substr($part, 0, 254);
+            $have[] = mb_strtolower($part);
+        }
+        $this->checkNotify();
+    }
+
+    /**
+     * The × on an address of «Gửi thông báo tới» (and Backspace in the empty box): takes that
+     * address off, case aside. Named by the address, not its place, so a second tap or a held key
+     * sent before the list came back never takes off another one.
+     */
+    public function removeNotify(string $email): void
+    {
+        if ($this->scope !== 'site') {
+            return;
+        }
+        $folded = mb_strtolower(trim(mb_substr($email, 0, 254)));
+        foreach ($this->notifyTo as $i => $have) {
+            if (mb_strtolower($have) === $folded) {
+                array_splice($this->notifyTo, $i, 1);
+                $this->checkNotify();
+
+                return;
+            }
+        }
+    }
+
+    /** The error under «Gửi thông báo tới» as the list is now (none once every address is well-formed). */
+    private function checkNotify(bool $full = false): void
+    {
+        $this->resetErrorBag('notifyTo');
+        $message = $this->notifyMessage() ?? ($full ? __('admin.em_notify_max', ['max' => MailNotifyTo::MAX]) : null);
+        if ($message !== null) {
+            $this->addError('notifyTo', $message);
+        }
+    }
+
+    /** Names the addresses of «Gửi thông báo tới» that are not well-formed; null when there are none. */
+    private function notifyMessage(): ?string
+    {
+        $bad = array_values(array_filter($this->notifyTo, fn (string $email): bool => ! FormDraft::isEmail($email)));
+        if ($bad !== []) {
+            return Cast::string(__('admin.em_notify_invalid', ['list' => implode(', ', $bad)]));
+        }
+
+        return count($this->notifyTo) > MailNotifyTo::MAX ? Cast::string(__('admin.em_notify_max', ['max' => MailNotifyTo::MAX])) : null;
+    }
+
+    private function notifyRule(string $attribute, mixed $value, Closure $fail): void
+    {
+        $message = $this->notifyMessage();
+        if ($message !== null) {
+            $fail($message);
+        }
+    }
+
+    /**
+     * What «Tên và địa chỉ người gửi» and «Gửi thông báo tới» draw: the sender line as a customer
+     * will see it (the name typed, else the website's; the address the picked outbox really sends
+     * from, '' while it has none yet, with `empty` saying why), whether the address is typed or
+     * locked (a signed-in mailbox, or «Email khác» on a public mailbox), the domain after @ (the
+     * stored address's own while its part before @ is not edited, `keptNote` then naming the
+     * domain an edit moves it to) and the suggestions.
+     *
+     * @return array{name: string, address: string, empty: string, edit: bool, locked: string, lockedHelp: string, domain: string, suffix: string, keptNote: string, defaultLocal: string, suggestions: list<string>, placeholderDomain: string}
+     */
+    private function senderView(string $siteName, string $platformFrom): array
+    {
+        $mailbox = in_array($this->provider, self::OAUTH_OUTBOXES, true);
+        $linked = $mailbox && $this->oauthConnectedProvider === $this->provider ? Cast::string($this->oauthConnectedEmail) : '';
+        $loginLock = $this->loginMailbox();
+        $edit = $this->provider === 'other' && $loginLock === '';
+        $domain = $this->provider === 'other' ? $this->fromDomain() : '';
+        // what an empty «Địa chỉ gửi đi» sends from (MailRelay::defaultFrom): the login of «Email khác»,
+        // no-reply@ on a service
+        $login = trim($this->smtpUsername);
+        $smtp = $this->relay === 'smtp';
+        $defaultLocal = $smtp ? (str_contains($login, '@') ? Str::beforeLast($login, '@') : '') : 'no-reply';
+        $typed = trim($this->fromLocal);
+        // the stored address is what sends until its part before @ is edited (siteFromAddress)
+        $stored = trim($this->fromAddress);
+        $kept = $edit && str_contains($stored, '@') && ! $this->fromLocalEdited() ? $stored : '';
+        $keptDomain = $kept !== '' ? mb_strtolower(Str::afterLast($kept, '@')) : '';
+        $address = match (true) {
+            $this->provider === 'platform' => $platformFrom,
+            $mailbox => $linked,
+            $loginLock !== '' => $loginLock,
+            $kept !== '' => $kept,
+            $domain === '' => '',
+            $typed !== '' => $typed.'@'.$domain,
+            $smtp => str_contains($login, '@') ? $login : '',
+            default => 'no-reply@'.$domain,
+        };
+        $name = trim($this->fromName) !== '' ? trim($this->fromName) : $siteName;
+
+        $linkedDomain = $linked !== '' ? mb_strtolower(Str::afterLast($linked, '@')) : '';
+        $suggestOn = match (true) {
+            $domain !== '' && ! in_array($domain, self::PUBLIC_MAILBOXES, true) => $domain,
+            $linkedDomain !== '' && ! in_array($linkedDomain, self::PUBLIC_MAILBOXES, true) => $linkedDomain,
+            default => $this->siteDomain,
+        };
+        $have = array_map(mb_strtolower(...), $this->notifyTo);
+        $suggestions = [];
+        if ($suggestOn !== '' && count($this->notifyTo) < MailNotifyTo::MAX) {
+            foreach (self::NOTIFY_PREFIXES as $prefix) {
+                if (! in_array($prefix.'@'.$suggestOn, $have, true)) {
+                    $suggestions[] = $prefix.'@'.$suggestOn;
+                }
+            }
+        }
+
+        return [
+            'name' => $name !== '' ? $name : Cast::string(__('admin.em_sender_site_fallback')),
+            'address' => $address,
+            'empty' => $edit && $domain === '' ? $this->noDomainMessage() : Cast::string(__('admin.em_sender_no_addr')),
+            'edit' => $edit,
+            'locked' => $mailbox ? $linked : $loginLock,
+            'lockedHelp' => Cast::string(__($mailbox ? 'admin.em_from_help_locked' : 'admin.em_from_help_login')),
+            'domain' => $domain,
+            'suffix' => $keptDomain !== '' ? $keptDomain : $domain,
+            'keptNote' => $keptDomain !== '' && $domain !== '' && $keptDomain !== $domain ? Cast::string(__('admin.em_from_kept', ['domain' => $domain])) : '',
+            'defaultLocal' => $defaultLocal,
+            'suggestions' => $suggestions,
+            'placeholderDomain' => $suggestOn !== '' ? $suggestOn : 'congty.vn',
+        ];
+    }
+
+    /**
      * The checks of a mail service: its key (a stored one only for the same service), its sending
      * domain, its region and login where it has them; its server from the relay table must be public too.
      *
@@ -1096,15 +1416,18 @@ final class EmailSettings extends Component
     public function render(): View
     {
         $platform = $this->scope === 'platform';
+        $siteName = $platform ? '' : $this->siteName();
+        $platformFrom = $platform ? '' : $this->platformFrom();
 
         $view = view('admin::livewire.email-settings', [
             'changes' => $this->unsavedCount(),
             'status' => $platform ? null : $this->deliveryStatus(),
-            'platformFrom' => $platform ? '' : $this->platformFrom(),
-            'siteName' => $platform ? '' : $this->siteName(),
+            'platformFrom' => $platformFrom,
+            'siteName' => $siteName,
             'sign' => $platform ? null : $this->signTab(),
             'keySaved' => ! $platform && $this->keySaved(),
             'quota' => $platform ? null : $this->platformQuota(),
+            'sender' => $platform ? null : $this->senderView($siteName, $platformFrom),
         ]);
         $view->layout($platform ? 'admin::layouts.platform' : 'admin::layouts.app');
         $view->title($platform ? __('admin.system_email') : __('admin.email_settings'));
